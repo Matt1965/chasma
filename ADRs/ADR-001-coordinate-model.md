@@ -79,3 +79,41 @@ Rejected as the sole solution because it primarily solves rendering/camera preci
 Floating origin may still be used later for rendering.
 
 It should not replace chunk-relative authoritative positioning.
+
+---
+
+# Addendum: Coordinate Conventions (Phase 0)
+
+Status: Accepted
+
+The following conventions make the Chunk Coordinate + Local Position model concrete.
+
+- 1 Bevy unit = 1 meter.
+- The chunk grid tiles the horizontal XZ plane. Bevy's Y axis is vertical (up).
+- Chunk coordinates are 2D integer coordinates (see ADR-006).
+- A chunk coordinate addresses a square region of the world. Chunk `(cx, cz)`
+  covers world X in `[cx * chunk_size, (cx + 1) * chunk_size)` and world Z in
+  `[cz * chunk_size, (cz + 1) * chunk_size)`.
+- A chunk's origin is its minimum (lowest X, lowest Z) corner, not its center.
+- World origin: chunk `(0, 0)`'s minimum corner sits at global `(0, 0, 0)`.
+- Local Position is relative to the chunk's minimum corner:
+  - `local.x` in `[0, chunk_size)`
+  - `local.z` in `[0, chunk_size)`
+  - `local.y` is absolute terrain height (vertical is not chunked; see ADR-006)
+- Global render-space conversion:
+  - `global = (cx * chunk_size + local.x, local.y, cz * chunk_size + local.z)`
+- Conversions must round-trip: `global -> (ChunkCoord, LocalPosition) -> global`.
+
+Chunk identity:
+
+- The chunk coordinate IS the chunk identity. There is no separately generated
+  chunk id.
+- This is the multiplayer- and persistence-friendly choice: identity is
+  deterministic, derived purely from world position, and requires no shared id
+  registry to stay consistent across machines or save/load cycles.
+
+Rationale:
+
+Minimum-corner origins keep tiling math simple (floor division by `chunk_size`)
+and avoid half-chunk offsets in streaming and persistence. Keeping vertical
+unchunked matches the heightfield terrain model (ADR-003).

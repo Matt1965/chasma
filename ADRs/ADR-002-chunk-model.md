@@ -104,3 +104,20 @@ Deferred because they increase management overhead and seam complexity.
 Chunk size may become configurable later.
 
 The architecture should not assume every future system uses terrain chunk size.
+
+---
+
+# Addendum: Chunk Size Ownership (Phase 0)
+
+Status: Accepted
+
+Chunk size is owned by `WorldConfig` as the single authoritative source, rather
+than a hard-coded compile-time constant. This honors the note above that chunk
+size may become configurable.
+
+Because chunk size is runtime data, coordinate conversions must not be `const`
+free functions that bake in `256`. Instead, conversions take a small `Copy`
+layout value (chunk size + units-per-meter) derived from `WorldConfig`.
+
+This keeps a single source of truth, allows future reconfiguration, and avoids
+scattering the literal `256` across systems.

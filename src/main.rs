@@ -1,3 +1,9 @@
+use bevy::prelude::*;
+use chasma::app::AppPlugin;
+
 fn main() {
-    println!("Hello, world!");
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_plugins(AppPlugin)
+        .run();
 }

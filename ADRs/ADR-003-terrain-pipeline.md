@@ -109,3 +109,16 @@ The exact terrain sample scale remains undecided:
 2m per sample
 
 Higher source detail is preferred when storage and build time allow it.
+
+---
+
+Addendum: Provisional Sample Scale (Phase 0)
+
+Status: Provisional
+
+For Phase 0 and early development, assume 1 meter per height sample as the
+default in `WorldConfig`.
+
+This remains provisional and may change once real terrain data and its
+build/storage costs are evaluated. Higher source detail is still preferred where
+storage and build time allow.
