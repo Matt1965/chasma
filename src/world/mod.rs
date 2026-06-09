@@ -10,7 +10,10 @@ pub use chunk::{ChunkData, ChunkId};
 pub use config::WorldConfig;
 pub use coordinates::{ChunkCoord, ChunkLayout, LocalPosition, WorldPosition};
 pub use data::{ChunkExtent, WorldData};
-pub use terrain::{Heightfield, MaskSource, TerrainDataError, TerrainMask, TerrainMetadata, TerrainSource};
+pub use terrain::{
+    Heightfield, ImportError, MaskSource, SourceHeightfield, TerrainDataError, TerrainMask,
+    TerrainMetadata, TerrainSource, import_world,
+};
 
 /// Owns the World Data Layer: the authoritative coordinate model (ADR-001),
 /// chunk identity and definitions (ADR-002), terrain data (ADR-003, ADR-008),

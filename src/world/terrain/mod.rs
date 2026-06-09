@@ -1,11 +1,13 @@
 use core::fmt;
 
 mod heightfield;
+mod import;
 mod mask;
 mod metadata;
 mod source;
 
 pub use heightfield::Heightfield;
+pub use import::{ImportError, SourceHeightfield, import_world};
 pub use mask::TerrainMask;
 pub use metadata::TerrainMetadata;
 pub use source::{MaskSource, TerrainSource};
