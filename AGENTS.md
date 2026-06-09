@@ -26,9 +26,10 @@ Before making design or implementation decisions:
 
 1. Read ARCHITECTURE.md
 2. Read relevant ADRs
-3. Read FEATURE_MAP.md
-4. Review existing code
-5. Only then propose implementation
+3. Read ROADMAP.md
+4. Read BEVY_REFERENCE.md
+5. Review existing code
+6. Only then propose implementation
 
 Do not assume the user's latest request overrides existing architecture.
 

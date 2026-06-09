@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use super::coordinates::ChunkCoord;
+use super::terrain::{Heightfield, TerrainMask, TerrainMetadata};
 
 /// The authoritative identity of a chunk.
 ///
@@ -34,5 +35,32 @@ impl From<ChunkCoord> for ChunkId {
 impl From<ChunkId> for ChunkCoord {
     fn from(id: ChunkId) -> Self {
         id.0
+    }
+}
+
+/// The authoritative definition of a single chunk's geography (ADR-002,
+/// ADR-008).
+///
+/// A `ChunkData` owns its terrain tile, the metadata derived from it, and any
+/// imported mask layers. It owns geography only: per ADR-002 it must not own
+/// doodads, occupancy, units, settlements, factions, or rendering/LOD state.
+/// Those belong to later phases.
+#[derive(Debug, Clone, PartialEq, Reflect)]
+pub struct ChunkData {
+    pub heightfield: Heightfield,
+    pub metadata: TerrainMetadata,
+    pub masks: Vec<TerrainMask>,
+}
+
+impl ChunkData {
+    /// Build chunk data from a heightfield and its mask layers, deriving the
+    /// terrain metadata so it always matches the heightfield.
+    pub fn new(heightfield: Heightfield, masks: Vec<TerrainMask>) -> Self {
+        let metadata = TerrainMetadata::from_heightfield(&heightfield);
+        Self {
+            heightfield,
+            metadata,
+            masks,
+        }
     }
 }
