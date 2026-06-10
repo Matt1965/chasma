@@ -205,6 +205,7 @@ model** as the heightfield, but at the mask's own resolution:
   and divide evenly; otherwise import fails with a mask-alignment error.
 
 This keeps masks aligned across chunk boundaries (no seams) and reuses the
-heightfield partition algorithm with a mask-specific span. The mask *decode and
-import* itself ships with the EXR decoder pass; this addendum fixes the model so
-that pass has no open design questions.
+heightfield partition algorithm with a mask-specific span. This addendum defines
+the *model* only; mask decode and import are **deferred** until a consumer exists
+(see ADR-009 "Phase 1 Cleanup" addendum). `TerrainMask` remains the Phase 1 data
+structure, but `import_world` produces empty mask lists for now.

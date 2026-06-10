@@ -7,7 +7,6 @@ mod heightfield;
 mod import;
 mod mask;
 mod metadata;
-mod source;
 
 #[cfg(feature = "terrain-import")]
 pub use decode::{DecodeError, decode_exr_heightfield};
@@ -16,7 +15,6 @@ pub use heightfield::Heightfield;
 pub use import::{ImportError, SourceHeightfield, import_world};
 pub use mask::TerrainMask;
 pub use metadata::TerrainMetadata;
-pub use source::{MaskSource, TerrainSource};
 
 /// Errors produced when constructing authoritative terrain data from raw
 /// samples (ADR-008).

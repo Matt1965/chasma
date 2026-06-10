@@ -10,9 +10,7 @@ pub use chunk::{ChunkData, ChunkId};
 pub use config::WorldConfig;
 pub use coordinates::{ChunkCoord, ChunkLayout, LocalPosition, WorldPosition};
 pub use data::{ChunkExtent, WorldData};
-pub use terrain::{
-    Heightfield, MaskSource, TerrainDataError, TerrainMask, TerrainMetadata, TerrainSource,
-};
+pub use terrain::{Heightfield, TerrainDataError, TerrainMask, TerrainMetadata};
 #[cfg(feature = "terrain-import")]
 pub use terrain::{
     DecodeError, ImportError, SourceHeightfield, decode_exr_heightfield, import_world,

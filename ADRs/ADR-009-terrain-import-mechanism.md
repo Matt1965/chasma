@@ -49,19 +49,21 @@ Bevy `AssetLoader`.
 
 ## Source description and invocation
 
-- A `TerrainSource` descriptor owns the import inputs: source heightfield path,
-  optional mask paths, and any format/scale parameters not already in
-  `WorldConfig`.
+- A source *descriptor* (naming the heightfield path, optional mask paths, and
+  any format/scale parameters not already in `WorldConfig`) owns the import
+  inputs.
 - Import runs once at startup via a system in the World Data Layer, **only when a
-  `TerrainSource` is configured**. With no source configured, import is a no-op
-  and `WorldData` is empty, so the runnable shell still starts (ADR-007).
+  source is configured**. With no source configured, import is a no-op and
+  `WorldData` is empty, so the runnable shell still starts (ADR-007).
 - World extent (finite bounds, ADR-006) is discovered during import and stored on
   `WorldData`.
 
 > **Superseded in part:** the assumption that the *runtime* imports a monolithic
-> source heightfield at startup is replaced by the Phase 1B addendum below.
+> source heightfield at startup is replaced by the Phase 1B addenda below.
 > Monolithic source heightfields are an *offline / preprocessing* input;
-> the runtime loads pre-chunked terrain assets.
+> the runtime loads pre-chunked terrain assets. The source-descriptor type
+> itself is deferred (see "Phase 1 Cleanup" addendum) until an offline driver
+> consumes it; the implemented decoder takes a path directly.
 
 ## Construction from raw samples
 
@@ -162,14 +164,19 @@ than assumed.
 
 ## Mask import behavior
 
-- Masks are **optional**. If a `TerrainSource` provides mask layers, each is
-  decoded to raw `f32` and partitioned per the ADR-008 mask-partitioning model,
-  then attached to every `ChunkData`. If no masks are provided, chunks have empty
-  mask lists (the current partitioner's behavior).
+When mask import is implemented, it follows these rules:
+
+- Masks are **optional**. When mask layers are provided, each is decoded to raw
+  `f32` and partitioned per the ADR-008 mask-partitioning model, then attached to
+  every `ChunkData`. If no masks are provided, chunks have empty mask lists.
 - Mask decoding follows the same authoritative-data rule as the heightfield: it
   decodes to plain `f32` data and is never routed through a render/image resource.
 - Mask resolution (`M`) need not match the heightfield resolution (`N`); both must
   partition into the same chunk grid (ADR-008 addendum), otherwise import fails.
+
+> See the "Phase 1 Cleanup" addendum below: mask decoding and partitioning are
+> **deferred** and not implemented in Phase 1. The rules above describe the
+> intended behavior for when a consumer exists.
 
 ---
 
@@ -216,9 +223,9 @@ is gated behind an opt-in Cargo feature named `terrain-import`:
   `ImportError`) and `terrain::decode` (`decode_exr_heightfield`, `DecodeError`)
   and their re-exports are compiled only with `terrain-import`.
 - The authoritative runtime data types — `Heightfield`, `TerrainMetadata`,
-  `TerrainMask`, `TerrainSource`/`MaskSource` descriptors, `ChunkData`, and
-  `WorldData` — remain available without the feature. The core world data layer
-  builds and is testable with default features.
+  `TerrainMask`, `ChunkData`, and `WorldData` — remain available without the
+  feature. The core world data layer builds and is testable with default
+  features.
 
 ## Deferred
 
@@ -227,3 +234,44 @@ is gated behind an opt-in Cargo feature named `terrain-import`:
   they are not built now (AGENTS.md Groundwork Rule). This addendum only fixes
   the boundary: runtime consumes pre-chunked data; monolithic sources are offline
   input.
+
+---
+
+# Addendum: Phase 1 Cleanup — Deferred Mask Import and Source Descriptors
+
+Status: Accepted
+
+The Phase 1 completion review found two pieces of this ADR that described
+behavior or types with no current consumer. Per the AGENTS.md Groundwork Rule
+("build seams, not fake future systems"), they are deferred rather than built.
+
+## Mask import is deferred
+
+- `TerrainMask` remains the Phase 1 terrain mask **data structure** (ADR-008): a
+  plain per-sample `f32` layer, constructible from raw samples.
+- **Mask decoding and mask partitioning are not implemented in Phase 1.** They
+  are deferred until a real consumer exists — expected at Phase 2 (terrain
+  material blending) or Phase 3 (doodad generation).
+- Consequently `import_world` produces chunks with empty mask lists. The mask
+  decode/partition rules above (and the ADR-008 mask-partitioning addendum) define
+  the *intended* model for when that consumer arrives; they are a documented seam,
+  not implemented behavior.
+
+## Source descriptors are deferred
+
+- The `TerrainSource` / `MaskSource` descriptor types have been **removed** for
+  now. Nothing consumed them: the decoder (`decode_exr_heightfield`) takes a path
+  directly, and the partitioner (`import_world`) takes an already-decoded
+  `SourceHeightfield`.
+- A source-descriptor type (naming heightfield + mask paths and format/scale
+  parameters) will be reintroduced when an **offline import driver** that wires
+  decode → partition → (eventually) mask import actually exists. That driver is
+  not built in this pass.
+- This keeps the default and `terrain-import` builds free of an unused public
+  type while preserving the design intent here in the ADR.
+
+## Unchanged
+
+- The offline boundary, the `terrain-import` feature gating, and the implemented
+  decode/partition path (`decode_exr_heightfield`, `SourceHeightfield`,
+  `import_world`) are unchanged.
