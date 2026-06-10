@@ -1,11 +1,13 @@
 use core::fmt;
 
+mod decode;
 mod heightfield;
 mod import;
 mod mask;
 mod metadata;
 mod source;
 
+pub use decode::{DecodeError, decode_exr_heightfield};
 pub use heightfield::Heightfield;
 pub use import::{ImportError, SourceHeightfield, import_world};
 pub use mask::TerrainMask;

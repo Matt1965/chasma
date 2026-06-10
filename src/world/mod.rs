@@ -11,8 +11,8 @@ pub use config::WorldConfig;
 pub use coordinates::{ChunkCoord, ChunkLayout, LocalPosition, WorldPosition};
 pub use data::{ChunkExtent, WorldData};
 pub use terrain::{
-    Heightfield, ImportError, MaskSource, SourceHeightfield, TerrainDataError, TerrainMask,
-    TerrainMetadata, TerrainSource, import_world,
+    DecodeError, Heightfield, ImportError, MaskSource, SourceHeightfield, TerrainDataError,
+    TerrainMask, TerrainMetadata, TerrainSource, decode_exr_heightfield, import_world,
 };
 
 /// Owns the World Data Layer: the authoritative coordinate model (ADR-001),

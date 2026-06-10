@@ -153,3 +153,58 @@ Rejected per ADR-003 (quantization artifacts).
 The provisional 1 m sample spacing (ADR-003 addendum) may change; because spacing
 is owned by `WorldConfig` and tiles are derived at import, changing it does not
 alter these structures, only their dimensions.
+
+---
+
+# Addendum: Source Placement and Mask Partitioning (Phase 1B)
+
+Status: Accepted
+
+This addendum closes design questions surfaced while implementing the Phase 1B
+partitioner (`import_world`). It clarifies how a single decoded source grid is
+placed onto the chunk grid, and how mask layers partition. It does not change the
+storage model above.
+
+## Source grid placement
+
+The importer maps the decoded source grid onto the chunk grid with a fixed,
+deterministic placement:
+
+- Source sample `(0, 0)` is the world origin: it sits at global `(0, 0, 0)`, the
+  minimum corner of chunk `(0, 0)` (ADR-001 addendum, minimum-corner origin).
+- Column index advances along `+X`; row index advances along `+Z`.
+- Chunks are emitted at non-negative coordinates only:
+  `(0..chunks_x, 0..chunks_z)`, where `chunks_x = (source_width - 1) / N` and
+  `chunks_z = (source_height - 1) / N`, with `N` the per-chunk sample span
+  (`chunk_size_meters / meters_per_sample`).
+- The finite world extent (ADR-006) is therefore
+  `[0, chunks_x - 1] x [0, chunks_z - 1]`.
+
+Offset, centered, or negative-origin placements are intentionally **not**
+supported in Phase 1. If a future consumer needs them, a source-placement
+parameter (origin offset in chunks) can be added as a seam on the import
+descriptor; it is not built now (AGENTS.md Groundwork Rule).
+
+The importer also relies on the coordinate model's `1 unit = 1 meter` invariant
+(ADR-001 addendum): it validates `units_per_meter == 1.0` and rejects other
+values, rather than silently scaling sample spacing into world units.
+
+## Mask partitioning
+
+A source mask image partitions using the **same chunk grid and shared-edge
+model** as the heightfield, but at the mask's own resolution:
+
+- A mask layer for the world has dimensions `(chunks_x * M + 1)` by
+  `(chunks_z * M + 1)` for some per-chunk mask span `M >= 1`, where `M` may differ
+  from the heightfield's `N`.
+- It partitions into per-chunk `(M + 1) x (M + 1)` tiles with shared boundary
+  samples, identical to the heightfield rule. Each chunk's `TerrainMask` then has
+  `samples_per_edge = M + 1`.
+- `M` is derived from the mask dimensions and the chunk count:
+  `M = (mask_width - 1) / chunks_x`, which must equal `(mask_height - 1) / chunks_z`
+  and divide evenly; otherwise import fails with a mask-alignment error.
+
+This keeps masks aligned across chunk boundaries (no seams) and reuses the
+heightfield partition algorithm with a mask-specific span. The mask *decode and
+import* itself ships with the EXR decoder pass; this addendum fixes the model so
+that pass has no open design questions.

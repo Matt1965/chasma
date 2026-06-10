@@ -10,7 +10,7 @@ use crate::world::{ChunkCoord, ChunkData, ChunkId, WorldConfig, WorldData};
 /// and *partitioning* (this module). It carries no spacing or world placement;
 /// sample spacing and chunk size come from [`WorldConfig`] (ADR-008). Column
 /// index advances along +X and row index along +Z, matching the chunk tile
-/// layout.
+/// layout (ADR-008 addendum: row 0 is minimum Z).
 #[derive(Debug, Clone, PartialEq)]
 pub struct SourceHeightfield {
     width: u32,
@@ -20,11 +20,10 @@ pub struct SourceHeightfield {
 
 impl SourceHeightfield {
     /// Build a source heightfield from raw row-major samples.
-    pub fn from_samples(
-        width: u32,
-        height: u32,
-        samples: Vec<f32>,
-    ) -> Result<Self, ImportError> {
+    ///
+    /// All samples must be finite: heights are authoritative data (ADR-003), and
+    /// NaN/infinite values would corrupt metadata and sampling.
+    pub fn from_samples(width: u32, height: u32, samples: Vec<f32>) -> Result<Self, ImportError> {
         if width == 0 || height == 0 {
             return Err(ImportError::SourceDimensionZero { width, height });
         }
@@ -35,23 +34,14 @@ impl SourceHeightfield {
                 actual: samples.len(),
             });
         }
+        if let Some(index) = samples.iter().position(|h| !h.is_finite()) {
+            return Err(ImportError::NonFiniteSample { index });
+        }
         Ok(Self {
             width,
             height,
             samples,
         })
-    }
-
-    pub fn width(&self) -> u32 {
-        self.width
-    }
-
-    pub fn height(&self) -> u32 {
-        self.height
-    }
-
-    pub fn samples(&self) -> &[f32] {
-        &self.samples
     }
 
     fn sample(&self, col: u32, row: u32) -> f32 {
@@ -71,6 +61,9 @@ pub enum ImportError {
         chunk_size_meters: f32,
         meters_per_sample: f32,
     },
+    /// `units_per_meter` was not 1.0; the coordinate model fixes 1 unit = 1 m
+    /// (ADR-001 addendum), which the importer relies on.
+    UnsupportedUnitsPerMeter { units_per_meter: f32 },
     /// Chunk size is not an integer multiple of the sample spacing (ADR-008).
     ChunkSizeNotMultipleOfSampleSpacing {
         chunk_size_meters: f32,
@@ -80,6 +73,8 @@ pub enum ImportError {
     SourceDimensionZero { width: u32, height: u32 },
     /// The source sample buffer length did not match `width * height`.
     SourceSampleCountMismatch { expected: usize, actual: usize },
+    /// A source sample was NaN or infinite. Heights must be finite (ADR-003).
+    NonFiniteSample { index: usize },
     /// The source is smaller than a single chunk tile.
     SourceTooSmall {
         source_width: u32,
@@ -108,6 +103,10 @@ impl fmt::Display for ImportError {
                 f,
                 "invalid world config: chunk_size_meters={chunk_size_meters}, meters_per_sample={meters_per_sample}"
             ),
+            Self::UnsupportedUnitsPerMeter { units_per_meter } => write!(
+                f,
+                "unsupported units_per_meter {units_per_meter}; the coordinate model fixes 1 unit = 1 meter (ADR-001)"
+            ),
             Self::ChunkSizeNotMultipleOfSampleSpacing {
                 chunk_size_meters,
                 meters_per_sample,
@@ -120,6 +119,9 @@ impl fmt::Display for ImportError {
             }
             Self::SourceSampleCountMismatch { expected, actual } => {
                 write!(f, "source expected {expected} samples, got {actual}")
+            }
+            Self::NonFiniteSample { index } => {
+                write!(f, "source heightfield has a non-finite sample at index {index}")
             }
             Self::SourceTooSmall {
                 source_width,
@@ -150,7 +152,9 @@ impl std::error::Error for ImportError {}
 /// The source grid is partitioned into 256 m chunks (or whatever
 /// `WorldConfig::chunk_size_meters` specifies) at `WorldConfig::meters_per_sample`
 /// spacing. Each chunk stores `N + 1` samples per edge, sharing boundary samples
-/// with its neighbors. Identical inputs always produce identical output.
+/// with its neighbors. Source sample (0, 0) maps to world origin and chunks are
+/// emitted at non-negative coordinates (ADR-008 addendum). Identical inputs
+/// always produce identical output.
 ///
 /// Chunks created here have no mask layers; mask import is introduced with the
 /// file decoder in a later pass.
@@ -158,6 +162,15 @@ pub fn import_world(
     source: &SourceHeightfield,
     config: &WorldConfig,
 ) -> Result<WorldData, ImportError> {
+    // The coordinate model fixes 1 unit = 1 meter (ADR-001 addendum). The
+    // importer relies on this when treating sample spacing (meters) as world
+    // units during sampling, so reject configurations that would break it.
+    if (config.units_per_meter - 1.0).abs() > 1e-6 {
+        return Err(ImportError::UnsupportedUnitsPerMeter {
+            units_per_meter: config.units_per_meter,
+        });
+    }
+
     let n = samples_per_chunk_span(config)?;
     let samples_per_edge = n + 1;
 
@@ -199,6 +212,12 @@ pub fn import_world(
 /// Compute `N`, the number of sample spans per chunk edge (so a tile has
 /// `N + 1` samples per edge), validating that chunk size is an integer multiple
 /// of the sample spacing (ADR-008).
+///
+/// `n * spacing` is the resulting tile span; requiring it to match the
+/// configured chunk size keeps the heightfield tile domain consistent with the
+/// coordinate layout. The tolerance is tight (a few ULP at 256 m) so genuinely
+/// non-integer ratios are rejected rather than silently snapped to a near
+/// integer.
 fn samples_per_chunk_span(config: &WorldConfig) -> Result<u32, ImportError> {
     let chunk_size = config.chunk_size_meters;
     let spacing = config.meters_per_sample;
@@ -212,7 +231,7 @@ fn samples_per_chunk_span(config: &WorldConfig) -> Result<u32, ImportError> {
 
     let ratio = chunk_size / spacing;
     let n = ratio.round();
-    if n < 1.0 || (n * spacing - chunk_size).abs() > chunk_size * 1e-4 {
+    if n < 1.0 || (n * spacing - chunk_size).abs() > chunk_size * 1e-5 {
         return Err(ImportError::ChunkSizeNotMultipleOfSampleSpacing {
             chunk_size_meters: chunk_size,
             meters_per_sample: spacing,
@@ -350,14 +369,37 @@ mod tests {
     }
 
     #[test]
-    fn rejects_mismatched_source_sample_count() {
-        let err = SourceHeightfield::from_samples(3, 3, vec![0.0; 4]).unwrap_err();
-        assert_eq!(
+    fn rejects_near_integer_chunk_size() {
+        // 2.02 is close to an integer multiple of 1.0 but not exact; the tight
+        // tolerance must reject it rather than snapping to N = 2.
+        let config = WorldConfig {
+            chunk_size_meters: 2.02,
+            units_per_meter: 1.0,
+            meters_per_sample: 1.0,
+        };
+        let err = import_world(&synthetic_source(5, 3), &config).unwrap_err();
+        assert!(matches!(
             err,
-            ImportError::SourceSampleCountMismatch {
-                expected: 9,
-                actual: 4,
-            }
-        );
+            ImportError::ChunkSizeNotMultipleOfSampleSpacing { .. }
+        ));
+    }
+
+    #[test]
+    fn rejects_non_unit_units_per_meter() {
+        let config = WorldConfig {
+            chunk_size_meters: 2.0,
+            units_per_meter: 2.0,
+            meters_per_sample: 1.0,
+        };
+        let err = import_world(&synthetic_source(5, 3), &config).unwrap_err();
+        assert!(matches!(err, ImportError::UnsupportedUnitsPerMeter { .. }));
+    }
+
+    #[test]
+    fn rejects_non_finite_source_samples() {
+        let mut samples = vec![0.0f32; 9];
+        samples[4] = f32::NAN;
+        let err = SourceHeightfield::from_samples(3, 3, samples).unwrap_err();
+        assert_eq!(err, ImportError::NonFiniteSample { index: 4 });
     }
 }
