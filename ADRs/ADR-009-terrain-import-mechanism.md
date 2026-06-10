@@ -205,6 +205,21 @@ runtime imports a monolithic source heightfield at startup.
   partitioner, so generated chunk assets are reproducible — preserving the
   multiplayer/persistence guarantees.
 
+## Build gating
+
+Because the EXR decode / offline partitioning path is not part of the runtime, it
+is gated behind an opt-in Cargo feature named `terrain-import`:
+
+- The `exr` dependency is optional and pulled in only by `terrain-import`
+  (`terrain-import = ["dep:exr"]`). Default builds do not compile `exr`.
+- The offline modules `terrain::import` (`SourceHeightfield`, `import_world`,
+  `ImportError`) and `terrain::decode` (`decode_exr_heightfield`, `DecodeError`)
+  and their re-exports are compiled only with `terrain-import`.
+- The authoritative runtime data types — `Heightfield`, `TerrainMetadata`,
+  `TerrainMask`, `TerrainSource`/`MaskSource` descriptors, `ChunkData`, and
+  `WorldData` — remain available without the feature. The core world data layer
+  builds and is testable with default features.
+
 ## Deferred
 
 - The pre-chunked runtime asset **format** and its **loader** are a separate

@@ -1,14 +1,18 @@
 use core::fmt;
 
+#[cfg(feature = "terrain-import")]
 mod decode;
 mod heightfield;
+#[cfg(feature = "terrain-import")]
 mod import;
 mod mask;
 mod metadata;
 mod source;
 
+#[cfg(feature = "terrain-import")]
 pub use decode::{DecodeError, decode_exr_heightfield};
 pub use heightfield::Heightfield;
+#[cfg(feature = "terrain-import")]
 pub use import::{ImportError, SourceHeightfield, import_world};
 pub use mask::TerrainMask;
 pub use metadata::TerrainMetadata;
