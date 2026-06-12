@@ -1,0 +1,45 @@
+# Rust
+target/
+Cargo.lock
+
+# Git
+.git/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Build outputs
+dist/
+build/
+out/
+
+# Generated assets
+assets/generated/
+assets/cache/
+
+# Cursor
+.cursor/index/
+.cursor/cache/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Archives
+*.zip
+*.tar
+*.gz
+
+# Large binary assets (if applicable)
+*.blend1
+*.psd

@@ -73,6 +73,14 @@ impl WorldData {
         self.chunks.get(&chunk)
     }
 
+    /// Iterate over the loaded chunks and their data.
+    ///
+    /// Iteration order is unspecified; callers that need determinism (e.g. the
+    /// offline asset writer) must sort by [`ChunkId`].
+    pub fn iter(&self) -> impl Iterator<Item = (ChunkId, &ChunkData)> {
+        self.chunks.iter().map(|(id, data)| (*id, data))
+    }
+
     /// Sample terrain height at a global position, if its chunk is loaded
     /// (ADR-005). Returns `None` when the owning chunk is not resident.
     pub fn height_at(&self, global: Vec3) -> Option<f32> {

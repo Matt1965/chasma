@@ -1,0 +1,1 @@
+(version:1,config:(chunk_size_meters:256.0,units_per_meter:1.0,meters_per_sample:1.0),chunks:[(x:0,z:0,path:"chunks/0_0.ron"),(x:1,z:0,path:"chunks/1_0.ron")])
