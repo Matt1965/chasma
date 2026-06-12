@@ -2,9 +2,10 @@
 //!
 //! The crate is organized as architectural layers (see ARCHITECTURE.md):
 //! the application composition root (`app`), the authoritative World Data Layer
-//! (`world`), and the Terrain Runtime Layer (`terrain`) which turns authoritative
-//! chunk data into derived, disposable meshes (ADR-010, ROADMAP Phase 2).
+//! (`world`), the Terrain Runtime Layer (`terrain`), and the client-local Camera
+//! layer (`camera`) (ADR-010, ADR-014, ROADMAP Phase 2).
 
 pub mod app;
+pub mod camera;
 pub mod terrain;
 pub mod world;

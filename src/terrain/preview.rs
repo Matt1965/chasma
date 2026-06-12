@@ -1,9 +1,10 @@
 //! Developer preview scene for the terrain runtime (dev-only).
 //!
 //! Gated behind the `dev` feature. This is composition/throwaway code: it wires
-//! a camera, a light, the manifest load path, and derived render entities so the
-//! Phase 2A vertical slice can be viewed end to end. It must not be depended on
-//! by the core layers (ADR-007, ADR-010).
+//! a light, the manifest load path, and derived render entities so the Phase 2A
+//! vertical slice can be viewed end to end. The permanent RTS camera comes from
+//! [`crate::camera::CameraPlugin`] (ADR-014). This plugin must not be depended
+//! on by the core layers (ADR-007, ADR-010).
 
 use std::path::Path;
 
@@ -60,8 +61,4 @@ fn setup_preview(
             .looking_at(Vec3::new(256.0, 0.0, 128.0), Vec3::Y),
     ));
 
-    commands.spawn((
-        Camera3d::default(),
-        Transform::from_xyz(256.0, 180.0, 420.0).looking_at(Vec3::new(256.0, 8.0, 128.0), Vec3::Y),
-    ));
 }

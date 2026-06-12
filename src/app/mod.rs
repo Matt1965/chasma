@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::camera::CameraPlugin;
 use crate::terrain::TerrainRuntimePlugin;
 use crate::world::WorldFoundationPlugin;
 
@@ -14,7 +15,8 @@ pub struct AppPlugin;
 impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(WorldFoundationPlugin)
-            .add_plugins(TerrainRuntimePlugin);
+            .add_plugins(TerrainRuntimePlugin)
+            .add_plugins(CameraPlugin);
 
         #[cfg(feature = "dev")]
         app.add_plugins(crate::terrain::preview::TerrainPreviewPlugin);
