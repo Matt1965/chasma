@@ -107,7 +107,7 @@ pub fn apply_rts_camera_control(
             state.target_yaw - delta.x * settings.rotate_sensitivity,
         );
         state.target_pitch = settings.clamp_pitch(
-            state.target_pitch - delta.y * settings.rotate_sensitivity,
+            state.target_pitch + delta.y * settings.rotate_sensitivity,
         );
     }
 
