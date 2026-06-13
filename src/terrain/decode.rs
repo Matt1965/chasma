@@ -1,7 +1,8 @@
 //! Delivery-agnostic decoding of pre-chunked terrain assets (ADR-011, ADR-012).
 //!
 //! These functions consume already-read text and never touch the filesystem, so
-//! the Phase 2A synchronous loader and a future Phase 2B `AssetLoader` can share
+//! the Phase 2A synchronous loader, Phase 2B on-demand loading, and a future
+//! `AssetLoader` can share the exact same decode path.
 //! the exact same decode path.
 
 use crate::world::{ChunkCoord, ChunkData, ChunkId, Heightfield, TerrainMetadata};

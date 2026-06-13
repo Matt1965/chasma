@@ -218,6 +218,13 @@ pub fn import_world(
         }
     }
 
+    if chunks_x > 0 && chunks_z > 0 {
+        world.set_authored_extent(crate::world::ChunkExtent {
+            min: ChunkCoord::new(0, 0),
+            max: ChunkCoord::new((chunks_x - 1) as i32, (chunks_z - 1) as i32),
+        });
+    }
+
     Ok(world)
 }
 

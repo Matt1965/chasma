@@ -1,10 +1,8 @@
 //! Developer preview scene for the terrain runtime (dev-only).
 //!
-//! Gated behind the `dev` feature. This is composition/throwaway code: it wires
-//! a light, the manifest load path, and derived render entities so the Phase 2A
-//! vertical slice can be viewed end to end. The permanent RTS camera comes from
-//! [`crate::camera::CameraPlugin`] (ADR-014). This plugin must not be depended
-//! on by the core layers (ADR-007, ADR-010).
+//! Gated behind the `dev` feature. Wires catalog init, synchronous streaming,
+//! lighting, and terrain render assets. The permanent RTS camera comes from
+//! [`crate::camera::CameraPlugin`] (ADR-014).
 
 use std::path::Path;
 
@@ -12,12 +10,11 @@ use bevy::prelude::*;
 
 use crate::world::{WorldConfig, WorldData};
 
-use super::load::load_world_from_manifest;
-use super::spawn::spawn_terrain_render_entities_scaled;
+use super::catalog::TerrainWorldCatalog;
+use super::spawn::TerrainRenderAssets;
+use super::streaming::TerrainStreamingSettings;
 
-/// Multiplier applied to mesh Y only in the dev preview. Source Gaea tiles in
-/// `source_data/test` carry ~0.27 m of relief over 512 m — invisible at RTS
-/// camera distance without exaggeration or a taller Gaea export scale.
+/// Multiplier applied to mesh Y only in the dev preview.
 const DEV_PREVIEW_VERTICAL_SCALE: f32 = 250.0;
 
 /// On-disk sample world exercised by the dev preview (ADR-011).
@@ -36,32 +33,36 @@ fn setup_preview(
     mut commands: Commands,
     config: Res<WorldConfig>,
     mut world: ResMut<WorldData>,
-    mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let loaded = load_world_from_manifest(Path::new(PREVIEW_MANIFEST_PATH), &config, &mut world)
+    let catalog = TerrainWorldCatalog::from_manifest(Path::new(PREVIEW_MANIFEST_PATH), &config)
         .unwrap_or_else(|err| {
             panic!(
-                "dev preview failed to load {PREVIEW_MANIFEST_PATH}: {err}. \
+                "dev preview failed to load catalog from {PREVIEW_MANIFEST_PATH}: {err}. \
                  Run from the project root so the assets path resolves."
             );
         });
-    assert!(loaded > 0, "dev preview manifest listed no chunks");
+    assert!(catalog.chunk_count() > 0, "dev preview manifest listed no chunks");
+
+    world.set_authored_extent(catalog.authored_extent());
 
     let material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.35, 0.55, 0.30),
         perceptual_roughness: 0.95,
         ..default()
     });
-    let size = config.chunk_layout().chunk_size_units();
-    spawn_terrain_render_entities_scaled(
-        &mut commands,
-        &world,
-        size,
-        &mut meshes,
+
+    commands.insert_resource(catalog);
+    commands.insert_resource(TerrainStreamingSettings {
+        load_radius_chunks: 1,
+        unload_radius_chunks: 2,
+        max_loads_per_frame: 4,
+        max_unloads_per_frame: 4,
+    });
+    commands.insert_resource(TerrainRenderAssets {
         material,
-        DEV_PREVIEW_VERTICAL_SCALE,
-    );
+        vertical_scale: DEV_PREVIEW_VERTICAL_SCALE,
+    });
 
     commands.spawn((
         DirectionalLight {
@@ -72,5 +73,4 @@ fn setup_preview(
         Transform::from_xyz(256.0, 200.0, 128.0)
             .looking_at(Vec3::new(256.0, 0.0, 128.0), Vec3::Y),
     ));
-
 }

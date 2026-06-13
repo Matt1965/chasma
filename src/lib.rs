@@ -8,4 +8,5 @@
 pub mod app;
 pub mod camera;
 pub mod terrain;
+pub mod view;
 pub mod world;

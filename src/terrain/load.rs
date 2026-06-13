@@ -1,28 +1,25 @@
-//! Phase 2A synchronous terrain loader (ADR-012).
+//! Phase 2A/2B synchronous terrain loading (ADR-012).
 //!
-//! Reads a manifest and its chunk files from disk and inserts the decoded
-//! [`ChunkData`] into [`WorldData`]. This is deliberately synchronous and
-//! eager: there is no `AssetServer`, no `AssetLoader`, and no streaming yet
-//! (those arrive in Phase 2B). The IO lives here; all parsing is delegated to
-//! the delivery-agnostic [`super::decode`] functions so the future
-//! `AssetLoader` can reuse them unchanged.
+//! Reads manifest and chunk files from disk synchronously. All parsing is
+//! delegated to delivery-agnostic [`super::decode`] functions.
 
 use std::fs;
 use std::path::Path;
 
-use crate::world::{WorldConfig, WorldData};
+use crate::world::{ChunkId, WorldConfig, WorldData};
 
-use super::asset::{ManifestConfig, TerrainAssetError};
+use super::asset::{ManifestChunk, ManifestConfig, TerrainAssetError};
+use super::catalog::authored_extent_from_entries;
 use super::decode::{decode_chunk, decode_manifest};
 
-fn read_to_string(path: &Path) -> Result<String, TerrainAssetError> {
+pub(crate) fn read_manifest_text(path: &Path) -> Result<String, TerrainAssetError> {
     fs::read_to_string(path).map_err(|err| TerrainAssetError::Io {
         path: path.display().to_string(),
         message: err.to_string(),
     })
 }
 
-fn config_snapshot(config: &WorldConfig) -> ManifestConfig {
+pub(crate) fn config_snapshot(config: &WorldConfig) -> ManifestConfig {
     ManifestConfig {
         chunk_size_meters: config.chunk_size_meters,
         units_per_meter: config.units_per_meter,
@@ -33,9 +30,9 @@ fn config_snapshot(config: &WorldConfig) -> ManifestConfig {
 /// Relative tolerance for comparing a chunk tile span to `WorldConfig`.
 const CHUNK_SIZE_TOLERANCE: f32 = 1e-5;
 
-fn validate_loaded_chunk(
-    entry: &super::asset::ManifestChunk,
-    id: crate::world::ChunkId,
+pub(crate) fn validate_loaded_chunk(
+    entry: &ManifestChunk,
+    id: ChunkId,
     data: &crate::world::ChunkData,
     config: &WorldConfig,
 ) -> Result<(), TerrainAssetError> {
@@ -65,18 +62,31 @@ fn validate_loaded_chunk(
     Ok(())
 }
 
+/// Synchronously load one chunk file into `world`.
+pub fn load_chunk_from_path(
+    chunk_path: &Path,
+    entry: &ManifestChunk,
+    config: &WorldConfig,
+    world: &mut WorldData,
+) -> Result<ChunkId, TerrainAssetError> {
+    let (id, data) = decode_chunk(&read_manifest_text(chunk_path)?)?;
+    validate_loaded_chunk(entry, id, &data, config)?;
+    world.insert(id, data);
+    Ok(id)
+}
+
 /// Load all chunks listed in a manifest into `world`.
 ///
 /// Chunk paths in the manifest are resolved relative to the manifest's own
 /// directory. The manifest's embedded config snapshot is validated against
-/// `config`; a mismatch is an error rather than a silent reinterpretation of the
-/// spatial layout. Returns the number of chunks inserted.
+/// `config`; authored extent is set from the manifest chunk list. Returns the
+/// number of chunks inserted.
 pub fn load_world_from_manifest(
     manifest_path: &Path,
     config: &WorldConfig,
     world: &mut WorldData,
 ) -> Result<usize, TerrainAssetError> {
-    let manifest = decode_manifest(&read_to_string(manifest_path)?)?;
+    let manifest = decode_manifest(&read_manifest_text(manifest_path)?)?;
 
     let runtime = config_snapshot(config);
     if manifest.config != runtime {
@@ -86,13 +96,15 @@ pub fn load_world_from_manifest(
         });
     }
 
+    if let Some(extent) = authored_extent_from_entries(&manifest.chunks) {
+        world.set_authored_extent(extent);
+    }
+
     let base_dir = manifest_path.parent().unwrap_or(Path::new(""));
     let mut loaded = 0;
     for entry in &manifest.chunks {
         let chunk_path = base_dir.join(&entry.path);
-        let (id, data) = decode_chunk(&read_to_string(&chunk_path)?)?;
-        validate_loaded_chunk(entry, id, &data, config)?;
-        world.insert(id, data);
+        load_chunk_from_path(&chunk_path, entry, config, world)?;
         loaded += 1;
     }
 
@@ -126,7 +138,6 @@ mod tests {
     }
 
     fn chunk_file(x: i32, z: i32) -> ChunkFile {
-        // 3x3 tile, spacing 128 -> 256 m chunk, heights row*10 + col.
         let mut samples = Vec::new();
         for row in 0..3 {
             for col in 0..3 {
@@ -174,6 +185,29 @@ mod tests {
     }
 
     #[test]
+    fn load_chunk_from_path_inserts_one_resident() {
+        let dir = temp_dir();
+        write_world_fixture(&dir, &[(1, 2)]);
+
+        let manifest = decode_manifest(&read_manifest_text(&dir.join("manifest.ron")).unwrap()).unwrap();
+        let entry = &manifest.chunks[0];
+        let chunk_path = dir.join(&entry.path);
+
+        let mut world = WorldData::new(config().chunk_layout());
+        world.set_authored_extent(crate::world::ChunkExtent {
+            min: ChunkCoord::new(1, 2),
+            max: ChunkCoord::new(1, 2),
+        });
+
+        let id = load_chunk_from_path(&chunk_path, entry, &config(), &mut world).unwrap();
+        assert_eq!(id, ChunkId::new(ChunkCoord::new(1, 2)));
+        assert_eq!(world.len(), 1);
+        assert_eq!(world.height_at(Vec3::new(256.0 + 128.0, 0.0, 512.0 + 128.0)), Some(11.0));
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
     fn loads_listed_chunks_into_world_data() {
         let dir = temp_dir();
         write_world_fixture(&dir, &[(0, 0), (2, 3)]);
@@ -185,8 +219,14 @@ mod tests {
         assert_eq!(count, 2);
         assert!(world.is_chunk_loaded(ChunkId::new(ChunkCoord::new(0, 0))));
         assert!(world.is_chunk_loaded(ChunkId::new(ChunkCoord::new(2, 3))));
-        // height_at uses the inserted heightfield (local (128,128) -> node 11).
         assert_eq!(world.height_at(Vec3::new(128.0, 0.0, 128.0)), Some(11.0));
+        assert_eq!(
+            world.extent(),
+            Some(crate::world::ChunkExtent {
+                min: ChunkCoord::new(0, 0),
+                max: ChunkCoord::new(2, 3),
+            })
+        );
 
         fs::remove_dir_all(&dir).ok();
     }
@@ -272,7 +312,6 @@ mod tests {
     #[test]
     fn rejects_chunk_size_mismatch() {
         let dir = temp_dir();
-        // 2x2 tile, spacing 1 -> 1 m span, not 256 m.
         let file = ChunkFile {
             version: CHUNK_FORMAT_VERSION,
             x: 0,
@@ -330,8 +369,8 @@ mod tests {
             .join("assets/worlds/main/manifest.ron");
         let mut world = WorldData::new(config().chunk_layout());
         let count = load_world_from_manifest(&manifest, &config(), &mut world).unwrap();
-        assert_eq!(count, 2);
+        assert_eq!(count, 4);
         assert!(world.is_chunk_loaded(ChunkId::new(ChunkCoord::new(0, 0))));
-        assert!(world.is_chunk_loaded(ChunkId::new(ChunkCoord::new(1, 0))));
+        assert!(world.is_chunk_loaded(ChunkId::new(ChunkCoord::new(1, 1))));
     }
 }
