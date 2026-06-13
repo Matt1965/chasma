@@ -58,6 +58,8 @@ fn setup_preview(
         unload_radius_chunks: 2,
         max_loads_per_frame: 4,
         max_unloads_per_frame: 4,
+        max_apply_per_frame: 2,
+        max_decode_per_frame: 4,
     });
     commands.insert_resource(TerrainRenderAssets {
         material,

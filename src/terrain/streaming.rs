@@ -11,19 +11,26 @@ use crate::world::{ChunkCoord, ChunkId, ChunkLayout, WorldData, WorldPosition};
 
 use super::catalog::TerrainWorldCatalog;
 
-/// Tunable synchronous streaming parameters (ADR-012).
+/// Tunable streaming parameters (ADR-012, Phase 2B.5 step 4).
 #[derive(Debug, Clone, Resource, Reflect)]
 #[reflect(Resource)]
 pub struct TerrainStreamingSettings {
-    /// Chebyshev chunk radius around the view focus used to load chunks.
-    pub load_radius_chunks: i32,
-    /// Chebyshev chunk radius within which resident chunks are kept loaded.
+    /// Chebyshev radius around the view focus used to **request** chunk loads.
     ///
-    /// Must be `>= load_radius_chunks` so the hysteresis band between the two
-    /// radii does not unload chunks that remain inside the load ring.
+    /// This is the inner ring: chunks within this distance begin loading when
+    /// absent. Must be `<= unload_radius_chunks` (the outer keep ring).
+    pub load_radius_chunks: i32,
+    /// Chebyshev radius within which resident chunks are **kept** loaded.
+    ///
+    /// This is the outer retention ring and must be `>= load_radius_chunks`.
+    /// Chunks between the two radii stay resident once loaded (hysteresis band).
     pub unload_radius_chunks: i32,
     pub max_loads_per_frame: usize,
     pub max_unloads_per_frame: usize,
+    /// Maximum decoded chunks applied to [`WorldData`] per frame.
+    pub max_apply_per_frame: usize,
+    /// Soft cap on IO→decode transitions per poll tick (`0` = unlimited).
+    pub max_decode_per_frame: usize,
 }
 
 impl Default for TerrainStreamingSettings {
@@ -33,6 +40,8 @@ impl Default for TerrainStreamingSettings {
             unload_radius_chunks: 2,
             max_loads_per_frame: 2,
             max_unloads_per_frame: 4,
+            max_apply_per_frame: 2,
+            max_decode_per_frame: 4,
         }
     }
 }
@@ -47,7 +56,21 @@ pub fn focus_chunk(focus: Vec3, layout: ChunkLayout) -> ChunkCoord {
     WorldPosition::from_global(focus, layout).chunk
 }
 
+/// Snap horizontal focus to a coarse grid so tiny camera jitter does not flip chunk coords.
+fn quantize_focus_horizontal(position: Vec3, layout: ChunkLayout) -> Vec3 {
+    let step = (layout.chunk_size_units() / 128.0).max(0.25);
+    let snap = |v: f32| (v / step).round() * step;
+    Vec3::new(snap(position.x), position.y, snap(position.z))
+}
+
+/// Stable focus chunk for streaming (quantized horizontal position).
+pub fn stable_focus_chunk(position: Vec3, layout: ChunkLayout) -> ChunkCoord {
+    focus_chunk(quantize_focus_horizontal(position, layout), layout)
+}
+
 /// Authored chunks within `radius_chunks` of `focus` (O(r²), catalog-local).
+///
+/// Does not scan the full manifest — only the `(2r+1)²` coordinate neighborhood.
 pub fn chunks_in_radius(
     focus: ChunkCoord,
     radius_chunks: i32,
@@ -67,27 +90,28 @@ pub fn chunks_in_radius(
 
 /// Compute load and unload worklists for one streaming tick.
 ///
-/// - `desired_load_set` = authored chunks within `load_radius_chunks`
-/// - `keep_resident_set` = authored chunks within `unload_radius_chunks`
+/// Hysteresis (load ring inside keep ring):
+/// - `desired_load_set` = authored chunks within `load_radius_chunks` (inner)
+/// - `keep_resident_set` = authored chunks within `unload_radius_chunks` (outer)
 /// - `to_load` = `desired_load_set` − resident set
-/// - `to_unload` = resident set − `keep_resident_set`
+/// - `to_unload` = resident set − `keep_resident_set` − `unload_exempt`
 ///
-/// Chunks in the hysteresis band (inside unload radius but outside load radius)
-/// stay resident if already loaded; they are not unloaded merely for being
-/// outside the load radius.
+/// Requires `unload_radius_chunks >= load_radius_chunks`. Chunks in the band
+/// between the two radii remain resident once loaded and do not ping-pong.
 pub fn diff_streaming_residency(
     focus: &PrimaryViewFocus,
     layout: ChunkLayout,
     settings: &TerrainStreamingSettings,
     catalog: &TerrainWorldCatalog,
     world: &WorldData,
+    unload_exempt: &HashSet<ChunkId>,
 ) -> (Vec<ChunkCoord>, Vec<ChunkId>) {
     debug_assert!(
         settings.unload_radius_chunks >= settings.load_radius_chunks,
-        "unload_radius_chunks must be >= load_radius_chunks for stable hysteresis"
+        "unload_radius_chunks (keep ring) must be >= load_radius_chunks (load ring)"
     );
 
-    let focus = focus_chunk(focus.position, layout);
+    let focus = stable_focus_chunk(focus.position, layout);
     let desired_load = chunks_in_radius(focus, settings.load_radius_chunks, catalog);
     let keep_resident = chunks_in_radius(focus, settings.unload_radius_chunks, catalog);
 
@@ -99,7 +123,9 @@ pub fn diff_streaming_residency(
     let mut to_unload: Vec<_> = world
         .iter()
         .map(|(id, _)| id)
-        .filter(|id| !keep_resident.contains(&id.coord()))
+        .filter(|id| {
+            !keep_resident.contains(&id.coord()) && !unload_exempt.contains(id)
+        })
         .collect();
 
     to_load.sort_by_key(|c| (c.z, c.x));
@@ -118,6 +144,15 @@ pub fn diff_streaming_residency(
     );
 
     (to_load, to_unload)
+}
+
+/// Returns true when a chunk coord is outside the keep or desired load rings.
+pub(crate) fn chunk_outside_residency_sets(
+    coord: ChunkCoord,
+    keep_resident: &HashSet<ChunkCoord>,
+    desired_load: &HashSet<ChunkCoord>,
+) -> bool {
+    !keep_resident.contains(&coord) || !desired_load.contains(&coord)
 }
 
 #[cfg(test)]
@@ -177,7 +212,13 @@ mod tests {
             unload_radius_chunks: unload,
             max_loads_per_frame: 16,
             max_unloads_per_frame: 16,
+            max_apply_per_frame: 16,
+            max_decode_per_frame: 16,
         }
+    }
+
+    fn no_exempt() -> HashSet<ChunkId> {
+        HashSet::new()
     }
 
     #[test]
@@ -197,6 +238,32 @@ mod tests {
     }
 
     #[test]
+    fn chunk_outside_residency_sets_detects_keep_and_desired_violations() {
+        let mut keep = HashSet::new();
+        keep.insert(ChunkCoord::new(0, 0));
+        keep.insert(ChunkCoord::new(2, 0));
+
+        let mut desired = HashSet::new();
+        desired.insert(ChunkCoord::new(0, 0));
+
+        assert!(!chunk_outside_residency_sets(
+            ChunkCoord::new(0, 0),
+            &keep,
+            &desired
+        ));
+        assert!(chunk_outside_residency_sets(
+            ChunkCoord::new(5, 0),
+            &keep,
+            &desired
+        ));
+        assert!(chunk_outside_residency_sets(
+            ChunkCoord::new(2, 0),
+            &keep,
+            &desired
+        ));
+    }
+
+    #[test]
     fn hysteresis_keeps_chunk_in_band_resident() {
         let catalog = catalog_with_chunks(&[(0, 0), (1, 0), (2, 0)]);
         let layout = WorldConfig::default().chunk_layout();
@@ -213,6 +280,7 @@ mod tests {
             &settings(1, 2),
             &catalog,
             &world,
+            &no_exempt(),
         );
         assert!(!to_unload.iter().any(|id| id.coord() == ChunkCoord::new(2, 0)));
         assert!(!to_load.contains(&ChunkCoord::new(2, 0)));
@@ -230,7 +298,7 @@ mod tests {
 
         for _ in 0..8 {
             let (to_load, to_unload) =
-                diff_streaming_residency(&focus, layout, &cfg, &catalog, &world);
+                diff_streaming_residency(&focus, layout, &cfg, &catalog, &world, &no_exempt());
             for id in to_unload {
                 world.remove(id);
             }
@@ -240,7 +308,7 @@ mod tests {
         }
 
         let (to_load, to_unload) =
-            diff_streaming_residency(&focus, layout, &cfg, &catalog, &world);
+            diff_streaming_residency(&focus, layout, &cfg, &catalog, &world, &no_exempt());
         assert!(to_load.is_empty(), "expected no loads when stable");
         assert!(to_unload.is_empty(), "expected no unloads when stable");
     }
@@ -261,6 +329,7 @@ mod tests {
             &settings(1, 2),
             &catalog,
             &world,
+            &no_exempt(),
         );
 
         let unload_coords: HashSet<_> = to_unload.iter().map(|id| id.coord()).collect();
@@ -286,7 +355,7 @@ mod tests {
 
         for _ in 0..6 {
             let (to_load, to_unload) =
-                diff_streaming_residency(&focus, layout, &cfg, &catalog, &world);
+                diff_streaming_residency(&focus, layout, &cfg, &catalog, &world, &no_exempt());
             for id in to_unload {
                 world.remove(id);
             }
@@ -297,7 +366,7 @@ mod tests {
 
         let before = world.len();
         let (to_load, to_unload) =
-            diff_streaming_residency(&focus, layout, &cfg, &catalog, &world);
+            diff_streaming_residency(&focus, layout, &cfg, &catalog, &world, &no_exempt());
         assert!(to_load.is_empty());
         assert!(to_unload.is_empty());
         assert_eq!(world.len(), before);
@@ -318,9 +387,150 @@ mod tests {
             &settings(1, 2),
             &catalog,
             &world,
+            &no_exempt(),
         );
 
         assert!(to_load.contains(&ChunkCoord::new(1, 0)));
         assert_eq!(to_unload, vec![ChunkId::new(ChunkCoord::new(3, 0))]);
+    }
+
+    #[test]
+    fn hysteresis_prevents_border_oscillation() {
+        let catalog = catalog_with_chunks(&[(0, 0), (1, 0), (2, 0), (3, 0)]);
+        let layout = WorldConfig::default().chunk_layout();
+        let mut world = WorldData::new(layout);
+        world.set_authored_extent(catalog.authored_extent());
+        world.insert(ChunkId::new(ChunkCoord::new(2, 0)), empty_chunk());
+
+        let focus = PrimaryViewFocus::new(Vec3::new(128.0, 0.0, 0.0));
+        let cfg = settings(1, 2);
+
+        for _ in 0..12 {
+            let (to_load, to_unload) =
+                diff_streaming_residency(&focus, layout, &cfg, &catalog, &world, &no_exempt());
+            for id in to_unload {
+                world.remove(id);
+            }
+            for coord in to_load {
+                world.insert(ChunkId::new(coord), empty_chunk());
+            }
+        }
+
+        let (to_load, to_unload) =
+            diff_streaming_residency(&focus, layout, &cfg, &catalog, &world, &no_exempt());
+        assert!(to_load.is_empty());
+        assert!(to_unload.is_empty());
+        assert!(world.is_chunk_loaded(ChunkId::new(ChunkCoord::new(2, 0))));
+    }
+
+    #[test]
+    fn no_load_unload_ping_pong_when_stationary() {
+        let catalog = catalog_with_chunks(&[(0, 0), (1, 0), (0, 1), (1, 1), (2, 0)]);
+        let layout = WorldConfig::default().chunk_layout();
+        let mut world = WorldData::new(layout);
+        world.set_authored_extent(catalog.authored_extent());
+
+        let focus = PrimaryViewFocus::new(Vec3::new(256.0, 0.0, 128.0));
+        let cfg = settings(1, 2);
+        let mut history: Vec<(usize, usize)> = Vec::new();
+
+        for _ in 0..20 {
+            let (to_load, to_unload) =
+                diff_streaming_residency(&focus, layout, &cfg, &catalog, &world, &no_exempt());
+            history.push((to_load.len(), to_unload.len()));
+            for id in to_unload {
+                world.remove(id);
+            }
+            for coord in to_load {
+                world.insert(ChunkId::new(coord), empty_chunk());
+            }
+        }
+
+        let (to_load, to_unload) =
+            diff_streaming_residency(&focus, layout, &cfg, &catalog, &world, &no_exempt());
+        assert!(to_load.is_empty());
+        assert!(to_unload.is_empty());
+        assert!(
+            history.iter().all(|&(loads, unloads)| !(loads > 0 && unloads > 0)),
+            "load and unload must not alternate in the same frame"
+        );
+    }
+
+    #[test]
+    fn unload_exempt_prevents_same_frame_eviction() {
+        let catalog = catalog_with_chunks(&[(0, 0), (3, 0)]);
+        let layout = WorldConfig::default().chunk_layout();
+        let mut world = WorldData::new(layout);
+        world.set_authored_extent(catalog.authored_extent());
+        let chunk_id = ChunkId::new(ChunkCoord::new(3, 0));
+        world.insert(chunk_id, empty_chunk());
+
+        let focus = PrimaryViewFocus::new(Vec3::new(128.0, 0.0, 0.0));
+        let mut exempt = HashSet::new();
+        exempt.insert(chunk_id);
+
+        let (_, to_unload) = diff_streaming_residency(
+            &focus,
+            layout,
+            &settings(1, 2),
+            &catalog,
+            &world,
+            &exempt,
+        );
+        assert!(!to_unload.contains(&chunk_id));
+    }
+
+    #[test]
+    fn streaming_is_frame_stable_when_stationary() {
+        let catalog = catalog_with_chunks(&[(0, 0), (1, 0), (0, 1), (1, 1), (2, 0)]);
+        let layout = WorldConfig::default().chunk_layout();
+        let mut world = WorldData::new(layout);
+        world.set_authored_extent(catalog.authored_extent());
+        world.insert(ChunkId::new(ChunkCoord::new(1, 0)), empty_chunk());
+
+        let focus = PrimaryViewFocus::new(Vec3::new(256.0, 0.0, 128.0));
+        let cfg = settings(1, 2);
+
+        let baseline =
+            diff_streaming_residency(&focus, layout, &cfg, &catalog, &world, &no_exempt());
+
+        for _ in 0..64 {
+            let current =
+                diff_streaming_residency(&focus, layout, &cfg, &catalog, &world, &no_exempt());
+            assert_eq!(current, baseline);
+        }
+    }
+
+    #[test]
+    fn deterministic_residency_diff_for_identical_focus() {
+        let catalog = catalog_with_chunks(&[(0, 0), (1, 0), (2, 0)]);
+        let layout = WorldConfig::default().chunk_layout();
+        let world = WorldData::new(layout);
+        let cfg = settings(1, 2);
+
+        let near_boundary_a = PrimaryViewFocus::new(Vec3::new(255.999, 0.0, 128.0));
+        let near_boundary_b = PrimaryViewFocus::new(Vec3::new(256.001, 0.0, 128.0));
+
+        let diff_a = diff_streaming_residency(
+            &near_boundary_a,
+            layout,
+            &cfg,
+            &catalog,
+            &world,
+            &no_exempt(),
+        );
+        let diff_b = diff_streaming_residency(
+            &near_boundary_b,
+            layout,
+            &cfg,
+            &catalog,
+            &world,
+            &no_exempt(),
+        );
+        assert_eq!(diff_a, diff_b);
+        assert_eq!(
+            stable_focus_chunk(near_boundary_a.position, layout),
+            stable_focus_chunk(near_boundary_b.position, layout)
+        );
     }
 }

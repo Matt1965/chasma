@@ -2,7 +2,8 @@
 
 # Status
 
-Accepted (revised for Phase 2B — synchronous streaming slice)
+Accepted (Phase 2B synchronous streaming proven; Phase 2B.5 async materialization
+designed)
 
 # Context
 
@@ -12,22 +13,14 @@ and how chunk residency is managed over time.
 
 Forces:
 
-- ADR-009 deferred a Bevy `AssetLoader` until streaming is in scope. Streaming
-  is Phase 2B, not Phase 2A. BEVY_REFERENCE notes an `AssetLoader` requires
-  `TypePath` (0.18) and pulls in async/handle machinery.
+- ADR-009 deferred a Bevy `AssetLoader` until a concrete consumer exists.
 - ADR-010: the Terrain Runtime Layer owns the loading *process*; the World Data
-  Layer owns the *data*. Phase 2 is built in vertical slices, and Phase 2A is the
-  smallest complete correct path.
+  Layer owns the *data*. Phase 2 is built in vertical slices.
 - AGENTS.md Groundwork Rule: do not build infrastructure ahead of a consumer.
-  Phase 2A's consumer is a one-time eager load. Phase 2B's first consumer is
-  synchronous on-demand residency; `AssetLoader` has no consumer until that path
-  is proven.
-- Phase 1 `WorldData` tracks extent as the bounds of *inserted* chunks. That is
-  correct as long as nothing unloads. Only streaming (which unloads) needs a
-  different model.
-- ADR-014: the camera layer must not import terrain or world; terrain must not
-  import camera. View position for streaming crosses layers through a generic
-  presentation resource and an app-layer bridge.
+- Phase 2B proved synchronous residency lifecycle (catalog, hysteresis, budgets,
+  view-focus seam) but exposed main-thread hitches during chunk materialization.
+- ADR-014: camera and terrain remain decoupled; view position crosses layers via
+  `PrimaryViewFocus` and an app-layer bridge.
 - ARCHITECTURE Scalability Rule: localized, chunk-local operations over global
   scans.
 
@@ -36,254 +29,279 @@ Forces:
 ## Loading mechanism is split from payload decode
 
 The **decode/parsing** of the manifest and chunk payloads (ADR-011) is implemented
-as **delivery-agnostic functions**: they take bytes (or a path) and produce a
+as **delivery-agnostic functions**: they take bytes (or text) and produce a
 manifest value / `ChunkData`, with no dependency on how the bytes were obtained.
-Phase 2A eager loading, Phase 2B on-demand loading, and any future `AssetLoader`
-delivery all reuse these same functions. This is the reusable core; the
-*delivery mechanism* may change in later slices.
+All delivery mechanisms (synchronous read, task-pool async, or a future optional
+`AssetLoader`) reuse these same functions.
 
 ## Phase 2A: synchronous file loading (no AssetLoader)
 
-Phase 2A loads the world synchronously at startup, with no Bevy `AssetLoader`,
-`TypePath`, `AssetServer`, handles, or async:
+Phase 2A loads the world synchronously at startup:
 
-- Read `assets/worlds/main/manifest.ron`, then read each chunk file under
-  `assets/worlds/main/chunks/` named by the manifest.
-- Decode via the shared functions, `insert` each `ChunkData` into `WorldData`, and
-  spawn the derived render entity (ADR-010, ADR-013).
+- Read manifest and chunk files from disk.
+- Decode via shared functions, `insert` each `ChunkData` into `WorldData`, spawn
+  derived render entity (ADR-010, ADR-013).
 - No view-distance-driven load or unload, and no LOD switching.
-
-This proves the full vertical path — asset file → decode → `WorldData` insert →
-pure mesh generation → derived render entity — with the least machinery.
 
 ## Phase 2A: Phase 1 `WorldData` semantics are unchanged
 
-Phase 2A keeps the Phase 1 World Data Layer as-is:
-
-- Inserted chunks **are** the loaded world; `extent()` is derived from inserted
-  chunks (Phase 1 behavior). Because nothing unloads in 2A, this is correct.
-- No `WorldData::remove`, and no authored-extent vs resident-set distinction in
-  2A.
-- The manifest may **carry** extent and `WorldConfig` info as data (for a
-  consistency check against the runtime `WorldConfig`), but it does **not** require
-  any `WorldData` refactor in 2A.
+Phase 2A keeps Phase 1 `WorldData` as-is (inserted chunks are the loaded world;
+extent from inserted chunks). No `remove`, no authored/resident split.
 
 ## Data contract
 
-- On loading a chunk, the runtime layer validates it against the runtime
-  `WorldConfig` and **inserts `ChunkData` into `WorldData`**, then spawns the
-  derived render entity.
-- `height_at`/`is_chunk_loaded` operate on resident chunks; queries for chunks not
-  resident return "not loaded" (ADR-005). This is acceptable through Phase 2.
+- On **resident** chunks, the runtime validates against `WorldConfig` and holds
+  `ChunkData` in `WorldData`, with a derived render entity.
+- `height_at` / `is_chunk_loaded` operate on **resident** chunks only (ADR-005).
+  Chunks that are authored or in-flight loading return "not loaded."
 
 ## Determinism
 
-Loading order and residency are runtime concerns. The **asset data** is
-deterministic (ADR-011); persistence/multiplayer guarantees rely on data
-determinism, not on which chunks are resident.
+The **asset data** is deterministic (ADR-011). Residency and load timing are
+runtime concerns.
 
-## Phase 2B: synchronous streaming and the residency model
+## Phase 2B: synchronous streaming and the residency model (proven baseline)
 
-Phase 2B implements chunk residency lifecycle **fully synchronously**. It does
-**not** introduce `AssetLoader`, `AssetServer` terrain loading, async I/O, or
-load/unload `Message` types. Those are deferred until synchronous streaming is
-proven and a real consumer exists (AGENTS.md Groundwork Rule).
+Phase 2B implemented chunk residency lifecycle **synchronously**. This slice
+proved the policy layer; main-thread materialization hitches motivated Phase
+2B.5.
 
 ### Manifest catalog (terrain layer, separate from residents)
 
-At startup the terrain runtime loads the manifest once into a **catalog** resource
-(metadata only — no height samples):
+At startup, load manifest once into **`TerrainWorldCatalog`** (metadata only):
 
-- validated `ManifestConfig` snapshot against runtime `WorldConfig`
-- mapping from each authored `ChunkCoord` to its chunk file path (relative to the
-  manifest directory)
-- **authored extent** derived from the manifest chunk list (min/max coordinates)
+- validated `ManifestConfig` against runtime `WorldConfig`
+- `ChunkCoord` → chunk file path mapping
+- **authored extent** from manifest chunk list
 
-The catalog is immutable for the session. It answers "which chunks exist in the
-authored world" and where their files live. It does not populate `WorldData`.
+Immutable for the session. Does not populate `WorldData`.
 
 ### Authored extent vs resident set (world layer)
 
-`WorldData` gains a distinction required because streaming unloads chunks:
+- **`authored_extent`**: set once from catalog; `extent()` reports this.
+- **Resident set**: `WorldData.chunks` — `ChunkData` currently in memory.
+- **`WorldData::remove`**: evicts resident data only; does not change authored
+  extent.
+- **`insert`**: does not expand authored extent.
 
-- **`authored_extent`**: set once from the catalog at startup; immutable for the
-  session; `extent()` reports this (ADR-006 finite world bounds).
-- **Resident set**: the existing `chunks` map — chunks whose `ChunkData` is
-  currently in memory.
-- **`WorldData::remove(chunk)`**: evicts resident `ChunkData` only; does not
-  change `authored_extent` or delete disk assets.
-- **`insert`**: no longer expands authored extent; only adds/replaces resident
-  data.
+`is_chunk_loaded` means **resident**. `WorldData` does **not** track loading or
+in-flight states (Phase 2B.5).
 
-`is_chunk_loaded` means resident. Coords in the catalog but not resident are
-authored-but-unloaded. Coords outside the catalog are outside the authored world.
+### Synchronous on-demand delivery (Phase 2B — superseded for runtime streaming)
 
-### Synchronous on-demand delivery (Phase 2B)
+Phase 2B read chunk files synchronously in the streaming system:
 
-Chunk files are read synchronously on demand, one chunk at a time:
+- `fs::read_to_string` → `decode_chunk` → validate → `insert` → spawn mesh
 
-- `fs::read_to_string` (or equivalent) for the catalog path
-- `decode_chunk` → validate → `WorldData::insert` → spawn derived mesh entity
+**Phase 2B.5 replaces this hot path** with async materialization. The synchronous
+`load_chunk_from_path` / `load_world_from_manifest` paths are **retained for
+tests and offline tooling only**.
 
-The Phase 2A `load_world_from_manifest` eager path is retained for tests and
-tooling but is not used by the dev preview after Phase 2B.
+### Residency policy (terrain layer — unchanged in Phase 2B.5)
 
-### Residency policy (terrain layer)
+Each frame:
 
-Each frame, synchronously:
+1. Read view center from `PrimaryViewFocus`.
+2. `desired_load_set` = authored chunks within **load radius** (O(r²)).
+3. `keep_resident_set` = authored chunks within **unload radius** (O(r²)).
+4. Hysteresis: **`unload_radius_chunks >= load_radius_chunks`**.
+5. Per-frame **request** and **unload** budgets.
 
-1. Read the active view center from a generic presentation resource (below).
-2. Compute the **desired resident set**: authored chunks within the load radius
-   of the focus chunk, using O(r²) iteration around the focus coordinate (never
-   scan the full manifest chunk list).
-3. Diff desired vs resident → `to_load`, `to_unload`.
-4. Apply per-frame load and unload budgets (cap how many chunks load/unload per
-   frame).
-5. **Hysteresis**: unload radius is smaller than load radius so border chunks do
-   not thrash.
+Phase 2B.5 changes **how** `to_request` is fulfilled, not this policy.
 
-Load/unload is chunk-local and driven by view movement; it must never load the
-entire world into memory.
+### Unload ordering (unchanged)
 
-### Unload ordering
+For each resident chunk outside `keep_resident_set`:
 
-For each chunk to unload, in a fixed system order within the same frame:
-
-1. Despawn derived `TerrainChunkMesh` render entities for that `ChunkId`.
+1. Despawn `TerrainChunkMesh` entities.
 2. `WorldData::remove(chunk)`.
+3. `ChunkResidencyTracker` → `Absent` (and cancel any in-flight load for that id).
 
-Meshes are disposable derived state (ADR-010). Despawn does not read mesh data
-back into `WorldData`.
+### View focus seam (ADR-014 — unchanged)
 
-### View focus seam (ADR-014)
+- `PrimaryViewFocus` in `src/view/`; app bridge from `RtsCameraState`.
+- Terrain must not import `crate::camera`. Camera must not import terrain/world.
 
-Streaming needs the local view center. Layer boundaries forbid terrain importing
-camera and camera importing terrain/world.
+### No streaming messages (Phase 2B through 2B.5)
 
-- A generic **presentation resource** (e.g. `PrimaryViewFocus` or `ViewFocus`)
-  holds the world-space center of the active local view. It is **not**
-  authoritative world state.
-- The **camera layer** does not write this resource directly from terrain code.
-- The **app composition layer** (`src/app/`) runs a bridge system that reads
-  `RtsCameraState` (camera layer) and writes the presentation resource.
-- **Terrain streaming** reads the presentation resource to compute desired chunks.
-- Terrain must not import `crate::camera`. Camera must not import
-  `crate::terrain` or `crate::world`.
+No `TerrainChunkLoaded`, `TerrainChunkUnloaded`, or other Bevy `Message`/`Event`
+types for streaming until a real consumer exists.
 
-### No streaming messages in Phase 2B
+---
 
-Phase 2B does not add `TerrainChunkLoaded`, `TerrainChunkUnloaded`, or any other
-Bevy `Message` types for streaming. Signals are deferred until a real consumer
-exists (AGENTS.md Groundwork Rule). If added later, they use the `Message` trait
-(BEVY_REFERENCE), not `Event`.
+## Phase 2B.5: async chunk materialization
 
-### Deferred beyond Phase 2B (this slice)
+Phase 2B.5 replaces **only the materialization step** of Phase 2B streaming.
+Residency policy, catalog model, manifest/chunk RON format (ADR-011), hysteresis,
+budgets, unload order, and view-focus seam are **unchanged**.
 
-The following remain out of Phase 2B scope:
+### What Phase 2B.5 changes
 
-- Bevy `AssetLoader` / `AssetServer` / async terrain delivery (future slice after
-  synchronous streaming is proven)
-- Load/unload `Message` types
-- Mesh-resolution LOD, skirts, far terrain (Phase 2C, ADR-013)
-- Region containers and region prefetch (ADR-011)
-- Masks, doodads, occupancy, gameplay, simulation, pathfinding, multiplayer
-- Custom shaders and renderer-specific complexity (ADR-004)
+| Unchanged | Changed |
+|-----------|---------|
+| `diff_streaming_residency` policy (radii, hysteresis, budgets) | Sync file read + decode + mesh build in `Update` |
+| `TerrainWorldCatalog`, manifest paths | Task-pool async pipeline |
+| `WorldData` authority | `ChunkResidencyTracker` for in-flight state |
+| Unload: despawn → remove | Request scheduler + apply system |
+| `decode_chunk`, `build_chunk_mesh` (pure fns) | Where those functions execute |
 
-Region-level prefetch (ADR-011) may inform load batching if/when region containers
-exist.
+### What Phase 2B.5 does not introduce
 
-## Phase 2B+ (future): AssetLoader delivery swap
+- No `AssetLoader` / `AssetServer` (deferred until region/packed delivery needs it)
+- No LOD (ADR-013 Phase 2C mesh LOD remains separate)
+- No regions, masks, gameplay, simulation, pathfinding, multiplayer
+- No streaming messages/events
+- No camera ↔ terrain imports
 
-After synchronous streaming is proven, a future slice may replace synchronous
-file reads with Bevy `AssetLoader`s driven by `AssetServer`, reusing the same
-decode functions. Residency policy, catalog diff, `WorldData::remove`, mesh
-despawn, and view-focus seam remain unchanged; only I/O delivery changes.
+### Execution split
 
-This slice is **not** part of Phase 2B.
+**Main thread (`Update`):**
+
+- Residency diff (pure policy; existing `streaming.rs` functions, extended inputs)
+- Request scheduling (start bounded new loads; cancel stale)
+- Apply completed async results (validate, `WorldData::insert`, spawn entity)
+- Unload residents (despawn mesh → `remove` → tracker `Absent`)
+- `Assets<Mesh>::add` (handle registration only; mesh already built off-thread)
+
+**Background threads (Bevy task pools):**
+
+- **`IoTaskPool`**: read chunk file → owned `String` (or bytes)
+- **`AsyncComputeTaskPool`**: `decode_chunk` → `(ChunkId, ChunkData)`
+- **`AsyncComputeTaskPool`**: `build_chunk_mesh_scaled` → `Mesh`
+
+`decode_chunk` and `build_chunk_mesh` remain pure, ECS-free, and reusable.
+
+### Chunk residency tracker (terrain layer only)
+
+`ChunkResidencyTracker` is the **sole** owner of non-catalog chunk lifecycle
+state. `WorldData` remains unaware of loading.
+
+Per `ChunkId`:
+
+| State | Meaning |
+|-------|---------|
+| **Absent** | Not resident; no in-flight load (or cancelled) |
+| **Loading { generation }** | Async materialization in progress |
+| **Resident** | `WorldData` holds `ChunkData`; mesh entity may exist |
+
+Rules:
+
+- At most one in-flight load per `ChunkId`.
+- Each new load request bumps a **generation** token; completions must match the
+  tracker's current generation to apply.
+- If completion arrives when coord ∉ `keep_resident_set`, **discard** (no insert,
+  no spawn).
+- Unload of a `Loading` chunk: set `Absent`, invalidate generation, discard
+  completion when it arrives.
+- Unload of a `Resident` chunk: despawn → `WorldData::remove` → `Absent`.
+
+### Async pipeline (per chunk)
+
+```
+Request (main):
+  tracker: Absent → Loading { generation }
+
+IoTaskPool:
+  read file → String
+
+AsyncComputeTaskPool (chained):
+  decode_chunk(&text) → (ChunkId, ChunkData)
+  build_chunk_mesh_scaled(&heightfield, …) → Mesh
+
+Apply (main, when task complete):
+  if generation matches AND coord ∈ keep_resident_set:
+    validate_loaded_chunk (WorldConfig)
+    WorldData::insert
+    spawn TerrainChunkMesh with prebuilt Mesh
+    tracker → Resident
+  else:
+    discard
+    tracker → Absent (if still Loading with same generation)
+```
+
+`max_loads_per_frame` bounds **new requests**, not apply count.
+
+### System ordering (`Update`)
+
+1. **`CameraControlSystems`** — camera input/smoothing (ADR-014)
+2. **`ViewFocusSystems`** — `publish_primary_view_focus` (app bridge)
+3. **`TerrainStreamingDiff`** — pure diff: `keep_resident_set`, `desired_load_set`,
+   `to_unload_residents`, `to_request`, `to_cancel_loading` (extend existing diff)
+4. **`TerrainStreamingUnload`** — process `to_unload_residents` (despawn, remove,
+   cancel loading); runs before request/apply
+5. **`TerrainStreamingRequest`** — cancel stale loads; spawn async tasks for
+   `to_request` (budgeted); tracker `Absent` → `Loading`
+6. **`TerrainStreamingApply`** — poll completed tasks; validate; insert; spawn;
+   tracker → `Resident` or discard
+
+`TerrainStreamingSystems` is the parent set: `Diff` is pure (may run in same system
+as diff-only or feed resources); unload → request → apply ordering is fixed.
+
+### Sync path retained
+
+`load_world_from_manifest` and `load_chunk_from_path` remain for unit tests and
+tooling. Dev preview uses async streaming only.
+
+### Deferred beyond Phase 2B.5
+
+- `AssetLoader` / `AssetServer` (optional future delivery for regions/packed assets)
+- Mesh-resolution LOD, skirts, far terrain (ADR-013; roadmap Phase 2C mesh LOD)
+- Region containers, masks, doodads, gameplay, simulation, streaming messages
 
 # Rationale
 
-Phase 2A's only loading consumer is a one-time eager load, which a synchronous
-reader satisfies completely. Phase 2B's consumer is residency lifecycle — which
-chunks are in memory and which render entities exist — not async I/O. Proving
-lifecycle with synchronous on-demand reads is the smallest correct path before
-introducing `AssetLoader`, handles, `TypePath`, and load-state polling.
+Phase 2B proved residency lifecycle correctness. Hitches came from synchronous
+materialization on the main thread (RON parse + full mesh build), not from
+streaming policy. Phase 2B.5 moves I/O and CPU materialization off-thread while
+keeping the proven diff/hysteresis model.
 
-The genuinely reusable asset is the **decode logic**, not the delivery mechanism.
-Isolating decode lets a future `AssetLoader` swap in without rewriting residency
-or `WorldData` semantics.
+Task pools (`IoTaskPool`, `AsyncComputeTaskPool`) are the smallest correct Bevy
+0.18 approach that moves **mesh build** off the main thread without introducing
+`AssetLoader` machinery or blurring authoritative data into `Assets<T>`.
 
-Keeping Phase 1 `WorldData` semantics in 2A avoided an authoritative-store
-refactor with no 2A consumer. The authored-extent/resident-set split lands with
-streaming because unloading is what makes it necessary.
-
-A generic view-focus resource preserves ADR-014 layer boundaries without
-terrain-specific presentation naming that would not generalize to future
-consumers (doodads, far representation).
+`ChunkResidencyTracker` keeps loading state out of `WorldData` (ADR-010, data
+first). Generation tokens prevent stale async writes after cancel or unload.
 
 # Consequences
 
 Benefits:
 
-- Phase 2A remains the smallest complete correct path.
-- Phase 2B proves streaming lifecycle without async/asset machinery.
-- Decode/delivery split means a future `AssetLoader` extends rather than replaces
-  meaningful code.
-- Clean data contract: process in the terrain runtime layer, data in `WorldData`.
-- Layer boundaries preserved via app-layer view-focus bridge.
+- Main thread no longer blocked by per-chunk read/decode/mesh build.
+- Phase 2B streaming policy reused verbatim.
+- `decode_chunk` / `build_chunk_mesh` unchanged; delivery swapped only.
+- Clear cancellation and single-flight semantics.
 
 Costs:
 
-- Synchronous per-chunk file reads may hitch on large loads; acceptable for
-  Phase 2B proof; per-frame budgets mitigate spikes.
-- `load_world_from_manifest` remains as a test/tooling path alongside streaming.
-- Eager loading is not viable for large worlds; streaming is required before
-  scale (Phase 2B).
+- In-flight memory holds decoded data + mesh until apply or discard.
+- Tracker + task polling add terrain-runtime complexity.
+- Chunk may pop in one frame after async completion (acceptable; no hitch).
+- Sync load path remains for tests.
 
 # Alternatives Considered
 
-## AssetLoader in Phase 2B
+## AssetLoader for Phase 2B.5
 
-Rejected for Phase 2B: synchronous residency lifecycle must be proven first.
-`AssetLoader` adds async/handle/`TypePath` machinery whose consumer is efficient
-delivery, not the residency model itself. Deferred to Phase 2B+ per AGENTS.md
-Groundwork Rule.
+Rejected: does not by itself move mesh build off main thread; adds `TypePath`/handle
+complexity without simplifying residency cancellation. May return when region
+containers justify engine asset caching.
 
-## AssetLoader in Phase 2A
+## Loading state in WorldData
 
-Rejected: no on-demand/unloadable streaming consumer in 2A.
+Rejected: conflates authoritative residents with runtime process state (ADR-010).
 
-## WorldData remove / authored-extent split in Phase 2A
+## Streaming Messages in Phase 2B.5
 
-Rejected: nothing unloads in 2A, so Phase 1 semantics are correct until streaming.
+Rejected: no consumer (AGENTS.md Groundwork Rule).
 
-## Distance-based streaming in Phase 2A
+## Changing hysteresis or catalog model
 
-Rejected: residency is breadth; would obscure whether the load → data → render
-contract is correct.
-
-## TerrainViewFocus (terrain-specific presentation resource)
-
-Rejected: view center is a generic local presentation concern, not terrain-owned.
-Use `PrimaryViewFocus` / `ViewFocus` in a presentation-appropriate module so
-future layers can share it without terrain naming.
-
-## Streaming load/unload Messages in Phase 2B
-
-Rejected: no consumer exists yet (AGENTS.md Groundwork Rule).
+Rejected: Phase 2B policy is proven; only materialization changes.
 
 # Notes
 
-The decode functions are the contract between delivery mechanisms: keep them free
-of `AssetServer`/IO-source assumptions so synchronous reads and a future
-`AssetLoader` can both call them.
-
-Streaming tuning (load radius, unload radius, per-frame budget) is a Phase 2B
-implementation concern; defaults are chosen at implementation time.
-
-Authored extent may be computed from the manifest chunk list at catalog init
-without an ADR-011 format change. An explicit `authored_extent` field in the
-manifest remains an optional future additive validation.
-
-Cross-references: ADR-010 (terrain runtime boundaries), ADR-011 (asset format),
-ADR-014 (camera layer; view-focus bridge).
+- Fix historical ADR text: hysteresis requires `unload_radius_chunks >=
+  load_radius_chunks` (keep ring ≥ load ring).
+- Authored extent from manifest chunk list at catalog init; no ADR-011 format
+  change required.
+- Cross-references: ADR-010, ADR-011, ADR-013 (mesh builder), ADR-014.

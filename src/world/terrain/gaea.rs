@@ -629,7 +629,19 @@ mod tests {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let input = root.join("source_data/test");
         let output = root.join("assets/worlds/main");
+        let expected = fs::read_dir(&input)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    == Some("exr")
+            })
+            .count();
+        assert!(expected > 0, "source_data/test must contain at least one .exr tile");
         let count = import_gaea_tile_directory(&input, &output, &WorldConfig::default()).unwrap();
-        assert_eq!(count, 4);
+        assert_eq!(count, expected, "one runtime chunk per source EXR");
     }
 }

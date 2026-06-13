@@ -12,9 +12,12 @@ pub mod asset;
 pub mod catalog;
 pub mod components;
 pub mod decode;
+pub mod grace;
 pub mod lifecycle;
 pub mod load;
+pub mod materialize;
 pub mod mesh;
+pub mod residency;
 pub mod spawn;
 pub mod streaming;
 
@@ -32,6 +35,8 @@ pub use components::TerrainChunkMesh;
 pub use decode::{decode_chunk, decode_manifest};
 pub use lifecycle::TerrainStreamingSystems;
 pub use load::{load_chunk_from_path, load_world_from_manifest};
+pub use materialize::PendingChunkMaterializations;
+pub use residency::{ChunkDiscardKind, ChunkResidencyState, ChunkResidencyTracker, discard_chunk_residency};
 pub use mesh::{ChunkLod, build_chunk_mesh};
 pub use spawn::{
     TerrainRenderAssets, despawn_chunk_meshes, spawn_chunk_mesh, spawn_terrain_render_entities,
@@ -49,9 +54,18 @@ impl Plugin for TerrainRuntimePlugin {
         app.register_type::<TerrainChunkMesh>()
             .register_type::<TerrainStreamingSettings>()
             .init_resource::<TerrainStreamingSettings>()
+            .init_resource::<ChunkResidencyTracker>()
+            .init_resource::<PendingChunkMaterializations>()
+            .init_resource::<grace::JustAppliedGrace>()
             .add_systems(
                 Update,
-                lifecycle::stream_terrain_chunks
+                (
+                    lifecycle::stream_terrain_chunks,
+                    lifecycle::poll_chunk_materializations,
+                    lifecycle::apply_chunk_materializations,
+                    lifecycle::unload_terrain_chunks,
+                )
+                    .chain()
                     .in_set(TerrainStreamingSystems)
                     .run_if(resource_exists::<TerrainWorldCatalog>)
                     .run_if(resource_exists::<TerrainRenderAssets>),
