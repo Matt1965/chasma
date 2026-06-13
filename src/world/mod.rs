@@ -13,7 +13,10 @@ pub use data::{ChunkExtent, WorldData};
 pub use terrain::{Heightfield, TerrainDataError, TerrainMask, TerrainMetadata};
 #[cfg(feature = "terrain-import")]
 pub use terrain::{
-    DecodeError, ImportError, SourceHeightfield, decode_exr_heightfield, import_world,
+    DecodeError, GaeaImportError, ImportError, SourceHeightfield, chunk_data_from_source_tile,
+    decode_exr_heightfield, expected_chunk_samples_per_edge, import_gaea_tile_directory,
+    import_world, parse_gaea_export_filename, source_tile_samples_per_edge,
+    validate_gaea_tile_dimensions,
 };
 
 /// Owns the World Data Layer: the authoritative coordinate model (ADR-001),

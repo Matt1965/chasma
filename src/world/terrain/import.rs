@@ -47,6 +47,18 @@ impl SourceHeightfield {
     fn sample(&self, col: u32, row: u32) -> f32 {
         self.samples[row as usize * self.width as usize + col as usize]
     }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    pub fn samples(&self) -> &[f32] {
+        &self.samples
+    }
 }
 
 /// Errors produced while importing terrain data into [`WorldData`].
@@ -207,6 +219,51 @@ pub fn import_world(
     }
 
     Ok(world)
+}
+
+/// Samples per chunk edge (`N + 1`) expected for a single pre-chunked Gaea tile.
+pub fn expected_chunk_samples_per_edge(config: &WorldConfig) -> Result<u32, ImportError> {
+    Ok(samples_per_chunk_span(config)? + 1)
+}
+
+/// Samples per source-tile edge for non-overlapping Gaea exports (`N`, where the
+/// runtime chunk uses `N + 1` shared-edge samples per ADR-008).
+pub fn source_tile_samples_per_edge(config: &WorldConfig) -> Result<u32, ImportError> {
+    samples_per_chunk_span(config)
+}
+
+/// Build [`ChunkData`] from a decoded tile that already covers exactly one chunk.
+///
+/// The source grid must be square with `expected_chunk_samples_per_edge(config)`
+/// samples per side. This does not partition a larger heightfield; each Gaea EXR
+/// tile maps 1:1 to one runtime chunk.
+pub fn chunk_data_from_source_tile(
+    source: &SourceHeightfield,
+    config: &WorldConfig,
+) -> Result<ChunkData, ImportError> {
+    if (config.units_per_meter - 1.0).abs() > 1e-6 {
+        return Err(ImportError::UnsupportedUnitsPerMeter {
+            units_per_meter: config.units_per_meter,
+        });
+    }
+
+    let samples_per_edge = expected_chunk_samples_per_edge(config)?;
+    if source.width() != samples_per_edge || source.height() != samples_per_edge {
+        return Err(ImportError::SourceNotChunkAligned {
+            source_width: source.width(),
+            source_height: source.height(),
+            samples_per_chunk_edge: samples_per_edge,
+        });
+    }
+
+    let heightfield = Heightfield::from_samples(
+        samples_per_edge,
+        config.meters_per_sample,
+        source.samples().to_vec(),
+    )
+    .map_err(ImportError::Heightfield)?;
+
+    Ok(ChunkData::new(heightfield, Vec::new()))
 }
 
 /// Compute `N`, the number of sample spans per chunk edge (so a tile has

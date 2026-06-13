@@ -13,7 +13,12 @@ use bevy::prelude::*;
 use crate::world::{WorldConfig, WorldData};
 
 use super::load::load_world_from_manifest;
-use super::spawn::spawn_terrain_render_entities;
+use super::spawn::spawn_terrain_render_entities_scaled;
+
+/// Multiplier applied to mesh Y only in the dev preview. Source Gaea tiles in
+/// `source_data/test` carry ~0.27 m of relief over 512 m — invisible at RTS
+/// camera distance without exaggeration or a taller Gaea export scale.
+const DEV_PREVIEW_VERTICAL_SCALE: f32 = 250.0;
 
 /// On-disk sample world exercised by the dev preview (ADR-011).
 pub const PREVIEW_MANIFEST_PATH: &str = "assets/worlds/main/manifest.ron";
@@ -49,7 +54,14 @@ fn setup_preview(
         ..default()
     });
     let size = config.chunk_layout().chunk_size_units();
-    spawn_terrain_render_entities(&mut commands, &world, size, &mut meshes, material);
+    spawn_terrain_render_entities_scaled(
+        &mut commands,
+        &world,
+        size,
+        &mut meshes,
+        material,
+        DEV_PREVIEW_VERTICAL_SCALE,
+    );
 
     commands.spawn((
         DirectionalLight {

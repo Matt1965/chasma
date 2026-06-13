@@ -31,6 +31,19 @@ pub enum ChunkLod {
 /// not depend on triangle winding; winding is chosen so front faces point up
 /// (+Y), matching `StandardMaterial`'s default back-face culling.
 pub fn build_chunk_mesh(heightfield: &Heightfield, lod: ChunkLod) -> Mesh {
+    build_chunk_mesh_scaled(heightfield, lod, 1.0)
+}
+
+/// Like [`build_chunk_mesh`], but multiplies sample heights for visualization.
+///
+/// Authoritative [`Heightfield`] data is unchanged; only vertex positions and
+/// normals are scaled. Values above `1.0` exaggerate relief (useful when source
+/// export heights are correct but too subtle to see at RTS camera distances).
+pub fn build_chunk_mesh_scaled(
+    heightfield: &Heightfield,
+    lod: ChunkLod,
+    vertical_scale: f32,
+) -> Mesh {
     let ChunkLod::Full = lod;
 
     let spe = heightfield.samples_per_edge() as usize;
@@ -47,24 +60,32 @@ pub fn build_chunk_mesh(heightfield: &Heightfield, lod: ChunkLod) -> Mesh {
 
     for row in 0..spe {
         for col in 0..spe {
-            let h = height(row, col);
+            let h = height(row, col) * vertical_scale;
             positions.push([col as f32 * spacing, h, row as f32 * spacing]);
             uvs.push([col as f32 / last, row as f32 / last]);
 
             // Central differences with one-sided fallback at the borders.
             let (hx0, hx1, dx) = if col == 0 {
-                (h, height(row, col + 1), spacing)
+                (h, height(row, col + 1) * vertical_scale, spacing)
             } else if col == spe - 1 {
-                (height(row, col - 1), h, spacing)
+                (height(row, col - 1) * vertical_scale, h, spacing)
             } else {
-                (height(row, col - 1), height(row, col + 1), 2.0 * spacing)
+                (
+                    height(row, col - 1) * vertical_scale,
+                    height(row, col + 1) * vertical_scale,
+                    2.0 * spacing,
+                )
             };
             let (hz0, hz1, dz) = if row == 0 {
-                (h, height(row + 1, col), spacing)
+                (h, height(row + 1, col) * vertical_scale, spacing)
             } else if row == spe - 1 {
-                (height(row - 1, col), h, spacing)
+                (height(row - 1, col) * vertical_scale, h, spacing)
             } else {
-                (height(row - 1, col), height(row + 1, col), 2.0 * spacing)
+                (
+                    height(row - 1, col) * vertical_scale,
+                    height(row + 1, col) * vertical_scale,
+                    2.0 * spacing,
+                )
             };
 
             let dhdx = (hx1 - hx0) / dx;
@@ -143,5 +164,17 @@ mod tests {
         for n in normals {
             assert!((n[1] - 1.0).abs() < 1e-5, "expected +Y normal, got {n:?}");
         }
+    }
+    #[test]
+    fn vertical_scale_exaggerates_positions() {
+        let hf = Heightfield::from_samples(2, 1.0, vec![0.0, 1.0, 2.0, 3.0]).unwrap();
+        let mesh = build_chunk_mesh_scaled(&hf, ChunkLod::Full, 100.0);
+        let bevy::mesh::VertexAttributeValues::Float32x3(positions) =
+            mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap()
+        else {
+            panic!("expected Float32x3 positions");
+        };
+        assert_eq!(positions[1][1], 100.0);
+        assert_eq!(positions[3][1], 300.0);
     }
 }

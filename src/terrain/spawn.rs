@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use crate::world::WorldData;
 
 use super::components::TerrainChunkMesh;
-use super::mesh::{ChunkLod, build_chunk_mesh};
+use super::mesh::{ChunkLod, build_chunk_mesh_scaled};
 
 /// Spawn one derived render entity per loaded chunk in `world`.
 ///
@@ -27,8 +27,27 @@ pub fn spawn_terrain_render_entities(
     meshes: &mut Assets<Mesh>,
     material: Handle<StandardMaterial>,
 ) {
+    spawn_terrain_render_entities_scaled(
+        commands,
+        world,
+        chunk_size_units,
+        meshes,
+        material,
+        1.0,
+    );
+}
+
+/// Spawn terrain meshes with optional vertical exaggeration for visualization.
+pub fn spawn_terrain_render_entities_scaled(
+    commands: &mut Commands,
+    world: &WorldData,
+    chunk_size_units: f32,
+    meshes: &mut Assets<Mesh>,
+    material: Handle<StandardMaterial>,
+    vertical_scale: f32,
+) {
     for (id, data) in world.iter() {
-        let mesh = build_chunk_mesh(&data.heightfield, ChunkLod::Full);
+        let mesh = build_chunk_mesh_scaled(&data.heightfield, ChunkLod::Full, vertical_scale);
         let coord = id.coord();
         commands.spawn((
             Mesh3d(meshes.add(mesh)),

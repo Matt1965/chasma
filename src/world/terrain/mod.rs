@@ -4,6 +4,8 @@ use core::fmt;
 mod decode;
 mod heightfield;
 #[cfg(feature = "terrain-import")]
+mod gaea;
+#[cfg(feature = "terrain-import")]
 mod import;
 mod mask;
 mod metadata;
@@ -12,7 +14,12 @@ mod metadata;
 pub use decode::{DecodeError, decode_exr_heightfield};
 pub use heightfield::Heightfield;
 #[cfg(feature = "terrain-import")]
-pub use import::{ImportError, SourceHeightfield, import_world};
+pub use gaea::{GaeaImportError, import_gaea_tile_directory, parse_gaea_export_filename, validate_gaea_tile_dimensions};
+#[cfg(feature = "terrain-import")]
+pub use import::{
+    ImportError, SourceHeightfield, chunk_data_from_source_tile, expected_chunk_samples_per_edge,
+    import_world, source_tile_samples_per_edge,
+};
 pub use mask::TerrainMask;
 pub use metadata::TerrainMetadata;
 
