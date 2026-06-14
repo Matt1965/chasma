@@ -11,11 +11,15 @@ use bevy::prelude::*;
 use crate::world::{WorldConfig, WorldData};
 
 use super::catalog::TerrainWorldCatalog;
-use super::spawn::TerrainRenderAssets;
+use super::decode::decode_chunk;
+use super::spawn::{vertical_scale_for_height_span, TerrainRenderAssets};
 use super::streaming::TerrainStreamingSettings;
 
-/// Multiplier applied to mesh Y only in the dev preview.
-const DEV_PREVIEW_VERTICAL_SCALE: f32 = 250.0;
+/// Fallback when chunk metadata cannot be sampled at preview startup.
+const DEV_PREVIEW_VERTICAL_SCALE_FALLBACK: f32 = 10.0;
+
+/// Dev preview relief target: visible relief without over-exaggerating stitch artifacts.
+const PREVIEW_TARGET_HEIGHT_SPAN_UNITS: f32 = 10.0;
 
 /// On-disk sample world exercised by the dev preview (ADR-011).
 pub const PREVIEW_MANIFEST_PATH: &str = "assets/worlds/main/manifest.ron";
@@ -52,6 +56,8 @@ fn setup_preview(
         ..default()
     });
 
+    let vertical_scale = preview_vertical_scale(&catalog);
+
     commands.insert_resource(catalog);
     commands.insert_resource(TerrainStreamingSettings {
         load_radius_chunks: 1,
@@ -63,16 +69,34 @@ fn setup_preview(
     });
     commands.insert_resource(TerrainRenderAssets {
         material,
-        vertical_scale: DEV_PREVIEW_VERTICAL_SCALE,
+        vertical_scale,
     });
 
     commands.spawn((
         DirectionalLight {
             illuminance: 12_000.0,
-            shadows_enabled: true,
+            shadows_enabled: false,
             ..default()
         },
         Transform::from_xyz(256.0, 200.0, 128.0)
             .looking_at(Vec3::new(256.0, 0.0, 128.0), Vec3::Y),
     ));
+}
+
+fn preview_vertical_scale(catalog: &TerrainWorldCatalog) -> f32 {
+    let coord = catalog.authored_extent().min;
+    let Some(path) = catalog.chunk_path(coord) else {
+        return DEV_PREVIEW_VERTICAL_SCALE_FALLBACK;
+    };
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return DEV_PREVIEW_VERTICAL_SCALE_FALLBACK;
+    };
+    let Ok((_, data)) = decode_chunk(&text) else {
+        return DEV_PREVIEW_VERTICAL_SCALE_FALLBACK;
+    };
+    vertical_scale_for_height_span(
+        data.metadata.height_min,
+        data.metadata.height_max,
+        PREVIEW_TARGET_HEIGHT_SPAN_UNITS,
+    )
 }

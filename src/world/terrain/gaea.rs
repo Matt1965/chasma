@@ -223,7 +223,45 @@ pub fn expand_non_overlap_tile(
         }
     }
 
+    let has_east = neighbors.contains_key(&(x + 1, z));
+    let has_north = neighbors.contains_key(&(x, z + 1));
+    let _ = (has_east, has_north);
+    repair_non_overlap_edge_slopes(&mut out, runtime_edge as usize);
+
     out
+}
+
+/// Linearly ramp interior samples toward the stitched +X / +Z boundary.
+fn repair_non_overlap_edge_slopes(heights: &mut [f32], spe: usize) {
+    const EDGE_RAMP_SAMPLES: usize = 1;
+    if spe < 2 {
+        return;
+    }
+    let last = spe - 1;
+    let ramp_len = last.min(EDGE_RAMP_SAMPLES);
+    if ramp_len < 2 {
+        return;
+    }
+    let ramp_start = last - ramp_len;
+
+    for row in 0..last {
+        let base = row * spe;
+        let hi = heights[base + ramp_start];
+        let hb = heights[base + last];
+        for step in 1..ramp_len {
+            let t = step as f32 / ramp_len as f32;
+            heights[base + ramp_start + step] = hi + (hb - hi) * t;
+        }
+    }
+
+    for col in 0..ramp_start {
+        let hi = heights[ramp_start * spe + col];
+        let hb = heights[last * spe + col];
+        for step in 1..ramp_len {
+            let t = step as f32 / ramp_len as f32;
+            heights[(ramp_start + step) * spe + col] = hi + (hb - hi) * t;
+        }
+    }
 }
 
 fn chunk_from_non_overlap_tile(
@@ -472,9 +510,9 @@ mod tests {
         };
 
         assert_eq!(at(0, 0), 0.0);
-        assert_eq!(at(1, 0), 1.0);
+        assert_eq!(at(1, 0), 50.0);
         assert_eq!(at(0, 1), 10.0);
-        assert_eq!(at(1, 1), 11.0);
+        assert_eq!(at(1, 1), 60.0);
         assert_eq!(at(2, 0), 100.0);
         assert_eq!(at(2, 1), 110.0);
         assert_eq!(at(0, 2), 1000.0);

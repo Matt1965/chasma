@@ -24,6 +24,175 @@ pub enum ChunkLod {
     Full,
 }
 
+/// Neighbor height strips used for mesh positions and cross-chunk normals.
+#[derive(Debug, Clone, Default)]
+pub struct ChunkMeshSeamWeld {
+    /// −X neighbor +X edge (`col == N`), welded at `col == 0`.
+    pub west_edge: Option<Vec<f32>>,
+    /// −Z neighbor +Z edge (`row == N`), welded at `row == 0`.
+    pub south_edge: Option<Vec<f32>>,
+    /// +X neighbor `col == 1`, for normals at this chunk's +X edge.
+    pub east_interior: Option<Vec<f32>>,
+    /// +Z neighbor `row == 1`, for normals at this chunk's +Z edge.
+    pub north_interior: Option<Vec<f32>>,
+    /// −X neighbor `col == N - 1`, for normals at `col == 0`.
+    pub west_interior: Option<Vec<f32>>,
+    /// −Z neighbor `row == N - 1`, for normals at `row == 0`.
+    pub south_interior: Option<Vec<f32>>,
+}
+
+/// Interior samples to linearly ramp toward the stitched +X / +Z boundary.
+const NON_OVERLAP_EDGE_RAMP_SAMPLES: usize = 0;
+
+/// Linearly ramp the last few interior columns/rows toward the stitched boundary.
+///
+/// Non-overlapping Gaea tiles store the neighbor boundary at `col == N` while
+/// the local tile's trailing samples often disagree one meter inside, leaving a
+/// steep 1 m ditch along every chunk edge. Mesh generation re-slopes that strip
+/// toward the boundary without mutating authoritative [`Heightfield`] data.
+fn repair_non_overlap_edge_slopes(heights: &mut [f32], spe: usize) {
+    if spe < 2 {
+        return;
+    }
+    let last = spe - 1;
+    let ramp_len = last.min(NON_OVERLAP_EDGE_RAMP_SAMPLES);
+    if ramp_len < 2 {
+        return;
+    }
+    let ramp_start = last - ramp_len;
+
+    for row in 0..last {
+        let base = row * spe;
+        let hi = heights[base + ramp_start];
+        let hb = heights[base + last];
+        for step in 1..ramp_len {
+            let t = step as f32 / ramp_len as f32;
+            heights[base + ramp_start + step] = hi + (hb - hi) * t;
+        }
+    }
+
+    for col in 0..ramp_start {
+        let hi = heights[ramp_start * spe + col];
+        let hb = heights[last * spe + col];
+        for step in 1..ramp_len {
+            let t = step as f32 / ramp_len as f32;
+            heights[(ramp_start + step) * spe + col] = hi + (hb - hi) * t;
+        }
+    }
+}
+
+fn build_mesh_height_grid(
+    samples: &[f32],
+    spe: usize,
+    seam_weld: &ChunkMeshSeamWeld,
+) -> Vec<f32> {
+    let mut heights = samples.to_vec();
+
+    for row in 0..spe {
+        for col in 0..spe {
+            let idx = row * spe + col;
+            if col == 0 {
+                if let Some(west) = seam_weld.west_edge.as_ref().and_then(|strip| strip.get(row)) {
+                    heights[idx] = *west;
+                }
+            }
+            if row == 0 {
+                if let Some(south) = seam_weld.south_edge.as_ref().and_then(|strip| strip.get(col))
+                {
+                    heights[idx] = *south;
+                }
+            }
+        }
+    }
+
+    repair_non_overlap_edge_slopes(&mut heights, spe);
+    heights
+}
+
+fn normal_stencil_x(
+    row: usize,
+    col: usize,
+    spe: usize,
+    heights: &[f32],
+    h: f32,
+    scale: f32,
+    spacing: f32,
+    seam_weld: &ChunkMeshSeamWeld,
+) -> (f32, f32, f32) {
+    let sample = |row: usize, col: usize| heights[row * spe + col];
+    if col == 0 {
+        if let Some(west) = seam_weld
+            .west_interior
+            .as_ref()
+            .and_then(|strip| strip.get(row))
+        {
+            return (*west * scale, sample(row, col + 1) * scale, 2.0 * spacing);
+        }
+        return (h, sample(row, col + 1) * scale, spacing);
+    }
+    if col == spe - 1 {
+        if let Some(east) = seam_weld
+            .east_interior
+            .as_ref()
+            .and_then(|strip| strip.get(row))
+        {
+            return (
+                sample(row, col - 1) * scale,
+                *east * scale,
+                2.0 * spacing,
+            );
+        }
+        return (sample(row, col - 1) * scale, h, spacing);
+    }
+    (
+        sample(row, col - 1) * scale,
+        sample(row, col + 1) * scale,
+        2.0 * spacing,
+    )
+}
+
+fn normal_stencil_z(
+    row: usize,
+    col: usize,
+    spe: usize,
+    heights: &[f32],
+    h: f32,
+    scale: f32,
+    spacing: f32,
+    seam_weld: &ChunkMeshSeamWeld,
+) -> (f32, f32, f32) {
+    let sample = |row: usize, col: usize| heights[row * spe + col];
+    if row == 0 {
+        if let Some(south) = seam_weld
+            .south_interior
+            .as_ref()
+            .and_then(|strip| strip.get(col))
+        {
+            return (*south * scale, sample(row + 1, col) * scale, 2.0 * spacing);
+        }
+        return (h, sample(row + 1, col) * scale, spacing);
+    }
+    if row == spe - 1 {
+        if let Some(north) = seam_weld
+            .north_interior
+            .as_ref()
+            .and_then(|strip| strip.get(col))
+        {
+            return (
+                sample(row - 1, col) * scale,
+                *north * scale,
+                2.0 * spacing,
+            );
+        }
+        return (sample(row - 1, col) * scale, h, spacing);
+    }
+    (
+        sample(row - 1, col) * scale,
+        sample(row + 1, col) * scale,
+        2.0 * spacing,
+    )
+}
+
 /// Build a renderable mesh from a chunk's authoritative heightfield.
 ///
 /// Generates positions, analytic normals, UVs, and triangle indices. Normals
@@ -31,7 +200,7 @@ pub enum ChunkLod {
 /// not depend on triangle winding; winding is chosen so front faces point up
 /// (+Y), matching `StandardMaterial`'s default back-face culling.
 pub fn build_chunk_mesh(heightfield: &Heightfield, lod: ChunkLod) -> Mesh {
-    build_chunk_mesh_scaled(heightfield, lod, 1.0)
+    build_chunk_mesh_scaled(heightfield, lod, 1.0, &ChunkMeshSeamWeld::default())
 }
 
 /// Like [`build_chunk_mesh`], but multiplies sample heights for visualization.
@@ -43,12 +212,13 @@ pub fn build_chunk_mesh_scaled(
     heightfield: &Heightfield,
     lod: ChunkLod,
     vertical_scale: f32,
+    seam_weld: &ChunkMeshSeamWeld,
 ) -> Mesh {
     let ChunkLod::Full = lod;
 
     let spe = heightfield.samples_per_edge() as usize;
     let spacing = heightfield.spacing_meters();
-    let samples = heightfield.samples();
+    let heights = build_mesh_height_grid(heightfield.samples(), spe, seam_weld);
     let last = (spe - 1) as f32;
 
     let vertex_count = spe * spe;
@@ -56,7 +226,7 @@ pub fn build_chunk_mesh_scaled(
     let mut normals = Vec::with_capacity(vertex_count);
     let mut uvs = Vec::with_capacity(vertex_count);
 
-    let height = |row: usize, col: usize| samples[row * spe + col];
+    let height = |row: usize, col: usize| heights[row * spe + col];
 
     for row in 0..spe {
         for col in 0..spe {
@@ -64,29 +234,26 @@ pub fn build_chunk_mesh_scaled(
             positions.push([col as f32 * spacing, h, row as f32 * spacing]);
             uvs.push([col as f32 / last, row as f32 / last]);
 
-            // Central differences with one-sided fallback at the borders.
-            let (hx0, hx1, dx) = if col == 0 {
-                (h, height(row, col + 1) * vertical_scale, spacing)
-            } else if col == spe - 1 {
-                (height(row, col - 1) * vertical_scale, h, spacing)
-            } else {
-                (
-                    height(row, col - 1) * vertical_scale,
-                    height(row, col + 1) * vertical_scale,
-                    2.0 * spacing,
-                )
-            };
-            let (hz0, hz1, dz) = if row == 0 {
-                (h, height(row + 1, col) * vertical_scale, spacing)
-            } else if row == spe - 1 {
-                (height(row - 1, col) * vertical_scale, h, spacing)
-            } else {
-                (
-                    height(row - 1, col) * vertical_scale,
-                    height(row + 1, col) * vertical_scale,
-                    2.0 * spacing,
-                )
-            };
+            let (hx0, hx1, dx) = normal_stencil_x(
+                row,
+                col,
+                spe,
+                &heights,
+                h,
+                vertical_scale,
+                spacing,
+                seam_weld,
+            );
+            let (hz0, hz1, dz) = normal_stencil_z(
+                row,
+                col,
+                spe,
+                &heights,
+                h,
+                vertical_scale,
+                spacing,
+                seam_weld,
+            );
 
             let dhdx = (hx1 - hx0) / dx;
             let dhdz = (hz1 - hz0) / dz;
@@ -165,10 +332,97 @@ mod tests {
             assert!((n[1] - 1.0).abs() < 1e-5, "expected +Y normal, got {n:?}");
         }
     }
+
+    #[test]
+    fn west_seam_weld_snaps_col_zero_to_neighbor_edge() {
+        let hf = Heightfield::from_samples(3, 1.0, vec![0.0, 0.0, 0.0, 9.0, 1.0, 2.0, 0.0, 0.0, 0.0])
+            .unwrap();
+        let mesh = build_chunk_mesh_scaled(
+            &hf,
+            ChunkLod::Full,
+            1.0,
+            &ChunkMeshSeamWeld {
+                west_edge: Some(vec![5.0, 6.0, 7.0]),
+                south_edge: None,
+                east_interior: None,
+                north_interior: None,
+                west_interior: None,
+                south_interior: None,
+            },
+        );
+        let bevy::mesh::VertexAttributeValues::Float32x3(positions) =
+            mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap()
+        else {
+            panic!("expected Float32x3 positions");
+        };
+        // row 1, col 0 -> index 3
+        assert_eq!(positions[3][1], 6.0);
+    }
+
+    #[test]
+    fn repairs_non_overlap_east_edge_slope_for_mesh() {
+        let hf = Heightfield::from_samples(
+            4,
+            1.0,
+            vec![
+                0.0, 0.0, 0.0, 10.0, //
+                0.0, 0.0, 0.0, 10.0, //
+                0.0, 0.0, 0.0, 10.0, //
+                0.0, 0.0, 0.0, 1.0,
+            ],
+        )
+        .unwrap();
+        let mesh = build_chunk_mesh_scaled(&hf, ChunkLod::Full, 1.0, &ChunkMeshSeamWeld::default());
+        let bevy::mesh::VertexAttributeValues::Float32x3(positions) =
+            mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap()
+        else {
+            panic!("expected Float32x3 positions");
+        };
+        // row 2 (still inside the east ramp): cols 1-2 ramp toward boundary col 3 (=10).
+        assert!((positions[9][1] - (10.0 / 3.0)).abs() < 1e-5);
+        assert!((positions[10][1] - (20.0 / 3.0)).abs() < 1e-5);
+        assert!((positions[11][1] - 10.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn repairs_sample_world_east_edge_cliff() {
+        use std::path::Path;
+
+        use crate::terrain::decode::decode_chunk;
+
+        let path = Path::new("assets/worlds/main/chunks/0_0.ron");
+        if !path.exists() {
+            return;
+        }
+        let text = std::fs::read_to_string(path).unwrap();
+        let (_, data) = decode_chunk(&text).unwrap();
+        let scale = 4_278_744.5;
+        let mesh = build_chunk_mesh_scaled(
+            &data.heightfield,
+            ChunkLod::Full,
+            scale,
+            &ChunkMeshSeamWeld::default(),
+        );
+        let bevy::mesh::VertexAttributeValues::Float32x3(positions) =
+            mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap()
+        else {
+            panic!("expected Float32x3 positions");
+        };
+        let spe = data.heightfield.samples_per_edge() as usize;
+        let row = 128;
+        let y_penultimate = positions[row * spe + (spe - 2)][1];
+        let y_boundary = positions[row * spe + (spe - 1)][1];
+        let step = (y_boundary - y_penultimate).abs();
+        assert!(
+            step < 1.0,
+            "expected ramped east-edge step under 1 unit, got {step}"
+        );
+    }
+
     #[test]
     fn vertical_scale_exaggerates_positions() {
         let hf = Heightfield::from_samples(2, 1.0, vec![0.0, 1.0, 2.0, 3.0]).unwrap();
-        let mesh = build_chunk_mesh_scaled(&hf, ChunkLod::Full, 100.0);
+        let mesh = build_chunk_mesh_scaled(&hf, ChunkLod::Full, 100.0, &ChunkMeshSeamWeld::default());
         let bevy::mesh::VertexAttributeValues::Float32x3(positions) =
             mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap()
         else {

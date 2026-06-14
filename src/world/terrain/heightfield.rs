@@ -61,6 +61,30 @@ impl Heightfield {
         &self.samples
     }
 
+    /// Height at a grid vertex (column `col`, row `row`).
+    pub fn height_at_vertex(&self, col: u32, row: u32) -> f32 {
+        let stride = self.samples_per_edge as usize;
+        self.samples[row as usize * stride + col as usize]
+    }
+
+    /// Column `col` across all rows (for seam normal stitching).
+    pub fn column_heights(&self, col: u32) -> Vec<f32> {
+        let spe = self.samples_per_edge as usize;
+        let col = col as usize;
+        (0..spe)
+            .map(|row| self.samples[row * spe + col])
+            .collect()
+    }
+
+    /// Row `row` across all columns (for seam normal stitching).
+    pub fn row_heights(&self, row: u32) -> Vec<f32> {
+        let spe = self.samples_per_edge as usize;
+        let row = row as usize;
+        (0..spe)
+            .map(|col| self.samples[row * spe + col])
+            .collect()
+    }
+
     /// Chunk edge length in world units, derived from the sample grid.
     pub fn chunk_size_meters(&self) -> f32 {
         (self.samples_per_edge - 1) as f32 * self.spacing_meters

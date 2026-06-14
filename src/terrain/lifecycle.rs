@@ -19,7 +19,9 @@ use super::load::validate_loaded_chunk;
 use super::residency::{
     ChunkDiscardKind, ChunkResidencyTracker, discard_chunk_residency,
 };
-use super::spawn::{TerrainRenderAssets, despawn_chunk_meshes, spawn_chunk_mesh};
+use super::spawn::{
+    TerrainRenderAssets, despawn_chunk_meshes, refresh_adjacent_chunk_meshes, spawn_chunk_mesh,
+};
 use super::streaming::{
     TerrainStreamingSettings, chunks_in_radius, diff_streaming_residency, stable_focus_chunk,
 };
@@ -282,6 +284,16 @@ pub(crate) fn apply_decoded_batch(
             meshes,
             render_assets.material.clone(),
             render_assets.vertical_scale,
+        );
+        refresh_adjacent_chunk_meshes(
+            commands,
+            chunk_id,
+            world,
+            chunk_size_units,
+            meshes,
+            render_assets.material.clone(),
+            render_assets.vertical_scale,
+            mesh_entities,
         );
         residency.mark_resident(chunk_id);
         applied.push(chunk_id);

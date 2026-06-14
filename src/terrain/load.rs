@@ -367,10 +367,14 @@ mod tests {
     fn loads_committed_sample_world() {
         let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("assets/worlds/main/manifest.ron");
+        let expected = decode_manifest(&read_manifest_text(&manifest).unwrap())
+            .unwrap()
+            .chunks
+            .len();
         let mut world = WorldData::new(config().chunk_layout());
         let count = load_world_from_manifest(&manifest, &config(), &mut world).unwrap();
-        assert_eq!(count, 4);
+        assert_eq!(count, expected);
         assert!(world.is_chunk_loaded(ChunkId::new(ChunkCoord::new(0, 0))));
-        assert!(world.is_chunk_loaded(ChunkId::new(ChunkCoord::new(1, 1))));
+        assert_eq!(world.len(), expected);
     }
 }
