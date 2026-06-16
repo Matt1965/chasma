@@ -1,0 +1,2152 @@
+# terrain streaming perf session started_at=1781577050
+# multi-line hitch summaries: poll/apply, mesh accounting, geometry, queues, per-mesh
+terrain streaming
+poll=0.06ms apply=0.03ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=4 decode=0 decoded_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.09ms apply=147.62ms mesh_assets=0.04ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=1 built=3 count=3 avg=38.4ms max=42.1ms
+
+Neighbor refresh:
+considered=8 rebuilt=1 skipped=7
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=2 applied=2 unloaded=0
+
+Per-mesh:
+  (0,0) new verts=66049 tris=131072 build=37.23ms
+  (1,0) new verts=66049 tris=131072 build=42.10ms
+  (0,0) neighbor verts=66049 tris=131072 build=35.84ms
+
+HITCH
+poll=0.04ms apply=212.36ms mesh_assets=0.05ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=2 built=4 count=4 avg=40.8ms max=47.2ms
+
+Neighbor refresh:
+considered=8 rebuilt=2 skipped=6
+
+Geometry:
+vertices=264196 indices=1572864 triangles=524288 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=2 decode=0 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (2,0) new verts=66049 tris=131072 build=36.68ms
+  (1,0) neighbor verts=66049 tris=131072 build=47.21ms
+  (0,1) new verts=66049 tris=131072 build=40.50ms
+  (0,0) neighbor verts=66049 tris=131072 build=38.93ms
+
+terrain streaming
+poll=0.07ms apply=0.04ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.07ms apply=134.50ms mesh_assets=0.05ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=36.1ms max=38.6ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (1,1) new verts=66049 tris=131072 build=35.51ms
+  (0,1) neighbor verts=66049 tris=131072 build=34.18ms
+  (1,0) neighbor verts=66049 tris=131072 build=38.59ms
+
+HITCH
+poll=0.05ms apply=124.68ms mesh_assets=0.04ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=33.3ms max=40.1ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (2,1) new verts=66049 tris=131072 build=33.27ms
+  (1,1) neighbor verts=66049 tris=131072 build=26.43ms
+  (2,0) neighbor verts=66049 tris=131072 build=40.06ms
+
+terrain streaming
+poll=0.07ms apply=0.04ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=2 decode=0 decoded_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.04ms apply=76.08ms mesh_assets=0.04ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=28.8ms max=31.2ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (3,1) new verts=66049 tris=131072 build=26.30ms
+  (2,1) neighbor verts=66049 tris=131072 build=31.23ms
+
+HITCH
+poll=0.07ms apply=127.04ms mesh_assets=0.05ms spawn=0.06ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=33.6ms max=39.2ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (3,0) new verts=66049 tris=131072 build=37.97ms
+  (2,0) neighbor verts=66049 tris=131072 build=39.24ms
+  (3,1) neighbor verts=66049 tris=131072 build=23.52ms
+
+terrain streaming
+poll=0.05ms apply=0.05ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=2 decode=0 decoded_q=0 applied=0 unloaded=2
+
+HITCH
+poll=0.07ms apply=65.11ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=25.8ms max=28.6ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (4,1) new verts=66049 tris=131072 build=28.56ms
+  (3,1) neighbor verts=66049 tris=131072 build=23.12ms
+
+HITCH
+poll=0.05ms apply=108.05ms mesh_assets=0.04ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=28.5ms max=29.7ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (4,0) new verts=66049 tris=131072 build=29.28ms
+  (3,0) neighbor verts=66049 tris=131072 build=29.70ms
+  (4,1) neighbor verts=66049 tris=131072 build=26.67ms
+
+terrain streaming
+poll=0.06ms apply=0.04ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 decoded_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.08ms apply=86.71ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=35.2ms max=38.4ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (3,2) new verts=66049 tris=131072 build=38.37ms
+  (3,1) neighbor verts=66049 tris=131072 build=31.97ms
+
+HITCH
+poll=0.09ms apply=104.91ms mesh_assets=0.04ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=28.0ms max=34.1ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (4,2) new verts=66049 tris=131072 build=34.11ms
+  (3,2) neighbor verts=66049 tris=131072 build=27.34ms
+  (4,1) neighbor verts=66049 tris=131072 build=22.41ms
+
+HITCH
+poll=0.08ms apply=95.19ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=36.2ms max=38.2ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,1) new verts=66049 tris=131072 build=38.16ms
+  (4,1) neighbor verts=66049 tris=131072 build=34.14ms
+
+HITCH
+poll=0.08ms apply=106.52ms mesh_assets=0.05ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=26.8ms max=29.3ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,0) new verts=66049 tris=131072 build=29.30ms
+  (4,0) neighbor verts=66049 tris=131072 build=27.98ms
+  (5,1) neighbor verts=66049 tris=131072 build=23.26ms
+
+HITCH
+poll=0.07ms apply=122.33ms mesh_assets=0.04ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=32.8ms max=36.8ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,2) new verts=66049 tris=131072 build=36.80ms
+  (4,2) neighbor verts=66049 tris=131072 build=36.19ms
+  (5,1) neighbor verts=66049 tris=131072 build=25.27ms
+
+terrain streaming
+poll=0.06ms apply=0.07ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 decoded_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.08ms apply=195.83ms mesh_assets=0.08ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=3 built=5 count=5 avg=30.2ms max=35.9ms
+
+Neighbor refresh:
+considered=8 rebuilt=3 skipped=5
+
+Geometry:
+vertices=330245 indices=1966080 triangles=655360 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (3,3) new verts=66049 tris=131072 build=28.02ms
+  (3,2) neighbor verts=66049 tris=131072 build=26.01ms
+  (4,3) new verts=66049 tris=131072 build=29.10ms
+  (3,3) neighbor verts=66049 tris=131072 build=32.17ms
+  (4,2) neighbor verts=66049 tris=131072 build=35.95ms
+
+HITCH
+poll=0.09ms apply=100.62ms mesh_assets=0.04ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=25.4ms max=28.4ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,3) new verts=66049 tris=131072 build=28.35ms
+  (4,3) neighbor verts=66049 tris=131072 build=23.16ms
+  (5,2) neighbor verts=66049 tris=131072 build=24.71ms
+
+terrain streaming
+poll=0.09ms apply=0.04ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 decoded_q=0 applied=0 unloaded=2
+
+HITCH
+poll=0.13ms apply=105.83ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=42.2ms max=42.5ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (6,2) new verts=66049 tris=131072 build=42.50ms
+  (5,2) neighbor verts=66049 tris=131072 build=41.83ms
+
+HITCH
+poll=0.08ms apply=123.76ms mesh_assets=0.05ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=32.4ms max=36.3ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (6,3) new verts=66049 tris=131072 build=36.34ms
+  (5,3) neighbor verts=66049 tris=131072 build=26.82ms
+  (6,2) neighbor verts=66049 tris=131072 build=33.92ms
+
+HITCH
+poll=0.06ms apply=104.70ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=39.5ms max=41.9ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (4,4) new verts=66049 tris=131072 build=37.01ms
+  (4,3) neighbor verts=66049 tris=131072 build=41.94ms
+
+HITCH
+poll=0.07ms apply=207.22ms mesh_assets=0.08ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=4 built=6 count=6 avg=27.2ms max=28.2ms
+
+Neighbor refresh:
+considered=8 rebuilt=4 skipped=4
+
+Geometry:
+vertices=396294 indices=2359296 triangles=786432 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (5,4) new verts=66049 tris=131072 build=28.18ms
+  (4,4) neighbor verts=66049 tris=131072 build=27.85ms
+  (5,3) neighbor verts=66049 tris=131072 build=27.90ms
+  (6,4) new verts=66049 tris=131072 build=26.56ms
+  (5,4) neighbor verts=66049 tris=131072 build=27.67ms
+  (6,3) neighbor verts=66049 tris=131072 build=24.75ms
+
+terrain streaming
+poll=0.04ms apply=0.05ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 decoded_q=0 applied=0 unloaded=3
+
+HITCH
+poll=0.08ms apply=86.94ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=33.1ms max=34.5ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (6,5) new verts=66049 tris=131072 build=31.62ms
+  (6,4) neighbor verts=66049 tris=131072 build=34.50ms
+
+HITCH
+poll=0.08ms apply=189.07ms mesh_assets=0.15ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=3 built=5 count=5 avg=28.8ms max=34.0ms
+
+Neighbor refresh:
+considered=8 rebuilt=3 skipped=5
+
+Geometry:
+vertices=330245 indices=1966080 triangles=655360 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (7,4) new verts=66049 tris=131072 build=28.35ms
+  (6,4) neighbor verts=66049 tris=131072 build=24.53ms
+  (5,5) new verts=66049 tris=131072 build=33.96ms
+  (6,5) neighbor verts=66049 tris=131072 build=27.25ms
+  (5,4) neighbor verts=66049 tris=131072 build=29.76ms
+
+HITCH
+poll=0.09ms apply=189.51ms mesh_assets=0.09ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=4 built=6 count=6 avg=25.0ms max=31.3ms
+
+Neighbor refresh:
+considered=8 rebuilt=4 skipped=4
+
+Geometry:
+vertices=396294 indices=2359296 triangles=786432 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (7,3) new verts=66049 tris=131072 build=31.33ms
+  (6,3) neighbor verts=66049 tris=131072 build=31.35ms
+  (7,4) neighbor verts=66049 tris=131072 build=21.00ms
+  (7,5) new verts=66049 tris=131072 build=21.97ms
+  (6,5) neighbor verts=66049 tris=131072 build=19.67ms
+  (7,4) neighbor verts=66049 tris=131072 build=24.77ms
+
+terrain streaming
+poll=0.12ms apply=0.11ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 decoded_q=0 applied=0 unloaded=3
+
+HITCH
+poll=0.07ms apply=94.81ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=37.4ms max=40.4ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (6,6) new verts=66049 tris=131072 build=34.39ms
+  (6,5) neighbor verts=66049 tris=131072 build=40.42ms
+
+HITCH
+poll=0.08ms apply=125.03ms mesh_assets=0.05ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=31.9ms max=34.5ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (7,6) new verts=66049 tris=131072 build=34.46ms
+  (6,6) neighbor verts=66049 tris=131072 build=33.00ms
+  (7,5) neighbor verts=66049 tris=131072 build=28.11ms
+
+HITCH
+poll=0.08ms apply=105.39ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=40.6ms max=41.3ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,5) new verts=66049 tris=131072 build=41.28ms
+  (7,5) neighbor verts=66049 tris=131072 build=39.94ms
+
+HITCH
+poll=0.05ms apply=177.23ms mesh_assets=0.09ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=4 built=6 count=6 avg=23.3ms max=26.9ms
+
+Neighbor refresh:
+considered=8 rebuilt=4 skipped=4
+
+Geometry:
+vertices=396294 indices=2359296 triangles=786432 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (8,4) new verts=66049 tris=131072 build=24.16ms
+  (7,4) neighbor verts=66049 tris=131072 build=21.15ms
+  (8,5) neighbor verts=66049 tris=131072 build=26.50ms
+  (8,6) new verts=66049 tris=131072 build=26.91ms
+  (7,6) neighbor verts=66049 tris=131072 build=20.48ms
+  (8,5) neighbor verts=66049 tris=131072 build=20.41ms
+
+terrain streaming
+poll=0.08ms apply=0.05ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=1 decode=2 decoded_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.12ms apply=85.90ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=32.6ms max=34.5ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,5) new verts=66049 tris=131072 build=30.68ms
+  (8,5) neighbor verts=66049 tris=131072 build=34.48ms
+
+HITCH
+poll=0.10ms apply=88.62ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=35.8ms max=37.7ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,7) new verts=66049 tris=131072 build=37.67ms
+  (8,6) neighbor verts=66049 tris=131072 build=33.86ms
+
+HITCH
+poll=0.10ms apply=152.36ms mesh_assets=0.05ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=40.7ms max=45.4ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,6) new verts=66049 tris=131072 build=44.23ms
+  (8,6) neighbor verts=66049 tris=131072 build=45.39ms
+  (9,5) neighbor verts=66049 tris=131072 build=32.40ms
+
+HITCH
+poll=0.07ms apply=191.89ms mesh_assets=0.09ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=4 built=6 count=6 avg=25.3ms max=28.5ms
+
+Neighbor refresh:
+considered=8 rebuilt=4 skipped=4
+
+Geometry:
+vertices=396294 indices=2359296 triangles=786432 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (7,7) new verts=66049 tris=131072 build=22.37ms
+  (8,7) neighbor verts=66049 tris=131072 build=27.47ms
+  (7,6) neighbor verts=66049 tris=131072 build=27.60ms
+  (9,7) new verts=66049 tris=131072 build=28.51ms
+  (8,7) neighbor verts=66049 tris=131072 build=25.25ms
+  (9,6) neighbor verts=66049 tris=131072 build=20.46ms
+
+terrain streaming
+poll=0.07ms apply=0.06ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.09ms apply=95.13ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=36.9ms max=37.4ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,5) new verts=66049 tris=131072 build=37.36ms
+  (9,5) neighbor verts=66049 tris=131072 build=36.45ms
+
+HITCH
+poll=0.06ms apply=111.22ms mesh_assets=0.04ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=29.6ms max=32.6ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,6) new verts=66049 tris=131072 build=32.53ms
+  (9,6) neighbor verts=66049 tris=131072 build=32.62ms
+  (10,5) neighbor verts=66049 tris=131072 build=23.75ms
+
+HITCH
+poll=0.07ms apply=102.17ms mesh_assets=0.04ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=27.4ms max=30.3ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,7) new verts=66049 tris=131072 build=25.51ms
+  (9,7) neighbor verts=66049 tris=131072 build=30.34ms
+  (10,6) neighbor verts=66049 tris=131072 build=26.24ms
+
+terrain streaming
+poll=0.06ms apply=0.05ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 decoded_q=0 applied=0 unloaded=2
+
+HITCH
+poll=0.09ms apply=161.23ms mesh_assets=0.06ms spawn=0.02ms
+
+Meshes:
+applied=2 new=2 neighbor=2 built=4 count=4 avg=31.1ms max=34.8ms
+
+Neighbor refresh:
+considered=8 rebuilt=2 skipped=6
+
+Geometry:
+vertices=264196 indices=1572864 triangles=524288 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (8,8) new verts=66049 tris=131072 build=33.20ms
+  (8,7) neighbor verts=66049 tris=131072 build=34.81ms
+  (10,8) new verts=66049 tris=131072 build=33.17ms
+  (10,7) neighbor verts=66049 tris=131072 build=23.27ms
+
+HITCH
+poll=0.07ms apply=129.85ms mesh_assets=0.07ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=3 built=4 count=4 avg=26.1ms max=38.3ms
+
+Neighbor refresh:
+considered=4 rebuilt=3 skipped=1
+
+Geometry:
+vertices=264196 indices=1572864 triangles=524288 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,8) new verts=66049 tris=131072 build=38.27ms
+  (8,8) neighbor verts=66049 tris=131072 build=20.13ms
+  (10,8) neighbor verts=66049 tris=131072 build=20.82ms
+  (9,7) neighbor verts=66049 tris=131072 build=25.02ms
+
+terrain streaming
+poll=0.05ms apply=0.06ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 decoded_q=0 applied=0 unloaded=3
+
+HITCH
+poll=0.09ms apply=88.52ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=35.8ms max=36.7ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,6) new verts=66049 tris=131072 build=36.75ms
+  (10,6) neighbor verts=66049 tris=131072 build=34.83ms
+
+HITCH
+poll=0.09ms apply=96.37ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=37.2ms max=37.3ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,8) new verts=66049 tris=131072 build=37.10ms
+  (10,8) neighbor verts=66049 tris=131072 build=37.34ms
+
+HITCH
+poll=0.08ms apply=146.77ms mesh_assets=0.06ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=3 built=4 count=4 avg=29.3ms max=40.4ms
+
+Neighbor refresh:
+considered=4 rebuilt=3 skipped=1
+
+Geometry:
+vertices=264196 indices=1572864 triangles=524288 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,7) new verts=66049 tris=131072 build=34.93ms
+  (10,7) neighbor verts=66049 tris=131072 build=40.44ms
+  (11,6) neighbor verts=66049 tris=131072 build=21.92ms
+  (11,8) neighbor verts=66049 tris=131072 build=19.98ms
+
+terrain streaming
+poll=0.05ms apply=0.05ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 decoded_q=0 applied=0 unloaded=3
+
+HITCH
+poll=0.09ms apply=84.87ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=34.7ms max=35.1ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,9) new verts=66049 tris=131072 build=35.12ms
+  (10,8) neighbor verts=66049 tris=131072 build=34.22ms
+
+HITCH
+poll=0.09ms apply=211.29ms mesh_assets=0.08ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=3 built=5 count=5 avg=32.1ms max=37.0ms
+
+Neighbor refresh:
+considered=8 rebuilt=3 skipped=5
+
+Geometry:
+vertices=330245 indices=1966080 triangles=655360 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (12,7) new verts=66049 tris=131072 build=37.00ms
+  (11,7) neighbor verts=66049 tris=131072 build=25.31ms
+  (11,9) new verts=66049 tris=131072 build=33.07ms
+  (10,9) neighbor verts=66049 tris=131072 build=34.82ms
+  (11,8) neighbor verts=66049 tris=131072 build=30.52ms
+
+HITCH
+poll=0.07ms apply=216.73ms mesh_assets=0.11ms spawn=0.04ms
+
+Meshes:
+applied=2 new=2 neighbor=4 built=6 count=6 avg=28.5ms max=44.2ms
+
+Neighbor refresh:
+considered=8 rebuilt=4 skipped=4
+
+Geometry:
+vertices=396294 indices=2359296 triangles=786432 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (12,8) new verts=66049 tris=131072 build=24.46ms
+  (11,8) neighbor verts=66049 tris=131072 build=20.97ms
+  (12,7) neighbor verts=66049 tris=131072 build=25.92ms
+  (12,9) new verts=66049 tris=131072 build=20.79ms
+  (11,9) neighbor verts=66049 tris=131072 build=34.81ms
+  (12,8) neighbor verts=66049 tris=131072 build=44.15ms
+
+terrain streaming
+poll=0.07ms apply=0.06ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.10ms apply=107.79ms mesh_assets=0.05ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=28.1ms max=29.2ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,9) new verts=66049 tris=131072 build=29.17ms
+  (10,9) neighbor verts=66049 tris=131072 build=28.84ms
+  (9,8) neighbor verts=66049 tris=131072 build=26.41ms
+
+terrain streaming
+poll=0.06ms apply=0.05ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 decoded_q=0 applied=0 unloaded=3
+
+HITCH
+poll=0.09ms apply=158.47ms mesh_assets=0.07ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=2 built=4 count=4 avg=32.5ms max=37.7ms
+
+Neighbor refresh:
+considered=8 rebuilt=2 skipped=6
+
+Geometry:
+vertices=264196 indices=1572864 triangles=524288 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (8,6) new verts=66049 tris=131072 build=37.70ms
+  (9,6) neighbor verts=66049 tris=131072 build=34.40ms
+  (8,8) new verts=66049 tris=131072 build=30.52ms
+  (9,8) neighbor verts=66049 tris=131072 build=27.40ms
+
+HITCH
+poll=0.06ms apply=126.02ms mesh_assets=0.07ms spawn=0.03ms
+
+Meshes:
+applied=1 new=1 neighbor=3 built=4 count=4 avg=24.5ms max=27.4ms
+
+Neighbor refresh:
+considered=4 rebuilt=3 skipped=1
+
+Geometry:
+vertices=264196 indices=1572864 triangles=524288 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,7) new verts=66049 tris=131072 build=27.35ms
+  (9,7) neighbor verts=66049 tris=131072 build=26.31ms
+  (8,6) neighbor verts=66049 tris=131072 build=23.01ms
+  (8,8) neighbor verts=66049 tris=131072 build=21.40ms
+
+terrain streaming
+poll=0.06ms apply=0.04ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 decoded_q=0 applied=0 unloaded=3
+
+HITCH
+poll=0.08ms apply=80.40ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=32.5ms max=33.9ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,5) new verts=66049 tris=131072 build=33.86ms
+  (8,6) neighbor verts=66049 tris=131072 build=31.12ms
+
+HITCH
+poll=0.09ms apply=87.21ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=35.0ms max=37.2ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (7,5) new verts=66049 tris=131072 build=32.83ms
+  (8,5) neighbor verts=66049 tris=131072 build=37.19ms
+
+HITCH
+poll=0.11ms apply=133.12ms mesh_assets=0.04ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=35.8ms max=37.0ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,5) new verts=66049 tris=131072 build=35.41ms
+  (8,5) neighbor verts=66049 tris=131072 build=34.88ms
+  (9,6) neighbor verts=66049 tris=131072 build=37.05ms
+
+HITCH
+poll=0.07ms apply=201.28ms mesh_assets=0.09ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=4 built=6 count=6 avg=25.6ms max=28.6ms
+
+Neighbor refresh:
+considered=8 rebuilt=4 skipped=4
+
+Geometry:
+vertices=396294 indices=2359296 triangles=786432 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (7,6) new verts=66049 tris=131072 build=27.30ms
+  (8,6) neighbor verts=66049 tris=131072 build=28.60ms
+  (7,5) neighbor verts=66049 tris=131072 build=23.30ms
+  (7,7) new verts=66049 tris=131072 build=27.92ms
+  (8,7) neighbor verts=66049 tris=131072 build=20.53ms
+  (7,6) neighbor verts=66049 tris=131072 build=26.26ms
+
+terrain streaming
+poll=0.10ms apply=0.05ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=1 decode=0 decoded_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.08ms apply=0.08ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 decoded_q=0 applied=0 unloaded=3
+
+HITCH
+poll=0.08ms apply=173.53ms mesh_assets=0.07ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=3 built=5 count=5 avg=28.0ms max=31.8ms
+
+Neighbor refresh:
+considered=8 rebuilt=3 skipped=5
+
+Geometry:
+vertices=330245 indices=1966080 triangles=655360 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (8,9) new verts=66049 tris=131072 build=28.58ms
+  (8,8) neighbor verts=66049 tris=131072 build=28.16ms
+  (9,9) new verts=66049 tris=131072 build=26.17ms
+  (8,9) neighbor verts=66049 tris=131072 build=31.80ms
+  (9,8) neighbor verts=66049 tris=131072 build=25.19ms
+
+HITCH
+poll=0.06ms apply=101.34ms mesh_assets=0.04ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=27.4ms max=28.4ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,9) new verts=66049 tris=131072 build=27.38ms
+  (9,9) neighbor verts=66049 tris=131072 build=28.44ms
+  (10,8) neighbor verts=66049 tris=131072 build=26.44ms
+
+terrain streaming
+poll=0.10ms apply=0.06ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 decoded_q=0 applied=0 unloaded=4
+
+HITCH
+poll=0.08ms apply=72.90ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=29.4ms max=34.6ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,10) new verts=66049 tris=131072 build=34.55ms
+  (9,9) neighbor verts=66049 tris=131072 build=24.34ms
+
+HITCH
+poll=0.09ms apply=145.53ms mesh_assets=0.04ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=38.3ms max=46.2ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,10) new verts=66049 tris=131072 build=46.23ms
+  (9,10) neighbor verts=66049 tris=131072 build=33.22ms
+  (10,9) neighbor verts=66049 tris=131072 build=35.55ms
+
+HITCH
+poll=0.06ms apply=84.10ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=32.3ms max=37.5ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,8) new verts=66049 tris=131072 build=37.52ms
+  (10,8) neighbor verts=66049 tris=131072 build=27.14ms
+
+HITCH
+poll=0.06ms apply=95.99ms mesh_assets=0.04ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=39.2ms max=45.6ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,10) new verts=66049 tris=131072 build=32.77ms
+  (10,10) neighbor verts=66049 tris=131072 build=45.57ms
+
+HITCH
+poll=0.08ms apply=128.55ms mesh_assets=0.06ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=3 built=4 count=4 avg=25.1ms max=27.7ms
+
+Neighbor refresh:
+considered=4 rebuilt=3 skipped=1
+
+Geometry:
+vertices=264196 indices=1572864 triangles=524288 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,9) new verts=66049 tris=131072 build=24.18ms
+  (10,9) neighbor verts=66049 tris=131072 build=22.79ms
+  (11,8) neighbor verts=66049 tris=131072 build=25.51ms
+  (11,10) neighbor verts=66049 tris=131072 build=27.73ms
+
+terrain streaming
+poll=0.08ms apply=0.05ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.07ms apply=75.69ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=27.6ms max=28.3ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,11) new verts=66049 tris=131072 build=28.33ms
+  (10,10) neighbor verts=66049 tris=131072 build=26.85ms
+
+HITCH
+poll=0.06ms apply=119.94ms mesh_assets=0.05ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=31.8ms max=33.5ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,11) new verts=66049 tris=131072 build=29.24ms
+  (10,11) neighbor verts=66049 tris=131072 build=33.47ms
+  (9,10) neighbor verts=66049 tris=131072 build=32.68ms
+
+HITCH
+poll=0.05ms apply=89.51ms mesh_assets=0.05ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=23.7ms max=26.7ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,11) new verts=66049 tris=131072 build=23.99ms
+  (10,11) neighbor verts=66049 tris=131072 build=26.71ms
+  (11,10) neighbor verts=66049 tris=131072 build=20.39ms
+
+HITCH
+poll=0.15ms apply=80.09ms mesh_assets=0.04ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=31.4ms max=33.7ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,9) new verts=66049 tris=131072 build=33.71ms
+  (11,9) neighbor verts=66049 tris=131072 build=29.00ms
+
+HITCH
+poll=0.07ms apply=126.78ms mesh_assets=0.04ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=34.1ms max=37.5ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,10) new verts=66049 tris=131072 build=33.83ms
+  (11,10) neighbor verts=66049 tris=131072 build=30.82ms
+  (12,9) neighbor verts=66049 tris=131072 build=37.53ms
+
+HITCH
+poll=0.06ms apply=106.78ms mesh_assets=0.05ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=27.9ms max=33.6ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,11) new verts=66049 tris=131072 build=24.19ms
+  (11,11) neighbor verts=66049 tris=131072 build=25.79ms
+  (12,10) neighbor verts=66049 tris=131072 build=33.63ms
+
+HITCH
+poll=0.09ms apply=143.32ms mesh_assets=0.06ms spawn=0.02ms
+
+Meshes:
+applied=2 new=2 neighbor=2 built=4 count=4 avg=27.4ms max=29.6ms
+
+Neighbor refresh:
+considered=8 rebuilt=2 skipped=6
+
+Geometry:
+vertices=264196 indices=1572864 triangles=524288 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (10,12) new verts=66049 tris=131072 build=29.33ms
+  (10,11) neighbor verts=66049 tris=131072 build=29.56ms
+  (12,12) new verts=66049 tris=131072 build=21.41ms
+  (12,11) neighbor verts=66049 tris=131072 build=29.39ms
+
+HITCH
+poll=0.05ms apply=142.11ms mesh_assets=0.07ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=3 built=4 count=4 avg=27.1ms max=29.3ms
+
+Neighbor refresh:
+considered=4 rebuilt=3 skipped=1
+
+Geometry:
+vertices=264196 indices=1572864 triangles=524288 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,12) new verts=66049 tris=131072 build=29.28ms
+  (10,12) neighbor verts=66049 tris=131072 build=27.29ms
+  (12,12) neighbor verts=66049 tris=131072 build=27.85ms
+  (11,11) neighbor verts=66049 tris=131072 build=23.87ms
+
+HITCH
+poll=0.09ms apply=175.10ms mesh_assets=0.07ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=3 built=5 count=5 avg=27.7ms max=30.8ms
+
+Neighbor refresh:
+considered=8 rebuilt=3 skipped=5
+
+Geometry:
+vertices=330245 indices=1966080 triangles=655360 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (13,10) new verts=66049 tris=131072 build=30.80ms
+  (12,10) neighbor verts=66049 tris=131072 build=24.24ms
+  (13,11) new verts=66049 tris=131072 build=27.64ms
+  (12,11) neighbor verts=66049 tris=131072 build=25.27ms
+  (13,10) neighbor verts=66049 tris=131072 build=30.59ms
+
+HITCH
+poll=0.10ms apply=95.92ms mesh_assets=0.04ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=25.5ms max=29.4ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,12) new verts=66049 tris=131072 build=27.30ms
+  (12,12) neighbor verts=66049 tris=131072 build=19.99ms
+  (13,11) neighbor verts=66049 tris=131072 build=29.35ms
+
+terrain streaming
+poll=0.06ms apply=0.05ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 decoded_q=0 applied=0 unloaded=4
+
+HITCH
+poll=0.08ms apply=89.19ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=34.9ms max=37.4ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,10) new verts=66049 tris=131072 build=37.37ms
+  (13,10) neighbor verts=66049 tris=131072 build=32.38ms
+
+HITCH
+poll=0.08ms apply=78.74ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=29.4ms max=33.9ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,9) new verts=66049 tris=131072 build=33.86ms
+  (14,10) neighbor verts=66049 tris=131072 build=24.94ms
+
+HITCH
+poll=0.05ms apply=131.37ms mesh_assets=0.05ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=35.6ms max=42.5ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,11) new verts=66049 tris=131072 build=42.54ms
+  (13,11) neighbor verts=66049 tris=131072 build=36.15ms
+  (14,10) neighbor verts=66049 tris=131072 build=28.16ms
+
+HITCH
+poll=0.05ms apply=121.31ms mesh_assets=0.06ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=3 built=4 count=4 avg=23.4ms max=24.6ms
+
+Neighbor refresh:
+considered=4 rebuilt=3 skipped=1
+
+Geometry:
+vertices=264196 indices=1572864 triangles=524288 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,9) new verts=66049 tris=131072 build=24.60ms
+  (12,9) neighbor verts=66049 tris=131072 build=24.05ms
+  (14,9) neighbor verts=66049 tris=131072 build=24.45ms
+  (13,10) neighbor verts=66049 tris=131072 build=20.45ms
+
+terrain streaming
+poll=0.07ms apply=0.05ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=4 decoded_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.08ms apply=77.78ms mesh_assets=0.03ms spawn=0.01ms
+
+Meshes:
+applied=1 new=1 neighbor=1 built=2 count=2 avg=30.2ms max=34.4ms
+
+Neighbor refresh:
+considered=4 rebuilt=1 skipped=3
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=3 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,11) new verts=66049 tris=131072 build=34.37ms
+  (14,11) neighbor verts=66049 tris=131072 build=26.07ms
+
+HITCH
+poll=0.07ms apply=138.82ms mesh_assets=0.04ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=37.2ms max=39.6ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=2 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,10) new verts=66049 tris=131072 build=35.45ms
+  (14,10) neighbor verts=66049 tris=131072 build=36.72ms
+  (15,11) neighbor verts=66049 tris=131072 build=39.56ms
+
+HITCH
+poll=0.08ms apply=180.85ms mesh_assets=0.09ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=4 built=6 count=6 avg=23.4ms max=26.2ms
+
+Neighbor refresh:
+considered=8 rebuilt=4 skipped=4
+
+Geometry:
+vertices=396294 indices=2359296 triangles=786432 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (14,12) new verts=66049 tris=131072 build=26.18ms
+  (13,12) neighbor verts=66049 tris=131072 build=24.02ms
+  (14,11) neighbor verts=66049 tris=131072 build=20.50ms
+  (15,12) new verts=66049 tris=131072 build=21.04ms
+  (14,12) neighbor verts=66049 tris=131072 build=25.31ms
+  (15,11) neighbor verts=66049 tris=131072 build=23.32ms
+
+terrain streaming
+poll=0.07ms apply=0.04ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=1 decode=0 decoded_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.23ms apply=97.17ms mesh_assets=0.04ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=2 built=3 count=3 avg=24.8ms max=28.5ms
+
+Neighbor refresh:
+considered=4 rebuilt=2 skipped=2
+
+Geometry:
+vertices=198147 indices=1179648 triangles=393216 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,9) new verts=66049 tris=131072 build=28.52ms
+  (14,9) neighbor verts=66049 tris=131072 build=25.15ms
+  (15,10) neighbor verts=66049 tris=131072 build=20.61ms
+
+terrain streaming
+poll=0.06ms apply=0.05ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 new=0 neighbor=0 built=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 decoded_q=0 applied=0 unloaded=4
+
+HITCH
+poll=0.09ms apply=184.25ms mesh_assets=0.08ms spawn=0.03ms
+
+Meshes:
+applied=2 new=2 neighbor=2 built=4 count=4 avg=35.4ms max=40.2ms
+
+Neighbor refresh:
+considered=8 rebuilt=2 skipped=6
+
+Geometry:
+vertices=264196 indices=1572864 triangles=524288 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=1 decoded_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (12,8) new verts=66049 tris=131072 build=35.87ms
+  (12,9) neighbor verts=66049 tris=131072 build=30.80ms
+  (14,8) new verts=66049 tris=131072 build=40.24ms
+  (14,9) neighbor verts=66049 tris=131072 build=34.65ms
+
+HITCH
+poll=0.06ms apply=134.37ms mesh_assets=0.06ms spawn=0.02ms
+
+Meshes:
+applied=1 new=1 neighbor=3 built=4 count=4 avg=25.9ms max=30.3ms
+
+Neighbor refresh:
+considered=4 rebuilt=3 skipped=1
+
+Geometry:
+vertices=264196 indices=1572864 triangles=524288 avg_vertices=66049 avg_triangles=131072
+
+Queues:
+io=0 decode=0 decoded_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,8) new verts=66049 tris=131072 build=26.08ms
+  (12,8) neighbor verts=66049 tris=131072 build=25.86ms
+  (14,8) neighbor verts=66049 tris=131072 build=21.22ms
+  (13,9) neighbor verts=66049 tris=131072 build=30.35ms
+
+# terrain streaming perf session started_at=1781578819
+# multi-line hitch summaries: poll/apply, mesh accounting, geometry, queues, per-mesh
+terrain streaming
+poll=0.07ms apply=0.03ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=4 decode=0 mesh_build=0 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.10ms apply=0.02ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=0 mesh_build=4 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.07ms apply=0.14ms async_mesh=152.37ms main_mesh=0.00ms mesh_assets=0.02ms spawn=0.01ms
+
+Meshes:
+applied=2 prebuilt=2 new=0 neighbor=0 built=0 async_completed=4 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=0 mesh_build=0 materialized_q=2 applied=2 unloaded=0
+
+terrain streaming
+poll=0.05ms apply=0.04ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=1 mesh_build=1 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.06ms apply=0.05ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=3 decode=0 mesh_build=0 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.08ms apply=0.10ms async_mesh=40.31ms main_mesh=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 new=0 neighbor=0 built=0 async_completed=1 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=2 mesh_build=1 materialized_q=0 applied=1 unloaded=0
+
+terrain streaming
+poll=0.07ms apply=0.05ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=3 mesh_build=1 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.07ms apply=0.05ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=3 mesh_build=0 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.04ms apply=0.03ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=2 mesh_build=0 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.07ms apply=0.07ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=3 mesh_build=0 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.15ms apply=0.06ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=3 mesh_build=1 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.08ms apply=0.07ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=4 mesh_build=0 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.10ms apply=0.14ms async_mesh=35.99ms main_mesh=0.00ms mesh_assets=0.02ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 new=0 neighbor=0 built=0 async_completed=1 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=1 mesh_build=2 materialized_q=0 applied=1 unloaded=0
+
+terrain streaming
+poll=0.06ms apply=0.04ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=0 mesh_build=1 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.15ms apply=0.06ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=3 mesh_build=1 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.09ms apply=0.07ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=2 mesh_build=1 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.07ms apply=0.06ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+Queues:
+io=0 decode=1 mesh_build=2 materialized_q=0 applied=0 unloaded=0
+

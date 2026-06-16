@@ -13,6 +13,22 @@ use bevy::prelude::*;
 
 use crate::world::Heightfield;
 
+#[cfg(test)]
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+#[cfg(test)]
+static BUILD_MESH_CALLS: AtomicUsize = AtomicUsize::new(0);
+
+#[cfg(test)]
+pub(crate) fn test_reset_build_mesh_calls() {
+    BUILD_MESH_CALLS.store(0, Ordering::SeqCst);
+}
+
+#[cfg(test)]
+pub(crate) fn test_build_mesh_call_count() -> usize {
+    BUILD_MESH_CALLS.load(Ordering::SeqCst)
+}
+
 /// Mesh level of detail for a chunk.
 ///
 /// Phase 2A emits a single full-resolution level. Subsampled levels, distance
@@ -214,6 +230,9 @@ pub fn build_chunk_mesh_scaled(
     vertical_scale: f32,
     seam_weld: &ChunkMeshSeamWeld,
 ) -> Mesh {
+    #[cfg(test)]
+    BUILD_MESH_CALLS.fetch_add(1, Ordering::Relaxed);
+
     let ChunkLod::Full = lod;
 
     let spe = heightfield.samples_per_edge() as usize;

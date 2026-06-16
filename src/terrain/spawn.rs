@@ -73,6 +73,47 @@ fn seam_weld_heights(world: &WorldData, chunk_id: ChunkId) -> ChunkMeshSeamWeld 
     }
 }
 
+pub(crate) fn spawn_prebuilt_chunk_mesh_inner(
+    commands: &mut Commands,
+    chunk_id: ChunkId,
+    chunk_size_units: f32,
+    meshes: &mut Assets<Mesh>,
+    material: Handle<StandardMaterial>,
+    mesh: Mesh,
+    #[cfg(feature = "dev")] mut perf: Option<&mut TerrainStreamingPerfRecorder>,
+) {
+    #[cfg(feature = "dev")]
+    if let Some(perf) = perf.as_mut() {
+        perf.record_prebuilt_mesh_applied();
+    }
+
+    #[cfg(feature = "dev")]
+    let assets_start = perf.is_some().then(Instant::now);
+    let mesh_handle = meshes.add(mesh);
+    #[cfg(feature = "dev")]
+    if let (Some(perf), Some(start)) = (perf.as_mut(), assets_start) {
+        perf.record_mesh_assets(start.elapsed());
+    }
+
+    let coord = chunk_id.coord();
+    #[cfg(feature = "dev")]
+    let spawn_start = perf.is_some().then(Instant::now);
+    commands.spawn((
+        Mesh3d(mesh_handle),
+        MeshMaterial3d(material),
+        Transform::from_xyz(
+            coord.x as f32 * chunk_size_units,
+            0.0,
+            coord.z as f32 * chunk_size_units,
+        ),
+        TerrainChunkMesh::new(chunk_id),
+    ));
+    #[cfg(feature = "dev")]
+    if let (Some(perf), Some(start)) = (perf.as_mut(), spawn_start) {
+        perf.record_spawn(start.elapsed());
+    }
+}
+
 /// Spawn one derived render entity for a resident chunk.
 pub fn spawn_chunk_mesh(
     commands: &mut Commands,

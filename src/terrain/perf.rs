@@ -71,6 +71,7 @@ pub struct BuiltMeshLogEntry {
 pub struct TerrainStreamingFrameSample {
     pub io_in_flight: usize,
     pub decode_in_flight: usize,
+    pub mesh_build_in_flight: usize,
     pub decoded_queue_len: usize,
     pub chunks_applied: usize,
     pub chunks_unloaded: usize,
@@ -90,6 +91,10 @@ pub struct TerrainStreamingFrameSample {
     pub avg_triangles_per_mesh: usize,
     pub poll_ms: f32,
     pub apply_ms: f32,
+    pub async_mesh_build_ms: f32,
+    pub async_mesh_builds_completed: usize,
+    pub main_thread_mesh_build_ms: f32,
+    pub prebuilt_meshes_applied: usize,
     pub mesh_build_ms: f32,
     pub mesh_assets_ms: f32,
     pub spawn_ms: f32,
@@ -107,6 +112,7 @@ impl TerrainStreamingFrameSample {
             || self.chunks_unloaded > 0
             || self.io_in_flight > 0
             || self.decode_in_flight > 0
+            || self.mesh_build_in_flight > 0
             || self.decoded_queue_len > 0
     }
 }
@@ -132,6 +138,7 @@ pub struct TerrainStreamingPerfRecorder {
     total_indices: usize,
     total_triangles: usize,
     mesh_details: Vec<BuiltMeshLogEntry>,
+    prebuilt_meshes_applied: usize,
 }
 
 impl TerrainStreamingPerfRecorder {
@@ -145,6 +152,10 @@ impl TerrainStreamingPerfRecorder {
 
     pub fn record_neighbor_rebuilt(&mut self) {
         self.neighbors_rebuilt += 1;
+    }
+
+    pub fn record_prebuilt_mesh_applied(&mut self) {
+        self.prebuilt_meshes_applied += 1;
     }
 
     pub fn record_mesh_build(
@@ -186,6 +197,8 @@ impl TerrainStreamingPerfRecorder {
         frame.neighbor_meshes_rebuilt = self.neighbor_meshes_rebuilt;
         frame.mesh_build_count = built;
         frame.mesh_build_ms = duration_to_ms(self.mesh_build);
+        frame.main_thread_mesh_build_ms = frame.mesh_build_ms;
+        frame.prebuilt_meshes_applied = self.prebuilt_meshes_applied;
         frame.mesh_assets_ms = duration_to_ms(self.mesh_assets);
         frame.spawn_ms = duration_to_ms(self.spawn);
         frame.neighbors_considered = self.neighbors_considered;
@@ -297,16 +310,23 @@ pub fn format_terrain_streaming_sample(
 
     let mut out = String::new();
     out.push_str(&format!(
-        "{level}\npoll={:.2}ms apply={:.2}ms mesh_assets={:.2}ms spawn={:.2}ms",
-        sample.poll_ms, sample.apply_ms, sample.mesh_assets_ms, sample.spawn_ms,
+        "{level}\npoll={:.2}ms apply={:.2}ms async_mesh={:.2}ms main_mesh={:.2}ms mesh_assets={:.2}ms spawn={:.2}ms",
+        sample.poll_ms,
+        sample.apply_ms,
+        sample.async_mesh_build_ms,
+        sample.main_thread_mesh_build_ms,
+        sample.mesh_assets_ms,
+        sample.spawn_ms,
     ));
     out.push_str("\n\nMeshes:\n");
     out.push_str(&format!(
-        "applied={} new={} neighbor={} built={} count={} avg={:.1}ms max={:.1}ms",
+        "applied={} prebuilt={} new={} neighbor={} built={} async_completed={} count={} avg={:.1}ms max={:.1}ms",
         sample.chunks_applied,
+        sample.prebuilt_meshes_applied,
         sample.new_chunk_meshes,
         sample.neighbor_meshes_rebuilt,
         sample.meshes_built,
+        sample.async_mesh_builds_completed,
         sample.mesh_build_count,
         sample.mesh_build_avg_ms,
         sample.mesh_build_max_ms,
@@ -327,9 +347,10 @@ pub fn format_terrain_streaming_sample(
     ));
     out.push_str("\n\nQueues:\n");
     out.push_str(&format!(
-        "io={} decode={} decoded_q={} applied={} unloaded={}",
+        "io={} decode={} mesh_build={} materialized_q={} applied={} unloaded={}",
         sample.io_in_flight,
         sample.decode_in_flight,
+        sample.mesh_build_in_flight,
         sample.decoded_queue_len,
         sample.chunks_applied,
         sample.chunks_unloaded,

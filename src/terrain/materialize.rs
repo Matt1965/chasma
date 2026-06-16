@@ -1,10 +1,11 @@
-//! Async chunk materialization pipeline (ADR-012 Phase 2B.5).
+//! Async chunk materialization pipeline (ADR-012 Phase 2B.5–2B.6).
 //!
-//! Step 2: IO + decode off the main thread. Mesh build and apply (WorldData +
-//! ECS spawn) land in later steps.
+//! IO, decode, and mesh build run off the main thread. Apply inserts
+//! [`ChunkData`], registers a prebuilt [`Mesh`], and spawns render entities.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, IoTaskPool, Task};
@@ -13,6 +14,7 @@ use crate::world::{ChunkCoord, ChunkData, ChunkId};
 
 use super::asset::TerrainAssetError;
 use super::decode::decode_chunk;
+use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled};
 use super::streaming::chunk_outside_residency_sets;
 use super::residency::{ChunkDiscardKind, ChunkResidencyTracker, discard_chunk_residency};
 
@@ -22,16 +24,32 @@ pub type ChunkIoTask = Task<Result<String, TerrainAssetError>>;
 /// Decoded chunk payload produced on the compute pool.
 pub type ChunkDecodeTask = Task<Result<(ChunkId, ChunkData), TerrainAssetError>>;
 
-/// Mesh-build phase (step 3+ — not wired yet).
-#[allow(dead_code)]
-pub type ChunkMeshBuildTask = Task<()>;
-
-/// Decoded chunk awaiting apply on the main thread (step 3+).
+/// Mesh output produced on the compute pool after decode.
 #[derive(Debug)]
-pub struct DecodedChunkPending {
+pub struct MeshBuildOutput {
+    pub data: ChunkData,
+    pub mesh: Mesh,
+    pub build_duration: Duration,
+}
+
+/// Async mesh-build task (compute pool).
+pub type ChunkMeshBuildTask = Task<MeshBuildOutput>;
+
+/// Chunk with decoded data and prebuilt mesh awaiting main-thread apply.
+#[derive(Debug)]
+pub struct MaterializedChunkPending {
     pub chunk_id: ChunkId,
     pub generation: u64,
     pub data: ChunkData,
+    pub mesh: Mesh,
+    pub async_mesh_build_ms: f32,
+}
+
+/// Per-poll stats for async mesh build (surfaced in dev perf).
+#[derive(Debug, Default, Clone, Copy)]
+pub struct MaterializePollStats {
+    pub async_mesh_build_ms: f32,
+    pub async_mesh_builds_completed: usize,
 }
 
 enum MaterializeStage {
@@ -39,6 +57,12 @@ enum MaterializeStage {
     IoReady { raw: String },
     Decode(ChunkDecodeTask),
     DecodeReady { data: ChunkData },
+    MeshBuild(ChunkMeshBuildTask),
+    MeshBuildReady {
+        data: ChunkData,
+        mesh: Mesh,
+        async_mesh_build_ms: f32,
+    },
 }
 
 struct InFlightMaterialization {
@@ -61,22 +85,34 @@ impl InFlightMaterialization {
             MaterializeStage::Decode(_) | MaterializeStage::DecodeReady { .. }
         )
     }
+
+    fn is_mesh_in_flight(&self) -> bool {
+        matches!(
+            self.stage,
+            MaterializeStage::MeshBuild(_) | MaterializeStage::MeshBuildReady { .. }
+        )
+    }
 }
 
-/// Queue of in-flight IO/decode work and decoded results (terrain runtime only).
+/// Queue of in-flight IO/decode/mesh work and materialized results (terrain runtime only).
 #[derive(Resource, Default)]
 pub struct PendingChunkMaterializations {
     in_flight: Vec<InFlightMaterialization>,
-    decoded: Vec<DecodedChunkPending>,
+    materialized: Vec<MaterializedChunkPending>,
 }
 
 impl PendingChunkMaterializations {
-    pub fn decoded_chunks(&self) -> &[DecodedChunkPending] {
-        &self.decoded
+    pub fn materialized_chunks(&self) -> &[MaterializedChunkPending] {
+        &self.materialized
     }
 
+    pub fn materialized_len(&self) -> usize {
+        self.materialized.len()
+    }
+
+    /// Alias for [`Self::materialized_len`] (perf / legacy naming).
     pub fn decoded_len(&self) -> usize {
-        self.decoded.len()
+        self.materialized.len()
     }
 
     pub fn in_flight_count(&self) -> usize {
@@ -91,11 +127,19 @@ impl PendingChunkMaterializations {
             .count()
     }
 
-    /// In-flight entries waiting on decode (includes decode-complete, not yet queued).
+    /// In-flight entries waiting on decode (includes decode-complete, mesh-not-started).
     pub fn decode_in_flight_count(&self) -> usize {
         self.in_flight
             .iter()
             .filter(|entry| entry.is_decode_in_flight())
+            .count()
+    }
+
+    /// In-flight entries waiting on async mesh build (includes build-complete, not yet queued).
+    pub fn mesh_build_in_flight_count(&self) -> usize {
+        self.in_flight
+            .iter()
+            .filter(|entry| entry.is_mesh_in_flight())
             .count()
     }
 
@@ -104,7 +148,7 @@ impl PendingChunkMaterializations {
         for entry in &self.in_flight {
             ids.insert(entry.chunk_id);
         }
-        for entry in &self.decoded {
+        for entry in &self.materialized {
             ids.insert(entry.chunk_id);
         }
         ids.len()
@@ -115,7 +159,7 @@ impl PendingChunkMaterializations {
             .iter()
             .any(|entry| entry.chunk_id == chunk_id)
             || self
-                .decoded
+                .materialized
                 .iter()
                 .any(|entry| entry.chunk_id == chunk_id)
     }
@@ -145,7 +189,7 @@ impl PendingChunkMaterializations {
 
     pub fn remove(&mut self, chunk_id: ChunkId) {
         self.in_flight.retain(|entry| entry.chunk_id != chunk_id);
-        self.decoded.retain(|entry| entry.chunk_id != chunk_id);
+        self.materialized.retain(|entry| entry.chunk_id != chunk_id);
     }
 
     /// Canonical cleanup for residency tracker + pipeline queue.
@@ -180,7 +224,7 @@ impl PendingChunkMaterializations {
                 revoke.insert(entry.chunk_id);
             }
         }
-        for entry in &self.decoded {
+        for entry in &self.materialized {
             if chunk_outside_residency_sets(entry.chunk_id.coord(), keep_resident, desired_load) {
                 revoke.insert(entry.chunk_id);
             }
@@ -203,30 +247,37 @@ impl PendingChunkMaterializations {
         );
     }
 
-    /// Advance IO → decode and collect finished decode results (no apply).
+    /// Advance IO → decode → async mesh build; queue materialized results for apply.
     pub fn poll_in_flight(
         &mut self,
         residency: &mut ChunkResidencyTracker,
         keep_resident: &HashSet<ChunkCoord>,
         max_decode_per_frame: usize,
+        vertical_scale: f32,
+        stats: &mut MaterializePollStats,
     ) {
         self.in_flight
             .sort_by_key(|entry| (entry.chunk_id.coord().z, entry.chunk_id.coord().x));
 
         let mut next = Vec::with_capacity(self.in_flight.len());
         let mut completed = Vec::new();
-        let decode_budget = if max_decode_per_frame == 0 {
+        let budget = if max_decode_per_frame == 0 {
             usize::MAX
         } else {
             max_decode_per_frame
         };
         let mut decode_starts = 0usize;
-        let mut decode_stores = 0usize;
+        let mut mesh_starts = 0usize;
+        let mut mesh_stores = 0usize;
 
         for mut entry in self.in_flight.drain(..) {
             match entry.stage {
-                MaterializeStage::DecodeReady { data } => {
-                    if !decoded_result_may_store(
+                MaterializeStage::MeshBuildReady {
+                    data,
+                    mesh,
+                    async_mesh_build_ms,
+                } => {
+                    if !materialized_result_may_store(
                         residency,
                         entry.chunk_id,
                         entry.generation,
@@ -240,9 +291,47 @@ impl PendingChunkMaterializations {
                         continue;
                     }
 
-                    if decode_stores < decode_budget {
-                        decode_stores += 1;
-                        completed.push((entry.chunk_id, entry.generation, data));
+                    if mesh_stores < budget {
+                        mesh_stores += 1;
+                        completed.push((
+                            entry.chunk_id,
+                            entry.generation,
+                            data,
+                            mesh,
+                            async_mesh_build_ms,
+                        ));
+                    } else {
+                        entry.stage = MaterializeStage::MeshBuildReady {
+                            data,
+                            mesh,
+                            async_mesh_build_ms,
+                        };
+                        next.push(entry);
+                    }
+                }
+                MaterializeStage::DecodeReady { data } => {
+                    if !materialized_result_may_store(
+                        residency,
+                        entry.chunk_id,
+                        entry.generation,
+                        keep_resident,
+                    ) {
+                        Self::reject_in_flight_completion(
+                            residency,
+                            entry.chunk_id,
+                            entry.generation,
+                        );
+                        continue;
+                    }
+
+                    if mesh_starts < budget {
+                        mesh_starts += 1;
+                        entry.stage =
+                            MaterializeStage::MeshBuild(spawn_chunk_mesh_build_task(
+                                data,
+                                vertical_scale,
+                            ));
+                        next.push(entry);
                     } else {
                         entry.stage = MaterializeStage::DecodeReady { data };
                         next.push(entry);
@@ -272,7 +361,7 @@ impl PendingChunkMaterializations {
                         }
                     };
 
-                    if !decoded_result_may_store(
+                    if !materialized_result_may_store(
                         residency,
                         entry.chunk_id,
                         entry.generation,
@@ -286,7 +375,7 @@ impl PendingChunkMaterializations {
                         continue;
                     }
 
-                    if decode_starts < decode_budget {
+                    if decode_starts < budget {
                         decode_starts += 1;
                         entry.stage =
                             MaterializeStage::Decode(spawn_chunk_decode_task(raw));
@@ -296,7 +385,7 @@ impl PendingChunkMaterializations {
                     next.push(entry);
                 }
                 MaterializeStage::IoReady { raw } => {
-                    if !decoded_result_may_store(
+                    if !materialized_result_may_store(
                         residency,
                         entry.chunk_id,
                         entry.generation,
@@ -310,7 +399,7 @@ impl PendingChunkMaterializations {
                         continue;
                     }
 
-                    if decode_starts < decode_budget {
+                    if decode_starts < budget {
                         decode_starts += 1;
                         entry.stage =
                             MaterializeStage::Decode(spawn_chunk_decode_task(raw));
@@ -344,29 +433,29 @@ impl PendingChunkMaterializations {
                                 );
                                 continue;
                             }
-                            if decoded_result_may_store(
+                            if !materialized_result_may_store(
                                 residency,
                                 entry.chunk_id,
                                 entry.generation,
                                 keep_resident,
                             ) {
-                                if decode_stores < decode_budget {
-                                    decode_stores += 1;
-                                    completed.push((
-                                        entry.chunk_id,
-                                        entry.generation,
-                                        data,
-                                    ));
-                                } else {
-                                    entry.stage = MaterializeStage::DecodeReady { data };
-                                    next.push(entry);
-                                }
-                            } else {
                                 Self::reject_in_flight_completion(
                                     residency,
                                     entry.chunk_id,
                                     entry.generation,
                                 );
+                                continue;
+                            }
+
+                            if mesh_starts < budget {
+                                mesh_starts += 1;
+                                entry.stage = MaterializeStage::MeshBuild(
+                                    spawn_chunk_mesh_build_task(data, vertical_scale),
+                                );
+                                next.push(entry);
+                            } else {
+                                entry.stage = MaterializeStage::DecodeReady { data };
+                                next.push(entry);
                             }
                         }
                         Err(err) => {
@@ -383,14 +472,76 @@ impl PendingChunkMaterializations {
                         }
                     }
                 }
+                MaterializeStage::MeshBuild(mut task) => {
+                    if !task.is_finished() {
+                        entry.stage = MaterializeStage::MeshBuild(task);
+                        next.push(entry);
+                        continue;
+                    }
+
+                    let output = bevy::tasks::block_on(&mut task);
+                    let async_mesh_build_ms = duration_to_ms(output.build_duration);
+                    stats.async_mesh_build_ms += async_mesh_build_ms;
+                    stats.async_mesh_builds_completed += 1;
+
+                    if !materialized_result_may_store(
+                        residency,
+                        entry.chunk_id,
+                        entry.generation,
+                        keep_resident,
+                    ) {
+                        Self::reject_in_flight_completion(
+                            residency,
+                            entry.chunk_id,
+                            entry.generation,
+                        );
+                        continue;
+                    }
+
+                    if mesh_stores < budget {
+                        mesh_stores += 1;
+                        completed.push((
+                            entry.chunk_id,
+                            entry.generation,
+                            output.data,
+                            output.mesh,
+                            async_mesh_build_ms,
+                        ));
+                    } else {
+                        entry.stage = MaterializeStage::MeshBuildReady {
+                            data: output.data,
+                            mesh: output.mesh,
+                            async_mesh_build_ms,
+                        };
+                        next.push(entry);
+                    }
+                }
             }
         }
 
         self.in_flight = next;
-        for (chunk_id, generation, data) in completed {
-            self.store_decoded(chunk_id, generation, data);
+        for (chunk_id, generation, data, mesh, async_mesh_build_ms) in completed {
+            self.store_materialized(
+                chunk_id,
+                generation,
+                data,
+                mesh,
+                async_mesh_build_ms,
+            );
         }
         self.assert_pipeline_chunk_uniqueness();
+    }
+
+    #[cfg(test)]
+    pub(crate) fn push_materialized_test_only(
+        &mut self,
+        chunk_id: ChunkId,
+        generation: u64,
+        data: ChunkData,
+        vertical_scale: f32,
+    ) {
+        let mesh = build_materialized_mesh(&data, vertical_scale);
+        self.store_materialized(chunk_id, generation, data, mesh, 0.0);
     }
 
     #[cfg(test)]
@@ -400,7 +551,7 @@ impl PendingChunkMaterializations {
         generation: u64,
         data: ChunkData,
     ) {
-        self.store_decoded(chunk_id, generation, data);
+        self.push_materialized_test_only(chunk_id, generation, data, 1.0);
     }
 
     fn pipeline_has_unique_chunk_ids(&self) -> bool {
@@ -410,7 +561,7 @@ impl PendingChunkMaterializations {
                 return false;
             }
         }
-        for entry in &self.decoded {
+        for entry in &self.materialized {
             if !seen.insert(entry.chunk_id) {
                 return false;
             }
@@ -433,10 +584,10 @@ impl PendingChunkMaterializations {
                 );
             }
         }
-        for entry in &self.decoded {
+        for entry in &self.materialized {
             if !seen.insert(entry.chunk_id) {
                 warn!(
-                    "terrain pipeline duplicate chunk ({}, {}) in decoded queue",
+                    "terrain pipeline duplicate chunk ({}, {}) in materialized queue",
                     entry.chunk_id.coord().x,
                     entry.chunk_id.coord().z
                 );
@@ -445,27 +596,42 @@ impl PendingChunkMaterializations {
         debug_assert!(self.pipeline_has_unique_chunk_ids());
     }
 
-    fn store_decoded(&mut self, chunk_id: ChunkId, generation: u64, data: ChunkData) {
-        self.decoded.retain(|entry| entry.chunk_id != chunk_id);
-        self.decoded.push(DecodedChunkPending {
+    fn store_materialized(
+        &mut self,
+        chunk_id: ChunkId,
+        generation: u64,
+        data: ChunkData,
+        mesh: Mesh,
+        async_mesh_build_ms: f32,
+    ) {
+        self.materialized.retain(|entry| entry.chunk_id != chunk_id);
+        self.materialized.push(MaterializedChunkPending {
             chunk_id,
             generation,
             data,
+            mesh,
+            async_mesh_build_ms,
         });
     }
 
-    /// Take decoded chunks ready for apply (step 3).
-    pub fn take_decoded(&mut self) -> Vec<DecodedChunkPending> {
-        std::mem::take(&mut self.decoded)
+    /// Take materialized chunks ready for main-thread apply.
+    pub fn take_materialized(&mut self) -> Vec<MaterializedChunkPending> {
+        std::mem::take(&mut self.materialized)
     }
 
-    /// Return decoded chunks that exceeded the apply budget to the queue.
-    pub fn requeue_decoded(&mut self, entries: Vec<DecodedChunkPending>) {
+    /// Alias for [`Self::take_materialized`].
+    pub fn take_decoded(&mut self) -> Vec<MaterializedChunkPending> {
+        self.take_materialized()
+    }
+
+    /// Return materialized chunks that exceeded the apply budget to the queue.
+    pub fn requeue_materialized(&mut self, entries: Vec<MaterializedChunkPending>) {
         if entries.is_empty() {
             return;
         }
 
         let mut sorted = entries;
+
         sorted.sort_by_key(|entry| (entry.chunk_id.coord().z, entry.chunk_id.coord().x));
         sorted.dedup_by_key(|entry| entry.chunk_id);
 
@@ -478,30 +644,55 @@ impl PendingChunkMaterializations {
                 continue;
             }
             if self
-                .decoded
+                .materialized
                 .iter()
-                .any(|decoded| decoded.chunk_id == entry.chunk_id)
+                .any(|queued| queued.chunk_id == entry.chunk_id)
             {
                 continue;
             }
-            self.store_decoded(entry.chunk_id, entry.generation, entry.data);
+            self.store_materialized(
+                entry.chunk_id,
+                entry.generation,
+                entry.data,
+                entry.mesh,
+                entry.async_mesh_build_ms,
+            );
         }
         self.assert_pipeline_chunk_uniqueness();
     }
+
+    /// Alias for [`Self::requeue_materialized`].
+    pub fn requeue_decoded(&mut self, entries: Vec<MaterializedChunkPending>) {
+        self.requeue_materialized(entries);
+    }
 }
 
-/// Returns true when a decoded result may be applied on the main thread.
+fn duration_to_ms(d: Duration) -> f32 {
+    d.as_secs_f32() * 1000.0
+}
+
+/// Returns true when a materialized result may be applied on the main thread.
+pub fn materialized_result_may_apply(
+    residency: &ChunkResidencyTracker,
+    chunk_id: ChunkId,
+    generation: u64,
+    keep_resident: &HashSet<ChunkCoord>,
+) -> bool {
+    materialized_result_may_store(residency, chunk_id, generation, keep_resident)
+}
+
+/// Alias for [`materialized_result_may_apply`].
 pub fn decoded_result_may_apply(
     residency: &ChunkResidencyTracker,
     chunk_id: ChunkId,
     generation: u64,
     keep_resident: &HashSet<ChunkCoord>,
 ) -> bool {
-    decoded_result_may_store(residency, chunk_id, generation, keep_resident)
+    materialized_result_may_apply(residency, chunk_id, generation, keep_resident)
 }
 
-/// Returns true when a decoded result may be retained (generation + residency band).
-pub(crate) fn decoded_result_may_store(
+/// Returns true when a pipeline result may be retained (generation + residency band).
+pub(crate) fn materialized_result_may_store(
     residency: &ChunkResidencyTracker,
     chunk_id: ChunkId,
     generation: u64,
@@ -509,6 +700,17 @@ pub(crate) fn decoded_result_may_store(
 ) -> bool {
     residency.loading_generation_matches(chunk_id, generation)
         && keep_resident.contains(&chunk_id.coord())
+}
+
+/// Alias for [`materialized_result_may_store`] (tests / legacy naming).
+#[allow(dead_code)]
+pub(crate) fn decoded_result_may_store(
+    residency: &ChunkResidencyTracker,
+    chunk_id: ChunkId,
+    generation: u64,
+    keep_resident: &HashSet<ChunkCoord>,
+) -> bool {
+    materialized_result_may_store(residency, chunk_id, generation, keep_resident)
 }
 
 /// Read chunk file text from disk (IO stage body).
@@ -536,12 +738,26 @@ pub fn spawn_chunk_decode_task(raw: String) -> ChunkDecodeTask {
     AsyncComputeTaskPool::get().spawn(async move { decode_chunk_text(&raw) })
 }
 
-/// Mesh-build stage skeleton (step 3+).
-#[allow(dead_code)]
-pub fn spawn_chunk_mesh_build_task() -> ChunkMeshBuildTask {
-    AsyncComputeTaskPool::get().spawn(async {
-        unimplemented!("mesh build phase lands in step 3")
+/// Mesh-build stage: pure mesh generation on [`AsyncComputeTaskPool`].
+pub fn spawn_chunk_mesh_build_task(data: ChunkData, vertical_scale: f32) -> ChunkMeshBuildTask {
+    AsyncComputeTaskPool::get().spawn(async move {
+        let start = std::time::Instant::now();
+        let mesh = build_materialized_mesh(&data, vertical_scale);
+        MeshBuildOutput {
+            data,
+            mesh,
+            build_duration: start.elapsed(),
+        }
     })
+}
+
+fn build_materialized_mesh(data: &ChunkData, vertical_scale: f32) -> Mesh {
+    build_chunk_mesh_scaled(
+        &data.heightfield,
+        ChunkLod::Full,
+        vertical_scale,
+        &ChunkMeshSeamWeld::default(),
+    )
 }
 
 #[cfg(test)]
@@ -748,7 +964,8 @@ mod tests {
         keep.insert(chunk_id.coord());
 
         for _ in 0..32 {
-            pending.poll_in_flight(&mut residency, &keep, 16);
+            let mut stats = MaterializePollStats::default();
+            pending.poll_in_flight(&mut residency, &keep, 16, 1.0, &mut stats);
             if !residency.is_loading(chunk_id) {
                 break;
             }
@@ -777,5 +994,90 @@ mod tests {
 
         assert!(!residency.is_loading(chunk_id));
         assert_eq!(pending.decoded_len(), 0);
+    }
+
+    #[test]
+    fn mesh_build_task_produces_chunk_data_and_mesh() {
+        ensure_task_pools();
+        let data = sample_chunk_data(0);
+        let mut task = spawn_chunk_mesh_build_task(data.clone(), 1.0);
+        let output = bevy::tasks::block_on(&mut task);
+        assert_eq!(output.data.heightfield.samples_per_edge(), 3);
+        assert!(output.mesh.contains_attribute(Mesh::ATTRIBUTE_POSITION));
+        assert!(output.build_duration > Duration::ZERO);
+    }
+
+    #[test]
+    fn async_pipeline_produces_materialized_chunk_with_mesh() {
+        ensure_task_pools();
+        let mut pending = PendingChunkMaterializations::default();
+        let mut residency = ChunkResidencyTracker::default();
+        let chunk_id = ChunkId::new(ChunkCoord::new(1, 2));
+        let generation = residency.begin_loading(chunk_id).unwrap();
+        let path = temp_chunk_path(1, 2);
+        assert!(pending.try_start_io(chunk_id, generation, path.clone()));
+
+        let mut keep = HashSet::new();
+        keep.insert(chunk_id.coord());
+        let mut stats = MaterializePollStats::default();
+
+        for _ in 0..64 {
+            pending.poll_in_flight(&mut residency, &keep, 16, 1.0, &mut stats);
+            if pending.materialized_len() > 0 {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+
+        assert_eq!(pending.materialized_len(), 1);
+        let entry = &pending.materialized_chunks()[0];
+        assert_eq!(entry.chunk_id, chunk_id);
+        assert_eq!(entry.data.heightfield.samples_per_edge(), 3);
+        assert!(entry.mesh.contains_attribute(Mesh::ATTRIBUTE_POSITION));
+        assert!(entry.async_mesh_build_ms >= 0.0);
+        std::fs::remove_file(path).ok();
+    }
+
+    #[test]
+    fn stale_mesh_result_is_discarded() {
+        ensure_task_pools();
+        let mut pending = PendingChunkMaterializations::default();
+        let mut residency = ChunkResidencyTracker::default();
+        let chunk_id = ChunkId::new(ChunkCoord::new(3, 4));
+        let stale_generation = residency.begin_loading(chunk_id).unwrap();
+        let path = temp_chunk_path(3, 4);
+        assert!(pending.try_start_io(chunk_id, stale_generation, path.clone()));
+
+        let mut keep = HashSet::new();
+        keep.insert(chunk_id.coord());
+        let mut stats = MaterializePollStats::default();
+
+        for _ in 0..32 {
+            pending.poll_in_flight(&mut residency, &keep, 16, 1.0, &mut stats);
+            if pending.mesh_build_in_flight_count() > 0 || pending.materialized_len() > 0 {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+
+        residency.cancel(chunk_id);
+        let _current = residency.begin_loading(chunk_id).unwrap();
+
+        for _ in 0..32 {
+            pending.poll_in_flight(&mut residency, &keep, 16, 1.0, &mut stats);
+            if !pending.has_pipeline_for(chunk_id) || pending.materialized_len() > 0 {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+
+        assert!(
+            pending
+                .materialized_chunks()
+                .iter()
+                .all(|entry| entry.generation != stale_generation),
+            "stale mesh result must not remain queued"
+        );
+        std::fs::remove_file(path).ok();
     }
 }

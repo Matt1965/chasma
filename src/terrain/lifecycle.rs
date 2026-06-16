@@ -15,15 +15,15 @@ use super::components::TerrainChunkMesh;
 use super::catalog::TerrainWorldCatalog;
 use super::grace::JustAppliedGrace;
 use super::materialize::{
-    DecodedChunkPending, PendingChunkMaterializations, decoded_result_may_apply,
+    MaterializedChunkPending, MaterializePollStats, PendingChunkMaterializations,
+    materialized_result_may_apply,
 };
 use super::load::validate_loaded_chunk;
 use super::residency::{
     ChunkDiscardKind, ChunkResidencyTracker, discard_chunk_residency,
 };
 use super::spawn::{
-    TerrainRenderAssets, despawn_chunk_meshes, refresh_adjacent_chunk_meshes_inner,
-    spawn_chunk_mesh_inner,
+    TerrainRenderAssets, despawn_chunk_meshes, spawn_prebuilt_chunk_mesh_inner,
 };
 use super::streaming::{
     TerrainStreamingSettings, chunks_in_radius, diff_streaming_residency, stable_focus_chunk,
@@ -104,12 +104,13 @@ pub fn stream_terrain_chunks(
     }
 }
 
-/// Poll IO/decode tasks and store decoded [`ChunkData`].
+/// Poll IO/decode/mesh tasks and store materialized [`ChunkData`] + [`Mesh`].
 pub fn poll_chunk_materializations(
     focus: Res<PrimaryViewFocus>,
     catalog: Res<TerrainWorldCatalog>,
     settings: Res<TerrainStreamingSettings>,
     config: Res<WorldConfig>,
+    render_assets: Res<TerrainRenderAssets>,
     mut residency: ResMut<ChunkResidencyTracker>,
     mut pending: ResMut<PendingChunkMaterializations>,
     #[cfg(feature = "dev")] perf_settings: Res<TerrainStreamingPerfSettings>,
@@ -123,10 +124,13 @@ pub fn poll_chunk_materializations(
     let keep_resident: HashSet<_> =
         chunks_in_radius(focus_coord, settings.unload_radius_chunks, &catalog);
 
+    let mut poll_stats = MaterializePollStats::default();
     pending.poll_in_flight(
         &mut residency,
         &keep_resident,
         settings.max_decode_per_frame,
+        render_assets.vertical_scale,
+        &mut poll_stats,
     );
 
     #[cfg(feature = "dev")]
@@ -135,7 +139,10 @@ pub fn poll_chunk_materializations(
         frame.poll_ms = duration_to_ms(poll_start.unwrap().elapsed());
         frame.io_in_flight = pending.io_in_flight_count();
         frame.decode_in_flight = pending.decode_in_flight_count();
+        frame.mesh_build_in_flight = pending.mesh_build_in_flight_count();
         frame.decoded_queue_len = pending.decoded_len();
+        frame.async_mesh_build_ms = poll_stats.async_mesh_build_ms;
+        frame.async_mesh_builds_completed = poll_stats.async_mesh_builds_completed;
     }
 }
 
@@ -166,10 +173,10 @@ pub fn apply_chunk_materializations(
     let keep_resident: HashSet<_> =
         chunks_in_radius(focus_coord, settings.unload_radius_chunks, &catalog);
 
-    let decoded = pending.take_decoded();
+    let materialized = pending.take_materialized();
 
-    let (applied, deferred) = apply_decoded_batch(
-        decoded,
+    let (applied, deferred) = apply_materialized_batch(
+        materialized,
         settings.max_apply_per_frame,
         &catalog,
         &config,
@@ -189,7 +196,7 @@ pub fn apply_chunk_materializations(
         grace.grant(*chunk_id);
     }
 
-    pending.requeue_decoded(deferred);
+    pending.requeue_materialized(deferred);
 
     #[cfg(feature = "dev")]
     if perf_settings.enabled {
@@ -198,6 +205,7 @@ pub fn apply_chunk_materializations(
         frame.chunks_applied = applied.len();
         frame.io_in_flight = pending.io_in_flight_count();
         frame.decode_in_flight = pending.decode_in_flight_count();
+        frame.mesh_build_in_flight = pending.mesh_build_in_flight_count();
         frame.decoded_queue_len = pending.decoded_len();
         if let Some(recorder) = mesh_perf.as_ref() {
             recorder.finish_into(frame);
@@ -244,9 +252,9 @@ pub fn unload_terrain_chunks(
     grace.clear();
 }
 
-/// Apply decoded entries to authoritative world data and spawn meshes.
-pub(crate) fn apply_decoded_batch(
-    mut decoded: Vec<DecodedChunkPending>,
+/// Apply materialized entries to authoritative world data and spawn prebuilt meshes.
+pub(crate) fn apply_materialized_batch(
+    mut materialized: Vec<MaterializedChunkPending>,
     max_apply: usize,
     catalog: &TerrainWorldCatalog,
     config: &WorldConfig,
@@ -259,15 +267,15 @@ pub(crate) fn apply_decoded_batch(
     render_assets: &TerrainRenderAssets,
     chunk_size_units: f32,
     #[cfg(feature = "dev")] mut perf: Option<&mut TerrainStreamingPerfRecorder>,
-) -> (Vec<ChunkId>, Vec<DecodedChunkPending>) {
-    decoded.sort_by_key(|entry| (entry.chunk_id.coord().z, entry.chunk_id.coord().x));
-    decoded.dedup_by_key(|entry| entry.chunk_id);
+) -> (Vec<ChunkId>, Vec<MaterializedChunkPending>) {
+    materialized.sort_by_key(|entry| (entry.chunk_id.coord().z, entry.chunk_id.coord().x));
+    materialized.dedup_by_key(|entry| entry.chunk_id);
 
     let mut applied = Vec::new();
     let mut deferred = Vec::new();
     let mut applied_count = 0usize;
 
-    for entry in decoded {
+    for entry in materialized {
         if applied_count >= max_apply {
             deferred.push(entry);
             continue;
@@ -276,7 +284,7 @@ pub(crate) fn apply_decoded_batch(
         let chunk_id = entry.chunk_id;
         let generation = entry.generation;
 
-        if !decoded_result_may_apply(residency, chunk_id, generation, keep_resident) {
+        if !materialized_result_may_apply(residency, chunk_id, generation, keep_resident) {
             discard_chunk_residency(
                 residency,
                 chunk_id,
@@ -339,31 +347,17 @@ pub(crate) fn apply_decoded_batch(
         }
 
         world.insert(chunk_id, entry.data);
-        spawn_chunk_mesh_inner(
+        spawn_prebuilt_chunk_mesh_inner(
             commands,
             chunk_id,
-            world,
             chunk_size_units,
             meshes,
             render_assets.material.clone(),
-            render_assets.vertical_scale,
-            #[cfg(feature = "dev")]
-            perf.as_deref_mut(),
-            #[cfg(feature = "dev")]
-            super::perf::MeshBuildKind::NewChunk,
-        );
-        refresh_adjacent_chunk_meshes_inner(
-            commands,
-            chunk_id,
-            world,
-            chunk_size_units,
-            meshes,
-            render_assets.material.clone(),
-            render_assets.vertical_scale,
-            mesh_entities,
+            entry.mesh,
             #[cfg(feature = "dev")]
             perf.as_deref_mut(),
         );
+        // Phase 2B.6: neighbor refresh disabled — deferred to a later async step.
         residency.mark_resident(chunk_id);
         applied.push(chunk_id);
         applied_count += 1;
@@ -376,7 +370,8 @@ pub(crate) fn apply_decoded_batch(
 mod apply_tests {
     use super::*;
     use crate::terrain::catalog::TerrainWorldCatalog;
-    use crate::terrain::materialize::PendingChunkMaterializations;
+    use crate::terrain::materialize::{MaterializedChunkPending, PendingChunkMaterializations};
+    use crate::terrain::mesh::{ChunkLod, build_chunk_mesh, test_build_mesh_call_count, test_reset_build_mesh_calls};
     use crate::world::{ChunkData, Heightfield};
     use bevy::ecs::system::SystemState;
 
@@ -385,6 +380,18 @@ mod apply_tests {
             Heightfield::from_samples(3, 128.0, vec![0.0; 9]).unwrap(),
             Vec::new(),
         )
+    }
+
+    fn sample_materialized_entry(chunk_id: ChunkId, generation: u64) -> MaterializedChunkPending {
+        let data = sample_chunk_data();
+        let mesh = build_chunk_mesh(&data.heightfield, ChunkLod::Full);
+        MaterializedChunkPending {
+            chunk_id,
+            generation,
+            data,
+            mesh,
+            async_mesh_build_ms: 0.0,
+        }
     }
 
     fn sample_render_assets(world: &mut World) -> TerrainRenderAssets {
@@ -447,7 +454,7 @@ mod apply_tests {
 
     fn apply_entries(
         world: &mut World,
-        decoded: Vec<DecodedChunkPending>,
+        materialized: Vec<MaterializedChunkPending>,
         keep_resident: &HashSet<ChunkCoord>,
         catalog: &TerrainWorldCatalog,
     ) {
@@ -466,8 +473,8 @@ mod apply_tests {
         {
             let (mut commands, mut world_data, mut residency, mut meshes, mesh_entities) =
                 system_state.get_mut(world);
-            let (_, _) = apply_decoded_batch(
-                decoded,
+            let (_, _) = apply_materialized_batch(
+                materialized,
                 usize::MAX,
                 catalog,
                 &config,
@@ -501,11 +508,7 @@ mod apply_tests {
 
             apply_entries(
                 &mut world,
-                vec![DecodedChunkPending {
-                    chunk_id,
-                    generation,
-                    data: sample_chunk_data(),
-                }],
+                vec![sample_materialized_entry(chunk_id, generation)],
                 &keep,
                 &catalog,
             );
@@ -530,11 +533,7 @@ mod apply_tests {
 
             apply_entries(
                 &mut world,
-                vec![DecodedChunkPending {
-                    chunk_id,
-                    generation,
-                    data: sample_chunk_data(),
-                }],
+                vec![sample_materialized_entry(chunk_id, generation)],
                 &keep,
                 &catalog,
             );
@@ -565,11 +564,7 @@ mod apply_tests {
 
         apply_entries(
             &mut world,
-            vec![DecodedChunkPending {
-                chunk_id,
-                generation: stale_generation,
-                data: sample_chunk_data(),
-            }],
+            vec![sample_materialized_entry(chunk_id, stale_generation)],
             &keep,
             &catalog,
         );
@@ -600,11 +595,7 @@ mod apply_tests {
 
         apply_entries(
             &mut world,
-            vec![DecodedChunkPending {
-                chunk_id,
-                generation,
-                data: sample_chunk_data(),
-            }],
+            vec![sample_materialized_entry(chunk_id, generation)],
             &keep,
             &catalog,
         );
@@ -632,21 +623,19 @@ mod apply_tests {
         let data = sample_chunk_data();
         apply_entries(
             &mut world,
-            vec![DecodedChunkPending {
+            vec![MaterializedChunkPending {
                 chunk_id,
                 generation,
                 data: data.clone(),
+                mesh: build_chunk_mesh(&data.heightfield, ChunkLod::Full),
+                async_mesh_build_ms: 0.0,
             }],
             &keep,
             &catalog,
         );
         apply_entries(
             &mut world,
-            vec![DecodedChunkPending {
-                chunk_id,
-                generation,
-                data,
-            }],
+            vec![sample_materialized_entry(chunk_id, generation)],
             &keep,
             &catalog,
         );
@@ -724,16 +713,12 @@ mod apply_tests {
                 let chunk_id = ChunkId::new(ChunkCoord::new(i, 0));
                 keep.insert(chunk_id.coord());
                 let generation = residency.begin_loading(chunk_id).unwrap();
-                entries.push(DecodedChunkPending {
-                    chunk_id,
-                    generation,
-                    data: sample_chunk_data(),
-                });
+                entries.push(sample_materialized_entry(chunk_id, generation));
             }
         }
 
         let catalog = test_catalog_for_coords(&[(0, 0), (1, 0), (2, 0), (3, 0), (4, 0)]);
-        let decoded = entries;
+        let materialized = entries;
         let budget = 2;
 
         let render_assets = sample_render_assets(&mut world);
@@ -750,8 +735,8 @@ mod apply_tests {
         let (applied, deferred) = {
             let (mut commands, mut world_data, mut residency, mut meshes, mesh_entities) =
                 system_state.get_mut(&mut world);
-            apply_decoded_batch(
-                decoded,
+            apply_materialized_batch(
+                materialized,
                 budget,
                 &catalog,
                 &config,
@@ -830,10 +815,11 @@ mod apply_tests {
 
         for _ in 0..16 {
             let mut residency = world.resource_mut::<ChunkResidencyTracker>();
-            pending.poll_in_flight(&mut residency, &keep, 2);
+            let mut poll_stats = crate::terrain::materialize::MaterializePollStats::default();
+            pending.poll_in_flight(&mut residency, &keep, 2, 1.0, &mut poll_stats);
         }
 
-        let decoded = pending.take_decoded();
+        let materialized = pending.take_materialized();
         let render_assets = sample_render_assets(&mut world);
         let chunk_size_units = world.resource::<WorldConfig>().chunk_layout().chunk_size_units();
         let config = world.resource::<WorldConfig>().clone();
@@ -848,8 +834,8 @@ mod apply_tests {
         let (applied, deferred) = {
             let (mut commands, mut world_data, mut residency, mut meshes, mesh_entities) =
                 system_state.get_mut(&mut world);
-            apply_decoded_batch(
-                decoded,
+            apply_materialized_batch(
+                materialized,
                 4,
                 &catalog,
                 &config,
@@ -866,7 +852,7 @@ mod apply_tests {
             )
         };
         system_state.apply(&mut world);
-        pending.requeue_decoded(deferred);
+        pending.requeue_materialized(deferred);
 
         let mut query = world.query::<&TerrainChunkMesh>();
         let markers: Vec<_> = query.iter(&world).collect();
@@ -881,6 +867,28 @@ mod apply_tests {
         for path in paths {
             std::fs::remove_file(path).ok();
         }
+    }
+
+    #[test]
+    fn apply_does_not_build_mesh_on_main_thread() {
+        let chunk_id = ChunkId::new(ChunkCoord::new(8, 8));
+        let catalog = test_catalog_for_coords(&[(8, 8)]);
+        let mut world = setup_apply_world();
+
+        {
+            let mut residency = world.resource_mut::<ChunkResidencyTracker>();
+            let generation = residency.begin_loading(chunk_id).unwrap();
+            let mut keep = HashSet::new();
+            keep.insert(chunk_id.coord());
+
+            let entry = sample_materialized_entry(chunk_id, generation);
+            test_reset_build_mesh_calls();
+
+            apply_entries(&mut world, vec![entry], &keep, &catalog);
+        }
+
+        assert_eq!(test_build_mesh_call_count(), 0);
+        assert!(world.resource::<WorldData>().is_chunk_loaded(chunk_id));
     }
 
     #[test]
@@ -903,10 +911,15 @@ mod apply_tests {
 
         apply_entries(
             &mut world,
-            vec![DecodedChunkPending {
+            vec![MaterializedChunkPending {
                 chunk_id,
                 generation,
                 data: bad_data,
+                mesh: build_chunk_mesh(
+                    &Heightfield::from_samples(3, 64.0, vec![0.0; 9]).unwrap(),
+                    ChunkLod::Full,
+                ),
+                async_mesh_build_ms: 0.0,
             }],
             &keep,
             &catalog,
