@@ -29,15 +29,52 @@ pub(crate) fn test_build_mesh_call_count() -> usize {
     BUILD_MESH_CALLS.load(Ordering::SeqCst)
 }
 
-/// Mesh level of detail for a chunk.
+/// Mesh level of detail for a chunk (ADR-013 Phase 2C).
 ///
-/// Phase 2A emits a single full-resolution level. Subsampled levels, distance
-/// selection, and skirts are deferred to Phase 2C (ADR-013), but the parameter
-/// exists now so the builder signature is stable.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Each level subsamples the authoritative full-resolution heightfield at a
+/// power-of-two stride. Selection policy lives in [`super::lod`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
+#[reflect(Debug, PartialEq)]
 pub enum ChunkLod {
-    /// One mesh vertex per heightfield sample.
+    /// Stride 1 — one mesh vertex per heightfield sample.
     Full,
+    /// Stride 2.
+    Half,
+    /// Stride 4.
+    Quarter,
+    /// Stride 8.
+    Eighth,
+}
+
+impl ChunkLod {
+    /// Heightfield sample stride for this LOD level.
+    pub const fn stride(self) -> usize {
+        match self {
+            Self::Full => 1,
+            Self::Half => 2,
+            Self::Quarter => 4,
+            Self::Eighth => 8,
+        }
+    }
+
+    /// Mesh grid width/height in samples after subsampling a full-resolution tile.
+    pub fn lod_samples_per_edge(self, full_samples_per_edge: u32) -> u32 {
+        let full = full_samples_per_edge as usize;
+        debug_assert!(full >= 2);
+        let stride = self.stride();
+        ((full - 1) / stride + 1) as u32
+    }
+
+    /// Expected vertex and triangle counts for a built chunk mesh.
+    pub fn expected_geometry(self, full_samples_per_edge: u32) -> ChunkMeshGeometry {
+        let spe = self.lod_samples_per_edge(full_samples_per_edge) as usize;
+        let cells = (spe - 1) * (spe - 1);
+        ChunkMeshGeometry {
+            vertices: spe * spe,
+            indices: cells * 6,
+            triangles: cells * 2,
+        }
+    }
 }
 
 /// Neighbor height strips used for mesh positions and cross-chunk normals.
@@ -125,6 +162,22 @@ fn build_mesh_height_grid(
     heights
 }
 
+/// Subsample a welded full-resolution height grid to a coarser LOD grid.
+fn subsample_height_grid(full_heights: &[f32], full_spe: usize, stride: usize) -> (Vec<f32>, usize) {
+    debug_assert!(stride >= 1);
+    debug_assert_eq!(full_heights.len(), full_spe * full_spe);
+    let lod_spe = (full_spe - 1) / stride + 1;
+    let mut lod_heights = Vec::with_capacity(lod_spe * lod_spe);
+    for lod_row in 0..lod_spe {
+        let full_row = lod_row * stride;
+        for lod_col in 0..lod_spe {
+            let full_col = lod_col * stride;
+            lod_heights.push(full_heights[full_row * full_spe + full_col]);
+        }
+    }
+    (lod_heights, lod_spe)
+}
+
 fn normal_stencil_x(
     row: usize,
     col: usize,
@@ -209,6 +262,80 @@ fn normal_stencil_z(
     )
 }
 
+fn build_mesh_from_height_grid(
+    heights: &[f32],
+    spe: usize,
+    spacing: f32,
+    vertical_scale: f32,
+    seam_weld: &ChunkMeshSeamWeld,
+) -> Mesh {
+    let last = (spe - 1) as f32;
+
+    let vertex_count = spe * spe;
+    let mut positions = Vec::with_capacity(vertex_count);
+    let mut normals = Vec::with_capacity(vertex_count);
+    let mut uvs = Vec::with_capacity(vertex_count);
+
+    let height = |row: usize, col: usize| heights[row * spe + col];
+
+    for row in 0..spe {
+        for col in 0..spe {
+            let h = height(row, col) * vertical_scale;
+            positions.push([col as f32 * spacing, h, row as f32 * spacing]);
+            uvs.push([col as f32 / last, row as f32 / last]);
+
+            let (hx0, hx1, dx) = normal_stencil_x(
+                row,
+                col,
+                spe,
+                heights,
+                h,
+                vertical_scale,
+                spacing,
+                seam_weld,
+            );
+            let (hz0, hz1, dz) = normal_stencil_z(
+                row,
+                col,
+                spe,
+                heights,
+                h,
+                vertical_scale,
+                spacing,
+                seam_weld,
+            );
+
+            let dhdx = (hx1 - hx0) / dx;
+            let dhdz = (hz1 - hz0) / dz;
+            let normal = Vec3::new(-dhdx, 1.0, -dhdz).normalize();
+            normals.push([normal.x, normal.y, normal.z]);
+        }
+    }
+
+    let cells = (spe - 1) * (spe - 1);
+    let mut indices = Vec::with_capacity(cells * 6);
+    let idx = |row: usize, col: usize| (row * spe + col) as u32;
+    for row in 0..spe - 1 {
+        for col in 0..spe - 1 {
+            let a = idx(row, col);
+            let b = idx(row, col + 1);
+            let c = idx(row + 1, col);
+            let d = idx(row + 1, col + 1);
+            indices.extend_from_slice(&[a, c, b, b, c, d]);
+        }
+    }
+
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.insert_indices(Indices::U32(indices));
+    mesh
+}
+
 /// Build a renderable mesh from a chunk's authoritative heightfield.
 ///
 /// Generates positions, analytic normals, UVs, and triangle indices. Normals
@@ -233,77 +360,31 @@ pub fn build_chunk_mesh_scaled(
     #[cfg(test)]
     BUILD_MESH_CALLS.fetch_add(1, Ordering::Relaxed);
 
-    let ChunkLod::Full = lod;
+    let full_spe = heightfield.samples_per_edge() as usize;
+    let base_spacing = heightfield.spacing_meters();
+    let full_heights = build_mesh_height_grid(heightfield.samples(), full_spe, seam_weld);
 
-    let spe = heightfield.samples_per_edge() as usize;
-    let spacing = heightfield.spacing_meters();
-    let heights = build_mesh_height_grid(heightfield.samples(), spe, seam_weld);
-    let last = (spe - 1) as f32;
+    let stride = lod.stride();
+    let (heights, spe, spacing) = if stride == 1 {
+        (full_heights, full_spe, base_spacing)
+    } else {
+        let (lod_heights, lod_spe) = subsample_height_grid(&full_heights, full_spe, stride);
+        (
+            lod_heights,
+            lod_spe,
+            base_spacing * stride as f32,
+        )
+    };
 
-    let vertex_count = spe * spe;
-    let mut positions = Vec::with_capacity(vertex_count);
-    let mut normals = Vec::with_capacity(vertex_count);
-    let mut uvs = Vec::with_capacity(vertex_count);
+    // Seam-weld strips target full-resolution grids; subsampled meshes use welded
+    // heights only (no per-LOD neighbor strips in Phase 2C-a).
+    let lod_seam_weld = if stride == 1 {
+        seam_weld
+    } else {
+        &ChunkMeshSeamWeld::default()
+    };
 
-    let height = |row: usize, col: usize| heights[row * spe + col];
-
-    for row in 0..spe {
-        for col in 0..spe {
-            let h = height(row, col) * vertical_scale;
-            positions.push([col as f32 * spacing, h, row as f32 * spacing]);
-            uvs.push([col as f32 / last, row as f32 / last]);
-
-            let (hx0, hx1, dx) = normal_stencil_x(
-                row,
-                col,
-                spe,
-                &heights,
-                h,
-                vertical_scale,
-                spacing,
-                seam_weld,
-            );
-            let (hz0, hz1, dz) = normal_stencil_z(
-                row,
-                col,
-                spe,
-                &heights,
-                h,
-                vertical_scale,
-                spacing,
-                seam_weld,
-            );
-
-            let dhdx = (hx1 - hx0) / dx;
-            let dhdz = (hz1 - hz0) / dz;
-            let normal = Vec3::new(-dhdx, 1.0, -dhdz).normalize();
-            normals.push([normal.x, normal.y, normal.z]);
-        }
-    }
-
-    let cells = (spe - 1) * (spe - 1);
-    let mut indices = Vec::with_capacity(cells * 6);
-    let idx = |row: usize, col: usize| (row * spe + col) as u32;
-    for row in 0..spe - 1 {
-        for col in 0..spe - 1 {
-            let a = idx(row, col);
-            let b = idx(row, col + 1);
-            let c = idx(row + 1, col);
-            let d = idx(row + 1, col + 1);
-            // Two triangles, both wound for an upward (+Y) front face.
-            indices.extend_from_slice(&[a, c, b, b, c, d]);
-        }
-    }
-
-    let mut mesh = Mesh::new(
-        PrimitiveTopology::TriangleList,
-        RenderAssetUsages::default(),
-    );
-    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
-    mesh.insert_indices(Indices::U32(indices));
-    mesh
+    build_mesh_from_height_grid(&heights, spe, spacing, vertical_scale, lod_seam_weld)
 }
 
 /// CPU geometry counts for a generated chunk mesh.
@@ -477,5 +558,101 @@ mod tests {
         };
         assert_eq!(positions[1][1], 100.0);
         assert_eq!(positions[3][1], 300.0);
+    }
+
+    fn mesh_geometry(mesh: &Mesh) -> ChunkMeshGeometry {
+        chunk_mesh_geometry(mesh)
+    }
+
+    #[test]
+    fn full_lod_matches_phase_2a_geometry_for_257_tile() {
+        let spe = 257u32;
+        let hf = flat_tile(spe);
+        let mesh = build_chunk_mesh(&hf, ChunkLod::Full);
+        let geom = mesh_geometry(&mesh);
+        assert_eq!(geom, ChunkLod::Full.expected_geometry(spe));
+        assert_eq!(geom.vertices, 66_049);
+        assert_eq!(geom.triangles, 131_072);
+    }
+
+    #[test]
+    fn lod_geometry_counts_for_257_tile() {
+        let spe = 257u32;
+        let hf = flat_tile(spe);
+
+        let half = mesh_geometry(&build_chunk_mesh(&hf, ChunkLod::Half));
+        assert_eq!(half, ChunkLod::Half.expected_geometry(spe));
+        assert_eq!(half.vertices, 16_641);
+        assert_eq!(half.triangles, 32_768);
+
+        let quarter = mesh_geometry(&build_chunk_mesh(&hf, ChunkLod::Quarter));
+        assert_eq!(quarter, ChunkLod::Quarter.expected_geometry(spe));
+        assert_eq!(quarter.vertices, 4_225);
+        assert_eq!(quarter.triangles, 8_192);
+
+        let eighth = mesh_geometry(&build_chunk_mesh(&hf, ChunkLod::Eighth));
+        assert_eq!(eighth, ChunkLod::Eighth.expected_geometry(spe));
+        assert_eq!(eighth.vertices, 1_089);
+        assert_eq!(eighth.triangles, 2_048);
+    }
+
+    #[test]
+    fn subsampled_positions_match_source_heightfield_at_stride() {
+        let spe = 9u32;
+        let n = (spe * spe) as usize;
+        let samples: Vec<f32> = (0..n).map(|i| i as f32).collect();
+        let hf = Heightfield::from_samples(spe, 1.0, samples).unwrap();
+
+        let full = build_chunk_mesh(&hf, ChunkLod::Full);
+        let half = build_chunk_mesh(&hf, ChunkLod::Half);
+
+        let full_positions = full.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
+        let half_positions = half.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
+        let bevy::mesh::VertexAttributeValues::Float32x3(full_positions) = full_positions else {
+            panic!("expected positions");
+        };
+        let bevy::mesh::VertexAttributeValues::Float32x3(half_positions) = half_positions else {
+            panic!("expected positions");
+        };
+
+        let full_spe = spe as usize;
+        let stride = ChunkLod::Half.stride();
+        let lod_spe = ChunkLod::Half.lod_samples_per_edge(spe) as usize;
+        for lod_row in 0..lod_spe {
+            for lod_col in 0..lod_spe {
+                let full_row = lod_row * stride;
+                let full_col = lod_col * stride;
+                let full_idx = full_row * full_spe + full_col;
+                let lod_idx = lod_row * lod_spe + lod_col;
+                assert_eq!(
+                    half_positions[lod_idx], full_positions[full_idx],
+                    "lod ({lod_row},{lod_col}) vs full ({full_row},{full_col})"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn flat_terrain_has_upward_normals_at_all_lods() {
+        let hf = flat_tile(257);
+        for lod in [
+            ChunkLod::Full,
+            ChunkLod::Half,
+            ChunkLod::Quarter,
+            ChunkLod::Eighth,
+        ] {
+            let mesh = build_chunk_mesh(&hf, lod);
+            let bevy::mesh::VertexAttributeValues::Float32x3(normals) =
+                mesh.attribute(Mesh::ATTRIBUTE_NORMAL).unwrap()
+            else {
+                panic!("expected normals");
+            };
+            for n in normals {
+                assert!(
+                    (n[1] - 1.0).abs() < 1e-5,
+                    "{lod:?} expected +Y normal, got {n:?}"
+                );
+            }
+        }
     }
 }

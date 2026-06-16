@@ -12,18 +12,23 @@ use crate::world::{ChunkCoord, ChunkId, ChunkLayout, WorldData, WorldPosition};
 use super::catalog::TerrainWorldCatalog;
 
 /// Tunable streaming parameters (ADR-012, Phase 2B.5 step 4).
-#[derive(Debug, Clone, Resource, Reflect)]
-#[reflect(Resource)]
+///
+/// Controls **which chunks exist** in [`WorldData`] and as render entities.
+/// [`super::lod::TerrainLodSettings`] is separate: it only picks mesh resolution
+/// among chunks already within the keep ring below.
+#[derive(Debug, Clone, Resource, Reflect)]#[reflect(Resource)]
 pub struct TerrainStreamingSettings {
     /// Chebyshev radius around the view focus used to **request** chunk loads.
     ///
     /// This is the inner ring: chunks within this distance begin loading when
-    /// absent. Must be `<= unload_radius_chunks` (the outer keep ring).
+    /// absent. Defines how far terrain is **requested** — not mesh detail.
+    /// Must be `<= unload_radius_chunks` (the outer keep ring).
     pub load_radius_chunks: i32,
     /// Chebyshev radius within which resident chunks are **kept** loaded.
     ///
-    /// This is the outer retention ring and must be `>= load_radius_chunks`.
-    /// Chunks between the two radii stay resident once loaded (hysteresis band).
+    /// This is the outer retention ring and bounds **visible terrain distance**.
+    /// Must be `>= load_radius_chunks`. Chunks between the two radii stay resident
+    /// once loaded (hysteresis band). LOD rings do not extend beyond this.
     pub unload_radius_chunks: i32,
     pub max_loads_per_frame: usize,
     pub max_unloads_per_frame: usize,

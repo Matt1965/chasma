@@ -3,6 +3,12 @@
 //! Gated behind the `dev` feature. Wires catalog init, synchronous streaming,
 //! lighting, and terrain render assets. The permanent RTS camera comes from
 //! [`crate::camera::CameraPlugin`] (ADR-014).
+//!
+//! **Streaming vs LOD (Phase 2C):** [`TerrainStreamingSettings`] controls how far
+//! terrain is loaded and kept resident (`load_radius_chunks` /
+//! `unload_radius_chunks`). [`super::lod::TerrainLodSettings`] only picks mesh
+//! resolution among chunks that are already resident — it does not load more
+//! chunks or extend visible distance.
 
 use std::path::Path;
 
@@ -12,6 +18,7 @@ use crate::world::{WorldConfig, WorldData};
 
 use super::catalog::TerrainWorldCatalog;
 use super::decode::decode_chunk;
+use super::lod::TerrainLodSettings;
 use super::spawn::{vertical_scale_for_height_span, TerrainRenderAssets};
 use super::streaming::TerrainStreamingSettings;
 use super::perf::TerrainStreamingPerfSettings;
@@ -25,6 +32,33 @@ const DEV_PREVIEW_VERTICAL_SCALE_FALLBACK: f32 = 5.0;
 /// Dev preview relief target: visible relief without over-exaggerating stitch artifacts.
 const PREVIEW_TARGET_HEIGHT_SPAN_UNITS: f32 = 5.0;
 
+/// Chebyshev radius (chunks) within which the preview **requests** new loads.
+///
+/// This is the streaming **existence** radius — terrain beyond this is not loaded.
+/// The sample world is 32×32 chunks (~8 km); radius 14 loads most of the map from
+/// a central focus. Must be `<=` [`PREVIEW_UNLOAD_RADIUS_CHUNKS`].
+const PREVIEW_LOAD_RADIUS_CHUNKS: i32 = 14;
+
+/// Chebyshev radius (chunks) within which resident preview chunks are **kept**.
+///
+/// Outer retention ring; must be `>` [`PREVIEW_LOAD_RADIUS_CHUNKS`]. Radius 16
+/// covers the full authored extent from a roughly central focus.
+const PREVIEW_UNLOAD_RADIUS_CHUNKS: i32 = 16;
+
+/// LOD detail rings (Chebyshev distance from focus). Only affect resident chunks.
+///
+/// Near focus stays sharp; the outer loaded band (distances 9–16) uses Eighth.
+const PREVIEW_LOD_FULL_MAX_DISTANCE: i32 = 0;
+const PREVIEW_LOD_HALF_MAX_DISTANCE: i32 = 3;
+const PREVIEW_LOD_QUARTER_MAX_DISTANCE: i32 = 8;
+
+/// Dev-only throughput knobs — higher than runtime defaults for faster map fill-in.
+/// Mesh work stays async; raise these if pop-in feels slow, lower if frames hitch.
+const PREVIEW_MAX_LOADS_PER_FRAME: usize = 32;
+const PREVIEW_MAX_UNLOADS_PER_FRAME: usize = 24;
+const PREVIEW_MAX_APPLY_PER_FRAME: usize = 32;
+const PREVIEW_MAX_DECODE_PER_FRAME: usize = 32;
+const PREVIEW_MAX_LOD_BUILDS_PER_FRAME: usize = 24;
 /// On-disk sample world exercised by the dev preview (ADR-011).
 pub const PREVIEW_MANIFEST_PATH: &str = "assets/worlds/main/manifest.ron";
 
@@ -64,12 +98,20 @@ fn setup_preview(
 
     commands.insert_resource(catalog);
     commands.insert_resource(TerrainStreamingSettings {
-        load_radius_chunks: 1,
-        unload_radius_chunks: 2,
-        max_loads_per_frame: 4,
-        max_unloads_per_frame: 4,
-        max_apply_per_frame: 2,
-        max_decode_per_frame: 4,
+        // Streaming radius = how far terrain exists (ADR-012). LOD does not extend this.
+        load_radius_chunks: PREVIEW_LOAD_RADIUS_CHUNKS,
+        unload_radius_chunks: PREVIEW_UNLOAD_RADIUS_CHUNKS,
+        max_loads_per_frame: PREVIEW_MAX_LOADS_PER_FRAME,
+        max_unloads_per_frame: PREVIEW_MAX_UNLOADS_PER_FRAME,
+        max_apply_per_frame: PREVIEW_MAX_APPLY_PER_FRAME,
+        max_decode_per_frame: PREVIEW_MAX_DECODE_PER_FRAME,
+    });
+    commands.insert_resource(TerrainLodSettings {
+        // LOD radius = mesh resolution among already-resident chunks (ADR-013).
+        full_max_distance: PREVIEW_LOD_FULL_MAX_DISTANCE,
+        half_max_distance: PREVIEW_LOD_HALF_MAX_DISTANCE,
+        quarter_max_distance: PREVIEW_LOD_QUARTER_MAX_DISTANCE,
+        max_lod_builds_per_frame: PREVIEW_MAX_LOD_BUILDS_PER_FRAME,
     });
     commands.insert_resource(TerrainRenderAssets {
         material,

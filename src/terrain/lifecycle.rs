@@ -18,6 +18,7 @@ use super::materialize::{
     MaterializedChunkPending, MaterializePollStats, PendingChunkMaterializations,
     materialized_result_may_apply,
 };
+use super::lod_build::PendingChunkLodBuilds;
 use super::load::validate_loaded_chunk;
 use super::residency::{
     ChunkDiscardKind, ChunkResidencyTracker, discard_chunk_residency,
@@ -111,6 +112,7 @@ pub fn poll_chunk_materializations(
     settings: Res<TerrainStreamingSettings>,
     config: Res<WorldConfig>,
     render_assets: Res<TerrainRenderAssets>,
+    lod_settings: Res<super::lod::TerrainLodSettings>,
     mut residency: ResMut<ChunkResidencyTracker>,
     mut pending: ResMut<PendingChunkMaterializations>,
     #[cfg(feature = "dev")] perf_settings: Res<TerrainStreamingPerfSettings>,
@@ -130,6 +132,8 @@ pub fn poll_chunk_materializations(
         &keep_resident,
         settings.max_decode_per_frame,
         render_assets.vertical_scale,
+        focus_coord,
+        &lod_settings,
         &mut poll_stats,
     );
 
@@ -221,6 +225,7 @@ pub fn unload_terrain_chunks(
     config: Res<WorldConfig>,
     mut residency: ResMut<ChunkResidencyTracker>,
     mut pending: ResMut<PendingChunkMaterializations>,
+    mut pending_lod_builds: ResMut<PendingChunkLodBuilds>,
     mut grace: ResMut<JustAppliedGrace>,
     mut world: ResMut<WorldData>,
     mut commands: Commands,
@@ -240,6 +245,7 @@ pub fn unload_terrain_chunks(
 
     for chunk_id in &to_unload {
         pending.discard_chunk_state(&mut residency, *chunk_id, ChunkDiscardKind::Revoked);
+        pending_lod_builds.cancel_for_chunk(*chunk_id);
         despawn_chunk_meshes(&mut commands, *chunk_id, &mesh_entities);
         world.remove(*chunk_id);
     }
@@ -354,6 +360,7 @@ pub(crate) fn apply_materialized_batch(
             meshes,
             render_assets.material.clone(),
             entry.mesh,
+            entry.lod,
             #[cfg(feature = "dev")]
             perf.as_deref_mut(),
         );
@@ -370,8 +377,9 @@ pub(crate) fn apply_materialized_batch(
 mod apply_tests {
     use super::*;
     use crate::terrain::catalog::TerrainWorldCatalog;
+    use crate::terrain::lod_cache::TerrainChunkLodCache;
     use crate::terrain::materialize::{MaterializedChunkPending, PendingChunkMaterializations};
-    use crate::terrain::mesh::{ChunkLod, build_chunk_mesh, test_build_mesh_call_count, test_reset_build_mesh_calls};
+    use crate::terrain::mesh::{ChunkLod, build_chunk_mesh, chunk_mesh_geometry, test_build_mesh_call_count, test_reset_build_mesh_calls};
     use crate::world::{ChunkData, Heightfield};
     use bevy::ecs::system::SystemState;
 
@@ -382,14 +390,44 @@ mod apply_tests {
         )
     }
 
-    fn sample_materialized_entry(chunk_id: ChunkId, generation: u64) -> MaterializedChunkPending {
+    fn dummy_apply_mesh() -> Mesh {
+        use bevy::asset::RenderAssetUsages;
+        use bevy::mesh::PrimitiveTopology;
+        Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::default(),
+        )
+    }
+
+    fn sample_materialized_entry(
+        chunk_id: ChunkId,
+        generation: u64,
+        lod: ChunkLod,
+    ) -> MaterializedChunkPending {
         let data = sample_chunk_data();
-        let mesh = build_chunk_mesh(&data.heightfield, ChunkLod::Full);
+        let mesh = build_chunk_mesh(&data.heightfield, lod);
         MaterializedChunkPending {
             chunk_id,
             generation,
             data,
             mesh,
+            lod,
+            async_mesh_build_ms: 0.0,
+        }
+    }
+
+    fn sample_materialized_entry_prebuilt(
+        chunk_id: ChunkId,
+        generation: u64,
+        lod: ChunkLod,
+    ) -> MaterializedChunkPending {
+        let data = sample_chunk_data();
+        MaterializedChunkPending {
+            chunk_id,
+            generation,
+            data,
+            mesh: dummy_apply_mesh(),
+            lod,
             async_mesh_build_ms: 0.0,
         }
     }
@@ -411,6 +449,7 @@ mod apply_tests {
         world.init_resource::<Assets<Mesh>>();
         world.init_resource::<Assets<StandardMaterial>>();
         world.register_component::<TerrainChunkMesh>();
+        world.register_component::<TerrainChunkLodCache>();
         world
     }
 
@@ -508,7 +547,7 @@ mod apply_tests {
 
             apply_entries(
                 &mut world,
-                vec![sample_materialized_entry(chunk_id, generation)],
+                vec![sample_materialized_entry(chunk_id, generation, ChunkLod::Full)],
                 &keep,
                 &catalog,
             );
@@ -533,7 +572,7 @@ mod apply_tests {
 
             apply_entries(
                 &mut world,
-                vec![sample_materialized_entry(chunk_id, generation)],
+                vec![sample_materialized_entry(chunk_id, generation, ChunkLod::Full)],
                 &keep,
                 &catalog,
             );
@@ -564,7 +603,7 @@ mod apply_tests {
 
         apply_entries(
             &mut world,
-            vec![sample_materialized_entry(chunk_id, stale_generation)],
+            vec![sample_materialized_entry(chunk_id, stale_generation, ChunkLod::Full)],
             &keep,
             &catalog,
         );
@@ -595,7 +634,7 @@ mod apply_tests {
 
         apply_entries(
             &mut world,
-            vec![sample_materialized_entry(chunk_id, generation)],
+            vec![sample_materialized_entry(chunk_id, generation, ChunkLod::Full)],
             &keep,
             &catalog,
         );
@@ -628,6 +667,7 @@ mod apply_tests {
                 generation,
                 data: data.clone(),
                 mesh: build_chunk_mesh(&data.heightfield, ChunkLod::Full),
+                lod: ChunkLod::Full,
                 async_mesh_build_ms: 0.0,
             }],
             &keep,
@@ -635,7 +675,7 @@ mod apply_tests {
         );
         apply_entries(
             &mut world,
-            vec![sample_materialized_entry(chunk_id, generation)],
+            vec![sample_materialized_entry(chunk_id, generation, ChunkLod::Full)],
             &keep,
             &catalog,
         );
@@ -713,7 +753,7 @@ mod apply_tests {
                 let chunk_id = ChunkId::new(ChunkCoord::new(i, 0));
                 keep.insert(chunk_id.coord());
                 let generation = residency.begin_loading(chunk_id).unwrap();
-                entries.push(sample_materialized_entry(chunk_id, generation));
+                entries.push(sample_materialized_entry(chunk_id, generation, ChunkLod::Full));
             }
         }
 
@@ -816,7 +856,17 @@ mod apply_tests {
         for _ in 0..16 {
             let mut residency = world.resource_mut::<ChunkResidencyTracker>();
             let mut poll_stats = crate::terrain::materialize::MaterializePollStats::default();
-            pending.poll_in_flight(&mut residency, &keep, 2, 1.0, &mut poll_stats);
+            let focus = ChunkCoord::new(0, 0);
+            let lod_settings = crate::terrain::lod::TerrainLodSettings::default();
+            pending.poll_in_flight(
+                &mut residency,
+                &keep,
+                2,
+                1.0,
+                focus,
+                &lod_settings,
+                &mut poll_stats,
+            );
         }
 
         let materialized = pending.take_materialized();
@@ -881,14 +931,100 @@ mod apply_tests {
             let mut keep = HashSet::new();
             keep.insert(chunk_id.coord());
 
-            let entry = sample_materialized_entry(chunk_id, generation);
+            let entry = sample_materialized_entry_prebuilt(chunk_id, generation, ChunkLod::Full);
             test_reset_build_mesh_calls();
 
             apply_entries(&mut world, vec![entry], &keep, &catalog);
+
+            assert_eq!(test_build_mesh_call_count(), 0);
         }
 
-        assert_eq!(test_build_mesh_call_count(), 0);
         assert!(world.resource::<WorldData>().is_chunk_loaded(chunk_id));
+    }
+
+    #[test]
+    fn apply_seeds_lod_cache_for_built_lod_only() {
+        let chunk_id = ChunkId::new(ChunkCoord::new(5, 5));
+        let catalog = test_catalog_for_coords(&[(5, 5)]);
+        let mut world = setup_apply_world();
+
+        {
+            let mut residency = world.resource_mut::<ChunkResidencyTracker>();
+            let generation = residency.begin_loading(chunk_id).unwrap();
+            let mut keep = HashSet::new();
+            keep.insert(chunk_id.coord());
+
+            apply_entries(
+                &mut world,
+                vec![sample_materialized_entry(chunk_id, generation, ChunkLod::Half)],
+                &keep,
+                &catalog,
+            );
+        }
+
+        let mut mesh_query = world.query::<(&TerrainChunkMesh, &TerrainChunkLodCache)>();
+        let (marker, cache) = mesh_query.single(&world).unwrap();
+        assert_eq!(marker.active_lod, ChunkLod::Half);
+        assert!(cache.has_lod(ChunkLod::Half));
+        assert!(!cache.has_lod(ChunkLod::Full));
+        assert!(!cache.has_lod(ChunkLod::Quarter));
+        assert!(!cache.has_lod(ChunkLod::Eighth));
+        assert_eq!(cache.cached_lod_count(), 1);
+    }
+
+    #[test]
+    fn apply_near_focus_materializes_full_lod_mesh() {
+        let chunk_id = ChunkId::new(ChunkCoord::new(2, 2));
+        let catalog = test_catalog_for_coords(&[(2, 2)]);
+        let mut world = setup_apply_world();
+
+        {
+            let mut residency = world.resource_mut::<ChunkResidencyTracker>();
+            let generation = residency.begin_loading(chunk_id).unwrap();
+            let mut keep = HashSet::new();
+            keep.insert(chunk_id.coord());
+
+            apply_entries(
+                &mut world,
+                vec![sample_materialized_entry(chunk_id, generation, ChunkLod::Full)],
+                &keep,
+                &catalog,
+            );
+        }
+
+        let marker = world.query::<&TerrainChunkMesh>().single(&world).unwrap();
+        assert_eq!(marker.active_lod, ChunkLod::Full);
+    }
+
+    #[test]
+    fn apply_distant_ring_materializes_coarser_mesh() {
+        let chunk_id = ChunkId::new(ChunkCoord::new(3, 0));
+        let catalog = test_catalog_for_coords(&[(3, 0)]);
+        let mut world = setup_apply_world();
+
+        {
+            let mut residency = world.resource_mut::<ChunkResidencyTracker>();
+            let generation = residency.begin_loading(chunk_id).unwrap();
+            let mut keep = HashSet::new();
+            keep.insert(chunk_id.coord());
+
+            apply_entries(
+                &mut world,
+                vec![sample_materialized_entry(chunk_id, generation, ChunkLod::Half)],
+                &keep,
+                &catalog,
+            );
+        }
+
+        let mut mesh_query = world.query::<(&TerrainChunkMesh, &TerrainChunkLodCache, &Mesh3d)>();
+        let (marker, cache, mesh3d) = mesh_query.single(&world).unwrap();
+        assert_eq!(marker.active_lod, ChunkLod::Half);
+        assert_eq!(cache.cached_lod_count(), 1);
+        assert!(cache.has_lod(ChunkLod::Half));
+        let meshes = world.resource::<Assets<Mesh>>();
+        let mesh = meshes.get(&mesh3d.0).expect("mesh asset");
+        let geom = chunk_mesh_geometry(mesh);
+        assert_eq!(geom.vertices, ChunkLod::Half.expected_geometry(3).vertices);
     }
 
     #[test]
@@ -919,6 +1055,7 @@ mod apply_tests {
                     &Heightfield::from_samples(3, 64.0, vec![0.0; 9]).unwrap(),
                     ChunkLod::Full,
                 ),
+                lod: ChunkLod::Full,
                 async_mesh_build_ms: 0.0,
             }],
             &keep,

@@ -14,6 +14,7 @@ use crate::world::{ChunkCoord, ChunkData, ChunkId};
 
 use super::asset::TerrainAssetError;
 use super::decode::decode_chunk;
+use super::lod::{TerrainLodSettings, desired_lod};
 use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled};
 use super::streaming::chunk_outside_residency_sets;
 use super::residency::{ChunkDiscardKind, ChunkResidencyTracker, discard_chunk_residency};
@@ -42,6 +43,7 @@ pub struct MaterializedChunkPending {
     pub generation: u64,
     pub data: ChunkData,
     pub mesh: Mesh,
+    pub lod: ChunkLod,
     pub async_mesh_build_ms: f32,
 }
 
@@ -68,6 +70,7 @@ enum MaterializeStage {
 struct InFlightMaterialization {
     chunk_id: ChunkId,
     generation: u64,
+    mesh_lod: Option<ChunkLod>,
     stage: MaterializeStage,
 }
 
@@ -182,6 +185,7 @@ impl PendingChunkMaterializations {
         self.in_flight.push(InFlightMaterialization {
             chunk_id,
             generation,
+            mesh_lod: None,
             stage: MaterializeStage::Io(spawn_chunk_io_task(path)),
         });
         true
@@ -254,13 +258,15 @@ impl PendingChunkMaterializations {
         keep_resident: &HashSet<ChunkCoord>,
         max_decode_per_frame: usize,
         vertical_scale: f32,
+        focus_chunk: ChunkCoord,
+        lod_settings: &TerrainLodSettings,
         stats: &mut MaterializePollStats,
     ) {
         self.in_flight
             .sort_by_key(|entry| (entry.chunk_id.coord().z, entry.chunk_id.coord().x));
 
         let mut next = Vec::with_capacity(self.in_flight.len());
-        let mut completed = Vec::new();
+        let mut completed: Vec<(ChunkId, u64, ChunkData, Mesh, ChunkLod, f32)> = Vec::new();
         let budget = if max_decode_per_frame == 0 {
             usize::MAX
         } else {
@@ -293,11 +299,13 @@ impl PendingChunkMaterializations {
 
                     if mesh_stores < budget {
                         mesh_stores += 1;
+                        let lod = entry.mesh_lod.expect("mesh_lod set before store");
                         completed.push((
                             entry.chunk_id,
                             entry.generation,
                             data,
                             mesh,
+                            lod,
                             async_mesh_build_ms,
                         ));
                     } else {
@@ -326,11 +334,14 @@ impl PendingChunkMaterializations {
 
                     if mesh_starts < budget {
                         mesh_starts += 1;
-                        entry.stage =
-                            MaterializeStage::MeshBuild(spawn_chunk_mesh_build_task(
-                                data,
-                                vertical_scale,
-                            ));
+                        let lod =
+                            desired_lod(focus_chunk, entry.chunk_id.coord(), lod_settings);
+                        entry.mesh_lod = Some(lod);
+                        entry.stage = MaterializeStage::MeshBuild(spawn_chunk_mesh_build_task(
+                            data,
+                            vertical_scale,
+                            lod,
+                        ));
                         next.push(entry);
                     } else {
                         entry.stage = MaterializeStage::DecodeReady { data };
@@ -449,8 +460,14 @@ impl PendingChunkMaterializations {
 
                             if mesh_starts < budget {
                                 mesh_starts += 1;
+                                let lod = desired_lod(
+                                    focus_chunk,
+                                    entry.chunk_id.coord(),
+                                    lod_settings,
+                                );
+                                entry.mesh_lod = Some(lod);
                                 entry.stage = MaterializeStage::MeshBuild(
-                                    spawn_chunk_mesh_build_task(data, vertical_scale),
+                                    spawn_chunk_mesh_build_task(data, vertical_scale, lod),
                                 );
                                 next.push(entry);
                             } else {
@@ -500,11 +517,13 @@ impl PendingChunkMaterializations {
 
                     if mesh_stores < budget {
                         mesh_stores += 1;
+                        let lod = entry.mesh_lod.expect("mesh_lod set before store");
                         completed.push((
                             entry.chunk_id,
                             entry.generation,
                             output.data,
                             output.mesh,
+                            lod,
                             async_mesh_build_ms,
                         ));
                     } else {
@@ -520,12 +539,13 @@ impl PendingChunkMaterializations {
         }
 
         self.in_flight = next;
-        for (chunk_id, generation, data, mesh, async_mesh_build_ms) in completed {
+        for (chunk_id, generation, data, mesh, lod, async_mesh_build_ms) in completed {
             self.store_materialized(
                 chunk_id,
                 generation,
                 data,
                 mesh,
+                lod,
                 async_mesh_build_ms,
             );
         }
@@ -539,9 +559,10 @@ impl PendingChunkMaterializations {
         generation: u64,
         data: ChunkData,
         vertical_scale: f32,
+        lod: ChunkLod,
     ) {
-        let mesh = build_materialized_mesh(&data, vertical_scale);
-        self.store_materialized(chunk_id, generation, data, mesh, 0.0);
+        let mesh = build_materialized_mesh(&data, vertical_scale, lod);
+        self.store_materialized(chunk_id, generation, data, mesh, lod, 0.0);
     }
 
     #[cfg(test)]
@@ -551,7 +572,7 @@ impl PendingChunkMaterializations {
         generation: u64,
         data: ChunkData,
     ) {
-        self.push_materialized_test_only(chunk_id, generation, data, 1.0);
+        self.push_materialized_test_only(chunk_id, generation, data, 1.0, ChunkLod::Full);
     }
 
     fn pipeline_has_unique_chunk_ids(&self) -> bool {
@@ -602,6 +623,7 @@ impl PendingChunkMaterializations {
         generation: u64,
         data: ChunkData,
         mesh: Mesh,
+        lod: ChunkLod,
         async_mesh_build_ms: f32,
     ) {
         self.materialized.retain(|entry| entry.chunk_id != chunk_id);
@@ -610,6 +632,7 @@ impl PendingChunkMaterializations {
             generation,
             data,
             mesh,
+            lod,
             async_mesh_build_ms,
         });
     }
@@ -655,6 +678,7 @@ impl PendingChunkMaterializations {
                 entry.generation,
                 entry.data,
                 entry.mesh,
+                entry.lod,
                 entry.async_mesh_build_ms,
             );
         }
@@ -739,10 +763,14 @@ pub fn spawn_chunk_decode_task(raw: String) -> ChunkDecodeTask {
 }
 
 /// Mesh-build stage: pure mesh generation on [`AsyncComputeTaskPool`].
-pub fn spawn_chunk_mesh_build_task(data: ChunkData, vertical_scale: f32) -> ChunkMeshBuildTask {
+pub fn spawn_chunk_mesh_build_task(
+    data: ChunkData,
+    vertical_scale: f32,
+    lod: ChunkLod,
+) -> ChunkMeshBuildTask {
     AsyncComputeTaskPool::get().spawn(async move {
         let start = std::time::Instant::now();
-        let mesh = build_materialized_mesh(&data, vertical_scale);
+        let mesh = build_materialized_mesh(&data, vertical_scale, lod);
         MeshBuildOutput {
             data,
             mesh,
@@ -751,10 +779,10 @@ pub fn spawn_chunk_mesh_build_task(data: ChunkData, vertical_scale: f32) -> Chun
     })
 }
 
-fn build_materialized_mesh(data: &ChunkData, vertical_scale: f32) -> Mesh {
+fn build_materialized_mesh(data: &ChunkData, vertical_scale: f32, lod: ChunkLod) -> Mesh {
     build_chunk_mesh_scaled(
         &data.heightfield,
-        ChunkLod::Full,
+        lod,
         vertical_scale,
         &ChunkMeshSeamWeld::default(),
     )
@@ -778,9 +806,15 @@ mod tests {
     }
 
     fn sample_chunk_file(x: i32, z: i32) -> ChunkFile {
+        sample_chunk_file_spe(x, z, 3)
+    }
+
+    fn sample_chunk_file_spe(x: i32, z: i32, samples_per_edge: u32) -> ChunkFile {
+        let spe = samples_per_edge as usize;
+        let spacing = 256.0 / (samples_per_edge - 1) as f32;
         let mut samples = Vec::new();
-        for row in 0..3 {
-            for col in 0..3 {
+        for row in 0..spe {
+            for col in 0..spe {
                 samples.push((row * 10 + col) as f32);
             }
         }
@@ -788,8 +822,8 @@ mod tests {
             version: CHUNK_FORMAT_VERSION,
             x,
             z,
-            samples_per_edge: 3,
-            spacing_meters: 128.0,
+            samples_per_edge,
+            spacing_meters: spacing,
             samples,
             height_min: 0.0,
             height_max: 22.0,
@@ -797,6 +831,10 @@ mod tests {
     }
 
     fn temp_chunk_path(x: i32, z: i32) -> PathBuf {
+        temp_chunk_path_spe(x, z, 3)
+    }
+
+    fn temp_chunk_path_spe(x: i32, z: i32, samples_per_edge: u32) -> PathBuf {
         use std::sync::atomic::{AtomicU64, Ordering};
 
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);
@@ -806,7 +844,11 @@ mod tests {
             std::process::id(),
             id
         ));
-        std::fs::write(&path, ron::to_string(&sample_chunk_file(x, z)).unwrap()).unwrap();
+        std::fs::write(
+            &path,
+            ron::to_string(&sample_chunk_file_spe(x, z, samples_per_edge)).unwrap(),
+        )
+        .unwrap();
         path
     }
 
@@ -946,6 +988,31 @@ mod tests {
         )
     }
 
+    fn poll_until_materialized(
+        pending: &mut PendingChunkMaterializations,
+        residency: &mut ChunkResidencyTracker,
+        keep: &HashSet<ChunkCoord>,
+        focus: ChunkCoord,
+    ) {
+        let settings = TerrainLodSettings::default();
+        let mut stats = MaterializePollStats::default();
+        for _ in 0..64 {
+            pending.poll_in_flight(
+                residency,
+                keep,
+                16,
+                1.0,
+                focus,
+                &settings,
+                &mut stats,
+            );
+            if pending.materialized_len() > 0 {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+
     #[test]
     fn poll_decode_failure_clears_loading_state() {
         ensure_task_pools();
@@ -965,7 +1032,16 @@ mod tests {
 
         for _ in 0..32 {
             let mut stats = MaterializePollStats::default();
-            pending.poll_in_flight(&mut residency, &keep, 16, 1.0, &mut stats);
+            let settings = TerrainLodSettings::default();
+            pending.poll_in_flight(
+                &mut residency,
+                &keep,
+                16,
+                1.0,
+                chunk_id.coord(),
+                &settings,
+                &mut stats,
+            );
             if !residency.is_loading(chunk_id) {
                 break;
             }
@@ -1000,7 +1076,7 @@ mod tests {
     fn mesh_build_task_produces_chunk_data_and_mesh() {
         ensure_task_pools();
         let data = sample_chunk_data(0);
-        let mut task = spawn_chunk_mesh_build_task(data.clone(), 1.0);
+        let mut task = spawn_chunk_mesh_build_task(data.clone(), 1.0, ChunkLod::Full);
         let output = bevy::tasks::block_on(&mut task);
         assert_eq!(output.data.heightfield.samples_per_edge(), 3);
         assert!(output.mesh.contains_attribute(Mesh::ATTRIBUTE_POSITION));
@@ -1019,22 +1095,36 @@ mod tests {
 
         let mut keep = HashSet::new();
         keep.insert(chunk_id.coord());
-        let mut stats = MaterializePollStats::default();
-
-        for _ in 0..64 {
-            pending.poll_in_flight(&mut residency, &keep, 16, 1.0, &mut stats);
-            if pending.materialized_len() > 0 {
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
+        let focus = ChunkCoord::new(1, 2);
+        poll_until_materialized(&mut pending, &mut residency, &keep, focus);
 
         assert_eq!(pending.materialized_len(), 1);
         let entry = &pending.materialized_chunks()[0];
         assert_eq!(entry.chunk_id, chunk_id);
+        assert_eq!(entry.lod, ChunkLod::Full);
         assert_eq!(entry.data.heightfield.samples_per_edge(), 3);
         assert!(entry.mesh.contains_attribute(Mesh::ATTRIBUTE_POSITION));
         assert!(entry.async_mesh_build_ms >= 0.0);
+        std::fs::remove_file(path).ok();
+    }
+
+    #[test]
+    fn async_pipeline_materializes_lower_lod_when_far_from_focus() {
+        ensure_task_pools();
+        let mut pending = PendingChunkMaterializations::default();
+        let mut residency = ChunkResidencyTracker::default();
+        let chunk_id = ChunkId::new(ChunkCoord::new(1, 0));
+        let generation = residency.begin_loading(chunk_id).unwrap();
+        let path = temp_chunk_path(1, 0);
+        assert!(pending.try_start_io(chunk_id, generation, path.clone()));
+
+        let mut keep = HashSet::new();
+        keep.insert(chunk_id.coord());
+        let focus = ChunkCoord::new(0, 0);
+        poll_until_materialized(&mut pending, &mut residency, &keep, focus);
+
+        assert_eq!(pending.materialized_len(), 1);
+        assert_eq!(pending.materialized_chunks()[0].lod, ChunkLod::Half);
         std::fs::remove_file(path).ok();
     }
 
@@ -1050,10 +1140,20 @@ mod tests {
 
         let mut keep = HashSet::new();
         keep.insert(chunk_id.coord());
-        let mut stats = MaterializePollStats::default();
+        let focus = chunk_id.coord();
+        let settings = TerrainLodSettings::default();
 
         for _ in 0..32 {
-            pending.poll_in_flight(&mut residency, &keep, 16, 1.0, &mut stats);
+            let mut stats = MaterializePollStats::default();
+            pending.poll_in_flight(
+                &mut residency,
+                &keep,
+                16,
+                1.0,
+                focus,
+                &settings,
+                &mut stats,
+            );
             if pending.mesh_build_in_flight_count() > 0 || pending.materialized_len() > 0 {
                 break;
             }
@@ -1064,7 +1164,16 @@ mod tests {
         let _current = residency.begin_loading(chunk_id).unwrap();
 
         for _ in 0..32 {
-            pending.poll_in_flight(&mut residency, &keep, 16, 1.0, &mut stats);
+            let mut stats = MaterializePollStats::default();
+            pending.poll_in_flight(
+                &mut residency,
+                &keep,
+                16,
+                1.0,
+                focus,
+                &settings,
+                &mut stats,
+            );
             if !pending.has_pipeline_for(chunk_id) || pending.materialized_len() > 0 {
                 break;
             }

@@ -15,6 +15,9 @@ pub mod decode;
 pub mod grace;
 pub mod lifecycle;
 pub mod load;
+pub mod lod;
+pub mod lod_build;
+pub mod lod_cache;
 pub mod materialize;
 pub mod mesh;
 pub mod residency;
@@ -40,6 +43,9 @@ pub use load::{load_chunk_from_path, load_world_from_manifest};
 pub use materialize::PendingChunkMaterializations;
 pub use residency::{ChunkDiscardKind, ChunkResidencyState, ChunkResidencyTracker, discard_chunk_residency};
 pub use mesh::{ChunkLod, build_chunk_mesh};
+pub use lod::{TerrainLodSettings, desired_lod};
+pub use lod_build::PendingChunkLodBuilds;
+pub use lod_cache::TerrainChunkLodCache;
 pub use spawn::{
     TerrainRenderAssets, despawn_chunk_meshes, spawn_chunk_mesh, spawn_terrain_render_entities,
 };
@@ -59,10 +65,15 @@ pub struct TerrainRuntimePlugin;
 impl Plugin for TerrainRuntimePlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<TerrainChunkMesh>()
+            .register_type::<TerrainChunkLodCache>()
+            .register_type::<ChunkLod>()
+            .register_type::<TerrainLodSettings>()
             .register_type::<TerrainStreamingSettings>()
             .init_resource::<TerrainStreamingSettings>()
+            .init_resource::<TerrainLodSettings>()
             .init_resource::<ChunkResidencyTracker>()
             .init_resource::<PendingChunkMaterializations>()
+            .init_resource::<PendingChunkLodBuilds>()
             .init_resource::<grace::JustAppliedGrace>();
 
         #[cfg(feature = "dev")]
@@ -87,6 +98,9 @@ impl Plugin for TerrainRuntimePlugin {
                     lifecycle::begin_terrain_streaming_perf_frame,
                     lifecycle::stream_terrain_chunks,
                     lifecycle::poll_chunk_materializations,
+                    lod_build::apply_cached_lod_swaps,
+                    lod_build::request_missing_lod_builds,
+                    lod_build::poll_lod_builds,
                     lifecycle::apply_chunk_materializations,
                     lifecycle::unload_terrain_chunks,
                     #[cfg(feature = "dev")]

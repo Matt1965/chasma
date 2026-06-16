@@ -11,6 +11,7 @@ use bevy::prelude::*;
 use crate::world::{ChunkCoord, ChunkId, WorldData};
 
 use super::components::TerrainChunkMesh;
+use super::lod_cache::TerrainChunkLodCache;
 use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled};
 #[cfg(feature = "dev")]
 use super::mesh::chunk_mesh_geometry;
@@ -37,7 +38,7 @@ pub fn vertical_scale_for_height_span(
     target_span_units / span
 }
 
-fn seam_weld_heights(world: &WorldData, chunk_id: ChunkId) -> ChunkMeshSeamWeld {
+pub(crate) fn seam_weld_heights(world: &WorldData, chunk_id: ChunkId) -> ChunkMeshSeamWeld {
     let coord = chunk_id.coord();
     let edge = |data: &crate::world::ChunkData| data.heightfield.samples_per_edge() - 1;
     let penultimate = |data: &crate::world::ChunkData| {
@@ -80,6 +81,7 @@ pub(crate) fn spawn_prebuilt_chunk_mesh_inner(
     meshes: &mut Assets<Mesh>,
     material: Handle<StandardMaterial>,
     mesh: Mesh,
+    active_lod: ChunkLod,
     #[cfg(feature = "dev")] mut perf: Option<&mut TerrainStreamingPerfRecorder>,
 ) {
     #[cfg(feature = "dev")]
@@ -95,6 +97,9 @@ pub(crate) fn spawn_prebuilt_chunk_mesh_inner(
         perf.record_mesh_assets(start.elapsed());
     }
 
+    let mut cache = TerrainChunkLodCache::default();
+    cache.set(active_lod, mesh_handle.clone());
+
     let coord = chunk_id.coord();
     #[cfg(feature = "dev")]
     let spawn_start = perf.is_some().then(Instant::now);
@@ -106,7 +111,8 @@ pub(crate) fn spawn_prebuilt_chunk_mesh_inner(
             0.0,
             coord.z as f32 * chunk_size_units,
         ),
-        TerrainChunkMesh::new(chunk_id),
+        TerrainChunkMesh::new(chunk_id, active_lod),
+        cache,
     ));
     #[cfg(feature = "dev")]
     if let (Some(perf), Some(start)) = (perf.as_mut(), spawn_start) {
@@ -182,6 +188,9 @@ pub(crate) fn spawn_chunk_mesh_inner(
         perf.record_mesh_assets(start.elapsed());
     }
 
+    let mut cache = TerrainChunkLodCache::default();
+    cache.set(ChunkLod::Full, mesh_handle.clone());
+
     let coord = chunk_id.coord();
     #[cfg(feature = "dev")]
     let spawn_start = perf.is_some().then(Instant::now);
@@ -193,7 +202,8 @@ pub(crate) fn spawn_chunk_mesh_inner(
             0.0,
             coord.z as f32 * chunk_size_units,
         ),
-        TerrainChunkMesh::new(chunk_id),
+        TerrainChunkMesh::new(chunk_id, ChunkLod::Full),
+        cache,
     ));
     #[cfg(feature = "dev")]
     if let (Some(perf), Some(start)) = (perf.as_mut(), spawn_start) {
