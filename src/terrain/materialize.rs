@@ -12,6 +12,8 @@ use bevy::tasks::{AsyncComputeTaskPool, IoTaskPool, Task};
 
 use crate::world::{ChunkCoord, ChunkData, ChunkId};
 
+use super::albedo::{AlbedoFallback, ChunkAlbedoGrid};
+use super::albedo_decode::load_albedo_sidecar_absolute;
 use super::asset::TerrainAssetError;
 use super::decode::decode_chunk;
 use super::lod::{TerrainLodSettings, desired_lod};
@@ -29,6 +31,7 @@ pub type ChunkDecodeTask = Task<Result<(ChunkId, ChunkData), TerrainAssetError>>
 #[derive(Debug)]
 pub struct MeshBuildOutput {
     pub data: ChunkData,
+    pub albedo: Option<ChunkAlbedoGrid>,
     pub mesh: Mesh,
     pub build_duration: Duration,
 }
@@ -42,6 +45,7 @@ pub struct MaterializedChunkPending {
     pub chunk_id: ChunkId,
     pub generation: u64,
     pub data: ChunkData,
+    pub albedo: Option<ChunkAlbedoGrid>,
     pub mesh: Mesh,
     pub lod: ChunkLod,
     pub async_mesh_build_ms: f32,
@@ -62,6 +66,7 @@ enum MaterializeStage {
     MeshBuild(ChunkMeshBuildTask),
     MeshBuildReady {
         data: ChunkData,
+        albedo: Option<ChunkAlbedoGrid>,
         mesh: Mesh,
         async_mesh_build_ms: f32,
     },
@@ -71,6 +76,7 @@ struct InFlightMaterialization {
     chunk_id: ChunkId,
     generation: u64,
     mesh_lod: Option<ChunkLod>,
+    albedo_path: Option<PathBuf>,
     stage: MaterializeStage,
 }
 
@@ -173,6 +179,7 @@ impl PendingChunkMaterializations {
         chunk_id: ChunkId,
         generation: u64,
         path: PathBuf,
+        albedo_path: Option<PathBuf>,
     ) -> bool {
         if self.has_pipeline_for(chunk_id) {
             warn!(
@@ -186,6 +193,7 @@ impl PendingChunkMaterializations {
             chunk_id,
             generation,
             mesh_lod: None,
+            albedo_path,
             stage: MaterializeStage::Io(spawn_chunk_io_task(path)),
         });
         true
@@ -266,7 +274,8 @@ impl PendingChunkMaterializations {
             .sort_by_key(|entry| (entry.chunk_id.coord().z, entry.chunk_id.coord().x));
 
         let mut next = Vec::with_capacity(self.in_flight.len());
-        let mut completed: Vec<(ChunkId, u64, ChunkData, Mesh, ChunkLod, f32)> = Vec::new();
+        let mut completed: Vec<(ChunkId, u64, ChunkData, Option<ChunkAlbedoGrid>, Mesh, ChunkLod, f32)> =
+            Vec::new();
         let budget = if max_decode_per_frame == 0 {
             usize::MAX
         } else {
@@ -280,6 +289,7 @@ impl PendingChunkMaterializations {
             match entry.stage {
                 MaterializeStage::MeshBuildReady {
                     data,
+                    albedo,
                     mesh,
                     async_mesh_build_ms,
                 } => {
@@ -304,6 +314,7 @@ impl PendingChunkMaterializations {
                             entry.chunk_id,
                             entry.generation,
                             data,
+                            albedo,
                             mesh,
                             lod,
                             async_mesh_build_ms,
@@ -311,6 +322,7 @@ impl PendingChunkMaterializations {
                     } else {
                         entry.stage = MaterializeStage::MeshBuildReady {
                             data,
+                            albedo,
                             mesh,
                             async_mesh_build_ms,
                         };
@@ -339,8 +351,10 @@ impl PendingChunkMaterializations {
                         entry.mesh_lod = Some(lod);
                         entry.stage = MaterializeStage::MeshBuild(spawn_chunk_mesh_build_task(
                             data,
+                            entry.albedo_path.clone(),
                             vertical_scale,
                             lod,
+                            AlbedoFallback::default(),
                         ));
                         next.push(entry);
                     } else {
@@ -467,7 +481,13 @@ impl PendingChunkMaterializations {
                                 );
                                 entry.mesh_lod = Some(lod);
                                 entry.stage = MaterializeStage::MeshBuild(
-                                    spawn_chunk_mesh_build_task(data, vertical_scale, lod),
+                                    spawn_chunk_mesh_build_task(
+                                        data,
+                                        entry.albedo_path.clone(),
+                                        vertical_scale,
+                                        lod,
+                                        AlbedoFallback::default(),
+                                    ),
                                 );
                                 next.push(entry);
                             } else {
@@ -522,6 +542,7 @@ impl PendingChunkMaterializations {
                             entry.chunk_id,
                             entry.generation,
                             output.data,
+                            output.albedo,
                             output.mesh,
                             lod,
                             async_mesh_build_ms,
@@ -529,6 +550,7 @@ impl PendingChunkMaterializations {
                     } else {
                         entry.stage = MaterializeStage::MeshBuildReady {
                             data: output.data,
+                            albedo: output.albedo,
                             mesh: output.mesh,
                             async_mesh_build_ms,
                         };
@@ -539,11 +561,12 @@ impl PendingChunkMaterializations {
         }
 
         self.in_flight = next;
-        for (chunk_id, generation, data, mesh, lod, async_mesh_build_ms) in completed {
+        for (chunk_id, generation, data, albedo, mesh, lod, async_mesh_build_ms) in completed {
             self.store_materialized(
                 chunk_id,
                 generation,
                 data,
+                albedo,
                 mesh,
                 lod,
                 async_mesh_build_ms,
@@ -561,8 +584,8 @@ impl PendingChunkMaterializations {
         vertical_scale: f32,
         lod: ChunkLod,
     ) {
-        let mesh = build_materialized_mesh(&data, vertical_scale, lod);
-        self.store_materialized(chunk_id, generation, data, mesh, lod, 0.0);
+        let mesh = build_materialized_mesh(&data, None, AlbedoFallback::default(), vertical_scale, lod);
+        self.store_materialized(chunk_id, generation, data, None, mesh, lod, 0.0);
     }
 
     #[cfg(test)]
@@ -622,6 +645,7 @@ impl PendingChunkMaterializations {
         chunk_id: ChunkId,
         generation: u64,
         data: ChunkData,
+        albedo: Option<ChunkAlbedoGrid>,
         mesh: Mesh,
         lod: ChunkLod,
         async_mesh_build_ms: f32,
@@ -631,6 +655,7 @@ impl PendingChunkMaterializations {
             chunk_id,
             generation,
             data,
+            albedo,
             mesh,
             lod,
             async_mesh_build_ms,
@@ -677,6 +702,7 @@ impl PendingChunkMaterializations {
                 entry.chunk_id,
                 entry.generation,
                 entry.data,
+                entry.albedo,
                 entry.mesh,
                 entry.lod,
                 entry.async_mesh_build_ms,
@@ -705,16 +731,6 @@ pub fn materialized_result_may_apply(
     materialized_result_may_store(residency, chunk_id, generation, keep_resident)
 }
 
-/// Alias for [`materialized_result_may_apply`].
-pub fn decoded_result_may_apply(
-    residency: &ChunkResidencyTracker,
-    chunk_id: ChunkId,
-    generation: u64,
-    keep_resident: &HashSet<ChunkCoord>,
-) -> bool {
-    materialized_result_may_apply(residency, chunk_id, generation, keep_resident)
-}
-
 /// Returns true when a pipeline result may be retained (generation + residency band).
 pub(crate) fn materialized_result_may_store(
     residency: &ChunkResidencyTracker,
@@ -724,17 +740,6 @@ pub(crate) fn materialized_result_may_store(
 ) -> bool {
     residency.loading_generation_matches(chunk_id, generation)
         && keep_resident.contains(&chunk_id.coord())
-}
-
-/// Alias for [`materialized_result_may_store`] (tests / legacy naming).
-#[allow(dead_code)]
-pub(crate) fn decoded_result_may_store(
-    residency: &ChunkResidencyTracker,
-    chunk_id: ChunkId,
-    generation: u64,
-    keep_resident: &HashSet<ChunkCoord>,
-) -> bool {
-    materialized_result_may_store(residency, chunk_id, generation, keep_resident)
 }
 
 /// Read chunk file text from disk (IO stage body).
@@ -765,26 +770,48 @@ pub fn spawn_chunk_decode_task(raw: String) -> ChunkDecodeTask {
 /// Mesh-build stage: pure mesh generation on [`AsyncComputeTaskPool`].
 pub fn spawn_chunk_mesh_build_task(
     data: ChunkData,
+    albedo_path: Option<PathBuf>,
     vertical_scale: f32,
     lod: ChunkLod,
+    fallback: AlbedoFallback,
 ) -> ChunkMeshBuildTask {
     AsyncComputeTaskPool::get().spawn(async move {
         let start = std::time::Instant::now();
-        let mesh = build_materialized_mesh(&data, vertical_scale, lod);
+        let spe = data.heightfield.samples_per_edge();
+        let albedo = match albedo_path.as_deref() {
+            Some(path) => match load_albedo_sidecar_absolute(path, spe) {
+                Ok(albedo) => albedo,
+                Err(err) => {
+                    bevy::log::error!("albedo sidecar load failed for {path:?}: {err}");
+                    None
+                }
+            },
+            None => None,
+        };
+        let mesh = build_materialized_mesh(&data, albedo.as_ref(), fallback, vertical_scale, lod);
         MeshBuildOutput {
             data,
+            albedo,
             mesh,
             build_duration: start.elapsed(),
         }
     })
 }
 
-fn build_materialized_mesh(data: &ChunkData, vertical_scale: f32, lod: ChunkLod) -> Mesh {
+fn build_materialized_mesh(
+    data: &ChunkData,
+    albedo: Option<&ChunkAlbedoGrid>,
+    fallback: AlbedoFallback,
+    vertical_scale: f32,
+    lod: ChunkLod,
+) -> Mesh {
     build_chunk_mesh_scaled(
         &data.heightfield,
         lod,
         vertical_scale,
         &ChunkMeshSeamWeld::default(),
+        albedo,
+        fallback,
     )
 }
 
@@ -803,10 +830,6 @@ mod tests {
             IoTaskPool::get_or_init(|| TaskPoolBuilder::new().num_threads(1).build());
             AsyncComputeTaskPool::get_or_init(|| TaskPoolBuilder::new().num_threads(1).build());
         });
-    }
-
-    fn sample_chunk_file(x: i32, z: i32) -> ChunkFile {
-        sample_chunk_file_spe(x, z, 3)
     }
 
     fn sample_chunk_file_spe(x: i32, z: i32, samples_per_edge: u32) -> ChunkFile {
@@ -891,8 +914,8 @@ mod tests {
         let chunk_id = ChunkId::new(ChunkCoord::new(0, 0));
         let path = temp_chunk_path(0, 0);
 
-        assert!(pending.try_start_io(chunk_id, 1, path.clone()));
-        assert!(!pending.try_start_io(chunk_id, 2, path.clone()));
+        assert!(pending.try_start_io(chunk_id, 1, path.clone(), None));
+        assert!(!pending.try_start_io(chunk_id, 2, path.clone(), None));
         assert_eq!(pending.in_flight_count(), 1);
 
         std::fs::remove_file(&path).ok();
@@ -907,7 +930,7 @@ mod tests {
         let mut keep = HashSet::new();
         keep.insert(ChunkCoord::new(2, 2));
 
-        assert!(decoded_result_may_store(
+        assert!(materialized_result_may_store(
             &residency,
             chunk_id,
             generation,
@@ -916,7 +939,7 @@ mod tests {
 
         residency.cancel(chunk_id);
 
-        assert!(!decoded_result_may_store(
+        assert!(!materialized_result_may_store(
             &residency,
             chunk_id,
             generation,
@@ -931,7 +954,7 @@ mod tests {
         let generation = residency.begin_loading(chunk_id).unwrap();
         let keep = HashSet::new();
 
-        assert!(!decoded_result_may_store(
+        assert!(!materialized_result_may_store(
             &residency,
             chunk_id,
             generation,
@@ -950,8 +973,8 @@ mod tests {
         let mut keep = HashSet::new();
         keep.insert(ChunkCoord::new(1, 1));
 
-        assert!(!decoded_result_may_store(&residency, chunk_id, 0, &keep));
-        assert!(decoded_result_may_store(&residency, chunk_id, second, &keep));
+        assert!(!materialized_result_may_store(&residency, chunk_id, 0, &keep));
+        assert!(materialized_result_may_store(&residency, chunk_id, second, &keep));
     }
 
     #[test]
@@ -1025,7 +1048,7 @@ mod tests {
             std::process::id()
         ));
         std::fs::write(&path, "not valid chunk ron").unwrap();
-        assert!(pending.try_start_io(chunk_id, generation, path.clone()));
+        assert!(pending.try_start_io(chunk_id, generation, path.clone(), None));
 
         let mut keep = HashSet::new();
         keep.insert(chunk_id.coord());
@@ -1076,7 +1099,13 @@ mod tests {
     fn mesh_build_task_produces_chunk_data_and_mesh() {
         ensure_task_pools();
         let data = sample_chunk_data(0);
-        let mut task = spawn_chunk_mesh_build_task(data.clone(), 1.0, ChunkLod::Full);
+        let mut task = spawn_chunk_mesh_build_task(
+            data.clone(),
+            None,
+            1.0,
+            ChunkLod::Full,
+            AlbedoFallback::default(),
+        );
         let output = bevy::tasks::block_on(&mut task);
         assert_eq!(output.data.heightfield.samples_per_edge(), 3);
         assert!(output.mesh.contains_attribute(Mesh::ATTRIBUTE_POSITION));
@@ -1091,7 +1120,7 @@ mod tests {
         let chunk_id = ChunkId::new(ChunkCoord::new(1, 2));
         let generation = residency.begin_loading(chunk_id).unwrap();
         let path = temp_chunk_path(1, 2);
-        assert!(pending.try_start_io(chunk_id, generation, path.clone()));
+        assert!(pending.try_start_io(chunk_id, generation, path.clone(), None));
 
         let mut keep = HashSet::new();
         keep.insert(chunk_id.coord());
@@ -1116,7 +1145,7 @@ mod tests {
         let chunk_id = ChunkId::new(ChunkCoord::new(1, 0));
         let generation = residency.begin_loading(chunk_id).unwrap();
         let path = temp_chunk_path(1, 0);
-        assert!(pending.try_start_io(chunk_id, generation, path.clone()));
+        assert!(pending.try_start_io(chunk_id, generation, path.clone(), None));
 
         let mut keep = HashSet::new();
         keep.insert(chunk_id.coord());
@@ -1136,7 +1165,7 @@ mod tests {
         let chunk_id = ChunkId::new(ChunkCoord::new(3, 4));
         let stale_generation = residency.begin_loading(chunk_id).unwrap();
         let path = temp_chunk_path(3, 4);
-        assert!(pending.try_start_io(chunk_id, stale_generation, path.clone()));
+        assert!(pending.try_start_io(chunk_id, stale_generation, path.clone(), None));
 
         let mut keep = HashSet::new();
         keep.insert(chunk_id.coord());

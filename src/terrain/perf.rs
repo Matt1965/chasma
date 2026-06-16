@@ -40,7 +40,7 @@ impl Default for TerrainStreamingPerfSettings {
     fn default() -> Self {
         Self {
             enabled: false,
-            log_to_console: true,
+            log_to_console: false,
             log_to_file: false,
             log_file_path: DEFAULT_PERF_LOG_PATH.to_string(),
             frame_time_threshold_ms: 4.0,

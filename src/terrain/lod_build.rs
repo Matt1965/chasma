@@ -11,6 +11,7 @@ use bevy::tasks::{AsyncComputeTaskPool, Task};
 use crate::view::PrimaryViewFocus;
 use crate::world::{ChunkCoord, ChunkData, ChunkId, WorldConfig, WorldData};
 
+use super::albedo::{AlbedoFallback, ChunkAlbedoGrid, TerrainChunkAlbedo};
 use super::components::TerrainChunkMesh;
 use super::lod::{
     LodPriority, TerrainLodSettings, desired_lod, predicted_lod_targets,
@@ -76,10 +77,21 @@ impl PendingChunkLodBuilds {
         chunk_id: ChunkId,
         lod: ChunkLod,
         data: ChunkData,
+        albedo: Option<ChunkAlbedoGrid>,
         vertical_scale: f32,
         seam_weld: ChunkMeshSeamWeld,
+        fallback: AlbedoFallback,
     ) -> bool {
-        self.try_enqueue_inner(chunk_id, lod, data, vertical_scale, seam_weld, false)
+        self.try_enqueue_inner(
+            chunk_id,
+            lod,
+            data,
+            albedo,
+            vertical_scale,
+            seam_weld,
+            fallback,
+            false,
+        )
     }
 
     /// Enqueue a predictive prefetch LOD build (lower scheduling priority than immediate).
@@ -88,10 +100,21 @@ impl PendingChunkLodBuilds {
         chunk_id: ChunkId,
         lod: ChunkLod,
         data: ChunkData,
+        albedo: Option<ChunkAlbedoGrid>,
         vertical_scale: f32,
         seam_weld: ChunkMeshSeamWeld,
+        fallback: AlbedoFallback,
     ) -> bool {
-        self.try_enqueue_inner(chunk_id, lod, data, vertical_scale, seam_weld, true)
+        self.try_enqueue_inner(
+            chunk_id,
+            lod,
+            data,
+            albedo,
+            vertical_scale,
+            seam_weld,
+            fallback,
+            true,
+        )
     }
 
     fn try_enqueue_inner(
@@ -99,8 +122,10 @@ impl PendingChunkLodBuilds {
         chunk_id: ChunkId,
         lod: ChunkLod,
         data: ChunkData,
+        albedo: Option<ChunkAlbedoGrid>,
         vertical_scale: f32,
         seam_weld: ChunkMeshSeamWeld,
+        fallback: AlbedoFallback,
         from_prefetch: bool,
     ) -> bool {
         if self.has_in_flight(chunk_id, lod) {
@@ -110,7 +135,15 @@ impl PendingChunkLodBuilds {
             chunk_id,
             lod,
             from_prefetch,
-            task: spawn_chunk_lod_build_task(chunk_id, data, vertical_scale, lod, seam_weld),
+            task: spawn_chunk_lod_build_task(
+                chunk_id,
+                data,
+                albedo,
+                vertical_scale,
+                lod,
+                seam_weld,
+                fallback,
+            ),
         });
         true
     }
@@ -124,7 +157,15 @@ impl PendingChunkLodBuilds {
         vertical_scale: f32,
         seam_weld: ChunkMeshSeamWeld,
     ) -> bool {
-        self.try_enqueue_immediate(chunk_id, lod, data, vertical_scale, seam_weld)
+        self.try_enqueue_immediate(
+            chunk_id,
+            lod,
+            data,
+            None,
+            vertical_scale,
+            seam_weld,
+            AlbedoFallback::default(),
+        )
     }
 
     /// Drop all in-flight builds for `chunk_id` (chunk unload).
@@ -150,9 +191,11 @@ impl PendingChunkLodBuilds {
 pub fn spawn_chunk_lod_build_task(
     chunk_id: ChunkId,
     data: ChunkData,
+    albedo: Option<ChunkAlbedoGrid>,
     vertical_scale: f32,
     lod: ChunkLod,
     seam_weld: ChunkMeshSeamWeld,
+    fallback: AlbedoFallback,
 ) -> ChunkLodBuildTask {
     AsyncComputeTaskPool::get().spawn(async move {
         let start = std::time::Instant::now();
@@ -161,6 +204,8 @@ pub fn spawn_chunk_lod_build_task(
             lod,
             vertical_scale,
             &seam_weld,
+            albedo.as_ref(),
+            fallback,
         );
         LodBuildOutput {
             chunk_id,
@@ -208,6 +253,7 @@ pub fn request_missing_lod_builds(
     streaming: Res<TerrainStreamingSettings>,
     lod_settings: Res<TerrainLodSettings>,
     render_assets: Res<TerrainRenderAssets>,
+    chunk_albedo: Res<TerrainChunkAlbedo>,
     world: Res<WorldData>,
     mut pending_builds: ResMut<PendingChunkLodBuilds>,
     query: Query<(&TerrainChunkMesh, &TerrainChunkLodCache)>,
@@ -221,6 +267,7 @@ pub fn request_missing_lod_builds(
         streaming.load_radius_chunks,
         &lod_settings,
         render_assets.vertical_scale,
+        &chunk_albedo,
         &world,
         &mut pending_builds,
         query,
@@ -235,16 +282,6 @@ pub fn request_missing_lod_builds(
         frame.lod_prefetch_hits = stats.prefetch_hits;
         frame.lod_prefetch_misses = stats.prefetch_misses;
         frame.lod_builds_started_from_prefetch = stats.builds_started_from_prefetch;
-        if stats.prefetch_requests > 0 || stats.prefetch_hits > 0 {
-            bevy::log::info!(
-                "LOD warmup: high={} mid={} low={} (hits={} misses={})",
-                stats.warmup_high,
-                stats.warmup_mid,
-                stats.warmup_low,
-                stats.prefetch_hits,
-                stats.prefetch_misses,
-            );
-        }
     }
 }
 
@@ -254,6 +291,7 @@ pub(crate) fn request_missing_lod_builds_inner(
     load_radius_chunks: i32,
     lod_settings: &TerrainLodSettings,
     vertical_scale: f32,
+    chunk_albedo: &TerrainChunkAlbedo,
     world: &WorldData,
     pending_builds: &mut PendingChunkLodBuilds,
     query: Query<(&TerrainChunkMesh, &TerrainChunkLodCache)>,
@@ -283,12 +321,15 @@ pub(crate) fn request_missing_lod_builds_inner(
             continue;
         };
         let seam_weld = seam_weld_heights(world, marker.chunk);
+        let albedo = chunk_albedo.get(marker.chunk).cloned();
         if pending_builds.try_enqueue_immediate(
             marker.chunk,
             desired,
             data,
+            albedo,
             vertical_scale,
             seam_weld,
+            AlbedoFallback::default(),
         ) {
             immediate_enqueued += 1;
         }
@@ -336,12 +377,15 @@ pub(crate) fn request_missing_lod_builds_inner(
             continue;
         };
         let seam_weld = seam_weld_heights(world, chunk_id);
+        let albedo = chunk_albedo.get(chunk_id).cloned();
         if pending_builds.try_enqueue_prefetch(
             chunk_id,
             lod,
             data,
+            albedo,
             vertical_scale,
             seam_weld,
+            AlbedoFallback::default(),
         ) {
             prefetch_enqueued += 1;
             stats.prefetch_requests += 1;
@@ -453,6 +497,7 @@ mod tests {
         let mut world = World::new();
         world.init_resource::<WorldConfig>();
         world.init_resource::<WorldData>();
+        world.init_resource::<TerrainChunkAlbedo>();
         world.init_resource::<PrimaryViewFocus>();
         world.init_resource::<TerrainLodSettings>();
         world.init_resource::<PendingChunkLodBuilds>();
@@ -553,11 +598,12 @@ mod tests {
             Res<TerrainStreamingSettings>,
             Res<TerrainLodSettings>,
             Res<TerrainRenderAssets>,
+            Res<TerrainChunkAlbedo>,
             Res<WorldData>,
             ResMut<PendingChunkLodBuilds>,
             Query<(&TerrainChunkMesh, &TerrainChunkLodCache)>,
         )>::new(world);
-        let (focus, config, catalog, streaming, lod_settings, render_assets, world_data, mut pending, query) =
+        let (focus, config, catalog, streaming, lod_settings, render_assets, chunk_albedo, world_data, mut pending, query) =
             state.get_mut(world);
         let stats = request_missing_lod_builds_inner(
             crate::terrain::streaming::stable_focus_chunk(focus.position, config.chunk_layout()),
@@ -565,6 +611,7 @@ mod tests {
             streaming.load_radius_chunks,
             &lod_settings,
             render_assets.vertical_scale,
+            &chunk_albedo,
             &world_data,
             &mut pending,
             query,
@@ -589,11 +636,7 @@ mod tests {
         let config = WorldConfig::default();
         let chunks: Vec<ManifestChunk> = coords
             .iter()
-            .map(|(x, z)| ManifestChunk {
-                x: *x,
-                z: *z,
-                path: format!("{x}_{z}.ron"),
-            })
+            .map(|(x, z)| ManifestChunk::at(*x, *z, format!("{x}_{z}.ron")))
             .collect();
         let manifest = Manifest {
             version: MANIFEST_FORMAT_VERSION,
@@ -841,6 +884,7 @@ mod tests {
         let mut world = World::new();
         world.init_resource::<WorldConfig>();
         world.init_resource::<WorldData>();
+        world.init_resource::<TerrainChunkAlbedo>();
         world.init_resource::<PrimaryViewFocus>();
         world.init_resource::<Assets<Mesh>>();
         world.init_resource::<Assets<StandardMaterial>>();

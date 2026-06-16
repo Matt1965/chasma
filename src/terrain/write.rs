@@ -8,14 +8,16 @@
 //! It is the inverse of [`super::decode`]: encoding is offline, decoding is
 //! runtime, and both share the [`super::asset`] format types.
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-use crate::world::{WorldConfig, WorldData};
+use crate::world::{ChunkId, WorldConfig, WorldData};
 
+use super::albedo::ChunkAlbedoGrid;
 use super::asset::{
-    CHUNK_FORMAT_VERSION, ChunkFile, MANIFEST_FORMAT_VERSION, Manifest, ManifestChunk,
-    ManifestConfig, TerrainAssetError,
+    ALBEDO_FORMAT_VERSION, CHUNK_FORMAT_VERSION, AlbedoFile, ChunkFile, MANIFEST_FORMAT_VERSION,
+    Manifest, ManifestChunk, ManifestConfig, TerrainAssetError,
 };
 
 fn io_err(path: &Path, err: std::io::Error) -> TerrainAssetError {
@@ -34,6 +36,16 @@ pub fn write_world(
     dir: &Path,
     config: &WorldConfig,
     world: &WorldData,
+) -> Result<(), TerrainAssetError> {
+    write_world_with_albedo(dir, config, world, None)
+}
+
+/// Like [`write_world`], optionally writing albedo sidecars and manifest paths.
+pub fn write_world_with_albedo(
+    dir: &Path,
+    config: &WorldConfig,
+    world: &WorldData,
+    albedo: Option<&HashMap<ChunkId, ChunkAlbedoGrid>>,
 ) -> Result<(), TerrainAssetError> {
     let chunks_dir = dir.join("chunks");
     fs::create_dir_all(&chunks_dir).map_err(|err| io_err(&chunks_dir, err))?;
@@ -61,11 +73,32 @@ pub fn write_world(
         let text = ron::to_string(&file).map_err(|err| TerrainAssetError::Ron(err.to_string()))?;
         fs::write(&path, text).map_err(|err| io_err(&path, err))?;
 
-        entries.push(ManifestChunk {
-            x: coord.x,
-            z: coord.z,
-            path: rel,
-        });
+        let mut entry = ManifestChunk::at(coord.x, coord.z, rel);
+        if let Some(albedo_map) = albedo {
+            if let Some(grid) = albedo_map.get(&id) {
+                if !grid.matches_height_samples(hf.samples_per_edge()) {
+                    return Err(TerrainAssetError::AlbedoDimensionMismatch {
+                        path: format!("chunks/{}_{}.albedo.ron", coord.x, coord.z),
+                        width: grid.samples_per_edge,
+                        height: grid.samples_per_edge,
+                        expected_samples_per_edge: hf.samples_per_edge() as usize,
+                    });
+                }
+                let albedo_rel = format!("chunks/{}_{}.albedo.ron", coord.x, coord.z);
+                let albedo_path = dir.join(&albedo_rel);
+                let albedo_file = AlbedoFile {
+                    version: ALBEDO_FORMAT_VERSION,
+                    samples_per_edge: grid.samples_per_edge as u32,
+                    samples: grid.data.clone(),
+                };
+                let albedo_text = ron::to_string(&albedo_file)
+                    .map_err(|err| TerrainAssetError::Ron(err.to_string()))?;
+                fs::write(&albedo_path, albedo_text).map_err(|err| io_err(&albedo_path, err))?;
+                entry = entry.with_albedo(albedo_rel);
+            }
+        }
+
+        entries.push(entry);
     }
 
     let manifest = Manifest {
@@ -88,8 +121,10 @@ pub fn write_world(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::terrain::load::load_world_from_manifest;
+    use crate::terrain::load::{load_chunk_payload_from_paths, load_world_from_manifest};
+    use crate::terrain::decode::decode_manifest;
     use crate::world::{ChunkCoord, ChunkData, ChunkId, Heightfield, WorldData};
+    use std::collections::HashMap;
     use std::path::PathBuf;
 
     fn temp_dir() -> PathBuf {
@@ -165,6 +200,39 @@ mod tests {
         for (id, data) in source.iter() {
             assert_eq!(loaded.get(id), Some(data));
         }
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn write_world_with_albedo_emits_manifest_paths() {
+        let dir = temp_dir();
+        let config = WorldConfig::default();
+        let mut source = WorldData::new(config.chunk_layout());
+        source.insert(ChunkId::new(ChunkCoord::new(0, 0)), sample_chunk(0.0));
+
+        let mut albedo = HashMap::new();
+        albedo.insert(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            ChunkAlbedoGrid::from_samples(3, vec![[0.5, 0.5, 0.5]; 9]).unwrap(),
+        );
+
+        write_world_with_albedo(&dir, &config, &source, Some(&albedo)).unwrap();
+
+        let manifest = decode_manifest(&fs::read_to_string(dir.join("manifest.ron")).unwrap()).unwrap();
+        assert_eq!(
+            manifest.chunks[0].albedo_path.as_deref(),
+            Some("chunks/0_0.albedo.ron")
+        );
+
+        let (_, payload) = load_chunk_payload_from_paths(
+            &dir.join(&manifest.chunks[0].path),
+            &manifest.chunks[0],
+            &dir,
+            &config,
+        )
+        .unwrap();
+        assert_eq!(payload.albedo.unwrap().data[0], [0.5, 0.5, 0.5]);
 
         fs::remove_dir_all(&dir).ok();
     }

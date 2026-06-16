@@ -27,10 +27,10 @@ use super::perf::TerrainStreamingPerfSettings;
 pub const PREVIEW_PERF_LOG_PATH: &str = "logs/terrain_streaming_perf.log";
 
 /// Fallback when chunk metadata cannot be sampled at preview startup.
-const DEV_PREVIEW_VERTICAL_SCALE_FALLBACK: f32 = 5.0;
+const DEV_PREVIEW_VERTICAL_SCALE_FALLBACK: f32 = 3.0;
 
 /// Dev preview relief target: visible relief without over-exaggerating stitch artifacts.
-const PREVIEW_TARGET_HEIGHT_SPAN_UNITS: f32 = 5.0;
+const PREVIEW_TARGET_HEIGHT_SPAN_UNITS: f32 = 3.0;
 
 /// Chebyshev radius (chunks) within which the preview **requests** new loads.
 ///
@@ -90,8 +90,9 @@ fn setup_preview(
     world.set_authored_extent(catalog.authored_extent());
 
     let material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.35, 0.55, 0.30),
-        perceptual_roughness: 0.95,
+        // Vertex colors multiply with base_color; white passes albedo through unchanged.
+        base_color: Color::WHITE,
+        unlit: true,
         ..default()
     });
 
@@ -121,7 +122,7 @@ fn setup_preview(
     });
     commands.insert_resource(TerrainStreamingPerfSettings {
         enabled: true,
-        log_to_console: true,
+        log_to_console: false,
         log_to_file: true,
         log_file_path: PREVIEW_PERF_LOG_PATH.to_string(),
         ..Default::default()

@@ -56,7 +56,7 @@ impl Default for CameraSettings {
             pitch_min: 0.15,
             pitch_max: 1.35,
             distance_min: 40.0,
-            distance_max: 2_000.0,
+            distance_max: 5_000.0,
 
             pan_speed: 256.0,
             fast_pan_multiplier: 2.5,

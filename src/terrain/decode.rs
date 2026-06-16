@@ -3,10 +3,10 @@
 //! These functions consume already-read text and never touch the filesystem, so
 //! the Phase 2A synchronous loader, Phase 2B on-demand loading, and a future
 //! `AssetLoader` can share the exact same decode path.
-//! the exact same decode path.
 
 use crate::world::{ChunkCoord, ChunkData, ChunkId, Heightfield, TerrainMetadata};
 
+use super::albedo::TerrainChunkPayload;
 use super::asset::{
     CHUNK_FORMAT_VERSION, ChunkFile, MANIFEST_FORMAT_VERSION, Manifest, TerrainAssetError,
 };
@@ -58,6 +58,13 @@ pub fn decode_chunk(text: &str) -> Result<(ChunkId, ChunkData), TerrainAssetErro
 
     let id = ChunkId::new(ChunkCoord::new(file.x, file.z));
     Ok((id, ChunkData::new(heightfield, Vec::new())))
+}
+
+/// Decode a height chunk file into a pipeline [`TerrainChunkPayload`] without
+/// loading optional albedo sidecars.
+pub fn decode_chunk_payload(text: &str) -> Result<(ChunkId, TerrainChunkPayload), TerrainAssetError> {
+    let (id, chunk_data) = decode_chunk(text)?;
+    Ok((id, TerrainChunkPayload::new(chunk_data, None)))
 }
 
 #[cfg(test)]
@@ -128,13 +135,38 @@ mod tests {
                 units_per_meter: 1.0,
                 meters_per_sample: 1.0,
             },
-            chunks: vec![ManifestChunk {
-                x: 1,
-                z: 2,
-                path: "chunks/1_2.ron".to_string(),
-            }],
+            chunks: vec![ManifestChunk::at(1, 2, "chunks/1_2.ron")],
         };
         let text = ron::to_string(&manifest).unwrap();
         assert_eq!(decode_manifest(&text).unwrap(), manifest);
+    }
+
+    #[test]
+    fn decodes_manifest_without_albedo_path_field() {
+        let text = r#"
+(
+    version: 1,
+    config: (
+        chunk_size_meters: 256.0,
+        units_per_meter: 1.0,
+        meters_per_sample: 1.0,
+    ),
+    chunks: [
+        (x: 0, z: 0, path: "chunks/0_0.ron"),
+    ],
+)
+"#;
+        let manifest = decode_manifest(text).unwrap();
+        assert_eq!(manifest.chunks.len(), 1);
+        assert_eq!(manifest.chunks[0].albedo_path, None);
+    }
+
+    #[test]
+    fn decode_chunk_payload_carries_no_albedo_from_height_ron() {
+        let file = sample_chunk_file();
+        let text = ron::to_string(&file).unwrap();
+        let (_, payload) = decode_chunk_payload(&text).unwrap();
+        assert!(payload.albedo.is_none());
+        assert_eq!(payload.chunk_data.heightfield.samples_per_edge(), 3);
     }
 }

@@ -140,3 +140,32 @@ ADR-003/ADR-009.
 The chunk payload is versioned so the reserved mask slot and future fields are
 additive. Any change to the heightfield encoding must bump the version and update
 the offline writer and runtime reader together.
+
+---
+
+# Addendum: Optional Albedo Sidecar Reference (Phase 2D)
+
+Status: Accepted
+
+## Decision
+
+- [`ManifestChunk`] gains optional **`albedo_path: Option<String>`** (relative to
+  the manifest directory). Omitted or `None` means no albedo sidecar; existing
+  manifests without the field remain valid (`#[serde(default)]`).
+- The height **`ChunkFile`** payload is **unchanged** — albedo is never embedded
+  in the height RON.
+- Supported sidecar formats (v1):
+  - **`*.albedo.exr`** — preferred; square RGB float grid, row-major, matching
+    height `samples_per_edge`.
+  - **`*.albedo.ron`** — compact versioned DTO (`AlbedoFile`) with
+    `samples_per_edge` and flat RGB triples.
+- Sidecar dimensions must **exactly match** the decoded height chunk grid; runtime
+  decode must not silently resample.
+- If `albedo_path` is set but the file is missing at load time: log a warning and
+  continue without albedo (height load succeeds).
+
+## Compatibility
+
+- Region-container evolution unchanged: sidecar path is manifest-level metadata,
+  parallel to the height chunk path.
+- Height-only worlds load unchanged.

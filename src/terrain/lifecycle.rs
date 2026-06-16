@@ -11,6 +11,7 @@ use bevy::prelude::*;
 use crate::view::PrimaryViewFocus;
 use crate::world::{ChunkCoord, ChunkId, WorldConfig, WorldData};
 
+use super::albedo::TerrainChunkAlbedo;
 use super::components::TerrainChunkMesh;
 use super::catalog::TerrainWorldCatalog;
 use super::grace::JustAppliedGrace;
@@ -95,7 +96,7 @@ pub fn stream_terrain_chunks(
             continue;
         };
 
-        if !pending.try_start_io(chunk_id, generation, path) {
+        if !pending.try_start_io(chunk_id, generation, path, catalog.albedo_path(coord)) {
             pending.discard_chunk_state(
                 &mut residency,
                 chunk_id,
@@ -160,6 +161,7 @@ pub fn apply_chunk_materializations(
     mut residency: ResMut<ChunkResidencyTracker>,
     mut pending: ResMut<PendingChunkMaterializations>,
     mut grace: ResMut<JustAppliedGrace>,
+    mut chunk_albedo: ResMut<TerrainChunkAlbedo>,
     mut world: ResMut<WorldData>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -185,6 +187,7 @@ pub fn apply_chunk_materializations(
         &catalog,
         &config,
         &mut residency,
+        &mut chunk_albedo,
         &mut world,
         &keep_resident,
         &mesh_entities,
@@ -227,6 +230,7 @@ pub fn unload_terrain_chunks(
     mut pending: ResMut<PendingChunkMaterializations>,
     mut pending_lod_builds: ResMut<PendingChunkLodBuilds>,
     mut grace: ResMut<JustAppliedGrace>,
+    mut chunk_albedo: ResMut<TerrainChunkAlbedo>,
     mut world: ResMut<WorldData>,
     mut commands: Commands,
     mesh_entities: Query<(Entity, &TerrainChunkMesh)>,
@@ -247,6 +251,7 @@ pub fn unload_terrain_chunks(
         pending.discard_chunk_state(&mut residency, *chunk_id, ChunkDiscardKind::Revoked);
         pending_lod_builds.cancel_for_chunk(*chunk_id);
         despawn_chunk_meshes(&mut commands, *chunk_id, &mesh_entities);
+        chunk_albedo.remove(*chunk_id);
         world.remove(*chunk_id);
     }
 
@@ -265,6 +270,7 @@ pub(crate) fn apply_materialized_batch(
     catalog: &TerrainWorldCatalog,
     config: &WorldConfig,
     residency: &mut ChunkResidencyTracker,
+    chunk_albedo: &mut TerrainChunkAlbedo,
     world: &mut WorldData,
     keep_resident: &HashSet<ChunkCoord>,
     mesh_entities: &Query<(Entity, &TerrainChunkMesh)>,
@@ -353,6 +359,9 @@ pub(crate) fn apply_materialized_batch(
         }
 
         world.insert(chunk_id, entry.data);
+        if let Some(grid) = entry.albedo {
+            chunk_albedo.insert(chunk_id, grid);
+        }
         spawn_prebuilt_chunk_mesh_inner(
             commands,
             chunk_id,
@@ -410,6 +419,7 @@ mod apply_tests {
             chunk_id,
             generation,
             data,
+            albedo: None,
             mesh,
             lod,
             async_mesh_build_ms: 0.0,
@@ -426,6 +436,7 @@ mod apply_tests {
             chunk_id,
             generation,
             data,
+            albedo: None,
             mesh: dummy_apply_mesh(),
             lod,
             async_mesh_build_ms: 0.0,
@@ -448,6 +459,7 @@ mod apply_tests {
         world.init_resource::<ChunkResidencyTracker>();
         world.init_resource::<Assets<Mesh>>();
         world.init_resource::<Assets<StandardMaterial>>();
+        world.init_resource::<TerrainChunkAlbedo>();
         world.register_component::<TerrainChunkMesh>();
         world.register_component::<TerrainChunkLodCache>();
         world
@@ -468,11 +480,7 @@ mod apply_tests {
         let cfg = WorldConfig::default();
         let entries: Vec<_> = coords
             .iter()
-            .map(|&(x, z)| ManifestChunk {
-                x,
-                z,
-                path: format!("chunks/{x}_{z}.ron"),
-            })
+            .map(|&(x, z)| ManifestChunk::at(x, z, format!("chunks/{x}_{z}.ron")))
             .collect();
         let manifest = crate::terrain::asset::Manifest {
             version: MANIFEST_FORMAT_VERSION,
@@ -505,12 +513,13 @@ mod apply_tests {
             Commands,
             ResMut<WorldData>,
             ResMut<ChunkResidencyTracker>,
+            ResMut<TerrainChunkAlbedo>,
             ResMut<Assets<Mesh>>,
             Query<(Entity, &TerrainChunkMesh)>,
         )>::new(world);
 
         {
-            let (mut commands, mut world_data, mut residency, mut meshes, mesh_entities) =
+            let (mut commands, mut world_data, mut residency, mut chunk_albedo, mut meshes, mesh_entities) =
                 system_state.get_mut(world);
             let (_, _) = apply_materialized_batch(
                 materialized,
@@ -518,6 +527,7 @@ mod apply_tests {
                 catalog,
                 &config,
                 &mut residency,
+                &mut chunk_albedo,
                 &mut world_data,
                 keep_resident,
                 &mesh_entities,
@@ -666,6 +676,7 @@ mod apply_tests {
                 chunk_id,
                 generation,
                 data: data.clone(),
+                albedo: None,
                 mesh: build_chunk_mesh(&data.heightfield, ChunkLod::Full),
                 lod: ChunkLod::Full,
                 async_mesh_build_ms: 0.0,
@@ -735,8 +746,8 @@ mod apply_tests {
         assert_eq!(decode_chunk_text(&std::fs::read_to_string(&path).unwrap()).unwrap().0, id);
 
         let mut pending = PendingChunkMaterializations::default();
-        assert!(pending.try_start_io(id, 1, path.clone()));
-        assert!(!pending.try_start_io(id, 2, path.clone()));
+        assert!(pending.try_start_io(id, 1, path.clone(), None));
+        assert!(!pending.try_start_io(id, 2, path.clone(), None));
 
         std::fs::remove_file(path).ok();
     }
@@ -768,12 +779,13 @@ mod apply_tests {
             Commands,
             ResMut<WorldData>,
             ResMut<ChunkResidencyTracker>,
+            ResMut<TerrainChunkAlbedo>,
             ResMut<Assets<Mesh>>,
             Query<(Entity, &TerrainChunkMesh)>,
         )>::new(&mut world);
 
         let (applied, deferred) = {
-            let (mut commands, mut world_data, mut residency, mut meshes, mesh_entities) =
+            let (mut commands, mut world_data, mut residency, mut chunk_albedo, mut meshes, mesh_entities) =
                 system_state.get_mut(&mut world);
             apply_materialized_batch(
                 materialized,
@@ -781,6 +793,7 @@ mod apply_tests {
                 &catalog,
                 &config,
                 &mut residency,
+                &mut chunk_albedo,
                 &mut world_data,
                 &keep,
                 &mesh_entities,
@@ -845,7 +858,7 @@ mod apply_tests {
                 };
                 std::fs::write(&path, ron::to_string(&file).unwrap()).unwrap();
                 paths.push(path.clone());
-                assert!(pending.try_start_io(chunk_id, generation, path));
+                assert!(pending.try_start_io(chunk_id, generation, path, None));
             }
         }
 
@@ -877,12 +890,13 @@ mod apply_tests {
             Commands,
             ResMut<WorldData>,
             ResMut<ChunkResidencyTracker>,
+            ResMut<TerrainChunkAlbedo>,
             ResMut<Assets<Mesh>>,
             Query<(Entity, &TerrainChunkMesh)>,
         )>::new(&mut world);
 
         let (applied, deferred) = {
-            let (mut commands, mut world_data, mut residency, mut meshes, mesh_entities) =
+            let (mut commands, mut world_data, mut residency, mut chunk_albedo, mut meshes, mesh_entities) =
                 system_state.get_mut(&mut world);
             apply_materialized_batch(
                 materialized,
@@ -890,6 +904,7 @@ mod apply_tests {
                 &catalog,
                 &config,
                 &mut residency,
+                &mut chunk_albedo,
                 &mut world_data,
                 &keep,
                 &mesh_entities,
@@ -1051,6 +1066,7 @@ mod apply_tests {
                 chunk_id,
                 generation,
                 data: bad_data,
+                albedo: None,
                 mesh: build_chunk_mesh(
                     &Heightfield::from_samples(3, 64.0, vec![0.0; 9]).unwrap(),
                     ChunkLod::Full,
@@ -1094,16 +1110,8 @@ mod apply_tests {
                     meters_per_sample: cfg.meters_per_sample,
                 },
                 chunks: vec![
-                    ManifestChunk {
-                        x: 0,
-                        z: 0,
-                        path: "chunks/0_0.ron".to_string(),
-                    },
-                    ManifestChunk {
-                        x: 3,
-                        z: 0,
-                        path: "chunks/3_0.ron".to_string(),
-                    },
+                    ManifestChunk::at(0, 0, "chunks/0_0.ron"),
+                    ManifestChunk::at(3, 0, "chunks/3_0.ron"),
                 ],
             };
             std::fs::write(

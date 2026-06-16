@@ -288,3 +288,29 @@ only if preview requires them.
 The builder's signature takes a LOD level from the start so Phase 2C is additive.
 Cross-references: ADR-010 (runtime owns LOD cache), ADR-012 (async
 materialization, streaming unchanged), ADR-014 (`PrimaryViewFocus` for selection).
+
+---
+
+# Addendum: Vertex Color from Albedo Sidecar (Phase 2D)
+
+Status: Accepted (mesh bake implemented; material tuning deferred)
+
+## Decision
+
+- The pure mesh builder accepts an optional [`ChunkAlbedoGrid`] and emits
+  **`Mesh::ATTRIBUTE_COLOR`** when albedo is present.
+- When albedo is absent, mesh generation uses a documented fallback policy
+  ([`AlbedoFallback::HeightGradient`] for debug/preview,
+  [`AlbedoFallback::Neutral`] optional for production).
+- LOD subsampling samples albedo at the same grid indices as height LOD
+  stride. Colors are baked during **async mesh generation** only; no main-thread
+  color work and no per-frame updates.
+- Albedo flows through the materialization pipeline as [`MaterializedChunkPending`]
+  / [`TerrainChunkAlbedo`] resident storage and is **not** stored in
+  [`WorldData`] / [`ChunkData`] (geography authority unchanged, ADR-010).
+
+## Deferred
+
+- Custom shaders, splatting, or texture arrays (ADR-004).
+- Public `surface_color_at` query (ADR-005).
+- StandardMaterial vertex-color display tuning (uses baked attributes as-is).

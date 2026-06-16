@@ -13,20 +13,24 @@ use bevy::prelude::*;
 
 use crate::world::Heightfield;
 
-#[cfg(test)]
-use std::sync::atomic::{AtomicUsize, Ordering};
+use super::albedo::{AlbedoFallback, ChunkAlbedoGrid, fallback_vertex_color};
 
 #[cfg(test)]
-static BUILD_MESH_CALLS: AtomicUsize = AtomicUsize::new(0);
+use std::cell::RefCell;
+
+#[cfg(test)]
+thread_local! {
+    static BUILD_MESH_CALLS: RefCell<usize> = const { RefCell::new(0) };
+}
 
 #[cfg(test)]
 pub(crate) fn test_reset_build_mesh_calls() {
-    BUILD_MESH_CALLS.store(0, Ordering::SeqCst);
+    BUILD_MESH_CALLS.with(|count| *count.borrow_mut() = 0);
 }
 
 #[cfg(test)]
 pub(crate) fn test_build_mesh_call_count() -> usize {
-    BUILD_MESH_CALLS.load(Ordering::SeqCst)
+    BUILD_MESH_CALLS.with(|count| *count.borrow())
 }
 
 /// Mesh level of detail for a chunk (ADR-013 Phase 2C).
@@ -59,10 +63,7 @@ impl ChunkLod {
 
     /// Mesh grid width/height in samples after subsampling a full-resolution tile.
     pub fn lod_samples_per_edge(self, full_samples_per_edge: u32) -> u32 {
-        let full = full_samples_per_edge as usize;
-        debug_assert!(full >= 2);
-        let stride = self.stride();
-        ((full - 1) / stride + 1) as u32
+        lod_samples_per_edge(full_samples_per_edge as usize, self.stride()) as u32
     }
 
     /// Expected vertex and triangle counts for a built chunk mesh.
@@ -92,6 +93,125 @@ pub struct ChunkMeshSeamWeld {
     pub west_interior: Option<Vec<f32>>,
     /// −Z neighbor `row == N - 1`, for normals at `row == 0`.
     pub south_interior: Option<Vec<f32>>,
+}
+
+/// LOD grid edge length after subsampling a full-resolution tile (integer math only).
+#[inline]
+pub(crate) fn lod_samples_per_edge(full_spe: usize, stride: usize) -> usize {
+    debug_assert!(stride >= 1);
+    debug_assert!(full_spe >= 2);
+    (full_spe - 1) / stride + 1
+}
+
+/// Linear index of a vertex on the LOD grid.
+#[inline]
+pub(crate) fn lod_grid_index(lod_row: usize, lod_col: usize, lod_spe: usize) -> usize {
+    lod_row * lod_spe + lod_col
+}
+
+/// One LOD vertex and its corresponding full-resolution grid coordinates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct LodVertexMapping {
+    pub lod_row: usize,
+    pub lod_col: usize,
+    pub full_row: usize,
+    pub full_col: usize,
+    pub lod_idx: usize,
+    pub full_idx: usize,
+}
+
+/// Iterate every LOD vertex in row-major order with synchronized full-grid indices.
+pub(crate) fn iter_lod_vertex_mappings(
+    full_spe: usize,
+    stride: usize,
+) -> impl Iterator<Item = LodVertexMapping> {
+    let lod_spe = lod_samples_per_edge(full_spe, stride);
+    (0..lod_spe).flat_map(move |lod_row| {
+        (0..lod_spe).map(move |lod_col| {
+            let full_row = lod_row * stride;
+            let full_col = lod_col * stride;
+            LodVertexMapping {
+                lod_row,
+                lod_col,
+                full_row,
+                full_col,
+                lod_idx: lod_grid_index(lod_row, lod_col, lod_spe),
+                full_idx: full_row * full_spe + full_col,
+            }
+        })
+    })
+}
+
+#[cfg(feature = "dev")]
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// When enabled (dev builds only), mesh generation validates height/color LOD index alignment once.
+#[cfg(feature = "dev")]
+pub static DEBUG_VALIDATE_LOD_SAMPLE_ALIGNMENT: AtomicBool = AtomicBool::new(false);
+
+#[cfg(feature = "dev")]
+static LOD_SAMPLE_ALIGNMENT_MISMATCH_LOGGED: AtomicBool = AtomicBool::new(false);
+
+#[cfg(feature = "dev")]
+fn debug_validate_lod_grids(
+    lod_heights: &[f32],
+    lod_colors: &[[f32; 3]],
+    full_heights: &[f32],
+    full_colors: &[[f32; 3]],
+    full_spe: usize,
+    stride: usize,
+) {
+    if !DEBUG_VALIDATE_LOD_SAMPLE_ALIGNMENT.load(Ordering::Relaxed) {
+        return;
+    }
+
+    let lod_spe = lod_samples_per_edge(full_spe, stride);
+    debug_assert_eq!(lod_heights.len(), lod_spe * lod_spe);
+    debug_assert_eq!(lod_colors.len(), lod_spe * lod_spe);
+
+    for mapping in iter_lod_vertex_mappings(full_spe, stride) {
+        let expected_height = full_heights[mapping.full_idx];
+        let actual_height = lod_heights[mapping.lod_idx];
+        let expected_color = full_colors[mapping.full_idx];
+        let actual_color = lod_colors[mapping.lod_idx];
+
+        let height_mismatch = actual_height.to_bits() != expected_height.to_bits();
+        let color_mismatch = actual_color != expected_color;
+
+        if height_mismatch || color_mismatch {
+            debug_assert!(
+                !height_mismatch && !color_mismatch,
+                "LOD sample mismatch at lod ({}, {}) full ({}, {}): \
+                 height {actual_height} vs {expected_height}, color {actual_color:?} vs {expected_color:?}",
+                mapping.lod_row,
+                mapping.lod_col,
+                mapping.full_row,
+                mapping.full_col,
+            );
+            if !LOD_SAMPLE_ALIGNMENT_MISMATCH_LOGGED.swap(true, Ordering::Relaxed) {
+                bevy::log::error!(
+                    "LOD height/color sample mismatch at lod ({}, {}) full ({}, {}): \
+                     height {actual_height} vs {expected_height}, color {actual_color:?} vs {expected_color:?}",
+                    mapping.lod_row,
+                    mapping.lod_col,
+                    mapping.full_row,
+                    mapping.full_col,
+                );
+            }
+            return;
+        }
+    }
+}
+
+#[cfg(not(feature = "dev"))]
+fn debug_validate_lod_grids(
+    _lod_heights: &[f32],
+    _lod_colors: &[[f32; 3]],
+    _full_heights: &[f32],
+    _full_colors: &[[f32; 3]],
+    _full_spe: usize,
+    _stride: usize,
+) {
 }
 
 /// Interior samples to linearly ramp toward the stitched +X / +Z boundary.
@@ -162,20 +282,79 @@ fn build_mesh_height_grid(
     heights
 }
 
-/// Subsample a welded full-resolution height grid to a coarser LOD grid.
-fn subsample_height_grid(full_heights: &[f32], full_spe: usize, stride: usize) -> (Vec<f32>, usize) {
-    debug_assert!(stride >= 1);
+/// Build synchronized LOD height and color grids from full-resolution welded samples.
+///
+/// Height and color always share the same `(lod_row, lod_col) → full_idx` mapping.
+fn subsample_lod_grids(
+    full_heights: &[f32],
+    full_colors: &[[f32; 3]],
+    full_spe: usize,
+    stride: usize,
+) -> (Vec<f32>, Vec<[f32; 3]>, usize) {
     debug_assert_eq!(full_heights.len(), full_spe * full_spe);
-    let lod_spe = (full_spe - 1) / stride + 1;
+    debug_assert_eq!(full_colors.len(), full_spe * full_spe);
+
+    let lod_spe = lod_samples_per_edge(full_spe, stride);
     let mut lod_heights = Vec::with_capacity(lod_spe * lod_spe);
-    for lod_row in 0..lod_spe {
-        let full_row = lod_row * stride;
-        for lod_col in 0..lod_spe {
-            let full_col = lod_col * stride;
-            lod_heights.push(full_heights[full_row * full_spe + full_col]);
-        }
+    let mut lod_colors = Vec::with_capacity(lod_spe * lod_spe);
+
+    for mapping in iter_lod_vertex_mappings(full_spe, stride) {
+        lod_heights.push(full_heights[mapping.full_idx]);
+        lod_colors.push(full_colors[mapping.full_idx]);
     }
-    (lod_heights, lod_spe)
+
+    debug_validate_lod_grids(
+        &lod_heights,
+        &lod_colors,
+        full_heights,
+        full_colors,
+        full_spe,
+        stride,
+    );
+
+    (lod_heights, lod_colors, lod_spe)
+}
+
+fn color_for_full_sample(
+    full_idx: usize,
+    full_heights: &[f32],
+    height_min: f32,
+    height_max: f32,
+    albedo: Option<&ChunkAlbedoGrid>,
+    fallback: AlbedoFallback,
+) -> [f32; 3] {
+    if let Some(grid) = albedo {
+        grid.data[full_idx]
+    } else {
+        fallback_vertex_color(full_heights[full_idx], height_min, height_max, fallback)
+    }
+}
+
+/// Build full-resolution vertex colors aligned to the welded height grid.
+fn build_full_vertex_colors(
+    full_heights: &[f32],
+    full_spe: usize,
+    height_min: f32,
+    height_max: f32,
+    albedo: Option<&ChunkAlbedoGrid>,
+    fallback: AlbedoFallback,
+) -> Vec<[f32; 3]> {
+    debug_assert_eq!(full_heights.len(), full_spe * full_spe);
+    (0..full_spe * full_spe)
+        .map(|full_idx| {
+            color_for_full_sample(full_idx, full_heights, height_min, height_max, albedo, fallback)
+        })
+        .collect()
+}
+
+fn height_range(heights: &[f32]) -> (f32, f32) {
+    let mut min = f32::INFINITY;
+    let mut max = f32::NEG_INFINITY;
+    for &h in heights {
+        min = min.min(h);
+        max = max.max(h);
+    }
+    (min, max)
 }
 
 fn normal_stencil_x(
@@ -268,6 +447,7 @@ fn build_mesh_from_height_grid(
     spacing: f32,
     vertical_scale: f32,
     seam_weld: &ChunkMeshSeamWeld,
+    colors: &[[f32; 3]],
 ) -> Mesh {
     let last = (spe - 1) as f32;
 
@@ -275,6 +455,9 @@ fn build_mesh_from_height_grid(
     let mut positions = Vec::with_capacity(vertex_count);
     let mut normals = Vec::with_capacity(vertex_count);
     let mut uvs = Vec::with_capacity(vertex_count);
+    let mut vertex_colors = Vec::with_capacity(vertex_count);
+
+    debug_assert_eq!(colors.len(), vertex_count);
 
     let height = |row: usize, col: usize| heights[row * spe + col];
 
@@ -309,6 +492,12 @@ fn build_mesh_from_height_grid(
             let dhdz = (hz1 - hz0) / dz;
             let normal = Vec3::new(-dhdx, 1.0, -dhdz).normalize();
             normals.push([normal.x, normal.y, normal.z]);
+            vertex_colors.push([
+                colors[row * spe + col][0],
+                colors[row * spe + col][1],
+                colors[row * spe + col][2],
+                1.0,
+            ]);
         }
     }
 
@@ -332,6 +521,7 @@ fn build_mesh_from_height_grid(
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, vertex_colors);
     mesh.insert_indices(Indices::U32(indices));
     mesh
 }
@@ -343,7 +533,14 @@ fn build_mesh_from_height_grid(
 /// not depend on triangle winding; winding is chosen so front faces point up
 /// (+Y), matching `StandardMaterial`'s default back-face culling.
 pub fn build_chunk_mesh(heightfield: &Heightfield, lod: ChunkLod) -> Mesh {
-    build_chunk_mesh_scaled(heightfield, lod, 1.0, &ChunkMeshSeamWeld::default())
+    build_chunk_mesh_scaled(
+        heightfield,
+        lod,
+        1.0,
+        &ChunkMeshSeamWeld::default(),
+        None,
+        AlbedoFallback::default(),
+    )
 }
 
 /// Like [`build_chunk_mesh`], but multiplies sample heights for visualization.
@@ -356,25 +553,37 @@ pub fn build_chunk_mesh_scaled(
     lod: ChunkLod,
     vertical_scale: f32,
     seam_weld: &ChunkMeshSeamWeld,
+    albedo: Option<&ChunkAlbedoGrid>,
+    fallback: AlbedoFallback,
 ) -> Mesh {
     #[cfg(test)]
-    BUILD_MESH_CALLS.fetch_add(1, Ordering::Relaxed);
+    BUILD_MESH_CALLS.with(|count| *count.borrow_mut() += 1);
 
     let full_spe = heightfield.samples_per_edge() as usize;
     let base_spacing = heightfield.spacing_meters();
     let full_heights = build_mesh_height_grid(heightfield.samples(), full_spe, seam_weld);
+    let (height_min, height_max) = height_range(&full_heights);
+    let full_colors = build_full_vertex_colors(
+        &full_heights,
+        full_spe,
+        height_min,
+        height_max,
+        albedo,
+        fallback,
+    );
 
     let stride = lod.stride();
-    let (heights, spe, spacing) = if stride == 1 {
-        (full_heights, full_spe, base_spacing)
+    let (heights, colors, spe, spacing) = if stride == 1 {
+        (full_heights, full_colors, full_spe, base_spacing)
     } else {
-        let (lod_heights, lod_spe) = subsample_height_grid(&full_heights, full_spe, stride);
-        (
-            lod_heights,
-            lod_spe,
-            base_spacing * stride as f32,
-        )
+        let (lod_heights, lod_colors, lod_spe) =
+            subsample_lod_grids(&full_heights, &full_colors, full_spe, stride);
+        (lod_heights, lod_colors, lod_spe, base_spacing * stride as f32)
     };
+
+    debug_assert_eq!(heights.len(), spe * spe);
+    debug_assert_eq!(colors.len(), spe * spe);
+    debug_assert_eq!(spe, lod_samples_per_edge(full_spe, stride));
 
     // Seam-weld strips target full-resolution grids; subsampled meshes use welded
     // heights only (no per-LOD neighbor strips in Phase 2C-a).
@@ -384,7 +593,14 @@ pub fn build_chunk_mesh_scaled(
         &ChunkMeshSeamWeld::default()
     };
 
-    build_mesh_from_height_grid(&heights, spe, spacing, vertical_scale, lod_seam_weld)
+    build_mesh_from_height_grid(
+        &heights,
+        spe,
+        spacing,
+        vertical_scale,
+        lod_seam_weld,
+        &colors,
+    )
 }
 
 /// CPU geometry counts for a generated chunk mesh.
@@ -471,6 +687,8 @@ mod tests {
                 west_interior: None,
                 south_interior: None,
             },
+            None,
+            AlbedoFallback::default(),
         );
         let bevy::mesh::VertexAttributeValues::Float32x3(positions) =
             mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap()
@@ -497,7 +715,14 @@ mod tests {
             ],
         )
         .unwrap();
-        let mesh = build_chunk_mesh_scaled(&hf, ChunkLod::Full, 1.0, &ChunkMeshSeamWeld::default());
+        let mesh = build_chunk_mesh_scaled(
+            &hf,
+            ChunkLod::Full,
+            1.0,
+            &ChunkMeshSeamWeld::default(),
+            None,
+            AlbedoFallback::default(),
+        );
         let bevy::mesh::VertexAttributeValues::Float32x3(positions) =
             mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap()
         else {
@@ -530,6 +755,8 @@ mod tests {
             ChunkLod::Full,
             scale,
             &ChunkMeshSeamWeld::default(),
+            None,
+            AlbedoFallback::default(),
         );
         let bevy::mesh::VertexAttributeValues::Float32x3(positions) =
             mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap()
@@ -550,7 +777,14 @@ mod tests {
     #[test]
     fn vertical_scale_exaggerates_positions() {
         let hf = Heightfield::from_samples(2, 1.0, vec![0.0, 1.0, 2.0, 3.0]).unwrap();
-        let mesh = build_chunk_mesh_scaled(&hf, ChunkLod::Full, 100.0, &ChunkMeshSeamWeld::default());
+        let mesh = build_chunk_mesh_scaled(
+            &hf,
+            ChunkLod::Full,
+            100.0,
+            &ChunkMeshSeamWeld::default(),
+            None,
+            AlbedoFallback::default(),
+        );
         let bevy::mesh::VertexAttributeValues::Float32x3(positions) =
             mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap()
         else {
@@ -596,6 +830,240 @@ mod tests {
         assert_eq!(eighth.triangles, 2_048);
     }
 
+    fn mesh_colors_rgb(mesh: &Mesh) -> Vec<[f32; 3]> {
+        let bevy::mesh::VertexAttributeValues::Float32x4(colors) =
+            mesh.attribute(Mesh::ATTRIBUTE_COLOR).unwrap()
+        else {
+            panic!("expected vertex colors");
+        };
+        colors.iter().map(|c| [c[0], c[1], c[2]]).collect()
+    }
+
+    fn assert_lod_height_color_index_alignment(
+        mesh: &Mesh,
+        full_mesh: &Mesh,
+        full_spe: usize,
+        stride: usize,
+    ) {
+        let lod_spe = lod_samples_per_edge(full_spe, stride);
+        let positions = mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
+        let full_positions = full_mesh.attribute(Mesh::ATTRIBUTE_POSITION).unwrap();
+        let bevy::mesh::VertexAttributeValues::Float32x3(positions) = positions else {
+            panic!("expected positions");
+        };
+        let bevy::mesh::VertexAttributeValues::Float32x3(full_positions) = full_positions else {
+            panic!("expected positions");
+        };
+        let colors = mesh_colors_rgb(mesh);
+        let full_colors = mesh_colors_rgb(full_mesh);
+
+        assert_eq!(positions.len(), lod_spe * lod_spe);
+        assert_eq!(colors.len(), positions.len());
+
+        for mapping in iter_lod_vertex_mappings(full_spe, stride) {
+            assert_eq!(
+                positions[mapping.lod_idx],
+                full_positions[mapping.full_idx],
+                "position mismatch at lod ({}, {})",
+                mapping.lod_row,
+                mapping.lod_col,
+            );
+            assert_eq!(
+                colors[mapping.lod_idx],
+                full_colors[mapping.full_idx],
+                "color mismatch at lod ({}, {})",
+                mapping.lod_row,
+                mapping.lod_col,
+            );
+            assert_eq!(
+                mapping.lod_idx,
+                lod_grid_index(mapping.lod_row, mapping.lod_col, lod_spe),
+            );
+        }
+    }
+
+    #[test]
+    fn lod_vertex_mapping_matches_chunk_lod_geometry() {
+        let full_spe = 257usize;
+        for lod in [
+            ChunkLod::Full,
+            ChunkLod::Half,
+            ChunkLod::Quarter,
+            ChunkLod::Eighth,
+        ] {
+            let stride = lod.stride();
+            let expected = lod.lod_samples_per_edge(full_spe as u32) as usize;
+            assert_eq!(lod_samples_per_edge(full_spe, stride), expected);
+            let count = iter_lod_vertex_mappings(full_spe, stride).count();
+            assert_eq!(count, expected * expected, "{lod:?}");
+        }
+    }
+
+    #[test]
+    fn all_lods_keep_height_and_color_on_same_vertex_indices() {
+        use super::super::albedo::ChunkAlbedoGrid;
+
+        let spe = 257u32;
+        let n = (spe * spe) as usize;
+        let hf = Heightfield::from_samples(
+            spe,
+            1.0,
+            (0..n).map(|i| (i as f32 * 0.01).sin()).collect(),
+        )
+        .unwrap();
+        let albedo = ChunkAlbedoGrid::from_samples(
+            spe as usize,
+            (0..n)
+                .map(|i| {
+                    let t = (i as f32 * 0.003).cos().abs();
+                    [t, 0.25, 0.75 - t * 0.5]
+                })
+                .collect(),
+        )
+        .unwrap();
+        let weld = ChunkMeshSeamWeld::default();
+
+        let full = build_chunk_mesh_scaled(
+            &hf,
+            ChunkLod::Full,
+            1.0,
+            &weld,
+            Some(&albedo),
+            AlbedoFallback::default(),
+        );
+
+        for lod in [ChunkLod::Half, ChunkLod::Quarter, ChunkLod::Eighth] {
+            let mesh = build_chunk_mesh_scaled(
+                &hf,
+                lod,
+                1.0,
+                &weld,
+                Some(&albedo),
+                AlbedoFallback::default(),
+            );
+            assert_lod_height_color_index_alignment(&mesh, &full, spe as usize, lod.stride());
+        }
+    }
+
+    #[test]
+    fn repeated_mesh_rebuild_is_deterministic_for_vertex_colors() {
+        use super::super::albedo::ChunkAlbedoGrid;
+
+        let hf = Heightfield::from_samples(
+            9,
+            1.0,
+            (0..81).map(|i| i as f32 * 0.1).collect(),
+        )
+        .unwrap();
+        let albedo = ChunkAlbedoGrid::from_samples(
+            9,
+            (0..81).map(|i| [(i % 7) as f32 / 7.0, 0.2, 0.3]).collect(),
+        )
+        .unwrap();
+
+        for lod in [
+            ChunkLod::Full,
+            ChunkLod::Half,
+            ChunkLod::Quarter,
+            ChunkLod::Eighth,
+        ] {
+            let first = build_chunk_mesh_scaled(
+                &hf,
+                lod,
+                2.0,
+                &ChunkMeshSeamWeld::default(),
+                Some(&albedo),
+                AlbedoFallback::default(),
+            );
+            let second = build_chunk_mesh_scaled(
+                &hf,
+                lod,
+                2.0,
+                &ChunkMeshSeamWeld::default(),
+                Some(&albedo),
+                AlbedoFallback::default(),
+            );
+            assert_eq!(mesh_colors_rgb(&first), mesh_colors_rgb(&second), "{lod:?}");
+        }
+    }
+
+    #[test]
+    fn fallback_colors_stable_across_lod_transitions() {
+        let hf = Heightfield::from_samples(
+            9,
+            1.0,
+            (0..81).map(|i| (i as f32 * 0.7).fract() * 10.0).collect(),
+        )
+        .unwrap();
+        let weld = ChunkMeshSeamWeld::default();
+        let full = build_chunk_mesh_scaled(
+            &hf,
+            ChunkLod::Full,
+            1.0,
+            &weld,
+            None,
+            AlbedoFallback::HeightGradient,
+        );
+
+        for lod in [ChunkLod::Half, ChunkLod::Quarter, ChunkLod::Eighth] {
+            let coarse = build_chunk_mesh_scaled(
+                &hf,
+                lod,
+                1.0,
+                &weld,
+                None,
+                AlbedoFallback::HeightGradient,
+            );
+            assert_lod_height_color_index_alignment(&coarse, &full, 9, lod.stride());
+        }
+    }
+
+    #[test]
+    fn streaming_reload_simulation_preserves_vertex_colors() {
+        use super::super::albedo::ChunkAlbedoGrid;
+
+        let hf = Heightfield::from_samples(5, 2.0, (0..25).map(|i| i as f32).collect()).unwrap();
+        let albedo = ChunkAlbedoGrid::from_samples(
+            5,
+            (0..25)
+                .map(|i| [i as f32 / 24.0, 0.4, 0.6])
+                .collect(),
+        )
+        .unwrap();
+
+        let initial = build_chunk_mesh_scaled(
+            &hf,
+            ChunkLod::Half,
+            1.0,
+            &ChunkMeshSeamWeld::default(),
+            Some(&albedo),
+            AlbedoFallback::default(),
+        );
+        let reload = build_chunk_mesh_scaled(
+            &hf,
+            ChunkLod::Half,
+            1.0,
+            &ChunkMeshSeamWeld::default(),
+            Some(&albedo),
+            AlbedoFallback::default(),
+        );
+        assert_eq!(mesh_colors_rgb(&initial), mesh_colors_rgb(&reload));
+    }
+
+    #[cfg(feature = "dev")]
+    #[test]
+    fn debug_validation_accepts_synchronized_lod_grids() {
+        use std::sync::atomic::Ordering;
+
+        DEBUG_VALIDATE_LOD_SAMPLE_ALIGNMENT.store(true, Ordering::Relaxed);
+        LOD_SAMPLE_ALIGNMENT_MISMATCH_LOGGED.store(false, Ordering::Relaxed);
+
+        let hf = flat_tile(9);
+        let _ = build_chunk_mesh(&hf, ChunkLod::Quarter);
+
+        DEBUG_VALIDATE_LOD_SAMPLE_ALIGNMENT.store(false, Ordering::Relaxed);
+    }
+
     #[test]
     fn subsampled_positions_match_source_heightfield_at_stride() {
         let spe = 9u32;
@@ -617,19 +1085,19 @@ mod tests {
 
         let full_spe = spe as usize;
         let stride = ChunkLod::Half.stride();
-        let lod_spe = ChunkLod::Half.lod_samples_per_edge(spe) as usize;
-        for lod_row in 0..lod_spe {
-            for lod_col in 0..lod_spe {
-                let full_row = lod_row * stride;
-                let full_col = lod_col * stride;
-                let full_idx = full_row * full_spe + full_col;
-                let lod_idx = lod_row * lod_spe + lod_col;
-                assert_eq!(
-                    half_positions[lod_idx], full_positions[full_idx],
-                    "lod ({lod_row},{lod_col}) vs full ({full_row},{full_col})"
-                );
-            }
+        let lod_spe = lod_samples_per_edge(full_spe, stride);
+        for mapping in iter_lod_vertex_mappings(full_spe, stride) {
+            assert_eq!(
+                half_positions[mapping.lod_idx],
+                full_positions[mapping.full_idx],
+                "lod ({}, {}) vs full ({}, {})",
+                mapping.lod_row,
+                mapping.lod_col,
+                mapping.full_row,
+                mapping.full_col,
+            );
         }
+        assert_eq!(half_positions.len(), lod_spe * lod_spe);
     }
 
     #[test]
@@ -654,5 +1122,157 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn includes_vertex_color_attribute() {
+        let hf = flat_tile(3);
+        let mesh = build_chunk_mesh(&hf, ChunkLod::Full);
+        assert!(mesh.attribute(Mesh::ATTRIBUTE_COLOR).is_some());
+    }
+
+    #[test]
+    fn vertex_colors_match_albedo_samples_at_full_lod() {
+        use super::super::albedo::ChunkAlbedoGrid;
+
+        let hf = Heightfield::from_samples(3, 1.0, vec![0.0; 9]).unwrap();
+        let albedo = ChunkAlbedoGrid::from_samples(
+            3,
+            vec![
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [1.0, 1.0, 0.0],
+                [1.0, 0.0, 1.0],
+                [0.0, 1.0, 1.0],
+                [0.5, 0.5, 0.5],
+                [0.2, 0.2, 0.2],
+                [0.8, 0.8, 0.8],
+            ],
+        )
+        .unwrap();
+        let mesh = build_chunk_mesh_scaled(
+            &hf,
+            ChunkLod::Full,
+            1.0,
+            &ChunkMeshSeamWeld::default(),
+            Some(&albedo),
+            AlbedoFallback::default(),
+        );
+        let bevy::mesh::VertexAttributeValues::Float32x4(colors) =
+            mesh.attribute(Mesh::ATTRIBUTE_COLOR).unwrap()
+        else {
+            panic!("expected vertex colors");
+        };
+        assert_eq!(colors.len(), 9);
+        assert_eq!(colors[0][0..3], [1.0, 0.0, 0.0]);
+        assert_eq!(colors[4][0..3], [1.0, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn missing_albedo_uses_height_gradient_fallback() {
+        let hf = Heightfield::from_samples(2, 1.0, vec![0.0, 1.0, 0.0, 1.0]).unwrap();
+        let mesh = build_chunk_mesh_scaled(
+            &hf,
+            ChunkLod::Full,
+            1.0,
+            &ChunkMeshSeamWeld::default(),
+            None,
+            AlbedoFallback::HeightGradient,
+        );
+        let bevy::mesh::VertexAttributeValues::Float32x4(colors) =
+            mesh.attribute(Mesh::ATTRIBUTE_COLOR).unwrap()
+        else {
+            panic!("expected vertex colors");
+        };
+        assert_ne!(colors[0][0..3], colors[3][0..3]);
+    }
+
+    #[test]
+    fn lod_vertex_color_count_matches_vertex_count() {
+        use super::super::albedo::ChunkAlbedoGrid;
+
+        let spe = 9u32;
+        let n = (spe * spe) as usize;
+        let samples: Vec<f32> = (0..n).map(|i| i as f32).collect();
+        let hf = Heightfield::from_samples(spe, 1.0, samples).unwrap();
+        let albedo = ChunkAlbedoGrid::from_samples(
+            spe as usize,
+            (0..n)
+                .map(|i| {
+                    let t = i as f32 / n as f32;
+                    [t, 0.5, 1.0 - t]
+                })
+                .collect(),
+        )
+        .unwrap();
+
+        for lod in [
+            ChunkLod::Full,
+            ChunkLod::Half,
+            ChunkLod::Quarter,
+            ChunkLod::Eighth,
+        ] {
+            let mesh = build_chunk_mesh_scaled(
+                &hf,
+                lod,
+                1.0,
+                &ChunkMeshSeamWeld::default(),
+                Some(&albedo),
+                AlbedoFallback::default(),
+            );
+            let geom = mesh_geometry(&mesh);
+            let color_count = mesh
+                .attribute(Mesh::ATTRIBUTE_COLOR)
+                .map(|attr| match attr {
+                    bevy::mesh::VertexAttributeValues::Float32x4(values) => values.len(),
+                    _ => 0,
+                })
+                .unwrap_or(0);
+            assert_eq!(color_count, geom.vertices, "{lod:?}");
+        }
+    }
+
+    #[test]
+    fn lod_colors_subsample_same_indices_as_height() {
+        use super::super::albedo::ChunkAlbedoGrid;
+
+        let spe = 9u32;
+        let n = (spe * spe) as usize;
+        let hf = Heightfield::from_samples(
+            spe,
+            1.0,
+            (0..n).map(|i| i as f32).collect(),
+        )
+        .unwrap();
+        let albedo = ChunkAlbedoGrid::from_samples(
+            spe as usize,
+            (0..n)
+                .map(|i| {
+                    let t = (i as f32 * 0.1) % 1.0;
+                    [t, 0.2, 0.3]
+                })
+                .collect(),
+        )
+        .unwrap();
+
+        let full = build_chunk_mesh_scaled(
+            &hf,
+            ChunkLod::Full,
+            1.0,
+            &ChunkMeshSeamWeld::default(),
+            Some(&albedo),
+            AlbedoFallback::default(),
+        );
+        let half = build_chunk_mesh_scaled(
+            &hf,
+            ChunkLod::Half,
+            1.0,
+            &ChunkMeshSeamWeld::default(),
+            Some(&albedo),
+            AlbedoFallback::default(),
+        );
+
+        assert_lod_height_color_index_alignment(&half, &full, spe as usize, ChunkLod::Half.stride());
     }
 }

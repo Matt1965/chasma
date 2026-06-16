@@ -8,6 +8,8 @@
 
 use bevy::prelude::*;
 
+pub mod albedo;
+pub mod albedo_decode;
 pub mod asset;
 pub mod catalog;
 pub mod components;
@@ -31,18 +33,22 @@ pub mod preview;
 #[cfg(feature = "terrain-import")]
 pub mod write;
 
+pub use albedo::{AlbedoFallback, ChunkAlbedoGrid, TerrainChunkAlbedo, TerrainChunkPayload};
 pub use asset::{
-    CHUNK_FORMAT_VERSION, ChunkFile, MANIFEST_FORMAT_VERSION, Manifest, ManifestChunk,
-    ManifestConfig, TerrainAssetError,
+    ALBEDO_FORMAT_VERSION, CHUNK_FORMAT_VERSION, AlbedoFile, ChunkFile, MANIFEST_FORMAT_VERSION,
+    Manifest, ManifestChunk, ManifestConfig, TerrainAssetError,
 };
+pub use albedo_decode::{decode_albedo_exr, decode_albedo_from_path, decode_albedo_png, decode_albedo_ron};
 pub use catalog::TerrainWorldCatalog;
 pub use components::TerrainChunkMesh;
-pub use decode::{decode_chunk, decode_manifest};
+pub use decode::{decode_chunk, decode_chunk_payload, decode_manifest};
 pub use lifecycle::TerrainStreamingSystems;
-pub use load::{load_chunk_from_path, load_world_from_manifest};
+pub use load::{load_chunk_from_path, load_chunk_payload_from_paths, load_world_from_manifest};
 pub use materialize::PendingChunkMaterializations;
 pub use residency::{ChunkDiscardKind, ChunkResidencyState, ChunkResidencyTracker, discard_chunk_residency};
 pub use mesh::{ChunkLod, build_chunk_mesh};
+#[cfg(feature = "dev")]
+pub use mesh::DEBUG_VALIDATE_LOD_SAMPLE_ALIGNMENT;
 pub use lod::{LodPriority, TerrainLodSettings, desired_lod, predicted_lod_targets};
 pub use lod_build::PendingChunkLodBuilds;
 pub use lod_cache::TerrainChunkLodCache;
@@ -57,7 +63,7 @@ pub use perf::{
 };
 
 #[cfg(feature = "terrain-import")]
-pub use write::write_world;
+pub use write::{write_world, write_world_with_albedo};
 
 /// Owns the Terrain Runtime Layer.
 pub struct TerrainRuntimePlugin;
@@ -74,7 +80,8 @@ impl Plugin for TerrainRuntimePlugin {
             .init_resource::<ChunkResidencyTracker>()
             .init_resource::<PendingChunkMaterializations>()
             .init_resource::<PendingChunkLodBuilds>()
-            .init_resource::<grace::JustAppliedGrace>();
+            .init_resource::<grace::JustAppliedGrace>()
+            .init_resource::<TerrainChunkAlbedo>();
 
         #[cfg(feature = "dev")]
         {

@@ -10,6 +10,7 @@ use bevy::prelude::*;
 
 use crate::world::{ChunkCoord, ChunkId, WorldData};
 
+use super::albedo::AlbedoFallback;
 use super::components::TerrainChunkMesh;
 use super::lod_cache::TerrainChunkLodCache;
 use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled};
@@ -169,6 +170,8 @@ pub(crate) fn spawn_chunk_mesh_inner(
         ChunkLod::Full,
         vertical_scale,
         &seam_weld,
+        None,
+        AlbedoFallback::default(),
     );
     #[cfg(feature = "dev")]
     if let (Some(perf), Some(start)) = (perf.as_mut(), build_start) {

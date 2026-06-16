@@ -8,9 +8,11 @@ use std::path::Path;
 
 use crate::world::{ChunkId, WorldConfig, WorldData};
 
+use super::albedo::TerrainChunkPayload;
+use super::albedo_decode::try_load_optional_albedo;
 use super::asset::{ManifestChunk, ManifestConfig, TerrainAssetError};
 use super::catalog::authored_extent_from_entries;
-use super::decode::{decode_chunk, decode_manifest};
+use super::decode::{decode_chunk, decode_chunk_payload, decode_manifest};
 
 pub(crate) fn read_manifest_text(path: &Path) -> Result<String, TerrainAssetError> {
     fs::read_to_string(path).map_err(|err| TerrainAssetError::Io {
@@ -60,6 +62,25 @@ pub(crate) fn validate_loaded_chunk(
     }
 
     Ok(())
+}
+
+/// Synchronously load one chunk file into a pipeline payload (height + optional albedo).
+///
+/// Inserts only geography into `world` when used via [`load_chunk_from_path`].
+pub fn load_chunk_payload_from_paths(
+    chunk_path: &Path,
+    entry: &ManifestChunk,
+    base_dir: &Path,
+    config: &WorldConfig,
+) -> Result<(ChunkId, TerrainChunkPayload), TerrainAssetError> {
+    let (id, mut payload) = decode_chunk_payload(&read_manifest_text(chunk_path)?)?;
+    validate_loaded_chunk(entry, id, &payload.chunk_data, config)?;
+    payload.albedo = try_load_optional_albedo(
+        base_dir,
+        entry.albedo_path.as_deref(),
+        payload.chunk_data.heightfield.samples_per_edge(),
+    )?;
+    Ok((id, payload))
 }
 
 /// Synchronously load one chunk file into `world`.
@@ -115,7 +136,8 @@ pub fn load_world_from_manifest(
 mod tests {
     use super::*;
     use crate::terrain::asset::{
-        CHUNK_FORMAT_VERSION, ChunkFile, MANIFEST_FORMAT_VERSION, Manifest, ManifestChunk,
+        ALBEDO_FORMAT_VERSION, AlbedoFile, CHUNK_FORMAT_VERSION, ChunkFile,
+        MANIFEST_FORMAT_VERSION, Manifest, ManifestChunk, ManifestConfig,
     };
     use crate::world::{ChunkCoord, ChunkId, ChunkLayout, WorldData};
     use bevy::prelude::Vec3;
@@ -165,7 +187,7 @@ mod tests {
         for &(x, z) in chunks {
             let rel = format!("chunks/{x}_{z}.ron");
             fs::write(dir.join(&rel), ron::to_string(&chunk_file(x, z)).unwrap()).unwrap();
-            entries.push(ManifestChunk { x, z, path: rel });
+            entries.push(ManifestChunk::at(x, z, rel));
         }
         let cfg = config();
         let manifest = Manifest {
@@ -281,11 +303,7 @@ mod tests {
                 units_per_meter: cfg.units_per_meter,
                 meters_per_sample: cfg.meters_per_sample,
             },
-            chunks: vec![ManifestChunk {
-                x: 0,
-                z: 0,
-                path: "chunks/0_0.ron".to_string(),
-            }],
+            chunks: vec![ManifestChunk::at(0, 0, "chunks/0_0.ron")],
         };
         fs::write(
             dir.join("manifest.ron"),
@@ -335,11 +353,7 @@ mod tests {
                 units_per_meter: cfg.units_per_meter,
                 meters_per_sample: cfg.meters_per_sample,
             },
-            chunks: vec![ManifestChunk {
-                x: 0,
-                z: 0,
-                path: "chunks/0_0.ron".to_string(),
-            }],
+            chunks: vec![ManifestChunk::at(0, 0, "chunks/0_0.ron")],
         };
         fs::write(
             dir.join("manifest.ron"),
@@ -376,5 +390,119 @@ mod tests {
         assert_eq!(count, expected);
         assert!(world.is_chunk_loaded(ChunkId::new(ChunkCoord::new(0, 0))));
         assert_eq!(world.len(), expected);
+    }
+
+    #[test]
+    fn load_chunk_payload_loads_optional_albedo_sidecar() {
+        let dir = temp_dir();
+        write_world_fixture(&dir, &[(0, 0)]);
+
+        let albedo = AlbedoFile {
+            version: ALBEDO_FORMAT_VERSION,
+            samples_per_edge: 3,
+            samples: vec![[0.2, 0.4, 0.6]; 9],
+        };
+        fs::write(
+            dir.join("chunks/0_0.albedo.ron"),
+            ron::to_string(&albedo).unwrap(),
+        )
+        .unwrap();
+
+        let mut manifest = decode_manifest(&read_manifest_text(&dir.join("manifest.ron")).unwrap()).unwrap();
+        manifest.chunks[0] = manifest.chunks[0].clone().with_albedo("chunks/0_0.albedo.ron");
+        fs::write(
+            dir.join("manifest.ron"),
+            ron::to_string(&manifest).unwrap(),
+        )
+        .unwrap();
+
+        let entry = &manifest.chunks[0];
+        let (id, payload) = load_chunk_payload_from_paths(
+            &dir.join(&entry.path),
+            entry,
+            &dir,
+            &config(),
+        )
+        .unwrap();
+
+        assert_eq!(id, ChunkId::new(ChunkCoord::new(0, 0)));
+        let grid = payload.albedo.expect("albedo sidecar should load");
+        assert_eq!(grid.samples_per_edge, 3);
+        assert_eq!(grid.data[0], [0.2, 0.4, 0.6]);
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn missing_albedo_sidecar_does_not_fail_height_load() {
+        let dir = temp_dir();
+        write_world_fixture(&dir, &[(0, 0)]);
+
+        let mut manifest = decode_manifest(&read_manifest_text(&dir.join("manifest.ron")).unwrap()).unwrap();
+        manifest.chunks[0] = manifest.chunks[0].clone().with_albedo("chunks/missing.albedo.ron");
+        fs::write(
+            dir.join("manifest.ron"),
+            ron::to_string(&manifest).unwrap(),
+        )
+        .unwrap();
+
+        let entry = &manifest.chunks[0];
+        let (_, payload) = load_chunk_payload_from_paths(
+            &dir.join(&entry.path),
+            entry,
+            &dir,
+            &config(),
+        )
+        .unwrap();
+        assert!(payload.albedo.is_none());
+
+        let mut world = WorldData::new(config().chunk_layout());
+        load_chunk_from_path(&dir.join(&entry.path), entry, &config(), &mut world).unwrap();
+        assert_eq!(world.len(), 1);
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn mismatched_albedo_dimensions_fail_load() {
+        let dir = temp_dir();
+        write_world_fixture(&dir, &[(0, 0)]);
+
+        let albedo = AlbedoFile {
+            version: ALBEDO_FORMAT_VERSION,
+            samples_per_edge: 2,
+            samples: vec![[1.0, 0.0, 0.0]; 4],
+        };
+        fs::write(
+            dir.join("chunks/0_0.albedo.ron"),
+            ron::to_string(&albedo).unwrap(),
+        )
+        .unwrap();
+
+        let mut manifest = decode_manifest(&read_manifest_text(&dir.join("manifest.ron")).unwrap()).unwrap();
+        manifest.chunks[0] = manifest.chunks[0].clone().with_albedo("chunks/0_0.albedo.ron");
+        fs::write(
+            dir.join("manifest.ron"),
+            ron::to_string(&manifest).unwrap(),
+        )
+        .unwrap();
+
+        let entry = &manifest.chunks[0];
+        let err = load_chunk_payload_from_paths(
+            &dir.join(&entry.path),
+            entry,
+            &dir,
+            &config(),
+        )
+        .unwrap_err();
+        assert!(matches!(
+            err,
+            TerrainAssetError::AlbedoDimensionMismatch {
+                expected_samples_per_edge: 3,
+                ..
+            }
+        ));
+
+        fs::remove_dir_all(&dir).ok();
     }
 }

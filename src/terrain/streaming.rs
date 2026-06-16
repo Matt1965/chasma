@@ -180,11 +180,7 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let entries: Vec<_> = coords
             .iter()
-            .map(|&(x, z)| ManifestChunk {
-                x,
-                z,
-                path: format!("chunks/{x}_{z}.ron"),
-            })
+            .map(|&(x, z)| ManifestChunk::at(x, z, format!("chunks/{x}_{z}.ron")))
             .collect();
         let cfg = WorldConfig::default();
         let manifest = crate::terrain::asset::Manifest {

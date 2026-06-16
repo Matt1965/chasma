@@ -15,12 +15,15 @@ use core::fmt;
 
 use serde::{Deserialize, Serialize};
 
+use super::albedo::AlbedoGridError;
 use crate::world::TerrainDataError;
 
 /// Version of the per-chunk file payload. Bumped if the encoding changes.
 pub const CHUNK_FORMAT_VERSION: u32 = 1;
 /// Version of the manifest payload.
 pub const MANIFEST_FORMAT_VERSION: u32 = 1;
+/// Version of the optional albedo sidecar RON payload (ADR-011 addendum).
+pub const ALBEDO_FORMAT_VERSION: u32 = 1;
 
 /// The `WorldConfig` snapshot embedded in a manifest, used to validate that
 /// assets were produced for the same spatial layout the runtime is using.
@@ -38,6 +41,25 @@ pub struct ManifestChunk {
     pub x: i32,
     pub z: i32,
     pub path: String,
+    /// Optional albedo sidecar path, relative to the manifest directory (ADR-011).
+    #[serde(default)]
+    pub albedo_path: Option<String>,
+}
+
+impl ManifestChunk {
+    pub fn at(x: i32, z: i32, path: impl Into<String>) -> Self {
+        Self {
+            x,
+            z,
+            path: path.into(),
+            albedo_path: None,
+        }
+    }
+
+    pub fn with_albedo(mut self, albedo_path: impl Into<String>) -> Self {
+        self.albedo_path = Some(albedo_path.into());
+        self
+    }
 }
 
 /// The world manifest (`assets/worlds/<name>/manifest.ron`).
@@ -64,6 +86,15 @@ pub struct ChunkFile {
     /// Derived height range (recomputed and validated on decode).
     pub height_min: f32,
     pub height_max: f32,
+}
+
+/// Optional per-chunk albedo sidecar payload (`*.albedo.ron`, ADR-011 addendum).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AlbedoFile {
+    pub version: u32,
+    pub samples_per_edge: u32,
+    /// Row-major linear RGB triples.
+    pub samples: Vec<[f32; 3]>,
 }
 
 /// Errors produced while decoding, loading, or writing pre-chunked terrain
@@ -106,6 +137,19 @@ pub enum TerrainAssetError {
         expected_meters: f32,
         found_meters: f32,
     },
+    /// Albedo grid construction failed.
+    AlbedoGrid(AlbedoGridError),
+    /// Albedo sidecar decode failed.
+    AlbedoDecode { path: String, message: String },
+    /// Albedo grid dimensions did not match the height chunk grid.
+    AlbedoDimensionMismatch {
+        path: String,
+        width: usize,
+        height: usize,
+        expected_samples_per_edge: usize,
+    },
+    /// Albedo sidecar file extension is not supported in this build.
+    AlbedoUnsupportedFormat { path: String, extension: String },
 }
 
 impl fmt::Display for TerrainAssetError {
@@ -149,6 +193,23 @@ impl fmt::Display for TerrainAssetError {
             } => write!(
                 f,
                 "chunk ({x}, {z}) span {found_meters} m does not match expected {expected_meters} m"
+            ),
+            Self::AlbedoGrid(err) => write!(f, "invalid albedo grid: {err}"),
+            Self::AlbedoDecode { path, message } => {
+                write!(f, "failed to decode albedo sidecar {path}: {message}")
+            }
+            Self::AlbedoDimensionMismatch {
+                path,
+                width,
+                height,
+                expected_samples_per_edge,
+            } => write!(
+                f,
+                "albedo sidecar {path} is {width}x{height}, expected square {expected_samples_per_edge}x{expected_samples_per_edge}"
+            ),
+            Self::AlbedoUnsupportedFormat { path, extension } => write!(
+                f,
+                "unsupported albedo sidecar format {extension:?} for {path}"
             ),
         }
     }

@@ -10,7 +10,9 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::terrain::write::write_world;
+use crate::terrain::albedo::ChunkAlbedoGrid;
+use crate::terrain::albedo_decode::decode_albedo_from_path;
+use crate::terrain::write::write_world_with_albedo;
 use crate::terrain::TerrainAssetError;
 use crate::world::{
     ChunkCoord, ChunkData, ChunkId, Heightfield, WorldConfig, WorldData,
@@ -125,6 +127,231 @@ pub fn parse_gaea_export_filename(filename: &str) -> Result<(i32, i32), GaeaImpo
     })?;
 
     Ok((x, z))
+}
+
+/// Parse `Albedo_y{z}_x{x}.exr` or `Albedo_y{z}_x{x}.png` into chunk coordinates.
+pub fn parse_gaea_albedo_filename(filename: &str) -> Result<(i32, i32), GaeaImportError> {
+    let name = Path::new(filename)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or(filename);
+
+    const PREFIX: &str = "Albedo_y";
+    let inner = if let Some(stem) = name.strip_prefix(PREFIX) {
+        stem.strip_suffix(".exr")
+            .or_else(|| stem.strip_suffix(".png"))
+    } else {
+        None
+    };
+
+    let Some(inner) = inner else {
+        return Err(GaeaImportError::InvalidFilename {
+            filename: name.to_string(),
+        });
+    };
+
+    let (z_str, x_str) = inner.split_once("_x").ok_or(GaeaImportError::InvalidFilename {
+        filename: name.to_string(),
+    })?;
+
+    let z: i32 = z_str.parse().map_err(|_| GaeaImportError::InvalidFilename {
+        filename: name.to_string(),
+    })?;
+    let x: i32 = x_str.parse().map_err(|_| GaeaImportError::InvalidFilename {
+        filename: name.to_string(),
+    })?;
+
+    Ok((x, z))
+}
+
+struct SourceAlbedoTile {
+    width: u32,
+    samples: Vec<[f32; 3]>,
+}
+
+impl SourceAlbedoTile {
+    fn from_grid(grid: ChunkAlbedoGrid) -> Self {
+        Self {
+            width: grid.samples_per_edge as u32,
+            samples: grid.data,
+        }
+    }
+
+    fn sample(&self, col: u32, row: u32) -> [f32; 3] {
+        let w = self.width as usize;
+        self.samples[row as usize * w + col as usize]
+    }
+}
+
+fn expand_non_overlap_albedo_tile(
+    x: i32,
+    z: i32,
+    tile: &SourceAlbedoTile,
+    neighbors: &HashMap<(i32, i32), &SourceAlbedoTile>,
+    source_edge: u32,
+) -> Vec<[f32; 3]> {
+    let runtime_edge = source_edge + 1;
+    let last = source_edge - 1;
+    let mut out = Vec::with_capacity((runtime_edge * runtime_edge) as usize);
+
+    for row in 0..runtime_edge {
+        for col in 0..runtime_edge {
+            let rgb = if col < source_edge && row < source_edge {
+                tile.sample(col, row)
+            } else if col == source_edge && row < source_edge {
+                neighbors
+                    .get(&(x + 1, z))
+                    .map(|n| n.sample(0, row))
+                    .unwrap_or_else(|| tile.sample(last, row))
+            } else if row == source_edge && col < source_edge {
+                neighbors
+                    .get(&(x, z + 1))
+                    .map(|n| n.sample(col, 0))
+                    .unwrap_or_else(|| tile.sample(col, last))
+            } else {
+                neighbors
+                    .get(&(x + 1, z + 1))
+                    .map(|n| n.sample(0, 0))
+                    .unwrap_or_else(|| tile.sample(last, last))
+            };
+            out.push(rgb);
+        }
+    }
+
+    out
+}
+
+fn albedo_grid_for_tile(
+    x: i32,
+    z: i32,
+    tile: &SourceAlbedoTile,
+    layout: GaeaTileLayout,
+    neighbors: &HashMap<(i32, i32), &SourceAlbedoTile>,
+    config: &WorldConfig,
+) -> Result<ChunkAlbedoGrid, ImportError> {
+    let runtime_edge = expected_chunk_samples_per_edge(config)? as usize;
+    let data = match layout {
+        GaeaTileLayout::SharedEdge => {
+            if tile.width as usize != runtime_edge {
+                return Err(ImportError::SourceNotChunkAligned {
+                    source_width: tile.width,
+                    source_height: tile.width,
+                    samples_per_chunk_edge: runtime_edge as u32,
+                });
+            }
+            tile.samples.clone()
+        }
+        GaeaTileLayout::NonOverlap => {
+            let source_edge = source_tile_samples_per_edge(config)?;
+            let expanded = expand_non_overlap_albedo_tile(x, z, tile, neighbors, source_edge);
+            if expanded.len() != runtime_edge * runtime_edge {
+                return Err(ImportError::SourceNotChunkAligned {
+                    source_width: tile.width,
+                    source_height: tile.width,
+                    samples_per_chunk_edge: runtime_edge as u32,
+                });
+            }
+            expanded
+        }
+    };
+
+    ChunkAlbedoGrid::from_samples(runtime_edge, data).map_err(|_| ImportError::SourceNotChunkAligned {
+        source_width: tile.width,
+        source_height: tile.width,
+        samples_per_chunk_edge: runtime_edge as u32,
+    })
+}
+
+fn load_optional_gaea_albedo_tiles(
+    input_dir: &Path,
+    loaded: &[LoadedGaeaTile],
+    config: &WorldConfig,
+) -> HashMap<ChunkId, ChunkAlbedoGrid> {
+    let mut paths: Vec<(PathBuf, i32, i32)> = Vec::new();
+    let Ok(read_dir) = fs::read_dir(input_dir) else {
+        return HashMap::new();
+    };
+
+    for entry in read_dir.flatten() {
+        let path = entry.path();
+        let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+            continue;
+        };
+        if ext != "exr" && ext != "png" {
+            continue;
+        }
+        let Some(filename) = path.file_name().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        if parse_gaea_albedo_filename(filename).is_err() {
+            continue;
+        }
+        let Ok((x, z)) = parse_gaea_albedo_filename(filename) else {
+            continue;
+        };
+        paths.push((path, x, z));
+    }
+
+    if paths.is_empty() {
+        return HashMap::new();
+    }
+
+    let height_layout: HashMap<(i32, i32), GaeaTileLayout> = loaded
+        .iter()
+        .map(|t| ((t.x, t.z), t.layout))
+        .collect();
+
+    let mut decoded: HashMap<(i32, i32), SourceAlbedoTile> = HashMap::new();
+    for (path, x, z) in paths {
+        if !height_layout.contains_key(&(x, z)) {
+            eprintln!(
+                "terrain albedo: skipping {} (no matching height tile for ({x}, {z}))",
+                path.display()
+            );
+            continue;
+        }
+        match decode_albedo_from_path(&path) {
+            Ok(grid) => {
+                decoded.insert((x, z), SourceAlbedoTile::from_grid(grid));
+            }
+            Err(err) => {
+                eprintln!(
+                    "terrain albedo: failed to decode {}: {err}, skipping",
+                    path.display()
+                );
+            }
+        }
+    }
+
+    let neighbors: HashMap<(i32, i32), &SourceAlbedoTile> =
+        decoded.iter().map(|(k, v)| (*k, v)).collect();
+
+    let mut out = HashMap::new();
+    for tile in loaded {
+        let Some(source) = decoded.get(&(tile.x, tile.z)) else {
+            continue;
+        };
+        match albedo_grid_for_tile(
+            tile.x,
+            tile.z,
+            source,
+            tile.layout,
+            &neighbors,
+            config,
+        ) {
+            Ok(grid) => {
+                out.insert(ChunkId::new(ChunkCoord::new(tile.x, tile.z)), grid);
+            }
+            Err(err) => {
+                eprintln!(
+                    "terrain albedo: skipping chunk ({}, {}): {err}",
+                    tile.x, tile.z
+                );
+            }
+        }
+    }
+
+    out
 }
 
 /// Classify a decoded tile's sample grid against [`WorldConfig`].
@@ -327,6 +554,9 @@ pub fn import_gaea_tile_directory(
             .ok_or_else(|| GaeaImportError::InvalidFilename {
                 filename: path.display().to_string(),
             })?;
+        if !filename.starts_with("Export_") {
+            continue;
+        }
         let (x, z) = parse_gaea_export_filename(filename)?;
         paths.push((path, x, z));
     }
@@ -391,7 +621,10 @@ pub fn import_gaea_tile_directory(
     }
 
     let count = world.len();
-    write_world(output_world_dir, config, &world).map_err(GaeaImportError::Write)?;
+    let albedo = load_optional_gaea_albedo_tiles(input_dir, &loaded, config);
+    let albedo_ref = if albedo.is_empty() { None } else { Some(&albedo) };
+    write_world_with_albedo(output_world_dir, config, &world, albedo_ref)
+        .map_err(GaeaImportError::Write)?;
     Ok(count)
 }
 
@@ -559,7 +792,19 @@ mod tests {
     }
 
     #[test]
-    fn imports_synthetic_shared_edge_gaea_tile_directory() {
+    fn parses_gaea_albedo_filenames() {
+        assert_eq!(
+            parse_gaea_albedo_filename("Albedo_y0_x0.exr").unwrap(),
+            (0, 0)
+        );
+        assert_eq!(
+            parse_gaea_albedo_filename("Albedo_y1_x2.png").unwrap(),
+            (2, 1)
+        );
+    }
+
+    #[test]
+    fn imports_height_without_albedo_tiles() {
         use exr::prelude::write_rgb_file;
         use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -657,6 +902,46 @@ mod tests {
         fs::remove_dir_all(&output).ok();
     }
 
+    #[test]
+    fn import_skips_albedo_exr_when_scanning_height_tiles() {
+        use exr::prelude::write_rgb_file;
+        use std::sync::atomic::{AtomicU32, Ordering};
+
+        static COUNTER: AtomicU32 = AtomicU32::new(0);
+
+        let config = WorldConfig {
+            chunk_size_meters: 2.0,
+            units_per_meter: 1.0,
+            meters_per_sample: 1.0,
+        };
+        let spe = expected_chunk_samples_per_edge(&config).unwrap();
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+        let input = std::env::temp_dir().join(format!("chasma_gaea_alb_in_{}_{n}", std::process::id()));
+        let output =
+            std::env::temp_dir().join(format!("chasma_gaea_alb_out_{}_{n}", std::process::id()));
+        fs::create_dir_all(&input).unwrap();
+
+        write_rgb_file(input.join("Export_y0_x0.exr"), spe as usize, spe as usize, |cx, cy| {
+            let h = (cx + cy) as f32;
+            (h, h, h)
+        })
+        .unwrap();
+        write_rgb_file(input.join("Albedo_y0_x0.exr"), spe as usize, spe as usize, |cx, _cy| {
+            let t = cx as f32 / spe as f32;
+            (t, 0.2, 0.8 - t)
+        })
+        .unwrap();
+
+        let count = import_gaea_tile_directory(&input, &output, &config).unwrap();
+        assert_eq!(count, 1);
+
+        let manifest_text = fs::read_to_string(output.join("manifest.ron")).unwrap();
+        assert!(manifest_text.contains("albedo_path"));
+
+        fs::remove_dir_all(&input).ok();
+        fs::remove_dir_all(&output).ok();
+    }
+
     /// Imports `source_data/test` into `assets/worlds/main`.
     ///
     /// Run manually:
@@ -673,9 +958,9 @@ mod tests {
             .filter(|entry| {
                 entry
                     .path()
-                    .extension()
-                    .and_then(|ext| ext.to_str())
-                    == Some("exr")
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with("Export_") && name.ends_with(".exr"))
             })
             .count();
         assert!(expected > 0, "source_data/test must contain at least one .exr tile");

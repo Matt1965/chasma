@@ -82,6 +82,15 @@ impl TerrainWorldCatalog {
             .get(&coord)
             .map(|entry| self.base_dir.join(&entry.path))
     }
+
+    pub fn albedo_path(&self, coord: ChunkCoord) -> Option<PathBuf> {
+        self.chunks.get(&coord).and_then(|entry| {
+            entry
+                .albedo_path
+                .as_ref()
+                .map(|rel| self.base_dir.join(rel))
+        })
+    }
 }
 
 /// Derive inclusive authored bounds from manifest chunk entries.
@@ -136,7 +145,7 @@ mod tests {
         for &(x, z) in chunks {
             let rel = format!("chunks/{x}_{z}.ron");
             fs::write(dir.join(&rel), ron::to_string(&chunk_file(x, z)).unwrap()).unwrap();
-            entries.push(ManifestChunk { x, z, path: rel });
+            entries.push(ManifestChunk::at(x, z, rel));
         }
         let manifest = Manifest {
             version: MANIFEST_FORMAT_VERSION,
@@ -157,16 +166,8 @@ mod tests {
     #[test]
     fn builds_extent_from_manifest_entries() {
         let entries = vec![
-            ManifestChunk {
-                x: 0,
-                z: 0,
-                path: "a".into(),
-            },
-            ManifestChunk {
-                x: 2,
-                z: 3,
-                path: "b".into(),
-            },
+            ManifestChunk::at(0, 0, "a"),
+            ManifestChunk::at(2, 3, "b"),
         ];
         assert_eq!(
             authored_extent_from_entries(&entries),

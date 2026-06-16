@@ -179,11 +179,7 @@ mod tests {
         let config = WorldConfig::default();
         let chunks: Vec<ManifestChunk> = coords
             .iter()
-            .map(|(x, z)| ManifestChunk {
-                x: *x,
-                z: *z,
-                path: format!("{x}_{z}.ron"),
-            })
+            .map(|(x, z)| ManifestChunk::at(*x, *z, format!("{x}_{z}.ron")))
             .collect();
         let manifest = Manifest {
             version: MANIFEST_FORMAT_VERSION,

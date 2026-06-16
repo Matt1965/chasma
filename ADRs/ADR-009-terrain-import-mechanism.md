@@ -275,3 +275,32 @@ behavior or types with no current consumer. Per the AGENTS.md Groundwork Rule
 - The offline boundary, the `terrain-import` feature gating, and the implemented
   decode/partition path (`decode_exr_heightfield`, `SourceHeightfield`,
   `import_world`) are unchanged.
+
+---
+
+# Addendum: Optional Gaea Albedo Sidecar Export (Phase 2D)
+
+Status: Accepted
+
+## Decision
+
+- Gaea may export optional albedo tiles alongside height tiles:
+  - **Primary:** `Albedo_y{z}_x{x}.exr` (float RGB, linear)
+  - **Fallback:** `Albedo_y{z}_x{x}.png` (8-bit sRGB, converted at import)
+- Height tiles remain **`Export_y{z}_x{x}.exr`** and are **required** for chunk
+  import. Albedo tiles are **optional**; missing albedo for a chunk must not fail
+  height import.
+- Albedo decode follows the authoritative-data rule: decode to plain `f32` RGB
+  samples in a [`ChunkAlbedoGrid`]; never route through Bevy `Image`/texture
+  assets (ADR-003).
+- Albedo tiles use the **same chunk coordinate naming and grid alignment** as
+  height (shared-edge or non-overlap stitching rules mirror height import).
+- Offline Gaea import writes runtime sidecars (`chunks/<x>_<z>.albedo.exr` or
+  `.albedo.ron`) and optional manifest `albedo_path` entries (ADR-011). Height
+  RON payloads are unchanged.
+
+## Deferred
+
+- Mesh vertex-color baking from albedo (ADR-013 addendum).
+- Near-field high-res texture/material blending (ADR-004).
+- Mask import (unchanged deferral above).
