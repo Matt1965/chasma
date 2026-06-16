@@ -47,6 +47,22 @@ struct InFlightMaterialization {
     stage: MaterializeStage,
 }
 
+impl InFlightMaterialization {
+    fn is_io_in_flight(&self) -> bool {
+        matches!(
+            self.stage,
+            MaterializeStage::Io(_) | MaterializeStage::IoReady { .. }
+        )
+    }
+
+    fn is_decode_in_flight(&self) -> bool {
+        matches!(
+            self.stage,
+            MaterializeStage::Decode(_) | MaterializeStage::DecodeReady { .. }
+        )
+    }
+}
+
 /// Queue of in-flight IO/decode work and decoded results (terrain runtime only).
 #[derive(Resource, Default)]
 pub struct PendingChunkMaterializations {
@@ -65,6 +81,22 @@ impl PendingChunkMaterializations {
 
     pub fn in_flight_count(&self) -> usize {
         self.in_flight.len()
+    }
+
+    /// In-flight entries waiting on disk IO (includes IO-complete, decode-not-started).
+    pub fn io_in_flight_count(&self) -> usize {
+        self.in_flight
+            .iter()
+            .filter(|entry| entry.is_io_in_flight())
+            .count()
+    }
+
+    /// In-flight entries waiting on decode (includes decode-complete, not yet queued).
+    pub fn decode_in_flight_count(&self) -> usize {
+        self.in_flight
+            .iter()
+            .filter(|entry| entry.is_decode_in_flight())
+            .count()
     }
 
     pub fn unique_pipeline_chunk_count(&self) -> usize {

@@ -3,6 +3,8 @@
 //! Phase 2B.5: async IO + decode materialization with main-thread apply.
 
 use std::collections::HashSet;
+#[cfg(feature = "dev")]
+use std::time::Instant;
 
 use bevy::prelude::*;
 
@@ -20,15 +22,32 @@ use super::residency::{
     ChunkDiscardKind, ChunkResidencyTracker, discard_chunk_residency,
 };
 use super::spawn::{
-    TerrainRenderAssets, despawn_chunk_meshes, refresh_adjacent_chunk_meshes, spawn_chunk_mesh,
+    TerrainRenderAssets, despawn_chunk_meshes, refresh_adjacent_chunk_meshes_inner,
+    spawn_chunk_mesh_inner,
 };
 use super::streaming::{
     TerrainStreamingSettings, chunks_in_radius, diff_streaming_residency, stable_focus_chunk,
 };
+#[cfg(feature = "dev")]
+use super::perf::{TerrainStreamingPerfRecorder, TerrainStreamingPerfSettings, duration_to_ms};
 
 /// Systems that drive terrain chunk residency.
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct TerrainStreamingSystems;
+
+/// Reset per-frame streaming perf counters (dev only).
+#[cfg(feature = "dev")]
+pub fn begin_terrain_streaming_perf_frame(
+    #[cfg(feature = "dev")] settings: Res<TerrainStreamingPerfSettings>,
+    #[cfg(feature = "dev")] mut perf_state: ResMut<super::perf::TerrainStreamingPerfState>,
+) {
+    #[cfg(feature = "dev")]
+    if !settings.enabled {
+        return;
+    }
+    #[cfg(feature = "dev")]
+    perf_state.begin_frame();
+}
 
 /// Request async loads for chunks entering the desired load set.
 pub fn stream_terrain_chunks(
@@ -93,7 +112,12 @@ pub fn poll_chunk_materializations(
     config: Res<WorldConfig>,
     mut residency: ResMut<ChunkResidencyTracker>,
     mut pending: ResMut<PendingChunkMaterializations>,
+    #[cfg(feature = "dev")] perf_settings: Res<TerrainStreamingPerfSettings>,
+    #[cfg(feature = "dev")] mut perf_state: ResMut<super::perf::TerrainStreamingPerfState>,
 ) {
+    #[cfg(feature = "dev")]
+    let poll_start = perf_settings.enabled.then(Instant::now);
+
     let layout = config.chunk_layout();
     let focus_coord = stable_focus_chunk(focus.position, layout);
     let keep_resident: HashSet<_> =
@@ -104,6 +128,15 @@ pub fn poll_chunk_materializations(
         &keep_resident,
         settings.max_decode_per_frame,
     );
+
+    #[cfg(feature = "dev")]
+    if perf_settings.enabled {
+        let frame = perf_state.frame_mut();
+        frame.poll_ms = duration_to_ms(poll_start.unwrap().elapsed());
+        frame.io_in_flight = pending.io_in_flight_count();
+        frame.decode_in_flight = pending.decode_in_flight_count();
+        frame.decoded_queue_len = pending.decoded_len();
+    }
 }
 
 /// Apply decoded chunks to [`WorldData`] and spawn derived render entities.
@@ -120,7 +153,14 @@ pub fn apply_chunk_materializations(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mesh_entities: Query<(Entity, &TerrainChunkMesh)>,
+    #[cfg(feature = "dev")] perf_settings: Res<TerrainStreamingPerfSettings>,
+    #[cfg(feature = "dev")] mut perf_state: ResMut<super::perf::TerrainStreamingPerfState>,
 ) {
+    #[cfg(feature = "dev")]
+    let apply_start = perf_settings.enabled.then(Instant::now);
+    #[cfg(feature = "dev")]
+    let mut mesh_perf = perf_settings.enabled.then(TerrainStreamingPerfRecorder::default);
+
     let layout = config.chunk_layout();
     let focus_coord = stable_focus_chunk(focus.position, layout);
     let keep_resident: HashSet<_> =
@@ -141,6 +181,8 @@ pub fn apply_chunk_materializations(
         &mut meshes,
         &render_assets,
         layout.chunk_size_units(),
+        #[cfg(feature = "dev")]
+        mesh_perf.as_mut(),
     );
 
     for chunk_id in &applied {
@@ -148,6 +190,19 @@ pub fn apply_chunk_materializations(
     }
 
     pending.requeue_decoded(deferred);
+
+    #[cfg(feature = "dev")]
+    if perf_settings.enabled {
+        let frame = perf_state.frame_mut();
+        frame.apply_ms = duration_to_ms(apply_start.unwrap().elapsed());
+        frame.chunks_applied = applied.len();
+        frame.io_in_flight = pending.io_in_flight_count();
+        frame.decode_in_flight = pending.decode_in_flight_count();
+        frame.decoded_queue_len = pending.decoded_len();
+        if let Some(recorder) = mesh_perf.as_ref() {
+            recorder.finish_into(frame);
+        }
+    }
 }
 
 /// Unload resident chunks outside the keep band.
@@ -162,6 +217,8 @@ pub fn unload_terrain_chunks(
     mut world: ResMut<WorldData>,
     mut commands: Commands,
     mesh_entities: Query<(Entity, &TerrainChunkMesh)>,
+    #[cfg(feature = "dev")] perf_settings: Res<TerrainStreamingPerfSettings>,
+    #[cfg(feature = "dev")] mut perf_state: ResMut<super::perf::TerrainStreamingPerfState>,
 ) {
     let layout = config.chunk_layout();
     let (_, to_unload) = diff_streaming_residency(
@@ -173,10 +230,15 @@ pub fn unload_terrain_chunks(
         grace.as_set(),
     );
 
-    for chunk_id in to_unload {
-        pending.discard_chunk_state(&mut residency, chunk_id, ChunkDiscardKind::Revoked);
-        despawn_chunk_meshes(&mut commands, chunk_id, &mesh_entities);
-        world.remove(chunk_id);
+    for chunk_id in &to_unload {
+        pending.discard_chunk_state(&mut residency, *chunk_id, ChunkDiscardKind::Revoked);
+        despawn_chunk_meshes(&mut commands, *chunk_id, &mesh_entities);
+        world.remove(*chunk_id);
+    }
+
+    #[cfg(feature = "dev")]
+    if perf_settings.enabled {
+        perf_state.frame_mut().chunks_unloaded = to_unload.len();
     }
 
     grace.clear();
@@ -196,6 +258,7 @@ pub(crate) fn apply_decoded_batch(
     meshes: &mut Assets<Mesh>,
     render_assets: &TerrainRenderAssets,
     chunk_size_units: f32,
+    #[cfg(feature = "dev")] mut perf: Option<&mut TerrainStreamingPerfRecorder>,
 ) -> (Vec<ChunkId>, Vec<DecodedChunkPending>) {
     decoded.sort_by_key(|entry| (entry.chunk_id.coord().z, entry.chunk_id.coord().x));
     decoded.dedup_by_key(|entry| entry.chunk_id);
@@ -276,7 +339,7 @@ pub(crate) fn apply_decoded_batch(
         }
 
         world.insert(chunk_id, entry.data);
-        spawn_chunk_mesh(
+        spawn_chunk_mesh_inner(
             commands,
             chunk_id,
             world,
@@ -284,8 +347,12 @@ pub(crate) fn apply_decoded_batch(
             meshes,
             render_assets.material.clone(),
             render_assets.vertical_scale,
+            #[cfg(feature = "dev")]
+            perf.as_deref_mut(),
+            #[cfg(feature = "dev")]
+            super::perf::MeshBuildKind::NewChunk,
         );
-        refresh_adjacent_chunk_meshes(
+        refresh_adjacent_chunk_meshes_inner(
             commands,
             chunk_id,
             world,
@@ -294,6 +361,8 @@ pub(crate) fn apply_decoded_batch(
             render_assets.material.clone(),
             render_assets.vertical_scale,
             mesh_entities,
+            #[cfg(feature = "dev")]
+            perf.as_deref_mut(),
         );
         residency.mark_resident(chunk_id);
         applied.push(chunk_id);
@@ -410,6 +479,8 @@ mod apply_tests {
                 &mut meshes,
                 &render_assets,
                 chunk_size_units,
+                #[cfg(feature = "dev")]
+                None,
             );
         }
 
@@ -692,6 +763,8 @@ mod apply_tests {
                 &mut meshes,
                 &render_assets,
                 chunk_size_units,
+                #[cfg(feature = "dev")]
+                None,
             )
         };
         system_state.apply(&mut world);
@@ -788,6 +861,8 @@ mod apply_tests {
                 &mut meshes,
                 &render_assets,
                 chunk_size_units,
+                #[cfg(feature = "dev")]
+                None,
             )
         };
         system_state.apply(&mut world);

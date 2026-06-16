@@ -22,6 +22,8 @@ pub mod spawn;
 pub mod streaming;
 
 #[cfg(feature = "dev")]
+pub mod perf;
+#[cfg(feature = "dev")]
 pub mod preview;
 #[cfg(feature = "terrain-import")]
 pub mod write;
@@ -43,6 +45,11 @@ pub use spawn::{
 };
 pub use streaming::TerrainStreamingSettings;
 
+#[cfg(feature = "dev")]
+pub use perf::{
+    TerrainStreamingFrameSample, TerrainStreamingPerfLatest, TerrainStreamingPerfSettings,
+};
+
 #[cfg(feature = "terrain-import")]
 pub use write::write_world;
 
@@ -56,14 +63,34 @@ impl Plugin for TerrainRuntimePlugin {
             .init_resource::<TerrainStreamingSettings>()
             .init_resource::<ChunkResidencyTracker>()
             .init_resource::<PendingChunkMaterializations>()
-            .init_resource::<grace::JustAppliedGrace>()
-            .add_systems(
+            .init_resource::<grace::JustAppliedGrace>();
+
+        #[cfg(feature = "dev")]
+        {
+            use perf::{
+                TerrainStreamingFrameSample, TerrainStreamingPerfFileLog, TerrainStreamingPerfLatest,
+                TerrainStreamingPerfSettings, TerrainStreamingPerfState,
+            };
+            app.register_type::<TerrainStreamingPerfSettings>()
+                .register_type::<TerrainStreamingPerfLatest>()
+                .register_type::<TerrainStreamingFrameSample>()
+                .init_resource::<TerrainStreamingPerfSettings>()
+                .init_resource::<TerrainStreamingPerfState>()
+                .init_resource::<TerrainStreamingPerfLatest>()
+                .init_resource::<TerrainStreamingPerfFileLog>();
+        }
+
+        app.add_systems(
                 Update,
                 (
+                    #[cfg(feature = "dev")]
+                    lifecycle::begin_terrain_streaming_perf_frame,
                     lifecycle::stream_terrain_chunks,
                     lifecycle::poll_chunk_materializations,
                     lifecycle::apply_chunk_materializations,
                     lifecycle::unload_terrain_chunks,
+                    #[cfg(feature = "dev")]
+                    perf::report_terrain_streaming_perf,
                 )
                     .chain()
                     .in_set(TerrainStreamingSystems)

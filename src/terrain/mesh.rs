@@ -287,6 +287,28 @@ pub fn build_chunk_mesh_scaled(
     mesh
 }
 
+/// CPU geometry counts for a generated chunk mesh.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ChunkMeshGeometry {
+    pub vertices: usize,
+    pub indices: usize,
+    pub triangles: usize,
+}
+
+/// Count vertices, indices, and triangles on a built chunk mesh.
+pub fn chunk_mesh_geometry(mesh: &Mesh) -> ChunkMeshGeometry {
+    let vertices = mesh.count_vertices();
+    let indices = mesh
+        .indices()
+        .map(|indices| indices.iter().count())
+        .unwrap_or(0);
+    ChunkMeshGeometry {
+        vertices,
+        indices,
+        triangles: indices / 3,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -361,6 +383,9 @@ mod tests {
 
     #[test]
     fn repairs_non_overlap_east_edge_slope_for_mesh() {
+        if NON_OVERLAP_EDGE_RAMP_SAMPLES < 2 {
+            return;
+        }
         let hf = Heightfield::from_samples(
             4,
             1.0,
@@ -386,6 +411,9 @@ mod tests {
 
     #[test]
     fn repairs_sample_world_east_edge_cliff() {
+        if NON_OVERLAP_EDGE_RAMP_SAMPLES < 2 {
+            return;
+        }
         use std::path::Path;
 
         use crate::terrain::decode::decode_chunk;

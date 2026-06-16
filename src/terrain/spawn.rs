@@ -3,12 +3,19 @@
 //! Meshes are disposable visualization; authoritative terrain remains in
 //! [`WorldData`].
 
+#[cfg(feature = "dev")]
+use std::time::Instant;
+
 use bevy::prelude::*;
 
 use crate::world::{ChunkCoord, ChunkId, WorldData};
 
 use super::components::TerrainChunkMesh;
 use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled};
+#[cfg(feature = "dev")]
+use super::mesh::chunk_mesh_geometry;
+#[cfg(feature = "dev")]
+use super::perf::{MeshBuildKind, TerrainStreamingPerfRecorder};
 
 /// Shared render resources for terrain chunk meshes.
 #[derive(Debug, Clone, Resource)]
@@ -76,20 +83,69 @@ pub fn spawn_chunk_mesh(
     material: Handle<StandardMaterial>,
     vertical_scale: f32,
 ) {
+    spawn_chunk_mesh_inner(
+        commands,
+        chunk_id,
+        world,
+        chunk_size_units,
+        meshes,
+        material,
+        vertical_scale,
+        #[cfg(feature = "dev")]
+        None,
+        #[cfg(feature = "dev")]
+        MeshBuildKind::NewChunk,
+    );
+}
+
+pub(crate) fn spawn_chunk_mesh_inner(
+    commands: &mut Commands,
+    chunk_id: ChunkId,
+    world: &WorldData,
+    chunk_size_units: f32,
+    meshes: &mut Assets<Mesh>,
+    material: Handle<StandardMaterial>,
+    vertical_scale: f32,
+    #[cfg(feature = "dev")] mut perf: Option<&mut TerrainStreamingPerfRecorder>,
+    #[cfg(feature = "dev")] mesh_kind: MeshBuildKind,
+) {
     let Some(data) = world.get(chunk_id) else {
         return;
     };
 
     let seam_weld = seam_weld_heights(world, chunk_id);
+
+    #[cfg(feature = "dev")]
+    let build_start = perf.is_some().then(Instant::now);
     let mesh = build_chunk_mesh_scaled(
         &data.heightfield,
         ChunkLod::Full,
         vertical_scale,
         &seam_weld,
     );
+    #[cfg(feature = "dev")]
+    if let (Some(perf), Some(start)) = (perf.as_mut(), build_start) {
+        perf.record_mesh_build(
+            mesh_kind,
+            chunk_id.coord(),
+            start.elapsed(),
+            chunk_mesh_geometry(&mesh),
+        );
+    }
+
+    #[cfg(feature = "dev")]
+    let assets_start = perf.is_some().then(Instant::now);
+    let mesh_handle = meshes.add(mesh);
+    #[cfg(feature = "dev")]
+    if let (Some(perf), Some(start)) = (perf.as_mut(), assets_start) {
+        perf.record_mesh_assets(start.elapsed());
+    }
+
     let coord = chunk_id.coord();
+    #[cfg(feature = "dev")]
+    let spawn_start = perf.is_some().then(Instant::now);
     commands.spawn((
-        Mesh3d(meshes.add(mesh)),
+        Mesh3d(mesh_handle),
         MeshMaterial3d(material),
         Transform::from_xyz(
             coord.x as f32 * chunk_size_units,
@@ -98,6 +154,10 @@ pub fn spawn_chunk_mesh(
         ),
         TerrainChunkMesh::new(chunk_id),
     ));
+    #[cfg(feature = "dev")]
+    if let (Some(perf), Some(start)) = (perf.as_mut(), spawn_start) {
+        perf.record_spawn(start.elapsed());
+    }
 }
 
 /// Rebuild render meshes for resident orthogonal neighbors after `chunk_id` loads.
@@ -111,6 +171,31 @@ pub fn refresh_adjacent_chunk_meshes(
     vertical_scale: f32,
     mesh_entities: &Query<(Entity, &TerrainChunkMesh)>,
 ) {
+    refresh_adjacent_chunk_meshes_inner(
+        commands,
+        chunk_id,
+        world,
+        chunk_size_units,
+        meshes,
+        material,
+        vertical_scale,
+        mesh_entities,
+        #[cfg(feature = "dev")]
+        None,
+    );
+}
+
+pub(crate) fn refresh_adjacent_chunk_meshes_inner(
+    commands: &mut Commands,
+    chunk_id: ChunkId,
+    world: &WorldData,
+    chunk_size_units: f32,
+    meshes: &mut Assets<Mesh>,
+    material: Handle<StandardMaterial>,
+    vertical_scale: f32,
+    mesh_entities: &Query<(Entity, &TerrainChunkMesh)>,
+    #[cfg(feature = "dev")] mut perf: Option<&mut TerrainStreamingPerfRecorder>,
+) {
     let coord = chunk_id.coord();
     let neighbors = [
         ChunkCoord::new(coord.x - 1, coord.z),
@@ -119,12 +204,27 @@ pub fn refresh_adjacent_chunk_meshes(
         ChunkCoord::new(coord.x, coord.z + 1),
     ];
     for neighbor_coord in neighbors {
+        #[cfg(feature = "dev")]
+        if let Some(perf) = perf.as_mut() {
+            perf.record_neighbor_considered();
+        }
+
         let neighbor_id = ChunkId::new(neighbor_coord);
         if world.get(neighbor_id).is_none() {
+            #[cfg(feature = "dev")]
+            if let Some(perf) = perf.as_mut() {
+                perf.record_neighbor_skipped();
+            }
             continue;
         }
+
+        #[cfg(feature = "dev")]
+        if let Some(perf) = perf.as_mut() {
+            perf.record_neighbor_rebuilt();
+        }
+
         despawn_chunk_meshes(commands, neighbor_id, mesh_entities);
-        spawn_chunk_mesh(
+        spawn_chunk_mesh_inner(
             commands,
             neighbor_id,
             world,
@@ -132,6 +232,10 @@ pub fn refresh_adjacent_chunk_meshes(
             meshes,
             material.clone(),
             vertical_scale,
+            #[cfg(feature = "dev")]
+            perf.as_deref_mut(),
+            #[cfg(feature = "dev")]
+            MeshBuildKind::NeighborRebuild,
         );
     }
 }

@@ -14,12 +14,16 @@ use super::catalog::TerrainWorldCatalog;
 use super::decode::decode_chunk;
 use super::spawn::{vertical_scale_for_height_span, TerrainRenderAssets};
 use super::streaming::TerrainStreamingSettings;
+use super::perf::TerrainStreamingPerfSettings;
+
+/// Default path for dev preview terrain perf logs (see [`TerrainStreamingPerfSettings`]).
+pub const PREVIEW_PERF_LOG_PATH: &str = "logs/terrain_streaming_perf.log";
 
 /// Fallback when chunk metadata cannot be sampled at preview startup.
-const DEV_PREVIEW_VERTICAL_SCALE_FALLBACK: f32 = 10.0;
+const DEV_PREVIEW_VERTICAL_SCALE_FALLBACK: f32 = 5.0;
 
 /// Dev preview relief target: visible relief without over-exaggerating stitch artifacts.
-const PREVIEW_TARGET_HEIGHT_SPAN_UNITS: f32 = 10.0;
+const PREVIEW_TARGET_HEIGHT_SPAN_UNITS: f32 = 5.0;
 
 /// On-disk sample world exercised by the dev preview (ADR-011).
 pub const PREVIEW_MANIFEST_PATH: &str = "assets/worlds/main/manifest.ron";
@@ -71,11 +75,18 @@ fn setup_preview(
         material,
         vertical_scale,
     });
+    commands.insert_resource(TerrainStreamingPerfSettings {
+        enabled: true,
+        log_to_console: true,
+        log_to_file: true,
+        log_file_path: PREVIEW_PERF_LOG_PATH.to_string(),
+        ..Default::default()
+    });
 
     commands.spawn((
         DirectionalLight {
             illuminance: 12_000.0,
-            shadows_enabled: false,
+            shadows_enabled: true,
             ..default()
         },
         Transform::from_xyz(256.0, 200.0, 128.0)
