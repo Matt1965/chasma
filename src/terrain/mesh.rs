@@ -152,68 +152,6 @@ pub static DEBUG_VALIDATE_LOD_SAMPLE_ALIGNMENT: AtomicBool = AtomicBool::new(fal
 #[cfg(feature = "dev")]
 static LOD_SAMPLE_ALIGNMENT_MISMATCH_LOGGED: AtomicBool = AtomicBool::new(false);
 
-#[cfg(feature = "dev")]
-fn debug_validate_lod_grids(
-    lod_heights: &[f32],
-    lod_colors: &[[f32; 3]],
-    full_heights: &[f32],
-    full_colors: &[[f32; 3]],
-    full_spe: usize,
-    stride: usize,
-) {
-    if !DEBUG_VALIDATE_LOD_SAMPLE_ALIGNMENT.load(Ordering::Relaxed) {
-        return;
-    }
-
-    let lod_spe = lod_samples_per_edge(full_spe, stride);
-    debug_assert_eq!(lod_heights.len(), lod_spe * lod_spe);
-    debug_assert_eq!(lod_colors.len(), lod_spe * lod_spe);
-
-    for mapping in iter_lod_vertex_mappings(full_spe, stride) {
-        let expected_height = full_heights[mapping.full_idx];
-        let actual_height = lod_heights[mapping.lod_idx];
-        let expected_color = full_colors[mapping.full_idx];
-        let actual_color = lod_colors[mapping.lod_idx];
-
-        let height_mismatch = actual_height.to_bits() != expected_height.to_bits();
-        let color_mismatch = actual_color != expected_color;
-
-        if height_mismatch || color_mismatch {
-            debug_assert!(
-                !height_mismatch && !color_mismatch,
-                "LOD sample mismatch at lod ({}, {}) full ({}, {}): \
-                 height {actual_height} vs {expected_height}, color {actual_color:?} vs {expected_color:?}",
-                mapping.lod_row,
-                mapping.lod_col,
-                mapping.full_row,
-                mapping.full_col,
-            );
-            if !LOD_SAMPLE_ALIGNMENT_MISMATCH_LOGGED.swap(true, Ordering::Relaxed) {
-                bevy::log::error!(
-                    "LOD height/color sample mismatch at lod ({}, {}) full ({}, {}): \
-                     height {actual_height} vs {expected_height}, color {actual_color:?} vs {expected_color:?}",
-                    mapping.lod_row,
-                    mapping.lod_col,
-                    mapping.full_row,
-                    mapping.full_col,
-                );
-            }
-            return;
-        }
-    }
-}
-
-#[cfg(not(feature = "dev"))]
-fn debug_validate_lod_grids(
-    _lod_heights: &[f32],
-    _lod_colors: &[[f32; 3]],
-    _full_heights: &[f32],
-    _full_colors: &[[f32; 3]],
-    _full_spe: usize,
-    _stride: usize,
-) {
-}
-
 /// Interior samples to linearly ramp toward the stitched +X / +Z boundary.
 const NON_OVERLAP_EDGE_RAMP_SAMPLES: usize = 0;
 
@@ -259,22 +197,10 @@ fn build_mesh_height_grid(
     spe: usize,
     seam_weld: &ChunkMeshSeamWeld,
 ) -> Vec<f32> {
-    let mut heights = samples.to_vec();
-
+    let mut heights = Vec::with_capacity(spe * spe);
     for row in 0..spe {
         for col in 0..spe {
-            let idx = row * spe + col;
-            if col == 0 {
-                if let Some(west) = seam_weld.west_edge.as_ref().and_then(|strip| strip.get(row)) {
-                    heights[idx] = *west;
-                }
-            }
-            if row == 0 {
-                if let Some(south) = seam_weld.south_edge.as_ref().and_then(|strip| strip.get(col))
-                {
-                    heights[idx] = *south;
-                }
-            }
+            heights.push(sample_welded_height(row, col, spe, samples, seam_weld));
         }
     }
 
@@ -282,37 +208,171 @@ fn build_mesh_height_grid(
     heights
 }
 
-/// Build synchronized LOD height and color grids from full-resolution welded samples.
-///
-/// Height and color always share the same `(lod_row, lod_col) → full_idx` mapping.
-fn subsample_lod_grids(
-    full_heights: &[f32],
-    full_colors: &[[f32; 3]],
+/// Height at one full-resolution grid vertex after west/south seam weld (no edge ramp).
+fn sample_welded_height(
+    row: usize,
+    col: usize,
+    spe: usize,
+    samples: &[f32],
+    seam_weld: &ChunkMeshSeamWeld,
+) -> f32 {
+    let mut h = samples[row * spe + col];
+    if col == 0 {
+        if let Some(west) = seam_weld.west_edge.as_ref().and_then(|strip| strip.get(row)) {
+            h = *west;
+        }
+    }
+    if row == 0 {
+        if let Some(south) = seam_weld.south_edge.as_ref().and_then(|strip| strip.get(col)) {
+            h = *south;
+        }
+    }
+    h
+}
+
+fn height_range_welded(
+    samples: &[f32],
+    spe: usize,
+    seam_weld: &ChunkMeshSeamWeld,
+) -> (f32, f32) {
+    let mut min = f32::INFINITY;
+    let mut max = f32::NEG_INFINITY;
+    for row in 0..spe {
+        for col in 0..spe {
+            let h = sample_welded_height(row, col, spe, samples, seam_weld);
+            min = min.min(h);
+            max = max.max(h);
+        }
+    }
+    (min, max)
+}
+
+/// Build LOD height/color grids by direct stride sampling (no full-resolution buffers).
+fn build_coarse_lod_grids(
+    heightfield: &Heightfield,
     full_spe: usize,
     stride: usize,
+    seam_weld: &ChunkMeshSeamWeld,
+    albedo: Option<&ChunkAlbedoGrid>,
+    fallback: AlbedoFallback,
 ) -> (Vec<f32>, Vec<[f32; 3]>, usize) {
-    debug_assert_eq!(full_heights.len(), full_spe * full_spe);
-    debug_assert_eq!(full_colors.len(), full_spe * full_spe);
+    let samples = heightfield.samples();
+    let (height_min, height_max) = if albedo.is_some() {
+        (0.0, 0.0)
+    } else {
+        height_range_welded(samples, full_spe, seam_weld)
+    };
 
     let lod_spe = lod_samples_per_edge(full_spe, stride);
     let mut lod_heights = Vec::with_capacity(lod_spe * lod_spe);
     let mut lod_colors = Vec::with_capacity(lod_spe * lod_spe);
 
     for mapping in iter_lod_vertex_mappings(full_spe, stride) {
-        lod_heights.push(full_heights[mapping.full_idx]);
-        lod_colors.push(full_colors[mapping.full_idx]);
+        let h = sample_welded_height(
+            mapping.full_row,
+            mapping.full_col,
+            full_spe,
+            samples,
+            seam_weld,
+        );
+        lod_heights.push(h);
+        let color = if let Some(grid) = albedo {
+            grid.data[mapping.full_idx]
+        } else {
+            fallback_vertex_color(h, height_min, height_max, fallback)
+        };
+        lod_colors.push(color);
     }
 
-    debug_validate_lod_grids(
+    debug_validate_coarse_lod_grids(
         &lod_heights,
         &lod_colors,
-        full_heights,
-        full_colors,
+        samples,
         full_spe,
         stride,
+        seam_weld,
+        albedo,
+        height_min,
+        height_max,
+        fallback,
     );
 
     (lod_heights, lod_colors, lod_spe)
+}
+
+#[cfg(feature = "dev")]
+fn debug_validate_coarse_lod_grids(
+    lod_heights: &[f32],
+    lod_colors: &[[f32; 3]],
+    samples: &[f32],
+    full_spe: usize,
+    stride: usize,
+    seam_weld: &ChunkMeshSeamWeld,
+    albedo: Option<&ChunkAlbedoGrid>,
+    height_min: f32,
+    height_max: f32,
+    fallback: AlbedoFallback,
+) {
+    if !DEBUG_VALIDATE_LOD_SAMPLE_ALIGNMENT.load(Ordering::Relaxed) {
+        return;
+    }
+
+    for mapping in iter_lod_vertex_mappings(full_spe, stride) {
+        let expected_height = sample_welded_height(
+            mapping.full_row,
+            mapping.full_col,
+            full_spe,
+            samples,
+            seam_weld,
+        );
+        let expected_color = if let Some(grid) = albedo {
+            grid.data[mapping.full_idx]
+        } else {
+            fallback_vertex_color(expected_height, height_min, height_max, fallback)
+        };
+
+        let actual_height = lod_heights[mapping.lod_idx];
+        let actual_color = lod_colors[mapping.lod_idx];
+
+        let height_mismatch = actual_height.to_bits() != expected_height.to_bits();
+        let color_mismatch = actual_color != expected_color;
+
+        if height_mismatch || color_mismatch {
+            debug_assert!(
+                !height_mismatch && !color_mismatch,
+                "coarse LOD sample mismatch at lod ({}, {}) full ({}, {})",
+                mapping.lod_row,
+                mapping.lod_col,
+                mapping.full_row,
+                mapping.full_col,
+            );
+            if !LOD_SAMPLE_ALIGNMENT_MISMATCH_LOGGED.swap(true, Ordering::Relaxed) {
+                bevy::log::error!(
+                    "coarse LOD height/color sample mismatch at lod ({}, {}) full ({}, {})",
+                    mapping.lod_row,
+                    mapping.lod_col,
+                    mapping.full_row,
+                    mapping.full_col,
+                );
+            }
+            return;
+        }
+    }
+}
+
+#[cfg(not(feature = "dev"))]
+fn debug_validate_coarse_lod_grids(
+    _lod_heights: &[f32],
+    _lod_colors: &[[f32; 3]],
+    _samples: &[f32],
+    _full_spe: usize,
+    _stride: usize,
+    _seam_weld: &ChunkMeshSeamWeld,
+    _albedo: Option<&ChunkAlbedoGrid>,
+    _height_min: f32,
+    _height_max: f32,
+    _fallback: AlbedoFallback,
+) {
 }
 
 fn color_for_full_sample(
@@ -561,23 +621,29 @@ pub fn build_chunk_mesh_scaled(
 
     let full_spe = heightfield.samples_per_edge() as usize;
     let base_spacing = heightfield.spacing_meters();
-    let full_heights = build_mesh_height_grid(heightfield.samples(), full_spe, seam_weld);
-    let (height_min, height_max) = height_range(&full_heights);
-    let full_colors = build_full_vertex_colors(
-        &full_heights,
-        full_spe,
-        height_min,
-        height_max,
-        albedo,
-        fallback,
-    );
-
     let stride = lod.stride();
+
     let (heights, colors, spe, spacing) = if stride == 1 {
+        let full_heights = build_mesh_height_grid(heightfield.samples(), full_spe, seam_weld);
+        let (height_min, height_max) = height_range(&full_heights);
+        let full_colors = build_full_vertex_colors(
+            &full_heights,
+            full_spe,
+            height_min,
+            height_max,
+            albedo,
+            fallback,
+        );
         (full_heights, full_colors, full_spe, base_spacing)
     } else {
-        let (lod_heights, lod_colors, lod_spe) =
-            subsample_lod_grids(&full_heights, &full_colors, full_spe, stride);
+        let (lod_heights, lod_colors, lod_spe) = build_coarse_lod_grids(
+            heightfield,
+            full_spe,
+            stride,
+            seam_weld,
+            albedo,
+            fallback,
+        );
         (lod_heights, lod_colors, lod_spe, base_spacing * stride as f32)
     };
 

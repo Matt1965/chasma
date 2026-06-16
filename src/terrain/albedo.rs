@@ -8,7 +8,9 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 
-use crate::world::{ChunkData, ChunkId};
+#[cfg(any(test, feature = "terrain-import"))]
+use crate::world::ChunkData;
+use crate::world::ChunkId;
 
 /// Row-major linear RGB samples for one chunk tile (ADR-011 albedo sidecar).
 #[derive(Debug, Clone, PartialEq)]

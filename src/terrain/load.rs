@@ -6,16 +6,20 @@
 use std::fs;
 use std::path::Path;
 
-use crate::world::{ChunkId, WorldConfig, WorldData};
+use crate::world::{ChunkId, WorldConfig};
+
+#[cfg(any(test, feature = "terrain-import"))]
+use crate::world::WorldData;
 
 #[cfg(any(test, feature = "terrain-import"))]
 use super::albedo::TerrainChunkPayload;
+#[cfg(any(test, feature = "terrain-import"))]
 use super::albedo_decode::try_load_optional_albedo;
 use super::asset::{ManifestChunk, ManifestConfig, TerrainAssetError};
+#[cfg(any(test, feature = "terrain-import"))]
 use super::catalog::authored_extent_from_entries;
 #[cfg(any(test, feature = "terrain-import"))]
-use super::decode::decode_chunk_payload;
-use super::decode::{decode_chunk, decode_manifest};
+use super::decode::{decode_chunk, decode_chunk_payload, decode_manifest};
 
 pub(crate) fn read_manifest_text(path: &Path) -> Result<String, TerrainAssetError> {
     fs::read_to_string(path).map_err(|err| TerrainAssetError::Io {
