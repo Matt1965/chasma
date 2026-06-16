@@ -6,6 +6,7 @@
 
 use crate::world::{ChunkCoord, ChunkData, ChunkId, Heightfield, TerrainMetadata};
 
+#[cfg(any(test, feature = "terrain-import"))]
 use super::albedo::TerrainChunkPayload;
 use super::asset::{
     CHUNK_FORMAT_VERSION, ChunkFile, MANIFEST_FORMAT_VERSION, Manifest, TerrainAssetError,
@@ -60,8 +61,9 @@ pub fn decode_chunk(text: &str) -> Result<(ChunkId, ChunkData), TerrainAssetErro
     Ok((id, ChunkData::new(heightfield, Vec::new())))
 }
 
-/// Decode a height chunk file into a pipeline [`TerrainChunkPayload`] without
-/// loading optional albedo sidecars.
+/// Decode a height chunk file into a sync-load pipeline payload without
+/// loading optional albedo sidecars (tests / terrain-import tooling only).
+#[cfg(any(test, feature = "terrain-import"))]
 pub fn decode_chunk_payload(text: &str) -> Result<(ChunkId, TerrainChunkPayload), TerrainAssetError> {
     let (id, chunk_data) = decode_chunk(text)?;
     Ok((id, TerrainChunkPayload::new(chunk_data, None)))

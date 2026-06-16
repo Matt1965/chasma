@@ -144,13 +144,15 @@ impl TerrainChunkAlbedo {
     }
 }
 
-/// Decode / materialization pipeline bundle (not stored in [`WorldData`]).
+/// Decode / sync-load pipeline bundle (not stored in [`WorldData`]; tests / import only).
+#[cfg(any(test, feature = "terrain-import"))]
 #[derive(Debug, Clone, PartialEq)]
 pub struct TerrainChunkPayload {
     pub chunk_data: ChunkData,
     pub albedo: Option<ChunkAlbedoGrid>,
 }
 
+#[cfg(any(test, feature = "terrain-import"))]
 impl TerrainChunkPayload {
     pub fn new(chunk_data: ChunkData, albedo: Option<ChunkAlbedoGrid>) -> Self {
         Self { chunk_data, albedo }
@@ -188,7 +190,10 @@ mod tests {
 
         let with = TerrainChunkPayload::new(chunk_data, Some(albedo.clone()));
         assert_eq!(with.albedo.as_ref(), Some(&albedo));
-        assert_eq!(with.chunk_data.metadata, TerrainMetadata::from_heightfield(&with.chunk_data.heightfield));
+        assert_eq!(
+            with.chunk_data.metadata,
+            TerrainMetadata::from_heightfield(&with.chunk_data.heightfield)
+        );
     }
 
     #[test]

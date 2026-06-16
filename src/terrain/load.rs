@@ -8,11 +8,14 @@ use std::path::Path;
 
 use crate::world::{ChunkId, WorldConfig, WorldData};
 
+#[cfg(any(test, feature = "terrain-import"))]
 use super::albedo::TerrainChunkPayload;
 use super::albedo_decode::try_load_optional_albedo;
 use super::asset::{ManifestChunk, ManifestConfig, TerrainAssetError};
 use super::catalog::authored_extent_from_entries;
-use super::decode::{decode_chunk, decode_chunk_payload, decode_manifest};
+#[cfg(any(test, feature = "terrain-import"))]
+use super::decode::decode_chunk_payload;
+use super::decode::{decode_chunk, decode_manifest};
 
 pub(crate) fn read_manifest_text(path: &Path) -> Result<String, TerrainAssetError> {
     fs::read_to_string(path).map_err(|err| TerrainAssetError::Io {
@@ -67,6 +70,7 @@ pub(crate) fn validate_loaded_chunk(
 /// Synchronously load one chunk file into a pipeline payload (height + optional albedo).
 ///
 /// Inserts only geography into `world` when used via [`load_chunk_from_path`].
+#[cfg(any(test, feature = "terrain-import"))]
 pub fn load_chunk_payload_from_paths(
     chunk_path: &Path,
     entry: &ManifestChunk,
@@ -83,7 +87,8 @@ pub fn load_chunk_payload_from_paths(
     Ok((id, payload))
 }
 
-/// Synchronously load one chunk file into `world`.
+/// Synchronously load one chunk file into `world` (tests / terrain-import tooling only).
+#[cfg(any(test, feature = "terrain-import"))]
 pub fn load_chunk_from_path(
     chunk_path: &Path,
     entry: &ManifestChunk,
@@ -96,12 +101,13 @@ pub fn load_chunk_from_path(
     Ok(id)
 }
 
-/// Load all chunks listed in a manifest into `world`.
+/// Load all chunks listed in a manifest into `world` (tests / terrain-import tooling only).
 ///
 /// Chunk paths in the manifest are resolved relative to the manifest's own
 /// directory. The manifest's embedded config snapshot is validated against
 /// `config`; authored extent is set from the manifest chunk list. Returns the
 /// number of chunks inserted.
+#[cfg(any(test, feature = "terrain-import"))]
 pub fn load_world_from_manifest(
     manifest_path: &Path,
     config: &WorldConfig,

@@ -588,16 +588,6 @@ impl PendingChunkMaterializations {
         self.store_materialized(chunk_id, generation, data, None, mesh, lod, 0.0);
     }
 
-    #[cfg(test)]
-    pub(crate) fn push_decoded_test_only(
-        &mut self,
-        chunk_id: ChunkId,
-        generation: u64,
-        data: ChunkData,
-    ) {
-        self.push_materialized_test_only(chunk_id, generation, data, 1.0, ChunkLod::Full);
-    }
-
     fn pipeline_has_unique_chunk_ids(&self) -> bool {
         let mut seen = HashSet::new();
         for entry in &self.in_flight {
@@ -667,11 +657,6 @@ impl PendingChunkMaterializations {
         std::mem::take(&mut self.materialized)
     }
 
-    /// Alias for [`Self::take_materialized`].
-    pub fn take_decoded(&mut self) -> Vec<MaterializedChunkPending> {
-        self.take_materialized()
-    }
-
     /// Return materialized chunks that exceeded the apply budget to the queue.
     pub fn requeue_materialized(&mut self, entries: Vec<MaterializedChunkPending>) {
         if entries.is_empty() {
@@ -709,11 +694,6 @@ impl PendingChunkMaterializations {
             );
         }
         self.assert_pipeline_chunk_uniqueness();
-    }
-
-    /// Alias for [`Self::requeue_materialized`].
-    pub fn requeue_decoded(&mut self, entries: Vec<MaterializedChunkPending>) {
-        self.requeue_materialized(entries);
     }
 }
 
@@ -985,11 +965,11 @@ mod tests {
         for i in 0..6 {
             let chunk_id = ChunkId::new(ChunkCoord::new(i, 0));
             let generation = residency.begin_loading(chunk_id).unwrap();
-            pending.push_decoded_test_only(chunk_id, generation, sample_chunk_data(i));
+            pending.push_materialized_test_only(chunk_id, generation, sample_chunk_data(i), 1.0, ChunkLod::Full);
         }
 
         let budget = 2;
-        let mut batch = pending.take_decoded();
+        let mut batch = pending.take_materialized();
         batch.sort_by_key(|entry| (entry.chunk_id.coord().z, entry.chunk_id.coord().x));
         let remainder = if batch.len() > budget {
             batch.split_off(budget)
@@ -998,7 +978,7 @@ mod tests {
         };
 
         assert_eq!(batch.len(), budget);
-        pending.requeue_decoded(remainder);
+        pending.requeue_materialized(remainder);
         assert_eq!(pending.decoded_len(), 4);
         assert_eq!(pending.unique_pipeline_chunk_count(), 4);
     }
@@ -1085,7 +1065,7 @@ mod tests {
         let mut residency = ChunkResidencyTracker::default();
         let chunk_id = ChunkId::new(ChunkCoord::new(3, 3));
         let generation = residency.begin_loading(chunk_id).unwrap();
-        pending.push_decoded_test_only(chunk_id, generation, sample_chunk_data(0));
+        pending.push_materialized_test_only(chunk_id, generation, sample_chunk_data(0), 1.0, ChunkLod::Full);
 
         let keep = HashSet::new();
         let desired = HashSet::new();

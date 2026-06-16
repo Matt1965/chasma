@@ -1,7 +1,8 @@
 //! Spawn and despawn derived terrain render entities (ADR-010, ADR-012).
 //!
-//! Meshes are disposable visualization; authoritative terrain remains in
-//! [`WorldData`].
+//! Runtime streaming applies prebuilt meshes via [`spawn_prebuilt_chunk_mesh_inner`].
+//! [`despawn_chunk_meshes`] is used on unload. Sync main-thread mesh rebuild
+//! entry points were removed; mesh generation runs on the async materialization path.
 
 #[cfg(feature = "dev")]
 use std::time::Instant;
@@ -10,14 +11,11 @@ use bevy::prelude::*;
 
 use crate::world::{ChunkCoord, ChunkId, WorldData};
 
-use super::albedo::AlbedoFallback;
 use super::components::TerrainChunkMesh;
 use super::lod_cache::TerrainChunkLodCache;
-use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled};
+use super::mesh::{ChunkLod, ChunkMeshSeamWeld};
 #[cfg(feature = "dev")]
-use super::mesh::chunk_mesh_geometry;
-#[cfg(feature = "dev")]
-use super::perf::{MeshBuildKind, TerrainStreamingPerfRecorder};
+use super::perf::TerrainStreamingPerfRecorder;
 
 /// Shared render resources for terrain chunk meshes.
 #[derive(Debug, Clone, Resource)]
@@ -121,179 +119,6 @@ pub(crate) fn spawn_prebuilt_chunk_mesh_inner(
     }
 }
 
-/// Spawn one derived render entity for a resident chunk.
-pub fn spawn_chunk_mesh(
-    commands: &mut Commands,
-    chunk_id: ChunkId,
-    world: &WorldData,
-    chunk_size_units: f32,
-    meshes: &mut Assets<Mesh>,
-    material: Handle<StandardMaterial>,
-    vertical_scale: f32,
-) {
-    spawn_chunk_mesh_inner(
-        commands,
-        chunk_id,
-        world,
-        chunk_size_units,
-        meshes,
-        material,
-        vertical_scale,
-        #[cfg(feature = "dev")]
-        None,
-        #[cfg(feature = "dev")]
-        MeshBuildKind::NewChunk,
-    );
-}
-
-pub(crate) fn spawn_chunk_mesh_inner(
-    commands: &mut Commands,
-    chunk_id: ChunkId,
-    world: &WorldData,
-    chunk_size_units: f32,
-    meshes: &mut Assets<Mesh>,
-    material: Handle<StandardMaterial>,
-    vertical_scale: f32,
-    #[cfg(feature = "dev")] mut perf: Option<&mut TerrainStreamingPerfRecorder>,
-    #[cfg(feature = "dev")] mesh_kind: MeshBuildKind,
-) {
-    let Some(data) = world.get(chunk_id) else {
-        return;
-    };
-
-    let seam_weld = seam_weld_heights(world, chunk_id);
-
-    #[cfg(feature = "dev")]
-    let build_start = perf.is_some().then(Instant::now);
-    let mesh = build_chunk_mesh_scaled(
-        &data.heightfield,
-        ChunkLod::Full,
-        vertical_scale,
-        &seam_weld,
-        None,
-        AlbedoFallback::default(),
-    );
-    #[cfg(feature = "dev")]
-    if let (Some(perf), Some(start)) = (perf.as_mut(), build_start) {
-        perf.record_mesh_build(
-            mesh_kind,
-            chunk_id.coord(),
-            start.elapsed(),
-            chunk_mesh_geometry(&mesh),
-        );
-    }
-
-    #[cfg(feature = "dev")]
-    let assets_start = perf.is_some().then(Instant::now);
-    let mesh_handle = meshes.add(mesh);
-    #[cfg(feature = "dev")]
-    if let (Some(perf), Some(start)) = (perf.as_mut(), assets_start) {
-        perf.record_mesh_assets(start.elapsed());
-    }
-
-    let mut cache = TerrainChunkLodCache::default();
-    cache.set(ChunkLod::Full, mesh_handle.clone());
-
-    let coord = chunk_id.coord();
-    #[cfg(feature = "dev")]
-    let spawn_start = perf.is_some().then(Instant::now);
-    commands.spawn((
-        Mesh3d(mesh_handle),
-        MeshMaterial3d(material),
-        Transform::from_xyz(
-            coord.x as f32 * chunk_size_units,
-            0.0,
-            coord.z as f32 * chunk_size_units,
-        ),
-        TerrainChunkMesh::new(chunk_id, ChunkLod::Full),
-        cache,
-    ));
-    #[cfg(feature = "dev")]
-    if let (Some(perf), Some(start)) = (perf.as_mut(), spawn_start) {
-        perf.record_spawn(start.elapsed());
-    }
-}
-
-/// Rebuild render meshes for resident orthogonal neighbors after `chunk_id` loads.
-pub fn refresh_adjacent_chunk_meshes(
-    commands: &mut Commands,
-    chunk_id: ChunkId,
-    world: &WorldData,
-    chunk_size_units: f32,
-    meshes: &mut Assets<Mesh>,
-    material: Handle<StandardMaterial>,
-    vertical_scale: f32,
-    mesh_entities: &Query<(Entity, &TerrainChunkMesh)>,
-) {
-    refresh_adjacent_chunk_meshes_inner(
-        commands,
-        chunk_id,
-        world,
-        chunk_size_units,
-        meshes,
-        material,
-        vertical_scale,
-        mesh_entities,
-        #[cfg(feature = "dev")]
-        None,
-    );
-}
-
-pub(crate) fn refresh_adjacent_chunk_meshes_inner(
-    commands: &mut Commands,
-    chunk_id: ChunkId,
-    world: &WorldData,
-    chunk_size_units: f32,
-    meshes: &mut Assets<Mesh>,
-    material: Handle<StandardMaterial>,
-    vertical_scale: f32,
-    mesh_entities: &Query<(Entity, &TerrainChunkMesh)>,
-    #[cfg(feature = "dev")] mut perf: Option<&mut TerrainStreamingPerfRecorder>,
-) {
-    let coord = chunk_id.coord();
-    let neighbors = [
-        ChunkCoord::new(coord.x - 1, coord.z),
-        ChunkCoord::new(coord.x + 1, coord.z),
-        ChunkCoord::new(coord.x, coord.z - 1),
-        ChunkCoord::new(coord.x, coord.z + 1),
-    ];
-    for neighbor_coord in neighbors {
-        #[cfg(feature = "dev")]
-        if let Some(perf) = perf.as_mut() {
-            perf.record_neighbor_considered();
-        }
-
-        let neighbor_id = ChunkId::new(neighbor_coord);
-        if world.get(neighbor_id).is_none() {
-            #[cfg(feature = "dev")]
-            if let Some(perf) = perf.as_mut() {
-                perf.record_neighbor_skipped();
-            }
-            continue;
-        }
-
-        #[cfg(feature = "dev")]
-        if let Some(perf) = perf.as_mut() {
-            perf.record_neighbor_rebuilt();
-        }
-
-        despawn_chunk_meshes(commands, neighbor_id, mesh_entities);
-        spawn_chunk_mesh_inner(
-            commands,
-            neighbor_id,
-            world,
-            chunk_size_units,
-            meshes,
-            material.clone(),
-            vertical_scale,
-            #[cfg(feature = "dev")]
-            perf.as_deref_mut(),
-            #[cfg(feature = "dev")]
-            MeshBuildKind::NeighborRebuild,
-        );
-    }
-}
-
 /// Despawn all derived render entities for `chunk_id`.
 pub fn despawn_chunk_meshes(
     commands: &mut Commands,
@@ -307,67 +132,10 @@ pub fn despawn_chunk_meshes(
     }
 }
 
-/// Spawn one derived render entity per resident chunk in `world`.
-pub fn spawn_terrain_render_entities(
-    commands: &mut Commands,
-    world: &WorldData,
-    chunk_size_units: f32,
-    meshes: &mut Assets<Mesh>,
-    material: Handle<StandardMaterial>,
-) {
-    spawn_terrain_render_entities_scaled(
-        commands,
-        world,
-        chunk_size_units,
-        meshes,
-        material,
-        1.0,
-    );
-}
-
-/// Spawn terrain meshes with optional vertical exaggeration for visualization.
-pub fn spawn_terrain_render_entities_scaled(
-    commands: &mut Commands,
-    world: &WorldData,
-    chunk_size_units: f32,
-    meshes: &mut Assets<Mesh>,
-    material: Handle<StandardMaterial>,
-    vertical_scale: f32,
-) {
-    for (id, _) in world.iter() {
-        spawn_chunk_mesh(
-            commands,
-            id,
-            world,
-            chunk_size_units,
-            meshes,
-            material.clone(),
-            vertical_scale,
-        );
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{ChunkData, ChunkLayout, Heightfield, WorldData};
-
-    fn sample_world() -> (WorldData, ChunkId) {
-        let mut world = WorldData::new(ChunkLayout {
-            chunk_size_meters: 256.0,
-            units_per_meter: 1.0,
-        });
-        let id = ChunkId::new(ChunkCoord::new(2, 3));
-        let hf = Heightfield::from_samples(2, 128.0, vec![0.0, 1.0, 2.0, 3.0]).unwrap();
-        world.insert(id, ChunkData::new(hf, Vec::new()));
-        (world, id)
-    }
-
-    #[test]
-    fn spawn_chunk_mesh_requires_resident_chunk_data() {
-        let (world, id) = sample_world();
-        assert!(world.get(id).is_some());
-    }
+    use crate::world::{ChunkCoord, ChunkId};
 
     #[test]
     fn vertical_scale_inversely_tracks_height_span() {

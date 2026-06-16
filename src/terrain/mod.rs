@@ -33,7 +33,9 @@ pub mod preview;
 #[cfg(feature = "terrain-import")]
 pub mod write;
 
-pub use albedo::{AlbedoFallback, ChunkAlbedoGrid, TerrainChunkAlbedo, TerrainChunkPayload};
+pub use albedo::{AlbedoFallback, ChunkAlbedoGrid, TerrainChunkAlbedo};
+#[cfg(any(test, feature = "terrain-import"))]
+pub use albedo::TerrainChunkPayload;
 pub use asset::{
     ALBEDO_FORMAT_VERSION, CHUNK_FORMAT_VERSION, AlbedoFile, ChunkFile, MANIFEST_FORMAT_VERSION,
     Manifest, ManifestChunk, ManifestConfig, TerrainAssetError,
@@ -41,8 +43,11 @@ pub use asset::{
 pub use albedo_decode::{decode_albedo_exr, decode_albedo_from_path, decode_albedo_png, decode_albedo_ron};
 pub use catalog::TerrainWorldCatalog;
 pub use components::TerrainChunkMesh;
-pub use decode::{decode_chunk, decode_chunk_payload, decode_manifest};
+pub use decode::{decode_chunk, decode_manifest};
+#[cfg(any(test, feature = "terrain-import"))]
+pub use decode::decode_chunk_payload;
 pub use lifecycle::TerrainStreamingSystems;
+#[cfg(any(test, feature = "terrain-import"))]
 pub use load::{load_chunk_from_path, load_chunk_payload_from_paths, load_world_from_manifest};
 pub use materialize::PendingChunkMaterializations;
 pub use residency::{ChunkDiscardKind, ChunkResidencyState, ChunkResidencyTracker, discard_chunk_residency};
@@ -52,9 +57,7 @@ pub use mesh::DEBUG_VALIDATE_LOD_SAMPLE_ALIGNMENT;
 pub use lod::{LodPriority, TerrainLodSettings, desired_lod, predicted_lod_targets};
 pub use lod_build::PendingChunkLodBuilds;
 pub use lod_cache::TerrainChunkLodCache;
-pub use spawn::{
-    TerrainRenderAssets, despawn_chunk_meshes, spawn_chunk_mesh, spawn_terrain_render_entities,
-};
+pub use spawn::{TerrainRenderAssets, despawn_chunk_meshes};
 pub use streaming::TerrainStreamingSettings;
 
 #[cfg(feature = "dev")]
