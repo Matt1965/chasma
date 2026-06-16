@@ -43,7 +43,7 @@ pub use load::{load_chunk_from_path, load_world_from_manifest};
 pub use materialize::PendingChunkMaterializations;
 pub use residency::{ChunkDiscardKind, ChunkResidencyState, ChunkResidencyTracker, discard_chunk_residency};
 pub use mesh::{ChunkLod, build_chunk_mesh};
-pub use lod::{TerrainLodSettings, desired_lod};
+pub use lod::{LodPriority, TerrainLodSettings, desired_lod, predicted_lod_targets};
 pub use lod_build::PendingChunkLodBuilds;
 pub use lod_cache::TerrainChunkLodCache;
 pub use spawn::{

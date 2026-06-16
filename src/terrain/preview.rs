@@ -59,6 +59,7 @@ const PREVIEW_MAX_UNLOADS_PER_FRAME: usize = 24;
 const PREVIEW_MAX_APPLY_PER_FRAME: usize = 32;
 const PREVIEW_MAX_DECODE_PER_FRAME: usize = 32;
 const PREVIEW_MAX_LOD_BUILDS_PER_FRAME: usize = 24;
+const PREVIEW_MAX_LOD_PREFETCH_PER_FRAME: usize = 12;
 /// On-disk sample world exercised by the dev preview (ADR-011).
 pub const PREVIEW_MANIFEST_PATH: &str = "assets/worlds/main/manifest.ron";
 
@@ -112,6 +113,7 @@ fn setup_preview(
         half_max_distance: PREVIEW_LOD_HALF_MAX_DISTANCE,
         quarter_max_distance: PREVIEW_LOD_QUARTER_MAX_DISTANCE,
         max_lod_builds_per_frame: PREVIEW_MAX_LOD_BUILDS_PER_FRAME,
+        max_lod_prefetch_per_frame: PREVIEW_MAX_LOD_PREFETCH_PER_FRAME,
     });
     commands.insert_resource(TerrainRenderAssets {
         material,

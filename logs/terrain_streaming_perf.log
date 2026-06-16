@@ -6480,3 +6480,1949 @@ vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
 Queues:
 io=0 decode=0 mesh_build=0 materialized_q=0 applied=0 unloaded=19
 
+# terrain streaming perf session started_at=1781631169
+# multi-line hitch summaries: poll/apply, mesh accounting, geometry, queues, per-mesh
+terrain streaming
+poll=0.76ms apply=0.69ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=31 decode=1 mesh_build=0 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.69ms apply=0.59ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=0 mesh_build=32 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.03ms apply=1.09ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=12 hits=12 misses=12 builds_from_prefetch=12
+
+Queues:
+io=0 decode=32 mesh_build=0 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.99ms apply=1.00ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=12 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=30 mesh_build=2 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.27ms apply=1.34ms async_mesh=42.06ms main_mesh=0.00ms mesh_assets=0.01ms spawn=0.01ms
+
+Meshes:
+applied=5 prebuilt=5 new=0 neighbor=0 built=0 async_completed=5 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=46 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=26 mesh_build=1 materialized_q=0 applied=5 unloaded=0
+
+terrain streaming
+poll=1.23ms apply=1.03ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=48 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=27 mesh_build=5 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.19ms apply=1.07ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=48 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=21 mesh_build=11 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.08ms apply=1.24ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=48 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=15 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=3.70ms apply=1.07ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=48 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=19 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.21ms apply=1.33ms async_mesh=3.39ms main_mesh=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 new=0 neighbor=0 built=0 async_completed=1 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=53 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=20 materialized_q=0 applied=1 unloaded=0
+
+terrain streaming
+poll=1.17ms apply=1.21ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=59 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=8 mesh_build=24 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.24ms apply=0.73ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=59 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=3 mesh_build=29 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.30ms apply=1.21ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=74 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=29 mesh_build=3 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.09ms apply=1.20ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=77 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=25 mesh_build=7 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.30ms apply=1.32ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=1 hits=88 misses=1 builds_from_prefetch=1
+
+Queues:
+io=0 decode=24 mesh_build=12 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.16ms apply=1.26ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=93 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=25 mesh_build=16 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.51ms apply=1.17ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=94 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=20 mesh_build=21 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.23ms apply=1.20ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=95 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=19 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.17ms apply=1.19ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=98 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=23 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.31ms apply=1.18ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=3 hits=103 misses=3 builds_from_prefetch=3
+
+Queues:
+io=0 decode=15 mesh_build=17 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.84ms apply=0.77ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=115 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=20 mesh_build=12 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.88ms apply=1.30ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=131 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=16 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.29ms apply=0.90ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=143 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=20 mesh_build=12 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.31ms apply=1.64ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=148 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=15 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.34ms apply=1.15ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=159 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=19 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.41ms apply=1.26ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=168 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=19 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.33ms apply=1.31ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=172 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=17 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.04ms apply=1.16ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=186 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=19 mesh_build=13 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.39ms apply=1.30ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=189 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=16 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.36ms apply=0.93ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=200 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=17 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.98ms apply=1.15ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=204 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=18 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.10ms apply=1.23ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=4 hits=213 misses=4 builds_from_prefetch=4
+
+Queues:
+io=2 decode=15 mesh_build=15 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.30ms apply=1.03ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=229 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=18 mesh_build=14 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.23ms apply=1.05ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=6 hits=233 misses=6 builds_from_prefetch=6
+
+Queues:
+io=3 decode=18 mesh_build=11 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.76ms apply=0.78ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=241 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=16 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.37ms apply=1.29ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=247 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=12 mesh_build=20 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.82ms apply=1.19ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=267 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=24 mesh_build=8 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.39ms apply=0.77ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=281 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=24 mesh_build=8 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.26ms apply=1.20ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=289 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=20 mesh_build=12 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.73ms apply=7.15ms async_mesh=3.37ms main_mesh=0.00ms mesh_assets=0.02ms spawn=0.03ms
+
+Meshes:
+applied=2 prebuilt=2 new=0 neighbor=0 built=0 async_completed=2 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=298 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=14 materialized_q=0 applied=2 unloaded=0
+
+terrain streaming
+poll=1.64ms apply=1.36ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=4 hits=301 misses=4 builds_from_prefetch=4
+
+Queues:
+io=2 decode=16 mesh_build=14 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.85ms apply=0.92ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=311 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=17 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.23ms apply=1.33ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=313 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=10 mesh_build=22 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.35ms apply=1.34ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=325 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=15 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.43ms apply=1.16ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=332 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=24 mesh_build=8 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.37ms apply=1.13ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=343 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=22 mesh_build=10 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.16ms apply=1.34ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=356 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=15 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.39ms apply=1.44ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=6 hits=371 misses=6 builds_from_prefetch=6
+
+Queues:
+io=3 decode=13 mesh_build=16 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.21ms apply=0.94ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=373 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=20 mesh_build=12 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.38ms apply=0.79ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=387 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=21 mesh_build=11 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=3.63ms apply=1.68ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=401 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=22 mesh_build=10 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.74ms apply=1.16ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=403 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=21 mesh_build=11 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.22ms apply=1.18ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=412 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=18 mesh_build=14 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.20ms apply=1.01ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=418 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=17 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.83ms apply=1.21ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=422 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=16 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.38ms apply=0.89ms async_mesh=4.63ms main_mesh=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=3 prebuilt=3 new=0 neighbor=0 built=0 async_completed=3 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=430 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=18 materialized_q=0 applied=3 unloaded=0
+
+terrain streaming
+poll=1.08ms apply=1.27ms async_mesh=1.95ms main_mesh=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 new=0 neighbor=0 built=0 async_completed=1 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=6 hits=449 misses=6 builds_from_prefetch=6
+
+Queues:
+io=3 decode=17 mesh_build=11 materialized_q=0 applied=1 unloaded=0
+
+terrain streaming
+poll=1.32ms apply=1.27ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=453 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=18 mesh_build=14 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.32ms apply=1.33ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=459 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=18 mesh_build=14 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.32ms apply=1.19ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=463 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=16 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.76ms apply=1.24ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=479 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=18 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=5.67ms apply=1.13ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=479 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=18 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.46ms apply=1.42ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=485 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=15 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.88ms apply=1.31ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=497 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=20 mesh_build=12 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.35ms apply=1.00ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=509 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=18 mesh_build=11 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=1.45ms apply=22.79ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=509 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=14 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.34ms apply=0.84ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=2 hits=510 misses=2 builds_from_prefetch=2
+
+Queues:
+io=0 decode=13 mesh_build=15 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.08ms apply=0.84ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=515 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=9 mesh_build=18 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.85ms apply=0.86ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=2 hits=534 misses=2 builds_from_prefetch=2
+
+Queues:
+io=0 decode=4 mesh_build=19 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.16ms apply=1.55ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=562 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=1 mesh_build=4 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=2.28ms apply=2.20ms async_mesh=7.60ms main_mesh=0.00ms mesh_assets=0.02ms spawn=0.01ms
+
+Meshes:
+applied=4 prebuilt=4 new=0 neighbor=0 built=0 async_completed=4 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=566 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=0 mesh_build=1 materialized_q=0 applied=4 unloaded=0
+
+terrain streaming
+poll=1.09ms apply=0.98ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=595 misses=0 builds_from_prefetch=0
+
+Queues:
+io=18 decode=0 mesh_build=0 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.31ms apply=0.83ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=599 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=4 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=2.72ms apply=1.84ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=592 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=42 mesh_build=8 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.30ms apply=1.50ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=592 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=40 mesh_build=10 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.75ms apply=1.51ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=591 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=16 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=2.19ms apply=1.75ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=604 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=39 mesh_build=9 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.07ms apply=1.04ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=603 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=51 mesh_build=13 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.79ms apply=1.02ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=598 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=45 mesh_build=19 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.26ms apply=1.45ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=593 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=39 mesh_build=25 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=2.58ms apply=1.58ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=593 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=37 mesh_build=27 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.78ms apply=1.77ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=593 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=33 mesh_build=31 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=4.37ms apply=1.02ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=595 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=31 mesh_build=33 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.92ms apply=0.90ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=636 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=30 mesh_build=12 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.87ms apply=1.44ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=663 misses=0 builds_from_prefetch=0
+
+Queues:
+io=11 decode=27 mesh_build=14 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.45ms apply=1.60ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=663 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=32 mesh_build=20 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.78ms apply=1.65ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=663 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=26 mesh_build=26 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.63ms apply=0.95ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=658 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=10 mesh_build=30 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=2.14ms apply=2.02ms async_mesh=2.87ms main_mesh=0.00ms mesh_assets=0.01ms spawn=0.01ms
+
+Meshes:
+applied=2 prebuilt=2 new=0 neighbor=0 built=0 async_completed=2 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=5 hits=630 misses=5 builds_from_prefetch=5
+
+Queues:
+io=0 decode=9 mesh_build=25 materialized_q=0 applied=2 unloaded=0
+
+terrain streaming
+poll=1.05ms apply=1.18ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=635 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=21 mesh_build=11 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=2.03ms apply=1.14ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=618 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=16 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.24ms apply=1.53ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=591 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=19 mesh_build=13 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.55ms apply=1.43ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=597 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=29 mesh_build=17 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.94ms apply=1.09ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=622 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=25 mesh_build=18 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.81ms apply=1.33ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=623 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=21 mesh_build=17 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=2.17ms apply=2.12ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=625 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=20 mesh_build=18 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.63ms apply=1.22ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=630 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=20 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=2.09ms apply=2.08ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=630 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=22 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.97ms apply=0.98ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=630 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=25 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.32ms apply=1.77ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=631 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=6 mesh_build=28 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=2.46ms apply=2.01ms async_mesh=7.44ms main_mesh=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=4 prebuilt=4 new=0 neighbor=0 built=0 async_completed=4 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=6 hits=654 misses=6 builds_from_prefetch=6
+
+Queues:
+io=3 decode=13 mesh_build=12 materialized_q=0 applied=4 unloaded=0
+
+terrain streaming
+poll=1.51ms apply=1.62ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=669 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=26 mesh_build=6 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.92ms apply=1.67ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=685 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=21 mesh_build=11 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=2.04ms apply=2.25ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=685 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=19 mesh_build=13 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.56ms apply=1.21ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=685 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=19 mesh_build=13 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.86ms apply=1.69ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=700 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=25 mesh_build=7 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.79ms apply=1.62ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=745 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=25 mesh_build=8 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=1.23ms apply=1.98ms async_mesh=0.00ms main_mesh=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 new=0 neighbor=0 built=0 async_completed=0 count=0 avg=0.0ms max=0.0ms
+
+Neighbor refresh:
+considered=0 rebuilt=0 skipped=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=763 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=20 mesh_build=13 materialized_q=0 applied=0 unloaded=0
+

@@ -89,6 +89,10 @@ pub struct TerrainStreamingFrameSample {
     pub total_triangles: usize,
     pub avg_vertices_per_mesh: usize,
     pub avg_triangles_per_mesh: usize,
+    pub lod_prefetch_requests: usize,
+    pub lod_prefetch_hits: usize,
+    pub lod_prefetch_misses: usize,
+    pub lod_builds_started_from_prefetch: usize,
     pub poll_ms: f32,
     pub apply_ms: f32,
     pub async_mesh_build_ms: f32,
@@ -344,6 +348,14 @@ pub fn format_terrain_streaming_sample(
         sample.total_triangles,
         sample.avg_vertices_per_mesh,
         sample.avg_triangles_per_mesh,
+    ));
+    out.push_str("\n\nLOD warmup:\n");
+    out.push_str(&format!(
+        "prefetch_req={} hits={} misses={} builds_from_prefetch={}",
+        sample.lod_prefetch_requests,
+        sample.lod_prefetch_hits,
+        sample.lod_prefetch_misses,
+        sample.lod_builds_started_from_prefetch,
     ));
     out.push_str("\n\nQueues:\n");
     out.push_str(&format!(
