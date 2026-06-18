@@ -148,10 +148,12 @@ budgets, unload order, and view-focus seam are **unchanged**.
 ### What Phase 2B.5 does not introduce
 
 - No `AssetLoader` / `AssetServer` (deferred until region/packed delivery needs it)
-- No LOD (ADR-013 Phase 2C mesh LOD remains separate)
-- No regions, masks, gameplay, simulation, pathfinding, multiplayer
+- No region containers, masks, gameplay, simulation, pathfinding, multiplayer
 - No streaming messages/events
 - No camera ↔ terrain imports
+
+Mesh-resolution LOD (ADR-013 Phase 2C) is a **separate** system chain stage
+added after Phase 2B.5; it does not change residency policy.
 
 ### Execution split
 
@@ -202,10 +204,12 @@ Request (main):
   tracker: Absent → Loading { generation }
 
 IoTaskPool:
-  read file → String
+  read height chunk → String
+  read optional albedo sidecar → bytes (decode deferred)
 
 AsyncComputeTaskPool (chained):
-  decode_chunk(&text) → (ChunkId, ChunkData)
+  decode_chunk(&height_text) → (ChunkId, ChunkData)
+  decode albedo from IO bytes (when present)
   build_chunk_mesh_scaled(&heightfield, …) → Mesh
 
 Apply (main, when task complete):
@@ -219,23 +223,44 @@ Apply (main, when task complete):
     tracker → Absent (if still Loading with same generation)
 ```
 
+Albedo sidecar **file reads** run on `IoTaskPool`; decode and mesh build stay on
+`AsyncComputeTaskPool`. Albedo is presentation data stored in terrain runtime
+(`TerrainChunkAlbedo`), not in `WorldData`.
+
 `max_loads_per_frame` bounds **new requests**, not apply count.
 
 ### System ordering (`Update`)
 
-1. **`CameraControlSystems`** — camera input/smoothing (ADR-014)
-2. **`ViewFocusSystems`** — `publish_primary_view_focus` (app bridge)
-3. **`TerrainStreamingDiff`** — pure diff: `keep_resident_set`, `desired_load_set`,
-   `to_unload_residents`, `to_request`, `to_cancel_loading` (extend existing diff)
-4. **`TerrainStreamingUnload`** — process `to_unload_residents` (despawn, remove,
-   cancel loading); runs before request/apply
-5. **`TerrainStreamingRequest`** — cancel stale loads; spawn async tasks for
-   `to_request` (budgeted); tracker `Absent` → `Loading`
-6. **`TerrainStreamingApply`** — poll completed tasks; validate; insert; spawn;
-   tracker → `Resident` or discard
+Implemented as one chained set in `TerrainRuntimePlugin`
+(`TerrainStreamingSystems`), after camera control and view-focus publish
+(ADR-014):
 
-`TerrainStreamingSystems` is the parent set: `Diff` is pure (may run in same system
-as diff-only or feed resources); unload → request → apply ordering is fixed.
+1. **`stream_terrain_chunks`** — discard out-of-ring pipeline work; compute
+   residency diff; start bounded IO for `to_load` (nearest-first).
+2. **`poll_chunk_materializations`** — advance IO → decode → async mesh build;
+   queue materialized results.
+3. **`apply_cached_lod_swaps`** — instant mesh handle swaps for cached LOD
+   (Phase 2C).
+4. **`request_missing_lod_builds`** — enqueue display-driven and predictive LOD
+   rebuilds for **already-resident** chunks only.
+5. **`poll_lod_builds`** — poll async LOD mesh builds.
+6. **`apply_chunk_materializations`** — validate; `WorldData::insert`; spawn
+   prebuilt mesh entities; tracker → `Resident`.
+7. **`unload_terrain_chunks`** — despawn mesh → `WorldData::remove` → tracker
+   `Absent` for chunks outside the keep ring.
+
+Unload runs **after** apply so completed work is not discarded before insertion.
+LOD systems run between materialization poll and apply so display swaps and
+prefetch builds see up-to-date residency.
+
+**Streaming vs LOD:** [`TerrainStreamingSettings`] controls which chunks exist
+(load/keep radii, IO/decode/mesh budgets). [`TerrainLodSettings`] only selects
+mesh resolution among resident chunks; predictive prefetch (`prefetch_warmup_lod`)
+warms one finer LOD step for resident catalog coords within load radius +2 and
+does not expand the load radius.
+
+**In-flight cancellation:** `discard_outside_residency_sets` revokes pipeline
+entries outside the current keep or desired load rings when focus moves.
 
 ### Sync path retained
 
@@ -245,8 +270,8 @@ tooling. Dev preview uses async streaming only.
 ### Deferred beyond Phase 2B.5
 
 - `AssetLoader` / `AssetServer` (optional future delivery for regions/packed assets)
-- Mesh-resolution LOD, skirts, far terrain (ADR-013; roadmap Phase 2C mesh LOD)
 - Region containers, masks, doodads, gameplay, simulation, streaming messages
+- Neighbor seam refresh on apply (explicitly disabled; deferred)
 
 # Rationale
 

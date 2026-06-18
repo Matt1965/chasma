@@ -15,6 +15,8 @@ use super::components::TerrainChunkMesh;
 use super::lod_cache::TerrainChunkLodCache;
 use super::mesh::{ChunkLod, ChunkMeshSeamWeld};
 #[cfg(feature = "dev")]
+use super::mesh::chunk_mesh_geometry;
+#[cfg(feature = "dev")]
 use super::perf::TerrainStreamingPerfRecorder;
 
 /// Shared render resources for terrain chunk meshes.
@@ -85,7 +87,11 @@ pub(crate) fn spawn_prebuilt_chunk_mesh_inner(
 ) {
     #[cfg(feature = "dev")]
     if let Some(perf) = perf.as_mut() {
-        perf.record_prebuilt_mesh_applied();
+        perf.record_prebuilt_mesh_applied(
+            chunk_id.coord(),
+            active_lod,
+            chunk_mesh_geometry(&mesh),
+        );
     }
 
     #[cfg(feature = "dev")]

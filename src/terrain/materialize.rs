@@ -13,16 +13,58 @@ use bevy::tasks::{AsyncComputeTaskPool, IoTaskPool, Task};
 use crate::world::{ChunkCoord, ChunkData, ChunkId};
 
 use super::albedo::{AlbedoFallback, ChunkAlbedoGrid};
-use super::albedo_decode::load_albedo_sidecar_absolute;
+use super::albedo_decode::{AlbedoSidecarIo, decode_albedo_sidecar_io, read_albedo_sidecar_bytes};
 use super::asset::TerrainAssetError;
 use super::decode::decode_chunk;
 use super::lod::{TerrainLodSettings, desired_lod};
-use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled};
-use super::streaming::chunk_outside_residency_sets;
+use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled, chunk_mesh_geometry};
+use super::streaming::{TerrainStreamingSettings, chunk_outside_residency_sets};
 use super::residency::{ChunkDiscardKind, ChunkResidencyTracker, discard_chunk_residency};
 
-/// Raw chunk file text read off the main thread.
-pub type ChunkIoTask = Task<Result<String, TerrainAssetError>>;
+/// Per-poll caps for materialization pipeline stage transitions (ADR-012).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MaterializePollBudgets {
+    pub max_decode_starts: usize,
+    pub max_mesh_starts: usize,
+    pub max_mesh_stores: usize,
+}
+
+impl MaterializePollBudgets {
+    pub fn unlimited_if_zero(cap: usize) -> usize {
+        if cap == 0 {
+            usize::MAX
+        } else {
+            cap
+        }
+    }
+
+    pub fn uniform(cap: usize) -> Self {
+        Self {
+            max_decode_starts: cap,
+            max_mesh_starts: cap,
+            max_mesh_stores: cap,
+        }
+    }
+}
+
+impl From<&TerrainStreamingSettings> for MaterializePollBudgets {
+    fn from(settings: &TerrainStreamingSettings) -> Self {
+        Self {
+            max_decode_starts: settings.max_decode_starts_per_frame,
+            max_mesh_starts: settings.max_mesh_starts_per_frame,
+            max_mesh_stores: settings.max_mesh_stores_per_frame,
+        }
+    }
+}
+
+/// Raw chunk file text and optional albedo sidecar bytes read off the main thread.
+pub struct ChunkIoPayload {
+    pub height_text: String,
+    pub albedo_sidecar: Option<AlbedoSidecarIo>,
+}
+
+/// IO task: read height workspace and optional albedo sidecar on [`IoTaskPool`].
+pub type ChunkIoTask = Task<Result<ChunkIoPayload, TerrainAssetError>>;
 
 /// Decoded chunk payload produced on the compute pool.
 pub type ChunkDecodeTask = Task<Result<(ChunkId, ChunkData), TerrainAssetError>>;
@@ -52,17 +94,31 @@ pub struct MaterializedChunkPending {
 }
 
 /// Per-poll stats for async mesh build (surfaced in dev perf).
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone)]
 pub struct MaterializePollStats {
     pub async_mesh_build_ms: f32,
     pub async_mesh_builds_completed: usize,
+    pub completions: Vec<MaterializeMeshCompletion>,
+}
+
+/// One completed async materialization mesh build.
+#[derive(Debug, Clone)]
+pub struct MaterializeMeshCompletion {
+    pub coord: ChunkCoord,
+    pub lod: ChunkLod,
+    pub build_ms: f32,
+    pub geometry: super::mesh::ChunkMeshGeometry,
 }
 
 enum MaterializeStage {
     Io(ChunkIoTask),
-    IoReady { raw: String },
+    IoReady {
+        height_text: String,
+    },
     Decode(ChunkDecodeTask),
-    DecodeReady { data: ChunkData },
+    DecodeReady {
+        data: ChunkData,
+    },
     MeshBuild(ChunkMeshBuildTask),
     MeshBuildReady {
         data: ChunkData,
@@ -76,7 +132,8 @@ struct InFlightMaterialization {
     chunk_id: ChunkId,
     generation: u64,
     mesh_lod: Option<ChunkLod>,
-    albedo_path: Option<PathBuf>,
+    /// Albedo sidecar bytes loaded during IO; decoded once height resolution is known.
+    albedo_sidecar: Option<AlbedoSidecarIo>,
     stage: MaterializeStage,
 }
 
@@ -116,11 +173,6 @@ impl PendingChunkMaterializations {
     }
 
     pub fn materialized_len(&self) -> usize {
-        self.materialized.len()
-    }
-
-    /// Alias for [`Self::materialized_len`] (perf / legacy naming).
-    pub fn decoded_len(&self) -> usize {
         self.materialized.len()
     }
 
@@ -193,8 +245,8 @@ impl PendingChunkMaterializations {
             chunk_id,
             generation,
             mesh_lod: None,
-            albedo_path,
-            stage: MaterializeStage::Io(spawn_chunk_io_task(path)),
+            albedo_sidecar: None,
+            stage: MaterializeStage::Io(spawn_chunk_io_task(path, albedo_path)),
         });
         true
     }
@@ -264,7 +316,7 @@ impl PendingChunkMaterializations {
         &mut self,
         residency: &mut ChunkResidencyTracker,
         keep_resident: &HashSet<ChunkCoord>,
-        max_decode_per_frame: usize,
+        budgets: MaterializePollBudgets,
         vertical_scale: f32,
         focus_chunk: ChunkCoord,
         lod_settings: &TerrainLodSettings,
@@ -276,11 +328,9 @@ impl PendingChunkMaterializations {
         let mut next = Vec::with_capacity(self.in_flight.len());
         let mut completed: Vec<(ChunkId, u64, ChunkData, Option<ChunkAlbedoGrid>, Mesh, ChunkLod, f32)> =
             Vec::new();
-        let budget = if max_decode_per_frame == 0 {
-            usize::MAX
-        } else {
-            max_decode_per_frame
-        };
+        let decode_cap = MaterializePollBudgets::unlimited_if_zero(budgets.max_decode_starts);
+        let mesh_start_cap = MaterializePollBudgets::unlimited_if_zero(budgets.max_mesh_starts);
+        let mesh_store_cap = MaterializePollBudgets::unlimited_if_zero(budgets.max_mesh_stores);
         let mut decode_starts = 0usize;
         let mut mesh_starts = 0usize;
         let mut mesh_stores = 0usize;
@@ -307,7 +357,7 @@ impl PendingChunkMaterializations {
                         continue;
                     }
 
-                    if mesh_stores < budget {
+                    if mesh_stores < mesh_store_cap {
                         mesh_stores += 1;
                         let lod = entry.mesh_lod.expect("mesh_lod set before store");
                         completed.push((
@@ -344,14 +394,14 @@ impl PendingChunkMaterializations {
                         continue;
                     }
 
-                    if mesh_starts < budget {
+                    if mesh_starts < mesh_start_cap {
                         mesh_starts += 1;
                         let lod =
                             desired_lod(focus_chunk, entry.chunk_id.coord(), lod_settings);
                         entry.mesh_lod = Some(lod);
                         entry.stage = MaterializeStage::MeshBuild(spawn_chunk_mesh_build_task(
                             data,
-                            entry.albedo_path.clone(),
+                            entry.albedo_sidecar.take(),
                             vertical_scale,
                             lod,
                             AlbedoFallback::default(),
@@ -369,8 +419,8 @@ impl PendingChunkMaterializations {
                         continue;
                     }
 
-                    let raw = match bevy::tasks::block_on(&mut task) {
-                        Ok(text) => text,
+                    let payload = match bevy::tasks::block_on(&mut task) {
+                        Ok(payload) => payload,
                         Err(err) => {
                             bevy::log::error!(
                                 "chunk IO failed ({}, {}): {err}",
@@ -400,16 +450,20 @@ impl PendingChunkMaterializations {
                         continue;
                     }
 
-                    if decode_starts < budget {
+                    if decode_starts < decode_cap {
                         decode_starts += 1;
+                        entry.albedo_sidecar = payload.albedo_sidecar;
                         entry.stage =
-                            MaterializeStage::Decode(spawn_chunk_decode_task(raw));
+                            MaterializeStage::Decode(spawn_chunk_decode_task(payload.height_text));
                     } else {
-                        entry.stage = MaterializeStage::IoReady { raw };
+                        entry.albedo_sidecar = payload.albedo_sidecar;
+                        entry.stage = MaterializeStage::IoReady {
+                            height_text: payload.height_text,
+                        };
                     }
                     next.push(entry);
                 }
-                MaterializeStage::IoReady { raw } => {
+                MaterializeStage::IoReady { height_text } => {
                     if !materialized_result_may_store(
                         residency,
                         entry.chunk_id,
@@ -424,13 +478,13 @@ impl PendingChunkMaterializations {
                         continue;
                     }
 
-                    if decode_starts < budget {
+                    if decode_starts < decode_cap {
                         decode_starts += 1;
                         entry.stage =
-                            MaterializeStage::Decode(spawn_chunk_decode_task(raw));
+                            MaterializeStage::Decode(spawn_chunk_decode_task(height_text));
                         next.push(entry);
                     } else {
-                        entry.stage = MaterializeStage::IoReady { raw };
+                        entry.stage = MaterializeStage::IoReady { height_text };
                         next.push(entry);
                     }
                 }
@@ -472,7 +526,7 @@ impl PendingChunkMaterializations {
                                 continue;
                             }
 
-                            if mesh_starts < budget {
+                            if mesh_starts < mesh_start_cap {
                                 mesh_starts += 1;
                                 let lod = desired_lod(
                                     focus_chunk,
@@ -483,7 +537,7 @@ impl PendingChunkMaterializations {
                                 entry.stage = MaterializeStage::MeshBuild(
                                     spawn_chunk_mesh_build_task(
                                         data,
-                                        entry.albedo_path.clone(),
+                                        entry.albedo_sidecar.take(),
                                         vertical_scale,
                                         lod,
                                         AlbedoFallback::default(),
@@ -535,7 +589,7 @@ impl PendingChunkMaterializations {
                         continue;
                     }
 
-                    if mesh_stores < budget {
+                    if mesh_stores < mesh_store_cap {
                         mesh_stores += 1;
                         let lod = entry.mesh_lod.expect("mesh_lod set before store");
                         completed.push((
@@ -562,6 +616,12 @@ impl PendingChunkMaterializations {
 
         self.in_flight = next;
         for (chunk_id, generation, data, albedo, mesh, lod, async_mesh_build_ms) in completed {
+            stats.completions.push(MaterializeMeshCompletion {
+                coord: chunk_id.coord(),
+                lod,
+                build_ms: async_mesh_build_ms,
+                geometry: chunk_mesh_geometry(&mesh),
+            });
             self.store_materialized(
                 chunk_id,
                 generation,
@@ -737,9 +797,22 @@ pub(crate) fn decode_chunk_text(
     decode_chunk(text)
 }
 
-/// IO stage: read chunk file from disk on [`IoTaskPool`].
-pub fn spawn_chunk_io_task(path: PathBuf) -> ChunkIoTask {
-    IoTaskPool::get().spawn(async move { read_chunk_file_text(&path) })
+/// IO stage: read height chunk and optional albedo sidecar on [`IoTaskPool`].
+pub fn spawn_chunk_io_task(
+    height_path: PathBuf,
+    albedo_path: Option<PathBuf>,
+) -> ChunkIoTask {
+    IoTaskPool::get().spawn(async move {
+        let height_text = read_chunk_file_text(&height_path)?;
+        let albedo_sidecar = match albedo_path.as_deref() {
+            Some(path) => read_albedo_sidecar_bytes(path)?,
+            None => None,
+        };
+        Ok(ChunkIoPayload {
+            height_text,
+            albedo_sidecar,
+        })
+    })
 }
 
 /// Decode stage: `decode_chunk` on [`AsyncComputeTaskPool`].
@@ -747,10 +820,10 @@ pub fn spawn_chunk_decode_task(raw: String) -> ChunkDecodeTask {
     AsyncComputeTaskPool::get().spawn(async move { decode_chunk_text(&raw) })
 }
 
-/// Mesh-build stage: pure mesh generation on [`AsyncComputeTaskPool`].
+/// Mesh-build stage: decode albedo from IO bytes and build mesh on [`AsyncComputeTaskPool`].
 pub fn spawn_chunk_mesh_build_task(
     data: ChunkData,
-    albedo_path: Option<PathBuf>,
+    albedo_sidecar: Option<AlbedoSidecarIo>,
     vertical_scale: f32,
     lod: ChunkLod,
     fallback: AlbedoFallback,
@@ -758,11 +831,14 @@ pub fn spawn_chunk_mesh_build_task(
     AsyncComputeTaskPool::get().spawn(async move {
         let start = std::time::Instant::now();
         let spe = data.heightfield.samples_per_edge();
-        let albedo = match albedo_path.as_deref() {
-            Some(path) => match load_albedo_sidecar_absolute(path, spe) {
+        let albedo = match albedo_sidecar.as_ref() {
+            Some(sidecar) => match decode_albedo_sidecar_io(sidecar, spe) {
                 Ok(albedo) => albedo,
                 Err(err) => {
-                    bevy::log::error!("albedo sidecar load failed for {path:?}: {err}");
+                    bevy::log::error!(
+                        "albedo sidecar decode failed for {:?}: {err}",
+                        sidecar.path
+                    );
                     None
                 }
             },
@@ -869,9 +945,9 @@ mod tests {
         ensure_task_pools();
         let path = temp_chunk_path(4, 5);
         let expected = std::fs::read_to_string(&path).unwrap();
-        let mut task = spawn_chunk_io_task(path.clone());
-        let actual = bevy::tasks::block_on(&mut task).unwrap();
-        assert_eq!(actual, expected);
+        let mut task = spawn_chunk_io_task(path.clone(), None);
+        let payload = bevy::tasks::block_on(&mut task).unwrap();
+        assert_eq!(payload.height_text, expected);
         std::fs::remove_file(&path).ok();
     }
 
@@ -979,7 +1055,7 @@ mod tests {
 
         assert_eq!(batch.len(), budget);
         pending.requeue_materialized(remainder);
-        assert_eq!(pending.decoded_len(), 4);
+        assert_eq!(pending.materialized_len(), 4);
         assert_eq!(pending.unique_pipeline_chunk_count(), 4);
     }
 
@@ -999,11 +1075,12 @@ mod tests {
     ) {
         let settings = TerrainLodSettings::default();
         let mut stats = MaterializePollStats::default();
+        let budgets = MaterializePollBudgets::uniform(16);
         for _ in 0..64 {
             pending.poll_in_flight(
                 residency,
                 keep,
-                16,
+                budgets,
                 1.0,
                 focus,
                 &settings,
@@ -1039,7 +1116,7 @@ mod tests {
             pending.poll_in_flight(
                 &mut residency,
                 &keep,
-                16,
+                MaterializePollBudgets::uniform(16),
                 1.0,
                 chunk_id.coord(),
                 &settings,
@@ -1072,7 +1149,7 @@ mod tests {
         pending.discard_outside_residency_sets(&mut residency, &keep, &desired);
 
         assert!(!residency.is_loading(chunk_id));
-        assert_eq!(pending.decoded_len(), 0);
+        assert_eq!(pending.materialized_len(), 0);
     }
 
     #[test]
@@ -1157,7 +1234,7 @@ mod tests {
             pending.poll_in_flight(
                 &mut residency,
                 &keep,
-                16,
+                MaterializePollBudgets::uniform(16),
                 1.0,
                 focus,
                 &settings,
@@ -1177,7 +1254,7 @@ mod tests {
             pending.poll_in_flight(
                 &mut residency,
                 &keep,
-                16,
+                MaterializePollBudgets::uniform(16),
                 1.0,
                 focus,
                 &settings,

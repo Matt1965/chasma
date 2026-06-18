@@ -39,9 +39,10 @@ pub struct TerrainLodSettings {
 impl Default for TerrainLodSettings {
     fn default() -> Self {
         Self {
+            // Tighter than legacy 3/8 rings: sharper near focus, Eighth from distance 5+.
             full_max_distance: 0,
             half_max_distance: 1,
-            quarter_max_distance: 2,
+            quarter_max_distance: 4,
             max_lod_builds_per_frame: 2,
             max_lod_prefetch_per_frame: 6,
         }
@@ -52,21 +53,42 @@ impl Default for TerrainLodSettings {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect)]
 #[reflect(Debug, PartialEq)]
 pub enum LodPriority {
-    /// Inside `load_radius_chunks` — warm Full/Half.
+    /// Inside `load_radius_chunks` — highest scheduling priority.
     High = 0,
-    /// `load_radius_chunks + 1` ring — warm Half/Quarter.
+    /// `load_radius_chunks + 1` ring.
     Medium = 1,
-    /// `load_radius_chunks + 2` ring — warm Eighth only.
+    /// `load_radius_chunks + 2` ring.
     Low = 2,
 }
 
-/// LOD levels to prefetch for a prediction band.
-pub fn prefetch_lods_for_priority(priority: LodPriority) -> &'static [ChunkLod] {
-    match priority {
-        LodPriority::High => &[ChunkLod::Full, ChunkLod::Half],
-        LodPriority::Medium => &[ChunkLod::Half, ChunkLod::Quarter],
-        LodPriority::Low => &[ChunkLod::Eighth],
+/// One finer mesh-resolution level, if any.
+pub fn finer_lod(lod: ChunkLod) -> Option<ChunkLod> {
+    match lod {
+        ChunkLod::Eighth => Some(ChunkLod::Quarter),
+        ChunkLod::Quarter => Some(ChunkLod::Half),
+        ChunkLod::Half => Some(ChunkLod::Full),
+        ChunkLod::Full => None,
     }
+}
+
+/// LOD level to prefetch for camera-move warmup: one step finer than display, ring-capped.
+///
+/// Never returns [`ChunkLod::Full`] beyond [`TerrainLodSettings::full_max_distance`].
+/// Does not prefetch coarser levels or duplicate the current display LOD.
+pub fn prefetch_warmup_lod(
+    focus_chunk: ChunkCoord,
+    chunk_coord: ChunkCoord,
+    settings: &TerrainLodSettings,
+) -> Option<ChunkLod> {
+    let display = desired_lod(focus_chunk, chunk_coord, settings);
+    let finer = finer_lod(display)?;
+    if finer == ChunkLod::Full {
+        let distance = chunk_chebyshev_distance(focus_chunk, chunk_coord);
+        if distance > settings.full_max_distance {
+            return None;
+        }
+    }
+    Some(finer)
 }
 
 /// Classify Chebyshev distance into a prefetch band (`None` outside +2 ring).
@@ -97,7 +119,7 @@ pub fn lod_prefetch_priority(
 pub fn predicted_lod_targets(
     focus_chunk: ChunkCoord,
     catalog: &TerrainWorldCatalog,
-    _settings: &TerrainLodSettings,
+    settings: &TerrainLodSettings,
     load_radius_chunks: i32,
 ) -> Vec<(ChunkCoord, ChunkLod, LodPriority)> {
     let outer = load_radius_chunks + 2;
@@ -113,9 +135,10 @@ pub fn predicted_lod_targets(
             else {
                 continue;
             };
-            for &lod in prefetch_lods_for_priority(priority) {
-                out.push((coord, lod, priority));
-            }
+            let Some(lod) = prefetch_warmup_lod(focus_chunk, coord, settings) else {
+                continue;
+            };
+            out.push((coord, lod, priority));
         }
     }
 
@@ -128,7 +151,7 @@ pub fn predicted_lod_targets(
     out
 }
 
-fn lod_order(lod: ChunkLod) -> u8 {
+pub(crate) fn lod_order(lod: ChunkLod) -> u8 {
     match lod {
         ChunkLod::Full => 0,
         ChunkLod::Half => 1,
@@ -199,7 +222,12 @@ mod tests {
 
     #[test]
     fn desired_lod_ring_table_distances_zero_through_five() {
-        let settings = TerrainLodSettings::default();
+        let settings = TerrainLodSettings {
+            full_max_distance: 0,
+            half_max_distance: 1,
+            quarter_max_distance: 2,
+            ..Default::default()
+        };
         let focus = coord(10, 10);
 
         assert_eq!(desired_lod(focus, coord(10, 10), &settings), ChunkLod::Full);
@@ -230,6 +258,42 @@ mod tests {
     }
 
     #[test]
+    fn default_lod_rings_are_tight_for_distant_coarsening() {
+        let settings = TerrainLodSettings::default();
+        let focus = coord(10, 10);
+
+        assert_eq!(settings.full_max_distance, 0);
+        assert_eq!(settings.half_max_distance, 1);
+        assert_eq!(settings.quarter_max_distance, 4);
+
+        assert_eq!(desired_lod(focus, focus, &settings), ChunkLod::Full);
+        assert_eq!(desired_lod(focus, coord(11, 10), &settings), ChunkLod::Half);
+        assert_eq!(desired_lod(focus, coord(14, 10), &settings), ChunkLod::Quarter);
+        assert_eq!(desired_lod(focus, coord(15, 10), &settings), ChunkLod::Eighth);
+    }
+
+    #[test]
+    fn prefetch_warmup_is_one_step_finer_and_skips_distant_full() {
+        let settings = TerrainLodSettings::default();
+        let focus = coord(0, 0);
+
+        assert_eq!(prefetch_warmup_lod(focus, focus, &settings), None);
+        assert_eq!(
+            prefetch_warmup_lod(focus, coord(1, 0), &settings),
+            None,
+            "Full is not prefetched beyond full_max_distance"
+        );
+        assert_eq!(
+            prefetch_warmup_lod(focus, coord(2, 0), &settings),
+            Some(ChunkLod::Half)
+        );
+        assert_eq!(
+            prefetch_warmup_lod(focus, coord(6, 0), &settings),
+            Some(ChunkLod::Quarter)
+        );
+    }
+
+    #[test]
     fn predicted_lod_targets_returns_correct_prefetch_rings() {
         let settings = TerrainLodSettings::default();
         let focus = coord(10, 10);
@@ -244,23 +308,12 @@ mod tests {
 
         let targets = predicted_lod_targets(focus, &catalog, &settings, load_radius);
 
-        assert!(targets.iter().any(|(c, lod, p)| {
-            *c == coord(10, 10) && *lod == ChunkLod::Full && *p == LodPriority::High
-        }));
-        assert!(targets.iter().any(|(c, lod, p)| {
-            *c == coord(10, 10) && *lod == ChunkLod::Half && *p == LodPriority::High
-        }));
-        assert!(targets.iter().any(|(c, lod, p)| {
-            *c == coord(11, 10) && *lod == ChunkLod::Half && *p == LodPriority::High
-        }));
+        assert!(!targets.iter().any(|(_, lod, _)| *lod == ChunkLod::Full));
         assert!(targets.iter().any(|(c, lod, p)| {
             *c == coord(12, 10) && *lod == ChunkLod::Half && *p == LodPriority::Medium
         }));
         assert!(targets.iter().any(|(c, lod, p)| {
-            *c == coord(12, 10) && *lod == ChunkLod::Quarter && *p == LodPriority::Medium
-        }));
-        assert!(targets.iter().any(|(c, lod, p)| {
-            *c == coord(13, 10) && *lod == ChunkLod::Eighth && *p == LodPriority::Low
+            *c == coord(13, 10) && *lod == ChunkLod::Half && *p == LodPriority::Low
         }));
         assert!(!targets.iter().any(|(c, _, _)| *c == coord(14, 10)));
     }

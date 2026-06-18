@@ -32,10 +32,17 @@ pub struct TerrainStreamingSettings {
     pub unload_radius_chunks: i32,
     pub max_loads_per_frame: usize,
     pub max_unloads_per_frame: usize,
-    /// Maximum decoded chunks applied to [`WorldData`] per frame.
+    /// Maximum materialized chunks applied to [`WorldData`] per frame.
     pub max_apply_per_frame: usize,
-    /// Soft cap on IO→decode transitions per poll tick (`0` = unlimited).
-    pub max_decode_per_frame: usize,
+    /// Soft cap on IO→decode task starts per poll tick (`0` = unlimited).
+    pub max_decode_starts_per_frame: usize,
+    /// Soft cap on decode→async mesh build task starts per poll (`0` = unlimited).
+    pub max_mesh_starts_per_frame: usize,
+    /// Soft cap on completed mesh results moved to the apply queue per poll (`0` = unlimited).
+    ///
+    /// Separated from [`Self::max_mesh_starts_per_frame`] so finished builds are not
+    /// held in `MeshBuildReady` while decode/mesh-start slots remain available.
+    pub max_mesh_stores_per_frame: usize,
 }
 
 impl Default for TerrainStreamingSettings {
@@ -43,10 +50,13 @@ impl Default for TerrainStreamingSettings {
         Self {
             load_radius_chunks: 1,
             unload_radius_chunks: 2,
-            max_loads_per_frame: 2,
-            max_unloads_per_frame: 4,
-            max_apply_per_frame: 2,
-            max_decode_per_frame: 4,
+            // Bracketed below dev preview (32/32/32) — raised after preview proved throughput scales.
+            max_loads_per_frame: 16,
+            max_unloads_per_frame: 8,
+            max_apply_per_frame: 16,
+            max_decode_starts_per_frame: 16,
+            max_mesh_starts_per_frame: 16,
+            max_mesh_stores_per_frame: 32,
         }
     }
 }
@@ -133,7 +143,12 @@ pub fn diff_streaming_residency(
         })
         .collect();
 
-    to_load.sort_by_key(|c| (c.z, c.x));
+    to_load.sort_by(|a, b| {
+        chunk_chebyshev_distance(focus, *a)
+            .cmp(&chunk_chebyshev_distance(focus, *b))
+            .then_with(|| a.z.cmp(&b.z))
+            .then_with(|| a.x.cmp(&b.x))
+    });
     to_unload.sort_by_key(|id| (id.coord().z, id.coord().x));
 
     to_load.truncate(settings.max_loads_per_frame);
@@ -214,12 +229,65 @@ mod tests {
             max_loads_per_frame: 16,
             max_unloads_per_frame: 16,
             max_apply_per_frame: 16,
-            max_decode_per_frame: 16,
+            max_decode_starts_per_frame: 16,
+            max_mesh_starts_per_frame: 16,
+            max_mesh_stores_per_frame: 16,
         }
     }
 
     fn no_exempt() -> HashSet<ChunkId> {
         HashSet::new()
+    }
+
+    #[test]
+    fn default_streaming_budgets_are_raised_and_split() {
+        let settings = TerrainStreamingSettings::default();
+        assert_eq!(settings.max_loads_per_frame, 16);
+        assert_eq!(settings.max_apply_per_frame, 16);
+        assert_eq!(settings.max_decode_starts_per_frame, 16);
+        assert_eq!(settings.max_mesh_starts_per_frame, 16);
+        assert_eq!(
+            settings.max_mesh_stores_per_frame,
+            32,
+            "mesh stores should exceed mesh starts so completed builds drain"
+        );
+    }
+
+    #[test]
+    fn to_load_prefers_nearest_chunks_first() {
+        let catalog = catalog_with_chunks(&[
+            (0, 0),
+            (1, 0),
+            (0, 1),
+            (5, 0),
+            (0, 5),
+        ]);
+        let layout = WorldConfig::default().chunk_layout();
+        let world = WorldData::new(layout);
+        let focus = PrimaryViewFocus::new(Vec3::new(128.0, 0.0, 128.0));
+        let cfg = TerrainStreamingSettings {
+            load_radius_chunks: 5,
+            unload_radius_chunks: 6,
+            max_loads_per_frame: 2,
+            ..settings(5, 6)
+        };
+
+        let (to_load, _) = diff_streaming_residency(
+            &focus,
+            layout,
+            &cfg,
+            &catalog,
+            &world,
+            &no_exempt(),
+        );
+
+        assert_eq!(to_load.len(), 2);
+        assert_eq!(to_load[0], ChunkCoord::new(0, 0));
+        assert!(
+            chunk_chebyshev_distance(ChunkCoord::new(0, 0), to_load[1]) <= 1,
+            "second slot should be a distance-1 ring chunk, got {:?}",
+            to_load[1]
+        );
     }
 
     #[test]

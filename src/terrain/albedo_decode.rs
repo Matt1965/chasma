@@ -3,10 +3,17 @@
 //! Decodes optional per-chunk albedo files into [`ChunkAlbedoGrid`]. File IO
 //! lives here; RON text decoding is delivery-agnostic like height chunks.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::albedo::ChunkAlbedoGrid;
 use super::asset::{ALBEDO_FORMAT_VERSION, AlbedoFile, TerrainAssetError};
+
+/// Raw albedo sidecar bytes read during the IO stage (decode deferred until height is known).
+#[derive(Debug, Clone)]
+pub struct AlbedoSidecarIo {
+    pub path: PathBuf,
+    pub bytes: Vec<u8>,
+}
 
 /// Decode an albedo sidecar from RON text.
 pub fn decode_albedo_ron(text: &str) -> Result<ChunkAlbedoGrid, TerrainAssetError> {
@@ -22,27 +29,41 @@ pub fn decode_albedo_ron(text: &str) -> Result<ChunkAlbedoGrid, TerrainAssetErro
         .map_err(TerrainAssetError::AlbedoGrid)
 }
 
-/// Decode an albedo sidecar from disk, choosing the decoder from the extension.
-pub fn decode_albedo_from_path(path: &Path) -> Result<ChunkAlbedoGrid, TerrainAssetError> {
-    let ext = path
-        .extension()
+fn albedo_extension(path: &Path) -> &str {
+    path.extension()
         .and_then(|s| s.to_str())
-        .unwrap_or("");
+        .unwrap_or("")
+}
 
-    match ext {
-        "ron" => decode_albedo_ron(&std::fs::read_to_string(path).map_err(|err| {
-            TerrainAssetError::Io {
+/// Decode an albedo sidecar from in-memory bytes (extension selects the decoder).
+pub fn decode_albedo_from_bytes(
+    path: &Path,
+    bytes: &[u8],
+) -> Result<ChunkAlbedoGrid, TerrainAssetError> {
+    match albedo_extension(path) {
+        "ron" => {
+            let text = std::str::from_utf8(bytes).map_err(|err| TerrainAssetError::AlbedoDecode {
                 path: path.display().to_string(),
                 message: err.to_string(),
-            }
-        })?),
-        "exr" => decode_albedo_exr(path),
-        "png" => decode_albedo_png(path),
+            })?;
+            decode_albedo_ron(text)
+        }
+        "exr" => decode_albedo_exr_bytes(path, bytes),
+        "png" => decode_albedo_png_bytes(path, bytes),
         other => Err(TerrainAssetError::AlbedoUnsupportedFormat {
             path: path.display().to_string(),
             extension: other.to_string(),
         }),
     }
+}
+
+/// Decode an albedo sidecar from disk, choosing the decoder from the extension.
+pub fn decode_albedo_from_path(path: &Path) -> Result<ChunkAlbedoGrid, TerrainAssetError> {
+    let bytes = std::fs::read(path).map_err(|err| TerrainAssetError::Io {
+        path: path.display().to_string(),
+        message: err.to_string(),
+    })?;
+    decode_albedo_from_bytes(path, &bytes)
 }
 
 /// Decode an OpenEXR RGB albedo tile (`Albedo_y{z}_x{x}.exr` or runtime sidecar).
@@ -194,6 +215,140 @@ pub fn decode_albedo_png(path: impl AsRef<Path>) -> Result<ChunkAlbedoGrid, Terr
     })
 }
 
+/// Decode PNG albedo bytes (IO stage reads; compute stage decodes).
+#[cfg(feature = "terrain-import")]
+fn decode_albedo_png_bytes(
+    path: &Path,
+    bytes: &[u8],
+) -> Result<ChunkAlbedoGrid, TerrainAssetError> {
+    use std::io::Cursor;
+
+    let decoder = png::Decoder::new(Cursor::new(bytes));
+    let mut reader = decoder.read_info().map_err(|err| TerrainAssetError::AlbedoDecode {
+        path: path.display().to_string(),
+        message: err.to_string(),
+    })?;
+
+    let width = reader.info().width as usize;
+    let height = reader.info().height as usize;
+    if width != height {
+        return Err(TerrainAssetError::AlbedoDimensionMismatch {
+            path: path.display().to_string(),
+            width,
+            height,
+            expected_samples_per_edge: width,
+        });
+    }
+
+    let buf_size = reader.output_buffer_size();
+    let mut buf = vec![0u8; buf_size];
+    let info = reader
+        .next_frame(&mut buf)
+        .map_err(|err| TerrainAssetError::AlbedoDecode {
+            path: path.display().to_string(),
+            message: err.to_string(),
+        })?;
+
+    let pixels = match info.color_type {
+        png::ColorType::Rgb => 3usize,
+        png::ColorType::Rgba => 4usize,
+        other => {
+            return Err(TerrainAssetError::AlbedoDecode {
+                path: path.display().to_string(),
+                message: format!("unsupported PNG color type: {other:?}"),
+            });
+        }
+    };
+
+    let data: Vec<[f32; 3]> = buf
+        .chunks_exact(pixels)
+        .map(|px| [px[0] as f32 / 255.0, px[1] as f32 / 255.0, px[2] as f32 / 255.0])
+        .collect();
+
+    ChunkAlbedoGrid::from_samples(width, data).map_err(TerrainAssetError::AlbedoGrid)
+}
+
+#[cfg(not(feature = "terrain-import"))]
+fn decode_albedo_png_bytes(
+    path: &Path,
+    _bytes: &[u8],
+) -> Result<ChunkAlbedoGrid, TerrainAssetError> {
+    Err(TerrainAssetError::AlbedoUnsupportedFormat {
+        path: path.display().to_string(),
+        extension: "png".to_string(),
+    })
+}
+
+/// Decode EXR albedo bytes (falls back to a temp file when no in-memory reader exists).
+#[cfg(feature = "terrain-import")]
+fn decode_albedo_exr_bytes(
+    path: &Path,
+    bytes: &[u8],
+) -> Result<ChunkAlbedoGrid, TerrainAssetError> {
+    use std::io::Write;
+
+    let temp = std::env::temp_dir().join(format!(
+        "chasma_albedo_exr_{}_{}",
+        std::process::id(),
+        path.file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("sidecar.exr")
+    ));
+    {
+        let mut file = std::fs::File::create(&temp).map_err(|err| TerrainAssetError::Io {
+            path: temp.display().to_string(),
+            message: err.to_string(),
+        })?;
+        file.write_all(bytes).map_err(|err| TerrainAssetError::Io {
+            path: temp.display().to_string(),
+            message: err.to_string(),
+        })?;
+    }
+    let result = decode_albedo_exr(&temp);
+    std::fs::remove_file(&temp).ok();
+    result
+}
+
+#[cfg(not(feature = "terrain-import"))]
+fn decode_albedo_exr_bytes(
+    path: &Path,
+    _bytes: &[u8],
+) -> Result<ChunkAlbedoGrid, TerrainAssetError> {
+    Err(TerrainAssetError::AlbedoUnsupportedFormat {
+        path: path.display().to_string(),
+        extension: "exr".to_string(),
+    })
+}
+
+/// Read optional albedo sidecar bytes on the IO pool (no decode).
+pub fn read_albedo_sidecar_bytes(path: &Path) -> Result<Option<AlbedoSidecarIo>, TerrainAssetError> {
+    if !path.is_file() {
+        eprintln!(
+            "terrain albedo: sidecar missing at {}, continuing without albedo",
+            path.display()
+        );
+        return Ok(None);
+    }
+    let bytes = std::fs::read(path).map_err(|err| TerrainAssetError::Io {
+        path: path.display().to_string(),
+        message: err.to_string(),
+    })?;
+    Ok(Some(AlbedoSidecarIo {
+        path: path.to_path_buf(),
+        bytes,
+    }))
+}
+
+/// Decode and validate albedo sidecar bytes once height sample resolution is known.
+pub fn decode_albedo_sidecar_io(
+    sidecar: &AlbedoSidecarIo,
+    height_samples_per_edge: u32,
+) -> Result<Option<ChunkAlbedoGrid>, TerrainAssetError> {
+    let albedo = decode_albedo_from_bytes(&sidecar.path, &sidecar.bytes)?;
+    validate_albedo_for_height(&albedo, height_samples_per_edge, &sidecar.path)?;
+    Ok(Some(albedo))
+}
+
 /// Validate decoded albedo against the height chunk grid.
 pub fn validate_albedo_for_height(
     albedo: &ChunkAlbedoGrid,
@@ -220,16 +375,10 @@ pub fn load_albedo_sidecar_absolute(
     path: &Path,
     height_samples_per_edge: u32,
 ) -> Result<Option<ChunkAlbedoGrid>, TerrainAssetError> {
-    if !path.is_file() {
-        eprintln!(
-            "terrain albedo: sidecar missing at {}, continuing without albedo",
-            path.display()
-        );
+    let Some(sidecar) = read_albedo_sidecar_bytes(path)? else {
         return Ok(None);
-    }
-    let albedo = decode_albedo_from_path(path)?;
-    validate_albedo_for_height(&albedo, height_samples_per_edge, path)?;
-    Ok(Some(albedo))
+    };
+    decode_albedo_sidecar_io(&sidecar, height_samples_per_edge)
 }
 
 /// Load optional albedo for a manifest entry.

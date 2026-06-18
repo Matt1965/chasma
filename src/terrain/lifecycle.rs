@@ -16,8 +16,8 @@ use super::components::TerrainChunkMesh;
 use super::catalog::TerrainWorldCatalog;
 use super::grace::JustAppliedGrace;
 use super::materialize::{
-    MaterializedChunkPending, MaterializePollStats, PendingChunkMaterializations,
-    materialized_result_may_apply,
+    MaterializedChunkPending, MaterializePollBudgets, MaterializePollStats,
+    PendingChunkMaterializations, materialized_result_may_apply,
 };
 use super::lod_build::PendingChunkLodBuilds;
 use super::load::validate_loaded_chunk;
@@ -131,7 +131,7 @@ pub fn poll_chunk_materializations(
     pending.poll_in_flight(
         &mut residency,
         &keep_resident,
-        settings.max_decode_per_frame,
+        MaterializePollBudgets::from(&*settings),
         render_assets.vertical_scale,
         focus_coord,
         &lod_settings,
@@ -141,13 +141,21 @@ pub fn poll_chunk_materializations(
     #[cfg(feature = "dev")]
     if perf_settings.enabled {
         let frame = perf_state.frame_mut();
+        for completion in &poll_stats.completions {
+            super::perf::record_mesh_build_event(
+                frame,
+                completion.coord,
+                completion.lod,
+                super::perf::MeshBuildReason::InitialMaterialize,
+                completion.build_ms,
+                completion.geometry,
+            );
+        }
         frame.poll_ms = duration_to_ms(poll_start.unwrap().elapsed());
         frame.io_in_flight = pending.io_in_flight_count();
         frame.decode_in_flight = pending.decode_in_flight_count();
         frame.mesh_build_in_flight = pending.mesh_build_in_flight_count();
-        frame.decoded_queue_len = pending.decoded_len();
-        frame.async_mesh_build_ms = poll_stats.async_mesh_build_ms;
-        frame.async_mesh_builds_completed = poll_stats.async_mesh_builds_completed;
+        frame.materialized_queue_len = pending.materialized_len();
     }
 }
 
@@ -213,7 +221,7 @@ pub fn apply_chunk_materializations(
         frame.io_in_flight = pending.io_in_flight_count();
         frame.decode_in_flight = pending.decode_in_flight_count();
         frame.mesh_build_in_flight = pending.mesh_build_in_flight_count();
-        frame.decoded_queue_len = pending.decoded_len();
+        frame.materialized_queue_len = pending.materialized_len();
         if let Some(recorder) = mesh_perf.as_ref() {
             recorder.finish_into(frame);
         }
@@ -736,8 +744,11 @@ mod apply_tests {
         std::fs::write(&path, ron::to_string(&file).unwrap()).unwrap();
 
         let raw = read_chunk_file_text(&path).unwrap();
-        let mut io_task = spawn_chunk_io_task(path.clone());
-        assert_eq!(bevy::tasks::block_on(&mut io_task).unwrap(), raw);
+        let mut io_task = spawn_chunk_io_task(path.clone(), None);
+        assert_eq!(
+            bevy::tasks::block_on(&mut io_task).unwrap().height_text,
+            raw
+        );
 
         let mut decode_task = spawn_chunk_decode_task(raw);
         let (id, data) = bevy::tasks::block_on(&mut decode_task).unwrap();
@@ -874,7 +885,7 @@ mod apply_tests {
             pending.poll_in_flight(
                 &mut residency,
                 &keep,
-                2,
+                MaterializePollBudgets::uniform(2),
                 1.0,
                 focus,
                 &lod_settings,
@@ -1135,7 +1146,9 @@ mod apply_tests {
             max_loads_per_frame: 16,
             max_unloads_per_frame: 16,
             max_apply_per_frame: 16,
-            max_decode_per_frame: 16,
+            max_decode_starts_per_frame: 16,
+            max_mesh_starts_per_frame: 16,
+            max_mesh_stores_per_frame: 16,
         };
 
         let mut grace = JustAppliedGrace::default();

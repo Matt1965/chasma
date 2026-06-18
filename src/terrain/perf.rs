@@ -11,7 +11,7 @@ use bevy::prelude::*;
 
 use crate::world::ChunkCoord;
 
-use super::mesh::ChunkMeshGeometry;
+use super::mesh::{ChunkLod, ChunkMeshGeometry};
 
 /// Default path for terrain streaming perf logs (relative to the process working directory).
 pub const DEFAULT_PERF_LOG_PATH: &str = "logs/terrain_streaming_perf.log";
@@ -50,20 +50,51 @@ impl Default for TerrainStreamingPerfSettings {
     }
 }
 
-/// Why a chunk mesh was built during apply.
+/// Why a terrain mesh was built or applied this frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MeshBuildKind {
-    NewChunk,
-    NeighborRebuild,
+pub enum MeshBuildReason {
+    /// Async initial materialization (`spawn_chunk_mesh_build_task`).
+    InitialMaterialize,
+    /// Async resident LOD rebuild (display-driven cache miss).
+    LodImmediate,
+    /// Async predictive LOD prefetch.
+    LodPrefetch,
+    /// Main-thread apply of a prebuilt materialization mesh.
+    AppliedPrebuilt,
 }
 
-/// Per-mesh build record for detailed hitch logs.
+/// Per-mesh record for detailed hitch logs.
 #[derive(Debug, Clone)]
-pub struct BuiltMeshLogEntry {
+pub struct MeshBuildLogEntry {
     pub coord: ChunkCoord,
-    pub kind: MeshBuildKind,
+    pub lod: ChunkLod,
+    pub reason: MeshBuildReason,
     pub build_ms: f32,
     pub geometry: ChunkMeshGeometry,
+}
+
+/// Completed async mesh builds by LOD level.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct LodBuildCounts {
+    pub full: usize,
+    pub half: usize,
+    pub quarter: usize,
+    pub eighth: usize,
+}
+
+impl LodBuildCounts {
+    pub fn record(&mut self, lod: ChunkLod) {
+        match lod {
+            ChunkLod::Full => self.full += 1,
+            ChunkLod::Half => self.half += 1,
+            ChunkLod::Quarter => self.quarter += 1,
+            ChunkLod::Eighth => self.eighth += 1,
+        }
+    }
+
+    pub fn total(&self) -> usize {
+        self.full + self.half + self.quarter + self.eighth
+    }
 }
 
 /// Per-frame streaming measurements (one terrain streaming chain tick).
@@ -72,18 +103,12 @@ pub struct TerrainStreamingFrameSample {
     pub io_in_flight: usize,
     pub decode_in_flight: usize,
     pub mesh_build_in_flight: usize,
-    pub decoded_queue_len: usize,
+    pub materialized_queue_len: usize,
     pub chunks_applied: usize,
     pub chunks_unloaded: usize,
-    pub meshes_built: usize,
-    pub new_chunk_meshes: usize,
-    pub neighbor_meshes_rebuilt: usize,
     pub mesh_build_count: usize,
     pub mesh_build_avg_ms: f32,
     pub mesh_build_max_ms: f32,
-    pub neighbors_considered: usize,
-    pub neighbors_rebuilt: usize,
-    pub neighbors_skipped: usize,
     pub total_vertices: usize,
     pub total_indices: usize,
     pub total_triangles: usize,
@@ -93,17 +118,71 @@ pub struct TerrainStreamingFrameSample {
     pub lod_prefetch_hits: usize,
     pub lod_prefetch_misses: usize,
     pub lod_builds_started_from_prefetch: usize,
+    /// Async materialization mesh builds completed this frame.
+    pub materialize_async_build_ms: f32,
+    pub materialize_async_builds_completed: usize,
+    /// Async resident LOD mesh builds completed this frame.
+    pub lod_async_build_ms: f32,
+    pub lod_async_builds_completed: usize,
+    #[reflect(ignore)]
+    pub lod_build_counts: LodBuildCounts,
     pub poll_ms: f32,
     pub apply_ms: f32,
-    pub async_mesh_build_ms: f32,
-    pub async_mesh_builds_completed: usize,
-    pub main_thread_mesh_build_ms: f32,
     pub prebuilt_meshes_applied: usize,
-    pub mesh_build_ms: f32,
     pub mesh_assets_ms: f32,
     pub spawn_ms: f32,
     #[reflect(ignore)]
-    pub mesh_details: Vec<BuiltMeshLogEntry>,
+    pub mesh_build_log: Vec<MeshBuildLogEntry>,
+}
+
+pub fn lod_label(lod: ChunkLod) -> &'static str {
+    match lod {
+        ChunkLod::Full => "Full",
+        ChunkLod::Half => "Half",
+        ChunkLod::Quarter => "Quarter",
+        ChunkLod::Eighth => "Eighth",
+    }
+}
+
+pub fn mesh_build_reason_label(reason: MeshBuildReason) -> &'static str {
+    match reason {
+        MeshBuildReason::InitialMaterialize => "InitialMaterialize",
+        MeshBuildReason::LodImmediate => "LodImmediate",
+        MeshBuildReason::LodPrefetch => "LodPrefetch",
+        MeshBuildReason::AppliedPrebuilt => "AppliedPrebuilt",
+    }
+}
+
+/// Record one mesh build/apply event on the current frame sample.
+pub fn record_mesh_build_event(
+    frame: &mut TerrainStreamingFrameSample,
+    coord: ChunkCoord,
+    lod: ChunkLod,
+    reason: MeshBuildReason,
+    build_ms: f32,
+    geometry: ChunkMeshGeometry,
+) {
+    frame.lod_build_counts.record(lod);
+
+    match reason {
+        MeshBuildReason::InitialMaterialize => {
+            frame.materialize_async_builds_completed += 1;
+            frame.materialize_async_build_ms += build_ms;
+        }
+        MeshBuildReason::LodImmediate | MeshBuildReason::LodPrefetch => {
+            frame.lod_async_builds_completed += 1;
+            frame.lod_async_build_ms += build_ms;
+        }
+        MeshBuildReason::AppliedPrebuilt => {}
+    }
+
+    frame.mesh_build_log.push(MeshBuildLogEntry {
+        coord,
+        lod,
+        reason,
+        build_ms,
+        geometry,
+    });
 }
 
 impl TerrainStreamingFrameSample {
@@ -117,7 +196,67 @@ impl TerrainStreamingFrameSample {
             || self.io_in_flight > 0
             || self.decode_in_flight > 0
             || self.mesh_build_in_flight > 0
-            || self.decoded_queue_len > 0
+            || self.materialized_queue_len > 0
+            || self.materialize_async_builds_completed > 0
+            || self.lod_async_builds_completed > 0
+            || !self.mesh_build_log.is_empty()
+    }
+
+    pub fn refresh_geometry_averages(&mut self) {
+        let built = self.mesh_build_log.len();
+        self.prebuilt_meshes_applied = self
+            .mesh_build_log
+            .iter()
+            .filter(|e| e.reason == MeshBuildReason::AppliedPrebuilt)
+            .count();
+        self.total_vertices = self
+            .mesh_build_log
+            .iter()
+            .map(|e| e.geometry.vertices)
+            .sum();
+        self.total_indices = self
+            .mesh_build_log
+            .iter()
+            .map(|e| e.geometry.indices)
+            .sum();
+        self.total_triangles = self
+            .mesh_build_log
+            .iter()
+            .map(|e| e.geometry.triangles)
+            .sum();
+        self.avg_vertices_per_mesh = if built > 0 {
+            self.total_vertices / built
+        } else {
+            0
+        };
+        self.avg_triangles_per_mesh = if built > 0 {
+            self.total_triangles / built
+        } else {
+            0
+        };
+        self.mesh_build_count = built;
+        if built > 0 {
+            let async_ms: f32 = self
+                .mesh_build_log
+                .iter()
+                .filter(|e| e.reason != MeshBuildReason::AppliedPrebuilt)
+                .map(|e| e.build_ms)
+                .sum();
+            let async_count = self
+                .mesh_build_log
+                .iter()
+                .filter(|e| e.reason != MeshBuildReason::AppliedPrebuilt)
+                .count();
+            if async_count > 0 {
+                self.mesh_build_avg_ms = async_ms / async_count as f32;
+                self.mesh_build_max_ms = self
+                    .mesh_build_log
+                    .iter()
+                    .filter(|e| e.reason != MeshBuildReason::AppliedPrebuilt)
+                    .map(|e| e.build_ms)
+                    .fold(0.0_f32, f32::max);
+            }
+        }
     }
 }
 
@@ -126,64 +265,22 @@ impl TerrainStreamingFrameSample {
 #[reflect(Resource)]
 pub struct TerrainStreamingPerfLatest(pub TerrainStreamingFrameSample);
 
-/// Accumulates mesh/spawn timings during one apply pass.
+/// Accumulates asset insert and spawn timings during one apply pass.
 #[derive(Debug, Default)]
 pub struct TerrainStreamingPerfRecorder {
-    mesh_build: Duration,
     mesh_assets: Duration,
     spawn: Duration,
-    mesh_build_durations: Vec<Duration>,
-    new_chunk_meshes: usize,
-    neighbor_meshes_rebuilt: usize,
-    neighbors_considered: usize,
-    neighbors_rebuilt: usize,
-    neighbors_skipped: usize,
-    total_vertices: usize,
-    total_indices: usize,
-    total_triangles: usize,
-    mesh_details: Vec<BuiltMeshLogEntry>,
-    prebuilt_meshes_applied: usize,
+    prebuilt_apply_log: Vec<(ChunkCoord, ChunkLod, ChunkMeshGeometry)>,
 }
 
 impl TerrainStreamingPerfRecorder {
-    pub fn record_neighbor_considered(&mut self) {
-        self.neighbors_considered += 1;
-    }
-
-    pub fn record_neighbor_skipped(&mut self) {
-        self.neighbors_skipped += 1;
-    }
-
-    pub fn record_neighbor_rebuilt(&mut self) {
-        self.neighbors_rebuilt += 1;
-    }
-
-    pub fn record_prebuilt_mesh_applied(&mut self) {
-        self.prebuilt_meshes_applied += 1;
-    }
-
-    pub fn record_mesh_build(
+    pub fn record_prebuilt_mesh_applied(
         &mut self,
-        kind: MeshBuildKind,
         coord: ChunkCoord,
-        elapsed: Duration,
+        lod: ChunkLod,
         geometry: ChunkMeshGeometry,
     ) {
-        self.mesh_build += elapsed;
-        self.mesh_build_durations.push(elapsed);
-        match kind {
-            MeshBuildKind::NewChunk => self.new_chunk_meshes += 1,
-            MeshBuildKind::NeighborRebuild => self.neighbor_meshes_rebuilt += 1,
-        }
-        self.total_vertices += geometry.vertices;
-        self.total_indices += geometry.indices;
-        self.total_triangles += geometry.triangles;
-        self.mesh_details.push(BuiltMeshLogEntry {
-            coord,
-            kind,
-            build_ms: duration_to_ms(elapsed),
-            geometry,
-        });
+        self.prebuilt_apply_log.push((coord, lod, geometry));
     }
 
     pub fn record_mesh_assets(&mut self, elapsed: Duration) {
@@ -195,46 +292,19 @@ impl TerrainStreamingPerfRecorder {
     }
 
     pub fn finish_into(&self, frame: &mut TerrainStreamingFrameSample) {
-        let built = self.mesh_build_durations.len();
-        frame.meshes_built = built;
-        frame.new_chunk_meshes = self.new_chunk_meshes;
-        frame.neighbor_meshes_rebuilt = self.neighbor_meshes_rebuilt;
-        frame.mesh_build_count = built;
-        frame.mesh_build_ms = duration_to_ms(self.mesh_build);
-        frame.main_thread_mesh_build_ms = frame.mesh_build_ms;
-        frame.prebuilt_meshes_applied = self.prebuilt_meshes_applied;
         frame.mesh_assets_ms = duration_to_ms(self.mesh_assets);
         frame.spawn_ms = duration_to_ms(self.spawn);
-        frame.neighbors_considered = self.neighbors_considered;
-        frame.neighbors_rebuilt = self.neighbors_rebuilt;
-        frame.neighbors_skipped = self.neighbors_skipped;
-        frame.total_vertices = self.total_vertices;
-        frame.total_indices = self.total_indices;
-        frame.total_triangles = self.total_triangles;
-        frame.avg_vertices_per_mesh = if built > 0 {
-            self.total_vertices / built
-        } else {
-            0
-        };
-        frame.avg_triangles_per_mesh = if built > 0 {
-            self.total_triangles / built
-        } else {
-            0
-        };
-        if built > 0 {
-            let total_ms: f32 = self
-                .mesh_build_durations
-                .iter()
-                .map(|d| duration_to_ms(*d))
-                .sum();
-            frame.mesh_build_avg_ms = total_ms / built as f32;
-            frame.mesh_build_max_ms = self
-                .mesh_build_durations
-                .iter()
-                .map(|d| duration_to_ms(*d))
-                .fold(0.0_f32, f32::max);
+        for (coord, lod, geometry) in &self.prebuilt_apply_log {
+            record_mesh_build_event(
+                frame,
+                *coord,
+                *lod,
+                MeshBuildReason::AppliedPrebuilt,
+                0.0,
+                *geometry,
+            );
         }
-        frame.mesh_details = self.mesh_details.clone();
+        frame.refresh_geometry_averages();
     }
 }
 
@@ -309,36 +379,38 @@ pub fn format_terrain_streaming_sample(
     settings: &TerrainStreamingPerfSettings,
 ) -> String {
     let hitch = sample.total_streaming_ms() > settings.frame_time_threshold_ms
-        || sample.mesh_build_ms > settings.mesh_build_threshold_ms;
+        || sample.mesh_build_max_ms > settings.mesh_build_threshold_ms;
     let level = if hitch { "HITCH" } else { "terrain streaming" };
 
     let mut out = String::new();
     out.push_str(&format!(
-        "{level}\npoll={:.2}ms apply={:.2}ms async_mesh={:.2}ms main_mesh={:.2}ms mesh_assets={:.2}ms spawn={:.2}ms",
+        "{level}\npoll={:.2}ms apply={:.2}ms mat_async={:.2}ms lod_async={:.2}ms mesh_assets={:.2}ms spawn={:.2}ms",
         sample.poll_ms,
         sample.apply_ms,
-        sample.async_mesh_build_ms,
-        sample.main_thread_mesh_build_ms,
+        sample.materialize_async_build_ms,
+        sample.lod_async_build_ms,
         sample.mesh_assets_ms,
         sample.spawn_ms,
     ));
     out.push_str("\n\nMeshes:\n");
     out.push_str(&format!(
-        "applied={} prebuilt={} new={} neighbor={} built={} async_completed={} count={} avg={:.1}ms max={:.1}ms",
+        "applied={} prebuilt={} mat_async_completed={} lod_async_completed={} logged={} async_avg={:.1}ms async_max={:.1}ms",
         sample.chunks_applied,
         sample.prebuilt_meshes_applied,
-        sample.new_chunk_meshes,
-        sample.neighbor_meshes_rebuilt,
-        sample.meshes_built,
-        sample.async_mesh_builds_completed,
-        sample.mesh_build_count,
+        sample.materialize_async_builds_completed,
+        sample.lod_async_builds_completed,
+        sample.mesh_build_log.len(),
         sample.mesh_build_avg_ms,
         sample.mesh_build_max_ms,
     ));
-    out.push_str("\n\nNeighbor refresh:\n");
+    out.push_str("\n\nLOD builds (logged this frame):\n");
     out.push_str(&format!(
-        "considered={} rebuilt={} skipped={}",
-        sample.neighbors_considered, sample.neighbors_rebuilt, sample.neighbors_skipped,
+        "Full={} Half={} Quarter={} Eighth={} total={}",
+        sample.lod_build_counts.full,
+        sample.lod_build_counts.half,
+        sample.lod_build_counts.quarter,
+        sample.lod_build_counts.eighth,
+        sample.lod_build_counts.total(),
     ));
     out.push_str("\n\nGeometry:\n");
     out.push_str(&format!(
@@ -363,22 +435,20 @@ pub fn format_terrain_streaming_sample(
         sample.io_in_flight,
         sample.decode_in_flight,
         sample.mesh_build_in_flight,
-        sample.decoded_queue_len,
+        sample.materialized_queue_len,
         sample.chunks_applied,
         sample.chunks_unloaded,
     ));
 
-    if !sample.mesh_details.is_empty() {
+    if !sample.mesh_build_log.is_empty() {
         out.push_str("\n\nPer-mesh:");
-        for entry in &sample.mesh_details {
-            let kind = match entry.kind {
-                MeshBuildKind::NewChunk => "new",
-                MeshBuildKind::NeighborRebuild => "neighbor",
-            };
+        for entry in &sample.mesh_build_log {
             out.push_str(&format!(
-                "\n  ({},{}) {kind} verts={} tris={} build={:.2}ms",
+                "\n  ({},{}) LOD={} reason={} verts={} tris={} build={:.2}ms",
                 entry.coord.x,
                 entry.coord.z,
+                lod_label(entry.lod),
+                mesh_build_reason_label(entry.reason),
                 entry.geometry.vertices,
                 entry.geometry.triangles,
                 entry.build_ms,
@@ -410,7 +480,7 @@ impl TerrainStreamingPerfState {
         let now = Instant::now();
 
         let hitch = sample.total_streaming_ms() > settings.frame_time_threshold_ms
-            || sample.mesh_build_ms > settings.mesh_build_threshold_ms;
+            || sample.mesh_build_max_ms > settings.mesh_build_threshold_ms;
 
         let due_summary = self
             .last_summary
@@ -438,6 +508,7 @@ pub fn duration_to_ms(d: Duration) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::mesh::ChunkLod;
 
     #[test]
     fn finish_frame_logs_on_hitch_without_waiting_for_summary() {
@@ -464,45 +535,24 @@ mod tests {
     }
 
     #[test]
-    fn recorder_tracks_new_and_neighbor_mesh_counts() {
+    fn recorder_tracks_prebuilt_apply() {
         let mut recorder = TerrainStreamingPerfRecorder::default();
-        recorder.record_neighbor_considered();
-        recorder.record_neighbor_considered();
-        recorder.record_neighbor_skipped();
-        recorder.record_neighbor_rebuilt();
-        recorder.record_mesh_build(
-            MeshBuildKind::NewChunk,
-            ChunkCoord::new(1, 0),
-            Duration::from_millis(40),
+        recorder.record_prebuilt_mesh_applied(
+            ChunkCoord::new(2, 0),
+            ChunkLod::Half,
             ChunkMeshGeometry {
-                vertices: 100,
-                indices: 600,
-                triangles: 200,
-            },
-        );
-        recorder.record_mesh_build(
-            MeshBuildKind::NeighborRebuild,
-            ChunkCoord::new(0, 0),
-            Duration::from_millis(60),
-            ChunkMeshGeometry {
-                vertices: 100,
-                indices: 600,
-                triangles: 200,
+                vertices: 16641,
+                indices: 98304,
+                triangles: 32768,
             },
         );
 
         let mut frame = TerrainStreamingFrameSample::default();
         recorder.finish_into(&mut frame);
-        assert_eq!(frame.new_chunk_meshes, 1);
-        assert_eq!(frame.neighbor_meshes_rebuilt, 1);
-        assert_eq!(frame.meshes_built, 2);
-        assert_eq!(frame.neighbors_considered, 2);
-        assert_eq!(frame.neighbors_skipped, 1);
-        assert_eq!(frame.neighbors_rebuilt, 1);
-        assert_eq!(frame.total_vertices, 200);
-        assert_eq!(frame.total_triangles, 400);
-        assert!((frame.mesh_build_avg_ms - 50.0).abs() < 0.1);
-        assert!((frame.mesh_build_max_ms - 60.0).abs() < 0.1);
+        assert_eq!(frame.prebuilt_meshes_applied, 1);
+        assert_eq!(frame.lod_build_counts.half, 1);
+        assert_eq!(frame.mesh_build_log.len(), 1);
+        assert_eq!(frame.mesh_build_log[0].reason, MeshBuildReason::AppliedPrebuilt);
     }
 
     #[test]
@@ -520,17 +570,12 @@ mod tests {
         };
         let mut sample = TerrainStreamingFrameSample {
             apply_ms: 12.0,
-            meshes_built: 3,
-            new_chunk_meshes: 1,
-            neighbor_meshes_rebuilt: 2,
-            mesh_build_count: 3,
-            mesh_build_avg_ms: 42.0,
-            mesh_build_max_ms: 57.0,
             ..Default::default()
         };
-        sample.mesh_details.push(BuiltMeshLogEntry {
+        sample.mesh_build_log.push(MeshBuildLogEntry {
             coord: ChunkCoord::new(0, 0),
-            kind: MeshBuildKind::NewChunk,
+            lod: ChunkLod::Full,
+            reason: MeshBuildReason::InitialMaterialize,
             build_ms: 57.0,
             geometry: ChunkMeshGeometry {
                 vertices: 66049,
@@ -538,6 +583,7 @@ mod tests {
                 triangles: 131072,
             },
         });
+        sample.refresh_geometry_averages();
         let block = format_terrain_streaming_sample(&sample, &settings);
 
         let mut file_log = TerrainStreamingPerfFileLog::default();
@@ -546,7 +592,8 @@ mod tests {
         let text = std::fs::read_to_string(&path).unwrap();
         assert!(text.contains("# terrain streaming perf session"));
         assert!(text.contains("HITCH") || text.contains("terrain streaming"));
-        assert!(text.contains("neighbor=2"));
+        assert!(text.contains("LOD=Full"));
+        assert!(text.contains("reason=InitialMaterialize"));
         assert!(text.contains("Per-mesh:"));
         std::fs::remove_file(path).ok();
     }
@@ -578,6 +625,8 @@ pub fn report_terrain_streaming_perf(
     }
 
     latest.0 = state.frame.clone();
+
+    state.frame_mut().refresh_geometry_averages();
 
     if let Some(sample) = state.finish_frame(&settings) {
         log_terrain_streaming_sample(&sample, &settings, &mut file_log);

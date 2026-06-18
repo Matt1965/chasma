@@ -47,17 +47,19 @@ const PREVIEW_UNLOAD_RADIUS_CHUNKS: i32 = 16;
 
 /// LOD detail rings (Chebyshev distance from focus). Only affect resident chunks.
 ///
-/// Near focus stays sharp; the outer loaded band (distances 9–16) uses Eighth.
+/// Near focus stays sharp; mid-distance uses Quarter; outer resident band → Eighth.
 const PREVIEW_LOD_FULL_MAX_DISTANCE: i32 = 0;
-const PREVIEW_LOD_HALF_MAX_DISTANCE: i32 = 3;
-const PREVIEW_LOD_QUARTER_MAX_DISTANCE: i32 = 8;
+const PREVIEW_LOD_HALF_MAX_DISTANCE: i32 = 1;
+const PREVIEW_LOD_QUARTER_MAX_DISTANCE: i32 = 4;
 
 /// Dev-only throughput knobs — higher than runtime defaults for faster map fill-in.
 /// Mesh work stays async; raise these if pop-in feels slow, lower if frames hitch.
 const PREVIEW_MAX_LOADS_PER_FRAME: usize = 32;
 const PREVIEW_MAX_UNLOADS_PER_FRAME: usize = 24;
 const PREVIEW_MAX_APPLY_PER_FRAME: usize = 32;
-const PREVIEW_MAX_DECODE_PER_FRAME: usize = 32;
+const PREVIEW_MAX_DECODE_STARTS_PER_FRAME: usize = 32;
+const PREVIEW_MAX_MESH_STARTS_PER_FRAME: usize = 32;
+const PREVIEW_MAX_MESH_STORES_PER_FRAME: usize = 32;
 const PREVIEW_MAX_LOD_BUILDS_PER_FRAME: usize = 24;
 const PREVIEW_MAX_LOD_PREFETCH_PER_FRAME: usize = 12;
 /// On-disk sample world exercised by the dev preview (ADR-011).
@@ -106,7 +108,9 @@ fn setup_preview(
         max_loads_per_frame: PREVIEW_MAX_LOADS_PER_FRAME,
         max_unloads_per_frame: PREVIEW_MAX_UNLOADS_PER_FRAME,
         max_apply_per_frame: PREVIEW_MAX_APPLY_PER_FRAME,
-        max_decode_per_frame: PREVIEW_MAX_DECODE_PER_FRAME,
+        max_decode_starts_per_frame: PREVIEW_MAX_DECODE_STARTS_PER_FRAME,
+        max_mesh_starts_per_frame: PREVIEW_MAX_MESH_STARTS_PER_FRAME,
+        max_mesh_stores_per_frame: PREVIEW_MAX_MESH_STORES_PER_FRAME,
     });
     commands.insert_resource(TerrainLodSettings {
         // LOD radius = mesh resolution among already-resident chunks (ADR-013).
