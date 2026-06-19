@@ -1,0 +1,32 @@
+Doodad glTF layout (ADR-023)
+=============================
+
+Path rule:
+  render_key "kind/variant"  ->  assets/doodads/kind/variant.glb
+
+Biome placement is NOT encoded in folders. Each catalog definition lists
+allowed_biomes (ADR-025). Add a new .glb here, then register the definition
+in the doodad catalog with the matching render_key and biome permissions.
+
+Starter catalog slots (drop your .glb at each path):
+--------------------------------------------------
+  tree/oak.glb          definition tree_oak          -> Forest only
+  tree/dead.glb         definition tree_dead         -> Forest only
+  rock/small.glb        definition rock_small        -> Forest only
+  rock/large.glb        definition rock_large        -> Desert, Marsh, Plains
+  bush/scrub.glb        definition bush_scrub        -> Forest only
+  ruin/stone.glb        definition ruin_stone         -> all assigned biomes
+  resource/iron.glb     definition resource_node_iron -> all assigned biomes
+
+Biome colors (biome_mask.png, starter mapping):
+  Green  = Forest
+  Yellow = Plains
+  Blue   = Marsh
+  Red    = Desert
+
+Adding biome-specific props:
+  1. Export model with origin at ground contact.
+  2. Place under kind/variant.glb (e.g. tree/pine.glb for a marsh tree).
+  3. Add a DoodadDefinition with render_key "tree/pine" and allowed_biomes.
+
+Author models at real-world scale; procedural placement applies catalog scale range.

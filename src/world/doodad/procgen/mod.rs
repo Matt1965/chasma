@@ -52,6 +52,13 @@ pub fn try_materialize_procedural_chunk_doodads(
     let layout = world.layout();
     let ctx = DoodadGenerationContext::new(world_seed, chunk, &layout);
     let candidates = generate_chunk_doodads(&ctx, catalog);
+    bevy::log::debug!(
+        target: "chasma::doodad_generation",
+        "chunk=({}, {}) candidates: {}",
+        chunk.coord().x,
+        chunk.coord().z,
+        crate::world::doodad::generation::format_candidate_summary(&candidates, catalog),
+    );
     let report = materialize_candidates_with_options(
         catalog,
         world,
@@ -89,8 +96,11 @@ mod tests {
     }
 
     fn insert_flat_chunk(world: &mut WorldData, x: i32, z: i32, height: f32) {
-        let samples = vec![height; 9];
-        let heightfield = Heightfield::from_samples(3, 128.0, samples).unwrap();
+        let samples_per_edge = 17;
+        let spacing = 16.0;
+        let sample_count = (samples_per_edge * samples_per_edge) as usize;
+        let samples = vec![height; sample_count];
+        let heightfield = Heightfield::from_samples(samples_per_edge, spacing, samples).unwrap();
         world.insert(
             ChunkId::new(ChunkCoord::new(x, z)),
             ChunkData::new(heightfield, Vec::new()),
@@ -302,5 +312,41 @@ mod tests {
 
         assert!(!chunk_needs_procedural_materialization(&world, chunk));
         assert!(try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED).is_none());
+    }
+
+    #[test]
+    fn forest_materialization_includes_weighted_mix() {
+        let catalog = DoodadCatalog::default();
+        let mut world = WorldData::new(layout());
+        insert_flat_chunk(&mut world, 5, 5, 0.0);
+        world.set_biome_mask(uniform_forest_mask(8192.0));
+        let chunk = ChunkId::new(ChunkCoord::new(5, 5));
+        const FOREST_MIX_SEED: u64 = 9001;
+
+        let outcome = try_materialize_procedural_chunk_doodads(
+            &catalog,
+            &mut world,
+            chunk,
+            FOREST_MIX_SEED,
+        )
+        .unwrap();
+        assert!(outcome.inserted > 0);
+
+        let store = world.doodads_in_chunk(chunk).unwrap();
+        let inserted_ids: std::collections::BTreeSet<_> = store
+            .records()
+            .iter()
+            .map(|record| record.definition_id.as_str())
+            .collect();
+        let forest_defs = ["tree_oak", "tree_dead", "bush_scrub", "rock_small"];
+        let matched = forest_defs
+            .iter()
+            .filter(|id| inserted_ids.contains(**id))
+            .count();
+        assert!(
+            matched >= 3,
+            "expected at least 3 forest definition types, got {inserted_ids:?}"
+        );
+        assert!(!inserted_ids.contains("rock_large"));
     }
 }

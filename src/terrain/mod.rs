@@ -57,7 +57,9 @@ pub use mesh::DEBUG_VALIDATE_LOD_SAMPLE_ALIGNMENT;
 pub use lod::{LodPriority, TerrainLodSettings, desired_lod, predicted_lod_targets};
 pub use lod_build::PendingChunkLodBuilds;
 pub use lod_cache::TerrainChunkLodCache;
-pub use spawn::{TerrainRenderAssets, despawn_chunk_meshes};
+pub use spawn::{
+    despawn_chunk_meshes, render_height, world_position_to_render_global, TerrainRenderAssets,
+};
 pub use streaming::TerrainStreamingSettings;
 
 #[cfg(feature = "dev")]

@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 
+use crate::terrain::world_position_to_render_global;
 use crate::world::{ChunkId, DoodadId, DoodadRecord, WorldConfig};
 
 use super::components::DoodadRenderEntity;
@@ -13,9 +14,11 @@ pub fn spawn_doodad_render_entity(
     chunk_id: ChunkId,
     scene: Handle<Scene>,
     config: &WorldConfig,
+    vertical_scale: f32,
 ) -> Entity {
     let layout = config.chunk_layout();
-    let translation = record.placement.position.to_global(layout);
+    let translation =
+        world_position_to_render_global(record.placement.position, layout, vertical_scale);
     commands
         .spawn((
             DoodadRenderEntity {

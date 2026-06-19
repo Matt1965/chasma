@@ -8,7 +8,15 @@ fn all_assigned_biomes() -> Vec<BiomeId> {
     BiomeId::all_assigned().to_vec()
 }
 
-/// Starter catalog content for Phase 3B (ADR-016), biome permissions ADR-025.
+fn forest_biomes() -> Vec<BiomeId> {
+    vec![BiomeId::Forest]
+}
+
+fn non_forest_biomes() -> Vec<BiomeId> {
+    vec![BiomeId::Desert, BiomeId::Marsh, BiomeId::Plains]
+}
+
+/// Starter catalog content for Phase 3B (ADR-016), biome permissions ADR-025, weights R5.
 pub fn starter_definitions() -> Vec<DoodadDefinition> {
     vec![
         DoodadDefinition::new(
@@ -24,7 +32,8 @@ pub fn starter_definitions() -> Vec<DoodadDefinition> {
             true,
             DoodadRenderKey::reserved("tree/oak"),
         )
-        .with_allowed_biomes(vec![BiomeId::Forest]),
+        .with_allowed_biomes(forest_biomes())
+        .with_spawn_weight(8.0),
         DoodadDefinition::new(
             DoodadDefinitionId::new("tree_dead"),
             DoodadKind::Tree,
@@ -38,7 +47,8 @@ pub fn starter_definitions() -> Vec<DoodadDefinition> {
             true,
             DoodadRenderKey::reserved("tree/dead"),
         )
-        .with_allowed_biomes(vec![BiomeId::Forest]),
+        .with_allowed_biomes(forest_biomes())
+        .with_spawn_weight(2.0),
         DoodadDefinition::new(
             DoodadDefinitionId::new("rock_small"),
             DoodadKind::Rock,
@@ -52,7 +62,8 @@ pub fn starter_definitions() -> Vec<DoodadDefinition> {
             true,
             DoodadRenderKey::reserved("rock/small"),
         )
-        .with_allowed_biomes(all_assigned_biomes()),
+        .with_allowed_biomes(forest_biomes())
+        .with_spawn_weight(3.0),
         DoodadDefinition::new(
             DoodadDefinitionId::new("rock_large"),
             DoodadKind::Rock,
@@ -66,7 +77,8 @@ pub fn starter_definitions() -> Vec<DoodadDefinition> {
             true,
             DoodadRenderKey::reserved("rock/large"),
         )
-        .with_allowed_biomes(all_assigned_biomes()),
+        .with_allowed_biomes(non_forest_biomes())
+        .with_spawn_weight(1.0),
         DoodadDefinition::new(
             DoodadDefinitionId::new("bush_scrub"),
             DoodadKind::Bush,
@@ -80,7 +92,8 @@ pub fn starter_definitions() -> Vec<DoodadDefinition> {
             true,
             DoodadRenderKey::reserved("bush/scrub"),
         )
-        .with_allowed_biomes(all_assigned_biomes()),
+        .with_allowed_biomes(forest_biomes())
+        .with_spawn_weight(5.0),
         DoodadDefinition::new(
             DoodadDefinitionId::new("ruin_stone"),
             DoodadKind::Ruin,
@@ -94,7 +107,8 @@ pub fn starter_definitions() -> Vec<DoodadDefinition> {
             true,
             DoodadRenderKey::reserved("ruin/stone"),
         )
-        .with_allowed_biomes(all_assigned_biomes()),
+        .with_allowed_biomes(all_assigned_biomes())
+        .with_spawn_weight(1.0),
         DoodadDefinition::new(
             DoodadDefinitionId::new("resource_node_iron"),
             DoodadKind::ResourceNode,
@@ -108,6 +122,7 @@ pub fn starter_definitions() -> Vec<DoodadDefinition> {
             true,
             DoodadRenderKey::reserved("resource/iron"),
         )
-        .with_allowed_biomes(all_assigned_biomes()),
+        .with_allowed_biomes(all_assigned_biomes())
+        .with_spawn_weight(1.0),
     ]
 }

@@ -6,6 +6,7 @@ use bevy::asset::LoadState;
 use bevy::prelude::*;
 
 use crate::terrain::residency::ChunkResidencyTracker;
+use crate::terrain::{world_position_to_render_global, TerrainRenderAssets};
 use crate::world::{DoodadCatalog, DoodadId, WorldConfig, WorldData};
 
 use super::assets::DoodadSceneAssets;
@@ -27,7 +28,12 @@ pub fn sync_doodad_render_entities(
     mut scene_assets: ResMut<DoodadSceneAssets>,
     mut index: ResMut<DoodadRenderIndex>,
     existing: Query<(Entity, &DoodadRenderEntity)>,
+    render_assets: Option<Res<TerrainRenderAssets>>,
 ) {
+    let vertical_scale = render_assets
+        .as_ref()
+        .map(|assets| assets.vertical_scale)
+        .unwrap_or(1.0);
     let mut should_render: HashSet<DoodadId> = HashSet::new();
 
     for (chunk_id, _) in world.iter() {
@@ -60,7 +66,8 @@ pub fn sync_doodad_render_entities(
             continue;
         };
         let layout = config.chunk_layout();
-        let translation = record.placement.position.to_global(layout);
+        let translation =
+            world_position_to_render_global(record.placement.position, layout, vertical_scale);
         commands.entity(entity).insert(Transform {
             translation,
             rotation: record.placement.rotation,
@@ -103,6 +110,7 @@ pub fn sync_doodad_render_entities(
             chunk_id,
             scene,
             &config,
+            vertical_scale,
         );
         index.0.insert(id, entity);
     }

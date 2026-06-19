@@ -33,7 +33,11 @@ pub struct DoodadDefinition {
     pub allowed_biomes: Vec<BiomeId>,
     /// Reserved string tags for future rule systems; not used by biome filter.
     pub biome_tags: Vec<String>,
-    /// Reserved relative spawn weight for procedural generation.
+    /// Relative spawn weight for procedural generation within the same [`DoodadKind`] (ADR-018).
+    ///
+    /// Higher weight = more frequent selection among enabled definitions of that kind.
+    /// Zero or negative weights are treated as zero; when all weights are zero, selection
+    /// falls back to uniform among enabled definitions.
     pub spawn_weight: f32,
     /// Reserved reference to a future placement rule set.
     pub rule_ref: Option<String>,
@@ -76,6 +80,11 @@ impl DoodadDefinition {
 
     pub fn with_allowed_biomes(mut self, allowed_biomes: impl Into<Vec<BiomeId>>) -> Self {
         self.allowed_biomes = allowed_biomes.into();
+        self
+    }
+
+    pub fn with_spawn_weight(mut self, spawn_weight: f32) -> Self {
+        self.spawn_weight = spawn_weight;
         self
     }
 

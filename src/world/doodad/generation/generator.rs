@@ -6,6 +6,7 @@ use super::candidate::DoodadSpawnCandidate;
 use super::context::DoodadGenerationContext;
 use super::rng::{chunk_seed, DeterministicRng};
 use super::settings::DoodadGenerationSettings;
+use super::weighted::pick_weighted_definition;
 use crate::world::doodad::catalog::{DoodadCatalog, DoodadDefinition};
 use crate::world::{DoodadKind, DoodadSource, LocalPosition, WorldPosition};
 
@@ -52,8 +53,7 @@ pub fn generate_chunk_doodads_with_settings(
         }
 
         for _ in 0..count {
-            let def_index = (rng.next_u32() as usize) % definitions.len();
-            let definition = definitions[def_index];
+            let definition = pick_weighted_definition(&definitions, &mut rng);
             let candidate_seed = rng.next_u64();
             candidates.push(spawn_candidate(
                 definition,
@@ -140,7 +140,9 @@ fn procedural_seed(source: DoodadSource) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{ChunkCoord, ChunkId, ChunkLayout, DoodadCatalog};
+    use super::super::weighted::count_candidates_by_definition;
+    use crate::world::doodad::catalog::DoodadRenderKey;
+    use crate::world::{ChunkCoord, ChunkId, ChunkLayout, DoodadCatalog, DoodadDefinitionId};
 
     fn layout() -> ChunkLayout {
         ChunkLayout {
@@ -257,6 +259,7 @@ mod tests {
     #[test]
     fn uses_catalog_not_hardcoded_definition_ids() {
         let catalog = DoodadCatalog::default();
+        let settings = DoodadGenerationSettings::default();
         let tree_ids: Vec<_> = catalog
             .definitions_for_kind(DoodadKind::Tree)
             .filter(|d| d.enabled)
@@ -264,11 +267,144 @@ mod tests {
             .collect();
         assert_eq!(tree_ids.len(), 2);
 
-        let candidates = generate(0, 0, 0);
+        let layout = layout();
+        let ctx = DoodadGenerationContext::new(0, ChunkId::new(ChunkCoord::new(0, 0)), &layout);
+        let candidates =
+            generate_chunk_doodads_with_settings(&ctx, &catalog, &settings);
         let tree_candidates: Vec<_> = candidates
             .iter()
             .filter(|c| tree_ids.contains(&c.definition_id.as_str()))
             .collect();
-        assert_eq!(tree_candidates.len(), 8);
+        assert_eq!(tree_candidates.len(), settings.trees_per_chunk as usize);
+    }
+
+    #[test]
+    fn weighted_selection_is_deterministic_for_seed() {
+        let counts_a = count_candidates_by_definition(&generate(4242, 3, 4));
+        let counts_b = count_candidates_by_definition(&generate(4242, 3, 4));
+        assert_eq!(counts_a, counts_b);
+        assert!(counts_a.get("tree_oak").copied().unwrap_or(0) > 0);
+        assert!(counts_a.get("tree_dead").copied().unwrap_or(0) > 0);
+    }
+
+    #[test]
+    fn different_seeds_change_definition_distribution() {
+        let counts_a = count_candidates_by_definition(&generate(1, 8, 8));
+        let counts_b = count_candidates_by_definition(&generate(2, 8, 8));
+        assert_ne!(counts_a, counts_b);
+    }
+
+    #[test]
+    fn spawn_weights_influence_tree_distribution() {
+        let heavy = DoodadDefinition::new(
+            DoodadDefinitionId::new("tree_heavy"),
+            DoodadKind::Tree,
+            "Heavy Tree",
+            1.0,
+            1.0,
+            1.0,
+            None,
+            None,
+            None,
+            true,
+            DoodadRenderKey::reserved("tree/oak"),
+        )
+        .with_spawn_weight(20.0);
+        let light = DoodadDefinition::new(
+            DoodadDefinitionId::new("tree_light"),
+            DoodadKind::Tree,
+            "Light Tree",
+            1.0,
+            1.0,
+            1.0,
+            None,
+            None,
+            None,
+            true,
+            DoodadRenderKey::reserved("tree/dead"),
+        )
+        .with_spawn_weight(1.0);
+        let catalog =
+            DoodadCatalog::from_definitions(vec![heavy, light]).expect("valid catalog");
+        let settings = DoodadGenerationSettings {
+            trees_per_chunk: 128,
+            rocks_per_chunk: 0,
+            bushes_per_chunk: 0,
+            ..DoodadGenerationSettings::default()
+        };
+        let layout = layout();
+        let ctx = DoodadGenerationContext::new(7, ChunkId::new(ChunkCoord::new(0, 0)), &layout);
+        let candidates =
+            generate_chunk_doodads_with_settings(&ctx, &catalog, &settings);
+        let heavy_count = candidates
+            .iter()
+            .filter(|c| c.definition_id.as_str() == "tree_heavy")
+            .count();
+        let light_count = candidates
+            .iter()
+            .filter(|c| c.definition_id.as_str() == "tree_light")
+            .count();
+        assert!(heavy_count > light_count);
+        assert!(light_count >= 2);
+    }
+
+    #[test]
+    fn disabled_definitions_are_never_selected() {
+        let disabled = DoodadDefinition::new(
+            DoodadDefinitionId::new("tree_disabled"),
+            DoodadKind::Tree,
+            "Disabled Tree",
+            1.0,
+            1.0,
+            1.0,
+            None,
+            None,
+            None,
+            false,
+            DoodadRenderKey::reserved("tree/dead"),
+        )
+        .with_spawn_weight(100.0);
+        let enabled = DoodadDefinition::new(
+            DoodadDefinitionId::new("tree_enabled"),
+            DoodadKind::Tree,
+            "Enabled Tree",
+            1.0,
+            1.0,
+            1.0,
+            None,
+            None,
+            None,
+            true,
+            DoodadRenderKey::reserved("tree/oak"),
+        )
+        .with_spawn_weight(1.0);
+        let catalog =
+            DoodadCatalog::from_definitions(vec![disabled, enabled]).expect("valid catalog");
+        let settings = DoodadGenerationSettings {
+            trees_per_chunk: 32,
+            rocks_per_chunk: 0,
+            bushes_per_chunk: 0,
+            ..DoodadGenerationSettings::default()
+        };
+        let layout = layout();
+        let ctx = DoodadGenerationContext::new(1, ChunkId::new(ChunkCoord::new(0, 0)), &layout);
+        let candidates =
+            generate_chunk_doodads_with_settings(&ctx, &catalog, &settings);
+        assert!(candidates
+            .iter()
+            .all(|c| c.definition_id.as_str() == "tree_enabled"));
+    }
+
+    #[test]
+    fn starter_catalog_produces_multiple_forest_kinds() {
+        let candidates = generate(9001, 5, 5);
+        let ids: std::collections::BTreeSet<_> = candidates
+            .iter()
+            .map(|c| c.definition_id.as_str())
+            .collect();
+        assert!(ids.contains("tree_oak"));
+        assert!(ids.contains("tree_dead"));
+        assert!(ids.contains("bush_scrub"));
+        assert!(ids.contains("rock_small"));
     }
 }

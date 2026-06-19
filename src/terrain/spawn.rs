@@ -9,7 +9,7 @@ use std::time::Instant;
 
 use bevy::prelude::*;
 
-use crate::world::{ChunkCoord, ChunkId, WorldData};
+use crate::world::{ChunkCoord, ChunkId, WorldData, WorldPosition};
 
 use super::components::TerrainChunkMesh;
 use super::lod_cache::TerrainChunkLodCache;
@@ -37,6 +37,25 @@ pub fn vertical_scale_for_height_span(
 ) -> f32 {
     let span = (height_max - height_min).max(1e-12);
     target_span_units / span
+}
+
+/// Map authoritative world Y to terrain render Y (ADR-010 visualization scale).
+pub fn render_height(authoritative_y: f32, vertical_scale: f32) -> f32 {
+    authoritative_y * vertical_scale
+}
+
+/// Compose a render-space position from authoritative [`WorldPosition`].
+///
+/// Terrain meshes multiply heightfield samples by `vertical_scale`; doodad render
+/// entities must apply the same factor so props align with the visible surface.
+pub fn world_position_to_render_global(
+    position: WorldPosition,
+    layout: crate::world::ChunkLayout,
+    vertical_scale: f32,
+) -> Vec3 {
+    let mut global = position.to_global(layout);
+    global.y = render_height(global.y, vertical_scale);
+    global
 }
 
 pub(crate) fn seam_weld_heights(world: &WorldData, chunk_id: ChunkId) -> ChunkMeshSeamWeld {
@@ -148,6 +167,24 @@ mod tests {
         let tight = vertical_scale_for_height_span(0.0, 0.0001, 100.0);
         let wide = vertical_scale_for_height_span(0.0, 10.0, 100.0);
         assert!(tight > wide);
+    }
+
+    #[test]
+    fn world_position_to_render_global_scales_y_only() {
+        use crate::world::{ChunkLayout, LocalPosition};
+
+        let layout = ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        };
+        let pos = WorldPosition::new(
+            ChunkCoord::new(1, 2),
+            LocalPosition::new(Vec3::new(10.0, 4.0, 20.0)),
+        );
+        let render = world_position_to_render_global(pos, layout, 3.0);
+        assert_eq!(render.x, 266.0);
+        assert_eq!(render.y, 12.0);
+        assert_eq!(render.z, 532.0);
     }
 
     #[test]
