@@ -1,6 +1,7 @@
 use super::options::MaterializationOptions;
 use super::report::DoodadMaterializationReport;
 use crate::world::doodad::authoring::{create_doodad, DoodadAuthoringError, DoodadPlacementOverrides};
+use crate::world::doodad::biome_filter::{filter_candidates_by_biome, BiomeFilterResult};
 use crate::world::doodad::catalog::DoodadCatalog;
 use crate::world::doodad::exclusion::filter_candidates_by_exclusion_zones;
 use crate::world::doodad::generation::DoodadSpawnCandidate;
@@ -11,10 +12,10 @@ use crate::world::WorldData;
 
 /// Materialize spawn candidates into [`WorldData`] via the authoring API (ADR-019).
 ///
-/// Uses [`MaterializationOptions::procedural_default`]: exclusion filtering,
-/// terrain validation, and terrain snap. For minimal snap-only behavior (tests,
-/// custom pipelines), use [`materialize_candidates_with_options`] with
-/// [`MaterializationOptions::raw`].
+/// Uses [`MaterializationOptions::procedural_default`]: biome filtering, exclusion
+/// filtering, terrain validation, and terrain snap. For minimal snap-only
+/// behavior (tests, custom pipelines), use [`materialize_candidates_with_options`]
+/// with [`MaterializationOptions::raw`].
 pub fn materialize_candidates(
     catalog: &DoodadCatalog,
     world: &mut WorldData,
@@ -49,16 +50,29 @@ pub fn materialize_candidates_with_options(
 ) -> DoodadMaterializationReport {
     let original_count = candidates.len() as u32;
 
+    let biome_result = if options.apply_biome_filter {
+        filter_candidates_by_biome(candidates, catalog, world)
+    } else {
+        BiomeFilterResult {
+            retained: candidates.to_vec(),
+            ..BiomeFilterResult::default()
+        }
+    };
+    let biome_skipped_disallowed = biome_result.skipped_biome_disallowed;
+    let biome_skipped_unavailable = biome_result.skipped_biome_unavailable;
+    let biome_skipped_invalid = biome_result.skipped_invalid_definition;
+    let after_biome = biome_result.retained;
+
     let (to_materialize, excluded_by_zone) = if options.apply_exclusion_zones {
         let layout = world.layout();
         let filtered = filter_candidates_by_exclusion_zones(
-            candidates,
+            &after_biome,
             world.doodad_exclusion_zones(),
             layout,
         );
         (filtered.retained, filtered.excluded_count)
     } else {
-        (candidates.to_vec(), 0)
+        (after_biome, 0)
     };
 
     let terrain_result = if options.validate_terrain {
@@ -79,6 +93,9 @@ pub fn materialize_candidates_with_options(
     let mut report = materialize_finalized_slice(catalog, world, &finalization.finalized);
     report.candidates_received = original_count;
     report.excluded_by_zone = excluded_by_zone;
+    report.skipped_biome_disallowed = biome_skipped_disallowed;
+    report.skipped_biome_unavailable = biome_skipped_unavailable;
+    report.skipped_invalid_definition += biome_skipped_invalid;
     merge_terrain_validation(&mut report, &terrain_result);
     merge_placement_finalization(&mut report, &finalization);
     report
@@ -180,6 +197,7 @@ mod tests {
         generate_chunk_doodads, DoodadGenerationContext,
     };
     use crate::world::{
+        biome::{BiomeColorMapping, BiomeMask, BiomeMaskBounds},
         ChunkCoord, ChunkId, ChunkLayout, DoodadCatalog, DoodadDefinitionId, DoodadExclusionZone,
         DoodadPlacementOverrides, DoodadSource, LocalPosition, WorldPosition,
     };
@@ -212,6 +230,31 @@ mod tests {
         let mut world = world();
         insert_flat_chunk(&mut world, x, z, height);
         world
+    }
+
+    fn install_uniform_forest_mask(world: &mut WorldData) {
+        let mask = BiomeMask::from_rgba_rows(
+            1,
+            1,
+            BiomeMaskBounds::new(0.0, 0.0, 4096.0, 4096.0),
+            &[0, 255, 0],
+            3,
+            &BiomeColorMapping::starter(),
+        )
+        .unwrap();
+        world.set_biome_mask(mask);
+    }
+
+    fn forest_desert_mask() -> BiomeMask {
+        BiomeMask::from_rgba_rows(
+            2,
+            1,
+            BiomeMaskBounds::new(0.0, 0.0, 512.0, 256.0),
+            &[0, 255, 0, 255, 255, 0, 0, 255],
+            4,
+            &BiomeColorMapping::starter(),
+        )
+        .unwrap()
     }
 
     fn materialize_raw(
@@ -444,8 +487,16 @@ mod tests {
             200.0,
         ));
 
-        let report =
-            materialize_candidates_with_exclusion(&catalog, &mut world, &candidates);
+        let report = materialize_candidates_with_options(
+            &catalog,
+            &mut world,
+            &candidates,
+            &MaterializationOptions {
+                apply_biome_filter: false,
+                apply_exclusion_zones: true,
+                ..MaterializationOptions::procedural_default()
+            },
+        );
 
         assert_eq!(report.candidates_received, candidates.len() as u32);
         assert_eq!(report.excluded_by_zone, candidates.len() as u32);
@@ -594,6 +645,7 @@ mod tests {
             &mut world,
             &[excluded, height_rejected, accepted],
             &MaterializationOptions {
+                apply_biome_filter: false,
                 apply_exclusion_zones: true,
                 validate_terrain: true,
                 ..MaterializationOptions::default()
@@ -644,6 +696,7 @@ mod tests {
             &mut world,
             &[candidate],
             &MaterializationOptions {
+                apply_biome_filter: false,
                 validate_terrain: true,
                 ..MaterializationOptions::default()
             },
@@ -696,6 +749,7 @@ mod tests {
     fn materialization_snaps_y_to_terrain_height() {
         let catalog = DoodadCatalog::default();
         let mut world = flat_world(37.5);
+        install_uniform_forest_mask(&mut world);
         let candidate = DoodadSpawnCandidate {
             definition_id: DoodadDefinitionId::new("tree_oak"),
             source: DoodadSource::Procedural { seed: 8 },
@@ -718,6 +772,7 @@ mod tests {
 
     #[test]
     fn full_pipeline_exclusion_validation_placement_materialization() {
+        use crate::world::biome::BiomeId;
         use crate::world::doodad::catalog::{DoodadDefinition, DoodadRenderKey};
         use crate::world::DoodadKind;
 
@@ -734,9 +789,11 @@ mod tests {
             Some(45.0),
             true,
             DoodadRenderKey::reserved("tree/oak"),
-        );
+        )
+        .with_allowed_biomes(vec![BiomeId::Forest]);
         let catalog = DoodadCatalog::from_definitions(defs).unwrap();
         let mut world = flat_world(55.0);
+        install_uniform_forest_mask(&mut world);
 
         world.add_doodad_exclusion_zone(DoodadExclusionZone::new(
             WorldPosition::new(
@@ -775,6 +832,7 @@ mod tests {
                 apply_exclusion_zones: true,
                 validate_terrain: true,
                 snap_to_terrain: true,
+                ..MaterializationOptions::default()
             },
         );
 
@@ -817,6 +875,7 @@ mod tests {
     fn procedural_default_materializes_valid_center_candidate() {
         let catalog = DoodadCatalog::default();
         let mut world = flat_world(0.0);
+        install_uniform_forest_mask(&mut world);
         let candidate = DoodadSpawnCandidate {
             definition_id: DoodadDefinitionId::new("tree_oak"),
             source: DoodadSource::Procedural { seed: 11 },
@@ -833,5 +892,113 @@ mod tests {
         assert_eq!(report.inserted, 1);
         assert_eq!(report.skipped_at_insert(), 0);
         assert_eq!(report.skipped_total(), 0);
+    }
+
+    #[test]
+    fn materialization_report_counts_biome_rejects() {
+        let catalog = DoodadCatalog::default();
+        let mut world = flat_world(0.0);
+        world.set_biome_mask(forest_desert_mask());
+
+        let desert_tree = DoodadSpawnCandidate {
+            definition_id: DoodadDefinitionId::new("tree_oak"),
+            source: DoodadSource::Procedural { seed: 1 },
+            position: WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(400.0, 0.0, 128.0)),
+            ),
+            rotation: Quat::IDENTITY,
+            scale: Vec3::ONE,
+        };
+
+        let report = materialize_candidates_with_options(
+            &catalog,
+            &mut world,
+            &[desert_tree],
+            &MaterializationOptions {
+                apply_exclusion_zones: false,
+                validate_terrain: false,
+                ..MaterializationOptions::procedural_default()
+            },
+        );
+
+        assert_eq!(report.skipped_biome_disallowed, 1);
+        assert_eq!(report.inserted, 0);
+    }
+
+    #[test]
+    fn forest_tree_materializes_under_procedural_default() {
+        let catalog = DoodadCatalog::default();
+        let mut world = flat_world(0.0);
+        world.set_biome_mask(forest_desert_mask());
+
+        let forest_tree = DoodadSpawnCandidate {
+            definition_id: DoodadDefinitionId::new("tree_oak"),
+            source: DoodadSource::Procedural { seed: 2 },
+            position: WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(64.0, 0.0, 128.0)),
+            ),
+            rotation: Quat::IDENTITY,
+            scale: Vec3::ONE,
+        };
+
+        let report = materialize_candidates_with_options(
+            &catalog,
+            &mut world,
+            &[forest_tree],
+            &MaterializationOptions {
+                apply_exclusion_zones: false,
+                validate_terrain: false,
+                ..MaterializationOptions::procedural_default()
+            },
+        );
+
+        assert_eq!(report.inserted, 1);
+        assert_eq!(report.skipped_biome_disallowed, 0);
+    }
+
+    #[test]
+    fn missing_biome_mask_skips_under_procedural_default() {
+        let catalog = DoodadCatalog::default();
+        let mut world = flat_world(0.0);
+
+        let candidate = DoodadSpawnCandidate {
+            definition_id: DoodadDefinitionId::new("rock_small"),
+            source: DoodadSource::Procedural { seed: 3 },
+            position: WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(64.0, 0.0, 128.0)),
+            ),
+            rotation: Quat::IDENTITY,
+            scale: Vec3::ONE,
+        };
+
+        let report = materialize_candidates(&catalog, &mut world, &[candidate]);
+
+        assert_eq!(report.skipped_biome_unavailable, 1);
+        assert_eq!(report.inserted, 0);
+    }
+
+    #[test]
+    fn raw_materialization_skips_biome_filter_without_mask() {
+        let catalog = DoodadCatalog::default();
+        let mut world = flat_world(0.0);
+
+        let candidate = DoodadSpawnCandidate {
+            definition_id: DoodadDefinitionId::new("rock_small"),
+            source: DoodadSource::Procedural { seed: 4 },
+            position: WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(64.0, 0.0, 128.0)),
+            ),
+            rotation: Quat::IDENTITY,
+            scale: Vec3::ONE,
+        };
+
+        let report = materialize_raw(&catalog, &mut world, &[candidate]);
+
+        assert_eq!(report.skipped_biome_unavailable, 0);
+        assert_eq!(report.inserted, 1);
     }
 }

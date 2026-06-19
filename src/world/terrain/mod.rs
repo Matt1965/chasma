@@ -14,7 +14,10 @@ mod metadata;
 pub use decode::{DecodeError, decode_exr_heightfield};
 pub use heightfield::Heightfield;
 #[cfg(feature = "terrain-import")]
-pub use gaea::{GaeaImportError, import_gaea_tile_directory, parse_gaea_export_filename, validate_gaea_tile_dimensions};
+pub use gaea::{
+    gaea_color_dir, gaea_height_dir, GaeaImportError, import_gaea_tile_directory,
+    parse_gaea_export_filename, validate_gaea_tile_dimensions,
+};
 #[cfg(feature = "terrain-import")]
 pub use import::{
     ImportError, SourceHeightfield, chunk_data_from_source_tile, expected_chunk_samples_per_edge,

@@ -1,6 +1,6 @@
 ﻿use exr::prelude::read_first_flat_layer_from_file;
 fn main() {
-    let path = "source_data/test/Albedo_y0_x0.exr";
+    let path = "source_data/test/color/Albedo_y0_x0.exr";
     let img = read_first_flat_layer_from_file(path).expect("read");
     let layer = img.layer_data;
     println!("size {}x{}", layer.size.0, layer.size.1);

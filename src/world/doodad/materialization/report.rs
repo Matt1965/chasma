@@ -1,8 +1,10 @@
-/// Outcome counters for materialization (ADR-019, ADR-020, ADR-021, ADR-022).
+/// Outcome counters for materialization (ADR-019, ADR-020, ADR-021, ADR-022, ADR-025).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct DoodadMaterializationReport {
     pub candidates_received: u32,
     pub inserted: u32,
+    pub skipped_biome_disallowed: u32,
+    pub skipped_biome_unavailable: u32,
     pub excluded_by_zone: u32,
     pub skipped_terrain_unavailable: u32,
     pub skipped_height_constraint: u32,
@@ -27,7 +29,9 @@ impl DoodadMaterializationReport {
 
     /// All candidates not inserted, including pre-insert pipeline filters.
     pub fn skipped_total(&self) -> u32 {
-        self.excluded_by_zone
+        self.skipped_biome_disallowed
+            + self.skipped_biome_unavailable
+            + self.excluded_by_zone
             + self.skipped_terrain_unavailable
             + self.skipped_height_constraint
             + self.skipped_slope_constraint
@@ -55,6 +59,8 @@ mod tests {
     #[test]
     fn skipped_total_includes_pipeline_and_insert_skips() {
         let report = DoodadMaterializationReport {
+            skipped_biome_disallowed: 1,
+            skipped_biome_unavailable: 2,
             excluded_by_zone: 1,
             skipped_terrain_unavailable: 2,
             skipped_height_constraint: 3,
@@ -66,6 +72,6 @@ mod tests {
             skipped_validation_failed: 9,
             ..DoodadMaterializationReport::default()
         };
-        assert_eq!(report.skipped_total(), 45);
+        assert_eq!(report.skipped_total(), 48);
     }
 }

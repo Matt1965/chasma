@@ -14,7 +14,9 @@ use std::path::Path;
 
 use bevy::prelude::*;
 
-use crate::world::{WorldConfig, WorldData};
+use crate::world::{
+    log_dev_biome_load_outcome, try_load_default_dev_biome_mask, WorldConfig, WorldData,
+};
 
 use super::catalog::TerrainWorldCatalog;
 use super::decode::decode_chunk;
@@ -90,6 +92,9 @@ fn setup_preview(
     assert!(catalog.chunk_count() > 0, "dev preview manifest listed no chunks");
 
     world.set_authored_extent(catalog.authored_extent());
+
+    let biome_outcome = try_load_default_dev_biome_mask(&mut world, &config);
+    log_dev_biome_load_outcome(&biome_outcome);
 
     let material = materials.add(StandardMaterial {
         // Vertex colors multiply with base_color; white passes albedo through unchanged.

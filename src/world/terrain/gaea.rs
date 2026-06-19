@@ -531,19 +531,48 @@ struct LoadedGaeaTile {
     layout: GaeaTileLayout,
 }
 
-/// Import every Gaea `Export_y{z}_x{x}.exr` tile in `input_dir` into runtime assets.
+/// Resolve the Gaea height export directory for a source world folder.
 ///
+/// Uses `<world>/height` when present; otherwise `<world>` (legacy flat layout).
+pub fn gaea_height_dir(world_dir: &Path) -> PathBuf {
+    let sub = world_dir.join("height");
+    if sub.is_dir() {
+        sub
+    } else {
+        world_dir.to_path_buf()
+    }
+}
+
+/// Resolve the Gaea color (albedo) directory for a source world folder.
+///
+/// Uses `<world>/color` when present; otherwise `<world>` (legacy flat layout).
+pub fn gaea_color_dir(world_dir: &Path) -> PathBuf {
+    let sub = world_dir.join("color");
+    if sub.is_dir() {
+        sub
+    } else {
+        world_dir.to_path_buf()
+    }
+}
+
+/// Import every Gaea `Export_y{z}_x{x}.exr` tile in a source world folder into runtime assets.
+///
+/// Height tiles are read from [`gaea_height_dir`] (`height/` when present).
+/// Optional albedo sidecars are read from [`gaea_color_dir`] (`color/` when present).
 /// Each EXR becomes one [`ChunkData`] at the parsed [`ChunkId`], then
 /// `output_world_dir/manifest.ron` and `output_world_dir/chunks/<x>_<z>.ron`
 /// are written (ADR-011). Returns the number of chunks imported.
 pub fn import_gaea_tile_directory(
-    input_dir: &Path,
+    world_dir: &Path,
     output_world_dir: &Path,
     config: &WorldConfig,
 ) -> Result<usize, GaeaImportError> {
+    let height_dir = gaea_height_dir(world_dir);
+    let color_dir = gaea_color_dir(world_dir);
+
     let mut paths: Vec<(PathBuf, i32, i32)> = Vec::new();
-    for entry in fs::read_dir(input_dir).map_err(|err| io_err(input_dir, err))? {
-        let entry = entry.map_err(|err| io_err(input_dir, err))?;
+    for entry in fs::read_dir(&height_dir).map_err(|err| io_err(&height_dir, err))? {
+        let entry = entry.map_err(|err| io_err(&height_dir, err))?;
         let path = entry.path();
         if path.extension().and_then(|ext| ext.to_str()) != Some("exr") {
             continue;
@@ -563,7 +592,7 @@ pub fn import_gaea_tile_directory(
 
     if paths.is_empty() {
         return Err(GaeaImportError::NoTilesFound {
-            directory: input_dir.display().to_string(),
+            directory: height_dir.display().to_string(),
         });
     }
 
@@ -621,7 +650,7 @@ pub fn import_gaea_tile_directory(
     }
 
     let count = world.len();
-    let albedo = load_optional_gaea_albedo_tiles(input_dir, &loaded, config);
+    let albedo = load_optional_gaea_albedo_tiles(&color_dir, &loaded, config);
     let albedo_ref = if albedo.is_empty() { None } else { Some(&albedo) };
     write_world_with_albedo(output_world_dir, config, &world, albedo_ref)
         .map_err(GaeaImportError::Write)?;
@@ -843,6 +872,50 @@ mod tests {
     }
 
     #[test]
+    fn imports_height_and_color_from_subdirectories() {
+        use exr::prelude::write_rgb_file;
+        use std::sync::atomic::{AtomicU32, Ordering};
+
+        static COUNTER: AtomicU32 = AtomicU32::new(0);
+
+        let config = WorldConfig {
+            chunk_size_meters: 2.0,
+            units_per_meter: 1.0,
+            meters_per_sample: 1.0,
+        };
+        let spe = expected_chunk_samples_per_edge(&config).unwrap();
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+        let world_root =
+            std::env::temp_dir().join(format!("chasma_gaea_world_{}_{n}", std::process::id()));
+        let height = world_root.join("height");
+        let color = world_root.join("color");
+        let output =
+            std::env::temp_dir().join(format!("chasma_gaea_sub_out_{}_{n}", std::process::id()));
+        fs::create_dir_all(&height).unwrap();
+        fs::create_dir_all(&color).unwrap();
+
+        write_rgb_file(height.join("Export_y0_x0.exr"), spe as usize, spe as usize, |cx, cy| {
+            let h = (cx + cy) as f32;
+            (h, h, h)
+        })
+        .unwrap();
+        write_rgb_file(color.join("Albedo_y0_x0.exr"), spe as usize, spe as usize, |cx, _cy| {
+            let t = cx as f32 / spe as f32;
+            (t, 0.2, 0.8 - t)
+        })
+        .unwrap();
+
+        let count = import_gaea_tile_directory(&world_root, &output, &config).unwrap();
+        assert_eq!(count, 1);
+
+        let manifest_text = fs::read_to_string(output.join("manifest.ron")).unwrap();
+        assert!(manifest_text.contains("albedo_path"));
+
+        fs::remove_dir_all(&world_root).ok();
+        fs::remove_dir_all(&output).ok();
+    }
+
+    #[test]
     fn imports_synthetic_non_overlap_2x2_gaea_directory() {
         use exr::prelude::write_rgb_file;
         use std::sync::atomic::{AtomicU32, Ordering};
@@ -942,7 +1015,7 @@ mod tests {
         fs::remove_dir_all(&output).ok();
     }
 
-    /// Imports `source_data/test` into `assets/worlds/main`.
+    /// Imports `source_data/test` (`height/` + `color/`) into `assets/worlds/main`.
     ///
     /// Run manually:
     /// `cargo test --features terrain-import import_source_data_test -- --ignored`
@@ -951,8 +1024,9 @@ mod tests {
     fn import_source_data_test() {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let input = root.join("source_data/test");
+        let height_dir = gaea_height_dir(&input);
         let output = root.join("assets/worlds/main");
-        let expected = fs::read_dir(&input)
+        let expected = fs::read_dir(&height_dir)
             .unwrap()
             .filter_map(Result::ok)
             .filter(|entry| {
@@ -963,7 +1037,10 @@ mod tests {
                     .is_some_and(|name| name.starts_with("Export_") && name.ends_with(".exr"))
             })
             .count();
-        assert!(expected > 0, "source_data/test must contain at least one .exr tile");
+        assert!(
+            expected > 0,
+            "source_data/test/height must contain at least one Export_*.exr tile"
+        );
         let count = import_gaea_tile_directory(&input, &output, &WorldConfig::default()).unwrap();
         assert_eq!(count, expected, "one runtime chunk per source EXR");
     }

@@ -6,6 +6,7 @@
 //! systems in this module.
 
 mod authoring;
+mod biome_filter;
 mod catalog;
 mod exclusion;
 mod generation;
@@ -14,6 +15,7 @@ mod kind;
 mod materialization;
 mod metadata;
 mod placement;
+mod procgen;
 mod procedural_key;
 mod record;
 mod source;
@@ -24,6 +26,7 @@ pub use authoring::{
     create_doodad, lookup_doodad, move_doodad, remove_doodad, DoodadAuthoringError,
     DoodadPlacementOverrides,
 };
+pub use biome_filter::{filter_candidates_by_biome, BiomeFilterResult};
 pub use catalog::{
     DoodadCatalog, DoodadCatalogError, DoodadDefinition, DoodadDefinitionId, DoodadRenderKey,
     starter_definitions,
@@ -45,6 +48,10 @@ pub use materialization::{
 pub use metadata::DoodadMetadata;
 pub use placement::{
     finalize_placements, DoodadPlacement, FinalizedDoodadPlacement, PlacementFinalizationResult,
+};
+pub use procgen::{
+    chunk_needs_procedural_materialization, try_materialize_procedural_chunk_doodads,
+    ChunkProceduralMaterializeOutcome,
 };
 pub use procedural_key::ProceduralDoodadKey;
 pub use record::DoodadRecord;

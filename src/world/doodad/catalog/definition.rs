@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use super::definition_id::DoodadDefinitionId;
 use super::render_key::DoodadRenderKey;
+use crate::world::biome::BiomeId;
 use crate::world::DoodadKind;
 
 /// Authoritative description of a doodad type (ADR-016).
@@ -28,7 +29,9 @@ pub struct DoodadDefinition {
     pub render_key: DoodadRenderKey,
     /// Reserved for future procedural filters (e.g. "forest_edge").
     pub placement_tags: Vec<String>,
-    /// Reserved for future biome-aware spawning.
+    /// Biomes where this type may be placed (ADR-025). Empty = never allowed.
+    pub allowed_biomes: Vec<BiomeId>,
+    /// Reserved string tags for future rule systems; not used by biome filter.
     pub biome_tags: Vec<String>,
     /// Reserved relative spawn weight for procedural generation.
     pub spawn_weight: f32,
@@ -64,9 +67,20 @@ impl DoodadDefinition {
             enabled,
             render_key,
             placement_tags: Vec::new(),
+            allowed_biomes: Vec::new(),
             biome_tags: Vec::new(),
             spawn_weight: 1.0,
             rule_ref: None,
         }
+    }
+
+    pub fn with_allowed_biomes(mut self, allowed_biomes: impl Into<Vec<BiomeId>>) -> Self {
+        self.allowed_biomes = allowed_biomes.into();
+        self
+    }
+
+    /// Whether `biome` is listed in [`Self::allowed_biomes`].
+    pub fn allows_biome(&self, biome: BiomeId) -> bool {
+        self.allowed_biomes.iter().any(|&allowed| allowed == biome)
     }
 }

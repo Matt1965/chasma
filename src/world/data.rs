@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use std::collections::HashMap;
 
+use super::biome::{BiomeMask, BiomeSample};
 use super::chunk::{ChunkData, ChunkId};
 use super::config::WorldConfig;
 use super::coordinates::{ChunkCoord, ChunkLayout, WorldPosition};
@@ -26,15 +27,18 @@ pub struct ChunkExtent {
 /// Doodad records live in a parallel chunk-keyed store (ADR-015), not in
 /// [`ChunkData`]. A required [`DoodadId`] → [`ChunkId`] index enables O(1)
 /// instance lookup (ADR-017); all doodad mutations must keep it synchronized
-/// with the chunk stores. The layout is a snapshot derived from [`WorldConfig`]
-/// at initialization so position-based lookups do not require threading layout
-/// through every call.
+/// with the chunk stores. An optional [`BiomeMask`] holds world-scale biome
+/// authority (ADR-024), independent of terrain residency. The layout is a
+/// snapshot derived from [`WorldConfig`] at initialization so position-based
+/// lookups do not require threading layout through every call.
 #[derive(Debug, Clone, Resource, Reflect)]
 #[reflect(Resource)]
 pub struct WorldData {
     layout: ChunkLayout,
     chunks: HashMap<ChunkId, ChunkData>,
     doodads: HashMap<ChunkId, ChunkDoodadStore>,
+    /// World-scale biome classification raster (ADR-024).
+    biome_mask: Option<BiomeMask>,
     /// Required O(1) index: doodad id → owning chunk (ADR-017).
     ///
     /// Must stay synchronized with [`Self::doodads`] on every insert, move, and
@@ -62,6 +66,7 @@ impl WorldData {
             layout,
             chunks: HashMap::new(),
             doodads: HashMap::new(),
+            biome_mask: None,
             doodad_locations: HashMap::new(),
             procedural_doodads: HashMap::new(),
             exclusion_zones: Vec::new(),
@@ -245,6 +250,29 @@ impl WorldData {
     /// Borrow the doodad store for a chunk, if any records exist.
     pub fn doodads_in_chunk(&self, chunk: ChunkId) -> Option<&ChunkDoodadStore> {
         self.doodads.get(&chunk)
+    }
+
+    /// Set the authoritative world-scale biome mask (ADR-024).
+    pub fn set_biome_mask(&mut self, mask: BiomeMask) {
+        self.biome_mask = Some(mask);
+    }
+
+    /// Borrow the biome mask, if imported.
+    pub fn biome_mask(&self) -> Option<&BiomeMask> {
+        self.biome_mask.as_ref()
+    }
+
+    /// Sample biome classification at an authoritative [`WorldPosition`] (ADR-024).
+    ///
+    /// Returns `None` when no mask is loaded. Does not require terrain residency.
+    pub fn biome_at(&self, position: WorldPosition) -> Option<BiomeSample> {
+        let mask = self.biome_mask.as_ref()?;
+        Some(mask.sample_at_global(position.to_global(self.layout)))
+    }
+
+    /// Sample biome classification at a global render-space position (ADR-024).
+    pub fn sample_biome_at_global(&self, global: Vec3) -> Option<BiomeSample> {
+        self.biome_mask.as_ref().map(|mask| mask.sample_at_global(global))
     }
 
     /// Append a world-scoped exclusion zone (data only; ADR-015).
@@ -486,6 +514,85 @@ mod tests {
         world.set_authored_extent(authored());
         world.insert(ChunkId::new(ChunkCoord::new(0, 0)), sample_chunk());
         assert_eq!(world.height_at(Vec3::new(300.0, 0.0, 0.0)), None);
+    }
+
+    mod biome_tests {
+        use super::*;
+        use crate::world::{
+            BiomeColorMapping, BiomeId, BiomeMask, BiomeMaskBounds, LocalPosition, WorldPosition,
+        };
+
+        fn sample_mask() -> BiomeMask {
+            BiomeMask::from_rgba_rows(
+                2,
+                2,
+                BiomeMaskBounds::new(0.0, 0.0, 512.0, 512.0),
+                &[
+                    255, 0, 0, 255, 0, 255, 0, 255, //
+                    0, 0, 255, 255, 255, 255, 0, 255, //
+                ],
+                4,
+                &BiomeColorMapping::starter(),
+            )
+            .unwrap()
+        }
+
+        #[test]
+        fn biome_at_none_without_mask() {
+            let world = WorldData::new(layout());
+            let position = WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(10.0, 0.0, 10.0)),
+            );
+            assert!(world.biome_at(position).is_none());
+        }
+
+        #[test]
+        fn biome_at_works_without_terrain_residency() {
+            let mut world = WorldData::new(layout());
+            world.set_biome_mask(sample_mask());
+            let position = WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(10.0, 0.0, 10.0)),
+            );
+            let sample = world.biome_at(position).unwrap();
+            assert_eq!(sample.biome, BiomeId::Desert);
+        }
+
+        #[test]
+        fn biome_at_edge_and_center_are_consistent() {
+            let mut world = WorldData::new(layout());
+            world.set_biome_mask(sample_mask());
+
+            let southwest = world
+                .biome_at(WorldPosition::new(
+                    ChunkCoord::new(0, 0),
+                    LocalPosition::new(Vec3::ZERO),
+                ))
+                .unwrap();
+            assert_eq!(southwest.biome, BiomeId::Desert);
+
+            let northeast = world
+                .sample_biome_at_global(Vec3::new(511.0, 0.0, 511.0))
+                .unwrap();
+            assert_eq!(northeast.biome, BiomeId::Plains);
+
+            let center = world
+                .sample_biome_at_global(Vec3::new(256.0, 0.0, 256.0))
+                .unwrap();
+            assert_eq!(center.biome, BiomeId::Plains);
+        }
+
+        #[test]
+        fn biome_sampling_is_deterministic() {
+            let mut world = WorldData::new(layout());
+            world.set_biome_mask(sample_mask());
+            let global = Vec3::new(100.0, 0.0, 200.0);
+            assert_eq!(
+                world.sample_biome_at_global(global),
+                world.sample_biome_at_global(global)
+            );
+        }
     }
 
     mod doodad_tests {

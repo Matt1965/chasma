@@ -1,6 +1,8 @@
-/// Materialization hooks (ADR-019, ADR-020, ADR-021, ADR-022).
+/// Materialization hooks (ADR-019, ADR-020, ADR-021, ADR-022, ADR-025).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MaterializationOptions {
+    /// Filter procedural candidates against [`WorldData::biome_at`] (ADR-025).
+    pub apply_biome_filter: bool,
     /// Filter procedural candidates against [`crate::world::DoodadExclusionZone`] before insert.
     pub apply_exclusion_zones: bool,
     /// Validate candidates against resident terrain height/slope before insert (ADR-021).
@@ -16,15 +18,17 @@ impl MaterializationOptions {
     /// [`Self::procedural_default`] for production procedural materialization.
     pub fn raw() -> Self {
         Self {
+            apply_biome_filter: false,
             apply_exclusion_zones: false,
             validate_terrain: false,
             snap_to_terrain: true,
         }
     }
 
-    /// Production procedural preset: exclusion, terrain validation, and snap.
+    /// Production procedural preset: biome, exclusion, terrain validation, and snap.
     pub fn procedural_default() -> Self {
         Self {
+            apply_biome_filter: true,
             apply_exclusion_zones: true,
             validate_terrain: true,
             snap_to_terrain: true,
@@ -48,8 +52,18 @@ mod tests {
     #[test]
     fn procedural_default_enables_full_pipeline() {
         let opts = MaterializationOptions::procedural_default();
+        assert!(opts.apply_biome_filter);
         assert!(opts.apply_exclusion_zones);
         assert!(opts.validate_terrain);
+        assert!(opts.snap_to_terrain);
+    }
+
+    #[test]
+    fn raw_disables_biome_and_exclusion_filters() {
+        let opts = MaterializationOptions::raw();
+        assert!(!opts.apply_biome_filter);
+        assert!(!opts.apply_exclusion_zones);
+        assert!(!opts.validate_terrain);
         assert!(opts.snap_to_terrain);
     }
 
