@@ -42,9 +42,11 @@ impl From<ChunkId> for ChunkCoord {
 /// ADR-008).
 ///
 /// A `ChunkData` owns its terrain tile, the metadata derived from it, and any
-/// imported mask layers. It owns geography only: per ADR-002 it must not own
-/// doodads, occupancy, units, settlements, factions, or rendering/LOD state.
-/// Those belong to later phases.
+/// imported mask layers. It owns terrain geography only: per ADR-002 and
+/// ADR-008 it must not own doodads, occupancy, units, settlements, factions,
+/// or rendering/LOD state. Doodads are parallel world data in
+/// [`crate::world::WorldData`] keyed by [`ChunkId`] (ADR-015), not fields on
+/// this struct.
 #[derive(Debug, Clone, PartialEq, Reflect)]
 pub struct ChunkData {
     pub heightfield: Heightfield,
