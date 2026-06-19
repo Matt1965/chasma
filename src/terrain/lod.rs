@@ -39,10 +39,10 @@ pub struct TerrainLodSettings {
 impl Default for TerrainLodSettings {
     fn default() -> Self {
         Self {
-            // Tighter than legacy 3/8 rings: sharper near focus, Eighth from distance 5+.
+            // Focus Full, 1-ring Half, 2-ring Quarter, Eighth from distance 3+ (ADR-013).
             full_max_distance: 0,
             half_max_distance: 1,
-            quarter_max_distance: 4,
+            quarter_max_distance: 2,
             max_lod_builds_per_frame: 2,
             max_lod_prefetch_per_frame: 6,
         }
@@ -264,12 +264,12 @@ mod tests {
 
         assert_eq!(settings.full_max_distance, 0);
         assert_eq!(settings.half_max_distance, 1);
-        assert_eq!(settings.quarter_max_distance, 4);
+        assert_eq!(settings.quarter_max_distance, 2);
 
         assert_eq!(desired_lod(focus, focus, &settings), ChunkLod::Full);
         assert_eq!(desired_lod(focus, coord(11, 10), &settings), ChunkLod::Half);
-        assert_eq!(desired_lod(focus, coord(14, 10), &settings), ChunkLod::Quarter);
-        assert_eq!(desired_lod(focus, coord(15, 10), &settings), ChunkLod::Eighth);
+        assert_eq!(desired_lod(focus, coord(12, 10), &settings), ChunkLod::Quarter);
+        assert_eq!(desired_lod(focus, coord(13, 10), &settings), ChunkLod::Eighth);
     }
 
     #[test]
@@ -313,7 +313,7 @@ mod tests {
             *c == coord(12, 10) && *lod == ChunkLod::Half && *p == LodPriority::Medium
         }));
         assert!(targets.iter().any(|(c, lod, p)| {
-            *c == coord(13, 10) && *lod == ChunkLod::Half && *p == LodPriority::Low
+            *c == coord(13, 10) && *lod == ChunkLod::Quarter && *p == LodPriority::Low
         }));
         assert!(!targets.iter().any(|(c, _, _)| *c == coord(14, 10)));
     }

@@ -47,10 +47,10 @@ const PREVIEW_UNLOAD_RADIUS_CHUNKS: i32 = 16;
 
 /// LOD detail rings (Chebyshev distance from focus). Only affect resident chunks.
 ///
-/// Near focus stays sharp; mid-distance uses Quarter; outer resident band → Eighth.
+/// Near focus stays sharp; distance 2 → Quarter; distance 3+ → Eighth (ADR-013).
 const PREVIEW_LOD_FULL_MAX_DISTANCE: i32 = 0;
 const PREVIEW_LOD_HALF_MAX_DISTANCE: i32 = 1;
-const PREVIEW_LOD_QUARTER_MAX_DISTANCE: i32 = 4;
+const PREVIEW_LOD_QUARTER_MAX_DISTANCE: i32 = 2;
 
 /// Dev-only throughput knobs — higher than runtime defaults for faster map fill-in.
 /// Mesh work stays async; raise these if pop-in feels slow, lower if frames hitch.
