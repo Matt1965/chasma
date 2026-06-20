@@ -47,6 +47,9 @@ impl Plugin for AppPlugin {
             );
 
         #[cfg(feature = "dev")]
-        app.add_plugins(crate::terrain::preview::TerrainPreviewPlugin);
+        {
+            app.add_plugins(crate::terrain::preview::TerrainPreviewPlugin);
+            app.add_plugins(crate::skybox::SkyboxPlugin);
+        }
     }
 }

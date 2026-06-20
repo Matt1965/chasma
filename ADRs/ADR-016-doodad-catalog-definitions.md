@@ -54,9 +54,14 @@ Each [`DoodadDefinition`] includes:
 - optional `min_height`, `max_height`, `max_slope_degrees`
 - `enabled`
 - reserved `render_key` (no asset loading)
-- reserved procgen fields: `placement_tags`, `biome_tags`, `spawn_weight`, `rule_ref`
+- `random_rotation_y` — Excel **Random Rotation**; deterministic yaw during placement finalization (R7)
+- `min_scale` / `max_scale` — Excel **Min Size** / **Max Size**; deterministic uniform scale during finalization (R7)
+- `spawn_weight` — Excel **Spawn Weight**; weighted procedural selection (ADR-018, R6)
+- reserved procgen fields: `placement_tags`, `biome_tags`, `rule_ref`
 
-No validation systems, generators, or renderers consume these fields in Phase 3B.
+Excel import (R6/R7) is the preferred authoring path for visual tuning fields.
+Rust must not hardcode per-doodad scale or rotation rules; new tuning columns belong
+in the data import schema and [`DoodadDefinition`], not placement code branches.
 
 ## Read-only after construction
 
@@ -80,9 +85,10 @@ mirroring ADR-010's separation of authoritative data from derived visuals.
 
 ## Procedural generation
 
-Reserved tags, weights, and `rule_ref` support future biome-aware placement without
-changing definition identity. Generators will read the catalog and write
-[`DoodadRecord`] instances to [`WorldData`].
+Reserved tags and `rule_ref` support future biome-aware placement without
+changing definition identity. Generators read the catalog for weighted type
+selection and write [`DoodadRecord`] instances to [`WorldData`]. Scale and yaw
+variation are **not** applied at generation time (R7); see ADR-022.
 
 ## Persistence
 

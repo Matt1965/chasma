@@ -12,6 +12,7 @@ mod variation;
 pub use finalize::{finalize_placements, PlacementFinalizationResult};
 pub use finalized::FinalizedDoodadPlacement;
 pub use pose::DoodadPlacement;
+#[allow(unused_imports)]
 pub use variation::{
-    apply_placement_variation, apply_placement_variation_batch, PlacementVariationSummary,
+    apply_catalog_believability, apply_catalog_believability_batch, PlacementBelievabilitySummary,
 };

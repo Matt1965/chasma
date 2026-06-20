@@ -1,11 +1,9 @@
 use std::collections::HashMap;
-use std::path::Path;
-
-use calamine::{open_workbook, Data, Reader, Xlsx, XlsxError};
 
 use super::error::{DataImportError, RowImportError};
 use super::schema::{
-    parse_bool_yn, parse_enabled_cell, DoodadImportRow, REQUIRED_COLUMNS,
+    parse_bool_yn, parse_enabled_cell, DoodadImportRow, BIOME_COLUMN, RANDOM_ROTATION_COLUMN_ALIASES,
+    REQUIRED_COLUMNS,
 };
 
 pub const DOODADS_SHEET_NAME: &str = "Doodads";
@@ -29,12 +27,23 @@ pub fn column_map_from_headers(headers: &[String]) -> Result<HashMap<String, usi
         }
     }
 
+    if !RANDOM_ROTATION_COLUMN_ALIASES
+        .iter()
+        .any(|name| map.contains_key(*name))
+    {
+        return Err(DataImportError::MissingRequiredColumn {
+            column: "Random Rotation".to_string(),
+        });
+    }
+
     Ok(map)
 }
 
 pub fn read_doodad_rows(
-    path: &Path,
+    path: &std::path::Path,
 ) -> Result<Vec<Result<DoodadImportRow, RowImportError>>, DataImportError> {
+    use calamine::{open_workbook, Reader, Xlsx, XlsxError};
+
     let mut workbook: Xlsx<_> =
         open_workbook(path).map_err(|err: XlsxError| DataImportError::WorkbookOpen(err.to_string()))?;
     let range = workbook
@@ -63,18 +72,26 @@ pub fn read_doodad_rows(
     Ok(parsed)
 }
 
-fn row_is_empty(cells: &[Data]) -> bool {
+fn row_is_empty(cells: &[calamine::Data]) -> bool {
     cells.iter().all(|cell| cell_to_string(cell).trim().is_empty())
 }
 
 fn parse_row(
     row_number: usize,
-    cells: &[Data],
+    cells: &[calamine::Data],
     columns: &HashMap<String, usize>,
 ) -> Result<DoodadImportRow, String> {
     let text = |column: &str| -> String {
         columns
             .get(column)
+            .and_then(|&index| cells.get(index))
+            .map(cell_to_string)
+            .unwrap_or_default()
+    };
+    let text_any = |names: &[&str]| -> String {
+        names
+            .iter()
+            .find_map(|name| columns.get(*name))
             .and_then(|&index| cells.get(index))
             .map(cell_to_string)
             .unwrap_or_default()
@@ -90,14 +107,17 @@ fn parse_row(
     };
 
     let (enabled, enabled_was_blank) = parse_enabled_cell(&text("Enabled"))?;
-    let random_rotation = parse_bool_yn(&text("Random Rotation (Y/N)"))?;
+    let random_rotation = parse_bool_yn(&text_any(RANDOM_ROTATION_COLUMN_ALIASES))?;
 
     Ok(DoodadImportRow {
         row_number,
         name: text("Name"),
         description: text("Description"),
         category: text("Category"),
-        biome: text("Biome"),
+        biome: columns
+            .get(BIOME_COLUMN)
+            .map(|_| text(BIOME_COLUMN))
+            .unwrap_or_default(),
         file_path: text("File Path"),
         min_size: float("Min Size")?,
         max_size: float("Max Size")?,
@@ -108,23 +128,23 @@ fn parse_row(
     })
 }
 
-fn cell_to_string(cell: &Data) -> String {
+fn cell_to_string(cell: &calamine::Data) -> String {
     match cell {
-        Data::Empty => String::new(),
-        Data::String(value) => value.clone(),
-        Data::Float(value) => trim_float(*value),
-        Data::Int(value) => value.to_string(),
-        Data::Bool(value) => {
+        calamine::Data::Empty => String::new(),
+        calamine::Data::String(value) => value.clone(),
+        calamine::Data::Float(value) => trim_float(*value),
+        calamine::Data::Int(value) => value.to_string(),
+        calamine::Data::Bool(value) => {
             if *value {
                 "Y".to_string()
             } else {
                 "N".to_string()
             }
         }
-        Data::DateTime(value) => value.to_string(),
-        Data::DateTimeIso(value) => value.clone(),
-        Data::DurationIso(value) => value.clone(),
-        Data::Error(_) => String::new(),
+        calamine::Data::DateTime(value) => value.to_string(),
+        calamine::Data::DateTimeIso(value) => value.clone(),
+        calamine::Data::DurationIso(value) => value.clone(),
+        calamine::Data::Error(_) => String::new(),
     }
 }
 
@@ -137,17 +157,14 @@ fn trim_float(value: f64) -> String {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(feature = "data-import", test))]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
+    use std::path::Path;
 
-    fn fixture_path(name: &str) -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("testdata").join("doodads").join(name)
-    }
+    use rust_xlsxwriter::Workbook;
 
     fn write_workbook(path: &Path, headers: &[&str], rows: &[Vec<&str>]) {
-        use rust_xlsxwriter::Workbook;
         let mut workbook = Workbook::new();
         let sheet = workbook.add_worksheet();
         sheet.set_name(DOODADS_SHEET_NAME).unwrap();
@@ -167,6 +184,39 @@ mod tests {
         workbook.save(path).unwrap();
     }
 
+    fn standard_headers_v2() -> [&'static str; 9] {
+        [
+            "Name",
+            "Description",
+            "Category",
+            "File Path",
+            "Min Size",
+            "Max Size",
+            "Spawn Weight",
+            "Random Rotation",
+            "Enabled",
+        ]
+    }
+
+    #[test]
+    fn reads_random_rotation_column_name() {
+        let path = std::env::temp_dir().join(format!(
+            "chasma_doodad_import_{}_{}.xlsx",
+            std::process::id(),
+            "random_rotation_col"
+        ));
+        let headers = standard_headers_v2();
+        let row = vec![
+            "Basic Tree", "Basic", "Flora", r"\doodads\tree", "0.5", "1.5", "10", "Y", "Y",
+        ];
+        write_workbook(&path, &headers, &[row]);
+        let rows = read_doodad_rows(&path).unwrap();
+        let row = rows[0].as_ref().unwrap();
+        assert!(row.random_rotation);
+        assert_eq!(row.category, "Flora");
+        let _ = std::fs::remove_file(path);
+    }
+
     #[test]
     fn column_order_is_irrelevant() {
         let path = std::env::temp_dir().join(format!(
@@ -181,13 +231,12 @@ mod tests {
             "Max Size",
             "Min Size",
             "File Path",
-            "Biome",
             "Category",
             "Description",
             "Name",
         ];
         let row = vec![
-            "Y", "Y", "5", "1.2", "0.8", "tree/oak.glb", "Forest", "Tree", "Oak", "tree_oak",
+            "Y", "Y", "5", "1.2", "0.8", "tree/oak.glb", "Tree", "Oak", "tree_oak",
         ];
         write_workbook(&path, &headers, &[row]);
         let rows = read_doodad_rows(&path).unwrap();
@@ -217,98 +266,60 @@ mod tests {
     }
 
     #[test]
-    fn invalid_numeric_field_fails_row_parse() {
+    fn invalid_numeric_field_fails_row() {
         let path = std::env::temp_dir().join(format!(
             "chasma_doodad_import_{}_{}.xlsx",
             std::process::id(),
-            "bad_number"
+            "invalid_numeric"
         ));
-        let headers = [
-            "Name",
-            "Description",
-            "Category",
-            "Biome",
-            "File Path",
-            "Min Size",
-            "Max Size",
-            "Spawn Weight",
-            "Random Rotation (Y/N)",
-            "Enabled",
-        ];
+        let headers = standard_headers_v2();
         let row = vec![
-            "tree_oak",
-            "Oak",
-            "Tree",
-            "Forest",
-            "tree/oak.glb",
-            "not_a_number",
-            "1.2",
-            "5",
-            "Y",
-            "Y",
+            "tree_oak", "Oak", "Tree", "tree/oak.glb", "not-a-number", "1.2", "5", "Y", "Y",
         ];
         write_workbook(&path, &headers, &[row]);
         let rows = read_doodad_rows(&path).unwrap();
-        assert_eq!(rows.len(), 1);
         assert!(rows[0].is_err());
         let _ = std::fs::remove_file(path);
     }
 
     #[test]
-    fn deterministic_import_from_same_file() {
-        let path = fixture_path("sample_doodads.xlsx");
-        if !path.exists() {
-            let headers = [
-                "Name",
-                "Description",
-                "Category",
-                "Biome",
-                "File Path",
-                "Min Size",
-                "Max Size",
-                "Spawn Weight",
-                "Random Rotation (Y/N)",
-                "Enabled",
+    fn random_rotation_supports_yn_variants() {
+        for (value, expected) in [("Yes", true), ("No", false), ("0", false), ("1", true)] {
+            let path = std::env::temp_dir().join(format!(
+                "chasma_doodad_import_{}_{}_{}.xlsx",
+                std::process::id(),
+                "random_rotation_variant",
+                value
+            ));
+            let headers = standard_headers_v2();
+            let row = vec![
+                "tree_oak",
+                "Oak",
+                "Tree",
+                "tree/oak.glb",
+                "0.8",
+                "1.2",
+                "5",
+                value,
+                "Y",
             ];
-            let rows = vec![
-                vec![
-                    "tree_oak", "Oak Tree", "Tree", "Forest", "tree/oak.glb", "0.85", "1.15",
-                    "8", "Y", "Y",
-                ],
-                vec![
-                    "rock_small", "Small Rock", "Rock", "Forest", "rock/small.glb", "0.8",
-                    "1.2", "3", "N", "Y",
-                ],
-            ];
-            write_workbook(&path, &headers, &rows);
+            write_workbook(&path, &headers, &[row]);
+            let rows = read_doodad_rows(&path).unwrap();
+            assert_eq!(rows[0].as_ref().unwrap().random_rotation, expected);
+            let _ = std::fs::remove_file(path);
         }
-        let a = read_doodad_rows(&path).unwrap();
-        let b = read_doodad_rows(&path).unwrap();
-        assert_eq!(a, b);
-        assert_eq!(a.len(), 2);
     }
 
     #[test]
-    fn enabled_blank_defaults_true() {
+    fn enabled_blank_defaults_true_in_row() {
         let path = std::env::temp_dir().join(format!(
             "chasma_doodad_import_{}_{}.xlsx",
             std::process::id(),
             "enabled_blank"
         ));
-        let headers = [
-            "Name",
-            "Description",
-            "Category",
-            "Biome",
-            "File Path",
-            "Min Size",
-            "Max Size",
-            "Spawn Weight",
-            "Random Rotation (Y/N)",
-            "Enabled",
-        ];
+        let headers = standard_headers_v2();
         let row = vec![
-            "tree_oak", "Oak", "Tree", "Forest", "tree/oak.glb", "0.8", "1.2", "5", "Y", "",
+            "tree_oak", "Oak", "Tree", "tree/oak.glb", "0.8", "1.2", "5", "Y", "",
         ];
         write_workbook(&path, &headers, &[row]);
         let rows = read_doodad_rows(&path).unwrap();

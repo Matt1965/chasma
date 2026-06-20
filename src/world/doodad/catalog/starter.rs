@@ -16,11 +16,8 @@ fn non_forest_biomes() -> Vec<BiomeId> {
     vec![BiomeId::Desert, BiomeId::Marsh, BiomeId::Plains]
 }
 
-fn with_random_rotation_y(mut definition: DoodadDefinition) -> DoodadDefinition {
-    definition
-        .placement_tags
-        .push("random_rotation_y".to_string());
-    definition
+fn with_random_rotation_y(definition: DoodadDefinition) -> DoodadDefinition {
+    definition.with_random_rotation_y(true)
 }
 
 /// Starter catalog content for Phase 3B (ADR-016), biome permissions ADR-025, weights R5.

@@ -18,7 +18,8 @@ mod ron;
 pub use error::{DataImportError, RowImportError};
 pub use schema::{
     normalize_file_path, normalize_file_path_to_render_key, parse_biome, parse_bool_yn,
-    parse_category, parse_enabled_cell, DoodadImportRow, REQUIRED_COLUMNS,
+    parse_category, parse_enabled_cell, DoodadImportRow, BIOME_COLUMN,
+    RANDOM_ROTATION_COLUMN_ALIASES, REQUIRED_COLUMNS,
 };
 
 #[cfg(feature = "data-import")]
@@ -242,6 +243,45 @@ mod integration_tests {
         let b = import_doodads_from_excel(&path).unwrap();
         assert_eq!(a, b);
         assert_eq!(a.0[0].render_key.0.as_deref(), Some("tree/oak"));
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn basic_tree_row_imports_catalog_fields() {
+        let path = temp_workbook("basic_tree");
+        let headers = [
+            "Name",
+            "Description",
+            "Category",
+            "File Path",
+            "Min Size",
+            "Max Size",
+            "Spawn Weight",
+            "Random Rotation",
+            "Enabled",
+        ];
+        let rows = vec![vec![
+            "Basic Tree",
+            "Basic",
+            "Flora",
+            r"\doodads\tree",
+            "0.5",
+            "1.5",
+            "10",
+            "Y",
+            "Y",
+        ]];
+        write_workbook(&path, &headers, &rows);
+        let (definitions, summary) = import_doodads_from_excel(&path).unwrap();
+        assert_eq!(summary.rows_valid, 1);
+        let def = &definitions[0];
+        assert_eq!(def.id.as_str(), "Basic Tree");
+        assert_eq!(def.kind, DoodadKind::Tree);
+        assert_eq!(def.render_key.0.as_deref(), Some("tree"));
+        assert!((def.spawn_weight - 10.0).abs() < 1e-4);
+        assert!(def.random_rotation_y);
+        assert!((def.min_scale - 0.5).abs() < 1e-4);
+        assert!((def.max_scale - 1.5).abs() < 1e-4);
         let _ = std::fs::remove_file(path);
     }
 }

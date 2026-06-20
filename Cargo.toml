@@ -2,6 +2,11 @@
 name = "chasma"
 version = "0.1.0"
 edition = "2024"
+default-run = "chasma"
+
+[[bin]]
+name = "merge_skybox_cubemap"
+path = "src/bin/merge_skybox_cubemap.rs"
 
 [dependencies]
 bevy = "0.18"

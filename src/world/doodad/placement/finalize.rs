@@ -1,4 +1,6 @@
 use super::finalized::FinalizedDoodadPlacement;
+use super::variation::apply_catalog_believability_batch;
+use crate::world::doodad::catalog::DoodadCatalog;
 use crate::world::doodad::generation::DoodadSpawnCandidate;
 use crate::world::{LocalPosition, WorldData, WorldPosition};
 
@@ -11,14 +13,15 @@ pub struct PlacementFinalizationResult {
     pub skipped_terrain_unavailable: u32,
 }
 
-/// Resolve candidate transforms into materialization-ready placements (ADR-022).
+/// Resolve candidate transforms into materialization-ready placements (ADR-022, R7).
 ///
-/// Read-only on [`WorldData`]; deterministic and side-effect free. Does not
-/// modify input candidates.
+/// Read-only on [`WorldData`] and input `candidates`. When `catalog` is provided,
+/// catalog-driven scale and yaw are applied to finalized placements only.
 pub fn finalize_placements(
     candidates: &[DoodadSpawnCandidate],
     world: &WorldData,
     snap_to_terrain: bool,
+    catalog: Option<&DoodadCatalog>,
 ) -> PlacementFinalizationResult {
     let mut result = PlacementFinalizationResult {
         finalized: Vec::with_capacity(candidates.len()),
@@ -26,21 +29,29 @@ pub fn finalize_placements(
     };
 
     for candidate in candidates {
-        if snap_to_terrain {
+        let placement = if snap_to_terrain {
             match snap_candidate_to_terrain(candidate, world) {
                 Some(placement) => {
                     if placement.position.local.0.y != candidate.position.local.0.y {
                         result.terrain_snaps_applied += 1;
                     }
-                    result.finalized.push(placement);
-                    result.placements_finalized += 1;
+                    placement
                 }
-                None => result.skipped_terrain_unavailable += 1,
+                None => {
+                    result.skipped_terrain_unavailable += 1;
+                    continue;
+                }
             }
         } else {
-            result.finalized.push(FinalizedDoodadPlacement::from_candidate(candidate));
-            result.placements_finalized += 1;
-        }
+            FinalizedDoodadPlacement::from_candidate(candidate)
+        };
+
+        result.finalized.push(placement);
+        result.placements_finalized += 1;
+    }
+
+    if let Some(catalog) = catalog {
+        apply_catalog_believability_batch(&mut result.finalized, catalog);
     }
 
     result
@@ -65,10 +76,11 @@ fn snap_candidate_to_terrain(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::doodad::catalog::DoodadDefinitionId;
+    use crate::world::doodad::catalog::{DoodadDefinition, DoodadRenderKey};
+    use crate::world::doodad::catalog::DoodadCatalog;
     use crate::world::doodad::source::DoodadSource;
     use crate::world::terrain::Heightfield;
-    use crate::world::{ChunkCoord, ChunkData, ChunkId, ChunkLayout, LocalPosition};
+    use crate::world::{ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, DoodadKind, LocalPosition};
     use bevy::prelude::{Quat, Vec3};
 
     fn layout() -> ChunkLayout {
@@ -102,12 +114,32 @@ mod tests {
         }
     }
 
+    fn catalog_with_tree(min: f32, max: f32, random_y: bool) -> DoodadCatalog {
+        DoodadCatalog::from_definitions(vec![
+            DoodadDefinition::new(
+                DoodadDefinitionId::new("tree_oak"),
+                DoodadKind::Tree,
+                "Oak",
+                4.0,
+                min,
+                max,
+                None,
+                None,
+                Some(25.0),
+                true,
+                DoodadRenderKey::reserved("tree/oak"),
+            )
+            .with_random_rotation_y(random_y),
+        ])
+        .unwrap()
+    }
+
     #[test]
     fn terrain_snap_updates_y() {
         let world = flat_world(42.0);
         let candidate = candidate_at(128.0, 0.0, 128.0);
 
-        let result = finalize_placements(&[candidate], &world, true);
+        let result = finalize_placements(&[candidate], &world, true, None);
 
         assert_eq!(result.finalized.len(), 1);
         assert_eq!(result.finalized[0].position.local.0.y, 42.0);
@@ -115,60 +147,53 @@ mod tests {
     }
 
     #[test]
-    fn xz_unchanged_after_snap() {
+    fn candidates_are_not_mutated_by_finalization() {
         let world = flat_world(10.0);
-        let candidate = candidate_at(64.0, 99.0, 96.0);
+        let candidates = vec![candidate_at(64.0, 0.0, 64.0)];
+        let before = candidates.clone();
+        let catalog = catalog_with_tree(0.8, 1.2, true);
 
-        let result = finalize_placements(&[candidate], &world, true);
+        let _ = finalize_placements(&candidates, &world, true, Some(&catalog));
 
-        assert_eq!(result.finalized[0].position.local.0.x, 64.0);
-        assert_eq!(result.finalized[0].position.local.0.z, 96.0);
+        assert_eq!(candidates, before);
     }
 
     #[test]
-    fn rotation_preserved() {
+    fn catalog_believability_overrides_candidate_transform() {
         let world = flat_world(0.0);
         let candidate = candidate_at(128.0, 0.0, 128.0);
-        let expected = candidate.rotation;
+        let catalog = catalog_with_tree(0.8, 1.2, true);
 
-        let result = finalize_placements(&[candidate], &world, true);
+        let result = finalize_placements(&[candidate], &world, true, Some(&catalog));
 
-        assert_eq!(result.finalized[0].rotation, expected);
+        assert_ne!(result.finalized[0].rotation, Quat::from_rotation_y(0.5));
+        assert_ne!(result.finalized[0].scale, Vec3::new(0.9, 1.0, 1.1));
     }
 
     #[test]
-    fn scale_preserved() {
+    fn finalization_without_catalog_preserves_candidate_transform() {
         let world = flat_world(0.0);
         let candidate = candidate_at(128.0, 0.0, 128.0);
-        let expected = candidate.scale;
+        let expected_rotation = candidate.rotation;
+        let expected_scale = candidate.scale;
 
-        let result = finalize_placements(&[candidate], &world, true);
+        let result = finalize_placements(&[candidate], &world, true, None);
 
-        assert_eq!(result.finalized[0].scale, expected);
+        assert_eq!(result.finalized[0].rotation, expected_rotation);
+        assert_eq!(result.finalized[0].scale, expected_scale);
     }
 
     #[test]
-    fn disabled_snap_keeps_original_y() {
-        let world = flat_world(42.0);
-        let candidate = candidate_at(128.0, 17.0, 128.0);
-
-        let result = finalize_placements(&[candidate], &world, false);
-
-        assert_eq!(result.finalized[0].position.local.0.y, 17.0);
-        assert_eq!(result.terrain_snaps_applied, 0);
-        assert_eq!(result.placements_finalized, 1);
-    }
-
-    #[test]
-    fn finalization_is_deterministic() {
+    fn finalization_is_deterministic_with_catalog() {
         let world = flat_world(25.0);
         let candidates = vec![
             candidate_at(64.0, 0.0, 64.0),
             candidate_at(128.0, 0.0, 128.0),
         ];
+        let catalog = catalog_with_tree(0.85, 1.15, true);
 
-        let a = finalize_placements(&candidates, &world, true);
-        let b = finalize_placements(&candidates, &world, true);
+        let a = finalize_placements(&candidates, &world, true, Some(&catalog));
+        let b = finalize_placements(&candidates, &world, true, Some(&catalog));
 
         assert_eq!(a, b);
     }
@@ -178,7 +203,7 @@ mod tests {
         let world = WorldData::new(layout());
         let candidate = candidate_at(128.0, 0.0, 128.0);
 
-        let result = finalize_placements(&[candidate], &world, true);
+        let result = finalize_placements(&[candidate], &world, true, None);
 
         assert!(result.finalized.is_empty());
         assert_eq!(result.skipped_terrain_unavailable, 1);

@@ -20,6 +20,9 @@ pub fn validate_row(row: &DoodadImportRow) -> Result<(), RowImportError> {
             row.min_size, row.max_size
         )));
     }
+    if row.min_size < 0.0 || row.max_size < 0.0 {
+        return Err(fail("Min Size and Max Size must be >= 0".to_string()));
+    }
     if row.spawn_weight < 0.0 {
         return Err(fail(format!(
             "Spawn Weight must be >= 0 (got {})",
@@ -34,7 +37,7 @@ pub fn validate_row(row: &DoodadImportRow) -> Result<(), RowImportError> {
     if super::schema::parse_category(&row.category).is_err() {
         return Err(fail(format!("invalid Category `{}`", row.category.trim())));
     }
-    if super::schema::parse_biome(&row.biome).is_err() {
+    if !row.biome.trim().is_empty() && super::schema::parse_biome(&row.biome).is_err() {
         return Err(fail(format!("invalid Biome `{}`", row.biome.trim())));
     }
     if super::schema::normalize_file_path_to_render_key(&row.file_path).is_err() {

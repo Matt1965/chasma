@@ -25,6 +25,7 @@ pub struct DoodadDefinitionRon {
     pub render_key: String,
     pub allowed_biomes: Vec<String>,
     pub spawn_weight: f32,
+    pub random_rotation_y: bool,
     pub placement_tags: Vec<String>,
 }
 
@@ -50,6 +51,7 @@ impl From<&DoodadDefinition> for DoodadDefinitionRon {
                 .map(|biome| biome_to_string(*biome))
                 .collect(),
             spawn_weight: definition.spawn_weight,
+            random_rotation_y: definition.random_rotation_y,
             placement_tags: definition.placement_tags.clone(),
         }
     }
@@ -122,7 +124,8 @@ mod tests {
             DoodadRenderKey::reserved("tree/oak"),
         )
         .with_allowed_biomes(vec![BiomeId::Forest])
-        .with_spawn_weight(8.0);
+        .with_spawn_weight(8.0)
+        .with_random_rotation_y(true);
 
         let path = std::env::temp_dir().join(format!(
             "chasma_catalog_{}.ron",
@@ -132,6 +135,7 @@ mod tests {
         let text = fs::read_to_string(&path).unwrap();
         assert!(text.contains("tree_oak"));
         assert!(text.contains("Forest"));
+        assert!(text.contains("random_rotation_y"));
         let _ = fs::remove_file(path);
     }
 }

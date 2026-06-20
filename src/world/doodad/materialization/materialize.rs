@@ -6,8 +6,7 @@ use crate::world::doodad::catalog::DoodadCatalog;
 use crate::world::doodad::exclusion::filter_candidates_by_exclusion_zones;
 use crate::world::doodad::generation::DoodadSpawnCandidate;
 use crate::world::doodad::placement::{
-    apply_placement_variation_batch, finalize_placements, FinalizedDoodadPlacement,
-    PlacementFinalizationResult,
+    finalize_placements, FinalizedDoodadPlacement, PlacementFinalizationResult,
 };
 use crate::world::doodad::procedural_key::ProceduralDoodadKey;
 use crate::world::doodad::terrain_validation::{filter_candidates_by_terrain, TerrainValidationResult};
@@ -91,6 +90,7 @@ pub fn materialize_candidates_with_options(
         &terrain_result.retained,
         world,
         options.snap_to_terrain,
+        options.apply_catalog_believability.then_some(catalog),
     );
 
     let PlacementFinalizationResult {
@@ -100,14 +100,7 @@ pub fn materialize_candidates_with_options(
         skipped_terrain_unavailable,
     } = finalization;
 
-    let layout = world.layout();
-    let mut varied = finalized;
-    if options.apply_placement_variation {
-        let variation_summary = apply_placement_variation_batch(&mut varied, catalog, layout);
-        log_placement_variation_if_enabled(options, &variation_summary, &varied);
-    }
-
-    let mut report = materialize_finalized_slice(catalog, world, &varied);
+    let mut report = materialize_finalized_slice(catalog, world, &finalized);
     report.candidates_received = original_count;
     report.excluded_by_zone = excluded_by_zone;
     report.skipped_biome_disallowed = biome_skipped_disallowed;
@@ -118,49 +111,6 @@ pub fn materialize_candidates_with_options(
     report.terrain_snaps_applied = terrain_snaps_applied;
     report.skipped_terrain_unavailable += skipped_terrain_unavailable;
     report
-}
-
-#[cfg(feature = "dev")]
-fn log_placement_variation_if_enabled(
-    options: &MaterializationOptions,
-    summary: &crate::world::doodad::placement::PlacementVariationSummary,
-    placements: &[FinalizedDoodadPlacement],
-) {
-    if !options.log_placement_variation || summary.placements_varied == 0 {
-        return;
-    }
-    let Some(chunk) = placements.first().map(|placement| placement.position.chunk) else {
-        return;
-    };
-    bevy::log::info!(
-        target: "chasma::doodad_variation",
-        "chunk=({}, {}) varied={} rotation_y={} identity={} scale=[{:?},{:?}] by_kind={:?}",
-        chunk.x,
-        chunk.z,
-        summary.placements_varied,
-        summary.rotation_randomized,
-        summary.rotation_identity,
-        summary.scale_min,
-        summary.scale_max,
-        summary.counts_by_kind,
-    );
-}
-
-#[cfg(not(feature = "dev"))]
-fn log_placement_variation_if_enabled(
-    _options: &MaterializationOptions,
-    _summary: &crate::world::doodad::placement::PlacementVariationSummary,
-    _placements: &[FinalizedDoodadPlacement],
-) {
-}
-
-fn merge_placement_finalization(
-    report: &mut DoodadMaterializationReport,
-    finalization: &PlacementFinalizationResult,
-) {
-    report.placements_finalized = finalization.placements_finalized;
-    report.terrain_snaps_applied = finalization.terrain_snaps_applied;
-    report.skipped_terrain_unavailable += finalization.skipped_terrain_unavailable;
 }
 
 fn merge_terrain_validation(
@@ -898,8 +848,8 @@ mod tests {
         let key = ProceduralDoodadKey::from_candidate(&accepted).unwrap();
         let record = world.get_doodad(world.procedural_doodad_id(&key).unwrap()).unwrap();
         assert_eq!(record.placement.position.local.0.y, 55.0);
-        // R7 variation overwrites candidate rotation/scale from definition bounds.
-        assert_eq!(record.placement.rotation, Quat::IDENTITY);
+        // R7 catalog believability overwrites candidate rotation/scale from definition bounds.
+        assert_ne!(record.placement.rotation, Quat::from_rotation_y(1.2));
         assert!(record.placement.scale.x >= 0.85 && record.placement.scale.x <= 1.15);
     }
 

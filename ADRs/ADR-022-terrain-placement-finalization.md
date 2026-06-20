@@ -59,8 +59,26 @@ From resident [`WorldData`] heightfield at candidate local `(x, z)`:
 
 - **Y**: replace with sampled terrain height when `snap_to_terrain` is enabled
 - **X/Z**: unchanged
-- **Rotation**: preserve candidate rotation
-- **Scale**: preserve candidate scale
+- **Rotation / scale**: preserve candidate values unless catalog believability is enabled (R7)
+
+### Catalog believability (R7)
+
+When [`MaterializationOptions::apply_catalog_believability`] is true (default in
+[`MaterializationOptions::procedural_default`]), [`finalize_placements`] applies
+deterministic scale and optional yaw from [`DoodadDefinition`] fields populated by
+Excel import:
+
+| Excel column | Catalog field | Finalization behavior |
+|--------------|---------------|------------------------|
+| Min Size / Max Size | `min_scale`, `max_scale` | Uniform scale in range; fixed when equal |
+| Random Rotation | `random_rotation_y` | Deterministic yaw 0..360° when true; identity when false |
+
+Seeding uses chunk coordinates, procedural instance seed, and definition id.
+[`DoodadSpawnCandidate`] is never mutated. Micro-position jitter is deferred until
+a schema field exists.
+
+Rust must not introduce hardcoded per-doodad visual tuning; extend the Excel schema
+instead.
 
 The snapped Y written to [`DoodadRecord`] is **authoritative terrain height** in
 world units. The doodad runtime may multiply render Y by
@@ -100,15 +118,15 @@ Finalization `skipped_terrain_unavailable` merges into the materialization repor
 
 # Future extension seams
 
-Finalization is the intended home for future procedural placement refinements
+Finalization is the intended home for procedural placement refinements
 without touching generation output:
 
 - align rotation to terrain normal
-- random yaw / scale variation
 - ground offset and species-specific placement
 - slope alignment, rock embedding, tree root offsets
 
-Reserve these as future additions to `finalize_placements` or companion
+R7 implemented catalog-driven random yaw and scale here (`variation.rs`).
+Reserve additional refinements as extensions to `finalize_placements` or companion
 functions in the same module — not in validation or generation.
 
 # Non-goals (Phase 3H)
@@ -132,6 +150,7 @@ Height sampling uses [`WorldData::sample_height_at_position`] (shared with ADR-0
 [`finalize_placements`]: ../src/world/doodad/placement/finalize.rs
 [`WorldData`]: ../src/world/data.rs
 [`MaterializationOptions::snap_to_terrain`]: ../src/world/doodad/materialization/options.rs
+[`MaterializationOptions::apply_catalog_believability`]: ../src/world/doodad/materialization/options.rs
 [`materialize_candidates_with_options`]: ../src/world/doodad/materialization/materialize.rs
 [`DoodadMaterializationReport`]: ../src/world/doodad/materialization/report.rs
 [`create_doodad`]: ../src/world/doodad/authoring.rs

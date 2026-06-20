@@ -27,6 +27,8 @@ pub struct DoodadDefinition {
     pub enabled: bool,
     /// Reserved for future renderer integration; does not load assets.
     pub render_key: DoodadRenderKey,
+    /// Excel `Random Rotation` — apply deterministic yaw during placement finalization (R7).
+    pub random_rotation_y: bool,
     /// Reserved for future procedural filters (e.g. "forest_edge").
     pub placement_tags: Vec<String>,
     /// Biomes where this type may be placed (ADR-025). Empty = never allowed.
@@ -70,6 +72,7 @@ impl DoodadDefinition {
             max_slope_degrees,
             enabled,
             render_key,
+            random_rotation_y: false,
             placement_tags: Vec::new(),
             allowed_biomes: Vec::new(),
             biome_tags: Vec::new(),
@@ -85,6 +88,11 @@ impl DoodadDefinition {
 
     pub fn with_spawn_weight(mut self, spawn_weight: f32) -> Self {
         self.spawn_weight = spawn_weight;
+        self
+    }
+
+    pub fn with_random_rotation_y(mut self, random_rotation_y: bool) -> Self {
+        self.random_rotation_y = random_rotation_y;
         self
     }
 

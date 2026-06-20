@@ -3,18 +3,24 @@
 use crate::world::{BiomeId, DoodadDefinition, DoodadDefinitionId, DoodadKind, DoodadRenderKey};
 
 /// Required worksheet column headers (exact names; order irrelevant).
+///
+/// [`RANDOM_ROTATION_COLUMN_ALIASES`] satisfies the random-rotation requirement.
 pub const REQUIRED_COLUMNS: &[&str] = &[
     "Name",
     "Description",
     "Category",
-    "Biome",
     "File Path",
     "Min Size",
     "Max Size",
     "Spawn Weight",
-    "Random Rotation (Y/N)",
     "Enabled",
 ];
+
+/// Accepted header names for the random-rotation column (any one is sufficient).
+pub const RANDOM_ROTATION_COLUMN_ALIASES: &[&str] = &["Random Rotation", "Random Rotation (Y/N)"];
+
+/// Optional column — when absent or blank, definitions allow all assigned biomes.
+pub const BIOME_COLUMN: &str = "Biome";
 
 /// Raw row parsed from the `Doodads` sheet before validation.
 #[derive(Debug, Clone, PartialEq)]
@@ -35,9 +41,9 @@ pub struct DoodadImportRow {
 
 pub fn parse_category(value: &str) -> Result<DoodadKind, String> {
     match value.trim() {
-        "Tree" => Ok(DoodadKind::Tree),
-        "Rock" => Ok(DoodadKind::Rock),
-        "Bush" => Ok(DoodadKind::Bush),
+        "Tree" | "Flora" => Ok(DoodadKind::Tree),
+        "Rock" | "Stone" => Ok(DoodadKind::Rock),
+        "Bush" | "Shrub" => Ok(DoodadKind::Bush),
         "Ruin" => Ok(DoodadKind::Ruin),
         "ResourceNode" | "Resource" | "Resource Node" => Ok(DoodadKind::ResourceNode),
         other => Err(format!("unknown Category `{other}`")),
@@ -72,8 +78,6 @@ pub fn parse_enabled_cell(value: &str) -> Result<(bool, bool), String> {
 }
 
 /// Normalize a workbook file-path cell to canonical forward-slash form.
-///
-/// Example: `\doodads\tree\oak.glb` → `doodads/tree/oak.glb`.
 pub fn normalize_file_path(path: &str) -> String {
     let mut normalized = path.trim().replace('\\', "/");
     while normalized.starts_with('/') {
@@ -112,34 +116,37 @@ fn kind_defaults(kind: DoodadKind) -> (f32, Option<f32>) {
     }
 }
 
+fn allowed_biomes_for_row(biome: &str) -> Result<Vec<BiomeId>, String> {
+    if biome.trim().is_empty() {
+        return Ok(BiomeId::all_assigned().to_vec());
+    }
+    Ok(vec![parse_biome(biome)?])
+}
+
 impl DoodadImportRow {
     pub fn to_definition(&self) -> Result<DoodadDefinition, String> {
         let kind = parse_category(&self.category)?;
-        let biome = parse_biome(&self.biome)?;
         let render_key = normalize_file_path_to_render_key(&self.file_path)?;
         let (placement_radius, max_slope) = kind_defaults(kind);
 
-        let mut definition = DoodadDefinition::new(
-            DoodadDefinitionId::new(self.name.trim()),
-            kind,
-            self.description.trim(),
-            placement_radius,
-            self.min_size,
-            self.max_size,
-            None,
-            None,
-            max_slope,
-            self.enabled,
-            DoodadRenderKey::reserved(render_key),
+        Ok(
+            DoodadDefinition::new(
+                DoodadDefinitionId::new(self.name.trim()),
+                kind,
+                self.description.trim(),
+                placement_radius,
+                self.min_size,
+                self.max_size,
+                None,
+                None,
+                max_slope,
+                self.enabled,
+                DoodadRenderKey::reserved(render_key),
+            )
+            .with_allowed_biomes(allowed_biomes_for_row(&self.biome)?)
+            .with_spawn_weight(self.spawn_weight)
+            .with_random_rotation_y(self.random_rotation),
         )
-        .with_allowed_biomes(vec![biome])
-        .with_spawn_weight(self.spawn_weight);
-
-        if self.random_rotation {
-            definition.placement_tags.push("random_rotation_y".to_string());
-        }
-
-        Ok(definition)
     }
 }
 
@@ -164,17 +171,39 @@ mod tests {
         }
     }
 
-    #[test]
-    fn category_parsing() {
-        assert_eq!(parse_category("Tree").unwrap(), DoodadKind::Tree);
-        assert_eq!(parse_category("Resource").unwrap(), DoodadKind::ResourceNode);
-        assert!(parse_category("Shrub").is_err());
+    fn basic_tree_row() -> DoodadImportRow {
+        DoodadImportRow {
+            row_number: 3,
+            name: "Basic Tree".to_string(),
+            description: "Basic Tree".to_string(),
+            category: "Flora".to_string(),
+            biome: String::new(),
+            file_path: r"\doodads\tree".to_string(),
+            min_size: 0.5,
+            max_size: 1.5,
+            spawn_weight: 10.0,
+            random_rotation: true,
+            enabled: true,
+            enabled_was_blank: false,
+        }
     }
 
     #[test]
-    fn biome_parsing() {
-        assert_eq!(parse_biome("Forest").unwrap(), BiomeId::Forest);
-        assert!(parse_biome("Tundra").is_err());
+    fn category_parsing_includes_flora_alias() {
+        assert_eq!(parse_category("Tree").unwrap(), DoodadKind::Tree);
+        assert_eq!(parse_category("Flora").unwrap(), DoodadKind::Tree);
+        assert_eq!(parse_category("Resource").unwrap(), DoodadKind::ResourceNode);
+        assert!(parse_category("Unknown").is_err());
+    }
+
+    #[test]
+    fn random_rotation_parsing_variants() {
+        for value in ["Y", "Yes", "TRUE", "1"] {
+            assert!(parse_bool_yn(value).unwrap());
+        }
+        for value in ["N", "No", "false", "0"] {
+            assert!(!parse_bool_yn(value).unwrap());
+        }
     }
 
     #[test]
@@ -184,15 +213,11 @@ mod tests {
             "doodads/tree/oak.glb"
         );
         assert_eq!(
-            normalize_file_path_to_render_key("assets/doodads/tree/oak.glb").unwrap(),
-            "tree/oak"
+            normalize_file_path_to_render_key(r"\doodads\tree").unwrap(),
+            "tree"
         );
         assert_eq!(
             normalize_file_path_to_render_key(r"\doodads\tree\oak.glb").unwrap(),
-            "tree/oak"
-        );
-        assert_eq!(
-            normalize_file_path_to_render_key("tree/oak").unwrap(),
             "tree/oak"
         );
         assert!(normalize_file_path_to_render_key("").is_err());
@@ -212,6 +237,30 @@ mod tests {
         assert_eq!(def.kind, DoodadKind::Tree);
         assert_eq!(def.spawn_weight, 8.0);
         assert_eq!(def.allowed_biomes, vec![BiomeId::Forest]);
-        assert!(def.placement_tags.contains(&"random_rotation_y".to_string()));
+        assert!(def.random_rotation_y);
+        assert!((def.min_scale - 0.85).abs() < f32::EPSILON);
+        assert!((def.max_scale - 1.15).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn basic_tree_excel_row_maps_to_catalog_fields() {
+        let def = basic_tree_row().to_definition().unwrap();
+        assert_eq!(def.id.as_str(), "Basic Tree");
+        assert_eq!(def.kind, DoodadKind::Tree);
+        assert_eq!(def.render_key.0.as_deref(), Some("tree"));
+        assert!((def.spawn_weight - 10.0).abs() < f32::EPSILON);
+        assert!(def.random_rotation_y);
+        assert!((def.min_scale - 0.5).abs() < f32::EPSILON);
+        assert!((def.max_scale - 1.5).abs() < f32::EPSILON);
+        assert_eq!(def.allowed_biomes.len(), BiomeId::all_assigned().len());
+    }
+
+    #[test]
+    fn fixed_scale_when_min_equals_max() {
+        let mut row = sample_row();
+        row.min_size = 1.2;
+        row.max_size = 1.2;
+        let def = row.to_definition().unwrap();
+        assert!((def.min_scale - def.max_scale).abs() < f32::EPSILON);
     }
 }

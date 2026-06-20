@@ -1,5 +1,3 @@
-use std::f32::consts::TAU;
-
 use bevy::prelude::*;
 
 use super::candidate::DoodadSpawnCandidate;
@@ -90,10 +88,6 @@ fn spawn_candidate(
     let span = (chunk_size - margin * 2.0).max(1.0);
     let local_x = margin + rng.next_f32() * span;
     let local_z = margin + rng.next_f32() * span;
-    let scale_t = rng.next_f32();
-    let uniform_scale =
-        definition.min_scale + scale_t * (definition.max_scale - definition.min_scale);
-    let yaw = rng.next_f32() * TAU;
 
     DoodadSpawnCandidate {
         definition_id: definition.id.clone(),
@@ -102,8 +96,8 @@ fn spawn_candidate(
             context.chunk.coord(),
             LocalPosition::new(Vec3::new(local_x, 0.0, local_z)),
         ),
-        rotation: Quat::from_rotation_y(yaw),
-        scale: Vec3::splat(uniform_scale),
+        rotation: Quat::IDENTITY,
+        scale: Vec3::ONE,
     }
 }
 
@@ -276,6 +270,16 @@ mod tests {
             .filter(|c| tree_ids.contains(&c.definition_id.as_str()))
             .collect();
         assert_eq!(tree_candidates.len(), settings.trees_per_chunk as usize);
+    }
+
+    #[test]
+    fn generation_emits_identity_transform_for_finalization() {
+        let candidates = generate(4242, 0, 0);
+        assert!(!candidates.is_empty());
+        for candidate in &candidates {
+            assert_eq!(candidate.rotation, Quat::IDENTITY);
+            assert_eq!(candidate.scale, Vec3::ONE);
+        }
     }
 
     #[test]
