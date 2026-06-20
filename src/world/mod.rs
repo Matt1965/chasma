@@ -53,8 +53,8 @@ pub use terrain::{
 ///
 /// This is the lowest architectural layer; every later layer depends on it. It
 /// registers the foundational data types for reflection and initializes the
-/// [`WorldConfig`] and (empty) [`WorldData`] resources. It owns no terrain
-/// import, rendering, or systems in this phase (ROADMAP Phase 1).
+/// [`WorldConfig`], (empty) [`WorldData`], and [`DoodadCatalog`] resources.
+/// Terrain import, rendering, and gameplay systems live in upper layers (ADR-007).
 pub struct WorldFoundationPlugin;
 
 impl Plugin for WorldFoundationPlugin {
@@ -91,7 +91,10 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<WorldData>();
 
         app.init_resource::<WorldConfig>();
+        #[cfg(not(feature = "dev"))]
         app.init_resource::<DoodadCatalog>();
+        #[cfg(feature = "dev")]
+        app.insert_resource(crate::data_import::resolve_dev_doodad_catalog());
         app.init_resource::<WorldData>();
     }
 }

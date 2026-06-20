@@ -62,7 +62,10 @@ From resident [`WorldData`] heightfield at candidate local `(x, z)`:
 - **Rotation**: preserve candidate rotation
 - **Scale**: preserve candidate scale
 
-No randomization in this phase.
+The snapped Y written to [`DoodadRecord`] is **authoritative terrain height** in
+world units. The doodad runtime may multiply render Y by
+[`TerrainRenderAssets::vertical_scale`] (ADR-010, ADR-023) for visual alignment
+with exaggerated terrain meshes. [`WorldData`] is never scaled.
 
 ## Materialization integration
 

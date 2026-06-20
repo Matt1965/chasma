@@ -28,6 +28,15 @@ impl DoodadSceneAssets {
             warn!("doodad glTF missing for render key `{key}` (expected under {DOODAD_ASSET_ROOT}/)");
         }
     }
+
+    /// Build scene assets from preloaded handles (unit tests only).
+    #[cfg(test)]
+    pub fn from_test_scenes(scenes: HashMap<DoodadDefinitionId, Handle<Scene>>) -> Self {
+        Self {
+            scenes,
+            missing_keys: HashSet::new(),
+        }
+    }
 }
 
 /// Resolve a render key to an asset path (without scene label).

@@ -7,6 +7,7 @@
 
 pub mod app;
 pub mod camera;
+pub mod data_import;
 pub mod doodads;
 pub mod terrain;
 pub mod view;

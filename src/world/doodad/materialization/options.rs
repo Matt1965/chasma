@@ -9,6 +9,10 @@ pub struct MaterializationOptions {
     pub validate_terrain: bool,
     /// Snap candidate Y to sampled terrain height before insert (ADR-022).
     pub snap_to_terrain: bool,
+    /// Apply deterministic scale/yaw/jitter variation before insert (R7).
+    pub apply_placement_variation: bool,
+    /// Log per-batch placement variation summary (dev only; off by default).
+    pub log_placement_variation: bool,
 }
 
 impl MaterializationOptions {
@@ -22,6 +26,8 @@ impl MaterializationOptions {
             apply_exclusion_zones: false,
             validate_terrain: false,
             snap_to_terrain: true,
+            apply_placement_variation: false,
+            log_placement_variation: false,
         }
     }
 
@@ -32,6 +38,8 @@ impl MaterializationOptions {
             apply_exclusion_zones: true,
             validate_terrain: true,
             snap_to_terrain: true,
+            apply_placement_variation: true,
+            log_placement_variation: false,
         }
     }
 }

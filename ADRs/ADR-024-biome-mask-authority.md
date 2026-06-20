@@ -46,6 +46,11 @@ WorldData
 
 PNG only in Phase R1. No EXR requirement.
 
+**Image dimensions:** width and height are arbitrary. A square PNG (e.g. 1024×1024)
+is a common authoring choice but not required. Import maps pixel coordinates to
+world XZ via [`BiomeMaskBounds`] derived from authored [`ChunkExtent`] and
+[`ChunkLayout`] — not from fixed world sizes (8k, 16k, etc.).
+
 ## Starter color classification (Phase R1)
 
 | Color | Biome |

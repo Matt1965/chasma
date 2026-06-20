@@ -39,8 +39,17 @@ Introduce a Doodad Runtime Layer at `src/doodads/`, registered by
 
 - The Doodad Runtime Layer depends on the World Data Layer and reads
   [`ChunkResidencyTracker`] for terrain residency. It does not mutate authoritative
-  doodad records except through future explicit integration points.
+  doodad records in production paths. Dev preview (`dev` feature) may invoke world
+  materialization helpers; that remains world-data ownership, not runtime state.
 - [`WorldData`] never depends on the Doodad Runtime Layer or rendering.
+
+## Vertical scale (presentation)
+
+[`WorldData`] and [`DoodadPlacement`] store authoritative positions from terrain
+sampling (ADR-022). Terrain and doodad **render** entities may apply
+[`TerrainRenderAssets::vertical_scale`] to Y so props align with the visible mesh
+(ADR-010). This is presentation only — simulation, persistence, and queries use
+unscaled [`WorldData`] Y.
 
 ## One-way data flow
 
@@ -102,8 +111,8 @@ placement will use **authored raster masks** (e.g. 1024×1024 PNG) where pixel
 color maps to biome or placement rule ids. Masks are world-scoped data imported
 alongside terrain, sampled at world XZ — not painted at runtime.
 
-This ADR records the direction only. Mask import, catalog `biome_tags` wiring,
-and generator integration remain future work (ROADMAP Phase 3+).
+This ADR records the direction only. Mask import and catalog [`allowed_biomes`]
+(ADR-025) are implemented; generator integration runs at materialization time.
 
 ## Build order (vertical slices)
 
@@ -115,9 +124,12 @@ and generator integration remain future work (ROADMAP Phase 3+).
 4. **Later:** instancing, LOD, persistence overlays (ROADMAP).
 
 **Dev preview (R4):** With the `dev` feature, resident terrain chunks with no
-existing doodad records trigger one procedural generate + materialize pass via
+existing doodad records trigger procedural generate + materialize via
 [`try_materialize_procedural_chunk_doodads`], using [`DoodadsRuntimeSettings::world_seed`].
-Records sync through the existing runtime layer; production streaming remains future work.
+Records sync through the existing runtime layer. The dev ledger marks chunks
+complete only after `inserted > 0` so zero-insert attempts remain retryable.
+**Production** auto-populate on chunk load remains deferred; future streaming
+requires a separate design.
 
 # Rationale
 
@@ -150,10 +162,15 @@ Costs:
 Rejected for this project phase: author will supply real `.glb` files; placeholders
 add a code path to remove.
 
-## Auto procedural populate on chunk load (dev preview)
+## Auto procedural populate on chunk load (production)
 
-Rejected: does not match final materialization + mask pipeline; would require
-rework when image masks and rules land.
+Rejected for production / final streaming: does not match the intended
+materialization + mask pipeline without a dedicated production trigger design.
+
+**Accepted for dev preview only (R4):** behind the `dev` feature,
+[`materialize_dev_procedural_doodads`] validates the ADR-018/019 pipeline end-to-end.
+This is not the production streaming path and must not be enabled outside dev
+preview composition.
 
 ## In-engine biome brush
 

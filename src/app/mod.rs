@@ -14,8 +14,8 @@ pub use view_focus::publish_primary_view_focus;
 ///
 /// `AppPlugin` is the single place where architectural layer plugins are
 /// registered, in dependency order. It owns wiring only: no data and no
-/// systems. Future layers (doodad, occupancy, rendering, gameplay, simulation)
-/// are added here as they gain real content. See ADR-007.
+/// systems. Additional layers (occupancy, gameplay, simulation) register here
+/// as they gain real content. See ADR-007.
 pub struct AppPlugin;
 
 /// Bridges camera state into generic view presentation (ADR-014).

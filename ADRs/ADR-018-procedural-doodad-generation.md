@@ -69,13 +69,14 @@ Output is sorted for stable ordering (definition id, local xz, procedural seed).
 [`DoodadGenerationSettings`] defines per-kind counts (trees, rocks, bushes; ruins
 and resource nodes default to zero). For each slot:
 
-1. Pick an enabled definition of that kind from the catalog (uniform among enabled)
+1. Pick an enabled definition of that kind from the catalog using
+   [`DoodadDefinition::spawn_weight`] (catalog-driven weighted selection)
 2. Sample local XZ within chunk bounds respecting `placement_radius_meters`
 3. Sample uniform scale in `[min_scale, max_scale]`
 4. Sample Y-axis rotation
 
-**Not used in Phase 3D:** terrain height, slope, biomes, exclusion zones, spawn
-weights, density maps.
+Biome membership, terrain validation, and exclusion run during materialization
+(ADR-020–ADR-025), not in the generator.
 
 ## Extension points reserved
 
@@ -87,8 +88,8 @@ not in the generator.
 
 ## Biome generation
 
-Biome tags on [`DoodadDefinition`] (ADR-016) will filter eligible definitions
-before placement. Generation context may gain biome sample inputs.
+[`DoodadDefinition::allowed_biomes`] (ADR-025) filters eligible definitions during
+materialization. Generation context does not read biome data directly.
 
 ## Exclusion zones
 

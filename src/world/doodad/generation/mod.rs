@@ -13,5 +13,6 @@ mod weighted;
 pub use candidate::DoodadSpawnCandidate;
 pub use context::DoodadGenerationContext;
 pub use generator::{generate_chunk_doodads, generate_chunk_doodads_with_settings};
+pub use rng::{chunk_seed, DeterministicRng};
 pub use settings::DoodadGenerationSettings;
 pub use weighted::format_candidate_summary;
