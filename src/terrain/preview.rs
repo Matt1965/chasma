@@ -1,8 +1,9 @@
 //! Developer preview scene for the terrain runtime (dev-only).
 //!
-//! Gated behind the `dev` feature. Wires catalog init, synchronous streaming,
-//! lighting, and terrain render assets. The permanent RTS camera comes from
-//! [`crate::camera::CameraPlugin`] (ADR-014).
+//! Gated behind the `dev` feature. Wires catalog init and synchronous streaming
+//! for terrain render assets. The permanent RTS camera comes from
+//! [`crate::camera::CameraPlugin`] (ADR-014). Lighting and skybox come from
+//! [`crate::environment::EnvironmentPlugin`] (ADR-026).
 //!
 //! **Streaming vs LOD (Phase 2C):** [`TerrainStreamingSettings`] controls how far
 //! terrain is loaded and kept resident (`load_radius_chunks` /
@@ -99,7 +100,7 @@ fn setup_preview(
     let material = materials.add(StandardMaterial {
         // Vertex colors multiply with base_color; white passes albedo through unchanged.
         base_color: Color::WHITE,
-        unlit: true,
+        perceptual_roughness: 0.92,
         ..default()
     });
 
@@ -136,16 +137,6 @@ fn setup_preview(
         log_file_path: PREVIEW_PERF_LOG_PATH.to_string(),
         ..Default::default()
     });
-
-    commands.spawn((
-        DirectionalLight {
-            illuminance: 12_000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        Transform::from_xyz(256.0, 200.0, 128.0)
-            .looking_at(Vec3::new(256.0, 0.0, 128.0), Vec3::Y),
-    ));
 }
 
 fn preview_vertical_scale(catalog: &TerrainWorldCatalog) -> f32 {

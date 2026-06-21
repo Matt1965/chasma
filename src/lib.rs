@@ -9,7 +9,7 @@ pub mod app;
 pub mod camera;
 pub mod data_import;
 pub mod doodads;
-pub mod skybox;
+pub mod environment;
 pub mod terrain;
 pub mod view;
 pub mod world;

@@ -1,6 +1,6 @@
-# Default skybox (`assets/skyboxes/default/`)
+# Default skybox (`assets/environment/skyboxes/default/`)
 
-Drop-in cubemap assets for the dev preview skybox (R8 / ADR-026).
+Drop-in cubemap assets for the environment skybox (R8 / ADR-026).
 
 ## Option A — loose face PNGs (authoring-friendly)
 
@@ -35,8 +35,8 @@ If both `cubemap.ktx2` and `cubemap.png` exist, `ktx2` is chosen first.
 ## Replacing the skybox
 
 Update face PNGs and re-run the merge command, or replace `cubemap.ktx2` / `cubemap.png` directly.
-Future sets live as sibling folders under `assets/skyboxes/` (e.g. `night/`).
+Future sets live as sibling folders under `assets/environment/skyboxes/` (e.g. `night_clear/`).
 
 ## Missing asset behavior
 
-If no cubemap file is present, the dev preview logs a warning and continues without a skybox.
+If no cubemap file is present, the engine logs a warning and continues without a skybox.

@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::camera::{CameraControlSystems, CameraPlugin};
 use crate::doodads::{DoodadRuntimeSystems, DoodadsRuntimePlugin};
+use crate::environment::EnvironmentPlugin;
 use crate::terrain::{TerrainRuntimePlugin, TerrainStreamingSystems};
 use crate::view::ViewPlugin;
 use crate::world::WorldFoundationPlugin;
@@ -27,6 +28,7 @@ impl Plugin for AppPlugin {
         app.add_plugins(ViewPlugin)
             .add_plugins(WorldFoundationPlugin)
             .add_plugins(TerrainRuntimePlugin)
+            .add_plugins(EnvironmentPlugin)
             .add_plugins(DoodadsRuntimePlugin)
             .add_plugins(CameraPlugin)
             .configure_sets(
@@ -49,7 +51,6 @@ impl Plugin for AppPlugin {
         #[cfg(feature = "dev")]
         {
             app.add_plugins(crate::terrain::preview::TerrainPreviewPlugin);
-            app.add_plugins(crate::skybox::SkyboxPlugin);
         }
     }
 }

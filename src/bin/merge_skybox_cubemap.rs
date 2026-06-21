@@ -1,4 +1,4 @@
-//! Merge loose skybox face PNGs into `assets/skyboxes/{set}/cubemap.png`.
+//! Merge loose skybox face PNGs into `assets/environment/skyboxes/{set}/cubemap.png`.
 //!
 //! ```text
 //! cargo run --bin merge_skybox_cubemap -- default
@@ -7,7 +7,7 @@
 use std::env;
 use std::process::ExitCode;
 
-use chasma::skybox::{loose_faces_exist, merge_loose_faces, DEFAULT_SKYBOX_SET};
+use chasma::environment::{loose_faces_exist, merge_loose_faces, DEFAULT_SKYBOX_SET, SKYBOX_ASSET_ROOT};
 
 fn main() -> ExitCode {
     let set_name = env::args()
@@ -16,7 +16,7 @@ fn main() -> ExitCode {
 
     if !loose_faces_exist(&set_name) {
         eprintln!(
-            "No complete face set in assets/skyboxes/{set_name}/\n\
+            "No complete face set in assets/{SKYBOX_ASSET_ROOT}/{set_name}/\n\
              Expected: right.png, left.png, top.png, bottom.png, front.png, back.png"
         );
         return ExitCode::from(1);
