@@ -17,11 +17,21 @@ impl Plugin for UnitsRuntimePlugin {
             .register_type::<UnitRenderEntity>()
             .register_type::<UnitSceneRoot>()
             .init_resource::<UnitsRuntimeSettings>()
-            .init_resource::<UnitRenderIndex>()
-            .add_systems(Startup, init_unit_scene_assets)
+            .init_resource::<UnitRenderIndex>();
+
+        #[cfg(feature = "dev")]
+        app.init_resource::<crate::units::dev_spawn::DevPreviewUnitSpawnLedger>();
+
+        app.add_systems(Startup, init_unit_scene_assets)
             .add_systems(
                 Update,
-                sync_unit_render_entities.in_set(UnitRuntimeSystems),
+                (
+                    #[cfg(feature = "dev")]
+                    crate::units::dev_spawn::spawn_dev_preview_units,
+                    sync_unit_render_entities,
+                )
+                    .chain()
+                    .in_set(UnitRuntimeSystems),
             );
     }
 }

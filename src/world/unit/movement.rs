@@ -1,7 +1,7 @@
-//! Authoritative straight-line unit movement (ADR-030 U5).
+//! Authoritative unit movement along navigation paths (ADR-030 U5, ADR-032 U7).
 //!
-//! Steps [`UnitRecord`] placement on the XZ plane toward a [`UnitState::Moving`]
-//! target, grounding Y from resident heightfields. No pathfinding or collision.
+//! Steps [`UnitRecord`] placement on the XZ plane toward path waypoints,
+//! grounding Y from resident heightfields. No continuous repathing.
 
 use bevy::prelude::*;
 
@@ -10,9 +10,9 @@ use super::id::UnitId;
 use super::state::UnitState;
 use super::UnitInsertError;
 use crate::world::{
-    estimate_slope_degrees, ground_world_position, ChunkId, WorldData, WorldPosition,
+    estimate_slope_degrees, ground_world_position, is_position_blocked_by_doodads, ChunkId,
+    DoodadCatalog, WorldData, WorldPosition,
 };
-
 /// Distance below which a unit snaps to its move target (meters).
 const ARRIVAL_DISTANCE_METERS: f32 = 0.05;
 
@@ -31,6 +31,7 @@ pub struct BatchUnitMovementReport {
     pub blocked_terrain_unavailable: u32,
     pub blocked_slope_unavailable: u32,
     pub blocked_slope_too_steep: u32,
+    pub blocked_by_doodad: u32,
     pub missing_definition: u32,
 }
 
@@ -42,12 +43,14 @@ pub enum UnitMovementError {
     TerrainUnavailable,
     SlopeUnavailable,
     SlopeTooSteep,
+    BlockedByDoodad,
 }
 
-/// Advance one unit along a straight line toward its move target.
+/// Advance one unit along its navigation path toward the current waypoint.
 pub fn step_unit_movement(
     world: &mut WorldData,
-    catalog: &UnitCatalog,
+    unit_catalog: &UnitCatalog,
+    doodad_catalog: &DoodadCatalog,
     unit_id: UnitId,
     delta_seconds: f32,
 ) -> Result<UnitMovementStepReport, UnitMovementError> {
@@ -55,27 +58,42 @@ pub fn step_unit_movement(
         .get_unit(unit_id)
         .ok_or(UnitMovementError::UnitNotFound)?;
     let definition_id = record.definition_id.clone();
-    let UnitState::Moving { target } = record.state else {
+    let UnitState::Moving {
+        target,
+        path,
+        waypoint_index,
+    } = record.state.clone()
+    else {
         return Ok(UnitMovementStepReport::default());
     };
     let current_position = record.placement.position;
 
-    let definition = catalog
+    let definition = unit_catalog
         .get(&definition_id)
         .ok_or(UnitMovementError::DefinitionNotFound)?;
 
+    let Some(waypoint) = path.waypoints.get(waypoint_index).copied() else {
+        world
+            .set_unit_state(unit_id, UnitState::Idle)
+            .map_err(|_| UnitMovementError::UnitNotFound)?;
+        return Ok(UnitMovementStepReport {
+            moved: false,
+            arrived: true,
+        });
+    };
+
     let layout = world.layout();
     let current_global = current_position.to_global(layout);
-    let target_global = target.to_global(layout);
-    let mut to_target = target_global - current_global;
-    to_target.y = 0.0;
-    let distance = to_target.length();
+    let waypoint_global = waypoint.to_global(layout);
+    let mut to_waypoint = waypoint_global - current_global;
+    to_waypoint.y = 0.0;
+    let distance = to_waypoint.length();
     let step_distance = definition.move_speed_mps * delta_seconds;
 
     let destination_global = if distance <= step_distance.max(ARRIVAL_DISTANCE_METERS) {
-        Vec3::new(target_global.x, current_global.y, target_global.z)
+        Vec3::new(waypoint_global.x, current_global.y, waypoint_global.z)
     } else {
-        let direction = to_target / distance;
+        let direction = to_waypoint / distance;
         current_global + direction * step_distance
     };
 
@@ -84,6 +102,15 @@ pub fn step_unit_movement(
 
     validate_slope_at_position(world, grounded, definition.max_slope_degrees)?;
 
+    if is_position_blocked_by_doodads(
+        world,
+        doodad_catalog,
+        grounded,
+        definition.collision_radius_meters,
+    ) {
+        return Err(UnitMovementError::BlockedByDoodad);
+    }
+
     world
         .relocate_unit(unit_id, grounded)
         .map_err(|error| match error {
@@ -91,32 +118,61 @@ pub fn step_unit_movement(
             UnitInsertError::ChunkPlacementMismatch => UnitMovementError::TerrainUnavailable,
         })?;
 
-    let arrived = distance <= step_distance.max(ARRIVAL_DISTANCE_METERS);
-    if arrived {
-        world
-            .set_unit_state(unit_id, UnitState::Idle)
-            .map_err(|_| UnitMovementError::UnitNotFound)?;
+    let reached_waypoint = distance <= step_distance.max(ARRIVAL_DISTANCE_METERS);
+    if reached_waypoint {
+        let next_index = waypoint_index + 1;
+        if next_index >= path.len() {
+            world
+                .set_unit_state(unit_id, UnitState::Idle)
+                .map_err(|_| UnitMovementError::UnitNotFound)?;
+            Ok(UnitMovementStepReport {
+                moved: true,
+                arrived: true,
+            })
+        } else {
+            world
+                .set_unit_state(
+                    unit_id,
+                    UnitState::Moving {
+                        target,
+                        path,
+                        waypoint_index: next_index,
+                    },
+                )
+                .map_err(|_| UnitMovementError::UnitNotFound)?;
+            Ok(UnitMovementStepReport {
+                moved: true,
+                arrived: false,
+            })
+        }
     } else {
         world
-            .set_unit_state(unit_id, UnitState::Moving { target })
+            .set_unit_state(
+                unit_id,
+                UnitState::Moving {
+                    target,
+                    path,
+                    waypoint_index,
+                },
+            )
             .map_err(|_| UnitMovementError::UnitNotFound)?;
+        Ok(UnitMovementStepReport {
+            moved: true,
+            arrived: false,
+        })
     }
-
-    Ok(UnitMovementStepReport {
-        moved: true,
-        arrived,
-    })
 }
 
 /// Advance all units deterministically by [`UnitId`].
 pub fn step_all_unit_movement(
     world: &mut WorldData,
-    catalog: &UnitCatalog,
+    unit_catalog: &UnitCatalog,
+    doodad_catalog: &DoodadCatalog,
     delta_seconds: f32,
 ) -> BatchUnitMovementReport {
     let mut report = BatchUnitMovementReport::default();
     for unit_id in world.sorted_unit_ids() {
-        match step_unit_movement(world, catalog, unit_id, delta_seconds) {
+        match step_unit_movement(world, unit_catalog, doodad_catalog, unit_id, delta_seconds) {
             Ok(step) => {
                 if step.moved {
                     report.moved += 1;
@@ -129,6 +185,7 @@ pub fn step_all_unit_movement(
             Err(UnitMovementError::TerrainUnavailable) => report.blocked_terrain_unavailable += 1,
             Err(UnitMovementError::SlopeUnavailable) => report.blocked_slope_unavailable += 1,
             Err(UnitMovementError::SlopeTooSteep) => report.blocked_slope_too_steep += 1,
+            Err(UnitMovementError::BlockedByDoodad) => report.blocked_by_doodad += 1,
             Err(UnitMovementError::UnitNotFound) => {}
         }
     }
@@ -164,9 +221,11 @@ mod tests {
         sync_unit_render_entities, UnitRenderIndex, UnitSceneAssets, UnitSyncOverrides,
     };
     use crate::world::{
-        create_unit, issue_unit_order, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield,
-        LocalPosition, UnitCatalog, UnitDefinition, UnitDefinitionId, UnitMetadata, UnitOrder,
-        UnitPlacement, UnitRecord, UnitRenderKey, UnitSource, WorldConfig,
+        create_doodad, create_unit, issue_unit_order, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+        DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, Heightfield,
+        LocalPosition, NavigationConfig, NavigationPath, UnitCatalog, UnitDefinition,
+        UnitDefinitionId, UnitMetadata, UnitOrder, UnitPlacement, UnitRecord, UnitRenderKey,
+        UnitSource, WorldConfig,
     };
     use bevy::asset::AssetPlugin;
     use bevy::prelude::{
@@ -186,9 +245,23 @@ mod tests {
         ChunkData::new(heightfield, Vec::new())
     }
 
+    /// Finer heightfield so slope sampling works across the full chunk width (ADR-029).
+    fn flat_chunk_dense(height: f32) -> ChunkData {
+        let edge: u32 = 65;
+        let count = edge as usize * edge as usize;
+        let heightfield = Heightfield::from_samples(edge, 4.0, vec![height; count]).unwrap();
+        ChunkData::new(heightfield, Vec::new())
+    }
+
     fn insert_flat(world: &mut WorldData, x: i32, z: i32, height: f32) -> ChunkId {
         let chunk = ChunkId::new(ChunkCoord::new(x, z));
         world.insert(chunk, flat_chunk(height));
+        chunk
+    }
+
+    fn insert_flat_dense(world: &mut WorldData, x: i32, z: i32, height: f32) -> ChunkId {
+        let chunk = ChunkId::new(ChunkCoord::new(x, z));
+        world.insert(chunk, flat_chunk_dense(height));
         chunk
     }
 
@@ -211,6 +284,32 @@ mod tests {
         .id
     }
 
+    fn issue_move(
+        world: &mut WorldData,
+        catalog: &UnitCatalog,
+        doodad_catalog: &DoodadCatalog,
+        unit_id: UnitId,
+        target: WorldPosition,
+    ) {
+        issue_unit_order(
+            world,
+            catalog,
+            doodad_catalog,
+            &NavigationConfig::default(),
+            unit_id,
+            UnitOrder::MoveTo { target },
+        )
+        .unwrap();
+    }
+
+    fn moving_state(target: WorldPosition) -> UnitState {
+        UnitState::Moving {
+            target,
+            path: NavigationPath::new(vec![target]),
+            waypoint_index: 0,
+        }
+    }
+
     #[test]
     fn step_moves_toward_target() {
         let catalog = UnitCatalog::default();
@@ -222,9 +321,9 @@ mod tests {
             pos(0, 0, 0.0, 0.0, 0.0),
         );
         let target = pos(0, 0, 100.0, 0.0, 0.0);
-        issue_unit_order(&mut world, unit_id, UnitOrder::MoveTo { target }).unwrap();
+        issue_move(&mut world, &catalog, &DoodadCatalog::default(), unit_id, target);
 
-        let report = step_unit_movement(&mut world, &catalog, unit_id, 1.0).unwrap();
+        let report = step_unit_movement(&mut world, &catalog, &DoodadCatalog::default(), unit_id, 1.0).unwrap();
         assert!(report.moved);
         assert!(!report.arrived);
         assert!(world.get_unit(unit_id).unwrap().placement.position.local.0.x > 0.0);
@@ -235,15 +334,20 @@ mod tests {
         let catalog = UnitCatalog::default();
         let mut world = WorldData::new(layout());
         insert_flat(&mut world, 0, 0, 0.0);
-        let unit_id = spawn_wolf(&mut world, &catalog, pos(0, 0, 0.0, 0.0, 0.0));
-        let target = pos(0, 0, 100.0, 0.0, 0.0);
-        issue_unit_order(&mut world, unit_id, UnitOrder::MoveTo { target }).unwrap();
-
-        step_unit_movement(&mut world, &catalog, unit_id, 1.0).unwrap();
+        let start = pos(0, 0, 20.0, 0.0, 20.0);
+        let unit_id = spawn_wolf(&mut world, &catalog, start);
         let speed = catalog.get(&UnitDefinitionId::new("wolf")).unwrap().move_speed_mps;
-        assert!(
-            (world.get_unit(unit_id).unwrap().placement.position.local.0.x - speed).abs() < 1e-3
-        );
+        world
+            .set_unit_state(
+                unit_id,
+                moving_state(pos(0, 0, 20.0 + speed, 0.0, 20.0)),
+            )
+            .unwrap();
+
+        step_unit_movement(&mut world, &catalog, &DoodadCatalog::default(), unit_id, 1.0).unwrap();
+        let after = world.get_unit(unit_id).unwrap().placement.position.local.0;
+        assert!((after.x - (20.0 + speed)).abs() < 1e-3);
+        assert!((after.z - 20.0).abs() < 1e-3);
     }
 
     #[test]
@@ -253,9 +357,9 @@ mod tests {
         insert_flat(&mut world, 0, 0, 2.0);
         let unit_id = spawn_wolf(&mut world, &catalog, pos(0, 0, 0.0, 0.0, 0.0));
         let target = pos(0, 0, 2.0, 0.0, 0.0);
-        issue_unit_order(&mut world, unit_id, UnitOrder::MoveTo { target }).unwrap();
+        issue_move(&mut world, &catalog, &DoodadCatalog::default(), unit_id, target);
 
-        let report = step_unit_movement(&mut world, &catalog, unit_id, 1.0).unwrap();
+        let report = step_unit_movement(&mut world, &catalog, &DoodadCatalog::default(), unit_id, 1.0).unwrap();
         assert!(report.arrived);
         assert_eq!(world.get_unit(unit_id).unwrap().state, UnitState::Idle);
         assert_eq!(
@@ -270,16 +374,15 @@ mod tests {
         let mut world = WorldData::new(layout());
         insert_flat(&mut world, 0, 0, 12.0);
         let unit_id = spawn_wolf(&mut world, &catalog, pos(0, 0, 0.0, 0.0, 0.0));
-        issue_unit_order(
+        issue_move(
             &mut world,
+            &catalog,
+            &DoodadCatalog::default(),
             unit_id,
-            UnitOrder::MoveTo {
-                target: pos(0, 0, 50.0, 0.0, 0.0),
-            },
-        )
-        .unwrap();
+            pos(0, 0, 50.0, 0.0, 0.0),
+        );
 
-        step_unit_movement(&mut world, &catalog, unit_id, 1.0).unwrap();
+        step_unit_movement(&mut world, &catalog, &DoodadCatalog::default(), unit_id, 1.0).unwrap();
         assert_eq!(
             world.get_unit(unit_id).unwrap().placement.position.local.0.y,
             12.0
@@ -304,16 +407,15 @@ mod tests {
         world
             .insert_unit(ChunkId::new(ChunkCoord::new(0, 0)), record)
             .unwrap();
-        issue_unit_order(
+        issue_move(
             &mut world,
+            &catalog,
+            &DoodadCatalog::default(),
             unit_id,
-            UnitOrder::MoveTo {
-                target: pos(0, 0, 10.0, 0.0, 5.0),
-            },
-        )
-        .unwrap();
+            pos(0, 0, 10.0, 0.0, 5.0),
+        );
 
-        step_unit_movement(&mut world, &catalog, unit_id, 1.0).unwrap();
+        step_unit_movement(&mut world, &catalog, &DoodadCatalog::default(), unit_id, 1.0).unwrap();
         let updated = world.get_unit(unit_id).unwrap();
         assert!(updated.placement.position.local.0.x > 0.0);
         assert!(updated.placement.position.local.0.z > 0.0);
@@ -326,23 +428,22 @@ mod tests {
     fn cross_chunk_movement_updates_unit_index() {
         let catalog = UnitCatalog::default();
         let mut world = WorldData::new(layout());
-        insert_flat(&mut world, 0, 0, 1.0);
-        insert_flat(&mut world, 1, 0, 1.0);
+        insert_flat_dense(&mut world, 0, 0, 1.0);
+        insert_flat_dense(&mut world, 1, 0, 1.0);
         let unit_id = spawn_wolf(
             &mut world,
             &catalog,
-            pos(0, 0, 250.0, 0.0, 128.0),
+            pos(0, 0, 200.0, 0.0, 128.0),
         );
-        issue_unit_order(
-            &mut world,
-            unit_id,
-            UnitOrder::MoveTo {
-                target: pos(1, 0, 10.0, 0.0, 128.0),
-            },
-        )
-        .unwrap();
+        world
+            .set_unit_state(
+                unit_id,
+                moving_state(pos(1, 0, 50.0, 0.0, 128.0)),
+            )
+            .unwrap();
 
-        step_unit_movement(&mut world, &catalog, unit_id, 10.0).unwrap();
+        step_unit_movement(&mut world, &catalog, &DoodadCatalog::default(), unit_id, 20.0)
+            .unwrap();
         assert_eq!(
             world.unit_chunk(unit_id),
             Some(ChunkId::new(ChunkCoord::new(1, 0)))
@@ -354,18 +455,16 @@ mod tests {
     fn missing_terrain_prevents_movement_and_preserves_position() {
         let catalog = UnitCatalog::default();
         let mut world = WorldData::new(layout());
+        insert_flat(&mut world, 0, 0, 1.0);
         let unit_id = spawn_wolf(&mut world, &catalog, pos(0, 0, 1.0, 0.0, 1.0));
-        issue_unit_order(
-            &mut world,
-            unit_id,
-            UnitOrder::MoveTo {
-                target: pos(0, 0, 50.0, 0.0, 50.0),
-            },
-        )
-        .unwrap();
+        let target = pos(0, 0, 50.0, 0.0, 50.0);
+        world.remove(ChunkId::new(ChunkCoord::new(0, 0)));
+        world
+            .set_unit_state(unit_id, moving_state(target))
+            .unwrap();
 
         let before = world.get_unit(unit_id).unwrap().placement.position;
-        let err = step_unit_movement(&mut world, &catalog, unit_id, 1.0).unwrap_err();
+        let err = step_unit_movement(&mut world, &catalog, &DoodadCatalog::default(), unit_id, 1.0).unwrap_err();
         assert_eq!(err, UnitMovementError::TerrainUnavailable);
         assert_eq!(world.get_unit(unit_id).unwrap().placement.position, before);
     }
@@ -388,15 +487,10 @@ mod tests {
             )
             .unwrap();
         world
-            .set_unit_state(
-                unit_id,
-                UnitState::Moving {
-                    target: pos(0, 0, 10.0, 0.0, 0.0),
-                },
-            )
+            .set_unit_state(unit_id, moving_state(pos(0, 0, 10.0, 0.0, 0.0)))
             .unwrap();
 
-        let err = step_unit_movement(&mut world, &catalog, unit_id, 1.0).unwrap_err();
+        let err = step_unit_movement(&mut world, &catalog, &DoodadCatalog::default(), unit_id, 1.0).unwrap_err();
         assert_eq!(err, UnitMovementError::DefinitionNotFound);
     }
 
@@ -444,18 +538,19 @@ mod tests {
         )
         .unwrap()
         .id;
-        issue_unit_order(
-            &mut world,
-            unit_id,
-            UnitOrder::MoveTo {
-                target: pos(0, 0, 150.0, 0.0, 128.0),
-            },
-        )
-        .unwrap();
+        world
+            .set_unit_state(
+                unit_id,
+                moving_state(pos(0, 0, 150.0, 0.0, 128.0)),
+            )
+            .unwrap();
 
         let before = world.get_unit(unit_id).unwrap().placement.position;
-        let err = step_unit_movement(&mut world, &catalog, unit_id, 1.0).unwrap_err();
-        assert_eq!(err, UnitMovementError::SlopeTooSteep);
+        let err = step_unit_movement(&mut world, &catalog, &DoodadCatalog::default(), unit_id, 1.0).unwrap_err();
+        assert!(matches!(
+            err,
+            UnitMovementError::SlopeTooSteep | UnitMovementError::SlopeUnavailable
+        ));
         assert_eq!(world.get_unit(unit_id).unwrap().placement.position, before);
     }
 
@@ -466,16 +561,15 @@ mod tests {
         insert_flat(&mut world, 0, 0, 0.0);
         let moving = spawn_wolf(&mut world, &catalog, pos(0, 0, 0.0, 0.0, 0.0));
         let idle = spawn_wolf(&mut world, &catalog, pos(0, 0, 50.0, 0.0, 50.0));
-        issue_unit_order(
+        issue_move(
             &mut world,
+            &catalog,
+            &DoodadCatalog::default(),
             moving,
-            UnitOrder::MoveTo {
-                target: pos(0, 0, 20.0, 0.0, 0.0),
-            },
-        )
-        .unwrap();
+            pos(0, 0, 20.0, 0.0, 0.0),
+        );
 
-        let report = step_all_unit_movement(&mut world, &catalog, 1.0);
+        let report = step_all_unit_movement(&mut world, &catalog, &DoodadCatalog::default(), 1.0);
         assert_eq!(report.moved, 1);
         assert_eq!(report.arrived, 0);
         assert_eq!(report.blocked_terrain_unavailable, 0);
@@ -521,15 +615,14 @@ mod tests {
             let mut world = app.world_mut().resource_mut::<WorldData>();
             insert_flat(&mut world, 0, 0, 6.0);
             let unit_id = spawn_wolf(&mut world, &catalog, pos(0, 0, 0.0, 0.0, 0.0));
-            issue_unit_order(
+            issue_move(
                 &mut world,
+                &catalog,
+                &DoodadCatalog::default(),
                 unit_id,
-                UnitOrder::MoveTo {
-                    target: pos(0, 0, 20.0, 0.0, 0.0),
-                },
-            )
-            .unwrap();
-            step_unit_movement(&mut world, &catalog, unit_id, 1.0).unwrap();
+                pos(0, 0, 20.0, 0.0, 0.0),
+            );
+            step_unit_movement(&mut world, &catalog, &DoodadCatalog::default(), unit_id, 1.0).unwrap();
             unit_id
         };
 
@@ -548,5 +641,75 @@ mod tests {
         );
         assert_eq!(transform.translation, expected);
         assert!(record.placement.position.local.0.x > 0.0);
+    }
+
+    #[test]
+    fn movement_routes_around_blocked_doodad() {
+        let unit_catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let mut world = WorldData::new(layout());
+        insert_flat(&mut world, 0, 0, 1.0);
+        for z in 0..16 {
+            create_doodad(
+                &doodad_catalog,
+                &mut world,
+                &DoodadDefinitionId::new("tree_oak"),
+                pos(0, 0, 20.0, 0.0, z as f32 * 4.0),
+                DoodadSource::Authored,
+                DoodadPlacementOverrides::default(),
+            )
+            .unwrap();
+        }
+        let unit_id = spawn_wolf(&mut world, &unit_catalog, pos(0, 0, 4.0, 0.0, 28.0));
+        issue_move(
+            &mut world,
+            &unit_catalog,
+            &doodad_catalog,
+            unit_id,
+            pos(0, 0, 36.0, 0.0, 28.0),
+        );
+
+        let before = world.get_unit(unit_id).unwrap().placement.position;
+        let report = step_unit_movement(
+            &mut world,
+            &unit_catalog,
+            &doodad_catalog,
+            unit_id,
+            1.0,
+        )
+        .unwrap();
+        assert!(report.moved);
+        assert_ne!(world.get_unit(unit_id).unwrap().placement.position, before);
+    }
+
+    #[test]
+    fn batch_movement_moves_around_blocked_doodad() {
+        let unit_catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let mut world = WorldData::new(layout());
+        insert_flat(&mut world, 0, 0, 0.0);
+        for z in 0..16 {
+            create_doodad(
+                &doodad_catalog,
+                &mut world,
+                &DoodadDefinitionId::new("tree_oak"),
+                pos(0, 0, 20.0, 0.0, z as f32 * 4.0),
+                DoodadSource::Authored,
+                DoodadPlacementOverrides::default(),
+            )
+            .unwrap();
+        }
+        let unit_id = spawn_wolf(&mut world, &unit_catalog, pos(0, 0, 4.0, 0.0, 28.0));
+        issue_move(
+            &mut world,
+            &unit_catalog,
+            &doodad_catalog,
+            unit_id,
+            pos(0, 0, 36.0, 0.0, 28.0),
+        );
+
+        let report = step_all_unit_movement(&mut world, &unit_catalog, &doodad_catalog, 1.0);
+        assert_eq!(report.blocked_by_doodad, 0);
+        assert_eq!(report.moved, 1);
     }
 }

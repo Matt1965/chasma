@@ -1,6 +1,6 @@
 //! Excel column schema and conversion into [`DoodadDefinition`].
 
-use crate::world::{BiomeId, DoodadDefinition, DoodadDefinitionId, DoodadKind, DoodadRenderKey};
+use crate::world::{default_blocks_movement, BiomeId, DoodadDefinition, DoodadDefinitionId, DoodadKind, DoodadRenderKey};
 
 /// Required worksheet column headers (exact names; order irrelevant).
 ///
@@ -22,6 +22,10 @@ pub const RANDOM_ROTATION_COLUMN_ALIASES: &[&str] = &["Random Rotation", "Random
 /// Optional column — when absent or blank, definitions allow all assigned biomes.
 pub const BIOME_COLUMN: &str = "Biome";
 
+/// Optional movement obstacle columns (ADR-031).
+pub const BLOCKS_MOVEMENT_COLUMN: &str = "Blocks Movement";
+pub const BLOCK_RADIUS_COLUMN: &str = "Block Radius";
+
 /// Raw row parsed from the `Doodads` sheet before validation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DoodadImportRow {
@@ -37,6 +41,10 @@ pub struct DoodadImportRow {
     pub random_rotation: bool,
     pub enabled: bool,
     pub enabled_was_blank: bool,
+    /// `None` when column absent or blank — use kind default.
+    pub blocks_movement: Option<bool>,
+    /// `None` when column absent or blank — defaults to placement radius.
+    pub block_radius_meters: Option<f32>,
 }
 
 pub fn parse_category(value: &str) -> Result<DoodadKind, String> {
@@ -128,6 +136,10 @@ impl DoodadImportRow {
         let kind = parse_category(&self.category)?;
         let render_key = normalize_file_path_to_render_key(&self.file_path)?;
         let (placement_radius, max_slope) = kind_defaults(kind);
+        let blocks_movement = self
+            .blocks_movement
+            .unwrap_or_else(|| default_blocks_movement(kind));
+        let block_radius_meters = self.block_radius_meters.unwrap_or(placement_radius);
 
         Ok(
             DoodadDefinition::new(
@@ -145,7 +157,9 @@ impl DoodadImportRow {
             )
             .with_allowed_biomes(allowed_biomes_for_row(&self.biome)?)
             .with_spawn_weight(self.spawn_weight)
-            .with_random_rotation_y(self.random_rotation),
+            .with_random_rotation_y(self.random_rotation)
+            .with_blocks_movement(blocks_movement)
+            .with_block_radius_meters(block_radius_meters),
         )
     }
 }
@@ -168,6 +182,8 @@ mod tests {
             random_rotation: true,
             enabled: true,
             enabled_was_blank: false,
+            blocks_movement: None,
+            block_radius_meters: None,
         }
     }
 
@@ -185,6 +201,8 @@ mod tests {
             random_rotation: true,
             enabled: true,
             enabled_was_blank: false,
+            blocks_movement: None,
+            block_radius_meters: None,
         }
     }
 
@@ -240,6 +258,26 @@ mod tests {
         assert!(def.random_rotation_y);
         assert!((def.min_scale - 0.85).abs() < f32::EPSILON);
         assert!((def.max_scale - 1.15).abs() < f32::EPSILON);
+        assert!(def.blocks_movement);
+        assert_eq!(def.block_radius_meters, def.placement_radius_meters);
+    }
+
+    #[test]
+    fn blocks_movement_column_overrides_kind_default() {
+        let mut row = sample_row();
+        row.category = "Bush".to_string();
+        row.blocks_movement = Some(true);
+        let def = row.to_definition().unwrap();
+        assert!(def.blocks_movement);
+    }
+
+    #[test]
+    fn block_radius_column_overrides_placement_default() {
+        let mut row = sample_row();
+        row.block_radius_meters = Some(9.5);
+        let def = row.to_definition().unwrap();
+        assert_eq!(def.block_radius_meters, 9.5);
+        assert_eq!(def.placement_radius_meters, 4.0);
     }
 
     #[test]

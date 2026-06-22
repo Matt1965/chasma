@@ -41,6 +41,10 @@ pub struct DoodadDefinition {
     /// Zero or negative weights are treated as zero; when all weights are zero, selection
     /// falls back to uniform among enabled definitions.
     pub spawn_weight: f32,
+    /// Whether instances block unit movement (ADR-031). Distinct from placement spacing.
+    pub blocks_movement: bool,
+    /// Movement obstacle radius in meters (ADR-031). Not [`Self::placement_radius_meters`].
+    pub block_radius_meters: f32,
     /// Reserved reference to a future placement rule set.
     pub rule_ref: Option<String>,
 }
@@ -77,6 +81,8 @@ impl DoodadDefinition {
             allowed_biomes: Vec::new(),
             biome_tags: Vec::new(),
             spawn_weight: 1.0,
+            blocks_movement: default_blocks_movement(kind),
+            block_radius_meters: placement_radius_meters,
             rule_ref: None,
         }
     }
@@ -96,8 +102,26 @@ impl DoodadDefinition {
         self
     }
 
+    pub fn with_blocks_movement(mut self, blocks_movement: bool) -> Self {
+        self.blocks_movement = blocks_movement;
+        self
+    }
+
+    pub fn with_block_radius_meters(mut self, block_radius_meters: f32) -> Self {
+        self.block_radius_meters = block_radius_meters;
+        self
+    }
+
     /// Whether `biome` is listed in [`Self::allowed_biomes`].
     pub fn allows_biome(&self, biome: BiomeId) -> bool {
         self.allowed_biomes.iter().any(|&allowed| allowed == biome)
+    }
+}
+
+/// Default movement-blocking flag by doodad kind (ADR-031).
+pub fn default_blocks_movement(kind: DoodadKind) -> bool {
+    match kind {
+        DoodadKind::Tree | DoodadKind::Rock | DoodadKind::Ruin | DoodadKind::ResourceNode => true,
+        DoodadKind::Bush => false,
     }
 }

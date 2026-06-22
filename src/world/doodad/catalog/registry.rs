@@ -114,6 +114,7 @@ mod tests {
         let oak = catalog.get(&DoodadDefinitionId::new("tree_oak")).unwrap();
         assert_eq!(oak.display_name, "Oak Tree");
         assert_eq!(oak.kind, DoodadKind::Tree);
+        assert!(oak.blocks_movement);
         assert!(catalog.get(&DoodadDefinitionId::new("missing")).is_none());
     }
 

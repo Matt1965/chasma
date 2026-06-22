@@ -43,6 +43,13 @@ pub fn validate_row(row: &DoodadImportRow) -> Result<(), RowImportError> {
     if super::schema::normalize_file_path_to_render_key(&row.file_path).is_err() {
         return Err(fail("invalid File Path".to_string()));
     }
+    if let Some(radius) = row.block_radius_meters {
+        if radius < 0.0 || !radius.is_finite() {
+            return Err(fail(format!(
+                "Block Radius must be >= 0 (got {radius})"
+            )));
+        }
+    }
 
     Ok(())
 }
@@ -66,6 +73,8 @@ mod tests {
             random_rotation: true,
             enabled: true,
             enabled_was_blank: false,
+            blocks_movement: None,
+            block_radius_meters: None,
         }
     }
 

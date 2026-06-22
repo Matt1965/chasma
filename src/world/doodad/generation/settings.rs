@@ -39,7 +39,7 @@ impl Default for DoodadGenerationSettings {
     /// these counts in `Default`.
     fn default() -> Self {
         Self {
-            trees_per_chunk: 8,
+            trees_per_chunk: 1,
             rocks_per_chunk: 4,
             bushes_per_chunk: 6,
             ruins_per_chunk: 0,

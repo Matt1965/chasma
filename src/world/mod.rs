@@ -6,6 +6,8 @@ mod config;
 mod coordinates;
 mod data;
 mod doodad;
+mod navigation;
+mod obstacle;
 mod terrain;
 mod unit;
 
@@ -33,11 +35,16 @@ pub use doodad::{
     DoodadAuthoringError, DoodadCatalog, DoodadCatalogError, DoodadDefinition,
     DoodadDefinitionId, DoodadExclusionZone, DoodadGenerationContext, DoodadGenerationSettings,
     DoodadId, DoodadInsertError, DoodadKind, DoodadMaterializationReport, DoodadMetadata,
+    default_blocks_movement,
     DoodadPlacement, DoodadPlacementOverrides, DoodadRecord, DoodadRenderKey, DoodadSource,
     DoodadSpawnCandidate, BiomeFilterResult, ExclusionFilterOptions, ExclusionFilterResult,
     FinalizedDoodadPlacement, MaterializationOptions, PlacementFinalizationResult,
     ProceduralDoodadKey,     TerrainValidationResult, starter_definitions,
 };
+pub use navigation::{
+    find_path, GridCoord, NavigationConfig, NavigationError, NavigationPath, NEIGHBOR_OFFSETS,
+};
+pub use obstacle::is_position_blocked_by_doodads;
 pub use unit::{
     create_unit, ground_unit_position, ground_unit_to_terrain, issue_unit_order, lookup_unit,
     move_unit, remove_unit, step_all_unit_movement, step_unit_movement,
@@ -101,6 +108,8 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<UnitPlacement>()
             .register_type::<UnitSource>()
             .register_type::<UnitMetadata>()
+            .register_type::<NavigationConfig>()
+            .register_type::<NavigationPath>()
             .register_type::<UnitState>()
             .register_type::<UnitRecord>()
             .register_type::<ChunkUnitStore>()

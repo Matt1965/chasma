@@ -6,6 +6,8 @@
 
 mod assets;
 mod components;
+#[cfg(feature = "dev")]
+mod dev_spawn;
 mod plugin;
 mod settings;
 mod spawn;

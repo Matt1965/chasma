@@ -28,8 +28,8 @@ pub use authoring::{
 };
 pub use biome_filter::{filter_candidates_by_biome, BiomeFilterResult};
 pub use catalog::{
-    DoodadCatalog, DoodadCatalogError, DoodadDefinition, DoodadDefinitionId, DoodadRenderKey,
-    starter_definitions,
+    default_blocks_movement, DoodadCatalog, DoodadCatalogError, DoodadDefinition,
+    DoodadDefinitionId, DoodadRenderKey, starter_definitions,
 };
 pub use exclusion::{
     filter_candidates_by_exclusion_zones, DoodadExclusionZone, ExclusionFilterOptions,

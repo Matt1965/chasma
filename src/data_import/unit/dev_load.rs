@@ -26,6 +26,23 @@ pub fn resolve_dev_unit_catalog() -> UnitCatalog {
             for warning in &summary.warnings {
                 warn!("Unit import warning: {warning}");
             }
+            let renderable: Vec<_> = catalog
+                .definitions()
+                .iter()
+                .filter(|def| def.render_key.0.is_some())
+                .map(|def| def.id.as_str())
+                .collect();
+            if renderable.is_empty() {
+                warn!(
+                    "Unit catalog has no renderable definitions (add a `File Path` column to the \
+                     Units sheet, e.g. `\\units\\robot.glb`)"
+                );
+            } else {
+                info!(
+                    "Unit catalog render keys: {}",
+                    renderable.join(", ")
+                );
+            }
             catalog
         }
         Err(err) => {

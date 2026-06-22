@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use super::error::{DataImportError, RowImportError};
 use super::schema::{
-    parse_bool_yn, parse_enabled_cell, DoodadImportRow, BIOME_COLUMN, RANDOM_ROTATION_COLUMN_ALIASES,
-    REQUIRED_COLUMNS,
+    parse_bool_yn, parse_enabled_cell, DoodadImportRow, BIOME_COLUMN, BLOCK_RADIUS_COLUMN,
+    BLOCKS_MOVEMENT_COLUMN, RANDOM_ROTATION_COLUMN_ALIASES, REQUIRED_COLUMNS,
 };
 
 pub const DOODADS_SHEET_NAME: &str = "Doodads";
@@ -108,6 +108,8 @@ fn parse_row(
 
     let (enabled, enabled_was_blank) = parse_enabled_cell(&text("Enabled"))?;
     let random_rotation = parse_bool_yn(&text_any(RANDOM_ROTATION_COLUMN_ALIASES))?;
+    let blocks_movement = optional_bool(columns, cells, BLOCKS_MOVEMENT_COLUMN)?;
+    let block_radius_meters = optional_float(columns, cells, BLOCK_RADIUS_COLUMN)?;
 
     Ok(DoodadImportRow {
         row_number,
@@ -125,7 +127,42 @@ fn parse_row(
         random_rotation,
         enabled,
         enabled_was_blank,
+        blocks_movement,
+        block_radius_meters,
     })
+}
+
+fn optional_bool(
+    columns: &HashMap<String, usize>,
+    cells: &[calamine::Data],
+    column: &str,
+) -> Result<Option<bool>, String> {
+    let Some(&index) = columns.get(column) else {
+        return Ok(None);
+    };
+    let raw = cells.get(index).map(cell_to_string).unwrap_or_default();
+    if raw.trim().is_empty() {
+        return Ok(None);
+    }
+    parse_bool_yn(&raw).map(Some)
+}
+
+fn optional_float(
+    columns: &HashMap<String, usize>,
+    cells: &[calamine::Data],
+    column: &str,
+) -> Result<Option<f32>, String> {
+    let Some(&index) = columns.get(column) else {
+        return Ok(None);
+    };
+    let raw = cells.get(index).map(cell_to_string).unwrap_or_default();
+    if raw.trim().is_empty() {
+        return Ok(None);
+    }
+    raw.trim()
+        .parse::<f32>()
+        .map(Some)
+        .map_err(|_| format!("{column} must be a number (got `{raw}`)"))
 }
 
 fn cell_to_string(cell: &calamine::Data) -> String {
@@ -326,6 +363,30 @@ mod tests {
         let row = rows[0].as_ref().unwrap();
         assert!(row.enabled);
         assert!(row.enabled_was_blank);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn reads_blocks_movement_and_block_radius_columns() {
+        let path = std::env::temp_dir().join(format!(
+            "chasma_doodad_import_{}_{}.xlsx",
+            std::process::id(),
+            "block_columns"
+        ));
+        let mut headers: Vec<&str> = standard_headers_v2().to_vec();
+        headers.push("Blocks Movement");
+        headers.push("Block Radius");
+        let row = vec![
+            "tree_oak", "Oak", "Tree", "tree/oak.glb", "0.8", "1.2", "5", "N", "Y", "No", "6.5",
+        ];
+        write_workbook(&path, &headers, &[row]);
+        let rows = read_doodad_rows(&path).unwrap();
+        let row = rows[0].as_ref().unwrap();
+        assert_eq!(row.blocks_movement, Some(false));
+        assert_eq!(row.block_radius_meters, Some(6.5));
+        let def = row.clone().to_definition().unwrap();
+        assert!(!def.blocks_movement);
+        assert_eq!(def.block_radius_meters, 6.5);
         let _ = std::fs::remove_file(path);
     }
 }
