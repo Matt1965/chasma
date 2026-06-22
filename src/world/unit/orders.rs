@@ -53,6 +53,7 @@ pub fn issue_unit_order(
                 doodad_catalog,
                 nav_config,
                 definition.collision_radius_meters,
+                definition.max_slope_degrees,
                 start,
                 target,
             )

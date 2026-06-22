@@ -1,14 +1,16 @@
-//! Navigation path requests (ADR-032).
+﻿//! Navigation path requests (ADR-032).
 
 use bevy::prelude::*;
 
 use super::astar::astar_path;
 use super::grid::{
-    grid_cell_world_position, grid_coord_at_position, cell_terrain_available, NavigationConfig,
+    grid_cell_world_position, grid_coord_at_position, cell_terrain_available, is_position_walkable,
+    NavigationAgent, NavigationConfig,
 };
-use super::path::NavigationPath;
+use super::path::{NavigationPath, xz_distance};
+use super::simplify::simplify_navigation_path;
 use crate::world::{
-    ground_world_position, is_position_blocked_by_doodads, DoodadCatalog, WorldData, WorldPosition,
+    ground_world_position, DoodadCatalog, WorldData, WorldPosition,
 };
 
 /// Why [`find_path`] failed.
@@ -26,12 +28,18 @@ pub fn find_path(
     doodad_catalog: &DoodadCatalog,
     config: &NavigationConfig,
     agent_radius_meters: f32,
+    max_slope_degrees: f32,
     start: WorldPosition,
     goal: WorldPosition,
 ) -> Result<NavigationPath, NavigationError> {
+    let agent = NavigationAgent {
+        radius_meters: agent_radius_meters,
+        max_slope_degrees,
+    };
     let layout = world.layout();
+    let grounded_goal = ground_world_position(world, goal).ok_or(NavigationError::TerrainUnavailable)?;
     let start_cell = grid_coord_at_position(start, layout, *config);
-    let goal_cell = grid_coord_at_position(goal, layout, *config);
+    let goal_cell = grid_coord_at_position(grounded_goal, layout, *config);
 
     if !cell_terrain_available(world, start_cell, *config)
         || ground_world_position(world, start).is_none()
@@ -39,23 +47,27 @@ pub fn find_path(
         return Err(NavigationError::TerrainUnavailable);
     }
     if !cell_terrain_available(world, goal_cell, *config)
-        || ground_world_position(world, goal).is_none()
+        || ground_world_position(world, grounded_goal).is_none()
     {
         return Err(NavigationError::TerrainUnavailable);
     }
 
-    if is_position_blocked_by_doodads(world, doodad_catalog, start, agent_radius_meters) {
+    if !is_position_walkable(world, doodad_catalog, start, agent) {
         return Err(NavigationError::StartBlocked);
     }
-    if is_position_blocked_by_doodads(world, doodad_catalog, goal, agent_radius_meters) {
+    if !is_position_walkable(world, doodad_catalog, grounded_goal, agent) {
         return Err(NavigationError::GoalBlocked);
+    }
+
+    if start_cell == goal_cell {
+        return Ok(NavigationPath::new(vec![grounded_goal]));
     }
 
     let mut waypoints = astar_path(
         world,
         doodad_catalog,
         *config,
-        agent_radius_meters,
+        agent,
         start_cell,
         goal_cell,
     )
@@ -70,6 +82,15 @@ pub fn find_path(
     }
 
     trim_waypoints_at_start(&mut waypoints, start, layout);
+    simplify_navigation_path(
+        &mut waypoints,
+        world,
+        doodad_catalog,
+        *config,
+        agent,
+        layout,
+    );
+    finalize_exact_goal(&mut waypoints, grounded_goal, layout);
 
     Ok(NavigationPath::new(waypoints))
 }
@@ -81,16 +102,31 @@ fn trim_waypoints_at_start(
 ) {
     const EPSILON: f32 = 0.25;
     while let Some(first) = waypoints.first().copied() {
-        let a = start.to_global(layout);
-        let b = first.to_global(layout);
-        let dx = a.x - b.x;
-        let dz = a.z - b.z;
-        if dx * dx + dz * dz <= EPSILON * EPSILON {
+        if xz_distance(start, first, layout) <= EPSILON {
             waypoints.remove(0);
         } else {
             break;
         }
     }
+}
+
+/// Ensure the final waypoint is the exact grounded click / command target.
+fn finalize_exact_goal(
+    waypoints: &mut Vec<WorldPosition>,
+    goal: WorldPosition,
+    layout: crate::world::ChunkLayout,
+) {
+    const EPSILON: f32 = 0.05;
+    if waypoints
+        .last()
+        .is_some_and(|waypoint| xz_distance(*waypoint, goal, layout) <= EPSILON)
+    {
+        if let Some(last) = waypoints.last_mut() {
+            *last = goal;
+        }
+        return;
+    }
+    waypoints.push(goal);
 }
 
 #[cfg(test)]
@@ -139,18 +175,67 @@ mod tests {
         let mut world = WorldData::new(layout());
         insert_flat(&mut world, 0, 0);
         let catalog = DoodadCatalog::default();
+        let start = pos(4.0, 4.0);
+        let goal = pos(40.0, 4.0);
         let path = find_path(
             &world,
             &catalog,
             &nav_config(),
             0.5,
-            pos(4.0, 4.0),
-            pos(40.0, 4.0),
+            40.0,
+            start,
+            goal,
         )
         .unwrap();
         assert!(path.len() >= 2);
-        let last = path.waypoints.last().unwrap();
-        assert!((last.to_global(layout()).x - 40.0).abs() < 4.5);
+        let last = *path.waypoints.last().unwrap();
+        assert!((last.to_global(layout()).x - 40.0).abs() < 0.05);
+        let straight = xz_distance(start, goal, layout());
+        let ratio = path.length_meters(layout()) / straight;
+        assert!(ratio <= 1.15, "path ratio {ratio} too high");
+    }
+
+    #[test]
+    fn diagonal_path_stays_near_straight_on_open_terrain() {
+        let mut world = WorldData::new(layout());
+        insert_flat(&mut world, 0, 0);
+        let catalog = DoodadCatalog::default();
+        let start = pos(8.0, 8.0);
+        let goal = pos(48.0, 48.0);
+        let path = find_path(
+            &world,
+            &catalog,
+            &nav_config(),
+            0.5,
+            40.0,
+            start,
+            goal,
+        )
+        .unwrap();
+        let straight = xz_distance(start, goal, layout());
+        let ratio = path.length_meters(layout()) / straight;
+        assert!(ratio <= 1.2, "diagonal path ratio {ratio} too high");
+    }
+
+    #[test]
+    fn final_waypoint_matches_exact_target() {
+        let mut world = WorldData::new(layout());
+        insert_flat(&mut world, 0, 0);
+        let catalog = DoodadCatalog::default();
+        let goal = pos(37.0, 19.0);
+        let path = find_path(
+            &world,
+            &catalog,
+            &nav_config(),
+            0.5,
+            40.0,
+            pos(4.0, 4.0),
+            goal,
+        )
+        .unwrap();
+        let last = *path.waypoints.last().unwrap();
+        assert!((last.to_global(layout()).x - 37.0).abs() < 0.05);
+        assert!((last.to_global(layout()).z - 19.0).abs() < 0.05);
     }
 
     #[test]
@@ -169,13 +254,16 @@ mod tests {
             )
             .unwrap();
         }
+        let start = pos(4.0, 28.0);
+        let goal = pos(36.0, 28.0);
         let path = find_path(
             &world,
             &catalog,
             &nav_config(),
             0.5,
-            pos(4.0, 28.0),
-            pos(36.0, 28.0),
+            40.0,
+            start,
+            goal,
         )
         .unwrap();
         assert!(path.len() >= 3);
@@ -185,6 +273,10 @@ mod tests {
             .map(|p| p.to_global(layout()).x)
             .collect();
         assert!(globals.iter().any(|&x| x < 18.0 || x > 22.0));
+        let straight = xz_distance(start, goal, layout());
+        let ratio = path.length_meters(layout()) / straight;
+        assert!(ratio > 1.05);
+        assert!(ratio < 3.5);
     }
 
     #[test]
@@ -206,6 +298,7 @@ mod tests {
             &catalog,
             &nav_config(),
             0.5,
+            40.0,
             pos(4.0, 4.0),
             pos(40.0, 40.0),
         )
@@ -232,6 +325,7 @@ mod tests {
             &catalog,
             &nav_config(),
             0.5,
+            40.0,
             pos(4.0, 4.0),
             pos(40.0, 40.0),
         )
@@ -249,6 +343,7 @@ mod tests {
             &catalog,
             &nav_config(),
             0.6,
+            40.0,
             pos(0.0, 0.0),
             pos(100.0, 0.0),
         )
@@ -261,12 +356,12 @@ mod tests {
         let mut world = WorldData::new(layout());
         insert_flat(&mut world, 0, 0);
         let catalog = DoodadCatalog::default();
-        for x in 0..64 {
+        for x in 0..128 {
             create_doodad(
                 &catalog,
                 &mut world,
                 &DoodadDefinitionId::new("tree_oak"),
-                pos(x as f32 * 4.0, 28.0),
+                pos(x as f32 * 2.0, 28.0),
                 DoodadSource::Authored,
                 DoodadPlacementOverrides::default(),
             )
@@ -277,6 +372,7 @@ mod tests {
             &catalog,
             &nav_config(),
             0.5,
+            40.0,
             pos(4.0, 4.0),
             pos(60.0, 60.0),
         )
@@ -295,6 +391,7 @@ mod tests {
             &catalog,
             &nav_config(),
             0.5,
+            40.0,
             pos_chunk(0, 0, 250.0, 128.0),
             pos_chunk(1, 0, 10.0, 128.0),
         )
@@ -322,6 +419,7 @@ mod tests {
             &catalog,
             &nav_config(),
             0.5,
+            40.0,
             pos(4.0, 4.0),
             pos(36.0, 36.0),
         )
@@ -331,6 +429,7 @@ mod tests {
             &catalog,
             &nav_config(),
             0.5,
+            40.0,
             pos(4.0, 4.0),
             pos(36.0, 36.0),
         )
@@ -347,6 +446,7 @@ mod tests {
             &catalog,
             &nav_config(),
             0.5,
+            40.0,
             pos(4.0, 4.0),
             pos(40.0, 40.0),
         )

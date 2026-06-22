@@ -108,7 +108,8 @@ mod tests {
         let catalog = DoodadCatalog::default();
         let tree = catalog.get(&DoodadDefinitionId::new("tree_oak")).unwrap();
         assert!(tree.blocks_movement);
-        assert_eq!(tree.block_radius_meters, tree.placement_radius_meters);
+        assert_eq!(tree.block_radius_meters, 1.0);
+        assert_eq!(tree.placement_radius_meters, 4.0);
 
         let bush = catalog.get(&DoodadDefinitionId::new("bush_scrub")).unwrap();
         assert!(!bush.blocks_movement);
@@ -148,7 +149,7 @@ mod tests {
     fn neighbor_chunk_obstacle_blocks_near_border() {
         let catalog = DoodadCatalog::default();
         let mut world = WorldData::new(layout());
-        place_tree(&mut world, &catalog, pos(1, 0, 2.0, 128.0));
+        place_tree(&mut world, &catalog, pos(1, 0, 0.0, 128.0));
 
         assert!(is_position_blocked_by_doodads(
             &world,

@@ -43,6 +43,7 @@ pub use doodad::{
 };
 pub use navigation::{
     find_path, GridCoord, NavigationConfig, NavigationError, NavigationPath, NEIGHBOR_OFFSETS,
+    xz_distance,
 };
 pub use obstacle::is_position_blocked_by_doodads;
 pub use unit::{
@@ -55,7 +56,7 @@ pub use unit::{
     UnitSource, UnitState,
 };
 pub use terrain::{Heightfield, TerrainDataError, TerrainMask, TerrainMetadata};
-pub use terrain::{estimate_slope_degrees, ground_world_position};
+pub use terrain::{estimate_slope_degrees, ground_world_position, is_position_slope_walkable};
 #[cfg(feature = "terrain-import")]
 pub use terrain::{
     DecodeError, GaeaImportError, ImportError, SourceHeightfield, chunk_data_from_source_tile,
@@ -133,5 +134,6 @@ impl Plugin for WorldFoundationPlugin {
             app.insert_resource(crate::data_import::resolve_dev_unit_catalog());
         }
         app.init_resource::<WorldData>();
+        app.init_resource::<NavigationConfig>();
     }
 }

@@ -10,11 +10,15 @@ use super::id::UnitId;
 use super::state::UnitState;
 use super::UnitInsertError;
 use crate::world::{
-    estimate_slope_degrees, ground_world_position, is_position_blocked_by_doodads, ChunkId,
-    DoodadCatalog, WorldData, WorldPosition,
+    ground_world_position, is_position_blocked_by_doodads, is_position_slope_walkable,
+    xz_distance, ChunkLayout, DoodadCatalog, WorldData, WorldPosition,
 };
 /// Distance below which a unit snaps to its move target (meters).
 const ARRIVAL_DISTANCE_METERS: f32 = 0.05;
+/// When blocked, treat as having reached a waypoint if within this distance (meters).
+const WAYPOINT_SKIP_DISTANCE_METERS: f32 = 2.0;
+/// When blocked near the final target, stop moving instead of freezing (meters).
+const PARTIAL_ARRIVAL_DISTANCE_METERS: f32 = 2.5;
 
 /// Outcome of one movement step for a single unit.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -100,7 +104,17 @@ pub fn step_unit_movement(
     let candidate = WorldPosition::from_global(destination_global, layout);
     let grounded = ground_world_position(world, candidate).ok_or(UnitMovementError::TerrainUnavailable)?;
 
-    validate_slope_at_position(world, grounded, definition.max_slope_degrees)?;
+    if !is_position_slope_walkable(world, grounded, definition.max_slope_degrees) {
+        return handle_blocked_step(
+            world,
+            unit_id,
+            target,
+            path,
+            waypoint_index,
+            current_position,
+            layout,
+        );
+    }
 
     if is_position_blocked_by_doodads(
         world,
@@ -108,7 +122,15 @@ pub fn step_unit_movement(
         grounded,
         definition.collision_radius_meters,
     ) {
-        return Err(UnitMovementError::BlockedByDoodad);
+        return handle_blocked_step(
+            world,
+            unit_id,
+            target,
+            path,
+            waypoint_index,
+            current_position,
+            layout,
+        );
     }
 
     world
@@ -192,25 +214,53 @@ pub fn step_all_unit_movement(
     report
 }
 
-fn validate_slope_at_position(
-    world: &WorldData,
-    position: WorldPosition,
-    max_slope_degrees: f32,
-) -> Result<(), UnitMovementError> {
-    let chunk_id = ChunkId::new(position.chunk);
-    let data = world
-        .get(chunk_id)
-        .ok_or(UnitMovementError::TerrainUnavailable)?;
-    let slope = estimate_slope_degrees(
-        &data.heightfield,
-        position.local.0.x,
-        position.local.0.z,
-    )
-    .ok_or(UnitMovementError::SlopeUnavailable)?;
-    if slope > max_slope_degrees {
-        return Err(UnitMovementError::SlopeTooSteep);
+fn handle_blocked_step(
+    world: &mut WorldData,
+    unit_id: UnitId,
+    target: WorldPosition,
+    path: crate::world::NavigationPath,
+    waypoint_index: usize,
+    current_position: WorldPosition,
+    layout: ChunkLayout,
+) -> Result<UnitMovementStepReport, UnitMovementError> {
+    let Some(waypoint) = path.waypoints.get(waypoint_index).copied() else {
+        world
+            .set_unit_state(unit_id, UnitState::Idle)
+            .map_err(|_| UnitMovementError::UnitNotFound)?;
+        return Ok(UnitMovementStepReport {
+            moved: false,
+            arrived: true,
+        });
+    };
+
+    let dist_to_waypoint = xz_distance(current_position, waypoint, layout);
+    let dist_to_target = xz_distance(current_position, target, layout);
+
+    if dist_to_waypoint <= WAYPOINT_SKIP_DISTANCE_METERS && waypoint_index + 1 < path.len() {
+        world
+            .set_unit_state(
+                unit_id,
+                UnitState::Moving {
+                    target,
+                    path,
+                    waypoint_index: waypoint_index + 1,
+                },
+            )
+            .map_err(|_| UnitMovementError::UnitNotFound)?;
+        return Ok(UnitMovementStepReport {
+            moved: false,
+            arrived: false,
+        });
     }
-    Ok(())
+
+    let arrived = dist_to_target <= PARTIAL_ARRIVAL_DISTANCE_METERS;
+    world
+        .set_unit_state(unit_id, UnitState::Idle)
+        .map_err(|_| UnitMovementError::UnitNotFound)?;
+    Ok(UnitMovementStepReport {
+        moved: false,
+        arrived,
+    })
 }
 
 #[cfg(test)]
@@ -546,12 +596,10 @@ mod tests {
             .unwrap();
 
         let before = world.get_unit(unit_id).unwrap().placement.position;
-        let err = step_unit_movement(&mut world, &catalog, &DoodadCatalog::default(), unit_id, 1.0).unwrap_err();
-        assert!(matches!(
-            err,
-            UnitMovementError::SlopeTooSteep | UnitMovementError::SlopeUnavailable
-        ));
+        let report = step_unit_movement(&mut world, &catalog, &DoodadCatalog::default(), unit_id, 1.0).unwrap();
+        assert!(!report.moved);
         assert_eq!(world.get_unit(unit_id).unwrap().placement.position, before);
+        assert_eq!(world.get_unit(unit_id).unwrap().state, UnitState::Idle);
     }
 
     #[test]
@@ -680,6 +728,45 @@ mod tests {
         .unwrap();
         assert!(report.moved);
         assert_ne!(world.get_unit(unit_id).unwrap().placement.position, before);
+    }
+
+    #[test]
+    fn unit_arrives_at_exact_clicked_target() {
+        let catalog = UnitCatalog::default();
+        let mut world = WorldData::new(layout());
+        insert_flat(&mut world, 0, 0, 0.0);
+        let unit_id = spawn_wolf(&mut world, &catalog, pos(0, 0, 4.0, 0.0, 4.0));
+        let target = pos(0, 0, 37.0, 0.0, 19.0);
+        issue_move(
+            &mut world,
+            &catalog,
+            &DoodadCatalog::default(),
+            unit_id,
+            target,
+        );
+
+        for _ in 0..512 {
+            let report = step_unit_movement(
+                &mut world,
+                &catalog,
+                &DoodadCatalog::default(),
+                unit_id,
+                0.25,
+            )
+            .unwrap();
+            if report.arrived {
+                break;
+            }
+        }
+
+        assert!(matches!(
+            world.get_unit(unit_id).unwrap().state,
+            UnitState::Idle
+        ));
+        let final_pos = world.get_unit(unit_id).unwrap().placement.position;
+        let final_global = final_pos.to_global(layout());
+        assert!((final_global.x - 37.0).abs() < 0.15);
+        assert!((final_global.z - 19.0).abs() < 0.15);
     }
 
     #[test]

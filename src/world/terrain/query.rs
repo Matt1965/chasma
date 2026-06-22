@@ -29,20 +29,51 @@ pub fn estimate_slope_degrees(
     let spacing = heightfield.spacing_meters();
     let size = heightfield.chunk_size_meters();
 
-    if local_x < 0.0
-        || local_z < 0.0
-        || local_x + spacing > size + 1e-4
-        || local_z + spacing > size + 1e-4
-    {
+    if local_x < 0.0 || local_z < 0.0 || local_x > size + 1e-4 || local_z > size + 1e-4 {
         return None;
     }
 
     let h = heightfield.sample(local_x, local_z);
-    let h_dx = heightfield.sample(local_x + spacing, local_z);
-    let h_dz = heightfield.sample(local_x, local_z + spacing);
-    let dhdx = (h_dx - h) / spacing;
-    let dhdz = (h_dz - h) / spacing;
+
+    let dhdx = if local_x + spacing <= size + 1e-4 {
+        (heightfield.sample(local_x + spacing, local_z) - h) / spacing
+    } else if local_x >= spacing {
+        (h - heightfield.sample(local_x - spacing, local_z)) / spacing
+    } else {
+        return None;
+    };
+
+    let dhdz = if local_z + spacing <= size + 1e-4 {
+        (heightfield.sample(local_x, local_z + spacing) - h) / spacing
+    } else if local_z >= spacing {
+        (h - heightfield.sample(local_x, local_z - spacing)) / spacing
+    } else {
+        return None;
+    };
+
     Some(dhdx.hypot(dhdz).atan().to_degrees())
+}
+
+/// Whether terrain slope at `position` is within the unit's limit.
+///
+/// Returns `false` when heightfield data is unavailable or slope cannot be estimated.
+pub fn is_position_slope_walkable(
+    world: &WorldData,
+    position: WorldPosition,
+    max_slope_degrees: f32,
+) -> bool {
+    let chunk_id = crate::world::ChunkId::new(position.chunk);
+    let Some(data) = world.get(chunk_id) else {
+        return false;
+    };
+    let Some(slope) = estimate_slope_degrees(
+        &data.heightfield,
+        position.local.0.x,
+        position.local.0.z,
+    ) else {
+        return false;
+    };
+    slope <= max_slope_degrees
 }
 
 #[cfg(test)]

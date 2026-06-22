@@ -14,7 +14,7 @@ mod metadata;
 #[cfg(feature = "terrain-import")]
 pub use decode::{DecodeError, decode_exr_heightfield};
 pub use heightfield::Heightfield;
-pub use query::{estimate_slope_degrees, ground_world_position};
+pub use query::{estimate_slope_degrees, ground_world_position, is_position_slope_walkable};
 #[cfg(feature = "terrain-import")]
 pub use gaea::{
     gaea_color_dir, gaea_height_dir, GaeaImportError, import_gaea_tile_directory,

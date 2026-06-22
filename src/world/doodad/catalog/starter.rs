@@ -38,7 +38,8 @@ pub fn starter_definitions() -> Vec<DoodadDefinition> {
                 DoodadRenderKey::reserved("tree/oak"),
             )
             .with_allowed_biomes(forest_biomes())
-            .with_spawn_weight(8.0),
+            .with_spawn_weight(8.0)
+            .with_block_radius_meters(1.0),
         ),
         with_random_rotation_y(
             DoodadDefinition::new(
@@ -55,7 +56,8 @@ pub fn starter_definitions() -> Vec<DoodadDefinition> {
                 DoodadRenderKey::reserved("tree/dead"),
             )
             .with_allowed_biomes(forest_biomes())
-            .with_spawn_weight(2.0),
+            .with_spawn_weight(2.0)
+            .with_block_radius_meters(0.9),
         ),
         DoodadDefinition::new(
             DoodadDefinitionId::new("rock_small"),
@@ -71,7 +73,8 @@ pub fn starter_definitions() -> Vec<DoodadDefinition> {
             DoodadRenderKey::reserved("rock/small"),
         )
         .with_allowed_biomes(forest_biomes())
-        .with_spawn_weight(3.0),
+        .with_spawn_weight(3.0)
+        .with_block_radius_meters(1.0),
         DoodadDefinition::new(
             DoodadDefinitionId::new("rock_large"),
             DoodadKind::Rock,
@@ -86,7 +89,8 @@ pub fn starter_definitions() -> Vec<DoodadDefinition> {
             DoodadRenderKey::reserved("rock/large"),
         )
         .with_allowed_biomes(non_forest_biomes())
-        .with_spawn_weight(1.0),
+        .with_spawn_weight(1.0)
+        .with_block_radius_meters(2.5),
         with_random_rotation_y(
             DoodadDefinition::new(
                 DoodadDefinitionId::new("bush_scrub"),
@@ -118,7 +122,8 @@ pub fn starter_definitions() -> Vec<DoodadDefinition> {
             DoodadRenderKey::reserved("ruin/stone"),
         )
         .with_allowed_biomes(all_assigned_biomes())
-        .with_spawn_weight(1.0),
+        .with_spawn_weight(1.0)
+        .with_block_radius_meters(4.0),
         DoodadDefinition::new(
             DoodadDefinitionId::new("resource_node_iron"),
             DoodadKind::ResourceNode,
@@ -133,6 +138,7 @@ pub fn starter_definitions() -> Vec<DoodadDefinition> {
             DoodadRenderKey::reserved("resource/iron"),
         )
         .with_allowed_biomes(all_assigned_biomes())
-        .with_spawn_weight(1.0),
+        .with_spawn_weight(1.0)
+        .with_block_radius_meters(1.5),
     ]
 }

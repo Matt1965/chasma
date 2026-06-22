@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::world::UnitCatalog;
 
 use super::assets::preload_unit_scenes;
-use super::components::{UnitRenderEntity, UnitSceneRoot};
+use super::components::{UnitRenderEntity, UnitSceneRoot, UnitSelectionIndicator};
 use super::settings::UnitsRuntimeSettings;
 use super::spawn::UnitRenderIndex;
 use super::sync::{sync_unit_render_entities, UnitRuntimeSystems};
@@ -16,6 +16,7 @@ impl Plugin for UnitsRuntimePlugin {
         app.register_type::<UnitsRuntimeSettings>()
             .register_type::<UnitRenderEntity>()
             .register_type::<UnitSceneRoot>()
+            .register_type::<UnitSelectionIndicator>()
             .init_resource::<UnitsRuntimeSettings>()
             .init_resource::<UnitRenderIndex>();
 

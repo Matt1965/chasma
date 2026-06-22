@@ -5,7 +5,7 @@ use std::collections::{BinaryHeap, HashMap};
 
 use super::grid::{
     diagonal_corner_clear, grid_cell_world_position, is_cell_walkable, neighbor_step_cost,
-    GridCoord, NEIGHBOR_OFFSETS, NavigationConfig,
+    GridCoord, NavigationAgent, NEIGHBOR_OFFSETS, NavigationConfig,
 };
 use crate::world::{DoodadCatalog, WorldData, WorldPosition};
 
@@ -39,11 +39,11 @@ impl Ord for SearchNode {
     }
 }
 
-fn octile_heuristic(a: GridCoord, b: GridCoord) -> f32 {
+fn octile_heuristic(a: GridCoord, b: GridCoord, cell_spacing_meters: f32) -> f32 {
     let dx = (a.x - b.x).abs();
     let dz = (a.z - b.z).abs();
     let (min, max) = if dx < dz { (dx, dz) } else { (dz, dx) };
-    max as f32 + (std::f32::consts::SQRT_2 - 1.0) * min as f32
+    (max as f32 + (std::f32::consts::SQRT_2 - 1.0) * min as f32) * cell_spacing_meters
 }
 
 /// Run A* between grid cells and return grounded world waypoints (goal inclusive).
@@ -51,7 +51,7 @@ pub fn astar_path(
     world: &WorldData,
     doodad_catalog: &DoodadCatalog,
     config: NavigationConfig,
-    agent_radius_meters: f32,
+    agent: NavigationAgent,
     start: GridCoord,
     goal: GridCoord,
 ) -> Option<Vec<WorldPosition>> {
@@ -63,7 +63,7 @@ pub fn astar_path(
     open.push(SearchNode {
         coord: start,
         g: 0.0,
-        h: octile_heuristic(start, goal),
+        h: octile_heuristic(start, goal, config.cell_spacing_meters),
     });
 
     let mut came_from: HashMap<GridCoord, GridCoord> = HashMap::new();
@@ -93,7 +93,7 @@ pub fn astar_path(
                 world,
                 doodad_catalog,
                 config,
-                agent_radius_meters,
+                agent,
                 next,
             ) {
                 continue;
@@ -102,7 +102,7 @@ pub fn astar_path(
                 world,
                 doodad_catalog,
                 config,
-                agent_radius_meters,
+                agent,
                 current.coord,
                 dx,
                 dz,
@@ -110,7 +110,7 @@ pub fn astar_path(
                 continue;
             }
 
-            let tentative = current_g + neighbor_step_cost(dx, dz);
+            let tentative = current_g + neighbor_step_cost(dx, dz, config.cell_spacing_meters);
             let better = g_score
                 .get(&next)
                 .is_none_or(|&existing| tentative < existing - 1e-4);
@@ -123,7 +123,7 @@ pub fn astar_path(
             open.push(SearchNode {
                 coord: next,
                 g: tentative,
-                h: octile_heuristic(next, goal),
+                h: octile_heuristic(next, goal, config.cell_spacing_meters),
             });
         }
     }

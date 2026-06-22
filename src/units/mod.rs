@@ -14,7 +14,7 @@ mod spawn;
 mod sync;
 
 pub use assets::{gltf_asset_path, preload_unit_scenes, UnitSceneAssets, UNIT_ASSET_ROOT};
-pub use components::{UnitRenderEntity, UnitSceneRoot};
+pub use components::{UnitRenderEntity, UnitSceneRoot, UnitSelectionIndicator};
 pub use plugin::UnitsRuntimePlugin;
 pub use settings::UnitsRuntimeSettings;
 pub use spawn::{despawn_unit_render_entities, spawn_unit_render_entity, UnitRenderIndex};

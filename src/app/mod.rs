@@ -4,6 +4,7 @@ use crate::camera::{CameraControlSystems, CameraPlugin};
 use crate::doodads::{DoodadRuntimeSystems, DoodadsRuntimePlugin};
 use crate::environment::EnvironmentPlugin;
 use crate::terrain::{TerrainRuntimePlugin, TerrainStreamingSystems};
+use crate::player::{PlayerControlSystems, PlayerPlugin};
 use crate::units::UnitRuntimeSystems;
 use crate::units::UnitsRuntimePlugin;
 use crate::view::ViewPlugin;
@@ -32,6 +33,7 @@ impl Plugin for AppPlugin {
             .add_plugins(TerrainRuntimePlugin)
             .add_plugins(DoodadsRuntimePlugin)
             .add_plugins(UnitsRuntimePlugin)
+            .add_plugins(PlayerPlugin)
             .add_plugins(EnvironmentPlugin)
             .add_plugins(CameraPlugin)
             .configure_sets(
@@ -49,6 +51,10 @@ impl Plugin for AppPlugin {
             .configure_sets(
                 Update,
                 UnitRuntimeSystems.after(DoodadRuntimeSystems),
+            )
+            .configure_sets(
+                Update,
+                PlayerControlSystems.after(UnitRuntimeSystems),
             )
             .add_systems(
                 Update,

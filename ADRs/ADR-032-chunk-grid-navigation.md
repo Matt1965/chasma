@@ -49,7 +49,15 @@ find_path(world, doodad_catalog, config, agent_radius_meters, start, goal)
 
 Errors: `StartBlocked`, `GoalBlocked`, `NoPath`, `TerrainUnavailable`.
 
-Waypoints are grounded [`WorldPosition`] samples at cell centers.
+Waypoints are grounded [`WorldPosition`] samples. Grid cell centers are navigation
+aids; [`find_path`] appends the exact grounded command target as the final waypoint
+when reachable.
+
+## Click targeting (ADR-033)
+
+Terrain clicks use render-space ray intersection only to recover X/Z. Authoritative
+Y always comes from heightfield sampling (`ground_world_position`). Vertical render
+scale is never written into [`WorldData`] placement.
 
 ## Unit integration
 

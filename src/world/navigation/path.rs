@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+﻿use bevy::prelude::*;
 
 use crate::world::WorldPosition;
 
@@ -16,6 +16,14 @@ impl NavigationPath {
         Self { waypoints }
     }
 
+    /// Sum of XZ segment lengths in world meters.
+    pub fn length_meters(&self, layout: crate::world::ChunkLayout) -> f32 {
+        self.waypoints
+            .windows(2)
+            .map(|segment| xz_distance(segment[0], segment[1], layout))
+            .sum()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.waypoints.is_empty()
     }
@@ -23,4 +31,11 @@ impl NavigationPath {
     pub fn len(&self) -> usize {
         self.waypoints.len()
     }
+}
+
+/// Straight-line XZ distance between two authoritative positions (meters).
+pub fn xz_distance(a: WorldPosition, b: WorldPosition, layout: crate::world::ChunkLayout) -> f32 {
+    let a = a.to_global(layout);
+    let b = b.to_global(layout);
+    Vec2::new(b.x - a.x, b.z - a.z).length()
 }

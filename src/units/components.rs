@@ -13,3 +13,8 @@ pub struct UnitRenderEntity {
 #[derive(Component, Debug, Clone, Copy, Default, PartialEq, Eq, Reflect)]
 #[reflect(Component)]
 pub struct UnitSceneRoot;
+
+/// Green selection ring rendered at a unit's feet (ADR-033 U8).
+#[derive(Component, Debug, Clone, Copy, Default, PartialEq, Eq, Reflect)]
+#[reflect(Component)]
+pub struct UnitSelectionIndicator;

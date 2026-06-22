@@ -3,12 +3,12 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    ground_world_position, is_position_blocked_by_doodads, ChunkId, ChunkLayout, DoodadCatalog,
-    WorldData, WorldPosition,
+    ground_world_position, is_position_blocked_by_doodads, is_position_slope_walkable, ChunkId,
+    ChunkLayout, DoodadCatalog, WorldData, WorldPosition,
 };
 
 /// Grid configuration for pathfinding (ADR-032).
-#[derive(Debug, Clone, Copy, PartialEq, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Reflect, Resource)]
 pub struct NavigationConfig {
     /// Distance between adjacent navigation cell centers (meters).
     pub cell_spacing_meters: f32,
@@ -20,6 +20,13 @@ impl Default for NavigationConfig {
             cell_spacing_meters: 4.0,
         }
     }
+}
+
+/// Agent footprint and terrain limits used by pathfinding and LOS checks.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NavigationAgent {
+    pub radius_meters: f32,
+    pub max_slope_degrees: f32,
 }
 
 /// Integer grid coordinate in navigation space (global XZ / spacing).
@@ -73,18 +80,61 @@ pub fn grid_cell_world_position(
     ground_world_position(world, position)
 }
 
-/// Whether a navigation cell is walkable for an agent with `agent_radius_meters`.
+/// Whether a grounded position is walkable for the given agent.
+pub fn is_position_walkable(
+    world: &WorldData,
+    doodad_catalog: &DoodadCatalog,
+    position: WorldPosition,
+    agent: NavigationAgent,
+) -> bool {
+    let Some(grounded) = ground_world_position(world, position) else {
+        return false;
+    };
+    if is_position_blocked_by_doodads(
+        world,
+        doodad_catalog,
+        grounded,
+        agent.radius_meters,
+    ) {
+        return false;
+    }
+    is_position_slope_walkable(world, grounded, agent.max_slope_degrees)
+}
+
+fn cell_walkability_sample_globals(
+    coord: GridCoord,
+    config: NavigationConfig,
+    agent_radius_meters: f32,
+) -> [Vec3; 5] {
+    let spacing = config.cell_spacing_meters;
+    let center = grid_cell_center_global(coord, config);
+    let inset = agent_radius_meters.min(spacing * 0.25);
+    let offset = (spacing * 0.5 - inset).max(0.0);
+    [
+        center,
+        center + Vec3::new(offset, 0.0, 0.0),
+        center + Vec3::new(-offset, 0.0, 0.0),
+        center + Vec3::new(0.0, 0.0, offset),
+        center + Vec3::new(0.0, 0.0, -offset),
+    ]
+}
+
+/// Whether a navigation cell is walkable for an agent (center + inset cardinal samples).
 pub fn is_cell_walkable(
     world: &WorldData,
     doodad_catalog: &DoodadCatalog,
     config: NavigationConfig,
-    agent_radius_meters: f32,
+    agent: NavigationAgent,
     coord: GridCoord,
 ) -> bool {
-    let Some(position) = grid_cell_world_position(world, coord, config) else {
-        return false;
-    };
-    !is_position_blocked_by_doodads(world, doodad_catalog, position, agent_radius_meters)
+    let layout = world.layout();
+    for global in cell_walkability_sample_globals(coord, config, agent.radius_meters) {
+        let position = WorldPosition::from_global(global, layout);
+        if !is_position_walkable(world, doodad_catalog, position, agent) {
+            return false;
+        }
+    }
+    true
 }
 
 /// Whether terrain heightfield is resident for this cell.
@@ -112,19 +162,20 @@ pub const NEIGHBOR_OFFSETS: [(i32, i32); 8] = [
     (-1, 1),
 ];
 
-pub fn neighbor_step_cost(dx: i32, dz: i32) -> f32 {
-    if dx == 0 || dz == 0 {
+pub fn neighbor_step_cost(dx: i32, dz: i32, cell_spacing_meters: f32) -> f32 {
+    let unit = if dx == 0 || dz == 0 {
         1.0
     } else {
         std::f32::consts::SQRT_2
-    }
+    };
+    unit * cell_spacing_meters
 }
 
 pub fn diagonal_corner_clear(
     world: &WorldData,
     doodad_catalog: &DoodadCatalog,
     config: NavigationConfig,
-    agent_radius_meters: f32,
+    agent: NavigationAgent,
     from: GridCoord,
     dx: i32,
     dz: i32,
@@ -134,19 +185,8 @@ pub fn diagonal_corner_clear(
     }
     let cardinal_a = GridCoord::new(from.x + dx, from.z);
     let cardinal_b = GridCoord::new(from.x, from.z + dz);
-    is_cell_walkable(
-        world,
-        doodad_catalog,
-        config,
-        agent_radius_meters,
-        cardinal_a,
-    ) && is_cell_walkable(
-        world,
-        doodad_catalog,
-        config,
-        agent_radius_meters,
-        cardinal_b,
-    )
+    is_cell_walkable(world, doodad_catalog, config, agent, cardinal_a)
+        && is_cell_walkable(world, doodad_catalog, config, agent, cardinal_b)
 }
 
 #[cfg(test)]
@@ -158,6 +198,13 @@ mod tests {
         ChunkLayout {
             chunk_size_meters: 256.0,
             units_per_meter: 1.0,
+        }
+    }
+
+    fn agent() -> NavigationAgent {
+        NavigationAgent {
+            radius_meters: 0.6,
+            max_slope_degrees: 40.0,
         }
     }
 
@@ -185,7 +232,7 @@ mod tests {
         for x in 0..=30 {
             let coord = GridCoord::new(x, 0);
             assert!(
-                is_cell_walkable(&world, &catalog, config, 0.6, coord),
+                is_cell_walkable(&world, &catalog, config, agent(), coord),
                 "cell {coord:?} not walkable"
             );
         }
