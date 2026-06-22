@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::world::DoodadDefinitionId;
+use crate::world::{DoodadDefinitionId, UnitDefinitionId};
 
 /// Errors that abort the entire import (sheet layout, I/O, zero valid rows).
 #[derive(Debug, Clone, PartialEq)]
@@ -18,6 +18,11 @@ pub enum DataImportError {
     },
     DuplicateName {
         name: DoodadDefinitionId,
+        first_row: usize,
+        duplicate_row: usize,
+    },
+    DuplicateUnitId {
+        id: UnitDefinitionId,
         first_row: usize,
         duplicate_row: usize,
     },
@@ -49,7 +54,16 @@ impl std::fmt::Display for DataImportError {
                 "duplicate Name `{}` (rows {first_row} and {duplicate_row})",
                 name.as_str()
             ),
-            Self::NoValidRows => write!(f, "no valid doodad rows after import"),
+            Self::DuplicateUnitId {
+                id,
+                first_row,
+                duplicate_row,
+            } => write!(
+                f,
+                "duplicate Unit ID `{}` (rows {first_row} and {duplicate_row})",
+                id.as_str()
+            ),
+            Self::NoValidRows => write!(f, "no valid rows after import"),
         }
     }
 }

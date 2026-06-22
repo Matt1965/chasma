@@ -7,6 +7,7 @@ mod coordinates;
 mod data;
 mod doodad;
 mod terrain;
+mod unit;
 
 pub use biome::{
     BiomeColorEntry, BiomeColorMapping, BiomeId, BiomeImportError, BiomeMask, BiomeMaskBounds,
@@ -35,9 +36,19 @@ pub use doodad::{
     DoodadPlacement, DoodadPlacementOverrides, DoodadRecord, DoodadRenderKey, DoodadSource,
     DoodadSpawnCandidate, BiomeFilterResult, ExclusionFilterOptions, ExclusionFilterResult,
     FinalizedDoodadPlacement, MaterializationOptions, PlacementFinalizationResult,
-    ProceduralDoodadKey, TerrainValidationResult, starter_definitions,
+    ProceduralDoodadKey,     TerrainValidationResult, starter_definitions,
+};
+pub use unit::{
+    create_unit, ground_unit_position, ground_unit_to_terrain, issue_unit_order, lookup_unit,
+    move_unit, remove_unit, step_all_unit_movement, step_unit_movement,
+    starter_definitions as starter_unit_definitions, BatchUnitMovementReport, ChunkUnitStore,
+    UnitAuthoringError, UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId,
+    UnitGroundingError, UnitId, UnitInsertError, UnitMetadata, UnitMovementError,
+    UnitMovementStepReport, UnitOrder, UnitOrderError, UnitPlacement, UnitRecord, UnitRenderKey,
+    UnitSource, UnitState,
 };
 pub use terrain::{Heightfield, TerrainDataError, TerrainMask, TerrainMetadata};
+pub use terrain::{estimate_slope_degrees, ground_world_position};
 #[cfg(feature = "terrain-import")]
 pub use terrain::{
     DecodeError, GaeaImportError, ImportError, SourceHeightfield, chunk_data_from_source_tile,
@@ -48,12 +59,12 @@ pub use terrain::{
 
 /// Owns the World Data Layer: the authoritative coordinate model (ADR-001),
 /// chunk identity and definitions (ADR-002), terrain data (ADR-003, ADR-008),
-/// doodad data (ADR-015), doodad type catalog (ADR-016), biome mask authority
-/// (ADR-024), and world configuration.
+/// doodad data (ADR-015), doodad type catalog (ADR-016), unit type catalog (ADR-027),
+/// biome mask authority (ADR-024), unit instance records (ADR-027 U2), and world configuration.
 ///
 /// This is the lowest architectural layer; every later layer depends on it. It
 /// registers the foundational data types for reflection and initializes the
-/// [`WorldConfig`], (empty) [`WorldData`], and [`DoodadCatalog`] resources.
+/// [`WorldConfig`], (empty) [`WorldData`], [`DoodadCatalog`], and [`UnitCatalog`] resources.
 /// Terrain import, rendering, and gameplay systems live in upper layers (ADR-007).
 pub struct WorldFoundationPlugin;
 
@@ -82,6 +93,17 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<DoodadRenderKey>()
             .register_type::<DoodadDefinition>()
             .register_type::<DoodadCatalog>()
+            .register_type::<UnitDefinitionId>()
+            .register_type::<UnitRenderKey>()
+            .register_type::<UnitDefinition>()
+            .register_type::<UnitCatalog>()
+            .register_type::<UnitId>()
+            .register_type::<UnitPlacement>()
+            .register_type::<UnitSource>()
+            .register_type::<UnitMetadata>()
+            .register_type::<UnitState>()
+            .register_type::<UnitRecord>()
+            .register_type::<ChunkUnitStore>()
             .register_type::<BiomeId>()
             .register_type::<BiomeSample>()
             .register_type::<BiomeColorEntry>()
@@ -92,9 +114,15 @@ impl Plugin for WorldFoundationPlugin {
 
         app.init_resource::<WorldConfig>();
         #[cfg(not(feature = "dev"))]
-        app.init_resource::<DoodadCatalog>();
+        {
+            app.init_resource::<DoodadCatalog>();
+            app.init_resource::<UnitCatalog>();
+        }
         #[cfg(feature = "dev")]
-        app.insert_resource(crate::data_import::resolve_dev_doodad_catalog());
+        {
+            app.insert_resource(crate::data_import::resolve_dev_doodad_catalog());
+            app.insert_resource(crate::data_import::resolve_dev_unit_catalog());
+        }
         app.init_resource::<WorldData>();
     }
 }

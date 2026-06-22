@@ -3,6 +3,7 @@ use core::fmt;
 #[cfg(feature = "terrain-import")]
 mod decode;
 mod heightfield;
+mod query;
 #[cfg(feature = "terrain-import")]
 mod gaea;
 #[cfg(feature = "terrain-import")]
@@ -13,6 +14,7 @@ mod metadata;
 #[cfg(feature = "terrain-import")]
 pub use decode::{DecodeError, decode_exr_heightfield};
 pub use heightfield::Heightfield;
+pub use query::{estimate_slope_degrees, ground_world_position};
 #[cfg(feature = "terrain-import")]
 pub use gaea::{
     gaea_color_dir, gaea_height_dir, GaeaImportError, import_gaea_tile_directory,

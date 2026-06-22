@@ -1,11 +1,11 @@
-//! Excel / RON doodad definition import pipeline (R6).
+//! Excel / RON definition import pipeline (R6 doodads, ADR-027 units).
 //!
 //! Offline data only: reads authored spreadsheets, validates rows, and produces
-//! [`crate::world::DoodadDefinition`] values for [`crate::world::DoodadCatalog`].
-//! No ECS systems, runtime Excel dependency, or rendering coupling.
+//! catalog definitions. No ECS systems, runtime Excel dependency, or rendering coupling.
 
 mod error;
 mod schema;
+mod unit;
 mod validate;
 
 #[cfg(feature = "data-import")]
@@ -26,6 +26,15 @@ pub use schema::{
 pub use dev_load::{
     resolve_dev_doodad_catalog, DEV_DOODAD_CATALOG_RON_PATH, DEV_DOODAD_EXCEL_PATH,
 };
+#[cfg(feature = "data-import")]
+pub use unit::{
+    import_units_from_excel, resolve_dev_unit_catalog, DEV_UNIT_EXCEL_PATH, UNITS_SHEET_NAME,
+};
+pub use unit::{
+    UnitImportRow, DEFAULT_COLLISION_RADIUS_METERS, DEFAULT_MAX_SLOPE_DEGREES,
+    DEFAULT_MOVE_SPEED_MPS, IGNORED_COLUMNS, OPTIONAL_COLUMNS,
+};
+pub use unit::{normalize_file_path_to_render_key as normalize_unit_file_path_to_render_key, REQUIRED_COLUMNS as UNIT_REQUIRED_COLUMNS};
 #[cfg(feature = "data-import")]
 pub use ron::{export_doodads_to_ron, DoodadCatalogRon, DoodadDefinitionRon};
 

@@ -11,5 +11,6 @@ pub mod data_import;
 pub mod doodads;
 pub mod environment;
 pub mod terrain;
+pub mod units;
 pub mod view;
 pub mod world;

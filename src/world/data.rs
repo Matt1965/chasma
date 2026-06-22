@@ -9,6 +9,9 @@ use super::doodad::{
     ChunkDoodadStore, DoodadExclusionZone, DoodadId, DoodadInsertError, DoodadRecord,
     ProceduralDoodadKey,
 };
+use super::unit::{
+    ChunkUnitStore, UnitId, UnitInsertError, UnitRecord,
+};
 
 /// Inclusive bounds of the authored world (ADR-006, ADR-012).
 ///
@@ -27,7 +30,9 @@ pub struct ChunkExtent {
 /// Doodad records live in a parallel chunk-keyed store (ADR-015), not in
 /// [`ChunkData`]. A required [`DoodadId`] → [`ChunkId`] index enables O(1)
 /// instance lookup (ADR-017); all doodad mutations must keep it synchronized
-/// with the chunk stores. An optional [`BiomeMask`] holds world-scale biome
+/// with the chunk stores. Unit records follow the same pattern (ADR-027 U2):
+/// chunk-keyed [`ChunkUnitStore`] plus a required [`UnitId`] → [`ChunkId`]
+/// index, independent of terrain residency. An optional [`BiomeMask`] holds world-scale biome
 /// authority (ADR-024), independent of terrain residency. The layout is a
 /// snapshot derived from [`WorldConfig`] at initialization so position-based
 /// lookups do not require threading layout through every call.
@@ -49,6 +54,10 @@ pub struct WorldData {
     procedural_doodads: HashMap<ProceduralDoodadKey, DoodadId>,
     exclusion_zones: Vec<DoodadExclusionZone>,
     next_doodad_id: u64,
+    units: HashMap<ChunkId, ChunkUnitStore>,
+    /// Required O(1) index: unit id → owning chunk (ADR-027 U2).
+    unit_locations: HashMap<UnitId, ChunkId>,
+    next_unit_id: u64,
     authored_extent: Option<ChunkExtent>,
 }
 
@@ -71,6 +80,9 @@ impl WorldData {
             procedural_doodads: HashMap::new(),
             exclusion_zones: Vec::new(),
             next_doodad_id: 1,
+            units: HashMap::new(),
+            unit_locations: HashMap::new(),
+            next_unit_id: 1,
             authored_extent: None,
         }
     }
@@ -95,8 +107,8 @@ impl WorldData {
 
     /// Evict a resident chunk's terrain. No-op if the chunk is not resident.
     ///
-    /// Does not change authored extent, doodad records, or on-disk assets
-    /// (ADR-012, ADR-015).
+    /// Does not change authored extent, doodad records, unit records, or on-disk assets
+    /// (ADR-012, ADR-015, ADR-027).
     pub fn remove(&mut self, chunk: ChunkId) {
         self.chunks.remove(&chunk);
     }
@@ -252,6 +264,132 @@ impl WorldData {
         self.doodads.get(&chunk)
     }
 
+    /// Allocate the next monotonic [`UnitId`].
+    pub fn allocate_unit_id(&mut self) -> UnitId {
+        let id = UnitId::new(self.next_unit_id);
+        self.next_unit_id += 1;
+        id
+    }
+
+    /// Insert a unit into the chunk-local store and update the id index.
+    ///
+    /// The record's [`super::unit::UnitPlacement::position`] chunk must match
+    /// `chunk`. Units may exist when terrain [`ChunkData`] is not resident.
+    pub fn insert_unit(
+        &mut self,
+        chunk: ChunkId,
+        record: UnitRecord,
+    ) -> Result<(), UnitInsertError> {
+        if record.placement.position.chunk != chunk.coord() {
+            return Err(UnitInsertError::ChunkPlacementMismatch);
+        }
+        self.units
+            .entry(chunk)
+            .or_default()
+            .insert(record.clone());
+        self.unit_locations.insert(record.id, chunk);
+        Ok(())
+    }
+
+    /// Remove a unit from a chunk store and the id index. Returns `true` when removed.
+    pub fn remove_unit(&mut self, chunk: ChunkId, id: UnitId) -> bool {
+        if self.units.get_mut(&chunk).and_then(|store| store.take(id)).is_none() {
+            return false;
+        }
+        self.unit_locations.remove(&id);
+        if self
+            .units
+            .get(&chunk)
+            .is_some_and(|store| store.is_empty())
+        {
+            self.units.remove(&chunk);
+        }
+        true
+    }
+
+    /// Remove a unit by id alone, returning the removed record (ADR-027 U2).
+    pub fn remove_unit_by_id(&mut self, id: UnitId) -> Option<UnitRecord> {
+        let chunk = self.unit_locations.remove(&id)?;
+        let store = self.units.get_mut(&chunk)?;
+        let record = store.take(id)?;
+        if store.is_empty() {
+            self.units.remove(&chunk);
+        }
+        Some(record)
+    }
+
+    /// Borrow a unit record by id via the O(1) id index (ADR-027 U2).
+    pub fn get_unit(&self, id: UnitId) -> Option<&UnitRecord> {
+        let chunk = self.unit_locations.get(&id)?;
+        self.units.get(chunk)?.get(id)
+    }
+
+    /// The chunk that currently stores a unit instance.
+    pub fn unit_chunk(&self, id: UnitId) -> Option<ChunkId> {
+        self.unit_locations.get(&id).copied()
+    }
+
+    /// All unit ids sorted for deterministic simulation iteration (ADR-030).
+    pub fn sorted_unit_ids(&self) -> Vec<UnitId> {
+        let mut ids: Vec<_> = self.unit_locations.keys().copied().collect();
+        ids.sort();
+        ids
+    }
+
+    /// Update simulation state without changing placement (ADR-030).
+    pub fn set_unit_state(&mut self, id: UnitId, state: super::unit::UnitState) -> Result<(), UnitInsertError> {
+        let chunk = self
+            .unit_locations
+            .get(&id)
+            .copied()
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        let store = self.units.get_mut(&chunk).ok_or(UnitInsertError::UnitNotFound)?;
+        let record = store.get_mut(id).ok_or(UnitInsertError::UnitNotFound)?;
+        record.state = state;
+        Ok(())
+    }
+
+    /// Move a unit to a new [`WorldPosition`], including cross-chunk moves (ADR-027 U2).
+    ///
+    /// Preserves id, definition, source, metadata, rotation, and state. Updates
+    /// the id index when the owning chunk changes.
+    pub fn relocate_unit(
+        &mut self,
+        id: UnitId,
+        new_position: WorldPosition,
+    ) -> Result<UnitRecord, UnitInsertError> {
+        let old_chunk = self
+            .unit_locations
+            .get(&id)
+            .copied()
+            .ok_or(UnitInsertError::UnitNotFound)?;
+
+        let new_chunk = ChunkId::new(new_position.chunk);
+        let mut record = self
+            .units
+            .get_mut(&old_chunk)
+            .and_then(|store| store.take(id))
+            .ok_or(UnitInsertError::UnitNotFound)?;
+
+        if self
+            .units
+            .get(&old_chunk)
+            .is_some_and(|store| store.is_empty())
+        {
+            self.units.remove(&old_chunk);
+        }
+
+        record.placement.position = new_position;
+        let moved = record.clone();
+        self.insert_unit(new_chunk, record)?;
+        Ok(moved)
+    }
+
+    /// Borrow the unit store for a chunk, if any records exist.
+    pub fn units_in_chunk(&self, chunk: ChunkId) -> Option<&ChunkUnitStore> {
+        self.units.get(&chunk)
+    }
+
     /// Set the authoritative world-scale biome mask (ADR-024).
     pub fn set_biome_mask(&mut self, mask: BiomeMask) {
         self.biome_mask = Some(mask);
@@ -394,6 +532,44 @@ impl WorldData {
                 Some(key.clone()),
                 "procedural key mismatch for id {:?}",
                 id
+            );
+        }
+    }
+
+    /// Verify the unit id index matches all chunk stores (both directions + counts).
+    pub(crate) fn assert_unit_index_consistent(&self) {
+        let indexed = self.unit_locations.len();
+        let stored: usize = self.units.values().map(|store| store.len()).sum();
+        assert_eq!(
+            indexed, stored,
+            "unit index len {indexed} != stored record count {stored}"
+        );
+
+        for (chunk, store) in &self.units {
+            for record in store.records() {
+                assert_eq!(
+                    self.unit_chunk(record.id),
+                    Some(*chunk),
+                    "index missing or wrong for unit {:?}",
+                    record.id
+                );
+                assert!(
+                    self.get_unit(record.id).is_some(),
+                    "get_unit failed for indexed record {:?}",
+                    record.id
+                );
+            }
+        }
+
+        for (id, chunk) in &self.unit_locations {
+            assert!(
+                self.units
+                    .get(chunk)
+                    .and_then(|store| store.get(*id))
+                    .is_some(),
+                "unit index entry {:?} -> {:?} has no matching store record",
+                id,
+                chunk
             );
         }
     }
@@ -1097,6 +1273,481 @@ mod tests {
             assert_eq!(report.inserted, 0);
             assert_eq!(world.procedural_doodad_id(&new_key), Some(id));
             assert!(world.procedural_doodad_id(&old_key).is_none());
+        }
+    }
+
+    mod unit_tests {
+        use super::*;
+        use crate::world::{
+            LocalPosition, UnitDefinitionId, UnitMetadata, UnitPlacement, UnitRecord,
+            UnitSource, UnitState,
+        };
+
+        fn chunk_id(x: i32, z: i32) -> ChunkId {
+            ChunkId::new(ChunkCoord::new(x, z))
+        }
+
+        fn placement_at(chunk: ChunkCoord, local: Vec3) -> UnitPlacement {
+            UnitPlacement::new(
+                WorldPosition::new(chunk, LocalPosition::new(local)),
+                Quat::from_rotation_y(0.25),
+            )
+        }
+
+        fn sample_record(id: UnitId, chunk: ChunkCoord, source: UnitSource) -> UnitRecord {
+            let mut record = UnitRecord::new(
+                id,
+                UnitDefinitionId::new("wolf"),
+                placement_at(chunk, Vec3::new(64.0, 0.0, 128.0)),
+                source,
+            );
+            record.state = UnitState::Idle;
+            record.metadata = UnitMetadata;
+            record
+        }
+
+        #[test]
+        fn allocate_unit_id_is_monotonic() {
+            let mut world = WorldData::new(layout());
+            let a = world.allocate_unit_id();
+            let b = world.allocate_unit_id();
+            let c = world.allocate_unit_id();
+            assert_eq!(a.raw(), 1);
+            assert_eq!(b.raw(), 2);
+            assert_eq!(c.raw(), 3);
+            assert_ne!(a, b);
+        }
+
+        #[test]
+        fn insert_unit_into_chunk() {
+            let mut world = WorldData::new(layout());
+            let chunk = chunk_id(1, 2);
+            let id = world.allocate_unit_id();
+            let record = sample_record(id, chunk.coord(), UnitSource::Authored);
+
+            world.insert_unit(chunk, record).unwrap();
+
+            let store = world.units_in_chunk(chunk).unwrap();
+            assert_eq!(store.len(), 1);
+            assert_eq!(store.records()[0].id, id);
+            world.assert_unit_index_consistent();
+        }
+
+        #[test]
+        fn retrieve_units_by_chunk() {
+            let mut world = WorldData::new(layout());
+            let chunk = chunk_id(0, 0);
+            assert!(world.units_in_chunk(chunk).is_none());
+
+            let id = world.allocate_unit_id();
+            world
+                .insert_unit(
+                    chunk,
+                    sample_record(id, chunk.coord(), UnitSource::Authored),
+                )
+                .unwrap();
+
+            assert_eq!(world.units_in_chunk(chunk).unwrap().len(), 1);
+            assert!(world.units_in_chunk(chunk_id(1, 0)).is_none());
+        }
+
+        #[test]
+        fn get_unit_by_id() {
+            let mut world = WorldData::new(layout());
+            let chunk = chunk_id(2, 3);
+            let id = world.allocate_unit_id();
+            world
+                .insert_unit(
+                    chunk,
+                    sample_record(id, chunk.coord(), UnitSource::Authored),
+                )
+                .unwrap();
+
+            assert_eq!(world.get_unit(id).unwrap().id, id);
+            assert!(world.get_unit(UnitId::new(999)).is_none());
+        }
+
+        #[test]
+        fn remove_unit_by_chunk_and_id() {
+            let mut world = WorldData::new(layout());
+            let chunk = chunk_id(3, 4);
+            let id = world.allocate_unit_id();
+            world
+                .insert_unit(
+                    chunk,
+                    sample_record(id, chunk.coord(), UnitSource::Authored),
+                )
+                .unwrap();
+
+            assert!(world.remove_unit(chunk, id));
+            assert!(world.units_in_chunk(chunk).is_none());
+            assert!(!world.remove_unit(chunk, id));
+            world.assert_unit_index_consistent();
+        }
+
+        #[test]
+        fn remove_unit_by_id() {
+            let mut world = WorldData::new(layout());
+            let chunk = chunk_id(5, 6);
+            let id = world.allocate_unit_id();
+            world
+                .insert_unit(
+                    chunk,
+                    sample_record(id, chunk.coord(), UnitSource::Procedural { seed: 7 }),
+                )
+                .unwrap();
+
+            let removed = world.remove_unit_by_id(id).unwrap();
+            assert_eq!(removed.id, id);
+            assert!(world.unit_chunk(id).is_none());
+            world.assert_unit_index_consistent();
+        }
+
+        #[test]
+        fn insert_rejects_chunk_placement_mismatch() {
+            let mut world = WorldData::new(layout());
+            let chunk = chunk_id(1, 1);
+            let id = world.allocate_unit_id();
+            let record = sample_record(id, ChunkCoord::new(2, 2), UnitSource::Authored);
+
+            assert_eq!(
+                world.insert_unit(chunk, record),
+                Err(crate::world::UnitInsertError::ChunkPlacementMismatch)
+            );
+            assert!(world.units_in_chunk(chunk).is_none());
+        }
+
+        #[test]
+        fn relocate_within_same_chunk() {
+            let mut world = WorldData::new(layout());
+            let chunk = chunk_id(0, 0);
+            let id = world.allocate_unit_id();
+            let record = sample_record(id, chunk.coord(), UnitSource::Authored);
+            world.insert_unit(chunk, record).unwrap();
+            world.assert_unit_index_consistent();
+
+            let new_pos = WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(200.0, 5.0, 50.0)),
+            );
+            let moved = world.relocate_unit(id, new_pos).unwrap();
+
+            assert_eq!(moved.id, id);
+            assert_eq!(moved.placement.position, new_pos);
+            assert_eq!(world.unit_chunk(id), Some(chunk));
+            world.assert_unit_index_consistent();
+        }
+
+        #[test]
+        fn relocate_across_chunk_boundary() {
+            let mut world = WorldData::new(layout());
+            let chunk = chunk_id(0, 0);
+            let id = world.allocate_unit_id();
+            world
+                .insert_unit(
+                    chunk,
+                    sample_record(id, chunk.coord(), UnitSource::Authored),
+                )
+                .unwrap();
+            world.assert_unit_index_consistent();
+
+            let new_chunk = chunk_id(1, 0);
+            let new_pos = WorldPosition::new(
+                ChunkCoord::new(1, 0),
+                LocalPosition::new(Vec3::new(128.0, 0.0, 128.0)),
+            );
+            let moved = world.relocate_unit(id, new_pos).unwrap();
+
+            assert_eq!(moved.placement.position, new_pos);
+            assert_eq!(world.unit_chunk(id), Some(new_chunk));
+            assert!(world.units_in_chunk(chunk).is_none());
+            world.assert_unit_index_consistent();
+        }
+
+        #[test]
+        fn unit_id_preserved_after_relocate() {
+            let mut world = WorldData::new(layout());
+            let id = world.allocate_unit_id();
+            world
+                .insert_unit(
+                    chunk_id(0, 0),
+                    sample_record(id, ChunkCoord::new(0, 0), UnitSource::Authored),
+                )
+                .unwrap();
+
+            world
+                .relocate_unit(
+                    id,
+                    WorldPosition::new(
+                        ChunkCoord::new(3, 4),
+                        LocalPosition::new(Vec3::new(50.0, 0.0, 50.0)),
+                    ),
+                )
+                .unwrap();
+
+            assert_eq!(world.get_unit(id).unwrap().id, id);
+            world.assert_unit_index_consistent();
+        }
+
+        #[test]
+        fn state_preserved_after_relocate() {
+            let mut world = WorldData::new(layout());
+            let id = world.allocate_unit_id();
+            let mut record =
+                sample_record(id, ChunkCoord::new(0, 0), UnitSource::Authored);
+            record.state = UnitState::Idle;
+            world.insert_unit(chunk_id(0, 0), record).unwrap();
+
+            world
+                .relocate_unit(
+                    id,
+                    WorldPosition::new(
+                        ChunkCoord::new(1, 0),
+                        LocalPosition::new(Vec3::new(1.0, 0.0, 1.0)),
+                    ),
+                )
+                .unwrap();
+
+            assert_eq!(world.get_unit(id).unwrap().state, UnitState::Idle);
+        }
+
+        #[test]
+        fn source_preserved_after_relocate() {
+            let mut world = WorldData::new(layout());
+            let source = UnitSource::Procedural { seed: 42 };
+            let id = world.allocate_unit_id();
+            world
+                .insert_unit(
+                    chunk_id(0, 0),
+                    sample_record(id, ChunkCoord::new(0, 0), source),
+                )
+                .unwrap();
+
+            world
+                .relocate_unit(
+                    id,
+                    WorldPosition::new(
+                        ChunkCoord::new(2, 0),
+                        LocalPosition::new(Vec3::new(1.0, 0.0, 1.0)),
+                    ),
+                )
+                .unwrap();
+
+            assert_eq!(world.get_unit(id).unwrap().source, source);
+        }
+
+        #[test]
+        fn metadata_preserved_after_relocate() {
+            let mut world = WorldData::new(layout());
+            let id = world.allocate_unit_id();
+            world
+                .insert_unit(
+                    chunk_id(0, 0),
+                    sample_record(id, ChunkCoord::new(0, 0), UnitSource::Authored),
+                )
+                .unwrap();
+            assert_eq!(world.get_unit(id).unwrap().metadata, UnitMetadata);
+
+            world
+                .relocate_unit(
+                    id,
+                    WorldPosition::new(
+                        ChunkCoord::new(1, 0),
+                        LocalPosition::new(Vec3::new(1.0, 0.0, 1.0)),
+                    ),
+                )
+                .unwrap();
+
+            assert_eq!(world.get_unit(id).unwrap().metadata, UnitMetadata);
+        }
+
+        #[test]
+        fn deterministic_ordering_by_unit_id() {
+            let mut world = WorldData::new(layout());
+            let chunk = chunk_id(5, 5);
+
+            let id_c = world.allocate_unit_id();
+            let id_a = world.allocate_unit_id();
+            let id_b = world.allocate_unit_id();
+
+            world
+                .insert_unit(
+                    chunk,
+                    sample_record(id_c, chunk.coord(), UnitSource::Authored),
+                )
+                .unwrap();
+            world
+                .insert_unit(
+                    chunk,
+                    sample_record(id_a, chunk.coord(), UnitSource::Authored),
+                )
+                .unwrap();
+            world
+                .insert_unit(
+                    chunk,
+                    sample_record(id_b, chunk.coord(), UnitSource::Authored),
+                )
+                .unwrap();
+
+            let ids: Vec<_> = world
+                .units_in_chunk(chunk)
+                .unwrap()
+                .records()
+                .iter()
+                .map(|r| r.id.raw())
+                .collect();
+            assert_eq!(ids, vec![id_c.raw(), id_a.raw(), id_b.raw()]);
+        }
+
+        #[test]
+        fn units_independent_of_terrain_residency() {
+            let mut world = WorldData::new(layout());
+            let chunk = chunk_id(0, 0);
+
+            let id = world.allocate_unit_id();
+            world
+                .insert_unit(
+                    chunk,
+                    sample_record(id, chunk.coord(), UnitSource::Authored),
+                )
+                .unwrap();
+            assert!(!world.is_chunk_loaded(chunk));
+            assert_eq!(world.units_in_chunk(chunk).unwrap().len(), 1);
+
+            world.insert(chunk, sample_chunk());
+            assert!(world.is_chunk_loaded(chunk));
+            assert_eq!(world.units_in_chunk(chunk).unwrap().len(), 1);
+
+            world.remove(chunk);
+            assert!(!world.is_chunk_loaded(chunk));
+            assert_eq!(world.units_in_chunk(chunk).unwrap().len(), 1);
+            assert!(world.remove_unit(chunk, id));
+            world.assert_unit_index_consistent();
+        }
+    }
+
+    mod unit_index_tests {
+        use super::*;
+        use crate::world::{
+            create_unit, move_unit, remove_unit, LocalPosition, UnitCatalog, UnitDefinitionId,
+            UnitSource,
+        };
+
+        fn pos(chunk_x: i32, chunk_z: i32, local: Vec3) -> WorldPosition {
+            WorldPosition::new(
+                ChunkCoord::new(chunk_x, chunk_z),
+                LocalPosition::new(local),
+            )
+        }
+
+        #[test]
+        fn index_integrity_after_create_via_authoring() {
+            let catalog = UnitCatalog::default();
+            let mut world = WorldData::new(layout());
+
+            let record = create_unit(
+                &catalog,
+                &mut world,
+                &UnitDefinitionId::new("wolf"),
+                pos(2, 3, Vec3::new(64.0, 0.0, 128.0)),
+                UnitSource::Authored,
+            )
+            .unwrap();
+
+            assert_eq!(
+                world.unit_chunk(record.id),
+                Some(ChunkId::new(ChunkCoord::new(2, 3)))
+            );
+            world.assert_unit_index_consistent();
+        }
+
+        #[test]
+        fn index_integrity_after_move_same_chunk() {
+            let catalog = UnitCatalog::default();
+            let mut world = WorldData::new(layout());
+            let chunk = ChunkId::new(ChunkCoord::new(0, 0));
+            let record = create_unit(
+                &catalog,
+                &mut world,
+                &UnitDefinitionId::new("deer"),
+                pos(0, 0, Vec3::new(10.0, 0.0, 20.0)),
+                UnitSource::Authored,
+            )
+            .unwrap();
+            world.assert_unit_index_consistent();
+
+            move_unit(&mut world, record.id, pos(0, 0, Vec3::new(200.0, 0.0, 50.0)))
+                .unwrap();
+
+            assert_eq!(world.unit_chunk(record.id), Some(chunk));
+            world.assert_unit_index_consistent();
+        }
+
+        #[test]
+        fn index_integrity_after_move_cross_chunk() {
+            let catalog = UnitCatalog::default();
+            let mut world = WorldData::new(layout());
+            let record = create_unit(
+                &catalog,
+                &mut world,
+                &UnitDefinitionId::new("bandit"),
+                pos(0, 0, Vec3::new(1.0, 0.0, 1.0)),
+                UnitSource::Authored,
+            )
+            .unwrap();
+            world.assert_unit_index_consistent();
+
+            let new_chunk = ChunkId::new(ChunkCoord::new(1, 0));
+            move_unit(
+                &mut world,
+                record.id,
+                pos(1, 0, Vec3::new(128.0, 0.0, 128.0)),
+            )
+            .unwrap();
+
+            assert_eq!(world.unit_chunk(record.id), Some(new_chunk));
+            world.assert_unit_index_consistent();
+        }
+
+        #[test]
+        fn index_integrity_after_remove_by_id() {
+            let catalog = UnitCatalog::default();
+            let mut world = WorldData::new(layout());
+            let record = create_unit(
+                &catalog,
+                &mut world,
+                &UnitDefinitionId::new("wolf"),
+                pos(4, 5, Vec3::new(64.0, 0.0, 64.0)),
+                UnitSource::Authored,
+            )
+            .unwrap();
+            world.assert_unit_index_consistent();
+
+            remove_unit(&mut world, record.id).unwrap();
+
+            assert!(world.unit_chunk(record.id).is_none());
+            world.assert_unit_index_consistent();
+        }
+
+        #[test]
+        fn index_integrity_after_remove_by_chunk() {
+            let catalog = UnitCatalog::default();
+            let mut world = WorldData::new(layout());
+            let chunk = ChunkId::new(ChunkCoord::new(3, 3));
+            let record = create_unit(
+                &catalog,
+                &mut world,
+                &UnitDefinitionId::new("deer"),
+                pos(3, 3, Vec3::new(32.0, 0.0, 32.0)),
+                UnitSource::Authored,
+            )
+            .unwrap();
+            world.assert_unit_index_consistent();
+
+            assert!(world.remove_unit(chunk, record.id));
+
+            assert!(world.unit_chunk(record.id).is_none());
+            world.assert_unit_index_consistent();
         }
     }
 }
