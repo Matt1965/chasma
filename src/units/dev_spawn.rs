@@ -12,9 +12,30 @@ use crate::world::{
     UnitGroundingError, UnitSource, WorldConfig, WorldData, WorldPosition,
 };
 
-/// XZ offsets (meters) from [`CameraSettings::initial_focus`], nudged east of the
-/// chunk seam so spawns land on interior terrain rather than the patch edge.
-const DEV_PREVIEW_SPAWN_OFFSETS: [(f32, f32); 3] = [(40.0, 0.0), (52.0, -14.0), (52.0, 14.0)];
+/// Dev preview unit count (grid near camera focus).
+pub const DEV_PREVIEW_UNIT_COUNT: usize = 100;
+
+/// XZ spacing between grid slots (meters).
+const DEV_PREVIEW_GRID_SPACING_METERS: f32 = 4.0;
+
+/// East of camera focus so spawns land on interior terrain rather than chunk seams.
+const DEV_PREVIEW_BASE_OFFSET_X: f32 = 40.0;
+
+/// Grid offsets from [`CameraSettings::initial_focus`].
+fn dev_preview_spawn_offsets(count: usize) -> Vec<(f32, f32)> {
+    let cols = (count as f32).sqrt().ceil() as usize;
+    (0..count)
+        .map(|index| {
+            let row = index / cols;
+            let col = index % cols;
+            let offset_x =
+                DEV_PREVIEW_BASE_OFFSET_X + col as f32 * DEV_PREVIEW_GRID_SPACING_METERS;
+            let offset_z = (row as f32 - (cols.saturating_sub(1)) as f32 * 0.5)
+                * DEV_PREVIEW_GRID_SPACING_METERS;
+            (offset_x, offset_z)
+        })
+        .collect()
+}
 
 #[derive(Resource, Default, Debug)]
 pub struct DevPreviewUnitSpawnLedger {
@@ -109,19 +130,22 @@ pub fn spawn_dev_preview_units(
 fn build_spawn_plan<'a>(
     renderable: &[&'a UnitDefinition],
 ) -> Vec<(&'a UnitDefinition, f32, f32)> {
+    let offsets = dev_preview_spawn_offsets(DEV_PREVIEW_UNIT_COUNT);
     if renderable.len() == 1 {
         let definition = renderable[0];
-        return DEV_PREVIEW_SPAWN_OFFSETS
-            .iter()
-            .map(|&(offset_x, offset_z)| (definition, offset_x, offset_z))
+        return offsets
+            .into_iter()
+            .map(|(offset_x, offset_z)| (definition, offset_x, offset_z))
             .collect();
     }
 
-    renderable
-        .iter()
-        .copied()
-        .zip(DEV_PREVIEW_SPAWN_OFFSETS)
-        .map(|(definition, (offset_x, offset_z))| (definition, offset_x, offset_z))
+    offsets
+        .into_iter()
+        .enumerate()
+        .map(|(index, (offset_x, offset_z))| {
+            let definition = renderable[index % renderable.len()];
+            (definition, offset_x, offset_z)
+        })
         .collect()
 }
 
@@ -158,18 +182,20 @@ mod tests {
     }
 
     #[test]
-    fn single_renderable_spawns_three_copies() {
+    fn single_renderable_spawns_hundred_copies() {
         let robot = stub_definition("robot", Some("robot"));
         let plan = build_spawn_plan(&[&robot]);
-        assert_eq!(plan.len(), 3);
+        assert_eq!(plan.len(), DEV_PREVIEW_UNIT_COUNT);
         assert!(plan.iter().all(|(def, _, _)| def.id.as_str() == "robot"));
     }
 
     #[test]
-    fn multiple_renderables_spawn_one_each() {
+    fn multiple_renderables_fill_grid_with_round_robin() {
         let robot = stub_definition("robot", Some("robot"));
         let wolf = stub_definition("wolf", Some("wolf"));
         let plan = build_spawn_plan(&[&robot, &wolf]);
-        assert_eq!(plan.len(), 2);
+        assert_eq!(plan.len(), DEV_PREVIEW_UNIT_COUNT);
+        assert_eq!(plan[0].0.id.as_str(), "robot");
+        assert_eq!(plan[1].0.id.as_str(), "wolf");
     }
 }

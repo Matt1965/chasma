@@ -6,6 +6,9 @@ mod config;
 mod coordinates;
 mod data;
 mod doodad;
+mod formation;
+mod interaction;
+mod movement;
 mod navigation;
 mod obstacle;
 mod terrain;
@@ -41,6 +44,27 @@ pub use doodad::{
     FinalizedDoodadPlacement, MaterializationOptions, PlacementFinalizationResult,
     ProceduralDoodadKey,     TerrainValidationResult, starter_definitions,
 };
+pub use formation::{
+    circle_formation_radius, formation_offsets, FormationAssignment, FormationKind,
+    FormationMovePlan, FormationPlanner,
+};
+pub use interaction::{
+    interaction_plan_to_unit_order, query_world_interaction, record_interaction_debug_from_click,
+    resolve_interaction_to_order, resolve_unit_click_to_order, resolve_world_click_to_order,
+    resolve_world_click_to_unit_order, InteractionDebugSnapshot, InteractionMetadata,
+    InteractionOrderPlan, InteractionQueryContext, InteractionResolveContext, InteractionResult,
+    InteractionTargetRef, InteractionType, DEFAULT_INTERACTION_AGENT_RADIUS_METERS,
+    DEFAULT_INTERACTION_MAX_SLOPE_DEGREES, DEFAULT_INTERACTION_QUERY_RADIUS_METERS,
+};
+pub use movement::feel::{
+    CommandBufferResolveReport, CommandResolveSuccess, MovementFeelSettings,
+    MovementSmoothingState, PendingUnitOrder, StabilizedMovementHeading, UnitCommandBuffer,
+    stabilized_movement_heading,
+};
+pub use movement::steering::{
+    apply_steering, cohesion_force, gather_steering_neighbors, separation_force, SteeringSettings,
+    SteeringNeighbor,
+};
 pub use navigation::{
     find_path, GridCoord, NavigationConfig, NavigationError, NavigationPath, NEIGHBOR_OFFSETS,
     xz_distance,
@@ -48,7 +72,9 @@ pub use navigation::{
 pub use obstacle::is_position_blocked_by_doodads;
 pub use unit::{
     create_unit, ground_unit_position, ground_unit_to_terrain, issue_unit_order, lookup_unit,
-    move_unit, remove_unit, step_all_unit_movement, step_unit_movement,
+    move_unit, remove_unit, resolve_all_pending_unit_orders, resolve_pending_unit_orders,
+    step_all_unit_movement,
+    step_unit_movement,
     starter_definitions as starter_unit_definitions, BatchUnitMovementReport, ChunkUnitStore,
     UnitAuthoringError, UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId,
     UnitGroundingError, UnitId, UnitInsertError, UnitMetadata, UnitMovementError,
@@ -135,5 +161,6 @@ impl Plugin for WorldFoundationPlugin {
         }
         app.init_resource::<WorldData>();
         app.init_resource::<NavigationConfig>();
+        app.init_resource::<crate::world::InteractionDebugSnapshot>();
     }
 }

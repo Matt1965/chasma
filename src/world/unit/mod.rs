@@ -35,7 +35,10 @@ pub use movement::{
     step_all_unit_movement, step_unit_movement, BatchUnitMovementReport, UnitMovementError,
     UnitMovementStepReport,
 };
-pub use orders::{issue_unit_order, UnitOrder, UnitOrderError};
+pub use orders::{
+    issue_unit_order, resolve_all_pending_unit_orders, resolve_pending_unit_orders, UnitOrder,
+    UnitOrderError,
+};
 pub use id::UnitId;
 pub use metadata::UnitMetadata;
 pub use placement::UnitPlacement;

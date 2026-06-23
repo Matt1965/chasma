@@ -59,6 +59,11 @@ pub struct WorldData {
     unit_locations: HashMap<UnitId, ChunkId>,
     next_unit_id: u64,
     authored_extent: Option<ChunkExtent>,
+    /// Deferred MoveTo orders resolved before movement (ADR-037 U12).
+    command_buffer: super::movement::feel::UnitCommandBuffer,
+    /// Per-unit direction smoothing cache (ADR-037 U12).
+    #[reflect(ignore)]
+    movement_smoothing: super::movement::feel::MovementSmoothingState,
 }
 
 impl FromWorld for WorldData {
@@ -84,7 +89,26 @@ impl WorldData {
             unit_locations: HashMap::new(),
             next_unit_id: 1,
             authored_extent: None,
+            command_buffer: super::movement::feel::UnitCommandBuffer::default(),
+            movement_smoothing: super::movement::feel::MovementSmoothingState::default(),
         }
+    }
+
+    /// Borrow the deferred unit command buffer (ADR-037 U12).
+    pub fn command_buffer(&self) -> &super::movement::feel::UnitCommandBuffer {
+        &self.command_buffer
+    }
+
+    /// Mutably borrow the deferred unit command buffer (ADR-037 U12).
+    pub fn command_buffer_mut(&mut self) -> &mut super::movement::feel::UnitCommandBuffer {
+        &mut self.command_buffer
+    }
+
+    /// Mutably borrow per-unit movement smoothing state (ADR-037 U12).
+    pub fn movement_smoothing_mut(
+        &mut self,
+    ) -> &mut super::movement::feel::MovementSmoothingState {
+        &mut self.movement_smoothing
     }
 
     /// The spatial layout this world was realized with.
@@ -388,6 +412,46 @@ impl WorldData {
     /// Borrow the unit store for a chunk, if any records exist.
     pub fn units_in_chunk(&self, chunk: ChunkId) -> Option<&ChunkUnitStore> {
         self.units.get(&chunk)
+    }
+
+    /// Units within `radius_meters` of `position` (XZ distance), sorted by [`UnitId`].
+    ///
+    /// Scans chunk-local stores in a bounded neighborhood only — not the full world.
+    pub fn query_units_in_radius(
+        &self,
+        position: WorldPosition,
+        radius_meters: f32,
+        exclude: Option<UnitId>,
+    ) -> Vec<UnitId> {
+        let layout = self.layout();
+        let center = position.to_global(layout);
+        let center_xz = Vec2::new(center.x, center.z);
+        let chunk_span = (radius_meters / layout.chunk_size_units())
+            .ceil()
+            .max(0.0) as i32
+            + 1;
+
+        let mut matches = Vec::new();
+        for dz in -chunk_span..=chunk_span {
+            for dx in -chunk_span..=chunk_span {
+                let chunk_coord = ChunkCoord::new(position.chunk.x + dx, position.chunk.z + dz);
+                let Some(store) = self.units_in_chunk(ChunkId::new(chunk_coord)) else {
+                    continue;
+                };
+                for record in store.records() {
+                    if exclude == Some(record.id) {
+                        continue;
+                    }
+                    let global = record.placement.position.to_global(layout);
+                    let xz = Vec2::new(global.x, global.z);
+                    if center_xz.distance(xz) <= radius_meters {
+                        matches.push(record.id);
+                    }
+                }
+            }
+        }
+        matches.sort_unstable();
+        matches
     }
 
     /// Set the authoritative world-scale biome mask (ADR-024).
@@ -1597,6 +1661,79 @@ mod tests {
                 .map(|r| r.id.raw())
                 .collect();
             assert_eq!(ids, vec![id_c.raw(), id_a.raw(), id_b.raw()]);
+        }
+
+        #[test]
+        fn query_units_in_radius_returns_sorted_neighbors() {
+            let mut world = WorldData::new(layout());
+            let chunk = chunk_id(0, 0);
+            let center = WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(50.0, 0.0, 50.0)),
+            );
+
+            let id_near_b = world.allocate_unit_id();
+            let id_near_a = world.allocate_unit_id();
+            world
+                .insert_unit(
+                    chunk,
+                    UnitRecord::new(
+                        id_near_b,
+                        UnitDefinitionId::new("wolf"),
+                        UnitPlacement::new(
+                            WorldPosition::new(
+                                ChunkCoord::new(0, 0),
+                                LocalPosition::new(Vec3::new(52.0, 0.0, 50.0)),
+                            ),
+                            Quat::IDENTITY,
+                        ),
+                        UnitSource::Authored,
+                    ),
+                )
+                .unwrap();
+            world
+                .insert_unit(
+                    chunk,
+                    UnitRecord::new(
+                        id_near_a,
+                        UnitDefinitionId::new("wolf"),
+                        UnitPlacement::new(
+                            WorldPosition::new(
+                                ChunkCoord::new(0, 0),
+                                LocalPosition::new(Vec3::new(48.0, 0.0, 50.0)),
+                            ),
+                            Quat::IDENTITY,
+                        ),
+                        UnitSource::Authored,
+                    ),
+                )
+                .unwrap();
+            let id_far = world.allocate_unit_id();
+            world
+                .insert_unit(
+                    chunk,
+                    UnitRecord::new(
+                        id_far,
+                        UnitDefinitionId::new("wolf"),
+                        UnitPlacement::new(
+                            WorldPosition::new(
+                                ChunkCoord::new(0, 0),
+                                LocalPosition::new(Vec3::new(80.0, 0.0, 80.0)),
+                            ),
+                            Quat::IDENTITY,
+                        ),
+                        UnitSource::Authored,
+                    ),
+                )
+                .unwrap();
+
+            let nearby = world.query_units_in_radius(center, 5.0, None);
+            assert_eq!(nearby.len(), 2);
+            assert!(nearby[0] < nearby[1]);
+            assert_eq!(nearby, vec![id_near_b, id_near_a]);
+
+            let excluding = world.query_units_in_radius(center, 5.0, Some(id_near_b));
+            assert_eq!(excluding, vec![id_near_a]);
         }
 
         #[test]

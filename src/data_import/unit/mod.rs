@@ -274,4 +274,29 @@ mod integration_tests {
         assert!(catalog.get(&UnitDefinitionId::new("U-0001")).is_some());
         let _ = std::fs::remove_file(path);
     }
+
+    #[test]
+    fn import_from_design() {
+        let path = Path::new("Chasma Design.xlsx");
+        if !path.exists() {
+            return;
+        }
+
+        let (definitions, summary) = import_units_from_excel(path).unwrap();
+        assert!(
+            summary.rows_valid >= 20,
+            "expected design units; valid={} failed={} warnings={:?}",
+            summary.rows_valid,
+            summary.rows_failed,
+            summary.warnings,
+        );
+
+        let robot = definitions
+            .iter()
+            .find(|def| def.id.as_str() == "U-0001")
+            .expect("U-0001 Robot");
+        assert_eq!(robot.display_name, "Robot");
+        assert!((robot.move_speed_mps - 9.0).abs() < f32::EPSILON);
+        assert_eq!(robot.render_key.0.as_deref(), Some("robot"));
+    }
 }

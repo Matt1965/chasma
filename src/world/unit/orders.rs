@@ -1,4 +1,4 @@
-//! Unit orders and issuance (ADR-030 U5, ADR-032 U7).
+//! Unit orders and issuance (ADR-030 U5, ADR-032 U7, ADR-037 U12).
 
 use bevy::prelude::*;
 
@@ -6,8 +6,10 @@ use super::catalog::UnitCatalog;
 use super::id::UnitId;
 use super::state::UnitState;
 use crate::world::{
-    find_path, DoodadCatalog, NavigationConfig, NavigationError, WorldData, WorldPosition,
+    CommandBufferResolveReport, CommandResolveSuccess, DoodadCatalog, NavigationConfig, WorldData,
+    WorldPosition,
 };
+use crate::world::movement::feel::PATH_RESOLVE_BUDGET_PER_TICK;
 
 /// Authoritative command issued to a unit instance.
 #[derive(Debug, Clone, Copy, PartialEq, Reflect)]
@@ -29,7 +31,10 @@ pub enum UnitOrderError {
     PathTerrainUnavailable,
 }
 
-/// Issue an order to a unit. `MoveTo` computes a navigation path before moving.
+/// Issue an order to a unit.
+///
+/// `MoveTo` is queued on the command buffer and resolved before the next movement
+/// step. `Idle` applies immediately.
 pub fn issue_unit_order(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
@@ -38,54 +43,106 @@ pub fn issue_unit_order(
     unit_id: UnitId,
     order: UnitOrder,
 ) -> Result<(), UnitOrderError> {
-    let record = world.get_unit(unit_id).ok_or(UnitOrderError::UnitNotFound)?;
-    let definition_id = record.definition_id.clone();
-    let start = record.placement.position;
-
-    let state = match order {
-        UnitOrder::Idle => UnitState::Idle,
-        UnitOrder::MoveTo { target } => {
-            let definition = unit_catalog
-                .get(&definition_id)
-                .ok_or(UnitOrderError::DefinitionNotFound)?;
-            let path = find_path(
-                world,
-                doodad_catalog,
-                nav_config,
-                definition.collision_radius_meters,
-                definition.max_slope_degrees,
-                start,
-                target,
-            )
-            .map_err(map_navigation_error)?;
-            UnitState::Moving {
-                target,
-                path,
-                waypoint_index: 0,
-            }
+    match order {
+        UnitOrder::Idle => {
+            world.command_buffer_mut().clear_pending(unit_id);
+            world.movement_smoothing_mut().clear_unit(unit_id);
+            world
+                .set_unit_state(unit_id, UnitState::Idle)
+                .map_err(|_| UnitOrderError::UnitNotFound)?;
+            Ok(())
         }
-    };
-
-    world
-        .set_unit_state(unit_id, state)
-        .map_err(|_| UnitOrderError::UnitNotFound)
+        UnitOrder::MoveTo { .. } => {
+            let _ = (unit_catalog, doodad_catalog, nav_config);
+            if world.get_unit(unit_id).is_none() {
+                return Err(UnitOrderError::UnitNotFound);
+            }
+            world.command_buffer_mut().enqueue(unit_id, order);
+            Ok(())
+        }
+    }
 }
 
-fn map_navigation_error(error: NavigationError) -> UnitOrderError {
-    match error {
-        NavigationError::StartBlocked => UnitOrderError::PathStartBlocked,
-        NavigationError::GoalBlocked => UnitOrderError::PathGoalBlocked,
-        NavigationError::NoPath => UnitOrderError::NoPath,
-        NavigationError::TerrainUnavailable => UnitOrderError::PathTerrainUnavailable,
+/// Resolve deferred orders before movement (ADR-037 U12).
+///
+/// Processes at most [`PATH_RESOLVE_BUDGET_PER_TICK`] paths per call so large
+/// group moves do not stall a single frame.
+pub fn resolve_pending_unit_orders(
+    world: &mut WorldData,
+    unit_catalog: &UnitCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
+) -> CommandBufferResolveReport {
+    if world.command_buffer().is_empty() {
+        return CommandBufferResolveReport::default();
     }
+
+    let batch = world
+        .command_buffer_mut()
+        .drain_sorted_budget(PATH_RESOLVE_BUDGET_PER_TICK);
+    let mut report = CommandBufferResolveReport::default();
+    for entry in batch {
+        match crate::world::movement::feel::resolve_one(
+            world,
+            unit_catalog,
+            doodad_catalog,
+            nav_config,
+            entry.unit_id,
+            entry.order,
+        ) {
+            Ok(()) => {
+                report.resolved += 1;
+                if let Some(record) = world.get_unit(entry.unit_id) {
+                    if let UnitState::Moving {
+                        target,
+                        ref path,
+                        ..
+                    } = record.state
+                    {
+                        report.successes.push(CommandResolveSuccess {
+                            unit_id: entry.unit_id,
+                            target,
+                            path_waypoint_count: path.len() as u32,
+                        });
+                    }
+                }
+            }
+            Err(error) => {
+                report.failed += 1;
+                report.failures.push((entry.unit_id, error));
+            }
+        }
+    }
+    report
+}
+
+/// Resolve every queued order (for tests and tooling).
+pub fn resolve_all_pending_unit_orders(
+    world: &mut WorldData,
+    unit_catalog: &UnitCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
+) -> CommandBufferResolveReport {
+    let mut total = CommandBufferResolveReport::default();
+    while !world.command_buffer().is_empty() {
+        let batch = resolve_pending_unit_orders(world, unit_catalog, doodad_catalog, nav_config);
+        if batch.resolved == 0 && batch.failed == 0 {
+            break;
+        }
+        total.resolved += batch.resolved;
+        total.failed += batch.failed;
+        total.failures.extend(batch.failures);
+        total.successes.extend(batch.successes);
+    }
+    total
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
-        UnitDefinitionId, UnitSource,
+        create_unit, resolve_pending_unit_orders, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+        Heightfield, LocalPosition, UnitDefinitionId, UnitSource,
     };
 
     fn layout_world() -> WorldData {
@@ -126,8 +183,27 @@ mod tests {
         )
     }
 
+    fn issue_and_resolve(
+        world: &mut WorldData,
+        catalog: &UnitCatalog,
+        unit_id: UnitId,
+        order: UnitOrder,
+    ) -> Result<(), UnitOrderError> {
+        issue(world, catalog, unit_id, order)?;
+        let report = resolve_pending_unit_orders(
+            world,
+            catalog,
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+        );
+        if report.failed > 0 {
+            return Err(report.failures[0].1);
+        }
+        Ok(())
+    }
+
     #[test]
-    fn issue_move_to_order_sets_moving_state_with_path() {
+    fn issue_move_to_queues_then_resolves_with_path() {
         let catalog = UnitCatalog::default();
         let mut world = layout_world();
         insert_flat(&mut world);
@@ -143,6 +219,15 @@ mod tests {
 
         let target = pos(100.0, 50.0);
         issue(&mut world, &catalog, unit_id, UnitOrder::MoveTo { target }).unwrap();
+        assert_eq!(world.get_unit(unit_id).unwrap().state, UnitState::Idle);
+        assert!(world.command_buffer().pending_for(unit_id).is_some());
+
+        resolve_pending_unit_orders(
+            &mut world,
+            &catalog,
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+        );
 
         let record = world.get_unit(unit_id).unwrap();
         match record.state {
@@ -158,6 +243,36 @@ mod tests {
             _ => panic!("expected Moving state"),
         }
         assert_eq!(record.placement.position, pos(10.0, 10.0));
+    }
+
+    #[test]
+    fn no_movement_state_before_buffer_resolution() {
+        let catalog = UnitCatalog::default();
+        let mut world = layout_world();
+        insert_flat(&mut world);
+        let unit_id = create_unit(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(10.0, 10.0),
+            UnitSource::Authored,
+        )
+        .unwrap()
+        .id;
+
+        issue(
+            &mut world,
+            &catalog,
+            unit_id,
+            UnitOrder::MoveTo {
+                target: pos(100.0, 50.0),
+            },
+        )
+        .unwrap();
+        assert!(!matches!(
+            world.get_unit(unit_id).unwrap().state,
+            UnitState::Moving { .. }
+        ));
     }
 
     #[test]
@@ -178,7 +293,7 @@ mod tests {
     }
 
     #[test]
-    fn issue_move_without_terrain_fails() {
+    fn issue_move_without_terrain_fails_on_resolve() {
         let catalog = UnitCatalog::default();
         let mut world = layout_world();
         let unit_id = create_unit(
@@ -191,7 +306,7 @@ mod tests {
         .unwrap()
         .id;
 
-        let err = issue(
+        issue(
             &mut world,
             &catalog,
             unit_id,
@@ -199,7 +314,14 @@ mod tests {
                 target: pos(100.0, 50.0),
             },
         )
-        .unwrap_err();
-        assert_eq!(err, UnitOrderError::PathTerrainUnavailable);
+        .unwrap();
+        let report = resolve_pending_unit_orders(
+            &mut world,
+            &catalog,
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+        );
+        assert_eq!(report.failed, 1);
+        assert_eq!(report.failures[0].1, UnitOrderError::PathTerrainUnavailable);
     }
 }
