@@ -83,9 +83,9 @@ pub fn filter_commandable_unit_ids(
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, create_unit_with_ownership, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
-        Heightfield, LocalPosition, UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource,
-        WorldPosition,
+        create_unit, create_unit_with_ownership, Affiliation, ChunkCoord, ChunkData, ChunkId,
+        ChunkLayout, Heightfield, LocalPosition, UnitCatalog, UnitDefinitionId, UnitOwnership,
+        UnitSource, WorldPosition,
     };
     use bevy::prelude::Vec3;
 

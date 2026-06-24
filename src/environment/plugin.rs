@@ -4,17 +4,25 @@ use bevy::prelude::*;
 use super::debug::{
     count_environment_singletons, log_environment_configuration, log_environment_singleton_report,
 };
+use super::cycle::{
+    advance_time_of_day, sync_environment_presentation, update_environment_from_time_of_day,
+};
 use super::lighting::setup_environment_lighting;
 use super::settings::EnvironmentSettings;
 use super::skybox::{attach_skybox_to_primary_camera, init_skybox_load, ActiveSkyboxLoad};
+use super::time_of_day::TimeOfDaySettings;
+use super::water::WaterPlugin;
 
-/// Environment rendering layer: skybox, ambient light, and directional light (R8 / R9).
+/// Environment rendering layer: skybox, ambient light, and directional light (R8 / R9 / E10).
 pub struct EnvironmentPlugin;
 
 impl Plugin for EnvironmentPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<EnvironmentSettings>()
+            .register_type::<TimeOfDaySettings>()
             .init_resource::<EnvironmentSettings>()
+            .init_resource::<TimeOfDaySettings>()
+            .add_plugins(WaterPlugin)
             .add_systems(
                 Startup,
                 (
@@ -24,7 +32,22 @@ impl Plugin for EnvironmentPlugin {
                 )
                     .chain(),
             )
-            .add_systems(Update, attach_skybox_to_primary_camera);
+            .add_systems(
+                Update,
+                (
+                    advance_time_of_day,
+                    update_environment_from_time_of_day,
+                    sync_environment_presentation,
+                    attach_skybox_to_primary_camera,
+                )
+                    .chain(),
+            );
+
+        #[cfg(feature = "dev")]
+        app.add_systems(
+            Update,
+            super::cycle::time_of_day_dev_keyboard.after(advance_time_of_day),
+        );
 
         #[cfg(feature = "dev")]
         app.add_systems(PostStartup, validate_environment_startup);
@@ -72,5 +95,7 @@ mod tests {
         let mut app = App::new();
         app.add_plugins(EnvironmentPlugin);
         assert!(app.world().get_resource::<EnvironmentSettings>().is_some());
+        assert!(app.world().get_resource::<TimeOfDaySettings>().is_some());
+        assert!(app.world().get_resource::<crate::environment::WaterSettings>().is_some());
     }
 }

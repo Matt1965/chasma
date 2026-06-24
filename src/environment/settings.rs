@@ -20,7 +20,7 @@ pub const DEFAULT_DIRECTIONAL_LIGHT_LOOK_AT: Vec3 = Vec3::new(256.0, 0.0, 128.0)
 /// All environment presentation tuning lives here. Future weather, day/night,
 /// atmosphere, and biome lighting modify this resource only — not
 /// [`crate::world::WorldData`] or gameplay state.
-#[derive(Debug, Clone, Resource, Reflect)]
+#[derive(Debug, Clone, Resource, Reflect, PartialEq)]
 #[reflect(Resource)]
 pub struct EnvironmentSettings {
     /// Skybox set folder name (e.g. `"default"` → `environment/skyboxes/default/`).
