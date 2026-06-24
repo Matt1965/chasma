@@ -8,6 +8,9 @@ use bevy::prelude::*;
 
 use super::components::{RtsCamera, RtsCameraState};
 use super::settings::CameraSettings;
+use super::terrain_bind::apply_rts_camera_terrain_binding;
+use crate::terrain::TerrainRenderAssets;
+use crate::world::{WorldConfig, WorldData};
 
 /// Systems that drive client-local RTS camera presentation.
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -60,12 +63,19 @@ fn exp_smooth_vec3(current: Vec3, target: Vec3, rate: f32, dt: f32) -> Vec3 {
 pub fn apply_rts_camera_control(
     time: Res<Time>,
     settings: Res<CameraSettings>,
+    world: Res<WorldData>,
+    config: Res<WorldConfig>,
+    render_assets: Option<Res<TerrainRenderAssets>>,
     keys: Res<ButtonInput<KeyCode>>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     mouse_motion: Res<AccumulatedMouseMotion>,
     mouse_scroll: Res<AccumulatedMouseScroll>,
     mut query: Query<(&mut RtsCameraState, &mut Transform), With<RtsCamera>>,
 ) {
+    let vertical_scale = render_assets
+        .as_ref()
+        .map(|assets| assets.vertical_scale)
+        .unwrap_or(1.0);
     let dt = time.delta_secs().min(settings.max_frame_delta);
 
     let Ok((mut state, mut transform)) = query.single_mut() else {
@@ -130,7 +140,14 @@ pub fn apply_rts_camera_control(
     state.target_pitch = settings.clamp_pitch(state.target_pitch);
     state.target_distance = settings.clamp_distance(state.target_distance);
 
-    *transform = orbit_transform(state.focus, state.yaw, state.pitch, state.distance);
+    apply_rts_camera_terrain_binding(
+        &mut state,
+        &mut transform,
+        &settings,
+        &world,
+        &config,
+        vertical_scale,
+    );
 }
 
 /// Smooth angle taking the shortest path across the yaw wrap.

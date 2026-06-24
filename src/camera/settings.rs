@@ -42,6 +42,11 @@ pub struct CameraSettings {
 
     /// Upper bound on frame delta used by camera systems (seconds).
     pub max_frame_delta: f32,
+
+    /// Minimum height of the camera eye above resident terrain (render units).
+    pub terrain_clearance: f32,
+    /// Vertical offset applied when gluing orbit focus to the terrain surface.
+    pub focus_terrain_offset: f32,
 }
 
 impl Default for CameraSettings {
@@ -67,6 +72,9 @@ impl Default for CameraSettings {
 
             smoothing: 12.0,
             max_frame_delta: 0.1,
+
+            terrain_clearance: 12.0,
+            focus_terrain_offset: 0.0,
         }
     }
 }

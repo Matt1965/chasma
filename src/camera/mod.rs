@@ -1,8 +1,8 @@
 //! Camera layer (ADR-014).
 //!
 //! Owns client-local RTS orbit camera presentation: input, smoothing, and the
-//! main `Camera3d` entity. This layer does not import world or terrain data and
-//! does not mutate authoritative simulation state.
+//! main `Camera3d` entity. Terrain height binding reads [`WorldData`] for
+//! presentation only and does not mutate authoritative simulation state.
 
 use bevy::prelude::*;
 
@@ -10,10 +10,12 @@ mod components;
 mod control;
 mod settings;
 mod setup;
+mod terrain_bind;
 
 pub use components::{RtsCamera, RtsCameraState};
 pub use control::{CameraControlSystems, orbit_position, orbit_transform};
 pub use settings::CameraSettings;
+pub use terrain_bind::render_terrain_height_at_global_xz;
 
 /// Owns the Camera layer (ADR-014).
 pub struct CameraPlugin;
