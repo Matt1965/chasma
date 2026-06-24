@@ -6,11 +6,14 @@ use crate::debug::{
     draw_path_debug_overlay, draw_selection_debug_overlay, draw_steering_debug_overlay,
     DebugOverlayPlugin,
 };
+use crate::simulation::{SimulationPlugin, SimulationSystems};
 use crate::ui::GameplayUiPlugin;
 use crate::units::input::{BoxSelectDrag, PlayerInteractionSettings, SelectedUnits};
 
 use super::box_select_overlay::{setup_box_select_overlay, sync_box_select_overlay};
 use super::indicator::{sync_unit_selection_indicators, UnitSelectionIndicatorState};
+use super::ownership::LocalPlayerOwnership;
+use super::selection_policy::sync_selection_policy_state;
 use super::simulation::{flush_simulation_command_trace, tick_unit_movement};
 
 /// Systems for client-local player unit control (ADR-033 U8, ADR-034 U9).
@@ -23,17 +26,23 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(ClientPipelinePlugin)
+            .add_plugins(SimulationPlugin)
             .add_plugins(DebugOverlayPlugin)
-            .add_plugins(GameplayUiPlugin)
-            .register_type::<PlayerInteractionSettings>()
+            .add_plugins(GameplayUiPlugin);
+        #[cfg(feature = "dev")]
+        app.add_plugins(crate::dev::DevModePlugin);
+        app.register_type::<PlayerInteractionSettings>()
             .init_resource::<SelectedUnits>()
+            .init_resource::<LocalPlayerOwnership>()
             .init_resource::<BoxSelectDrag>()
             .init_resource::<PlayerInteractionSettings>()
             .init_resource::<UnitSelectionIndicatorState>()
             .add_systems(Startup, setup_box_select_overlay)
             .add_systems(
                 Update,
-                tick_unit_movement.in_set(PlayerControlSystems),
+                tick_unit_movement
+                    .in_set(SimulationSystems)
+                    .in_set(PlayerControlSystems),
             )
             .add_systems(
                 Update,
@@ -43,8 +52,15 @@ impl Plugin for PlayerPlugin {
             )
             .add_systems(
                 Update,
-                collect_unit_input_intents
+                sync_selection_policy_state
                     .after(flush_simulation_command_trace)
+                    .before(collect_unit_input_intents)
+                    .in_set(PlayerControlSystems),
+            )
+            .add_systems(
+                Update,
+                collect_unit_input_intents
+                    .after(sync_selection_policy_state)
                     .in_set(PlayerControlSystems),
             )
             .add_systems(

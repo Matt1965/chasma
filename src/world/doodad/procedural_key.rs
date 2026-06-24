@@ -38,7 +38,7 @@ impl ProceduralDoodadKey {
                 definition_id: candidate.definition_id.clone(),
                 procedural_seed: seed,
             }),
-            DoodadSource::Authored => None,
+            DoodadSource::Authored | DoodadSource::Dev => None,
         }
     }
 
@@ -49,7 +49,7 @@ impl ProceduralDoodadKey {
                 definition_id: placement.definition_id.clone(),
                 procedural_seed: seed,
             }),
-            DoodadSource::Authored => None,
+            DoodadSource::Authored | DoodadSource::Dev => None,
         }
     }
 
@@ -60,7 +60,7 @@ impl ProceduralDoodadKey {
                 definition_id: record.definition_id.clone(),
                 procedural_seed: seed,
             }),
-            DoodadSource::Authored => None,
+            DoodadSource::Authored | DoodadSource::Dev => None,
         }
     }
 }

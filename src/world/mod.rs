@@ -11,6 +11,7 @@ mod interaction;
 mod movement;
 mod navigation;
 mod obstacle;
+mod ownership;
 mod terrain;
 mod unit;
 
@@ -41,12 +42,15 @@ pub use doodad::{
     default_blocks_movement,
     DoodadPlacement, DoodadPlacementOverrides, DoodadRecord, DoodadRenderKey, DoodadSource,
     DoodadSpawnCandidate, BiomeFilterResult, ExclusionFilterOptions, ExclusionFilterResult,
+    DeterministicRng,
     FinalizedDoodadPlacement, MaterializationOptions, PlacementFinalizationResult,
-    ProceduralDoodadKey,     TerrainValidationResult, starter_definitions,
+    ProceduralDoodadKey, TerrainValidationResult,
 };
+#[cfg(test)]
+pub use doodad::starter_definitions;
 pub use formation::{
-    circle_formation_radius, formation_offsets, FormationAssignment, FormationKind,
-    FormationMovePlan, FormationPlanner,
+    circle_formation_radius, formation_offsets, unit_spacing_meters, FormationAssignment,
+    FormationKind, FormationMovePlan, FormationPlanner,
 };
 pub use interaction::{
     interaction_plan_to_unit_order, query_world_interaction, record_interaction_debug_from_click,
@@ -62,25 +66,33 @@ pub use movement::feel::{
     stabilized_movement_heading,
 };
 pub use movement::steering::{
-    apply_steering, cohesion_force, gather_steering_neighbors, separation_force, SteeringSettings,
-    SteeringNeighbor,
+    alignment_force, apply_steering, cohesion_force, gather_steering_neighbors, separation_force,
+    SteeringContext, SteeringSettings, SteeringNeighbor,
 };
 pub use navigation::{
     find_path, GridCoord, NavigationConfig, NavigationError, NavigationPath, NEIGHBOR_OFFSETS,
     xz_distance,
 };
-pub use obstacle::is_position_blocked_by_doodads;
+pub use obstacle::{blocking_doodad_at_position, is_position_blocked_by_doodads};
+pub use ownership::{
+    default_ownership_for_source, filter_commandable_unit_ids, filter_selectable_unit_ids,
+    is_owned_by, is_player_controllable, player_units, unit_is_commandable, unit_is_selectable,
+    Affiliation, OwnerId, SelectionControllabilityPolicy, TeamId, UnitOwnership,
+    DEFAULT_PLAYER_OWNER_ID, DEFAULT_PLAYER_TEAM_ID,
+};
 pub use unit::{
-    create_unit, ground_unit_position, ground_unit_to_terrain, issue_unit_order, lookup_unit,
+    create_unit, create_unit_with_ownership, ground_unit_position, ground_unit_to_terrain, issue_unit_order, lookup_unit,
     move_unit, remove_unit, resolve_all_pending_unit_orders, resolve_pending_unit_orders,
     step_all_unit_movement,
     step_unit_movement,
-    starter_definitions as starter_unit_definitions, BatchUnitMovementReport, ChunkUnitStore,
+    BatchUnitMovementReport, ChunkUnitStore,
     UnitAuthoringError, UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId,
     UnitGroundingError, UnitId, UnitInsertError, UnitMetadata, UnitMovementError,
     UnitMovementStepReport, UnitOrder, UnitOrderError, UnitPlacement, UnitRecord, UnitRenderKey,
     UnitSource, UnitState,
 };
+#[cfg(test)]
+pub use unit::starter_definitions as starter_unit_definitions;
 pub use terrain::{Heightfield, TerrainDataError, TerrainMask, TerrainMetadata};
 pub use terrain::{estimate_slope_degrees, ground_world_position, is_position_slope_walkable};
 #[cfg(feature = "terrain-import")]
@@ -138,6 +150,9 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<NavigationConfig>()
             .register_type::<NavigationPath>()
             .register_type::<UnitState>()
+            .register_type::<Affiliation>()
+            .register_type::<OwnerId>()
+            .register_type::<TeamId>()
             .register_type::<UnitRecord>()
             .register_type::<ChunkUnitStore>()
             .register_type::<BiomeId>()

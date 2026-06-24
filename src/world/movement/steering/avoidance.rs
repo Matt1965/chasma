@@ -1,6 +1,6 @@
 //! Steering composition and movement integration (ADR-036 U11).
 
-use bevy::prelude::{Vec2, Vec3};
+use bevy::prelude::Vec2;
 
 use crate::world::{UnitCatalog, UnitId, UnitState, WorldData, WorldPosition};
 
@@ -208,6 +208,7 @@ pub fn apply_steering(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bevy::prelude::Vec3;
     use crate::world::{
         create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
         NavigationPath, UnitCatalog, UnitDefinitionId, UnitSource, UnitState,

@@ -3,8 +3,8 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    issue_unit_order, DoodadCatalog, FormationKind, FormationPlanner, NavigationConfig, UnitCatalog,
-    UnitOrder, UnitOrderError, WorldData, WorldPosition,
+    filter_commandable_unit_ids, issue_unit_order, DoodadCatalog, FormationKind, FormationPlanner,
+    NavigationConfig, UnitCatalog, UnitOrder, UnitOrderError, WorldData, WorldPosition,
 };
 
 use super::selection::SelectedUnits;
@@ -36,7 +36,7 @@ pub fn issue_move_orders_to_selection(
     nav_config: &NavigationConfig,
     target: WorldPosition,
 ) -> MoveOrdersReport {
-    let unit_ids: Vec<_> = selection.iter().collect();
+    let unit_ids = filter_commandable_unit_ids(world, selection.iter());
     if unit_ids.is_empty() {
         return MoveOrdersReport::default();
     }
@@ -94,7 +94,7 @@ pub fn issue_idle_orders_to_selection(
     nav_config: &NavigationConfig,
     selection: &SelectedUnits,
 ) -> MoveOrdersReport {
-    let unit_ids: Vec<_> = selection.iter().collect();
+    let unit_ids = filter_commandable_unit_ids(world, selection.iter());
     if unit_ids.is_empty() {
         return MoveOrdersReport::default();
     }
@@ -159,8 +159,9 @@ pub fn log_move_order_failure(unit_id: crate::world::UnitId, error: UnitOrderErr
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, resolve_all_pending_unit_orders, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
-        Heightfield, LocalPosition, UnitDefinitionId, UnitSource, UnitState, WorldPosition,
+        create_unit, create_unit_with_ownership, resolve_all_pending_unit_orders, ChunkCoord,
+        ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitDefinitionId,
+        UnitOwnership, UnitSource, UnitState, WorldPosition,
     };
 
     fn flat_world() -> WorldData {
@@ -197,21 +198,23 @@ mod tests {
         let nav_config = NavigationConfig::default();
         let mut world = flat_world();
 
-        let a = create_unit(
+        let a = create_unit_with_ownership(
             &catalog,
             &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
+            UnitOwnership::player_default(),
         )
         .unwrap()
         .id;
-        let b = create_unit(
+        let b = create_unit_with_ownership(
             &catalog,
             &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(8.0, 8.0),
             UnitSource::Authored,
+            UnitOwnership::player_default(),
         )
         .unwrap()
         .id;
@@ -249,21 +252,23 @@ mod tests {
         let nav_config = NavigationConfig::default();
         let mut world = flat_world();
 
-        let a = create_unit(
+        let a = create_unit_with_ownership(
             &catalog,
             &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
+            UnitOwnership::player_default(),
         )
         .unwrap()
         .id;
-        let b = create_unit(
+        let b = create_unit_with_ownership(
             &catalog,
             &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(8.0, 8.0),
             UnitSource::Authored,
+            UnitOwnership::player_default(),
         )
         .unwrap()
         .id;
@@ -295,21 +300,23 @@ mod tests {
         let nav_config = NavigationConfig::default();
         let mut world = flat_world();
 
-        let a = create_unit(
+        let a = create_unit_with_ownership(
             &catalog,
             &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
+            UnitOwnership::player_default(),
         )
         .unwrap()
         .id;
-        let b = create_unit(
+        let b = create_unit_with_ownership(
             &catalog,
             &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(8.0, 8.0),
             UnitSource::Authored,
+            UnitOwnership::player_default(),
         )
         .unwrap()
         .id;

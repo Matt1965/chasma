@@ -3,10 +3,14 @@
 mod box_select_overlay;
 mod indicator;
 mod move_feedback;
+mod ownership;
 mod plugin;
+mod selection_policy;
 mod simulation;
 
 pub use move_feedback::MoveCommandFeedback;
+pub use ownership::{LocalPlayerOwnership, selection_policy_for_frame};
+pub use selection_policy::{sync_selection_policy_state, SelectionPolicyState};
 pub use plugin::{PlayerControlSystems, PlayerPlugin};
 pub use simulation::{flush_simulation_command_trace, tick_unit_movement};
 

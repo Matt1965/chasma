@@ -82,9 +82,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_uses_starter_density() {
+    fn default_uses_modest_preview_density() {
         let settings = DoodadGenerationSettings::default();
-        assert_eq!(settings.trees_per_chunk, 8);
+        assert_eq!(settings.trees_per_chunk, 1);
         assert_eq!(settings.rocks_per_chunk, 4);
         assert_eq!(settings.bushes_per_chunk, 6);
         assert_eq!(settings.ruins_per_chunk, 0);

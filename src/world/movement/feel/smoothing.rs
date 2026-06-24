@@ -18,6 +18,10 @@ impl MovementSmoothingState {
         self.last_direction.remove(&unit_id);
     }
 
+    pub fn clear_all(&mut self) {
+        self.last_direction.clear();
+    }
+
     /// Blend toward the new direction; first tick returns `raw_direction` unchanged.
     pub fn smooth_direction(
         &mut self,

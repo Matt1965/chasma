@@ -10,4 +10,5 @@ mod planner;
 
 pub use distribution::{circle_formation_radius, formation_offsets};
 pub use layout::FormationKind;
+pub use offsets::unit_spacing_meters;
 pub use planner::{FormationAssignment, FormationMovePlan, FormationPlanner};

@@ -1,19 +1,13 @@
 Doodad definition authoring (R6)
 =================================
 
-Place the Excel workbook here for dev import:
+Doodad rows live on the **Doodads** worksheet in the repo-root design workbook:
 
-  Doodads.xlsx   (worksheet name: Doodads)
+  Chasma Design.xlsx
 
-When running with `--features dev`, startup attempts:
-
-  source_data/doodads/Doodads.xlsx
-    -> validate rows
-    -> build DoodadCatalog
-    -> optional export to assets/doodads/catalog.ron
-
-If the workbook is missing or invalid, the engine falls back to the in-code
-starter catalog and continues startup.
+When running with `--features dev`, startup imports that workbook (Units + Doodads sheets)
+via the crate manifest path, builds runtime catalogs, and optionally exports doodads to
+`assets/doodads/catalog.ron`.
 
 Column headers (exact names; order does not matter):
 

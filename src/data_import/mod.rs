@@ -13,6 +13,8 @@ mod dev_load;
 #[cfg(feature = "data-import")]
 mod excel;
 #[cfg(feature = "data-import")]
+mod paths;
+#[cfg(feature = "data-import")]
 mod ron;
 
 pub use error::{DataImportError, RowImportError};
@@ -23,13 +25,17 @@ pub use schema::{
 };
 
 #[cfg(feature = "data-import")]
-pub use dev_load::{
-    resolve_dev_doodad_catalog, DEV_DOODAD_CATALOG_RON_PATH, DEV_DOODAD_EXCEL_PATH,
-};
+pub use dev_load::{resolve_dev_doodad_catalog, DEV_DOODAD_CATALOG_RON_PATH};
 #[cfg(feature = "data-import")]
-pub use unit::{
-    import_units_from_excel, resolve_dev_unit_catalog, DEV_UNIT_EXCEL_PATH, UNITS_SHEET_NAME,
-};
+pub use paths::{dev_design_workbook_path, DEV_DESIGN_WORKBOOK};
+/// Same workbook as [`DEV_DESIGN_WORKBOOK`]; kept for older call sites.
+#[cfg(feature = "data-import")]
+pub use paths::DEV_DESIGN_WORKBOOK as DEV_DOODAD_EXCEL_PATH;
+#[cfg(feature = "data-import")]
+pub use unit::{import_units_from_excel, resolve_dev_unit_catalog, UNITS_SHEET_NAME};
+/// Same workbook as [`DEV_DESIGN_WORKBOOK`]; kept for older call sites.
+#[cfg(feature = "data-import")]
+pub use paths::DEV_DESIGN_WORKBOOK as DEV_UNIT_EXCEL_PATH;
 pub use unit::{
     UnitImportRow, DEFAULT_COLLISION_RADIUS_METERS, DEFAULT_MAX_SLOPE_DEGREES,
     DEFAULT_MOVE_SPEED_MPS, IGNORED_COLUMNS, OPTIONAL_COLUMNS,
@@ -286,7 +292,7 @@ mod integration_tests {
         let def = &definitions[0];
         assert_eq!(def.id.as_str(), "Basic Tree");
         assert_eq!(def.kind, DoodadKind::Tree);
-        assert_eq!(def.render_key.0.as_deref(), Some("tree"));
+        assert_eq!(def.render_key.0.as_deref(), Some("tree/oak"));
         assert!((def.spawn_weight - 10.0).abs() < 1e-4);
         assert!(def.random_rotation_y);
         assert!((def.min_scale - 0.5).abs() < 1e-4);

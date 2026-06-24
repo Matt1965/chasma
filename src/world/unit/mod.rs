@@ -22,12 +22,14 @@ mod state;
 mod store;
 
 pub use authoring::{
-    create_unit, lookup_unit, move_unit, remove_unit, UnitAuthoringError,
+    create_unit, create_unit_with_ownership, lookup_unit, move_unit, remove_unit,
+    UnitAuthoringError,
 };
 pub use catalog::{
-    starter_definitions, UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId,
-    UnitRenderKey,
+    UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId, UnitRenderKey,
 };
+#[cfg(test)]
+pub use catalog::starter_definitions;
 pub use grounding::{
     ground_unit_position, ground_unit_to_terrain, UnitGroundingError,
 };

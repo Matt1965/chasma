@@ -1,67 +1,41 @@
-//! Gameplay UI layer — SC2-style player-facing feedback (ADR-040 U-UI4).
+//! Gameplay UI layer — SC2/Kenshi hybrid player HUD (ADR-040, ADR-050 P-UI1).
 
 mod command_feedback;
+mod command_panel;
 mod cursor_feedback;
-mod hud;
+mod input_gate;
+mod layout;
+mod player_hud_state;
+mod plugin;
+mod selected_unit_panel;
 mod selection_ui;
+mod squad_panel;
 mod state;
+mod styles;
 
 pub use command_feedback::{
     sync_move_command_indicator, tick_move_command_indicator, MoveCommandFeedback,
 };
+pub use command_panel::{
+    command_button_enabled, command_button_emits_palette_intent, HudCommandButton,
+};
 pub use cursor_feedback::{sample_gameplay_cursor_context, GameplayCursorPresentation};
-pub use hud::{setup_gameplay_hud, sync_gameplay_hud};
+pub use input_gate::{
+    gameplay_input_blocked_by_hud, update_player_hud_hover_state, PlayerHudHoverState,
+};
+pub use layout::{GameplayHudRoot, PlayerHudUi, setup_player_hud_layout};
+pub use player_hud_state::{
+    primary_selected_unit, sync_primary_selection, PlayerHudState, SquadFilterMode,
+};
+pub use plugin::{GameplayUiPlugin, GameplayUiSystems};
+pub use selected_unit_panel::{
+    build_selected_unit_snapshot, format_single_unit_lines, format_unit_detail_lines,
+    unit_state_label, SelectedUnitPanelSnapshot,
+};
 pub use selection_ui::{clear_gameplay_hud_dirty, sync_gameplay_ui_state};
+pub use squad_panel::{squad_display_name, squad_panel_unit_ids};
 pub use state::{
     command_state_display, derive_command_state, derive_cursor_mode, derive_gameplay_snapshot,
     CommandHoverContext, GameplayCommandState, GameplayCursorMode, GameplayUiSnapshot,
     GameplayUiState,
 };
-
-use bevy::prelude::*;
-
-use crate::player::PlayerControlSystems;
-
-/// Gameplay HUD and command feedback systems (player experience layer).
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct GameplayUiSystems;
-
-/// Registers gameplay UI resources and presentation systems.
-pub struct GameplayUiPlugin;
-
-impl Plugin for GameplayUiPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_resource::<GameplayUiState>()
-            .init_resource::<GameplayCursorPresentation>()
-            .init_resource::<MoveCommandFeedback>()
-            .add_systems(Startup, setup_gameplay_hud)
-            .configure_sets(
-                Update,
-                GameplayUiSystems.in_set(PlayerControlSystems),
-            )
-            .add_systems(
-                Update,
-                sample_gameplay_cursor_context
-                    .after(crate::client::collect_unit_input_intents)
-                    .in_set(GameplayUiSystems),
-            )
-            .add_systems(
-                Update,
-                sync_gameplay_ui_state
-                    .after(crate::debug::flush_intent_dispatch_trace)
-                    .in_set(GameplayUiSystems),
-            )
-            .add_systems(
-                Update,
-                (
-                    sync_gameplay_hud,
-                    clear_gameplay_hud_dirty,
-                    sync_move_command_indicator,
-                    tick_move_command_indicator,
-                )
-                    .chain()
-                    .after(sync_gameplay_ui_state)
-                    .in_set(GameplayUiSystems),
-            );
-    }
-}

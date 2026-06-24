@@ -127,7 +127,7 @@ fn sort_candidates(candidates: &mut [DoodadSpawnCandidate]) {
 fn procedural_seed(source: DoodadSource) -> u64 {
     match source {
         DoodadSource::Procedural { seed } => seed,
-        DoodadSource::Authored => 0,
+        DoodadSource::Authored | DoodadSource::Dev => 0,
     }
 }
 
@@ -153,6 +153,28 @@ mod tests {
             &layout,
         );
         generate_chunk_doodads(&ctx, &DoodadCatalog::default())
+    }
+
+    /// Enough tree candidates to exercise weighted distribution across definitions.
+    fn distribution_settings() -> DoodadGenerationSettings {
+        DoodadGenerationSettings {
+            trees_per_chunk: 64,
+            ..DoodadGenerationSettings::default()
+        }
+    }
+
+    fn generate_for_distribution(world_seed: u64, x: i32, z: i32) -> Vec<DoodadSpawnCandidate> {
+        let layout = layout();
+        let ctx = DoodadGenerationContext::new(
+            world_seed,
+            ChunkId::new(ChunkCoord::new(x, z)),
+            &layout,
+        );
+        generate_chunk_doodads_with_settings(
+            &ctx,
+            &DoodadCatalog::default(),
+            &distribution_settings(),
+        )
     }
 
     #[test]
@@ -284,8 +306,8 @@ mod tests {
 
     #[test]
     fn weighted_selection_is_deterministic_for_seed() {
-        let counts_a = count_candidates_by_definition(&generate(4242, 3, 4));
-        let counts_b = count_candidates_by_definition(&generate(4242, 3, 4));
+        let counts_a = count_candidates_by_definition(&generate_for_distribution(4242, 3, 4));
+        let counts_b = count_candidates_by_definition(&generate_for_distribution(4242, 3, 4));
         assert_eq!(counts_a, counts_b);
         assert!(counts_a.get("tree_oak").copied().unwrap_or(0) > 0);
         assert!(counts_a.get("tree_dead").copied().unwrap_or(0) > 0);
@@ -293,8 +315,8 @@ mod tests {
 
     #[test]
     fn different_seeds_change_definition_distribution() {
-        let counts_a = count_candidates_by_definition(&generate(1, 8, 8));
-        let counts_b = count_candidates_by_definition(&generate(2, 8, 8));
+        let counts_a = count_candidates_by_definition(&generate_for_distribution(1, 8, 8));
+        let counts_b = count_candidates_by_definition(&generate_for_distribution(2, 8, 8));
         assert_ne!(counts_a, counts_b);
     }
 
@@ -401,7 +423,7 @@ mod tests {
 
     #[test]
     fn starter_catalog_produces_multiple_forest_kinds() {
-        let candidates = generate(9001, 5, 5);
+        let candidates = generate_for_distribution(9001, 5, 5);
         let ids: std::collections::BTreeSet<_> = candidates
             .iter()
             .map(|c| c.definition_id.as_str())

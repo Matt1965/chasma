@@ -23,6 +23,26 @@ impl DoodadSceneAssets {
         self.scenes.get(definition_id)
     }
 
+    /// Return a scene handle for this definition, loading and caching if needed.
+    pub fn ensure_scene(
+        &mut self,
+        definition_id: &DoodadDefinitionId,
+        render_key: &DoodadRenderKey,
+        asset_server: &AssetServer,
+    ) -> Option<Handle<Scene>> {
+        if let Some(scene) = self.scenes.get(definition_id) {
+            return Some(scene.clone());
+        }
+        let Some(path) = gltf_asset_path(render_key) else {
+            return None;
+        };
+        let scene: Handle<Scene> = asset_server.load(
+            GltfAssetLabel::Scene(DEFAULT_GLTF_SCENE_INDEX).from_asset(path),
+        );
+        self.scenes.insert(definition_id.clone(), scene.clone());
+        Some(scene)
+    }
+
     pub fn log_missing_once(&mut self, key: &str) {
         if self.missing_keys.insert(key.to_owned()) {
             warn!("doodad glTF missing for render key `{key}` (expected under {DOODAD_ASSET_ROOT}/)");

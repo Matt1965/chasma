@@ -2,7 +2,6 @@
 
 use bevy::prelude::*;
 
-use crate::terrain::world_position_to_render_global;
 use crate::world::{ChunkLayout, WorldPosition};
 
 /// Ground marker at the last move-click destination (gameplay presentation).

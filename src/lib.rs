@@ -8,13 +8,20 @@
 pub mod app;
 pub mod camera;
 pub mod client;
+#[cfg(feature = "dev")]
+pub mod dev;
 pub mod data_import;
 pub mod debug;
 pub mod doodads;
 pub mod environment;
+pub mod logging;
 pub mod terrain;
 pub mod player;
+pub mod simulation;
 pub mod ui;
 pub mod units;
 pub mod view;
 pub mod world;
+
+#[cfg(test)]
+mod review;

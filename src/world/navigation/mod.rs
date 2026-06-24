@@ -6,6 +6,6 @@ mod path;
 mod query;
 mod simplify;
 
-pub use grid::{GridCoord, NavigationAgent, NavigationConfig, NEIGHBOR_OFFSETS};
+pub use grid::{GridCoord, NavigationConfig, NEIGHBOR_OFFSETS};
 pub use path::{NavigationPath, xz_distance};
 pub use query::{find_path, NavigationError};

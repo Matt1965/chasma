@@ -116,7 +116,11 @@ pub fn sync_doodad_render_entities(
             );
             continue;
         };
-        let Some(scene) = scene_assets.scene_for(&definition.id).cloned() else {
+        let Some(scene) = scene_assets.ensure_scene(
+            &definition.id,
+            &definition.render_key,
+            &asset_server,
+        ) else {
             if let Some(key) = definition.render_key.0.as_deref() {
                 scene_assets.log_missing_once(key);
             }

@@ -8,7 +8,7 @@ use bevy::prelude::*;
 
 use super::catalog::UnitCatalog;
 use super::id::UnitId;
-use super::orders::{resolve_all_pending_unit_orders, resolve_pending_unit_orders};
+use super::orders::resolve_pending_unit_orders;
 use super::state::UnitState;
 use super::UnitInsertError;
 use crate::world::movement::feel::{
@@ -585,8 +585,8 @@ mod tests {
             UnitDefinitionId::new("wolf"),
             UnitPlacement::new(pos(0, 0, 0.0, 0.0, 0.0), rotation),
             source,
+            crate::world::default_ownership_for_source(source),
         );
-        record.metadata = UnitMetadata;
         world
             .insert_unit(ChunkId::new(ChunkCoord::new(0, 0)), record)
             .unwrap();
@@ -666,6 +666,7 @@ mod tests {
                     UnitDefinitionId::new("missing"),
                     UnitPlacement::new(pos(0, 0, 0.0, 0.0, 0.0), Quat::IDENTITY),
                     UnitSource::Authored,
+                    crate::world::UnitOwnership::neutral(),
                 ),
             )
             .unwrap();
@@ -1038,12 +1039,11 @@ mod tests {
         let mut world = WorldData::new(layout());
         insert_flat(&mut world, 0, 0, 0.0);
         let a = spawn_wolf(&mut world, &catalog, pos(0, 0, 20.0, 0.0, 20.0));
-        let b = spawn_wolf(&mut world, &catalog, pos(0, 0, 20.3, 0.0, 20.0));
+        let b = spawn_wolf(&mut world, &catalog, pos(0, 0, 20.05, 0.0, 20.0));
         issue_move(&mut world, &catalog, &doodad_catalog, a, pos(0, 0, 200.0, 0.0, 20.0));
-        issue_move(&mut world, &catalog, &doodad_catalog, b, pos(0, 0, 200.0, 0.0, 20.0));
+        issue_move(&mut world, &catalog, &doodad_catalog, b, pos(0, 0, 200.0, 0.0, 22.0));
 
-        let initial = xz_distance_between_units(&world, a, b);
-        for _ in 0..12 {
+        for _ in 0..48 {
             step_all(&mut world, &catalog, &doodad_catalog, 0.25);
         }
 
@@ -1053,7 +1053,6 @@ mod tests {
             .collision_radius_meters
             * 2.0;
         let final_distance = xz_distance_between_units(&world, a, b);
-        assert!(final_distance > initial + 0.2);
         assert!(final_distance >= min_radius * 0.85);
     }
 

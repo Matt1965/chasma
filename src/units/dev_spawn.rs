@@ -1,16 +1,18 @@
 //! Dev-only preview unit placement near the initial camera focus (ADR-028).
 //!
 //! Spawns instances for Excel catalog rows that include a `File Path` (render key).
-//! Starter-catalog fallback is used only when the workbook import fails entirely.
 
 use bevy::prelude::*;
 
 use crate::camera::CameraSettings;
+use crate::logging::{append_log_line, DEV_STARTUP_LOG_PATH};
 use crate::terrain::residency::ChunkResidencyTracker;
 use crate::world::{
-    create_unit, ground_unit_to_terrain, ChunkId, UnitCatalog, UnitDefinition,
-    UnitGroundingError, UnitSource, WorldConfig, WorldData, WorldPosition,
+    create_unit_with_ownership, ground_unit_to_terrain, ChunkId, UnitCatalog, UnitDefinition,
+    UnitGroundingError, UnitOwnership, UnitSource, WorldConfig, WorldData, WorldPosition,
 };
+
+const SESSION_HEADER: &str = "# chasma dev startup log";
 
 /// Dev preview unit count (grid near camera focus).
 pub const DEV_PREVIEW_UNIT_COUNT: usize = 100;
@@ -63,9 +65,11 @@ pub fn spawn_dev_preview_units(
 
     if renderable.is_empty() {
         if !ledger.warned_no_renderable_definitions {
-            warn!(
+            append_log_line(
+                DEV_STARTUP_LOG_PATH,
+                SESSION_HEADER,
                 "dev preview unit spawn skipped: no Units sheet rows with `File Path` \
-                 (add column `File Path` and set e.g. `\\units\\robot.glb` on the robot row)"
+                 (add column `File Path` and set e.g. `\\units\\robot.glb` on the robot row)",
             );
             ledger.warned_no_renderable_definitions = true;
         }
@@ -90,18 +94,23 @@ pub fn spawn_dev_preview_units(
         let global = Vec3::new(focus.x + offset_x, 0.0, focus.z + offset_z);
         let position = WorldPosition::from_global(global, layout);
 
-        let record = match create_unit(
+        let record = match create_unit_with_ownership(
             &catalog,
             &mut world,
             &definition.id,
             position,
             UnitSource::Authored,
+            UnitOwnership::player_default(),
         ) {
             Ok(record) => record,
             Err(err) => {
-                warn!(
-                    "dev preview unit spawn failed for `{}`: {err:?}",
-                    definition.id.as_str()
+                append_log_line(
+                    DEV_STARTUP_LOG_PATH,
+                    SESSION_HEADER,
+                    &format!(
+                        "dev preview unit spawn failed for `{}`: {err:?}",
+                        definition.id.as_str()
+                    ),
                 );
                 return;
             }
@@ -111,18 +120,26 @@ pub fn spawn_dev_preview_units(
             if err == UnitGroundingError::TerrainUnavailable {
                 return;
             }
-            warn!(
-                "dev preview unit grounding failed for `{}`: {err:?}",
-                definition.id.as_str()
+            append_log_line(
+                DEV_STARTUP_LOG_PATH,
+                SESSION_HEADER,
+                &format!(
+                    "dev preview unit grounding failed for `{}`: {err:?}",
+                    definition.id.as_str()
+                ),
             );
             return;
         }
         spawned += 1;
     }
 
-    info!(
-        "dev preview spawned {spawned} unit(s) near camera focus ({:.0}, {:.0})",
-        focus.x, focus.z
+    append_log_line(
+        DEV_STARTUP_LOG_PATH,
+        SESSION_HEADER,
+        &format!(
+            "dev preview spawned {spawned} unit(s) near camera focus ({:.0}, {:.0})",
+            focus.x, focus.z
+        ),
     );
     ledger.completed = true;
 }

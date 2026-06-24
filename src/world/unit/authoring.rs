@@ -1,4 +1,4 @@
-//! Authoritative unit placement API (ADR-027 U2).
+//! Authoritative unit placement API (ADR-027 U2, ADR-051 O1).
 //!
 //! Operates on [`crate::world::WorldData`] and [`super::catalog::UnitCatalog`].
 //! No ECS entities, rendering, movement validation, or save/load.
@@ -10,6 +10,7 @@ use super::id::UnitId;
 use super::placement::UnitPlacement;
 use super::record::UnitRecord;
 use super::source::UnitSource;
+use crate::world::ownership::{default_ownership_for_source, UnitOwnership};
 use crate::world::{UnitDefinitionId, UnitInsertError, WorldData, WorldPosition};
 
 /// Why an authoring operation failed (ADR-027 U2).
@@ -21,13 +22,14 @@ pub enum UnitAuthoringError {
     ChunkPlacementMismatch,
 }
 
-/// Create a unit instance from a catalog definition and insert it into world data.
-pub fn create_unit(
+/// Create a unit with explicit runtime ownership.
+pub fn create_unit_with_ownership(
     catalog: &UnitCatalog,
     world: &mut WorldData,
     definition_id: &UnitDefinitionId,
     position: WorldPosition,
     source: UnitSource,
+    ownership: UnitOwnership,
 ) -> Result<UnitRecord, UnitAuthoringError> {
     let definition = catalog
         .get(definition_id)
@@ -45,6 +47,7 @@ pub fn create_unit(
         definition.id.clone(),
         UnitPlacement::new(position, Quat::IDENTITY),
         source,
+        ownership,
     );
 
     let chunk = crate::world::ChunkId::new(position.chunk);
@@ -56,6 +59,26 @@ pub fn create_unit(
         })?;
 
     Ok(record)
+}
+
+/// Create a unit instance using safe default ownership for [`UnitSource`].
+///
+/// Does **not** derive ownership from catalog `faction_tag`.
+pub fn create_unit(
+    catalog: &UnitCatalog,
+    world: &mut WorldData,
+    definition_id: &UnitDefinitionId,
+    position: WorldPosition,
+    source: UnitSource,
+) -> Result<UnitRecord, UnitAuthoringError> {
+    create_unit_with_ownership(
+        catalog,
+        world,
+        definition_id,
+        position,
+        source,
+        default_ownership_for_source(source),
+    )
 }
 
 /// Move an existing unit to a new world position, including cross-chunk moves.
@@ -87,6 +110,7 @@ pub fn lookup_unit(world: &WorldData, id: UnitId) -> Option<&UnitRecord> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::ownership::{Affiliation, UnitOwnership};
     use crate::world::{ChunkCoord, LocalPosition, UnitCatalog};
 
     fn layout_world() -> WorldData {
@@ -120,6 +144,25 @@ mod tests {
         assert_eq!(record.placement.position, pos);
         assert_eq!(lookup_unit(&world, record.id).unwrap().id, record.id);
         world.assert_unit_index_consistent();
+    }
+
+    #[test]
+    fn create_unit_with_ownership_stores_fields() {
+        let cat = catalog();
+        let mut world = layout_world();
+        let ownership = UnitOwnership::player_default();
+        let record = create_unit_with_ownership(
+            &cat,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            position(0, 0, Vec3::ZERO),
+            UnitSource::Authored,
+            ownership,
+        )
+        .unwrap();
+        assert_eq!(record.owner_id, ownership.owner_id);
+        assert_eq!(record.team_id, ownership.team_id);
+        assert_eq!(record.affiliation, Affiliation::Player);
     }
 
     #[test]

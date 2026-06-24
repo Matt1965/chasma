@@ -388,6 +388,7 @@ mod tests {
                             Quat::IDENTITY,
                         ),
                         UnitSource::Authored,
+                        crate::world::UnitOwnership::neutral(),
                     ),
                 )
                 .unwrap();

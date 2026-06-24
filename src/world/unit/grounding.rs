@@ -147,6 +147,7 @@ mod tests {
                 rotation,
             ),
             UnitSource::Authored,
+            crate::world::default_ownership_for_source(UnitSource::Authored),
         );
         world
             .insert_unit(ChunkId::new(ChunkCoord::new(0, 0)), record)
@@ -176,6 +177,7 @@ mod tests {
                 Quat::IDENTITY,
             ),
             source,
+            crate::world::default_ownership_for_source(source),
         );
         record.state = UnitState::Idle;
         record.metadata = UnitMetadata;

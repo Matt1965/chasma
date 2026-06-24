@@ -8,6 +8,7 @@ use std::collections::HashSet;
 use bevy::prelude::*;
 
 use crate::terrain::residency::ChunkResidencyTracker;
+use crate::logging::{append_log_line_buffered, DOODAD_PROCGEN_LOG_PATH};
 use crate::world::{
     chunk_needs_procedural_materialization, try_materialize_procedural_chunk_doodads, ChunkId,
     DoodadCatalog, WorldData,
@@ -67,17 +68,15 @@ pub fn materialize_dev_procedural_doodads(
         };
 
         if outcome.inserted > 0 {
-            info!(
-                "Generated doodads: chunk=({}, {}) candidates={} inserted={}",
-                coord.x, coord.z, outcome.candidates, outcome.inserted
+            append_log_line_buffered(
+                DOODAD_PROCGEN_LOG_PATH,
+                "# doodad procedural materialization",
+                &format!(
+                    "Generated doodads: chunk=({}, {}) candidates={} inserted={}",
+                    coord.x, coord.z, outcome.candidates, outcome.inserted
+                ),
             );
             ledger.mark_completed(chunk);
-        } else {
-            debug!(
-                target: "chasma::doodad_procgen",
-                "chunk=({}, {}) materialization yielded zero inserts; will retry next frame",
-                coord.x, coord.z,
-            );
         }
     }
 }

@@ -21,7 +21,8 @@ impl BiomeColorMapping {
         Self { entries }
     }
 
-    /// Starter mapping for Phase R1 (ADR-024).
+    /// Color legend for `source_data/test/biome_mask.png` (dev import only, ADR-024).
+    /// Not a runtime fallback — production worlds must import biome data explicitly.
     pub fn starter() -> Self {
         Self::new(vec![
             BiomeColorEntry {

@@ -50,6 +50,7 @@ pub fn draw_intent_debug_overlay(
                 // Selection intents are visualized via selection overlay.
             }
             ClientIntent::ClearSelection | ClientIntent::ShiftModifier { .. } => {}
+            ClientIntent::PaletteCommand { .. } => {}
         }
     }
 }

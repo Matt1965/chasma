@@ -13,7 +13,10 @@ use super::import::import_biome_mask_from_png;
 use super::mapping::BiomeColorMapping;
 use super::mask::BiomeMaskBounds;
 use super::BiomeImportError;
+use crate::logging::{append_log_line, DEV_STARTUP_LOG_PATH};
 use crate::world::{ChunkExtent, WorldConfig, WorldData};
+
+const SESSION_HEADER: &str = "# chasma dev startup log";
 
 /// Source world folder for dev preview / manual import (`source_data/test`).
 pub const DEV_SOURCE_WORLD_DIR: &str = "source_data/test";
@@ -110,32 +113,48 @@ pub fn try_load_default_dev_biome_mask(
     try_load_dev_biome_mask(world, config, Path::new(DEV_BIOME_MASK_PATH))
 }
 
-/// Log the dev biome load outcome (concise info/warn/error only).
+/// Log the dev biome load outcome to [`DEV_STARTUP_LOG_PATH`].
 pub fn log_dev_biome_load_outcome(outcome: &DevBiomeLoadOutcome) {
     match outcome {
         DevBiomeLoadOutcome::Loaded(summary) => {
             let bounds = summary.bounds;
-            info!(
-                "Biome mask loaded: size={}x{} bounds=({:.0},{:.0})-({:.0},{:.0}) {}",
-                summary.width,
-                summary.height,
-                bounds.origin_x,
-                bounds.origin_z,
-                bounds.max_x(),
-                bounds.max_z(),
-                summary.format_counts(),
+            append_log_line(
+                DEV_STARTUP_LOG_PATH,
+                SESSION_HEADER,
+                &format!(
+                    "Biome mask loaded: size={}x{} bounds=({:.0},{:.0})-({:.0},{:.0}) {}",
+                    summary.width,
+                    summary.height,
+                    bounds.origin_x,
+                    bounds.origin_z,
+                    bounds.max_x(),
+                    bounds.max_z(),
+                    summary.format_counts(),
+                ),
             );
         }
         DevBiomeLoadOutcome::Missing => {
-            warn!(
-                "dev biome mask not found at {DEV_BIOME_MASK_PATH}; continuing without biome data"
+            append_log_line(
+                DEV_STARTUP_LOG_PATH,
+                SESSION_HEADER,
+                &format!(
+                    "dev biome mask not found at {DEV_BIOME_MASK_PATH}; continuing without biome data"
+                ),
             );
         }
         DevBiomeLoadOutcome::NoAuthoredExtent => {
-            warn!("dev biome mask skipped: WorldData authored extent not set yet");
+            append_log_line(
+                DEV_STARTUP_LOG_PATH,
+                SESSION_HEADER,
+                "dev biome mask skipped: WorldData authored extent not set yet",
+            );
         }
         DevBiomeLoadOutcome::ImportFailed(err) => {
-            error!("dev biome mask import failed: {err}; continuing without biome data");
+            append_log_line(
+                DEV_STARTUP_LOG_PATH,
+                SESSION_HEADER,
+                &format!("dev biome mask import failed: {err}; continuing without biome data"),
+            );
         }
     }
 }

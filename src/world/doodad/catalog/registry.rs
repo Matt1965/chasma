@@ -21,8 +21,9 @@ pub struct DoodadCatalog {
 }
 
 impl Default for DoodadCatalog {
+    /// Empty outside unit tests; fixtures come from Excel import at runtime (ADR-049).
     fn default() -> Self {
-        Self::from_definitions(starter_definitions()).expect("starter catalog is valid")
+        Self::from_definitions(starter_definitions()).expect("doodad catalog is valid")
     }
 }
 
@@ -84,9 +85,13 @@ mod tests {
     use super::*;
     use crate::world::DoodadRenderKey;
 
+    fn starter_catalog() -> DoodadCatalog {
+        DoodadCatalog::default()
+    }
+
     #[test]
     fn catalog_contains_starter_definitions() {
-        let catalog = DoodadCatalog::default();
+        let catalog = starter_catalog();
         assert_eq!(catalog.len(), starter_definitions().len());
         assert!(catalog.get(&DoodadDefinitionId::new("tree_oak")).is_some());
         assert!(catalog.get(&DoodadDefinitionId::new("resource_node_iron")).is_some());
@@ -94,7 +99,7 @@ mod tests {
 
     #[test]
     fn lookup_by_kind() {
-        let catalog = DoodadCatalog::default();
+        let catalog = starter_catalog();
         let trees: Vec<_> = catalog
             .definitions_for_kind(DoodadKind::Tree)
             .map(|d| d.id.as_str())
@@ -110,7 +115,7 @@ mod tests {
 
     #[test]
     fn lookup_by_definition_id() {
-        let catalog = DoodadCatalog::default();
+        let catalog = starter_catalog();
         let oak = catalog.get(&DoodadDefinitionId::new("tree_oak")).unwrap();
         assert_eq!(oak.display_name, "Oak Tree");
         assert_eq!(oak.kind, DoodadKind::Tree);
@@ -130,7 +135,7 @@ mod tests {
 
     #[test]
     fn placement_constraints_preserved() {
-        let catalog = DoodadCatalog::default();
+        let catalog = starter_catalog();
         let ruin = catalog.get(&DoodadDefinitionId::new("ruin_stone")).unwrap();
         assert_eq!(ruin.placement_radius_meters, 8.0);
         assert_eq!(ruin.min_scale, 1.0);
@@ -141,7 +146,7 @@ mod tests {
 
     #[test]
     fn render_key_preserved() {
-        let catalog = DoodadCatalog::default();
+        let catalog = starter_catalog();
         let rock = catalog.get(&DoodadDefinitionId::new("rock_large")).unwrap();
         assert_eq!(
             rock.render_key,
@@ -151,7 +156,7 @@ mod tests {
 
     #[test]
     fn catalog_iteration_stable() {
-        let catalog = DoodadCatalog::default();
+        let catalog = starter_catalog();
         let ids_a: Vec<_> = catalog
             .definitions()
             .iter()
@@ -175,5 +180,11 @@ mod tests {
                 "resource_node_iron",
             ]
         );
+    }
+
+    #[test]
+    fn default_catalog_is_empty_without_test_fixtures() {
+        let catalog = DoodadCatalog::from_definitions(Vec::new()).unwrap();
+        assert!(catalog.is_empty());
     }
 }

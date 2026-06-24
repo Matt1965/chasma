@@ -10,4 +10,5 @@ pub use definition::UnitDefinition;
 pub use definition_id::UnitDefinitionId;
 pub use registry::{UnitCatalog, UnitCatalogError};
 pub use render_key::UnitRenderKey;
+#[cfg(test)]
 pub use starter::starter_definitions;

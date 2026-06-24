@@ -14,7 +14,7 @@ pub use schema::{
 };
 
 #[cfg(feature = "data-import")]
-pub use dev_load::{resolve_dev_unit_catalog, DEV_UNIT_EXCEL_PATH};
+pub use dev_load::resolve_dev_unit_catalog;
 #[cfg(feature = "data-import")]
 pub use excel::UNITS_SHEET_NAME;
 

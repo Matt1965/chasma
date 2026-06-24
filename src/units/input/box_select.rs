@@ -6,7 +6,7 @@ use bevy::camera::Camera;
 use bevy::prelude::*;
 
 use crate::units::UnitRenderEntity;
-use crate::world::{UnitId, WorldData};
+use crate::world::{unit_is_selectable, SelectionControllabilityPolicy, UnitId, WorldData};
 
 use super::picking::world_position_to_screen;
 
@@ -78,12 +78,16 @@ pub fn collect_units_in_screen_rect(
     camera_transform: &GlobalTransform,
     world: &WorldData,
     units: &Query<(&UnitRenderEntity, &GlobalTransform)>,
+    policy: SelectionControllabilityPolicy,
 ) -> HashSet<UnitId> {
     let mut projected = Vec::new();
     projected.reserve(units.iter().len());
 
     for (marker, transform) in units {
-        if world.get_unit(marker.unit_id).is_none() {
+        let Some(record) = world.get_unit(marker.unit_id) else {
+            continue;
+        };
+        if !unit_is_selectable(record, policy) {
             continue;
         }
         let Some(screen) =

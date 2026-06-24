@@ -4,11 +4,11 @@ use bevy::prelude::*;
 
 use crate::camera::RtsCamera;
 use crate::debug::{unit_ids_for_intent, ClientBoundaryGuard, ClientFrameIndex, PendingDispatchTrace, PendingDispatchTraceRecord};
-use crate::ui::gameplay::MoveCommandFeedback;
 use crate::terrain::TerrainRenderAssets;
+use crate::ui::gameplay::MoveCommandFeedback;
 use crate::units::input::{
     collect_units_in_screen_rect, issue_idle_orders_to_selection, issue_move_orders_to_selection,
-    MoveOrdersReport, PlayerInteractionSettings, SelectedUnits,
+    prune_non_commandable_from_selection, MoveOrdersReport, PlayerInteractionSettings, SelectedUnits,
 };
 use crate::units::UnitRenderEntity;
 use crate::world::{
@@ -18,10 +18,11 @@ use crate::world::{
 };
 
 use super::commands::{
-    build_command_plan, resolve_contextual_command, BuiltCommandPlan, CommandResolutionContext,
-    CommandTarget, CommandType,
+    build_command_plan, resolve_contextual_command, resolve_palette_command, BuiltCommandPlan,
+    CommandResolutionContext, CommandTarget, CommandType,
 };
 use super::intent::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
+use crate::world::{SelectionControllabilityPolicy, unit_is_selectable};
 
 /// Outcome of dispatching one intent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -95,6 +96,8 @@ pub fn dispatch_client_intents(
         .map(|assets| assets.vertical_scale)
         .unwrap_or(1.0);
 
+    let selection_policy = modifiers.selection_policy;
+
     let mut report = IntentDispatchReport::default();
 
     for intent in intents {
@@ -117,6 +120,7 @@ pub fn dispatch_client_intents(
                 &mut modifiers,
                 &mut move_report_opt,
                 &mut pending_trace,
+                selection_policy,
             );
             move_report_holder = move_report_opt;
             (status, move_report_holder.as_ref())
@@ -168,6 +172,7 @@ fn dispatch_one(
     modifiers: &mut ClientInputModifiers,
     move_report: &mut Option<MoveOrdersReport>,
     pending_trace: &mut PendingDispatchTrace,
+    selection_policy: SelectionControllabilityPolicy,
 ) -> IntentDispatchStatus {
     match intent {
         ClientIntent::ContextualCommand { target } => dispatch_contextual_command(
@@ -199,20 +204,40 @@ fn dispatch_one(
             pending_trace,
         ),
         ClientIntent::SelectUnit { unit_id } => {
-            selection.set_single(*unit_id);
-            IntentDispatchStatus::Applied
+            if world
+                .get_unit(*unit_id)
+                .is_some_and(|record| unit_is_selectable(record, selection_policy))
+            {
+                selection.set_single(*unit_id);
+                IntentDispatchStatus::Applied
+            } else {
+                IntentDispatchStatus::Ignored
+            }
         }
         ClientIntent::ToggleUnitSelection { unit_id } => {
-            selection.toggle(*unit_id);
-            IntentDispatchStatus::Applied
+            if world
+                .get_unit(*unit_id)
+                .is_some_and(|record| unit_is_selectable(record, selection_policy))
+            {
+                selection.toggle(*unit_id);
+                IntentDispatchStatus::Applied
+            } else {
+                IntentDispatchStatus::Ignored
+            }
         }
         ClientIntent::BoxSelect { rect_min, rect_max } => {
             let (camera, units) = match (camera, units) {
                 (Some(camera), Some(units)) => (camera, units),
                 _ => return IntentDispatchStatus::Ignored,
             };
-            let Some(picked) = units_in_screen_rect(*rect_min, *rect_max, camera, world, units)
-            else {
+            let Some(picked) = units_in_screen_rect(
+                *rect_min,
+                *rect_max,
+                camera,
+                world,
+                units,
+                selection_policy,
+            ) else {
                 return IntentDispatchStatus::Ignored;
             };
             selection.replace_with(picked);
@@ -223,8 +248,14 @@ fn dispatch_one(
                 (Some(camera), Some(units)) => (camera, units),
                 _ => return IntentDispatchStatus::Ignored,
             };
-            let Some(picked) = units_in_screen_rect(*rect_min, *rect_max, camera, world, units)
-            else {
+            let Some(picked) = units_in_screen_rect(
+                *rect_min,
+                *rect_max,
+                camera,
+                world,
+                units,
+                selection_policy,
+            ) else {
                 return IntentDispatchStatus::Ignored;
             };
             selection.add_all(picked);
@@ -238,6 +269,20 @@ fn dispatch_one(
             modifiers.shift = *pressed;
             IntentDispatchStatus::Applied
         }
+        ClientIntent::PaletteCommand { command_type } => dispatch_palette_command(
+            *command_type,
+            selection,
+            move_feedback,
+            world,
+            unit_catalog,
+            doodad_catalog,
+            nav_config,
+            layout,
+            vertical_scale,
+            settings,
+            move_report,
+            pending_trace,
+        ),
     }
 }
 
@@ -273,6 +318,11 @@ fn dispatch_contextual_command(
     move_report: &mut Option<MoveOrdersReport>,
     pending_trace: &mut PendingDispatchTrace,
 ) -> IntentDispatchStatus {
+    if selection.is_empty() {
+        return IntentDispatchStatus::Ignored;
+    }
+
+    prune_non_commandable_from_selection(world, selection);
     if selection.is_empty() {
         return IntentDispatchStatus::Ignored;
     }
@@ -362,12 +412,75 @@ fn dispatch_contextual_command(
     }
 }
 
+fn dispatch_palette_command(
+    command_type: CommandType,
+    selection: &mut SelectedUnits,
+    _move_feedback: &mut MoveCommandFeedback,
+    world: &mut WorldData,
+    unit_catalog: &UnitCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
+    _layout: crate::world::ChunkLayout,
+    _vertical_scale: f32,
+    _settings: &PlayerInteractionSettings,
+    move_report: &mut Option<MoveOrdersReport>,
+    pending_trace: &mut PendingDispatchTrace,
+) -> IntentDispatchStatus {
+    if selection.is_empty() {
+        return IntentDispatchStatus::Ignored;
+    }
+
+    prune_non_commandable_from_selection(world, selection);
+    if selection.is_empty() {
+        return IntentDispatchStatus::Ignored;
+    }
+
+    let selected: Vec<_> = selection.iter().collect();
+    let Some(contextual) = resolve_palette_command(command_type, &selected, None) else {
+        return IntentDispatchStatus::Ignored;
+    };
+
+    let plan = match build_command_plan(&contextual, selection, world) {
+        Ok(plan) => plan,
+        Err(_) => return IntentDispatchStatus::Ignored,
+    };
+
+    pending_trace.resolved_command = Some(contextual.command_type);
+    pending_trace.command_tooltip = Some(contextual.command_type.tooltip().to_string());
+
+    match plan {
+        BuiltCommandPlan::MoveTo { .. } => IntentDispatchStatus::Ignored,
+        BuiltCommandPlan::StopAll => {
+            *move_report = Some(issue_idle_orders_to_selection(
+                world,
+                unit_catalog,
+                doodad_catalog,
+                nav_config,
+                selection,
+            ));
+            IntentDispatchStatus::Applied
+        }
+        BuiltCommandPlan::HoldAll => {
+            *move_report = Some(issue_idle_orders_to_selection(
+                world,
+                unit_catalog,
+                doodad_catalog,
+                nav_config,
+                selection,
+            ));
+            IntentDispatchStatus::Applied
+        }
+        BuiltCommandPlan::NoOp => IntentDispatchStatus::Ignored,
+    }
+}
+
 fn units_in_screen_rect(
     rect_min: Vec2,
     rect_max: Vec2,
     camera: &Query<(&Camera, &GlobalTransform), With<RtsCamera>>,
     world: &WorldData,
     units: &Query<(&UnitRenderEntity, &GlobalTransform)>,
+    policy: SelectionControllabilityPolicy,
 ) -> Option<std::collections::HashSet<crate::world::UnitId>> {
     let (camera, camera_transform) = camera.single().ok()?;
     Some(collect_units_in_screen_rect(
@@ -377,6 +490,7 @@ fn units_in_screen_rect(
         camera_transform,
         world,
         units,
+        policy,
     ))
 }
 
@@ -427,11 +541,13 @@ fn log_generated_path(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::client::commands::CommandType;
     use crate::units::input::SelectedUnits;
     use crate::world::{
-        create_doodad, create_unit, resolve_all_pending_unit_orders, ChunkCoord, ChunkData,
-        ChunkId, ChunkLayout, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource,
-        Heightfield, LocalPosition, UnitDefinitionId, UnitSource, UnitState, WorldPosition,
+        create_doodad, create_unit, create_unit_with_ownership, resolve_all_pending_unit_orders,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, DoodadPlacementOverrides,
+        DoodadSource, Heightfield, LocalPosition, UnitDefinitionId, UnitOwnership, UnitSource,
+        UnitState, WorldPosition,
     };
     use bevy::prelude::{Vec2, Vec3};
 
@@ -466,12 +582,13 @@ mod tests {
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
         let catalog = UnitCatalog::default();
-        let unit_id = create_unit(
+        let unit_id = create_unit_with_ownership(
             &catalog,
             &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
+            crate::world::UnitOwnership::player_default(),
         )
         .unwrap()
         .id;
@@ -492,6 +609,7 @@ mod tests {
             &mut modifiers,
             &mut None,
             &mut PendingDispatchTrace::default(),
+            SelectionControllabilityPolicy::gameplay_default(),
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert!(selection.contains(unit_id));
@@ -506,12 +624,13 @@ mod tests {
         let catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();
         let nav_config = NavigationConfig::default();
-        let unit_id = create_unit(
+        let unit_id = create_unit_with_ownership(
             &catalog,
             &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
+            crate::world::UnitOwnership::player_default(),
         )
         .unwrap()
         .id;
@@ -534,6 +653,7 @@ mod tests {
             &mut modifiers,
             &mut None,
             &mut PendingDispatchTrace::default(),
+            SelectionControllabilityPolicy::gameplay_default(),
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         resolve_all_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav_config);
@@ -569,6 +689,7 @@ mod tests {
             &mut modifiers,
             &mut None,
             &mut PendingDispatchTrace::default(),
+            SelectionControllabilityPolicy::gameplay_default(),
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
     }
@@ -582,12 +703,13 @@ mod tests {
         let catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();
         let nav_config = NavigationConfig::default();
-        let unit_id = create_unit(
+        let unit_id = create_unit_with_ownership(
             &catalog,
             &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
+            crate::world::UnitOwnership::player_default(),
         )
         .unwrap()
         .id;
@@ -620,6 +742,7 @@ mod tests {
             &mut modifiers,
             &mut None,
             &mut PendingDispatchTrace::default(),
+            SelectionControllabilityPolicy::gameplay_default(),
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
         assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
@@ -653,6 +776,7 @@ mod tests {
             &mut modifiers,
             &mut None,
             &mut PendingDispatchTrace::default(),
+            SelectionControllabilityPolicy::gameplay_default(),
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
     }
@@ -664,12 +788,13 @@ mod tests {
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
         let catalog = UnitCatalog::default();
-        let unit_id = create_unit(
+        let unit_id = create_unit_with_ownership(
             &catalog,
             &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
+            crate::world::UnitOwnership::player_default(),
         )
         .unwrap()
         .id;
@@ -691,6 +816,7 @@ mod tests {
             &mut modifiers,
             &mut None,
             &mut PendingDispatchTrace::default(),
+            SelectionControllabilityPolicy::gameplay_default(),
         );
 
         assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
@@ -706,12 +832,13 @@ mod tests {
         let catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();
         let nav_config = NavigationConfig::default();
-        let unit_id = create_unit(
+        let unit_id = create_unit_with_ownership(
             &catalog,
             &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
+            crate::world::UnitOwnership::player_default(),
         )
         .unwrap()
         .id;
@@ -736,6 +863,7 @@ mod tests {
             &mut modifiers,
             &mut None,
             &mut pending,
+            SelectionControllabilityPolicy::gameplay_default(),
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert_eq!(pending.resolved_command, Some(CommandType::Move));
@@ -770,6 +898,7 @@ mod tests {
             &mut modifiers,
             &mut None,
             &mut PendingDispatchTrace::default(),
+            SelectionControllabilityPolicy::gameplay_default(),
         );
         assert!(modifiers.shift);
     }

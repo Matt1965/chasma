@@ -18,8 +18,9 @@ pub struct UnitCatalog {
 }
 
 impl Default for UnitCatalog {
+    /// Empty outside unit tests; fixtures come from Excel import at runtime (ADR-049).
     fn default() -> Self {
-        Self::from_definitions(starter_definitions()).expect("starter unit catalog is valid")
+        Self::from_definitions(starter_definitions()).expect("unit catalog is valid")
     }
 }
 
@@ -128,5 +129,11 @@ mod tests {
         let catalog = UnitCatalog::default();
         let wolf = catalog.get(&UnitDefinitionId::new("wolf")).unwrap();
         assert_eq!(wolf.render_key, UnitRenderKey::reserved("wolf"));
+    }
+
+    #[test]
+    fn runtime_default_catalog_is_empty_without_test_fixtures() {
+        let catalog = UnitCatalog::from_definitions(Vec::new()).unwrap();
+        assert!(catalog.is_empty());
     }
 }

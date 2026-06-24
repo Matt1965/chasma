@@ -11,7 +11,7 @@ use crate::terrain::TerrainRenderAssets;
 use crate::units::input::{
     cursor_world_ray, pick_unit_along_ray, terrain_click_to_world_position, SelectedUnits,
 };
-use crate::world::{UnitCatalog, WorldConfig, WorldData};
+use crate::world::{SelectionControllabilityPolicy, UnitCatalog, WorldConfig, WorldData};
 
 use super::state::{derive_cursor_mode, CommandHoverContext, GameplayCursorMode, GameplayUiState};
 
@@ -41,7 +41,15 @@ pub fn sample_gameplay_cursor_context(
         .unwrap_or(1.0);
 
     let hover = cursor_world_ray(&windows, &camera).map_or(CommandHoverContext::None, |ray| {
-        if pick_unit_along_ray(&ray, &world, &unit_catalog, &units).is_some() {
+        if pick_unit_along_ray(
+            &ray,
+            &world,
+            &unit_catalog,
+            &units,
+            SelectionControllabilityPolicy::gameplay_default(),
+        )
+        .is_some()
+        {
             CommandHoverContext::Unit
         } else if terrain_click_to_world_position(&ray, &world, layout, vertical_scale).is_some() {
             CommandHoverContext::Terrain

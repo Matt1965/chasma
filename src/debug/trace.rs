@@ -4,11 +4,10 @@ use std::collections::VecDeque;
 
 use bevy::prelude::*;
 
-use crate::client::{ClientIntent, IntentDispatchRecord, IntentDispatchReport, IntentDispatchStatus};
+use crate::client::{ClientIntent, IntentDispatchReport, IntentDispatchStatus};
 use crate::units::input::MoveOrdersReport;
 use crate::world::{
-    CommandBufferResolveReport, CommandResolveSuccess, UnitId, UnitOrder, UnitOrderError,
-    WorldPosition,
+    CommandBufferResolveReport, UnitId, UnitOrder, UnitOrderError,
 };
 
 /// Monotonic client frame index for trace ordering.
@@ -42,6 +41,7 @@ pub enum CommandTraceIntentKind {
     ClearSelection,
     ContextualCommand,
     MoveCommand,
+    PaletteCommand,
     ShiftModifier,
     CommandResolve,
 }
@@ -56,6 +56,7 @@ impl CommandTraceIntentKind {
             ClientIntent::ClearSelection => Self::ClearSelection,
             ClientIntent::ContextualCommand { .. } => Self::ContextualCommand,
             ClientIntent::MoveCommand { .. } => Self::MoveCommand,
+            ClientIntent::PaletteCommand { .. } => Self::PaletteCommand,
             ClientIntent::ShiftModifier { .. } => Self::ShiftModifier,
         }
     }
@@ -249,9 +250,11 @@ pub fn unit_ids_for_intent(intent: &ClientIntent) -> Vec<UnitId> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::IntentDispatchStatus;
+    use crate::client::{IntentDispatchRecord, IntentDispatchStatus};
     use crate::units::input::MoveOrderUnitTrace;
-    use crate::world::{ChunkCoord, LocalPosition};
+    use crate::world::{
+        ChunkCoord, CommandResolveSuccess, LocalPosition, WorldPosition,
+    };
 
     fn pos(x: f32, z: f32) -> WorldPosition {
         WorldPosition::new(

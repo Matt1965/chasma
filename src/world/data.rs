@@ -360,6 +360,49 @@ impl WorldData {
         ids
     }
 
+    /// All doodad ids sorted for deterministic iteration (ADR-045 dev scenes).
+    pub fn sorted_doodad_ids(&self) -> Vec<DoodadId> {
+        let mut ids: Vec<_> = self.doodad_locations.keys().copied().collect();
+        ids.sort();
+        ids
+    }
+
+    #[cfg(feature = "dev")]
+    /// Remove all unit and doodad instances without touching terrain (ADR-045).
+    pub fn dev_clear_units_and_doodads(&mut self) {
+        for id in self.sorted_unit_ids() {
+            let _ = self.remove_unit_by_id(id);
+        }
+        for id in self.sorted_doodad_ids() {
+            let _ = self.remove_doodad_by_id(id);
+        }
+        self.procedural_doodads.clear();
+        let _ = self.command_buffer_mut().take_pending_sorted();
+        self.movement_smoothing_mut().clear_all();
+    }
+
+    #[cfg(feature = "dev")]
+    /// Ensure monotonic id allocators stay above restored instance ids (ADR-045).
+    pub fn dev_restore_id_counters(&mut self, next_unit_id: u64, next_doodad_id: u64) {
+        self.next_unit_id = self.next_unit_id.max(next_unit_id);
+        self.next_doodad_id = self.next_doodad_id.max(next_doodad_id);
+    }
+
+    #[cfg(feature = "dev")]
+    pub fn dev_next_unit_id(&self) -> u64 {
+        self.next_unit_id
+    }
+
+    #[cfg(feature = "dev")]
+    pub fn dev_next_doodad_id(&self) -> u64 {
+        self.next_doodad_id
+    }
+
+    #[cfg(feature = "dev")]
+    pub fn dev_reregister_procedural_doodad(&mut self, record: &DoodadRecord) {
+        self.reregister_procedural_doodad(record);
+    }
+
     /// Update simulation state without changing placement (ADR-030).
     pub fn set_unit_state(&mut self, id: UnitId, state: super::unit::UnitState) -> Result<(), UnitInsertError> {
         let chunk = self
@@ -1364,6 +1407,7 @@ mod tests {
                 UnitDefinitionId::new("wolf"),
                 placement_at(chunk, Vec3::new(64.0, 0.0, 128.0)),
                 source,
+                crate::world::default_ownership_for_source(source),
             );
             record.state = UnitState::Idle;
             record.metadata = UnitMetadata;
@@ -1688,6 +1732,7 @@ mod tests {
                             Quat::IDENTITY,
                         ),
                         UnitSource::Authored,
+                        crate::world::UnitOwnership::neutral(),
                     ),
                 )
                 .unwrap();
@@ -1705,6 +1750,7 @@ mod tests {
                             Quat::IDENTITY,
                         ),
                         UnitSource::Authored,
+                        crate::world::UnitOwnership::neutral(),
                     ),
                 )
                 .unwrap();
@@ -1723,6 +1769,7 @@ mod tests {
                             Quat::IDENTITY,
                         ),
                         UnitSource::Authored,
+                        crate::world::UnitOwnership::neutral(),
                     ),
                 )
                 .unwrap();

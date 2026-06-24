@@ -114,6 +114,15 @@ pub fn normalize_file_path_to_render_key(path: &str) -> Result<String, String> {
     Ok(key)
 }
 
+/// Resolve legacy folder-style design-sheet paths to shipped glTF stems.
+pub fn canonical_doodad_render_key(key: String) -> String {
+    match key.as_str() {
+        // Chasma Design uses `\doodads\tree` for the oak test mesh at `tree/oak.glb`.
+        "tree" => "tree/oak".to_string(),
+        _ => key,
+    }
+}
+
 fn kind_defaults(kind: DoodadKind) -> (f32, Option<f32>) {
     match kind {
         DoodadKind::Tree => (4.0, Some(25.0)),
@@ -134,7 +143,8 @@ fn allowed_biomes_for_row(biome: &str) -> Result<Vec<BiomeId>, String> {
 impl DoodadImportRow {
     pub fn to_definition(&self) -> Result<DoodadDefinition, String> {
         let kind = parse_category(&self.category)?;
-        let render_key = normalize_file_path_to_render_key(&self.file_path)?;
+        let render_key =
+            canonical_doodad_render_key(normalize_file_path_to_render_key(&self.file_path)?);
         let (placement_radius, max_slope) = kind_defaults(kind);
         let blocks_movement = self
             .blocks_movement
@@ -225,6 +235,14 @@ mod tests {
     }
 
     #[test]
+    fn legacy_tree_folder_path_maps_to_oak_mesh() {
+        assert_eq!(
+            canonical_doodad_render_key(normalize_file_path_to_render_key(r"\doodads\tree").unwrap()),
+            "tree/oak"
+        );
+    }
+
+    #[test]
     fn file_path_normalization() {
         assert_eq!(
             normalize_file_path(r"\doodads\tree\oak.glb"),
@@ -285,7 +303,7 @@ mod tests {
         let def = basic_tree_row().to_definition().unwrap();
         assert_eq!(def.id.as_str(), "Basic Tree");
         assert_eq!(def.kind, DoodadKind::Tree);
-        assert_eq!(def.render_key.0.as_deref(), Some("tree"));
+        assert_eq!(def.render_key.0.as_deref(), Some("tree/oak"));
         assert!((def.spawn_weight - 10.0).abs() < f32::EPSILON);
         assert!(def.random_rotation_y);
         assert!((def.min_scale - 0.5).abs() < f32::EPSILON);

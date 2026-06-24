@@ -7,6 +7,7 @@ use bevy::window::PrimaryWindow;
 
 use crate::camera::RtsCamera;
 use crate::terrain::TerrainRenderAssets;
+use crate::ui::gameplay::{gameplay_input_blocked_by_hud, PlayerHudHoverState};
 use crate::units::input::{
     cursor_screen_position, cursor_world_ray, normalized_screen_rect, pick_unit_along_ray,
     terrain_click_to_world_position, BoxSelectDrag,
@@ -54,6 +55,8 @@ pub fn collect_unit_input_intents(
     mut modifiers: ResMut<ClientInputModifiers>,
     mut box_drag: ResMut<BoxSelectDrag>,
     mut boundary: ResMut<crate::debug::ClientBoundaryGuard>,
+    hud_hover: Res<PlayerHudHoverState>,
+    #[cfg(feature = "dev")] gate: Res<crate::dev::DevModeInputGate>,
 ) {
     boundary.begin_input_collection();
     let shift = keyboard.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
@@ -61,6 +64,17 @@ pub fn collect_unit_input_intents(
         queue.push(ClientIntent::ShiftModifier { pressed: shift });
     }
     modifiers.shift = shift;
+
+    #[cfg(feature = "dev")]
+    if crate::dev::DevModeInputGate::should_block(&gate) {
+        boundary.end_input_collection();
+        return;
+    }
+
+    if gameplay_input_blocked_by_hud(&hud_hover) {
+        boundary.end_input_collection();
+        return;
+    }
 
     let layout = config.chunk_layout();
     let vertical_scale = render_assets
@@ -80,6 +94,8 @@ pub fn collect_unit_input_intents(
         }
     }
 
+    let selection_policy = modifiers.selection_policy;
+
     if mouse_buttons.just_released(MouseButton::Left) {
         if box_drag.active {
             if box_drag.is_box_drag() {
@@ -92,7 +108,7 @@ pub fn collect_unit_input_intents(
                 }
             } else if let Some(ray) = cursor_world_ray(&windows, &camera) {
                 if let Some(unit_id) =
-                    pick_unit_along_ray(&ray, &world, &unit_catalog, &units)
+                    pick_unit_along_ray(&ray, &world, &unit_catalog, &units, selection_policy)
                 {
                     if shift {
                         queue.push(ClientIntent::ToggleUnitSelection { unit_id });
@@ -118,7 +134,7 @@ pub fn collect_unit_input_intents(
 
         use crate::client::CommandTarget;
 
-        if let Some(unit_id) = pick_unit_along_ray(&ray, &world, &unit_catalog, &units) {
+        if let Some(unit_id) = pick_unit_along_ray(&ray, &world, &unit_catalog, &units, selection_policy) {
             queue.push(ClientIntent::ContextualCommand {
                 target: CommandTarget::Unit { unit_id },
             });

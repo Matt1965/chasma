@@ -13,8 +13,10 @@ use crate::world::ChunkCoord;
 
 use super::mesh::{ChunkLod, ChunkMeshGeometry};
 
+use crate::logging::TERRAIN_STREAMING_PERF_LOG_PATH;
+
 /// Default path for terrain streaming perf logs (relative to the process working directory).
-pub const DEFAULT_PERF_LOG_PATH: &str = "logs/terrain_streaming_perf.log";
+pub const DEFAULT_PERF_LOG_PATH: &str = TERRAIN_STREAMING_PERF_LOG_PATH;
 
 /// Tunable reporting thresholds and output targets (dev preview opts in at startup).
 #[derive(Debug, Clone, Resource, Reflect)]

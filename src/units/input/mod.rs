@@ -6,6 +6,7 @@
 
 mod box_select;
 mod commands;
+mod controllability;
 mod picking;
 mod selection;
 mod settings;
@@ -17,6 +18,9 @@ pub use terrain_click::{
 };
 
 pub use box_select::{collect_units_in_screen_rect, normalized_screen_rect, BoxSelectDrag};
+pub use controllability::{
+    apply_selectable_filter, prune_non_commandable_from_selection,
+};
 pub use commands::{
     issue_idle_orders_to_selection, issue_move_orders_to_selection, MoveOrderUnitTrace,
     MoveOrdersReport,

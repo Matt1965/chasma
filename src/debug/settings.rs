@@ -1,11 +1,11 @@
-//! Debug overlay toggle settings (ADR-039 U-UI3).
+//! Debug overlay toggle settings (ADR-039 U-UI3, ADR-047).
 
 use bevy::prelude::*;
 
-/// Per-category debug overlay toggles (presentation only).
+/// Single source of truth for debug overlay toggles (presentation only).
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Reflect)]
 #[reflect(Resource)]
-pub struct DebugOverlaySettings {
+pub struct DebugOverlayConfig {
     /// Master switch — when false, all overlay systems no-op.
     pub enabled: bool,
     pub intent: bool,
@@ -14,11 +14,16 @@ pub struct DebugOverlaySettings {
     pub steering: bool,
     pub selection: bool,
     pub interaction: bool,
+    /// Reserved grid overlay (not rendered yet).
+    pub grid: bool,
     /// Cap per-frame debug draws for moving/selected units.
     pub max_draw_units: u32,
 }
 
-impl Default for DebugOverlaySettings {
+/// Back-compat alias used across overlay systems.
+pub type DebugOverlaySettings = DebugOverlayConfig;
+
+impl Default for DebugOverlayConfig {
     fn default() -> Self {
         Self {
             enabled: true,
@@ -28,12 +33,13 @@ impl Default for DebugOverlaySettings {
             steering: true,
             selection: true,
             interaction: true,
+            grid: false,
             max_draw_units: 64,
         }
     }
 }
 
-impl DebugOverlaySettings {
+impl DebugOverlayConfig {
     pub fn category_enabled(&self, category: DebugOverlayCategory) -> bool {
         if !self.enabled {
             return false;
@@ -45,6 +51,7 @@ impl DebugOverlaySettings {
             DebugOverlayCategory::Steering => self.steering,
             DebugOverlayCategory::Selection => self.selection,
             DebugOverlayCategory::Interaction => self.interaction,
+            DebugOverlayCategory::Grid => self.grid,
         }
     }
 }
@@ -57,4 +64,5 @@ pub enum DebugOverlayCategory {
     Steering,
     Selection,
     Interaction,
+    Grid,
 }

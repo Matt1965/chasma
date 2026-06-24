@@ -42,7 +42,8 @@ pub fn build_command_plan(
     }
 }
 
-/// Safe fallback for unknown or future command types.
+/// Safe fallback for unknown or future command types (unit tests only).
+#[cfg(test)]
 pub fn build_command_plan_or_fallback_move(
     intent: &ContextualCommandIntent,
     selection: &SelectedUnits,

@@ -2,29 +2,38 @@
 
 use std::path::Path;
 
-use bevy::prelude::*;
-
-use crate::world::{starter_unit_definitions, UnitCatalog};
+use crate::data_import::paths::dev_design_workbook_path;
+use crate::logging::{append_log_line, DEV_STARTUP_LOG_PATH};
+use crate::world::UnitCatalog;
 
 use super::import_units_from_excel;
-use crate::data_import::{DataImportError, ImportSummary};
+use crate::data_import::DataImportError;
 
-/// Default Excel workbook path for dev unit authoring (`Chasma Design` pipeline).
-pub const DEV_UNIT_EXCEL_PATH: &str = "Chasma Design.xlsx";
+const SESSION_HEADER: &str = "# chasma dev startup log";
 
-/// Load [`UnitCatalog`] for dev startup: Excel import with starter fallback.
+/// Load [`UnitCatalog`] for dev startup from the design workbook `Units` sheet.
 pub fn resolve_dev_unit_catalog() -> UnitCatalog {
-    match try_import_dev_unit_catalog(Path::new(DEV_UNIT_EXCEL_PATH)) {
+    let path = dev_design_workbook_path();
+    match try_import_dev_unit_catalog(&path) {
         Ok((catalog, summary)) => {
-            info!(
-                "Unit Excel import: processed={} valid={} failed={} warnings={}",
-                summary.rows_processed,
-                summary.rows_valid,
-                summary.rows_failed,
-                summary.warnings.len(),
+            append_log_line(
+                DEV_STARTUP_LOG_PATH,
+                SESSION_HEADER,
+                &format!(
+                    "Unit Excel import ({}): processed={} valid={} failed={} warnings={}",
+                    path.display(),
+                    summary.rows_processed,
+                    summary.rows_valid,
+                    summary.rows_failed,
+                    summary.warnings.len(),
+                ),
             );
             for warning in &summary.warnings {
-                warn!("Unit import warning: {warning}");
+                append_log_line(
+                    DEV_STARTUP_LOG_PATH,
+                    SESSION_HEADER,
+                    &format!("Unit import warning: {warning}"),
+                );
             }
             let renderable: Vec<_> = catalog
                 .definitions()
@@ -33,22 +42,29 @@ pub fn resolve_dev_unit_catalog() -> UnitCatalog {
                 .map(|def| def.id.as_str())
                 .collect();
             if renderable.is_empty() {
-                warn!(
+                append_log_line(
+                    DEV_STARTUP_LOG_PATH,
+                    SESSION_HEADER,
                     "Unit catalog has no renderable definitions (add a `File Path` column to the \
-                     Units sheet, e.g. `\\units\\robot.glb`)"
+                     Units sheet, e.g. `\\units\\robot.glb` on the robot row)",
                 );
             } else {
-                info!(
-                    "Unit catalog render keys: {}",
-                    renderable.join(", ")
+                append_log_line(
+                    DEV_STARTUP_LOG_PATH,
+                    SESSION_HEADER,
+                    &format!("Unit catalog render keys: {}", renderable.join(", ")),
                 );
             }
             catalog
         }
         Err(err) => {
-            warn!(
-                "Unit Excel import failed ({err}); using starter catalog ({} definitions)",
-                starter_unit_definitions().len()
+            append_log_line(
+                DEV_STARTUP_LOG_PATH,
+                SESSION_HEADER,
+                &format!(
+                    "Unit Excel import failed for {} ({err}); dev unit catalog is empty",
+                    path.display()
+                ),
             );
             UnitCatalog::default()
         }
@@ -57,7 +73,7 @@ pub fn resolve_dev_unit_catalog() -> UnitCatalog {
 
 fn try_import_dev_unit_catalog(
     path: &Path,
-) -> Result<(UnitCatalog, ImportSummary), DataImportError> {
+) -> Result<(UnitCatalog, crate::data_import::ImportSummary), DataImportError> {
     let (definitions, summary) = import_units_from_excel(path)?;
     let catalog = UnitCatalog::from_definitions(definitions).map_err(|err| {
         DataImportError::WorkbookOpen(format!("unit catalog build failed: {err:?}"))

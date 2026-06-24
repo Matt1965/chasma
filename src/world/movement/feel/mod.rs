@@ -12,7 +12,6 @@ pub(crate) use command_buffer::resolve_one;
 pub use smoothing::{MovementSmoothingState, should_skip_direction_smoothing};
 pub use stabilization::{
     stabilized_movement_heading, steering_is_allowed, StabilizedMovementHeading,
-    WAYPOINT_DIRECTION_EPSILON_METERS,
 };
 
 /// Conservative feel tuning (does not alter pathfinding or formation).

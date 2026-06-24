@@ -1,0 +1,24 @@
+(
+    definitions: [
+        (
+            id: "Basic Tree",
+            kind: "Tree",
+            display_name: "Basic Tree for Testing",
+            placement_radius_meters: 4.0,
+            min_scale: 0.5,
+            max_scale: 1.5,
+            max_slope_degrees: Some(25.0),
+            enabled: true,
+            render_key: "tree/oak",
+            allowed_biomes: [
+                "Desert",
+                "Forest",
+                "Marsh",
+                "Plains",
+            ],
+            spawn_weight: 1.0,
+            random_rotation_y: true,
+            placement_tags: [],
+        ),
+    ],
+)

@@ -29,8 +29,10 @@ pub use authoring::{
 pub use biome_filter::{filter_candidates_by_biome, BiomeFilterResult};
 pub use catalog::{
     default_blocks_movement, DoodadCatalog, DoodadCatalogError, DoodadDefinition,
-    DoodadDefinitionId, DoodadRenderKey, starter_definitions,
+    DoodadDefinitionId, DoodadRenderKey,
 };
+#[cfg(test)]
+pub use catalog::starter_definitions;
 pub use exclusion::{
     filter_candidates_by_exclusion_zones, DoodadExclusionZone, ExclusionFilterOptions,
     ExclusionFilterResult,
@@ -58,6 +60,7 @@ pub use record::DoodadRecord;
 pub use source::DoodadSource;
 pub use store::ChunkDoodadStore;
 pub use terrain_validation::{filter_candidates_by_terrain, TerrainValidationResult};
+pub use generation::DeterministicRng;
 
 /// Why [`crate::world::WorldData::insert_doodad`] or relocation rejected a record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

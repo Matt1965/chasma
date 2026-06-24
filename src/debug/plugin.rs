@@ -19,6 +19,7 @@ impl Plugin for DebugOverlayPlugin {
             .init_resource::<ClientFrameIndex>()
             .init_resource::<IntentDispatchHistory>()
             .init_resource::<DebugOverlaySettings>()
+            .init_resource::<super::inspector_focus::InspectorOverlayFocus>()
             .init_resource::<PendingDispatchTrace>()
             .init_resource::<PendingSimulationTrace>()
             .init_resource::<super::boundaries::ClientBoundaryGuard>()
@@ -26,7 +27,7 @@ impl Plugin for DebugOverlayPlugin {
             .add_systems(
                 Update,
                 advance_client_frame_index
-                    .before(crate::player::tick_unit_movement)
+                    .before(crate::simulation::SimulationSystems)
                     .in_set(PlayerControlSystems),
             );
     }

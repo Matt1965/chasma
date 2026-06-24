@@ -8,9 +8,10 @@ mod command_types;
 mod context_resolver;
 
 pub use command_builder::{
-    build_command_plan, build_command_plan_or_fallback_move, unit_orders_for_plan,
-    BuiltCommandPlan, CommandBuildError,
+    build_command_plan, unit_orders_for_plan, BuiltCommandPlan, CommandBuildError,
 };
+#[cfg(test)]
+pub use command_builder::build_command_plan_or_fallback_move;
 pub use command_palette::{
     available_commands_for_selection, unit_supports_command, CommandPaletteEntry,
 };

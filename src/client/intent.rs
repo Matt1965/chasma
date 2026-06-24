@@ -31,11 +31,13 @@ pub enum ClientIntent {
     },
     /// Legacy move intent — routed through the contextual command pipeline.
     MoveCommand { target: WorldPosition },
+    /// Explicit command palette selection (Stop / Hold / future hotkeys).
+    PaletteCommand {
+        command_type: crate::client::commands::CommandType,
+    },
     /// Shift modifier edge (optional; also tracked on [`ClientInputModifiers`]).
     ShiftModifier { pressed: bool },
 }
-
-/// Per-frame, order-preserving intent buffer cleared after dispatch.
 #[derive(Resource, Default, Debug, Clone, PartialEq)]
 pub struct ClientIntentQueue {
     pending: Vec<ClientIntent>,
@@ -73,6 +75,8 @@ impl ClientIntentQueue {
 #[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientInputModifiers {
     pub shift: bool,
+    /// Selectable unit filter for this frame (ADR-051 O1).
+    pub selection_policy: crate::world::SelectionControllabilityPolicy,
 }
 
 #[cfg(test)]

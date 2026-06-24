@@ -2,13 +2,9 @@
 
 use bevy::prelude::*;
 
-use crate::client::IntentDispatchStatus;
 use crate::client::ResolvedCommandFeedback;
 use crate::debug::dispatch_pending::PendingDispatchTrace;
-use crate::debug::{
-    unit_ids_for_intent, ClientFrameIndex, ClientBoundaryGuard, CommandTraceBuffer,
-    IntentDispatchHistory,
-};
+use crate::debug::{ClientBoundaryGuard, CommandTraceBuffer, IntentDispatchHistory};
 
 /// Record dispatch traces and history from the pending batch (read-only simulation).
 pub fn flush_intent_dispatch_trace(
@@ -49,8 +45,9 @@ pub fn flush_intent_dispatch_trace(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::{ClientIntent, IntentDispatchRecord, IntentDispatchReport};
+    use crate::client::{ClientIntent, IntentDispatchRecord, IntentDispatchReport, IntentDispatchStatus};
     use crate::debug::dispatch_pending::PendingDispatchTraceRecord;
+    use crate::debug::unit_ids_for_intent;
     use crate::world::{ChunkCoord, LocalPosition, UnitId, WorldPosition};
 
     fn pos(x: f32, z: f32) -> WorldPosition {

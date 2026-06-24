@@ -6,7 +6,7 @@ use bevy::window::PrimaryWindow;
 
 use crate::camera::RtsCamera;
 use crate::units::UnitRenderEntity;
-use crate::world::{UnitCatalog, UnitDefinition, UnitId, WorldData};
+use crate::world::{unit_is_selectable, SelectionControllabilityPolicy, UnitCatalog, UnitDefinition, UnitId, WorldData};
 
 /// Minimum pick radius so small unit meshes remain clickable (meters).
 const MIN_UNIT_PICK_RADIUS_METERS: f32 = 1.5;
@@ -45,6 +45,7 @@ pub fn pick_unit_along_ray(
     world: &WorldData,
     catalog: &UnitCatalog,
     units: &Query<(&UnitRenderEntity, &GlobalTransform)>,
+    policy: SelectionControllabilityPolicy,
 ) -> Option<UnitId> {
     let mut best: Option<(f32, UnitId)> = None;
 
@@ -55,6 +56,9 @@ pub fn pick_unit_along_ray(
         let Some(definition) = catalog.get(&record.definition_id) else {
             continue;
         };
+        if !unit_is_selectable(record, policy) {
+            continue;
+        }
         let radius = unit_pick_radius(definition);
         let center = transform.translation() + Vec3::Y * (radius * 0.35);
         let Some(distance) = ray_sphere_hit_distance(ray, center, radius) else {
