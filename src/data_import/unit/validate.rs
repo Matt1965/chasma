@@ -34,6 +34,15 @@ pub fn validate_row(row: &UnitImportRow) -> Result<(), crate::data_import::RowIm
             row.max_slope_degrees
         )));
     }
+    if row.has_default_weapon_column && row.default_weapon_id.trim().is_empty() {
+        return Err(fail("Default Weapon ID must be non-empty".to_string()));
+    }
+    if row.max_hp == 0 {
+        return Err(fail(format!(
+            "Max HP must be > 0 (got {})",
+            row.max_hp
+        )));
+    }
     if !row.power_rating.is_finite()
         || !row.move_speed_mps.is_finite()
         || !row.collision_radius_meters.is_finite()
@@ -63,6 +72,7 @@ mod tests {
             faction: "Wild".to_string(),
             level: 2,
             base_hp: 5,
+            max_hp: 5,
             strength: 4,
             dexterity: 6,
             constitution: 3,
@@ -75,15 +85,32 @@ mod tests {
             move_speed_mps: move_speed,
             collision_radius_meters: collision,
             max_slope_degrees: 40.0,
+            default_weapon_id: "weapon_fists".to_string(),
             enabled: true,
             enabled_was_blank: false,
             has_file_path_column: true,
+            has_default_weapon_column: true,
         }
     }
 
     #[test]
     fn rejects_non_positive_move_speed() {
         assert!(validate_row(&row_with(0.0, 0.5)).is_err());
+    }
+
+    #[test]
+    fn rejects_non_positive_max_hp() {
+        let mut row = row_with(4.5, 0.6);
+        row.max_hp = 0;
+        assert!(validate_row(&row).is_err());
+    }
+
+    #[test]
+    fn rejects_empty_default_weapon_id() {
+        let mut row = row_with(4.5, 0.6);
+        row.default_weapon_id.clear();
+        row.has_default_weapon_column = true;
+        assert!(validate_row(&row).is_err());
     }
 
     #[test]

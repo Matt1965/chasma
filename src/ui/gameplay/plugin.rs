@@ -31,11 +31,7 @@ pub struct GameplayUiPlugin;
 impl Plugin for GameplayUiPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<GameplayUiState>()
-            .insert_resource(PlayerHudState {
-                visible: true,
-                squad_filter_mode: super::player_hud_state::SquadFilterMode::AvailableUnits,
-                ..Default::default()
-            })
+            .insert_resource(PlayerHudState::new_visible())
             .init_resource::<PlayerHudHoverState>()
             .init_resource::<GameplayCursorPresentation>()
             .init_resource::<MoveCommandFeedback>()

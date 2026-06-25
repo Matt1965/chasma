@@ -126,11 +126,13 @@ mod tests {
             1,
             1,
             1,
+            1,
             1.0,
             "Common",
             4.0,
             0.1,
             40.0,
+            crate::world::WeaponDefinitionId::new("weapon_fists"),
             true,
             UnitRenderKey::unset(),
         );

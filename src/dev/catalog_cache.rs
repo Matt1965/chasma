@@ -25,22 +25,18 @@ pub struct CatalogBrowseIndex {
 
 impl CatalogBrowseIndex {
     pub fn sync(&mut self, unit_catalog: &UnitCatalog, doodad_catalog: &DoodadCatalog) {
-        if self.units.catalog_len != unit_catalog.len() {
-            self.units.all = unit_catalog
-                .definitions()
-                .iter()
-                .map(unit_row)
-                .collect();
-            self.units.catalog_len = unit_catalog.len();
-        }
-        if self.doodads.catalog_len != doodad_catalog.len() {
-            self.doodads.all = doodad_catalog
-                .definitions()
-                .iter()
-                .map(doodad_row)
-                .collect();
-            self.doodads.catalog_len = doodad_catalog.len();
-        }
+        self.units.all = unit_catalog
+            .definitions()
+            .iter()
+            .map(unit_row)
+            .collect();
+        self.units.catalog_len = unit_catalog.len();
+        self.doodads.all = doodad_catalog
+            .definitions()
+            .iter()
+            .map(doodad_row)
+            .collect();
+        self.doodads.catalog_len = doodad_catalog.len();
     }
 }
 

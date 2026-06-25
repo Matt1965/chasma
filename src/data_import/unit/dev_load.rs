@@ -12,9 +12,9 @@ use crate::data_import::DataImportError;
 const SESSION_HEADER: &str = "# chasma dev startup log";
 
 /// Load [`UnitCatalog`] for dev startup from the design workbook `Units` sheet.
-pub fn resolve_dev_unit_catalog() -> UnitCatalog {
+pub fn resolve_dev_unit_catalog(weapons: &crate::world::WeaponCatalog) -> UnitCatalog {
     let path = dev_design_workbook_path();
-    match try_import_dev_unit_catalog(&path) {
+    match try_import_dev_unit_catalog(&path, weapons) {
         Ok((catalog, summary)) => {
             append_log_line(
                 DEV_STARTUP_LOG_PATH,
@@ -35,6 +35,16 @@ pub fn resolve_dev_unit_catalog() -> UnitCatalog {
                     &format!("Unit import warning: {warning}"),
                 );
             }
+            let ids: Vec<_> = catalog
+                .definitions()
+                .iter()
+                .map(|def| def.id.as_str())
+                .collect();
+            append_log_line(
+                DEV_STARTUP_LOG_PATH,
+                SESSION_HEADER,
+                &format!("Unit catalog ids: {}", ids.join(", ")),
+            );
             let renderable: Vec<_> = catalog
                 .definitions()
                 .iter()
@@ -66,15 +76,16 @@ pub fn resolve_dev_unit_catalog() -> UnitCatalog {
                     path.display()
                 ),
             );
-            UnitCatalog::default()
+            UnitCatalog::from_definitions(Vec::new()).expect("empty unit catalog is valid")
         }
     }
 }
 
 fn try_import_dev_unit_catalog(
     path: &Path,
+    weapons: &crate::world::WeaponCatalog,
 ) -> Result<(UnitCatalog, crate::data_import::ImportSummary), DataImportError> {
-    let (definitions, summary) = import_units_from_excel(path)?;
+    let (definitions, summary) = import_units_from_excel(path, weapons)?;
     let catalog = UnitCatalog::from_definitions(definitions).map_err(|err| {
         DataImportError::WorkbookOpen(format!("unit catalog build failed: {err:?}"))
     })?;

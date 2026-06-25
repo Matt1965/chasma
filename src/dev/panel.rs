@@ -494,7 +494,7 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
             root.spawn((
                 DevWorldToolsText,
                 DevPanelUi,
-                Text::new("World tools — coming soon (scenario editor, brushes, save states)"),
+                Text::new("World tools — terrain/scenario utilities (sim controls are above)"),
                 TextFont {
                     font_size: 11.0,
                     ..default()
@@ -505,6 +505,9 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
                     ..default()
                 },
             ));
+
+            super::time_of_day_panel::spawn_time_of_day_section(root);
+            super::lighting_panel::spawn_lighting_section(root);
 
             spawn_debug_toggle_row(root, "Master overlay", DevToggleFlag::Master);
             spawn_debug_toggle_row(root, "Paths", DevToggleFlag::Paths);
@@ -1002,6 +1005,29 @@ pub(crate) fn sync_dev_panel_button_styles(
             Without<DevPlacementButton>,
         ),
     >,
+    mut time_buttons: Query<
+        (&Interaction, &mut BackgroundColor),
+        (
+            With<super::time_of_day_panel::DevTimeOfDayButton>,
+            With<Button>,
+            Without<DevTabButton>,
+            Without<DevSimulationButton>,
+            Without<DevPlacementButton>,
+            Without<DevSceneButton>,
+        ),
+    >,
+    mut lighting_buttons: Query<
+        (&Interaction, &mut BackgroundColor),
+        (
+            With<super::lighting_panel::DevLightingTuneButton>,
+            With<Button>,
+            Without<DevTabButton>,
+            Without<DevSimulationButton>,
+            Without<DevPlacementButton>,
+            Without<DevSceneButton>,
+            Without<super::time_of_day_panel::DevTimeOfDayButton>,
+        ),
+    >,
     mut toggle_buttons: Query<
         (&Interaction, &DevToggleButton, &mut BackgroundColor),
         (
@@ -1010,6 +1036,8 @@ pub(crate) fn sync_dev_panel_button_styles(
             Without<DevSimulationButton>,
             Without<DevPlacementButton>,
             Without<DevSceneButton>,
+            Without<super::time_of_day_panel::DevTimeOfDayButton>,
+            Without<super::lighting_panel::DevLightingTuneButton>,
         ),
     >,
 ) {
@@ -1032,6 +1060,14 @@ pub(crate) fn sync_dev_panel_button_styles(
     }
 
     for (interaction, mut bg) in &mut scene_buttons {
+        *bg = menu_button_bg(interaction, false);
+    }
+
+    for (interaction, mut bg) in &mut time_buttons {
+        *bg = menu_button_bg(interaction, false);
+    }
+
+    for (interaction, mut bg) in &mut lighting_buttons {
         *bg = menu_button_bg(interaction, false);
     }
 

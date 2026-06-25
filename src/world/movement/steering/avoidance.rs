@@ -120,7 +120,7 @@ pub fn gather_steering_neighbors(
                     let target_global = target.to_global(layout);
                     Some(Vec2::new(target_global.x, target_global.z))
                 }
-                UnitState::Idle => None,
+                UnitState::Idle | UnitState::Dead => None,
             };
             Some(SteeringNeighbor {
                 unit_id: neighbor_id,

@@ -57,12 +57,15 @@ pub(crate) fn sync_inspector_panel(
 
 fn format_unit_snapshot(s: &UnitInspectorSnapshot) -> String {
     let mut out = format!(
-        "Unit #{}  def={}  state={}  tick={}\n\
+        "Unit #{}  def={}  state={}  hp={}/{}  combat={}  tick={}\n\
          Chunk ({},{}) terrain={} doodads={} units={}\n\
          Block: {}\n",
         s.unit_id.raw(),
         s.definition_id.as_str(),
         s.state_label,
+        s.current_hp,
+        s.max_hp,
+        s.combat_state_label,
         s.simulation_tick,
         s.chunk.unit_chunk.x,
         s.chunk.unit_chunk.z,

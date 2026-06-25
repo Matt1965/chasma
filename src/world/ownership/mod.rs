@@ -20,7 +20,7 @@ pub use types::{Affiliation, OwnerId, TeamId, UnitOwnership};
 mod tests {
     use super::*;
     use crate::world::UnitDefinition;
-    use crate::world::{UnitCatalog, UnitDefinitionId, UnitRenderKey};
+    use crate::world::{UnitCatalog, UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
 
     #[test]
     fn definition_faction_tag_is_not_ownership_truth() {
@@ -46,11 +46,13 @@ mod tests {
             1,
             1,
             1,
+            1,
             1.0,
             "Normal",
             4.0,
             0.5,
             40.0,
+            WeaponDefinitionId::new("weapon_fists"),
             true,
             UnitRenderKey::reserved("bandit"),
         );

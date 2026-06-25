@@ -1,5 +1,6 @@
 //! Intent dispatch — routes client intents to selection and command APIs (ADR-038 U-UI2).
 
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use crate::camera::RtsCamera;
@@ -7,14 +8,15 @@ use crate::debug::{unit_ids_for_intent, ClientBoundaryGuard, ClientFrameIndex, P
 use crate::terrain::TerrainRenderAssets;
 use crate::ui::gameplay::MoveCommandFeedback;
 use crate::units::input::{
-    collect_units_in_screen_rect, issue_idle_orders_to_selection, issue_move_orders_to_selection,
+    collect_units_in_screen_rect, issue_attack_move_orders_to_selection,
+    issue_attack_orders_to_selection, issue_idle_orders_to_selection, issue_move_orders_to_selection,
     prune_non_commandable_from_selection, MoveOrdersReport, PlayerInteractionSettings, SelectedUnits,
 };
 use crate::units::UnitRenderEntity;
 use crate::world::{
-    DoodadCatalog, InteractionOrderPlan, InteractionResolveContext, NavigationConfig,
-    NavigationPath, UnitCatalog, UnitId, WorldConfig, WorldData, WorldPosition, xz_distance,
-    resolve_unit_click_to_order, resolve_world_click_to_order,
+    AttackTargetingPolicy, DoodadCatalog, InteractionOrderPlan, InteractionResolveContext,
+    NavigationConfig, NavigationPath, UnitCatalog, UnitId, WeaponCatalog, WorldConfig, WorldData,
+    WorldPosition, xz_distance, resolve_unit_click_to_order, resolve_world_click_to_order,
 };
 
 use super::commands::{
@@ -23,6 +25,15 @@ use super::commands::{
 };
 use super::intent::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
 use crate::world::{SelectionControllabilityPolicy, unit_is_selectable};
+
+/// Bundled simulation catalogs (keeps dispatch system param count under Bevy limit).
+#[derive(SystemParam)]
+pub struct DispatchSimulationParams<'w> {
+    pub unit_catalog: Res<'w, UnitCatalog>,
+    pub weapon_catalog: Res<'w, WeaponCatalog>,
+    pub doodad_catalog: Res<'w, DoodadCatalog>,
+    pub nav_config: Res<'w, NavigationConfig>,
+}
 
 /// Outcome of dispatching one intent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,9 +78,7 @@ pub fn dispatch_client_intents(
     mut move_feedback: ResMut<MoveCommandFeedback>,
     mut world: ResMut<WorldData>,
     config: Res<WorldConfig>,
-    unit_catalog: Res<UnitCatalog>,
-    doodad_catalog: Res<DoodadCatalog>,
-    nav_config: Res<NavigationConfig>,
+    catalogs: DispatchSimulationParams,
     settings: Res<PlayerInteractionSettings>,
     camera: Query<(&Camera, &GlobalTransform), With<RtsCamera>>,
     render_assets: Option<Res<TerrainRenderAssets>>,
@@ -100,6 +109,13 @@ pub fn dispatch_client_intents(
 
     let mut report = IntentDispatchReport::default();
 
+    let DispatchSimulationParams {
+        unit_catalog,
+        weapon_catalog,
+        doodad_catalog,
+        nav_config,
+    } = catalogs;
+
     for intent in intents {
         let move_report_holder;
         let (status, _move_report) = {
@@ -110,6 +126,7 @@ pub fn dispatch_client_intents(
                 &mut move_feedback,
                 &mut world,
                 &unit_catalog,
+                &weapon_catalog,
                 &doodad_catalog,
                 &nav_config,
                 layout,
@@ -162,6 +179,7 @@ fn dispatch_one(
     move_feedback: &mut MoveCommandFeedback,
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     layout: crate::world::ChunkLayout,
@@ -181,6 +199,7 @@ fn dispatch_one(
             move_feedback,
             world,
             unit_catalog,
+            weapon_catalog,
             doodad_catalog,
             nav_config,
             layout,
@@ -195,6 +214,7 @@ fn dispatch_one(
             move_feedback,
             world,
             unit_catalog,
+            weapon_catalog,
             doodad_catalog,
             nav_config,
             layout,
@@ -275,6 +295,7 @@ fn dispatch_one(
             move_feedback,
             world,
             unit_catalog,
+            weapon_catalog,
             doodad_catalog,
             nav_config,
             layout,
@@ -290,10 +311,17 @@ fn resolve_move_target_from_interaction(
     world: &WorldData,
     doodad_catalog: &DoodadCatalog,
     unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
     selected: &[UnitId],
     target: CommandTarget,
 ) -> Option<WorldPosition> {
-    let ctx = InteractionResolveContext::new(world, doodad_catalog, unit_catalog, selected);
+    let ctx = InteractionResolveContext::new(
+        world,
+        doodad_catalog,
+        unit_catalog,
+        weapon_catalog,
+        selected,
+    );
     let plan = match target {
         CommandTarget::Terrain { position } => resolve_world_click_to_order(&ctx, position)?,
         CommandTarget::Unit { unit_id } => resolve_unit_click_to_order(&ctx, unit_id)?,
@@ -301,6 +329,7 @@ fn resolve_move_target_from_interaction(
     match plan {
         InteractionOrderPlan::MoveTo { target } => Some(target),
         InteractionOrderPlan::NoOp => None,
+        InteractionOrderPlan::Attack { .. } | InteractionOrderPlan::AttackMove { .. } => None,
     }
 }
 
@@ -310,6 +339,7 @@ fn dispatch_contextual_command(
     move_feedback: &mut MoveCommandFeedback,
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     layout: crate::world::ChunkLayout,
@@ -328,9 +358,14 @@ fn dispatch_contextual_command(
     }
 
     let selected: Vec<_> = selection.iter().collect();
+    let targeting_policy = AttackTargetingPolicy::default();
     let Some(contextual) = resolve_contextual_command(&CommandResolutionContext {
         selected_units: &selected,
         target,
+        world,
+        unit_catalog,
+        weapon_catalog,
+        targeting_policy,
     }) else {
         return IntentDispatchStatus::Ignored;
     };
@@ -350,6 +385,7 @@ fn dispatch_contextual_command(
                 world,
                 doodad_catalog,
                 unit_catalog,
+                weapon_catalog,
                 &selected_ids,
                 contextual.target,
             ) else {
@@ -362,9 +398,11 @@ fn dispatch_contextual_command(
                 world,
                 selection,
                 unit_catalog,
+                weapon_catalog,
                 doodad_catalog,
                 nav_config,
                 resolved_target,
+                targeting_policy,
             );
             *move_report = Some(move_report_result);
             move_feedback.set_target(resolved_target, layout, vertical_scale);
@@ -387,24 +425,53 @@ fn dispatch_contextual_command(
             }
             IntentDispatchStatus::Applied
         }
+        BuiltCommandPlan::Attack { target } => {
+            *move_report = Some(issue_attack_orders_to_selection(
+                world,
+                selection,
+                unit_catalog,
+                weapon_catalog,
+                doodad_catalog,
+                nav_config,
+                target,
+                targeting_policy,
+            ));
+            IntentDispatchStatus::Applied
+        }
+        BuiltCommandPlan::AttackMove { destination } => {
+            *move_report = Some(issue_attack_move_orders_to_selection(
+                world,
+                selection,
+                unit_catalog,
+                weapon_catalog,
+                doodad_catalog,
+                nav_config,
+                destination,
+                targeting_policy,
+            ));
+            IntentDispatchStatus::Applied
+        }
         BuiltCommandPlan::StopAll => {
             *move_report = Some(issue_idle_orders_to_selection(
                 world,
                 unit_catalog,
+                weapon_catalog,
                 doodad_catalog,
                 nav_config,
                 selection,
+                targeting_policy,
             ));
             IntentDispatchStatus::Applied
         }
         BuiltCommandPlan::HoldAll => {
-            // Placeholder — same idle routing until hold mechanics exist.
             *move_report = Some(issue_idle_orders_to_selection(
                 world,
                 unit_catalog,
+                weapon_catalog,
                 doodad_catalog,
                 nav_config,
                 selection,
+                targeting_policy,
             ));
             IntentDispatchStatus::Applied
         }
@@ -418,6 +485,7 @@ fn dispatch_palette_command(
     _move_feedback: &mut MoveCommandFeedback,
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     _layout: crate::world::ChunkLayout,
@@ -436,6 +504,7 @@ fn dispatch_palette_command(
     }
 
     let selected: Vec<_> = selection.iter().collect();
+    let targeting_policy = AttackTargetingPolicy::default();
     let Some(contextual) = resolve_palette_command(command_type, &selected, None) else {
         return IntentDispatchStatus::Ignored;
     };
@@ -450,13 +519,29 @@ fn dispatch_palette_command(
 
     match plan {
         BuiltCommandPlan::MoveTo { .. } => IntentDispatchStatus::Ignored,
+        BuiltCommandPlan::AttackMove { destination } => {
+            *move_report = Some(issue_attack_move_orders_to_selection(
+                world,
+                selection,
+                unit_catalog,
+                weapon_catalog,
+                doodad_catalog,
+                nav_config,
+                destination,
+                targeting_policy,
+            ));
+            IntentDispatchStatus::Applied
+        }
+        BuiltCommandPlan::Attack { .. } => IntentDispatchStatus::Ignored,
         BuiltCommandPlan::StopAll => {
             *move_report = Some(issue_idle_orders_to_selection(
                 world,
                 unit_catalog,
+                weapon_catalog,
                 doodad_catalog,
                 nav_config,
                 selection,
+                targeting_policy,
             ));
             IntentDispatchStatus::Applied
         }
@@ -464,9 +549,11 @@ fn dispatch_palette_command(
             *move_report = Some(issue_idle_orders_to_selection(
                 world,
                 unit_catalog,
+                weapon_catalog,
                 doodad_catalog,
                 nav_config,
                 selection,
+                targeting_policy,
             ));
             IntentDispatchStatus::Applied
         }
@@ -599,6 +686,7 @@ mod tests {
             &mut move_feedback,
             &mut world,
             &catalog,
+            &WeaponCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             layout(),
@@ -643,6 +731,7 @@ mod tests {
             &mut move_feedback,
             &mut world,
             &catalog,
+            &WeaponCatalog::default(),
             &doodad_catalog,
             &nav_config,
             layout(),
@@ -679,6 +768,7 @@ mod tests {
             &mut move_feedback,
             &mut world,
             &catalog,
+            &WeaponCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             layout(),
@@ -732,6 +822,7 @@ mod tests {
             &mut move_feedback,
             &mut world,
             &catalog,
+            &WeaponCatalog::default(),
             &doodad_catalog,
             &nav_config,
             layout(),
@@ -766,6 +857,7 @@ mod tests {
             &mut move_feedback,
             &mut world,
             &catalog,
+            &WeaponCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             layout(),
@@ -806,6 +898,7 @@ mod tests {
             &mut move_feedback,
             &mut world,
             &catalog,
+            &WeaponCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             layout(),
@@ -853,6 +946,7 @@ mod tests {
             &mut move_feedback,
             &mut world,
             &catalog,
+            &WeaponCatalog::default(),
             &doodad_catalog,
             &nav_config,
             layout(),
@@ -888,6 +982,7 @@ mod tests {
             &mut move_feedback,
             &mut world,
             &catalog,
+            &WeaponCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             layout(),

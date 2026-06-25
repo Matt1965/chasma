@@ -30,6 +30,7 @@ pub struct InteractionQueryContext<'a> {
     pub world: &'a WorldData,
     pub doodad_catalog: &'a DoodadCatalog,
     pub unit_catalog: &'a UnitCatalog,
+    pub weapon_catalog: &'a crate::world::WeaponCatalog,
     pub query_radius_meters: f32,
     pub agent_radius_meters: f32,
     pub max_slope_degrees: f32,
@@ -40,11 +41,13 @@ impl<'a> InteractionQueryContext<'a> {
         world: &'a WorldData,
         doodad_catalog: &'a DoodadCatalog,
         unit_catalog: &'a UnitCatalog,
+        weapon_catalog: &'a crate::world::WeaponCatalog,
     ) -> Self {
         Self {
             world,
             doodad_catalog,
             unit_catalog,
+            weapon_catalog,
             query_radius_meters: DEFAULT_INTERACTION_QUERY_RADIUS_METERS,
             agent_radius_meters: DEFAULT_INTERACTION_AGENT_RADIUS_METERS,
             max_slope_degrees: DEFAULT_INTERACTION_MAX_SLOPE_DEGREES,
@@ -238,8 +241,13 @@ mod tests {
         world: &'a WorldData,
         catalog: &'a DoodadCatalog,
         unit_catalog: &'a UnitCatalog,
+        weapon_catalog: &'a crate::world::WeaponCatalog,
     ) -> InteractionQueryContext<'a> {
-        InteractionQueryContext::new(world, catalog, unit_catalog)
+        InteractionQueryContext::new(world, catalog, unit_catalog, weapon_catalog)
+    }
+
+    fn weapons() -> crate::world::WeaponCatalog {
+        crate::world::WeaponCatalog::default()
     }
 
     #[test]
@@ -247,8 +255,9 @@ mod tests {
         let world = flat_world();
         let catalog = DoodadCatalog::default();
         let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
         let result =
-            query_world_interaction(&ctx(&world, &catalog, &unit_catalog), pos(64.0, 64.0))
+            query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), pos(64.0, 64.0))
                 .unwrap();
         assert_eq!(result.interaction_type, InteractionType::MoveTarget);
         assert!(result.valid);
@@ -258,6 +267,7 @@ mod tests {
     fn blocking_doodad_returns_blocked_area() {
         let catalog = DoodadCatalog::default();
         let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
         let mut world = flat_world();
         create_doodad(
             &catalog,
@@ -270,7 +280,7 @@ mod tests {
         .unwrap();
 
         let result =
-            query_world_interaction(&ctx(&world, &catalog, &unit_catalog), pos(50.0, 50.0))
+            query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), pos(50.0, 50.0))
                 .unwrap();
         assert_eq!(result.interaction_type, InteractionType::BlockedArea);
         assert!(matches!(result.target, InteractionTargetRef::Doodad(_)));
@@ -280,6 +290,7 @@ mod tests {
     fn non_blocking_doodad_returns_interactable_object() {
         let catalog = DoodadCatalog::default();
         let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
         let mut world = flat_world();
         create_doodad(
             &catalog,
@@ -292,7 +303,7 @@ mod tests {
         .unwrap();
 
         let result =
-            query_world_interaction(&ctx(&world, &catalog, &unit_catalog), pos(30.0, 30.0))
+            query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), pos(30.0, 30.0))
                 .unwrap();
         assert_eq!(result.interaction_type, InteractionType::InteractableObject);
     }
@@ -301,6 +312,7 @@ mod tests {
     fn resource_node_returns_resource_node_type() {
         let catalog = DoodadCatalog::default();
         let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
         let mut world = flat_world();
         create_doodad(
             &catalog,
@@ -313,7 +325,7 @@ mod tests {
         .unwrap();
 
         let result =
-            query_world_interaction(&ctx(&world, &catalog, &unit_catalog), pos(70.0, 70.0))
+            query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), pos(70.0, 70.0))
                 .unwrap();
         assert_eq!(result.interaction_type, InteractionType::ResourceNode);
     }
@@ -323,8 +335,9 @@ mod tests {
         let world = WorldData::new(layout());
         let catalog = DoodadCatalog::default();
         let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
         assert!(
-            query_world_interaction(&ctx(&world, &catalog, &unit_catalog), pos(1.0, 1.0)).is_none()
+            query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), pos(1.0, 1.0)).is_none()
         );
     }
 
@@ -335,7 +348,12 @@ mod tests {
         let world = flat_world();
         let chunks_before = world.len();
         let _ = query_world_interaction(
-            &InteractionQueryContext::new(&world, &catalog, &unit_catalog),
+            &InteractionQueryContext::new(
+                &world,
+                &catalog,
+                &unit_catalog,
+                &crate::world::WeaponCatalog::default(),
+            ),
             pos(10.0, 10.0),
         );
         assert_eq!(world.len(), chunks_before);
@@ -345,9 +363,10 @@ mod tests {
     fn classification_is_deterministic() {
         let catalog = DoodadCatalog::default();
         let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
         let world = flat_world();
-        let a = query_world_interaction(&ctx(&world, &catalog, &unit_catalog), pos(12.0, 14.0));
-        let b = query_world_interaction(&ctx(&world, &catalog, &unit_catalog), pos(12.0, 14.0));
+        let a = query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), pos(12.0, 14.0));
+        let b = query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), pos(12.0, 14.0));
         assert_eq!(a, b);
     }
 }

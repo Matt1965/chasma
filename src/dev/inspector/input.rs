@@ -144,6 +144,7 @@ pub fn handle_inspector_input(
             &capture.world,
             &capture.unit_catalog,
             &capture.doodad_catalog,
+            &capture.weapon_catalog,
             click.world_position,
         );
         inspector.last_message = "Interaction probe at terrain click".into();

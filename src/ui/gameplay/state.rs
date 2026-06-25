@@ -336,6 +336,10 @@ mod tests {
             outcome: CommandTraceOutcome::OrderResolved,
             path_waypoint_count: Some(3),
             error: None,
+            combat_status: None,
+            center_distance_meters: None,
+            edge_distance_meters: None,
+            weapon_range_meters: None,
         };
         assert!(!is_gameplay_visible_trace(&entry));
     }

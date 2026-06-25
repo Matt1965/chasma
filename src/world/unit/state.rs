@@ -15,4 +15,6 @@ pub enum UnitState {
         path: NavigationPath,
         waypoint_index: usize,
     },
+    /// HP depleted — queued for deferred removal (ADR-059 C6).
+    Dead,
 }

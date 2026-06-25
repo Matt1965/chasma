@@ -2,15 +2,18 @@
 //!
 //! Produces orders only — movement/pathfinding remain authoritative downstream.
 
+use crate::world::combat::{classify_unit_target, AttackTargetingPolicy};
 use crate::world::{UnitId, UnitOrder, WorldData, WorldPosition};
 
 use super::query::{query_world_interaction, InteractionQueryContext};
-use super::types::{InteractionResult, InteractionType};
+use super::types::{InteractionResult, InteractionTargetRef, InteractionType};
 
 /// Resolved interaction outcome before per-unit issuance.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum InteractionOrderPlan {
     MoveTo { target: WorldPosition },
+    Attack { target: UnitId },
+    AttackMove { destination: WorldPosition },
     NoOp,
 }
 
@@ -19,6 +22,7 @@ pub enum InteractionOrderPlan {
 pub struct InteractionResolveContext<'a> {
     pub query: InteractionQueryContext<'a>,
     pub selected_units: &'a [UnitId],
+    pub targeting_policy: AttackTargetingPolicy,
 }
 
 impl<'a> InteractionResolveContext<'a> {
@@ -26,12 +30,19 @@ impl<'a> InteractionResolveContext<'a> {
         world: &'a WorldData,
         doodad_catalog: &'a crate::world::DoodadCatalog,
         unit_catalog: &'a crate::world::UnitCatalog,
+        weapon_catalog: &'a crate::world::WeaponCatalog,
         selected_units: &'a [UnitId],
     ) -> Self {
         Self {
-            query: InteractionQueryContext::new(world, doodad_catalog, unit_catalog),
+            query: InteractionQueryContext::new(world, doodad_catalog, unit_catalog, weapon_catalog),
             selected_units,
+            targeting_policy: AttackTargetingPolicy::default(),
         }
+    }
+
+    pub fn with_targeting_policy(mut self, policy: AttackTargetingPolicy) -> Self {
+        self.targeting_policy = policy;
+        self
     }
 }
 
@@ -53,7 +64,32 @@ pub fn resolve_interaction_to_order(interaction: &InteractionResult) -> Interact
                 target: interaction.position,
             }
         }
+        InteractionType::AttackableUnit => InteractionOrderPlan::Attack {
+            target: unit_id_from_target(interaction),
+        },
+        InteractionType::FriendlyUnit | InteractionType::NeutralUnit => {
+            if interaction.target.is_unit() {
+                InteractionOrderPlan::MoveTo {
+                    target: interaction.position,
+                }
+            } else {
+                InteractionOrderPlan::NoOp
+            }
+        }
         InteractionType::BlockedArea | InteractionType::None => InteractionOrderPlan::NoOp,
+    }
+}
+
+fn unit_id_from_target(interaction: &InteractionResult) -> UnitId {
+    match interaction.target {
+        InteractionTargetRef::Unit(id) => id,
+        _ => UnitId::new(0),
+    }
+}
+
+impl InteractionTargetRef {
+    fn is_unit(self) -> bool {
+        matches!(self, Self::Unit(_))
     }
 }
 
@@ -85,7 +121,26 @@ pub fn resolve_unit_click_to_order(
         .get_unit(target_unit)
         .map(|record| record.placement.position)?;
 
-    let interaction = query_world_interaction(&ctx.query, position)?;
+    let attacker = *ctx.selected_units.first()?;
+    let interaction_type = classify_unit_target(
+        ctx.query.world,
+        attacker,
+        target_unit,
+        ctx.query.weapon_catalog,
+        ctx.query.unit_catalog,
+        ctx.targeting_policy,
+    );
+    let interaction = InteractionResult {
+        interaction_type,
+        position,
+        metadata: super::types::InteractionMetadata {
+            label: interaction_type.label().to_string(),
+            doodad_kind: None,
+            blocks_movement: false,
+        },
+        valid: true,
+        target: InteractionTargetRef::Unit(target_unit),
+    };
     Some(resolve_interaction_to_order(&interaction))
 }
 
@@ -93,6 +148,10 @@ pub fn resolve_unit_click_to_order(
 pub fn interaction_plan_to_unit_order(plan: InteractionOrderPlan) -> Option<UnitOrder> {
     match plan {
         InteractionOrderPlan::MoveTo { target } => Some(UnitOrder::MoveTo { target }),
+        InteractionOrderPlan::Attack { target } => Some(UnitOrder::Attack { target }),
+        InteractionOrderPlan::AttackMove { destination } => {
+            Some(UnitOrder::AttackMove { destination })
+        }
         InteractionOrderPlan::NoOp => None,
     }
 }
@@ -139,13 +198,28 @@ mod tests {
         world
     }
 
+    fn weapons() -> crate::world::WeaponCatalog {
+        crate::world::WeaponCatalog::default()
+    }
+
+    fn resolve_ctx<'a>(
+        world: &'a WorldData,
+        catalog: &'a crate::world::DoodadCatalog,
+        unit_catalog: &'a crate::world::UnitCatalog,
+        weapon_catalog: &'a crate::world::WeaponCatalog,
+        selected: &'a [UnitId],
+    ) -> InteractionResolveContext<'a> {
+        InteractionResolveContext::new(world, catalog, unit_catalog, weapon_catalog, selected)
+    }
+
     #[test]
     fn resolver_produces_move_to_for_move_target() {
         let world = flat_world();
         let catalog = crate::world::DoodadCatalog::default();
         let unit_catalog = crate::world::UnitCatalog::default();
+        let weapon_catalog = weapons();
         let units = [UnitId::new(1)];
-        let ctx = InteractionResolveContext::new(&world, &catalog, &unit_catalog, &units);
+        let ctx = resolve_ctx(&world, &catalog, &unit_catalog, &weapon_catalog, &units);
         let plan = resolve_world_click_to_order(&ctx, pos(40.0, 40.0)).unwrap();
         assert!(matches!(plan, InteractionOrderPlan::MoveTo { .. }));
         let order = interaction_plan_to_unit_order(plan).unwrap();
@@ -167,7 +241,8 @@ mod tests {
         .unwrap();
         let unit_catalog = crate::world::UnitCatalog::default();
         let units = [UnitId::new(1)];
-        let ctx = InteractionResolveContext::new(&world, &catalog, &unit_catalog, &units);
+        let weapon_catalog = weapons();
+        let ctx = resolve_ctx(&world, &catalog, &unit_catalog, &weapon_catalog, &units);
         let plan = resolve_world_click_to_order(&ctx, pos(50.0, 50.0)).unwrap();
         assert_eq!(plan, InteractionOrderPlan::NoOp);
         assert!(interaction_plan_to_unit_order(plan).is_none());
@@ -188,7 +263,8 @@ mod tests {
         .unwrap();
         let unit_catalog = crate::world::UnitCatalog::default();
         let units = [UnitId::new(1)];
-        let ctx = InteractionResolveContext::new(&world, &catalog, &unit_catalog, &units);
+        let weapon_catalog = weapons();
+        let ctx = resolve_ctx(&world, &catalog, &unit_catalog, &weapon_catalog, &units);
         let plan = resolve_world_click_to_order(&ctx, pos(60.0, 60.0)).unwrap();
         assert!(matches!(plan, InteractionOrderPlan::MoveTo { .. }));
     }
@@ -198,7 +274,8 @@ mod tests {
         let world = flat_world();
         let catalog = crate::world::DoodadCatalog::default();
         let unit_catalog = crate::world::UnitCatalog::default();
-        let ctx = InteractionResolveContext::new(&world, &catalog, &unit_catalog, &[]);
+        let weapon_catalog = weapons();
+        let ctx = resolve_ctx(&world, &catalog, &unit_catalog, &weapon_catalog, &[]);
         assert!(resolve_world_click_to_order(&ctx, pos(1.0, 1.0)).is_none());
     }
 
@@ -209,30 +286,79 @@ mod tests {
         let unit_catalog = crate::world::UnitCatalog::default();
         let one = [UnitId::new(1)];
         let many = [UnitId::new(1), UnitId::new(2), UnitId::new(3)];
-        let ctx_one = InteractionResolveContext::new(&world, &catalog, &unit_catalog, &one);
-        let ctx_many = InteractionResolveContext::new(&world, &catalog, &unit_catalog, &many);
+        let weapon_catalog = weapons();
+        let ctx_one = resolve_ctx(&world, &catalog, &unit_catalog, &weapon_catalog, &one);
+        let ctx_many = resolve_ctx(&world, &catalog, &unit_catalog, &weapon_catalog, &many);
         let a = resolve_world_click_to_order(&ctx_one, pos(20.0, 20.0));
         let b = resolve_world_click_to_order(&ctx_many, pos(20.0, 20.0));
         assert_eq!(a, b);
     }
 
     #[test]
-    fn unit_click_resolves_from_unit_position() {
+    fn unit_click_on_hostile_resolves_to_attack() {
+        use crate::world::{
+            create_unit_with_ownership, UnitOwnership,
+        };
         let unit_catalog = crate::world::UnitCatalog::default();
         let catalog = crate::world::DoodadCatalog::default();
         let mut world = flat_world();
-        let unit_id = create_unit(
+        let player = create_unit_with_ownership(
             &unit_catalog,
             &mut world,
             &UnitDefinitionId::new("wolf"),
-            pos(15.0, 15.0),
+            pos(1.0, 1.0),
             UnitSource::Authored,
+            UnitOwnership::player_default(),
         )
         .unwrap()
         .id;
-        let selected = [UnitId::new(99)];
-        let ctx = InteractionResolveContext::new(&world, &catalog, &unit_catalog, &selected);
-        let plan = resolve_unit_click_to_order(&ctx, unit_id).unwrap();
+        let hostile = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(15.0, 15.0),
+            UnitSource::Authored,
+            UnitOwnership::hostile(),
+        )
+        .unwrap()
+        .id;
+        let selected = [player];
+        let weapon_catalog = weapons();
+        let ctx = resolve_ctx(&world, &catalog, &unit_catalog, &weapon_catalog, &selected);
+        let plan = resolve_unit_click_to_order(&ctx, hostile).unwrap();
+        assert!(matches!(plan, InteractionOrderPlan::Attack { target } if target == hostile));
+    }
+
+    #[test]
+    fn unit_click_on_friendly_resolves_to_move() {
+        use crate::world::{create_unit_with_ownership, UnitOwnership};
+        let unit_catalog = crate::world::UnitCatalog::default();
+        let catalog = crate::world::DoodadCatalog::default();
+        let mut world = flat_world();
+        let player = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let friendly = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(15.0, 15.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let selected = [player];
+        let weapon_catalog = weapons();
+        let ctx = resolve_ctx(&world, &catalog, &unit_catalog, &weapon_catalog, &selected);
+        let plan = resolve_unit_click_to_order(&ctx, friendly).unwrap();
         assert!(matches!(plan, InteractionOrderPlan::MoveTo { .. }));
     }
 }

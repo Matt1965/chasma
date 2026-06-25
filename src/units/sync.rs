@@ -389,6 +389,7 @@ mod tests {
                         ),
                         UnitSource::Authored,
                         crate::world::UnitOwnership::neutral(),
+                        10,
                     ),
                 )
                 .unwrap();
@@ -417,11 +418,13 @@ mod tests {
             1,
             1,
             1,
+            1,
             1.0,
             "Common",
             4.0,
             0.5,
             40.0,
+            crate::world::WeaponDefinitionId::new("weapon_fists"),
             true,
             UnitRenderKey::unset(),
         )])
@@ -446,6 +449,22 @@ mod tests {
             .resource_mut::<ChunkResidencyTracker>()
             .mark_resident(chunk);
         app.insert_resource(UnitSceneAssets::default());
+        app.update();
+        assert!(app.world().resource::<UnitRenderIndex>().0.is_empty());
+    }
+
+    #[test]
+    fn death_pipeline_removal_despawns_render_entity() {
+        let mut app = setup_sync_app();
+        let unit_id = prepare_resident_unit(&mut app, 2, 2);
+        app.update();
+        assert_eq!(app.world().resource::<UnitRenderIndex>().0.len(), 1);
+
+        {
+            let mut world = app.world_mut().resource_mut::<WorldData>();
+            world.damage_unit(unit_id, 999).unwrap();
+            crate::world::step_unit_death_pipeline(&mut world, 1);
+        }
         app.update();
         assert!(app.world().resource::<UnitRenderIndex>().0.is_empty());
     }

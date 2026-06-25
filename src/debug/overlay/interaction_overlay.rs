@@ -10,7 +10,7 @@ use crate::terrain::TerrainRenderAssets;
 use crate::world::{
     interaction_plan_to_unit_order, query_world_interaction, resolve_interaction_to_order,
     DoodadCatalog, InteractionDebugSnapshot, InteractionQueryContext, InteractionType,
-    UnitCatalog, WorldConfig, WorldData, WorldPosition,
+    UnitCatalog, WeaponCatalog, WorldConfig, WorldData, WorldPosition,
 };
 
 use super::helpers::{render_position, xz_to_render_y};
@@ -24,6 +24,7 @@ pub fn draw_interaction_debug_overlay(
     config: Res<WorldConfig>,
     doodad_catalog: Res<DoodadCatalog>,
     unit_catalog: Res<UnitCatalog>,
+    weapon_catalog: Res<WeaponCatalog>,
     render_assets: Option<Res<TerrainRenderAssets>>,
     mut snapshot: ResMut<InteractionDebugSnapshot>,
 ) {
@@ -35,7 +36,12 @@ pub fn draw_interaction_debug_overlay(
         return;
     };
 
-    let ctx = InteractionQueryContext::new(&world, &doodad_catalog, &unit_catalog);
+    let ctx = InteractionQueryContext::new(
+        &world,
+        &doodad_catalog,
+        &unit_catalog,
+        &weapon_catalog,
+    );
     let Some(interaction) = query_world_interaction(&ctx, position) else {
         snapshot.clear();
         return;
@@ -94,6 +100,9 @@ fn interaction_type_color(kind: InteractionType) -> Color {
         InteractionType::InteractableObject => Color::srgba(0.35, 0.65, 1.0, 0.85),
         InteractionType::BlockedArea => Color::srgba(0.95, 0.25, 0.2, 0.85),
         InteractionType::TerrainPoint => Color::srgba(0.7, 0.7, 0.7, 0.8),
+        InteractionType::AttackableUnit => Color::srgba(0.95, 0.2, 0.2, 0.9),
+        InteractionType::FriendlyUnit => Color::srgba(0.25, 0.55, 0.95, 0.85),
+        InteractionType::NeutralUnit => Color::srgba(0.85, 0.85, 0.35, 0.85),
         InteractionType::None => Color::srgba(0.5, 0.5, 0.5, 0.5),
     }
 }

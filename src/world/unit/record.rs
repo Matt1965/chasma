@@ -1,11 +1,14 @@
 use bevy::prelude::*;
 
+use super::attack_cycle::AttackCycle;
 use super::catalog::UnitDefinitionId;
+use super::combat_state::CombatState;
 use super::id::UnitId;
 use super::metadata::UnitMetadata;
 use super::placement::UnitPlacement;
 use super::source::UnitSource;
 use super::state::UnitState;
+use super::vitals::UnitVitals;
 use crate::world::ownership::{Affiliation, OwnerId, TeamId, UnitOwnership};
 
 /// One authoritative unit instance (ADR-027 U2, ADR-051 O1).
@@ -27,6 +30,10 @@ pub struct UnitRecord {
     pub team_id: Option<TeamId>,
     /// Broad classification for UI and controllability.
     pub affiliation: Affiliation,
+    pub vitals: UnitVitals,
+    pub combat_state: CombatState,
+    /// Weapon attack cycle timing when in-range (ADR-058 C5).
+    pub attack_cycle: Option<AttackCycle>,
 }
 
 impl UnitRecord {
@@ -36,6 +43,7 @@ impl UnitRecord {
         placement: UnitPlacement,
         source: UnitSource,
         ownership: UnitOwnership,
+        max_hp: u32,
     ) -> Self {
         Self {
             id,
@@ -47,6 +55,9 @@ impl UnitRecord {
             owner_id: ownership.owner_id,
             team_id: ownership.team_id,
             affiliation: ownership.affiliation,
+            vitals: UnitVitals::full(max_hp),
+            combat_state: CombatState::default(),
+            attack_cycle: None,
         }
     }
 

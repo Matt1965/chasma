@@ -100,6 +100,7 @@ pub fn format_unit_detail_lines(
         format!("Definition: {}", def.id.as_str()),
         format!("Faction: {}", def.faction_tag),
         format!("Level: {}", def.level),
+        format!("HP: {}/{}", record.vitals.current_hp, record.vitals.max_hp),
         format!("Base HP: {}", def.base_hp),
         format!("STR: {}  DEX: {}  CON: {}", def.strength, def.dexterity, def.constitution),
         format!(
@@ -109,6 +110,7 @@ pub fn format_unit_detail_lines(
         format!("Move speed: {:.1} m/s", def.move_speed_mps),
         format!("Collision radius: {:.2} m", def.collision_radius_meters),
         format!("State: {}", unit_state_label(&record.state)),
+        format!("Combat: {}", record.combat_state.label()),
     ]
 }
 
@@ -116,6 +118,7 @@ pub fn unit_state_label(state: &UnitState) -> &'static str {
     match state {
         UnitState::Idle => "Idle",
         UnitState::Moving { .. } => "Moving",
+        UnitState::Dead => "Dead",
     }
 }
 
@@ -235,6 +238,7 @@ mod tests {
         let snapshot = build_selected_unit_snapshot(&selection, &world, &catalog);
         let joined = snapshot.lines.join("\n");
         assert!(joined.contains("Wolf"));
+        assert!(joined.contains("HP: 5/5"));
         assert!(joined.contains("Base HP: 5"));
         assert!(joined.contains("STR: 4"));
         assert!(joined.contains("Move speed: 4.5"));

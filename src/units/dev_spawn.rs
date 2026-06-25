@@ -15,7 +15,7 @@ use crate::world::{
 const SESSION_HEADER: &str = "# chasma dev startup log";
 
 /// Dev preview unit count (grid near camera focus).
-pub const DEV_PREVIEW_UNIT_COUNT: usize = 100;
+pub const DEV_PREVIEW_UNIT_COUNT: usize = 1;
 
 /// XZ spacing between grid slots (meters).
 const DEV_PREVIEW_GRID_SPACING_METERS: f32 = 4.0;
@@ -169,7 +169,7 @@ fn build_spawn_plan<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{UnitDefinitionId, UnitRenderKey};
+    use crate::world::{UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
     use crate::world::UnitDefinition;
 
     fn stub_definition(id: &str, key: Option<&str>) -> UnitDefinition {
@@ -185,11 +185,13 @@ mod tests {
             1,
             1,
             1,
+            1,
             1.0,
             "Common",
             4.0,
             0.5,
             40.0,
+            WeaponDefinitionId::new("weapon_fists"),
             true,
             match key {
                 Some(key) => UnitRenderKey::reserved(key),

@@ -2,6 +2,9 @@
 
 use bevy::prelude::*;
 
+/// Fixed simulation tick duration (30 Hz). Combat timing uses this, not render delta.
+pub const SIMULATION_TICK_SECONDS: f32 = 1.0 / 30.0;
+
 /// Global simulation tick gate — independent of rendering, UI, and dev mode.
 #[derive(Resource, Debug, Clone, PartialEq, Reflect)]
 #[reflect(Resource)]

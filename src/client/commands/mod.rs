@@ -67,17 +67,23 @@ mod tests {
 
         let units = [crate::world::UnitId::new(1)];
         let target = CommandTarget::Terrain { position: pos(8.0, 8.0) };
-        let ctx = CommandResolutionContext {
-            selected_units: &units,
-            target: target.clone(),
-        };
-        let intent = resolve_contextual_command(&ctx).unwrap();
-        let mut selection = SelectedUnits::default();
-        selection.set_single(units[0]);
         let world = crate::world::WorldData::new(crate::world::ChunkLayout {
             chunk_size_meters: 256.0,
             units_per_meter: 1.0,
         });
+        let unit_catalog = crate::world::UnitCatalog::default();
+        let weapon_catalog = crate::world::WeaponCatalog::default();
+        let ctx = CommandResolutionContext {
+            selected_units: &units,
+            target: target.clone(),
+            world: &world,
+            unit_catalog: &unit_catalog,
+            weapon_catalog: &weapon_catalog,
+            targeting_policy: crate::world::AttackTargetingPolicy::default(),
+        };
+        let intent = resolve_contextual_command(&ctx).unwrap();
+        let mut selection = SelectedUnits::default();
+        selection.set_single(units[0]);
         let plan = build_command_plan(&intent, &selection, &world).unwrap();
         assert!(matches!(plan, BuiltCommandPlan::MoveTo { .. }));
     }

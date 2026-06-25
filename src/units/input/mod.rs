@@ -22,6 +22,7 @@ pub use controllability::{
     apply_selectable_filter, prune_non_commandable_from_selection,
 };
 pub use commands::{
+    issue_attack_move_orders_to_selection, issue_attack_orders_to_selection,
     issue_idle_orders_to_selection, issue_move_orders_to_selection, MoveOrderUnitTrace,
     MoveOrdersReport,
 };

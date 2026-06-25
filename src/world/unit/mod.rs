@@ -7,8 +7,11 @@
 //! Obstacle and navigation systems will live under `world/navigation/` or
 //! `world/obstacle/` — not under this module.
 
+mod attack_cycle;
 mod authoring;
 mod catalog;
+mod combat_state;
+mod death;
 mod grounding;
 mod id;
 mod metadata;
@@ -20,6 +23,7 @@ mod record;
 mod source;
 mod state;
 mod store;
+mod vitals;
 
 pub use authoring::{
     create_unit, create_unit_with_ownership, lookup_unit, move_unit, remove_unit,
@@ -28,7 +32,14 @@ pub use authoring::{
 pub use catalog::{
     UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId, UnitRenderKey,
 };
-#[cfg(test)]
+pub use attack_cycle::{AttackCycle, AttackPhase};
+pub use death::{
+    queue_unit_removal, record_kill_attribution, step_unit_death_pipeline, KillAttribution,
+    RemovalReason, UnitDeathEvent, UnitDeathReport, UnitDeathTrace, UnitRemovalEntry,
+    UnitRemovalQueue,
+};
+pub use combat_state::CombatState;
+#[cfg(any(test, feature = "dev"))]
 pub use catalog::starter_definitions;
 pub use grounding::{
     ground_unit_position, ground_unit_to_terrain, UnitGroundingError,
@@ -48,6 +59,7 @@ pub use record::UnitRecord;
 pub use source::UnitSource;
 pub use state::UnitState;
 pub use store::ChunkUnitStore;
+pub use vitals::UnitVitals;
 
 /// Why [`crate::world::WorldData::insert_unit`] or relocation rejected a record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

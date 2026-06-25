@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 mod biome;
 mod chunk;
+mod combat;
 mod config;
 mod coordinates;
 mod data;
@@ -14,6 +15,14 @@ mod obstacle;
 mod ownership;
 mod terrain;
 mod unit;
+mod weapon;
+
+pub use weapon::{
+    DamageType, HitMode, TargetFilter, WeaponCatalog, WeaponCatalogError, WeaponDefinition,
+    WeaponDefinitionId,
+};
+#[cfg(any(test, feature = "dev"))]
+pub use weapon::starter_definitions as starter_weapon_definitions;
 
 pub use biome::{
     BiomeColorEntry, BiomeColorMapping, BiomeId, BiomeImportError, BiomeMask, BiomeMaskBounds,
@@ -26,6 +35,13 @@ pub use biome::{
     DEV_BIOME_MASK_PATH, DEV_SOURCE_WORLD_DIR,
 };
 pub use chunk::{ChunkData, ChunkId};
+pub use combat::{
+    classify_unit_target, initial_attack_combat_state, is_in_weapon_range, is_unit_alive,
+    is_valid_attack_target,
+    step_all_combat_engagement, step_all_combat_strikes, validate_attack_target,
+    AttackTargetingPolicy, CombatEngagementReport, CombatEngagementStatus, CombatEngagementTrace,
+    CombatStrikeEvent, CombatStrikeReport, CombatStrikeTrace, RangeCheck, RANGE_HYSTERESIS_METERS,
+};
 pub use config::WorldConfig;
 pub use coordinates::{ChunkCoord, ChunkLayout, LocalPosition, WorldPosition};
 pub use data::{ChunkExtent, WorldData};
@@ -84,14 +100,16 @@ pub use unit::{
     create_unit, create_unit_with_ownership, ground_unit_position, ground_unit_to_terrain, issue_unit_order, lookup_unit,
     move_unit, remove_unit, resolve_all_pending_unit_orders, resolve_pending_unit_orders,
     step_all_unit_movement,
+    step_unit_death_pipeline,
     step_unit_movement,
     BatchUnitMovementReport, ChunkUnitStore,
     UnitAuthoringError, UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId,
     UnitGroundingError, UnitId, UnitInsertError, UnitMetadata, UnitMovementError,
     UnitMovementStepReport, UnitOrder, UnitOrderError, UnitPlacement, UnitRecord, UnitRenderKey,
-    UnitSource, UnitState,
+    UnitSource, UnitState, UnitVitals, AttackCycle, AttackPhase, CombatState, RemovalReason,
+    UnitDeathReport, UnitDeathTrace, UnitDeathEvent,
 };
-#[cfg(test)]
+#[cfg(any(test, feature = "dev"))]
 pub use unit::starter_definitions as starter_unit_definitions;
 pub use terrain::{Heightfield, TerrainDataError, TerrainMask, TerrainMetadata};
 pub use terrain::{estimate_slope_degrees, ground_world_position, is_position_slope_walkable};
@@ -110,7 +128,8 @@ pub use terrain::{
 ///
 /// This is the lowest architectural layer; every later layer depends on it. It
 /// registers the foundational data types for reflection and initializes the
-/// [`WorldConfig`], (empty) [`WorldData`], [`DoodadCatalog`], and [`UnitCatalog`] resources.
+/// [`WorldConfig`], (empty) [`WorldData`], [`DoodadCatalog`], [`WeaponCatalog`],
+/// and [`UnitCatalog`] resources.
 /// Terrain import, rendering, and gameplay systems live in upper layers (ADR-007).
 pub struct WorldFoundationPlugin;
 
@@ -143,6 +162,12 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<UnitRenderKey>()
             .register_type::<UnitDefinition>()
             .register_type::<UnitCatalog>()
+            .register_type::<WeaponDefinitionId>()
+            .register_type::<DamageType>()
+            .register_type::<HitMode>()
+            .register_type::<TargetFilter>()
+            .register_type::<WeaponDefinition>()
+            .register_type::<WeaponCatalog>()
             .register_type::<UnitId>()
             .register_type::<UnitPlacement>()
             .register_type::<UnitSource>()
@@ -150,6 +175,8 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<NavigationConfig>()
             .register_type::<NavigationPath>()
             .register_type::<UnitState>()
+            .register_type::<UnitVitals>()
+            .register_type::<CombatState>()
             .register_type::<Affiliation>()
             .register_type::<OwnerId>()
             .register_type::<TeamId>()
@@ -167,12 +194,15 @@ impl Plugin for WorldFoundationPlugin {
         #[cfg(not(feature = "dev"))]
         {
             app.init_resource::<DoodadCatalog>();
+            app.init_resource::<WeaponCatalog>();
             app.init_resource::<UnitCatalog>();
         }
         #[cfg(feature = "dev")]
         {
+            let weapons = crate::data_import::resolve_dev_weapon_catalog();
+            app.insert_resource(weapons.clone());
             app.insert_resource(crate::data_import::resolve_dev_doodad_catalog());
-            app.insert_resource(crate::data_import::resolve_dev_unit_catalog());
+            app.insert_resource(crate::data_import::resolve_dev_unit_catalog(&weapons));
         }
         app.init_resource::<WorldData>();
         app.init_resource::<NavigationConfig>();

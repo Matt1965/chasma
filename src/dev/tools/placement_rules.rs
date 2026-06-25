@@ -17,8 +17,6 @@ pub struct PlacementRules {
     pub avoid_doodads: bool,
     pub min_distance_between_entities: f32,
     pub enforce_slope: bool,
-    /// When true and biome mask is loaded, doodad definitions must allow sampled biome.
-    pub enforce_biome: bool,
 }
 
 impl Default for PlacementRules {
@@ -28,7 +26,6 @@ impl Default for PlacementRules {
             avoid_doodads: true,
             min_distance_between_entities: 1.5,
             enforce_slope: true,
-            enforce_biome: true,
         }
     }
 }
@@ -39,7 +36,6 @@ pub enum PlacementRejectReason {
     TerrainUnavailable,
     SlopeTooSteep,
     BlockedByDoodad,
-    BiomeDisallowed,
     TooCloseToPeer,
 }
 
@@ -102,21 +98,7 @@ pub fn validate_placement(
         }
     }
 
-    if ctx.rules.enforce_biome {
-        if let DefinitionId::Doodad(definition_id) = ctx.definition {
-            if let Some(definition) = ctx.doodad_catalog.get(definition_id) {
-                if !definition.allowed_biomes.is_empty() {
-                    if let Some(sample) = ctx.world.biome_at(position) {
-                        if !definition.allows_biome(sample.biome) {
-                            return PlacementValidation::Rejected(
-                                PlacementRejectReason::BiomeDisallowed,
-                            );
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // Dev-authored doodad placement ignores biome restrictions from the catalog.
 
     let min_dist = ctx.rules.min_distance_between_entities;
     if min_dist > 0.0 {
@@ -274,11 +256,13 @@ mod tests {
             1,
             1,
             1,
+            1,
             1.0,
             "Test",
             1.0,
             0.5,
             5.0,
+            crate::world::WeaponDefinitionId::new("weapon_fists"),
             true,
             UnitRenderKey::reserved("strict"),
         )])

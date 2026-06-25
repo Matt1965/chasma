@@ -92,6 +92,7 @@ mod tests {
             ),
             UnitSource::Authored,
             crate::world::UnitOwnership::neutral(),
+            5,
         )
     }
 

@@ -11,6 +11,9 @@ use super::id::UnitId;
 use super::orders::resolve_pending_unit_orders;
 use super::state::UnitState;
 use super::UnitInsertError;
+use crate::world::is_unit_alive;
+use crate::world::combat::{step_all_combat_engagement, step_all_combat_strikes};
+use super::death::step_unit_death_pipeline;
 use crate::world::movement::feel::{
     should_skip_direction_smoothing, stabilized_movement_heading, steering_is_allowed,
     MovementFeelSettings, StabilizedMovementHeading,
@@ -18,8 +21,8 @@ use crate::world::movement::feel::{
 use crate::world::movement::steering::SteeringSettings;
 use crate::world::{
     apply_steering, ground_world_position, is_position_blocked_by_doodads,
-    is_position_slope_walkable, xz_distance, ChunkLayout, DoodadCatalog, NavigationConfig,
-    WorldData, WorldPosition,
+    is_position_slope_walkable, xz_distance, AttackTargetingPolicy, ChunkLayout, DoodadCatalog,
+    NavigationConfig, WeaponCatalog, WorldData, WorldPosition,
 };
 /// Distance below which a unit snaps to its move target (meters).
 const ARRIVAL_DISTANCE_METERS: f32 = 0.05;
@@ -50,11 +53,14 @@ pub struct BatchUnitMovementReport {
     pub missing_definition: u32,
 }
 
-/// Movement tick plus command-buffer resolution metadata.
+/// Movement tick plus command-buffer resolution and combat engagement metadata.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct UnitSimulationStepReport {
     pub movement: BatchUnitMovementReport,
     pub command_resolve: crate::world::CommandBufferResolveReport,
+    pub combat: crate::world::CombatEngagementReport,
+    pub combat_strike: crate::world::CombatStrikeReport,
+    pub death: crate::world::UnitDeathReport,
 }
 
 /// Why [`step_unit_movement`] could not complete a step.
@@ -79,6 +85,9 @@ pub fn step_unit_movement(
     let record = world
         .get_unit(unit_id)
         .ok_or(UnitMovementError::UnitNotFound)?;
+    if !is_unit_alive(record) || matches!(record.state, UnitState::Dead) {
+        return Ok(UnitMovementStepReport::default());
+    }
     let definition_id = record.definition_id.clone();
     let UnitState::Moving {
         target,
@@ -293,10 +302,31 @@ pub fn step_unit_movement(
 pub fn step_all_unit_movement(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
+    targeting_policy: AttackTargetingPolicy,
     delta_seconds: f32,
+    simulation_tick: u64,
 ) -> UnitSimulationStepReport {
+    let combat_strike = step_all_combat_strikes(
+        world,
+        unit_catalog,
+        weapon_catalog,
+        doodad_catalog,
+        nav_config,
+        targeting_policy,
+        delta_seconds,
+    );
+    let death = step_unit_death_pipeline(world, simulation_tick);
+    let combat = step_all_combat_engagement(
+        world,
+        unit_catalog,
+        weapon_catalog,
+        doodad_catalog,
+        nav_config,
+        targeting_policy,
+    );
     let command_resolve =
         resolve_pending_unit_orders(world, unit_catalog, doodad_catalog, nav_config);
     let mut report = BatchUnitMovementReport::default();
@@ -321,6 +351,9 @@ pub fn step_all_unit_movement(
     UnitSimulationStepReport {
         movement: report,
         command_resolve,
+        combat,
+        combat_strike,
+        death,
     }
 }
 
@@ -387,8 +420,9 @@ mod tests {
         ChunkData, ChunkId, ChunkLayout, DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides,
         DoodadSource, Heightfield, LocalPosition, NavigationConfig, NavigationPath, UnitCatalog,
         UnitDefinition, UnitDefinitionId, UnitMetadata, UnitOrder, UnitPlacement, UnitRecord,
-        UnitRenderKey, UnitSource, WorldConfig,
+        UnitRenderKey, UnitSource, WeaponCatalog, WorldConfig,
     };
+    use crate::world::AttackTargetingPolicy;
     use bevy::asset::AssetPlugin;
     use bevy::prelude::{
         App, Assets, MinimalPlugins, Quat, Scene, StandardMaterial, Transform, Update, Vec3, World,
@@ -459,11 +493,18 @@ mod tests {
         step_all_unit_movement(
             world,
             catalog,
+            &WeaponCatalog::default(),
             doodad_catalog,
             &nav_config(),
+            AttackTargetingPolicy::default(),
             delta_seconds,
+            0,
         )
         .movement
+    }
+
+    fn weapons() -> crate::world::WeaponCatalog {
+        crate::world::WeaponCatalog::default()
     }
 
     fn issue_move(
@@ -476,10 +517,12 @@ mod tests {
         issue_unit_order(
             world,
             catalog,
+            &weapons(),
             doodad_catalog,
             &nav_config(),
             unit_id,
             UnitOrder::MoveTo { target },
+            crate::world::AttackTargetingPolicy::default(),
         )
         .unwrap();
         resolve_all_pending_unit_orders(world, catalog, doodad_catalog, &nav_config());
@@ -586,6 +629,7 @@ mod tests {
             UnitPlacement::new(pos(0, 0, 0.0, 0.0, 0.0), rotation),
             source,
             crate::world::default_ownership_for_source(source),
+            5,
         );
         world
             .insert_unit(ChunkId::new(ChunkCoord::new(0, 0)), record)
@@ -667,6 +711,7 @@ mod tests {
                     UnitPlacement::new(pos(0, 0, 0.0, 0.0, 0.0), Quat::IDENTITY),
                     UnitSource::Authored,
                     crate::world::UnitOwnership::neutral(),
+                    10,
                 ),
             )
             .unwrap();
@@ -699,11 +744,13 @@ mod tests {
             1,
             1,
             1,
+            1,
             1.0,
             "Common",
             4.0,
             0.5,
             5.0,
+            crate::world::WeaponDefinitionId::new("weapon_fists"),
             true,
             UnitRenderKey::reserved("goat"),
         )])
@@ -1081,12 +1128,14 @@ mod tests {
             issue_unit_order(
                 &mut world,
                 &catalog,
+                &crate::world::WeaponCatalog::default(),
                 &doodad_catalog,
                 &nav,
                 assignment.unit_id,
                 UnitOrder::MoveTo {
                     target: assignment.target,
                 },
+                crate::world::AttackTargetingPolicy::default(),
             )
             .unwrap();
         }
@@ -1186,12 +1235,14 @@ mod tests {
         issue_unit_order(
             &mut world,
             &catalog,
+            &crate::world::WeaponCatalog::default(),
             &doodad_catalog,
             &nav_config(),
             unit_id,
             UnitOrder::MoveTo {
                 target: pos(0, 0, 60.0, 0.0, 10.0),
             },
+            crate::world::AttackTargetingPolicy::default(),
         )
         .unwrap();
 

@@ -48,6 +48,7 @@ pub fn create_unit_with_ownership(
         UnitPlacement::new(position, Quat::IDENTITY),
         source,
         ownership,
+        definition.max_hp,
     );
 
     let chunk = crate::world::ChunkId::new(position.chunk);
@@ -129,6 +130,27 @@ mod tests {
             ChunkCoord::new(chunk_x, chunk_z),
             LocalPosition::new(local),
         )
+    }
+
+    #[test]
+    fn create_unit_starts_at_full_hp() {
+        let cat = catalog();
+        let mut world = layout_world();
+        let def_id = UnitDefinitionId::new("wolf");
+        let expected_max = cat.get(&def_id).unwrap().max_hp;
+
+        let record = create_unit(
+            &cat,
+            &mut world,
+            &def_id,
+            position(0, 0, Vec3::ZERO),
+            UnitSource::Authored,
+        )
+        .unwrap();
+
+        assert_eq!(record.vitals.current_hp, expected_max);
+        assert_eq!(record.vitals.max_hp, expected_max);
+        assert_eq!(record.combat_state, crate::world::CombatState::Peaceful);
     }
 
     #[test]

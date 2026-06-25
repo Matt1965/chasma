@@ -18,7 +18,7 @@ pub struct UnitCatalog {
 }
 
 impl Default for UnitCatalog {
-    /// Empty outside unit tests; fixtures come from Excel import at runtime (ADR-049).
+    /// Test fixtures in `cargo test`; empty in dev/runtime builds (Excel import at startup).
     fn default() -> Self {
         Self::from_definitions(starter_definitions()).expect("unit catalog is valid")
     }

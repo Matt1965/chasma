@@ -13,7 +13,9 @@ pub enum CommandType {
     Move,
     Stop,
     HoldPosition,
-    /// Placeholder — resolves to move until combat exists.
+    /// Direct attack against a unit target.
+    Attack,
+    /// Move while scanning for targets — intent only in C3.
     AttackMove,
     /// Placeholder — future worker / interact hook.
     Interact,
@@ -25,6 +27,7 @@ impl CommandType {
             Self::Move => "Move",
             Self::Stop => "Stop",
             Self::HoldPosition => "Hold Position",
+            Self::Attack => "Attack",
             Self::AttackMove => "Attack Move",
             Self::Interact => "Interact",
         }
@@ -35,14 +38,15 @@ impl CommandType {
             Self::Move => "Move selected units to target",
             Self::Stop => "Stop selected units",
             Self::HoldPosition => "Hold position (placeholder)",
-            Self::AttackMove => "Attack-move (placeholder — moves for now)",
+            Self::Attack => "Attack selected units at target unit",
+            Self::AttackMove => "Attack-move to destination (intent only in C3)",
             Self::Interact => "Interact (placeholder)",
         }
     }
 
     /// Whether U-UI5 executes real simulation effects for this command.
     pub fn is_fully_functional(self) -> bool {
-        matches!(self, Self::Move | Self::Stop)
+        matches!(self, Self::Move | Self::Stop | Self::Attack | Self::AttackMove)
     }
 }
 
@@ -79,11 +83,12 @@ mod tests {
     }
 
     #[test]
-    fn only_move_and_stop_are_functional_in_u5() {
+    fn only_move_stop_and_attack_commands_are_functional_in_u5() {
         assert!(CommandType::Move.is_fully_functional());
         assert!(CommandType::Stop.is_fully_functional());
+        assert!(CommandType::Attack.is_fully_functional());
+        assert!(CommandType::AttackMove.is_fully_functional());
         assert!(!CommandType::HoldPosition.is_fully_functional());
-        assert!(!CommandType::AttackMove.is_fully_functional());
     }
 
     #[test]

@@ -304,12 +304,14 @@ mod tests {
             let result = crate::world::issue_unit_order(
                 &mut world,
                 &catalog,
+                &crate::world::WeaponCatalog::default(),
                 &doodad_catalog,
                 &nav_config,
                 assignment.unit_id,
                 crate::world::UnitOrder::MoveTo {
                     target: assignment.target,
                 },
+                crate::world::AttackTargetingPolicy::default(),
             );
             assert!(result.is_ok());
         }

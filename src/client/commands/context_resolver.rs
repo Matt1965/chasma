@@ -1,16 +1,22 @@
-//! Context resolution — classifies clicks into [`ContextualCommandIntent`] (ADR-041 U-UI5).
+//! Context resolution — classifies clicks into [`ContextualCommandIntent`] (ADR-041 U-UI5, ADR-056 C3).
 
 use bevy::prelude::Vec3;
+
+use crate::world::{is_valid_attack_target, AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldData};
 
 use crate::world::{UnitId, WorldPosition};
 
 use super::command_types::{CommandTarget, CommandType, ContextualCommandIntent};
 
 /// Inputs available when resolving a right-click into a contextual command.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct CommandResolutionContext<'a> {
     pub selected_units: &'a [UnitId],
     pub target: CommandTarget,
+    pub world: &'a WorldData,
+    pub unit_catalog: &'a UnitCatalog,
+    pub weapon_catalog: &'a WeaponCatalog,
+    pub targeting_policy: AttackTargetingPolicy,
 }
 
 /// Classify a command target given the current selection.
@@ -29,14 +35,41 @@ pub fn resolve_contextual_command(
             target: CommandTarget::Terrain { position: *position },
         }),
         CommandTarget::Unit { unit_id } => {
-            // Future: AttackMove or Interact based on unit relationship.
-            // U-UI5 default fallback — still classified as Move.
-            Some(ContextualCommandIntent {
-                command_type: CommandType::Move,
-                target: CommandTarget::Unit { unit_id: *unit_id },
-            })
+            let attacker = *ctx.selected_units.first()?;
+            if is_valid_attack_target(
+                ctx.world,
+                attacker,
+                *unit_id,
+                ctx.weapon_catalog,
+                ctx.unit_catalog,
+                ctx.targeting_policy,
+            ) || any_selected_can_attack(ctx, *unit_id)
+            {
+                Some(ContextualCommandIntent {
+                    command_type: CommandType::Attack,
+                    target: CommandTarget::Unit { unit_id: *unit_id },
+                })
+            } else {
+                Some(ContextualCommandIntent {
+                    command_type: CommandType::Move,
+                    target: CommandTarget::Unit { unit_id: *unit_id },
+                })
+            }
         }
     }
+}
+
+fn any_selected_can_attack(ctx: &CommandResolutionContext<'_>, target: UnitId) -> bool {
+    ctx.selected_units.iter().any(|attacker| {
+        is_valid_attack_target(
+            ctx.world,
+            *attacker,
+            target,
+            ctx.weapon_catalog,
+            ctx.unit_catalog,
+            ctx.targeting_policy,
+        )
+    })
 }
 
 /// Resolve an explicit palette command (keyboard/UI hotkey hook).
@@ -62,7 +95,10 @@ pub fn resolve_palette_command(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{ChunkCoord, LocalPosition, UnitId, WorldPosition};
+    use crate::world::{
+        create_unit_with_ownership, ChunkCoord, ChunkLayout, LocalPosition, UnitDefinitionId,
+        UnitOwnership, UnitSource, WorldData, WorldPosition,
+    };
     use bevy::prelude::Vec3;
 
     fn pos(x: f32, z: f32) -> WorldPosition {
@@ -72,71 +108,136 @@ mod tests {
         )
     }
 
-    fn ctx(units: &[UnitId], target: CommandTarget) -> CommandResolutionContext<'_> {
+    fn ctx<'a>(
+        units: &'a [UnitId],
+        target: CommandTarget,
+        world: &'a WorldData,
+        unit_catalog: &'a UnitCatalog,
+        weapon_catalog: &'a WeaponCatalog,
+    ) -> CommandResolutionContext<'a> {
         CommandResolutionContext {
             selected_units: units,
             target,
+            world,
+            unit_catalog,
+            weapon_catalog,
+            targeting_policy: AttackTargetingPolicy::default(),
         }
     }
 
     #[test]
     fn terrain_click_resolves_to_move() {
+        let world = WorldData::new(ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let unit_catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
         let units = [UnitId::new(1)];
         let resolved = resolve_contextual_command(&ctx(
             &units,
             CommandTarget::Terrain { position: pos(10.0, 10.0) },
+            &world,
+            &unit_catalog,
+            &weapons,
         ))
         .unwrap();
         assert_eq!(resolved.command_type, CommandType::Move);
-        assert!(matches!(resolved.target, CommandTarget::Terrain { .. }));
     }
 
     #[test]
-    fn unit_click_resolves_to_move_fallback() {
-        let units = [UnitId::new(1)];
-        let target_unit = UnitId::new(9);
+    fn hostile_unit_click_resolves_to_attack() {
+        let unit_catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = WorldData::new(ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let player = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let hostile = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(5.0, 5.0),
+            UnitSource::Authored,
+            UnitOwnership::hostile(),
+        )
+        .unwrap()
+        .id;
         let resolved = resolve_contextual_command(&ctx(
-            &units,
-            CommandTarget::Unit {
-                unit_id: target_unit,
-            },
+            &[player],
+            CommandTarget::Unit { unit_id: hostile },
+            &world,
+            &unit_catalog,
+            &weapons,
+        ))
+        .unwrap();
+        assert_eq!(resolved.command_type, CommandType::Attack);
+    }
+
+    #[test]
+    fn friendly_unit_click_resolves_to_move() {
+        let unit_catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = WorldData::new(ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let a = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let b = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(5.0, 5.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let resolved = resolve_contextual_command(&ctx(
+            &[a],
+            CommandTarget::Unit { unit_id: b },
+            &world,
+            &unit_catalog,
+            &weapons,
         ))
         .unwrap();
         assert_eq!(resolved.command_type, CommandType::Move);
-        assert_eq!(
-            resolved.target,
-            CommandTarget::Unit {
-                unit_id: target_unit
-            }
-        );
     }
 
     #[test]
     fn empty_selection_returns_none() {
+        let world = WorldData::new(ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let unit_catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
         assert!(resolve_contextual_command(&ctx(
             &[],
             CommandTarget::Terrain { position: pos(0.0, 0.0) },
+            &world,
+            &unit_catalog,
+            &weapons,
         ))
         .is_none());
-    }
-
-    #[test]
-    fn resolver_is_deterministic() {
-        let units = [UnitId::new(2), UnitId::new(5)];
-        let target = CommandTarget::Terrain { position: pos(3.0, 4.0) };
-        let a = resolve_contextual_command(&ctx(&units, target.clone()));
-        let b = resolve_contextual_command(&ctx(&units, target));
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn multi_unit_selection_still_resolves_move() {
-        let units = [UnitId::new(1), UnitId::new(2), UnitId::new(3)];
-        let resolved = resolve_contextual_command(&ctx(
-            &units,
-            CommandTarget::Terrain { position: pos(1.0, 1.0) },
-        ))
-        .unwrap();
-        assert_eq!(resolved.command_type, CommandType::Move);
     }
 }

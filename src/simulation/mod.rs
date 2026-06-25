@@ -10,6 +10,7 @@ mod plugin;
 
 pub use control::{
     apply_simulation_control_requests, SimulationControlRequests, SimulationControlState,
+    SIMULATION_TICK_SECONDS,
 };
 pub use input::handle_simulation_keyboard;
 pub use plugin::{SimulationControlSystems, SimulationPlugin, SimulationSystems};

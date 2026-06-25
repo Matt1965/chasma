@@ -39,7 +39,7 @@ fn command_enabled_for_selection(command_type: CommandType, _selection: &Selecte
     match command_type {
         CommandType::Move | CommandType::Stop => true,
         CommandType::HoldPosition => true,
-        CommandType::AttackMove | CommandType::Interact => false,
+        CommandType::AttackMove | CommandType::Interact | CommandType::Attack => false,
     }
 }
 
@@ -47,7 +47,7 @@ fn command_enabled_for_selection(command_type: CommandType, _selection: &Selecte
 pub fn unit_supports_command(_unit_id: UnitId, command_type: CommandType) -> bool {
     match command_type {
         CommandType::Move | CommandType::Stop | CommandType::HoldPosition => true,
-        CommandType::AttackMove | CommandType::Interact => false,
+        CommandType::AttackMove | CommandType::Interact | CommandType::Attack => false,
     }
 }
 

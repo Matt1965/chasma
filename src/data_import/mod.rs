@@ -5,7 +5,9 @@
 
 mod error;
 mod schema;
-mod unit;
+mod weapon;
+
+pub mod unit;
 mod validate;
 
 #[cfg(feature = "data-import")]
@@ -31,6 +33,8 @@ pub use paths::{dev_design_workbook_path, DEV_DESIGN_WORKBOOK};
 /// Same workbook as [`DEV_DESIGN_WORKBOOK`]; kept for older call sites.
 #[cfg(feature = "data-import")]
 pub use paths::DEV_DESIGN_WORKBOOK as DEV_DOODAD_EXCEL_PATH;
+#[cfg(feature = "data-import")]
+pub use weapon::{import_weapons_from_excel, resolve_dev_weapon_catalog, WEAPONS_SHEET_NAME};
 #[cfg(feature = "data-import")]
 pub use unit::{import_units_from_excel, resolve_dev_unit_catalog, UNITS_SHEET_NAME};
 /// Same workbook as [`DEV_DESIGN_WORKBOOK`]; kept for older call sites.

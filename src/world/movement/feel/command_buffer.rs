@@ -82,6 +82,45 @@ pub struct CommandResolveSuccess {
     pub path_waypoint_count: u32,
 }
 
+pub fn start_unit_move_to(
+    world: &mut WorldData,
+    unit_catalog: &UnitCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
+    unit_id: UnitId,
+    target: WorldPosition,
+) -> Result<(), UnitOrderError> {
+    let record = world.get_unit(unit_id).ok_or(UnitOrderError::UnitNotFound)?;
+    let definition_id = record.definition_id.clone();
+    let start = record.placement.position;
+    let definition = unit_catalog
+        .get(&definition_id)
+        .ok_or(UnitOrderError::DefinitionNotFound)?;
+    let path = find_path(
+        world,
+        doodad_catalog,
+        nav_config,
+        definition.collision_radius_meters,
+        definition.max_slope_degrees,
+        start,
+        target,
+    )
+    .map_err(map_navigation_error)?;
+    if path.is_empty() {
+        return Err(UnitOrderError::NoPath);
+    }
+    world
+        .set_unit_state(
+            unit_id,
+            UnitState::Moving {
+                target,
+                path,
+                waypoint_index: 0,
+            },
+        )
+        .map_err(|_| UnitOrderError::UnitNotFound)
+}
+
 pub(crate) fn resolve_one(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
@@ -90,40 +129,30 @@ pub(crate) fn resolve_one(
     unit_id: UnitId,
     order: UnitOrder,
 ) -> Result<(), UnitOrderError> {
-    let record = world.get_unit(unit_id).ok_or(UnitOrderError::UnitNotFound)?;
-    let definition_id = record.definition_id.clone();
-    let start = record.placement.position;
+    if world.get_unit(unit_id).is_none() {
+        return Err(UnitOrderError::UnitNotFound);
+    }
 
-    let state = match order {
-        UnitOrder::Idle => UnitState::Idle,
+    match order {
+        UnitOrder::Idle => {
+            world
+                .set_unit_state(unit_id, UnitState::Idle)
+                .map_err(|_| UnitOrderError::UnitNotFound)
+        }
         UnitOrder::MoveTo { target } => {
-            let definition = unit_catalog
-                .get(&definition_id)
-                .ok_or(UnitOrderError::DefinitionNotFound)?;
-            let path = find_path(
+            start_unit_move_to(
                 world,
+                unit_catalog,
                 doodad_catalog,
                 nav_config,
-                definition.collision_radius_meters,
-                definition.max_slope_degrees,
-                start,
+                unit_id,
                 target,
             )
-            .map_err(map_navigation_error)?;
-            if path.is_empty() {
-                return Err(UnitOrderError::NoPath);
-            }
-            UnitState::Moving {
-                target,
-                path,
-                waypoint_index: 0,
-            }
         }
-    };
-
-    world
-        .set_unit_state(unit_id, state)
-        .map_err(|_| UnitOrderError::UnitNotFound)
+        UnitOrder::Attack { .. } | UnitOrder::AttackMove { .. } => {
+            Err(UnitOrderError::AttackerNotFound)
+        }
+    }
 }
 
 fn map_navigation_error(error: NavigationError) -> UnitOrderError {

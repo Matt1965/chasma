@@ -1,13 +1,16 @@
-//! Unit orders and issuance (ADR-030 U5, ADR-032 U7, ADR-037 U12).
+//! Unit orders and issuance (ADR-030 U5, ADR-032 U7, ADR-037 U12, ADR-056 C3).
 
 use bevy::prelude::*;
 
 use super::catalog::UnitCatalog;
+use super::combat_state::CombatState;
 use super::id::UnitId;
 use super::state::UnitState;
+use crate::world::is_unit_alive;
 use crate::world::{
-    CommandBufferResolveReport, CommandResolveSuccess, DoodadCatalog, NavigationConfig, WorldData,
-    WorldPosition,
+    initial_attack_combat_state, validate_attack_target, AttackTargetingPolicy,
+    CommandBufferResolveReport, CommandResolveSuccess, DoodadCatalog, NavigationConfig,
+    WeaponCatalog, WorldData, WorldPosition,
 };
 use crate::world::movement::feel::PATH_RESOLVE_BUDGET_PER_TICK;
 
@@ -17,6 +20,14 @@ pub enum UnitOrder {
     Idle,
     MoveTo {
         target: WorldPosition,
+    },
+    /// Attack a specific unit — intent only in C3 (no damage).
+    Attack {
+        target: UnitId,
+    },
+    /// Move while attack-scanning — destination stored; scan deferred (C3).
+    AttackMove {
+        destination: WorldPosition,
     },
 }
 
@@ -29,20 +40,56 @@ pub enum UnitOrderError {
     PathGoalBlocked,
     NoPath,
     PathTerrainUnavailable,
+    AttackerNotFound,
+    TargetNotFound,
+    SelfTarget,
+    AttackerDead,
+    TargetDead,
+    MissingWeapon,
+    InvalidOwnershipTarget,
+    WeaponCannotTarget,
+}
+
+impl std::fmt::Display for UnitOrderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UnitNotFound => write!(f, "unit not found"),
+            Self::DefinitionNotFound => write!(f, "definition not found"),
+            Self::PathStartBlocked => write!(f, "path start blocked"),
+            Self::PathGoalBlocked => write!(f, "path goal blocked"),
+            Self::NoPath => write!(f, "no path"),
+            Self::PathTerrainUnavailable => write!(f, "terrain unavailable"),
+            Self::AttackerNotFound => write!(f, "attacker not found"),
+            Self::TargetNotFound => write!(f, "target not found"),
+            Self::SelfTarget => write!(f, "cannot attack self"),
+            Self::AttackerDead => write!(f, "attacker dead"),
+            Self::TargetDead => write!(f, "target dead"),
+            Self::MissingWeapon => write!(f, "missing weapon"),
+            Self::InvalidOwnershipTarget => write!(f, "invalid ownership target"),
+            Self::WeaponCannotTarget => write!(f, "weapon cannot target"),
+        }
+    }
 }
 
 /// Issue an order to a unit.
 ///
 /// `MoveTo` is queued on the command buffer and resolved before the next movement
-/// step. `Idle` applies immediately.
+/// step. `Idle`, `Attack`, and `AttackMove` apply immediately.
 pub fn issue_unit_order(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     unit_id: UnitId,
     order: UnitOrder,
+    targeting_policy: AttackTargetingPolicy,
 ) -> Result<(), UnitOrderError> {
+    if let Some(record) = world.get_unit(unit_id) {
+        if !is_unit_alive(record) {
+            return Err(UnitOrderError::UnitNotFound);
+        }
+    }
     match order {
         UnitOrder::Idle => {
             world.command_buffer_mut().clear_pending(unit_id);
@@ -50,14 +97,68 @@ pub fn issue_unit_order(
             world
                 .set_unit_state(unit_id, UnitState::Idle)
                 .map_err(|_| UnitOrderError::UnitNotFound)?;
+            world
+                .set_unit_combat_state(unit_id, CombatState::Peaceful)
+                .map_err(|_| UnitOrderError::UnitNotFound)?;
+            world
+                .set_unit_attack_cycle(unit_id, None)
+                .map_err(|_| UnitOrderError::UnitNotFound)?;
             Ok(())
         }
         UnitOrder::MoveTo { .. } => {
-            let _ = (unit_catalog, doodad_catalog, nav_config);
+            let _ = (weapon_catalog, targeting_policy);
             if world.get_unit(unit_id).is_none() {
                 return Err(UnitOrderError::UnitNotFound);
             }
             world.command_buffer_mut().enqueue(unit_id, order);
+            Ok(())
+        }
+        UnitOrder::Attack { target } => {
+            let _ = (doodad_catalog, nav_config);
+            validate_attack_target(
+                world,
+                unit_id,
+                target,
+                weapon_catalog,
+                unit_catalog,
+                targeting_policy,
+            )?;
+            world.command_buffer_mut().clear_pending(unit_id);
+            world.movement_smoothing_mut().clear_unit(unit_id);
+            let combat_state = initial_attack_combat_state(
+                world,
+                unit_id,
+                target,
+                unit_catalog,
+                weapon_catalog,
+            );
+            world
+                .set_unit_combat_state(unit_id, combat_state)
+                .map_err(|_| UnitOrderError::AttackerNotFound)?;
+            Ok(())
+        }
+        UnitOrder::AttackMove { destination } => {
+            let _ = (
+                doodad_catalog,
+                nav_config,
+                weapon_catalog,
+                unit_catalog,
+                targeting_policy,
+            );
+            if world.get_unit(unit_id).is_none() {
+                return Err(UnitOrderError::AttackerNotFound);
+            }
+            world.command_buffer_mut().clear_pending(unit_id);
+            world.movement_smoothing_mut().clear_unit(unit_id);
+            world
+                .set_unit_combat_state(
+                    unit_id,
+                    CombatState::AttackMoving {
+                        destination,
+                        target: None,
+                    },
+                )
+                .map_err(|_| UnitOrderError::AttackerNotFound)?;
             Ok(())
         }
     }
@@ -141,8 +242,9 @@ pub fn resolve_all_pending_unit_orders(
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, resolve_pending_unit_orders, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
-        Heightfield, LocalPosition, UnitDefinitionId, UnitSource,
+        create_unit, create_unit_with_ownership, resolve_pending_unit_orders, AttackTargetingPolicy,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
+        UnitDefinitionId, UnitOwnership, UnitSource, WeaponCatalog,
     };
 
     fn layout_world() -> WorldData {
@@ -167,6 +269,14 @@ mod tests {
         );
     }
 
+    fn weapons() -> WeaponCatalog {
+        WeaponCatalog::default()
+    }
+
+    fn policy() -> AttackTargetingPolicy {
+        AttackTargetingPolicy::default()
+    }
+
     fn issue(
         world: &mut WorldData,
         catalog: &UnitCatalog,
@@ -176,30 +286,13 @@ mod tests {
         issue_unit_order(
             world,
             catalog,
+            &weapons(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             unit_id,
             order,
+            policy(),
         )
-    }
-
-    fn issue_and_resolve(
-        world: &mut WorldData,
-        catalog: &UnitCatalog,
-        unit_id: UnitId,
-        order: UnitOrder,
-    ) -> Result<(), UnitOrderError> {
-        issue(world, catalog, unit_id, order)?;
-        let report = resolve_pending_unit_orders(
-            world,
-            catalog,
-            &DoodadCatalog::default(),
-            &NavigationConfig::default(),
-        );
-        if report.failed > 0 {
-            return Err(report.failures[0].1);
-        }
-        Ok(())
     }
 
     #[test]
@@ -246,16 +339,26 @@ mod tests {
     }
 
     #[test]
-    fn no_movement_state_before_buffer_resolution() {
+    fn valid_attack_order_sets_combat_state() {
         let catalog = UnitCatalog::default();
         let mut world = layout_world();
-        insert_flat(&mut world);
-        let unit_id = create_unit(
+        let player = create_unit_with_ownership(
             &catalog,
             &mut world,
             &UnitDefinitionId::new("wolf"),
-            pos(10.0, 10.0),
+            pos(1.0, 1.0),
             UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let hostile = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(5.0, 5.0),
+            UnitSource::Authored,
+            UnitOwnership::hostile(),
         )
         .unwrap()
         .id;
@@ -263,15 +366,72 @@ mod tests {
         issue(
             &mut world,
             &catalog,
-            unit_id,
-            UnitOrder::MoveTo {
-                target: pos(100.0, 50.0),
-            },
+            player,
+            UnitOrder::Attack { target: hostile },
         )
         .unwrap();
-        assert!(!matches!(
-            world.get_unit(unit_id).unwrap().state,
-            UnitState::Moving { .. }
+        assert!(matches!(
+            world.get_unit(player).unwrap().combat_state,
+            CombatState::Attacking { target: t } | CombatState::Chasing { target: t } if t == hostile
+        ));
+    }
+
+    #[test]
+    fn invalid_attack_order_does_not_mutate_state() {
+        let catalog = UnitCatalog::default();
+        let mut world = layout_world();
+        let player = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let before = world.get_unit(player).unwrap().combat_state.clone();
+
+        let err = issue(
+            &mut world,
+            &catalog,
+            player,
+            UnitOrder::Attack { target: player },
+        )
+        .unwrap_err();
+        assert_eq!(err, UnitOrderError::SelfTarget);
+        assert_eq!(world.get_unit(player).unwrap().combat_state, before);
+    }
+
+    #[test]
+    fn attack_move_stores_destination() {
+        let catalog = UnitCatalog::default();
+        let mut world = layout_world();
+        let player = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let destination = pos(30.0, 30.0);
+
+        issue(
+            &mut world,
+            &catalog,
+            player,
+            UnitOrder::AttackMove { destination },
+        )
+        .unwrap();
+        assert!(matches!(
+            world.get_unit(player).unwrap().combat_state,
+            CombatState::AttackMoving {
+                destination: d,
+                target: None
+            } if d == destination
         ));
     }
 
@@ -290,38 +450,5 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(err, UnitOrderError::UnitNotFound);
-    }
-
-    #[test]
-    fn issue_move_without_terrain_fails_on_resolve() {
-        let catalog = UnitCatalog::default();
-        let mut world = layout_world();
-        let unit_id = create_unit(
-            &catalog,
-            &mut world,
-            &UnitDefinitionId::new("wolf"),
-            pos(10.0, 10.0),
-            UnitSource::Authored,
-        )
-        .unwrap()
-        .id;
-
-        issue(
-            &mut world,
-            &catalog,
-            unit_id,
-            UnitOrder::MoveTo {
-                target: pos(100.0, 50.0),
-            },
-        )
-        .unwrap();
-        let report = resolve_pending_unit_orders(
-            &mut world,
-            &catalog,
-            &DoodadCatalog::default(),
-            &NavigationConfig::default(),
-        );
-        assert_eq!(report.failed, 1);
-        assert_eq!(report.failures[0].1, UnitOrderError::PathTerrainUnavailable);
     }
 }

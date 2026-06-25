@@ -3,8 +3,9 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    filter_commandable_unit_ids, issue_unit_order, DoodadCatalog, FormationKind, FormationPlanner,
-    NavigationConfig, UnitCatalog, UnitOrder, UnitOrderError, WorldData, WorldPosition,
+    filter_commandable_unit_ids, issue_unit_order, AttackTargetingPolicy, CombatState,
+    DoodadCatalog, FormationKind, FormationPlanner, NavigationConfig, UnitCatalog, UnitOrder,
+    UnitOrderError, WeaponCatalog, WorldData, WorldPosition,
 };
 
 use super::selection::SelectedUnits;
@@ -32,9 +33,11 @@ pub fn issue_move_orders_to_selection(
     world: &mut WorldData,
     selection: &SelectedUnits,
     unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     target: WorldPosition,
+    targeting_policy: AttackTargetingPolicy,
 ) -> MoveOrdersReport {
     let unit_ids = filter_commandable_unit_ids(world, selection.iter());
     if unit_ids.is_empty() {
@@ -59,10 +62,12 @@ pub fn issue_move_orders_to_selection(
         match issue_unit_order(
             world,
             unit_catalog,
+            weapon_catalog,
             doodad_catalog,
             nav_config,
             assignment.unit_id,
             order,
+            targeting_policy,
         ) {
             Ok(()) => {
                 report.issued += 1;
@@ -90,9 +95,11 @@ pub fn issue_move_orders_to_selection(
 pub fn issue_idle_orders_to_selection(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     selection: &SelectedUnits,
+    targeting_policy: AttackTargetingPolicy,
 ) -> MoveOrdersReport {
     let unit_ids = filter_commandable_unit_ids(world, selection.iter());
     if unit_ids.is_empty() {
@@ -105,10 +112,12 @@ pub fn issue_idle_orders_to_selection(
         match issue_unit_order(
             world,
             unit_catalog,
+            weapon_catalog,
             doodad_catalog,
             nav_config,
             unit_id,
             order,
+            targeting_policy,
         ) {
             Ok(()) => {
                 report.issued += 1;
@@ -131,7 +140,113 @@ pub fn issue_idle_orders_to_selection(
     report
 }
 
+/// Issue `Attack` orders for every selected unit against one target.
+pub fn issue_attack_orders_to_selection(
+    world: &mut WorldData,
+    selection: &SelectedUnits,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
+    target: crate::world::UnitId,
+    targeting_policy: AttackTargetingPolicy,
+) -> MoveOrdersReport {
+    let unit_ids = filter_commandable_unit_ids(world, selection.iter());
+    if unit_ids.is_empty() {
+        return MoveOrdersReport::default();
+    }
+
+    let mut report = MoveOrdersReport::default();
+    for unit_id in unit_ids {
+        let order = UnitOrder::Attack { target };
+        match issue_unit_order(
+            world,
+            unit_catalog,
+            weapon_catalog,
+            doodad_catalog,
+            nav_config,
+            unit_id,
+            order,
+            targeting_policy,
+        ) {
+            Ok(()) => {
+                report.issued += 1;
+                report.unit_traces.push(MoveOrderUnitTrace {
+                    unit_id,
+                    order,
+                    error: None,
+                });
+            }
+            Err(error) => {
+                report.failed += 1;
+                report.unit_traces.push(MoveOrderUnitTrace {
+                    unit_id,
+                    order,
+                    error: Some(error),
+                });
+                log_order_failure(unit_id, order, error);
+            }
+        }
+    }
+    report
+}
+
+/// Issue `AttackMove` orders for every selected unit.
+pub fn issue_attack_move_orders_to_selection(
+    world: &mut WorldData,
+    selection: &SelectedUnits,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
+    destination: WorldPosition,
+    targeting_policy: AttackTargetingPolicy,
+) -> MoveOrdersReport {
+    let unit_ids = filter_commandable_unit_ids(world, selection.iter());
+    if unit_ids.is_empty() {
+        return MoveOrdersReport::default();
+    }
+
+    let mut report = MoveOrdersReport::default();
+    for unit_id in unit_ids {
+        let order = UnitOrder::AttackMove { destination };
+        match issue_unit_order(
+            world,
+            unit_catalog,
+            weapon_catalog,
+            doodad_catalog,
+            nav_config,
+            unit_id,
+            order,
+            targeting_policy,
+        ) {
+            Ok(()) => {
+                report.issued += 1;
+                report.unit_traces.push(MoveOrderUnitTrace {
+                    unit_id,
+                    order,
+                    error: None,
+                });
+            }
+            Err(error) => {
+                report.failed += 1;
+                report.unit_traces.push(MoveOrderUnitTrace {
+                    unit_id,
+                    order,
+                    error: Some(error),
+                });
+                log_order_failure(unit_id, order, error);
+            }
+        }
+    }
+    report
+}
+
 pub fn log_move_order_failure(unit_id: crate::world::UnitId, error: UnitOrderError) {
+    log_order_failure(unit_id, UnitOrder::Idle, error);
+}
+
+fn log_order_failure(unit_id: crate::world::UnitId, order: UnitOrder, error: UnitOrderError) {
     match error {
         UnitOrderError::NoPath => {
             warn!("move order for unit {} failed: no path", unit_id.raw());
@@ -148,8 +263,24 @@ pub fn log_move_order_failure(unit_id: crate::world::UnitId, error: UnitOrderErr
         UnitOrderError::UnitNotFound => {}
         UnitOrderError::DefinitionNotFound => {
             warn!(
-                "move order for unit {} failed: missing definition",
+                "order {:?} for unit {} failed: missing definition",
+                order,
                 unit_id.raw()
+            );
+        }
+        UnitOrderError::AttackerNotFound
+        | UnitOrderError::TargetNotFound
+        | UnitOrderError::SelfTarget
+        | UnitOrderError::AttackerDead
+        | UnitOrderError::TargetDead
+        | UnitOrderError::MissingWeapon
+        | UnitOrderError::InvalidOwnershipTarget
+        | UnitOrderError::WeaponCannotTarget => {
+            warn!(
+                "attack order {:?} for unit {} failed: {}",
+                order,
+                unit_id.raw(),
+                error
             );
         }
     }
@@ -159,9 +290,9 @@ pub fn log_move_order_failure(unit_id: crate::world::UnitId, error: UnitOrderErr
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, create_unit_with_ownership, resolve_all_pending_unit_orders, ChunkCoord,
-        ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitDefinitionId,
-        UnitOwnership, UnitSource, UnitState, WorldPosition,
+        create_unit, create_unit_with_ownership, resolve_all_pending_unit_orders, AttackTargetingPolicy,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatState, Heightfield, LocalPosition,
+        UnitDefinitionId, UnitOwnership, UnitSource, UnitState, WeaponCatalog, WorldPosition,
     };
 
     fn flat_world() -> WorldData {
@@ -222,14 +353,18 @@ mod tests {
         let mut selection = SelectedUnits::default();
         selection.replace_with([a, b]);
 
+        let weapons = WeaponCatalog::default();
+        let policy = AttackTargetingPolicy::default();
         let target = pos(40.0, 40.0);
         let report = issue_move_orders_to_selection(
             &mut world,
             &selection,
             &catalog,
+            &weapons,
             &doodad_catalog,
             &nav_config,
             target,
+            policy,
         );
         resolve_all_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav_config);
 
@@ -276,13 +411,17 @@ mod tests {
         let mut selection = SelectedUnits::default();
         selection.replace_with([a, b]);
         let click = pos(40.0, 40.0);
+        let weapons = WeaponCatalog::default();
+        let policy = AttackTargetingPolicy::default();
         issue_move_orders_to_selection(
             &mut world,
             &selection,
             &catalog,
+            &weapons,
             &doodad_catalog,
             &nav_config,
             click,
+            policy,
         );
         resolve_all_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav_config);
 
@@ -323,13 +462,17 @@ mod tests {
 
         let mut selection = SelectedUnits::default();
         selection.replace_with([a, b]);
+        let weapons = WeaponCatalog::default();
+        let policy = AttackTargetingPolicy::default();
         issue_move_orders_to_selection(
             &mut world,
             &selection,
             &catalog,
+            &weapons,
             &doodad_catalog,
             &nav_config,
             pos(40.0, 40.0),
+            policy,
         );
         resolve_all_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav_config);
 
@@ -364,5 +507,141 @@ mod tests {
         let after = world.get_unit(unit_id).unwrap();
 
         assert_eq!(before, *after);
+    }
+
+    #[test]
+    fn valid_attack_order_sets_combat_state() {
+        let catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let nav_config = NavigationConfig::default();
+        let policy = AttackTargetingPolicy::default();
+        let mut world = flat_world();
+
+        let player = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let hostile = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(5.0, 5.0),
+            UnitSource::Authored,
+            UnitOwnership::hostile(),
+        )
+        .unwrap()
+        .id;
+
+        let mut selection = SelectedUnits::default();
+        selection.set_single(player);
+        let report = issue_attack_orders_to_selection(
+            &mut world,
+            &selection,
+            &catalog,
+            &weapons,
+            &doodad_catalog,
+            &nav_config,
+            hostile,
+            policy,
+        );
+        assert_eq!(report.issued, 1);
+        assert_eq!(report.failed, 0);
+        assert!(matches!(
+            world.get_unit(player).unwrap().combat_state,
+            CombatState::Attacking { target: t } | CombatState::Chasing { target: t }
+                if t == hostile
+        ));
+    }
+
+    #[test]
+    fn invalid_attack_order_does_not_mutate_state() {
+        let catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let nav_config = NavigationConfig::default();
+        let policy = AttackTargetingPolicy::default();
+        let mut world = flat_world();
+
+        let player = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let before = world.get_unit(player).unwrap().combat_state.clone();
+
+        let mut selection = SelectedUnits::default();
+        selection.set_single(player);
+        let report = issue_attack_orders_to_selection(
+            &mut world,
+            &selection,
+            &catalog,
+            &weapons,
+            &doodad_catalog,
+            &nav_config,
+            player,
+            policy,
+        );
+        assert_eq!(report.issued, 0);
+        assert_eq!(report.failed, 1);
+        assert_eq!(
+            report.unit_traces[0].error,
+            Some(UnitOrderError::SelfTarget)
+        );
+        assert_eq!(world.get_unit(player).unwrap().combat_state, before);
+    }
+
+    #[test]
+    fn attack_move_stores_destination_in_combat_state() {
+        let catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let nav_config = NavigationConfig::default();
+        let policy = AttackTargetingPolicy::default();
+        let mut world = flat_world();
+
+        let player = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+
+        let destination = pos(30.0, 30.0);
+        let mut selection = SelectedUnits::default();
+        selection.set_single(player);
+        let report = issue_attack_move_orders_to_selection(
+            &mut world,
+            &selection,
+            &catalog,
+            &weapons,
+            &doodad_catalog,
+            &nav_config,
+            destination,
+            policy,
+        );
+        assert_eq!(report.issued, 1);
+        assert!(matches!(
+            world.get_unit(player).unwrap().combat_state,
+            CombatState::AttackMoving {
+                destination: d,
+                target: None
+            } if d == destination
+        ));
     }
 }

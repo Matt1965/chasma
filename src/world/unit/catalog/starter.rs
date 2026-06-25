@@ -4,6 +4,7 @@ mod fixtures {
     use crate::world::unit::catalog::definition::UnitDefinition;
     use crate::world::unit::catalog::definition_id::UnitDefinitionId;
     use crate::world::unit::catalog::render_key::UnitRenderKey;
+    use crate::world::weapon::WeaponDefinitionId;
 
     pub fn starter_definitions() -> Vec<UnitDefinition> {
         vec![
@@ -12,6 +13,7 @@ mod fixtures {
                 "Wolf",
                 "Wild",
                 2,
+                5,
                 5,
                 4,
                 6,
@@ -24,6 +26,7 @@ mod fixtures {
                 4.5,
                 0.6,
                 40.0,
+                WeaponDefinitionId::new("weapon_wolf_bite"),
                 true,
                 UnitRenderKey::reserved("wolf"),
             ),
@@ -32,6 +35,7 @@ mod fixtures {
                 "Bandit Scout",
                 "Bandits",
                 3,
+                8,
                 8,
                 4,
                 7,
@@ -44,6 +48,7 @@ mod fixtures {
                 3.8,
                 0.45,
                 35.0,
+                WeaponDefinitionId::new("weapon_fists"),
                 true,
                 UnitRenderKey::reserved("bandit"),
             ),
@@ -52,6 +57,7 @@ mod fixtures {
                 "Deer",
                 "Wild",
                 1,
+                4,
                 4,
                 2,
                 5,
@@ -64,6 +70,7 @@ mod fixtures {
                 5.5,
                 0.5,
                 30.0,
+                WeaponDefinitionId::new("weapon_claws"),
                 true,
                 UnitRenderKey::reserved("deer"),
             ),

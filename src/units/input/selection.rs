@@ -54,6 +54,12 @@ impl SelectedUnits {
         self.0.retain(|id| world.get_unit(*id).is_some());
     }
 
+    /// Drop dead or removed units from the selection set (ADR-059 C6).
+    pub fn prune_dead(&mut self, world: &WorldData) {
+        use crate::world::is_unit_alive;
+        self.0.retain(|id| world.get_unit(*id).map(is_unit_alive).unwrap_or(false));
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = UnitId> + '_ {
         self.0.iter().copied()
     }

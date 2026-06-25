@@ -86,6 +86,7 @@ pub enum SceneUnitState {
         waypoints: Vec<SceneWorldPosition>,
         waypoint_index: usize,
     },
+    Dead,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -209,6 +210,7 @@ impl SceneUnitRecord {
             ),
             source,
             ownership,
+            5,
         );
         record.state = self.state.to_state()?;
         Ok(record)
@@ -307,12 +309,14 @@ impl SceneUnitState {
                     .collect(),
                 waypoint_index: *waypoint_index,
             },
+            UnitState::Dead => Self::Dead,
         }
     }
 
     pub fn to_state(&self) -> Result<UnitState, SceneRecordError> {
         Ok(match self {
             Self::Idle => UnitState::Idle,
+            Self::Dead => UnitState::Dead,
             Self::Moving {
                 target,
                 waypoints,

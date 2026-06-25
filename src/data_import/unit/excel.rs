@@ -119,11 +119,23 @@ fn parse_row(
             .map_err(|_| format!("{column} must be a number (got `{raw}`)"))
     };
 
-    let has_file_path_column = columns.contains_key("File Path");
+    let has_default_weapon_column = columns.contains_key("Default Weapon ID");
     let (enabled, enabled_was_blank) = if columns.contains_key("Enabled") {
         parse_enabled_cell(&text("Enabled"))?
     } else {
         (true, true)
+    };
+
+    let base_hp = u32_col("Base HP")?;
+    let max_hp = if columns.contains_key("Max HP") {
+        let raw = text("Max HP");
+        if raw.trim().is_empty() {
+            base_hp
+        } else {
+            u32_col("Max HP")?
+        }
+    } else {
+        base_hp
     };
 
     Ok(UnitImportRow {
@@ -132,7 +144,8 @@ fn parse_row(
         name: text("Name"),
         faction: text("Faction"),
         level: u32_col("Level")?,
-        base_hp: u32_col("Base HP")?,
+        base_hp,
+        max_hp,
         strength: u32_col("Strength")?,
         dexterity: u32_col("Dexterity")?,
         constitution: u32_col("Constitution")?,
@@ -141,7 +154,7 @@ fn parse_row(
         intelligence: u32_col("Intelligence")?,
         power_rating: f32_col("Power Rating")?,
         tier: text("Tier"),
-        file_path: if has_file_path_column {
+        file_path: if columns.contains_key("File Path") {
             text("File Path")
         } else {
             String::new()
@@ -149,9 +162,15 @@ fn parse_row(
         move_speed_mps: optional_f32("Move Speed", DEFAULT_MOVE_SPEED_MPS)?,
         collision_radius_meters: optional_f32("Collision Radius", DEFAULT_COLLISION_RADIUS_METERS)?,
         max_slope_degrees: optional_f32("Max Slope", DEFAULT_MAX_SLOPE_DEGREES)?,
+        default_weapon_id: if has_default_weapon_column {
+            text("Default Weapon ID")
+        } else {
+            String::new()
+        },
         enabled,
         enabled_was_blank,
-        has_file_path_column,
+        has_file_path_column: columns.contains_key("File Path"),
+        has_default_weapon_column,
     })
 }
 
@@ -218,6 +237,7 @@ mod tests {
             "Faction",
             "Level",
             "Base HP",
+            "Max HP",
             "Strength",
             "Dexterity",
             "Constitution",
@@ -227,6 +247,7 @@ mod tests {
             "Total Stats",
             "Power Rating",
             "Tier",
+            "Default Weapon ID",
             "File Path",
             "Move Speed",
             "Collision Radius",
@@ -242,6 +263,7 @@ mod tests {
             "Faction",
             "Level",
             "Base HP",
+            "Max HP",
             "Strength",
             "Dexterity",
             "Constitution",
@@ -263,6 +285,8 @@ mod tests {
         ));
         let headers = vec![
             "Tier",
+            "Default Weapon ID",
+            "Max HP",
             "Power Rating",
             "Intelligence",
             "Charisma",
@@ -277,16 +301,21 @@ mod tests {
             "Unit ID",
         ];
         let row = vec![
-            "Elite", "26.5", "3", "2", "7", "3", "6", "4", "5", "2", "Wild", "Wolf", "U-0001",
+            "Elite", "weapon_wolf_bite", "5", "26.5", "3", "2", "7", "3", "6", "4", "5", "2", "Wild",
+            "Wolf", "U-0001",
         ];
         write_workbook(&path, &headers, &[row]);
         let rows = read_unit_rows(&path).unwrap();
         assert_eq!(rows[0].as_ref().unwrap().unit_id, "U-0001");
+        assert_eq!(
+            rows[0].as_ref().unwrap().default_weapon_id,
+            "weapon_wolf_bite"
+        );
         let _ = std::fs::remove_file(path);
     }
 
     #[test]
-    fn reads_legacy_workbook_schema_with_defaults() {
+    fn legacy_workbook_missing_weapon_column_fails() {
         let path = std::env::temp_dir().join(format!(
             "chasma_unit_import_{}_{}.xlsx",
             std::process::id(),
@@ -298,10 +327,11 @@ mod tests {
             "Elite",
         ];
         write_workbook(&path, &headers, &[row]);
-        let rows = read_unit_rows(&path).unwrap();
-        let row = rows[0].as_ref().unwrap();
-        assert_eq!(row.unit_id, "U-0001");
-        assert!((row.move_speed_mps - DEFAULT_MOVE_SPEED_MPS).abs() < f32::EPSILON);
+        let err = read_unit_rows(&path).unwrap_err();
+        assert!(matches!(
+            err,
+            crate::data_import::DataImportError::MissingRequiredColumn { .. }
+        ));
         let _ = std::fs::remove_file(path);
     }
 
@@ -319,6 +349,7 @@ mod tests {
             "Wild",
             "2",
             "5",
+            "5",
             "4",
             "6",
             "3",
@@ -328,6 +359,7 @@ mod tests {
             "999",
             "26.5",
             "Elite",
+            "weapon_wolf_bite",
             r"\units\wolf.glb",
             "4.5",
             "0.6",

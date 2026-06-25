@@ -10,7 +10,8 @@ use super::doodad::{
     ProceduralDoodadKey,
 };
 use super::unit::{
-    ChunkUnitStore, UnitId, UnitInsertError, UnitRecord,
+    ChunkUnitStore, KillAttribution, UnitId, UnitInsertError, UnitRecord, UnitRemovalEntry,
+    UnitRemovalQueue,
 };
 
 /// Inclusive bounds of the authored world (ADR-006, ADR-012).
@@ -64,6 +65,12 @@ pub struct WorldData {
     /// Per-unit direction smoothing cache (ADR-037 U12).
     #[reflect(ignore)]
     movement_smoothing: super::movement::feel::MovementSmoothingState,
+    /// Deferred unit removal queue (ADR-059 C6).
+    #[reflect(ignore)]
+    removal_queue: UnitRemovalQueue,
+    /// Latest lethal damage attribution per target (ADR-059 C6).
+    #[reflect(ignore)]
+    kill_attributions: HashMap<UnitId, KillAttribution>,
 }
 
 impl FromWorld for WorldData {
@@ -91,6 +98,8 @@ impl WorldData {
             authored_extent: None,
             command_buffer: super::movement::feel::UnitCommandBuffer::default(),
             movement_smoothing: super::movement::feel::MovementSmoothingState::default(),
+            removal_queue: UnitRemovalQueue::default(),
+            kill_attributions: HashMap::new(),
         }
     }
 
@@ -414,6 +423,146 @@ impl WorldData {
         let record = store.get_mut(id).ok_or(UnitInsertError::UnitNotFound)?;
         record.state = state;
         Ok(())
+    }
+
+    /// Borrow vitals for a unit instance (ADR-055 C2).
+    pub fn get_unit_vitals(&self, id: UnitId) -> Option<&super::unit::UnitVitals> {
+        self.get_unit(id).map(|record| &record.vitals)
+    }
+
+    /// Set current HP, clamped to `[0, max_hp]`. Does not change max HP.
+    pub fn set_unit_hp(
+        &mut self,
+        id: UnitId,
+        current_hp: u32,
+    ) -> Result<super::unit::UnitVitals, UnitInsertError> {
+        let vitals = self.mutate_unit_vitals(id, |vitals| {
+            vitals.current_hp = current_hp.min(vitals.max_hp);
+        })?;
+        Ok(vitals)
+    }
+
+    /// Apply damage without death or removal side effects (ADR-055 C2).
+    pub fn damage_unit(
+        &mut self,
+        id: UnitId,
+        amount: u32,
+    ) -> Result<super::unit::UnitVitals, UnitInsertError> {
+        let vitals = self.mutate_unit_vitals(id, |vitals| {
+            vitals.current_hp = vitals.current_hp.saturating_sub(amount);
+        })?;
+        Ok(vitals)
+    }
+
+    /// Heal without exceeding max HP (ADR-055 C2).
+    pub fn heal_unit(
+        &mut self,
+        id: UnitId,
+        amount: u32,
+    ) -> Result<super::unit::UnitVitals, UnitInsertError> {
+        let vitals = self.mutate_unit_vitals(id, |vitals| {
+            vitals.current_hp = vitals
+                .current_hp
+                .saturating_add(amount)
+                .min(vitals.max_hp);
+        })?;
+        Ok(vitals)
+    }
+
+    fn mutate_unit_vitals(
+        &mut self,
+        id: UnitId,
+        mutate: impl FnOnce(&mut super::unit::UnitVitals),
+    ) -> Result<super::unit::UnitVitals, UnitInsertError> {
+        let chunk = self
+            .unit_locations
+            .get(&id)
+            .copied()
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        let store = self.units.get_mut(&chunk).ok_or(UnitInsertError::UnitNotFound)?;
+        let record = store.get_mut(id).ok_or(UnitInsertError::UnitNotFound)?;
+        mutate(&mut record.vitals);
+        Ok(record.vitals)
+    }
+
+    /// Update combat posture / attack intent without changing locomotion (ADR-056 C3).
+    pub fn set_unit_combat_state(
+        &mut self,
+        id: UnitId,
+        combat_state: super::unit::CombatState,
+    ) -> Result<(), UnitInsertError> {
+        let chunk = self
+            .unit_locations
+            .get(&id)
+            .copied()
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        let store = self.units.get_mut(&chunk).ok_or(UnitInsertError::UnitNotFound)?;
+        let record = store.get_mut(id).ok_or(UnitInsertError::UnitNotFound)?;
+        record.combat_state = combat_state;
+        Ok(())
+    }
+
+    /// Update weapon attack cycle timing (ADR-058 C5).
+    pub fn set_unit_attack_cycle(
+        &mut self,
+        id: UnitId,
+        attack_cycle: Option<super::unit::AttackCycle>,
+    ) -> Result<(), UnitInsertError> {
+        let chunk = self
+            .unit_locations
+            .get(&id)
+            .copied()
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        let store = self.units.get_mut(&chunk).ok_or(UnitInsertError::UnitNotFound)?;
+        let record = store.get_mut(id).ok_or(UnitInsertError::UnitNotFound)?;
+        record.attack_cycle = attack_cycle;
+        Ok(())
+    }
+
+    /// Borrow the deferred unit removal queue (ADR-059 C6).
+    pub fn removal_queue(&self) -> &UnitRemovalQueue {
+        &self.removal_queue
+    }
+
+    /// Mutably borrow the deferred unit removal queue (ADR-059 C6).
+    pub fn removal_queue_mut(&mut self) -> &mut UnitRemovalQueue {
+        &mut self.removal_queue
+    }
+
+    /// Queue a unit for deferred removal; returns false if already queued.
+    pub fn queue_unit_removal(&mut self, entry: UnitRemovalEntry) -> bool {
+        self.removal_queue.queue(entry)
+    }
+
+    /// Record kill attribution from the latest damaging strike.
+    pub fn record_kill_attribution(
+        &mut self,
+        target_id: UnitId,
+        killer_id: UnitId,
+        hp_before: u32,
+    ) {
+        self.kill_attributions.insert(
+            target_id,
+            KillAttribution {
+                killer: killer_id,
+                hp_before,
+            },
+        );
+    }
+
+    /// Take kill attribution for a target when death is processed.
+    pub fn take_kill_attribution(&mut self, target_id: UnitId) -> Option<UnitId> {
+        self.kill_attributions
+            .remove(&target_id)
+            .map(|info| info.killer)
+    }
+
+    pub fn take_kill_attribution_info(&mut self, target_id: UnitId) -> Option<KillAttribution> {
+        self.kill_attributions.remove(&target_id)
+    }
+
+    pub fn clear_kill_attribution(&mut self, target_id: UnitId) {
+        self.kill_attributions.remove(&target_id);
     }
 
     /// Move a unit to a new [`WorldPosition`], including cross-chunk moves (ADR-027 U2).
@@ -1386,8 +1535,8 @@ mod tests {
     mod unit_tests {
         use super::*;
         use crate::world::{
-            LocalPosition, UnitDefinitionId, UnitMetadata, UnitPlacement, UnitRecord,
-            UnitSource, UnitState,
+            create_unit, create_unit_with_ownership, move_unit, LocalPosition, UnitDefinitionId,
+            UnitMetadata, UnitPlacement, UnitRecord, UnitSource, UnitState,
         };
 
         fn chunk_id(x: i32, z: i32) -> ChunkId {
@@ -1408,6 +1557,7 @@ mod tests {
                 placement_at(chunk, Vec3::new(64.0, 0.0, 128.0)),
                 source,
                 crate::world::default_ownership_for_source(source),
+                5,
             );
             record.state = UnitState::Idle;
             record.metadata = UnitMetadata;
@@ -1733,6 +1883,7 @@ mod tests {
                         ),
                         UnitSource::Authored,
                         crate::world::UnitOwnership::neutral(),
+                        5,
                     ),
                 )
                 .unwrap();
@@ -1751,6 +1902,7 @@ mod tests {
                         ),
                         UnitSource::Authored,
                         crate::world::UnitOwnership::neutral(),
+                        5,
                     ),
                 )
                 .unwrap();
@@ -1770,6 +1922,7 @@ mod tests {
                         ),
                         UnitSource::Authored,
                         crate::world::UnitOwnership::neutral(),
+                        5,
                     ),
                 )
                 .unwrap();
@@ -1932,6 +2085,152 @@ mod tests {
 
             assert!(world.unit_chunk(record.id).is_none());
             world.assert_unit_index_consistent();
+        }
+
+        #[test]
+        fn get_unit_vitals_returns_instance_hp() {
+            let catalog = UnitCatalog::default();
+            let mut world = WorldData::new(layout());
+            let record = create_unit(
+                &catalog,
+                &mut world,
+                &UnitDefinitionId::new("wolf"),
+                pos(0, 0, Vec3::ZERO),
+                UnitSource::Authored,
+            )
+            .unwrap();
+            let vitals = world.get_unit_vitals(record.id).unwrap();
+            assert_eq!(vitals.current_hp, 5);
+            assert_eq!(vitals.max_hp, 5);
+        }
+
+        #[test]
+        fn damage_clamps_at_zero() {
+            let catalog = UnitCatalog::default();
+            let mut world = WorldData::new(layout());
+            let record = create_unit(
+                &catalog,
+                &mut world,
+                &UnitDefinitionId::new("wolf"),
+                pos(0, 0, Vec3::ZERO),
+                UnitSource::Authored,
+            )
+            .unwrap();
+            let vitals = world.damage_unit(record.id, 999).unwrap();
+            assert_eq!(vitals.current_hp, 0);
+            assert_eq!(vitals.max_hp, 5);
+        }
+
+        #[test]
+        fn heal_clamps_at_max_hp() {
+            let catalog = UnitCatalog::default();
+            let mut world = WorldData::new(layout());
+            let record = create_unit(
+                &catalog,
+                &mut world,
+                &UnitDefinitionId::new("wolf"),
+                pos(0, 0, Vec3::ZERO),
+                UnitSource::Authored,
+            )
+            .unwrap();
+            world.damage_unit(record.id, 3).unwrap();
+            let vitals = world.heal_unit(record.id, 999).unwrap();
+            assert_eq!(vitals.current_hp, 5);
+        }
+
+        #[test]
+        fn set_unit_hp_clamps_to_max() {
+            let catalog = UnitCatalog::default();
+            let mut world = WorldData::new(layout());
+            let record = create_unit(
+                &catalog,
+                &mut world,
+                &UnitDefinitionId::new("wolf"),
+                pos(0, 0, Vec3::ZERO),
+                UnitSource::Authored,
+            )
+            .unwrap();
+            let vitals = world.set_unit_hp(record.id, 99).unwrap();
+            assert_eq!(vitals.current_hp, 5);
+        }
+
+        #[test]
+        fn damage_preserves_unrelated_record_fields() {
+            let catalog = UnitCatalog::default();
+            let mut world = WorldData::new(layout());
+            let ownership = crate::world::UnitOwnership::player_default();
+            let record = crate::world::create_unit_with_ownership(
+                &catalog,
+                &mut world,
+                &UnitDefinitionId::new("wolf"),
+                pos(0, 0, Vec3::new(12.0, 0.0, 8.0)),
+                UnitSource::Authored,
+                ownership,
+            )
+            .unwrap();
+            world.damage_unit(record.id, 2).unwrap();
+            let updated = world.get_unit(record.id).unwrap();
+            assert_eq!(updated.placement.position.local.0.x, 12.0);
+            assert_eq!(updated.owner_id, ownership.owner_id);
+            assert_eq!(updated.affiliation, ownership.affiliation);
+            assert_eq!(updated.combat_state, crate::world::CombatState::Peaceful);
+        }
+
+        #[test]
+        fn heal_preserves_unrelated_record_fields() {
+            let catalog = UnitCatalog::default();
+            let mut world = WorldData::new(layout());
+            let record = create_unit(
+                &catalog,
+                &mut world,
+                &UnitDefinitionId::new("deer"),
+                pos(1, 0, Vec3::new(3.0, 0.0, 4.0)),
+                UnitSource::Procedural { seed: 7 },
+            )
+            .unwrap();
+            world.damage_unit(record.id, 1).unwrap();
+            world.heal_unit(record.id, 1).unwrap();
+            let updated = world.get_unit(record.id).unwrap();
+            assert_eq!(updated.source, UnitSource::Procedural { seed: 7 });
+            assert_eq!(updated.placement.position.chunk, ChunkCoord::new(1, 0));
+        }
+
+        #[test]
+        fn hp_api_results_are_deterministic() {
+            let catalog = UnitCatalog::default();
+            let mut world = WorldData::new(layout());
+            let record = create_unit(
+                &catalog,
+                &mut world,
+                &UnitDefinitionId::new("bandit"),
+                pos(0, 0, Vec3::ZERO),
+                UnitSource::Authored,
+            )
+            .unwrap();
+            let a = world.damage_unit(record.id, 2).unwrap();
+            let b = world.get_unit_vitals(record.id).unwrap();
+            assert_eq!(a, *b);
+        }
+
+        #[test]
+        fn movement_unaffected_by_hp_changes() {
+            let catalog = UnitCatalog::default();
+            let mut world = WorldData::new(layout());
+            let record = create_unit(
+                &catalog,
+                &mut world,
+                &UnitDefinitionId::new("wolf"),
+                pos(0, 0, Vec3::new(10.0, 0.0, 10.0)),
+                UnitSource::Authored,
+            )
+            .unwrap();
+            world.damage_unit(record.id, 4).unwrap();
+            let new_pos = pos(0, 0, Vec3::new(50.0, 0.0, 10.0));
+            move_unit(&mut world, record.id, new_pos).unwrap();
+            assert_eq!(
+                world.get_unit(record.id).unwrap().placement.position,
+                new_pos
+            );
         }
     }
 }

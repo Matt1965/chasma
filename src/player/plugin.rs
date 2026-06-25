@@ -14,7 +14,7 @@ use super::box_select_overlay::{setup_box_select_overlay, sync_box_select_overla
 use super::indicator::{sync_unit_selection_indicators, UnitSelectionIndicatorState};
 use super::ownership::LocalPlayerOwnership;
 use super::selection_policy::sync_selection_policy_state;
-use super::simulation::{flush_simulation_command_trace, tick_unit_movement};
+use super::simulation::{apply_death_client_cleanup, flush_simulation_command_trace, tick_unit_movement};
 
 /// Systems for client-local player unit control (ADR-033 U8, ADR-034 U9).
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -46,8 +46,15 @@ impl Plugin for PlayerPlugin {
             )
             .add_systems(
                 Update,
-                flush_simulation_command_trace
+                apply_death_client_cleanup
                     .after(tick_unit_movement)
+                    .before(flush_simulation_command_trace)
+                    .in_set(PlayerControlSystems),
+            )
+            .add_systems(
+                Update,
+                flush_simulation_command_trace
+                    .after(apply_death_client_cleanup)
                     .in_set(PlayerControlSystems),
             )
             .add_systems(

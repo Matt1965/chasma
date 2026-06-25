@@ -54,6 +54,9 @@ pub fn capture_unit_inspector_snapshot(
         unit_id,
         definition_id: record.definition_id.clone(),
         state_label: state_label(&record.state),
+        current_hp: record.vitals.current_hp,
+        max_hp: record.vitals.max_hp,
+        combat_state_label: record.combat_state.label().to_string(),
         path,
         formation,
         steering,
@@ -68,9 +71,10 @@ pub fn capture_interaction_inspector_snapshot(
     world: &WorldData,
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
+    weapon_catalog: &crate::world::WeaponCatalog,
     click_position: WorldPosition,
 ) -> Option<InteractionInspectorSnapshot> {
-    let ctx = InteractionQueryContext::new(world, doodad_catalog, unit_catalog);
+    let ctx = InteractionQueryContext::new(world, doodad_catalog, unit_catalog, weapon_catalog);
     let terrain_hit = ground_world_position(world, click_position).is_some();
     let interaction = query_world_interaction(&ctx, click_position)?;
     let plan = resolve_interaction_to_order(&interaction);
@@ -97,6 +101,7 @@ fn state_label(state: &UnitState) -> String {
     match state {
         UnitState::Idle => "Idle".into(),
         UnitState::Moving { .. } => "Moving".into(),
+        UnitState::Dead => "Dead".into(),
     }
 }
 
@@ -511,6 +516,7 @@ mod tests {
             &world,
             &catalog,
             &DoodadCatalog::default(),
+            &crate::world::WeaponCatalog::default(),
             click,
         )
         .unwrap();

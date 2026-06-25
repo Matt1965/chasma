@@ -7,9 +7,11 @@ mod dev_mode;
 mod history;
 mod input;
 mod inspector;
+mod lighting_panel;
 mod panel;
 mod scenes;
 mod spawn_tools;
+mod time_of_day_panel;
 mod tools;
 
 #[cfg(test)]
@@ -93,6 +95,10 @@ impl Plugin for DevModePlugin {
                     sync_dev_panel_button_styles,
                     sync_dev_panel_section_visibility,
                     sync_dev_panel_tab_sections,
+                    time_of_day_panel::sync_time_of_day_section_visibility,
+                    time_of_day_panel::sync_time_of_day_panel_text,
+                    lighting_panel::sync_lighting_section_visibility,
+                    lighting_panel::sync_lighting_panel_text,
                 )
                     .chain()
                     .in_set(DevModeSystems),
@@ -107,6 +113,8 @@ impl Plugin for DevModePlugin {
                 Update,
                 (
                     handle_dev_panel_ui_interaction,
+                    time_of_day_panel::handle_time_of_day_buttons,
+                    lighting_panel::handle_lighting_tune_buttons,
                     sync_dev_debug_controls,
                 )
                     .chain()

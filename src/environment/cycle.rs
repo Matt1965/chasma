@@ -22,12 +22,6 @@ pub struct TimeOfDayLighting {
     pub skybox_brightness: f32,
 }
 
-/// Noon reference values — match [`EnvironmentSettings::default`].
-const NOON_DIRECTIONAL_ILLUMINANCE: f32 = 14_000.0;
-const NIGHT_DIRECTIONAL_ILLUMINANCE: f32 = 6.0;
-const NOON_AMBIENT_BRIGHTNESS: f32 = 180.0;
-const NOON_SKYBOX_BRIGHTNESS: f32 = 850.0;
-const NIGHT_SKYBOX_BRIGHTNESS: f32 = 60.0;
 
 const DAY_DIRECTIONAL_COLOR: Color = Color::srgb(1.0, 0.97, 0.92);
 const TWILIGHT_DIRECTIONAL_COLOR: Color = Color::srgb(1.0, 0.72, 0.38);
@@ -88,20 +82,29 @@ pub fn evaluate_time_of_day_lighting(settings: &TimeOfDaySettings) -> TimeOfDayL
         settings.sunset_hour,
     );
 
+    // Twilight adds brightness even when daylight_factor is still low at dawn/dusk.
+    let effective_daylight =
+        (daylight + warmth * settings.twilight_daylight_blend).clamp(0.0, 1.0);
+
     let directional_light_illuminance = lerp_f32(
-        NIGHT_DIRECTIONAL_ILLUMINANCE,
-        NOON_DIRECTIONAL_ILLUMINANCE,
-        daylight,
+        settings.night_directional_illuminance,
+        settings.noon_directional_illuminance,
+        effective_daylight,
     );
 
-    let base_directional = lerp_color(NIGHT_DIRECTIONAL_COLOR, DAY_DIRECTIONAL_COLOR, daylight);
+    let base_directional = lerp_color(NIGHT_DIRECTIONAL_COLOR, DAY_DIRECTIONAL_COLOR, effective_daylight);
     let directional_light_color = lerp_color(base_directional, TWILIGHT_DIRECTIONAL_COLOR, warmth);
 
-    let night_ambient = NOON_AMBIENT_BRIGHTNESS * settings.night_ambient_multiplier;
-    let ambient_brightness = lerp_f32(night_ambient, NOON_AMBIENT_BRIGHTNESS, daylight);
-    let ambient_color = lerp_color(NIGHT_AMBIENT_COLOR, DAY_AMBIENT_COLOR, daylight);
+    let night_ambient = settings.noon_ambient_brightness * settings.night_ambient_multiplier;
+    let ambient_brightness =
+        lerp_f32(night_ambient, settings.noon_ambient_brightness, effective_daylight);
+    let ambient_color = lerp_color(NIGHT_AMBIENT_COLOR, DAY_AMBIENT_COLOR, effective_daylight);
 
-    let skybox_brightness = lerp_f32(NIGHT_SKYBOX_BRIGHTNESS, NOON_SKYBOX_BRIGHTNESS, daylight);
+    let skybox_brightness = lerp_f32(
+        settings.night_skybox_brightness,
+        settings.noon_skybox_brightness,
+        effective_daylight,
+    );
 
     let t = TimeOfDaySettings::normalize_hours(settings.time_hours);
     let yaw = (t / 24.0) * std::f32::consts::TAU - std::f32::consts::FRAC_PI_2;
@@ -186,45 +189,105 @@ pub fn time_of_day_dev_keyboard(
     }
 
     if keyboard.just_pressed(KeyCode::KeyT) {
-        time_of_day.enabled = !time_of_day.enabled;
-        bevy::log::info!(
-            target: "chasma::environment",
-            "Time of day {}",
-            if time_of_day.enabled { "enabled" } else { "disabled" }
-        );
+        apply_time_of_day_dev_action(TimeOfDayDevAction::ToggleEnabled, &mut time_of_day);
     }
     if keyboard.just_pressed(KeyCode::KeyP) {
-        time_of_day.paused = !time_of_day.paused;
-        bevy::log::info!(
-            target: "chasma::environment",
-            "Time of day {}",
-            if time_of_day.paused { "paused" } else { "running" }
-        );
+        apply_time_of_day_dev_action(TimeOfDayDevAction::TogglePaused, &mut time_of_day);
     }
     if keyboard.just_pressed(KeyCode::BracketLeft) {
-        let hours = time_of_day.time_hours - 1.0;
-        time_of_day.set_time_hours(hours);
+        apply_time_of_day_dev_action(TimeOfDayDevAction::HourEarlier, &mut time_of_day);
     }
     if keyboard.just_pressed(KeyCode::BracketRight) {
-        let hours = time_of_day.time_hours + 1.0;
-        time_of_day.set_time_hours(hours);
+        apply_time_of_day_dev_action(TimeOfDayDevAction::HourLater, &mut time_of_day);
     }
     if keyboard.just_pressed(KeyCode::Comma) {
-        time_of_day.day_length_seconds = (time_of_day.day_length_seconds - 60.0).max(30.0);
+        apply_time_of_day_dev_action(TimeOfDayDevAction::SlowerDay, &mut time_of_day);
     }
     if keyboard.just_pressed(KeyCode::Period) {
-        time_of_day.day_length_seconds = (time_of_day.day_length_seconds + 60.0).min(3600.0);
+        apply_time_of_day_dev_action(TimeOfDayDevAction::FasterDay, &mut time_of_day);
     }
     if keyboard.just_pressed(KeyCode::Digit6) {
-        let sunrise = time_of_day.sunrise_hour;
-        time_of_day.set_time_hours(sunrise);
+        apply_time_of_day_dev_action(TimeOfDayDevAction::SetDawn, &mut time_of_day);
     }
     if keyboard.just_pressed(KeyCode::Digit1) {
-        time_of_day.set_time_hours(12.0);
+        apply_time_of_day_dev_action(TimeOfDayDevAction::SetNoon, &mut time_of_day);
     }
     if keyboard.just_pressed(KeyCode::Digit0) {
-        time_of_day.set_time_hours(0.0);
+        apply_time_of_day_dev_action(TimeOfDayDevAction::SetMidnight, &mut time_of_day);
     }
+}
+
+/// Dev panel / hotkey actions for the visual day-night clock.
+#[cfg(feature = "dev")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimeOfDayDevAction {
+    ToggleEnabled,
+    TogglePaused,
+    HourEarlier,
+    HourLater,
+    SlowerDay,
+    FasterDay,
+    SetDawn,
+    SetNoon,
+    SetMidnight,
+}
+
+#[cfg(feature = "dev")]
+pub fn apply_time_of_day_dev_action(action: TimeOfDayDevAction, time_of_day: &mut TimeOfDaySettings) {
+    match action {
+        TimeOfDayDevAction::ToggleEnabled => {
+            time_of_day.enabled = !time_of_day.enabled;
+            bevy::log::info!(
+                target: "chasma::environment",
+                "Time of day {}",
+                if time_of_day.enabled { "enabled" } else { "disabled" }
+            );
+        }
+        TimeOfDayDevAction::TogglePaused => {
+            time_of_day.paused = !time_of_day.paused;
+            bevy::log::info!(
+                target: "chasma::environment",
+                "Time of day {}",
+                if time_of_day.paused { "paused" } else { "running" }
+            );
+        }
+        TimeOfDayDevAction::HourEarlier => {
+            time_of_day.set_time_hours(time_of_day.time_hours - 1.0);
+        }
+        TimeOfDayDevAction::HourLater => {
+            time_of_day.set_time_hours(time_of_day.time_hours + 1.0);
+        }
+        TimeOfDayDevAction::SlowerDay => {
+            time_of_day.day_length_seconds = (time_of_day.day_length_seconds - 60.0).max(30.0);
+        }
+        TimeOfDayDevAction::FasterDay => {
+            time_of_day.day_length_seconds = (time_of_day.day_length_seconds + 60.0).min(3600.0);
+        }
+        TimeOfDayDevAction::SetDawn => {
+            let sunrise = time_of_day.sunrise_hour;
+            time_of_day.set_time_hours(sunrise);
+        }
+        TimeOfDayDevAction::SetNoon => {
+            time_of_day.set_time_hours(12.0);
+        }
+        TimeOfDayDevAction::SetMidnight => {
+            time_of_day.set_time_hours(0.0);
+        }
+    }
+}
+
+#[cfg(feature = "dev")]
+pub fn format_time_of_day_status(settings: &TimeOfDaySettings) -> String {
+    let hours = settings.time_hours.floor() as u32;
+    let minutes = ((settings.time_hours.fract()) * 60.0).floor() as u32;
+    format!(
+        "Time: {:02}:{:02}  cycle={}  paused={}  day_len={:.0}s\n[ / ] hour  6 dawn  1 noon  0 night  T toggle  P pause",
+        hours % 24,
+        minutes,
+        if settings.enabled { "on" } else { "off" },
+        settings.paused,
+        settings.day_length_seconds,
+    )
 }
 
 #[cfg(test)]
@@ -251,8 +314,16 @@ mod tests {
     #[test]
     fn night_gives_low_light_intensity() {
         let night = lighting_at(3.0);
-        assert!(night.directional_light_illuminance < 50.0);
-        assert!(night.ambient_brightness < 50.0);
+        assert!(night.directional_light_illuminance < 200.0);
+        assert!(night.ambient_brightness < 150.0);
+    }
+
+    #[test]
+    fn sunrise_is_brighter_than_deep_night() {
+        let night = lighting_at(2.0);
+        let sunrise = lighting_at(6.0);
+        assert!(sunrise.ambient_brightness > night.ambient_brightness);
+        assert!(sunrise.skybox_brightness > night.skybox_brightness);
     }
 
     #[test]

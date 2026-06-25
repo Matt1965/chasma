@@ -20,6 +20,11 @@ pub use cycle::{
     sync_environment_presentation, twilight_warmth, update_environment_from_time_of_day,
     TimeOfDayLighting,
 };
+#[cfg(feature = "dev")]
+pub use cycle::{
+    apply_time_of_day_dev_action, format_time_of_day_status, time_of_day_dev_keyboard,
+    TimeOfDayDevAction,
+};
 
 pub use debug::{
     count_environment_singletons, log_environment_configuration,

@@ -362,7 +362,7 @@ pub struct DevPanelRoot;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::dev_mode::{DefinitionId, SpawnMode};
+    use crate::dev::dev_mode::{DefinitionId, SpawnMode};
     use crate::world::WorldPosition;
 
     #[test]

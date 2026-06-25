@@ -1,7 +1,7 @@
 //! Excel column schema and conversion into [`UnitDefinition`].
 
 use crate::world::{
-    UnitDefinition, UnitDefinitionId, UnitRenderKey,
+    UnitDefinition, UnitDefinitionId, UnitRenderKey, WeaponDefinitionId,
 };
 
 use super::super::schema::normalize_file_path;
@@ -23,8 +23,10 @@ pub const REQUIRED_COLUMNS: &[&str] = &[
     "Tier",
 ];
 
-/// Optional v1 locomotion/render columns — defaults apply when absent from header or blank.
+/// Optional v1 locomotion/render/combat columns — defaults apply when absent from header or blank.
 pub const OPTIONAL_COLUMNS: &[&str] = &[
+    "Max HP",
+    "Default Weapon ID",
     "File Path",
     "Move Speed",
     "Collision Radius",
@@ -38,6 +40,8 @@ pub const IGNORED_COLUMNS: &[&str] = &["Total Stats"];
 pub const DEFAULT_MOVE_SPEED_MPS: f32 = 4.0;
 pub const DEFAULT_COLLISION_RADIUS_METERS: f32 = 0.5;
 pub const DEFAULT_MAX_SLOPE_DEGREES: f32 = 40.0;
+/// Used when the workbook has no `Default Weapon ID` column or the cell is blank.
+pub const DEFAULT_WEAPON_ID_WHEN_UNSPECIFIED: &str = "weapon_fists";
 
 /// Raw row parsed from the `Units` sheet before validation.
 #[derive(Debug, Clone, PartialEq)]
@@ -48,6 +52,7 @@ pub struct UnitImportRow {
     pub faction: String,
     pub level: u32,
     pub base_hp: u32,
+    pub max_hp: u32,
     pub strength: u32,
     pub dexterity: u32,
     pub constitution: u32,
@@ -60,9 +65,11 @@ pub struct UnitImportRow {
     pub move_speed_mps: f32,
     pub collision_radius_meters: f32,
     pub max_slope_degrees: f32,
+    pub default_weapon_id: String,
     pub enabled: bool,
     pub enabled_was_blank: bool,
     pub has_file_path_column: bool,
+    pub has_default_weapon_column: bool,
 }
 
 /// Normalize a workbook file-path cell into a [`UnitRenderKey`] path segment (`wolf`).
@@ -101,6 +108,7 @@ impl UnitImportRow {
             self.faction.trim(),
             self.level,
             self.base_hp,
+            self.max_hp,
             self.strength,
             self.dexterity,
             self.constitution,
@@ -112,9 +120,18 @@ impl UnitImportRow {
             self.move_speed_mps,
             self.collision_radius_meters,
             self.max_slope_degrees,
+            WeaponDefinitionId::new(self.resolved_default_weapon_id()),
             self.enabled,
             render_key,
         ))
+    }
+
+    fn resolved_default_weapon_id(&self) -> &str {
+        if self.default_weapon_id.trim().is_empty() {
+            DEFAULT_WEAPON_ID_WHEN_UNSPECIFIED
+        } else {
+            self.default_weapon_id.trim()
+        }
     }
 }
 
@@ -130,6 +147,7 @@ mod tests {
             faction: "Wild".to_string(),
             level: 2,
             base_hp: 5,
+            max_hp: 5,
             strength: 4,
             dexterity: 6,
             constitution: 3,
@@ -142,9 +160,11 @@ mod tests {
             move_speed_mps: 4.5,
             collision_radius_meters: 0.6,
             max_slope_degrees: 40.0,
+            default_weapon_id: "weapon_wolf_bite".to_string(),
             enabled: true,
             enabled_was_blank: false,
             has_file_path_column: true,
+            has_default_weapon_column: true,
         }
     }
 
@@ -183,6 +203,8 @@ mod tests {
         assert!((def.move_speed_mps - 4.5).abs() < 1e-4);
         assert!((def.collision_radius_meters - 0.6).abs() < 1e-4);
         assert_eq!(def.render_key.0.as_deref(), Some("wolf"));
+        assert_eq!(def.default_weapon_id.as_str(), "weapon_wolf_bite");
+        assert_eq!(def.max_hp, 5);
     }
 
     #[test]

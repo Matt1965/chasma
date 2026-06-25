@@ -7,7 +7,9 @@ use bevy::prelude::*;
 use crate::client::{ClientIntent, IntentDispatchReport, IntentDispatchStatus};
 use crate::units::input::MoveOrdersReport;
 use crate::world::{
-    CommandBufferResolveReport, UnitId, UnitOrder, UnitOrderError,
+    CommandBufferResolveReport, CombatEngagementReport, CombatEngagementStatus,
+    CombatStrikeEvent, CombatStrikeReport, UnitDeathEvent, UnitDeathReport, UnitId, UnitOrder,
+    UnitOrderError,
 };
 
 /// Monotonic client frame index for trace ordering.
@@ -29,6 +31,22 @@ pub enum CommandTraceOutcome {
     OrderFailed,
     OrderResolved,
     ResolveFailed,
+    CombatRangeReady,
+    CombatChasing,
+    CombatTargetInvalid,
+    CombatPathUnavailable,
+    CombatTerrainUnavailable,
+    CombatAttackMoveAcquired,
+    CombatAttackWindupStarted,
+    CombatAttackStrikeApplied,
+    CombatAttackStrikeMissed,
+    CombatAttackRecoveryStarted,
+    CombatAttackCooldownStarted,
+    CombatUnsupportedProjectileMode,
+    UnitDied,
+    UnitRemovalQueued,
+    UnitRemoved,
+    TargetClearedDueToDeath,
 }
 
 /// Simplified intent kind for trace entries (stable for tests).
@@ -44,6 +62,9 @@ pub enum CommandTraceIntentKind {
     PaletteCommand,
     ShiftModifier,
     CommandResolve,
+    CombatEngagement,
+    CombatStrike,
+    UnitDeath,
 }
 
 impl CommandTraceIntentKind {
@@ -73,6 +94,10 @@ pub struct CommandTraceEntry {
     pub outcome: CommandTraceOutcome,
     pub path_waypoint_count: Option<u32>,
     pub error: Option<UnitOrderError>,
+    pub combat_status: Option<CombatEngagementStatus>,
+    pub center_distance_meters: Option<f32>,
+    pub edge_distance_meters: Option<f32>,
+    pub weapon_range_meters: Option<f32>,
 }
 
 /// Ring buffer of recent command traces (simulation writes, overlays read).
@@ -186,6 +211,10 @@ impl CommandTraceBuffer {
                     outcome: unit_outcome,
                     path_waypoint_count: None,
                     error: trace.error,
+                    combat_status: None,
+                    center_distance_meters: None,
+                    edge_distance_meters: None,
+                    weapon_range_meters: None,
                 });
             }
         }
@@ -200,7 +229,113 @@ impl CommandTraceBuffer {
             outcome,
             path_waypoint_count: None,
             error: None,
+            combat_status: None,
+            center_distance_meters: None,
+            edge_distance_meters: None,
+            weapon_range_meters: None,
         });
+    }
+
+    pub fn record_combat_engagement(&mut self, tick: u64, report: &CombatEngagementReport) {
+        for trace in &report.traces {
+            let outcome = match trace.status {
+                CombatEngagementStatus::InRangeReady => CommandTraceOutcome::CombatRangeReady,
+                CombatEngagementStatus::OutOfRangeChasing => CommandTraceOutcome::CombatChasing,
+                CombatEngagementStatus::TargetInvalid => CommandTraceOutcome::CombatTargetInvalid,
+                CombatEngagementStatus::PathUnavailable => CommandTraceOutcome::CombatPathUnavailable,
+                CombatEngagementStatus::TerrainUnavailable => {
+                    CommandTraceOutcome::CombatTerrainUnavailable
+                }
+                CombatEngagementStatus::AttackMoveAcquired => {
+                    CommandTraceOutcome::CombatAttackMoveAcquired
+                }
+                CombatEngagementStatus::MissingWeapon
+                | CombatEngagementStatus::AttackMoveMoving => continue,
+            };
+            let sequence = self.next_sequence();
+            self.push_entry(CommandTraceEntry {
+                tick,
+                sequence,
+                intent_kind: CommandTraceIntentKind::CombatEngagement,
+                unit_ids: vec![trace.unit_id],
+                order: None,
+                outcome,
+                path_waypoint_count: None,
+                error: None,
+                combat_status: Some(trace.status),
+                center_distance_meters: trace.center_distance_meters,
+                edge_distance_meters: trace.edge_distance_meters,
+                weapon_range_meters: trace.weapon_range_meters,
+            });
+        }
+    }
+
+    pub fn record_combat_strike(&mut self, tick: u64, report: &CombatStrikeReport) {
+        for trace in &report.traces {
+            let outcome = match &trace.event {
+                CombatStrikeEvent::AttackWindupStarted => {
+                    CommandTraceOutcome::CombatAttackWindupStarted
+                }
+                CombatStrikeEvent::AttackStrikeApplied { .. } => {
+                    CommandTraceOutcome::CombatAttackStrikeApplied
+                }
+                CombatStrikeEvent::AttackStrikeMissedInvalidTarget => {
+                    CommandTraceOutcome::CombatAttackStrikeMissed
+                }
+                CombatStrikeEvent::AttackRecoveryStarted => {
+                    CommandTraceOutcome::CombatAttackRecoveryStarted
+                }
+                CombatStrikeEvent::AttackCooldownStarted => {
+                    CommandTraceOutcome::CombatAttackCooldownStarted
+                }
+                CombatStrikeEvent::UnsupportedProjectileMode => {
+                    CommandTraceOutcome::CombatUnsupportedProjectileMode
+                }
+            };
+            let sequence = self.next_sequence();
+            self.push_entry(CommandTraceEntry {
+                tick,
+                sequence,
+                intent_kind: CommandTraceIntentKind::CombatStrike,
+                unit_ids: vec![trace.attacker_id],
+                order: None,
+                outcome,
+                path_waypoint_count: None,
+                error: None,
+                combat_status: None,
+                center_distance_meters: None,
+                edge_distance_meters: None,
+                weapon_range_meters: None,
+            });
+        }
+    }
+
+    pub fn record_unit_death(&mut self, tick: u64, report: &UnitDeathReport) {
+        for trace in &report.traces {
+            let outcome = match &trace.event {
+                UnitDeathEvent::UnitDied { .. } => CommandTraceOutcome::UnitDied,
+                UnitDeathEvent::UnitRemovalQueued { .. } => CommandTraceOutcome::UnitRemovalQueued,
+                UnitDeathEvent::UnitRemoved { .. } => CommandTraceOutcome::UnitRemoved,
+                UnitDeathEvent::TargetClearedDueToDeath { .. } => {
+                    CommandTraceOutcome::TargetClearedDueToDeath
+                }
+            };
+            let sequence = self.next_sequence();
+            self.push_entry(CommandTraceEntry {
+                tick,
+                sequence,
+                intent_kind: CommandTraceIntentKind::UnitDeath,
+                unit_ids: vec![trace.unit_id],
+                order: None,
+                outcome,
+                path_waypoint_count: None,
+                error: None,
+                combat_status: None,
+                center_distance_meters: None,
+                edge_distance_meters: None,
+                weapon_range_meters: None,
+            });
+        }
     }
 
     pub fn record_command_resolve(&mut self, tick: u64, report: &CommandBufferResolveReport) {
@@ -217,6 +352,10 @@ impl CommandTraceBuffer {
                 outcome: CommandTraceOutcome::OrderResolved,
                 path_waypoint_count: Some(success.path_waypoint_count),
                 error: None,
+                combat_status: None,
+                center_distance_meters: None,
+                edge_distance_meters: None,
+                weapon_range_meters: None,
             });
         }
         for (unit_id, error) in &report.failures {
@@ -230,6 +369,10 @@ impl CommandTraceBuffer {
                 outcome: CommandTraceOutcome::ResolveFailed,
                 path_waypoint_count: None,
                 error: Some(*error),
+                combat_status: None,
+                center_distance_meters: None,
+                edge_distance_meters: None,
+                weapon_range_meters: None,
             });
         }
     }
@@ -420,5 +563,42 @@ mod tests {
         let entry = buffer.latest().unwrap();
         assert_eq!(entry.path_waypoint_count, Some(5));
         assert_eq!(entry.outcome, CommandTraceOutcome::OrderResolved);
+    }
+
+    #[test]
+    fn rejected_attack_order_records_error_in_trace() {
+        let mut buffer = CommandTraceBuffer::default();
+        buffer.begin_tick(9);
+        let report = MoveOrdersReport {
+            issued: 0,
+            failed: 1,
+            unit_traces: vec![MoveOrderUnitTrace {
+                unit_id: UnitId::new(1),
+                order: UnitOrder::Attack {
+                    target: UnitId::new(1),
+                },
+                error: Some(UnitOrderError::SelfTarget),
+            }],
+        };
+        buffer.record_intent_dispatch(
+            9,
+            &ClientIntent::ContextualCommand {
+                target: crate::client::commands::CommandTarget::Unit {
+                    unit_id: UnitId::new(1),
+                },
+            },
+            IntentDispatchStatus::Applied,
+            &[UnitId::new(1)],
+            Some(&report),
+        );
+        let attack_trace = buffer
+            .entries()
+            .find(|entry| entry.error == Some(UnitOrderError::SelfTarget))
+            .expect("attack rejection trace");
+        assert_eq!(attack_trace.unit_ids, vec![UnitId::new(1)]);
+        assert!(matches!(
+            attack_trace.order,
+            Some(UnitOrder::Attack { target }) if target == UnitId::new(1)
+        ));
     }
 }

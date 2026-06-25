@@ -24,6 +24,15 @@ pub struct TimeOfDaySettings {
     pub sunset_hour: f32,
     /// Ambient brightness multiplier at full night (relative to noon ambient).
     pub night_ambient_multiplier: f32,
+    /// Directional illuminance (lux) at solar noon and deep night.
+    pub noon_directional_illuminance: f32,
+    pub night_directional_illuminance: f32,
+    /// Ambient and skybox brightness at noon and night (before night ambient multiplier).
+    pub noon_ambient_brightness: f32,
+    pub noon_skybox_brightness: f32,
+    pub night_skybox_brightness: f32,
+    /// Extra daylight factor from twilight warmth at dawn/dusk.
+    pub twilight_daylight_blend: f32,
 }
 
 impl Default for TimeOfDaySettings {
@@ -37,7 +46,13 @@ impl Default for TimeOfDaySettings {
             sun_pitch_max_deg: 58.0,
             sunrise_hour: 6.0,
             sunset_hour: 18.0,
-            night_ambient_multiplier: 0.12,
+            night_ambient_multiplier: 0.32,
+            noon_directional_illuminance: 24_000.0,
+            night_directional_illuminance: 40.0,
+            noon_ambient_brightness: 320.0,
+            noon_skybox_brightness: 1_200.0,
+            night_skybox_brightness: 160.0,
+            twilight_daylight_blend: 0.5,
         }
     }
 }

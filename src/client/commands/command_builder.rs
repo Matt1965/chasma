@@ -1,7 +1,7 @@
-//! Command builder — [`ContextualCommandIntent`] → executable plan (ADR-041 U-UI5).
+//! Command builder — [`ContextualCommandIntent`] → executable plan (ADR-041 U-UI5, ADR-056 C3).
 
 use crate::units::input::SelectedUnits;
-use crate::world::{UnitOrder, WorldData, WorldPosition};
+use crate::world::{UnitId, UnitOrder, WorldData, WorldPosition};
 
 use super::command_types::{CommandTarget, CommandType, ContextualCommandIntent};
 
@@ -9,6 +9,8 @@ use super::command_types::{CommandTarget, CommandType, ContextualCommandIntent};
 #[derive(Debug, Clone, PartialEq)]
 pub enum BuiltCommandPlan {
     MoveTo { target: WorldPosition },
+    Attack { target: UnitId },
+    AttackMove { destination: WorldPosition },
     StopAll,
     HoldAll,
     NoOp,
@@ -20,6 +22,7 @@ pub enum CommandBuildError {
     EmptySelection,
     TargetUnitNotFound,
     MissingMoveTarget,
+    MissingAttackTarget,
 }
 
 /// Translate a contextual intent into a simulation-facing plan.
@@ -33,9 +36,17 @@ pub fn build_command_plan(
     }
 
     match intent.command_type {
-        CommandType::Move | CommandType::AttackMove | CommandType::Interact => {
+        CommandType::Move | CommandType::Interact => {
             let target = resolve_move_target(&intent.target, world)?;
             Ok(BuiltCommandPlan::MoveTo { target })
+        }
+        CommandType::Attack => {
+            let target = resolve_attack_target(&intent.target)?;
+            Ok(BuiltCommandPlan::Attack { target })
+        }
+        CommandType::AttackMove => {
+            let destination = resolve_move_target(&intent.target, world)?;
+            Ok(BuiltCommandPlan::AttackMove { destination })
         }
         CommandType::Stop => Ok(BuiltCommandPlan::StopAll),
         CommandType::HoldPosition => Ok(BuiltCommandPlan::HoldAll),
@@ -71,13 +82,23 @@ fn resolve_move_target(
     }
 }
 
+fn resolve_attack_target(target: &CommandTarget) -> Result<UnitId, CommandBuildError> {
+    match target {
+        CommandTarget::Unit { unit_id } => Ok(*unit_id),
+        CommandTarget::Terrain { .. } => Err(CommandBuildError::MissingAttackTarget),
+    }
+}
+
 /// Per-unit orders for non-formation commands (Stop / Hold placeholders).
 pub fn unit_orders_for_plan(plan: &BuiltCommandPlan) -> Vec<UnitOrder> {
     match plan {
         BuiltCommandPlan::StopAll | BuiltCommandPlan::HoldAll => {
             vec![UnitOrder::Idle]
         }
-        BuiltCommandPlan::MoveTo { .. } | BuiltCommandPlan::NoOp => Vec::new(),
+        BuiltCommandPlan::MoveTo { .. }
+        | BuiltCommandPlan::Attack { .. }
+        | BuiltCommandPlan::AttackMove { .. }
+        | BuiltCommandPlan::NoOp => Vec::new(),
     }
 }
 
@@ -124,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    fn attack_move_temporarily_maps_to_move_to() {
+    fn attack_move_stores_destination() {
         let world = flat_world();
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
@@ -133,7 +154,27 @@ mod tests {
             target: CommandTarget::Terrain { position: pos(5.0, 5.0) },
         };
         let plan = build_command_plan(&intent, &selection, &world).unwrap();
-        assert!(matches!(plan, BuiltCommandPlan::MoveTo { .. }));
+        assert_eq!(
+            plan,
+            BuiltCommandPlan::AttackMove {
+                destination: pos(5.0, 5.0)
+            }
+        );
+    }
+
+    #[test]
+    fn attack_requires_unit_target() {
+        let world = flat_world();
+        let mut selection = SelectedUnits::default();
+        selection.set_single(crate::world::UnitId::new(1));
+        let intent = ContextualCommandIntent {
+            command_type: CommandType::Attack,
+            target: CommandTarget::Terrain { position: pos(5.0, 5.0) },
+        };
+        assert_eq!(
+            build_command_plan(&intent, &selection, &world),
+            Err(CommandBuildError::MissingAttackTarget)
+        );
     }
 
     #[test]

@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use super::definition_id::UnitDefinitionId;
 use super::render_key::UnitRenderKey;
+use crate::world::weapon::WeaponDefinitionId;
 
 /// Authoritative description of a unit type (ADR-027 U1).
 ///
@@ -17,6 +18,12 @@ pub struct UnitDefinition {
     pub faction_tag: String,
     pub level: u32,
     pub base_hp: u32,
+    /// Combat max HP copied to instances at spawn (ADR-055 C2).
+    pub max_hp: u32,
+    /// Reserved for future stamina system — no behavior in C2.
+    pub stamina_max: Option<u32>,
+    /// Reserved for future energy system — no behavior in C2.
+    pub energy_max: Option<u32>,
     pub strength: u32,
     pub dexterity: u32,
     pub constitution: u32,
@@ -28,6 +35,8 @@ pub struct UnitDefinition {
     pub move_speed_mps: f32,
     pub collision_radius_meters: f32,
     pub max_slope_degrees: f32,
+    /// Default innate or equipped weapon reference (ADR-054 C1).
+    pub default_weapon_id: WeaponDefinitionId,
     pub enabled: bool,
     pub render_key: UnitRenderKey,
 }
@@ -40,6 +49,7 @@ impl UnitDefinition {
         faction_tag: impl Into<String>,
         level: u32,
         base_hp: u32,
+        max_hp: u32,
         strength: u32,
         dexterity: u32,
         constitution: u32,
@@ -51,6 +61,7 @@ impl UnitDefinition {
         move_speed_mps: f32,
         collision_radius_meters: f32,
         max_slope_degrees: f32,
+        default_weapon_id: WeaponDefinitionId,
         enabled: bool,
         render_key: UnitRenderKey,
     ) -> Self {
@@ -60,6 +71,9 @@ impl UnitDefinition {
             faction_tag: faction_tag.into(),
             level,
             base_hp,
+            max_hp,
+            stamina_max: None,
+            energy_max: None,
             strength,
             dexterity,
             constitution,
@@ -71,6 +85,7 @@ impl UnitDefinition {
             move_speed_mps,
             collision_radius_meters,
             max_slope_degrees,
+            default_weapon_id,
             enabled,
             render_key,
         }

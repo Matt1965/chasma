@@ -116,15 +116,21 @@ fn command_builder_fails_closed_without_silent_move_fallback() {
 #[test]
 fn contextual_resolver_does_not_inject_world_data() {
     let units = [crate::world::UnitId::new(1)];
+    let world = empty_layout_world();
+    let unit_catalog = crate::world::UnitCatalog::default();
+    let weapon_catalog = crate::world::WeaponCatalog::default();
     let ctx = CommandResolutionContext {
         selected_units: &units,
         target: CommandTarget::Terrain {
             position: pos(5.0, 5.0),
         },
+        world: &world,
+        unit_catalog: &unit_catalog,
+        weapon_catalog: &weapon_catalog,
+        targeting_policy: crate::world::AttackTargetingPolicy::default(),
     };
     let resolved = crate::client::commands::resolve_contextual_command(&ctx).unwrap();
     assert_eq!(resolved.command_type, CommandType::Move);
-    let world = empty_layout_world();
     assert!(world.sorted_unit_ids().is_empty());
 }
 
@@ -144,9 +150,12 @@ fn movement_with_empty_catalogs_does_not_panic_on_empty_world() {
     let report = crate::world::step_all_unit_movement(
         &mut world,
         &catalog,
+        &crate::world::WeaponCatalog::default(),
         &doodad_catalog,
         &crate::world::NavigationConfig::default(),
+        crate::world::AttackTargetingPolicy::default(),
         1.0 / 60.0,
+        0,
     );
     assert_eq!(report.movement.moved, 0);
 }

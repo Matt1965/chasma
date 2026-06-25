@@ -13,6 +13,12 @@ pub enum InteractionType {
     None,
     /// Walkable terrain suitable as a move destination.
     MoveTarget,
+    /// Hostile or otherwise valid attack target unit.
+    AttackableUnit,
+    /// Friendly unit — not attackable by default.
+    FriendlyUnit,
+    /// Neutral unit — not attackable unless weapon filters allow.
+    NeutralUnit,
     /// Harvestable resource (read-only stub until U13+).
     ResourceNode,
     /// Non-blocking interactable (doors, markers, ruins).
@@ -28,6 +34,9 @@ impl InteractionType {
         match self {
             Self::None => "None",
             Self::MoveTarget => "MoveTarget",
+            Self::AttackableUnit => "AttackableUnit",
+            Self::FriendlyUnit => "FriendlyUnit",
+            Self::NeutralUnit => "NeutralUnit",
             Self::ResourceNode => "ResourceNode",
             Self::InteractableObject => "InteractableObject",
             Self::BlockedArea => "BlockedArea",
