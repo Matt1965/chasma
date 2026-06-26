@@ -132,6 +132,22 @@ impl DevModeState {
         self.selected_definition = Some(id);
     }
 
+    pub fn cycle_spawn_affiliation(&mut self) {
+        self.spawn_affiliation = match self.spawn_affiliation {
+            crate::world::Affiliation::Player => crate::world::Affiliation::Wildlife,
+            crate::world::Affiliation::Wildlife => crate::world::Affiliation::Player,
+            _ => crate::world::Affiliation::Player,
+        };
+    }
+
+    pub fn spawn_team_label(&self) -> &'static str {
+        match self.spawn_affiliation {
+            crate::world::Affiliation::Player => "Player",
+            crate::world::Affiliation::Wildlife => "Wilds",
+            other => other.label(),
+        }
+    }
+
     pub fn toggle_favorite(&mut self, id: DefinitionId) {
         if self.favorites.contains(&id) {
             self.favorites.remove(&id);

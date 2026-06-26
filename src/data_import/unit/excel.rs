@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::schema::{
     UnitImportRow, DEFAULT_COLLISION_RADIUS_METERS, DEFAULT_MAX_SLOPE_DEGREES,
-    DEFAULT_MOVE_SPEED_MPS, REQUIRED_COLUMNS,
+    DEFAULT_MOVE_SPEED_MPS, DEFAULT_RENDER_SCALE, REQUIRED_COLUMNS,
 };
 use crate::data_import::error::{DataImportError, RowImportError};
 use crate::data_import::schema::parse_enabled_cell;
@@ -162,6 +162,7 @@ fn parse_row(
         move_speed_mps: optional_f32("Move Speed", DEFAULT_MOVE_SPEED_MPS)?,
         collision_radius_meters: optional_f32("Collision Radius", DEFAULT_COLLISION_RADIUS_METERS)?,
         max_slope_degrees: optional_f32("Max Slope", DEFAULT_MAX_SLOPE_DEGREES)?,
+        render_scale: optional_f32("Render Scale", DEFAULT_RENDER_SCALE)?,
         default_weapon_id: if has_default_weapon_column {
             text("Default Weapon ID")
         } else {
@@ -171,6 +172,7 @@ fn parse_row(
         enabled_was_blank,
         has_file_path_column: columns.contains_key("File Path"),
         has_default_weapon_column,
+        has_render_scale_column: columns.contains_key("Render Scale"),
     })
 }
 

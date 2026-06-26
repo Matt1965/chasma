@@ -59,6 +59,10 @@ pub fn dev_mode_keyboard_input(
         dev_state.enabled_only = !dev_state.enabled_only;
     }
 
+    if keyboard.just_pressed(KeyCode::KeyT) && !panel_hovered.hovered {
+        dev_state.cycle_spawn_affiliation();
+    }
+
     if !panel_hovered.hovered {
         handle_favorite_hotkeys(&keyboard, &mut dev_state);
     }
@@ -320,6 +324,7 @@ pub fn handle_dev_spawn_click(
             .map(|r| r.world_seed)
             .unwrap_or(crate::doodads::DEFAULT_DOODAD_WORLD_SEED),
         layout,
+        spawn_affiliation: dev_state.spawn_affiliation,
     };
 
     let report = execute_batch_spawn(

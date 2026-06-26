@@ -23,8 +23,12 @@ pub fn available_commands_for_selection(
         return Vec::new();
     }
 
-    static PALETTE: [CommandType; 3] =
-        [CommandType::Move, CommandType::Stop, CommandType::HoldPosition];
+    static PALETTE: [CommandType; 4] = [
+        CommandType::Move,
+        CommandType::Stop,
+        CommandType::HoldPosition,
+        CommandType::Attack,
+    ];
 
     PALETTE
         .iter()
@@ -35,19 +39,25 @@ pub fn available_commands_for_selection(
         .collect()
 }
 
-fn command_enabled_for_selection(command_type: CommandType, _selection: &SelectedUnits) -> bool {
+fn command_enabled_for_selection(command_type: CommandType, selection: &SelectedUnits) -> bool {
+    if selection.is_empty() {
+        return false;
+    }
     match command_type {
-        CommandType::Move | CommandType::Stop => true,
-        CommandType::HoldPosition => true,
-        CommandType::AttackMove | CommandType::Interact | CommandType::Attack => false,
+        CommandType::Move | CommandType::Stop | CommandType::HoldPosition | CommandType::Attack => {
+            true
+        }
+        CommandType::AttackMove | CommandType::Interact => false,
     }
 }
 
 /// Per-unit capability hook for future ability expansion.
 pub fn unit_supports_command(_unit_id: UnitId, command_type: CommandType) -> bool {
     match command_type {
-        CommandType::Move | CommandType::Stop | CommandType::HoldPosition => true,
-        CommandType::AttackMove | CommandType::Interact | CommandType::Attack => false,
+        CommandType::Move | CommandType::Stop | CommandType::HoldPosition | CommandType::Attack => {
+            true
+        }
+        CommandType::AttackMove | CommandType::Interact => false,
     }
 }
 
@@ -66,10 +76,11 @@ mod tests {
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
         let entries = available_commands_for_selection(&selection, &UnitCatalog::default());
-        assert_eq!(entries.len(), 3);
+        assert_eq!(entries.len(), 4);
         assert_eq!(entries[0].command_type, CommandType::Move);
         assert_eq!(entries[1].command_type, CommandType::Stop);
         assert_eq!(entries[2].command_type, CommandType::HoldPosition);
+        assert_eq!(entries[3].command_type, CommandType::Attack);
     }
 
     #[test]

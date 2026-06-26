@@ -20,10 +20,11 @@ use crate::world::{
 };
 
 use super::commands::{
-    build_command_plan, resolve_contextual_command, resolve_palette_command, BuiltCommandPlan,
-    CommandResolutionContext, CommandTarget, CommandType,
+    build_command_plan, resolve_contextual_command_with_armed, resolve_palette_command,
+    BuiltCommandPlan, CommandResolutionContext, CommandTarget, CommandType,
 };
 use super::intent::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
+use crate::ui::gameplay::PlayerHudState;
 use crate::world::{SelectionControllabilityPolicy, unit_is_selectable};
 
 /// Bundled simulation catalogs (keeps dispatch system param count under Bevy limit).
@@ -87,6 +88,7 @@ pub fn dispatch_client_intents(
     mut pending_trace: ResMut<PendingDispatchTrace>,
     frame_index: Res<ClientFrameIndex>,
     mut boundary: ResMut<ClientBoundaryGuard>,
+    mut hud: ResMut<PlayerHudState>,
 ) {
     boundary.begin_intent_dispatch();
     pending_trace.clear();
@@ -138,7 +140,17 @@ pub fn dispatch_client_intents(
                 &mut move_report_opt,
                 &mut pending_trace,
                 selection_policy,
+                hud.armed_command,
             );
+            if status == IntentDispatchStatus::Applied
+                && matches!(
+                    intent,
+                    ClientIntent::ContextualCommand { .. } | ClientIntent::MoveCommand { .. }
+                )
+                && hud.armed_command.is_some()
+            {
+                hud.armed_command = None;
+            }
             move_report_holder = move_report_opt;
             (status, move_report_holder.as_ref())
         };
@@ -191,6 +203,7 @@ fn dispatch_one(
     move_report: &mut Option<MoveOrdersReport>,
     pending_trace: &mut PendingDispatchTrace,
     selection_policy: SelectionControllabilityPolicy,
+    armed_command: Option<CommandType>,
 ) -> IntentDispatchStatus {
     match intent {
         ClientIntent::ContextualCommand { target } => dispatch_contextual_command(
@@ -207,6 +220,7 @@ fn dispatch_one(
             settings,
             move_report,
             pending_trace,
+            armed_command,
         ),
         ClientIntent::MoveCommand { target } => dispatch_contextual_command(
             CommandTarget::Terrain { position: *target },
@@ -222,6 +236,7 @@ fn dispatch_one(
             settings,
             move_report,
             pending_trace,
+            armed_command,
         ),
         ClientIntent::SelectUnit { unit_id } => {
             if world
@@ -347,6 +362,7 @@ fn dispatch_contextual_command(
     settings: &PlayerInteractionSettings,
     move_report: &mut Option<MoveOrdersReport>,
     pending_trace: &mut PendingDispatchTrace,
+    armed_command: Option<CommandType>,
 ) -> IntentDispatchStatus {
     if selection.is_empty() {
         return IntentDispatchStatus::Ignored;
@@ -359,14 +375,17 @@ fn dispatch_contextual_command(
 
     let selected: Vec<_> = selection.iter().collect();
     let targeting_policy = AttackTargetingPolicy::default();
-    let Some(contextual) = resolve_contextual_command(&CommandResolutionContext {
-        selected_units: &selected,
-        target,
-        world,
-        unit_catalog,
-        weapon_catalog,
-        targeting_policy,
-    }) else {
+    let Some(contextual) = resolve_contextual_command_with_armed(
+        &CommandResolutionContext {
+            selected_units: &selected,
+            target,
+            world,
+            unit_catalog,
+            weapon_catalog,
+            targeting_policy,
+        },
+        armed_command,
+    ) else {
         return IntentDispatchStatus::Ignored;
     };
 
@@ -698,6 +717,7 @@ mod tests {
             &mut None,
             &mut PendingDispatchTrace::default(),
             SelectionControllabilityPolicy::gameplay_default(),
+            None,
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert!(selection.contains(unit_id));
@@ -743,6 +763,7 @@ mod tests {
             &mut None,
             &mut PendingDispatchTrace::default(),
             SelectionControllabilityPolicy::gameplay_default(),
+            None,
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         resolve_all_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav_config);
@@ -780,6 +801,7 @@ mod tests {
             &mut None,
             &mut PendingDispatchTrace::default(),
             SelectionControllabilityPolicy::gameplay_default(),
+            None,
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
     }
@@ -834,6 +856,7 @@ mod tests {
             &mut None,
             &mut PendingDispatchTrace::default(),
             SelectionControllabilityPolicy::gameplay_default(),
+            None,
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
         assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
@@ -869,6 +892,7 @@ mod tests {
             &mut None,
             &mut PendingDispatchTrace::default(),
             SelectionControllabilityPolicy::gameplay_default(),
+            None,
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
     }
@@ -910,6 +934,7 @@ mod tests {
             &mut None,
             &mut PendingDispatchTrace::default(),
             SelectionControllabilityPolicy::gameplay_default(),
+            None,
         );
 
         assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
@@ -958,6 +983,7 @@ mod tests {
             &mut None,
             &mut pending,
             SelectionControllabilityPolicy::gameplay_default(),
+            None,
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert_eq!(pending.resolved_command, Some(CommandType::Move));
@@ -994,6 +1020,7 @@ mod tests {
             &mut None,
             &mut PendingDispatchTrace::default(),
             SelectionControllabilityPolicy::gameplay_default(),
+            None,
         );
         assert!(modifiers.shift);
     }

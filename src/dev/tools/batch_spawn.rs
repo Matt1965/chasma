@@ -25,6 +25,8 @@ pub struct BatchSpawnRequest {
     pub rules: PlacementRules,
     pub world_seed: u64,
     pub layout: crate::world::ChunkLayout,
+    /// Runtime affiliation for dev unit spawns (O1).
+    pub spawn_affiliation: crate::world::Affiliation,
 }
 
 /// Summary of a committed batch spawn.
@@ -128,6 +130,7 @@ pub fn execute_batch_spawn(
             doodad_catalog,
             &request.definition,
             position,
+            request.spawn_affiliation,
         );
         if outcome {
             report.spawned += 1;
@@ -145,6 +148,7 @@ fn spawn_at(
     doodad_catalog: &DoodadCatalog,
     definition: &DefinitionId,
     position: WorldPosition,
+    spawn_affiliation: crate::world::Affiliation,
 ) -> bool {
     match definition {
         DefinitionId::Unit(definition_id) => create_unit_with_ownership(
@@ -153,7 +157,7 @@ fn spawn_at(
             definition_id,
             position,
             UnitSource::Dev,
-            UnitOwnership::player_default(),
+            UnitOwnership::with_affiliation(spawn_affiliation),
         )
         .is_ok(),
         DefinitionId::Doodad(definition_id) => create_doodad(
@@ -236,6 +240,7 @@ mod tests {
             rules: PlacementRules::default(),
             world_seed: 7,
             layout: layout(),
+            spawn_affiliation: crate::world::Affiliation::Player,
         };
         let mut scratch = BatchSpawnScratch::default();
         let report = execute_batch_spawn(
@@ -275,6 +280,7 @@ mod tests {
             },
             world_seed: 1,
             layout: layout(),
+            spawn_affiliation: crate::world::Affiliation::Player,
         };
         let mut scratch = BatchSpawnScratch::default();
         let (planned, report) = plan_batch_spawn(
@@ -307,6 +313,7 @@ mod tests {
             rules: PlacementRules::default(),
             world_seed: 0,
             layout: layout(),
+            spawn_affiliation: crate::world::Affiliation::Player,
         };
         let mut scratch = BatchSpawnScratch::default();
         plan_batch_spawn(

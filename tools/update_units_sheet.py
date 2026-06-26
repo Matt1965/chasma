@@ -19,6 +19,7 @@ NEW_COLUMNS = [
     ("Move Speed", "USED — meters/sec for movement simulation (authoritative for speed)"),
     ("Collision Radius", "USED — meters; selection ring + steering radius"),
     ("Max Slope", "USED — degrees; max walkable terrain slope for pathfinding"),
+    ("Render Scale", "USED — uniform glTF scale (1.0 = as authored; robot ≈ 2.15 for human height)"),
     ("Enabled", "USED — Y/N; N excludes row from imported catalog"),
 ]
 
@@ -60,6 +61,7 @@ SCHEMA_ROWS = [
     ("Move Speed", "Optional (default 4.0)", "Movement sim", "m/s — authoritative"),
     ("Collision Radius", "Optional (default 0.5)", "Movement + UI", "meters"),
     ("Max Slope", "Optional (default 40)", "Pathfinding", "degrees"),
+    ("Render Scale", "Optional (default 1.0)", "Render mesh", "Uniform glTF scale"),
     ("Enabled", "Optional (default Y)", "Catalog filter", "N = row skipped"),
 ]
 
@@ -127,6 +129,12 @@ def suggested_collision(strength: float, constitution: float) -> float:
     return round(min(max(base, 0.4), 1.2), 2)
 
 
+def suggested_render_scale(name: str) -> float:
+    if name.strip().lower() == "robot":
+        return 2.15
+    return 1.0
+
+
 def main() -> None:
     if not WORKBOOK.exists():
         raise SystemExit(f"Workbook not found: {WORKBOOK}")
@@ -152,7 +160,8 @@ def main() -> None:
     col_move = headers.get("Move Speed") or start_col
     col_collision = headers.get("Collision Radius") or (start_col + 1)
     col_slope = headers.get("Max Slope") or (start_col + 2)
-    col_enabled = headers.get("Enabled") or (start_col + 3)
+    col_render_scale = headers.get("Render Scale") or (start_col + 3)
+    col_enabled = headers.get("Enabled") or (start_col + 4)
 
     agility_col = headers["Agility"]
     strength_col = headers["Strength"]
@@ -173,6 +182,8 @@ def main() -> None:
             ws.cell(row, col_collision, suggested_collision(strength, constitution))
         if ws.cell(row, col_slope).value in (None, ""):
             ws.cell(row, col_slope, 40)
+        if ws.cell(row, col_render_scale).value in (None, ""):
+            ws.cell(row, col_render_scale, suggested_render_scale(name))
         if ws.cell(row, col_enabled).value in (None, ""):
             ws.cell(row, col_enabled, "Y")
 

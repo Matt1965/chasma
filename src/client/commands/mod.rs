@@ -16,7 +16,10 @@ pub use command_palette::{
     available_commands_for_selection, unit_supports_command, CommandPaletteEntry,
 };
 pub use command_types::{CommandTarget, CommandType, ContextualCommandIntent};
-pub use context_resolver::{resolve_contextual_command, resolve_palette_command, CommandResolutionContext};
+pub use context_resolver::{
+    resolve_contextual_command, resolve_contextual_command_with_armed, resolve_palette_command,
+    CommandResolutionContext,
+};
 
 use bevy::prelude::*;
 

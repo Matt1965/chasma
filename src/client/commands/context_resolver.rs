@@ -25,8 +25,37 @@ pub struct CommandResolutionContext<'a> {
 pub fn resolve_contextual_command(
     ctx: &CommandResolutionContext<'_>,
 ) -> Option<ContextualCommandIntent> {
+    resolve_contextual_command_with_armed(ctx, None)
+}
+
+/// Resolve a contextual command, honoring an armed palette command when set.
+pub fn resolve_contextual_command_with_armed(
+    ctx: &CommandResolutionContext<'_>,
+    armed: Option<CommandType>,
+) -> Option<ContextualCommandIntent> {
     if ctx.selected_units.is_empty() {
         return None;
+    }
+
+    if let Some(armed_type) = armed {
+        return match armed_type {
+            CommandType::Attack => match ctx.target {
+                CommandTarget::Unit { unit_id }
+                    if any_selected_can_attack(ctx, unit_id) =>
+                {
+                    Some(ContextualCommandIntent {
+                        command_type: CommandType::Attack,
+                        target: CommandTarget::Unit { unit_id },
+                    })
+                }
+                _ => None,
+            },
+            CommandType::Move => Some(ContextualCommandIntent {
+                command_type: CommandType::Move,
+                target: ctx.target,
+            }),
+            _ => None,
+        };
     }
 
     match &ctx.target {

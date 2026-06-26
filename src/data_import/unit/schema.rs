@@ -31,6 +31,7 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Move Speed",
     "Collision Radius",
     "Max Slope",
+    "Render Scale",
     "Enabled",
 ];
 
@@ -40,6 +41,9 @@ pub const IGNORED_COLUMNS: &[&str] = &["Total Stats"];
 pub const DEFAULT_MOVE_SPEED_MPS: f32 = 4.0;
 pub const DEFAULT_COLLISION_RADIUS_METERS: f32 = 0.5;
 pub const DEFAULT_MAX_SLOPE_DEGREES: f32 = 40.0;
+pub const DEFAULT_RENDER_SCALE: f32 = 1.0;
+/// `robot.glb` mesh bounds are ~0.81 m tall; scale to ~1.75 m humanoid when the sheet omits Render Scale.
+pub const ROBOT_DEFAULT_RENDER_SCALE: f32 = 2.15;
 /// Used when the workbook has no `Default Weapon ID` column or the cell is blank.
 pub const DEFAULT_WEAPON_ID_WHEN_UNSPECIFIED: &str = "weapon_fists";
 
@@ -65,11 +69,13 @@ pub struct UnitImportRow {
     pub move_speed_mps: f32,
     pub collision_radius_meters: f32,
     pub max_slope_degrees: f32,
+    pub render_scale: f32,
     pub default_weapon_id: String,
     pub enabled: bool,
     pub enabled_was_blank: bool,
     pub has_file_path_column: bool,
     pub has_default_weapon_column: bool,
+    pub has_render_scale_column: bool,
 }
 
 /// Normalize a workbook file-path cell into a [`UnitRenderKey`] path segment (`wolf`).
@@ -102,7 +108,7 @@ impl UnitImportRow {
             UnitRenderKey::reserved(normalize_file_path_to_render_key(&self.file_path)?)
         };
 
-        Ok(UnitDefinition::new(
+        let mut definition = UnitDefinition::new(
             UnitDefinitionId::new(self.unit_id.trim()),
             self.name.trim(),
             self.faction.trim(),
@@ -123,7 +129,9 @@ impl UnitImportRow {
             WeaponDefinitionId::new(self.resolved_default_weapon_id()),
             self.enabled,
             render_key,
-        ))
+        );
+        definition.render_scale = self.resolved_render_scale();
+        Ok(definition)
     }
 
     fn resolved_default_weapon_id(&self) -> &str {
@@ -132,6 +140,20 @@ impl UnitImportRow {
         } else {
             self.default_weapon_id.trim()
         }
+    }
+
+    fn resolved_render_scale(&self) -> f32 {
+        if self.has_render_scale_column {
+            return self.render_scale;
+        }
+        if !self.file_path.trim().is_empty() {
+            if let Ok(key) = normalize_file_path_to_render_key(&self.file_path) {
+                if key == "robot" {
+                    return ROBOT_DEFAULT_RENDER_SCALE;
+                }
+            }
+        }
+        DEFAULT_RENDER_SCALE
     }
 }
 
@@ -160,11 +182,13 @@ mod tests {
             move_speed_mps: 4.5,
             collision_radius_meters: 0.6,
             max_slope_degrees: 40.0,
+            render_scale: DEFAULT_RENDER_SCALE,
             default_weapon_id: "weapon_wolf_bite".to_string(),
             enabled: true,
             enabled_was_blank: false,
             has_file_path_column: true,
             has_default_weapon_column: true,
+            has_render_scale_column: false,
         }
     }
 
@@ -202,6 +226,7 @@ mod tests {
         assert_eq!(def.tier, "Elite");
         assert!((def.move_speed_mps - 4.5).abs() < 1e-4);
         assert!((def.collision_radius_meters - 0.6).abs() < 1e-4);
+        assert!((def.render_scale - DEFAULT_RENDER_SCALE).abs() < 1e-4);
         assert_eq!(def.render_key.0.as_deref(), Some("wolf"));
         assert_eq!(def.default_weapon_id.as_str(), "weapon_wolf_bite");
         assert_eq!(def.max_hp, 5);
@@ -213,5 +238,24 @@ mod tests {
         row.file_path = String::new();
         let def = row.to_definition().unwrap();
         assert_eq!(def.render_key, UnitRenderKey::unset());
+    }
+
+    #[test]
+    fn robot_without_render_scale_column_uses_humanoid_default() {
+        let mut row = sample_row();
+        row.file_path = r"\units\robot.glb".to_string();
+        row.name = "Robot".to_string();
+        row.has_render_scale_column = false;
+        let def = row.to_definition().unwrap();
+        assert!((def.render_scale - ROBOT_DEFAULT_RENDER_SCALE).abs() < 1e-4);
+    }
+
+    #[test]
+    fn explicit_render_scale_column_is_preserved() {
+        let mut row = sample_row();
+        row.has_render_scale_column = true;
+        row.render_scale = 1.75;
+        let def = row.to_definition().unwrap();
+        assert!((def.render_scale - 1.75).abs() < 1e-4);
     }
 }

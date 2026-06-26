@@ -27,7 +27,7 @@ pub use commands::{
     MoveOrdersReport,
 };
 pub use picking::{
-    cursor_screen_position, cursor_world_ray, pick_unit_along_ray, unit_pick_radius,
-    world_position_to_screen,
+    cursor_screen_position, cursor_world_ray, pick_unit_along_ray,
+    pick_unit_command_target_along_ray, unit_pick_radius, world_position_to_screen,
 };
 pub use selection::SelectedUnits;

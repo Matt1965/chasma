@@ -46,12 +46,13 @@ impl HudCommandButton {
             Self::Move => Some(CommandType::Move),
             Self::Stop => Some(CommandType::Stop),
             Self::HoldPosition => Some(CommandType::HoldPosition),
-            Self::Attack | Self::Harvest | Self::Interact => None,
+            Self::Attack => Some(CommandType::Attack),
+            Self::Harvest | Self::Interact => None,
         }
     }
 
     pub fn is_future_placeholder(self) -> bool {
-        matches!(self, Self::Attack | Self::Harvest | Self::Interact)
+        matches!(self, Self::Harvest | Self::Interact)
     }
 }
 
@@ -158,13 +159,10 @@ pub fn sync_command_panel_buttons(
         &mut BackgroundColor,
         &mut BorderColor,
     )>,
-    mut cache: Local<u32>,
 ) {
-    let sig = selection.0.len() as u32;
-    if *cache == sig && !selection.is_empty() {
+    if !selection.is_changed() && !hud.is_changed() {
         return;
     }
-    *cache = sig;
     for (button, mut bg, mut border) in &mut buttons {
         let enabled = command_button_enabled(*button, &selection, &catalog);
         let armed = hud.armed_command == button.palette_command();
@@ -224,6 +222,9 @@ pub fn handle_command_button_clicks(
             HudCommandButton::Move => {
                 hud.armed_command = Some(CommandType::Move);
             }
+            HudCommandButton::Attack => {
+                hud.armed_command = Some(CommandType::Attack);
+            }
             HudCommandButton::Stop | HudCommandButton::HoldPosition => {
                 if let Some(command_type) = button.palette_command() {
                     queue.push(ClientIntent::PaletteCommand { command_type });
@@ -252,14 +253,20 @@ mod tests {
     }
 
     #[test]
-    fn future_commands_are_disabled() {
+    fn attack_command_is_enabled_with_selection() {
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
-        assert!(!command_button_enabled(
+        assert!(command_button_enabled(
             HudCommandButton::Attack,
             &selection,
             &UnitCatalog::default()
         ));
+    }
+
+    #[test]
+    fn harvest_and_interact_remain_disabled() {
+        let mut selection = SelectedUnits::default();
+        selection.set_single(crate::world::UnitId::new(1));
         assert!(!command_button_enabled(
             HudCommandButton::Harvest,
             &selection,

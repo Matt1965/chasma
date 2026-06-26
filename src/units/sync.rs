@@ -87,13 +87,17 @@ pub fn sync_unit_render_entities(
             index.0.remove(&marker.unit_id);
             continue;
         };
+        let render_scale = catalog
+            .get(&record.definition_id)
+            .map(|definition| definition.render_scale)
+            .unwrap_or(1.0);
         let layout = config.chunk_layout();
         let translation =
             world_position_to_render_global(record.placement.position, layout, vertical_scale);
         commands.entity(entity).insert(Transform {
             translation,
             rotation: record.placement.rotation,
-            scale: Vec3::ONE,
+            scale: Vec3::splat(render_scale),
         });
     }
 
@@ -129,6 +133,7 @@ pub fn sync_unit_render_entities(
             scene,
             &config,
             vertical_scale,
+            definition.render_scale,
         );
         index.0.insert(id, entity);
     }
@@ -339,6 +344,41 @@ mod tests {
         assert_eq!(record.placement.position.local.0.y, 8.0);
         assert_eq!(transform.translation.y, 8.0 * vertical_scale);
         assert_eq!(transform.rotation, record.placement.rotation);
+    }
+
+    #[test]
+    fn sync_applies_definition_render_scale() {
+        let mut app = setup_sync_app();
+        let mut definition = UnitDefinition::new(
+            UnitDefinitionId::new("wolf"),
+            "Wolf",
+            "Wild",
+            2,
+            5,
+            5,
+            4,
+            6,
+            3,
+            7,
+            2,
+            3,
+            26.5,
+            "Elite",
+            4.5,
+            0.6,
+            40.0,
+            crate::world::WeaponDefinitionId::new("weapon_wolf_bite"),
+            true,
+            UnitRenderKey::reserved("wolf"),
+        );
+        definition.render_scale = 2.15;
+        let catalog = UnitCatalog::from_definitions(vec![definition]).unwrap();
+        app.insert_resource(catalog);
+        let unit_id = prepare_resident_unit(&mut app, 9, 10);
+        app.update();
+        let entity = app.world().resource::<UnitRenderIndex>().0[&unit_id];
+        let transform = app.world().entity(entity).get::<Transform>().unwrap();
+        assert_eq!(transform.scale, Vec3::splat(2.15));
     }
 
     #[test]

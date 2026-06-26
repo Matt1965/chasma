@@ -10,7 +10,7 @@ use crate::terrain::TerrainRenderAssets;
 use crate::ui::gameplay::{gameplay_input_blocked_by_hud, PlayerHudHoverState};
 use crate::units::input::{
     cursor_screen_position, cursor_world_ray, normalized_screen_rect, pick_unit_along_ray,
-    terrain_click_to_world_position, BoxSelectDrag,
+    pick_unit_command_target_along_ray, terrain_click_to_world_position, BoxSelectDrag,
 };
 use crate::units::UnitRenderEntity;
 use crate::world::{UnitCatalog, WorldConfig, WorldData};
@@ -134,7 +134,9 @@ pub fn collect_unit_input_intents(
 
         use crate::client::CommandTarget;
 
-        if let Some(unit_id) = pick_unit_along_ray(&ray, &world, &unit_catalog, &units, selection_policy) {
+        if let Some(unit_id) =
+            pick_unit_command_target_along_ray(&ray, &world, &unit_catalog, &units)
+        {
             queue.push(ClientIntent::ContextualCommand {
                 target: CommandTarget::Unit { unit_id },
             });

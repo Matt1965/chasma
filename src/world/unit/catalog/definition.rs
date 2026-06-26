@@ -35,7 +35,8 @@ pub struct UnitDefinition {
     pub move_speed_mps: f32,
     pub collision_radius_meters: f32,
     pub max_slope_degrees: f32,
-    /// Default innate or equipped weapon reference (ADR-054 C1).
+    /// Uniform glTF scene scale at spawn (1.0 = mesh units as authored).
+    pub render_scale: f32,
     pub default_weapon_id: WeaponDefinitionId,
     pub enabled: bool,
     pub render_key: UnitRenderKey,
@@ -85,6 +86,7 @@ impl UnitDefinition {
             move_speed_mps,
             collision_radius_meters,
             max_slope_degrees,
+            render_scale: 1.0,
             default_weapon_id,
             enabled,
             render_key,

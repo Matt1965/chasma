@@ -34,6 +34,12 @@ pub fn validate_row(row: &UnitImportRow) -> Result<(), crate::data_import::RowIm
             row.max_slope_degrees
         )));
     }
+    if row.render_scale <= 0.0 {
+        return Err(fail(format!(
+            "Render Scale must be > 0 (got {})",
+            row.render_scale
+        )));
+    }
     if row.has_default_weapon_column && row.default_weapon_id.trim().is_empty() {
         return Err(fail("Default Weapon ID must be non-empty".to_string()));
     }
@@ -47,6 +53,7 @@ pub fn validate_row(row: &UnitImportRow) -> Result<(), crate::data_import::RowIm
         || !row.move_speed_mps.is_finite()
         || !row.collision_radius_meters.is_finite()
         || !row.max_slope_degrees.is_finite()
+        || !row.render_scale.is_finite()
     {
         return Err(fail("numeric fields must be finite".to_string()));
     }
@@ -85,11 +92,13 @@ mod tests {
             move_speed_mps: move_speed,
             collision_radius_meters: collision,
             max_slope_degrees: 40.0,
+            render_scale: 1.0,
             default_weapon_id: "weapon_fists".to_string(),
             enabled: true,
             enabled_was_blank: false,
             has_file_path_column: true,
             has_default_weapon_column: true,
+            has_render_scale_column: false,
         }
     }
 

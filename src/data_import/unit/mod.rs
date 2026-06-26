@@ -345,5 +345,6 @@ mod integration_tests {
         assert_eq!(robot.display_name, "Robot");
         assert!((robot.move_speed_mps - 9.0).abs() < f32::EPSILON);
         assert_eq!(robot.render_key.0.as_deref(), Some("robot"));
+        assert!((robot.render_scale - 2.15).abs() < f32::EPSILON);
     }
 }

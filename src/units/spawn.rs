@@ -14,6 +14,7 @@ pub fn spawn_unit_render_entity(
     scene: Handle<Scene>,
     config: &WorldConfig,
     vertical_scale: f32,
+    render_scale: f32,
 ) -> Entity {
     let layout = config.chunk_layout();
     let translation =
@@ -28,7 +29,7 @@ pub fn spawn_unit_render_entity(
             Transform {
                 translation,
                 rotation: record.placement.rotation,
-                scale: Vec3::ONE,
+                scale: Vec3::splat(render_scale),
             },
             Visibility::default(),
         ))

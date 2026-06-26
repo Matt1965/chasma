@@ -91,6 +91,7 @@ pub fn update_dev_placement_preview(
             .map(|r| r.world_seed)
             .unwrap_or(crate::doodads::DEFAULT_DOODAD_WORLD_SEED),
         layout: config.chunk_layout(),
+        spawn_affiliation: dev_state.spawn_affiliation,
     };
 
     let ctx = PlacementValidateContext {

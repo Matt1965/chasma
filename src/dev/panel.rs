@@ -121,6 +121,7 @@ enum DevPlacementAction {
     RadiusDown,
     ToggleTerrainSnap,
     TogglePreview,
+    CycleSpawnTeam,
 }
 
 #[derive(Component, Debug)]
@@ -378,6 +379,7 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
                     ("Radius -", DevPlacementAction::RadiusDown),
                     ("Toggle terrain snap", DevPlacementAction::ToggleTerrainSnap),
                     ("Toggle preview", DevPlacementAction::TogglePreview),
+                    ("Cycle spawn team", DevPlacementAction::CycleSpawnTeam),
                 ] {
                     placement.spawn((
                         DevPlacementButton { action },
@@ -777,9 +779,15 @@ pub(crate) fn sync_dev_panel_content(
             }
         } else if dev_state.last_spawn_message.is_empty() {
             if show_placement {
-                "Select a definition, configure brush, left-click terrain to batch spawn (Shift=more, Ctrl=repeat last)".into()
+                format!(
+                    "Team: {} · Select definition, left-click terrain (T=cycle team, Shift=more, Ctrl=repeat)",
+                    dev_state.spawn_team_label()
+                )
             } else {
-                "Left-click terrain to spawn · 1-9 favorites · Ctrl+1-9 assign slot · F toggle favorite".into()
+                format!(
+                    "Team: {} · Left-click spawn · T=cycle team · 1-9 favorites · Ctrl+1-9 assign · F=favorite",
+                    dev_state.spawn_team_label()
+                )
             }
         } else {
             dev_state.last_spawn_message.clone()
@@ -1297,6 +1305,9 @@ fn apply_placement_action(state: &mut DevModeState, action: DevPlacementAction) 
         }
         DevPlacementAction::TogglePreview => {
             state.show_preview = !state.show_preview;
+        }
+        DevPlacementAction::CycleSpawnTeam => {
+            state.cycle_spawn_affiliation();
         }
     }
 }
