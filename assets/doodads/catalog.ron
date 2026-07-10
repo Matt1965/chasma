@@ -1,7 +1,7 @@
 (
     definitions: [
         (
-            id: "Basic Tree",
+            id: "d_0001",
             kind: "Tree",
             display_name: "Basic Tree for Testing",
             placement_radius_meters: 4.0,

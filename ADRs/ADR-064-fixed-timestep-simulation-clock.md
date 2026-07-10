@@ -8,7 +8,8 @@ Accepted
 
 Prior to this ADR, [`tick_unit_movement`](../src/player/simulation.rs) ran once per render
 frame and passed a fixed [`SIMULATION_TICK_SECONDS`](../src/simulation/control.rs) into
-[`step_all_unit_movement`](../src/world/unit/movement.rs). [`SimulationControlState`]
+[`run_simulation_tick`](../src/simulation/tick.rs) (ADR-065).
+[`SimulationControlState`]
 (ADR-046) gated pause and step-once, but did not accumulate real elapsed time. Higher FPS
 therefore advanced the authoritative world faster than lower FPS.
 
@@ -29,7 +30,7 @@ FrameTickPlan (0..N fixed ticks, capped per frame)
         ↓
 SimulationControlState gate (pause / step_once)
         ↓
-step_all_unit_movement × N (each with SIMULATION_TICK_SECONDS)
+run_simulation_tick × N (each with SIMULATION_TICK_SECONDS)
 ```
 
 Presentation (render sync, UI, input, debug overlays, camera, environment) stays on
@@ -65,7 +66,7 @@ control exists (ADR-046 future compatibility).
 
 ### Systems under fixed ticks
 
-All authoritative work already bundled in `step_all_unit_movement` runs per fixed tick:
+All authoritative work orchestrated by `run_simulation_tick` (ADR-065) runs per fixed tick:
 
 - Combat strikes and attack timers
 - Projectile simulation

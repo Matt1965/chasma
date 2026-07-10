@@ -149,7 +149,7 @@ fn movement_with_empty_catalogs_does_not_panic_on_empty_world() {
     let mut world = empty_layout_world();
     let mut scan = crate::world::CombatAiScanState::default();
     let settings = crate::world::CombatAiSettings::default();
-    let report = crate::world::step_all_unit_movement(
+    let report = crate::simulation::run_simulation_tick(
         &mut world,
         &catalog,
         &crate::world::WeaponCatalog::default(),

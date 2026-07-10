@@ -1,7 +1,7 @@
-use super::slope::estimate_slope_degrees;
 use crate::world::doodad::catalog::{DoodadCatalog, DoodadDefinition};
 use crate::world::doodad::generation::DoodadSpawnCandidate;
-use crate::world::{ChunkId, WorldData, WorldPosition};
+use crate::world::terrain::{slope_at, try_sample_height_at_position, TerrainQueryError};
+use crate::world::{WorldData, WorldPosition};
 
 /// Outcome of [`filter_candidates_by_terrain`].
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -65,15 +65,9 @@ fn validate_candidate_terrain(
     definition: &DoodadDefinition,
     world: &WorldData,
 ) -> TerrainCheck {
-    let chunk_id = ChunkId::new(position.chunk);
-    let Some(chunk_data) = world.get(chunk_id) else {
-        return TerrainCheck::TerrainUnavailable;
-    };
-
-    let local_x = position.local.0.x;
-    let local_z = position.local.0.z;
-    let Some(terrain_height) = world.sample_height_at_position(position) else {
-        return TerrainCheck::TerrainUnavailable;
+    let terrain_height = match try_sample_height_at_position(world, position) {
+        Ok(height) => height,
+        Err(_) => return TerrainCheck::TerrainUnavailable,
     };
 
     if let Some(min) = definition.min_height {
@@ -88,8 +82,10 @@ fn validate_candidate_terrain(
     }
 
     if definition.max_slope_degrees.is_some() {
-        let Some(slope) = estimate_slope_degrees(&chunk_data.heightfield, local_x, local_z) else {
-            return TerrainCheck::SlopeUnavailable;
+        let slope = match slope_at(world, position) {
+            Ok(slope) => slope,
+            Err(TerrainQueryError::SlopeUnavailable) => return TerrainCheck::SlopeUnavailable,
+            Err(_) => return TerrainCheck::TerrainUnavailable,
         };
         if let Some(max_slope) = definition.max_slope_degrees {
             if slope > max_slope {
@@ -108,7 +104,8 @@ mod tests {
     use crate::world::doodad::catalog::starter_definitions;
     use crate::world::terrain::Heightfield;
     use crate::world::{
-        ChunkCoord, ChunkData, ChunkLayout, DoodadKind, DoodadSource, LocalPosition, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadKind, DoodadSource, LocalPosition,
+        WorldPosition,
     };
     use bevy::prelude::{Quat, Vec3};
 
@@ -262,6 +259,21 @@ mod tests {
 
         assert!(result.retained.is_empty());
         assert_eq!(result.skipped_slope_constraint, 1);
+    }
+
+    #[test]
+    fn rejected_when_coordinate_outside_heightfield_domain() {
+        let world = world_with_chunk(ChunkId::new(ChunkCoord::new(0, 0)), flat_chunk(50.0));
+        let catalog = catalog_with_constraints(None, None, None);
+
+        let result = filter_candidates_by_terrain(
+            &[candidate_at(Vec3::new(-10.0, 0.0, 128.0))],
+            &catalog,
+            &world,
+        );
+
+        assert!(result.retained.is_empty());
+        assert_eq!(result.skipped_terrain_unavailable, 1);
     }
 
     #[test]

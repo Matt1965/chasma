@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use crate::client::commands::CommandType;
 use crate::client::{ClientIntent, IntentDispatchReport, IntentDispatchStatus};
+use crate::client::commands::CommandUnavailableReason;
 use crate::units::input::MoveOrdersReport;
 use crate::world::UnitId;
 
@@ -24,6 +25,7 @@ pub struct PendingDispatchTrace {
     pub report: Option<IntentDispatchReport>,
     pub resolved_command: Option<CommandType>,
     pub command_tooltip: Option<String>,
+    pub unavailable_reason: Option<CommandUnavailableReason>,
 }
 
 impl PendingDispatchTrace {

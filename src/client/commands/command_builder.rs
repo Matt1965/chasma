@@ -1,8 +1,9 @@
-//! Command builder — [`ContextualCommandIntent`] → executable plan (ADR-041 U-UI5, ADR-056 C3).
+//! Command builder — [`ContextualCommandIntent`] → executable plan (ADR-041, REVIEW-B3).
 
 use crate::units::input::SelectedUnits;
-use crate::world::{UnitId, UnitOrder, WorldData, WorldPosition};
+use crate::world::{UnitId, WorldData, WorldPosition};
 
+use super::command_availability::CommandUnavailableReason;
 use super::command_types::{CommandTarget, CommandType, ContextualCommandIntent};
 
 /// Executable command plan produced by the builder (before [`issue_unit_order`]).
@@ -12,7 +13,6 @@ pub enum BuiltCommandPlan {
     Attack { target: UnitId },
     AttackMove { destination: WorldPosition },
     StopAll,
-    HoldAll,
     NoOp,
 }
 
@@ -23,6 +23,7 @@ pub enum CommandBuildError {
     TargetUnitNotFound,
     MissingMoveTarget,
     MissingAttackTarget,
+    FeatureUnavailable(CommandUnavailableReason),
 }
 
 /// Translate a contextual intent into a simulation-facing plan.
@@ -36,7 +37,7 @@ pub fn build_command_plan(
     }
 
     match intent.command_type {
-        CommandType::Move | CommandType::Interact => {
+        CommandType::Move => {
             let target = resolve_move_target(&intent.target, world)?;
             Ok(BuiltCommandPlan::MoveTo { target })
         }
@@ -49,7 +50,9 @@ pub fn build_command_plan(
             Ok(BuiltCommandPlan::AttackMove { destination })
         }
         CommandType::Stop => Ok(BuiltCommandPlan::StopAll),
-        CommandType::HoldPosition => Ok(BuiltCommandPlan::HoldAll),
+        CommandType::HoldPosition | CommandType::Interact => Err(CommandBuildError::FeatureUnavailable(
+            CommandUnavailableReason::FeatureNotImplemented,
+        )),
     }
 }
 
@@ -86,19 +89,6 @@ fn resolve_attack_target(target: &CommandTarget) -> Result<UnitId, CommandBuildE
     match target {
         CommandTarget::Unit { unit_id } => Ok(*unit_id),
         CommandTarget::Terrain { .. } => Err(CommandBuildError::MissingAttackTarget),
-    }
-}
-
-/// Per-unit orders for non-formation commands (Stop / Hold placeholders).
-pub fn unit_orders_for_plan(plan: &BuiltCommandPlan) -> Vec<UnitOrder> {
-    match plan {
-        BuiltCommandPlan::StopAll | BuiltCommandPlan::HoldAll => {
-            vec![UnitOrder::Idle]
-        }
-        BuiltCommandPlan::MoveTo { .. }
-        | BuiltCommandPlan::Attack { .. }
-        | BuiltCommandPlan::AttackMove { .. }
-        | BuiltCommandPlan::NoOp => Vec::new(),
     }
 }
 
@@ -175,6 +165,40 @@ mod tests {
             build_command_plan(&intent, &selection, &world),
             Err(CommandBuildError::MissingAttackTarget)
         );
+    }
+
+    #[test]
+    fn hold_position_rejects_as_unimplemented() {
+        let world = flat_world();
+        let mut selection = SelectedUnits::default();
+        selection.set_single(crate::world::UnitId::new(1));
+        let intent = ContextualCommandIntent {
+            command_type: CommandType::HoldPosition,
+            target: CommandTarget::Terrain { position: pos(0.0, 0.0) },
+        };
+        assert!(matches!(
+            build_command_plan(&intent, &selection, &world),
+            Err(CommandBuildError::FeatureUnavailable(
+                CommandUnavailableReason::FeatureNotImplemented
+            ))
+        ));
+    }
+
+    #[test]
+    fn interact_rejects_as_unimplemented() {
+        let world = flat_world();
+        let mut selection = SelectedUnits::default();
+        selection.set_single(crate::world::UnitId::new(1));
+        let intent = ContextualCommandIntent {
+            command_type: CommandType::Interact,
+            target: CommandTarget::Terrain { position: pos(0.0, 0.0) },
+        };
+        assert!(matches!(
+            build_command_plan(&intent, &selection, &world),
+            Err(CommandBuildError::FeatureUnavailable(
+                CommandUnavailableReason::FeatureNotImplemented
+            ))
+        ));
     }
 
     #[test]

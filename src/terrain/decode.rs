@@ -4,7 +4,7 @@
 //! the Phase 2A synchronous loader, Phase 2B on-demand loading, and a future
 //! `AssetLoader` can share the exact same decode path.
 
-use crate::world::{ChunkCoord, ChunkData, ChunkId, Heightfield, TerrainMetadata};
+use crate::world::{ChunkCoord, ChunkData, ChunkId, Heightfield, TerrainDataError, TerrainMetadata};
 
 #[cfg(any(test, feature = "terrain-import"))]
 use super::albedo::TerrainChunkPayload;
@@ -161,6 +161,19 @@ mod tests {
         let manifest = decode_manifest(text).unwrap();
         assert_eq!(manifest.chunks.len(), 1);
         assert_eq!(manifest.chunks[0].albedo_path, None);
+    }
+
+    #[test]
+    fn rejects_non_finite_height_sample_in_decode() {
+        let mut file = sample_chunk_file();
+        file.samples[4] = f32::NAN;
+        let text = ron::to_string(&file).unwrap();
+        assert!(matches!(
+            decode_chunk(&text),
+            Err(TerrainAssetError::Heightfield(
+                TerrainDataError::NonFiniteHeightSample { index: 4 }
+            ))
+        ));
     }
 
     #[test]

@@ -1,9 +1,10 @@
-//! Bottom-right command panel (P-UI1).
+//! Bottom-right command panel (P-UI1, REVIEW-B3).
 
 use bevy::prelude::*;
 
 use crate::client::{
-    available_commands_for_selection, ClientIntent, ClientIntentQueue, CommandType,
+    available_commands_for_selection, command_availability, command_tooltip, ClientIntent,
+    ClientIntentQueue, CommandType,
 };
 use crate::units::input::SelectedUnits;
 use crate::world::UnitCatalog;
@@ -41,19 +42,20 @@ impl HudCommandButton {
         }
     }
 
-    pub fn palette_command(self) -> Option<CommandType> {
+    pub fn command_type(self) -> CommandType {
         match self {
-            Self::Move => Some(CommandType::Move),
-            Self::Stop => Some(CommandType::Stop),
-            Self::HoldPosition => Some(CommandType::HoldPosition),
-            Self::Attack => Some(CommandType::Attack),
-            Self::AttackMove => Some(CommandType::AttackMove),
-            Self::Interact => None,
+            Self::Move => CommandType::Move,
+            Self::Stop => CommandType::Stop,
+            Self::HoldPosition => CommandType::HoldPosition,
+            Self::Attack => CommandType::Attack,
+            Self::AttackMove => CommandType::AttackMove,
+            Self::Interact => CommandType::Interact,
         }
     }
 
-    pub fn is_future_placeholder(self) -> bool {
-        matches!(self, Self::Interact)
+    /// Only Stop uses immediate palette dispatch; other commands arm for right-click.
+    pub fn emits_palette_intent(self) -> bool {
+        matches!(self, HudCommandButton::Stop)
     }
 }
 
@@ -63,20 +65,26 @@ pub fn command_button_enabled(
     selection: &SelectedUnits,
     catalog: &UnitCatalog,
 ) -> bool {
-    if button.is_future_placeholder() {
-        return false;
+    let command_type = button.command_type();
+    if let Some(entry) = available_commands_for_selection(selection, catalog)
+        .into_iter()
+        .find(|entry| entry.command_type == command_type)
+    {
+        entry.is_enabled()
+    } else if selection.is_empty() {
+        false
+    } else {
+        command_availability(command_type, selection).is_available()
     }
-    let Some(command_type) = button.palette_command() else {
-        return false;
-    };
-    available_commands_for_selection(selection, catalog)
-        .iter()
-        .any(|entry| entry.command_type == command_type && entry.enabled)
 }
 
-/// Whether pressing the button should enqueue a gameplay palette intent.
-pub fn command_button_emits_palette_intent(button: HudCommandButton) -> bool {
-    matches!(button, HudCommandButton::Stop | HudCommandButton::HoldPosition)
+/// Tooltip for a command button including unavailability reason.
+pub fn command_button_tooltip(
+    button: HudCommandButton,
+    selection: &SelectedUnits,
+) -> String {
+    let command_type = button.command_type();
+    command_tooltip(command_type, command_availability(command_type, selection))
 }
 
 pub const COMMAND_GRID: [HudCommandButton; 6] = [
@@ -166,7 +174,7 @@ pub fn sync_command_panel_buttons(
     }
     for (button, mut bg, mut border) in &mut buttons {
         let enabled = command_button_enabled(*button, &selection, &catalog);
-        let armed = hud.armed_command == button.palette_command();
+        let armed = hud.armed_command == Some(button.command_type());
         *bg = if enabled {
             if armed {
                 BackgroundColor(super::styles::CMD_BTN_ARMED_BG)
@@ -199,7 +207,7 @@ pub fn update_command_button_hover(
 ) {
     for (interaction, button, mut bg) in &mut query {
         let enabled = command_button_enabled(*button, &selection, &catalog);
-        let armed = hud.armed_command == button.palette_command();
+        let armed = hud.armed_command == Some(button.command_type());
         *bg = command_button_bg(interaction, enabled, armed);
     }
 }
@@ -218,21 +226,14 @@ pub fn handle_command_button_clicks(
         if !command_button_enabled(*button, &selection, &catalog) {
             continue;
         }
-        hud.hovered_command = button.palette_command();
+        let command_type = button.command_type();
+        hud.hovered_command = Some(command_type);
         match *button {
-            HudCommandButton::Move => {
-                hud.armed_command = Some(CommandType::Move);
-            }
-            HudCommandButton::Attack => {
-                hud.armed_command = Some(CommandType::Attack);
-            }
-            HudCommandButton::AttackMove => {
-                hud.armed_command = Some(CommandType::AttackMove);
-            }
-            HudCommandButton::Stop | HudCommandButton::HoldPosition => {
-                if let Some(command_type) = button.palette_command() {
-                    queue.push(ClientIntent::PaletteCommand { command_type });
-                }
+            HudCommandButton::Move => hud.armed_command = Some(CommandType::Move),
+            HudCommandButton::Attack => hud.armed_command = Some(CommandType::Attack),
+            HudCommandButton::AttackMove => hud.armed_command = Some(CommandType::AttackMove),
+            HudCommandButton::Stop if button.emits_palette_intent() => {
+                queue.push(ClientIntent::PaletteCommand { command_type });
                 hud.armed_command = None;
             }
             _ => {}
@@ -243,7 +244,7 @@ pub fn handle_command_button_clicks(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::CommandPaletteEntry;
+    use crate::client::{CommandAvailability, CommandPaletteEntry, CommandUnavailableReason};
 
     #[test]
     fn move_command_is_enabled_with_selection() {
@@ -289,7 +290,20 @@ mod tests {
     }
 
     #[test]
-    fn interact_remains_disabled() {
+    fn hold_position_disabled_with_explicit_reason() {
+        let mut selection = SelectedUnits::default();
+        selection.set_single(crate::world::UnitId::new(1));
+        assert!(!command_button_enabled(
+            HudCommandButton::HoldPosition,
+            &selection,
+            &UnitCatalog::default()
+        ));
+        let tooltip = command_button_tooltip(HudCommandButton::HoldPosition, &selection);
+        assert!(tooltip.contains("Not implemented"));
+    }
+
+    #[test]
+    fn interact_disabled_with_explicit_reason() {
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
         assert!(!command_button_enabled(
@@ -297,13 +311,15 @@ mod tests {
             &selection,
             &UnitCatalog::default()
         ));
+        let tooltip = command_button_tooltip(HudCommandButton::Interact, &selection);
+        assert!(tooltip.contains("Not implemented"));
     }
 
     #[test]
-    fn disabled_buttons_do_not_emit_palette_intents() {
-        assert!(!command_button_emits_palette_intent(HudCommandButton::Attack));
-        assert!(!command_button_emits_palette_intent(HudCommandButton::Move));
-        assert!(command_button_emits_palette_intent(HudCommandButton::Stop));
+    fn only_stop_emits_palette_intent() {
+        assert!(HudCommandButton::Stop.emits_palette_intent());
+        assert!(!HudCommandButton::HoldPosition.emits_palette_intent());
+        assert!(!HudCommandButton::Move.emits_palette_intent());
     }
 
     #[test]
@@ -313,7 +329,7 @@ mod tests {
         let entries = available_commands_for_selection(&selection, &UnitCatalog::default());
         assert!(entries.contains(&CommandPaletteEntry {
             command_type: CommandType::Move,
-            enabled: true,
+            availability: CommandAvailability::Available,
         }));
     }
 }

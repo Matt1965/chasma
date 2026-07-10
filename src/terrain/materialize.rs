@@ -10,14 +10,15 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, IoTaskPool, Task};
 
-use crate::world::{ChunkCoord, ChunkData, ChunkId};
+use crate::world::{ChunkCoord, ChunkData, ChunkId, WorldData};
 
-use super::albedo::{AlbedoFallback, ChunkAlbedoGrid};
+use super::albedo::{production_albedo_fallback, AlbedoFallback, ChunkAlbedoGrid};
 use super::albedo_decode::{AlbedoSidecarIo, decode_albedo_sidecar_io, read_albedo_sidecar_bytes};
 use super::asset::TerrainAssetError;
 use super::decode::decode_chunk;
 use super::lod::{TerrainLodSettings, desired_lod};
 use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled, chunk_mesh_geometry};
+use super::spawn::seam_weld_heights;
 use super::streaming::{TerrainStreamingSettings, chunk_outside_residency_sets};
 use super::residency::{ChunkDiscardKind, ChunkResidencyTracker, discard_chunk_residency};
 
@@ -320,6 +321,7 @@ impl PendingChunkMaterializations {
         vertical_scale: f32,
         focus_chunk: ChunkCoord,
         lod_settings: &TerrainLodSettings,
+        world: &WorldData,
         stats: &mut MaterializePollStats,
     ) {
         self.in_flight
@@ -358,8 +360,20 @@ impl PendingChunkMaterializations {
                     }
 
                     if mesh_stores < mesh_store_cap {
+                        let Some(lod) = entry.mesh_lod else {
+                            bevy::log::error!(
+                                "chunk materialize store missing mesh_lod ({}, {})",
+                                entry.chunk_id.coord().x,
+                                entry.chunk_id.coord().z
+                            );
+                            Self::reject_in_flight_completion(
+                                residency,
+                                entry.chunk_id,
+                                entry.generation,
+                            );
+                            continue;
+                        };
                         mesh_stores += 1;
-                        let lod = entry.mesh_lod.expect("mesh_lod set before store");
                         completed.push((
                             entry.chunk_id,
                             entry.generation,
@@ -399,12 +413,14 @@ impl PendingChunkMaterializations {
                         let lod =
                             desired_lod(focus_chunk, entry.chunk_id.coord(), lod_settings);
                         entry.mesh_lod = Some(lod);
+                        let seam_weld = seam_weld_heights(world, entry.chunk_id);
                         entry.stage = MaterializeStage::MeshBuild(spawn_chunk_mesh_build_task(
                             data,
                             entry.albedo_sidecar.take(),
                             vertical_scale,
                             lod,
-                            AlbedoFallback::default(),
+                            seam_weld,
+                            production_albedo_fallback(),
                         ));
                         next.push(entry);
                     } else {
@@ -534,13 +550,15 @@ impl PendingChunkMaterializations {
                                     lod_settings,
                                 );
                                 entry.mesh_lod = Some(lod);
+                                let seam_weld = seam_weld_heights(world, entry.chunk_id);
                                 entry.stage = MaterializeStage::MeshBuild(
                                     spawn_chunk_mesh_build_task(
                                         data,
                                         entry.albedo_sidecar.take(),
                                         vertical_scale,
                                         lod,
-                                        AlbedoFallback::default(),
+                                        seam_weld,
+                                        production_albedo_fallback(),
                                     ),
                                 );
                                 next.push(entry);
@@ -590,8 +608,20 @@ impl PendingChunkMaterializations {
                     }
 
                     if mesh_stores < mesh_store_cap {
+                        let Some(lod) = entry.mesh_lod else {
+                            bevy::log::error!(
+                                "chunk materialize store missing mesh_lod ({}, {})",
+                                entry.chunk_id.coord().x,
+                                entry.chunk_id.coord().z
+                            );
+                            Self::reject_in_flight_completion(
+                                residency,
+                                entry.chunk_id,
+                                entry.generation,
+                            );
+                            continue;
+                        };
                         mesh_stores += 1;
-                        let lod = entry.mesh_lod.expect("mesh_lod set before store");
                         completed.push((
                             entry.chunk_id,
                             entry.generation,
@@ -644,7 +674,14 @@ impl PendingChunkMaterializations {
         vertical_scale: f32,
         lod: ChunkLod,
     ) {
-        let mesh = build_materialized_mesh(&data, None, AlbedoFallback::default(), vertical_scale, lod);
+        let mesh = build_materialized_mesh(
+            &data,
+            None,
+            production_albedo_fallback(),
+            vertical_scale,
+            lod,
+            &ChunkMeshSeamWeld::default(),
+        );
         self.store_materialized(chunk_id, generation, data, None, mesh, lod, 0.0);
     }
 
@@ -826,6 +863,7 @@ pub fn spawn_chunk_mesh_build_task(
     albedo_sidecar: Option<AlbedoSidecarIo>,
     vertical_scale: f32,
     lod: ChunkLod,
+    seam_weld: ChunkMeshSeamWeld,
     fallback: AlbedoFallback,
 ) -> ChunkMeshBuildTask {
     AsyncComputeTaskPool::get().spawn(async move {
@@ -842,9 +880,22 @@ pub fn spawn_chunk_mesh_build_task(
                     None
                 }
             },
-            None => None,
+            None => {
+                bevy::log::warn!(
+                    target: "chasma::terrain",
+                    "chunk missing albedo sidecar; using production neutral fallback"
+                );
+                None
+            }
         };
-        let mesh = build_materialized_mesh(&data, albedo.as_ref(), fallback, vertical_scale, lod);
+        let mesh = build_materialized_mesh(
+            &data,
+            albedo.as_ref(),
+            fallback,
+            vertical_scale,
+            lod,
+            &seam_weld,
+        );
         MeshBuildOutput {
             data,
             albedo,
@@ -860,12 +911,13 @@ fn build_materialized_mesh(
     fallback: AlbedoFallback,
     vertical_scale: f32,
     lod: ChunkLod,
+    seam_weld: &ChunkMeshSeamWeld,
 ) -> Mesh {
     build_chunk_mesh_scaled(
         &data.heightfield,
         lod,
         vertical_scale,
-        &ChunkMeshSeamWeld::default(),
+        seam_weld,
         albedo,
         fallback,
     )
@@ -1072,6 +1124,7 @@ mod tests {
         residency: &mut ChunkResidencyTracker,
         keep: &HashSet<ChunkCoord>,
         focus: ChunkCoord,
+        world: &WorldData,
     ) {
         let settings = TerrainLodSettings::default();
         let mut stats = MaterializePollStats::default();
@@ -1084,6 +1137,7 @@ mod tests {
                 1.0,
                 focus,
                 &settings,
+                world,
                 &mut stats,
             );
             if pending.materialized_len() > 0 {
@@ -1120,6 +1174,10 @@ mod tests {
                 1.0,
                 chunk_id.coord(),
                 &settings,
+                &crate::world::WorldData::new(crate::world::ChunkLayout {
+                    chunk_size_meters: 256.0,
+                    units_per_meter: 1.0,
+                }),
                 &mut stats,
             );
             if !residency.is_loading(chunk_id) {
@@ -1161,7 +1219,8 @@ mod tests {
             None,
             1.0,
             ChunkLod::Full,
-            AlbedoFallback::default(),
+            ChunkMeshSeamWeld::default(),
+            production_albedo_fallback(),
         );
         let output = bevy::tasks::block_on(&mut task);
         assert_eq!(output.data.heightfield.samples_per_edge(), 3);
@@ -1182,7 +1241,16 @@ mod tests {
         let mut keep = HashSet::new();
         keep.insert(chunk_id.coord());
         let focus = ChunkCoord::new(1, 2);
-        poll_until_materialized(&mut pending, &mut residency, &keep, focus);
+        poll_until_materialized(
+            &mut pending,
+            &mut residency,
+            &keep,
+            focus,
+            &crate::world::WorldData::new(crate::world::ChunkLayout {
+                chunk_size_meters: 256.0,
+                units_per_meter: 1.0,
+            }),
+        );
 
         assert_eq!(pending.materialized_len(), 1);
         let entry = &pending.materialized_chunks()[0];
@@ -1207,7 +1275,16 @@ mod tests {
         let mut keep = HashSet::new();
         keep.insert(chunk_id.coord());
         let focus = ChunkCoord::new(0, 0);
-        poll_until_materialized(&mut pending, &mut residency, &keep, focus);
+        poll_until_materialized(
+            &mut pending,
+            &mut residency,
+            &keep,
+            focus,
+            &crate::world::WorldData::new(crate::world::ChunkLayout {
+                chunk_size_meters: 256.0,
+                units_per_meter: 1.0,
+            }),
+        );
 
         assert_eq!(pending.materialized_len(), 1);
         assert_eq!(pending.materialized_chunks()[0].lod, ChunkLod::Half);
@@ -1238,6 +1315,10 @@ mod tests {
                 1.0,
                 focus,
                 &settings,
+                &crate::world::WorldData::new(crate::world::ChunkLayout {
+                    chunk_size_meters: 256.0,
+                    units_per_meter: 1.0,
+                }),
                 &mut stats,
             );
             if pending.mesh_build_in_flight_count() > 0 || pending.materialized_len() > 0 {
@@ -1258,6 +1339,10 @@ mod tests {
                 1.0,
                 focus,
                 &settings,
+                &crate::world::WorldData::new(crate::world::ChunkLayout {
+                    chunk_size_meters: 256.0,
+                    units_per_meter: 1.0,
+                }),
                 &mut stats,
             );
             if !pending.has_pipeline_for(chunk_id) || pending.materialized_len() > 0 {

@@ -1,4 +1,4 @@
-//! Extended RTS command model (ADR-041 U-UI5).
+//! Extended RTS command model (ADR-041 U-UI5, REVIEW-B3).
 //!
 //! Pure data — classification only; execution lives in [`super::command_builder`].
 
@@ -6,18 +6,19 @@ use bevy::prelude::*;
 
 use crate::world::{UnitId, WorldPosition};
 
-/// High-level command semantics (SC2-style command palette foundation).
+/// High-level command semantics exposed to the player.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Default)]
 pub enum CommandType {
     #[default]
     Move,
     Stop,
+    /// Reserved — not implemented (REVIEW-B3).
     HoldPosition,
     /// Direct attack against a unit target.
     Attack,
-    /// Move while scanning for targets — intent only in C3.
+    /// Move while scanning for hostile targets (ADR-057).
     AttackMove,
-    /// Placeholder — future worker / interact hook.
+    /// Reserved — worker/interact hook; not player-exposed yet (REVIEW-B3).
     Interact,
 }
 
@@ -33,20 +34,32 @@ impl CommandType {
         }
     }
 
-    pub fn tooltip(self) -> &'static str {
+    /// Player-facing description (availability suffix added by [`super::command_availability`]).
+    pub fn description(self) -> &'static str {
         match self {
             Self::Move => "Move selected units to target",
             Self::Stop => "Stop selected units",
-            Self::HoldPosition => "Hold position (placeholder)",
-            Self::Attack => "Attack selected units at target unit",
-            Self::AttackMove => "Attack-move to destination (intent only in C3)",
-            Self::Interact => "Interact (placeholder)",
+            Self::HoldPosition => "Hold position at current location",
+            Self::Attack => "Attack target unit",
+            Self::AttackMove => "Attack-move to destination",
+            Self::Interact => "Interact with world object",
         }
     }
 
-    /// Whether U-UI5 executes real simulation effects for this command.
-    pub fn is_fully_functional(self) -> bool {
+    /// Whether the command has a full simulation implementation (REVIEW-B3).
+    pub fn is_implemented(self) -> bool {
         matches!(self, Self::Move | Self::Stop | Self::Attack | Self::AttackMove)
+    }
+
+    /// Commands shown in the static player palette.
+    pub fn player_palette() -> &'static [CommandType] {
+        &[
+            CommandType::Move,
+            CommandType::Stop,
+            CommandType::HoldPosition,
+            CommandType::Attack,
+            CommandType::AttackMove,
+        ]
     }
 }
 
@@ -83,12 +96,13 @@ mod tests {
     }
 
     #[test]
-    fn only_move_stop_and_attack_commands_are_functional_in_u5() {
-        assert!(CommandType::Move.is_fully_functional());
-        assert!(CommandType::Stop.is_fully_functional());
-        assert!(CommandType::Attack.is_fully_functional());
-        assert!(CommandType::AttackMove.is_fully_functional());
-        assert!(!CommandType::HoldPosition.is_fully_functional());
+    fn only_implemented_commands_are_functional() {
+        assert!(CommandType::Move.is_implemented());
+        assert!(CommandType::Stop.is_implemented());
+        assert!(CommandType::Attack.is_implemented());
+        assert!(CommandType::AttackMove.is_implemented());
+        assert!(!CommandType::HoldPosition.is_implemented());
+        assert!(!CommandType::Interact.is_implemented());
     }
 
     #[test]

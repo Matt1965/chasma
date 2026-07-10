@@ -26,6 +26,7 @@ impl Plugin for SimulationPlugin {
             .init_resource::<SimulationControlRequests>()
             .init_resource::<crate::world::CombatAiSettings>()
             .init_resource::<crate::world::CombatAiScanState>()
+            .init_resource::<crate::debug::MovementBlockObservability>()
             .register_type::<SimulationControlState>()
             .configure_sets(
                 Update,

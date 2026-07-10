@@ -899,7 +899,7 @@ mod tests {
             );
             let mut scan = crate::world::CombatAiScanState::default();
             let settings = crate::world::CombatAiSettings::default();
-            crate::world::step_all_unit_movement(
+            crate::simulation::run_simulation_tick(
                 &mut world,
                 &catalog,
                 &weapons(),

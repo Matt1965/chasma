@@ -64,8 +64,7 @@ impl Plugin for DebugOverlayPlugin {
                     )
                         .chain()
                         .after(crate::debug::flush_intent_dispatch_trace)
-                        .in_set(DebugOverlaySystems)
-                        .in_set(PlayerControlSystems),
+                        .in_set(DebugOverlaySystems),
                 );
         }
     }

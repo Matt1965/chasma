@@ -1,6 +1,9 @@
 ﻿use bevy::prelude::*;
 
-use crate::client::{collect_unit_input_intents, dispatch_client_intents, ClientPipelinePlugin};
+use crate::client::{
+    collect_unit_input_intents, dispatch_client_intents, ClientIntentCollectSystems,
+    ClientIntentDispatchSystems, ClientPipelinePlugin,
+};
 use crate::debug::DebugOverlayPlugin;
 use crate::simulation::{SimulationPlugin, SimulationSystems};
 use crate::ui::GameplayUiPlugin;
@@ -13,7 +16,19 @@ use super::ownership::LocalPlayerOwnership;
 use super::selection_policy::sync_selection_policy_state;
 use super::simulation::{apply_death_client_cleanup, flush_simulation_command_trace, tick_unit_movement};
 
-/// Systems for client-local player unit control (ADR-033 U8, ADR-034 U9).
+/// Runtime entity sync from authoritative world data (ADR-065).
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct RuntimeSyncSystems;
+
+/// Gameplay HUD and command presentation (ADR-040).
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct GameplayPresentationSystems;
+
+/// Debug overlay and dev presentation (ADR-039).
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct DebugPresentationSystems;
+
+/// Systems for client-local player unit control (ADR-033 U8, ADR-034 U9, REVIEW-B5).
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct PlayerControlSystems;
 
@@ -28,6 +43,31 @@ impl Plugin for PlayerPlugin {
             .add_plugins(GameplayUiPlugin);
         #[cfg(feature = "dev")]
         app.add_plugins(crate::dev::DevModePlugin);
+        app.configure_sets(
+            Update,
+            (
+                ClientIntentCollectSystems,
+                ClientIntentDispatchSystems,
+                GameplayPresentationSystems,
+                DebugPresentationSystems,
+            )
+                .chain()
+                .in_set(PlayerControlSystems),
+        );
+        app.configure_sets(
+            Update,
+            crate::ui::gameplay::GameplayUiSystems.in_set(GameplayPresentationSystems),
+        );
+        #[cfg(feature = "dev")]
+        app.configure_sets(
+            Update,
+            crate::dev::DevModeSystems.before(ClientIntentCollectSystems),
+        );
+        #[cfg(feature = "dev")]
+        app.configure_sets(
+            Update,
+            crate::debug::DebugOverlaySystems.in_set(DebugPresentationSystems),
+        );
         app.register_type::<PlayerInteractionSettings>()
             .init_resource::<SelectedUnits>()
             .init_resource::<LocalPlayerOwnership>()
@@ -66,13 +106,13 @@ impl Plugin for PlayerPlugin {
                 Update,
                 collect_unit_input_intents
                     .after(sync_selection_policy_state)
-                    .in_set(PlayerControlSystems),
+                    .in_set(ClientIntentCollectSystems),
             )
             .add_systems(
                 Update,
                 dispatch_client_intents
                     .after(collect_unit_input_intents)
-                    .in_set(PlayerControlSystems),
+                    .in_set(ClientIntentDispatchSystems),
             )
             .add_systems(
                 Update,

@@ -1,15 +1,17 @@
-//! Contextual command layer — intent enrichment between client intents and unit orders (ADR-041 U-UI5).
+//! Contextual command layer — intent enrichment between client intents and unit orders (ADR-041, REVIEW-B3).
 //!
 //! Pipeline: `ClientIntent` → context resolve → command build → [`issue_unit_order`].
 
+mod command_availability;
 mod command_builder;
 mod command_palette;
 mod command_types;
 mod context_resolver;
 
-pub use command_builder::{
-    build_command_plan, unit_orders_for_plan, BuiltCommandPlan, CommandBuildError,
+pub use command_availability::{
+    command_availability, command_tooltip, CommandAvailability, CommandUnavailableReason,
 };
+pub use command_builder::{build_command_plan, BuiltCommandPlan, CommandBuildError};
 #[cfg(test)]
 pub use command_builder::build_command_plan_or_fallback_move;
 pub use command_palette::{
@@ -28,12 +30,30 @@ use bevy::prelude::*;
 pub struct ResolvedCommandFeedback {
     pub command_type: Option<CommandType>,
     pub tooltip: Option<String>,
+    pub unavailable_reason: Option<CommandUnavailableReason>,
 }
 
 impl ResolvedCommandFeedback {
     pub fn set_resolved(&mut self, command_type: CommandType) {
         self.command_type = Some(command_type);
-        self.tooltip = Some(command_type.tooltip().to_string());
+        self.tooltip = Some(command_tooltip(
+            command_type,
+            CommandAvailability::Available,
+        ));
+        self.unavailable_reason = None;
+    }
+
+    pub fn set_rejected(
+        &mut self,
+        command_type: CommandType,
+        reason: CommandUnavailableReason,
+    ) {
+        self.command_type = Some(command_type);
+        self.tooltip = Some(command_tooltip(
+            command_type,
+            CommandAvailability::Unavailable(reason),
+        ));
+        self.unavailable_reason = Some(reason);
     }
 
     pub fn clear(&mut self) {
@@ -62,6 +82,23 @@ mod tests {
         assert!(feedback.tooltip.as_ref().is_some_and(|t| t.contains("Move")));
         feedback.clear();
         assert!(feedback.command_type.is_none());
+    }
+
+    #[test]
+    fn rejected_feedback_records_unavailable_reason() {
+        let mut feedback = ResolvedCommandFeedback::default();
+        feedback.set_rejected(
+            CommandType::HoldPosition,
+            CommandUnavailableReason::FeatureNotImplemented,
+        );
+        assert_eq!(
+            feedback.unavailable_reason,
+            Some(CommandUnavailableReason::FeatureNotImplemented)
+        );
+        assert!(feedback
+            .tooltip
+            .as_ref()
+            .is_some_and(|t| t.contains("Not implemented")));
     }
 
     #[test]

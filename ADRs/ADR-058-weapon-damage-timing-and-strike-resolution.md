@@ -96,7 +96,8 @@ Projectile weapons do not apply damage until C7.
 
 Strike timers advance in `step_all_combat_strikes` **after**
 `step_all_combat_engagement` within the canonical tick order defined in
-[ADR-057](ADR-057-combat-range-and-chase-behavior.md#canonical-simulation-tick-order-review-a4).
+[ADR-057](ADR-057-combat-range-and-chase-behavior.md#canonical-simulation-tick-order-review-a4),
+orchestrated by [ADR-065](ADR-065-authoritative-simulation-tick-orchestrator.md).
 
 Engagement clears attack cycles when targets leave range or become invalid before
 strike progression runs. Player simulation passes [`SIMULATION_TICK_SECONDS`]

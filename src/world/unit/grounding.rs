@@ -6,7 +6,7 @@
 use super::id::UnitId;
 use super::record::UnitRecord;
 use super::UnitInsertError;
-use crate::world::ground_world_position;
+use crate::world::try_ground_world_position;
 use crate::world::{WorldData, WorldPosition};
 
 /// Why [`ground_unit_to_terrain`] failed.
@@ -22,7 +22,7 @@ pub enum UnitGroundingError {
 ///
 /// X/Z and chunk are unchanged. Returns `None` when terrain is unavailable.
 pub fn ground_unit_position(world: &WorldData, position: WorldPosition) -> Option<WorldPosition> {
-    ground_world_position(world, position)
+    try_ground_world_position(world, position).ok()
 }
 
 /// Snap an existing unit's placement Y to resident terrain height.
@@ -192,6 +192,19 @@ mod tests {
         assert_eq!(updated.state, UnitState::Idle);
         assert_eq!(updated.source, source);
         assert_eq!(updated.metadata, UnitMetadata);
+    }
+
+    #[test]
+    fn structured_terrain_failure_for_non_resident_chunk() {
+        let world = WorldData::new(layout());
+        let position = WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::new(64.0, 0.0, 128.0)),
+        );
+        assert_eq!(
+            try_ground_world_position(&world, position),
+            Err(crate::world::TerrainQueryError::ChunkNotResident)
+        );
     }
 
     #[test]

@@ -51,8 +51,9 @@ pub use grounding::{
     ground_unit_position, ground_unit_to_terrain, UnitGroundingError,
 };
 pub use movement::{
-    step_all_unit_movement, step_unit_movement, BatchUnitMovementReport, UnitMovementError,
-    UnitMovementStepReport, UnitSimulationStepReport,
+    step_all_unit_movement, step_unit_movement, BatchUnitMovementReport, BlockedMovementReason,
+    UnitMovementError, UnitMovementReport, UnitMovementStepOutcome, UnitMovementStepReport,
+    UnitMovementTrace, UnitSimulationStepReport,
 };
 pub use orders::{
     issue_unit_order, resolve_all_pending_unit_orders, resolve_pending_unit_orders, UnitOrder,

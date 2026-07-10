@@ -116,6 +116,7 @@ pub fn poll_chunk_materializations(
     lod_settings: Res<super::lod::TerrainLodSettings>,
     mut residency: ResMut<ChunkResidencyTracker>,
     mut pending: ResMut<PendingChunkMaterializations>,
+    world: Res<WorldData>,
     #[cfg(feature = "dev")] perf_settings: Res<TerrainStreamingPerfSettings>,
     #[cfg(feature = "dev")] mut perf_state: ResMut<super::perf::TerrainStreamingPerfState>,
 ) {
@@ -135,6 +136,7 @@ pub fn poll_chunk_materializations(
         render_assets.vertical_scale,
         focus_coord,
         &lod_settings,
+        &world,
         &mut poll_stats,
     );
 
@@ -460,9 +462,16 @@ mod apply_tests {
         }
     }
 
+    fn test_world_config() -> WorldConfig {
+        WorldConfig {
+            meters_per_sample: 128.0,
+            ..WorldConfig::default()
+        }
+    }
+
     fn setup_apply_world() -> World {
         let mut world = World::new();
-        world.init_resource::<WorldConfig>();
+        world.insert_resource(test_world_config());
         world.init_resource::<WorldData>();
         world.init_resource::<ChunkResidencyTracker>();
         world.init_resource::<Assets<Mesh>>();
@@ -485,7 +494,7 @@ mod apply_tests {
             id
         ));
         std::fs::create_dir_all(&dir).unwrap();
-        let cfg = WorldConfig::default();
+        let cfg = test_world_config();
         let entries: Vec<_> = coords
             .iter()
             .map(|&(x, z)| ManifestChunk::at(x, z, format!("chunks/{x}_{z}.ron")))
@@ -877,6 +886,8 @@ mod apply_tests {
 
         assert_eq!(pending.unique_pipeline_chunk_count(), 8);
 
+        let world_snapshot = world.resource::<WorldData>().clone();
+
         for _ in 0..16 {
             let mut residency = world.resource_mut::<ChunkResidencyTracker>();
             let mut poll_stats = crate::terrain::materialize::MaterializePollStats::default();
@@ -889,6 +900,7 @@ mod apply_tests {
                 1.0,
                 focus,
                 &lod_settings,
+                &world_snapshot,
                 &mut poll_stats,
             );
         }
@@ -1112,7 +1124,7 @@ mod apply_tests {
                 id
             ));
             std::fs::create_dir_all(&dir).unwrap();
-            let cfg = WorldConfig::default();
+            let cfg = test_world_config();
             let manifest = crate::terrain::asset::Manifest {
                 version: MANIFEST_FORMAT_VERSION,
                 config: crate::terrain::asset::ManifestConfig {
@@ -1133,7 +1145,7 @@ mod apply_tests {
             TerrainWorldCatalog::from_manifest(&dir.join("manifest.ron"), &cfg).unwrap()
         };
 
-        let layout = WorldConfig::default().chunk_layout();
+        let layout = test_world_config().chunk_layout();
         let mut world_data = WorldData::new(layout);
         world_data.set_authored_extent(catalog.authored_extent());
         let chunk_id = ChunkId::new(ChunkCoord::new(3, 0));

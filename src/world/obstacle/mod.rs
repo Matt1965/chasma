@@ -3,6 +3,11 @@
 //! Movement blocking reads [`crate::world::DoodadRecord`] stores and
 //! [`crate::world::DoodadCatalog`] definitions only — never ECS render entities.
 
+mod error;
 mod query;
 
-pub use query::{blocking_doodad_at_position, is_position_blocked_by_doodads};
+pub use error::ObstacleQueryError;
+pub use query::{
+    blocking_doodad_at_position, is_position_blocked_by_doodads, query_obstacle_at_position,
+    ObstacleQueryResult,
+};

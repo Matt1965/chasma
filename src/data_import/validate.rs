@@ -63,6 +63,7 @@ mod tests {
         DoodadImportRow {
             row_number: 3,
             name: "tree_oak".to_string(),
+            definition_id: "tree_oak".to_string(),
             description: "Oak".to_string(),
             category: "Tree".to_string(),
             biome: "Forest".to_string(),

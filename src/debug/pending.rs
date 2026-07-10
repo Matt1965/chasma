@@ -2,7 +2,10 @@
 
 use bevy::prelude::*;
 
-use crate::world::{CommandBufferResolveReport, CombatAiReport, CombatEngagementReport, CombatStrikeReport, ProjectileReport, UnitDeathReport};
+use crate::world::{
+    CommandBufferResolveReport, CombatAiReport, CombatEngagementReport, CombatStrikeReport,
+    ProjectileReport, UnitDeathReport, UnitMovementTrace,
+};
 
 /// Resolve report awaiting trace flush (simulation writes, debug reads).
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
@@ -13,4 +16,5 @@ pub struct PendingSimulationTrace {
     pub projectile: Option<ProjectileReport>,
     pub death: Option<UnitDeathReport>,
     pub combat_ai: Option<CombatAiReport>,
+    pub movement_traces: Vec<UnitMovementTrace>,
 }

@@ -52,6 +52,33 @@ pick resolution. They never call [`issue_unit_order`] or mutate [`SelectedUnits`
 
 ## Schedule (Player control chain)
 
+**REVIEW-B5** — explicit cross-plugin ordering via shared [`SystemSet`]s at the
+composition root ([`AppPlugin`](../src/app/mod.rs), [`PlayerPlugin`](../src/player/plugin.rs)).
+Do not rely on plugin registration order alone.
+
+```text
+RuntimeSyncSystems (doodad / unit / projectile render mirrors)
+  → tick_unit_movement (SimulationSystems — authoritative fixed tick)
+  → apply_death_client_cleanup → flush_simulation_command_trace
+  → sync_selection_policy_state
+  → DevModeSystems (dev only, before input collect)
+  → update_player_hud_hover_state (UI capture before world intents)
+  → ClientIntentCollectSystems (collect_unit_input_intents)
+  → HUD command/squad clicks (before dispatch)
+  → ClientIntentDispatchSystems (dispatch_client_intents)
+  → flush_intent_dispatch_trace
+  → GameplayPresentationSystems
+  → DebugPresentationSystems (dev only)
+```
+
+[`PlayerControlSystems`](../src/player/plugin.rs) chains intent collect → dispatch →
+presentation. [`gameplay_input_blocked_by_hud`](../src/ui/gameplay/input_gate.rs) and
+dev input gates suppress world intents when UI captures the pointer.
+
+Keyboard binding ownership: ADR-068, [`src/input/bindings.rs`](../src/input/bindings.rs).
+
+## Legacy schedule note (pre-B5)
+
 ```text
 tick_unit_movement → collect_unit_input_intents → dispatch_client_intents → presentation sync
 ```

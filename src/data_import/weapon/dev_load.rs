@@ -42,11 +42,11 @@ pub fn resolve_dev_weapon_catalog() -> WeaponCatalog {
                 DEV_STARTUP_LOG_PATH,
                 SESSION_HEADER,
                 &format!(
-                    "Weapon Excel import failed for {} ({err}); using starter WeaponCatalog",
+                    "Weapon Excel import failed for {} ({err}); using empty WeaponCatalog",
                     path.display()
                 ),
             );
-            WeaponCatalog::default()
+            WeaponCatalog::from_definitions(Vec::new()).expect("empty weapon catalog is valid")
         }
     }
 }

@@ -2,8 +2,9 @@ use std::collections::HashMap;
 
 use super::error::{DataImportError, RowImportError};
 use super::schema::{
-    parse_bool_yn, parse_enabled_cell, DoodadImportRow, BIOME_COLUMN, BLOCK_RADIUS_COLUMN,
-    BLOCKS_MOVEMENT_COLUMN, RANDOM_ROTATION_COLUMN_ALIASES, REQUIRED_COLUMNS,
+    normalize_doodad_definition_id, parse_bool_yn, parse_enabled_cell, DoodadImportRow,
+    BIOME_COLUMN, BLOCK_RADIUS_COLUMN, BLOCKS_MOVEMENT_COLUMN, DEFINITION_ID_COLUMN_ALIASES,
+    RANDOM_ROTATION_COLUMN_ALIASES, REQUIRED_COLUMNS,
 };
 
 pub const DOODADS_SHEET_NAME: &str = "Doodads";
@@ -110,10 +111,18 @@ fn parse_row(
     let random_rotation = parse_bool_yn(&text_any(RANDOM_ROTATION_COLUMN_ALIASES))?;
     let blocks_movement = optional_bool(columns, cells, BLOCKS_MOVEMENT_COLUMN)?;
     let block_radius_meters = optional_float(columns, cells, BLOCK_RADIUS_COLUMN)?;
+    let name = text("Name");
+    let definition_id_raw = text_any(DEFINITION_ID_COLUMN_ALIASES);
+    let definition_id = if definition_id_raw.trim().is_empty() {
+        normalize_doodad_definition_id(&name)?
+    } else {
+        normalize_doodad_definition_id(definition_id_raw.trim())?
+    };
 
     Ok(DoodadImportRow {
         row_number,
-        name: text("Name"),
+        name,
+        definition_id,
         description: text("Description"),
         category: text("Category"),
         biome: columns

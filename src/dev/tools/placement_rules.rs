@@ -3,8 +3,8 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    ground_world_position, is_position_blocked_by_doodads, is_position_slope_walkable,
-    DoodadCatalog, UnitCatalog, WorldData, WorldPosition,
+    classify_slope_walkability, ground_world_position, is_position_blocked_by_doodads,
+    DoodadCatalog, SlopeWalkability, UnitCatalog, WorldData, WorldPosition,
 };
 
 use super::super::dev_mode::DefinitionId;
@@ -34,6 +34,7 @@ impl Default for PlacementRules {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlacementRejectReason {
     TerrainUnavailable,
+    SlopeUnavailable,
     SlopeTooSteep,
     BlockedByDoodad,
     TooCloseToPeer,
@@ -81,8 +82,14 @@ pub fn validate_placement(
 
     if ctx.rules.enforce_slope {
         let max_slope = max_slope_for_definition(ctx);
-        if !is_position_slope_walkable(ctx.world, position, max_slope) {
-            return PlacementValidation::Rejected(PlacementRejectReason::SlopeTooSteep);
+        match classify_slope_walkability(ctx.world, position, max_slope) {
+            SlopeWalkability::Walkable => {}
+            SlopeWalkability::TooSteep => {
+                return PlacementValidation::Rejected(PlacementRejectReason::SlopeTooSteep);
+            }
+            SlopeWalkability::Unavailable => {
+                return PlacementValidation::Rejected(PlacementRejectReason::SlopeUnavailable);
+            }
         }
     }
 
@@ -153,8 +160,9 @@ fn xz_distance(world: &WorldData, a: WorldPosition, b: WorldPosition) -> f32 {
 mod tests {
     use super::*;
     use crate::world::{
-        estimate_slope_degrees, is_position_slope_walkable, ChunkCoord, ChunkData, ChunkId,
-        ChunkLayout, Heightfield, LocalPosition, UnitDefinition, UnitDefinitionId, UnitRenderKey,
+        classify_slope_walkability, estimate_slope_degrees, ChunkCoord, ChunkData, ChunkId,
+        ChunkLayout, Heightfield, LocalPosition, SlopeWalkability, UnitDefinition,
+        UnitDefinitionId, UnitRenderKey,
     };
 
     fn flat_world() -> WorldData {
@@ -292,11 +300,42 @@ mod tests {
             .unwrap();
         let slope = estimate_slope_degrees(&chunk.heightfield, 64.0, 64.0).unwrap();
         assert!(slope > 5.0);
-        assert!(!is_position_slope_walkable(&world, candidate, 5.0));
+        assert_eq!(
+            classify_slope_walkability(&world, candidate, 5.0),
+            SlopeWalkability::TooSteep
+        );
         let result = validate_placement(&ctx, candidate, &[]);
         assert!(matches!(
             result,
             PlacementValidation::Rejected(PlacementRejectReason::SlopeTooSteep)
+        ));
+    }
+
+    #[test]
+    fn missing_terrain_reports_slope_unavailable_when_not_snapping() {
+        let world = WorldData::new(ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let unit_catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let definition = DefinitionId::Unit(UnitDefinitionId::new("wolf"));
+        let rules = PlacementRules {
+            snap_to_terrain: false,
+            enforce_slope: true,
+            ..PlacementRules::default()
+        };
+        let ctx = PlacementValidateContext {
+            world: &world,
+            unit_catalog: &unit_catalog,
+            doodad_catalog: &doodad_catalog,
+            definition: &definition,
+            rules: &rules,
+        };
+        let result = validate_placement(&ctx, pos(64.0, 64.0), &[]);
+        assert!(matches!(
+            result,
+            PlacementValidation::Rejected(PlacementRejectReason::SlopeUnavailable)
         ));
     }
 }

@@ -42,6 +42,11 @@ impl Heightfield {
                 actual: samples.len(),
             });
         }
+        for (index, sample) in samples.iter().enumerate() {
+            if !sample.is_finite() {
+                return Err(TerrainDataError::NonFiniteHeightSample { index });
+            }
+        }
         Ok(Self {
             samples_per_edge,
             spacing_meters,
@@ -90,6 +95,30 @@ impl Heightfield {
         (self.samples_per_edge - 1) as f32 * self.spacing_meters
     }
 
+    /// Whether chunk-local XZ lies inside the heightfield domain `[0, chunk_size]`.
+    pub fn is_within_domain(&self, local_x: f32, local_z: f32) -> bool {
+        let size = self.chunk_size_meters();
+        local_x >= -1e-4
+            && local_z >= -1e-4
+            && local_x <= size + 1e-4
+            && local_z <= size + 1e-4
+    }
+
+    /// Sample height when `local_x` / `local_z` are inside the chunk domain.
+    ///
+    /// Simulation callers must use this (or [`super::try_sample_height_at_position`]) instead
+    /// of [`Self::sample`] to avoid silent edge clamping (REVIEW-B4).
+    pub fn try_sample(
+        &self,
+        local_x: f32,
+        local_z: f32,
+    ) -> Result<f32, super::TerrainQueryError> {
+        if !self.is_within_domain(local_x, local_z) {
+            return Err(super::TerrainQueryError::InvalidTerrainCoordinate);
+        }
+        Ok(self.sample(local_x, local_z))
+    }
+
     fn height(&self, col: i32, row: i32) -> f32 {
         let stride = self.samples_per_edge as usize;
         self.samples[row as usize * stride + col as usize]
@@ -100,6 +129,10 @@ impl Heightfield {
     ///
     /// `local_x` and `local_z` are in world units relative to the chunk's
     /// minimum corner and are clamped to the chunk's `[0, chunk_size]` domain.
+    ///
+    /// **Simulation code** must use [`Self::try_sample`] or
+    /// [`super::try_sample_height_at_position`] instead — clamping is render/import
+    /// convenience only (REVIEW-B4).
     pub fn sample(&self, local_x: f32, local_z: f32) -> f32 {
         let last = self.samples_per_edge as i32 - 1;
         let size = self.chunk_size_meters();
@@ -169,6 +202,14 @@ mod tests {
     }
 
     #[test]
+    fn try_sample_rejects_out_of_domain() {
+        let hf = unit_tile();
+        assert!(hf.try_sample(-0.1, 0.5).is_err());
+        assert!(hf.try_sample(0.5, 99.0).is_err());
+        assert_eq!(hf.try_sample(0.5, 0.5).unwrap(), 1.5);
+    }
+
+    #[test]
     fn clamps_outside_domain() {
         let hf = unit_tile();
         approx(hf.sample(-5.0, -5.0), 0.0);
@@ -199,5 +240,35 @@ mod tests {
             Heightfield::from_samples(2, 0.0, vec![0.0; 4]).unwrap_err(),
             TerrainDataError::NonPositiveSpacing { spacing_meters: 0.0 }
         );
+    }
+
+    #[test]
+    fn rejects_non_finite_samples() {
+        let mut samples = vec![0.0; 4];
+        samples[2] = f32::NAN;
+        assert_eq!(
+            Heightfield::from_samples(2, 1.0, samples.clone()).unwrap_err(),
+            TerrainDataError::NonFiniteHeightSample { index: 2 }
+        );
+        let mut samples = vec![0.0; 4];
+        samples[2] = f32::INFINITY;
+        assert_eq!(
+            Heightfield::from_samples(2, 1.0, samples).unwrap_err(),
+            TerrainDataError::NonFiniteHeightSample { index: 2 }
+        );
+        let mut samples = vec![0.0; 4];
+        samples[2] = f32::NEG_INFINITY;
+        assert_eq!(
+            Heightfield::from_samples(2, 1.0, samples).unwrap_err(),
+            TerrainDataError::NonFiniteHeightSample { index: 2 }
+        );
+    }
+
+    #[test]
+    fn rejects_non_finite_spacing() {
+        assert!(matches!(
+            Heightfield::from_samples(2, f32::NAN, vec![0.0; 4]),
+            Err(TerrainDataError::NonPositiveSpacing { .. })
+        ));
     }
 }

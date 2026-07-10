@@ -14,6 +14,7 @@ pub mod data_import;
 pub mod debug;
 pub mod doodads;
 pub mod environment;
+pub mod input;
 pub mod logging;
 pub mod terrain;
 pub mod player;

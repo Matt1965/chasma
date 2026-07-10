@@ -11,7 +11,10 @@ mod simulation;
 pub use move_feedback::MoveCommandFeedback;
 pub use ownership::{LocalPlayerOwnership, selection_policy_for_frame};
 pub use selection_policy::{sync_selection_policy_state, SelectionPolicyState};
-pub use plugin::{PlayerControlSystems, PlayerPlugin};
+pub use plugin::{
+    DebugPresentationSystems, GameplayPresentationSystems, PlayerControlSystems, PlayerPlugin,
+    RuntimeSyncSystems,
+};
 pub use simulation::{apply_death_client_cleanup, flush_simulation_command_trace, tick_unit_movement};
 
 pub use crate::units::input::{

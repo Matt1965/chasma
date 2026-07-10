@@ -17,9 +17,7 @@ mod styles;
 pub use command_feedback::{
     sync_move_command_indicator, tick_move_command_indicator, MoveCommandFeedback,
 };
-pub use command_panel::{
-    command_button_enabled, command_button_emits_palette_intent, HudCommandButton,
-};
+pub use command_panel::{command_button_enabled, HudCommandButton};
 pub use cursor_feedback::{
     sample_gameplay_cursor_context, GameplayCursorPresentation, GameplayHoveredUnit,
 };

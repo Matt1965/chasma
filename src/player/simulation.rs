@@ -2,18 +2,20 @@
 
 use bevy::prelude::*;
 
-use crate::debug::{ClientFrameIndex, CommandTraceBuffer, PendingSimulationTrace};
-use crate::simulation::{SimulationClock, SimulationControlState, SIMULATION_TICK_SECONDS};
+use crate::debug::{ClientFrameIndex, CommandTraceBuffer, MovementBlockObservability, PendingSimulationTrace};
+use crate::simulation::{
+    run_simulation_tick, SimulationClock, SimulationControlState, SimulationTickReport,
+    SIMULATION_TICK_SECONDS,
+};
 use crate::ui::gameplay::PlayerHudState;
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    step_all_unit_movement, AttackTargetingPolicy, CombatAiScanState, CombatAiSettings,
-    CommandBufferResolveReport, CombatAiReport, CombatEngagementReport, CombatStrikeReport,
-    DoodadCatalog, NavigationConfig, ProjectileReport, UnitCatalog, UnitDeathReport,
-    UnitSimulationStepReport, WeaponCatalog, WorldData,
+    AttackTargetingPolicy, CombatAiScanState, CombatAiSettings, CommandBufferResolveReport,
+    CombatAiReport, CombatEngagementReport, CombatStrikeReport, DoodadCatalog, NavigationConfig,
+    ProjectileReport, UnitCatalog, UnitDeathReport, WeaponCatalog, WorldData,
 };
 
-fn merge_step_trace(pending: &mut PendingSimulationTrace, step_report: &UnitSimulationStepReport) {
+fn merge_step_trace(pending: &mut PendingSimulationTrace, step_report: &SimulationTickReport) {
     if !step_report.command_resolve.failures.is_empty()
         || !step_report.command_resolve.successes.is_empty()
         || step_report.command_resolve.resolved > 0
@@ -71,6 +73,7 @@ pub fn tick_unit_movement(
     doodad_catalog: Res<DoodadCatalog>,
     nav_config: Res<NavigationConfig>,
     mut pending_trace: ResMut<PendingSimulationTrace>,
+    mut movement_blocks: ResMut<MovementBlockObservability>,
     mut combat_ai_scan: ResMut<CombatAiScanState>,
     combat_ai_settings: Res<CombatAiSettings>,
 ) {
@@ -81,7 +84,7 @@ pub fn tick_unit_movement(
         }
 
         let tick = control.current_tick;
-        let step_report = step_all_unit_movement(
+        let step_report = run_simulation_tick(
             &mut world,
             &unit_catalog,
             &weapon_catalog,
@@ -95,13 +98,18 @@ pub fn tick_unit_movement(
         );
         control.complete_tick();
         merge_step_trace(&mut pending_trace, &step_report);
+        let fresh_blocks = movement_blocks.filter_new_block_traces(&step_report.movement.traces);
+        movement_blocks.apply_batch_traces(&step_report.movement.traces);
+        pending_trace.movement_traces.extend(fresh_blocks);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulation::{SimulationClock, SimulationControlState, SIMULATION_TICK_SECONDS};
+    use crate::simulation::{
+        run_simulation_tick, SimulationClock, SimulationControlState, SIMULATION_TICK_SECONDS,
+    };
     use crate::world::{
         create_unit, create_unit_with_ownership, issue_unit_order, resolve_all_pending_unit_orders,
         starter_unit_definitions, starter_weapon_definitions, ChunkCoord, ChunkData, ChunkId,
@@ -175,7 +183,7 @@ mod tests {
                     break;
                 }
                 let tick = control.current_tick;
-                let _ = step_all_unit_movement(
+                let _ = run_simulation_tick(
                     world,
                     catalog,
                     weapon_catalog,
@@ -716,5 +724,9 @@ pub fn flush_simulation_command_trace(
     }
     if let Some(report) = pending.combat_ai.take() {
         trace.record_combat_ai(frame_index.0, &report);
+    }
+    if !pending.movement_traces.is_empty() {
+        trace.record_unit_movement(frame_index.0, &pending.movement_traces);
+        pending.movement_traces.clear();
     }
 }

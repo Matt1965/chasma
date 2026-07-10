@@ -35,7 +35,11 @@ pub fn flush_intent_dispatch_trace(
         CommandTraceBuffer::store_dispatch_history(&mut history, report);
     }
     if let Some(command_type) = pending.resolved_command.take() {
-        resolved_command.set_resolved(command_type);
+        if let Some(reason) = pending.unavailable_reason.take() {
+            resolved_command.set_rejected(command_type, reason);
+        } else {
+            resolved_command.set_resolved(command_type);
+        }
     }
     pending.command_tooltip = None;
     pending.clear();

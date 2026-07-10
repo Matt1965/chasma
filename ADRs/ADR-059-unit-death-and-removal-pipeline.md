@@ -59,7 +59,8 @@ when damage is applied. Death detection consumes this when emitting
 
 Death pipeline runs after combat strikes and projectile impacts, before combat AI
 and movement. See the canonical order in
-[ADR-057](ADR-057-combat-range-and-chase-behavior.md#canonical-simulation-tick-order-review-a4):
+[ADR-057](ADR-057-combat-range-and-chase-behavior.md#canonical-simulation-tick-order-review-a4)
+and pipeline entry in [ADR-065](ADR-065-authoritative-simulation-tick-orchestrator.md):
 
 ```text
 … → strikes → projectiles → step_unit_death_pipeline → combat AI → movement

@@ -8,6 +8,8 @@
 mod control;
 mod input;
 mod plugin;
+mod report;
+mod tick;
 
 pub use control::{
     apply_simulation_control_requests, FrameTickPlan, SimulationClock, SimulationControlRequests,
@@ -15,3 +17,5 @@ pub use control::{
 };
 pub use input::handle_simulation_keyboard;
 pub use plugin::{SimulationControlSystems, SimulationPlugin, SimulationSystems};
+pub use report::SimulationTickReport;
+pub use tick::run_simulation_tick;

@@ -9,8 +9,8 @@ mod tests {
     };
     use crate::world::projectile::{step_all_projectiles, ProjectileEvent};
     use crate::world::unit::{
-        queue_unit_removal, step_all_unit_movement, step_unit_death_pipeline, AttackCycle,
-        AttackPhase, RemovalReason, UnitDeathEvent, UnitSimulationStepReport,
+        queue_unit_removal, step_unit_death_pipeline, AttackCycle,
+        AttackPhase, RemovalReason, UnitDeathEvent,
     };
     use crate::world::{
         create_unit_with_ownership, issue_unit_order, starter_unit_definitions,
@@ -122,10 +122,10 @@ mod tests {
             .unwrap();
     }
 
-    fn step_tick(world: &mut WorldData, catalog: &UnitCatalog, weapon_catalog: &WeaponCatalog) -> UnitSimulationStepReport {
+    fn step_tick(world: &mut WorldData, catalog: &UnitCatalog, weapon_catalog: &WeaponCatalog) -> crate::simulation::SimulationTickReport {
         let mut scan = CombatAiScanState::default();
         let settings = CombatAiSettings::default();
-        step_all_unit_movement(
+        crate::simulation::run_simulation_tick(
             world,
             catalog,
             weapon_catalog,

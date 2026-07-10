@@ -6,7 +6,7 @@
 use std::fs;
 use std::path::Path;
 
-use crate::world::{ChunkId, WorldConfig};
+use crate::world::{ChunkId, WorldConfig, validate_heightfield_against_config};
 
 #[cfg(any(test, feature = "terrain-import"))]
 use crate::world::WorldData;
@@ -67,6 +67,9 @@ pub(crate) fn validate_loaded_chunk(
             found_meters: found,
         });
     }
+
+    validate_heightfield_against_config(&data.heightfield, config)
+        .map_err(TerrainAssetError::Heightfield)?;
 
     Ok(())
 }
@@ -189,7 +192,10 @@ mod tests {
     }
 
     fn config() -> WorldConfig {
-        WorldConfig::default()
+        WorldConfig {
+            meters_per_sample: 128.0,
+            ..WorldConfig::default()
+        }
     }
 
     fn write_world_fixture(dir: &Path, chunks: &[(i32, i32)]) {
@@ -389,14 +395,17 @@ mod tests {
 
     #[test]
     fn loads_committed_sample_world() {
-        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("assets/worlds/main/manifest.ron");
-        let expected = decode_manifest(&read_manifest_text(&manifest).unwrap())
-            .unwrap()
-            .chunks
-            .len();
-        let mut world = WorldData::new(config().chunk_layout());
-        let count = load_world_from_manifest(&manifest, &config(), &mut world).unwrap();
+        let manifest = decode_manifest(&read_manifest_text(&manifest_path).unwrap()).unwrap();
+        let config = WorldConfig {
+            chunk_size_meters: manifest.config.chunk_size_meters,
+            units_per_meter: manifest.config.units_per_meter,
+            meters_per_sample: manifest.config.meters_per_sample,
+        };
+        let expected = manifest.chunks.len();
+        let mut world = WorldData::new(config.chunk_layout());
+        let count = load_world_from_manifest(&manifest_path, &config, &mut world).unwrap();
         assert_eq!(count, expected);
         assert!(world.is_chunk_loaded(ChunkId::new(ChunkCoord::new(0, 0))));
         assert_eq!(world.len(), expected);

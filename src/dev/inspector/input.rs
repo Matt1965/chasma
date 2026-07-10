@@ -47,6 +47,7 @@ pub fn refresh_inspector_snapshot(
         &capture.doodad_catalog,
         unit_id,
         capture.simulation.current_tick,
+        capture.movement_blocks.last_for_unit(unit_id),
     ) else {
         inspector.clear();
         overlay_focus.set_unit(None);
@@ -113,6 +114,7 @@ pub fn handle_inspector_input(
             &capture.doodad_catalog,
             unit_id,
             capture.simulation.current_tick,
+            capture.movement_blocks.last_for_unit(unit_id),
         ) {
             overlay_focus.path_waypoint_index = Some(snapshot.path.waypoint_index);
             inspector.unit_snapshot = Some(snapshot);

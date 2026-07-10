@@ -44,6 +44,10 @@ Eligibility uses runtime [`Affiliation`] / [`is_player_controllable`], not catal
 `max_units_scanned_per_tick` caps work per interval window. `scan_interval_seconds`
 prevents full-world scans every simulation tick.
 
+Combat AI acquisition runs in stage 6 of [`run_simulation_tick`]
+([ADR-065](ADR-065-authoritative-simulation-tick-orchestrator.md)), after death cleanup
+and before movement.
+
 ### Attack-move interaction
 
 Units in [`CombatState::AttackMoving`] without a valid target remain eligible for

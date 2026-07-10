@@ -101,7 +101,10 @@ pub use navigation::{
     find_path, GridCoord, NavigationConfig, NavigationError, NavigationPath, NEIGHBOR_OFFSETS,
     xz_distance,
 };
-pub use obstacle::{blocking_doodad_at_position, is_position_blocked_by_doodads};
+pub use obstacle::{
+    blocking_doodad_at_position, is_position_blocked_by_doodads, query_obstacle_at_position,
+    ObstacleQueryError, ObstacleQueryResult,
+};
 pub use ownership::{
     default_ownership_for_source, filter_commandable_unit_ids, filter_selectable_unit_ids,
     is_owned_by, is_player_controllable, player_units, unit_is_commandable, unit_is_selectable,
@@ -115,10 +118,10 @@ pub use unit::{
     step_unit_death_pipeline,
     step_unit_movement,
     unit_can_execute_actions, unit_record_can_execute_actions,
-    BatchUnitMovementReport, ChunkUnitStore,
+    BatchUnitMovementReport, BlockedMovementReason, ChunkUnitStore,
     UnitAuthoringError, UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId,
     UnitGroundingError, UnitId, UnitInsertError, UnitMetadata, UnitMovementError,
-    UnitMovementStepReport, UnitOrder, UnitOrderError, UnitPlacement, UnitRecord, UnitRenderKey,
+    UnitMovementReport, UnitMovementStepOutcome, UnitMovementStepReport, UnitMovementTrace, UnitOrder, UnitOrderError, UnitPlacement, UnitRecord, UnitRenderKey,
     UnitSimulationStepReport, UnitSource, UnitState, UnitVitals, AttackCycle, AttackPhase, CombatState, RemovalReason,
     UnitDeathReport, UnitDeathTrace, UnitDeathEvent,
 };
@@ -128,8 +131,15 @@ pub use unit::{
 };
 #[cfg(any(test, feature = "dev"))]
 pub use unit::starter_definitions as starter_unit_definitions;
-pub use terrain::{Heightfield, TerrainDataError, TerrainMask, TerrainMetadata};
-pub use terrain::{estimate_slope_degrees, ground_world_position, is_position_slope_walkable};
+pub use terrain::{
+    validate_heightfield_against_config, Heightfield, TerrainDataError, TerrainMask,
+    TerrainMetadata, TerrainQueryError,
+};
+pub use terrain::{
+    classify_slope_walkability, estimate_slope_degrees, ground_world_position,
+    is_position_slope_walkable, slope_at, try_ground_world_position,
+    try_sample_height_at_position, SlopeWalkability,
+};
 #[cfg(feature = "terrain-import")]
 pub use terrain::{
     DecodeError, GaeaImportError, ImportError, SourceHeightfield, chunk_data_from_source_tile,

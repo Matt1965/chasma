@@ -11,7 +11,7 @@ use bevy::tasks::{AsyncComputeTaskPool, Task};
 use crate::view::PrimaryViewFocus;
 use crate::world::{ChunkCoord, ChunkData, ChunkId, WorldConfig, WorldData};
 
-use super::albedo::{AlbedoFallback, ChunkAlbedoGrid, TerrainChunkAlbedo};
+use super::albedo::{production_albedo_fallback, AlbedoFallback, ChunkAlbedoGrid, TerrainChunkAlbedo};
 use super::components::TerrainChunkMesh;
 use super::lod::{
     LodPriority, TerrainLodSettings, desired_lod, predicted_lod_targets,
@@ -166,7 +166,7 @@ impl PendingChunkLodBuilds {
             None,
             vertical_scale,
             seam_weld,
-            AlbedoFallback::default(),
+            production_albedo_fallback(),
         )
     }
 
@@ -334,7 +334,7 @@ pub(crate) fn request_missing_lod_builds_inner(
             albedo,
             vertical_scale,
             seam_weld,
-            AlbedoFallback::default(),
+            production_albedo_fallback(),
         ) {
             immediate_enqueued += 1;
         }
@@ -389,7 +389,7 @@ pub(crate) fn request_missing_lod_builds_inner(
             albedo,
             vertical_scale,
             seam_weld,
-            AlbedoFallback::default(),
+            production_albedo_fallback(),
         ) {
             prefetch_enqueued += 1;
             stats.prefetch_requests += 1;

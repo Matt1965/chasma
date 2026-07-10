@@ -22,6 +22,9 @@ pub const RANDOM_ROTATION_COLUMN_ALIASES: &[&str] = &["Random Rotation", "Random
 /// Optional column — when absent or blank, definitions allow all assigned biomes.
 pub const BIOME_COLUMN: &str = "Biome";
 
+/// Optional stable machine id column (preferred over slugified Name).
+pub const DEFINITION_ID_COLUMN_ALIASES: &[&str] = &["Definition ID", "Doodad ID"];
+
 /// Optional movement obstacle columns (ADR-031).
 pub const BLOCKS_MOVEMENT_COLUMN: &str = "Blocks Movement";
 pub const BLOCK_RADIUS_COLUMN: &str = "Block Radius";
@@ -30,7 +33,10 @@ pub const BLOCK_RADIUS_COLUMN: &str = "Block Radius";
 #[derive(Debug, Clone, PartialEq)]
 pub struct DoodadImportRow {
     pub row_number: usize,
+    /// Display name from the workbook `Name` column.
     pub name: String,
+    /// Stable machine id when `Definition ID` column is present; otherwise derived.
+    pub definition_id: String,
     pub description: String,
     pub category: String,
     pub biome: String,
@@ -123,6 +129,49 @@ pub fn canonical_doodad_render_key(key: String) -> String {
     }
 }
 
+/// Normalize a workbook display name into a stable machine id (REVIEW-B5).
+pub fn normalize_doodad_definition_id(name: &str) -> Result<String, String> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err("Name must be non-empty".to_string());
+    }
+    if is_machine_definition_id(trimmed) {
+        return Ok(trimmed.to_string());
+    }
+    let slug = slugify_definition_id(trimmed);
+    if slug.is_empty() {
+        return Err("Name must contain at least one alphanumeric character".to_string());
+    }
+    Ok(slug)
+}
+
+fn is_machine_definition_id(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+}
+
+fn slugify_definition_id(value: &str) -> String {
+    let mut slug = String::new();
+    let mut last_was_sep = false;
+    for c in value.trim().chars() {
+        if c.is_ascii_alphanumeric() {
+            slug.push(c.to_ascii_lowercase());
+            last_was_sep = false;
+        } else if c.is_whitespace() || c == '-' || c == '_' {
+            if !slug.is_empty() && !last_was_sep {
+                slug.push('_');
+                last_was_sep = true;
+            }
+        }
+    }
+    while slug.ends_with('_') {
+        slug.pop();
+    }
+    slug
+}
+
 fn kind_defaults(kind: DoodadKind) -> (f32, Option<f32>) {
     match kind {
         DoodadKind::Tree => (4.0, Some(25.0)),
@@ -151,11 +200,17 @@ impl DoodadImportRow {
             .unwrap_or_else(|| default_blocks_movement(kind));
         let block_radius_meters = self.block_radius_meters.unwrap_or(placement_radius);
 
+        let display_name = if self.description.trim().is_empty() {
+            self.name.trim()
+        } else {
+            self.description.trim()
+        };
+
         Ok(
             DoodadDefinition::new(
-                DoodadDefinitionId::new(self.name.trim()),
+                DoodadDefinitionId::new(self.definition_id.trim()),
                 kind,
-                self.description.trim(),
+                display_name,
                 placement_radius,
                 self.min_size,
                 self.max_size,
@@ -182,6 +237,7 @@ mod tests {
         DoodadImportRow {
             row_number: 2,
             name: "tree_oak".to_string(),
+            definition_id: "tree_oak".to_string(),
             description: "Oak Tree".to_string(),
             category: "Tree".to_string(),
             biome: "Forest".to_string(),
@@ -201,6 +257,7 @@ mod tests {
         DoodadImportRow {
             row_number: 3,
             name: "Basic Tree".to_string(),
+            definition_id: "basic_tree".to_string(),
             description: "Basic Tree".to_string(),
             category: "Flora".to_string(),
             biome: String::new(),
@@ -301,7 +358,8 @@ mod tests {
     #[test]
     fn basic_tree_excel_row_maps_to_catalog_fields() {
         let def = basic_tree_row().to_definition().unwrap();
-        assert_eq!(def.id.as_str(), "Basic Tree");
+        assert_eq!(def.id.as_str(), "basic_tree");
+        assert_eq!(def.display_name, "Basic Tree");
         assert_eq!(def.kind, DoodadKind::Tree);
         assert_eq!(def.render_key.0.as_deref(), Some("tree/oak"));
         assert!((def.spawn_weight - 10.0).abs() < f32::EPSILON);
@@ -309,6 +367,22 @@ mod tests {
         assert!((def.min_scale - 0.5).abs() < f32::EPSILON);
         assert!((def.max_scale - 1.5).abs() < f32::EPSILON);
         assert_eq!(def.allowed_biomes.len(), BiomeId::all_assigned().len());
+    }
+
+    #[test]
+    fn normalize_slugifies_display_names() {
+        assert_eq!(
+            normalize_doodad_definition_id("Basic Tree").unwrap(),
+            "basic_tree"
+        );
+        assert_eq!(
+            normalize_doodad_definition_id("tree_oak").unwrap(),
+            "tree_oak"
+        );
+        assert_eq!(
+            normalize_doodad_definition_id("Basic-Tree").unwrap(),
+            "basic_tree"
+        );
     }
 
     #[test]

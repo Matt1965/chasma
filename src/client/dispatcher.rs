@@ -20,8 +20,9 @@ use crate::world::{
 };
 
 use super::commands::{
-    build_command_plan, resolve_contextual_command_with_armed, resolve_palette_command,
-    BuiltCommandPlan, CommandResolutionContext, CommandTarget, CommandType,
+    build_command_plan, command_availability, command_tooltip, resolve_contextual_command_with_armed,
+    resolve_palette_command, BuiltCommandPlan, CommandBuildError, CommandResolutionContext,
+    CommandTarget, CommandType, CommandUnavailableReason,
 };
 use super::intent::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
 use crate::ui::gameplay::PlayerHudState;
@@ -41,6 +42,7 @@ pub struct DispatchSimulationParams<'w> {
 pub enum IntentDispatchStatus {
     Applied,
     Ignored,
+    Rejected(CommandUnavailableReason),
 }
 
 /// Per-intent dispatch record for debug logging.
@@ -391,11 +393,23 @@ fn dispatch_contextual_command(
 
     let plan = match build_command_plan(&contextual, selection, world) {
         Ok(plan) => plan,
+        Err(CommandBuildError::FeatureUnavailable(reason)) => {
+            pending_trace.resolved_command = Some(contextual.command_type);
+            pending_trace.command_tooltip = Some(command_tooltip(
+                contextual.command_type,
+                crate::client::commands::CommandAvailability::Unavailable(reason),
+            ));
+            pending_trace.unavailable_reason = Some(reason);
+            return IntentDispatchStatus::Rejected(reason);
+        }
         Err(_) => return IntentDispatchStatus::Ignored,
     };
 
     pending_trace.resolved_command = Some(contextual.command_type);
-    pending_trace.command_tooltip = Some(contextual.command_type.tooltip().to_string());
+    pending_trace.command_tooltip = Some(command_tooltip(
+        contextual.command_type,
+        command_availability(contextual.command_type, selection),
+    ));
 
     match plan {
         BuiltCommandPlan::MoveTo { .. } => {
@@ -482,18 +496,6 @@ fn dispatch_contextual_command(
             ));
             IntentDispatchStatus::Applied
         }
-        BuiltCommandPlan::HoldAll => {
-            *move_report = Some(issue_idle_orders_to_selection(
-                world,
-                unit_catalog,
-                weapon_catalog,
-                doodad_catalog,
-                nav_config,
-                selection,
-                targeting_policy,
-            ));
-            IntentDispatchStatus::Applied
-        }
         BuiltCommandPlan::NoOp => IntentDispatchStatus::Ignored,
     }
 }
@@ -522,6 +524,14 @@ fn dispatch_palette_command(
         return IntentDispatchStatus::Ignored;
     }
 
+    let availability = command_availability(command_type, selection);
+    if let Some(reason) = availability.reason() {
+        pending_trace.resolved_command = Some(command_type);
+        pending_trace.command_tooltip = Some(command_tooltip(command_type, availability));
+        pending_trace.unavailable_reason = Some(reason);
+        return IntentDispatchStatus::Rejected(reason);
+    }
+
     let selected: Vec<_> = selection.iter().collect();
     let targeting_policy = AttackTargetingPolicy::default();
     let Some(contextual) = resolve_palette_command(command_type, &selected, None) else {
@@ -530,11 +540,20 @@ fn dispatch_palette_command(
 
     let plan = match build_command_plan(&contextual, selection, world) {
         Ok(plan) => plan,
+        Err(CommandBuildError::FeatureUnavailable(reason)) => {
+            pending_trace.resolved_command = Some(command_type);
+            pending_trace.command_tooltip = Some(command_tooltip(command_type, availability));
+            pending_trace.unavailable_reason = Some(reason);
+            return IntentDispatchStatus::Rejected(reason);
+        }
         Err(_) => return IntentDispatchStatus::Ignored,
     };
 
     pending_trace.resolved_command = Some(contextual.command_type);
-    pending_trace.command_tooltip = Some(contextual.command_type.tooltip().to_string());
+    pending_trace.command_tooltip = Some(command_tooltip(
+        contextual.command_type,
+        command_availability(contextual.command_type, selection),
+    ));
 
     match plan {
         BuiltCommandPlan::MoveTo { .. } => IntentDispatchStatus::Ignored,
@@ -553,18 +572,6 @@ fn dispatch_palette_command(
         }
         BuiltCommandPlan::Attack { .. } => IntentDispatchStatus::Ignored,
         BuiltCommandPlan::StopAll => {
-            *move_report = Some(issue_idle_orders_to_selection(
-                world,
-                unit_catalog,
-                weapon_catalog,
-                doodad_catalog,
-                nav_config,
-                selection,
-                targeting_policy,
-            ));
-            IntentDispatchStatus::Applied
-        }
-        BuiltCommandPlan::HoldAll => {
             *move_report = Some(issue_idle_orders_to_selection(
                 world,
                 unit_catalog,
@@ -992,6 +999,62 @@ mod tests {
             world.get_unit(unit_id).unwrap().state,
             UnitState::Moving { .. }
         ));
+    }
+
+    #[test]
+    fn palette_hold_position_rejected_without_world_mutation() {
+        use crate::client::commands::CommandUnavailableReason;
+
+        let mut selection = SelectedUnits::default();
+        let mut move_feedback = MoveCommandFeedback::default();
+        let mut world = flat_world();
+        let mut modifiers = ClientInputModifiers::default();
+        let mut pending = PendingDispatchTrace::default();
+        let catalog = UnitCatalog::default();
+        let unit_id = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(4.0, 4.0),
+            UnitSource::Authored,
+            crate::world::UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        selection.set_single(unit_id);
+        let state_before = world.get_unit(unit_id).unwrap().state.clone();
+
+        let status = dispatch_one(
+            &ClientIntent::PaletteCommand {
+                command_type: CommandType::HoldPosition,
+            },
+            &mut selection,
+            &mut move_feedback,
+            &mut world,
+            &catalog,
+            &WeaponCatalog::default(),
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            layout(),
+            1.0,
+            &PlayerInteractionSettings::default(),
+            None,
+            None,
+            &mut modifiers,
+            &mut None,
+            &mut pending,
+            SelectionControllabilityPolicy::gameplay_default(),
+            None,
+        );
+        assert_eq!(
+            status,
+            IntentDispatchStatus::Rejected(CommandUnavailableReason::FeatureNotImplemented)
+        );
+        assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
+        assert_eq!(
+            pending.unavailable_reason,
+            Some(CommandUnavailableReason::FeatureNotImplemented)
+        );
     }
 
     #[test]

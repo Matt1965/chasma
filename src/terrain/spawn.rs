@@ -13,7 +13,7 @@ use crate::world::{ChunkCoord, ChunkId, WorldData, WorldPosition};
 
 use super::components::TerrainChunkMesh;
 use super::lod_cache::TerrainChunkLodCache;
-use super::mesh::{ChunkLod, ChunkMeshSeamWeld};
+use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled};
 #[cfg(feature = "dev")]
 use super::mesh::chunk_mesh_geometry;
 #[cfg(feature = "dev")]
@@ -94,6 +94,27 @@ pub(crate) fn seam_weld_heights(world: &WorldData, chunk_id: ChunkId) -> ChunkMe
     }
 }
 
+/// Shared mesh finalization for initial materialization and LOD rebuilds (REVIEW-B6).
+pub fn build_chunk_mesh_finalized(
+    heightfield: &crate::world::Heightfield,
+    world: &WorldData,
+    chunk_id: ChunkId,
+    lod: ChunkLod,
+    vertical_scale: f32,
+    albedo: Option<&super::albedo::ChunkAlbedoGrid>,
+    fallback: super::albedo::AlbedoFallback,
+) -> Mesh {
+    let seam_weld = seam_weld_heights(world, chunk_id);
+    build_chunk_mesh_scaled(
+        heightfield,
+        lod,
+        vertical_scale,
+        &seam_weld,
+        albedo,
+        fallback,
+    )
+}
+
 pub(crate) fn spawn_prebuilt_chunk_mesh_inner(
     commands: &mut Commands,
     chunk_id: ChunkId,
@@ -160,7 +181,9 @@ pub fn despawn_chunk_meshes(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{ChunkCoord, ChunkId};
+    use crate::terrain::albedo::AlbedoFallback;
+    use crate::terrain::mesh::{build_chunk_mesh_scaled, chunk_mesh_geometry, ChunkLod};
+    use crate::world::{ChunkCoord, ChunkData, ChunkId, Heightfield, WorldData};
 
     #[test]
     fn vertical_scale_inversely_tracks_height_span() {
@@ -185,6 +208,65 @@ mod tests {
         assert_eq!(render.x, 266.0);
         assert_eq!(render.y, 12.0);
         assert_eq!(render.z, 532.0);
+    }
+
+    #[test]
+    fn finalized_mesh_matches_explicit_seam_weld_path() {
+        let layout = crate::world::ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        };
+        let mut world = WorldData::new(layout);
+        let west_samples: Vec<f32> = (0..9).map(|i| i as f32 * 0.5).collect();
+        let center_samples: Vec<f32> = (0..9).map(|i| i as f32).collect();
+        let east_samples: Vec<f32> = (0..9).map(|i| i as f32 * 2.0).collect();
+        world.insert(
+            ChunkId::new(ChunkCoord::new(-1, 0)),
+            ChunkData::new(
+                Heightfield::from_samples(3, 128.0, west_samples).unwrap(),
+                Vec::new(),
+            ),
+        );
+        let center_id = ChunkId::new(ChunkCoord::new(0, 0));
+        world.insert(
+            center_id,
+            ChunkData::new(
+                Heightfield::from_samples(3, 128.0, center_samples).unwrap(),
+                Vec::new(),
+            ),
+        );
+        world.insert(
+            ChunkId::new(ChunkCoord::new(1, 0)),
+            ChunkData::new(
+                Heightfield::from_samples(3, 128.0, east_samples).unwrap(),
+                Vec::new(),
+            ),
+        );
+
+        let center = world.get(center_id).unwrap();
+        let seam_weld = seam_weld_heights(&world, center_id);
+        let explicit = build_chunk_mesh_scaled(
+            &center.heightfield,
+            ChunkLod::Full,
+            1.0,
+            &seam_weld,
+            None,
+            AlbedoFallback::Neutral,
+        );
+        let finalized = build_chunk_mesh_finalized(
+            &center.heightfield,
+            &world,
+            center_id,
+            ChunkLod::Full,
+            1.0,
+            None,
+            AlbedoFallback::Neutral,
+        );
+        assert_eq!(
+            chunk_mesh_geometry(&explicit),
+            chunk_mesh_geometry(&finalized),
+            "initial materialization and shared finalization must match"
+        );
     }
 
     #[test]

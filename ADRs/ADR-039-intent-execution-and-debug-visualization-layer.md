@@ -48,7 +48,7 @@ Trace entries record:
 - intent kind
 - affected unit IDs
 - resulting [`UnitOrder`] when applicable
-- outcome (applied, ignored, queued, resolved, failed)
+- outcome (applied, ignored, rejected, queued, resolved, failed)
 - optional path waypoint count after resolve
 
 **Rules:**
@@ -114,6 +114,25 @@ advance_client_frame_index
 
 [`ClientBoundaryGuard`](../src/debug/boundaries.rs) debug-asserts that input
 collection and intent dispatch do not overlap.
+
+## Command availability and rejection (REVIEW-B3)
+
+Every player-facing command is exactly one of: **implemented**, **explicitly
+unavailable**, or **removed**. There are no pretend implementations.
+
+| Component | Responsibility |
+|-----------|----------------|
+| [`CommandAvailability`](../src/client/commands/command_availability.rs) | Central rules for whether a command may be issued |
+| [`CommandUnavailableReason`](../src/client/commands/command_availability.rs) | Structured rejection (empty selection, feature not implemented, invalid target) |
+| [`IntentDispatchStatus::Rejected`](../src/client/dispatcher.rs) | Dispatcher outcome when validation or build rejects a command |
+| [`ResolvedCommandFeedback::set_rejected`](../src/client/commands/mod.rs) | UI hook records rejection reason for tooltips |
+
+**Rules:**
+
+- Unimplemented commands appear disabled in the HUD with an explicit reason
+- Dispatcher returns `Rejected` — never `Applied` — for unavailable commands
+- Rejected intents do not mutate [`WorldData`]
+- Trace maps `Rejected` → `CommandTraceOutcome::CommandRejected`
 
 ## SC2-style observability model
 

@@ -2,7 +2,7 @@
 
 # Status
 
-Accepted (U6 — movement blocking foundation)
+Accepted (U6 — movement blocking foundation; REVIEW-B6 fail-closed queries)
 
 # Context
 
@@ -41,11 +41,24 @@ Excel optional columns: `Blocks Movement`, `Block Radius` (Y/N parsing).
 
 `src/world/obstacle/` owns spatial queries against doodad chunk stores:
 
-- [`is_position_blocked_by_doodads`]
+- [`query_obstacle_at_position`] — structured result with diagnostics
+- [`is_position_blocked_by_doodads`] — convenience bool; **fail-closed on any error**
 - Checks owning chunk + eight neighbors
-- XZ circle overlap: `unit_radius + block_radius_meters`
+- XZ circle overlap: `unit_radius + block_radius_meters` (inclusive `<=` boundary)
 - Deterministic chunk and record iteration order
 - No ECS / glTF / terrain mesh access
+
+### Fail-closed missing definitions (REVIEW-B6)
+
+When a [`DoodadRecord`] references a missing [`DoodadDefinition`]:
+
+| Kind default | Behavior |
+|--------------|----------|
+| Blocking kind (tree, rock, ruin, resource node) | Conservative kind-based block radius; overlap test proceeds; [`ObstacleQueryError::MissingDoodadDefinition`] emitted |
+| Non-blocking kind (bush) | Passable; no error |
+
+[`is_position_blocked_by_doodads`] treats **any** query error as blocked — navigation
+and movement must not silently walk through corrupt catalog data.
 
 ## Unit movement integration (U5 extension)
 
@@ -85,4 +98,5 @@ navgrids or A*.
 [`DoodadRecord`]: ../src/world/doodad/record.rs
 [`DoodadCatalog`]: ../src/world/doodad/catalog/registry.rs
 [`DoodadDefinition`]: ../src/world/doodad/catalog/definition.rs
+[`query_obstacle_at_position`]: ../src/world/obstacle/query.rs
 [`is_position_blocked_by_doodads`]: ../src/world/obstacle/query.rs

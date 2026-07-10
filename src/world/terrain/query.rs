@@ -1,20 +1,56 @@
-//! Shared terrain height and slope queries against authoritative [`WorldData`] (ADR-029).
+//! Shared terrain height and slope queries against authoritative [`WorldData`] (ADR-029, REVIEW-B4).
 //!
 //! Reads resident [`super::Heightfield`] data only — never terrain runtime meshes or
-//! render exaggeration.
+//! render exaggeration. Simulation callers must use [`try_sample_height_at_position`] /
+//! [`try_ground_world_position`] and handle [`super::TerrainQueryError`] explicitly.
 
-use crate::world::{LocalPosition, WorldData, WorldPosition};
+use crate::world::{ChunkId, LocalPosition, WorldData, WorldPosition};
 
-use super::Heightfield;
+use super::{Heightfield, TerrainQueryError};
 
-/// Sample terrain height at `position` and return a copy with authoritative Y set.
-///
-/// Returns `None` when the owning chunk's heightfield is not resident.
-pub fn ground_world_position(world: &WorldData, position: WorldPosition) -> Option<WorldPosition> {
-    let height = world.sample_height_at_position(position)?;
+/// Sample resident heightfield height at an authoritative [`WorldPosition`].
+pub fn try_sample_height_at_position(
+    world: &WorldData,
+    position: WorldPosition,
+) -> Result<f32, TerrainQueryError> {
+    let chunk_id = ChunkId::new(position.chunk);
+    let data = world
+        .get(chunk_id)
+        .ok_or(TerrainQueryError::ChunkNotResident)?;
+    data.heightfield
+        .try_sample(position.local.0.x, position.local.0.z)
+}
+
+/// Sample terrain height and return a copy with authoritative Y set.
+pub fn try_ground_world_position(
+    world: &WorldData,
+    position: WorldPosition,
+) -> Result<WorldPosition, TerrainQueryError> {
+    let height = try_sample_height_at_position(world, position)?;
     let mut local = position.local.0;
     local.y = height;
-    Some(WorldPosition::new(position.chunk, LocalPosition::new(local)))
+    Ok(WorldPosition::new(position.chunk, LocalPosition::new(local)))
+}
+
+/// Convenience wrapper — maps all query failures to `None`.
+///
+/// Prefer [`try_ground_world_position`] when the failure reason matters.
+pub fn ground_world_position(world: &WorldData, position: WorldPosition) -> Option<WorldPosition> {
+    try_ground_world_position(world, position).ok()
+}
+
+/// Estimate terrain slope in degrees at a chunk-local position (ADR-005).
+pub fn slope_at(world: &WorldData, position: WorldPosition) -> Result<f32, TerrainQueryError> {
+    let chunk_id = ChunkId::new(position.chunk);
+    let data = world
+        .get(chunk_id)
+        .ok_or(TerrainQueryError::ChunkNotResident)?;
+    estimate_slope_degrees(
+        &data.heightfield,
+        position.local.0.x,
+        position.local.0.z,
+    )
+    .ok_or(TerrainQueryError::SlopeUnavailable)
 }
 
 /// Estimate terrain slope in degrees at a chunk-local position.
@@ -29,7 +65,7 @@ pub fn estimate_slope_degrees(
     let spacing = heightfield.spacing_meters();
     let size = heightfield.chunk_size_meters();
 
-    if local_x < 0.0 || local_z < 0.0 || local_x > size + 1e-4 || local_z > size + 1e-4 {
+    if !heightfield.is_within_domain(local_x, local_z) {
         return None;
     }
 
@@ -62,18 +98,34 @@ pub fn is_position_slope_walkable(
     position: WorldPosition,
     max_slope_degrees: f32,
 ) -> bool {
-    let chunk_id = crate::world::ChunkId::new(position.chunk);
-    let Some(data) = world.get(chunk_id) else {
-        return false;
-    };
-    let Some(slope) = estimate_slope_degrees(
-        &data.heightfield,
-        position.local.0.x,
-        position.local.0.z,
-    ) else {
-        return false;
-    };
-    slope <= max_slope_degrees
+    matches!(
+        classify_slope_walkability(world, position, max_slope_degrees),
+        SlopeWalkability::Walkable
+    )
+}
+
+/// Slope classification for movement blocking (ADR-066).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SlopeWalkability {
+    Walkable,
+    Unavailable,
+    TooSteep,
+}
+
+/// Classify slope at `position` for movement outcome reporting.
+pub fn classify_slope_walkability(
+    world: &WorldData,
+    position: WorldPosition,
+    max_slope_degrees: f32,
+) -> SlopeWalkability {
+    match slope_at(world, position) {
+        Ok(slope) if slope > max_slope_degrees => SlopeWalkability::TooSteep,
+        Ok(_) => SlopeWalkability::Walkable,
+        Err(TerrainQueryError::SlopeUnavailable) => SlopeWalkability::Unavailable,
+        Err(TerrainQueryError::ChunkNotResident | TerrainQueryError::InvalidTerrainCoordinate) => {
+            SlopeWalkability::Unavailable
+        }
+    }
 }
 
 #[cfg(test)]
@@ -95,7 +147,7 @@ mod tests {
     }
 
     #[test]
-    fn ground_world_position_samples_resident_terrain() {
+    fn resident_terrain_query_succeeds() {
         let mut world = WorldData::new(layout());
         world.insert(
             ChunkId::new(ChunkCoord::new(0, 0)),
@@ -106,20 +158,90 @@ mod tests {
             LocalPosition::new(Vec3::new(128.0, 0.0, 128.0)),
         );
 
-        let grounded = ground_world_position(&world, position).unwrap();
-        assert_eq!(grounded.local.0.x, 128.0);
-        assert_eq!(grounded.local.0.z, 128.0);
+        let height = try_sample_height_at_position(&world, position).unwrap();
+        assert_eq!(height, 11.0);
+        let grounded = try_ground_world_position(&world, position).unwrap();
         assert_eq!(grounded.local.0.y, 11.0);
     }
 
     #[test]
-    fn ground_world_position_none_when_chunk_not_resident() {
+    fn non_resident_terrain_returns_chunk_not_resident() {
         let world = WorldData::new(layout());
         let position = WorldPosition::new(
             ChunkCoord::new(0, 0),
             LocalPosition::new(Vec3::new(10.0, 5.0, 10.0)),
         );
+        assert_eq!(
+            try_sample_height_at_position(&world, position),
+            Err(TerrainQueryError::ChunkNotResident)
+        );
         assert!(ground_world_position(&world, position).is_none());
+    }
+
+    #[test]
+    fn out_of_domain_coordinate_returns_invalid_terrain_coordinate() {
+        let mut world = WorldData::new(layout());
+        world.insert(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            sample_chunk(vec![0.0; 9]),
+        );
+        let position = WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::new(-5.0, 0.0, 64.0)),
+        );
+        assert_eq!(
+            try_sample_height_at_position(&world, position),
+            Err(TerrainQueryError::InvalidTerrainCoordinate)
+        );
+    }
+
+    #[test]
+    fn slope_at_reports_unavailable_for_missing_chunk() {
+        let world = WorldData::new(layout());
+        let position = WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::new(64.0, 0.0, 64.0)),
+        );
+        assert_eq!(
+            slope_at(&world, position),
+            Err(TerrainQueryError::ChunkNotResident)
+        );
+    }
+
+    #[test]
+    fn classify_slope_distinguishes_unavailable_from_too_steep() {
+        let mut world = WorldData::new(layout());
+        world.insert(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            sample_chunk(vec![0.0; 9]),
+        );
+        let missing = WorldPosition::new(
+            ChunkCoord::new(1, 0),
+            LocalPosition::new(Vec3::new(64.0, 0.0, 64.0)),
+        );
+        assert_eq!(
+            classify_slope_walkability(&world, missing, 30.0),
+            SlopeWalkability::Unavailable
+        );
+
+        let mut ramp = Vec::new();
+        for _row in 0..3 {
+            for col in 0..3 {
+                ramp.push(col as f32 * 40.0);
+            }
+        }
+        world.insert(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            sample_chunk(ramp),
+        );
+        let steep = WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::new(128.0, 0.0, 128.0)),
+        );
+        assert_eq!(
+            classify_slope_walkability(&world, steep, 5.0),
+            SlopeWalkability::TooSteep
+        );
     }
 
     #[test]

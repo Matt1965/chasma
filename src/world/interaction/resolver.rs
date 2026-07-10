@@ -59,13 +59,11 @@ pub fn resolve_interaction_to_order(interaction: &InteractionResult) -> Interact
             }
         }
         InteractionType::ResourceNode | InteractionType::InteractableObject => {
-            // Placeholder — move adjacent until harvest/interact exists.
-            InteractionOrderPlan::MoveTo {
-                target: interaction.position,
-            }
+            InteractionOrderPlan::NoOp
         }
-        InteractionType::AttackableUnit => InteractionOrderPlan::Attack {
-            target: unit_id_from_target(interaction),
+        InteractionType::AttackableUnit => match interaction.target {
+            InteractionTargetRef::Unit(target) => InteractionOrderPlan::Attack { target },
+            _ => InteractionOrderPlan::NoOp,
         },
         InteractionType::FriendlyUnit | InteractionType::NeutralUnit => {
             if interaction.target.is_unit() {
@@ -77,13 +75,6 @@ pub fn resolve_interaction_to_order(interaction: &InteractionResult) -> Interact
             }
         }
         InteractionType::BlockedArea | InteractionType::None => InteractionOrderPlan::NoOp,
-    }
-}
-
-fn unit_id_from_target(interaction: &InteractionResult) -> UnitId {
-    match interaction.target {
-        InteractionTargetRef::Unit(id) => id,
-        _ => UnitId::new(0),
     }
 }
 
@@ -167,10 +158,11 @@ pub fn resolve_world_click_to_unit_order(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::interaction::types::{InteractionMetadata, InteractionTargetRef, InteractionType};
     use crate::world::{
         create_doodad, create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
         DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition,
-        UnitDefinitionId, UnitSource,
+        UnitDefinitionId, UnitSource, WorldData,
     };
     use bevy::prelude::Vec3;
 
@@ -249,7 +241,7 @@ mod tests {
     }
 
     #[test]
-    fn resource_node_placeholder_maps_to_move_to() {
+    fn resource_node_produces_no_op_until_interact_exists() {
         let catalog = crate::world::DoodadCatalog::default();
         let mut world = flat_world();
         create_doodad(
@@ -266,7 +258,30 @@ mod tests {
         let weapon_catalog = weapons();
         let ctx = resolve_ctx(&world, &catalog, &unit_catalog, &weapon_catalog, &units);
         let plan = resolve_world_click_to_order(&ctx, pos(60.0, 60.0)).unwrap();
-        assert!(matches!(plan, InteractionOrderPlan::MoveTo { .. }));
+        assert_eq!(plan, InteractionOrderPlan::NoOp);
+        assert!(interaction_plan_to_unit_order(plan).is_none());
+    }
+
+    #[test]
+    fn attackable_unit_without_target_produces_no_op() {
+        let world = flat_world();
+        let catalog = crate::world::DoodadCatalog::default();
+        let unit_catalog = crate::world::UnitCatalog::default();
+        let units = [UnitId::new(1)];
+        let weapon_catalog = weapons();
+        let interaction = InteractionResult {
+            interaction_type: InteractionType::AttackableUnit,
+            position: pos(10.0, 10.0),
+            metadata: InteractionMetadata {
+                label: "Attack".to_string(),
+                doodad_kind: None,
+                blocks_movement: false,
+            },
+            valid: true,
+            target: InteractionTargetRef::None,
+        };
+        let plan = resolve_interaction_to_order(&interaction);
+        assert_eq!(plan, InteractionOrderPlan::NoOp);
     }
 
     #[test]

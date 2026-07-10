@@ -200,7 +200,7 @@ mod tests {
     use crate::world::{
         create_unit_with_ownership, issue_unit_order, starter_unit_definitions,
         starter_weapon_definitions, step_all_combat_engagement, step_all_combat_strikes,
-        step_all_unit_movement, AttackTargetingPolicy, ChunkCoord, ChunkData, ChunkId,
+        step_all_projectiles, AttackTargetingPolicy, ChunkCoord, ChunkData, ChunkId,
         ChunkLayout, CombatStrikeEvent, CombatStrikeReport, DamageType, DoodadCatalog, Heightfield, HitMode,
         LocalPosition, NavigationConfig, ProjectileEvent, ProjectileImpactRejection, ProjectileLaunchSnapshot,
         ProjectileReport, TargetFilter, UnitDefinitionId, UnitId, UnitOrder, UnitOwnership, UnitSource,
@@ -933,7 +933,7 @@ mod tests {
         for _ in 0..10 {
             let mut scan = crate::world::CombatAiScanState::default();
             let settings = crate::world::CombatAiSettings::default();
-            step_all_unit_movement(
+            crate::simulation::run_simulation_tick(
                 &mut world,
                 &catalog,
                 &weapons,

@@ -8,6 +8,9 @@ use bevy::{
 
 use super::lighting::EnvironmentDirectionalLight;
 use super::settings::EnvironmentSettings;
+use super::singleton::{
+    update_environment_directional_light, EnvironmentDirectionalLightResolution,
+};
 use super::skybox::SkyboxCamera;
 use super::time_of_day::TimeOfDaySettings;
 
@@ -158,7 +161,7 @@ pub fn update_environment_from_time_of_day(
 pub fn sync_environment_presentation(
     settings: Res<EnvironmentSettings>,
     mut ambient: ResMut<GlobalAmbientLight>,
-    mut lights: Query<
+    lights: Query<
         (&mut DirectionalLight, &mut Transform),
         With<EnvironmentDirectionalLight>,
     >,
@@ -167,10 +170,26 @@ pub fn sync_environment_presentation(
     ambient.color = settings.ambient_color;
     ambient.brightness = settings.ambient_brightness;
 
-    if let Ok((mut light, mut transform)) = lights.single_mut() {
-        light.color = settings.directional_light_color;
-        light.illuminance = settings.directional_light_illuminance;
-        transform.rotation = settings.directional_light_rotation;
+    let count = lights.iter().count();
+    let resolution = match count {
+        0 => EnvironmentDirectionalLightResolution::Missing,
+        1 => EnvironmentDirectionalLightResolution::Single,
+        n => EnvironmentDirectionalLightResolution::Duplicate { count: n },
+    };
+    if !matches!(resolution, EnvironmentDirectionalLightResolution::Single) {
+        #[cfg(feature = "dev")]
+        if resolution != EnvironmentDirectionalLightResolution::Missing {
+            bevy::log::warn!(
+                target: "chasma::environment",
+                "Skipping directional light update: {resolution:?}"
+            );
+        }
+    } else {
+        let _ = update_environment_directional_light(resolution, lights, |light, transform| {
+            light.color = settings.directional_light_color;
+            light.illuminance = settings.directional_light_illuminance;
+            transform.rotation = settings.directional_light_rotation;
+        });
     }
 
     for mut skybox in &mut skyboxes {
@@ -182,18 +201,17 @@ pub fn sync_environment_presentation(
 pub fn time_of_day_dev_keyboard(
     keyboard: Res<ButtonInput<KeyCode>>,
     dev_state: Res<crate::dev::DevModeState>,
+    panel_hovered: Res<crate::dev::DevPanelHoverState>,
     mut time_of_day: ResMut<TimeOfDaySettings>,
 ) {
-    if !dev_state.enabled {
+    if !dev_state.enabled || dev_state.active_tab != crate::dev::DevTab::WorldTools {
+        return;
+    }
+    if panel_hovered.hovered {
         return;
     }
 
-    if keyboard.just_pressed(KeyCode::KeyT) {
-        apply_time_of_day_dev_action(TimeOfDayDevAction::ToggleEnabled, &mut time_of_day);
-    }
-    if keyboard.just_pressed(KeyCode::KeyP) {
-        apply_time_of_day_dev_action(TimeOfDayDevAction::TogglePaused, &mut time_of_day);
-    }
+    // Bracket / Alt combinations only — panel buttons own primary controls (REVIEW-B5).
     if keyboard.just_pressed(KeyCode::BracketLeft) {
         apply_time_of_day_dev_action(TimeOfDayDevAction::HourEarlier, &mut time_of_day);
     }
@@ -205,15 +223,6 @@ pub fn time_of_day_dev_keyboard(
     }
     if keyboard.just_pressed(KeyCode::Period) {
         apply_time_of_day_dev_action(TimeOfDayDevAction::FasterDay, &mut time_of_day);
-    }
-    if keyboard.just_pressed(KeyCode::Digit6) {
-        apply_time_of_day_dev_action(TimeOfDayDevAction::SetDawn, &mut time_of_day);
-    }
-    if keyboard.just_pressed(KeyCode::Digit1) {
-        apply_time_of_day_dev_action(TimeOfDayDevAction::SetNoon, &mut time_of_day);
-    }
-    if keyboard.just_pressed(KeyCode::Digit0) {
-        apply_time_of_day_dev_action(TimeOfDayDevAction::SetMidnight, &mut time_of_day);
     }
 }
 
@@ -281,7 +290,7 @@ pub fn format_time_of_day_status(settings: &TimeOfDaySettings) -> String {
     let hours = settings.time_hours.floor() as u32;
     let minutes = ((settings.time_hours.fract()) * 60.0).floor() as u32;
     format!(
-        "Time: {:02}:{:02}  cycle={}  paused={}  day_len={:.0}s\n[ / ] hour  6 dawn  1 noon  0 night  T toggle  P pause",
+        "Time: {:02}:{:02}  cycle={}  paused={}  day_len={:.0}s\nWorld tab: [ / ] hour  , / . speed  (use panel for cycle/pause/presets)",
         hours % 24,
         minutes,
         if settings.enabled { "on" } else { "off" },
@@ -293,6 +302,7 @@ pub fn format_time_of_day_status(settings: &TimeOfDaySettings) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bevy::ecs::system::RunSystemOnce;
 
     fn lighting_at(hour: f32) -> TimeOfDayLighting {
         let settings = TimeOfDaySettings {
@@ -374,5 +384,56 @@ mod tests {
         assert!(noon > dawn);
         assert!(noon > dusk);
         assert!((noon - 1.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn sync_environment_presentation_does_not_panic_without_directional_light() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<EnvironmentSettings>();
+        app.init_resource::<GlobalAmbientLight>();
+        app.world_mut()
+            .run_system_once(sync_environment_presentation)
+            .unwrap();
+    }
+
+    #[test]
+    fn sync_environment_presentation_does_not_mutate_duplicate_lights() {
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins);
+        app.init_resource::<EnvironmentSettings>();
+        app.init_resource::<GlobalAmbientLight>();
+        app.world_mut().spawn((
+            DirectionalLight {
+                illuminance: 1.0,
+                ..default()
+            },
+            Transform::default(),
+            EnvironmentDirectionalLight,
+        ));
+        app.world_mut().spawn((
+            DirectionalLight {
+                illuminance: 2.0,
+                ..default()
+            },
+            Transform::default(),
+            EnvironmentDirectionalLight,
+        ));
+        let before: Vec<f32> = app
+            .world_mut()
+            .query::<&DirectionalLight>()
+            .iter(app.world_mut())
+            .map(|light| light.illuminance)
+            .collect();
+        app.world_mut()
+            .run_system_once(sync_environment_presentation)
+            .unwrap();
+        let after: Vec<f32> = app
+            .world_mut()
+            .query::<&DirectionalLight>()
+            .iter(app.world_mut())
+            .map(|light| light.illuminance)
+            .collect();
+        assert_eq!(before, after);
     }
 }

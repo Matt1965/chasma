@@ -26,7 +26,7 @@ SimulationClock accumulator (ADR-064)
         ↓
 SimulationControlState gate (pause / step_once)
         ↓
-Simulation tick(s) — step_all_unit_movement × N
+Simulation tick(s) — run_simulation_tick × N
         ↓
 Movement · combat · projectiles · death · AI (unchanged rules)
 ```
@@ -69,11 +69,11 @@ F12 remains dev mode toggle (ADR-043). Space is **not** used for dev catalog sea
 [`tick_unit_movement`](../src/player/simulation.rs) plans ticks via
 [`SimulationClock::plan_frame`](../src/simulation/control.rs), then for each planned tick
 calls [`SimulationControlState::begin_tick`](../src/simulation/control.rs) before
-[`step_all_unit_movement`](../src/world/unit/movement.rs) and
+[`run_simulation_tick`](../src/simulation/tick.rs) (ADR-065) and
 [`complete_tick`](../src/simulation/control.rs) after.
 
-This single tick bundles U5/U7/U10/U11/U12 work already sequenced inside
-`step_all_unit_movement` (command-buffer resolve → per-unit movement/steering).
+One orchestrator call advances all canonical simulation stages (ADR-057); locomotion is
+[`step_all_unit_movement`](../src/world/unit/movement.rs) inside that pipeline.
 
 **Not gated** (by design):
 
@@ -86,7 +86,7 @@ This single tick bundles U5/U7/U10/U11/U12 work already sequenced inside
 
 1. User sets `step_once` (Shift+Space or dev button).
 2. Next frame: `begin_tick` returns true even if `paused`.
-3. One full `step_all_unit_movement` runs.
+3. One full `run_simulation_tick` runs (ADR-065).
 4. `complete_tick` increments `current_tick`, clears `step_once`, sets `paused = true`.
 
 No partial ticks; no duplicate execution within a frame.

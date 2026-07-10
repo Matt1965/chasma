@@ -91,7 +91,7 @@ pub fn issue_move_orders_to_selection(
     report
 }
 
-/// Issue `Idle` orders for every selected unit (Stop / Hold placeholders).
+/// Issue `Idle` orders for every selected unit (Stop).
 pub fn issue_idle_orders_to_selection(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,

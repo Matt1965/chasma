@@ -380,4 +380,12 @@ mod tests {
         assert_eq!(second.tick_count, 1);
         assert_eq!(control.current_tick, 1);
     }
+
+    #[test]
+    fn simulation_control_state_has_no_speed_multiplier_field() {
+        let control = SimulationControlState::default();
+        assert!(!control.paused);
+        assert_eq!(control.current_tick, 0);
+        // ADR-064 / REVIEW-B2: speed multiplier removed — pause + fixed clock only.
+    }
 }

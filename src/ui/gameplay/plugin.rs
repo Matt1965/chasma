@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use crate::player::PlayerControlSystems;
+use crate::player::GameplayPresentationSystems;
 
 use super::command_feedback::{
     sync_move_command_indicator, tick_move_command_indicator, MoveCommandFeedback,
@@ -41,7 +41,7 @@ impl Plugin for GameplayUiPlugin {
             .add_systems(Startup, setup_player_hud_layout)
             .configure_sets(
                 Update,
-                GameplayUiSystems.in_set(PlayerControlSystems),
+                GameplayUiSystems.in_set(GameplayPresentationSystems),
             )
             .add_systems(
                 Update,
@@ -49,6 +49,7 @@ impl Plugin for GameplayUiPlugin {
                     update_player_hud_hover_state,
                     sync_player_hud_state,
                 )
+                    .before(crate::client::collect_unit_input_intents)
                     .in_set(GameplayUiSystems),
             )
             .add_systems(
@@ -85,6 +86,7 @@ impl Plugin for GameplayUiPlugin {
                     update_squad_entry_hover,
                     update_command_button_hover,
                 )
+                    .before(crate::client::dispatch_client_intents)
                     .in_set(GameplayUiSystems),
             );
     }

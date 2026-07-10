@@ -8,9 +8,10 @@ mod intent;
 pub mod pipeline;
 
 pub use commands::{
-    available_commands_for_selection, build_command_plan, resolve_contextual_command,
-    BuiltCommandPlan, CommandPaletteEntry, CommandResolutionContext, CommandTarget,
-    CommandType, ContextualCommandIntent, ResolvedCommandFeedback,
+    available_commands_for_selection, build_command_plan, command_availability, command_tooltip,
+    resolve_contextual_command, BuiltCommandPlan, CommandAvailability, CommandPaletteEntry,
+    CommandResolutionContext, CommandTarget, CommandType, CommandUnavailableReason,
+    ContextualCommandIntent, ResolvedCommandFeedback,
 };
 pub use dispatcher::{
     dispatch_client_intents, IntentDispatchRecord, IntentDispatchReport, IntentDispatchStatus,

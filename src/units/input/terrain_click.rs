@@ -98,7 +98,7 @@ fn refine_terrain_crossing(
         let mid = (t_low + t_high) * 0.5;
         let above = ray_height_error(ray, world, layout, vertical_scale, mid)
             .map(|error| error > 0.0)
-            .unwrap_or(true);
+            .unwrap_or(false);
         if above {
             t_low = mid;
         } else {

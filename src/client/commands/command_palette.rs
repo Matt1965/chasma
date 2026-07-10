@@ -1,20 +1,25 @@
-//! Command palette — available commands per selection (ADR-041 U-UI5).
+//! Command palette — available commands per selection (ADR-041, REVIEW-B3).
 
 use crate::units::input::SelectedUnits;
 use crate::world::{UnitCatalog, UnitId};
 
+use super::command_availability::command_availability;
 use super::command_types::CommandType;
 
 /// One entry in the command palette (UI / hotkey hook).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CommandPaletteEntry {
     pub command_type: CommandType,
-    pub enabled: bool,
+    pub availability: super::command_availability::CommandAvailability,
 }
 
-/// Static U-UI5 palette: Move, Stop, Hold Position.
-///
-/// Mixed-capability selections fall back to the intersection (currently identical for all units).
+impl CommandPaletteEntry {
+    pub fn is_enabled(self) -> bool {
+        self.availability.is_available()
+    }
+}
+
+/// Player command palette for the current selection.
 pub fn available_commands_for_selection(
     selection: &SelectedUnits,
     _catalog: &UnitCatalog,
@@ -23,52 +28,24 @@ pub fn available_commands_for_selection(
         return Vec::new();
     }
 
-    static PALETTE: [CommandType; 5] = [
-        CommandType::Move,
-        CommandType::Stop,
-        CommandType::HoldPosition,
-        CommandType::Attack,
-        CommandType::AttackMove,
-    ];
-
-    PALETTE
+    CommandType::player_palette()
         .iter()
         .map(|&command_type| CommandPaletteEntry {
             command_type,
-            enabled: command_enabled_for_selection(command_type, selection),
+            availability: command_availability(command_type, selection),
         })
         .collect()
 }
 
-fn command_enabled_for_selection(command_type: CommandType, selection: &SelectedUnits) -> bool {
-    if selection.is_empty() {
-        return false;
-    }
-    match command_type {
-        CommandType::Move
-        | CommandType::Stop
-        | CommandType::HoldPosition
-        | CommandType::Attack
-        | CommandType::AttackMove => true,
-        CommandType::Interact => false,
-    }
-}
-
 /// Per-unit capability hook for future ability expansion.
 pub fn unit_supports_command(_unit_id: UnitId, command_type: CommandType) -> bool {
-    match command_type {
-        CommandType::Move
-        | CommandType::Stop
-        | CommandType::HoldPosition
-        | CommandType::Attack
-        | CommandType::AttackMove => true,
-        CommandType::Interact => false,
-    }
+    command_type.is_implemented()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::client::commands::CommandUnavailableReason;
 
     #[test]
     fn empty_selection_has_no_palette_entries() {
@@ -77,22 +54,42 @@ mod tests {
     }
 
     #[test]
-    fn selection_exposes_static_palette() {
+    fn selection_exposes_implemented_palette_commands() {
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
         let entries = available_commands_for_selection(&selection, &UnitCatalog::default());
         assert_eq!(entries.len(), 5);
         assert_eq!(entries[0].command_type, CommandType::Move);
+        assert!(entries[0].is_enabled());
         assert_eq!(entries[1].command_type, CommandType::Stop);
-        assert_eq!(entries[2].command_type, CommandType::HoldPosition);
-        assert_eq!(entries[3].command_type, CommandType::Attack);
+        assert!(!entries[2].is_enabled());
+        assert_eq!(
+            entries[2].availability.reason(),
+            Some(CommandUnavailableReason::FeatureNotImplemented)
+        );
+        assert!(entries[3].is_enabled());
     }
 
     #[test]
-    fn multi_unit_mixed_capabilities_still_expose_move() {
+    fn multi_unit_selection_still_exposes_move() {
         let mut selection = SelectedUnits::default();
         selection.replace_with([crate::world::UnitId::new(1), crate::world::UnitId::new(2)]);
         let entries = available_commands_for_selection(&selection, &UnitCatalog::default());
-        assert!(entries.iter().any(|e| e.command_type == CommandType::Move && e.enabled));
+        assert!(entries.iter().any(|e| e.command_type == CommandType::Move && e.is_enabled()));
+    }
+
+    #[test]
+    fn hold_position_disabled_with_explicit_reason() {
+        let mut selection = SelectedUnits::default();
+        selection.set_single(crate::world::UnitId::new(1));
+        let hold = available_commands_for_selection(&selection, &UnitCatalog::default())
+            .into_iter()
+            .find(|e| e.command_type == CommandType::HoldPosition)
+            .expect("hold entry");
+        assert!(!hold.is_enabled());
+        assert_eq!(
+            hold.availability.reason(),
+            Some(CommandUnavailableReason::FeatureNotImplemented)
+        );
     }
 }

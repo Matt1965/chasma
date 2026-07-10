@@ -9,6 +9,7 @@
 mod cycle;
 mod debug;
 mod lighting;
+mod singleton;
 mod plugin;
 mod settings;
 mod skybox;
@@ -30,7 +31,10 @@ pub use debug::{
     count_environment_singletons, log_environment_configuration,
     log_environment_singleton_report, validate_environment_singletons, EnvironmentSingletonReport,
 };
-pub use lighting::{EnvironmentDirectionalLight, EnvironmentLightingInitialized};
+pub use singleton::{
+    resolve_environment_directional_light, update_environment_directional_light,
+    EnvironmentDirectionalLightResolution,
+};
 pub use plugin::EnvironmentPlugin;
 pub use settings::{
     EnvironmentSettings, DEFAULT_DIRECTIONAL_LIGHT_LOOK_AT, DEFAULT_DIRECTIONAL_LIGHT_POSITION,

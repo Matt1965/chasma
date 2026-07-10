@@ -15,6 +15,7 @@ mod overlay;
 mod pending;
 mod plugin;
 mod settings;
+mod movement_observability;
 mod trace;
 
 pub use inspector_focus::InspectorOverlayFocus;
@@ -29,6 +30,9 @@ pub use pending::PendingSimulationTrace;
 pub use settings::{
     debug_combat_overlay_enabled, debug_interaction_overlay_enabled, debug_path_overlay_enabled,
     DebugOverlayCategory, DebugOverlayConfig, DebugOverlaySettings,
+};
+pub use movement_observability::{
+    blocked_reason_label, MovementBlockObservability,
 };
 pub use trace::{
     ClientFrameIndex, CommandTraceBuffer, CommandTraceEntry, CommandTraceIntentKind,

@@ -7,8 +7,9 @@ use bevy::prelude::*;
 
 use crate::world::obstacle::blocking_doodad_at_position;
 use crate::world::{
-    ground_world_position, is_position_slope_walkable, ChunkCoord, ChunkId, DoodadCatalog,
-    DoodadDefinition, DoodadId, DoodadKind, DoodadRecord, UnitCatalog, WorldData, WorldPosition,
+    classify_slope_walkability, ground_world_position, ChunkCoord, ChunkId, DoodadCatalog,
+    DoodadDefinition, DoodadId, DoodadKind, DoodadRecord, SlopeWalkability, UnitCatalog,
+    WorldData, WorldPosition,
 };
 
 use super::types::{
@@ -93,19 +94,22 @@ pub fn query_world_interaction(
         });
     }
 
-    let walkable = is_position_slope_walkable(ctx.world, grounded, ctx.max_slope_degrees);
-    if !walkable {
-        return Some(InteractionResult {
-            interaction_type: InteractionType::BlockedArea,
-            position: grounded,
-            metadata: InteractionMetadata {
-                label: "Unwalkable terrain".to_string(),
-                doodad_kind: None,
-                blocks_movement: true,
-            },
-            valid: true,
-            target: InteractionTargetRef::Terrain(grounded),
-        });
+    match classify_slope_walkability(ctx.world, grounded, ctx.max_slope_degrees) {
+        SlopeWalkability::Walkable => {}
+        SlopeWalkability::TooSteep => {
+            return Some(InteractionResult {
+                interaction_type: InteractionType::BlockedArea,
+                position: grounded,
+                metadata: InteractionMetadata {
+                    label: "Unwalkable terrain".to_string(),
+                    doodad_kind: None,
+                    blocks_movement: true,
+                },
+                valid: true,
+                target: InteractionTargetRef::Terrain(grounded),
+            });
+        }
+        SlopeWalkability::Unavailable => return None,
     }
 
     Some(InteractionResult {

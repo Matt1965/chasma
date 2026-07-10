@@ -106,7 +106,8 @@ keys log once and skip the visual; simulation continues.
 ### Tick order
 
 Projectile movement runs after strikes in the canonical simulation order
-([ADR-057](ADR-057-combat-range-and-chase-behavior.md#canonical-simulation-tick-order-review-a4)).
+([ADR-057](ADR-057-combat-range-and-chase-behavior.md#canonical-simulation-tick-order-review-a4),
+[ADR-065](ADR-065-authoritative-simulation-tick-orchestrator.md)).
 Projectiles spawned during strike resolution are **not** stepped in the same tick;
 movement begins on the next tick. Impact deaths enter the same
 `step_unit_death_pipeline` as direct strikes.

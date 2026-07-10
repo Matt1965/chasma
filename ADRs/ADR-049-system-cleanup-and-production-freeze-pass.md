@@ -48,9 +48,21 @@ Remove or gate all temporary scaffolding so the runtime baseline is:
 
 Intentional **non-simulation** fallbacks retained with explicit scope:
 
-- Terrain mesh **albedo** height-gradient when no sidecar (render-only, ADR-013).
+- Terrain mesh **albedo** neutral gray when no sidecar (render-only, ADR-013/067).
+  Height-gradient visualization is **dev-only** explicit opt-in — not production default
+  (REVIEW-B6).
 - Steering **separation** numeric epsilon away from coincident neighbors (simulation correctness).
 - Command **placeholders** (`HoldPosition`, `AttackMove`) documented until U13+ combat.
+
+**REVIEW-B6 terrain/obstacle fail-closed alignment:**
+
+| Area | Production policy |
+|------|-------------------|
+| Heightfield samples | Reject NaN/±Inf at construction/decode |
+| Chunk spacing metadata | Validated against `WorldConfig` |
+| Missing albedo sidecar | Warn + neutral render fallback |
+| Missing doodad definition | Conservative block radius + query error; movement treats error as blocked |
+| Async terrain completion | Discard stale generation; no panic on race |
 
 ## Architecture freeze statement
 

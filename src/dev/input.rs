@@ -59,7 +59,10 @@ pub fn dev_mode_keyboard_input(
         dev_state.enabled_only = !dev_state.enabled_only;
     }
 
-    if keyboard.just_pressed(KeyCode::KeyT) && !panel_hovered.hovered {
+    if keyboard.just_pressed(KeyCode::KeyT)
+        && (keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight))
+        && !panel_hovered.hovered
+    {
         dev_state.cycle_spawn_affiliation();
     }
 

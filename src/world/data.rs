@@ -240,12 +240,11 @@ impl WorldData {
 
     /// Sample resident heightfield height at an authoritative [`WorldPosition`] (ADR-005).
     ///
-    /// Returns `None` when the owning chunk is not resident. Used by procedural
-    /// terrain validation and placement finalization.
+    /// Returns `None` when the owning chunk is not resident or coordinates are
+    /// outside the heightfield domain. Prefer [`crate::world::terrain::try_sample_height_at_position`]
+    /// when the failure reason matters (REVIEW-B4).
     pub fn sample_height_at_position(&self, position: WorldPosition) -> Option<f32> {
-        let chunk_id = ChunkId::new(position.chunk);
-        let data = self.chunks.get(&chunk_id)?;
-        Some(data.heightfield.sample(position.local.0.x, position.local.0.z))
+        crate::world::terrain::try_sample_height_at_position(self, position).ok()
     }
 
     /// Borrow a doodad record by id via the O(1) id index (ADR-017).

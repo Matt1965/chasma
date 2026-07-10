@@ -21,9 +21,9 @@ mod ron;
 
 pub use error::{DataImportError, RowImportError};
 pub use schema::{
-    normalize_file_path, normalize_file_path_to_render_key, parse_biome, parse_bool_yn,
-    parse_category, parse_enabled_cell, DoodadImportRow, BIOME_COLUMN,
-    RANDOM_ROTATION_COLUMN_ALIASES, REQUIRED_COLUMNS,
+    normalize_doodad_definition_id, normalize_file_path, normalize_file_path_to_render_key,
+    parse_biome, parse_bool_yn, parse_category, parse_enabled_cell, DoodadImportRow, BIOME_COLUMN,
+    DEFINITION_ID_COLUMN_ALIASES, RANDOM_ROTATION_COLUMN_ALIASES, REQUIRED_COLUMNS,
 };
 
 #[cfg(feature = "data-import")]
@@ -294,13 +294,33 @@ mod integration_tests {
         let (definitions, summary) = import_doodads_from_excel(&path).unwrap();
         assert_eq!(summary.rows_valid, 1);
         let def = &definitions[0];
-        assert_eq!(def.id.as_str(), "Basic Tree");
+        assert_eq!(def.id.as_str(), "basic_tree");
         assert_eq!(def.kind, DoodadKind::Tree);
         assert_eq!(def.render_key.0.as_deref(), Some("tree/oak"));
         assert!((def.spawn_weight - 10.0).abs() < 1e-4);
         assert!(def.random_rotation_y);
         assert!((def.min_scale - 0.5).abs() < 1e-4);
         assert!((def.max_scale - 1.5).abs() < 1e-4);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn duplicate_normalized_definition_ids_reject_import() {
+        let path = temp_workbook("duplicate_id");
+        let headers = standard_headers();
+        let rows = vec![
+            vec![
+                "Basic Tree", "Oak", "Tree", "Forest", "tree/oak.glb", "0.85", "1.15", "8", "Y",
+                "Y",
+            ],
+            vec![
+                "basic_tree", "Oak 2", "Tree", "Forest", "tree/oak.glb", "0.85", "1.15", "4", "Y",
+                "Y",
+            ],
+        ];
+        write_workbook(&path, &headers, &rows);
+        let err = import_doodads_from_excel(&path).unwrap_err();
+        assert!(matches!(err, DataImportError::DuplicateName { .. }));
         let _ = std::fs::remove_file(path);
     }
 }

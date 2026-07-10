@@ -7,9 +7,10 @@ use bevy::prelude::*;
 use crate::client::{ClientIntent, IntentDispatchReport, IntentDispatchStatus};
 use crate::units::input::MoveOrdersReport;
 use crate::world::{
-    CommandBufferResolveReport, CombatAiReport, CombatAiTraceOutcome, CombatEngagementReport,
-    CombatEngagementStatus, CombatStrikeEvent, CombatStrikeReport, ProjectileEvent, ProjectileReport,
-    UnitDeathEvent, UnitDeathReport, UnitId, UnitOrder, UnitOrderError,
+    BlockedMovementReason, CommandBufferResolveReport, CombatAiReport, CombatAiTraceOutcome,
+    CombatEngagementReport, CombatEngagementStatus, CombatStrikeEvent, CombatStrikeReport,
+    ProjectileEvent, ProjectileReport, UnitDeathEvent, UnitDeathReport, UnitId, UnitMovementTrace,
+    UnitOrder, UnitOrderError,
 };
 
 /// Monotonic client frame index for trace ordering.
@@ -62,6 +63,8 @@ pub enum CommandTraceOutcome {
     AiTargetAcquired,
     AiScanNoTarget,
     AiScanSkippedBudget,
+    UnitMovementBlocked,
+    CommandRejected,
     HealthBarShown,
     HealthBarHidden,
 }
@@ -84,6 +87,7 @@ pub enum CommandTraceIntentKind {
     Projectile,
     UnitDeath,
     CombatAi,
+    UnitMovement,
     HealthBar,
 }
 
@@ -237,6 +241,7 @@ impl CommandTraceBuffer {
         let outcome = match status {
             IntentDispatchStatus::Applied => CommandTraceOutcome::Applied,
             IntentDispatchStatus::Ignored => CommandTraceOutcome::Ignored,
+            IntentDispatchStatus::Rejected(_) => CommandTraceOutcome::CommandRejected,
         };
 
         if let Some(report) = move_report {
@@ -462,6 +467,28 @@ impl CommandTraceBuffer {
         }
     }
 
+    pub fn record_unit_movement(&mut self, tick: u64, traces: &[UnitMovementTrace]) {
+        for trace in traces {
+            let sequence = self.next_sequence();
+            self.push_entry(CommandTraceEntry {
+                tick,
+                sequence,
+                intent_kind: CommandTraceIntentKind::UnitMovement,
+                unit_ids: vec![trace.unit_id],
+                order: Some(UnitOrder::MoveTo {
+                    target: trace.target,
+                }),
+                outcome: CommandTraceOutcome::UnitMovementBlocked,
+                path_waypoint_count: Some(trace.waypoint_index as u32),
+                error: movement_block_order_error(trace.reason),
+                combat_status: None,
+                center_distance_meters: None,
+                edge_distance_meters: None,
+                weapon_range_meters: None,
+            });
+        }
+    }
+
     pub fn record_command_resolve(&mut self, tick: u64, report: &CommandBufferResolveReport) {
         for success in &report.successes {
             let sequence = self.next_sequence();
@@ -512,6 +539,20 @@ pub fn unit_ids_for_intent(intent: &ClientIntent) -> Vec<UnitId> {
         | ClientIntent::ToggleUnitSelection { unit_id } => vec![*unit_id],
         _ => Vec::new(),
     }
+}
+
+fn movement_block_order_error(reason: BlockedMovementReason) -> Option<UnitOrderError> {
+    Some(match reason {
+        BlockedMovementReason::TerrainUnavailable => UnitOrderError::PathTerrainUnavailable,
+        BlockedMovementReason::BlockedByDoodad
+        | BlockedMovementReason::SlopeTooSteep
+        | BlockedMovementReason::SlopeUnavailable
+        | BlockedMovementReason::DestinationBlocked
+        | BlockedMovementReason::TargetUnavailable => UnitOrderError::PathGoalBlocked,
+        BlockedMovementReason::PathUnavailable | BlockedMovementReason::InvalidWaypoint => {
+            UnitOrderError::NoPath
+        }
+    })
 }
 
 #[cfg(test)]

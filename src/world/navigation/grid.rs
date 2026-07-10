@@ -3,8 +3,8 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    ground_world_position, is_position_blocked_by_doodads, is_position_slope_walkable, ChunkId,
-    ChunkLayout, DoodadCatalog, WorldData, WorldPosition,
+    classify_slope_walkability, ground_world_position, is_position_blocked_by_doodads,
+    ChunkLayout, DoodadCatalog, SlopeWalkability, WorldData, WorldPosition,
 };
 
 /// Grid configuration for pathfinding (ADR-032).
@@ -98,7 +98,10 @@ pub fn is_position_walkable(
     ) {
         return false;
     }
-    is_position_slope_walkable(world, grounded, agent.max_slope_degrees)
+    matches!(
+        classify_slope_walkability(world, grounded, agent.max_slope_degrees),
+        SlopeWalkability::Walkable
+    )
 }
 
 fn cell_walkability_sample_globals(
@@ -146,8 +149,7 @@ pub fn cell_terrain_available(
     let layout = world.layout();
     let global = grid_cell_center_global(coord, config);
     let position = WorldPosition::from_global(global, layout);
-    let chunk = ChunkId::new(position.chunk);
-    world.get(chunk).is_some() && ground_world_position(world, position).is_some()
+    ground_world_position(world, position).is_some()
 }
 
 /// Deterministic 8-neighbor offsets: N, NE, E, SE, S, SW, W, NW.

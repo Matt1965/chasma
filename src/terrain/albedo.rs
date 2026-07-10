@@ -88,14 +88,30 @@ impl core::fmt::Display for AlbedoGridError {
 
 impl std::error::Error for AlbedoGridError {}
 
-/// Fallback color policy when no albedo sidecar is available (ADR-013).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+/// Fallback color policy when no albedo sidecar is available (ADR-013, REVIEW-B6).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AlbedoFallback {
-    /// Height-normalized gradient (debug / preview).
-    #[default]
+    /// Height-normalized gradient (dev/debug visualization only).
     HeightGradient,
-    /// Flat neutral gray.
+    /// Flat neutral gray (production default).
     Neutral,
+}
+
+impl Default for AlbedoFallback {
+    fn default() -> Self {
+        Self::Neutral
+    }
+}
+
+/// Production materialization fallback — neutral, never height-gradient (REVIEW-B6).
+pub fn production_albedo_fallback() -> AlbedoFallback {
+    AlbedoFallback::Neutral
+}
+
+/// Dev visualization fallback when height-gradient is explicitly enabled.
+#[cfg(feature = "dev")]
+pub fn dev_height_gradient_albedo_fallback() -> AlbedoFallback {
+    AlbedoFallback::HeightGradient
 }
 
 /// Compute a per-vertex fallback RGB when no albedo sidecar is available.
@@ -206,6 +222,21 @@ mod tests {
         assert_eq!(
             fallback_vertex_color(5.0, 0.0, 10.0, AlbedoFallback::HeightGradient),
             fallback_vertex_color(5.0, 0.0, 10.0, AlbedoFallback::HeightGradient),
+        );
+    }
+
+    #[test]
+    fn production_albedo_fallback_is_neutral() {
+        assert_eq!(production_albedo_fallback(), AlbedoFallback::Neutral);
+        assert_eq!(AlbedoFallback::default(), AlbedoFallback::Neutral);
+    }
+
+    #[cfg(feature = "dev")]
+    #[test]
+    fn dev_height_gradient_fallback_is_explicit() {
+        assert_eq!(
+            dev_height_gradient_albedo_fallback(),
+            AlbedoFallback::HeightGradient
         );
     }
 

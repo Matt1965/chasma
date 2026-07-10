@@ -3,6 +3,7 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
+use crate::debug::MovementBlockObservability;
 use crate::simulation::SimulationControlState;
 use crate::world::{DoodadCatalog, UnitCatalog, WeaponCatalog, WorldConfig, WorldData};
 
@@ -15,4 +16,5 @@ pub struct InspectorCaptureParams<'w> {
     pub weapon_catalog: Res<'w, WeaponCatalog>,
     pub doodad_catalog: Res<'w, DoodadCatalog>,
     pub simulation: Res<'w, SimulationControlState>,
+    pub movement_blocks: Res<'w, MovementBlockObservability>,
 }

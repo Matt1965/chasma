@@ -22,11 +22,11 @@ pub enum UnitOrder {
     MoveTo {
         target: WorldPosition,
     },
-    /// Attack a specific unit — intent only in C3 (no damage).
+    /// Attack a specific unit (ADR-056 C3+).
     Attack {
         target: UnitId,
     },
-    /// Move while attack-scanning — destination stored; scan deferred (C3).
+    /// Move while attack-scanning (ADR-057).
     AttackMove {
         destination: WorldPosition,
     },

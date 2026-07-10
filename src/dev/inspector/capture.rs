@@ -2,15 +2,19 @@
 
 use bevy::prelude::*;
 
+use crate::debug::blocked_reason_label;
+
 use crate::ui::gameplay::combat_display::{
     attack_cycle_summary, combat_target_id, weapon_display_for_unit,
 };
 use crate::world::{
     alignment_force, blocking_doodad_at_position, cohesion_force, gather_steering_neighbors,
-    ground_world_position, interaction_plan_to_unit_order, is_position_slope_walkable,
+    ground_world_position, interaction_plan_to_unit_order, classify_slope_walkability,
+    SlopeWalkability,
     query_world_interaction, resolve_interaction_to_order, separation_force, unit_spacing_meters,
     ChunkCoord, DoodadCatalog, InteractionQueryContext, NavigationPath, SteeringContext,
-    SteeringSettings, UnitCatalog, UnitId, UnitState, WeaponCatalog, WorldData, WorldPosition,
+    SteeringSettings, UnitCatalog, UnitId, UnitMovementTrace, UnitState, WeaponCatalog, WorldData,
+    WorldPosition,
 };
 
 use super::snapshot::{
@@ -30,6 +34,7 @@ pub fn capture_unit_inspector_snapshot(
     doodad_catalog: &DoodadCatalog,
     unit_id: UnitId,
     simulation_tick: u64,
+    last_block: Option<&UnitMovementTrace>,
 ) -> Option<UnitInspectorSnapshot> {
     let record = world.get_unit(unit_id)?.clone();
     let definition = unit_catalog.get(&record.definition_id)?;
@@ -47,12 +52,16 @@ pub fn capture_unit_inspector_snapshot(
         definition.collision_radius_meters,
         layout,
     );
-    let block_reason = diagnose_block_reason(
-        world,
-        doodad_catalog,
-        position,
-        definition.collision_radius_meters,
-    );
+    let block_reason = last_block
+        .map(|trace| blocked_reason_label(trace.reason).to_string())
+        .or_else(|| {
+            diagnose_block_reason(
+                world,
+                doodad_catalog,
+                position,
+                definition.collision_radius_meters,
+            )
+        });
     let chunk = capture_chunk_residency(world, unit_id)?;
 
     let combat = capture_combat_inspector(&record, unit_catalog, weapon_catalog);
@@ -381,10 +390,11 @@ fn diagnose_block_reason(
     if let Some(doodad_id) = blocking_doodad_at_position(world, doodad_catalog, position, radius) {
         return Some(format!("Blocked by doodad #{}", doodad_id.raw()));
     }
-    if !is_position_slope_walkable(world, position, 40.0) {
-        return Some("Unwalkable slope".into());
+    match classify_slope_walkability(world, position, 40.0) {
+        SlopeWalkability::Walkable => None,
+        SlopeWalkability::TooSteep => Some("Unwalkable slope".into()),
+        SlopeWalkability::Unavailable => Some("Terrain slope unavailable".into()),
     }
-    None
 }
 
 fn capture_chunk_residency(world: &WorldData, unit_id: UnitId) -> Option<ChunkResidencySnapshot> {
@@ -475,6 +485,7 @@ mod tests {
             &DoodadCatalog::default(),
             unit_id,
             7,
+            None,
         )
         .unwrap();
         assert_eq!(snap.unit_id, unit_id);
@@ -508,6 +519,7 @@ mod tests {
             &DoodadCatalog::default(),
             unit_id,
             0,
+            None,
         )
         .unwrap();
         assert_eq!(snap.path.waypoints, waypoints);
@@ -539,6 +551,7 @@ mod tests {
             &DoodadCatalog::default(),
             unit_id,
             0,
+            None,
         )
         .unwrap();
         assert!(snap.steering.path_direction.length() > 0.0);
@@ -570,6 +583,7 @@ mod tests {
             &DoodadCatalog::default(),
             unit_id,
             0,
+            None,
         )
         .unwrap();
         assert_eq!(snap.formation.target, Some(target));
@@ -609,6 +623,7 @@ mod tests {
             &DoodadCatalog::default(),
             unit_id,
             0,
+            None,
         );
         assert_eq!(world.get_unit(unit_id).unwrap(), &before);
     }
@@ -626,6 +641,7 @@ mod tests {
             &DoodadCatalog::default(),
             unit_id,
             3,
+            None,
         )
         .unwrap();
         let b = capture_unit_inspector_snapshot(
@@ -635,6 +651,7 @@ mod tests {
             &DoodadCatalog::default(),
             unit_id,
             3,
+            None,
         )
         .unwrap();
         assert_eq!(a, b);
@@ -657,6 +674,7 @@ mod tests {
             &DoodadCatalog::default(),
             unit_id,
             0,
+            None,
         )
         .unwrap();
         assert_eq!(snap.combat.weapon_name.as_deref(), Some("Wolf Bite"));

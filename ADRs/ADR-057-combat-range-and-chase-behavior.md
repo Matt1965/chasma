@@ -66,9 +66,10 @@ Chase uses shared [`start_unit_move_to`] (same pathfinding as deferred MoveTo).
 
 ## Canonical simulation tick order (REVIEW-A4)
 
-Authoritative combat and movement run inside [`step_all_unit_movement`]. This is the
-single canonical pipeline — other ADRs reference this section rather than duplicating
-phase lists.
+Authoritative simulation stages are orchestrated by [`run_simulation_tick`]
+(../src/simulation/tick.rs) (ADR-065). This section is the single canonical pipeline —
+other ADRs reference it rather than duplicating phase lists.
+[`step_all_unit_movement`](../src/world/unit/movement.rs) handles locomotion only (stage 7).
 
 ```text
 1. resolve_pending_unit_orders
@@ -123,8 +124,7 @@ deterministic and avoids coupling pathing bugs to damage resolution.
 
 # Consequences
 
-- `step_all_unit_movement` signature adds `WeaponCatalog` and
-  `AttackTargetingPolicy`
+- Combat stages integrate via [`run_simulation_tick`](../src/simulation/tick.rs) (ADR-065)
 - `CombatState` gains `Chasing` variant
 - Simulation tick flushes combat traces alongside command resolve traces
 - No damage occurs in C4; HP remains unchanged during chase/engage tests
