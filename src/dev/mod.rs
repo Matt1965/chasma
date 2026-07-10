@@ -57,9 +57,13 @@ use bevy::prelude::*;
 
 use crate::player::PlayerControlSystems;
 
-/// Dev mode authoring systems (F12 panel, catalog browser, spawn tools).
+/// Dev mode input and panel systems (before intent collection).
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct DevModeSystems;
+pub struct DevModeInputSystems;
+
+/// Dev mode presentation after dispatch trace flush.
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct DevModePresentationSystems;
 
 /// Registers dev mode resources, UI, and input (requires `dev` feature).
 pub struct DevModePlugin;
@@ -78,7 +82,6 @@ impl Plugin for DevModePlugin {
             .init_resource::<DevPreviewAnchor>()
             .init_resource::<scenes::DevSceneRegistry>()
             .add_systems(Startup, (setup_dev_panel, scenes::init_dev_scene_registry))
-            .configure_sets(Update, DevModeSystems.in_set(PlayerControlSystems))
             .add_systems(
                 Update,
                 (
@@ -101,13 +104,13 @@ impl Plugin for DevModePlugin {
                     lighting_panel::sync_lighting_panel_text,
                 )
                     .chain()
-                    .in_set(DevModeSystems),
+                    .in_set(DevModeInputSystems),
             )
             .add_systems(
                 Update,
                 (sync_inspector_panel, refresh_inspector_snapshot)
                     .chain()
-                    .in_set(DevModeSystems),
+                    .in_set(DevModeInputSystems),
             )
             .add_systems(
                 Update,
@@ -119,27 +122,24 @@ impl Plugin for DevModePlugin {
                 )
                     .chain()
                     .after(sync_dev_panel_tab_sections)
-                    .in_set(DevModeSystems),
+                    .in_set(DevModeInputSystems),
             )
             .add_systems(
                 Update,
                 handle_inspector_input
                     .after(sync_dev_panel_tab_sections)
                     .before(handle_dev_spawn_click)
-                    .in_set(DevModeSystems),
+                    .in_set(DevModeInputSystems),
             )
             .add_systems(
                 Update,
                 handle_dev_spawn_click
                     .after(sync_dev_panel_tab_sections)
-                    .before(crate::client::collect_unit_input_intents)
-                    .in_set(DevModeSystems),
+                    .in_set(DevModeInputSystems),
             )
             .add_systems(
                 Update,
-                tools::draw_dev_placement_preview
-                    .after(crate::debug::flush_intent_dispatch_trace)
-                    .in_set(DevModeSystems),
+                tools::draw_dev_placement_preview.in_set(DevModePresentationSystems),
             );
     }
 }

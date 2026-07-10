@@ -29,6 +29,10 @@ pub struct ClientIntentCollectSystems;
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct ClientIntentDispatchSystems;
 
+/// Flush dispatch trace after intents are applied.
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct ClientIntentFlushSystems;
+
 /// Registers client intent resources and pipeline systems.
 pub struct ClientPipelinePlugin;
 

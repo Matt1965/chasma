@@ -23,7 +23,15 @@ use super::squad_panel::{
 };
 use super::state::GameplayUiState;
 
-/// Gameplay HUD and command feedback systems (player experience layer).
+/// HUD hover gate — must run before intent collection reads [`PlayerHudHoverState`].
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct GameplayInputGateSystems;
+
+/// HUD command/squad clicks — after collect, before dispatch.
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct GameplayCommandInputSystems;
+
+/// Post-dispatch HUD presentation sync.
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct GameplayUiSystems;
 
@@ -41,7 +49,11 @@ impl Plugin for GameplayUiPlugin {
             .add_systems(Startup, setup_player_hud_layout)
             .configure_sets(
                 Update,
-                GameplayUiSystems.in_set(GameplayPresentationSystems),
+                (
+                    GameplayInputGateSystems,
+                    GameplayCommandInputSystems,
+                    GameplayUiSystems.in_set(GameplayPresentationSystems),
+                ),
             )
             .add_systems(
                 Update,
@@ -49,20 +61,16 @@ impl Plugin for GameplayUiPlugin {
                     update_player_hud_hover_state,
                     sync_player_hud_state,
                 )
-                    .before(crate::client::collect_unit_input_intents)
-                    .in_set(GameplayUiSystems),
+                    .chain()
+                    .in_set(GameplayInputGateSystems),
             )
             .add_systems(
                 Update,
-                sample_gameplay_cursor_context
-                    .after(crate::client::collect_unit_input_intents)
-                    .in_set(GameplayUiSystems),
+                sample_gameplay_cursor_context.in_set(GameplayCommandInputSystems),
             )
             .add_systems(
                 Update,
-                sync_gameplay_ui_state
-                    .after(crate::debug::flush_intent_dispatch_trace)
-                    .in_set(GameplayUiSystems),
+                sync_gameplay_ui_state.in_set(GameplayUiSystems),
             )
             .add_systems(
                 Update,
@@ -86,8 +94,8 @@ impl Plugin for GameplayUiPlugin {
                     update_squad_entry_hover,
                     update_command_button_hover,
                 )
-                    .before(crate::client::dispatch_client_intents)
-                    .in_set(GameplayUiSystems),
+                    .chain()
+                    .in_set(GameplayCommandInputSystems),
             );
     }
 }

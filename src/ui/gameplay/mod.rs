@@ -28,7 +28,9 @@ pub use layout::{GameplayHudRoot, PlayerHudUi, setup_player_hud_layout};
 pub use player_hud_state::{
     primary_selected_unit, sync_primary_selection, PlayerHudState, SquadFilterMode,
 };
-pub use plugin::{GameplayUiPlugin, GameplayUiSystems};
+pub use plugin::{
+    GameplayCommandInputSystems, GameplayInputGateSystems, GameplayUiPlugin, GameplayUiSystems,
+};
 pub use selected_unit_panel::{
     build_selected_unit_snapshot, format_single_unit_lines, format_unit_detail_lines,
     unit_state_label, SelectedUnitPanelSnapshot,

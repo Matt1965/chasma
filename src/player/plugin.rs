@@ -2,8 +2,9 @@
 
 use crate::client::{
     collect_unit_input_intents, dispatch_client_intents, ClientIntentCollectSystems,
-    ClientIntentDispatchSystems, ClientPipelinePlugin,
+    ClientIntentDispatchSystems, ClientIntentFlushSystems, ClientPipelinePlugin,
 };
+use crate::ui::gameplay::{GameplayCommandInputSystems, GameplayInputGateSystems};
 use crate::debug::DebugOverlayPlugin;
 use crate::simulation::{SimulationPlugin, SimulationSystems};
 use crate::ui::GameplayUiPlugin;
@@ -43,25 +44,40 @@ impl Plugin for PlayerPlugin {
             .add_plugins(GameplayUiPlugin);
         #[cfg(feature = "dev")]
         app.add_plugins(crate::dev::DevModePlugin);
+        #[cfg(feature = "dev")]
+        {
+            use crate::dev::{DevModeInputSystems, DevModePresentationSystems};
+            app.configure_sets(
+                Update,
+                (
+                    DevModeInputSystems,
+                    GameplayInputGateSystems,
+                    ClientIntentCollectSystems,
+                    GameplayCommandInputSystems,
+                    ClientIntentDispatchSystems,
+                    ClientIntentFlushSystems,
+                    GameplayPresentationSystems,
+                    DevModePresentationSystems,
+                    DebugPresentationSystems,
+                )
+                    .chain()
+                    .in_set(PlayerControlSystems),
+            );
+        }
+        #[cfg(not(feature = "dev"))]
         app.configure_sets(
             Update,
             (
+                GameplayInputGateSystems,
                 ClientIntentCollectSystems,
+                GameplayCommandInputSystems,
                 ClientIntentDispatchSystems,
+                ClientIntentFlushSystems,
                 GameplayPresentationSystems,
                 DebugPresentationSystems,
             )
                 .chain()
                 .in_set(PlayerControlSystems),
-        );
-        app.configure_sets(
-            Update,
-            crate::ui::gameplay::GameplayUiSystems.in_set(GameplayPresentationSystems),
-        );
-        #[cfg(feature = "dev")]
-        app.configure_sets(
-            Update,
-            crate::dev::DevModeSystems.before(ClientIntentCollectSystems),
         );
         #[cfg(feature = "dev")]
         app.configure_sets(
@@ -116,9 +132,7 @@ impl Plugin for PlayerPlugin {
             )
             .add_systems(
                 Update,
-                crate::debug::flush_intent_dispatch_trace
-                    .after(dispatch_client_intents)
-                    .in_set(PlayerControlSystems),
+                crate::debug::flush_intent_dispatch_trace.in_set(ClientIntentFlushSystems),
             )
             .add_systems(
                 Update,

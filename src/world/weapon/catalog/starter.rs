@@ -1,4 +1,4 @@
-/// Starter weapon fixtures for tests and dev import fallback (ADR-054 C1).
+/// Starter weapon fixtures for unit tests only.
 #[cfg(any(test, feature = "dev"))]
 mod fixtures {
     use crate::world::{

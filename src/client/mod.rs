@@ -19,5 +19,5 @@ pub use dispatcher::{
 pub use intent::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
 pub use pipeline::{
     collect_unit_input_intents, ClientIntentCollectSystems, ClientIntentDispatchSystems,
-    ClientPipelinePlugin, ClientPipelineSystems,
+    ClientIntentFlushSystems, ClientPipelinePlugin, ClientPipelineSystems,
 };

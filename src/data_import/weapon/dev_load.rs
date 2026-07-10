@@ -42,7 +42,8 @@ pub fn resolve_dev_weapon_catalog() -> WeaponCatalog {
                 DEV_STARTUP_LOG_PATH,
                 SESSION_HEADER,
                 &format!(
-                    "Weapon Excel import failed for {} ({err}); using empty WeaponCatalog",
+                    "Weapon Excel import failed for {} ({err}); dev WeaponCatalog is empty — \
+                     add a `Weapons` sheet to the design workbook",
                     path.display()
                 ),
             );
