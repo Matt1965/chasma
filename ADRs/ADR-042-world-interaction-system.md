@@ -31,7 +31,7 @@ steering — it only supplies destination targets for [`UnitOrder::MoveTo`].
 | [`types.rs`](../src/world/interaction/types.rs) | `InteractionType`, `InteractionResult`, metadata |
 | [`query.rs`](../src/world/interaction/query.rs) | `query_world_interaction` — unified facade |
 | [`resolver.rs`](../src/world/interaction/resolver.rs) | Interaction → `InteractionOrderPlan` → `UnitOrder` |
-| [`mod.rs`](../src/world/interaction/mod.rs) | `InteractionDebugSnapshot` hook |
+| [`mod.rs`](../src/world/interaction/mod.rs) | Module exports (query types only) |
 
 ## Interaction types (U6)
 
@@ -71,9 +71,11 @@ Terrain, obstacle, and doodad modules remain separate; interaction only **calls*
 
 ## Debug (U-UI3 hook)
 
-[`draw_interaction_debug_overlay`](../src/debug/overlay/interaction_overlay.rs) re-queries
-the last dispatched click from [`IntentDispatchHistory`] (read-only) and draws
-classification gizmos. [`InteractionDebugSnapshot`] stores the last query + resolved order.
+[`capture_interaction_debug_snapshot`](../src/debug/interaction_capture.rs) records the
+last dispatched click from [`IntentDispatchHistory`] into client-local
+[`InteractionDebugSnapshot`](../src/debug/interaction_snapshot.rs).
+[`draw_interaction_debug_overlay`](../src/debug/overlay/interaction_overlay.rs) reads
+that snapshot and draws classification gizmos only (REVIEW-A6 read-only rule).
 
 ## Future extensions
 

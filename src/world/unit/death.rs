@@ -431,6 +431,7 @@ mod tests {
             &crate::world::DoodadCatalog::default(),
             &crate::world::NavigationConfig::default(),
             AttackTargetingPolicy::default(),
+            &mut crate::world::CombatStrikeReport::default(),
         );
         step_all_combat_strikes(
             &mut world,
@@ -440,6 +441,7 @@ mod tests {
             &crate::world::NavigationConfig::default(),
             AttackTargetingPolicy::default(),
             0.2,
+            &mut crate::world::ProjectileReport::default(),
         );
         assert!(world.get_unit(hostile).is_some());
         assert_eq!(world.get_unit(hostile).unwrap().vitals.current_hp, 0);

@@ -9,6 +9,7 @@ mod components;
 #[cfg(feature = "dev")]
 mod dev_spawn;
 pub mod input;
+mod health_bars;
 mod plugin;
 mod settings;
 mod spawn;
@@ -22,6 +23,10 @@ pub use input::{
 
 pub use assets::{gltf_asset_path, preload_unit_scenes, UnitSceneAssets, UNIT_ASSET_ROOT};
 pub use components::{UnitRenderEntity, UnitSceneRoot, UnitSelectionIndicator};
+pub use health_bars::{
+    health_bar_color, health_percent, should_show_health_bar, sync_unit_health_bars,
+    UnitHealthBar, UnitHealthBarState,
+};
 pub use plugin::UnitsRuntimePlugin;
 pub use settings::UnitsRuntimeSettings;
 pub use spawn::{despawn_unit_render_entities, spawn_unit_render_entity, UnitRenderIndex};

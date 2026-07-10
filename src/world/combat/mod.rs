@@ -3,13 +3,25 @@
 //! Authoritative combat intent lives on [`crate::world::UnitRecord`] via
 //! [`crate::world::CombatState`]. C5 adds weapon timing and damage application.
 
+mod ai;
 mod attack_cycle;
+mod cycle_lifecycle;
 mod engagement;
 mod range;
 mod standoff;
 mod strike;
 mod targeting;
+mod tick_order;
 
+pub use ai::{
+    find_auto_acquire_target, step_combat_ai_acquisition, unit_eligible_for_auto_acquire,
+    CombatAiReport, CombatAiScanState, CombatAiSettings, CombatAiTrace, CombatAiTraceOutcome,
+};
+pub use cycle_lifecycle::{
+    clear_attack_cycle_for_invalid_target, clear_attack_cycle_for_order_cancel,
+    combat_engagement_target, is_attack_capable_combat_state, reset_attack_cycle_for_retarget,
+    validate_attack_cycle_for_strike,
+};
 pub use engagement::{
     initial_attack_combat_state, scan_attack_move_target, step_all_combat_engagement,
     ATTACK_MOVE_SCAN_RADIUS_METERS, CombatEngagementReport, CombatEngagementStatus,
@@ -29,5 +41,6 @@ pub use strike::{
 };
 pub use targeting::{
     classify_unit_target, is_unit_alive, is_valid_attack_target, validate_attack_target,
-    AttackTargetingPolicy,
+    validate_projectile_impact_target, AttackTargetingPolicy, ProjectileImpactRejection,
+    ProjectileLaunchSnapshot,
 };

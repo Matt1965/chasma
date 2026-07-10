@@ -13,6 +13,7 @@ use super::unit::{
     ChunkUnitStore, KillAttribution, UnitId, UnitInsertError, UnitRecord, UnitRemovalEntry,
     UnitRemovalQueue,
 };
+use super::projectile::{ProjectileId, ProjectileRecord};
 
 /// Inclusive bounds of the authored world (ADR-006, ADR-012).
 ///
@@ -71,6 +72,10 @@ pub struct WorldData {
     /// Latest lethal damage attribution per target (ADR-059 C6).
     #[reflect(ignore)]
     kill_attributions: HashMap<UnitId, KillAttribution>,
+    /// Authoritative in-flight and recently resolved projectiles (ADR-060 C7).
+    #[reflect(ignore)]
+    projectiles: HashMap<ProjectileId, ProjectileRecord>,
+    next_projectile_id: u64,
 }
 
 impl FromWorld for WorldData {
@@ -100,6 +105,8 @@ impl WorldData {
             movement_smoothing: super::movement::feel::MovementSmoothingState::default(),
             removal_queue: UnitRemovalQueue::default(),
             kill_attributions: HashMap::new(),
+            projectiles: HashMap::new(),
+            next_projectile_id: 1,
         }
     }
 
@@ -376,6 +383,40 @@ impl WorldData {
         ids
     }
 
+    /// Allocate the next monotonic [`ProjectileId`] (ADR-060 C7).
+    pub fn allocate_projectile_id(&mut self) -> ProjectileId {
+        let id = ProjectileId::new(self.next_projectile_id);
+        self.next_projectile_id += 1;
+        id
+    }
+
+    /// Insert or replace an authoritative projectile record.
+    pub fn insert_projectile(&mut self, record: ProjectileRecord) {
+        self.projectiles.insert(record.id, record);
+    }
+
+    /// Remove a projectile by id. Returns `true` when removed.
+    pub fn remove_projectile(&mut self, id: ProjectileId) -> bool {
+        self.projectiles.remove(&id).is_some()
+    }
+
+    /// Borrow a projectile record by id.
+    pub fn get_projectile(&self, id: ProjectileId) -> Option<&ProjectileRecord> {
+        self.projectiles.get(&id)
+    }
+
+    /// Iterate projectile records in arbitrary map order.
+    pub fn projectiles(&self) -> impl Iterator<Item = (&ProjectileId, &ProjectileRecord)> {
+        self.projectiles.iter()
+    }
+
+    /// All projectile ids sorted for deterministic simulation iteration (ADR-060 C7).
+    pub fn sorted_projectile_ids(&self) -> Vec<ProjectileId> {
+        let mut ids: Vec<_> = self.projectiles.keys().copied().collect();
+        ids.sort();
+        ids
+    }
+
     #[cfg(feature = "dev")]
     /// Remove all unit and doodad instances without touching terrain (ADR-045).
     pub fn dev_clear_units_and_doodads(&mut self) {
@@ -388,6 +429,56 @@ impl WorldData {
         self.procedural_doodads.clear();
         let _ = self.command_buffer_mut().take_pending_sorted();
         self.movement_smoothing_mut().clear_all();
+        self.dev_clear_transient_simulation_state();
+    }
+
+    #[cfg(feature = "dev")]
+    /// Clear transient simulation state not stored in dev scenes (REVIEW-A5).
+    pub fn dev_clear_transient_simulation_state(&mut self) {
+        self.projectiles.clear();
+        let _ = self.removal_queue_mut().drain();
+        self.kill_attributions.clear();
+    }
+
+    #[cfg(any(test, feature = "dev"))]
+    /// Verify unit/doodad indexes after scene restore (REVIEW-A5).
+    pub fn verify_instance_indexes(&self) -> Result<(), &'static str> {
+        let unit_indexed = self.unit_locations.len();
+        let unit_stored: usize = self.units.values().map(|store| store.len()).sum();
+        if unit_indexed != unit_stored {
+            return Err("unit index length mismatch");
+        }
+        for (chunk, store) in &self.units {
+            for record in store.records() {
+                if self.unit_chunk(record.id) != Some(*chunk) {
+                    return Err("unit location index mismatch");
+                }
+            }
+        }
+
+        let doodad_indexed = self.doodad_locations.len();
+        let doodad_stored: usize = self.doodads.values().map(|store| store.len()).sum();
+        if doodad_indexed != doodad_stored {
+            return Err("doodad index length mismatch");
+        }
+        for (chunk, store) in &self.doodads {
+            for record in store.records() {
+                if self.doodad_chunk(record.id) != Some(*chunk) {
+                    return Err("doodad location index mismatch");
+                }
+            }
+        }
+
+        for (key, id) in &self.procedural_doodads {
+            let Some(record) = self.get_doodad(*id) else {
+                return Err("procedural key points at missing doodad");
+            };
+            if ProceduralDoodadKey::from_record(record) != Some(key.clone()) {
+                return Err("procedural key identity mismatch");
+            }
+        }
+
+        Ok(())
     }
 
     #[cfg(feature = "dev")]
@@ -405,11 +496,6 @@ impl WorldData {
     #[cfg(feature = "dev")]
     pub fn dev_next_doodad_id(&self) -> u64 {
         self.next_doodad_id
-    }
-
-    #[cfg(feature = "dev")]
-    pub fn dev_reregister_procedural_doodad(&mut self, record: &DoodadRecord) {
-        self.reregister_procedural_doodad(record);
     }
 
     /// Update simulation state without changing placement (ADR-030).

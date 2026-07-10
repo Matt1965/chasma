@@ -17,6 +17,7 @@ pub mod environment;
 pub mod logging;
 pub mod terrain;
 pub mod player;
+pub mod projectiles;
 pub mod simulation;
 pub mod ui;
 pub mod units;

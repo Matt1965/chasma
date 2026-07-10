@@ -24,7 +24,7 @@ pub enum GameplayCursorMode {
     #[default]
     Default,
     Move,
-    /// Future attack-move cursor hook.
+    Attack,
     AttackMove,
 }
 
@@ -174,9 +174,25 @@ fn trace_entry_implies_moving(
 pub fn derive_cursor_mode(
     has_selection: bool,
     hover: CommandHoverContext,
+    armed: Option<crate::client::CommandType>,
+    hover_attackable: bool,
 ) -> GameplayCursorMode {
     if !has_selection {
         return GameplayCursorMode::Default;
+    }
+    if let Some(crate::client::CommandType::Attack) = armed {
+        return if hover_attackable {
+            GameplayCursorMode::Attack
+        } else {
+            GameplayCursorMode::Default
+        };
+    }
+    if armed == Some(crate::client::CommandType::AttackMove) {
+        return if matches!(hover, CommandHoverContext::Terrain) {
+            GameplayCursorMode::AttackMove
+        } else {
+            GameplayCursorMode::Default
+        };
     }
     match hover {
         CommandHoverContext::Terrain | CommandHoverContext::Unit => GameplayCursorMode::Move,
@@ -298,11 +314,11 @@ mod tests {
     #[test]
     fn cursor_mode_move_when_selection_and_terrain() {
         assert_eq!(
-            derive_cursor_mode(true, CommandHoverContext::Terrain),
+            derive_cursor_mode(true, CommandHoverContext::Terrain, None, false),
             GameplayCursorMode::Move
         );
         assert_eq!(
-            derive_cursor_mode(false, CommandHoverContext::Terrain),
+            derive_cursor_mode(false, CommandHoverContext::Terrain, None, false),
             GameplayCursorMode::Default
         );
     }

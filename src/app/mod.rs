@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use crate::camera::{CameraControlSystems, CameraPlugin};
 use crate::doodads::{DoodadRuntimeSystems, DoodadsRuntimePlugin};
 use crate::environment::EnvironmentPlugin;
+use crate::projectiles::{ProjectileRuntimeSystems, ProjectilesRuntimePlugin};
 use crate::simulation::{SimulationControlSystems, SimulationSystems};
 use crate::terrain::{TerrainRuntimePlugin, TerrainStreamingSystems};
 use crate::player::{PlayerControlSystems, PlayerPlugin};
@@ -34,6 +35,7 @@ impl Plugin for AppPlugin {
             .add_plugins(TerrainRuntimePlugin)
             .add_plugins(DoodadsRuntimePlugin)
             .add_plugins(UnitsRuntimePlugin)
+            .add_plugins(ProjectilesRuntimePlugin)
             .add_plugins(PlayerPlugin)
             .add_plugins(EnvironmentPlugin)
             .add_plugins(CameraPlugin)
@@ -55,7 +57,11 @@ impl Plugin for AppPlugin {
             )
             .configure_sets(
                 Update,
-                PlayerControlSystems.after(UnitRuntimeSystems),
+                ProjectileRuntimeSystems.after(UnitRuntimeSystems),
+            )
+            .configure_sets(
+                Update,
+                PlayerControlSystems.after(ProjectileRuntimeSystems),
             )
             .configure_sets(
                 Update,

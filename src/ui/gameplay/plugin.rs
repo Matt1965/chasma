@@ -10,7 +10,9 @@ use super::command_feedback::{
 use super::command_panel::{
     handle_command_button_clicks, sync_command_panel_buttons, update_command_button_hover,
 };
-use super::cursor_feedback::{sample_gameplay_cursor_context, GameplayCursorPresentation};
+use super::cursor_feedback::{
+    sample_gameplay_cursor_context, GameplayCursorPresentation, GameplayHoveredUnit,
+};
 use super::input_gate::{update_player_hud_hover_state, PlayerHudHoverState};
 use super::layout::setup_player_hud_layout;
 use super::player_hud_state::{sync_primary_selection, PlayerHudState};
@@ -34,6 +36,7 @@ impl Plugin for GameplayUiPlugin {
             .insert_resource(PlayerHudState::new_visible())
             .init_resource::<PlayerHudHoverState>()
             .init_resource::<GameplayCursorPresentation>()
+            .init_resource::<GameplayHoveredUnit>()
             .init_resource::<MoveCommandFeedback>()
             .add_systems(Startup, setup_player_hud_layout)
             .configure_sets(

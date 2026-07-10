@@ -3,7 +3,8 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    ChunkCoord, DoodadDefinitionId, UnitDefinitionId, UnitId, UnitOrder, WorldPosition,
+    ChunkCoord, DoodadDefinitionId, ProjectileId, ProjectileStatus, UnitDefinitionId, UnitId,
+    UnitOrder, WeaponCatalog, WorldPosition,
 };
 
 /// Full read-only inspection payload for one unit.
@@ -15,12 +16,32 @@ pub struct UnitInspectorSnapshot {
     pub current_hp: u32,
     pub max_hp: u32,
     pub combat_state_label: String,
+    pub combat: CombatInspectorSnapshot,
+    pub projectiles: Vec<ProjectileInspectorSnapshot>,
     pub path: PathInspectorSnapshot,
     pub formation: FormationInspectorSnapshot,
     pub steering: SteeringInspectorSnapshot,
     pub block_reason: Option<String>,
     pub chunk: ChunkResidencySnapshot,
     pub simulation_tick: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct CombatInspectorSnapshot {
+    pub weapon_name: Option<String>,
+    pub target_unit_id: Option<UnitId>,
+    pub attack_phase: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProjectileInspectorSnapshot {
+    pub projectile_id: ProjectileId,
+    pub source_unit_id: UnitId,
+    pub target_unit_id: UnitId,
+    pub weapon_id: String,
+    pub position: WorldPosition,
+    pub speed_mps: f32,
+    pub status: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]

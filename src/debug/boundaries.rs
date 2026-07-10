@@ -45,9 +45,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn overlay_settings_default_do_not_mutate_world() {
+    fn production_overlay_settings_do_not_enable_debug_categories() {
         let settings = crate::debug::settings::DebugOverlaySettings::default();
-        assert!(settings.enabled);
-        assert!(settings.path);
+        assert!(!settings.enabled);
+        assert!(!settings.path);
+        assert!(!settings.intent);
     }
 }

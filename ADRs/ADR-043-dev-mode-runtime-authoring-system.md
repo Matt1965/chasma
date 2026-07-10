@@ -27,7 +27,7 @@ Dev mode **must not**:
 
 - mutate movement, pathfinding, steering, or formation logic
 - spawn ECS entities directly
-- bypass catalog validation
+- bypass catalog validation (including scene restore — see ADR-045)
 - alter the client intent pipeline contract
 
 ## Module layout (`src/dev/`)
@@ -99,7 +99,10 @@ Dev Debug tab toggles map directly to [`DebugOverlaySettings`](../src/debug/sett
 | `show_command_trace` | `intent` |
 | `show_grid_overlay` | Reserved (no grid overlay yet) |
 
-Overlays remain read-only gizmo systems (ADR-039).
+Overlays remain read-only gizmo systems (ADR-039). **REVIEW-A6:** overlay draw systems
+compile and register only with `feature = "dev"`; production builds use
+[`DebugOverlayConfig::production()`](../src/debug/settings.rs) (all categories off).
+Toggle changes persist for the session via [`DevModeState::debug_config`](../src/dev/dev_mode.rs).
 
 ## UI approach
 
@@ -123,7 +126,7 @@ right-docked, hidden until F12. Search uses keyboard capture when the panel is n
 
 # Future work
 
-- World Tools tab: scenario snapshots, exclusion brushes, chunk reload
+- World Tools tab: exclusion brushes, chunk reload (scenario snapshots via ADR-045 validated restore)
 - Text input widget for search (replace keyboard capture)
 - Optional middle-click spawn to avoid selection conflict
 - Grid navigation debug overlay wired to `show_grid_overlay`

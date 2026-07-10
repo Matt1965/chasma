@@ -95,10 +95,24 @@ fn parse_row(
         }
     };
 
+    let optional_f32 = |column: &str| -> Result<Option<f32>, String> {
+        let raw = text(column);
+        if raw.trim().is_empty() {
+            Ok(None)
+        } else {
+            raw.trim()
+                .parse::<f32>()
+                .map(Some)
+                .map_err(|_| format!("{column} must be a number (got `{raw}`)"))
+        }
+    };
+
     let (enabled, enabled_was_blank) = parse_enabled_cell(&text("Enabled"))?;
     let projectile_key = optional_text("Projectile Key");
     let stat_scaling = optional_text("Stat Scaling");
     let target_filters = TargetFilter::parse_list(&text("Target Filters"))?;
+    let hit_mode = HitMode::parse(&text("Hit Mode"))?;
+    let projectile_speed_mps = optional_f32("Projectile Speed")?.unwrap_or(0.0);
 
     Ok(WeaponImportRow {
         row_number,
@@ -111,8 +125,9 @@ fn parse_row(
         attacks_per_second: f32_col("Attacks Per Second")?,
         windup_seconds: f32_col("Windup")?,
         recovery_seconds: f32_col("Recovery")?,
-        hit_mode: HitMode::parse(&text("Hit Mode"))?,
+        hit_mode,
         projectile_key,
+        projectile_speed_mps,
         animation_key: text("Animation Key"),
         target_filters,
         stat_scaling,

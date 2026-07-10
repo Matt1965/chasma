@@ -28,11 +28,64 @@ No ECS entities, meshes, render assets, or command trace buffers are stored.
 
 ```text
 capture_scene(WorldData) → SceneDefinition → RON file
-load: validate → dev_clear_units_and_doodads → insert_unit/insert_doodad → sync id counters
+load: validate plan → backup → clear → restore_unit_record/restore_doodad_record → verify indexes → sync id counters
 ```
 
-[`apply_scene`](../src/dev/scenes/load.rs) validates catalog references **before** clearing
-world entities so invalid files fail without corruption.
+[`apply_scene`](../src/dev/scenes/load.rs) validates **all** catalog references and record
+invariants into a temporary [`RestorePlan`](../src/dev/scenes/load.rs) **before** mutating
+[`WorldData`](../src/world/data.rs). Invalid files fail with structured
+[`SceneApplyError`](../src/dev/scenes/load.rs) and leave the current world unchanged.
+
+On apply failure after clear, a [`DevWorldEntityBackup`](../src/dev/scenes/load.rs) rolls back
+the prior units/doodads and id counters.
+
+## Validated restore APIs (REVIEW-A5)
+
+Scene load does **not** call low-level `insert_unit` / `insert_doodad` directly.
+
+| API | Responsibility |
+|-----|----------------|
+| [`validate_unit_for_restore`](../src/world/unit/restore.rs) | Catalog/enabled, within-scene duplicate ids, placement chunk, vitals normalization policy |
+| [`restore_unit_record`](../src/world/unit/restore.rs) | Normalize persistent state, clear ephemeral combat timing, insert with preserved id |
+| [`validate_doodad_for_restore`](../src/world/doodad/restore.rs) | Catalog/enabled/kind/scale, duplicate ids and procedural keys |
+| [`restore_doodad_record`](../src/world/doodad/restore.rs) | Insert with preserved id; re-register procedural keys |
+
+`create_unit` / `create_doodad` are not used for restore (they allocate new ids).
+
+## Identity policy
+
+**Preserve snapshot ids** (Option A):
+
+- Reject duplicate `UnitId` / `DoodadId` within the scene file
+- After successful apply, advance `next_unit_id` / `next_doodad_id` to scene counters via
+  [`dev_restore_id_counters`](../src/world/data.rs)
+
+No id remapping or reference rewriting in the current scene format.
+
+## Persistent vs transient state
+
+**Restored:** placement, ownership, definition, movement state (`Idle`/`Moving`), source.
+
+**Normalized on restore:** vitals from catalog (`max_hp`, alive `current_hp`); `combat_state = Peaceful`;
+`attack_cycle = None`.
+
+**Cleared on load** (via [`dev_clear_units_and_doodads`](../src/world/data.rs)):
+
+- All unit/doodad instances
+- In-flight projectiles, removal queue, kill attributions
+- Command buffer and movement smoothing scratch
+
+Projectiles and combat timing are **transient simulation state** — not in scene files.
+
+## Catalog failure behavior
+
+Missing or disabled definitions reject the **entire** load. No starter substitution, no
+best-effort partial apply.
+
+## Index verification
+
+After apply, [`verify_instance_indexes`](../src/world/data.rs) checks unit/doodad location
+maps, procedural doodad keys, and duplicate ids.
 
 ## Persistence (dev-only)
 
@@ -58,8 +111,9 @@ New **Scenes** tab (F12 dev panel):
 ## Safety
 
 - Compiled only with `dev` feature (`src/dev/` module)
-- Clears units/doodads/command buffer/smoothing only — terrain and authored extent unchanged
+- Clears units/doodads and transient simulation queues only — terrain and authored extent unchanged
 - Does not modify movement, pathfinding, steering, or interaction systems
+- Scene restore is validated authoring, not raw WorldData insertion
 
 ## Relationship to future multiplayer replays
 
@@ -78,9 +132,10 @@ simulation ticks — explicitly out of scope. Scene format provides a compatible
 
 ## Negative
 
-- Scene restore uses `insert_unit`/`insert_doodad` (not `create_*`) to preserve ids
+- Scene restore bypasses `create_*` id allocation — uses dedicated restore APIs instead
 - Procedural doodad keys re-registered on load when source is procedural
 - No terrain editing in scenes (terrain must already be resident/imported)
+- Attack targets and in-flight projectiles are not captured; combat state resets on load
 
 # Verification
 

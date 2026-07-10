@@ -3,7 +3,12 @@
 use bevy::prelude::*;
 
 use crate::units::input::SelectedUnits;
-use crate::world::{UnitCatalog, UnitDefinition, UnitId, UnitRecord, UnitState, WorldData};
+use crate::world::{UnitCatalog, UnitDefinition, UnitId, UnitRecord, UnitState, WeaponCatalog, WorldData};
+
+use super::combat_display::{
+    append_combat_state_lines, append_weapon_hud_lines, average_hp_percent, combat_target_id,
+    weapon_display_for_unit,
+};
 
 use super::player_hud_state::primary_selected_unit;
 use super::styles::{hud_title_font, PANEL_BG, TEXT_PRIMARY};
@@ -27,6 +32,7 @@ pub fn build_selected_unit_snapshot(
     selection: &SelectedUnits,
     world: &WorldData,
     catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
 ) -> SelectedUnitPanelSnapshot {
     let count = selection.0.len() as u32;
     let primary = primary_selected_unit(selection);
@@ -41,9 +47,12 @@ pub fn build_selected_unit_snapshot(
 
     if count > 1 {
         let mut lines = vec![format!("Selected: {count} units")];
+        if let Some(avg) = average_hp_percent(selection, world) {
+            lines.push(format!("Average HP: {avg:.0}%"));
+        }
         if let Some(id) = primary {
             lines.push(format!("Primary: Unit #{}", id.raw()));
-            if let Some(summary) = primary_unit_summary(id, world, catalog) {
+            if let Some(summary) = primary_unit_summary(id, world, catalog, weapon_catalog) {
                 lines.push(summary);
             }
         }
@@ -58,7 +67,7 @@ pub fn build_selected_unit_snapshot(
     SelectedUnitPanelSnapshot {
         selection_count: 1,
         primary_unit: Some(unit_id),
-        lines: format_single_unit_lines(unit_id, world, catalog),
+        lines: format_single_unit_lines(unit_id, world, catalog, weapon_catalog),
     }
 }
 
@@ -66,16 +75,26 @@ fn primary_unit_summary(
     unit_id: UnitId,
     world: &WorldData,
     catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
 ) -> Option<String> {
     let record = world.get_unit(unit_id)?;
     let def = catalog.get(&record.definition_id)?;
-    Some(format!("{} — {}", def.display_name, unit_state_label(&record.state)))
+    let weapon = weapon_display_for_unit(record, catalog, weapon_catalog)
+        .map(|w| w.name)
+        .unwrap_or_else(|| "unknown".to_string());
+    Some(format!(
+        "{} — {} / weapon: {}",
+        def.display_name,
+        unit_state_label(&record.state),
+        weapon
+    ))
 }
 
 pub fn format_single_unit_lines(
     unit_id: UnitId,
     world: &WorldData,
     catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
 ) -> Vec<String> {
     let Some(record) = world.get_unit(unit_id) else {
         return vec![format!("Unit #{} (missing from world)", unit_id.raw())];
@@ -86,15 +105,17 @@ pub fn format_single_unit_lines(
             format!("Definition: {} (not in catalog)", record.definition_id.as_str()),
         ];
     };
-    format_unit_detail_lines(unit_id, record, def)
+    format_unit_detail_lines(unit_id, record, def, catalog, weapon_catalog)
 }
 
 pub fn format_unit_detail_lines(
     unit_id: UnitId,
     record: &UnitRecord,
     def: &UnitDefinition,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
 ) -> Vec<String> {
-    vec![
+    let mut lines = vec![
         def.display_name.clone(),
         format!("Unit ID: {}", unit_id.raw()),
         format!("Definition: {}", def.id.as_str()),
@@ -111,7 +132,12 @@ pub fn format_unit_detail_lines(
         format!("Collision radius: {:.2} m", def.collision_radius_meters),
         format!("State: {}", unit_state_label(&record.state)),
         format!("Combat: {}", record.combat_state.label()),
-    ]
+    ];
+    if let Some(weapon) = weapon_display_for_unit(record, unit_catalog, weapon_catalog) {
+        append_weapon_hud_lines(&mut lines, &weapon);
+    }
+    append_combat_state_lines(&mut lines, record, combat_target_id(&record.combat_state));
+    lines
 }
 
 pub fn unit_state_label(state: &UnitState) -> &'static str {
@@ -152,10 +178,11 @@ pub fn sync_selected_unit_panel(
     selection: Res<SelectedUnits>,
     world: Res<WorldData>,
     catalog: Res<UnitCatalog>,
+    weapon_catalog: Res<WeaponCatalog>,
     mut cache: Local<Option<SelectedUnitPanelSnapshot>>,
     mut text: Query<&mut Text, With<SelectedUnitPanelText>>,
 ) {
-    let snapshot = build_selected_unit_snapshot(&selection, &world, &catalog);
+    let snapshot = build_selected_unit_snapshot(&selection, &world, &catalog, &weapon_catalog);
     if cache.as_ref() == Some(&snapshot) {
         return;
     }
@@ -171,8 +198,8 @@ pub fn sync_selected_unit_panel(
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
-        UnitDefinitionId, UnitSource, WorldPosition,
+        create_unit, starter_weapon_definitions, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+        Heightfield, LocalPosition, UnitDefinitionId, UnitSource, WeaponCatalog, WorldPosition,
     };
     use bevy::prelude::Vec3;
 
@@ -200,12 +227,17 @@ mod tests {
         UnitCatalog::default()
     }
 
+    fn default_weapons() -> WeaponCatalog {
+        WeaponCatalog::from_definitions(starter_weapon_definitions()).unwrap()
+    }
+
     #[test]
     fn empty_selection_shows_empty_state() {
         let snapshot = build_selected_unit_snapshot(
             &SelectedUnits::default(),
             &flat_world(),
             &wolf_catalog(),
+            &default_weapons(),
         );
         assert_eq!(snapshot.selection_count, 0);
         assert_eq!(snapshot.lines[0], "No unit selected");
@@ -215,7 +247,7 @@ mod tests {
     fn multi_selection_shows_count() {
         let mut selection = SelectedUnits::default();
         selection.replace_with([UnitId::new(1), UnitId::new(2)]);
-        let snapshot = build_selected_unit_snapshot(&selection, &flat_world(), &wolf_catalog());
+        let snapshot = build_selected_unit_snapshot(&selection, &flat_world(), &wolf_catalog(), &default_weapons());
         assert_eq!(snapshot.selection_count, 2);
         assert!(snapshot.lines[0].contains("2 units"));
     }
@@ -235,7 +267,7 @@ mod tests {
         .id;
         let mut selection = SelectedUnits::default();
         selection.set_single(unit_id);
-        let snapshot = build_selected_unit_snapshot(&selection, &world, &catalog);
+        let snapshot = build_selected_unit_snapshot(&selection, &world, &catalog, &default_weapons());
         let joined = snapshot.lines.join("\n");
         assert!(joined.contains("Wolf"));
         assert!(joined.contains("HP: 5/5"));
@@ -261,7 +293,32 @@ mod tests {
         let before = world.get_unit(unit_id).unwrap().clone();
         let mut selection = SelectedUnits::default();
         selection.set_single(unit_id);
-        let _ = build_selected_unit_snapshot(&selection, &world, &catalog);
+        let _ = build_selected_unit_snapshot(&selection, &world, &catalog, &default_weapons());
         assert_eq!(world.get_unit(unit_id).unwrap(), &before);
+    }
+
+    #[test]
+    fn dead_unit_selection_handled_gracefully() {
+        let catalog = wolf_catalog();
+        let weapons = default_weapons();
+        let mut world = flat_world();
+        let unit_id = create_unit(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+        )
+        .unwrap()
+        .id;
+        world
+            .set_unit_state(unit_id, UnitState::Dead)
+            .expect("set dead");
+        let mut selection = SelectedUnits::default();
+        selection.set_single(unit_id);
+        let snapshot = build_selected_unit_snapshot(&selection, &world, &catalog, &weapons);
+        let joined = snapshot.lines.join("\n");
+        assert!(joined.contains("Dead"));
+        assert!(joined.contains("HP:"));
     }
 }

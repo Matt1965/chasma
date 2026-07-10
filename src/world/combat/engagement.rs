@@ -15,8 +15,12 @@ use super::range::{
     range_status_from_check, weapon_for_unit_record, RangeStatus, RANGE_HYSTERESIS_METERS,
 };
 use super::standoff::{compute_standoff_destination, StandoffError};
-use super::strike::clear_attack_cycle;
+use super::cycle_lifecycle::{
+    clear_attack_cycle, clear_attack_cycle_for_invalid_target, clear_attack_cycle_for_order_cancel,
+};
+use super::strike::CombatStrikeReport;
 use super::targeting::is_unit_alive;
+use crate::world::unit::unit_can_execute_actions;
 
 /// Radius for attack-move hostile acquisition scans.
 pub const ATTACK_MOVE_SCAN_RADIUS_METERS: f32 = 16.0;
@@ -66,10 +70,14 @@ pub fn step_all_combat_engagement(
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
+    strike_trace: &mut CombatStrikeReport,
 ) -> CombatEngagementReport {
     let unit_ids = world.sorted_unit_ids();
     let mut report = CombatEngagementReport::default();
     for unit_id in unit_ids {
+        if !unit_can_execute_actions(world, unit_id) {
+            continue;
+        }
         let Some(combat_state) = world.get_unit(unit_id).map(|record| record.combat_state.clone())
         else {
             continue;
@@ -83,6 +91,7 @@ pub fn step_all_combat_engagement(
             targeting_policy,
             unit_id,
             combat_state,
+            strike_trace,
         );
         if let Some(trace) = trace {
             report.push(trace);
@@ -100,6 +109,7 @@ fn step_unit_combat_engagement(
     targeting_policy: AttackTargetingPolicy,
     unit_id: UnitId,
     combat_state: CombatState,
+    strike_trace: &mut CombatStrikeReport,
 ) -> Option<CombatEngagementTrace> {
     match combat_state {
         CombatState::Peaceful | CombatState::Alert | CombatState::Engaged => None,
@@ -113,6 +123,7 @@ fn step_unit_combat_engagement(
             unit_id,
             target,
             None,
+            strike_trace,
         )),
         CombatState::Chasing { target } => Some(handle_chasing_target(
             world,
@@ -124,6 +135,7 @@ fn step_unit_combat_engagement(
             unit_id,
             target,
             None,
+            strike_trace,
         )),
         CombatState::AttackMoving { destination, target } => Some(handle_attack_moving(
             world,
@@ -135,6 +147,7 @@ fn step_unit_combat_engagement(
             unit_id,
             destination,
             target,
+            strike_trace,
         )),
     }
 }
@@ -149,6 +162,7 @@ fn handle_attacking_target(
     unit_id: UnitId,
     target: UnitId,
     invalid_target_state: Option<CombatState>,
+    strike_trace: &mut CombatStrikeReport,
 ) -> CombatEngagementTrace {
     let mut trace = CombatEngagementTrace {
         unit_id,
@@ -170,7 +184,15 @@ fn handle_attacking_target(
     )
     .is_err()
     {
-        apply_invalid_target_state(world, unit_id, invalid_target_state);
+        apply_invalid_target_state(
+            world,
+            unit_id,
+            target,
+            invalid_target_state,
+            strike_trace,
+            unit_catalog,
+            weapon_catalog,
+        );
         trace.status = CombatEngagementStatus::TargetInvalid;
         trace.target = None;
         return trace;
@@ -181,6 +203,14 @@ fn handle_attacking_target(
     let weapon = match weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) {
         Ok(weapon) => weapon,
         Err(_) => {
+            clear_attack_cycle_for_invalid_target(
+                world,
+                unit_id,
+                target,
+                Some(strike_trace),
+                unit_catalog,
+                weapon_catalog,
+            );
             trace.status = CombatEngagementStatus::MissingWeapon;
             return trace;
         }
@@ -238,6 +268,7 @@ fn handle_chasing_target(
     unit_id: UnitId,
     target: UnitId,
     invalid_target_state: Option<CombatState>,
+    strike_trace: &mut CombatStrikeReport,
 ) -> CombatEngagementTrace {
     let mut trace = CombatEngagementTrace {
         unit_id,
@@ -259,7 +290,15 @@ fn handle_chasing_target(
     )
     .is_err()
     {
-        apply_invalid_target_state(world, unit_id, invalid_target_state);
+        apply_invalid_target_state(
+            world,
+            unit_id,
+            target,
+            invalid_target_state,
+            strike_trace,
+            unit_catalog,
+            weapon_catalog,
+        );
         trace.status = CombatEngagementStatus::TargetInvalid;
         trace.target = None;
         return trace;
@@ -270,6 +309,14 @@ fn handle_chasing_target(
     let weapon = match weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) {
         Ok(weapon) => weapon,
         Err(_) => {
+            clear_attack_cycle_for_invalid_target(
+                world,
+                unit_id,
+                target,
+                Some(strike_trace),
+                unit_catalog,
+                weapon_catalog,
+            );
             trace.status = CombatEngagementStatus::MissingWeapon;
             return trace;
         }
@@ -314,6 +361,7 @@ fn handle_attack_moving(
     unit_id: UnitId,
     destination: WorldPosition,
     target: Option<UnitId>,
+    strike_trace: &mut CombatStrikeReport,
 ) -> CombatEngagementTrace {
     if let Some(acquired) = target {
         return handle_chasing_target(
@@ -329,6 +377,7 @@ fn handle_attack_moving(
                 destination,
                 target: None,
             }),
+            strike_trace,
         );
     }
 
@@ -361,6 +410,7 @@ fn handle_attack_moving(
                 destination,
                 target: None,
             }),
+            strike_trace,
         );
         trace.status = CombatEngagementStatus::AttackMoveAcquired;
         return trace;
@@ -522,15 +572,28 @@ fn hold_in_attack_range(world: &mut WorldData, unit_id: UnitId) {
 fn apply_invalid_target_state(
     world: &mut WorldData,
     unit_id: UnitId,
+    target: UnitId,
     invalid_target_state: Option<CombatState>,
+    strike_trace: &mut CombatStrikeReport,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
 ) {
     hold_in_attack_range(world, unit_id);
+    clear_attack_cycle_for_invalid_target(
+        world,
+        unit_id,
+        target,
+        Some(strike_trace),
+        unit_catalog,
+        weapon_catalog,
+    );
     let next = invalid_target_state.unwrap_or(CombatState::Peaceful);
     let _ = world.set_unit_combat_state(unit_id, next);
 }
 
+#[allow(dead_code)]
 fn clear_combat_to_peaceful(world: &mut WorldData, unit_id: UnitId) {
-    apply_invalid_target_state(world, unit_id, None);
+    let _ = (world, unit_id);
 }
 
 /// Initial combat posture when an attack order is accepted.
@@ -573,8 +636,9 @@ mod tests {
     use crate::world::combat::range::RANGE_HYSTERESIS_METERS;
     use crate::world::{
         create_unit_with_ownership, issue_unit_order, resolve_all_pending_unit_orders,
-        starter_unit_definitions, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield,
-        LocalPosition, UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource, WeaponCatalog,
+        starter_unit_definitions, ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatStrikeReport,
+        Heightfield, LocalPosition, UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource,
+        WeaponCatalog,
     };
     use bevy::prelude::Vec3;
 
@@ -644,6 +708,7 @@ mod tests {
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
+            &mut CombatStrikeReport::default(),
         )
     }
 
@@ -832,6 +897,8 @@ mod tests {
                 &DoodadCatalog::default(),
                 &NavigationConfig::default(),
             );
+            let mut scan = crate::world::CombatAiScanState::default();
+            let settings = crate::world::CombatAiSettings::default();
             crate::world::step_all_unit_movement(
                 &mut world,
                 &catalog,
@@ -839,6 +906,8 @@ mod tests {
                 &DoodadCatalog::default(),
                 &NavigationConfig::default(),
                 policy(),
+                &settings,
+                &mut scan,
                 0.25,
                 0,
             );

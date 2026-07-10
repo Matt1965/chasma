@@ -1,12 +1,17 @@
 //! Weapon strike resolution and damage application (ADR-058 C5).
 
-use crate::world::unit::{AttackCycle, AttackPhase, CombatState, UnitId};
+use crate::world::unit::{unit_can_execute_actions, AttackCycle, AttackPhase, CombatState, UnitId};
 use crate::world::{
-    validate_attack_target, AttackTargetingPolicy, DoodadCatalog, HitMode, NavigationConfig,
-    UnitCatalog, WeaponCatalog, WorldData,
+    spawn_projectile_from_strike, validate_attack_target, AttackTargetingPolicy, DoodadCatalog,
+    HitMode, NavigationConfig, ProjectileRecord, ProjectileReport, UnitCatalog, WeaponCatalog,
+    WorldData,
 };
 
 use super::attack_cycle::WeaponTiming;
+use super::cycle_lifecycle::{
+    clear_attack_cycle, combat_engagement_target, is_attack_capable_combat_state,
+    record_strike_state_mismatch, validate_attack_cycle_for_strike,
+};
 use super::range::{is_in_weapon_range, weapon_for_unit_record};
 use super::targeting::is_unit_alive;
 use crate::world::weapon::WeaponDefinitionId;
@@ -24,6 +29,18 @@ pub enum CombatStrikeEvent {
     AttackRecoveryStarted,
     AttackCooldownStarted,
     UnsupportedProjectileMode,
+    AttackCycleResetRetarget {
+        old_target: UnitId,
+        new_target: UnitId,
+    },
+    AttackCycleClearedInvalidTarget {
+        target: UnitId,
+    },
+    AttackCycleClearedOrderCancelled,
+    AttackStrikeSkippedStateMismatch {
+        cycle_target: Option<UnitId>,
+        combat_target: Option<UnitId>,
+    },
 }
 
 /// One strike-timing trace row.
@@ -60,6 +77,7 @@ pub fn step_all_combat_strikes(
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
     delta_seconds: f32,
+    projectile_report: &mut ProjectileReport,
 ) -> CombatStrikeReport {
     let _ = (doodad_catalog, nav_config);
     let unit_ids = world.sorted_unit_ids();
@@ -73,6 +91,7 @@ pub fn step_all_combat_strikes(
             unit_id,
             delta_seconds,
             &mut report,
+            projectile_report,
         );
     }
     report
@@ -86,15 +105,82 @@ fn step_unit_combat_strike(
     unit_id: UnitId,
     delta_seconds: f32,
     report: &mut CombatStrikeReport,
+    projectile_report: &mut ProjectileReport,
 ) {
-    let Some(target_id) = strike_target_id(world, unit_id) else {
-        clear_attack_cycle(world, unit_id);
-        return;
-    };
-
     let Some(attacker) = world.get_unit(unit_id).cloned() else {
         return;
     };
+
+    let cycle_target = attacker.attack_cycle.as_ref().map(|cycle| cycle.target);
+    let combat_target = combat_engagement_target(&attacker.combat_state);
+
+    if !unit_can_execute_actions(world, unit_id) {
+        if attacker.attack_cycle.is_some() {
+            clear_attack_cycle(world, unit_id);
+        }
+        return;
+    }
+
+    if !is_unit_alive(&attacker) {
+        if attacker.attack_cycle.is_some() {
+            clear_attack_cycle(world, unit_id);
+        }
+        return;
+    }
+
+    if !is_attack_capable_combat_state(&attacker.combat_state) {
+        if attacker.attack_cycle.is_some() {
+            record_strike_state_mismatch(
+                report,
+                world,
+                unit_id,
+                cycle_target,
+                combat_target,
+                unit_catalog,
+                weapon_catalog,
+            );
+            clear_attack_cycle(world, unit_id);
+        }
+        return;
+    }
+
+    let Some(target_id) = validate_attack_cycle_for_strike(
+        world,
+        unit_id,
+        unit_catalog,
+        weapon_catalog,
+        targeting_policy,
+    ) else {
+        if let Some(target) = cycle_target.or(combat_target) {
+            if attacker.attack_cycle.is_some() {
+                record_strike_state_mismatch(
+                    report,
+                    world,
+                    unit_id,
+                    cycle_target,
+                    combat_target,
+                    unit_catalog,
+                    weapon_catalog,
+                );
+                clear_attack_cycle(world, unit_id);
+                resume_chase_after_failed_strike(world, unit_id, target);
+            }
+        }
+        return;
+    };
+
+    if cycle_target.is_some_and(|cycle_target| cycle_target != target_id) {
+        record_strike_state_mismatch(
+            report,
+            world,
+            unit_id,
+            cycle_target,
+            Some(target_id),
+            unit_catalog,
+            weapon_catalog,
+        );
+        clear_attack_cycle(world, unit_id);
+    }
 
     let Some(target) = world.get_unit(target_id).cloned() else {
         clear_attack_cycle(world, unit_id);
@@ -113,23 +199,13 @@ fn step_unit_combat_strike(
 
     if existing_cycle.is_none() {
         if !is_in_weapon_range(world, &attacker, &target, unit_catalog, weapon) {
-            clear_attack_cycle(world, unit_id);
             return;
         }
 
-        if weapon.hit_mode == HitMode::Projectile {
-            report.push(CombatStrikeTrace {
-                attacker_id: unit_id,
-                target_id,
-                weapon_id: weapon.id.clone(),
-                event: CombatStrikeEvent::UnsupportedProjectileMode,
-            });
-            clear_attack_cycle(world, unit_id);
-            return;
-        }
-
-        if !matches!(weapon.hit_mode, HitMode::Melee | HitMode::RangedInstant) {
-            clear_attack_cycle(world, unit_id);
+        if !matches!(
+            weapon.hit_mode,
+            HitMode::Melee | HitMode::RangedInstant | HitMode::Projectile
+        ) {
             return;
         }
     }
@@ -141,17 +217,10 @@ fn step_unit_combat_strike(
         .unwrap_or(true);
 
     if cycle_needs_start {
-        if weapon.hit_mode == HitMode::Projectile {
-            report.push(CombatStrikeTrace {
-                attacker_id: unit_id,
-                target_id,
-                weapon_id: weapon.id.clone(),
-                event: CombatStrikeEvent::UnsupportedProjectileMode,
-            });
-            clear_attack_cycle(world, unit_id);
-            return;
-        }
-        if !matches!(weapon.hit_mode, HitMode::Melee | HitMode::RangedInstant) {
+        if !matches!(
+            weapon.hit_mode,
+            HitMode::Melee | HitMode::RangedInstant | HitMode::Projectile
+        ) {
             clear_attack_cycle(world, unit_id);
             return;
         }
@@ -191,6 +260,7 @@ fn step_unit_combat_strike(
         &mut cycle,
         delta_seconds,
         report,
+        projectile_report,
     );
 
     if world
@@ -214,6 +284,7 @@ fn advance_attack_cycle(
     cycle: &mut AttackCycle,
     mut remaining_delta: f32,
     report: &mut CombatStrikeReport,
+    projectile_report: &mut ProjectileReport,
 ) {
     while remaining_delta > 0.0 {
         if cycle.phase_remaining_seconds > remaining_delta {
@@ -236,6 +307,7 @@ fn advance_attack_cycle(
                     weapon,
                     cycle,
                     report,
+                    projectile_report,
                 );
                 if world
                     .get_unit(unit_id)
@@ -309,6 +381,7 @@ fn resolve_strike(
     weapon: &crate::world::WeaponDefinition,
     cycle: &mut AttackCycle,
     report: &mut CombatStrikeReport,
+    projectile_report: &mut ProjectileReport,
 ) {
     cycle.phase = AttackPhase::Strike;
     cycle.struck_this_cycle = true;
@@ -332,6 +405,19 @@ fn resolve_strike(
         return;
     }
 
+    if weapon.hit_mode == HitMode::Projectile {
+        resolve_projectile_strike(
+            world,
+            attacker_id,
+            target_id,
+            weapon,
+            unit_catalog,
+            targeting_policy,
+            projectile_report,
+        );
+        return;
+    }
+
     let hp_before = world
         .get_unit(target_id)
         .map(|record| record.vitals.current_hp)
@@ -351,6 +437,58 @@ fn resolve_strike(
     });
 }
 
+fn resolve_projectile_strike(
+    world: &mut WorldData,
+    attacker_id: UnitId,
+    target_id: UnitId,
+    weapon: &crate::world::WeaponDefinition,
+    unit_catalog: &UnitCatalog,
+    targeting_policy: AttackTargetingPolicy,
+    projectile_report: &mut ProjectileReport,
+) {
+    if weapon.projectile_speed_mps <= 0.0 {
+        return;
+    }
+
+    if !unit_can_execute_actions(world, attacker_id) {
+        return;
+    }
+
+    let Some(attacker) = world.get_unit(attacker_id) else {
+        return;
+    };
+    let Some(target) = world.get_unit(target_id) else {
+        return;
+    };
+
+    if weapon.projectile_key.is_none() {
+        bevy::log::warn!(
+            "weapon `{}` uses projectile hit mode without projectile_key; simulation continues without visual",
+            weapon.id.as_str()
+        );
+    }
+
+    let source_position = attacker.placement.position;
+    let target_position = target.placement.position;
+    let launch_snapshot =
+        crate::world::ProjectileLaunchSnapshot::capture(attacker, weapon, targeting_policy);
+    let projectile_id = world.allocate_projectile_id();
+    let record = ProjectileRecord::new_in_flight(
+        projectile_id,
+        attacker_id,
+        target_id,
+        weapon.id.clone(),
+        weapon.damage,
+        weapon.damage_type,
+        source_position,
+        target_position,
+        weapon.projectile_speed_mps,
+        launch_snapshot,
+    );
+    let _ = unit_catalog;
+    spawn_projectile_from_strike(world, record, projectile_report);
+}
+
 fn validate_strike_target(
     world: &WorldData,
     attacker_id: UnitId,
@@ -359,6 +497,9 @@ fn validate_strike_target(
     unit_catalog: &UnitCatalog,
     targeting_policy: AttackTargetingPolicy,
 ) -> bool {
+    if !unit_can_execute_actions(world, attacker_id) {
+        return false;
+    }
     if validate_attack_target(
         world,
         attacker_id,
@@ -414,25 +555,6 @@ fn resume_chase_after_failed_strike(
     }
 }
 
-fn strike_target_id(world: &WorldData, unit_id: UnitId) -> Option<UnitId> {
-    let record = world.get_unit(unit_id)?;
-    if let Some(cycle) = record.attack_cycle.as_ref() {
-        return Some(cycle.target);
-    }
-    match record.combat_state {
-        CombatState::Attacking { target } => Some(target),
-        CombatState::AttackMoving {
-            target: Some(target),
-            ..
-        } => Some(target),
-        _ => None,
-    }
-}
-
-pub(crate) fn clear_attack_cycle(world: &mut WorldData, unit_id: UnitId) {
-    let _ = world.set_unit_attack_cycle(unit_id, None);
-}
-
 fn set_attack_cycle(world: &mut WorldData, unit_id: UnitId, cycle: AttackCycle) {
     let _ = world.set_unit_attack_cycle(unit_id, Some(cycle));
 }
@@ -442,6 +564,7 @@ mod tests {
     use super::*;
     use crate::simulation::{SimulationControlState, SIMULATION_TICK_SECONDS};
     use crate::world::combat::step_all_combat_engagement;
+    use crate::world::projectile::{step_all_projectiles, ProjectileEvent, ProjectileReport};
     use crate::world::{
         create_unit_with_ownership, issue_unit_order, starter_unit_definitions,
         starter_weapon_definitions, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DamageType,
@@ -532,7 +655,8 @@ mod tests {
         catalog: &UnitCatalog,
         delta: f32,
     ) -> CombatStrikeReport {
-        let strikes = step_all_combat_strikes(
+        let mut projectile = crate::world::ProjectileReport::default();
+        let mut strikes = step_all_combat_strikes(
             world,
             catalog,
             &weapons(),
@@ -540,20 +664,41 @@ mod tests {
             &NavigationConfig::default(),
             policy(),
             delta,
+            &mut projectile,
         );
-        step_all_combat_engagement(
+        let _ = step_all_projectiles(world, delta, &[]);
+        let _ = step_all_combat_engagement(
             world,
             catalog,
             &weapons(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
+            &mut strikes,
         );
         strikes
     }
 
     fn hostile_hp(world: &WorldData, hostile: UnitId) -> u32 {
         world.get_unit(hostile).unwrap().vitals.current_hp
+    }
+
+    fn report_skipped_invalid_strike(report: &CombatStrikeReport) -> bool {
+        report.traces.iter().any(|trace| {
+            matches!(
+                trace.event,
+                CombatStrikeEvent::AttackStrikeMissedInvalidTarget
+                    | CombatStrikeEvent::AttackStrikeSkippedStateMismatch { .. }
+                    | CombatStrikeEvent::AttackCycleClearedInvalidTarget { .. }
+            )
+        })
+    }
+
+    fn report_applied_strike(report: &CombatStrikeReport) -> bool {
+        report
+            .traces
+            .iter()
+            .any(|trace| matches!(trace.event, CombatStrikeEvent::AttackStrikeApplied { .. }))
     }
 
     #[test]
@@ -616,30 +761,55 @@ mod tests {
         assert_eq!(hostile_hp(&world, hostile), hp_after_first);
     }
 
+    fn step_strikes_only(
+        world: &mut WorldData,
+        catalog: &UnitCatalog,
+        delta: f32,
+    ) -> CombatStrikeReport {
+        let mut projectile = crate::world::ProjectileReport::default();
+        step_all_combat_strikes(
+            world,
+            catalog,
+            &weapons(),
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            policy(),
+            delta,
+            &mut projectile,
+        )
+    }
+
     #[test]
     fn attacks_per_second_controls_repeat_timing() {
         let catalog = catalog();
+        let weapons = weapons();
         let mut world = flat_world();
         let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
         let hostile = spawn_hostile(&mut world, &catalog, 11.0, 10.0);
         issue_attack(&mut world, &catalog, player, hostile);
-        let mut strike_count = 0u32;
-        let mut windup_count = 0u32;
-        for _ in 0..35 {
-            let report = step_combat(&mut world, &catalog, SIMULATION_TICK_SECONDS);
-            for trace in &report.traces {
-                match trace.event {
-                    CombatStrikeEvent::AttackStrikeApplied { .. } => strike_count += 1,
-                    CombatStrikeEvent::AttackWindupStarted => windup_count += 1,
-                    _ => {}
-                }
-            }
-        }
-        assert!(strike_count >= 1, "expected at least one strike, got {strike_count}");
+        world
+            .set_unit_combat_state(player, CombatState::Attacking { target: hostile })
+            .unwrap();
+        let weapon = weapons
+            .get(&crate::world::weapon::WeaponDefinitionId::new("weapon_wolf_bite"))
+            .unwrap();
+        let timing = super::super::attack_cycle::WeaponTiming::from_weapon(weapon);
+        assert!((timing.attack_period_seconds - (1.0 / 1.2)).abs() < 0.01);
         assert!(
-            windup_count >= 2,
-            "expected repeated windup cycles from 1.2 aps timing, got {windup_count}"
+            timing.windup_seconds + timing.recovery_seconds + timing.cooldown_seconds
+                <= timing.attack_period_seconds + f32::EPSILON
         );
+        let report = step_strikes_only(
+            &mut world,
+            &catalog,
+            timing.attack_period_seconds,
+        );
+        assert!(report.traces.iter().any(|trace| {
+            matches!(
+                trace.event,
+                CombatStrikeEvent::AttackStrikeApplied { .. }
+            )
+        }));
     }
 
     #[test]
@@ -668,7 +838,8 @@ mod tests {
         world.damage_unit(hostile, 999).unwrap();
         let hp_before = hostile_hp(&world, hostile);
         let report = step_combat(&mut world, &catalog, 0.1);
-        assert!(report.has_event(&CombatStrikeEvent::AttackStrikeMissedInvalidTarget));
+        assert!(report_skipped_invalid_strike(&report));
+        assert!(!report_applied_strike(&report));
         assert_eq!(hostile_hp(&world, hostile), hp_before);
     }
 
@@ -683,8 +854,9 @@ mod tests {
         step_combat(&mut world, &catalog, 0.1);
         world.damage_unit(player, 999).unwrap();
         let report = step_combat(&mut world, &catalog, 0.1);
-        assert!(report.has_event(&CombatStrikeEvent::AttackStrikeMissedInvalidTarget));
+        assert!(!report_applied_strike(&report));
         assert_eq!(hostile_hp(&world, hostile), hp_before);
+        assert!(world.get_unit(player).unwrap().attack_cycle.is_none());
     }
 
     #[test]
@@ -698,7 +870,8 @@ mod tests {
         world.damage_unit(hostile, 999).unwrap();
         let hp_before = hostile_hp(&world, hostile);
         let report = step_combat(&mut world, &catalog, 0.1);
-        assert!(report.has_event(&CombatStrikeEvent::AttackStrikeMissedInvalidTarget));
+        assert!(report_skipped_invalid_strike(&report));
+        assert!(!report_applied_strike(&report));
         assert_eq!(hostile_hp(&world, hostile), hp_before);
     }
 
@@ -730,6 +903,7 @@ mod tests {
             0.1,
             HitMode::RangedInstant,
             None,
+            0.0,
             "attack_bow",
             vec![TargetFilter::Enemies],
             None,
@@ -766,7 +940,9 @@ mod tests {
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
+            &mut CombatStrikeReport::default(),
         );
+        let mut projectile = ProjectileReport::default();
         let report = step_all_combat_strikes(
             &mut world,
             &custom_catalog,
@@ -775,6 +951,7 @@ mod tests {
             &NavigationConfig::default(),
             policy(),
             0.1,
+            &mut projectile,
         );
         assert!(report.traces.iter().any(|trace| {
             matches!(
@@ -789,7 +966,7 @@ mod tests {
     }
 
     #[test]
-    fn projectile_mode_is_deferred() {
+    fn projectile_mode_spawns_projectile_at_strike() {
         let catalog = catalog();
         let mut weapon_defs = starter_weapon_definitions();
         weapon_defs.push(WeaponDefinition::new(
@@ -798,12 +975,13 @@ mod tests {
             "Test",
             5.0,
             DamageType::Piercing,
-            1.5,
+            15.0,
             1.0,
             0.1,
             0.1,
             HitMode::Projectile,
-            None,
+            Some("arrow".to_string()),
+            20.0,
             "attack_proj",
             vec![TargetFilter::Enemies],
             None,
@@ -817,7 +995,7 @@ mod tests {
                 .unwrap();
         let mut world = flat_world();
         let player = spawn_player(&mut world, &custom_catalog, 10.0, 10.0);
-        let hostile = spawn_hostile(&mut world, &custom_catalog, 11.0, 10.0);
+        let hostile = spawn_hostile(&mut world, &custom_catalog, 14.0, 10.0);
         let hp_before = hostile_hp(&world, hostile);
         issue_unit_order(
             &mut world,
@@ -837,18 +1015,22 @@ mod tests {
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
+            &mut CombatStrikeReport::default(),
         );
-        let report = step_all_combat_strikes(
+        let mut projectile = ProjectileReport::default();
+        step_all_combat_strikes(
             &mut world,
             &custom_catalog,
             &weapons,
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
-            SIMULATION_TICK_SECONDS,
+            0.2,
+            &mut projectile,
         );
-        assert!(report.has_event(&CombatStrikeEvent::UnsupportedProjectileMode));
+        assert!(projectile.has_event(&ProjectileEvent::Spawned));
         assert_eq!(hostile_hp(&world, hostile), hp_before);
+        assert_eq!(world.projectiles().count(), 1);
     }
 
     #[test]

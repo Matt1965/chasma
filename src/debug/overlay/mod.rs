@@ -1,5 +1,6 @@
 //! Unified debug overlay systems (ADR-039 U-UI3).
 
+mod combat_overlay;
 mod formation_overlay;
 mod helpers;
 mod intent_overlay;
@@ -8,6 +9,7 @@ mod path_overlay;
 mod selection_overlay;
 mod steering_overlay;
 
+pub use combat_overlay::draw_combat_debug_overlay;
 pub use formation_overlay::draw_formation_debug_overlay;
 pub use intent_overlay::draw_intent_debug_overlay;
 pub use interaction_overlay::draw_interaction_debug_overlay;

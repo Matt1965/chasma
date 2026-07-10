@@ -23,11 +23,12 @@ pub fn available_commands_for_selection(
         return Vec::new();
     }
 
-    static PALETTE: [CommandType; 4] = [
+    static PALETTE: [CommandType; 5] = [
         CommandType::Move,
         CommandType::Stop,
         CommandType::HoldPosition,
         CommandType::Attack,
+        CommandType::AttackMove,
     ];
 
     PALETTE
@@ -44,20 +45,24 @@ fn command_enabled_for_selection(command_type: CommandType, selection: &Selected
         return false;
     }
     match command_type {
-        CommandType::Move | CommandType::Stop | CommandType::HoldPosition | CommandType::Attack => {
-            true
-        }
-        CommandType::AttackMove | CommandType::Interact => false,
+        CommandType::Move
+        | CommandType::Stop
+        | CommandType::HoldPosition
+        | CommandType::Attack
+        | CommandType::AttackMove => true,
+        CommandType::Interact => false,
     }
 }
 
 /// Per-unit capability hook for future ability expansion.
 pub fn unit_supports_command(_unit_id: UnitId, command_type: CommandType) -> bool {
     match command_type {
-        CommandType::Move | CommandType::Stop | CommandType::HoldPosition | CommandType::Attack => {
-            true
-        }
-        CommandType::AttackMove | CommandType::Interact => false,
+        CommandType::Move
+        | CommandType::Stop
+        | CommandType::HoldPosition
+        | CommandType::Attack
+        | CommandType::AttackMove => true,
+        CommandType::Interact => false,
     }
 }
 
@@ -76,7 +81,7 @@ mod tests {
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
         let entries = available_commands_for_selection(&selection, &UnitCatalog::default());
-        assert_eq!(entries.len(), 4);
+        assert_eq!(entries.len(), 5);
         assert_eq!(entries[0].command_type, CommandType::Move);
         assert_eq!(entries[1].command_type, CommandType::Stop);
         assert_eq!(entries[2].command_type, CommandType::HoldPosition);

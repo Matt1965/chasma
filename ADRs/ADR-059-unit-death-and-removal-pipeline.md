@@ -57,13 +57,13 @@ when damage is applied. Death detection consumes this when emitting
 
 ## Simulation tick order
 
-Within [`step_all_unit_movement`]:
+Death pipeline runs after combat strikes and projectile impacts, before combat AI
+and movement. See the canonical order in
+[ADR-057](ADR-057-combat-range-and-chase-behavior.md#canonical-simulation-tick-order-review-a4):
 
-1. `step_all_combat_strikes` (C5 — unchanged timing rules)
-2. `step_unit_death_pipeline` (detect → queue → target cleanup → remove)
-3. `step_all_combat_engagement` (C4)
-4. `resolve_pending_unit_orders`
-5. `step_unit_movement` (skips dead / 0 HP units)
+```text
+… → strikes → projectiles → step_unit_death_pipeline → combat AI → movement
+```
 
 Pause / `step_once` gating remains at [`SimulationControlState::begin_tick`].
 

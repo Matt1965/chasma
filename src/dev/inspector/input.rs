@@ -43,6 +43,7 @@ pub fn refresh_inspector_snapshot(
     let Some(snapshot) = capture_unit_inspector_snapshot(
         &capture.world,
         &capture.unit_catalog,
+        &capture.weapon_catalog,
         &capture.doodad_catalog,
         unit_id,
         capture.simulation.current_tick,
@@ -108,6 +109,7 @@ pub fn handle_inspector_input(
         if let Some(snapshot) = capture_unit_inspector_snapshot(
             &capture.world,
             &capture.unit_catalog,
+            &capture.weapon_catalog,
             &capture.doodad_catalog,
             unit_id,
             capture.simulation.current_tick,

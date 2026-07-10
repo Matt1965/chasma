@@ -2,6 +2,8 @@
 
 use bevy::prelude::*;
 
+use crate::debug::{recent_combat_log_lines, CommandTraceBuffer};
+
 use super::snapshot::{InteractionInspectorSnapshot, UnitInspectorSnapshot};
 use super::state::WorldInspectorState;
 
@@ -31,6 +33,7 @@ pub(crate) fn setup_inspector_panel(parent: &mut ChildSpawnerCommands<'_>) {
 pub(crate) fn sync_inspector_panel(
     dev_state: Res<crate::dev::DevModeState>,
     inspector: Res<WorldInspectorState>,
+    trace: Res<CommandTraceBuffer>,
     mut text: Query<(&mut Text, &mut Node), With<DevInspectorText>>,
 ) {
     let Ok((mut label, mut node)) = text.single_mut() else {
@@ -45,7 +48,16 @@ pub(crate) fn sync_inspector_panel(
     }
 
     **label = if let Some(snapshot) = inspector.unit_snapshot.as_ref() {
-        format_unit_snapshot(snapshot)
+        let mut body = format_unit_snapshot(snapshot);
+        let unit_filter = inspector.selected_unit;
+        let log_lines = recent_combat_log_lines(&trace, unit_filter, 6);
+        if !log_lines.is_empty() {
+            body.push_str("\nCombat log:\n");
+            for line in log_lines {
+                body.push_str(&format!("  {line}\n"));
+            }
+        }
+        body
     } else if let Some(interaction) = inspector.interaction_snapshot.as_ref() {
         format_interaction_snapshot(interaction)
     } else if inspector.last_message.is_empty() {
@@ -74,6 +86,37 @@ fn format_unit_snapshot(s: &UnitInspectorSnapshot) -> String {
         s.chunk.units_in_chunk,
         s.block_reason.as_deref().unwrap_or("none"),
     );
+
+    out.push_str(&format!(
+        "\nCombat detail: weapon={} target={} phase={}\n",
+        s.combat
+            .weapon_name
+            .as_deref()
+            .unwrap_or("none"),
+        s.combat
+            .target_unit_id
+            .map(|id| format!("#{}", id.raw()))
+            .unwrap_or_else(|| "none".into()),
+        s.combat
+            .attack_phase
+            .as_deref()
+            .unwrap_or("none"),
+    ));
+
+    if !s.projectiles.is_empty() {
+        out.push_str("\nProjectiles:\n");
+        for projectile in &s.projectiles {
+            out.push_str(&format!(
+                "  #{} src=#{} tgt=#{} weapon={} speed={:.1} status={}\n",
+                projectile.projectile_id.raw(),
+                projectile.source_unit_id.raw(),
+                projectile.target_unit_id.raw(),
+                projectile.weapon_id,
+                projectile.speed_mps,
+                projectile.status,
+            ));
+        }
+    }
 
     out.push_str(&format!(
         "\nPath: {} wp  idx={}  len={:.1}m\n",

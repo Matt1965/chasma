@@ -62,6 +62,7 @@ mod tests {
             recovery,
             HitMode::Melee,
             None,
+            0.0,
             "attack_test",
             vec![TargetFilter::Enemies],
             None,

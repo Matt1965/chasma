@@ -7,9 +7,9 @@ use bevy::prelude::*;
 use crate::client::{ClientIntent, IntentDispatchReport, IntentDispatchStatus};
 use crate::units::input::MoveOrdersReport;
 use crate::world::{
-    CommandBufferResolveReport, CombatEngagementReport, CombatEngagementStatus,
-    CombatStrikeEvent, CombatStrikeReport, UnitDeathEvent, UnitDeathReport, UnitId, UnitOrder,
-    UnitOrderError,
+    CommandBufferResolveReport, CombatAiReport, CombatAiTraceOutcome, CombatEngagementReport,
+    CombatEngagementStatus, CombatStrikeEvent, CombatStrikeReport, ProjectileEvent, ProjectileReport,
+    UnitDeathEvent, UnitDeathReport, UnitId, UnitOrder, UnitOrderError,
 };
 
 /// Monotonic client frame index for trace ordering.
@@ -37,16 +37,33 @@ pub enum CommandTraceOutcome {
     CombatPathUnavailable,
     CombatTerrainUnavailable,
     CombatAttackMoveAcquired,
+    AttackOrderAccepted,
+    AttackOrderRejected,
+    AttackEnteredRange,
     CombatAttackWindupStarted,
     CombatAttackStrikeApplied,
     CombatAttackStrikeMissed,
     CombatAttackRecoveryStarted,
     CombatAttackCooldownStarted,
     CombatUnsupportedProjectileMode,
+    CombatAttackCycleResetRetarget,
+    CombatAttackCycleClearedInvalidTarget,
+    CombatAttackCycleClearedOrderCancelled,
+    CombatAttackStrikeSkippedStateMismatch,
+    ProjectileSpawned,
+    ProjectileHit,
+    ProjectileExpired,
+    ProjectileImpactRejected,
+    ProjectileDamageApplied,
     UnitDied,
     UnitRemovalQueued,
     UnitRemoved,
     TargetClearedDueToDeath,
+    AiTargetAcquired,
+    AiScanNoTarget,
+    AiScanSkippedBudget,
+    HealthBarShown,
+    HealthBarHidden,
 }
 
 /// Simplified intent kind for trace entries (stable for tests).
@@ -64,7 +81,10 @@ pub enum CommandTraceIntentKind {
     CommandResolve,
     CombatEngagement,
     CombatStrike,
+    Projectile,
     UnitDeath,
+    CombatAi,
+    HealthBar,
 }
 
 impl CommandTraceIntentKind {
@@ -181,6 +201,31 @@ impl CommandTraceBuffer {
         sequence
     }
 
+    /// Presentation-only trace rows (health bars, optional debug).
+    pub fn push_presentation_entry(
+        &mut self,
+        tick: u64,
+        intent_kind: CommandTraceIntentKind,
+        unit_ids: Vec<UnitId>,
+        outcome: CommandTraceOutcome,
+    ) {
+        let sequence = self.next_sequence();
+        self.push_entry(CommandTraceEntry {
+            tick,
+            sequence,
+            intent_kind,
+            unit_ids,
+            order: None,
+            outcome,
+            path_waypoint_count: None,
+            error: None,
+            combat_status: None,
+            center_distance_meters: None,
+            edge_distance_meters: None,
+            weapon_range_meters: None,
+        });
+    }
+
     pub fn record_intent_dispatch(
         &mut self,
         tick: u64,
@@ -197,7 +242,13 @@ impl CommandTraceBuffer {
         if let Some(report) = move_report {
             for trace in &report.unit_traces {
                 let unit_outcome = if trace.error.is_some() {
-                    CommandTraceOutcome::OrderFailed
+                    if matches!(trace.order, UnitOrder::Attack { .. }) {
+                        CommandTraceOutcome::AttackOrderRejected
+                    } else {
+                        CommandTraceOutcome::OrderFailed
+                    }
+                } else if matches!(trace.order, UnitOrder::Attack { .. }) {
+                    CommandTraceOutcome::AttackOrderAccepted
                 } else {
                     CommandTraceOutcome::OrderQueued
                 };
@@ -239,7 +290,7 @@ impl CommandTraceBuffer {
     pub fn record_combat_engagement(&mut self, tick: u64, report: &CombatEngagementReport) {
         for trace in &report.traces {
             let outcome = match trace.status {
-                CombatEngagementStatus::InRangeReady => CommandTraceOutcome::CombatRangeReady,
+                CombatEngagementStatus::InRangeReady => CommandTraceOutcome::AttackEnteredRange,
                 CombatEngagementStatus::OutOfRangeChasing => CommandTraceOutcome::CombatChasing,
                 CombatEngagementStatus::TargetInvalid => CommandTraceOutcome::CombatTargetInvalid,
                 CombatEngagementStatus::PathUnavailable => CommandTraceOutcome::CombatPathUnavailable,
@@ -291,6 +342,18 @@ impl CommandTraceBuffer {
                 CombatStrikeEvent::UnsupportedProjectileMode => {
                     CommandTraceOutcome::CombatUnsupportedProjectileMode
                 }
+                CombatStrikeEvent::AttackCycleResetRetarget { .. } => {
+                    CommandTraceOutcome::CombatAttackCycleResetRetarget
+                }
+                CombatStrikeEvent::AttackCycleClearedInvalidTarget { .. } => {
+                    CommandTraceOutcome::CombatAttackCycleClearedInvalidTarget
+                }
+                CombatStrikeEvent::AttackCycleClearedOrderCancelled => {
+                    CommandTraceOutcome::CombatAttackCycleClearedOrderCancelled
+                }
+                CombatStrikeEvent::AttackStrikeSkippedStateMismatch { .. } => {
+                    CommandTraceOutcome::CombatAttackStrikeSkippedStateMismatch
+                }
             };
             let sequence = self.next_sequence();
             self.push_entry(CommandTraceEntry {
@@ -299,6 +362,67 @@ impl CommandTraceBuffer {
                 intent_kind: CommandTraceIntentKind::CombatStrike,
                 unit_ids: vec![trace.attacker_id],
                 order: None,
+                outcome,
+                path_waypoint_count: None,
+                error: None,
+                combat_status: None,
+                center_distance_meters: None,
+                edge_distance_meters: None,
+                weapon_range_meters: None,
+            });
+        }
+    }
+
+    pub fn record_projectile(&mut self, tick: u64, report: &ProjectileReport) {
+        for trace in &report.traces {
+            let outcome = match &trace.event {
+                ProjectileEvent::Spawned => CommandTraceOutcome::ProjectileSpawned,
+                ProjectileEvent::Hit => CommandTraceOutcome::ProjectileHit,
+                ProjectileEvent::Expired => CommandTraceOutcome::ProjectileExpired,
+                ProjectileEvent::ImpactRejected { .. } => {
+                    CommandTraceOutcome::ProjectileImpactRejected
+                }
+                ProjectileEvent::DamageApplied { .. } => {
+                    CommandTraceOutcome::ProjectileDamageApplied
+                }
+            };
+            let sequence = self.next_sequence();
+            self.push_entry(CommandTraceEntry {
+                tick,
+                sequence,
+                intent_kind: CommandTraceIntentKind::Projectile,
+                unit_ids: vec![trace.source_unit_id],
+                order: None,
+                outcome,
+                path_waypoint_count: None,
+                error: None,
+                combat_status: None,
+                center_distance_meters: None,
+                edge_distance_meters: None,
+                weapon_range_meters: None,
+            });
+        }
+    }
+
+    pub fn record_combat_ai(&mut self, tick: u64, report: &CombatAiReport) {
+        for trace in &report.traces {
+            let outcome = match trace.outcome {
+                CombatAiTraceOutcome::AiTargetAcquired => CommandTraceOutcome::AiTargetAcquired,
+                CombatAiTraceOutcome::AiScanNoTarget => CommandTraceOutcome::AiScanNoTarget,
+                CombatAiTraceOutcome::AiScanSkippedBudget => CommandTraceOutcome::AiScanSkippedBudget,
+                CombatAiTraceOutcome::AiScanSkippedInterval => continue,
+            };
+            let mut unit_ids = vec![trace.unit_id];
+            if let Some(target) = trace.target {
+                unit_ids.push(target);
+            }
+            let sequence = self.next_sequence();
+            self.push_entry(CommandTraceEntry {
+                tick,
+                sequence,
+                intent_kind: CommandTraceIntentKind::CombatAi,
+                unit_ids,
+                order: trace.target.map(|target| UnitOrder::Attack { target }),
                 outcome,
                 path_waypoint_count: None,
                 error: None,

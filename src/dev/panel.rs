@@ -148,6 +148,8 @@ enum DevToggleFlag {
     Formations,
     Selection,
     Interaction,
+    Combat,
+    Health,
     CommandTrace,
     Grid,
     ResetDevState,
@@ -517,6 +519,8 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
             spawn_debug_toggle_row(root, "Formations", DevToggleFlag::Formations);
             spawn_debug_toggle_row(root, "Selection gizmos", DevToggleFlag::Selection);
             spawn_debug_toggle_row(root, "Interaction hits", DevToggleFlag::Interaction);
+            spawn_debug_toggle_row(root, "Combat overlay", DevToggleFlag::Combat);
+            spawn_debug_toggle_row(root, "Health bars (all)", DevToggleFlag::Health);
             spawn_debug_toggle_row(root, "Command trace", DevToggleFlag::CommandTrace);
             spawn_debug_toggle_row(root, "Grid overlay", DevToggleFlag::Grid);
             spawn_debug_toggle_row(root, "Enabled only (E)", DevToggleFlag::EnabledOnly);
@@ -1087,6 +1091,8 @@ pub(crate) fn sync_dev_panel_button_styles(
             DevToggleFlag::Formations => flags.formation,
             DevToggleFlag::Selection => flags.selection,
             DevToggleFlag::Interaction => flags.interaction,
+            DevToggleFlag::Combat => flags.combat,
+            DevToggleFlag::Health => flags.health,
             DevToggleFlag::CommandTrace => flags.intent,
             DevToggleFlag::Grid => flags.grid,
             DevToggleFlag::EnabledOnly => dev_state.enabled_only,
@@ -1112,13 +1118,15 @@ fn format_list_row(entry: &CatalogBrowserEntry, favorite: bool) -> String {
 
 fn format_debug_summary(flags: &DevDebugFlags) -> String {
     format!(
-        "Overlay master: {}\nPaths: {}  Steering: {}  Formations: {}\nSelection: {}  Interaction: {}  Trace: {}  Grid: {}",
+        "Overlay master: {}\nPaths: {}  Steering: {}  Formations: {}\nSelection: {}  Interaction: {}  Combat: {}  Health: {}  Trace: {}  Grid: {}",
         flags.enabled,
         flags.path,
         flags.steering,
         flags.formation,
         flags.selection,
         flags.interaction,
+        flags.combat,
+        flags.health,
         flags.intent,
         flags.grid,
     )
@@ -1412,6 +1420,8 @@ fn toggle_dev_flag(
         DevToggleFlag::Interaction => {
             state.debug_config.interaction = !state.debug_config.interaction
         }
+        DevToggleFlag::Combat => state.debug_config.combat = !state.debug_config.combat,
+        DevToggleFlag::Health => state.debug_config.health = !state.debug_config.health,
         DevToggleFlag::CommandTrace => state.debug_config.intent = !state.debug_config.intent,
         DevToggleFlag::Grid => state.debug_config.grid = !state.debug_config.grid,
         DevToggleFlag::ResetDevState => {

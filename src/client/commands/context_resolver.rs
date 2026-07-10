@@ -54,6 +54,13 @@ pub fn resolve_contextual_command_with_armed(
                 command_type: CommandType::Move,
                 target: ctx.target,
             }),
+            CommandType::AttackMove => match ctx.target {
+                CommandTarget::Terrain { position } => Some(ContextualCommandIntent {
+                    command_type: CommandType::AttackMove,
+                    target: CommandTarget::Terrain { position },
+                }),
+                _ => None,
+            },
             _ => None,
         };
     }

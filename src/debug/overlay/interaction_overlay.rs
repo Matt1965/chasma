@@ -1,55 +1,31 @@
-//! Interaction classification debug overlay (ADR-042 U6 + ADR-039 U-UI3).
+//! Interaction classification debug overlay (ADR-042 U6 + ADR-039 U-UI3, REVIEW-A6).
+//!
+//! Read-only: draws from [`crate::debug::InteractionDebugSnapshot`] populated by capture.
 
 use bevy::prelude::*;
 
-use crate::client::ClientIntent;
-use crate::client::commands::CommandTarget;
+use crate::debug::interaction_snapshot::InteractionDebugSnapshot;
 use crate::debug::settings::{DebugOverlayCategory, DebugOverlaySettings};
-use crate::debug::trace::IntentDispatchHistory;
 use crate::terrain::TerrainRenderAssets;
-use crate::world::{
-    interaction_plan_to_unit_order, query_world_interaction, resolve_interaction_to_order,
-    DoodadCatalog, InteractionDebugSnapshot, InteractionQueryContext, InteractionType,
-    UnitCatalog, WeaponCatalog, WorldConfig, WorldData, WorldPosition,
-};
+use crate::world::{InteractionType, WorldConfig};
 
 use super::helpers::{render_position, xz_to_render_y};
 
-/// Sample the last dispatched click against world interaction and draw classification.
+/// Draw interaction classification gizmos from the client-local debug snapshot.
 pub fn draw_interaction_debug_overlay(
     mut gizmos: Gizmos,
     settings: Res<DebugOverlaySettings>,
-    history: Res<IntentDispatchHistory>,
-    world: Res<WorldData>,
+    snapshot: Res<InteractionDebugSnapshot>,
     config: Res<WorldConfig>,
-    doodad_catalog: Res<DoodadCatalog>,
-    unit_catalog: Res<UnitCatalog>,
-    weapon_catalog: Res<WeaponCatalog>,
     render_assets: Option<Res<TerrainRenderAssets>>,
-    mut snapshot: ResMut<InteractionDebugSnapshot>,
 ) {
     if !settings.category_enabled(DebugOverlayCategory::Interaction) {
         return;
     }
 
-    let Some(position) = last_command_target_position(&history, &world) else {
+    let Some(interaction) = snapshot.query.as_ref() else {
         return;
     };
-
-    let ctx = InteractionQueryContext::new(
-        &world,
-        &doodad_catalog,
-        &unit_catalog,
-        &weapon_catalog,
-    );
-    let Some(interaction) = query_world_interaction(&ctx, position) else {
-        snapshot.clear();
-        return;
-    };
-
-    let plan = resolve_interaction_to_order(&interaction);
-    let order = interaction_plan_to_unit_order(plan);
-    snapshot.record_query_and_order(interaction.clone(), order);
 
     let layout = config.chunk_layout();
     let vertical_scale = render_assets
@@ -69,30 +45,6 @@ pub fn draw_interaction_debug_overlay(
     );
 }
 
-fn last_command_target_position(
-    history: &IntentDispatchHistory,
-    world: &WorldData,
-) -> Option<WorldPosition> {
-    let report = history.report.as_ref()?;
-    for record in report.records.iter().rev() {
-        match &record.intent {
-            ClientIntent::ContextualCommand {
-                target: CommandTarget::Terrain { position },
-            }
-            | ClientIntent::MoveCommand { target: position } => return Some(*position),
-            ClientIntent::ContextualCommand {
-                target: CommandTarget::Unit { unit_id },
-            } => {
-                return world
-                    .get_unit(*unit_id)
-                    .map(|record| record.placement.position);
-            }
-            _ => {}
-        }
-    }
-    None
-}
-
 fn interaction_type_color(kind: InteractionType) -> Color {
     match kind {
         InteractionType::MoveTarget => Color::srgba(0.2, 0.85, 0.35, 0.85),
@@ -104,5 +56,36 @@ fn interaction_type_color(kind: InteractionType) -> Color {
         InteractionType::FriendlyUnit => Color::srgba(0.25, 0.55, 0.95, 0.85),
         InteractionType::NeutralUnit => Color::srgba(0.85, 0.85, 0.35, 0.85),
         InteractionType::None => Color::srgba(0.5, 0.5, 0.5, 0.5),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use bevy::prelude::Vec3;
+    use crate::debug::interaction_snapshot::InteractionDebugSnapshot;
+    use crate::world::{
+        ChunkCoord, InteractionMetadata, InteractionResult, InteractionTargetRef, InteractionType,
+        LocalPosition, WorldPosition,
+    };
+
+    #[test]
+    fn overlay_consumes_read_only_snapshot() {
+        let snapshot = InteractionDebugSnapshot {
+            query: Some(InteractionResult {
+                interaction_type: InteractionType::MoveTarget,
+                position: WorldPosition::new(
+                    ChunkCoord::new(0, 0),
+                    LocalPosition::new(Vec3::ZERO),
+                ),
+                metadata: InteractionMetadata::default(),
+                valid: true,
+                target: InteractionTargetRef::Terrain(WorldPosition::new(
+                    ChunkCoord::new(0, 0),
+                    LocalPosition::new(Vec3::ZERO),
+                )),
+            }),
+            resolved_order: None,
+        };
+        assert!(snapshot.query.is_some());
     }
 }

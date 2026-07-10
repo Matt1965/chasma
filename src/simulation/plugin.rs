@@ -2,7 +2,10 @@
 
 use bevy::prelude::*;
 
-use super::control::{apply_simulation_control_requests, SimulationControlRequests, SimulationControlState};
+use super::control::{
+    apply_simulation_control_requests, SimulationClock, SimulationControlRequests,
+    SimulationControlState,
+};
 use super::input::handle_simulation_keyboard;
 
 /// Systems that advance authoritative simulation (WorldData mutation ticks).
@@ -19,7 +22,10 @@ pub struct SimulationPlugin;
 impl Plugin for SimulationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SimulationControlState>()
+            .init_resource::<SimulationClock>()
             .init_resource::<SimulationControlRequests>()
+            .init_resource::<crate::world::CombatAiSettings>()
+            .init_resource::<crate::world::CombatAiScanState>()
             .register_type::<SimulationControlState>()
             .configure_sets(
                 Update,

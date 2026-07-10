@@ -48,12 +48,12 @@ impl Default for EnvironmentSettings {
 
         Self {
             skybox_set: DEFAULT_SKYBOX_SET.to_string(),
-            skybox_brightness: 1_200.0,
+            skybox_brightness: 1_078.0,
             skybox_rotation: Quat::IDENTITY,
-            directional_light_illuminance: 24_000.0,
+            directional_light_illuminance: 21_189.0,
             directional_light_color: Color::srgb(1.0, 0.97, 0.92),
             directional_light_rotation,
-            ambient_brightness: 320.0,
+            ambient_brightness: 349.0,
             ambient_color: Color::srgb(0.85, 0.88, 0.95),
             directional_shadows_enabled: true,
         }

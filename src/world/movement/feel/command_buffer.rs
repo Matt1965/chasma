@@ -132,6 +132,9 @@ pub(crate) fn resolve_one(
     if world.get_unit(unit_id).is_none() {
         return Err(UnitOrderError::UnitNotFound);
     }
+    if !crate::world::unit::unit_can_execute_actions(world, unit_id) {
+        return Err(UnitOrderError::UnitNotFound);
+    }
 
     match order {
         UnitOrder::Idle => {

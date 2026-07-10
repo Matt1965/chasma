@@ -1,9 +1,12 @@
-//! Simulation execution control state (ADR-046).
+//! Simulation execution control state (ADR-046, ADR-064).
 
 use bevy::prelude::*;
 
 /// Fixed simulation tick duration (30 Hz). Combat timing uses this, not render delta.
 pub const SIMULATION_TICK_SECONDS: f32 = 1.0 / 30.0;
+
+/// Maximum authoritative ticks executed per render frame (catch-up cap).
+pub const MAX_SIMULATION_TICKS_PER_FRAME: u32 = 8;
 
 /// Global simulation tick gate — independent of rendering, UI, and dev mode.
 #[derive(Resource, Debug, Clone, PartialEq, Reflect)]
@@ -11,7 +14,6 @@ pub const SIMULATION_TICK_SECONDS: f32 = 1.0 / 30.0;
 pub struct SimulationControlState {
     pub paused: bool,
     pub step_once: bool,
-    pub simulation_speed_multiplier: f32,
     pub current_tick: u64,
 }
 
@@ -20,7 +22,6 @@ impl Default for SimulationControlState {
         Self {
             paused: false,
             step_once: false,
-            simulation_speed_multiplier: 1.0,
             current_tick: 0,
         }
     }
@@ -71,6 +72,73 @@ impl SimulationControlState {
     }
 }
 
+/// Real-time accumulator that schedules fixed simulation ticks (ADR-064).
+#[derive(Resource, Debug, Clone, PartialEq)]
+pub struct SimulationClock {
+    /// Unspent real time carried into the next render frame (seconds).
+    pub accumulator_seconds: f32,
+}
+
+impl Default for SimulationClock {
+    fn default() -> Self {
+        Self {
+            accumulator_seconds: 0.0,
+        }
+    }
+}
+
+/// Outcome of planning simulation work for one render frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FrameTickPlan {
+    pub tick_count: u32,
+    /// True when elapsed time still warrants more ticks after the per-frame cap.
+    pub capped: bool,
+}
+
+impl SimulationClock {
+    /// Plan how many fixed simulation ticks should run this render frame.
+    ///
+    /// Paused simulation does not accumulate real time. `step_once` schedules exactly one
+    /// tick without consuming accumulated time.
+    pub fn plan_frame(
+        &mut self,
+        delta_seconds: f32,
+        control: &SimulationControlState,
+    ) -> FrameTickPlan {
+        if control.step_once {
+            return FrameTickPlan {
+                tick_count: 1,
+                capped: false,
+            };
+        }
+
+        if control.paused {
+            return FrameTickPlan {
+                tick_count: 0,
+                capped: false,
+            };
+        }
+
+        if delta_seconds > 0.0 {
+            self.accumulator_seconds += delta_seconds;
+        }
+
+        let mut tick_count = 0u32;
+        while self.accumulator_seconds + f32::EPSILON >= SIMULATION_TICK_SECONDS
+            && tick_count < MAX_SIMULATION_TICKS_PER_FRAME
+        {
+            self.accumulator_seconds -= SIMULATION_TICK_SECONDS;
+            tick_count += 1;
+        }
+
+        let capped = self.accumulator_seconds + f32::EPSILON >= SIMULATION_TICK_SECONDS;
+        FrameTickPlan {
+            tick_count,
+            capped,
+        }
+    }
+}
+
 /// Client-local requests to the simulation controller (dev UI, scripts, etc.).
 ///
 /// Producers set flags; [`apply_simulation_control_requests`] consumes them.
@@ -109,6 +177,19 @@ pub fn apply_simulation_control_requests(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn run_planned_ticks(
+        clock: &mut SimulationClock,
+        control: &mut SimulationControlState,
+        delta_seconds: f32,
+    ) -> FrameTickPlan {
+        let plan = clock.plan_frame(delta_seconds, control);
+        for _ in 0..plan.tick_count {
+            assert!(control.begin_tick());
+            control.complete_tick();
+        }
+        plan
+    }
 
     #[test]
     fn pause_prevents_simulation_tick_execution() {
@@ -186,5 +267,117 @@ mod tests {
         control.resume();
         assert!(!control.step_once);
         assert!(!control.paused);
+    }
+
+    #[test]
+    fn paused_clock_advances_zero_ticks() {
+        let mut clock = SimulationClock::default();
+        let mut control = SimulationControlState {
+            paused: true,
+            ..Default::default()
+        };
+        let plan = run_planned_ticks(&mut clock, &mut control, 1.0 / 60.0);
+        assert_eq!(plan.tick_count, 0);
+        assert_eq!(control.current_tick, 0);
+        assert_eq!(clock.accumulator_seconds, 0.0);
+    }
+
+    #[test]
+    fn step_once_clock_advances_exactly_one_tick() {
+        let mut clock = SimulationClock::default();
+        let mut control = SimulationControlState {
+            paused: true,
+            step_once: true,
+            ..Default::default()
+        };
+        let plan = run_planned_ticks(&mut clock, &mut control, 1.0 / 60.0);
+        assert_eq!(plan.tick_count, 1);
+        assert_eq!(control.current_tick, 1);
+        assert!(control.paused);
+        assert_eq!(clock.accumulator_seconds, 0.0);
+    }
+
+    #[test]
+    fn thirty_and_sixty_fps_produce_same_tick_count_over_one_second() {
+        let mut clock_30 = SimulationClock::default();
+        let mut control_30 = SimulationControlState::default();
+        for _ in 0..30 {
+            run_planned_ticks(&mut clock_30, &mut control_30, 1.0 / 30.0);
+        }
+
+        let mut clock_60 = SimulationClock::default();
+        let mut control_60 = SimulationControlState::default();
+        for _ in 0..60 {
+            run_planned_ticks(&mut clock_60, &mut control_60, 1.0 / 60.0);
+        }
+
+        assert_eq!(control_30.current_tick, 30);
+        assert_eq!(control_60.current_tick, 30);
+    }
+
+    #[test]
+    fn thirty_and_one_twenty_fps_produce_same_tick_count_over_one_second() {
+        let mut clock_30 = SimulationClock::default();
+        let mut control_30 = SimulationControlState::default();
+        for _ in 0..30 {
+            run_planned_ticks(&mut clock_30, &mut control_30, 1.0 / 30.0);
+        }
+
+        let mut clock_120 = SimulationClock::default();
+        let mut control_120 = SimulationControlState::default();
+        for _ in 0..120 {
+            run_planned_ticks(&mut clock_120, &mut control_120, 1.0 / 120.0);
+        }
+
+        assert_eq!(control_30.current_tick, 30);
+        assert_eq!(control_120.current_tick, 30);
+    }
+
+    #[test]
+    fn slow_render_frame_runs_multiple_ticks_up_to_cap() {
+        let mut clock = SimulationClock::default();
+        let mut control = SimulationControlState::default();
+        let plan = run_planned_ticks(&mut clock, &mut control, 0.5);
+        assert_eq!(plan.tick_count, MAX_SIMULATION_TICKS_PER_FRAME);
+        assert!(plan.capped);
+        assert!(clock.accumulator_seconds > 0.0);
+    }
+
+    #[test]
+    fn catch_up_continues_across_frames_without_dropping_time() {
+        let mut clock = SimulationClock::default();
+        let mut control = SimulationControlState::default();
+        let first = run_planned_ticks(&mut clock, &mut control, 1.0);
+        assert_eq!(first.tick_count, MAX_SIMULATION_TICKS_PER_FRAME);
+        assert!(first.capped);
+
+        for _ in 0..10 {
+            if control.current_tick >= 30 {
+                break;
+            }
+            run_planned_ticks(&mut clock, &mut control, 0.0);
+        }
+        if control.current_tick < 30 {
+            run_planned_ticks(&mut clock, &mut control, SIMULATION_TICK_SECONDS);
+        }
+        assert_eq!(control.current_tick, 30);
+        assert!(clock.accumulator_seconds < SIMULATION_TICK_SECONDS);
+    }
+
+    #[test]
+    fn paused_simulation_does_not_accumulate_time() {
+        let mut clock = SimulationClock::default();
+        let mut control = SimulationControlState {
+            paused: true,
+            ..Default::default()
+        };
+        run_planned_ticks(&mut clock, &mut control, 1.0);
+        assert_eq!(clock.accumulator_seconds, 0.0);
+        control.resume();
+        let first = run_planned_ticks(&mut clock, &mut control, 1.0 / 60.0);
+        assert_eq!(first.tick_count, 0);
+        let second = run_planned_ticks(&mut clock, &mut control, 1.0 / 60.0);
+        assert_eq!(second.tick_count, 1);
+        assert_eq!(control.current_tick, 1);
     }
 }

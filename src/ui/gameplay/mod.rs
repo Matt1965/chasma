@@ -1,5 +1,6 @@
 //! Gameplay UI layer — SC2/Kenshi hybrid player HUD (ADR-040, ADR-050 P-UI1).
 
+pub mod combat_display;
 mod command_feedback;
 mod command_panel;
 mod cursor_feedback;
@@ -19,7 +20,9 @@ pub use command_feedback::{
 pub use command_panel::{
     command_button_enabled, command_button_emits_palette_intent, HudCommandButton,
 };
-pub use cursor_feedback::{sample_gameplay_cursor_context, GameplayCursorPresentation};
+pub use cursor_feedback::{
+    sample_gameplay_cursor_context, GameplayCursorPresentation, GameplayHoveredUnit,
+};
 pub use input_gate::{
     gameplay_input_blocked_by_hud, update_player_hud_hover_state, PlayerHudHoverState,
 };

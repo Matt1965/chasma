@@ -6,9 +6,10 @@ use super::catalog::UnitCatalog;
 use super::combat_state::CombatState;
 use super::id::UnitId;
 use super::state::UnitState;
-use crate::world::is_unit_alive;
+use crate::world::unit::unit_can_execute_actions;
 use crate::world::{
-    initial_attack_combat_state, validate_attack_target, AttackTargetingPolicy,
+    initial_attack_combat_state, reset_attack_cycle_for_retarget, validate_attack_target,
+    AttackTargetingPolicy, clear_attack_cycle_for_order_cancel,
     CommandBufferResolveReport, CommandResolveSuccess, DoodadCatalog, NavigationConfig,
     WeaponCatalog, WorldData, WorldPosition,
 };
@@ -85,10 +86,11 @@ pub fn issue_unit_order(
     order: UnitOrder,
     targeting_policy: AttackTargetingPolicy,
 ) -> Result<(), UnitOrderError> {
-    if let Some(record) = world.get_unit(unit_id) {
-        if !is_unit_alive(record) {
-            return Err(UnitOrderError::UnitNotFound);
-        }
+    if world.get_unit(unit_id).is_none() {
+        return Err(UnitOrderError::UnitNotFound);
+    }
+    if !unit_can_execute_actions(world, unit_id) {
+        return Err(UnitOrderError::UnitNotFound);
     }
     match order {
         UnitOrder::Idle => {
@@ -97,11 +99,15 @@ pub fn issue_unit_order(
             world
                 .set_unit_state(unit_id, UnitState::Idle)
                 .map_err(|_| UnitOrderError::UnitNotFound)?;
+            clear_attack_cycle_for_order_cancel(
+                world,
+                unit_id,
+                None,
+                unit_catalog,
+                weapon_catalog,
+            );
             world
                 .set_unit_combat_state(unit_id, CombatState::Peaceful)
-                .map_err(|_| UnitOrderError::UnitNotFound)?;
-            world
-                .set_unit_attack_cycle(unit_id, None)
                 .map_err(|_| UnitOrderError::UnitNotFound)?;
             Ok(())
         }
@@ -110,6 +116,18 @@ pub fn issue_unit_order(
             if world.get_unit(unit_id).is_none() {
                 return Err(UnitOrderError::UnitNotFound);
             }
+            world.command_buffer_mut().clear_pending(unit_id);
+            world.movement_smoothing_mut().clear_unit(unit_id);
+            world
+                .set_unit_combat_state(unit_id, CombatState::Peaceful)
+                .map_err(|_| UnitOrderError::UnitNotFound)?;
+            clear_attack_cycle_for_order_cancel(
+                world,
+                unit_id,
+                None,
+                unit_catalog,
+                weapon_catalog,
+            );
             world.command_buffer_mut().enqueue(unit_id, order);
             Ok(())
         }
@@ -123,6 +141,20 @@ pub fn issue_unit_order(
                 unit_catalog,
                 targeting_policy,
             )?;
+            let old_cycle_target = world
+                .get_unit(unit_id)
+                .and_then(|record| record.attack_cycle.as_ref().map(|cycle| cycle.target));
+            if old_cycle_target.is_some_and(|old| old != target) {
+                reset_attack_cycle_for_retarget(
+                    world,
+                    unit_id,
+                    old_cycle_target.unwrap(),
+                    target,
+                    None,
+                    unit_catalog,
+                    weapon_catalog,
+                );
+            }
             world.command_buffer_mut().clear_pending(unit_id);
             world.movement_smoothing_mut().clear_unit(unit_id);
             let combat_state = initial_attack_combat_state(
@@ -150,6 +182,13 @@ pub fn issue_unit_order(
             }
             world.command_buffer_mut().clear_pending(unit_id);
             world.movement_smoothing_mut().clear_unit(unit_id);
+            clear_attack_cycle_for_order_cancel(
+                world,
+                unit_id,
+                None,
+                unit_catalog,
+                weapon_catalog,
+            );
             world
                 .set_unit_combat_state(
                     unit_id,

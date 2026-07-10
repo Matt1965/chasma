@@ -18,6 +18,8 @@ mod placement;
 mod procgen;
 mod procedural_key;
 mod record;
+#[cfg(any(test, feature = "dev"))]
+mod restore;
 mod source;
 mod store;
 mod terrain_validation;
@@ -56,6 +58,8 @@ pub use procgen::{
     ChunkProceduralMaterializeOutcome,
 };
 pub use procedural_key::ProceduralDoodadKey;
+#[cfg(any(test, feature = "dev"))]
+pub use restore::{restore_doodad_record, validate_doodad_for_restore, DoodadRestoreError};
 pub use record::DoodadRecord;
 pub use source::DoodadSource;
 pub use store::ChunkDoodadStore;

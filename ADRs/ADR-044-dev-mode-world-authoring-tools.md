@@ -62,6 +62,13 @@ Drawn via gizmos under U-UI3 interaction overlay category — **no ECS entities*
 New **Placement** tab: brush mode cycle, count/spacing/radius adjust, terrain snap + preview toggles.
 Units/Doodads tabs still select definitions; Placement tab configures batch behavior.
 
+## Relationship to scenes (ADR-045)
+
+Batch placement and scene restore share the same invariant: all instances enter
+[`WorldData`](../src/world/data.rs) through validated authoring or restore APIs.
+Scene load uses [`restore_unit_record`](../src/world/unit/restore.rs) /
+[`restore_doodad_record`](../src/world/doodad/restore.rs), not raw insertion.
+
 # Consequences
 
 ## Positive

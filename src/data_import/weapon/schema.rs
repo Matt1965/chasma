@@ -23,6 +23,9 @@ pub const REQUIRED_COLUMNS: &[&str] = &[
     "Enabled",
 ];
 
+/// Optional worksheet column for projectile weapons.
+pub const OPTIONAL_COLUMNS: &[&str] = &["Projectile Speed"];
+
 /// Raw row parsed from the `Weapons` sheet before validation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct WeaponImportRow {
@@ -38,6 +41,7 @@ pub struct WeaponImportRow {
     pub recovery_seconds: f32,
     pub hit_mode: HitMode,
     pub projectile_key: Option<String>,
+    pub projectile_speed_mps: f32,
     pub animation_key: String,
     pub target_filters: Vec<TargetFilter>,
     pub stat_scaling: Option<String>,
@@ -59,6 +63,7 @@ impl WeaponImportRow {
             self.recovery_seconds,
             self.hit_mode,
             self.projectile_key.clone(),
+            self.projectile_speed_mps,
             self.animation_key.trim(),
             self.target_filters.clone(),
             self.stat_scaling.clone(),

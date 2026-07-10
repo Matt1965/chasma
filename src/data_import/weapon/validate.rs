@@ -39,6 +39,14 @@ pub fn validate_row(row: &WeaponImportRow) -> Result<(), crate::data_import::Row
             row.recovery_seconds
         )));
     }
+    if row.hit_mode == crate::world::HitMode::Projectile {
+        if row.projectile_speed_mps <= 0.0 {
+            return Err(fail(format!(
+                "Projectile Speed must be > 0 for Projectile hit mode (got {})",
+                row.projectile_speed_mps
+            )));
+        }
+    }
     if !row.damage.is_finite()
         || !row.range_meters.is_finite()
         || !row.attacks_per_second.is_finite()
@@ -71,6 +79,7 @@ mod tests {
             recovery_seconds: 0.1,
             hit_mode: HitMode::Melee,
             projectile_key: None,
+            projectile_speed_mps: 0.0,
             animation_key: "attack_fists".to_string(),
             target_filters: vec![TargetFilter::Enemies],
             stat_scaling: None,
@@ -83,6 +92,16 @@ mod tests {
     fn attacks_per_second_must_be_positive() {
         assert!(validate_row(&sample_row(0.0)).is_err());
         assert!(validate_row(&sample_row(1.5)).is_ok());
+    }
+
+    #[test]
+    fn projectile_speed_required_for_projectile_hit_mode() {
+        let mut row = sample_row(1.5);
+        row.hit_mode = HitMode::Projectile;
+        row.projectile_speed_mps = 0.0;
+        assert!(validate_row(&row).is_err());
+        row.projectile_speed_mps = 12.0;
+        assert!(validate_row(&row).is_ok());
     }
 
     #[test]

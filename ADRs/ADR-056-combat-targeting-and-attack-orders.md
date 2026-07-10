@@ -98,6 +98,56 @@ Unit clicks use `classify_unit_target` (not terrain query).
 Command trace records attack order accept/reject per unit with `UnitOrderError`
 when rejected.
 
+## Attack-cycle lifetime (REVIEW-A2)
+
+An [`AttackCycle`] is valid only while **all** hold:
+
+- attacker is alive
+- target exists and is alive
+- `CombatState` still references the same target
+- target remains valid under ownership / weapon filters
+- unit is in an attack-capable engagement state (`Attacking`, `Chasing`, or
+  `AttackMoving` with `target: Some`)
+
+If any condition fails, clear `attack_cycle` immediately; no strike may occur
+from that cycle.
+
+### Retargeting (`UnitOrder::Attack`)
+
+When a new `Attack { target }` is accepted and `target` differs from the
+current cycle target:
+
+- clear the existing `attack_cycle` (no preserved windup / recovery progress)
+- set combat state to the new target via `initial_attack_combat_state`
+- emit `AttackCycleResetRetarget` when trace is available
+
+Re-issuing `Attack` against the **same** target does **not** reset cycle
+progress.
+
+### Order cancellation
+
+Orders that cancel or replace engagement clear `attack_cycle` and stale combat
+targets:
+
+| Order | Combat state | Cycle |
+|-------|--------------|-------|
+| `Idle` | `Peaceful` | cleared |
+| `MoveTo` | `Peaceful` (on issue) | cleared |
+| `AttackMove` | `AttackMoving { target: None }` | cleared |
+| `Attack` (new target) | updated | cleared when target differs |
+
+Emit `AttackCycleClearedOrderCancelled` when trace is available.
+
+### Invalid engagement
+
+When engagement detects target removed, dead, non-hostile, weapon missing, or
+filter-invalid:
+
+- clear `attack_cycle`
+- transition to `Peaceful` for direct `Attack`, or resume stored `AttackMove`
+  destination (`target: None`) when applicable
+- emit `AttackCycleClearedInvalidTarget`
+
 ## Future
 
 - **C4:** range validation, chase, attack-move target acquisition

@@ -2,17 +2,21 @@
 
 use bevy::prelude::*;
 
+use crate::ui::gameplay::combat_display::{
+    attack_cycle_summary, combat_target_id, weapon_display_for_unit,
+};
 use crate::world::{
     alignment_force, blocking_doodad_at_position, cohesion_force, gather_steering_neighbors,
     ground_world_position, interaction_plan_to_unit_order, is_position_slope_walkable,
     query_world_interaction, resolve_interaction_to_order, separation_force, unit_spacing_meters,
     ChunkCoord, DoodadCatalog, InteractionQueryContext, NavigationPath, SteeringContext,
-    SteeringSettings, UnitCatalog, UnitId, UnitState, WorldData, WorldPosition,
+    SteeringSettings, UnitCatalog, UnitId, UnitState, WeaponCatalog, WorldData, WorldPosition,
 };
 
 use super::snapshot::{
-    ChunkResidencySnapshot, FormationInspectorSnapshot, InteractionInspectorSnapshot,
-    PathInspectorSnapshot, SteeringInspectorSnapshot, UnitInspectorSnapshot,
+    ChunkResidencySnapshot, CombatInspectorSnapshot, FormationInspectorSnapshot,
+    InteractionInspectorSnapshot, PathInspectorSnapshot, ProjectileInspectorSnapshot,
+    SteeringInspectorSnapshot, UnitInspectorSnapshot,
 };
 
 const STEERING_SETTINGS: SteeringSettings = SteeringSettings::DEFAULT;
@@ -22,6 +26,7 @@ const FORMATION_TARGET_EPSILON: f32 = 0.25;
 pub fn capture_unit_inspector_snapshot(
     world: &WorldData,
     unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
     doodad_catalog: &DoodadCatalog,
     unit_id: UnitId,
     simulation_tick: u64,
@@ -50,6 +55,9 @@ pub fn capture_unit_inspector_snapshot(
     );
     let chunk = capture_chunk_residency(world, unit_id)?;
 
+    let combat = capture_combat_inspector(&record, unit_catalog, weapon_catalog);
+    let projectiles = capture_projectiles_for_unit(world, unit_id);
+
     Some(UnitInspectorSnapshot {
         unit_id,
         definition_id: record.definition_id.clone(),
@@ -57,6 +65,8 @@ pub fn capture_unit_inspector_snapshot(
         current_hp: record.vitals.current_hp,
         max_hp: record.vitals.max_hp,
         combat_state_label: record.combat_state.label().to_string(),
+        combat,
+        projectiles,
         path,
         formation,
         steering,
@@ -102,6 +112,62 @@ fn state_label(state: &UnitState) -> String {
         UnitState::Idle => "Idle".into(),
         UnitState::Moving { .. } => "Moving".into(),
         UnitState::Dead => "Dead".into(),
+    }
+}
+
+fn capture_combat_inspector(
+    record: &crate::world::UnitRecord,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
+) -> CombatInspectorSnapshot {
+    CombatInspectorSnapshot {
+        weapon_name: weapon_display_for_unit(record, unit_catalog, weapon_catalog)
+            .map(|w| w.name),
+        target_unit_id: combat_target_id(&record.combat_state),
+        attack_phase: record
+            .attack_cycle
+            .as_ref()
+            .map(attack_cycle_summary),
+    }
+}
+
+fn capture_projectiles_for_unit(world: &WorldData, unit_id: UnitId) -> Vec<ProjectileInspectorSnapshot> {
+    world
+        .sorted_projectile_ids()
+        .into_iter()
+        .filter_map(|id| world.get_projectile(id))
+        .filter(|record| record.source_unit_id == unit_id)
+        .map(projectile_inspector_from_record)
+        .collect()
+}
+
+pub fn capture_projectile_inspector_snapshot(
+    world: &WorldData,
+    projectile_id: crate::world::ProjectileId,
+) -> Option<ProjectileInspectorSnapshot> {
+    world
+        .get_projectile(projectile_id)
+        .map(projectile_inspector_from_record)
+}
+
+fn projectile_inspector_from_record(record: &crate::world::ProjectileRecord) -> ProjectileInspectorSnapshot {
+    ProjectileInspectorSnapshot {
+        projectile_id: record.id,
+        source_unit_id: record.source_unit_id,
+        target_unit_id: record.target_unit_id,
+        weapon_id: record.weapon_id.as_str().to_string(),
+        position: record.position,
+        speed_mps: record.speed_mps,
+        status: projectile_status_label(record.status).to_string(),
+    }
+}
+
+fn projectile_status_label(status: crate::world::ProjectileStatus) -> &'static str {
+    match status {
+        crate::world::ProjectileStatus::InFlight => "InFlight",
+        crate::world::ProjectileStatus::Hit => "Hit",
+        crate::world::ProjectileStatus::Expired => "Expired",
+        crate::world::ProjectileStatus::Invalidated => "Invalidated",
     }
 }
 
@@ -405,6 +471,7 @@ mod tests {
         let snap = capture_unit_inspector_snapshot(
             &world,
             &catalog,
+            &crate::world::WeaponCatalog::default(),
             &DoodadCatalog::default(),
             unit_id,
             7,
@@ -437,6 +504,7 @@ mod tests {
         let snap = capture_unit_inspector_snapshot(
             &world,
             &catalog,
+            &crate::world::WeaponCatalog::default(),
             &DoodadCatalog::default(),
             unit_id,
             0,
@@ -467,6 +535,7 @@ mod tests {
         let snap = capture_unit_inspector_snapshot(
             &world,
             &catalog,
+            &crate::world::WeaponCatalog::default(),
             &DoodadCatalog::default(),
             unit_id,
             0,
@@ -497,6 +566,7 @@ mod tests {
         let snap = capture_unit_inspector_snapshot(
             &world,
             &catalog,
+            &crate::world::WeaponCatalog::default(),
             &DoodadCatalog::default(),
             unit_id,
             0,
@@ -535,6 +605,7 @@ mod tests {
         let _ = capture_unit_inspector_snapshot(
             &world,
             &catalog,
+            &crate::world::WeaponCatalog::default(),
             &DoodadCatalog::default(),
             unit_id,
             0,
@@ -551,6 +622,7 @@ mod tests {
         let a = capture_unit_inspector_snapshot(
             &world,
             &catalog,
+            &crate::world::WeaponCatalog::default(),
             &DoodadCatalog::default(),
             unit_id,
             3,
@@ -559,11 +631,61 @@ mod tests {
         let b = capture_unit_inspector_snapshot(
             &world,
             &catalog,
+            &crate::world::WeaponCatalog::default(),
             &DoodadCatalog::default(),
             unit_id,
             3,
         )
         .unwrap();
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn inspector_reads_weapon_and_combat_fields() {
+        let catalog = UnitCatalog::default();
+        let weapons = crate::world::WeaponCatalog::from_definitions(
+            crate::world::starter_weapon_definitions(),
+        )
+        .unwrap();
+        let mut world = WorldData::new(layout());
+        insert_flat(&mut world);
+        let unit_id = spawn_wolf(&mut world, &catalog, pos(1.0, 1.0));
+        let snap = capture_unit_inspector_snapshot(
+            &world,
+            &catalog,
+            &weapons,
+            &DoodadCatalog::default(),
+            unit_id,
+            0,
+        )
+        .unwrap();
+        assert_eq!(snap.combat.weapon_name.as_deref(), Some("Wolf Bite"));
+        assert!(snap.combat.attack_phase.is_none());
+    }
+
+    #[test]
+    fn projectile_inspector_reads_projectile_record_only() {
+        use crate::world::{
+            DamageType, ProjectileId, ProjectileLaunchSnapshot, ProjectileRecord, WeaponDefinitionId,
+        };
+        let mut world = WorldData::new(layout());
+        insert_flat(&mut world);
+        let record = ProjectileRecord::new_in_flight(
+            ProjectileId::new(1),
+            UnitId::new(1),
+            UnitId::new(2),
+            WeaponDefinitionId::new("weapon_bow"),
+            5.0,
+            DamageType::Piercing,
+            pos(0.0, 0.0),
+            pos(10.0, 0.0),
+            20.0,
+            ProjectileLaunchSnapshot::render_test_placeholder(UnitId::new(1)),
+        );
+        world.insert_projectile(record.clone());
+        let snap = capture_projectile_inspector_snapshot(&world, ProjectileId::new(1)).unwrap();
+        assert_eq!(snap.projectile_id, ProjectileId::new(1));
+        assert_eq!(snap.speed_mps, 20.0);
+        assert_eq!(snap.status, "InFlight");
     }
 }

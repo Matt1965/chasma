@@ -1,14 +1,11 @@
 ﻿use bevy::prelude::*;
 
 use crate::client::{collect_unit_input_intents, dispatch_client_intents, ClientPipelinePlugin};
-use crate::debug::{
-    draw_formation_debug_overlay, draw_intent_debug_overlay, draw_interaction_debug_overlay,
-    draw_path_debug_overlay, draw_selection_debug_overlay, draw_steering_debug_overlay,
-    DebugOverlayPlugin,
-};
+use crate::debug::DebugOverlayPlugin;
 use crate::simulation::{SimulationPlugin, SimulationSystems};
 use crate::ui::GameplayUiPlugin;
 use crate::units::input::{BoxSelectDrag, PlayerInteractionSettings, SelectedUnits};
+use crate::units::{sync_unit_health_bars, UnitHealthBarState};
 
 use super::box_select_overlay::{setup_box_select_overlay, sync_box_select_overlay};
 use super::indicator::{sync_unit_selection_indicators, UnitSelectionIndicatorState};
@@ -37,6 +34,7 @@ impl Plugin for PlayerPlugin {
             .init_resource::<BoxSelectDrag>()
             .init_resource::<PlayerInteractionSettings>()
             .init_resource::<UnitSelectionIndicatorState>()
+            .init_resource::<UnitHealthBarState>()
             .add_systems(Startup, setup_box_select_overlay)
             .add_systems(
                 Update,
@@ -85,25 +83,12 @@ impl Plugin for PlayerPlugin {
             .add_systems(
                 Update,
                 (
-                    draw_intent_debug_overlay,
-                    draw_interaction_debug_overlay,
-                    draw_path_debug_overlay,
-                    draw_formation_debug_overlay,
-                    draw_steering_debug_overlay,
-                    draw_selection_debug_overlay,
+                    sync_box_select_overlay,
+                    sync_unit_selection_indicators,
+                    sync_unit_health_bars,
                 )
                     .chain()
                     .after(crate::debug::flush_intent_dispatch_trace)
-                    .in_set(PlayerControlSystems),
-            )
-            .add_systems(
-                Update,
-                (
-                    sync_box_select_overlay,
-                    sync_unit_selection_indicators,
-                )
-                    .chain()
-                    .after(draw_selection_debug_overlay)
                     .in_set(PlayerControlSystems),
             );
     }

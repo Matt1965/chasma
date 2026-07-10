@@ -3,6 +3,7 @@ use bevy::prelude::*;
 mod biome;
 mod chunk;
 mod combat;
+mod projectile;
 mod config;
 mod coordinates;
 mod data;
@@ -35,12 +36,19 @@ pub use biome::{
     DEV_BIOME_MASK_PATH, DEV_SOURCE_WORLD_DIR,
 };
 pub use chunk::{ChunkData, ChunkId};
+pub use projectile::{
+    ProjectileEvent, ProjectileId, ProjectileRecord, ProjectileReport, ProjectileStatus,
+    ProjectileTrace, spawn_projectile_from_strike, step_all_projectiles,
+};
 pub use combat::{
-    classify_unit_target, initial_attack_combat_state, is_in_weapon_range, is_unit_alive,
-    is_valid_attack_target,
-    step_all_combat_engagement, step_all_combat_strikes, validate_attack_target,
-    AttackTargetingPolicy, CombatEngagementReport, CombatEngagementStatus, CombatEngagementTrace,
-    CombatStrikeEvent, CombatStrikeReport, CombatStrikeTrace, RangeCheck, RANGE_HYSTERESIS_METERS,
+    classify_unit_target, clear_attack_cycle_for_order_cancel, find_auto_acquire_target,
+    initial_attack_combat_state, is_in_weapon_range, is_unit_alive, is_valid_attack_target,
+    reset_attack_cycle_for_retarget, step_all_combat_engagement, step_all_combat_strikes, step_combat_ai_acquisition, validate_attack_target,
+    weapon_for_unit_record, AttackTargetingPolicy, CombatAiReport, CombatAiScanState,
+    CombatAiSettings, CombatAiTrace, CombatAiTraceOutcome, CombatEngagementReport,
+    CombatEngagementStatus, CombatEngagementTrace, CombatStrikeEvent, CombatStrikeReport,
+    CombatStrikeTrace, ProjectileImpactRejection, ProjectileLaunchSnapshot,
+    RangeCheck, RANGE_HYSTERESIS_METERS, validate_projectile_impact_target,
 };
 pub use config::WorldConfig;
 pub use coordinates::{ChunkCoord, ChunkLayout, LocalPosition, WorldPosition};
@@ -62,6 +70,10 @@ pub use doodad::{
     FinalizedDoodadPlacement, MaterializationOptions, PlacementFinalizationResult,
     ProceduralDoodadKey, TerrainValidationResult,
 };
+#[cfg(any(test, feature = "dev"))]
+pub use doodad::{
+    restore_doodad_record, validate_doodad_for_restore, DoodadRestoreError,
+};
 #[cfg(test)]
 pub use doodad::starter_definitions;
 pub use formation::{
@@ -69,9 +81,9 @@ pub use formation::{
     FormationKind, FormationMovePlan, FormationPlanner,
 };
 pub use interaction::{
-    interaction_plan_to_unit_order, query_world_interaction, record_interaction_debug_from_click,
-    resolve_interaction_to_order, resolve_unit_click_to_order, resolve_world_click_to_order,
-    resolve_world_click_to_unit_order, InteractionDebugSnapshot, InteractionMetadata,
+    interaction_plan_to_unit_order, query_world_interaction, resolve_interaction_to_order,
+    resolve_unit_click_to_order, resolve_world_click_to_order,
+    resolve_world_click_to_unit_order, InteractionMetadata,
     InteractionOrderPlan, InteractionQueryContext, InteractionResolveContext, InteractionResult,
     InteractionTargetRef, InteractionType, DEFAULT_INTERACTION_AGENT_RADIUS_METERS,
     DEFAULT_INTERACTION_MAX_SLOPE_DEGREES, DEFAULT_INTERACTION_QUERY_RADIUS_METERS,
@@ -102,12 +114,17 @@ pub use unit::{
     step_all_unit_movement,
     step_unit_death_pipeline,
     step_unit_movement,
+    unit_can_execute_actions, unit_record_can_execute_actions,
     BatchUnitMovementReport, ChunkUnitStore,
     UnitAuthoringError, UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId,
     UnitGroundingError, UnitId, UnitInsertError, UnitMetadata, UnitMovementError,
     UnitMovementStepReport, UnitOrder, UnitOrderError, UnitPlacement, UnitRecord, UnitRenderKey,
-    UnitSource, UnitState, UnitVitals, AttackCycle, AttackPhase, CombatState, RemovalReason,
+    UnitSimulationStepReport, UnitSource, UnitState, UnitVitals, AttackCycle, AttackPhase, CombatState, RemovalReason,
     UnitDeathReport, UnitDeathTrace, UnitDeathEvent,
+};
+#[cfg(any(test, feature = "dev"))]
+pub use unit::{
+    normalize_restored_unit, restore_unit_record, validate_unit_for_restore, UnitRestoreError,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use unit::starter_definitions as starter_unit_definitions;
@@ -206,6 +223,5 @@ impl Plugin for WorldFoundationPlugin {
         }
         app.init_resource::<WorldData>();
         app.init_resource::<NavigationConfig>();
-        app.init_resource::<crate::world::InteractionDebugSnapshot>();
     }
 }

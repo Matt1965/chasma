@@ -12,6 +12,7 @@ mod authoring;
 mod catalog;
 mod combat_state;
 mod death;
+mod eligibility;
 mod grounding;
 mod id;
 mod metadata;
@@ -20,6 +21,8 @@ mod orders;
 mod placement;
 mod query;
 mod record;
+#[cfg(any(test, feature = "dev"))]
+mod restore;
 mod source;
 mod state;
 mod store;
@@ -38,6 +41,9 @@ pub use death::{
     RemovalReason, UnitDeathEvent, UnitDeathReport, UnitDeathTrace, UnitRemovalEntry,
     UnitRemovalQueue,
 };
+pub use eligibility::{unit_can_execute_actions, unit_record_can_execute_actions};
+#[cfg(any(test, feature = "dev"))]
+pub use restore::{normalize_restored_unit, restore_unit_record, validate_unit_for_restore, UnitRestoreError};
 pub use combat_state::CombatState;
 #[cfg(any(test, feature = "dev"))]
 pub use catalog::starter_definitions;
@@ -46,7 +52,7 @@ pub use grounding::{
 };
 pub use movement::{
     step_all_unit_movement, step_unit_movement, BatchUnitMovementReport, UnitMovementError,
-    UnitMovementStepReport,
+    UnitMovementStepReport, UnitSimulationStepReport,
 };
 pub use orders::{
     issue_unit_order, resolve_all_pending_unit_orders, resolve_pending_unit_orders, UnitOrder,

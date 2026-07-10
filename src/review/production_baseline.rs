@@ -147,6 +147,8 @@ fn movement_with_empty_catalogs_does_not_panic_on_empty_world() {
     let catalog = UnitCatalog::from_definitions(Vec::new()).unwrap();
     let doodad_catalog = DoodadCatalog::from_definitions(Vec::new()).unwrap();
     let mut world = empty_layout_world();
+    let mut scan = crate::world::CombatAiScanState::default();
+    let settings = crate::world::CombatAiSettings::default();
     let report = crate::world::step_all_unit_movement(
         &mut world,
         &catalog,
@@ -154,6 +156,8 @@ fn movement_with_empty_catalogs_does_not_panic_on_empty_world() {
         &doodad_catalog,
         &crate::world::NavigationConfig::default(),
         crate::world::AttackTargetingPolicy::default(),
+        &settings,
+        &mut scan,
         1.0 / 60.0,
         0,
     );

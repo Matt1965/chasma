@@ -22,11 +22,13 @@ render frame with no global gate.
 ```text
 Real time (render / UI / debug / input collection)
         ↓
-SimulationControlState gate
+SimulationClock accumulator (ADR-064)
         ↓
-Simulation tick (one call to step_all_unit_movement)
+SimulationControlState gate (pause / step_once)
         ↓
-Movement · path resolve · steering · formation (unchanged rules)
+Simulation tick(s) — step_all_unit_movement × N
+        ↓
+Movement · combat · projectiles · death · AI (unchanged rules)
 ```
 
 Pause affects **simulation tick progression only**. Rendering, UI, debug overlays,
@@ -48,8 +50,10 @@ selection, and intent collection continue on real time.
 |-------|---------|
 | `paused` | When true, skip simulation ticks |
 | `step_once` | Run exactly one tick, then re-pause |
-| `simulation_speed_multiplier` | Reserved for future time scaling (default `1.0`) |
 | `current_tick` | Monotonic completed simulation tick counter |
+
+Fixed-timestep scheduling lives on [`SimulationClock`](../src/simulation/control.rs)
+(ADR-064), not on this resource.
 
 ## Input bindings
 
@@ -62,8 +66,9 @@ F12 remains dev mode toggle (ADR-043). Space is **not** used for dev catalog sea
 
 ## Gating point
 
-[`tick_unit_movement`](../src/player/simulation.rs) calls
-[`SimulationControlState::begin_tick`](../src/simulation/control.rs) before
+[`tick_unit_movement`](../src/player/simulation.rs) plans ticks via
+[`SimulationClock::plan_frame`](../src/simulation/control.rs), then for each planned tick
+calls [`SimulationControlState::begin_tick`](../src/simulation/control.rs) before
 [`step_all_unit_movement`](../src/world/unit/movement.rs) and
 [`complete_tick`](../src/simulation/control.rs) after.
 
@@ -98,8 +103,7 @@ mutates it directly.
 
 - SC2-style replay debugging: `current_tick` is the hook for recorded snapshots.
 - Multiplayer: control state can move to server authority; gate pattern unchanged.
-- Time dilation: `simulation_speed_multiplier` can drive multiple ticks per frame
-  without changing movement rules.
+- Time dilation: deferred until product-facing controls exist (see ADR-064).
 
 # Consequences
 

@@ -1,11 +1,110 @@
 //! Attack target validation (ADR-056 C3).
 
 use crate::world::interaction::InteractionType;
-use crate::world::ownership::Affiliation;
+use crate::world::ownership::{Affiliation, OwnerId, TeamId};
 use crate::world::unit::{UnitOrderError, UnitRecord, UnitState};
 use crate::world::{
     TargetFilter, UnitCatalog, UnitId, WeaponCatalog, WeaponDefinition, WorldData,
 };
+
+/// Frozen attacker ownership and weapon filter state at projectile launch (ADR-060, REVIEW-A3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProjectileLaunchSnapshot {
+    pub source_unit_id: UnitId,
+    pub source_owner_id: Option<OwnerId>,
+    pub source_team_id: Option<TeamId>,
+    pub source_affiliation: Affiliation,
+    pub weapon_target_filters: Vec<TargetFilter>,
+    pub dev_allow_all_targets: bool,
+}
+
+impl ProjectileLaunchSnapshot {
+    pub fn capture(
+        attacker: &UnitRecord,
+        weapon: &WeaponDefinition,
+        policy: AttackTargetingPolicy,
+    ) -> Self {
+        Self {
+            source_unit_id: attacker.id,
+            source_owner_id: attacker.owner_id,
+            source_team_id: attacker.team_id,
+            source_affiliation: attacker.affiliation,
+            weapon_target_filters: weapon.target_filters.clone(),
+            dev_allow_all_targets: policy.dev_allow_all_targets,
+        }
+    }
+
+    /// Render-only tests that never resolve impact against live unit rules.
+    pub fn render_test_placeholder(source_unit_id: UnitId) -> Self {
+        Self {
+            source_unit_id,
+            source_owner_id: None,
+            source_team_id: None,
+            source_affiliation: Affiliation::Dev,
+            weapon_target_filters: vec![TargetFilter::All],
+            dev_allow_all_targets: true,
+        }
+    }
+}
+
+impl Default for ProjectileLaunchSnapshot {
+    fn default() -> Self {
+        Self {
+            source_unit_id: UnitId::new(0),
+            source_owner_id: None,
+            source_team_id: None,
+            source_affiliation: Affiliation::Unknown,
+            weapon_target_filters: Vec::new(),
+            dev_allow_all_targets: false,
+        }
+    }
+}
+
+/// Why a projectile impact was rejected (REVIEW-A3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProjectileImpactRejection {
+    TargetMissing,
+    TargetDead,
+    TargetNowFriendly,
+    TargetFilterRejected,
+    OwnershipUnavailable,
+}
+
+/// Revalidate projectile target legality at impact using launch-time snapshot (REVIEW-A3).
+///
+/// Does not require the source unit to exist or be alive. Does not recheck weapon range.
+pub fn validate_projectile_impact_target(
+    world: &WorldData,
+    target_id: UnitId,
+    snapshot: &ProjectileLaunchSnapshot,
+) -> Result<(), ProjectileImpactRejection> {
+    if snapshot.source_unit_id == target_id {
+        return Err(ProjectileImpactRejection::TargetNowFriendly);
+    }
+    if snapshot.source_affiliation == Affiliation::Unknown && !snapshot.dev_allow_all_targets {
+        return Err(ProjectileImpactRejection::OwnershipUnavailable);
+    }
+    let Some(target) = world.get_unit(target_id) else {
+        return Err(ProjectileImpactRejection::TargetMissing);
+    };
+    if !is_unit_alive(target) {
+        return Err(ProjectileImpactRejection::TargetDead);
+    }
+    let ownership_ok = ownership_allows_attack_parts(
+        snapshot.source_unit_id,
+        snapshot.source_team_id,
+        snapshot.source_affiliation,
+        target,
+        snapshot.dev_allow_all_targets,
+    );
+    if !ownership_ok && !snapshot.weapon_target_filters.contains(&TargetFilter::Neutral) {
+        return Err(ProjectileImpactRejection::TargetNowFriendly);
+    }
+    if !weapon_allows_target_filters(&snapshot.weapon_target_filters, target, ownership_ok) {
+        return Err(ProjectileImpactRejection::TargetFilterRejected);
+    }
+    Ok(())
+}
 
 /// Policy hooks for dev/debug targeting overrides.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -139,15 +238,31 @@ fn ownership_allows_attack(
     target: &UnitRecord,
     dev_allow_all: bool,
 ) -> bool {
-    if dev_allow_all || attacker.affiliation == Affiliation::Dev {
-        return attacker.id != target.id;
+    ownership_allows_attack_parts(
+        attacker.id,
+        attacker.team_id,
+        attacker.affiliation,
+        target,
+        dev_allow_all,
+    )
+}
+
+fn ownership_allows_attack_parts(
+    attacker_id: UnitId,
+    attacker_team_id: Option<TeamId>,
+    attacker_affiliation: Affiliation,
+    target: &UnitRecord,
+    dev_allow_all: bool,
+) -> bool {
+    if dev_allow_all || attacker_affiliation == Affiliation::Dev {
+        return attacker_id != target.id;
     }
 
-    if attacker.team_id.is_some() && attacker.team_id == target.team_id {
+    if attacker_team_id.is_some() && attacker_team_id == target.team_id {
         return false;
     }
 
-    match attacker.affiliation {
+    match attacker_affiliation {
         Affiliation::Player => matches!(
             target.affiliation,
             Affiliation::Hostile | Affiliation::Wildlife
@@ -163,11 +278,19 @@ fn weapon_allows_target(
     target: &UnitRecord,
     ownership_ok: bool,
 ) -> bool {
-    if weapon.target_filters.contains(&TargetFilter::All) {
+    weapon_allows_target_filters(&weapon.target_filters, target, ownership_ok)
+}
+
+fn weapon_allows_target_filters(
+    filters: &[TargetFilter],
+    target: &UnitRecord,
+    ownership_ok: bool,
+) -> bool {
+    if filters.contains(&TargetFilter::All) {
         return true;
     }
 
-    for filter in &weapon.target_filters {
+    for filter in filters {
         match filter {
             TargetFilter::All => return true,
             TargetFilter::Enemies if ownership_ok => return true,

@@ -75,6 +75,10 @@ deterministic generation with explicit test fixtures.
 - Unit tests must construct catalogs explicitly (`UnitCatalog::default()` in tests
   still resolves to fixtures under `cfg(test)`).
 - Dev builds without a workbook get empty catalogs and explicit warnings.
+- Dev scene load (ADR-045) rejects missing/disabled catalog references atomically; no
+  starter substitution on restore failure.
+- Debug overlay visualization is dev-gated and defaults off in production (REVIEW-A6);
+  command trace emission remains available for gameplay HUD and diagnostics.
 
 # Non-goals
 

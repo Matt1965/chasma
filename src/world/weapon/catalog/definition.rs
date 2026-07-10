@@ -104,6 +104,8 @@ pub struct WeaponDefinition {
     pub recovery_seconds: f32,
     pub hit_mode: HitMode,
     pub projectile_key: Option<String>,
+    /// Travel speed for [`HitMode::Projectile`] weapons (m/s). Ignored for other hit modes.
+    pub projectile_speed_mps: f32,
     pub animation_key: String,
     pub target_filters: Vec<TargetFilter>,
     /// Reserved for future stat scaling — ignored in C1 behavior.
@@ -125,6 +127,7 @@ impl WeaponDefinition {
         recovery_seconds: f32,
         hit_mode: HitMode,
         projectile_key: Option<String>,
+        projectile_speed_mps: f32,
         animation_key: impl Into<String>,
         target_filters: Vec<TargetFilter>,
         stat_scaling: Option<String>,
@@ -142,6 +145,7 @@ impl WeaponDefinition {
             recovery_seconds,
             hit_mode,
             projectile_key,
+            projectile_speed_mps,
             animation_key: animation_key.into(),
             target_filters,
             stat_scaling,

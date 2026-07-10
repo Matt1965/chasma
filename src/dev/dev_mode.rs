@@ -90,7 +90,7 @@ impl Default for DevModeState {
             selected_definition: None,
             spawn_mode: SpawnMode::Unit,
             enabled_only: true,
-            debug_config: DebugOverlayConfig::default(),
+            debug_config: DebugOverlayConfig::production(),
             brush: BrushSettings::default(),
             terrain_conforming: true,
             show_preview: true,

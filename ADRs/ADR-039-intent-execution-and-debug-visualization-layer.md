@@ -70,6 +70,26 @@ Trace entries record:
 [`DebugOverlaySettings`](../src/debug/settings.rs) provides per-category toggles,
 a master switch, and `max_draw_units` (default 64) to cap draw cost.
 
+## Production gating (REVIEW-A6)
+
+| Build | Debug overlay draw systems | Default config |
+|-------|---------------------------|----------------|
+| Default / production | Not registered (`feature = "dev"`) | [`DebugOverlayConfig::production()`](../src/debug/settings.rs) — all categories off |
+| Dev | Registered in [`DebugOverlayPlugin`](../src/debug/plugin.rs) with per-category `run_if` | Categories off until Dev Mode toggles |
+
+**Gameplay presentation** (selection mesh rings, box-select marquee, move-command
+marker/ping, cursor feedback) remains registered in [`PlayerPlugin`](../src/player/plugin.rs)
+and is **not** gated by debug overlay settings.
+
+**Command trace emission** (`CommandTraceBuffer`, flush systems) remains active in all
+builds; only **visualization** (intent/combat overlays, inspector panels) is dev-gated.
+
+## Read-only overlay rule (REVIEW-A6)
+
+[`InteractionDebugSnapshot`](../src/debug/interaction_snapshot.rs) is a **client-local
+debug resource** (not [`WorldData`](../src/world/data.rs)). [`capture_interaction_debug_snapshot`](../src/debug/interaction_capture.rs) populates it from dispatch history;
+[`draw_interaction_debug_overlay`](../src/debug/overlay/interaction_overlay.rs) reads only.
+
 ## Schedule (player control)
 
 ```text
@@ -79,7 +99,7 @@ advance_client_frame_index
   → collect_unit_input_intents
   → dispatch_client_intents
   → flush_intent_dispatch_trace
-  → debug overlays (chain)
+  → [dev] capture + debug overlays (chain, run_if per category)
   → presentation sync (selection rings, move marker, box select)
 ```
 
@@ -90,7 +110,7 @@ advance_client_frame_index
 | Input collection | `ClientIntentQueue`, `BoxSelectDrag` | `WorldData`, `SelectedUnits` |
 | Intent dispatch | `SelectedUnits`, command APIs | Direct rendering |
 | Simulation | `WorldData` | Input devices, overlays |
-| Debug overlays | Gizmos only | `WorldData` or command issuance |
+| Debug overlays | Gizmos + client-local debug resources only | `WorldData`, command issuance |
 
 [`ClientBoundaryGuard`](../src/debug/boundaries.rs) debug-asserts that input
 collection and intent dispatch do not overlap.

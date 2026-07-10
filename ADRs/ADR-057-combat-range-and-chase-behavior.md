@@ -63,13 +63,36 @@ do not teleport or mutate placement.
 ## Movement reuse
 
 Chase uses shared [`start_unit_move_to`] (same pathfinding as deferred MoveTo).
-Combat runs **before** command-buffer resolve and movement each tick:
 
-1. `step_all_combat_engagement`
-2. `resolve_pending_unit_orders`
-3. `step_unit_movement`
+## Canonical simulation tick order (REVIEW-A4)
 
-No changes to A*, steering, or formation systems.
+Authoritative combat and movement run inside [`step_all_unit_movement`]. This is the
+single canonical pipeline — other ADRs reference this section rather than duplicating
+phase lists.
+
+```text
+1. resolve_pending_unit_orders
+2. step_all_combat_engagement     (target validation, chase, in-range)
+3. step_all_combat_strikes        (windup / strike / spawn projectiles)
+4. step_all_projectiles           (existing projectiles only; same-tick spawns skipped)
+5. step_unit_death_pipeline       (detect → queue → target cleanup → remove)
+6. step_combat_ai_acquisition     (post-cleanup; affects next tick orders)
+7. step_unit_movement             (per-unit locomotion)
+```
+
+Engagement always runs before strikes so range transitions clear stale windups.
+Combat AI runs after death cleanup so scans observe a stable post-combat world.
+Deferred [`UnitRemovalQueue`] prevents mid-iteration erasure during strikes and
+projectile impacts.
+
+Units that are dead, at 0 HP, or queued for removal must not act — see
+[`unit_can_execute_actions`] (REVIEW-A4).
+
+## Legacy C4 movement note
+
+C4 originally documented engagement before command resolve and movement only.
+Strikes, projectiles, death, and AI phases were added in C5–C9; the canonical
+order above supersedes the C4-only list.
 
 ## Attack-move scan
 

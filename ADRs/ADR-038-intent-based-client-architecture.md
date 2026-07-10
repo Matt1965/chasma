@@ -62,6 +62,10 @@ Movement resolves the command buffer before new intents are collected.
 
 [`PlayerInteractionSettings::debug_intents`] logs each intent and dispatch result.
 
+**REVIEW-A6:** Debug overlay *visualization* is dev-feature-gated and defaults off in
+production. Gameplay presentation (selection rings, move feedback) is separate and always
+available. See ADR-039.
+
 ## Migration (U-UI2 scope)
 
 - Removed direct [`handle_unit_selection_input`] side effects.

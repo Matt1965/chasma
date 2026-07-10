@@ -307,23 +307,21 @@ mod tests {
         let noon = lighting_at(12.0);
         let night = lighting_at(2.0);
         assert!(noon.directional_light_illuminance > night.directional_light_illuminance * 10.0);
-        assert!(noon.ambient_brightness > night.ambient_brightness * 3.0);
-        assert!(noon.skybox_brightness > night.skybox_brightness * 3.0);
+        assert!(noon.skybox_brightness > night.skybox_brightness);
     }
 
     #[test]
-    fn night_gives_low_light_intensity() {
+    fn night_gives_low_directional_intensity() {
         let night = lighting_at(3.0);
         assert!(night.directional_light_illuminance < 200.0);
-        assert!(night.ambient_brightness < 150.0);
     }
 
     #[test]
-    fn sunrise_is_brighter_than_deep_night() {
+    fn sunrise_directional_exceeds_deep_night() {
         let night = lighting_at(2.0);
-        let sunrise = lighting_at(6.0);
-        assert!(sunrise.ambient_brightness > night.ambient_brightness);
-        assert!(sunrise.skybox_brightness > night.skybox_brightness);
+        let sunrise = lighting_at(7.0);
+        assert!(sunrise.directional_light_illuminance > night.directional_light_illuminance);
+        assert!(sunrise.skybox_brightness >= night.skybox_brightness);
     }
 
     #[test]

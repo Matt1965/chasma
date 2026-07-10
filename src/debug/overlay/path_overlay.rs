@@ -18,12 +18,9 @@ pub fn draw_path_debug_overlay(
     selection: Res<SelectedUnits>,
     settings: Res<DebugOverlaySettings>,
     focus: Res<InspectorOverlayFocus>,
-    interaction_settings: Res<crate::units::input::PlayerInteractionSettings>,
     render_assets: Option<Res<TerrainRenderAssets>>,
 ) {
-    if !settings.category_enabled(DebugOverlayCategory::Path)
-        && !interaction_settings.debug_unit_interaction
-    {
+    if !settings.category_enabled(DebugOverlayCategory::Path) {
         return;
     }
 

@@ -11,8 +11,12 @@ use super::id::UnitId;
 use super::orders::resolve_pending_unit_orders;
 use super::state::UnitState;
 use super::UnitInsertError;
-use crate::world::is_unit_alive;
-use crate::world::combat::{step_all_combat_engagement, step_all_combat_strikes};
+use super::eligibility::unit_can_execute_actions;
+use crate::world::combat::{
+    step_all_combat_engagement, step_all_combat_strikes, step_combat_ai_acquisition,
+    CombatAiReport, CombatAiScanState, CombatAiSettings, CombatStrikeReport,
+};
+use crate::world::projectile::{step_all_projectiles, ProjectileReport};
 use super::death::step_unit_death_pipeline;
 use crate::world::movement::feel::{
     should_skip_direction_smoothing, stabilized_movement_heading, steering_is_allowed,
@@ -60,7 +64,9 @@ pub struct UnitSimulationStepReport {
     pub command_resolve: crate::world::CommandBufferResolveReport,
     pub combat: crate::world::CombatEngagementReport,
     pub combat_strike: crate::world::CombatStrikeReport,
+    pub projectile: crate::world::ProjectileReport,
     pub death: crate::world::UnitDeathReport,
+    pub combat_ai: CombatAiReport,
 }
 
 /// Why [`step_unit_movement`] could not complete a step.
@@ -85,7 +91,7 @@ pub fn step_unit_movement(
     let record = world
         .get_unit(unit_id)
         .ok_or(UnitMovementError::UnitNotFound)?;
-    if !is_unit_alive(record) || matches!(record.state, UnitState::Dead) {
+    if !unit_can_execute_actions(world, unit_id) {
         return Ok(UnitMovementStepReport::default());
     }
     let definition_id = record.definition_id.clone();
@@ -298,7 +304,15 @@ pub fn step_unit_movement(
     }
 }
 
-/// Advance all units deterministically by [`UnitId`].
+/// Advance all units deterministically by [`UnitId`] (REVIEW-A4 canonical tick order).
+///
+/// 1. Resolve pending unit orders
+/// 2. Combat engagement (range / chase / target validation)
+/// 3. Combat strikes (may spawn projectiles)
+/// 4. Projectile movement / impact (skips same-tick spawns)
+/// 5. Death detection, queue, target cleanup, removal
+/// 6. Combat AI acquisition (post-cleanup snapshot)
+/// 7. Unit movement
 pub fn step_all_unit_movement(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
@@ -306,19 +320,14 @@ pub fn step_all_unit_movement(
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
+    combat_ai_settings: &CombatAiSettings,
+    combat_ai_scan: &mut CombatAiScanState,
     delta_seconds: f32,
     simulation_tick: u64,
 ) -> UnitSimulationStepReport {
-    let combat_strike = step_all_combat_strikes(
-        world,
-        unit_catalog,
-        weapon_catalog,
-        doodad_catalog,
-        nav_config,
-        targeting_policy,
-        delta_seconds,
-    );
-    let death = step_unit_death_pipeline(world, simulation_tick);
+    let command_resolve =
+        resolve_pending_unit_orders(world, unit_catalog, doodad_catalog, nav_config);
+    let mut combat_strike = CombatStrikeReport::default();
     let combat = step_all_combat_engagement(
         world,
         unit_catalog,
@@ -326,9 +335,36 @@ pub fn step_all_unit_movement(
         doodad_catalog,
         nav_config,
         targeting_policy,
+        &mut combat_strike,
     );
-    let command_resolve =
-        resolve_pending_unit_orders(world, unit_catalog, doodad_catalog, nav_config);
+    let mut projectile_spawn = ProjectileReport::default();
+    combat_strike = step_all_combat_strikes(
+        world,
+        unit_catalog,
+        weapon_catalog,
+        doodad_catalog,
+        nav_config,
+        targeting_policy,
+        delta_seconds,
+        &mut projectile_spawn,
+    );
+    let spawned_this_tick = projectile_spawn.spawned_projectile_ids();
+    let mut projectile_step =
+        step_all_projectiles(world, delta_seconds, &spawned_this_tick);
+    let mut projectile = projectile_spawn;
+    projectile.traces.append(&mut projectile_step.traces);
+    let death = step_unit_death_pipeline(world, simulation_tick);
+    let combat_ai = step_combat_ai_acquisition(
+        world,
+        unit_catalog,
+        weapon_catalog,
+        doodad_catalog,
+        nav_config,
+        targeting_policy,
+        combat_ai_settings,
+        combat_ai_scan,
+        delta_seconds,
+    );
     let mut report = BatchUnitMovementReport::default();
     for unit_id in world.sorted_unit_ids() {
         match step_unit_movement(world, unit_catalog, doodad_catalog, unit_id, delta_seconds) {
@@ -353,7 +389,9 @@ pub fn step_all_unit_movement(
         command_resolve,
         combat,
         combat_strike,
+        projectile,
         death,
+        combat_ai,
     }
 }
 
@@ -490,6 +528,8 @@ mod tests {
         doodad_catalog: &DoodadCatalog,
         delta_seconds: f32,
     ) -> BatchUnitMovementReport {
+        let mut scan = CombatAiScanState::default();
+        let settings = CombatAiSettings::default();
         step_all_unit_movement(
             world,
             catalog,
@@ -497,6 +537,8 @@ mod tests {
             doodad_catalog,
             &nav_config(),
             AttackTargetingPolicy::default(),
+            &settings,
+            &mut scan,
             delta_seconds,
             0,
         )
