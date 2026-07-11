@@ -15,8 +15,8 @@ mod kind;
 mod materialization;
 mod metadata;
 mod placement;
-mod procgen;
 mod procedural_key;
+mod procgen;
 mod record;
 #[cfg(any(test, feature = "dev"))]
 mod restore;
@@ -25,46 +25,46 @@ mod store;
 mod terrain_validation;
 
 pub use authoring::{
-    create_doodad, lookup_doodad, move_doodad, remove_doodad, DoodadAuthoringError,
-    DoodadPlacementOverrides,
+    DoodadAuthoringError, DoodadPlacementOverrides, create_doodad, lookup_doodad, move_doodad,
+    remove_doodad,
 };
-pub use biome_filter::{filter_candidates_by_biome, BiomeFilterResult};
-pub use catalog::{
-    default_blocks_movement, DoodadCatalog, DoodadCatalogError, DoodadDefinition,
-    DoodadDefinitionId, DoodadRenderKey,
-};
+pub use biome_filter::{BiomeFilterResult, filter_candidates_by_biome};
 #[cfg(test)]
 pub use catalog::starter_definitions;
-pub use exclusion::{
-    filter_candidates_by_exclusion_zones, DoodadExclusionZone, ExclusionFilterOptions,
-    ExclusionFilterResult,
+pub use catalog::{
+    DoodadCatalog, DoodadCatalogError, DoodadDefinition, DoodadDefinitionId, DoodadRenderKey,
+    default_blocks_movement,
 };
+pub use exclusion::{
+    DoodadExclusionZone, ExclusionFilterOptions, ExclusionFilterResult,
+    filter_candidates_by_exclusion_zones,
+};
+pub use generation::DeterministicRng;
 pub use generation::{
-    generate_chunk_doodads, generate_chunk_doodads_with_settings, DoodadGenerationContext,
-    DoodadGenerationSettings, DoodadSpawnCandidate,
+    DoodadGenerationContext, DoodadGenerationSettings, DoodadSpawnCandidate,
+    generate_chunk_doodads, generate_chunk_doodads_with_settings,
 };
 pub use id::DoodadId;
 pub use kind::DoodadKind;
 pub use materialization::{
-    materialize_candidates, materialize_candidates_with_exclusion,
-    materialize_candidates_with_options, DoodadMaterializationReport, MaterializationOptions,
+    DoodadMaterializationReport, MaterializationOptions, materialize_candidates,
+    materialize_candidates_with_exclusion, materialize_candidates_with_options,
 };
 pub use metadata::DoodadMetadata;
 pub use placement::{
-    finalize_placements, DoodadPlacement, FinalizedDoodadPlacement, PlacementFinalizationResult,
-};
-pub use procgen::{
-    chunk_needs_procedural_materialization, try_materialize_procedural_chunk_doodads,
-    ChunkProceduralMaterializeOutcome,
+    DoodadPlacement, FinalizedDoodadPlacement, PlacementFinalizationResult, finalize_placements,
 };
 pub use procedural_key::ProceduralDoodadKey;
-#[cfg(any(test, feature = "dev"))]
-pub use restore::{restore_doodad_record, validate_doodad_for_restore, DoodadRestoreError};
+pub use procgen::{
+    ChunkProceduralMaterializeOutcome, chunk_needs_procedural_materialization,
+    try_materialize_procedural_chunk_doodads,
+};
 pub use record::DoodadRecord;
+#[cfg(any(test, feature = "dev"))]
+pub use restore::{DoodadRestoreError, restore_doodad_record, validate_doodad_for_restore};
 pub use source::DoodadSource;
 pub use store::ChunkDoodadStore;
-pub use terrain_validation::{filter_candidates_by_terrain, TerrainValidationResult};
-pub use generation::DeterministicRng;
+pub use terrain_validation::{TerrainValidationResult, filter_candidates_by_terrain};
 
 /// Why [`crate::world::WorldData::insert_doodad`] or relocation rejected a record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

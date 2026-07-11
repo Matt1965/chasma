@@ -14,33 +14,20 @@ mod targeting;
 mod tick_order;
 
 pub use ai::{
-    find_auto_acquire_target, step_combat_ai_acquisition, unit_eligible_for_auto_acquire,
     CombatAiReport, CombatAiScanState, CombatAiSettings, CombatAiTrace, CombatAiTraceOutcome,
+    find_auto_acquire_target, step_combat_ai_acquisition,
 };
-pub use cycle_lifecycle::{
-    clear_attack_cycle_for_invalid_target, clear_attack_cycle_for_order_cancel,
-    combat_engagement_target, is_attack_capable_combat_state, reset_attack_cycle_for_retarget,
-    validate_attack_cycle_for_strike,
-};
+pub use cycle_lifecycle::{clear_attack_cycle_for_order_cancel, reset_attack_cycle_for_retarget};
 pub use engagement::{
-    initial_attack_combat_state, scan_attack_move_target, step_all_combat_engagement,
-    ATTACK_MOVE_SCAN_RADIUS_METERS, CombatEngagementReport, CombatEngagementStatus,
-    CombatEngagementTrace,
+    CombatEngagementReport, CombatEngagementStatus, CombatEngagementTrace,
+    initial_attack_combat_state, step_all_combat_engagement,
 };
-pub use range::{
-    center_distance_meters, collision_radius_for_record, edge_distance_meters,
-    is_in_weapon_range, is_outside_weapon_range_with_hysteresis, measure_weapon_range,
-    range_check_for_units, range_status_from_check, weapon_for_unit_record, RangeCheck,
-    RangeStatus, RANGE_HYSTERESIS_METERS,
-};
-pub use standoff::{
-    compute_standoff_destination, standoff_center_distance_matches_weapon_range, StandoffError,
-};
+pub use range::{RANGE_HYSTERESIS_METERS, RangeCheck, is_in_weapon_range, weapon_for_unit_record};
 pub use strike::{
-    step_all_combat_strikes, CombatStrikeEvent, CombatStrikeReport, CombatStrikeTrace,
+    CombatStrikeEvent, CombatStrikeReport, CombatStrikeTrace, step_all_combat_strikes,
 };
 pub use targeting::{
+    AttackTargetingPolicy, ProjectileImpactRejection, ProjectileLaunchSnapshot,
     classify_unit_target, is_unit_alive, is_valid_attack_target, validate_attack_target,
-    validate_projectile_impact_target, AttackTargetingPolicy, ProjectileImpactRejection,
-    ProjectileLaunchSnapshot,
+    validate_projectile_impact_target,
 };

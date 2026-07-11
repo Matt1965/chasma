@@ -2,14 +2,16 @@
 
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    filter_commandable_unit_ids, filter_selectable_unit_ids, SelectionControllabilityPolicy,
-    WorldData,
+    SelectionControllabilityPolicy, WorldData, filter_commandable_unit_ids,
+    filter_selectable_unit_ids,
 };
 
 /// Remove units the local player cannot command from the selection set.
 pub fn prune_non_commandable_from_selection(world: &WorldData, selection: &mut SelectedUnits) {
     let commandable: std::collections::HashSet<_> =
-        filter_commandable_unit_ids(world, selection.iter()).into_iter().collect();
+        filter_commandable_unit_ids(world, selection.iter())
+            .into_iter()
+            .collect();
     selection.0.retain(|id| commandable.contains(id));
 }
 
@@ -26,9 +28,9 @@ pub fn apply_selectable_filter(
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, create_unit_with_ownership, Affiliation, ChunkCoord, ChunkData, ChunkId,
-        ChunkLayout, Heightfield, LocalPosition, UnitCatalog, UnitDefinitionId, UnitOwnership,
-        UnitSource, WorldPosition,
+        Affiliation, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
+        UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource, WorldPosition, create_unit,
+        create_unit_with_ownership,
     };
     use bevy::prelude::Vec3;
 

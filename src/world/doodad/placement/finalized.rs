@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 
+use crate::world::WorldPosition;
 use crate::world::doodad::catalog::DoodadDefinitionId;
 use crate::world::doodad::generation::DoodadSpawnCandidate;
 use crate::world::doodad::source::DoodadSource;
-use crate::world::WorldPosition;
 
 /// Exact transform to materialize into a [`crate::world::doodad::DoodadRecord`] (ADR-022).
 ///

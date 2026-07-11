@@ -3,9 +3,9 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    filter_commandable_unit_ids, issue_unit_order, AttackTargetingPolicy, CombatState,
-    DoodadCatalog, FormationKind, FormationPlanner, NavigationConfig, UnitCatalog, UnitOrder,
-    UnitOrderError, WeaponCatalog, WorldData, WorldPosition,
+    AttackTargetingPolicy, DoodadCatalog, FormationKind, FormationPlanner, NavigationConfig,
+    UnitCatalog, UnitOrder, UnitOrderError, WeaponCatalog, WorldData, WorldPosition,
+    filter_commandable_unit_ids, issue_unit_order,
 };
 
 use super::selection::SelectedUnits;
@@ -290,9 +290,10 @@ fn log_order_failure(unit_id: crate::world::UnitId, order: UnitOrder, error: Uni
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, create_unit_with_ownership, resolve_all_pending_unit_orders, AttackTargetingPolicy,
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatState, Heightfield, LocalPosition,
-        UnitDefinitionId, UnitOwnership, UnitSource, UnitState, WeaponCatalog, WorldPosition,
+        AttackTargetingPolicy, ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatState,
+        Heightfield, LocalPosition, UnitDefinitionId, UnitOwnership, UnitSource, UnitState,
+        WeaponCatalog, WorldPosition, create_unit, create_unit_with_ownership,
+        resolve_all_pending_unit_orders,
     };
 
     fn flat_world() -> WorldData {
@@ -476,10 +477,16 @@ mod tests {
         );
         resolve_all_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav_config);
 
-        let UnitState::Moving { path: ref path_a, .. } = world.get_unit(a).unwrap().state else {
+        let UnitState::Moving {
+            path: ref path_a, ..
+        } = world.get_unit(a).unwrap().state
+        else {
             panic!("expected moving");
         };
-        let UnitState::Moving { path: ref path_b, .. } = world.get_unit(b).unwrap().state else {
+        let UnitState::Moving {
+            path: ref path_b, ..
+        } = world.get_unit(b).unwrap().state
+        else {
             panic!("expected moving");
         };
         assert_ne!(path_a, path_b);

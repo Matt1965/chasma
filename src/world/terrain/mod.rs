@@ -1,34 +1,26 @@
 use core::fmt;
 
+mod contract;
 #[cfg(feature = "terrain-import")]
 mod decode;
-mod contract;
-mod heightfield;
-mod query;
 #[cfg(feature = "terrain-import")]
 mod gaea;
+mod heightfield;
 #[cfg(feature = "terrain-import")]
 mod import;
 mod mask;
 mod metadata;
+mod query;
 
+pub use contract::validate_heightfield_against_config;
 #[cfg(feature = "terrain-import")]
 pub use decode::{DecodeError, decode_exr_heightfield};
-pub use contract::{
-    validate_heightfield_against_config, CHUNK_SPAN_RELATIVE_TOLERANCE,
-    SPACING_TOLERANCE_METERS,
-};
-pub use heightfield::Heightfield;
-pub use query::{
-    classify_slope_walkability, estimate_slope_degrees, ground_world_position,
-    is_position_slope_walkable, slope_at, try_ground_world_position,
-    try_sample_height_at_position, SlopeWalkability,
-};
 #[cfg(feature = "terrain-import")]
 pub use gaea::{
-    gaea_color_dir, gaea_height_dir, GaeaImportError, import_gaea_tile_directory,
+    GaeaImportError, gaea_color_dir, gaea_height_dir, import_gaea_tile_directory,
     parse_gaea_export_filename, validate_gaea_tile_dimensions,
 };
+pub use heightfield::Heightfield;
 #[cfg(feature = "terrain-import")]
 pub use import::{
     ImportError, SourceHeightfield, chunk_data_from_source_tile, expected_chunk_samples_per_edge,
@@ -36,6 +28,10 @@ pub use import::{
 };
 pub use mask::TerrainMask;
 pub use metadata::TerrainMetadata;
+pub use query::{
+    SlopeWalkability, classify_slope_walkability, estimate_slope_degrees, ground_world_position,
+    is_position_slope_walkable, slope_at, try_ground_world_position, try_sample_height_at_position,
+};
 
 /// Errors produced when constructing authoritative terrain data from raw
 /// samples (ADR-008, REVIEW-B6).
@@ -113,7 +109,9 @@ impl fmt::Display for TerrainQueryError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ChunkNotResident => write!(f, "terrain chunk not resident"),
-            Self::InvalidTerrainCoordinate => write!(f, "terrain coordinate outside heightfield domain"),
+            Self::InvalidTerrainCoordinate => {
+                write!(f, "terrain coordinate outside heightfield domain")
+            }
             Self::SlopeUnavailable => write!(f, "terrain slope unavailable"),
         }
     }

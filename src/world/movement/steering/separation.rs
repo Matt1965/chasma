@@ -2,8 +2,8 @@
 
 use bevy::prelude::Vec2;
 
-use super::SteeringSettings;
 use super::SteeringNeighbor;
+use super::SteeringSettings;
 
 /// Repulsion away from overlapping neighbors (XZ plane).
 pub fn separation_force(

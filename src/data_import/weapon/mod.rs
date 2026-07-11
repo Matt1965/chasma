@@ -7,8 +7,6 @@ mod excel;
 mod schema;
 mod validate;
 
-pub use schema::{WeaponImportRow, REQUIRED_COLUMNS as WEAPON_REQUIRED_COLUMNS};
-
 #[cfg(feature = "data-import")]
 pub use dev_load::resolve_dev_weapon_catalog;
 #[cfg(feature = "data-import")]
@@ -17,8 +15,13 @@ pub use excel::WEAPONS_SHEET_NAME;
 #[cfg(feature = "data-import")]
 pub fn import_weapons_from_excel(
     path: &std::path::Path,
-) -> Result<(Vec<crate::world::WeaponDefinition>, crate::data_import::ImportSummary), crate::data_import::DataImportError>
-{
+) -> Result<
+    (
+        Vec<crate::world::WeaponDefinition>,
+        crate::data_import::ImportSummary,
+    ),
+    crate::data_import::DataImportError,
+> {
     use std::collections::HashMap;
 
     use crate::world::WeaponDefinitionId;

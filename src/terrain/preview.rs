@@ -16,15 +16,15 @@ use std::path::Path;
 use bevy::prelude::*;
 
 use crate::world::{
-    log_dev_biome_load_outcome, try_load_default_dev_biome_mask, WorldConfig, WorldData,
+    WorldConfig, WorldData, log_dev_biome_load_outcome, try_load_default_dev_biome_mask,
 };
 
 use super::catalog::TerrainWorldCatalog;
 use super::decode::decode_chunk;
 use super::lod::TerrainLodSettings;
-use super::spawn::{vertical_scale_for_height_span, TerrainRenderAssets};
-use super::streaming::TerrainStreamingSettings;
 use super::perf::TerrainStreamingPerfSettings;
+use super::spawn::{TerrainRenderAssets, vertical_scale_for_height_span};
+use super::streaming::TerrainStreamingSettings;
 
 /// Default path for dev preview terrain perf logs (see [`TerrainStreamingPerfSettings`]).
 pub const PREVIEW_PERF_LOG_PATH: &str = "logs/terrain_streaming_perf.log";
@@ -90,7 +90,10 @@ fn setup_preview(
                  Run from the project root so the assets path resolves."
             );
         });
-    assert!(catalog.chunk_count() > 0, "dev preview manifest listed no chunks");
+    assert!(
+        catalog.chunk_count() > 0,
+        "dev preview manifest listed no chunks"
+    );
 
     world.set_authored_extent(catalog.authored_extent());
 

@@ -6,15 +6,15 @@ use bevy::window::PrimaryWindow;
 use crate::camera::RtsCamera;
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::{
-    cursor_world_ray, pick_unit_along_ray, terrain_click_to_world_position, SelectedUnits,
+    SelectedUnits, cursor_world_ray, pick_unit_along_ray, terrain_click_to_world_position,
 };
 use crate::world::{
-    is_valid_attack_target, AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldConfig,
-    WorldData,
+    AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldConfig, WorldData,
+    is_valid_attack_target,
 };
 
 use super::player_hud_state::PlayerHudState;
-use super::state::{derive_cursor_mode, CommandHoverContext, GameplayCursorMode, GameplayUiState};
+use super::state::{CommandHoverContext, GameplayCursorMode, GameplayUiState, derive_cursor_mode};
 
 /// Last published gameplay cursor mode (for tests and future OS cursor sync).
 #[derive(Resource, Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -51,8 +51,9 @@ pub fn sample_gameplay_cursor_context(
         .unwrap_or(1.0);
     let policy = AttackTargetingPolicy::default();
 
-    let (hover, hover_attackable, hovered_unit) =
-        cursor_world_ray(&windows, &camera).map_or((CommandHoverContext::None, false, None), |ray| {
+    let (hover, hover_attackable, hovered_unit) = cursor_world_ray(&windows, &camera).map_or(
+        (CommandHoverContext::None, false, None),
+        |ray| {
             if let Some(unit_id) = pick_unit_along_ray(
                 &ray,
                 &world,
@@ -71,13 +72,15 @@ pub fn sample_gameplay_cursor_context(
                     )
                 });
                 (CommandHoverContext::Unit, attackable, Some(unit_id))
-            } else if terrain_click_to_world_position(&ray, &world, layout, vertical_scale).is_some()
+            } else if terrain_click_to_world_position(&ray, &world, layout, vertical_scale)
+                .is_some()
             {
                 (CommandHoverContext::Terrain, false, None)
             } else {
                 (CommandHoverContext::None, false, None)
             }
-        });
+        },
+    );
 
     hovered.unit_id = hovered_unit;
 
@@ -96,7 +99,7 @@ pub fn sample_gameplay_cursor_context(
 
 #[cfg(test)]
 mod tests {
-    use super::super::state::{derive_cursor_mode, CommandHoverContext, GameplayCursorMode};
+    use super::super::state::{CommandHoverContext, GameplayCursorMode, derive_cursor_mode};
     use crate::client::CommandType;
 
     #[test]

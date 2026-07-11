@@ -2,17 +2,19 @@
 
 use bevy::prelude::*;
 
-use crate::debug::{ClientFrameIndex, CommandTraceBuffer, MovementBlockObservability, PendingSimulationTrace};
+use crate::debug::{
+    ClientFrameIndex, CommandTraceBuffer, MovementBlockObservability, PendingSimulationTrace,
+};
 use crate::simulation::{
-    run_simulation_tick, SimulationClock, SimulationControlState, SimulationTickReport,
-    SIMULATION_TICK_SECONDS,
+    SIMULATION_TICK_SECONDS, SimulationClock, SimulationControlState, SimulationTickReport,
+    run_simulation_tick,
 };
 use crate::ui::gameplay::PlayerHudState;
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    AttackTargetingPolicy, CombatAiScanState, CombatAiSettings, CommandBufferResolveReport,
-    CombatAiReport, CombatEngagementReport, CombatStrikeReport, DoodadCatalog, NavigationConfig,
-    ProjectileReport, UnitCatalog, UnitDeathReport, WeaponCatalog, WorldData,
+    AttackTargetingPolicy, CombatAiReport, CombatAiScanState, CombatAiSettings,
+    CombatEngagementReport, CombatStrikeReport, CommandBufferResolveReport, DoodadCatalog,
+    NavigationConfig, ProjectileReport, UnitCatalog, UnitDeathReport, WeaponCatalog, WorldData,
 };
 
 fn merge_step_trace(pending: &mut PendingSimulationTrace, step_report: &SimulationTickReport) {
@@ -21,9 +23,15 @@ fn merge_step_trace(pending: &mut PendingSimulationTrace, step_report: &Simulati
         || step_report.command_resolve.resolved > 0
         || step_report.command_resolve.failed > 0
     {
-        let slot = pending.resolve.get_or_insert_with(CommandBufferResolveReport::default);
-        slot.resolved = slot.resolved.saturating_add(step_report.command_resolve.resolved);
-        slot.failed = slot.failed.saturating_add(step_report.command_resolve.failed);
+        let slot = pending
+            .resolve
+            .get_or_insert_with(CommandBufferResolveReport::default);
+        slot.resolved = slot
+            .resolved
+            .saturating_add(step_report.command_resolve.resolved);
+        slot.failed = slot
+            .failed
+            .saturating_add(step_report.command_resolve.failed);
         slot.failures
             .extend(step_report.command_resolve.failures.iter().cloned());
         slot.successes
@@ -33,7 +41,8 @@ fn merge_step_trace(pending: &mut PendingSimulationTrace, step_report: &Simulati
         let slot = pending
             .combat
             .get_or_insert_with(CombatEngagementReport::default);
-        slot.traces.extend(step_report.combat.traces.iter().cloned());
+        slot.traces
+            .extend(step_report.combat.traces.iter().cloned());
     }
     if !step_report.combat_strike.traces.is_empty() {
         let slot = pending
@@ -56,7 +65,9 @@ fn merge_step_trace(pending: &mut PendingSimulationTrace, step_report: &Simulati
             .extend(step_report.death.removed_unit_ids.iter().copied());
     }
     if !step_report.combat_ai.traces.is_empty() {
-        let slot = pending.combat_ai.get_or_insert_with(CombatAiReport::default);
+        let slot = pending
+            .combat_ai
+            .get_or_insert_with(CombatAiReport::default);
         slot.traces
             .extend(step_report.combat_ai.traces.iter().cloned());
     }
@@ -108,13 +119,13 @@ pub fn tick_unit_movement(
 mod tests {
     use super::*;
     use crate::simulation::{
-        run_simulation_tick, SimulationClock, SimulationControlState, SIMULATION_TICK_SECONDS,
+        SIMULATION_TICK_SECONDS, SimulationClock, SimulationControlState, run_simulation_tick,
     };
     use crate::world::{
-        create_unit, create_unit_with_ownership, issue_unit_order, resolve_all_pending_unit_orders,
-        starter_unit_definitions, starter_weapon_definitions, ChunkCoord, ChunkData, ChunkId,
-        ChunkLayout, Heightfield, LocalPosition, UnitCatalog, UnitDefinitionId,
-        UnitOrder, UnitOwnership, UnitSource, WeaponCatalog, WorldData, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitCatalog,
+        UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource, WeaponCatalog, WorldData,
+        WorldPosition, create_unit, create_unit_with_ownership, issue_unit_order,
+        resolve_all_pending_unit_orders, starter_unit_definitions, starter_weapon_definitions,
     };
 
     fn test_world_with_unit() -> (WorldData, UnitCatalog, crate::world::UnitId) {
@@ -229,11 +240,7 @@ mod tests {
         let doodad_catalog = DoodadCatalog::default();
         let weapon_catalog = WeaponCatalog::default();
         let nav_config = NavigationConfig::default();
-        let before = world
-            .get_unit(unit_id)
-            .unwrap()
-            .placement
-            .position;
+        let before = world.get_unit(unit_id).unwrap().placement.position;
 
         let mut control = SimulationControlState {
             paused: true,
@@ -254,11 +261,7 @@ mod tests {
             60,
         );
 
-        let after = world
-            .get_unit(unit_id)
-            .unwrap()
-            .placement
-            .position;
+        let after = world.get_unit(unit_id).unwrap().placement.position;
         assert_eq!(before, after);
         assert_eq!(control.current_tick, 0);
     }
@@ -386,10 +389,7 @@ mod tests {
                 .set_unit_combat_state(player, CombatState::Attacking { target: hostile })
                 .unwrap();
             world
-                .set_unit_attack_cycle(
-                    player,
-                    Some(AttackCycle::start_windup(hostile, 1.0)),
-                )
+                .set_unit_attack_cycle(player, Some(AttackCycle::start_windup(hostile, 1.0)))
                 .unwrap();
             (player, hostile)
         };
@@ -616,21 +616,22 @@ mod tests {
         .unwrap()
         .id;
 
-        let insert_projectile = |world: &mut WorldData, source: crate::world::UnitId, target: crate::world::UnitId| {
-            let projectile_id = world.allocate_projectile_id();
-            world.insert_projectile(ProjectileRecord::new_in_flight(
-                projectile_id,
-                source,
-                target,
-                weapon_id.clone(),
-                1.0,
-                DamageType::Piercing,
-                start,
-                target_pos,
-                30.0,
-                ProjectileLaunchSnapshot::render_test_placeholder(source),
-            ));
-        };
+        let insert_projectile =
+            |world: &mut WorldData, source: crate::world::UnitId, target: crate::world::UnitId| {
+                let projectile_id = world.allocate_projectile_id();
+                world.insert_projectile(ProjectileRecord::new_in_flight(
+                    projectile_id,
+                    source,
+                    target,
+                    weapon_id.clone(),
+                    1.0,
+                    DamageType::Piercing,
+                    start,
+                    target_pos,
+                    30.0,
+                    ProjectileLaunchSnapshot::render_test_placeholder(source),
+                ));
+            };
         insert_projectile(&mut world_a, source_a, target_a);
         insert_projectile(&mut world_b, source_b, target_b);
 

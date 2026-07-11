@@ -4,11 +4,11 @@ use bevy::prelude::*;
 
 use crate::world::navigation::xz_distance;
 use crate::world::ownership::is_player_controllable;
-use crate::world::unit::{unit_can_execute_actions, CombatState, UnitId, UnitOrder, UnitState};
+use crate::world::unit::{CombatState, UnitId, UnitOrder, UnitState, unit_can_execute_actions};
 use crate::world::{
+    AttackTargetingPolicy, DoodadCatalog, NavigationConfig, UnitCatalog, WeaponCatalog, WorldData,
     is_unit_alive, is_valid_attack_target, issue_unit_order, validate_attack_target,
-    weapon_for_unit_record, AttackTargetingPolicy, DoodadCatalog, NavigationConfig, UnitCatalog,
-    WeaponCatalog, WorldData,
+    weapon_for_unit_record,
 };
 
 use super::settings::CombatAiSettings;
@@ -116,7 +116,14 @@ fn scan_unit_for_acquisition(
     if !unit_eligible_for_auto_acquire(record, settings) {
         return None;
     }
-    if !unit_needs_auto_acquire_target(world, unit_id, record, weapon_catalog, unit_catalog, targeting_policy) {
+    if !unit_needs_auto_acquire_target(
+        world,
+        unit_id,
+        record,
+        weapon_catalog,
+        unit_catalog,
+        targeting_policy,
+    ) {
         return None;
     }
     if weapon_for_unit_record(record, unit_catalog, weapon_catalog).is_err() {
@@ -264,9 +271,9 @@ pub fn find_auto_acquire_target(
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit_with_ownership, starter_unit_definitions, starter_weapon_definitions,
         Affiliation, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
         UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource, WeaponCatalog, WorldPosition,
+        create_unit_with_ownership, starter_unit_definitions, starter_weapon_definitions,
     };
     use bevy::prelude::Vec3;
 
@@ -329,7 +336,8 @@ mod tests {
         )
         .unwrap()
         .id;
-        let hostile = spawn_with_affiliation(&mut world, &catalog, Affiliation::Hostile, pos(4.0, 0.0));
+        let hostile =
+            spawn_with_affiliation(&mut world, &catalog, Affiliation::Hostile, pos(4.0, 0.0));
         let mut scan = CombatAiScanState::default();
         let settings = CombatAiSettings::default();
         let report = step_combat_ai_acquisition(
@@ -343,10 +351,9 @@ mod tests {
             &mut scan,
             1.0,
         );
-        assert!(report
-            .traces
-            .iter()
-            .any(|t| t.outcome == CombatAiTraceOutcome::AiTargetAcquired && t.target == Some(player)));
+        assert!(report.traces.iter().any(
+            |t| t.outcome == CombatAiTraceOutcome::AiTargetAcquired && t.target == Some(player)
+        ));
         assert!(matches!(
             world.get_unit(hostile).unwrap().combat_state,
             CombatState::Attacking { target } | CombatState::Chasing { target } if target == player
@@ -357,7 +364,8 @@ mod tests {
     fn player_unit_does_not_auto_acquire_by_default() {
         let (catalog, weapons) = test_catalogs();
         let mut world = flat_world();
-        let _hostile = spawn_with_affiliation(&mut world, &catalog, Affiliation::Hostile, pos(0.0, 0.0));
+        let _hostile =
+            spawn_with_affiliation(&mut world, &catalog, Affiliation::Hostile, pos(0.0, 0.0));
         let player = create_unit_with_ownership(
             &catalog,
             &mut world,
@@ -391,7 +399,8 @@ mod tests {
     fn player_auto_acquire_setting_enables_player_acquisition() {
         let (catalog, weapons) = test_catalogs();
         let mut world = flat_world();
-        let hostile = spawn_with_affiliation(&mut world, &catalog, Affiliation::Hostile, pos(0.0, 0.0));
+        let hostile =
+            spawn_with_affiliation(&mut world, &catalog, Affiliation::Hostile, pos(0.0, 0.0));
         let player = create_unit_with_ownership(
             &catalog,
             &mut world,
@@ -418,10 +427,12 @@ mod tests {
             &mut scan,
             1.0,
         );
-        assert!(report
-            .traces
-            .iter()
-            .any(|t| t.unit_id == player && t.target == Some(hostile)));
+        assert!(
+            report
+                .traces
+                .iter()
+                .any(|t| t.unit_id == player && t.target == Some(hostile))
+        );
     }
 
     #[test]
@@ -437,7 +448,8 @@ mod tests {
             UnitOwnership::player_default(),
         )
         .unwrap();
-        let neutral = spawn_with_affiliation(&mut world, &catalog, Affiliation::Neutral, pos(4.0, 0.0));
+        let neutral =
+            spawn_with_affiliation(&mut world, &catalog, Affiliation::Neutral, pos(4.0, 0.0));
         let mut scan = CombatAiScanState::default();
         let report = step_combat_ai_acquisition(
             &mut world,
@@ -472,7 +484,8 @@ mod tests {
             UnitOwnership::player_default(),
         )
         .unwrap();
-        let hostile = spawn_with_affiliation(&mut world, &catalog, Affiliation::Hostile, pos(4.0, 0.0));
+        let hostile =
+            spawn_with_affiliation(&mut world, &catalog, Affiliation::Hostile, pos(4.0, 0.0));
         world
             .set_unit_state(hostile, UnitState::Dead)
             .expect("set dead");
@@ -495,7 +508,8 @@ mod tests {
     fn closest_target_chosen() {
         let (catalog, weapons) = test_catalogs();
         let mut world = flat_world();
-        let hostile = spawn_with_affiliation(&mut world, &catalog, Affiliation::Hostile, pos(0.0, 0.0));
+        let hostile =
+            spawn_with_affiliation(&mut world, &catalog, Affiliation::Hostile, pos(0.0, 0.0));
         let near = create_unit_with_ownership(
             &catalog,
             &mut world,
@@ -531,7 +545,8 @@ mod tests {
     fn lowest_unit_id_tie_break() {
         let (catalog, weapons) = test_catalogs();
         let mut world = flat_world();
-        let hostile = spawn_with_affiliation(&mut world, &catalog, Affiliation::Hostile, pos(0.0, 0.0));
+        let hostile =
+            spawn_with_affiliation(&mut world, &catalog, Affiliation::Hostile, pos(0.0, 0.0));
         let a = create_unit_with_ownership(
             &catalog,
             &mut world,
@@ -664,7 +679,8 @@ mod tests {
         )
         .unwrap()
         .id;
-        let hostile = spawn_with_affiliation(&mut world, &catalog, Affiliation::Hostile, pos(4.0, 0.0));
+        let hostile =
+            spawn_with_affiliation(&mut world, &catalog, Affiliation::Hostile, pos(4.0, 0.0));
         let before = world.get_unit(hostile).unwrap().combat_state.clone();
         assert_eq!(before, CombatState::Peaceful);
         let mut scan = CombatAiScanState::default();
@@ -747,10 +763,12 @@ mod tests {
             &mut scan,
             1.0,
         );
-        assert!(!report
-            .traces
-            .iter()
-            .any(|t| t.outcome == CombatAiTraceOutcome::AiTargetAcquired));
+        assert!(
+            !report
+                .traces
+                .iter()
+                .any(|t| t.outcome == CombatAiTraceOutcome::AiTargetAcquired)
+        );
         assert_eq!(
             world.get_unit(hostile).unwrap().combat_state,
             CombatState::Peaceful

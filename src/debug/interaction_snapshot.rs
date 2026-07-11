@@ -6,8 +6,8 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    interaction_plan_to_unit_order, query_world_interaction, resolve_interaction_to_order,
     InteractionQueryContext, InteractionResult, UnitOrder, WorldPosition,
+    interaction_plan_to_unit_order, query_world_interaction, resolve_interaction_to_order,
 };
 
 /// Last interaction query + resolved order for debug tooling (client-local).

@@ -5,7 +5,7 @@
 
 use std::collections::HashSet;
 
-use super::catalog::{UnitCatalog, UnitDefinitionId};
+use super::catalog::UnitCatalog;
 use super::combat_state::CombatState;
 use super::id::UnitId;
 use super::record::UnitRecord;
@@ -148,6 +148,7 @@ pub fn restore_unit_record(
 
 #[cfg(test)]
 mod tests {
+    use super::catalog::UnitDefinitionId;
     use super::*;
     use crate::world::ownership::UnitOwnership;
     use crate::world::{ChunkCoord, LocalPosition, UnitSource, WorldPosition};
@@ -208,7 +209,10 @@ mod tests {
         let mut seen = HashSet::new();
         restore_unit_record(&mut world, &cat, record, &mut seen).unwrap();
         let restored = world.get_unit(UnitId::new(1)).unwrap();
-        assert_eq!(restored.vitals.max_hp, cat.get(&UnitDefinitionId::new("wolf")).unwrap().max_hp);
+        assert_eq!(
+            restored.vitals.max_hp,
+            cat.get(&UnitDefinitionId::new("wolf")).unwrap().max_hp
+        );
         assert_eq!(restored.vitals.current_hp, restored.vitals.max_hp);
     }
 
@@ -219,6 +223,9 @@ mod tests {
         let mut seen = HashSet::new();
         restore_unit_record(&mut world, &cat, sample_record(1), &mut seen).unwrap();
         let err = restore_unit_record(&mut world, &cat, sample_record(1), &mut seen).unwrap_err();
-        assert!(matches!(err, UnitRestoreError::DuplicateUnitId { unit_id: 1 }));
+        assert!(matches!(
+            err,
+            UnitRestoreError::DuplicateUnitId { unit_id: 1 }
+        ));
     }
 }

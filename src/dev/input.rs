@@ -9,16 +9,14 @@ use crate::camera::RtsCamera;
 use crate::doodads::DoodadsRuntimeSettings;
 use crate::simulation::SimulationControlState;
 use crate::terrain::TerrainRenderAssets;
-use crate::units::input::{cursor_world_ray, terrain_click_to_world_position, BoxSelectDrag};
+use crate::units::input::{BoxSelectDrag, cursor_world_ray, terrain_click_to_world_position};
 use crate::world::{DoodadCatalog, UnitCatalog, WorldConfig, WorldData};
 
 use super::catalog_cache::DevSearchDebounce;
 use super::dev_mode::{DevModeInputGate, DevModeState, DevTab};
 use super::history::DevSpawnRecord;
 use super::spawn_tools::dev_spawn_position_from_terrain_click;
-use super::tools::{
-    execute_batch_spawn, BatchSpawnRequest, BatchSpawnScratch, DevPreviewAnchor,
-};
+use super::tools::{BatchSpawnRequest, BatchSpawnScratch, DevPreviewAnchor, execute_batch_spawn};
 
 const SHIFT_BATCH_COUNT: u32 = 5;
 
@@ -187,10 +185,8 @@ pub fn update_dev_panel_hover_state(
     interactions: Query<&Interaction, With<DevPanelUi>>,
     mut hover: ResMut<DevPanelHoverState>,
 ) {
-    hover.hovered = dev_state.enabled
-        && interactions
-            .iter()
-            .any(|state| *state != Interaction::None);
+    hover.hovered =
+        dev_state.enabled && interactions.iter().any(|state| *state != Interaction::None);
 }
 
 /// Update terrain anchor under cursor for brush preview.
@@ -216,7 +212,8 @@ pub fn update_dev_preview_anchor(
         .map(|a| a.vertical_scale)
         .unwrap_or(1.0);
     if let Some(click) = terrain_click_to_world_position(&ray, &world, layout, vertical_scale) {
-        if let Some(grounded) = dev_spawn_position_from_terrain_click(&world, click.world_position) {
+        if let Some(grounded) = dev_spawn_position_from_terrain_click(&world, click.world_position)
+        {
             anchor.position = grounded;
             let dir = Vec3::new(ray.direction.x, 0.0, ray.direction.z);
             if dir.length_squared() > 1e-6 {
@@ -394,9 +391,9 @@ mod tests {
     fn tab_switch_preserves_selection() {
         let mut state = DevModeState::default();
         state.enabled = true;
-        state.select_definition(DefinitionId::Unit(
-            crate::world::UnitDefinitionId::new("wolf"),
-        ));
+        state.select_definition(DefinitionId::Unit(crate::world::UnitDefinitionId::new(
+            "wolf",
+        )));
         state.active_tab = DevTab::Doodads;
         assert!(state.selected_definition.is_some());
     }
@@ -411,8 +408,8 @@ mod tests {
 
     #[test]
     fn spawn_history_records_last_entry() {
-        use bevy::prelude::Vec3;
         use crate::world::{ChunkCoord, LocalPosition};
+        use bevy::prelude::Vec3;
 
         let mut state = DevModeState::default();
         let id = DefinitionId::Doodad(crate::world::DoodadDefinitionId::new("tree"));
@@ -426,7 +423,10 @@ mod tests {
             simulation_tick: 42,
         });
         assert_eq!(state.spawn_history.last().unwrap().simulation_tick, 42);
-        assert_eq!(state.spawn_history.last().unwrap().definition.id_str(), "tree");
+        assert_eq!(
+            state.spawn_history.last().unwrap().definition.id_str(),
+            "tree"
+        );
     }
 
     #[test]

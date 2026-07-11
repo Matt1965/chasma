@@ -1,4 +1,4 @@
-﻿//! Future unit spatial and affiliation query API (reserved â€” not implemented in U2).
+//! Future unit spatial and affiliation query API (reserved â€” not implemented in U2).
 //!
 //! U3+ will expose chunk-local and radius queries without scanning the full world:
 //!
@@ -12,4 +12,3 @@
 //!
 //! Implementation will read authoritative unit stores on [`crate::world::WorldData`],
 //! not ECS render entities.
-

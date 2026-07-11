@@ -36,16 +36,17 @@ impl DoodadSceneAssets {
         let Some(path) = gltf_asset_path(render_key) else {
             return None;
         };
-        let scene: Handle<Scene> = asset_server.load(
-            GltfAssetLabel::Scene(DEFAULT_GLTF_SCENE_INDEX).from_asset(path),
-        );
+        let scene: Handle<Scene> =
+            asset_server.load(GltfAssetLabel::Scene(DEFAULT_GLTF_SCENE_INDEX).from_asset(path));
         self.scenes.insert(definition_id.clone(), scene.clone());
         Some(scene)
     }
 
     pub fn log_missing_once(&mut self, key: &str) {
         if self.missing_keys.insert(key.to_owned()) {
-            warn!("doodad glTF missing for render key `{key}` (expected under {DOODAD_ASSET_ROOT}/)");
+            warn!(
+                "doodad glTF missing for render key `{key}` (expected under {DOODAD_ASSET_ROOT}/)"
+            );
         }
     }
 
@@ -68,15 +69,17 @@ pub fn gltf_asset_path(render_key: &DoodadRenderKey) -> Option<String> {
 }
 
 /// Preload scene handles for every catalog definition that has a render key.
-pub fn preload_doodad_scenes(catalog: &DoodadCatalog, asset_server: &AssetServer) -> DoodadSceneAssets {
+pub fn preload_doodad_scenes(
+    catalog: &DoodadCatalog,
+    asset_server: &AssetServer,
+) -> DoodadSceneAssets {
     let mut scenes = HashMap::new();
     for definition in catalog.definitions() {
         let Some(path) = gltf_asset_path(&definition.render_key) else {
             continue;
         };
-        let scene: Handle<Scene> = asset_server.load(
-            GltfAssetLabel::Scene(DEFAULT_GLTF_SCENE_INDEX).from_asset(path),
-        );
+        let scene: Handle<Scene> =
+            asset_server.load(GltfAssetLabel::Scene(DEFAULT_GLTF_SCENE_INDEX).from_asset(path));
         scenes.insert(definition.id.clone(), scene);
     }
     DoodadSceneAssets {

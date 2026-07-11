@@ -12,11 +12,15 @@ This document defines behavioral requirements for AI contributors.
 
 Project architecture, goals, and system ownership are defined in ARCHITECTURE.md.
 
-AI contributors must follow the architecture rather than reinterpret it.
+Game design direction (combat feel, progression, AI, economy) is defined in DESIGN.md.
 
 When conflicts occur:
 
-ARCHITECTURE.md takes precedence.
+ARCHITECTURE.md takes precedence for system structure.
+
+DESIGN.md takes precedence for intended player experience when ADRs do not yet cover a topic.
+
+Accepted ADRs take precedence over DESIGN.md for implemented behavior.
 
 ---
 
@@ -25,11 +29,12 @@ ARCHITECTURE.md takes precedence.
 Before making design or implementation decisions:
 
 1. Read ARCHITECTURE.md
-2. Read relevant ADRs
-3. Read ROADMAP.md
-4. Read BEVY_REFERENCE.md
-5. Review existing code
-6. Only then propose implementation
+2. Read DESIGN.md (game design direction)
+3. Read relevant ADRs
+4. Read ROADMAP.md
+5. Read BEVY_REFERENCE.md
+6. Review existing code
+7. Only then propose implementation
 
 Do not assume the user's latest request overrides existing architecture.
 

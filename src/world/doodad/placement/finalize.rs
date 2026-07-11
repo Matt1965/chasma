@@ -76,11 +76,13 @@ fn snap_candidate_to_terrain(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::doodad::catalog::{DoodadDefinition, DoodadRenderKey};
     use crate::world::doodad::catalog::DoodadCatalog;
+    use crate::world::doodad::catalog::{DoodadDefinition, DoodadRenderKey};
     use crate::world::doodad::source::DoodadSource;
     use crate::world::terrain::Heightfield;
-    use crate::world::{ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, DoodadKind, LocalPosition};
+    use crate::world::{
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, DoodadKind, LocalPosition,
+    };
     use bevy::prelude::{Quat, Vec3};
 
     fn layout() -> ChunkLayout {

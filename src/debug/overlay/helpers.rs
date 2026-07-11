@@ -5,11 +5,7 @@ use bevy::prelude::*;
 use crate::terrain::world_position_to_render_global;
 use crate::world::{ChunkLayout, WorldPosition};
 
-pub fn render_position(
-    position: WorldPosition,
-    layout: ChunkLayout,
-    vertical_scale: f32,
-) -> Vec3 {
+pub fn render_position(position: WorldPosition, layout: ChunkLayout, vertical_scale: f32) -> Vec3 {
     world_position_to_render_global(position, layout, vertical_scale)
 }
 

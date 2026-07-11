@@ -64,10 +64,7 @@ fn draw_move_target(
     let center = xz_to_render_y(render_position(target, layout, vertical_scale), 0.25);
     gizmos.sphere(center, 0.35, Color::srgba(0.2, 0.85, 1.0, 0.75));
     gizmos.circle(
-        Isometry3d::new(
-            center,
-            Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2),
-        ),
+        Isometry3d::new(center, Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
         0.65,
         Color::srgba(0.2, 0.85, 1.0, 0.45),
     );

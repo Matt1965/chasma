@@ -4,7 +4,7 @@
 //! the Phase 2A synchronous loader, Phase 2B on-demand loading, and a future
 //! `AssetLoader` can share the exact same decode path.
 
-use crate::world::{ChunkCoord, ChunkData, ChunkId, Heightfield, TerrainDataError, TerrainMetadata};
+use crate::world::{ChunkCoord, ChunkData, ChunkId, Heightfield, TerrainMetadata};
 
 #[cfg(any(test, feature = "terrain-import"))]
 use super::albedo::TerrainChunkPayload;
@@ -64,7 +64,9 @@ pub fn decode_chunk(text: &str) -> Result<(ChunkId, ChunkData), TerrainAssetErro
 /// Decode a height chunk file into a sync-load pipeline payload without
 /// loading optional albedo sidecars (tests / terrain-import tooling only).
 #[cfg(any(test, feature = "terrain-import"))]
-pub fn decode_chunk_payload(text: &str) -> Result<(ChunkId, TerrainChunkPayload), TerrainAssetError> {
+pub fn decode_chunk_payload(
+    text: &str,
+) -> Result<(ChunkId, TerrainChunkPayload), TerrainAssetError> {
     let (id, chunk_data) = decode_chunk(text)?;
     Ok((id, TerrainChunkPayload::new(chunk_data, None)))
 }
@@ -73,6 +75,7 @@ pub fn decode_chunk_payload(text: &str) -> Result<(ChunkId, TerrainChunkPayload)
 mod tests {
     use super::*;
     use crate::terrain::asset::{ManifestChunk, ManifestConfig};
+    use crate::world::TerrainDataError;
 
     fn sample_chunk_file() -> ChunkFile {
         // 3x3 tile, spacing 128 -> 256 m chunk. Heights row*10 + col.

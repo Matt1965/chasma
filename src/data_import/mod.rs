@@ -21,32 +21,36 @@ mod ron;
 
 pub use error::{DataImportError, RowImportError};
 pub use schema::{
-    normalize_doodad_definition_id, normalize_file_path, normalize_file_path_to_render_key,
-    parse_biome, parse_bool_yn, parse_category, parse_enabled_cell, DoodadImportRow, BIOME_COLUMN,
-    DEFINITION_ID_COLUMN_ALIASES, RANDOM_ROTATION_COLUMN_ALIASES, REQUIRED_COLUMNS,
+    BIOME_COLUMN, DEFINITION_ID_COLUMN_ALIASES, DoodadImportRow, RANDOM_ROTATION_COLUMN_ALIASES,
+    REQUIRED_COLUMNS, normalize_doodad_definition_id, normalize_file_path,
+    normalize_file_path_to_render_key, parse_biome, parse_bool_yn, parse_category,
+    parse_enabled_cell,
 };
 
 #[cfg(feature = "data-import")]
-pub use dev_load::{resolve_dev_doodad_catalog, DEV_DOODAD_CATALOG_RON_PATH};
-#[cfg(feature = "data-import")]
-pub use paths::{dev_design_workbook_path, DEV_DESIGN_WORKBOOK};
+pub use dev_load::{DEV_DOODAD_CATALOG_RON_PATH, resolve_dev_doodad_catalog};
 /// Same workbook as [`DEV_DESIGN_WORKBOOK`]; kept for older call sites.
 #[cfg(feature = "data-import")]
 pub use paths::DEV_DESIGN_WORKBOOK as DEV_DOODAD_EXCEL_PATH;
-#[cfg(feature = "data-import")]
-pub use weapon::{import_weapons_from_excel, resolve_dev_weapon_catalog, WEAPONS_SHEET_NAME};
-#[cfg(feature = "data-import")]
-pub use unit::{import_units_from_excel, resolve_dev_unit_catalog, UNITS_SHEET_NAME};
 /// Same workbook as [`DEV_DESIGN_WORKBOOK`]; kept for older call sites.
 #[cfg(feature = "data-import")]
 pub use paths::DEV_DESIGN_WORKBOOK as DEV_UNIT_EXCEL_PATH;
-pub use unit::{
-    UnitImportRow, DEFAULT_COLLISION_RADIUS_METERS, DEFAULT_MAX_SLOPE_DEGREES,
-    DEFAULT_MOVE_SPEED_MPS, IGNORED_COLUMNS, OPTIONAL_COLUMNS,
-};
-pub use unit::{normalize_file_path_to_render_key as normalize_unit_file_path_to_render_key, REQUIRED_COLUMNS as UNIT_REQUIRED_COLUMNS};
 #[cfg(feature = "data-import")]
-pub use ron::{export_doodads_to_ron, DoodadCatalogRon, DoodadDefinitionRon};
+pub use paths::{DEV_DESIGN_WORKBOOK, dev_design_workbook_path};
+#[cfg(feature = "data-import")]
+pub use ron::{DoodadCatalogRon, DoodadDefinitionRon, export_doodads_to_ron};
+pub use unit::{
+    DEFAULT_COLLISION_RADIUS_METERS, DEFAULT_MAX_SLOPE_DEGREES, DEFAULT_MOVE_SPEED_MPS,
+    IGNORED_COLUMNS, OPTIONAL_COLUMNS, UnitImportRow,
+};
+pub use unit::{
+    REQUIRED_COLUMNS as UNIT_REQUIRED_COLUMNS,
+    normalize_file_path_to_render_key as normalize_unit_file_path_to_render_key,
+};
+#[cfg(feature = "data-import")]
+pub use unit::{UNITS_SHEET_NAME, import_units_from_excel, resolve_dev_unit_catalog};
+#[cfg(feature = "data-import")]
+pub use weapon::{WEAPONS_SHEET_NAME, import_weapons_from_excel, resolve_dev_weapon_catalog};
 
 /// Outcome counters for a doodad Excel import pass.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -199,7 +203,16 @@ mod integration_tests {
         let path = temp_workbook("e2e");
         let headers = standard_headers();
         let rows = vec![vec![
-            "tree_oak", "Oak", "Tree", "Forest", "tree/oak.glb", "0.85", "1.15", "8", "Y", "Y",
+            "tree_oak",
+            "Oak",
+            "Tree",
+            "Forest",
+            "tree/oak.glb",
+            "0.85",
+            "1.15",
+            "8",
+            "Y",
+            "Y",
         ]];
         write_workbook(&path, &headers, &rows);
         let (definitions, summary) = import_doodads_from_excel(&path).unwrap();
@@ -216,11 +229,27 @@ mod integration_tests {
         let headers = standard_headers();
         let rows = vec![
             vec![
-                "tree_oak", "Oak", "Tree", "Forest", "tree/oak.glb", "0.85", "1.15", "8", "Y",
+                "tree_oak",
+                "Oak",
+                "Tree",
+                "Forest",
+                "tree/oak.glb",
+                "0.85",
+                "1.15",
+                "8",
+                "Y",
                 "Y",
             ],
             vec![
-                "tree_dead", "Dead", "Tree", "Forest", "tree/dead.glb", "0.9", "1.1", "2", "Y",
+                "tree_dead",
+                "Dead",
+                "Tree",
+                "Forest",
+                "tree/dead.glb",
+                "0.9",
+                "1.1",
+                "2",
+                "Y",
                 "N",
             ],
         ];
@@ -229,10 +258,7 @@ mod integration_tests {
         assert_eq!(summary.rows_valid, 1);
         assert_eq!(definitions.len(), 1);
         assert_eq!(definitions[0].id.as_str(), "tree_oak");
-        assert!(summary
-            .warnings
-            .iter()
-            .any(|w| w.contains("Enabled=false")));
+        assert!(summary.warnings.iter().any(|w| w.contains("Enabled=false")));
         let _ = std::fs::remove_file(path);
     }
 
@@ -241,7 +267,16 @@ mod integration_tests {
         let path = temp_workbook("weight");
         let headers = standard_headers();
         let rows = vec![vec![
-            "tree_oak", "Oak", "Tree", "Forest", "tree/oak.glb", "0.85", "1.15", "12.5", "Y", "Y",
+            "tree_oak",
+            "Oak",
+            "Tree",
+            "Forest",
+            "tree/oak.glb",
+            "0.85",
+            "1.15",
+            "12.5",
+            "Y",
+            "Y",
         ]];
         write_workbook(&path, &headers, &rows);
         let (definitions, _) = import_doodads_from_excel(&path).unwrap();
@@ -254,8 +289,16 @@ mod integration_tests {
         let path = temp_workbook("deterministic");
         let headers = standard_headers();
         let rows = vec![vec![
-            "tree_oak", "Oak", "Tree", "Forest", r"\doodads\tree\oak.glb", "0.85", "1.15", "8",
-            "Y", "Y",
+            "tree_oak",
+            "Oak",
+            "Tree",
+            "Forest",
+            r"\doodads\tree\oak.glb",
+            "0.85",
+            "1.15",
+            "8",
+            "Y",
+            "Y",
         ]];
         write_workbook(&path, &headers, &rows);
         let a = import_doodads_from_excel(&path).unwrap();
@@ -310,11 +353,27 @@ mod integration_tests {
         let headers = standard_headers();
         let rows = vec![
             vec![
-                "Basic Tree", "Oak", "Tree", "Forest", "tree/oak.glb", "0.85", "1.15", "8", "Y",
+                "Basic Tree",
+                "Oak",
+                "Tree",
+                "Forest",
+                "tree/oak.glb",
+                "0.85",
+                "1.15",
+                "8",
+                "Y",
                 "Y",
             ],
             vec![
-                "basic_tree", "Oak 2", "Tree", "Forest", "tree/oak.glb", "0.85", "1.15", "4", "Y",
+                "basic_tree",
+                "Oak 2",
+                "Tree",
+                "Forest",
+                "tree/oak.glb",
+                "0.85",
+                "1.15",
+                "4",
+                "Y",
                 "Y",
             ],
         ];

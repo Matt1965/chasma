@@ -2,14 +2,14 @@
 //!
 //! Verifies fail-closed catalog behavior and absence of silent fallback injection.
 
-use crate::client::commands::{build_command_plan, CommandBuildError, CommandResolutionContext};
+use crate::client::commands::{CommandBuildError, CommandResolutionContext, build_command_plan};
 use crate::client::commands::{CommandTarget, CommandType, ContextualCommandIntent};
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    create_doodad, create_unit, generate_chunk_doodads_with_settings, ChunkCoord, ChunkData,
-    ChunkId, ChunkLayout, DoodadCatalog, DoodadDefinitionId, DoodadGenerationContext,
-    DoodadGenerationSettings, DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition,
-    UnitCatalog, UnitDefinitionId, UnitSource, WorldData, WorldPosition,
+    ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, DoodadDefinitionId,
+    DoodadGenerationContext, DoodadGenerationSettings, DoodadPlacementOverrides, DoodadSource,
+    Heightfield, LocalPosition, UnitCatalog, UnitDefinitionId, UnitSource, WorldData,
+    WorldPosition, create_doodad, create_unit, generate_chunk_doodads_with_settings,
 };
 use bevy::prelude::Vec3;
 
@@ -85,16 +85,9 @@ fn procedural_generation_with_empty_catalog_emits_no_candidates() {
         chunk_size_meters: 256.0,
         units_per_meter: 1.0,
     };
-    let ctx = DoodadGenerationContext::new(
-        42,
-        ChunkId::new(ChunkCoord::new(0, 0)),
-        &layout,
-    );
-    let candidates = generate_chunk_doodads_with_settings(
-        &ctx,
-        &catalog,
-        &DoodadGenerationSettings::default(),
-    );
+    let ctx = DoodadGenerationContext::new(42, ChunkId::new(ChunkCoord::new(0, 0)), &layout);
+    let candidates =
+        generate_chunk_doodads_with_settings(&ctx, &catalog, &DoodadGenerationSettings::default());
     assert!(candidates.is_empty());
 }
 

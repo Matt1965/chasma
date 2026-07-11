@@ -24,7 +24,10 @@ pub struct TerrainWorldCatalog {
 
 impl TerrainWorldCatalog {
     /// Load a manifest from disk and build the catalog. Does not load chunk payloads.
-    pub fn from_manifest(manifest_path: &Path, config: &WorldConfig) -> Result<Self, TerrainAssetError> {
+    pub fn from_manifest(
+        manifest_path: &Path,
+        config: &WorldConfig,
+    ) -> Result<Self, TerrainAssetError> {
         let manifest = decode_manifest(&read_manifest_text(manifest_path)?)?;
 
         let runtime = config_snapshot(config);
@@ -35,21 +38,26 @@ impl TerrainWorldCatalog {
             });
         }
 
-        let authored_extent = authored_extent_from_entries(&manifest.chunks).ok_or(
-            TerrainAssetError::Io {
+        let authored_extent =
+            authored_extent_from_entries(&manifest.chunks).ok_or(TerrainAssetError::Io {
                 path: manifest_path.display().to_string(),
                 message: "manifest listed no chunks".to_string(),
-            },
-        )?;
+            })?;
 
-        let base_dir = manifest_path.parent().unwrap_or(Path::new("")).to_path_buf();
+        let base_dir = manifest_path
+            .parent()
+            .unwrap_or(Path::new(""))
+            .to_path_buf();
         let mut chunks = HashMap::with_capacity(manifest.chunks.len());
         for entry in manifest.chunks {
             let coord = ChunkCoord::new(entry.x, entry.z);
             if chunks.insert(coord, entry).is_some() {
                 return Err(TerrainAssetError::Io {
                     path: manifest_path.display().to_string(),
-                    message: format!("duplicate manifest entry for chunk ({}, {})", coord.x, coord.z),
+                    message: format!(
+                        "duplicate manifest entry for chunk ({}, {})",
+                        coord.x, coord.z
+                    ),
                 });
             }
         }
@@ -156,19 +164,12 @@ mod tests {
             },
             chunks: entries,
         };
-        fs::write(
-            dir.join("manifest.ron"),
-            ron::to_string(&manifest).unwrap(),
-        )
-        .unwrap();
+        fs::write(dir.join("manifest.ron"), ron::to_string(&manifest).unwrap()).unwrap();
     }
 
     #[test]
     fn builds_extent_from_manifest_entries() {
-        let entries = vec![
-            ManifestChunk::at(0, 0, "a"),
-            ManifestChunk::at(2, 3, "b"),
-        ];
+        let entries = vec![ManifestChunk::at(0, 0, "a"), ManifestChunk::at(2, 3, "b")];
         assert_eq!(
             authored_extent_from_entries(&entries),
             Some(ChunkExtent {

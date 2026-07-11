@@ -25,11 +25,7 @@ pub struct CatalogBrowseIndex {
 
 impl CatalogBrowseIndex {
     pub fn sync(&mut self, unit_catalog: &UnitCatalog, doodad_catalog: &DoodadCatalog) {
-        self.units.all = unit_catalog
-            .definitions()
-            .iter()
-            .map(unit_row)
-            .collect();
+        self.units.all = unit_catalog.definitions().iter().map(unit_row).collect();
         self.units.catalog_len = unit_catalog.len();
         self.doodads.all = doodad_catalog
             .definitions()
@@ -161,7 +157,11 @@ fn filtered_from_index(
             entry.label.to_ascii_lowercase().contains(&query)
                 || entry.render_key.to_ascii_lowercase().contains(&query)
                 || entry.category.to_ascii_lowercase().contains(&query)
-                || entry.definition.id_str().to_ascii_lowercase().contains(&query)
+                || entry
+                    .definition
+                    .id_str()
+                    .to_ascii_lowercase()
+                    .contains(&query)
         })
         .cloned()
         .collect()
@@ -233,7 +233,7 @@ pub fn tick_dev_search_debounce(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{starter_unit_definitions, UnitCatalog};
+    use crate::world::{UnitCatalog, starter_unit_definitions};
 
     #[test]
     fn search_debounce_delays_filtered_query() {
@@ -288,9 +288,9 @@ mod tests {
         index.sync(&catalog, &DoodadCatalog::default());
         let mut cache = CatalogFilterCache::default();
         let mut favorites = HashSet::new();
-        favorites.insert(DefinitionId::Unit(
-            crate::world::UnitDefinitionId::new("deer"),
-        ));
+        favorites.insert(DefinitionId::Unit(crate::world::UnitDefinitionId::new(
+            "deer",
+        )));
         let entries = browse_catalog_entries(
             &index,
             &mut cache,

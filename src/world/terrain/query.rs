@@ -29,7 +29,10 @@ pub fn try_ground_world_position(
     let height = try_sample_height_at_position(world, position)?;
     let mut local = position.local.0;
     local.y = height;
-    Ok(WorldPosition::new(position.chunk, LocalPosition::new(local)))
+    Ok(WorldPosition::new(
+        position.chunk,
+        LocalPosition::new(local),
+    ))
 }
 
 /// Convenience wrapper — maps all query failures to `None`.
@@ -45,12 +48,8 @@ pub fn slope_at(world: &WorldData, position: WorldPosition) -> Result<f32, Terra
     let data = world
         .get(chunk_id)
         .ok_or(TerrainQueryError::ChunkNotResident)?;
-    estimate_slope_degrees(
-        &data.heightfield,
-        position.local.0.x,
-        position.local.0.z,
-    )
-    .ok_or(TerrainQueryError::SlopeUnavailable)
+    estimate_slope_degrees(&data.heightfield, position.local.0.x, position.local.0.z)
+        .ok_or(TerrainQueryError::SlopeUnavailable)
 }
 
 /// Estimate terrain slope in degrees at a chunk-local position.
@@ -131,7 +130,9 @@ pub fn classify_slope_walkability(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, WorldData};
+    use crate::world::{
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, WorldData,
+    };
     use bevy::prelude::Vec3;
 
     fn layout() -> ChunkLayout {
@@ -230,10 +231,7 @@ mod tests {
                 ramp.push(col as f32 * 40.0);
             }
         }
-        world.insert(
-            ChunkId::new(ChunkCoord::new(0, 0)),
-            sample_chunk(ramp),
-        );
+        world.insert(ChunkId::new(ChunkCoord::new(0, 0)), sample_chunk(ramp));
         let steep = WorldPosition::new(
             ChunkCoord::new(0, 0),
             LocalPosition::new(Vec3::new(128.0, 0.0, 128.0)),

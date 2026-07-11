@@ -16,7 +16,6 @@ pub const PANEL_BG: Color = Color::srgba(0.06, 0.09, 0.11, 0.88);
 pub const TEXT_PRIMARY: Color = Color::srgba(0.92, 0.95, 0.98, 1.0);
 pub const TEXT_MUTED: Color = Color::srgba(0.65, 0.72, 0.78, 1.0);
 pub const ACCENT_GREEN: Color = Color::srgba(0.35, 0.92, 0.42, 1.0);
-pub const ACCENT_GREEN_DIM: Color = Color::srgba(0.2, 0.55, 0.28, 0.95);
 
 pub const CMD_BTN_ENABLED_BG: Color = Color::srgba(0.12, 0.18, 0.24, 0.95);
 pub const CMD_BTN_ENABLED_HOVER: Color = Color::srgba(0.18, 0.28, 0.36, 0.98);
@@ -39,13 +38,6 @@ pub fn hud_title_font() -> TextFont {
 pub fn hud_body_font() -> TextFont {
     TextFont {
         font_size: 12.0,
-        ..default()
-    }
-}
-
-pub fn hud_stat_font() -> TextFont {
-    TextFont {
-        font_size: 11.0,
         ..default()
     }
 }

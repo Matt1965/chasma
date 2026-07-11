@@ -10,12 +10,12 @@ use bevy::asset::LoadState;
 use bevy::prelude::*;
 
 use crate::terrain::residency::ChunkResidencyTracker;
-use crate::terrain::{world_position_to_render_global, TerrainRenderAssets};
+use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
 use crate::world::{UnitCatalog, UnitId, WorldConfig, WorldData};
 
 use super::assets::UnitSceneAssets;
 use super::components::UnitRenderEntity;
-use super::spawn::{despawn_unit_render_entities, spawn_unit_render_entity, UnitRenderIndex};
+use super::spawn::{UnitRenderIndex, despawn_unit_render_entities, spawn_unit_render_entity};
 
 /// Systems that sync unit render entities with world data.
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -140,10 +140,7 @@ pub fn sync_unit_render_entities(
 }
 
 fn scene_is_loaded(asset_server: &AssetServer, scene: &Handle<Scene>) -> bool {
-    matches!(
-        asset_server.get_load_state(scene),
-        Some(LoadState::Loaded)
-    )
+    matches!(asset_server.get_load_state(scene), Some(LoadState::Loaded))
 }
 
 #[cfg(test)]
@@ -152,9 +149,9 @@ mod tests {
     use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
     use crate::units::{UnitSceneAssets, UnitSyncOverrides};
     use crate::world::{
-        create_unit, Heightfield, ChunkCoord, ChunkData, ChunkId, ChunkLayout, LocalPosition,
-        UnitCatalog, UnitDefinition, UnitDefinitionId, UnitId, UnitRenderKey, UnitSource,
-        WorldConfig, WorldData, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitCatalog,
+        UnitDefinition, UnitDefinitionId, UnitId, UnitRenderKey, UnitSource, WorldConfig,
+        WorldData, WorldPosition, create_unit,
     };
     use bevy::asset::AssetPlugin;
     use bevy::prelude::{App, MinimalPlugins, Quat, StandardMaterial, Update, Vec3};
@@ -176,7 +173,12 @@ mod tests {
         );
     }
 
-    fn insert_authored_unit(world: &mut WorldData, catalog: &UnitCatalog, x: i32, z: i32) -> UnitId {
+    fn insert_authored_unit(
+        world: &mut WorldData,
+        catalog: &UnitCatalog,
+        x: i32,
+        z: i32,
+    ) -> UnitId {
         create_unit(
             catalog,
             world,
@@ -477,10 +479,7 @@ mod tests {
                 &catalog,
                 &mut world,
                 &UnitDefinitionId::new("ghost"),
-                WorldPosition::new(
-                    ChunkCoord::new(1, 1),
-                    LocalPosition::new(Vec3::ZERO),
-                ),
+                WorldPosition::new(ChunkCoord::new(1, 1), LocalPosition::new(Vec3::ZERO)),
                 UnitSource::Authored,
             )
             .unwrap();

@@ -7,7 +7,9 @@
 use std::env;
 use std::process::ExitCode;
 
-use chasma::environment::{loose_faces_exist, merge_loose_faces, DEFAULT_SKYBOX_SET, SKYBOX_ASSET_ROOT};
+use chasma::environment::{
+    DEFAULT_SKYBOX_SET, SKYBOX_ASSET_ROOT, loose_faces_exist, merge_loose_faces,
+};
 
 fn main() -> ExitCode {
     let set_name = env::args()

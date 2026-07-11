@@ -2,7 +2,10 @@
 
 use bevy::prelude::*;
 
-use crate::world::{SelectionControllabilityPolicy, DEFAULT_PLAYER_OWNER_ID, DEFAULT_PLAYER_TEAM_ID, OwnerId, TeamId};
+use crate::world::{
+    DEFAULT_PLAYER_OWNER_ID, DEFAULT_PLAYER_TEAM_ID, OwnerId, SelectionControllabilityPolicy,
+    TeamId,
+};
 
 /// Client-local human player identity for controllability checks.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,9 +30,4 @@ pub fn selection_policy_for_frame(dev_mode_enabled: bool) -> SelectionControllab
     } else {
         SelectionControllabilityPolicy::gameplay_default()
     }
-}
-
-#[cfg(feature = "dev")]
-pub fn selection_policy_from_dev(dev_state: &crate::dev::DevModeState) -> SelectionControllabilityPolicy {
-    selection_policy_for_frame(dev_state.enabled)
 }

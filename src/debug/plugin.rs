@@ -38,9 +38,9 @@ impl Plugin for DebugOverlayPlugin {
             };
             use super::interaction_snapshot::InteractionDebugSnapshot;
             use super::overlay::{
-                draw_combat_debug_overlay, draw_formation_debug_overlay, draw_intent_debug_overlay,
-                draw_interaction_debug_overlay, draw_path_debug_overlay, draw_selection_debug_overlay,
-                draw_steering_debug_overlay, DebugOverlaySystems,
+                DebugOverlaySystems, draw_combat_debug_overlay, draw_formation_debug_overlay,
+                draw_intent_debug_overlay, draw_interaction_debug_overlay, draw_path_debug_overlay,
+                draw_selection_debug_overlay, draw_steering_debug_overlay,
             };
             use super::settings::{
                 run_debug_combat_overlay, run_debug_formation_overlay, run_debug_intent_overlay,
@@ -48,24 +48,23 @@ impl Plugin for DebugOverlayPlugin {
                 run_debug_steering_overlay,
             };
 
-            app.init_resource::<InteractionDebugSnapshot>()
-                .add_systems(
-                    Update,
-                    (
-                        capture_interaction_debug_snapshot
-                            .run_if(run_capture_interaction_debug_snapshot),
-                        draw_intent_debug_overlay.run_if(run_debug_intent_overlay),
-                        draw_interaction_debug_overlay.run_if(run_debug_interaction_overlay),
-                        draw_path_debug_overlay.run_if(run_debug_path_overlay),
-                        draw_formation_debug_overlay.run_if(run_debug_formation_overlay),
-                        draw_steering_debug_overlay.run_if(run_debug_steering_overlay),
-                        draw_selection_debug_overlay.run_if(run_debug_selection_overlay),
-                        draw_combat_debug_overlay.run_if(run_debug_combat_overlay),
-                    )
-                        .chain()
-                        .after(crate::debug::flush_intent_dispatch_trace)
-                        .in_set(DebugOverlaySystems),
-                );
+            app.init_resource::<InteractionDebugSnapshot>().add_systems(
+                Update,
+                (
+                    capture_interaction_debug_snapshot
+                        .run_if(run_capture_interaction_debug_snapshot),
+                    draw_intent_debug_overlay.run_if(run_debug_intent_overlay),
+                    draw_interaction_debug_overlay.run_if(run_debug_interaction_overlay),
+                    draw_path_debug_overlay.run_if(run_debug_path_overlay),
+                    draw_formation_debug_overlay.run_if(run_debug_formation_overlay),
+                    draw_steering_debug_overlay.run_if(run_debug_steering_overlay),
+                    draw_selection_debug_overlay.run_if(run_debug_selection_overlay),
+                    draw_combat_debug_overlay.run_if(run_debug_combat_overlay),
+                )
+                    .chain()
+                    .after(crate::debug::flush_intent_dispatch_trace)
+                    .in_set(DebugOverlaySystems),
+            );
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::world::doodad::catalog::{DoodadCatalog, DoodadDefinition};
 use crate::world::doodad::generation::DoodadSpawnCandidate;
-use crate::world::terrain::{slope_at, try_sample_height_at_position, TerrainQueryError};
+use crate::world::terrain::{TerrainQueryError, slope_at, try_sample_height_at_position};
 use crate::world::{WorldData, WorldPosition};
 
 /// Outcome of [`filter_candidates_by_terrain`].
@@ -100,8 +100,8 @@ fn validate_candidate_terrain(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::doodad::catalog::{DoodadCatalog, DoodadDefinitionId, DoodadRenderKey};
     use crate::world::doodad::catalog::starter_definitions;
+    use crate::world::doodad::catalog::{DoodadCatalog, DoodadDefinitionId, DoodadRenderKey};
     use crate::world::terrain::Heightfield;
     use crate::world::{
         ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadKind, DoodadSource, LocalPosition,

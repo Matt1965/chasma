@@ -14,7 +14,9 @@ pub const CHUNK_SPAN_RELATIVE_TOLERANCE: f32 = 1e-5;
 pub fn expected_samples_per_edge(config: &WorldConfig) -> Result<u32, TerrainDataError> {
     let spacing = config.meters_per_sample;
     if !(spacing > 0.0) || !spacing.is_finite() {
-        return Err(TerrainDataError::NonPositiveSpacing { spacing_meters: spacing });
+        return Err(TerrainDataError::NonPositiveSpacing {
+            spacing_meters: spacing,
+        });
     }
     let chunk_size = config.chunk_size_meters;
     if !(chunk_size > 0.0) || !chunk_size.is_finite() {

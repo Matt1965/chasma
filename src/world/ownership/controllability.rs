@@ -26,10 +26,7 @@ impl SelectionControllabilityPolicy {
 }
 
 /// Whether the local player may select this unit.
-pub fn unit_is_selectable(
-    record: &UnitRecord,
-    policy: SelectionControllabilityPolicy,
-) -> bool {
+pub fn unit_is_selectable(record: &UnitRecord, policy: SelectionControllabilityPolicy) -> bool {
     if is_player_controllable(record) {
         return true;
     }
@@ -69,11 +66,7 @@ pub fn filter_commandable_unit_ids(
 ) -> Vec<UnitId> {
     let mut ids: Vec<_> = unit_ids
         .into_iter()
-        .filter(|id| {
-            world
-                .get_unit(*id)
-                .is_some_and(unit_is_commandable)
-        })
+        .filter(|id| world.get_unit(*id).is_some_and(unit_is_commandable))
         .collect();
     ids.sort_by_key(|id| id.raw());
     ids
@@ -83,9 +76,9 @@ pub fn filter_commandable_unit_ids(
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, create_unit_with_ownership, Affiliation, ChunkCoord, ChunkData, ChunkId,
-        ChunkLayout, Heightfield, LocalPosition, UnitCatalog, UnitDefinitionId, UnitOwnership,
-        UnitSource, WorldPosition,
+        Affiliation, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
+        UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource, WorldPosition, create_unit,
+        create_unit_with_ownership,
     };
     use bevy::prelude::Vec3;
 

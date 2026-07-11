@@ -16,7 +16,7 @@ use crate::world::{ChunkId, WorldConfig, WorldData};
 
 use super::albedo::ChunkAlbedoGrid;
 use super::asset::{
-    ALBEDO_FORMAT_VERSION, CHUNK_FORMAT_VERSION, AlbedoFile, ChunkFile, MANIFEST_FORMAT_VERSION,
+    ALBEDO_FORMAT_VERSION, AlbedoFile, CHUNK_FORMAT_VERSION, ChunkFile, MANIFEST_FORMAT_VERSION,
     Manifest, ManifestChunk, ManifestConfig, TerrainAssetError,
 };
 
@@ -111,8 +111,7 @@ pub fn write_world_with_albedo(
         chunks: entries,
     };
     let manifest_path = dir.join("manifest.ron");
-    let text =
-        ron::to_string(&manifest).map_err(|err| TerrainAssetError::Ron(err.to_string()))?;
+    let text = ron::to_string(&manifest).map_err(|err| TerrainAssetError::Ron(err.to_string()))?;
     fs::write(&manifest_path, text).map_err(|err| io_err(&manifest_path, err))?;
 
     Ok(())
@@ -121,8 +120,8 @@ pub fn write_world_with_albedo(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::terrain::load::{load_chunk_payload_from_paths, load_world_from_manifest};
     use crate::terrain::decode::decode_manifest;
+    use crate::terrain::load::{load_chunk_payload_from_paths, load_world_from_manifest};
     use crate::world::{ChunkCoord, ChunkData, ChunkId, Heightfield, WorldData};
     use std::collections::HashMap;
     use std::path::PathBuf;
@@ -134,11 +133,7 @@ mod tests {
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
 
         let mut dir = std::env::temp_dir();
-        dir.push(format!(
-            "chasma_write_test_{}_{}",
-            std::process::id(),
-            id
-        ));
+        dir.push(format!("chasma_write_test_{}_{}", std::process::id(), id));
         dir
     }
 
@@ -149,7 +144,10 @@ mod tests {
                 samples.push(seed + (row * 10 + col) as f32);
             }
         }
-        ChunkData::new(Heightfield::from_samples(3, 128.0, samples).unwrap(), Vec::new())
+        ChunkData::new(
+            Heightfield::from_samples(3, 128.0, samples).unwrap(),
+            Vec::new(),
+        )
     }
 
     fn hill_chunk(seed: f32) -> ChunkData {
@@ -164,7 +162,10 @@ mod tests {
             seed + 2.0,
             seed,
         ];
-        ChunkData::new(Heightfield::from_samples(3, 128.0, samples).unwrap(), Vec::new())
+        ChunkData::new(
+            Heightfield::from_samples(3, 128.0, samples).unwrap(),
+            Vec::new(),
+        )
     }
 
     /// Regenerates `assets/worlds/main/` from synthetic data. Run manually when
@@ -219,7 +220,8 @@ mod tests {
 
         write_world_with_albedo(&dir, &config, &source, Some(&albedo)).unwrap();
 
-        let manifest = decode_manifest(&fs::read_to_string(dir.join("manifest.ron")).unwrap()).unwrap();
+        let manifest =
+            decode_manifest(&fs::read_to_string(dir.join("manifest.ron")).unwrap()).unwrap();
         assert_eq!(
             manifest.chunks[0].albedo_path.as_deref(),
             Some("chunks/0_0.albedo.ron")

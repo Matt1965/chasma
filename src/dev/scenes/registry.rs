@@ -1,13 +1,12 @@
 //! Dev scene registry — local file index (ADR-045).
 
-use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
-use super::save::{read_scene_file, write_scene_file, SceneSaveError, DEV_SCENES_DIR};
+use super::save::{DEV_SCENES_DIR, SceneSaveError, read_scene_file, write_scene_file};
 use super::snapshot::SceneDefinition;
 
 const REGISTRY_VERSION: u32 = 1;
@@ -108,7 +107,10 @@ impl SceneRegistry {
     }
 
     pub fn get(&self, scene_id: &str) -> Option<&SceneRegistryEntry> {
-        self.index.entries.iter().find(|entry| entry.scene_id == scene_id)
+        self.index
+            .entries
+            .iter()
+            .find(|entry| entry.scene_id == scene_id)
     }
 
     pub fn load_from_disk(&mut self) -> Result<(), SceneSaveError> {
@@ -118,9 +120,12 @@ impl SceneRegistry {
             self.index = SceneRegistryIndex::default();
             return Ok(());
         }
-        let text = fs::read_to_string(&index_path).map_err(|err| SceneSaveError::Io(err.to_string()))?;
+        let text =
+            fs::read_to_string(&index_path).map_err(|err| SceneSaveError::Io(err.to_string()))?;
         self.index = ron::from_str(&text).map_err(|err| SceneSaveError::Ron(err.to_string()))?;
-        self.index.entries.sort_by(|a, b| a.scene_id.cmp(&b.scene_id));
+        self.index
+            .entries
+            .sort_by(|a, b| a.scene_id.cmp(&b.scene_id));
         Ok(())
     }
 
@@ -134,7 +139,10 @@ impl SceneRegistry {
             .map_err(|err| SceneSaveError::Io(err.to_string()))
     }
 
-    pub fn register(&mut self, scene: SceneDefinition) -> Result<SceneRegistryEntry, SceneRegistryError> {
+    pub fn register(
+        &mut self,
+        scene: SceneDefinition,
+    ) -> Result<SceneRegistryEntry, SceneRegistryError> {
         if self.get(&scene.scene_id).is_some() {
             return Err(SceneRegistryError::DuplicateId(scene.scene_id.clone()));
         }
@@ -148,12 +156,17 @@ impl SceneRegistry {
             file_name: format!("{}.ron", scene.scene_id),
         };
         self.index.entries.push(entry.clone());
-        self.index.entries.sort_by(|a, b| a.scene_id.cmp(&b.scene_id));
+        self.index
+            .entries
+            .sort_by(|a, b| a.scene_id.cmp(&b.scene_id));
         self.save_index().map_err(SceneRegistryError::Save)?;
         Ok(entry)
     }
 
-    pub fn upsert(&mut self, scene: SceneDefinition) -> Result<SceneRegistryEntry, SceneRegistryError> {
+    pub fn upsert(
+        &mut self,
+        scene: SceneDefinition,
+    ) -> Result<SceneRegistryEntry, SceneRegistryError> {
         if let Some(index) = self
             .index
             .entries
@@ -179,7 +192,8 @@ impl SceneRegistry {
             .ok_or_else(|| SceneRegistryError::NotFound(scene_id.to_string()))?;
         let path = self.dir.join(&entry.file_name);
         if path.exists() {
-            fs::remove_file(&path).map_err(|err| SceneRegistryError::Save(SceneSaveError::Io(err.to_string())))?;
+            fs::remove_file(&path)
+                .map_err(|err| SceneRegistryError::Save(SceneSaveError::Io(err.to_string())))?;
         }
         self.index.entries.retain(|e| e.scene_id != scene_id);
         self.save_index().map_err(SceneRegistryError::Save)?;
@@ -190,8 +204,7 @@ impl SceneRegistry {
         let entry = self
             .get(scene_id)
             .ok_or_else(|| SceneRegistryError::NotFound(scene_id.to_string()))?;
-        read_scene_file(&self.dir.join(&entry.file_name))
-            .map_err(SceneRegistryError::Save)
+        read_scene_file(&self.dir.join(&entry.file_name)).map_err(SceneRegistryError::Save)
     }
 }
 
@@ -250,28 +263,13 @@ pub fn unix_timestamp_secs() -> u64 {
         .unwrap_or(0)
 }
 
-/// Deterministic ordering helper for tests.
-pub fn sorted_scene_entries(entries: &[SceneRegistryEntry]) -> Vec<SceneRegistryEntry> {
-    let mut sorted = entries.to_vec();
-    sorted.sort_by(|a, b| a.scene_id.cmp(&b.scene_id));
-    sorted
-}
-
-/// Map scene entries by id for quick lookup.
-pub fn entries_by_id(entries: &[SceneRegistryEntry]) -> BTreeMap<String, SceneRegistryEntry> {
-    entries
-        .iter()
-        .map(|entry| (entry.scene_id.clone(), entry.clone()))
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::dev::scenes::capture_scene;
     use crate::world::{
-        create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
-        UnitCatalog, UnitDefinitionId, UnitSource, WorldData, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitCatalog,
+        UnitDefinitionId, UnitSource, WorldData, WorldPosition, create_unit,
     };
 
     fn temp_registry() -> (SceneRegistry, PathBuf) {

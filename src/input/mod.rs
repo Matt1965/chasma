@@ -2,6 +2,4 @@
 
 mod bindings;
 
-pub use bindings::{
-    critical_binding_conflict, GlobalBinding, TIME_OF_DAY_KEYBOARD_HINT,
-};
+pub use bindings::{GlobalBinding, TIME_OF_DAY_KEYBOARD_HINT, critical_binding_conflict};

@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 use bevy::ui::FocusPolicy;
 
-use crate::units::input::{normalized_screen_rect, BoxSelectDrag};
+use crate::units::input::{BoxSelectDrag, normalized_screen_rect};
 
 /// Root UI node for the drag-selection rectangle.
 #[derive(Component, Debug)]

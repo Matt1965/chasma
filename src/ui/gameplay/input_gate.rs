@@ -15,9 +15,7 @@ pub fn update_player_hud_hover_state(
     interactions: Query<&Interaction, With<PlayerHudUi>>,
     mut hover: ResMut<PlayerHudHoverState>,
 ) {
-    hover.hovered = interactions
-        .iter()
-        .any(|state| *state != Interaction::None);
+    hover.hovered = interactions.iter().any(|state| *state != Interaction::None);
 }
 
 /// Whether gameplay mouse intents should be suppressed this frame.

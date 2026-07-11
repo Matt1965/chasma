@@ -8,8 +8,8 @@ use crate::terrain::TerrainRenderAssets;
 use crate::world::{DoodadCatalog, UnitCatalog, WorldConfig, WorldData, WorldPosition};
 
 use super::super::dev_mode::DevModeState;
-use super::batch_spawn::{plan_batch_spawn, BatchSpawnRequest, BatchSpawnScratch};
-use super::placement_rules::{validate_placement, PlacementValidateContext, PlacementValidation};
+use super::batch_spawn::{BatchSpawnRequest, BatchSpawnScratch, plan_batch_spawn};
+use super::placement_rules::{PlacementValidateContext, PlacementValidation, validate_placement};
 
 /// One preview marker (simulation-independent).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -125,7 +125,14 @@ fn generate_preview_points(
     scratch: &mut BatchSpawnScratch,
     out: &mut Vec<PreviewPoint>,
 ) {
-    let _ = plan_batch_spawn(request, definition_key, world, unit_catalog, doodad_catalog, scratch);
+    let _ = plan_batch_spawn(
+        request,
+        definition_key,
+        world,
+        unit_catalog,
+        doodad_catalog,
+        scratch,
+    );
     let mut accepted: Vec<WorldPosition> = Vec::new();
     out.clear();
     out.reserve(scratch.candidate_positions().len());

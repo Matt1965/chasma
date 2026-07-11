@@ -44,8 +44,8 @@ pub fn formation_jitter(unit_id: UnitId, target: WorldPosition, layout: ChunkLay
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bevy::prelude::Vec3;
     use crate::world::{ChunkCoord, LocalPosition};
+    use bevy::prelude::Vec3;
 
     fn layout() -> ChunkLayout {
         ChunkLayout {

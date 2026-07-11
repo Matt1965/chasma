@@ -3,8 +3,8 @@
 use bevy::prelude::*;
 
 use super::control::{
-    apply_simulation_control_requests, SimulationClock, SimulationControlRequests,
-    SimulationControlState,
+    SimulationClock, SimulationControlRequests, SimulationControlState,
+    apply_simulation_control_requests,
 };
 use super::input::handle_simulation_keyboard;
 

@@ -7,7 +7,7 @@
 use bevy::prelude::*;
 
 use crate::terrain::render_height;
-use crate::world::{ground_world_position, ChunkLayout, WorldConfig, WorldData, WorldPosition};
+use crate::world::{ChunkLayout, WorldConfig, WorldData, WorldPosition, ground_world_position};
 
 use super::components::RtsCameraState;
 use super::control::orbit_transform;
@@ -48,15 +48,23 @@ fn bind_focus_to_terrain(
     vertical_scale: f32,
 ) {
     let layout = config.chunk_layout();
-    if let Some(terrain_y) =
-        render_terrain_height_at_global_xz(state.target_focus.x, state.target_focus.z, world, layout, vertical_scale)
-    {
+    if let Some(terrain_y) = render_terrain_height_at_global_xz(
+        state.target_focus.x,
+        state.target_focus.z,
+        world,
+        layout,
+        vertical_scale,
+    ) {
         let y = terrain_y + settings.focus_terrain_offset;
         state.target_focus.y = y;
     }
-    if let Some(terrain_y) =
-        render_terrain_height_at_global_xz(state.focus.x, state.focus.z, world, layout, vertical_scale)
-    {
+    if let Some(terrain_y) = render_terrain_height_at_global_xz(
+        state.focus.x,
+        state.focus.z,
+        world,
+        layout,
+        vertical_scale,
+    ) {
         let y = terrain_y + settings.focus_terrain_offset;
         state.focus.y = y;
     }

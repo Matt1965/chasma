@@ -1,16 +1,20 @@
 use super::options::MaterializationOptions;
 use super::report::DoodadMaterializationReport;
-use crate::world::doodad::authoring::{create_doodad, DoodadAuthoringError, DoodadPlacementOverrides};
-use crate::world::doodad::biome_filter::{filter_candidates_by_biome, BiomeFilterResult};
+use crate::world::WorldData;
+use crate::world::doodad::authoring::{
+    DoodadAuthoringError, DoodadPlacementOverrides, create_doodad,
+};
+use crate::world::doodad::biome_filter::{BiomeFilterResult, filter_candidates_by_biome};
 use crate::world::doodad::catalog::DoodadCatalog;
 use crate::world::doodad::exclusion::filter_candidates_by_exclusion_zones;
 use crate::world::doodad::generation::DoodadSpawnCandidate;
 use crate::world::doodad::placement::{
-    finalize_placements, FinalizedDoodadPlacement, PlacementFinalizationResult,
+    FinalizedDoodadPlacement, PlacementFinalizationResult, finalize_placements,
 };
 use crate::world::doodad::procedural_key::ProceduralDoodadKey;
-use crate::world::doodad::terrain_validation::{filter_candidates_by_terrain, TerrainValidationResult};
-use crate::world::WorldData;
+use crate::world::doodad::terrain_validation::{
+    TerrainValidationResult, filter_candidates_by_terrain,
+};
 
 /// Materialize spawn candidates into [`WorldData`] via the authoring API (ADR-019).
 ///
@@ -196,13 +200,11 @@ mod tests {
     use super::*;
     use crate::world::doodad::authoring::create_doodad;
     use crate::world::doodad::catalog::starter_definitions;
-    use crate::world::doodad::generation::{
-        generate_chunk_doodads, DoodadGenerationContext,
-    };
+    use crate::world::doodad::generation::{DoodadGenerationContext, generate_chunk_doodads};
     use crate::world::{
-        biome::{BiomeColorMapping, BiomeMask, BiomeMaskBounds},
         ChunkCoord, ChunkId, ChunkLayout, DoodadCatalog, DoodadDefinitionId, DoodadExclusionZone,
         DoodadPlacementOverrides, DoodadSource, LocalPosition, WorldPosition,
+        biome::{BiomeColorMapping, BiomeMask, BiomeMaskBounds},
     };
     use bevy::prelude::{Quat, Vec3};
 
@@ -218,8 +220,8 @@ mod tests {
     }
 
     fn insert_flat_chunk(world: &mut WorldData, x: i32, z: i32, height: f32) {
-        use crate::world::terrain::Heightfield;
         use crate::world::ChunkData;
+        use crate::world::terrain::Heightfield;
 
         let samples = vec![height; 9];
         let heightfield = Heightfield::from_samples(3, 128.0, samples).unwrap();
@@ -265,16 +267,17 @@ mod tests {
         world: &mut WorldData,
         candidates: &[DoodadSpawnCandidate],
     ) -> DoodadMaterializationReport {
-        materialize_candidates_with_options(catalog, world, candidates, &MaterializationOptions::raw())
+        materialize_candidates_with_options(
+            catalog,
+            world,
+            candidates,
+            &MaterializationOptions::raw(),
+        )
     }
 
     fn candidates_for_chunk(seed: u64, x: i32, z: i32) -> Vec<DoodadSpawnCandidate> {
         let layout = layout();
-        let ctx = DoodadGenerationContext::new(
-            seed,
-            ChunkId::new(ChunkCoord::new(x, z)),
-            &layout,
-        );
+        let ctx = DoodadGenerationContext::new(seed, ChunkId::new(ChunkCoord::new(x, z)), &layout);
         generate_chunk_doodads(&ctx, &DoodadCatalog::default())
     }
 
@@ -290,11 +293,17 @@ mod tests {
         assert_eq!(report.candidates_received, candidates.len() as u32);
         assert_eq!(report.excluded_by_zone, 0);
         assert!(report.skipped_at_insert() == 0);
-        assert!(world.get_doodad(
+        assert!(
             world
-                .procedural_doodad_id(&ProceduralDoodadKey::from_candidate(&candidates[0]).unwrap())
-                .unwrap()
-        ).is_some());
+                .get_doodad(
+                    world
+                        .procedural_doodad_id(
+                            &ProceduralDoodadKey::from_candidate(&candidates[0]).unwrap()
+                        )
+                        .unwrap()
+                )
+                .is_some()
+        );
         world.assert_doodad_index_consistent();
     }
 
@@ -435,10 +444,7 @@ mod tests {
         let invalid = DoodadSpawnCandidate {
             definition_id: DoodadDefinitionId::new("missing"),
             source: DoodadSource::Procedural { seed: 123 },
-            position: WorldPosition::new(
-                ChunkCoord::new(0, 0),
-                LocalPosition::new(Vec3::ZERO),
-            ),
+            position: WorldPosition::new(ChunkCoord::new(0, 0), LocalPosition::new(Vec3::ZERO)),
             rotation: Quat::IDENTITY,
             scale: Vec3::ONE,
         };
@@ -584,8 +590,8 @@ mod tests {
 
     #[test]
     fn materialization_applies_exclusion_then_terrain_validation() {
-        use crate::world::doodad::catalog::{DoodadDefinition, DoodadRenderKey};
         use crate::world::DoodadKind;
+        use crate::world::doodad::catalog::{DoodadDefinition, DoodadRenderKey};
 
         let mut defs = starter_definitions();
         defs[0] = DoodadDefinition::new(
@@ -663,8 +669,8 @@ mod tests {
 
     #[test]
     fn materialization_report_counts_terrain_rejects() {
-        use crate::world::doodad::catalog::{DoodadDefinition, DoodadRenderKey};
         use crate::world::DoodadKind;
+        use crate::world::doodad::catalog::{DoodadDefinition, DoodadRenderKey};
 
         let mut defs = starter_definitions();
         defs[0] = DoodadDefinition::new(
@@ -711,8 +717,8 @@ mod tests {
 
     #[test]
     fn authoring_api_unaffected_by_terrain_validation() {
-        use crate::world::doodad::catalog::{DoodadDefinition, DoodadRenderKey};
         use crate::world::DoodadKind;
+        use crate::world::doodad::catalog::{DoodadDefinition, DoodadRenderKey};
 
         let mut defs = starter_definitions();
         defs[0] = DoodadDefinition::new(
@@ -769,15 +775,17 @@ mod tests {
 
         assert_eq!(report.inserted, 1);
         assert_eq!(report.terrain_snaps_applied, 1);
-        let record = world.get_doodad(world.procedural_doodad_id(&key).unwrap()).unwrap();
+        let record = world
+            .get_doodad(world.procedural_doodad_id(&key).unwrap())
+            .unwrap();
         assert_eq!(record.placement.position.local.0.y, 37.5);
     }
 
     #[test]
     fn full_pipeline_exclusion_validation_placement_materialization() {
+        use crate::world::DoodadKind;
         use crate::world::biome::BiomeId;
         use crate::world::doodad::catalog::{DoodadDefinition, DoodadRenderKey};
-        use crate::world::DoodadKind;
 
         let mut defs = starter_definitions();
         defs[0] = DoodadDefinition::new(
@@ -846,7 +854,9 @@ mod tests {
         assert_eq!(report.inserted, 1);
 
         let key = ProceduralDoodadKey::from_candidate(&accepted).unwrap();
-        let record = world.get_doodad(world.procedural_doodad_id(&key).unwrap()).unwrap();
+        let record = world
+            .get_doodad(world.procedural_doodad_id(&key).unwrap())
+            .unwrap();
         assert_eq!(record.placement.position.local.0.y, 55.0);
         // R7 catalog believability overwrites candidate rotation/scale from definition bounds.
         assert_ne!(record.placement.rotation, Quat::from_rotation_y(1.2));

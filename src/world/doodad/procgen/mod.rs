@@ -4,11 +4,9 @@
 //! trigger) decide when to invoke this after terrain residency is established.
 
 use crate::world::doodad::catalog::DoodadCatalog;
-use crate::world::doodad::generation::{
-    generate_chunk_doodads, DoodadGenerationContext,
-};
+use crate::world::doodad::generation::{DoodadGenerationContext, generate_chunk_doodads};
 use crate::world::doodad::materialization::{
-    materialize_candidates_with_options, DoodadMaterializationReport, MaterializationOptions,
+    DoodadMaterializationReport, MaterializationOptions, materialize_candidates_with_options,
 };
 use crate::world::{ChunkId, WorldData};
 
@@ -72,19 +70,19 @@ pub fn try_materialize_procedural_chunk_doodads(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::doodad::authoring::DoodadPlacementOverrides;
     use crate::world::doodad::catalog::{DoodadDefinition, DoodadRenderKey};
     use crate::world::doodad::materialization::{
-        materialize_candidates_with_options, MaterializationOptions,
+        MaterializationOptions, materialize_candidates_with_options,
     };
-    use crate::world::doodad::authoring::DoodadPlacementOverrides;
-    use bevy::prelude::Vec3;
     use crate::world::doodad::source::DoodadSource;
     use crate::world::terrain::Heightfield;
     use crate::world::{
-        biome::{BiomeColorMapping, BiomeId, BiomeMask, BiomeMaskBounds},
         ChunkCoord, ChunkData, ChunkLayout, DoodadCatalog, DoodadDefinitionId, DoodadKind,
         LocalPosition, WorldPosition,
+        biome::{BiomeColorMapping, BiomeId, BiomeMask, BiomeMaskBounds},
     };
+    use bevy::prelude::Vec3;
 
     const TEST_SEED: u64 = 0x0045_4A5_5EED;
 
@@ -132,20 +130,22 @@ mod tests {
     }
 
     fn forest_only_tree_catalog() -> DoodadCatalog {
-        let defs = vec![DoodadDefinition::new(
-            DoodadDefinitionId::new("tree_oak"),
-            DoodadKind::Tree,
-            "Oak Tree",
-            4.0,
-            0.85,
-            1.15,
-            None,
-            None,
-            Some(25.0),
-            true,
-            DoodadRenderKey::reserved("tree/oak"),
-        )
-        .with_allowed_biomes(vec![BiomeId::Forest])];
+        let defs = vec![
+            DoodadDefinition::new(
+                DoodadDefinitionId::new("tree_oak"),
+                DoodadKind::Tree,
+                "Oak Tree",
+                4.0,
+                0.85,
+                1.15,
+                None,
+                None,
+                Some(25.0),
+                true,
+                DoodadRenderKey::reserved("tree/oak"),
+            )
+            .with_allowed_biomes(vec![BiomeId::Forest]),
+        ];
         DoodadCatalog::from_definitions(defs).unwrap()
     }
 
@@ -159,8 +159,9 @@ mod tests {
         let chunk = ChunkId::new(ChunkCoord::new(4, 7));
         assert!(chunk_needs_procedural_materialization(&world, chunk));
 
-        let outcome = try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED)
-            .expect("first pass should run");
+        let outcome =
+            try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED)
+                .expect("first pass should run");
         assert!(outcome.candidates > 0);
         assert!(outcome.inserted > 0);
         assert!(!chunk_needs_procedural_materialization(&world, chunk));
@@ -174,12 +175,19 @@ mod tests {
         world.set_biome_mask(uniform_forest_mask(4096.0));
         let chunk = ChunkId::new(ChunkCoord::new(2, 2));
 
-        let first = try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED)
-            .unwrap();
+        let first =
+            try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED)
+                .unwrap();
         let count_after_first = world.doodads_in_chunk(chunk).unwrap().len();
 
-        assert!(try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED).is_none());
-        assert_eq!(world.doodads_in_chunk(chunk).unwrap().len(), count_after_first);
+        assert!(
+            try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED)
+                .is_none()
+        );
+        assert_eq!(
+            world.doodads_in_chunk(chunk).unwrap().len(),
+            count_after_first
+        );
         assert_eq!(first.inserted, count_after_first as u32);
     }
 
@@ -201,8 +209,12 @@ mod tests {
         world_a.set_biome_mask(uniform_forest_mask(8192.0));
         world_b.set_biome_mask(uniform_forest_mask(8192.0));
 
-        let out_a = try_materialize_procedural_chunk_doodads(&catalog, &mut world_a, chunk, TEST_SEED).unwrap();
-        let out_b = try_materialize_procedural_chunk_doodads(&catalog, &mut world_b, chunk, TEST_SEED).unwrap();
+        let out_a =
+            try_materialize_procedural_chunk_doodads(&catalog, &mut world_a, chunk, TEST_SEED)
+                .unwrap();
+        let out_b =
+            try_materialize_procedural_chunk_doodads(&catalog, &mut world_b, chunk, TEST_SEED)
+                .unwrap();
         assert_eq!(out_a, out_b);
         assert_eq!(
             world_a.doodads_in_chunk(chunk).unwrap().len(),
@@ -222,10 +234,12 @@ mod tests {
 
         insert_flat_chunk(&mut world, 1, 0, 0.0);
 
-        let forest = try_materialize_procedural_chunk_doodads(&catalog, &mut world, forest_chunk, TEST_SEED)
-            .unwrap();
-        let desert = try_materialize_procedural_chunk_doodads(&catalog, &mut world, desert_chunk, TEST_SEED)
-            .unwrap();
+        let forest =
+            try_materialize_procedural_chunk_doodads(&catalog, &mut world, forest_chunk, TEST_SEED)
+                .unwrap();
+        let desert =
+            try_materialize_procedural_chunk_doodads(&catalog, &mut world, desert_chunk, TEST_SEED)
+                .unwrap();
 
         assert!(forest.inserted > 0);
         assert_eq!(desert.inserted, 0);
@@ -240,7 +254,9 @@ mod tests {
         world.set_biome_mask(uniform_forest_mask(8192.0));
         let chunk = ChunkId::new(ChunkCoord::new(3, 3));
 
-        let outcome = try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED).unwrap();
+        let outcome =
+            try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED)
+                .unwrap();
         let store = world.doodads_in_chunk(chunk).expect("records should exist");
         assert_eq!(store.len(), outcome.inserted as usize);
 
@@ -263,7 +279,9 @@ mod tests {
         let ctx = DoodadGenerationContext::new(TEST_SEED, chunk, &layout_ref);
         let candidates = generate_chunk_doodads(&ctx, &catalog);
 
-        let first = try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED).unwrap();
+        let first =
+            try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED)
+                .unwrap();
         assert!(first.inserted > 0);
         let count_before = world.doodads_in_chunk(chunk).unwrap().len();
 
@@ -285,7 +303,10 @@ mod tests {
         let chunk = ChunkId::new(ChunkCoord::new(0, 0));
 
         assert!(!chunk_needs_procedural_materialization(&world, chunk));
-        assert!(try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED).is_none());
+        assert!(
+            try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED)
+                .is_none()
+        );
     }
 
     #[test]
@@ -311,7 +332,10 @@ mod tests {
         .unwrap();
 
         assert!(!chunk_needs_procedural_materialization(&world, chunk));
-        assert!(try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED).is_none());
+        assert!(
+            try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, TEST_SEED)
+                .is_none()
+        );
     }
 
     #[test]
@@ -323,13 +347,9 @@ mod tests {
         let chunk = ChunkId::new(ChunkCoord::new(5, 5));
         const FOREST_MIX_SEED: u64 = 9001;
 
-        let outcome = try_materialize_procedural_chunk_doodads(
-            &catalog,
-            &mut world,
-            chunk,
-            FOREST_MIX_SEED,
-        )
-        .unwrap();
+        let outcome =
+            try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, FOREST_MIX_SEED)
+                .unwrap();
         assert!(outcome.inserted > 0);
 
         let store = world.doodads_in_chunk(chunk).unwrap();

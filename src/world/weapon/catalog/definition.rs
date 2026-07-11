@@ -79,10 +79,7 @@ impl TargetFilter {
         if trimmed.is_empty() {
             return Ok(vec![Self::Enemies]);
         }
-        trimmed
-            .split(',')
-            .map(|part| Self::parse(part))
-            .collect()
+        trimmed.split(',').map(|part| Self::parse(part)).collect()
     }
 }
 

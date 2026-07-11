@@ -6,11 +6,11 @@
 use bevy::prelude::*;
 
 use crate::client::ResolvedCommandFeedback;
-use crate::debug::{CommandTraceBuffer, IntentDispatchHistory};
 use crate::debug::DebugOverlaySettings;
+use crate::debug::{CommandTraceBuffer, IntentDispatchHistory};
 use crate::units::input::SelectedUnits;
 
-use super::state::{derive_gameplay_snapshot, GameplayUiState};
+use super::state::{GameplayUiState, derive_gameplay_snapshot};
 
 /// Sync gameplay UI snapshot from client-local sources (read-only).
 pub fn sync_gameplay_ui_state(
@@ -46,7 +46,10 @@ pub fn clear_gameplay_hud_dirty(mut ui_state: ResMut<GameplayUiState>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::{ClientIntent, IntentDispatchRecord, IntentDispatchReport, IntentDispatchStatus, ResolvedCommandFeedback};
+    use crate::client::{
+        ClientIntent, IntentDispatchRecord, IntentDispatchReport, IntentDispatchStatus,
+        ResolvedCommandFeedback,
+    };
     use crate::ui::gameplay::state::GameplayCommandState;
     use crate::world::{ChunkCoord, LocalPosition, WorldPosition};
 

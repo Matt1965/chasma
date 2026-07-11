@@ -25,11 +25,7 @@ pub enum DoodadAuthoringError {
     DefinitionNotFound(DoodadDefinitionId),
     DefinitionDisabled(DoodadDefinitionId),
     DoodadNotFound(DoodadId),
-    ScaleOutOfRange {
-        min: f32,
-        max: f32,
-        scale: Vec3,
-    },
+    ScaleOutOfRange { min: f32, max: f32, scale: Vec3 },
     ChunkPlacementMismatch,
 }
 
@@ -69,7 +65,9 @@ pub fn create_doodad(
     world
         .insert_doodad(chunk, record.clone())
         .map_err(|error| match error {
-            DoodadInsertError::ChunkPlacementMismatch => DoodadAuthoringError::ChunkPlacementMismatch,
+            DoodadInsertError::ChunkPlacementMismatch => {
+                DoodadAuthoringError::ChunkPlacementMismatch
+            }
             DoodadInsertError::DoodadNotFound => DoodadAuthoringError::DoodadNotFound(id),
         })?;
 
@@ -85,7 +83,9 @@ pub fn move_doodad(
     world
         .relocate_doodad(id, new_position)
         .map_err(|error| match error {
-            DoodadInsertError::ChunkPlacementMismatch => DoodadAuthoringError::ChunkPlacementMismatch,
+            DoodadInsertError::ChunkPlacementMismatch => {
+                DoodadAuthoringError::ChunkPlacementMismatch
+            }
             DoodadInsertError::DoodadNotFound => DoodadAuthoringError::DoodadNotFound(id),
         })
 }
@@ -131,10 +131,7 @@ mod tests {
     }
 
     fn position(chunk_x: i32, chunk_z: i32, local: Vec3) -> WorldPosition {
-        WorldPosition::new(
-            ChunkCoord::new(chunk_x, chunk_z),
-            LocalPosition::new(local),
-        )
+        WorldPosition::new(ChunkCoord::new(chunk_x, chunk_z), LocalPosition::new(local))
     }
 
     #[test]
@@ -198,10 +195,7 @@ mod tests {
         )
         .unwrap_err();
 
-        assert!(matches!(
-            err,
-            DoodadAuthoringError::ScaleOutOfRange { .. }
-        ));
+        assert!(matches!(err, DoodadAuthoringError::ScaleOutOfRange { .. }));
     }
 
     #[test]
@@ -223,7 +217,10 @@ mod tests {
 
         assert_eq!(moved.id, record.id);
         assert_eq!(moved.placement.position, new_pos);
-        assert_eq!(world.doodad_chunk(record.id), Some(crate::world::ChunkId::new(ChunkCoord::new(0, 0))));
+        assert_eq!(
+            world.doodad_chunk(record.id),
+            Some(crate::world::ChunkId::new(ChunkCoord::new(0, 0)))
+        );
     }
 
     #[test]
@@ -248,9 +245,11 @@ mod tests {
             world.doodad_chunk(record.id),
             Some(crate::world::ChunkId::new(ChunkCoord::new(1, 0)))
         );
-        assert!(world
-            .doodads_in_chunk(crate::world::ChunkId::new(ChunkCoord::new(0, 0)))
-            .is_none());
+        assert!(
+            world
+                .doodads_in_chunk(crate::world::ChunkId::new(ChunkCoord::new(0, 0)))
+                .is_none()
+        );
     }
 
     #[test]
@@ -307,7 +306,12 @@ mod tests {
         )
         .unwrap();
 
-        move_doodad(&mut world, record.id, position(3, 4, Vec3::new(50.0, 0.0, 50.0))).unwrap();
+        move_doodad(
+            &mut world,
+            record.id,
+            position(3, 4, Vec3::new(50.0, 0.0, 50.0)),
+        )
+        .unwrap();
         assert_eq!(lookup_doodad(&world, record.id).unwrap().id, record.id);
         world.assert_doodad_index_consistent();
     }
@@ -327,7 +331,12 @@ mod tests {
         )
         .unwrap();
 
-        move_doodad(&mut world, record.id, position(1, 1, Vec3::new(1.0, 0.0, 1.0))).unwrap();
+        move_doodad(
+            &mut world,
+            record.id,
+            position(1, 1, Vec3::new(1.0, 0.0, 1.0)),
+        )
+        .unwrap();
         assert_eq!(lookup_doodad(&world, record.id).unwrap().definition_id, def);
     }
 
@@ -344,10 +353,21 @@ mod tests {
             DoodadPlacementOverrides::default(),
         )
         .unwrap();
-        assert_eq!(lookup_doodad(&world, record.id).unwrap().metadata, DoodadMetadata);
+        assert_eq!(
+            lookup_doodad(&world, record.id).unwrap().metadata,
+            DoodadMetadata
+        );
 
-        move_doodad(&mut world, record.id, position(1, 0, Vec3::new(1.0, 0.0, 1.0))).unwrap();
-        assert_eq!(lookup_doodad(&world, record.id).unwrap().metadata, DoodadMetadata);
+        move_doodad(
+            &mut world,
+            record.id,
+            position(1, 0, Vec3::new(1.0, 0.0, 1.0)),
+        )
+        .unwrap();
+        assert_eq!(
+            lookup_doodad(&world, record.id).unwrap().metadata,
+            DoodadMetadata
+        );
     }
 
     #[test]
@@ -365,7 +385,12 @@ mod tests {
         )
         .unwrap();
 
-        move_doodad(&mut world, record.id, position(2, 0, Vec3::new(1.0, 0.0, 1.0))).unwrap();
+        move_doodad(
+            &mut world,
+            record.id,
+            position(2, 0, Vec3::new(1.0, 0.0, 1.0)),
+        )
+        .unwrap();
         assert_eq!(lookup_doodad(&world, record.id).unwrap().source, source);
     }
 }

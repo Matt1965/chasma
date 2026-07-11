@@ -9,7 +9,7 @@ use std::f32::consts::TAU;
 use bevy::prelude::*;
 
 use crate::world::doodad::catalog::{DoodadCatalog, DoodadDefinition};
-use crate::world::doodad::generation::{chunk_seed, DeterministicRng};
+use crate::world::doodad::generation::{DeterministicRng, chunk_seed};
 use crate::world::doodad::source::DoodadSource;
 use crate::world::{ChunkCoord, DoodadKind};
 
@@ -31,9 +31,7 @@ pub fn believability_seed(chunk: ChunkCoord, procedural_seed: u64, definition_id
     let base = chunk_seed(procedural_seed, chunk.x, chunk.z);
     let mut h = base ^ 0xD00D_AD17_0000_0007;
     for byte in definition_id.as_bytes() {
-        h = h
-            .wrapping_mul(0x100000001B3)
-            .wrapping_add(u64::from(*byte));
+        h = h.wrapping_mul(0x100000001B3).wrapping_add(u64::from(*byte));
     }
     h
 }

@@ -37,7 +37,11 @@ pub fn outcome_label(outcome: CommandTraceOutcome) -> &'static str {
 }
 
 pub fn format_trace_entry(entry: &CommandTraceEntry) -> String {
-    let units: Vec<_> = entry.unit_ids.iter().map(|id| id.raw().to_string()).collect();
+    let units: Vec<_> = entry
+        .unit_ids
+        .iter()
+        .map(|id| id.raw().to_string())
+        .collect();
     format!(
         "t{} #{}{} {:?}",
         entry.tick,
@@ -60,9 +64,7 @@ pub fn recent_combat_log_lines(
     let mut lines: Vec<_> = trace
         .entries()
         .filter(|entry| is_combat_log_outcome(entry.outcome))
-        .filter(|entry| {
-            unit_filter.is_none_or(|unit_id| entry.unit_ids.contains(&unit_id))
-        })
+        .filter(|entry| unit_filter.is_none_or(|unit_id| entry.unit_ids.contains(&unit_id)))
         .map(format_trace_entry)
         .collect();
     if lines.len() > limit {

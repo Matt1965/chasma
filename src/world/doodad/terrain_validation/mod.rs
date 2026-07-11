@@ -4,6 +4,5 @@
 //! before materialization. Does not use terrain runtime, meshes, or ECS.
 
 mod filter;
-mod slope;
 
-pub use filter::{filter_candidates_by_terrain, TerrainValidationResult};
+pub use filter::{TerrainValidationResult, filter_candidates_by_terrain};

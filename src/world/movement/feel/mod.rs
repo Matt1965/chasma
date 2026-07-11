@@ -4,14 +4,14 @@ mod command_buffer;
 mod smoothing;
 mod stabilization;
 
-pub use command_buffer::{
-    start_unit_move_to, CommandBufferResolveReport, CommandResolveSuccess, PendingUnitOrder,
-    UnitCommandBuffer, PATH_RESOLVE_BUDGET_PER_TICK,
-};
 pub(crate) use command_buffer::resolve_one;
+pub use command_buffer::{
+    CommandBufferResolveReport, CommandResolveSuccess, PATH_RESOLVE_BUDGET_PER_TICK,
+    PendingUnitOrder, UnitCommandBuffer, start_unit_move_to,
+};
 pub use smoothing::{MovementSmoothingState, should_skip_direction_smoothing};
 pub use stabilization::{
-    stabilized_movement_heading, steering_is_allowed, StabilizedMovementHeading,
+    StabilizedMovementHeading, stabilized_movement_heading, steering_is_allowed,
 };
 
 /// Conservative feel tuning (does not alter pathfinding or formation).

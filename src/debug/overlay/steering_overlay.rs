@@ -6,8 +6,8 @@ use crate::debug::settings::{DebugOverlayCategory, DebugOverlaySettings};
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    cohesion_force, gather_steering_neighbors, separation_force, SteeringSettings, UnitCatalog,
-    UnitState, WorldConfig, WorldData,
+    SteeringSettings, UnitCatalog, UnitState, WorldConfig, WorldData, cohesion_force,
+    gather_steering_neighbors, separation_force,
 };
 
 use super::helpers::{render_position, xz_to_render_y};

@@ -120,6 +120,7 @@ under `client/devtools/` without changing this pipeline contract.
 - ADR-033 (player control)
 - ADR-034 (multi-unit selection)
 - ADR-037 (movement feel / command buffer)
+- ADR-069 (player responsiveness — commands interrupt own-unit actions, not enemy CC)
 
 [`WorldData`]: ../src/world/data.rs
 [`SelectedUnits`]: ../src/units/input/selection.rs

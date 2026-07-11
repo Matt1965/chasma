@@ -11,7 +11,8 @@ pub fn import_biome_mask_from_png(
     bounds: BiomeMaskBounds,
     mapping: &BiomeColorMapping,
 ) -> Result<BiomeMask, BiomeImportError> {
-    let bytes = std::fs::read(path.as_ref()).map_err(|err| BiomeImportError::Io(err.to_string()))?;
+    let bytes =
+        std::fs::read(path.as_ref()).map_err(|err| BiomeImportError::Io(err.to_string()))?;
     import_biome_mask_from_png_bytes(&bytes, bounds, mapping)
 }
 
@@ -76,10 +77,7 @@ mod tests {
             encoder.set_color(png::ColorType::Rgb);
             encoder.set_depth(png::BitDepth::Eight);
             let mut writer = encoder.write_header().unwrap();
-            let data: Vec<u8> = pixels
-                .iter()
-                .flat_map(|(r, g, b)| [*r, *g, *b])
-                .collect();
+            let data: Vec<u8> = pixels.iter().flat_map(|(r, g, b)| [*r, *g, *b]).collect();
             writer.write_image_data(&data).unwrap();
         }
         buf
@@ -88,17 +86,13 @@ mod tests {
     #[test]
     fn imports_rgb_png_and_classifies_pixels() {
         let png = encode_test_png(
-            &[
-                (255, 0, 0),
-                (0, 255, 0),
-                (0, 0, 255),
-                (255, 255, 0),
-            ],
+            &[(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)],
             2,
             2,
         );
         let bounds = BiomeMaskBounds::new(0.0, 0.0, 4.0, 4.0);
-        let mask = import_biome_mask_from_png_bytes(&png, bounds, &BiomeColorMapping::starter()).unwrap();
+        let mask =
+            import_biome_mask_from_png_bytes(&png, bounds, &BiomeColorMapping::starter()).unwrap();
 
         assert_eq!(mask.width(), 2);
         assert_eq!(mask.height(), 2);
@@ -112,7 +106,8 @@ mod tests {
     fn invalid_color_becomes_unassigned_at_import() {
         let png = encode_test_png(&[(128, 64, 32); 4], 2, 2);
         let bounds = BiomeMaskBounds::new(0.0, 0.0, 4.0, 4.0);
-        let mask = import_biome_mask_from_png_bytes(&png, bounds, &BiomeColorMapping::starter()).unwrap();
+        let mask =
+            import_biome_mask_from_png_bytes(&png, bounds, &BiomeColorMapping::starter()).unwrap();
         assert_eq!(mask.pixel_biome(0, 0), BiomeId::Unassigned);
     }
 
@@ -127,7 +122,8 @@ mod tests {
             writer.write_image_data(&[128]).unwrap();
         }
         let bounds = BiomeMaskBounds::new(0.0, 0.0, 1.0, 1.0);
-        let err = import_biome_mask_from_png_bytes(&buf, bounds, &BiomeColorMapping::starter()).unwrap_err();
+        let err = import_biome_mask_from_png_bytes(&buf, bounds, &BiomeColorMapping::starter())
+            .unwrap_err();
         assert!(matches!(err, BiomeImportError::UnsupportedColorType { .. }));
     }
 

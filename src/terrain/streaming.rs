@@ -16,7 +16,8 @@ use super::catalog::TerrainWorldCatalog;
 /// Controls **which chunks exist** in [`WorldData`] and as render entities.
 /// [`super::lod::TerrainLodSettings`] is separate: it only picks mesh resolution
 /// among chunks already within the keep ring below.
-#[derive(Debug, Clone, Resource, Reflect)]#[reflect(Resource)]
+#[derive(Debug, Clone, Resource, Reflect)]
+#[reflect(Resource)]
 pub struct TerrainStreamingSettings {
     /// Chebyshev radius around the view focus used to **request** chunk loads.
     ///
@@ -138,9 +139,7 @@ pub fn diff_streaming_residency(
     let mut to_unload: Vec<_> = world
         .iter()
         .map(|(id, _)| id)
-        .filter(|id| {
-            !keep_resident.contains(&id.coord()) && !unload_exempt.contains(id)
-        })
+        .filter(|id| !keep_resident.contains(&id.coord()) && !unload_exempt.contains(id))
         .collect();
 
     to_load.sort_by(|a, b| {
@@ -155,11 +154,9 @@ pub fn diff_streaming_residency(
     to_unload.truncate(settings.max_unloads_per_frame);
 
     debug_assert!(
-        !to_load.iter().any(|coord| {
-            to_unload
-                .iter()
-                .any(|id| id.coord() == *coord)
-        }),
+        !to_load
+            .iter()
+            .any(|coord| { to_unload.iter().any(|id| id.coord() == *coord) }),
         "a chunk must not be scheduled to load and unload in the same frame"
     );
 
@@ -187,11 +184,8 @@ mod tests {
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
 
-        let dir = std::env::temp_dir().join(format!(
-            "chasma_stream_cat_{}_{}",
-            std::process::id(),
-            id
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("chasma_stream_cat_{}_{}", std::process::id(), id));
         std::fs::create_dir_all(&dir).unwrap();
         let entries: Vec<_> = coords
             .iter()
@@ -207,11 +201,7 @@ mod tests {
             },
             chunks: entries,
         };
-        std::fs::write(
-            dir.join("manifest.ron"),
-            ron::to_string(&manifest).unwrap(),
-        )
-        .unwrap();
+        std::fs::write(dir.join("manifest.ron"), ron::to_string(&manifest).unwrap()).unwrap();
         TerrainWorldCatalog::from_manifest(&dir.join("manifest.ron"), &cfg).unwrap()
     }
 
@@ -247,21 +237,14 @@ mod tests {
         assert_eq!(settings.max_decode_starts_per_frame, 16);
         assert_eq!(settings.max_mesh_starts_per_frame, 16);
         assert_eq!(
-            settings.max_mesh_stores_per_frame,
-            32,
+            settings.max_mesh_stores_per_frame, 32,
             "mesh stores should exceed mesh starts so completed builds drain"
         );
     }
 
     #[test]
     fn to_load_prefers_nearest_chunks_first() {
-        let catalog = catalog_with_chunks(&[
-            (0, 0),
-            (1, 0),
-            (0, 1),
-            (5, 0),
-            (0, 5),
-        ]);
+        let catalog = catalog_with_chunks(&[(0, 0), (1, 0), (0, 1), (5, 0), (0, 5)]);
         let layout = WorldConfig::default().chunk_layout();
         let world = WorldData::new(layout);
         let focus = PrimaryViewFocus::new(Vec3::new(128.0, 0.0, 128.0));
@@ -272,14 +255,8 @@ mod tests {
             ..settings(5, 6)
         };
 
-        let (to_load, _) = diff_streaming_residency(
-            &focus,
-            layout,
-            &cfg,
-            &catalog,
-            &world,
-            &no_exempt(),
-        );
+        let (to_load, _) =
+            diff_streaming_residency(&focus, layout, &cfg, &catalog, &world, &no_exempt());
 
         assert_eq!(to_load.len(), 2);
         assert_eq!(to_load[0], ChunkCoord::new(0, 0));
@@ -351,7 +328,11 @@ mod tests {
             &world,
             &no_exempt(),
         );
-        assert!(!to_unload.iter().any(|id| id.coord() == ChunkCoord::new(2, 0)));
+        assert!(
+            !to_unload
+                .iter()
+                .any(|id| id.coord() == ChunkCoord::new(2, 0))
+        );
         assert!(!to_load.contains(&ChunkCoord::new(2, 0)));
     }
 
@@ -520,7 +501,9 @@ mod tests {
         assert!(to_load.is_empty());
         assert!(to_unload.is_empty());
         assert!(
-            history.iter().all(|&(loads, unloads)| !(loads > 0 && unloads > 0)),
+            history
+                .iter()
+                .all(|&(loads, unloads)| !(loads > 0 && unloads > 0)),
             "load and unload must not alternate in the same frame"
         );
     }
@@ -538,14 +521,8 @@ mod tests {
         let mut exempt = HashSet::new();
         exempt.insert(chunk_id);
 
-        let (_, to_unload) = diff_streaming_residency(
-            &focus,
-            layout,
-            &settings(1, 2),
-            &catalog,
-            &world,
-            &exempt,
-        );
+        let (_, to_unload) =
+            diff_streaming_residency(&focus, layout, &settings(1, 2), &catalog, &world, &exempt);
         assert!(!to_unload.contains(&chunk_id));
     }
 

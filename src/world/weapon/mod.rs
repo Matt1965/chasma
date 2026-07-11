@@ -5,9 +5,9 @@
 
 mod catalog;
 
+#[cfg(any(test, feature = "dev"))]
+pub use catalog::starter_definitions;
 pub use catalog::{
     DamageType, HitMode, TargetFilter, WeaponCatalog, WeaponCatalogError, WeaponDefinition,
     WeaponDefinitionId,
 };
-#[cfg(any(test, feature = "dev"))]
-pub use catalog::starter_definitions;

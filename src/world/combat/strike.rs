@@ -1,10 +1,10 @@
 //! Weapon strike resolution and damage application (ADR-058 C5).
 
-use crate::world::unit::{unit_can_execute_actions, AttackCycle, AttackPhase, CombatState, UnitId};
+use crate::world::unit::{AttackCycle, AttackPhase, CombatState, UnitId, unit_can_execute_actions};
 use crate::world::{
-    spawn_projectile_from_strike, validate_attack_target, AttackTargetingPolicy, DoodadCatalog,
-    HitMode, NavigationConfig, ProjectileRecord, ProjectileReport, UnitCatalog, WeaponCatalog,
-    WorldData,
+    AttackTargetingPolicy, DoodadCatalog, HitMode, NavigationConfig, ProjectileRecord,
+    ProjectileReport, UnitCatalog, WeaponCatalog, WorldData, spawn_projectile_from_strike,
+    validate_attack_target,
 };
 
 use super::attack_cycle::WeaponTiming;
@@ -527,20 +527,14 @@ fn validate_strike_target(
     is_in_weapon_range(world, attacker, target, unit_catalog, weapon)
 }
 
-fn resume_chase_after_failed_strike(
-    world: &mut WorldData,
-    attacker_id: UnitId,
-    target_id: UnitId,
-) {
+fn resume_chase_after_failed_strike(world: &mut WorldData, attacker_id: UnitId, target_id: UnitId) {
     let combat_state = world
         .get_unit(attacker_id)
         .map(|record| record.combat_state.clone());
     match combat_state {
         Some(CombatState::Attacking { .. }) => {
-            let _ = world.set_unit_combat_state(
-                attacker_id,
-                CombatState::Chasing { target: target_id },
-            );
+            let _ = world
+                .set_unit_combat_state(attacker_id, CombatState::Chasing { target: target_id });
         }
         Some(CombatState::AttackMoving { destination, .. }) => {
             let _ = world.set_unit_combat_state(
@@ -562,14 +556,14 @@ fn set_attack_cycle(world: &mut WorldData, unit_id: UnitId, cycle: AttackCycle) 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulation::{SimulationControlState, SIMULATION_TICK_SECONDS};
+    use crate::simulation::{SIMULATION_TICK_SECONDS, SimulationControlState};
     use crate::world::combat::step_all_combat_engagement;
-    use crate::world::projectile::{step_all_projectiles, ProjectileEvent, ProjectileReport};
+    use crate::world::projectile::{ProjectileEvent, ProjectileReport, step_all_projectiles};
     use crate::world::{
-        create_unit_with_ownership, issue_unit_order, starter_unit_definitions,
-        starter_weapon_definitions, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DamageType,
-        Heightfield, HitMode, LocalPosition, TargetFilter, UnitDefinitionId, UnitOrder,
-        UnitOwnership, UnitSource, WeaponDefinition, WeaponDefinitionId,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DamageType, Heightfield, HitMode,
+        LocalPosition, TargetFilter, UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource,
+        WeaponDefinition, WeaponDefinitionId, create_unit_with_ownership, issue_unit_order,
+        starter_unit_definitions, starter_weapon_definitions,
     };
     use bevy::prelude::Vec3;
 
@@ -631,12 +625,7 @@ mod tests {
         .id
     }
 
-    fn issue_attack(
-        world: &mut WorldData,
-        catalog: &UnitCatalog,
-        player: UnitId,
-        hostile: UnitId,
-    ) {
+    fn issue_attack(world: &mut WorldData, catalog: &UnitCatalog, player: UnitId, hostile: UnitId) {
         issue_unit_order(
             world,
             catalog,
@@ -650,11 +639,7 @@ mod tests {
         .unwrap();
     }
 
-    fn step_combat(
-        world: &mut WorldData,
-        catalog: &UnitCatalog,
-        delta: f32,
-    ) -> CombatStrikeReport {
+    fn step_combat(world: &mut WorldData, catalog: &UnitCatalog, delta: f32) -> CombatStrikeReport {
         let mut projectile = crate::world::ProjectileReport::default();
         let mut strikes = step_all_combat_strikes(
             world,
@@ -755,9 +740,11 @@ mod tests {
         assert!(report.has_event(&CombatStrikeEvent::AttackRecoveryStarted));
         let hp_after_first = hostile_hp(&world, hostile);
         let follow_up = step_combat(&mut world, &catalog, 0.05);
-        assert!(!follow_up.traces.iter().any(|trace| {
-            matches!(trace.event, CombatStrikeEvent::AttackStrikeApplied { .. })
-        }));
+        assert!(
+            !follow_up.traces.iter().any(|trace| {
+                matches!(trace.event, CombatStrikeEvent::AttackStrikeApplied { .. })
+            })
+        );
         assert_eq!(hostile_hp(&world, hostile), hp_after_first);
     }
 
@@ -791,7 +778,9 @@ mod tests {
             .set_unit_combat_state(player, CombatState::Attacking { target: hostile })
             .unwrap();
         let weapon = weapons
-            .get(&crate::world::weapon::WeaponDefinitionId::new("weapon_wolf_bite"))
+            .get(&crate::world::weapon::WeaponDefinitionId::new(
+                "weapon_wolf_bite",
+            ))
             .unwrap();
         let timing = super::super::attack_cycle::WeaponTiming::from_weapon(weapon);
         assert!((timing.attack_period_seconds - (1.0 / 1.2)).abs() < 0.01);
@@ -799,17 +788,12 @@ mod tests {
             timing.windup_seconds + timing.recovery_seconds + timing.cooldown_seconds
                 <= timing.attack_period_seconds + f32::EPSILON
         );
-        let report = step_strikes_only(
-            &mut world,
-            &catalog,
-            timing.attack_period_seconds,
+        let report = step_strikes_only(&mut world, &catalog, timing.attack_period_seconds);
+        assert!(
+            report.traces.iter().any(|trace| {
+                matches!(trace.event, CombatStrikeEvent::AttackStrikeApplied { .. })
+            })
         );
-        assert!(report.traces.iter().any(|trace| {
-            matches!(
-                trace.event,
-                CombatStrikeEvent::AttackStrikeApplied { .. }
-            )
-        }));
     }
 
     #[test]
@@ -990,9 +974,14 @@ mod tests {
         let weapons = WeaponCatalog::from_definitions(weapon_defs).unwrap();
         let mut unit_def = catalog.get(&UnitDefinitionId::new("wolf")).unwrap().clone();
         unit_def.default_weapon_id = WeaponDefinitionId::new("weapon_test_proj");
-        let custom_catalog =
-            UnitCatalog::from_definitions(vec![unit_def, catalog.get(&UnitDefinitionId::new("bandit")).unwrap().clone()])
-                .unwrap();
+        let custom_catalog = UnitCatalog::from_definitions(vec![
+            unit_def,
+            catalog
+                .get(&UnitDefinitionId::new("bandit"))
+                .unwrap()
+                .clone(),
+        ])
+        .unwrap();
         let mut world = flat_world();
         let player = spawn_player(&mut world, &custom_catalog, 10.0, 10.0);
         let hostile = spawn_hostile(&mut world, &custom_catalog, 14.0, 10.0);

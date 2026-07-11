@@ -8,9 +8,9 @@ mod schema;
 mod validate;
 
 pub use schema::{
-    normalize_file_path_to_render_key, UnitImportRow, DEFAULT_COLLISION_RADIUS_METERS,
-    DEFAULT_MAX_SLOPE_DEGREES, DEFAULT_MOVE_SPEED_MPS, IGNORED_COLUMNS, OPTIONAL_COLUMNS,
-    REQUIRED_COLUMNS,
+    DEFAULT_COLLISION_RADIUS_METERS, DEFAULT_MAX_SLOPE_DEGREES, DEFAULT_MOVE_SPEED_MPS,
+    IGNORED_COLUMNS, OPTIONAL_COLUMNS, REQUIRED_COLUMNS, UnitImportRow,
+    normalize_file_path_to_render_key,
 };
 
 #[cfg(feature = "data-import")]
@@ -22,8 +22,13 @@ pub use excel::UNITS_SHEET_NAME;
 pub fn import_units_from_excel(
     path: &std::path::Path,
     weapons: &crate::world::WeaponCatalog,
-) -> Result<(Vec<crate::world::UnitDefinition>, crate::data_import::ImportSummary), crate::data_import::DataImportError>
-{
+) -> Result<
+    (
+        Vec<crate::world::UnitDefinition>,
+        crate::data_import::ImportSummary,
+    ),
+    crate::data_import::DataImportError,
+> {
     use std::collections::HashMap;
 
     use crate::world::UnitDefinitionId;
@@ -180,7 +185,14 @@ mod integration_tests {
     }
 
     fn wolf_row_suffix() -> [&'static str; 6] {
-        ["26.5", "Elite", "weapon_wolf_bite", r"\units\wolf.glb", "4.5", "0.6"]
+        [
+            "26.5",
+            "Elite",
+            "weapon_wolf_bite",
+            r"\units\wolf.glb",
+            "4.5",
+            "0.6",
+        ]
     }
 
     fn wolf_row_tail() -> [&'static str; 2] {
@@ -197,8 +209,7 @@ mod integration_tests {
         row.extend_from_slice(&wolf_row_suffix());
         row.extend_from_slice(&wolf_row_tail());
         write_workbook(&path, &headers, &[row]);
-        let (definitions, summary) =
-            import_units_from_excel(&path, &starter_weapons()).unwrap();
+        let (definitions, summary) = import_units_from_excel(&path, &starter_weapons()).unwrap();
         assert_eq!(summary.rows_valid, 1);
         let def = &definitions[0];
         assert_eq!(def.id.as_str(), "U-0001");
@@ -224,13 +235,31 @@ mod integration_tests {
                 row
             },
             vec![
-                "U-0002", "Deer", "Wild", "1", "4", "4", "2", "5", "2", "8", "1", "2", "20", "12.0",
-                "Common", "weapon_claws", r"\units\deer.glb", "5.5", "0.5", "30", "N",
+                "U-0002",
+                "Deer",
+                "Wild",
+                "1",
+                "4",
+                "4",
+                "2",
+                "5",
+                "2",
+                "8",
+                "1",
+                "2",
+                "20",
+                "12.0",
+                "Common",
+                "weapon_claws",
+                r"\units\deer.glb",
+                "5.5",
+                "0.5",
+                "30",
+                "N",
             ],
         ];
         write_workbook(&path, &headers, &rows);
-        let (definitions, summary) =
-            import_units_from_excel(&path, &starter_weapons()).unwrap();
+        let (definitions, summary) = import_units_from_excel(&path, &starter_weapons()).unwrap();
         assert_eq!(summary.rows_valid, 1);
         assert_eq!(definitions.len(), 1);
         assert_eq!(definitions[0].id.as_str(), "U-0001");
@@ -242,8 +271,26 @@ mod integration_tests {
         let path = temp_workbook("deterministic");
         let headers = full_headers();
         let rows = vec![vec![
-            "U-0003", "Bandit Scout", "Bandits", "3", "8", "4", "7", "3", "6", "3", "4", "27",
-            "31.6", "Elite", "weapon_fists", r"\units\bandit.glb", "3.8", "0.45", "35", "Y",
+            "U-0003",
+            "Bandit Scout",
+            "Bandits",
+            "3",
+            "8",
+            "4",
+            "7",
+            "3",
+            "6",
+            "3",
+            "4",
+            "27",
+            "31.6",
+            "Elite",
+            "weapon_fists",
+            r"\units\bandit.glb",
+            "3.8",
+            "0.45",
+            "35",
+            "Y",
         ]];
         write_workbook(&path, &headers, &rows);
         let a = import_units_from_excel(&path, &starter_weapons()).unwrap();
@@ -267,7 +314,18 @@ mod integration_tests {
             },
             {
                 let mut row = vec![
-                    "U-0001", "Wolf Duplicate", "Wild", "2", "5", "5", "4", "6", "3", "7", "2", "3",
+                    "U-0001",
+                    "Wolf Duplicate",
+                    "Wild",
+                    "2",
+                    "5",
+                    "5",
+                    "4",
+                    "6",
+                    "3",
+                    "7",
+                    "2",
+                    "3",
                     "25",
                 ];
                 row.extend_from_slice(&wolf_row_suffix());
@@ -297,8 +355,7 @@ mod integration_tests {
             row
         }];
         write_workbook(&path, &headers, &rows);
-        let (definitions, _) =
-            import_units_from_excel(&path, &starter_weapons()).unwrap();
+        let (definitions, _) = import_units_from_excel(&path, &starter_weapons()).unwrap();
         let catalog = crate::world::UnitCatalog::from_definitions(definitions).unwrap();
         assert!(catalog.get(&UnitDefinitionId::new("U-0001")).is_some());
         let _ = std::fs::remove_file(path);
@@ -309,8 +366,27 @@ mod integration_tests {
         let path = temp_workbook("missing_weapon");
         let headers = full_headers();
         let rows = vec![vec![
-            "U-0001", "Wolf", "Wild", "2", "5", "5", "4", "6", "3", "7", "2", "3", "25", "26.5",
-            "Elite", "weapon_missing", r"\units\wolf.glb", "4.5", "0.6", "40", "Y",
+            "U-0001",
+            "Wolf",
+            "Wild",
+            "2",
+            "5",
+            "5",
+            "4",
+            "6",
+            "3",
+            "7",
+            "2",
+            "3",
+            "25",
+            "26.5",
+            "Elite",
+            "weapon_missing",
+            r"\units\wolf.glb",
+            "4.5",
+            "0.6",
+            "40",
+            "Y",
         ]];
         write_workbook(&path, &headers, &rows);
         let err = import_units_from_excel(&path, &starter_weapons()).unwrap_err();

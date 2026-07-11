@@ -75,7 +75,11 @@ mod tests {
         let mut selection = SelectedUnits::default();
         selection.replace_with([crate::world::UnitId::new(1), crate::world::UnitId::new(2)]);
         let entries = available_commands_for_selection(&selection, &UnitCatalog::default());
-        assert!(entries.iter().any(|e| e.command_type == CommandType::Move && e.is_enabled()));
+        assert!(
+            entries
+                .iter()
+                .any(|e| e.command_type == CommandType::Move && e.is_enabled())
+        );
     }
 
     #[test]

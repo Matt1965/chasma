@@ -2,7 +2,7 @@
 
 use crate::world::unit::{CombatState, UnitId};
 use crate::world::{
-    validate_attack_target, AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldData,
+    AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldData, validate_attack_target,
 };
 
 use super::range::weapon_for_unit_record;
@@ -14,7 +14,10 @@ use crate::world::weapon::WeaponDefinitionId;
 pub fn combat_engagement_target(combat_state: &CombatState) -> Option<UnitId> {
     match combat_state {
         CombatState::Attacking { target } | CombatState::Chasing { target } => Some(*target),
-        CombatState::AttackMoving { target: Some(target), .. } => Some(*target),
+        CombatState::AttackMoving {
+            target: Some(target),
+            ..
+        } => Some(*target),
         _ => None,
     }
 }
@@ -110,7 +113,11 @@ pub fn clear_attack_cycle_for_invalid_target(
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
 ) {
-    if world.get_unit(unit_id).and_then(|r| r.attack_cycle.as_ref()).is_none() {
+    if world
+        .get_unit(unit_id)
+        .and_then(|r| r.attack_cycle.as_ref())
+        .is_none()
+    {
         return;
     }
     clear_attack_cycle(world, unit_id);
@@ -211,18 +218,18 @@ pub fn record_strike_state_mismatch(
 
 #[cfg(test)]
 mod tests {
+    use super::super::range::weapon_for_unit_record;
     use super::{
         clear_attack_cycle_for_invalid_target, reset_attack_cycle_for_retarget,
         validate_attack_cycle_for_strike, *,
     };
-    use super::super::range::weapon_for_unit_record;
     use crate::world::unit::{AttackCycle, AttackPhase, CombatState};
     use crate::world::{
-        create_unit_with_ownership, issue_unit_order, step_all_combat_engagement,
-        step_all_combat_strikes, starter_unit_definitions, starter_weapon_definitions, ChunkCoord,
-        ChunkData, ChunkId, ChunkLayout, CombatStrikeEvent, CombatStrikeReport, DoodadCatalog,
-        Heightfield, LocalPosition, NavigationConfig, UnitDefinitionId, UnitOrder, UnitOwnership,
-        UnitSource, WeaponCatalog,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatStrikeEvent, CombatStrikeReport,
+        DoodadCatalog, Heightfield, LocalPosition, NavigationConfig, UnitDefinitionId, UnitOrder,
+        UnitOwnership, UnitSource, WeaponCatalog, create_unit_with_ownership, issue_unit_order,
+        starter_unit_definitions, starter_weapon_definitions, step_all_combat_engagement,
+        step_all_combat_strikes,
     };
     use bevy::prelude::Vec3;
 
@@ -258,7 +265,12 @@ mod tests {
         AttackTargetingPolicy::default()
     }
 
-    fn spawn_player(world: &mut WorldData, catalog: &crate::world::UnitCatalog, x: f32, z: f32) -> UnitId {
+    fn spawn_player(
+        world: &mut WorldData,
+        catalog: &crate::world::UnitCatalog,
+        x: f32,
+        z: f32,
+    ) -> UnitId {
         create_unit_with_ownership(
             catalog,
             world,
@@ -271,7 +283,12 @@ mod tests {
         .id
     }
 
-    fn spawn_hostile(world: &mut WorldData, catalog: &crate::world::UnitCatalog, x: f32, z: f32) -> UnitId {
+    fn spawn_hostile(
+        world: &mut WorldData,
+        catalog: &crate::world::UnitCatalog,
+        x: f32,
+        z: f32,
+    ) -> UnitId {
         create_unit_with_ownership(
             catalog,
             world,
@@ -292,10 +309,7 @@ mod tests {
         let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
         let hostile = spawn_hostile(&mut world, &catalog, 11.0, 10.0);
         world
-            .set_unit_attack_cycle(
-                player,
-                Some(AttackCycle::start_windup(hostile, 0.2)),
-            )
+            .set_unit_attack_cycle(player, Some(AttackCycle::start_windup(hostile, 0.2)))
             .unwrap();
         let mut report = CombatStrikeReport::default();
         clear_attack_cycle_for_invalid_target(
@@ -329,19 +343,12 @@ mod tests {
             .set_unit_combat_state(player, CombatState::Peaceful)
             .unwrap();
         world
-            .set_unit_attack_cycle(
-                player,
-                Some(AttackCycle::start_windup(hostile, 0.2)),
-            )
+            .set_unit_attack_cycle(player, Some(AttackCycle::start_windup(hostile, 0.2)))
             .unwrap();
-        assert!(validate_attack_cycle_for_strike(
-            &world,
-            player,
-            &catalog,
-            &weapons,
-            policy(),
-        )
-        .is_none());
+        assert!(
+            validate_attack_cycle_for_strike(&world, player, &catalog, &weapons, policy(),)
+                .is_none()
+        );
     }
 
     #[test]
@@ -363,17 +370,17 @@ mod tests {
         world
             .set_unit_combat_state(player, CombatState::Attacking { target: friendly })
             .unwrap();
-        assert!(validate_attack_cycle_for_strike(
-            &world,
-            player,
-            &catalog,
-            &weapons,
-            policy(),
-        )
-        .is_none());
+        assert!(
+            validate_attack_cycle_for_strike(&world, player, &catalog, &weapons, policy(),)
+                .is_none()
+        );
     }
 
-    fn step_combat(world: &mut WorldData, catalog: &crate::world::UnitCatalog, delta: f32) -> CombatStrikeReport {
+    fn step_combat(
+        world: &mut WorldData,
+        catalog: &crate::world::UnitCatalog,
+        delta: f32,
+    ) -> CombatStrikeReport {
         let mut projectile = crate::world::ProjectileReport::default();
         let mut strikes = step_all_combat_strikes(
             world,
@@ -438,10 +445,7 @@ mod tests {
         assert_eq!(hostile_hp(&world, hostile_a), hp_a_before);
         assert!(report.traces.iter().any(|trace| {
             trace.target_id == hostile_b
-                && matches!(
-                    trace.event,
-                    CombatStrikeEvent::AttackStrikeApplied { .. }
-                )
+                && matches!(trace.event, CombatStrikeEvent::AttackStrikeApplied { .. })
         }));
         assert!(hostile_hp(&world, hostile_b) < hp_b_before);
     }
@@ -575,10 +579,7 @@ mod tests {
             .set_unit_combat_state(player, CombatState::Peaceful)
             .unwrap();
         world
-            .set_unit_attack_cycle(
-                player,
-                Some(AttackCycle::start_windup(hostile, 0.2)),
-            )
+            .set_unit_attack_cycle(player, Some(AttackCycle::start_windup(hostile, 0.2)))
             .unwrap();
         let report = step_combat(&mut world, &catalog, 0.1);
         assert!(world.get_unit(player).unwrap().attack_cycle.is_none());
@@ -661,10 +662,7 @@ mod tests {
             .set_unit_combat_state(player, CombatState::Attacking { target: neutral })
             .unwrap();
         world
-            .set_unit_attack_cycle(
-                player,
-                Some(AttackCycle::start_windup(neutral, 0.2)),
-            )
+            .set_unit_attack_cycle(player, Some(AttackCycle::start_windup(neutral, 0.2)))
             .unwrap();
         let mut report = CombatStrikeReport::default();
         let strike_report = step_all_combat_strikes(
@@ -697,10 +695,7 @@ mod tests {
             .set_unit_combat_state(player, CombatState::Attacking { target: hostile_b })
             .unwrap();
         world
-            .set_unit_attack_cycle(
-                player,
-                Some(AttackCycle::start_windup(hostile_a, 0.01)),
-            )
+            .set_unit_attack_cycle(player, Some(AttackCycle::start_windup(hostile_a, 0.01)))
             .unwrap();
         let report = step_combat(&mut world, &catalog, 0.05);
         assert_eq!(hostile_hp(&world, hostile_a), hp_a_before);
@@ -731,10 +726,7 @@ mod tests {
         let hostile_a = spawn_hostile(&mut world, &catalog, 11.0, 10.0);
         let hostile_b = spawn_hostile(&mut world, &catalog, 12.0, 10.0);
         world
-            .set_unit_attack_cycle(
-                player,
-                Some(AttackCycle::start_windup(hostile_a, 0.2)),
-            )
+            .set_unit_attack_cycle(player, Some(AttackCycle::start_windup(hostile_a, 0.2)))
             .unwrap();
         let mut report = CombatStrikeReport::default();
         reset_attack_cycle_for_retarget(
@@ -785,10 +777,7 @@ mod tests {
             )
             .unwrap();
         world
-            .set_unit_attack_cycle(
-                player,
-                Some(AttackCycle::start_windup(hostile, 0.2)),
-            )
+            .set_unit_attack_cycle(player, Some(AttackCycle::start_windup(hostile, 0.2)))
             .unwrap();
         world.damage_unit(hostile, 999).unwrap();
         let mut report = CombatStrikeReport::default();

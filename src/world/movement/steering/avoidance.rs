@@ -4,10 +4,10 @@ use bevy::prelude::Vec2;
 
 use crate::world::{UnitCatalog, UnitId, UnitState, WorldData, WorldPosition};
 
+use super::SteeringSettings;
 use super::alignment::alignment_force;
 use super::cohesion::cohesion_force;
 use super::separation::separation_force;
-use super::SteeringSettings;
 
 /// Nearby unit sample for local steering.
 #[derive(Debug, Clone, PartialEq)]
@@ -69,7 +69,11 @@ impl SteeringContext {
             return base;
         }
 
-        clamp_angle_from(base, blended.normalize(), self.settings.max_steering_angle_radians)
+        clamp_angle_from(
+            base,
+            blended.normalize(),
+            self.settings.max_steering_angle_radians,
+        )
     }
 }
 
@@ -151,10 +155,7 @@ fn unit_velocity_xz(
     };
     let current = record.placement.position.to_global(layout);
     let waypoint_global = waypoint.to_global(layout);
-    let mut delta = Vec2::new(
-        waypoint_global.x - current.x,
-        waypoint_global.z - current.z,
-    );
+    let mut delta = Vec2::new(waypoint_global.x - current.x, waypoint_global.z - current.z);
     if delta.length_squared() <= 1e-8 {
         return Vec2::ZERO;
     }
@@ -208,11 +209,11 @@ pub fn apply_steering(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bevy::prelude::Vec3;
     use crate::world::{
-        create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
-        NavigationPath, UnitCatalog, UnitDefinitionId, UnitSource, UnitState,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, NavigationPath,
+        UnitCatalog, UnitDefinitionId, UnitSource, UnitState, create_unit,
     };
+    use bevy::prelude::Vec3;
 
     fn layout() -> ChunkLayout {
         ChunkLayout {

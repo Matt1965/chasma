@@ -13,13 +13,9 @@ pub enum CombatState {
     /// Placeholder for future engaged posture.
     Engaged,
     /// Attack order assigned — in weapon range, ready (no damage in C4).
-    Attacking {
-        target: crate::world::UnitId,
-    },
+    Attacking { target: crate::world::UnitId },
     /// Pursuing an attack target to enter weapon range.
-    Chasing {
-        target: crate::world::UnitId,
-    },
+    Chasing { target: crate::world::UnitId },
     /// Attack-move order assigned — destination + optional acquired target.
     AttackMoving {
         destination: crate::world::WorldPosition,

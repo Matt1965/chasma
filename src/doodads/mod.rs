@@ -14,9 +14,9 @@ pub mod settings;
 pub mod spawn;
 pub mod sync;
 
-pub use assets::{DoodadSceneAssets, DOODAD_ASSET_ROOT, gltf_asset_path, preload_doodad_scenes};
+pub use assets::{DOODAD_ASSET_ROOT, DoodadSceneAssets, gltf_asset_path, preload_doodad_scenes};
 pub use components::DoodadRenderEntity;
-pub use settings::{DoodadsRuntimeSettings, DEFAULT_DOODAD_WORLD_SEED};
+pub use settings::{DEFAULT_DOODAD_WORLD_SEED, DoodadsRuntimeSettings};
 pub use spawn::{DoodadRenderIndex, spawn_doodad_render_entity};
 pub use sync::DoodadRuntimeSystems;
 

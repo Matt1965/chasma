@@ -7,11 +7,11 @@ use std::collections::HashSet;
 
 use bevy::prelude::*;
 
+use crate::logging::{DOODAD_PROCGEN_LOG_PATH, append_log_line_buffered};
 use crate::terrain::residency::ChunkResidencyTracker;
-use crate::logging::{append_log_line_buffered, DOODAD_PROCGEN_LOG_PATH};
 use crate::world::{
-    chunk_needs_procedural_materialization, try_materialize_procedural_chunk_doodads, ChunkId,
-    DoodadCatalog, WorldData,
+    ChunkId, DoodadCatalog, WorldData, chunk_needs_procedural_materialization,
+    try_materialize_procedural_chunk_doodads,
 };
 
 use super::settings::DoodadsRuntimeSettings;
@@ -58,12 +58,9 @@ pub fn materialize_dev_procedural_doodads(
 
     for chunk in candidates {
         let coord = chunk.coord();
-        let Some(outcome) = try_materialize_procedural_chunk_doodads(
-            &catalog,
-            &mut world,
-            chunk,
-            world_seed,
-        ) else {
+        let Some(outcome) =
+            try_materialize_procedural_chunk_doodads(&catalog, &mut world, chunk, world_seed)
+        else {
             continue;
         };
 
@@ -85,9 +82,9 @@ pub fn materialize_dev_procedural_doodads(
 mod tests {
     use super::*;
     use crate::world::{
-        BiomeColorMapping, BiomeMask, BiomeMaskBounds, create_doodad, Heightfield, ChunkCoord,
-        ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource,
-        LocalPosition, WorldData, WorldPosition,
+        BiomeColorMapping, BiomeMask, BiomeMaskBounds, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+        DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition,
+        WorldData, WorldPosition, create_doodad,
     };
     use bevy::prelude::Vec3;
 

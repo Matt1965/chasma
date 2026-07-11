@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use crate::debug::{recent_combat_log_lines, CommandTraceBuffer};
+use crate::debug::{CommandTraceBuffer, recent_combat_log_lines};
 
 use super::snapshot::{InteractionInspectorSnapshot, UnitInspectorSnapshot};
 use super::state::WorldInspectorState;
@@ -89,18 +89,12 @@ fn format_unit_snapshot(s: &UnitInspectorSnapshot) -> String {
 
     out.push_str(&format!(
         "\nCombat detail: weapon={} target={} phase={}\n",
-        s.combat
-            .weapon_name
-            .as_deref()
-            .unwrap_or("none"),
+        s.combat.weapon_name.as_deref().unwrap_or("none"),
         s.combat
             .target_unit_id
             .map(|id| format!("#{}", id.raw()))
             .unwrap_or_else(|| "none".into()),
-        s.combat
-            .attack_phase
-            .as_deref()
-            .unwrap_or("none"),
+        s.combat.attack_phase.as_deref().unwrap_or("none"),
     ));
 
     if !s.projectiles.is_empty() {

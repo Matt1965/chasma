@@ -1,15 +1,15 @@
 use bevy::prelude::*;
 
+use super::cycle::{
+    advance_time_of_day, sync_environment_presentation, update_environment_from_time_of_day,
+};
 #[cfg(feature = "dev")]
 use super::debug::{
     count_environment_singletons, log_environment_configuration, log_environment_singleton_report,
 };
-use super::cycle::{
-    advance_time_of_day, sync_environment_presentation, update_environment_from_time_of_day,
-};
 use super::lighting::setup_environment_lighting;
 use super::settings::EnvironmentSettings;
-use super::skybox::{attach_skybox_to_primary_camera, init_skybox_load, ActiveSkyboxLoad};
+use super::skybox::{ActiveSkyboxLoad, attach_skybox_to_primary_camera, init_skybox_load};
 use super::time_of_day::TimeOfDaySettings;
 use super::water::WaterPlugin;
 
@@ -54,7 +54,10 @@ impl Plugin for EnvironmentPlugin {
     }
 }
 
-fn log_environment_startup(settings: Res<EnvironmentSettings>, load: Option<Res<ActiveSkyboxLoad>>) {
+fn log_environment_startup(
+    settings: Res<EnvironmentSettings>,
+    load: Option<Res<ActiveSkyboxLoad>>,
+) {
     #[cfg(feature = "dev")]
     {
         bevy::log::info!(target: "chasma::environment", "Environment initialized");
@@ -77,11 +80,7 @@ fn validate_environment_startup(
     skybox_cameras: Query<(), With<super::skybox::SkyboxCamera>>,
 ) {
     let _ = &settings;
-    let report = count_environment_singletons(
-        directional,
-        environment_directional,
-        skybox_cameras,
-    );
+    let report = count_environment_singletons(directional, environment_directional, skybox_cameras);
     log_environment_singleton_report(&report);
 }
 
@@ -96,6 +95,10 @@ mod tests {
         app.add_plugins(EnvironmentPlugin);
         assert!(app.world().get_resource::<EnvironmentSettings>().is_some());
         assert!(app.world().get_resource::<TimeOfDaySettings>().is_some());
-        assert!(app.world().get_resource::<crate::environment::WaterSettings>().is_some());
+        assert!(
+            app.world()
+                .get_resource::<crate::environment::WaterSettings>()
+                .is_some()
+        );
     }
 }

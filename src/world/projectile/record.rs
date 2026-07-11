@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
-use crate::world::coordinates::WorldPosition;
 use crate::world::combat::ProjectileLaunchSnapshot;
+use crate::world::coordinates::WorldPosition;
 use crate::world::unit::UnitId;
 use crate::world::weapon::{DamageType, WeaponDefinitionId};
 

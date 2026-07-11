@@ -3,8 +3,8 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    ChunkCoord, DoodadDefinitionId, ProjectileId, ProjectileStatus, UnitDefinitionId, UnitId,
-    UnitOrder, WeaponCatalog, WorldPosition,
+    ChunkCoord, DoodadDefinitionId, ProjectileId, UnitDefinitionId, UnitId, UnitOrder,
+    WorldPosition,
 };
 
 /// Full read-only inspection payload for one unit.

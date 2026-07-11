@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
-use crate::units::{UnitRenderIndex, UnitSelectionIndicator};
 use crate::units::input::SelectedUnits;
+use crate::units::{UnitRenderIndex, UnitSelectionIndicator};
 use crate::world::{UnitCatalog, UnitId, WorldData};
 
 /// Tracks one selection ring entity per selected unit.
@@ -21,10 +21,7 @@ pub fn sync_unit_selection_indicators(
     mut state: ResMut<UnitSelectionIndicatorState>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut fade_query: Query<(
-        &mut SelectionRingFade,
-        &MeshMaterial3d<StandardMaterial>,
-    )>,
+    mut fade_query: Query<(&mut SelectionRingFade, &MeshMaterial3d<StandardMaterial>)>,
 ) {
     let selected = &selection.0;
 
@@ -104,9 +101,7 @@ fn spawn_indicator(
     commands
         .spawn((
             UnitSelectionIndicator,
-            SelectionRingFade {
-                elapsed_secs: 0.0,
-            },
+            SelectionRingFade { elapsed_secs: 0.0 },
             Mesh3d(mesh),
             MeshMaterial3d(material),
             Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))

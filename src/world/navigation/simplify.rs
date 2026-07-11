@@ -1,14 +1,12 @@
-﻿//! Conservative navigation path post-processing (ADR-032).
+//! Conservative navigation path post-processing (ADR-032).
 
 use bevy::prelude::*;
 
 use super::grid::{
-    grid_coord_at_position, is_cell_walkable, is_position_walkable, NavigationAgent,
-    NavigationConfig,
+    NavigationAgent, NavigationConfig, grid_coord_at_position, is_cell_walkable,
+    is_position_walkable,
 };
-use crate::world::{
-    ground_world_position, ChunkLayout, DoodadCatalog, WorldData, WorldPosition,
-};
+use crate::world::{ChunkLayout, DoodadCatalog, WorldData, WorldPosition, ground_world_position};
 
 /// Remove collinear grid waypoints and apply greedy line-of-sight shortcuts.
 pub fn simplify_navigation_path(
@@ -23,14 +21,7 @@ pub fn simplify_navigation_path(
         return;
     }
     remove_collinear_waypoints(waypoints, layout);
-    apply_line_of_sight_shortcuts(
-        waypoints,
-        world,
-        doodad_catalog,
-        config,
-        agent,
-        layout,
-    );
+    apply_line_of_sight_shortcuts(waypoints, world, doodad_catalog, config, agent, layout);
 }
 
 fn remove_collinear_waypoints(waypoints: &mut Vec<WorldPosition>, layout: ChunkLayout) {
@@ -39,7 +30,12 @@ fn remove_collinear_waypoints(waypoints: &mut Vec<WorldPosition>, layout: ChunkL
     }
     let mut index = 0;
     while index + 2 < waypoints.len() {
-        if is_collinear_xz(waypoints[index], waypoints[index + 1], waypoints[index + 2], layout) {
+        if is_collinear_xz(
+            waypoints[index],
+            waypoints[index + 1],
+            waypoints[index + 2],
+            layout,
+        ) {
             waypoints.remove(index + 1);
         } else {
             index += 1;

@@ -4,13 +4,15 @@ use bevy::prelude::*;
 
 use crate::client::ClientIntent;
 use crate::client::commands::CommandTarget;
-use crate::debug::settings::{debug_interaction_overlay_enabled, DebugOverlayCategory, DebugOverlaySettings};
+use crate::debug::settings::{
+    DebugOverlayCategory, DebugOverlaySettings, debug_interaction_overlay_enabled,
+};
 use crate::debug::trace::IntentDispatchHistory;
 use crate::world::{
     DoodadCatalog, InteractionQueryContext, UnitCatalog, WeaponCatalog, WorldData, WorldPosition,
 };
 
-use super::interaction_snapshot::{capture_interaction_at_position, InteractionDebugSnapshot};
+use super::interaction_snapshot::{InteractionDebugSnapshot, capture_interaction_at_position};
 
 /// Populate [`InteractionDebugSnapshot`] from the last dispatched click (no presentation writes).
 pub fn capture_interaction_debug_snapshot(
@@ -32,12 +34,7 @@ pub fn capture_interaction_debug_snapshot(
         return;
     };
 
-    let ctx = InteractionQueryContext::new(
-        &world,
-        &doodad_catalog,
-        &unit_catalog,
-        &weapon_catalog,
-    );
+    let ctx = InteractionQueryContext::new(&world, &doodad_catalog, &unit_catalog, &weapon_catalog);
     capture_interaction_at_position(&mut snapshot, &ctx, position);
 }
 
@@ -74,11 +71,14 @@ pub fn run_capture_interaction_debug_snapshot(settings: Res<DebugOverlaySettings
 mod tests {
     use bevy::prelude::*;
 
-    use crate::debug::interaction_snapshot::{capture_interaction_at_position, InteractionDebugSnapshot};
+    use crate::debug::interaction_snapshot::{
+        InteractionDebugSnapshot, capture_interaction_at_position,
+    };
     use crate::debug::settings::{DebugOverlayCategory, DebugOverlayConfig};
     use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, Heightfield, InteractionQueryContext,
-        LocalPosition, UnitCatalog, WeaponCatalog, WorldData, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, Heightfield,
+        InteractionQueryContext, LocalPosition, UnitCatalog, WeaponCatalog, WorldData,
+        WorldPosition,
     };
 
     fn flat_world() -> WorldData {

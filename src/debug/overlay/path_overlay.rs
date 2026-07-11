@@ -2,8 +2,8 @@
 
 use bevy::prelude::*;
 
-use crate::debug::settings::{DebugOverlayCategory, DebugOverlaySettings};
 use crate::debug::InspectorOverlayFocus;
+use crate::debug::settings::{DebugOverlayCategory, DebugOverlaySettings};
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::SelectedUnits;
 use crate::world::{UnitState, WorldConfig, WorldData, WorldPosition};
@@ -69,7 +69,13 @@ pub fn draw_path_debug_overlay(
         }
 
         if let (Some(start), Some(end)) = (
-            active_segment_start(record.placement.position, path, waypoint_index, layout, vertical_scale),
+            active_segment_start(
+                record.placement.position,
+                path,
+                waypoint_index,
+                layout,
+                vertical_scale,
+            ),
             active_segment_end(path, waypoint_index, layout, vertical_scale),
         ) {
             gizmos.line(
@@ -84,7 +90,14 @@ pub fn draw_path_debug_overlay(
 
     if let Some(focus_id) = focus.unit_id {
         if focus.is_focused(focus_id) && !selection.contains(focus_id) {
-            draw_focus_path(&mut gizmos, &world, focus_id, focus.path_waypoint_index, layout, vertical_scale);
+            draw_focus_path(
+                &mut gizmos,
+                &world,
+                focus_id,
+                focus.path_waypoint_index,
+                layout,
+                vertical_scale,
+            );
         }
     }
 }

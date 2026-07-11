@@ -10,7 +10,7 @@ use crate::ui::gameplay::combat_display::{
     attack_range_circle_radius_meters, combat_target_id, weapon_display_for_unit,
 };
 use crate::units::input::SelectedUnits;
-use crate::world::{weapon_for_unit_record, UnitCatalog, WeaponCatalog, WorldConfig, WorldData};
+use crate::world::{UnitCatalog, WeaponCatalog, WorldConfig, WorldData, weapon_for_unit_record};
 
 use super::helpers::{render_position, xz_to_render_y};
 
@@ -74,8 +74,7 @@ pub fn draw_combat_debug_overlay(
 
         if let Some(target_id) = combat_target_id(&record.combat_state) {
             if let Some(target) = world.get_unit(target_id) {
-                let target_pos =
-                    render_position(target.placement.position, layout, vertical_scale);
+                let target_pos = render_position(target.placement.position, layout, vertical_scale);
                 gizmos.line(
                     xz_to_render_y(center, 0.15),
                     xz_to_render_y(target_pos, 0.15),
@@ -125,10 +124,7 @@ pub fn draw_combat_debug_overlay(
         if !is_combat_log_outcome(entry.outcome) {
             continue;
         }
-        let affects_selection = entry
-            .unit_ids
-            .iter()
-            .any(|id| selection.contains(*id));
+        let affects_selection = entry.unit_ids.iter().any(|id| selection.contains(*id));
         if !affects_selection {
             continue;
         }

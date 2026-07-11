@@ -10,11 +10,7 @@ pub struct ExclusionFilterResult {
 }
 
 /// World-space distance between two authoritative positions (ADR-001).
-pub fn world_position_distance(
-    a: WorldPosition,
-    b: WorldPosition,
-    layout: ChunkLayout,
-) -> f32 {
+pub fn world_position_distance(a: WorldPosition, b: WorldPosition, layout: ChunkLayout) -> f32 {
     a.to_global(layout).distance(b.to_global(layout))
 }
 
@@ -24,9 +20,9 @@ pub fn position_excluded_by_zones(
     zones: &[DoodadExclusionZone],
     layout: ChunkLayout,
 ) -> bool {
-    zones.iter().any(|zone| {
-        world_position_distance(position, zone.center, layout) <= zone.radius_meters
-    })
+    zones
+        .iter()
+        .any(|zone| world_position_distance(position, zone.center, layout) <= zone.radius_meters)
 }
 
 /// Pure, deterministic procedural candidate filter (ADR-020).
@@ -144,11 +140,7 @@ mod tests {
         let zones = vec![zone_at(0.0, 0.0, 10.0)];
         let candidates = vec![candidate_at(10.0, 0.0)];
 
-        let dist = world_position_distance(
-            candidates[0].position,
-            zones[0].center,
-            layout,
-        );
+        let dist = world_position_distance(candidates[0].position, zones[0].center, layout);
         assert!((dist - 10.0).abs() < 1e-4);
 
         let result = filter_candidates_by_exclusion_zones(&candidates, &zones, layout);

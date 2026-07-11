@@ -5,8 +5,8 @@ use bevy::prelude::*;
 use crate::world::{ChunkLayout, WorldPosition};
 
 use super::pattern::{
-    circle_offsets, dev_placement_seed, grid_offsets, line_offsets, offsets_to_world_positions,
-    scatter_offsets, PatternPointBuffer,
+    PatternPointBuffer, circle_offsets, dev_placement_seed, grid_offsets, line_offsets,
+    offsets_to_world_positions, scatter_offsets,
 };
 
 /// How a single click expands into multiple spawn candidates.
@@ -115,7 +115,8 @@ pub fn generate_brush_positions(
             &buffer.pattern
         }
         BrushMode::Grid => {
-            buffer.pattern = grid_offsets(settings.grid_columns, settings.grid_rows, settings.spacing);
+            buffer.pattern =
+                grid_offsets(settings.grid_columns, settings.grid_rows, settings.spacing);
             &buffer.pattern
         }
         BrushMode::RandomScatter => {

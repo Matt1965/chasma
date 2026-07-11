@@ -6,8 +6,8 @@ use crate::camera::RtsCameraState;
 use crate::world::{DoodadCatalog, UnitCatalog, WorldData};
 
 use super::{
-    apply_scene, capture_scene, clear_world_entities, SceneApplyReport, SceneCaptureContext,
-    SceneDebugFlagsSnapshot, SceneRegistry,
+    SceneApplyReport, SceneCaptureContext, SceneDebugFlagsSnapshot, SceneRegistry, apply_scene,
+    capture_scene, clear_world_entities,
 };
 
 /// Bevy resource wrapping the on-disk scene registry.
@@ -45,7 +45,10 @@ pub fn save_current_world(
     });
     let ctx = SceneCaptureContext::from_dev_state(
         name,
-        format!("Dev snapshot saved at {}", super::registry::unix_timestamp_secs()),
+        format!(
+            "Dev snapshot saved at {}",
+            super::registry::unix_timestamp_secs()
+        ),
         world_seed,
         debug_flags,
         camera_state,

@@ -12,8 +12,8 @@ mod report;
 mod tick;
 
 pub use control::{
-    apply_simulation_control_requests, FrameTickPlan, SimulationClock, SimulationControlRequests,
-    SimulationControlState, MAX_SIMULATION_TICKS_PER_FRAME, SIMULATION_TICK_SECONDS,
+    FrameTickPlan, MAX_SIMULATION_TICKS_PER_FRAME, SIMULATION_TICK_SECONDS, SimulationClock,
+    SimulationControlRequests, SimulationControlState, apply_simulation_control_requests,
 };
 pub use input::handle_simulation_keyboard;
 pub use plugin::{SimulationControlSystems, SimulationPlugin, SimulationSystems};

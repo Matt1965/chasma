@@ -10,18 +10,16 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::terrain::TerrainAssetError;
 use crate::terrain::albedo::ChunkAlbedoGrid;
 use crate::terrain::albedo_decode::decode_albedo_from_path;
 use crate::terrain::write::write_world_with_albedo;
-use crate::terrain::TerrainAssetError;
-use crate::world::{
-    ChunkCoord, ChunkData, ChunkId, Heightfield, WorldConfig, WorldData,
-};
+use crate::world::{ChunkCoord, ChunkData, ChunkId, Heightfield, WorldConfig, WorldData};
 
-use super::decode::{decode_exr_heightfield, DecodeError};
+use super::decode::{DecodeError, decode_exr_heightfield};
 use super::import::{
-    chunk_data_from_source_tile, expected_chunk_samples_per_edge, source_tile_samples_per_edge,
-    ImportError, SourceHeightfield,
+    ImportError, SourceHeightfield, chunk_data_from_source_tile, expected_chunk_samples_per_edge,
+    source_tile_samples_per_edge,
 };
 
 /// How a Gaea source tile maps to the runtime chunk grid.
@@ -36,11 +34,24 @@ pub enum GaeaTileLayout {
 /// Errors produced while importing a directory of Gaea EXR tiles.
 #[derive(Debug, Clone, PartialEq)]
 pub enum GaeaImportError {
-    Io { path: String, message: String },
-    InvalidFilename { filename: String },
-    NoTilesFound { directory: String },
-    DuplicateChunk { x: i32, z: i32 },
-    Decode { path: String, error: DecodeError },
+    Io {
+        path: String,
+        message: String,
+    },
+    InvalidFilename {
+        filename: String,
+    },
+    NoTilesFound {
+        directory: String,
+    },
+    DuplicateChunk {
+        x: i32,
+        z: i32,
+    },
+    Decode {
+        path: String,
+        error: DecodeError,
+    },
     TileDimensionMismatch {
         path: String,
         actual_width: u32,
@@ -115,16 +126,22 @@ pub fn parse_gaea_export_filename(filename: &str) -> Result<(i32, i32), GaeaImpo
     }
 
     let inner = &name[PREFIX.len()..name.len() - SUFFIX.len()];
-    let (z_str, x_str) = inner.split_once("_x").ok_or(GaeaImportError::InvalidFilename {
-        filename: name.to_string(),
-    })?;
+    let (z_str, x_str) = inner
+        .split_once("_x")
+        .ok_or(GaeaImportError::InvalidFilename {
+            filename: name.to_string(),
+        })?;
 
-    let z: i32 = z_str.parse().map_err(|_| GaeaImportError::InvalidFilename {
-        filename: name.to_string(),
-    })?;
-    let x: i32 = x_str.parse().map_err(|_| GaeaImportError::InvalidFilename {
-        filename: name.to_string(),
-    })?;
+    let z: i32 = z_str
+        .parse()
+        .map_err(|_| GaeaImportError::InvalidFilename {
+            filename: name.to_string(),
+        })?;
+    let x: i32 = x_str
+        .parse()
+        .map_err(|_| GaeaImportError::InvalidFilename {
+            filename: name.to_string(),
+        })?;
 
     Ok((x, z))
 }
@@ -150,16 +167,22 @@ pub fn parse_gaea_albedo_filename(filename: &str) -> Result<(i32, i32), GaeaImpo
         });
     };
 
-    let (z_str, x_str) = inner.split_once("_x").ok_or(GaeaImportError::InvalidFilename {
-        filename: name.to_string(),
-    })?;
+    let (z_str, x_str) = inner
+        .split_once("_x")
+        .ok_or(GaeaImportError::InvalidFilename {
+            filename: name.to_string(),
+        })?;
 
-    let z: i32 = z_str.parse().map_err(|_| GaeaImportError::InvalidFilename {
-        filename: name.to_string(),
-    })?;
-    let x: i32 = x_str.parse().map_err(|_| GaeaImportError::InvalidFilename {
-        filename: name.to_string(),
-    })?;
+    let z: i32 = z_str
+        .parse()
+        .map_err(|_| GaeaImportError::InvalidFilename {
+            filename: name.to_string(),
+        })?;
+    let x: i32 = x_str
+        .parse()
+        .map_err(|_| GaeaImportError::InvalidFilename {
+            filename: name.to_string(),
+        })?;
 
     Ok((x, z))
 }
@@ -255,10 +278,12 @@ fn albedo_grid_for_tile(
         }
     };
 
-    ChunkAlbedoGrid::from_samples(runtime_edge, data).map_err(|_| ImportError::SourceNotChunkAligned {
-        source_width: tile.width,
-        source_height: tile.width,
-        samples_per_chunk_edge: runtime_edge as u32,
+    ChunkAlbedoGrid::from_samples(runtime_edge, data).map_err(|_| {
+        ImportError::SourceNotChunkAligned {
+            source_width: tile.width,
+            source_height: tile.width,
+            samples_per_chunk_edge: runtime_edge as u32,
+        }
     })
 }
 
@@ -296,10 +321,8 @@ fn load_optional_gaea_albedo_tiles(
         return HashMap::new();
     }
 
-    let height_layout: HashMap<(i32, i32), GaeaTileLayout> = loaded
-        .iter()
-        .map(|t| ((t.x, t.z), t.layout))
-        .collect();
+    let height_layout: HashMap<(i32, i32), GaeaTileLayout> =
+        loaded.iter().map(|t| ((t.x, t.z), t.layout)).collect();
 
     let mut decoded: HashMap<(i32, i32), SourceAlbedoTile> = HashMap::new();
     for (path, x, z) in paths {
@@ -331,14 +354,7 @@ fn load_optional_gaea_albedo_tiles(
         let Some(source) = decoded.get(&(tile.x, tile.z)) else {
             continue;
         };
-        match albedo_grid_for_tile(
-            tile.x,
-            tile.z,
-            source,
-            tile.layout,
-            &neighbors,
-            config,
-        ) {
+        match albedo_grid_for_tile(tile.x, tile.z, source, tile.layout, &neighbors, config) {
             Ok(grid) => {
                 out.insert(ChunkId::new(ChunkCoord::new(tile.x, tile.z)), grid);
             }
@@ -507,12 +523,8 @@ fn chunk_from_non_overlap_tile(
     let source_edge = source_tile_samples_per_edge(config)?;
     let runtime_edge = source_edge + 1;
     let samples = expand_non_overlap_tile(x, z, tile, neighbors, source_edge);
-    let heightfield = Heightfield::from_samples(
-        runtime_edge,
-        config.meters_per_sample,
-        samples,
-    )
-    .map_err(ImportError::Heightfield)?;
+    let heightfield = Heightfield::from_samples(runtime_edge, config.meters_per_sample, samples)
+        .map_err(ImportError::Heightfield)?;
 
     Ok(ChunkData::new(heightfield, Vec::new()))
 }
@@ -577,12 +589,11 @@ pub fn import_gaea_tile_directory(
         if path.extension().and_then(|ext| ext.to_str()) != Some("exr") {
             continue;
         }
-        let filename = path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .ok_or_else(|| GaeaImportError::InvalidFilename {
+        let filename = path.file_name().and_then(|s| s.to_str()).ok_or_else(|| {
+            GaeaImportError::InvalidFilename {
                 filename: path.display().to_string(),
-            })?;
+            }
+        })?;
         if !filename.starts_with("Export_") {
             continue;
         }
@@ -609,12 +620,7 @@ pub fn import_gaea_tile_directory(
             error,
         })?;
 
-        let layout = validate_gaea_tile_dimensions(
-            source.width(),
-            source.height(),
-            config,
-            &path,
-        )?;
+        let layout = validate_gaea_tile_dimensions(source.width(), source.height(), config, &path)?;
 
         loaded.push(LoadedGaeaTile {
             x,
@@ -624,10 +630,8 @@ pub fn import_gaea_tile_directory(
         });
     }
 
-    let neighbors: HashMap<(i32, i32), &SourceHeightfield> = loaded
-        .iter()
-        .map(|t| ((t.x, t.z), &t.source))
-        .collect();
+    let neighbors: HashMap<(i32, i32), &SourceHeightfield> =
+        loaded.iter().map(|t| ((t.x, t.z), &t.source)).collect();
 
     let mut world = WorldData::new(config.chunk_layout());
 
@@ -637,21 +641,21 @@ pub fn import_gaea_tile_directory(
             GaeaTileLayout::SharedEdge => {
                 chunk_data_from_source_tile(&tile.source, config).map_err(GaeaImportError::Chunk)?
             }
-            GaeaTileLayout::NonOverlap => chunk_from_non_overlap_tile(
-                tile.x,
-                tile.z,
-                &tile.source,
-                &neighbors,
-                config,
-            )
-            .map_err(GaeaImportError::Chunk)?,
+            GaeaTileLayout::NonOverlap => {
+                chunk_from_non_overlap_tile(tile.x, tile.z, &tile.source, &neighbors, config)
+                    .map_err(GaeaImportError::Chunk)?
+            }
         };
         world.insert(chunk_id, chunk);
     }
 
     let count = world.len();
     let albedo = load_optional_gaea_albedo_tiles(&color_dir, &loaded, config);
-    let albedo_ref = if albedo.is_empty() { None } else { Some(&albedo) };
+    let albedo_ref = if albedo.is_empty() {
+        None
+    } else {
+        Some(&albedo)
+    };
     write_world_with_albedo(output_world_dir, config, &world, albedo_ref)
         .map_err(GaeaImportError::Write)?;
     Ok(count)
@@ -715,11 +719,14 @@ mod tests {
     #[test]
     fn rejects_unsupported_tile_dimensions() {
         let config = WorldConfig::default();
-        let err = validate_gaea_tile_dimensions(100, 100, &config, Path::new("bad.exr"))
-            .unwrap_err();
+        let err =
+            validate_gaea_tile_dimensions(100, 100, &config, Path::new("bad.exr")).unwrap_err();
         assert!(matches!(
             err,
-            GaeaImportError::TileDimensionMismatch { actual_width: 100, .. }
+            GaeaImportError::TileDimensionMismatch {
+                actual_width: 100,
+                ..
+            }
         ));
     }
 
@@ -734,10 +741,7 @@ mod tests {
             Path::new("bad.exr"),
         )
         .unwrap_err();
-        assert!(matches!(
-            err,
-            GaeaImportError::TileDimensionMismatch { .. }
-        ));
+        assert!(matches!(err, GaeaImportError::TileDimensionMismatch { .. }));
     }
 
     #[test]
@@ -767,9 +771,7 @@ mod tests {
         let runtime_edge = n + 1;
         assert_eq!(expanded.len(), (runtime_edge * runtime_edge) as usize);
 
-        let at = |col: u32, row: u32| {
-            expanded[row as usize * runtime_edge as usize + col as usize]
-        };
+        let at = |col: u32, row: u32| expanded[row as usize * runtime_edge as usize + col as usize];
 
         assert_eq!(at(0, 0), 0.0);
         assert_eq!(at(1, 0), 50.0);
@@ -809,9 +811,7 @@ mod tests {
 
         let expanded = expand_non_overlap_tile(0, 0, &tile, &neighbors, n);
         let runtime_edge = n + 1;
-        let at = |col: u32, row: u32| {
-            expanded[row as usize * runtime_edge as usize + col as usize]
-        };
+        let at = |col: u32, row: u32| expanded[row as usize * runtime_edge as usize + col as usize];
 
         assert_eq!(at(2, 0), 1.0);
         assert_eq!(at(2, 1), 11.0);
@@ -894,15 +894,25 @@ mod tests {
         fs::create_dir_all(&height).unwrap();
         fs::create_dir_all(&color).unwrap();
 
-        write_rgb_file(height.join("Export_y0_x0.exr"), spe as usize, spe as usize, |cx, cy| {
-            let h = (cx + cy) as f32;
-            (h, h, h)
-        })
+        write_rgb_file(
+            height.join("Export_y0_x0.exr"),
+            spe as usize,
+            spe as usize,
+            |cx, cy| {
+                let h = (cx + cy) as f32;
+                (h, h, h)
+            },
+        )
         .unwrap();
-        write_rgb_file(color.join("Albedo_y0_x0.exr"), spe as usize, spe as usize, |cx, _cy| {
-            let t = cx as f32 / spe as f32;
-            (t, 0.2, 0.8 - t)
-        })
+        write_rgb_file(
+            color.join("Albedo_y0_x0.exr"),
+            spe as usize,
+            spe as usize,
+            |cx, _cy| {
+                let t = cx as f32 / spe as f32;
+                (t, 0.2, 0.8 - t)
+            },
+        )
         .unwrap();
 
         let count = import_gaea_tile_directory(&world_root, &output, &config).unwrap();
@@ -952,15 +962,9 @@ mod tests {
         let mut world = WorldData::new(config.chunk_layout());
         load_world_from_manifest(&output.join("manifest.ron"), &config, &mut world).unwrap();
 
-        let c00 = world
-            .get(ChunkId::new(ChunkCoord::new(0, 0)))
-            .unwrap();
-        let c10 = world
-            .get(ChunkId::new(ChunkCoord::new(1, 0)))
-            .unwrap();
-        let c01 = world
-            .get(ChunkId::new(ChunkCoord::new(0, 1)))
-            .unwrap();
+        let c00 = world.get(ChunkId::new(ChunkCoord::new(0, 0))).unwrap();
+        let c10 = world.get(ChunkId::new(ChunkCoord::new(1, 0))).unwrap();
+        let c01 = world.get(ChunkId::new(ChunkCoord::new(0, 1))).unwrap();
 
         assert_eq!(
             c00.heightfield.sample(2.0, 0.0),
@@ -989,20 +993,31 @@ mod tests {
         };
         let spe = expected_chunk_samples_per_edge(&config).unwrap();
         let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let input = std::env::temp_dir().join(format!("chasma_gaea_alb_in_{}_{n}", std::process::id()));
+        let input =
+            std::env::temp_dir().join(format!("chasma_gaea_alb_in_{}_{n}", std::process::id()));
         let output =
             std::env::temp_dir().join(format!("chasma_gaea_alb_out_{}_{n}", std::process::id()));
         fs::create_dir_all(&input).unwrap();
 
-        write_rgb_file(input.join("Export_y0_x0.exr"), spe as usize, spe as usize, |cx, cy| {
-            let h = (cx + cy) as f32;
-            (h, h, h)
-        })
+        write_rgb_file(
+            input.join("Export_y0_x0.exr"),
+            spe as usize,
+            spe as usize,
+            |cx, cy| {
+                let h = (cx + cy) as f32;
+                (h, h, h)
+            },
+        )
         .unwrap();
-        write_rgb_file(input.join("Albedo_y0_x0.exr"), spe as usize, spe as usize, |cx, _cy| {
-            let t = cx as f32 / spe as f32;
-            (t, 0.2, 0.8 - t)
-        })
+        write_rgb_file(
+            input.join("Albedo_y0_x0.exr"),
+            spe as usize,
+            spe as usize,
+            |cx, _cy| {
+                let t = cx as f32 / spe as f32;
+                (t, 0.2, 0.8 - t)
+            },
+        )
         .unwrap();
 
         let count = import_gaea_tile_directory(&input, &output, &config).unwrap();

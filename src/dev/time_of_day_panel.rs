@@ -2,7 +2,9 @@
 
 use bevy::prelude::*;
 
-use crate::environment::{apply_time_of_day_dev_action, format_time_of_day_status, TimeOfDayDevAction, TimeOfDaySettings};
+use crate::environment::{
+    TimeOfDayDevAction, TimeOfDaySettings, apply_time_of_day_dev_action, format_time_of_day_status,
+};
 
 use super::dev_mode::{DevModeState, DevTab};
 use super::input::DevPanelUi;
@@ -42,7 +44,13 @@ pub(crate) fn spawn_time_of_day_section(parent: &mut ChildSpawnerCommands<'_>) {
                 },
                 TextColor(Color::srgba(0.8, 0.85, 0.92, 1.0)),
             ));
-            spawn_time_button_row(section, &[("-1h", TimeOfDayDevAction::HourEarlier), ("+1h", TimeOfDayDevAction::HourLater)]);
+            spawn_time_button_row(
+                section,
+                &[
+                    ("-1h", TimeOfDayDevAction::HourEarlier),
+                    ("+1h", TimeOfDayDevAction::HourLater),
+                ],
+            );
             spawn_time_button_row(
                 section,
                 &[
@@ -63,7 +71,10 @@ pub(crate) fn spawn_time_of_day_section(parent: &mut ChildSpawnerCommands<'_>) {
         });
 }
 
-fn spawn_time_button_row(parent: &mut ChildSpawnerCommands<'_>, buttons: &[(&str, TimeOfDayDevAction)]) {
+fn spawn_time_button_row(
+    parent: &mut ChildSpawnerCommands<'_>,
+    buttons: &[(&str, TimeOfDayDevAction)],
+) {
     parent
         .spawn((
             DevPanelUi,

@@ -382,8 +382,8 @@ pub fn attach_skybox_to_primary_camera(
 mod tests {
     use std::io::Cursor;
 
-    use super::*;
     use super::super::settings::DEFAULT_SKYBOX_SET;
+    use super::*;
 
     fn write_test_face_png(width: u32, height: u32, fill: u8) -> Vec<u8> {
         let mut buf = Vec::new();
@@ -403,20 +403,14 @@ mod tests {
     #[test]
     fn cubemap_paths_use_environment_root() {
         let paths = cubemap_paths_for_set(DEFAULT_SKYBOX_SET);
-        assert_eq!(
-            paths.ktx2,
-            "environment/skyboxes/default/cubemap.ktx2"
-        );
+        assert_eq!(paths.ktx2, "environment/skyboxes/default/cubemap.ktx2");
         assert_eq!(paths.png, "environment/skyboxes/default/cubemap.png");
     }
 
     #[test]
     fn custom_set_paths_are_not_hardcoded_to_default() {
         let paths = cubemap_paths_for_set("night_clear");
-        assert_eq!(
-            paths.ktx2,
-            "environment/skyboxes/night_clear/cubemap.ktx2"
-        );
+        assert_eq!(paths.ktx2, "environment/skyboxes/night_clear/cubemap.ktx2");
     }
 
     #[test]

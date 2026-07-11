@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use super::settings::WaterSettings;
 use super::spawn::{
-    ensure_environment_water, sync_environment_water_presentation, WaterSpawnState,
+    WaterSpawnState, ensure_environment_water, sync_environment_water_presentation,
 };
 
 /// Visual water surface presentation (Environment layer).

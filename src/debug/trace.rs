@@ -7,8 +7,8 @@ use bevy::prelude::*;
 use crate::client::{ClientIntent, IntentDispatchReport, IntentDispatchStatus};
 use crate::units::input::MoveOrdersReport;
 use crate::world::{
-    BlockedMovementReason, CommandBufferResolveReport, CombatAiReport, CombatAiTraceOutcome,
-    CombatEngagementReport, CombatEngagementStatus, CombatStrikeEvent, CombatStrikeReport,
+    BlockedMovementReason, CombatAiReport, CombatAiTraceOutcome, CombatEngagementReport,
+    CombatEngagementStatus, CombatStrikeEvent, CombatStrikeReport, CommandBufferResolveReport,
     ProjectileEvent, ProjectileReport, UnitDeathEvent, UnitDeathReport, UnitId, UnitMovementTrace,
     UnitOrder, UnitOrderError,
 };
@@ -298,7 +298,9 @@ impl CommandTraceBuffer {
                 CombatEngagementStatus::InRangeReady => CommandTraceOutcome::AttackEnteredRange,
                 CombatEngagementStatus::OutOfRangeChasing => CommandTraceOutcome::CombatChasing,
                 CombatEngagementStatus::TargetInvalid => CommandTraceOutcome::CombatTargetInvalid,
-                CombatEngagementStatus::PathUnavailable => CommandTraceOutcome::CombatPathUnavailable,
+                CombatEngagementStatus::PathUnavailable => {
+                    CommandTraceOutcome::CombatPathUnavailable
+                }
                 CombatEngagementStatus::TerrainUnavailable => {
                     CommandTraceOutcome::CombatTerrainUnavailable
                 }
@@ -414,7 +416,9 @@ impl CommandTraceBuffer {
             let outcome = match trace.outcome {
                 CombatAiTraceOutcome::AiTargetAcquired => CommandTraceOutcome::AiTargetAcquired,
                 CombatAiTraceOutcome::AiScanNoTarget => CommandTraceOutcome::AiScanNoTarget,
-                CombatAiTraceOutcome::AiScanSkippedBudget => CommandTraceOutcome::AiScanSkippedBudget,
+                CombatAiTraceOutcome::AiScanSkippedBudget => {
+                    CommandTraceOutcome::AiScanSkippedBudget
+                }
                 CombatAiTraceOutcome::AiScanSkippedInterval => continue,
             };
             let mut unit_ids = vec![trace.unit_id];
@@ -528,15 +532,19 @@ impl CommandTraceBuffer {
         }
     }
 
-    pub fn store_dispatch_history(history: &mut IntentDispatchHistory, report: IntentDispatchReport) {
+    pub fn store_dispatch_history(
+        history: &mut IntentDispatchHistory,
+        report: IntentDispatchReport,
+    ) {
         history.report = Some(report);
     }
 }
 
 pub fn unit_ids_for_intent(intent: &ClientIntent) -> Vec<UnitId> {
     match intent {
-        ClientIntent::SelectUnit { unit_id }
-        | ClientIntent::ToggleUnitSelection { unit_id } => vec![*unit_id],
+        ClientIntent::SelectUnit { unit_id } | ClientIntent::ToggleUnitSelection { unit_id } => {
+            vec![*unit_id]
+        }
         _ => Vec::new(),
     }
 }
@@ -560,9 +568,7 @@ mod tests {
     use super::*;
     use crate::client::{IntentDispatchRecord, IntentDispatchStatus};
     use crate::units::input::MoveOrderUnitTrace;
-    use crate::world::{
-        ChunkCoord, CommandResolveSuccess, LocalPosition, WorldPosition,
-    };
+    use crate::world::{ChunkCoord, CommandResolveSuccess, LocalPosition, WorldPosition};
 
     fn pos(x: f32, z: f32) -> WorldPosition {
         WorldPosition::new(
@@ -585,7 +591,10 @@ mod tests {
             None,
         );
         assert_eq!(buffer.len(), 1);
-        assert_eq!(buffer.latest().unwrap().intent_kind, CommandTraceIntentKind::SelectUnit);
+        assert_eq!(
+            buffer.latest().unwrap().intent_kind,
+            CommandTraceIntentKind::SelectUnit
+        );
     }
 
     #[test]

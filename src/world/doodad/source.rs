@@ -10,5 +10,7 @@ pub enum DoodadSource {
     Authored,
     /// Runtime placement via dev authoring tools (ADR-043).
     Dev,
-    Procedural { seed: u64 },
+    Procedural {
+        seed: u64,
+    },
 }

@@ -5,16 +5,14 @@
 
 use bevy::prelude::*;
 
-use crate::world::obstacle::blocking_doodad_at_position;
+use crate::world::obstacle::is_position_blocked_by_doodads;
 use crate::world::{
-    classify_slope_walkability, ground_world_position, ChunkCoord, ChunkId, DoodadCatalog,
-    DoodadDefinition, DoodadId, DoodadKind, DoodadRecord, SlopeWalkability, UnitCatalog,
-    WorldData, WorldPosition,
+    ChunkCoord, ChunkId, DoodadCatalog, DoodadDefinition, DoodadId, DoodadKind, DoodadRecord,
+    SlopeWalkability, UnitCatalog, WorldData, WorldPosition, classify_slope_walkability,
+    ground_world_position,
 };
 
-use super::types::{
-    InteractionMetadata, InteractionResult, InteractionTargetRef, InteractionType,
-};
+use super::types::{InteractionMetadata, InteractionResult, InteractionTargetRef, InteractionType};
 
 /// Default query radius for “under cursor” classification (meters).
 pub const DEFAULT_INTERACTION_QUERY_RADIUS_METERS: f32 = 2.5;
@@ -73,14 +71,12 @@ pub fn query_world_interaction(
         return Some(classify_doodad_hit(grounded, record, definition));
     }
 
-    if blocking_doodad_at_position(
+    if is_position_blocked_by_doodads(
         ctx.world,
         ctx.doodad_catalog,
         grounded,
         ctx.agent_radius_meters,
-    )
-    .is_some()
-    {
+    ) {
         return Some(InteractionResult {
             interaction_type: InteractionType::BlockedArea,
             position: grounded,
@@ -109,7 +105,19 @@ pub fn query_world_interaction(
                 target: InteractionTargetRef::Terrain(grounded),
             });
         }
-        SlopeWalkability::Unavailable => return None,
+        SlopeWalkability::Unavailable => {
+            return Some(InteractionResult {
+                interaction_type: InteractionType::BlockedArea,
+                position: grounded,
+                metadata: InteractionMetadata {
+                    label: "Terrain unavailable".to_string(),
+                    doodad_kind: None,
+                    blocks_movement: true,
+                },
+                valid: false,
+                target: InteractionTargetRef::Terrain(grounded),
+            });
+        }
     }
 
     Some(InteractionResult {
@@ -167,7 +175,10 @@ fn nearest_doodad_in_radius<'a>(
     let mut chunks: Vec<ChunkCoord> = Vec::with_capacity(9);
     for dz in -1..=1 {
         for dx in -1..=1 {
-            chunks.push(ChunkCoord::new(position.chunk.x + dx, position.chunk.z + dz));
+            chunks.push(ChunkCoord::new(
+                position.chunk.x + dx,
+                position.chunk.z + dz,
+            ));
         }
     }
     chunks.sort_by_key(|coord| (coord.x, coord.z));
@@ -192,7 +203,8 @@ fn nearest_doodad_in_radius<'a>(
                 None => true,
                 Some((best_dist, best_id)) => {
                     distance < *best_dist - 1e-4
-                        || ((distance - *best_dist).abs() <= 1e-4 && record.id.raw() < best_id.raw())
+                        || ((distance - *best_dist).abs() <= 1e-4
+                            && record.id.raw() < best_id.raw())
                 }
             };
             if replace {
@@ -213,8 +225,8 @@ fn nearest_doodad_in_radius<'a>(
 mod tests {
     use super::*;
     use crate::world::{
-        create_doodad, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId,
-        DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, DoodadPlacementOverrides,
+        DoodadSource, Heightfield, LocalPosition, create_doodad,
     };
 
     fn layout() -> ChunkLayout {
@@ -260,9 +272,11 @@ mod tests {
         let catalog = DoodadCatalog::default();
         let unit_catalog = UnitCatalog::default();
         let weapons = weapons();
-        let result =
-            query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), pos(64.0, 64.0))
-                .unwrap();
+        let result = query_world_interaction(
+            &ctx(&world, &catalog, &unit_catalog, &weapons),
+            pos(64.0, 64.0),
+        )
+        .unwrap();
         assert_eq!(result.interaction_type, InteractionType::MoveTarget);
         assert!(result.valid);
     }
@@ -283,9 +297,11 @@ mod tests {
         )
         .unwrap();
 
-        let result =
-            query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), pos(50.0, 50.0))
-                .unwrap();
+        let result = query_world_interaction(
+            &ctx(&world, &catalog, &unit_catalog, &weapons),
+            pos(50.0, 50.0),
+        )
+        .unwrap();
         assert_eq!(result.interaction_type, InteractionType::BlockedArea);
         assert!(matches!(result.target, InteractionTargetRef::Doodad(_)));
     }
@@ -306,9 +322,11 @@ mod tests {
         )
         .unwrap();
 
-        let result =
-            query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), pos(30.0, 30.0))
-                .unwrap();
+        let result = query_world_interaction(
+            &ctx(&world, &catalog, &unit_catalog, &weapons),
+            pos(30.0, 30.0),
+        )
+        .unwrap();
         assert_eq!(result.interaction_type, InteractionType::InteractableObject);
     }
 
@@ -328,9 +346,11 @@ mod tests {
         )
         .unwrap();
 
-        let result =
-            query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), pos(70.0, 70.0))
-                .unwrap();
+        let result = query_world_interaction(
+            &ctx(&world, &catalog, &unit_catalog, &weapons),
+            pos(70.0, 70.0),
+        )
+        .unwrap();
         assert_eq!(result.interaction_type, InteractionType::ResourceNode);
     }
 
@@ -341,7 +361,11 @@ mod tests {
         let unit_catalog = UnitCatalog::default();
         let weapons = weapons();
         assert!(
-            query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), pos(1.0, 1.0)).is_none()
+            query_world_interaction(
+                &ctx(&world, &catalog, &unit_catalog, &weapons),
+                pos(1.0, 1.0)
+            )
+            .is_none()
         );
     }
 
@@ -369,8 +393,40 @@ mod tests {
         let unit_catalog = UnitCatalog::default();
         let weapons = weapons();
         let world = flat_world();
-        let a = query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), pos(12.0, 14.0));
-        let b = query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), pos(12.0, 14.0));
+        let a = query_world_interaction(
+            &ctx(&world, &catalog, &unit_catalog, &weapons),
+            pos(12.0, 14.0),
+        );
+        let b = query_world_interaction(
+            &ctx(&world, &catalog, &unit_catalog, &weapons),
+            pos(12.0, 14.0),
+        );
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn slope_unavailable_returns_blocked_area_not_none() {
+        let catalog = DoodadCatalog::default();
+        let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
+        let mut world = WorldData::new(layout());
+        let samples: Vec<f32> = (0..9).map(|i| i as f32 * 10.0).collect();
+        let heightfield = Heightfield::from_samples(3, 128.0, samples).unwrap();
+        world.insert(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            ChunkData::new(heightfield, Vec::new()),
+        );
+        let position = pos(0.0, 0.0);
+        let result =
+            query_world_interaction(&ctx(&world, &catalog, &unit_catalog, &weapons), position);
+        if matches!(
+            classify_slope_walkability(&world, position, DEFAULT_INTERACTION_MAX_SLOPE_DEGREES),
+            SlopeWalkability::Unavailable
+        ) {
+            let result = result.expect("slope unavailable should surface blocked feedback");
+            assert_eq!(result.interaction_type, InteractionType::BlockedArea);
+            assert!(!result.valid);
+            assert_eq!(result.metadata.label, "Terrain unavailable");
+        }
     }
 }

@@ -44,10 +44,7 @@ pub fn validate_row(row: &UnitImportRow) -> Result<(), crate::data_import::RowIm
         return Err(fail("Default Weapon ID must be non-empty".to_string()));
     }
     if row.max_hp == 0 {
-        return Err(fail(format!(
-            "Max HP must be > 0 (got {})",
-            row.max_hp
-        )));
+        return Err(fail(format!("Max HP must be > 0 (got {})", row.max_hp)));
     }
     if !row.power_rating.is_finite()
         || !row.move_speed_mps.is_finite()

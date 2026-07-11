@@ -1,21 +1,23 @@
-﻿use bevy::prelude::*;
+use bevy::prelude::*;
 
 use crate::client::{
-    collect_unit_input_intents, dispatch_client_intents, ClientIntentCollectSystems,
-    ClientIntentDispatchSystems, ClientIntentFlushSystems, ClientPipelinePlugin,
+    ClientIntentCollectSystems, ClientIntentDispatchSystems, ClientIntentFlushSystems,
+    ClientPipelinePlugin, collect_unit_input_intents, dispatch_client_intents,
 };
-use crate::ui::gameplay::{GameplayCommandInputSystems, GameplayInputGateSystems};
 use crate::debug::DebugOverlayPlugin;
 use crate::simulation::{SimulationPlugin, SimulationSystems};
 use crate::ui::GameplayUiPlugin;
+use crate::ui::gameplay::{GameplayCommandInputSystems, GameplayInputGateSystems};
 use crate::units::input::{BoxSelectDrag, PlayerInteractionSettings, SelectedUnits};
-use crate::units::{sync_unit_health_bars, UnitHealthBarState};
+use crate::units::{UnitHealthBarState, sync_unit_health_bars};
 
 use super::box_select_overlay::{setup_box_select_overlay, sync_box_select_overlay};
-use super::indicator::{sync_unit_selection_indicators, UnitSelectionIndicatorState};
+use super::indicator::{UnitSelectionIndicatorState, sync_unit_selection_indicators};
 use super::ownership::LocalPlayerOwnership;
 use super::selection_policy::sync_selection_policy_state;
-use super::simulation::{apply_death_client_cleanup, flush_simulation_command_trace, tick_unit_movement};
+use super::simulation::{
+    apply_death_client_cleanup, flush_simulation_command_trace, tick_unit_movement,
+};
 
 /// Runtime entity sync from authoritative world data (ADR-065).
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]

@@ -61,22 +61,19 @@ fn interaction_type_color(kind: InteractionType) -> Color {
 
 #[cfg(test)]
 mod tests {
-    use bevy::prelude::Vec3;
     use crate::debug::interaction_snapshot::InteractionDebugSnapshot;
     use crate::world::{
         ChunkCoord, InteractionMetadata, InteractionResult, InteractionTargetRef, InteractionType,
         LocalPosition, WorldPosition,
     };
+    use bevy::prelude::Vec3;
 
     #[test]
     fn overlay_consumes_read_only_snapshot() {
         let snapshot = InteractionDebugSnapshot {
             query: Some(InteractionResult {
                 interaction_type: InteractionType::MoveTarget,
-                position: WorldPosition::new(
-                    ChunkCoord::new(0, 0),
-                    LocalPosition::new(Vec3::ZERO),
-                ),
+                position: WorldPosition::new(ChunkCoord::new(0, 0), LocalPosition::new(Vec3::ZERO)),
                 metadata: InteractionMetadata::default(),
                 valid: true,
                 target: InteractionTargetRef::Terrain(WorldPosition::new(

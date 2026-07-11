@@ -204,10 +204,7 @@ impl SceneUnitRecord {
         let mut record = UnitRecord::new(
             UnitId::new(self.id),
             crate::world::UnitDefinitionId::new(&self.definition_id),
-            crate::world::UnitPlacement::new(
-                self.position.to_world()?,
-                self.rotation.to_quat(),
-            ),
+            crate::world::UnitPlacement::new(self.position.to_world()?, self.rotation.to_quat()),
             source,
             ownership,
             5,
@@ -261,17 +258,12 @@ impl SceneWorldPosition {
     }
 
     pub fn to_world(self) -> Result<WorldPosition, SceneRecordError> {
-        if !self.local_x.is_finite()
-            || !self.local_y.is_finite()
-            || !self.local_z.is_finite()
-        {
+        if !self.local_x.is_finite() || !self.local_y.is_finite() || !self.local_z.is_finite() {
             return Err(SceneRecordError::InvalidPosition);
         }
         Ok(WorldPosition::new(
             crate::world::ChunkCoord::new(self.chunk_x, self.chunk_z),
-            crate::world::LocalPosition::new(Vec3::new(
-                self.local_x, self.local_y, self.local_z,
-            )),
+            crate::world::LocalPosition::new(Vec3::new(self.local_x, self.local_y, self.local_z)),
         ))
     }
 }

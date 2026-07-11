@@ -5,8 +5,8 @@
 
 use super::id::UnitId;
 use super::record::UnitRecord;
-use crate::world::is_unit_alive;
 use crate::world::WorldData;
+use crate::world::is_unit_alive;
 
 /// Whether a unit may perform authoritative simulation actions this tick.
 pub fn unit_can_execute_actions(world: &WorldData, unit_id: UnitId) -> bool {

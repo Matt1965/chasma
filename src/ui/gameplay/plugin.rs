@@ -5,22 +5,20 @@ use bevy::prelude::*;
 use crate::player::GameplayPresentationSystems;
 
 use super::command_feedback::{
-    sync_move_command_indicator, tick_move_command_indicator, MoveCommandFeedback,
+    MoveCommandFeedback, sync_move_command_indicator, tick_move_command_indicator,
 };
 use super::command_panel::{
     handle_command_button_clicks, sync_command_panel_buttons, update_command_button_hover,
 };
 use super::cursor_feedback::{
-    sample_gameplay_cursor_context, GameplayCursorPresentation, GameplayHoveredUnit,
+    GameplayCursorPresentation, GameplayHoveredUnit, sample_gameplay_cursor_context,
 };
-use super::input_gate::{update_player_hud_hover_state, PlayerHudHoverState};
+use super::input_gate::{PlayerHudHoverState, update_player_hud_hover_state};
 use super::layout::setup_player_hud_layout;
-use super::player_hud_state::{sync_primary_selection, PlayerHudState};
+use super::player_hud_state::{PlayerHudState, sync_primary_selection};
 use super::selected_unit_panel::sync_selected_unit_panel;
 use super::selection_ui::{clear_gameplay_hud_dirty, sync_gameplay_ui_state};
-use super::squad_panel::{
-    handle_squad_entry_clicks, sync_squad_panel, update_squad_entry_hover,
-};
+use super::squad_panel::{handle_squad_entry_clicks, sync_squad_panel, update_squad_entry_hover};
 use super::state::GameplayUiState;
 
 /// HUD hover gate — must run before intent collection reads [`PlayerHudHoverState`].
@@ -57,10 +55,7 @@ impl Plugin for GameplayUiPlugin {
             )
             .add_systems(
                 Update,
-                (
-                    update_player_hud_hover_state,
-                    sync_player_hud_state,
-                )
+                (update_player_hud_hover_state, sync_player_hud_state)
                     .chain()
                     .in_set(GameplayInputGateSystems),
             )
@@ -68,10 +63,7 @@ impl Plugin for GameplayUiPlugin {
                 Update,
                 sample_gameplay_cursor_context.in_set(GameplayCommandInputSystems),
             )
-            .add_systems(
-                Update,
-                sync_gameplay_ui_state.in_set(GameplayUiSystems),
-            )
+            .add_systems(Update, sync_gameplay_ui_state.in_set(GameplayUiSystems))
             .add_systems(
                 Update,
                 (
@@ -100,6 +92,9 @@ impl Plugin for GameplayUiPlugin {
     }
 }
 
-fn sync_player_hud_state(selection: Res<crate::units::input::SelectedUnits>, mut hud: ResMut<PlayerHudState>) {
+fn sync_player_hud_state(
+    selection: Res<crate::units::input::SelectedUnits>,
+    mut hud: ResMut<PlayerHudState>,
+) {
     sync_primary_selection(&mut hud, &selection);
 }

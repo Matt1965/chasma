@@ -9,18 +9,18 @@ mod command_types;
 mod context_resolver;
 
 pub use command_availability::{
-    command_availability, command_tooltip, CommandAvailability, CommandUnavailableReason,
+    CommandAvailability, CommandUnavailableReason, command_availability, command_tooltip,
 };
-pub use command_builder::{build_command_plan, BuiltCommandPlan, CommandBuildError};
 #[cfg(test)]
 pub use command_builder::build_command_plan_or_fallback_move;
+pub use command_builder::{BuiltCommandPlan, CommandBuildError, build_command_plan};
 pub use command_palette::{
-    available_commands_for_selection, unit_supports_command, CommandPaletteEntry,
+    CommandPaletteEntry, available_commands_for_selection, unit_supports_command,
 };
 pub use command_types::{CommandTarget, CommandType, ContextualCommandIntent};
 pub use context_resolver::{
-    resolve_contextual_command, resolve_contextual_command_with_armed, resolve_palette_command,
-    CommandResolutionContext,
+    CommandResolutionContext, resolve_contextual_command, resolve_contextual_command_with_armed,
+    resolve_palette_command,
 };
 
 use bevy::prelude::*;
@@ -43,11 +43,7 @@ impl ResolvedCommandFeedback {
         self.unavailable_reason = None;
     }
 
-    pub fn set_rejected(
-        &mut self,
-        command_type: CommandType,
-        reason: CommandUnavailableReason,
-    ) {
+    pub fn set_rejected(&mut self, command_type: CommandType, reason: CommandUnavailableReason) {
         self.command_type = Some(command_type);
         self.tooltip = Some(command_tooltip(
             command_type,
@@ -79,7 +75,12 @@ mod tests {
         let mut feedback = ResolvedCommandFeedback::default();
         feedback.set_resolved(CommandType::Move);
         assert_eq!(feedback.command_type, Some(CommandType::Move));
-        assert!(feedback.tooltip.as_ref().is_some_and(|t| t.contains("Move")));
+        assert!(
+            feedback
+                .tooltip
+                .as_ref()
+                .is_some_and(|t| t.contains("Move"))
+        );
         feedback.clear();
         assert!(feedback.command_type.is_none());
     }
@@ -95,10 +96,12 @@ mod tests {
             feedback.unavailable_reason,
             Some(CommandUnavailableReason::FeatureNotImplemented)
         );
-        assert!(feedback
-            .tooltip
-            .as_ref()
-            .is_some_and(|t| t.contains("Not implemented")));
+        assert!(
+            feedback
+                .tooltip
+                .as_ref()
+                .is_some_and(|t| t.contains("Not implemented"))
+        );
     }
 
     #[test]
@@ -106,7 +109,9 @@ mod tests {
         use crate::units::input::SelectedUnits;
 
         let units = [crate::world::UnitId::new(1)];
-        let target = CommandTarget::Terrain { position: pos(8.0, 8.0) };
+        let target = CommandTarget::Terrain {
+            position: pos(8.0, 8.0),
+        };
         let world = crate::world::WorldData::new(crate::world::ChunkLayout {
             chunk_size_meters: 256.0,
             units_per_meter: 1.0,

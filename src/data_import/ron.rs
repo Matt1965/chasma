@@ -40,11 +40,7 @@ impl From<&DoodadDefinition> for DoodadDefinitionRon {
             max_scale: definition.max_scale,
             max_slope_degrees: definition.max_slope_degrees,
             enabled: definition.enabled,
-            render_key: definition
-                .render_key
-                .0
-                .clone()
-                .unwrap_or_default(),
+            render_key: definition.render_key.0.clone().unwrap_or_default(),
             allowed_biomes: definition
                 .allowed_biomes
                 .iter()
@@ -86,10 +82,12 @@ pub fn export_doodads_to_ron(
     let catalog = DoodadCatalogRon {
         definitions: definitions.iter().map(DoodadDefinitionRon::from).collect(),
     };
-    let text = ron::ser::to_string_pretty(&catalog, ron::ser::PrettyConfig::default())
-        .map_err(|err| DataImportError::Io {
-            path: path.to_path_buf(),
-            message: err.to_string(),
+    let text =
+        ron::ser::to_string_pretty(&catalog, ron::ser::PrettyConfig::default()).map_err(|err| {
+            DataImportError::Io {
+                path: path.to_path_buf(),
+                message: err.to_string(),
+            }
         })?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|err| DataImportError::Io {
@@ -106,7 +104,9 @@ pub fn export_doodads_to_ron(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{BiomeId, DoodadDefinition, DoodadDefinitionId, DoodadKind, DoodadRenderKey};
+    use crate::world::{
+        BiomeId, DoodadDefinition, DoodadDefinitionId, DoodadKind, DoodadRenderKey,
+    };
 
     #[test]
     fn exports_definitions_to_ron_text() {
@@ -127,10 +127,7 @@ mod tests {
         .with_spawn_weight(8.0)
         .with_random_rotation_y(true);
 
-        let path = std::env::temp_dir().join(format!(
-            "chasma_catalog_{}.ron",
-            std::process::id()
-        ));
+        let path = std::env::temp_dir().join(format!("chasma_catalog_{}.ron", std::process::id()));
         export_doodads_to_ron(&path, &[definition]).unwrap();
         let text = fs::read_to_string(&path).unwrap();
         assert!(text.contains("tree_oak"));

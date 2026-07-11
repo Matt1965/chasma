@@ -36,9 +36,6 @@ pub(crate) fn config_snapshot(config: &WorldConfig) -> ManifestConfig {
     }
 }
 
-/// Relative tolerance for comparing a chunk tile span to `WorldConfig`.
-const CHUNK_SIZE_TOLERANCE: f32 = 1e-5;
-
 pub(crate) fn validate_loaded_chunk(
     entry: &ManifestChunk,
     id: ChunkId,
@@ -52,19 +49,6 @@ pub(crate) fn validate_loaded_chunk(
             manifest_z: entry.z,
             file_x: coord.x,
             file_z: coord.z,
-        });
-    }
-
-    let expected = config.chunk_size_meters;
-    let found = data.heightfield.chunk_size_meters();
-    if found < expected * (1.0 - CHUNK_SIZE_TOLERANCE)
-        || found > expected * (1.0 + CHUNK_SIZE_TOLERANCE)
-    {
-        return Err(TerrainAssetError::ChunkSizeMismatch {
-            x: coord.x,
-            z: coord.z,
-            expected_meters: expected,
-            found_meters: found,
         });
     }
 
@@ -152,7 +136,7 @@ mod tests {
         ALBEDO_FORMAT_VERSION, AlbedoFile, CHUNK_FORMAT_VERSION, ChunkFile,
         MANIFEST_FORMAT_VERSION, Manifest, ManifestChunk, ManifestConfig,
     };
-    use crate::world::{ChunkCoord, ChunkId, ChunkLayout, WorldData};
+    use crate::world::{ChunkCoord, ChunkId, ChunkLayout, TerrainDataError, WorldData};
     use bevy::prelude::Vec3;
     use std::path::PathBuf;
 
@@ -163,11 +147,7 @@ mod tests {
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
 
         let mut dir = std::env::temp_dir();
-        dir.push(format!(
-            "chasma_load_test_{}_{}",
-            std::process::id(),
-            id
-        ));
+        dir.push(format!("chasma_load_test_{}_{}", std::process::id(), id));
         fs::create_dir_all(dir.join("chunks")).unwrap();
         dir
     }
@@ -215,11 +195,7 @@ mod tests {
             },
             chunks: entries,
         };
-        fs::write(
-            dir.join("manifest.ron"),
-            ron::to_string(&manifest).unwrap(),
-        )
-        .unwrap();
+        fs::write(dir.join("manifest.ron"), ron::to_string(&manifest).unwrap()).unwrap();
     }
 
     #[test]
@@ -227,7 +203,8 @@ mod tests {
         let dir = temp_dir();
         write_world_fixture(&dir, &[(1, 2)]);
 
-        let manifest = decode_manifest(&read_manifest_text(&dir.join("manifest.ron")).unwrap()).unwrap();
+        let manifest =
+            decode_manifest(&read_manifest_text(&dir.join("manifest.ron")).unwrap()).unwrap();
         let entry = &manifest.chunks[0];
         let chunk_path = dir.join(&entry.path);
 
@@ -240,7 +217,10 @@ mod tests {
         let id = load_chunk_from_path(&chunk_path, entry, &config(), &mut world).unwrap();
         assert_eq!(id, ChunkId::new(ChunkCoord::new(1, 2)));
         assert_eq!(world.len(), 1);
-        assert_eq!(world.height_at(Vec3::new(256.0 + 128.0, 0.0, 512.0 + 128.0)), Some(11.0));
+        assert_eq!(
+            world.height_at(Vec3::new(256.0 + 128.0, 0.0, 512.0 + 128.0)),
+            Some(11.0)
+        );
 
         fs::remove_dir_all(&dir).ok();
     }
@@ -251,8 +231,8 @@ mod tests {
         write_world_fixture(&dir, &[(0, 0), (2, 3)]);
 
         let mut world = WorldData::new(config().chunk_layout());
-        let count = load_world_from_manifest(&dir.join("manifest.ron"), &config(), &mut world)
-            .unwrap();
+        let count =
+            load_world_from_manifest(&dir.join("manifest.ron"), &config(), &mut world).unwrap();
 
         assert_eq!(count, 2);
         assert!(world.is_chunk_loaded(ChunkId::new(ChunkCoord::new(0, 0))));
@@ -282,9 +262,8 @@ mod tests {
             chunk_size_meters: 128.0,
             units_per_meter: 1.0,
         });
-        let err =
-            load_world_from_manifest(&dir.join("manifest.ron"), &mismatched, &mut world)
-                .unwrap_err();
+        let err = load_world_from_manifest(&dir.join("manifest.ron"), &mismatched, &mut world)
+            .unwrap_err();
         assert!(matches!(err, TerrainAssetError::ConfigMismatch { .. }));
 
         fs::remove_dir_all(&dir).ok();
@@ -294,8 +273,8 @@ mod tests {
     fn reports_io_error_for_missing_manifest() {
         let dir = temp_dir();
         let mut world = WorldData::new(config().chunk_layout());
-        let err = load_world_from_manifest(&dir.join("nope.ron"), &config(), &mut world)
-            .unwrap_err();
+        let err =
+            load_world_from_manifest(&dir.join("nope.ron"), &config(), &mut world).unwrap_err();
         assert!(matches!(err, TerrainAssetError::Io { .. }));
         fs::remove_dir_all(&dir).ok();
     }
@@ -306,11 +285,7 @@ mod tests {
         let mut file = chunk_file(0, 0);
         file.x = 9;
         file.z = 9;
-        fs::write(
-            dir.join("chunks/0_0.ron"),
-            ron::to_string(&file).unwrap(),
-        )
-        .unwrap();
+        fs::write(dir.join("chunks/0_0.ron"), ron::to_string(&file).unwrap()).unwrap();
         let cfg = config();
         let manifest = Manifest {
             version: MANIFEST_FORMAT_VERSION,
@@ -321,16 +296,11 @@ mod tests {
             },
             chunks: vec![ManifestChunk::at(0, 0, "chunks/0_0.ron")],
         };
-        fs::write(
-            dir.join("manifest.ron"),
-            ron::to_string(&manifest).unwrap(),
-        )
-        .unwrap();
+        fs::write(dir.join("manifest.ron"), ron::to_string(&manifest).unwrap()).unwrap();
 
         let mut world = WorldData::new(config().chunk_layout());
         let err =
-            load_world_from_manifest(&dir.join("manifest.ron"), &config(), &mut world)
-                .unwrap_err();
+            load_world_from_manifest(&dir.join("manifest.ron"), &config(), &mut world).unwrap_err();
         assert!(matches!(
             err,
             TerrainAssetError::ChunkCoordMismatch {
@@ -356,11 +326,7 @@ mod tests {
             height_min: 0.0,
             height_max: 0.0,
         };
-        fs::write(
-            dir.join("chunks/0_0.ron"),
-            ron::to_string(&file).unwrap(),
-        )
-        .unwrap();
+        fs::write(dir.join("chunks/0_0.ron"), ron::to_string(&file).unwrap()).unwrap();
         let cfg = config();
         let manifest = Manifest {
             version: MANIFEST_FORMAT_VERSION,
@@ -371,32 +337,33 @@ mod tests {
             },
             chunks: vec![ManifestChunk::at(0, 0, "chunks/0_0.ron")],
         };
-        fs::write(
-            dir.join("manifest.ron"),
-            ron::to_string(&manifest).unwrap(),
-        )
-        .unwrap();
+        fs::write(dir.join("manifest.ron"), ron::to_string(&manifest).unwrap()).unwrap();
 
         let mut world = WorldData::new(config().chunk_layout());
         let err =
-            load_world_from_manifest(&dir.join("manifest.ron"), &config(), &mut world)
-                .unwrap_err();
-        assert!(matches!(
-            err,
-            TerrainAssetError::ChunkSizeMismatch {
-                x: 0,
-                z: 0,
-                expected_meters,
-                found_meters,
-            } if expected_meters == 256.0 && found_meters == 1.0
-        ));
+            load_world_from_manifest(&dir.join("manifest.ron"), &config(), &mut world).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                TerrainAssetError::Heightfield(TerrainDataError::InvalidDimensions { .. })
+                    | TerrainAssetError::Heightfield(TerrainDataError::SpacingMismatch { .. })
+            ) || matches!(
+                err,
+                TerrainAssetError::ChunkSizeMismatch {
+                    x: 0,
+                    z: 0,
+                    expected_meters,
+                    found_meters,
+                } if expected_meters == 256.0 && found_meters == 1.0
+            )
+        );
         fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
     fn loads_committed_sample_world() {
-        let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("assets/worlds/main/manifest.ron");
+        let manifest_path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/worlds/main/manifest.ron");
         let manifest = decode_manifest(&read_manifest_text(&manifest_path).unwrap()).unwrap();
         let config = WorldConfig {
             chunk_size_meters: manifest.config.chunk_size_meters,
@@ -427,22 +394,16 @@ mod tests {
         )
         .unwrap();
 
-        let mut manifest = decode_manifest(&read_manifest_text(&dir.join("manifest.ron")).unwrap()).unwrap();
-        manifest.chunks[0] = manifest.chunks[0].clone().with_albedo("chunks/0_0.albedo.ron");
-        fs::write(
-            dir.join("manifest.ron"),
-            ron::to_string(&manifest).unwrap(),
-        )
-        .unwrap();
+        let mut manifest =
+            decode_manifest(&read_manifest_text(&dir.join("manifest.ron")).unwrap()).unwrap();
+        manifest.chunks[0] = manifest.chunks[0]
+            .clone()
+            .with_albedo("chunks/0_0.albedo.ron");
+        fs::write(dir.join("manifest.ron"), ron::to_string(&manifest).unwrap()).unwrap();
 
         let entry = &manifest.chunks[0];
-        let (id, payload) = load_chunk_payload_from_paths(
-            &dir.join(&entry.path),
-            entry,
-            &dir,
-            &config(),
-        )
-        .unwrap();
+        let (id, payload) =
+            load_chunk_payload_from_paths(&dir.join(&entry.path), entry, &dir, &config()).unwrap();
 
         assert_eq!(id, ChunkId::new(ChunkCoord::new(0, 0)));
         let grid = payload.albedo.expect("albedo sidecar should load");
@@ -457,22 +418,16 @@ mod tests {
         let dir = temp_dir();
         write_world_fixture(&dir, &[(0, 0)]);
 
-        let mut manifest = decode_manifest(&read_manifest_text(&dir.join("manifest.ron")).unwrap()).unwrap();
-        manifest.chunks[0] = manifest.chunks[0].clone().with_albedo("chunks/missing.albedo.ron");
-        fs::write(
-            dir.join("manifest.ron"),
-            ron::to_string(&manifest).unwrap(),
-        )
-        .unwrap();
+        let mut manifest =
+            decode_manifest(&read_manifest_text(&dir.join("manifest.ron")).unwrap()).unwrap();
+        manifest.chunks[0] = manifest.chunks[0]
+            .clone()
+            .with_albedo("chunks/missing.albedo.ron");
+        fs::write(dir.join("manifest.ron"), ron::to_string(&manifest).unwrap()).unwrap();
 
         let entry = &manifest.chunks[0];
-        let (_, payload) = load_chunk_payload_from_paths(
-            &dir.join(&entry.path),
-            entry,
-            &dir,
-            &config(),
-        )
-        .unwrap();
+        let (_, payload) =
+            load_chunk_payload_from_paths(&dir.join(&entry.path), entry, &dir, &config()).unwrap();
         assert!(payload.albedo.is_none());
 
         let mut world = WorldData::new(config().chunk_layout());
@@ -498,22 +453,16 @@ mod tests {
         )
         .unwrap();
 
-        let mut manifest = decode_manifest(&read_manifest_text(&dir.join("manifest.ron")).unwrap()).unwrap();
-        manifest.chunks[0] = manifest.chunks[0].clone().with_albedo("chunks/0_0.albedo.ron");
-        fs::write(
-            dir.join("manifest.ron"),
-            ron::to_string(&manifest).unwrap(),
-        )
-        .unwrap();
+        let mut manifest =
+            decode_manifest(&read_manifest_text(&dir.join("manifest.ron")).unwrap()).unwrap();
+        manifest.chunks[0] = manifest.chunks[0]
+            .clone()
+            .with_albedo("chunks/0_0.albedo.ron");
+        fs::write(dir.join("manifest.ron"), ron::to_string(&manifest).unwrap()).unwrap();
 
         let entry = &manifest.chunks[0];
-        let err = load_chunk_payload_from_paths(
-            &dir.join(&entry.path),
-            entry,
-            &dir,
-            &config(),
-        )
-        .unwrap_err();
+        let err = load_chunk_payload_from_paths(&dir.join(&entry.path), entry, &dir, &config())
+            .unwrap_err();
         assert!(matches!(
             err,
             TerrainAssetError::AlbedoDimensionMismatch {

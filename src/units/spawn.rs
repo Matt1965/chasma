@@ -21,9 +21,7 @@ pub fn spawn_unit_render_entity(
         world_position_to_render_global(record.placement.position, layout, vertical_scale);
     commands
         .spawn((
-            UnitRenderEntity {
-                unit_id: record.id,
-            },
+            UnitRenderEntity { unit_id: record.id },
             UnitSceneRoot,
             SceneRoot(scene),
             Transform {

@@ -6,7 +6,14 @@ This project is a **Bevy 0.18 large-world runtime and simulation foundation**.
 
 The immediate goal is not to build a complete game.
 
-The immediate goal is to build the foundational systems required for a future large-world simulation game inspired by titles such as Kenshi, while remaining flexible enough to support future mechanics that have not yet been designed.
+The immediate goal is to build the foundational systems required for a future large-world
+simulation game combining **Kenshi-inspired world survival and attachment** with
+**Warcraft III-style tactical combat** — while remaining flexible enough to support future
+mechanics that have not yet been designed.
+
+Game design goals, combat philosophy, progression, AI, economy, and food systems are
+documented in [DESIGN.md](DESIGN.md). Accepted design directions also appear as ADRs
+069–073.
 
 The project is first and foremost a large-world runtime:
 
@@ -482,7 +489,9 @@ Allows the world to remain active independent of player location.
 
 Settlements
 
-Settlements are future simulation objects.
+Settlements are future simulation objects. Automation philosophy (professions, task
+generation, building production requests) is defined in
+[DESIGN.md](DESIGN.md#settlement-automation) and [ADR-072](ADRs/ADR-072-settlement-automation-and-production.md).
 
 Examples:
 
@@ -660,6 +669,12 @@ multiplayer implementation
 navmesh generation
 large-scale combat systems
 custom GPU rendering pipelines
+
+**Note:** Unit combat **foundations** (orders, range, strikes, projectiles, basic AI) are
+implemented per ADRs 054–062. [ADR-069](ADRs/ADR-069-combat-design-philosophy.md) documents
+the target Warcraft III-style experience; downed state, stagger, facing, and attribute
+scaling remain future work. Settlement, economy, and full creature AI remain deferred per
+ADR-072 and ADR-071.
 
 These may be added later.
 

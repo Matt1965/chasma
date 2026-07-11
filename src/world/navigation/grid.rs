@@ -3,8 +3,8 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    classify_slope_walkability, ground_world_position, is_position_blocked_by_doodads,
     ChunkLayout, DoodadCatalog, SlopeWalkability, WorldData, WorldPosition,
+    classify_slope_walkability, ground_world_position, is_position_blocked_by_doodads,
 };
 
 /// Grid configuration for pathfinding (ADR-032).
@@ -90,12 +90,7 @@ pub fn is_position_walkable(
     let Some(grounded) = ground_world_position(world, position) else {
         return false;
     };
-    if is_position_blocked_by_doodads(
-        world,
-        doodad_catalog,
-        grounded,
-        agent.radius_meters,
-    ) {
+    if is_position_blocked_by_doodads(world, doodad_catalog, grounded, agent.radius_meters) {
         return false;
     }
     matches!(
@@ -194,7 +189,9 @@ pub fn diagonal_corner_clear(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{ChunkCoord, ChunkData, ChunkId, DoodadCatalog, Heightfield, LocalPosition, WorldData};
+    use crate::world::{
+        ChunkCoord, ChunkData, ChunkId, DoodadCatalog, Heightfield, LocalPosition, WorldData,
+    };
 
     fn layout() -> ChunkLayout {
         ChunkLayout {

@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    CommandBufferResolveReport, CombatAiReport, CombatEngagementReport, CombatStrikeReport,
+    CombatAiReport, CombatEngagementReport, CombatStrikeReport, CommandBufferResolveReport,
     ProjectileReport, UnitDeathReport, UnitMovementTrace,
 };
 

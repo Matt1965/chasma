@@ -5,11 +5,11 @@
 use bevy::prelude::*;
 
 use crate::camera::CameraSettings;
-use crate::logging::{append_log_line, DEV_STARTUP_LOG_PATH};
+use crate::logging::{DEV_STARTUP_LOG_PATH, append_log_line};
 use crate::terrain::residency::ChunkResidencyTracker;
 use crate::world::{
-    create_unit_with_ownership, ground_unit_to_terrain, ChunkId, UnitCatalog, UnitDefinition,
-    UnitGroundingError, UnitOwnership, UnitSource, WorldConfig, WorldData, WorldPosition,
+    ChunkId, UnitCatalog, UnitDefinition, UnitGroundingError, UnitOwnership, UnitSource,
+    WorldConfig, WorldData, WorldPosition, create_unit_with_ownership, ground_unit_to_terrain,
 };
 
 const SESSION_HEADER: &str = "# chasma dev startup log";
@@ -30,8 +30,7 @@ fn dev_preview_spawn_offsets(count: usize) -> Vec<(f32, f32)> {
         .map(|index| {
             let row = index / cols;
             let col = index % cols;
-            let offset_x =
-                DEV_PREVIEW_BASE_OFFSET_X + col as f32 * DEV_PREVIEW_GRID_SPACING_METERS;
+            let offset_x = DEV_PREVIEW_BASE_OFFSET_X + col as f32 * DEV_PREVIEW_GRID_SPACING_METERS;
             let offset_z = (row as f32 - (cols.saturating_sub(1)) as f32 * 0.5)
                 * DEV_PREVIEW_GRID_SPACING_METERS;
             (offset_x, offset_z)
@@ -144,9 +143,7 @@ pub fn spawn_dev_preview_units(
     ledger.completed = true;
 }
 
-fn build_spawn_plan<'a>(
-    renderable: &[&'a UnitDefinition],
-) -> Vec<(&'a UnitDefinition, f32, f32)> {
+fn build_spawn_plan<'a>(renderable: &[&'a UnitDefinition]) -> Vec<(&'a UnitDefinition, f32, f32)> {
     let offsets = dev_preview_spawn_offsets(DEV_PREVIEW_UNIT_COUNT);
     if renderable.len() == 1 {
         let definition = renderable[0];
@@ -169,8 +166,8 @@ fn build_spawn_plan<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
     use crate::world::UnitDefinition;
+    use crate::world::{UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
 
     fn stub_definition(id: &str, key: Option<&str>) -> UnitDefinition {
         UnitDefinition::new(

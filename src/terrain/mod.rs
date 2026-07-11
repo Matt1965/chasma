@@ -33,32 +33,36 @@ pub mod preview;
 #[cfg(feature = "terrain-import")]
 pub mod write;
 
-pub use albedo::{AlbedoFallback, ChunkAlbedoGrid, TerrainChunkAlbedo};
 #[cfg(any(test, feature = "terrain-import"))]
 pub use albedo::TerrainChunkPayload;
+pub use albedo::{AlbedoFallback, ChunkAlbedoGrid, TerrainChunkAlbedo};
+pub use albedo_decode::{
+    decode_albedo_exr, decode_albedo_from_path, decode_albedo_png, decode_albedo_ron,
+};
 pub use asset::{
-    ALBEDO_FORMAT_VERSION, CHUNK_FORMAT_VERSION, AlbedoFile, ChunkFile, MANIFEST_FORMAT_VERSION,
+    ALBEDO_FORMAT_VERSION, AlbedoFile, CHUNK_FORMAT_VERSION, ChunkFile, MANIFEST_FORMAT_VERSION,
     Manifest, ManifestChunk, ManifestConfig, TerrainAssetError,
 };
-pub use albedo_decode::{decode_albedo_exr, decode_albedo_from_path, decode_albedo_png, decode_albedo_ron};
 pub use catalog::TerrainWorldCatalog;
 pub use components::TerrainChunkMesh;
-pub use decode::{decode_chunk, decode_manifest};
 #[cfg(any(test, feature = "terrain-import"))]
 pub use decode::decode_chunk_payload;
+pub use decode::{decode_chunk, decode_manifest};
 pub use lifecycle::TerrainStreamingSystems;
 #[cfg(any(test, feature = "terrain-import"))]
 pub use load::{load_chunk_from_path, load_chunk_payload_from_paths, load_world_from_manifest};
-pub use materialize::PendingChunkMaterializations;
-pub use residency::{ChunkDiscardKind, ChunkResidencyState, ChunkResidencyTracker, discard_chunk_residency};
-pub use mesh::{ChunkLod, build_chunk_mesh};
-#[cfg(feature = "dev")]
-pub use mesh::DEBUG_VALIDATE_LOD_SAMPLE_ALIGNMENT;
 pub use lod::{LodPriority, TerrainLodSettings, desired_lod, predicted_lod_targets};
 pub use lod_build::PendingChunkLodBuilds;
 pub use lod_cache::TerrainChunkLodCache;
+pub use materialize::PendingChunkMaterializations;
+#[cfg(feature = "dev")]
+pub use mesh::DEBUG_VALIDATE_LOD_SAMPLE_ALIGNMENT;
+pub use mesh::{ChunkLod, build_chunk_mesh};
+pub use residency::{
+    ChunkDiscardKind, ChunkResidencyState, ChunkResidencyTracker, discard_chunk_residency,
+};
 pub use spawn::{
-    despawn_chunk_meshes, render_height, world_position_to_render_global, TerrainRenderAssets,
+    TerrainRenderAssets, despawn_chunk_meshes, render_height, world_position_to_render_global,
 };
 pub use streaming::TerrainStreamingSettings;
 
@@ -91,8 +95,9 @@ impl Plugin for TerrainRuntimePlugin {
         #[cfg(feature = "dev")]
         {
             use perf::{
-                TerrainStreamingFrameSample, TerrainStreamingPerfFileLog, TerrainStreamingPerfLatest,
-                TerrainStreamingPerfSettings, TerrainStreamingPerfState,
+                TerrainStreamingFrameSample, TerrainStreamingPerfFileLog,
+                TerrainStreamingPerfLatest, TerrainStreamingPerfSettings,
+                TerrainStreamingPerfState,
             };
             app.register_type::<TerrainStreamingPerfSettings>()
                 .register_type::<TerrainStreamingPerfLatest>()
@@ -104,24 +109,24 @@ impl Plugin for TerrainRuntimePlugin {
         }
 
         app.add_systems(
-                Update,
-                (
-                    #[cfg(feature = "dev")]
-                    lifecycle::begin_terrain_streaming_perf_frame,
-                    lifecycle::stream_terrain_chunks,
-                    lifecycle::poll_chunk_materializations,
-                    lod_build::apply_cached_lod_swaps,
-                    lod_build::request_missing_lod_builds,
-                    lod_build::poll_lod_builds,
-                    lifecycle::apply_chunk_materializations,
-                    lifecycle::unload_terrain_chunks,
-                    #[cfg(feature = "dev")]
-                    perf::report_terrain_streaming_perf,
-                )
-                    .chain()
-                    .in_set(TerrainStreamingSystems)
-                    .run_if(resource_exists::<TerrainWorldCatalog>)
-                    .run_if(resource_exists::<TerrainRenderAssets>),
-            );
+            Update,
+            (
+                #[cfg(feature = "dev")]
+                lifecycle::begin_terrain_streaming_perf_frame,
+                lifecycle::stream_terrain_chunks,
+                lifecycle::poll_chunk_materializations,
+                lod_build::apply_cached_lod_swaps,
+                lod_build::request_missing_lod_builds,
+                lod_build::poll_lod_builds,
+                lifecycle::apply_chunk_materializations,
+                lifecycle::unload_terrain_chunks,
+                #[cfg(feature = "dev")]
+                perf::report_terrain_streaming_perf,
+            )
+                .chain()
+                .in_set(TerrainStreamingSystems)
+                .run_if(resource_exists::<TerrainWorldCatalog>)
+                .run_if(resource_exists::<TerrainRenderAssets>),
+        );
     }
 }

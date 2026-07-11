@@ -61,10 +61,25 @@ pub(crate) fn spawn_lighting_section(parent: &mut ChildSpawnerCommands<'_>) {
                 },
                 TextColor(Color::srgba(0.8, 0.85, 0.92, 1.0)),
             ));
-            spawn_tune_row(section, "Noon dir", LightingTuneField::NoonDirectional, 1_000.0);
-            spawn_tune_row(section, "Night dir", LightingTuneField::NightDirectional, 10.0);
+            spawn_tune_row(
+                section,
+                "Noon dir",
+                LightingTuneField::NoonDirectional,
+                1_000.0,
+            );
+            spawn_tune_row(
+                section,
+                "Night dir",
+                LightingTuneField::NightDirectional,
+                10.0,
+            );
             spawn_tune_row(section, "Noon amb", LightingTuneField::NoonAmbient, 20.0);
-            spawn_tune_row(section, "Night amb x", LightingTuneField::NightAmbientMult, 0.05);
+            spawn_tune_row(
+                section,
+                "Night amb x",
+                LightingTuneField::NightAmbientMult,
+                0.05,
+            );
             spawn_tune_row(section, "Noon sky", LightingTuneField::NoonSkybox, 50.0);
             spawn_tune_row(section, "Night sky", LightingTuneField::NightSkybox, 10.0);
             spawn_tune_row(section, "Twilight", LightingTuneField::TwilightBlend, 0.05);
@@ -72,8 +87,18 @@ pub(crate) fn spawn_lighting_section(parent: &mut ChildSpawnerCommands<'_>) {
             spawn_tune_row(section, "Sun max", LightingTuneField::SunPitchMax, 2.0);
             spawn_tune_row(section, "Sunrise", LightingTuneField::SunriseHour, 0.5);
             spawn_tune_row(section, "Sunset", LightingTuneField::SunsetHour, 0.5);
-            spawn_tune_row(section, "Manual dir", LightingTuneField::ManualDirectional, 500.0);
-            spawn_tune_row(section, "Manual amb", LightingTuneField::ManualAmbient, 20.0);
+            spawn_tune_row(
+                section,
+                "Manual dir",
+                LightingTuneField::ManualDirectional,
+                500.0,
+            );
+            spawn_tune_row(
+                section,
+                "Manual amb",
+                LightingTuneField::ManualAmbient,
+                20.0,
+            );
             spawn_tune_row(section, "Manual sky", LightingTuneField::ManualSkybox, 50.0);
         });
 }
@@ -243,10 +268,12 @@ fn apply_lighting_tune(
                 (time_of_day.twilight_daylight_blend + delta).clamp(0.0, 1.0);
         }
         LightingTuneField::SunPitchMin => {
-            time_of_day.sun_pitch_min_deg = (time_of_day.sun_pitch_min_deg + delta).clamp(-90.0, 90.0);
+            time_of_day.sun_pitch_min_deg =
+                (time_of_day.sun_pitch_min_deg + delta).clamp(-90.0, 90.0);
         }
         LightingTuneField::SunPitchMax => {
-            time_of_day.sun_pitch_max_deg = (time_of_day.sun_pitch_max_deg + delta).clamp(-90.0, 90.0);
+            time_of_day.sun_pitch_max_deg =
+                (time_of_day.sun_pitch_max_deg + delta).clamp(-90.0, 90.0);
         }
         LightingTuneField::SunriseHour => {
             time_of_day.sunrise_hour = (time_of_day.sunrise_hour + delta).clamp(0.0, 23.0);

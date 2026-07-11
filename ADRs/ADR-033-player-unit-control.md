@@ -90,6 +90,7 @@ subsume this tick).
 - ADR-028 (unit runtime layer)
 - ADR-030 (unit orders)
 - ADR-032 (chunk grid navigation)
+- ADR-069 (combat responsiveness — player commands resolve immediately)
 - ARCHITECTURE Gameplay Layer
 
 [`WorldData`]: ../src/world/data.rs

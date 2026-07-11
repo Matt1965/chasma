@@ -23,6 +23,11 @@ lifecycle gap while deferring corpses, loot, XP, animations, and projectiles.
 | Kill attribution traces | AI morale reactions |
 | Runtime despawn via existing sync | Projectile changes |
 
+**Design direction ([ADR-069](ADR-069-combat-design-philosophy.md)):** future **downed state**
+replaces instant death as the default — lootable/treatable downed units; death requires
+additional circumstances. C6 instant removal remains current behavior until a follow-on ADR
+implements downed semantics.
+
 ## Death model
 
 When [`UnitVitals::current_hp`] reaches 0:

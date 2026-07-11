@@ -132,10 +132,7 @@ impl SimulationClock {
         }
 
         let capped = self.accumulator_seconds + f32::EPSILON >= SIMULATION_TICK_SECONDS;
-        FrameTickPlan {
-            tick_count,
-            capped,
-        }
+        FrameTickPlan { tick_count, capped }
     }
 }
 

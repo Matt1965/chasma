@@ -79,6 +79,14 @@ Advanced AI, aggro memory, threat scoring, squad tactics, and patrol behavior re
 out of scope. [`CombatAiSettings::player_units_auto_acquire`] is the seam for
 optional player auto-targeting.
 
+Full creature AI architecture (species → behavior template → personality → state →
+decision) is documented in [ADR-071](ADR-071-creature-ai-architecture.md). C9
+implementation is a deterministic placeholder only.
+
+**Design alignment ([ADR-069](ADR-069-combat-design-philosophy.md)):** future AI must use
+tiered target priority (active combatants first) and closest-in-tier selection — no hidden
+weighting.
+
 ## Non-goals (C9)
 
 No behavior trees, kiting, retreats, abilities, armor, economy AI, sound/VFX, or

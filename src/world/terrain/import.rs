@@ -127,13 +127,19 @@ impl fmt::Display for ImportError {
                 "chunk size {chunk_size_meters} m is not an integer multiple of sample spacing {meters_per_sample} m"
             ),
             Self::SourceDimensionZero { width, height } => {
-                write!(f, "source heightfield has a zero dimension: {width}x{height}")
+                write!(
+                    f,
+                    "source heightfield has a zero dimension: {width}x{height}"
+                )
             }
             Self::SourceSampleCountMismatch { expected, actual } => {
                 write!(f, "source expected {expected} samples, got {actual}")
             }
             Self::NonFiniteSample { index } => {
-                write!(f, "source heightfield has a non-finite sample at index {index}")
+                write!(
+                    f,
+                    "source heightfield has a non-finite sample at index {index}"
+                )
             }
             Self::SourceTooSmall {
                 source_width,

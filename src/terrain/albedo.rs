@@ -24,7 +24,10 @@ impl ChunkAlbedoGrid {
     ///
     /// Returns an error when `samples_per_edge` is zero, the sample count does
     /// not match `samples_per_edge²`, or any channel is non-finite.
-    pub fn from_samples(samples_per_edge: usize, data: Vec<[f32; 3]>) -> Result<Self, AlbedoGridError> {
+    pub fn from_samples(
+        samples_per_edge: usize,
+        data: Vec<[f32; 3]>,
+    ) -> Result<Self, AlbedoGridError> {
         if samples_per_edge == 0 {
             return Err(AlbedoGridError::InvalidSamplesPerEdge { samples_per_edge });
         }
@@ -58,7 +61,9 @@ impl ChunkAlbedoGrid {
 /// Errors while constructing or validating [`ChunkAlbedoGrid`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlbedoGridError {
-    InvalidSamplesPerEdge { samples_per_edge: usize },
+    InvalidSamplesPerEdge {
+        samples_per_edge: usize,
+    },
     SampleCountMismatch {
         samples_per_edge: usize,
         expected: usize,
@@ -71,7 +76,10 @@ impl core::fmt::Display for AlbedoGridError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::InvalidSamplesPerEdge { samples_per_edge } => {
-                write!(f, "albedo samples_per_edge must be > 0, got {samples_per_edge}")
+                write!(
+                    f,
+                    "albedo samples_per_edge must be > 0, got {samples_per_edge}"
+                )
             }
             Self::SampleCountMismatch {
                 samples_per_edge,

@@ -52,7 +52,12 @@ Windup is required and weapon-specific. Recovery is stored separately.
 ## Range interpretation
 
 `range_meters` is stored on `WeaponDefinition`. Edge-to-edge interpretation using collision
-radii is reserved for C4 combat behavior.
+radii is implemented in C4 (ADR-057).
+
+**Design direction ([ADR-069](ADR-069-combat-design-philosophy.md)):** weapons will gain
+**minimum and maximum effective range** envelopes (e.g. axe 0–100, spear 100–200, bow
+200–1000). Current single `range_meters` field is the max-reach foundation until min range
+and envelope semantics are added.
 
 ## Innate attacks
 
@@ -84,7 +89,8 @@ switching.
 
 - C2+: vitals, attack orders, damage pipeline
 - C4: edge-to-edge range using collision radii
-- Equipment / `active_weapon_id` on `UnitRecord`
+- Equipment / `active_weapon_id` on `UnitRecord` ([ADR-073](ADR-073-inventory-and-equipment.md))
+- Min/max range envelope, weapon-origin hit volumes ([ADR-069](ADR-069-combat-design-philosophy.md))
 
 # References
 

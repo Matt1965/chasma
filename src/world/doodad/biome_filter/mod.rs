@@ -2,4 +2,4 @@
 
 mod filter;
 
-pub use filter::{filter_candidates_by_biome, BiomeFilterResult};
+pub use filter::{BiomeFilterResult, filter_candidates_by_biome};

@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::candidate::DoodadSpawnCandidate;
 use super::context::DoodadGenerationContext;
-use super::rng::{chunk_seed, DeterministicRng};
+use super::rng::{DeterministicRng, chunk_seed};
 use super::settings::DoodadGenerationSettings;
 use super::weighted::pick_weighted_definition;
 use crate::world::doodad::catalog::{DoodadCatalog, DoodadDefinition};
@@ -91,7 +91,9 @@ fn spawn_candidate(
 
     DoodadSpawnCandidate {
         definition_id: definition.id.clone(),
-        source: DoodadSource::Procedural { seed: candidate_seed },
+        source: DoodadSource::Procedural {
+            seed: candidate_seed,
+        },
         position: WorldPosition::new(
             context.chunk.coord(),
             LocalPosition::new(Vec3::new(local_x, 0.0, local_z)),
@@ -106,20 +108,8 @@ fn sort_candidates(candidates: &mut [DoodadSpawnCandidate]) {
     candidates.sort_by(|a, b| {
         a.definition_id
             .cmp(&b.definition_id)
-            .then_with(|| {
-                a.position
-                    .local
-                    .0
-                    .x
-                    .total_cmp(&b.position.local.0.x)
-            })
-            .then_with(|| {
-                a.position
-                    .local
-                    .0
-                    .z
-                    .total_cmp(&b.position.local.0.z)
-            })
+            .then_with(|| a.position.local.0.x.total_cmp(&b.position.local.0.x))
+            .then_with(|| a.position.local.0.z.total_cmp(&b.position.local.0.z))
             .then_with(|| procedural_seed(a.source).cmp(&procedural_seed(b.source)))
     });
 }
@@ -133,8 +123,8 @@ fn procedural_seed(source: DoodadSource) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::weighted::count_candidates_by_definition;
+    use super::*;
     use crate::world::doodad::catalog::DoodadRenderKey;
     use crate::world::{ChunkCoord, ChunkId, ChunkLayout, DoodadCatalog, DoodadDefinitionId};
 
@@ -147,11 +137,8 @@ mod tests {
 
     fn generate(world_seed: u64, x: i32, z: i32) -> Vec<DoodadSpawnCandidate> {
         let layout = layout();
-        let ctx = DoodadGenerationContext::new(
-            world_seed,
-            ChunkId::new(ChunkCoord::new(x, z)),
-            &layout,
-        );
+        let ctx =
+            DoodadGenerationContext::new(world_seed, ChunkId::new(ChunkCoord::new(x, z)), &layout);
         generate_chunk_doodads(&ctx, &DoodadCatalog::default())
     }
 
@@ -165,11 +152,8 @@ mod tests {
 
     fn generate_for_distribution(world_seed: u64, x: i32, z: i32) -> Vec<DoodadSpawnCandidate> {
         let layout = layout();
-        let ctx = DoodadGenerationContext::new(
-            world_seed,
-            ChunkId::new(ChunkCoord::new(x, z)),
-            &layout,
-        );
+        let ctx =
+            DoodadGenerationContext::new(world_seed, ChunkId::new(ChunkCoord::new(x, z)), &layout);
         generate_chunk_doodads_with_settings(
             &ctx,
             &DoodadCatalog::default(),
@@ -213,10 +197,7 @@ mod tests {
                 "unknown definition {:?}",
                 candidate.definition_id
             );
-            assert!(matches!(
-                candidate.source,
-                DoodadSource::Procedural { .. }
-            ));
+            assert!(matches!(candidate.source, DoodadSource::Procedural { .. }));
         }
     }
 
@@ -285,8 +266,7 @@ mod tests {
 
         let layout = layout();
         let ctx = DoodadGenerationContext::new(0, ChunkId::new(ChunkCoord::new(0, 0)), &layout);
-        let candidates =
-            generate_chunk_doodads_with_settings(&ctx, &catalog, &settings);
+        let candidates = generate_chunk_doodads_with_settings(&ctx, &catalog, &settings);
         let tree_candidates: Vec<_> = candidates
             .iter()
             .filter(|c| tree_ids.contains(&c.definition_id.as_str()))
@@ -350,8 +330,7 @@ mod tests {
             DoodadRenderKey::reserved("tree/dead"),
         )
         .with_spawn_weight(1.0);
-        let catalog =
-            DoodadCatalog::from_definitions(vec![heavy, light]).expect("valid catalog");
+        let catalog = DoodadCatalog::from_definitions(vec![heavy, light]).expect("valid catalog");
         let settings = DoodadGenerationSettings {
             trees_per_chunk: 128,
             rocks_per_chunk: 0,
@@ -360,8 +339,7 @@ mod tests {
         };
         let layout = layout();
         let ctx = DoodadGenerationContext::new(7, ChunkId::new(ChunkCoord::new(0, 0)), &layout);
-        let candidates =
-            generate_chunk_doodads_with_settings(&ctx, &catalog, &settings);
+        let candidates = generate_chunk_doodads_with_settings(&ctx, &catalog, &settings);
         let heavy_count = candidates
             .iter()
             .filter(|c| c.definition_id.as_str() == "tree_heavy")
@@ -414,11 +392,12 @@ mod tests {
         };
         let layout = layout();
         let ctx = DoodadGenerationContext::new(1, ChunkId::new(ChunkCoord::new(0, 0)), &layout);
-        let candidates =
-            generate_chunk_doodads_with_settings(&ctx, &catalog, &settings);
-        assert!(candidates
-            .iter()
-            .all(|c| c.definition_id.as_str() == "tree_enabled"));
+        let candidates = generate_chunk_doodads_with_settings(&ctx, &catalog, &settings);
+        assert!(
+            candidates
+                .iter()
+                .all(|c| c.definition_id.as_str() == "tree_enabled")
+        );
     }
 
     #[test]

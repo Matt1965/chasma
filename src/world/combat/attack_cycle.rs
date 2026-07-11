@@ -45,9 +45,7 @@ impl WeaponTiming {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{
-        DamageType, HitMode, TargetFilter, WeaponDefinition, WeaponDefinitionId,
-    };
+    use crate::world::{DamageType, HitMode, TargetFilter, WeaponDefinition, WeaponDefinitionId};
 
     fn test_weapon(aps: f32, windup: f32, recovery: f32) -> WeaponDefinition {
         WeaponDefinition::new(

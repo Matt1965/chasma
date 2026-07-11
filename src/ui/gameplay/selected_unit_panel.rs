@@ -3,7 +3,9 @@
 use bevy::prelude::*;
 
 use crate::units::input::SelectedUnits;
-use crate::world::{UnitCatalog, UnitDefinition, UnitId, UnitRecord, UnitState, WeaponCatalog, WorldData};
+use crate::world::{
+    UnitCatalog, UnitDefinition, UnitId, UnitRecord, UnitState, WeaponCatalog, WorldData,
+};
 
 use super::combat_display::{
     append_combat_state_lines, append_weapon_hud_lines, average_hp_percent, combat_target_id,
@@ -11,7 +13,7 @@ use super::combat_display::{
 };
 
 use super::player_hud_state::primary_selected_unit;
-use super::styles::{hud_title_font, PANEL_BG, TEXT_PRIMARY};
+use super::styles::{PANEL_BG, TEXT_PRIMARY, hud_title_font};
 
 /// Marker for the selected-unit panel root.
 #[derive(Component, Debug)]
@@ -102,7 +104,10 @@ pub fn format_single_unit_lines(
     let Some(def) = catalog.get(&record.definition_id) else {
         return vec![
             format!("Unit #{}", unit_id.raw()),
-            format!("Definition: {} (not in catalog)", record.definition_id.as_str()),
+            format!(
+                "Definition: {} (not in catalog)",
+                record.definition_id.as_str()
+            ),
         ];
     };
     format_unit_detail_lines(unit_id, record, def, catalog, weapon_catalog)
@@ -123,7 +128,10 @@ pub fn format_unit_detail_lines(
         format!("Level: {}", def.level),
         format!("HP: {}/{}", record.vitals.current_hp, record.vitals.max_hp),
         format!("Base HP: {}", def.base_hp),
-        format!("STR: {}  DEX: {}  CON: {}", def.strength, def.dexterity, def.constitution),
+        format!(
+            "STR: {}  DEX: {}  CON: {}",
+            def.strength, def.dexterity, def.constitution
+        ),
         format!(
             "AGI: {}  CHA: {}  INT: {}",
             def.agility, def.charisma, def.intelligence
@@ -198,8 +206,8 @@ pub fn sync_selected_unit_panel(
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, starter_weapon_definitions, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
-        Heightfield, LocalPosition, UnitDefinitionId, UnitSource, WeaponCatalog, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitDefinitionId,
+        UnitSource, WeaponCatalog, WorldPosition, create_unit, starter_weapon_definitions,
     };
     use bevy::prelude::Vec3;
 
@@ -247,7 +255,12 @@ mod tests {
     fn multi_selection_shows_count() {
         let mut selection = SelectedUnits::default();
         selection.replace_with([UnitId::new(1), UnitId::new(2)]);
-        let snapshot = build_selected_unit_snapshot(&selection, &flat_world(), &wolf_catalog(), &default_weapons());
+        let snapshot = build_selected_unit_snapshot(
+            &selection,
+            &flat_world(),
+            &wolf_catalog(),
+            &default_weapons(),
+        );
         assert_eq!(snapshot.selection_count, 2);
         assert!(snapshot.lines[0].contains("2 units"));
     }
@@ -267,7 +280,8 @@ mod tests {
         .id;
         let mut selection = SelectedUnits::default();
         selection.set_single(unit_id);
-        let snapshot = build_selected_unit_snapshot(&selection, &world, &catalog, &default_weapons());
+        let snapshot =
+            build_selected_unit_snapshot(&selection, &world, &catalog, &default_weapons());
         let joined = snapshot.lines.join("\n");
         assert!(joined.contains("Wolf"));
         assert!(joined.contains("HP: 5/5"));

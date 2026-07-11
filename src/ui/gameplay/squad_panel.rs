@@ -4,13 +4,13 @@ use bevy::prelude::*;
 
 use crate::client::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
 use crate::units::input::SelectedUnits;
-use crate::world::{player_units, UnitCatalog, UnitId, WorldData};
+use crate::world::{UnitCatalog, UnitId, WorldData, player_units};
 
 use super::layout::PlayerHudUi;
-use super::player_hud_state::{primary_selected_unit, PlayerHudState, SquadFilterMode};
+use super::player_hud_state::{PlayerHudState, SquadFilterMode, primary_selected_unit};
 use super::styles::{
-    hud_body_font, ACCENT_GREEN, PANEL_BG, SQUAD_ENTRY_BG, SQUAD_ENTRY_HOVER,
-    SQUAD_ENTRY_SELECTED, TEXT_MUTED, TEXT_PRIMARY,
+    ACCENT_GREEN, PANEL_BG, SQUAD_ENTRY_BG, SQUAD_ENTRY_HOVER, SQUAD_ENTRY_SELECTED, TEXT_MUTED,
+    TEXT_PRIMARY, hud_body_font,
 };
 
 /// Marker for the squad panel root.
@@ -143,11 +143,7 @@ pub fn sync_squad_panel(
                 }),
             ))
             .with_children(|btn| {
-                btn.spawn((
-                    Text::new(label),
-                    hud_body_font(),
-                    TextColor(TEXT_PRIMARY),
-                ));
+                btn.spawn((Text::new(label), hud_body_font(), TextColor(TEXT_PRIMARY)));
             });
         }
     });
@@ -178,10 +174,7 @@ pub fn handle_squad_entry_clicks(
 /// Highlight squad entries on hover.
 pub fn update_squad_entry_hover(
     selection: Res<SelectedUnits>,
-    mut query: Query<
-        (&Interaction, &SquadEntryButton, &mut BackgroundColor),
-        Changed<Interaction>,
-    >,
+    mut query: Query<(&Interaction, &SquadEntryButton, &mut BackgroundColor), Changed<Interaction>>,
 ) {
     for (interaction, entry, mut bg) in &mut query {
         if selection.contains(entry.unit_id) {
@@ -199,8 +192,8 @@ pub fn update_squad_entry_hover(
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit_with_ownership, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield,
-        LocalPosition, UnitDefinitionId, UnitOwnership, UnitSource, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitDefinitionId,
+        UnitOwnership, UnitSource, WorldPosition, create_unit_with_ownership,
     };
     use bevy::prelude::Vec3;
 

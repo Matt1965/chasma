@@ -35,10 +35,7 @@ impl UnitCatalog {
             }
         }
 
-        Ok(Self {
-            definitions,
-            by_id,
-        })
+        Ok(Self { definitions, by_id })
     }
 
     pub fn len(&self) -> usize {

@@ -6,7 +6,7 @@ use bevy::asset::LoadState;
 use bevy::prelude::*;
 
 use crate::terrain::residency::ChunkResidencyTracker;
-use crate::terrain::{world_position_to_render_global, TerrainRenderAssets};
+use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
 use crate::world::{ChunkId, ProjectileId, WeaponCatalog, WorldConfig, WorldData};
 
 use super::assets::ProjectileSceneAssets;
@@ -83,8 +83,7 @@ pub fn sync_projectile_render_entities(
         if !should_render.contains(&marker.projectile_id) {
             continue;
         }
-        let translation =
-            world_position_to_render_global(record.position, layout, vertical_scale);
+        let translation = world_position_to_render_global(record.position, layout, vertical_scale);
         commands.entity(entity).insert(Transform {
             translation,
             rotation: Quat::IDENTITY,
@@ -118,13 +117,10 @@ pub fn sync_projectile_render_entities(
             continue;
         }
 
-        let translation =
-            world_position_to_render_global(record.position, layout, vertical_scale);
+        let translation = world_position_to_render_global(record.position, layout, vertical_scale);
         let entity = commands
             .spawn((
-                ProjectileRenderEntity {
-                    projectile_id: id,
-                },
+                ProjectileRenderEntity { projectile_id: id },
                 ProjectileSceneRoot,
                 SceneRoot(scene),
                 Transform {
@@ -140,25 +136,24 @@ pub fn sync_projectile_render_entities(
 }
 
 fn scene_is_loaded(asset_server: &AssetServer, scene: &Handle<Scene>) -> bool {
-    matches!(
-        asset_server.get_load_state(scene),
-        Some(LoadState::Loaded)
-    )
+    matches!(asset_server.get_load_state(scene), Some(LoadState::Loaded))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bevy::prelude::{App, AssetPlugin, Assets, MinimalPlugins, Scene, StandardMaterial, Vec3, World as BevyWorld};
-    use std::collections::HashMap;
-    use crate::terrain::residency::ChunkResidencyTracker;
     use crate::terrain::TerrainRenderAssets;
+    use crate::terrain::residency::ChunkResidencyTracker;
     use crate::world::{
         ChunkCoord, ChunkData, ChunkId, ChunkLayout, DamageType, Heightfield, HitMode,
         LocalPosition, ProjectileId, ProjectileLaunchSnapshot, ProjectileRecord, TargetFilter,
         UnitId, WeaponCatalog, WeaponDefinition, WeaponDefinitionId, WorldConfig, WorldData,
         WorldPosition,
     };
+    use bevy::prelude::{
+        App, AssetPlugin, Assets, MinimalPlugins, Scene, StandardMaterial, Vec3, World as BevyWorld,
+    };
+    use std::collections::HashMap;
 
     fn setup_sync_app() -> App {
         let mut app = App::new();
@@ -178,25 +173,27 @@ mod tests {
             "arrow".to_string(),
             scene,
         )])));
-        app.insert_resource(WeaponCatalog::from_definitions(vec![WeaponDefinition::new(
-            WeaponDefinitionId::new("weapon_bow"),
-            "Bow",
-            "Test",
-            5.0,
-            DamageType::Piercing,
-            10.0,
-            1.0,
-            0.1,
-            0.1,
-            HitMode::Projectile,
-            Some("arrow".to_string()),
-            20.0,
-            "attack_bow",
-            vec![TargetFilter::Enemies],
-            None,
-            true,
-        )])
-        .unwrap());
+        app.insert_resource(
+            WeaponCatalog::from_definitions(vec![WeaponDefinition::new(
+                WeaponDefinitionId::new("weapon_bow"),
+                "Bow",
+                "Test",
+                5.0,
+                DamageType::Piercing,
+                10.0,
+                1.0,
+                0.1,
+                0.1,
+                HitMode::Projectile,
+                Some("arrow".to_string()),
+                20.0,
+                "attack_bow",
+                vec![TargetFilter::Enemies],
+                None,
+                true,
+            )])
+            .unwrap(),
+        );
         app.add_systems(Update, sync_projectile_render_entities);
         app
     }
@@ -279,7 +276,9 @@ mod tests {
         app.update();
         assert_eq!(app.world().resource::<ProjectileRenderIndex>().0.len(), 1);
 
-        app.world_mut().resource_mut::<WorldData>().remove_projectile(projectile_id);
+        app.world_mut()
+            .resource_mut::<WorldData>()
+            .remove_projectile(projectile_id);
         app.update();
         assert!(app.world().resource::<ProjectileRenderIndex>().0.is_empty());
     }

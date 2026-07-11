@@ -3,8 +3,8 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    default_blocks_movement, ChunkCoord, ChunkId, DoodadCatalog, DoodadId, DoodadKind,
-    DoodadRecord, WorldData, WorldPosition,
+    ChunkCoord, ChunkId, DoodadCatalog, DoodadId, DoodadKind, DoodadRecord, WorldData,
+    WorldPosition, default_blocks_movement,
 };
 
 use super::error::ObstacleQueryError;
@@ -28,12 +28,7 @@ fn conservative_block_radius_for_kind(kind: DoodadKind) -> f32 {
     }
 }
 
-fn circle_overlap_blocked(
-    center_a: Vec2,
-    center_b: Vec2,
-    radius_a: f32,
-    radius_b: f32,
-) -> bool {
+fn circle_overlap_blocked(center_a: Vec2, center_b: Vec2, radius_a: f32, radius_b: f32) -> bool {
     // Inclusive boundary: touching combined radius counts as blocked (REVIEW-B6).
     center_a.distance(center_b) <= radius_a + radius_b
 }
@@ -73,9 +68,7 @@ pub fn query_obstacle_at_position(
         return ObstacleQueryResult {
             blocked: true,
             blocking_doodad: None,
-            error: Some(ObstacleQueryError::InvalidBlockingRadius {
-                radius_meters,
-            }),
+            error: Some(ObstacleQueryError::InvalidBlockingRadius { radius_meters }),
         };
     }
 
@@ -86,7 +79,10 @@ pub fn query_obstacle_at_position(
     let mut chunks: Vec<ChunkCoord> = Vec::with_capacity(9);
     for dz in -1..=1 {
         for dx in -1..=1 {
-            chunks.push(ChunkCoord::new(position.chunk.x + dx, position.chunk.z + dz));
+            chunks.push(ChunkCoord::new(
+                position.chunk.x + dx,
+                position.chunk.z + dz,
+            ));
         }
     }
     chunks.sort_by_key(|coord| (coord.x, coord.z));
@@ -193,8 +189,8 @@ pub fn blocking_doodad_at_position(
 mod tests {
     use super::*;
     use crate::world::{
-        create_doodad, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog,
-        DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, DoodadDefinitionId,
+        DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition, create_doodad,
     };
 
     fn layout() -> ChunkLayout {
@@ -266,10 +262,7 @@ mod tests {
 
         let unit_pos = pos(0, 0, 50.0 + tree.block_radius_meters + 1.0, 50.0);
         assert!(!is_position_blocked_by_doodads(
-            &world,
-            &catalog,
-            unit_pos,
-            0.5,
+            &world, &catalog, unit_pos, 0.5,
         ));
     }
 
@@ -328,9 +321,7 @@ mod tests {
 
     #[test]
     fn missing_definition_fails_closed_for_blocking_kind() {
-        use crate::world::{
-            DoodadId, DoodadKind, DoodadPlacement, DoodadRecord, DoodadSource,
-        };
+        use crate::world::{DoodadId, DoodadKind, DoodadPlacement, DoodadRecord, DoodadSource};
 
         let catalog = DoodadCatalog::default();
         let mut world = WorldData::new(layout());
@@ -357,9 +348,7 @@ mod tests {
 
     #[test]
     fn missing_definition_fail_closed_even_without_overlap() {
-        use crate::world::{
-            DoodadId, DoodadKind, DoodadPlacement, DoodadRecord, DoodadSource,
-        };
+        use crate::world::{DoodadId, DoodadKind, DoodadPlacement, DoodadRecord, DoodadSource};
 
         let catalog = DoodadCatalog::default();
         let mut world = WorldData::new(layout());

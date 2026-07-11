@@ -2,8 +2,8 @@ use bevy::prelude::*;
 
 use super::definition_id::DoodadDefinitionId;
 use super::render_key::DoodadRenderKey;
-use crate::world::biome::BiomeId;
 use crate::world::DoodadKind;
+use crate::world::biome::BiomeId;
 
 /// Authoritative description of a doodad type (ADR-016).
 ///

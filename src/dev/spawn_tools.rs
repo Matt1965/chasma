@@ -3,9 +3,9 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    create_doodad, create_unit_with_ownership, DoodadCatalog, DoodadDefinitionId,
-    DoodadPlacementOverrides, DoodadSource, UnitCatalog, UnitDefinitionId, UnitOwnership,
-    UnitSource, WorldData, WorldPosition,
+    DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, UnitCatalog,
+    UnitDefinitionId, UnitOwnership, UnitSource, WorldData, WorldPosition, create_doodad,
+    create_unit_with_ownership,
 };
 
 use super::dev_mode::{DefinitionId, SpawnMode};
@@ -100,9 +100,7 @@ pub fn spawn_by_mode_at_position(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
-    };
+    use crate::world::{ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition};
     use bevy::prelude::Vec3;
 
     fn flat_world() -> WorldData {

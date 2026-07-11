@@ -1,13 +1,15 @@
 use std::collections::HashMap;
 
-use super::schema::{WeaponImportRow, REQUIRED_COLUMNS};
+use super::schema::{REQUIRED_COLUMNS, WeaponImportRow};
 use crate::data_import::error::{DataImportError, RowImportError};
 use crate::data_import::schema::parse_enabled_cell;
 use crate::world::{DamageType, HitMode, TargetFilter};
 
 pub const WEAPONS_SHEET_NAME: &str = "Weapons";
 
-pub fn column_map_from_headers(headers: &[String]) -> Result<HashMap<String, usize>, DataImportError> {
+pub fn column_map_from_headers(
+    headers: &[String],
+) -> Result<HashMap<String, usize>, DataImportError> {
     let mut map = HashMap::new();
     for (index, header) in headers.iter().enumerate() {
         let key = header.trim();
@@ -31,15 +33,15 @@ pub fn column_map_from_headers(headers: &[String]) -> Result<HashMap<String, usi
 pub fn read_weapon_rows(
     path: &std::path::Path,
 ) -> Result<Vec<Result<WeaponImportRow, RowImportError>>, DataImportError> {
-    use calamine::{open_workbook, Reader, Xlsx, XlsxError};
+    use calamine::{Reader, Xlsx, XlsxError, open_workbook};
 
-    let mut workbook: Xlsx<_> =
-        open_workbook(path).map_err(|err: XlsxError| DataImportError::WorkbookOpen(err.to_string()))?;
-    let range = workbook
-        .worksheet_range(WEAPONS_SHEET_NAME)
-        .map_err(|_| DataImportError::SheetNotFound {
+    let mut workbook: Xlsx<_> = open_workbook(path)
+        .map_err(|err: XlsxError| DataImportError::WorkbookOpen(err.to_string()))?;
+    let range = workbook.worksheet_range(WEAPONS_SHEET_NAME).map_err(|_| {
+        DataImportError::SheetNotFound {
             sheet: WEAPONS_SHEET_NAME.to_string(),
-        })?;
+        }
+    })?;
 
     let mut rows = range.rows();
     let header_cells = rows.next().ok_or(DataImportError::NoValidRows)?;
@@ -52,17 +54,21 @@ pub fn read_weapon_rows(
             continue;
         }
         let row_number = offset + 2;
-        parsed.push(parse_row(row_number, cells, &columns).map_err(|message| RowImportError {
-            row_number,
-            message,
-        }));
+        parsed.push(
+            parse_row(row_number, cells, &columns).map_err(|message| RowImportError {
+                row_number,
+                message,
+            }),
+        );
     }
 
     Ok(parsed)
 }
 
 fn row_is_empty(cells: &[calamine::Data]) -> bool {
-    cells.iter().all(|cell| cell_to_string(cell).trim().is_empty())
+    cells
+        .iter()
+        .all(|cell| cell_to_string(cell).trim().is_empty())
 }
 
 fn parse_row(
@@ -237,8 +243,21 @@ mod tests {
             "Weapon ID",
         ];
         let row = vec![
-            "Y", "", "Enemies", "attack_fists", "", "Melee", "0.1", "0.1", "1.5", "1.2",
-            "Blunt", "4", "Unarmed", "Fists", "weapon_fists",
+            "Y",
+            "",
+            "Enemies",
+            "attack_fists",
+            "",
+            "Melee",
+            "0.1",
+            "0.1",
+            "1.5",
+            "1.2",
+            "Blunt",
+            "4",
+            "Unarmed",
+            "Fists",
+            "weapon_fists",
         ];
         write_workbook(&path, &headers, &[row]);
         let rows = read_weapon_rows(&path).unwrap();

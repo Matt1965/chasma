@@ -6,10 +6,15 @@ use bevy::ui::FocusPolicy;
 use crate::world::{DoodadCatalog, UnitCatalog};
 
 use super::catalog_browser::CatalogBrowserEntry;
-use super::catalog_cache::{browse_catalog_entries, CatalogBrowseIndex, CatalogFilterCache, DevSearchDebounce};
+use super::catalog_cache::{
+    CatalogBrowseIndex, CatalogFilterCache, DevSearchDebounce, browse_catalog_entries,
+};
 use super::dev_mode::{DefinitionId, DevDebugFlags, DevModeState, DevTab};
 use super::input::{DevPanelRoot, DevPanelUi};
-use super::scenes::{delete_scene, load_scene_by_id, save_current_world, clear_dev_world, DevSceneRegistry, SceneDebugFlagsSnapshot};
+use super::scenes::{
+    DevSceneRegistry, SceneDebugFlagsSnapshot, clear_dev_world, delete_scene, load_scene_by_id,
+    save_current_world,
+};
 use super::tools::MAX_BRUSH_SPAWN_COUNT;
 
 use crate::camera::{RtsCamera, RtsCameraState};
@@ -292,62 +297,62 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
                 },
             ))
             .with_children(|catalog| {
-            catalog.spawn((
-                DevSearchText,
-                DevPanelUi,
-                Text::new("Search: (type when panel not hovered)"),
-                TextFont {
-                    font_size: 12.0,
-                    ..default()
-                },
-                TextColor(Color::srgba(0.75, 0.82, 0.9, 1.0)),
-            ));
-
-            catalog.spawn((
-                DevListText,
-                DevPanelUi,
-                Text::new(""),
-                TextFont {
-                    font_size: 12.0,
-                    ..default()
-                },
-                TextColor(Color::srgba(0.9, 0.93, 0.96, 1.0)),
-            ));
-
-            catalog
-                .spawn((
+                catalog.spawn((
+                    DevSearchText,
                     DevPanelUi,
-                    Node {
-                        flex_direction: FlexDirection::Column,
-                        row_gap: Val::Px(2.0),
-                        max_height: Val::Px(ROW_HEIGHT_PX * MAX_VISIBLE_ROWS as f32),
-                        overflow: Overflow::scroll_y(),
+                    Text::new("Search: (type when panel not hovered)"),
+                    TextFont {
+                        font_size: 12.0,
                         ..default()
                     },
-                ))
-                .with_children(|list| {
-                for index in 0..MAX_VISIBLE_ROWS {
-                    list.spawn((
-                        DevListRow { index },
+                    TextColor(Color::srgba(0.75, 0.82, 0.9, 1.0)),
+                ));
+
+                catalog.spawn((
+                    DevListText,
+                    DevPanelUi,
+                    Text::new(""),
+                    TextFont {
+                        font_size: 12.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgba(0.9, 0.93, 0.96, 1.0)),
+                ));
+
+                catalog
+                    .spawn((
                         DevPanelUi,
-                        Button,
                         Node {
-                            width: Val::Percent(100.0),
-                            height: Val::Px(ROW_HEIGHT_PX),
-                            padding: UiRect::horizontal(Val::Px(4.0)),
-                            align_items: AlignItems::Center,
+                            flex_direction: FlexDirection::Column,
+                            row_gap: Val::Px(2.0),
+                            max_height: Val::Px(ROW_HEIGHT_PX * MAX_VISIBLE_ROWS as f32),
+                            overflow: Overflow::scroll_y(),
                             ..default()
                         },
-                        BackgroundColor(Color::srgba(0.1, 0.14, 0.18, 0.85)),
-                        Text::new(""),
-                        TextFont {
-                            font_size: 11.0,
-                            ..default()
-                        },
-                        TextColor(Color::srgba(0.88, 0.92, 0.96, 1.0)),
-                    ));
-                }
-            });
+                    ))
+                    .with_children(|list| {
+                        for index in 0..MAX_VISIBLE_ROWS {
+                            list.spawn((
+                                DevListRow { index },
+                                DevPanelUi,
+                                Button,
+                                Node {
+                                    width: Val::Percent(100.0),
+                                    height: Val::Px(ROW_HEIGHT_PX),
+                                    padding: UiRect::horizontal(Val::Px(4.0)),
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgba(0.1, 0.14, 0.18, 0.85)),
+                                Text::new(""),
+                                TextFont {
+                                    font_size: 11.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgba(0.88, 0.92, 0.96, 1.0)),
+                            ));
+                        }
+                    });
             });
 
             root.spawn((
@@ -692,14 +697,21 @@ pub(crate) fn sync_dev_panel_content(
     if let Ok(mut text) = texts.p1().single_mut() {
         **text = match dev_state.active_tab {
             DevTab::Units | DevTab::Doodads => {
-                format!("Definitions ({}) — scroll: ↑/↓ when not hovering panel", catalog_entries.len())
+                format!(
+                    "Definitions ({}) — scroll: ↑/↓ when not hovering panel",
+                    catalog_entries.len()
+                )
             }
-            DevTab::Placement => "Placement tools — select definition on Units/Doodads tab".to_string(),
+            DevTab::Placement => {
+                "Placement tools — select definition on Units/Doodads tab".to_string()
+            }
             DevTab::Scenes => format!(
                 "Scenes ({}) — click row to load, type to filter/name",
                 scene_entries.len()
             ),
-            DevTab::Inspector => "World inspector — Alt+click unit, terrain click probes interaction".into(),
+            DevTab::Inspector => {
+                "World inspector — Alt+click unit, terrain click probes interaction".into()
+            }
             DevTab::Debug => "Debug overlay toggles".to_string(),
             DevTab::WorldTools => "World authoring tools".to_string(),
         };
@@ -952,12 +964,20 @@ pub(crate) fn sync_dev_panel_tab_sections(
     }
 
     if let Ok((mut text, mut node)) = queries.p0().single_mut() {
-        node.display = if show_debug { Display::Flex } else { Display::None };
+        node.display = if show_debug {
+            Display::Flex
+        } else {
+            Display::None
+        };
         **text = format_debug_summary(&dev_state.debug_config);
     }
 
     if let Ok((mut text, mut node)) = queries.p1().single_mut() {
-        node.display = if show_world { Display::Flex } else { Display::None };
+        node.display = if show_world {
+            Display::Flex
+        } else {
+            Display::None
+        };
         **text = "World tools — terrain/scenario utilities (sim controls are above)".into();
     }
 }
@@ -996,7 +1016,11 @@ pub(crate) fn sync_dev_panel_button_styles(
     mut tabs: Query<(&Interaction, &DevTabButton, &mut BackgroundColor), With<Button>>,
     mut sim_buttons: Query<
         (&Interaction, &mut BackgroundColor),
-        (With<DevSimulationButton>, With<Button>, Without<DevTabButton>),
+        (
+            With<DevSimulationButton>,
+            With<Button>,
+            Without<DevTabButton>,
+        ),
     >,
     mut placement_buttons: Query<
         (&Interaction, &mut BackgroundColor),
@@ -1333,9 +1357,7 @@ fn apply_scene_action(
     let world_seed = runtime
         .map(|settings| settings.world_seed)
         .unwrap_or(crate::doodads::DEFAULT_DOODAD_WORLD_SEED);
-    let debug_flags = Some(SceneDebugFlagsSnapshot::from(
-        dev_state.debug_config,
-    ));
+    let debug_flags = Some(SceneDebugFlagsSnapshot::from(dev_state.debug_config));
 
     match action {
         DevSceneAction::SaveCurrent => {
@@ -1355,8 +1377,7 @@ fn apply_scene_action(
                 Ok(scene_id) => {
                     dev_state.selected_scene_id = Some(scene_id.clone());
                     dev_state.last_loaded_scene_id = Some(scene_id.clone());
-                    dev_state.last_scene_message =
-                        format!("Saved scene '{name}' as {scene_id}");
+                    dev_state.last_scene_message = format!("Saved scene '{name}' as {scene_id}");
                 }
                 Err(err) => dev_state.last_scene_message = format!("Save failed: {err}"),
             }

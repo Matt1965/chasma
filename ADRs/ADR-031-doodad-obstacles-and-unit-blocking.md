@@ -73,7 +73,16 @@ No sliding, avoidance, or pushing. Straight-line movement simply stops.
 ## Pathfinding (deferred)
 
 Future navigation will consume the same obstacle query layer. U6 does not build
-navgrids or A*.
+navgrids or A\*.
+
+## Design direction (collision)
+
+See [ADR-069](ADR-069-combat-design-philosophy.md), [DESIGN.md](../DESIGN.md#combat).
+
+- Physical unit collision target: radius **smaller than Warcraft III**
+- Natural front lines and chokepoints from collision + weapon reach — **no combat slot system**
+- Unit-unit blocking (beyond doodad obstacles) is deferred; straight-line movement stops at
+  doodads today
 
 # Consequences
 

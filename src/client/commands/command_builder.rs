@@ -50,9 +50,9 @@ pub fn build_command_plan(
             Ok(BuiltCommandPlan::AttackMove { destination })
         }
         CommandType::Stop => Ok(BuiltCommandPlan::StopAll),
-        CommandType::HoldPosition | CommandType::Interact => Err(CommandBuildError::FeatureUnavailable(
-            CommandUnavailableReason::FeatureNotImplemented,
-        )),
+        CommandType::HoldPosition | CommandType::Interact => Err(
+            CommandBuildError::FeatureUnavailable(CommandUnavailableReason::FeatureNotImplemented),
+        ),
     }
 }
 
@@ -96,8 +96,8 @@ fn resolve_attack_target(target: &CommandTarget) -> Result<UnitId, CommandBuildE
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
-        UnitDefinitionId, UnitSource, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitDefinitionId,
+        UnitSource, WorldPosition, create_unit,
     };
     use bevy::prelude::Vec3;
 
@@ -128,10 +128,17 @@ mod tests {
         selection.set_single(crate::world::UnitId::new(1));
         let intent = ContextualCommandIntent {
             command_type: CommandType::Move,
-            target: CommandTarget::Terrain { position: pos(20.0, 30.0) },
+            target: CommandTarget::Terrain {
+                position: pos(20.0, 30.0),
+            },
         };
         let plan = build_command_plan(&intent, &selection, &world).unwrap();
-        assert_eq!(plan, BuiltCommandPlan::MoveTo { target: pos(20.0, 30.0) });
+        assert_eq!(
+            plan,
+            BuiltCommandPlan::MoveTo {
+                target: pos(20.0, 30.0)
+            }
+        );
     }
 
     #[test]
@@ -141,7 +148,9 @@ mod tests {
         selection.set_single(crate::world::UnitId::new(1));
         let intent = ContextualCommandIntent {
             command_type: CommandType::AttackMove,
-            target: CommandTarget::Terrain { position: pos(5.0, 5.0) },
+            target: CommandTarget::Terrain {
+                position: pos(5.0, 5.0),
+            },
         };
         let plan = build_command_plan(&intent, &selection, &world).unwrap();
         assert_eq!(
@@ -159,7 +168,9 @@ mod tests {
         selection.set_single(crate::world::UnitId::new(1));
         let intent = ContextualCommandIntent {
             command_type: CommandType::Attack,
-            target: CommandTarget::Terrain { position: pos(5.0, 5.0) },
+            target: CommandTarget::Terrain {
+                position: pos(5.0, 5.0),
+            },
         };
         assert_eq!(
             build_command_plan(&intent, &selection, &world),
@@ -174,7 +185,9 @@ mod tests {
         selection.set_single(crate::world::UnitId::new(1));
         let intent = ContextualCommandIntent {
             command_type: CommandType::HoldPosition,
-            target: CommandTarget::Terrain { position: pos(0.0, 0.0) },
+            target: CommandTarget::Terrain {
+                position: pos(0.0, 0.0),
+            },
         };
         assert!(matches!(
             build_command_plan(&intent, &selection, &world),
@@ -191,7 +204,9 @@ mod tests {
         selection.set_single(crate::world::UnitId::new(1));
         let intent = ContextualCommandIntent {
             command_type: CommandType::Interact,
-            target: CommandTarget::Terrain { position: pos(0.0, 0.0) },
+            target: CommandTarget::Terrain {
+                position: pos(0.0, 0.0),
+            },
         };
         assert!(matches!(
             build_command_plan(&intent, &selection, &world),
@@ -223,7 +238,12 @@ mod tests {
             },
         };
         let plan = build_command_plan(&intent, &selection, &world).unwrap();
-        assert_eq!(plan, BuiltCommandPlan::MoveTo { target: pos(12.0, 14.0) });
+        assert_eq!(
+            plan,
+            BuiltCommandPlan::MoveTo {
+                target: pos(12.0, 14.0)
+            }
+        );
     }
 
     #[test]
@@ -233,7 +253,9 @@ mod tests {
         selection.set_single(crate::world::UnitId::new(1));
         let intent = ContextualCommandIntent {
             command_type: CommandType::Stop,
-            target: CommandTarget::Terrain { position: pos(0.0, 0.0) },
+            target: CommandTarget::Terrain {
+                position: pos(0.0, 0.0),
+            },
         };
         assert_eq!(
             build_command_plan(&intent, &selection, &world).unwrap(),
@@ -252,26 +274,26 @@ mod tests {
                 unit_id: crate::world::UnitId::new(999),
             },
         };
-        let plan = build_command_plan_or_fallback_move(
-            &intent,
-            &selection,
-            &world,
-            Some(pos(1.0, 1.0)),
+        let plan =
+            build_command_plan_or_fallback_move(&intent, &selection, &world, Some(pos(1.0, 1.0)));
+        assert_eq!(
+            plan,
+            BuiltCommandPlan::MoveTo {
+                target: pos(1.0, 1.0)
+            }
         );
-        assert_eq!(plan, BuiltCommandPlan::MoveTo { target: pos(1.0, 1.0) });
     }
 
     #[test]
     fn multi_unit_selection_builds_single_batch_plan() {
         let world = flat_world();
         let mut selection = SelectedUnits::default();
-        selection.replace_with([
-            crate::world::UnitId::new(1),
-            crate::world::UnitId::new(2),
-        ]);
+        selection.replace_with([crate::world::UnitId::new(1), crate::world::UnitId::new(2)]);
         let intent = ContextualCommandIntent {
             command_type: CommandType::Move,
-            target: CommandTarget::Terrain { position: pos(40.0, 40.0) },
+            target: CommandTarget::Terrain {
+                position: pos(40.0, 40.0),
+            },
         };
         let plan = build_command_plan(&intent, &selection, &world).unwrap();
         assert!(matches!(plan, BuiltCommandPlan::MoveTo { .. }));

@@ -1,6 +1,6 @@
+use crate::world::WorldData;
 use crate::world::doodad::catalog::DoodadCatalog;
 use crate::world::doodad::generation::DoodadSpawnCandidate;
-use crate::world::WorldData;
 
 /// Output of [`filter_candidates_by_biome`].
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -105,11 +105,7 @@ mod tests {
         let mut world = WorldData::new(layout());
         world.set_biome_mask(forest_desert_mask());
 
-        let result = filter_candidates_by_biome(
-            &[candidate_at(64.0, 128.0)],
-            &catalog,
-            &world,
-        );
+        let result = filter_candidates_by_biome(&[candidate_at(64.0, 128.0)], &catalog, &world);
 
         assert_eq!(result.retained.len(), 1);
         assert_eq!(result.skipped_biome_disallowed, 0);
@@ -121,11 +117,7 @@ mod tests {
         let mut world = WorldData::new(layout());
         world.set_biome_mask(forest_desert_mask());
 
-        let result = filter_candidates_by_biome(
-            &[candidate_at(400.0, 128.0)],
-            &catalog,
-            &world,
-        );
+        let result = filter_candidates_by_biome(&[candidate_at(400.0, 128.0)], &catalog, &world);
 
         assert!(result.retained.is_empty());
         assert_eq!(result.skipped_biome_disallowed, 1);

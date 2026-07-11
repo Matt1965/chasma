@@ -1,7 +1,7 @@
 //! Read-only health bar visibility rules (ADR-062 C9).
 
 use crate::units::input::SelectedUnits;
-use crate::world::{is_unit_alive, UnitId, WorldData};
+use crate::world::{UnitId, WorldData, is_unit_alive};
 
 /// Compute normalized HP percent; guards max_hp == 0.
 pub fn health_percent(current_hp: u32, max_hp: u32) -> f32 {
@@ -28,10 +28,7 @@ pub fn should_show_health_bar(
     if dev_show_all_health {
         return true;
     }
-    if !matches!(
-        record.combat_state,
-        crate::world::CombatState::Peaceful
-    ) {
+    if !matches!(record.combat_state, crate::world::CombatState::Peaceful) {
         return true;
     }
     if selection.contains(unit_id) {
@@ -47,8 +44,8 @@ pub fn should_show_health_bar(
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
-        UnitCatalog, UnitDefinitionId, UnitSource, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitCatalog,
+        UnitDefinitionId, UnitSource, WorldPosition, create_unit,
     };
     use bevy::prelude::Vec3;
 
@@ -92,7 +89,9 @@ mod tests {
         .unwrap()
         .id;
         let selection = SelectedUnits::default();
-        assert!(!should_show_health_bar(unit_id, &world, &selection, None, false));
+        assert!(!should_show_health_bar(
+            unit_id, &world, &selection, None, false
+        ));
     }
 
     #[test]
@@ -133,7 +132,9 @@ mod tests {
         .id;
         let mut selection = SelectedUnits::default();
         selection.set_single(unit_id);
-        assert!(should_show_health_bar(unit_id, &world, &selection, None, false));
+        assert!(should_show_health_bar(
+            unit_id, &world, &selection, None, false
+        ));
     }
 
     #[test]
@@ -154,7 +155,9 @@ mod tests {
             .unwrap();
         let mut selection = SelectedUnits::default();
         selection.set_single(unit_id);
-        assert!(!should_show_health_bar(unit_id, &world, &selection, None, false));
+        assert!(!should_show_health_bar(
+            unit_id, &world, &selection, None, false
+        ));
     }
 
     #[test]
@@ -172,13 +175,7 @@ mod tests {
         .id;
         world.set_unit_hp(unit_id, 2).unwrap();
         let before = world.get_unit(unit_id).unwrap().clone();
-        let _ = should_show_health_bar(
-            unit_id,
-            &world,
-            &SelectedUnits::default(),
-            None,
-            false,
-        );
+        let _ = should_show_health_bar(unit_id, &world, &SelectedUnits::default(), None, false);
         assert_eq!(world.get_unit(unit_id).unwrap(), &before);
     }
 }

@@ -3,10 +3,10 @@
 use std::path::Path;
 
 use crate::data_import::paths::dev_design_workbook_path;
-use crate::logging::{append_log_line, DEV_STARTUP_LOG_PATH};
+use crate::logging::{DEV_STARTUP_LOG_PATH, append_log_line};
 use crate::world::DoodadCatalog;
 
-use super::{export_doodads_to_ron, import_doodads_from_excel, DataImportError};
+use super::{DataImportError, export_doodads_to_ron, import_doodads_from_excel};
 
 const SESSION_HEADER: &str = "# chasma dev startup log";
 
@@ -57,16 +57,14 @@ fn try_import_dev_doodad_catalog(
     path: &Path,
 ) -> Result<(DoodadCatalog, crate::data_import::ImportSummary), DataImportError> {
     let (definitions, summary) = import_doodads_from_excel(path)?;
-    if let Err(err) = export_doodads_to_ron(Path::new(DEV_DOODAD_CATALOG_RON_PATH), &definitions)
-    {
+    if let Err(err) = export_doodads_to_ron(Path::new(DEV_DOODAD_CATALOG_RON_PATH), &definitions) {
         append_log_line(
             DEV_STARTUP_LOG_PATH,
             SESSION_HEADER,
             &format!("Doodad RON export failed: {err}"),
         );
     }
-    let catalog = DoodadCatalog::from_definitions(definitions).map_err(|err| {
-        DataImportError::WorkbookOpen(format!("catalog build failed: {err:?}"))
-    })?;
+    let catalog = DoodadCatalog::from_definitions(definitions)
+        .map_err(|err| DataImportError::WorkbookOpen(format!("catalog build failed: {err:?}")))?;
     Ok((catalog, summary))
 }

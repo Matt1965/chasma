@@ -3,8 +3,8 @@
 use bevy::prelude::*;
 
 use crate::client::commands::CommandType;
-use crate::client::{ClientIntent, IntentDispatchReport, IntentDispatchStatus};
 use crate::client::commands::CommandUnavailableReason;
+use crate::client::{ClientIntent, IntentDispatchReport, IntentDispatchStatus};
 use crate::units::input::MoveOrdersReport;
 use crate::world::UnitId;
 

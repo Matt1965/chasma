@@ -76,18 +76,14 @@ impl Heightfield {
     pub fn column_heights(&self, col: u32) -> Vec<f32> {
         let spe = self.samples_per_edge as usize;
         let col = col as usize;
-        (0..spe)
-            .map(|row| self.samples[row * spe + col])
-            .collect()
+        (0..spe).map(|row| self.samples[row * spe + col]).collect()
     }
 
     /// Row `row` across all columns (for seam normal stitching).
     pub fn row_heights(&self, row: u32) -> Vec<f32> {
         let spe = self.samples_per_edge as usize;
         let row = row as usize;
-        (0..spe)
-            .map(|col| self.samples[row * spe + col])
-            .collect()
+        (0..spe).map(|col| self.samples[row * spe + col]).collect()
     }
 
     /// Chunk edge length in world units, derived from the sample grid.
@@ -98,21 +94,14 @@ impl Heightfield {
     /// Whether chunk-local XZ lies inside the heightfield domain `[0, chunk_size]`.
     pub fn is_within_domain(&self, local_x: f32, local_z: f32) -> bool {
         let size = self.chunk_size_meters();
-        local_x >= -1e-4
-            && local_z >= -1e-4
-            && local_x <= size + 1e-4
-            && local_z <= size + 1e-4
+        local_x >= -1e-4 && local_z >= -1e-4 && local_x <= size + 1e-4 && local_z <= size + 1e-4
     }
 
     /// Sample height when `local_x` / `local_z` are inside the chunk domain.
     ///
     /// Simulation callers must use this (or [`super::try_sample_height_at_position`]) instead
     /// of [`Self::sample`] to avoid silent edge clamping (REVIEW-B4).
-    pub fn try_sample(
-        &self,
-        local_x: f32,
-        local_z: f32,
-    ) -> Result<f32, super::TerrainQueryError> {
+    pub fn try_sample(&self, local_x: f32, local_z: f32) -> Result<f32, super::TerrainQueryError> {
         if !self.is_within_domain(local_x, local_z) {
             return Err(super::TerrainQueryError::InvalidTerrainCoordinate);
         }
@@ -238,7 +227,9 @@ mod tests {
         );
         assert_eq!(
             Heightfield::from_samples(2, 0.0, vec![0.0; 4]).unwrap_err(),
-            TerrainDataError::NonPositiveSpacing { spacing_meters: 0.0 }
+            TerrainDataError::NonPositiveSpacing {
+                spacing_meters: 0.0
+            }
         );
     }
 

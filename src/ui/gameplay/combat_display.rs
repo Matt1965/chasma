@@ -146,8 +146,8 @@ pub fn attack_range_circle_radius_meters(
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, starter_weapon_definitions, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
-        Heightfield, LocalPosition, UnitDefinitionId, UnitSource, WeaponCatalog, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitDefinitionId,
+        UnitSource, WeaponCatalog, WorldPosition, create_unit, starter_weapon_definitions,
     };
     use bevy::prelude::Vec3;
 

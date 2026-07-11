@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use crate::data_import::paths::dev_design_workbook_path;
-use crate::logging::{append_log_line, DEV_STARTUP_LOG_PATH};
+use crate::logging::{DEV_STARTUP_LOG_PATH, append_log_line};
 use crate::world::UnitCatalog;
 
 use super::import_units_from_excel;

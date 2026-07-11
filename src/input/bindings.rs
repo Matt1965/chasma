@@ -30,7 +30,10 @@ pub const TIME_OF_DAY_KEYBOARD_HINT: &str =
 pub fn critical_binding_conflict(a: GlobalBinding, b: GlobalBinding) -> bool {
     matches!(
         (a, b),
-        (GlobalBinding::CycleSpawnAffiliation, GlobalBinding::CycleSpawnAffiliation)
+        (
+            GlobalBinding::CycleSpawnAffiliation,
+            GlobalBinding::CycleSpawnAffiliation
+        )
     )
 }
 
@@ -40,8 +43,14 @@ mod tests {
 
     #[test]
     fn dev_mode_and_simulation_pause_are_distinct_bindings() {
-        assert_ne!(GlobalBinding::ToggleDevMode, GlobalBinding::ToggleSimulationPause);
-        assert_ne!(GlobalBinding::ToggleSimulationPause, GlobalBinding::StepSimulation);
+        assert_ne!(
+            GlobalBinding::ToggleDevMode,
+            GlobalBinding::ToggleSimulationPause
+        );
+        assert_ne!(
+            GlobalBinding::ToggleSimulationPause,
+            GlobalBinding::StepSimulation
+        );
     }
 
     #[test]

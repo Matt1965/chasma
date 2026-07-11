@@ -3,10 +3,10 @@ use bevy::prelude::*;
 use crate::camera::{CameraControlSystems, CameraPlugin};
 use crate::doodads::{DoodadRuntimeSystems, DoodadsRuntimePlugin};
 use crate::environment::EnvironmentPlugin;
+use crate::player::{PlayerControlSystems, PlayerPlugin, RuntimeSyncSystems};
 use crate::projectiles::{ProjectileRuntimeSystems, ProjectilesRuntimePlugin};
 use crate::simulation::{SimulationControlSystems, SimulationSystems};
 use crate::terrain::{TerrainRuntimePlugin, TerrainStreamingSystems};
-use crate::player::{PlayerControlSystems, PlayerPlugin, RuntimeSyncSystems};
 use crate::units::UnitRuntimeSystems;
 use crate::units::UnitsRuntimePlugin;
 use crate::view::ViewPlugin;
@@ -39,14 +39,8 @@ impl Plugin for AppPlugin {
             .add_plugins(PlayerPlugin)
             .add_plugins(EnvironmentPlugin)
             .add_plugins(CameraPlugin)
-            .configure_sets(
-                Update,
-                ViewFocusSystems.after(CameraControlSystems),
-            )
-            .configure_sets(
-                Update,
-                TerrainStreamingSystems.after(ViewFocusSystems),
-            )
+            .configure_sets(Update, ViewFocusSystems.after(CameraControlSystems))
+            .configure_sets(Update, TerrainStreamingSystems.after(ViewFocusSystems))
             .configure_sets(
                 Update,
                 DoodadRuntimeSystems
@@ -65,18 +59,9 @@ impl Plugin for AppPlugin {
                     .after(UnitRuntimeSystems)
                     .in_set(RuntimeSyncSystems),
             )
-            .configure_sets(
-                Update,
-                PlayerControlSystems.after(RuntimeSyncSystems),
-            )
-            .configure_sets(
-                Update,
-                SimulationControlSystems.before(SimulationSystems),
-            )
-            .add_systems(
-                Update,
-                publish_primary_view_focus.in_set(ViewFocusSystems),
-            );
+            .configure_sets(Update, PlayerControlSystems.after(RuntimeSyncSystems))
+            .configure_sets(Update, SimulationControlSystems.before(SimulationSystems))
+            .add_systems(Update, publish_primary_view_focus.in_set(ViewFocusSystems));
 
         #[cfg(feature = "dev")]
         {

@@ -65,11 +65,7 @@ fn layout_from_extent(
     let width = (extent.max.x - extent.min.x + 1) as f32 * chunk_size;
     let depth = (extent.max.z - extent.min.z + 1) as f32 * chunk_size;
     WaterPlaneLayout {
-        center: Vec3::new(
-            origin_x + width * 0.5,
-            water_level,
-            origin_z + depth * 0.5,
-        ),
+        center: Vec3::new(origin_x + width * 0.5, water_level, origin_z + depth * 0.5),
         width,
         depth,
     }
@@ -198,7 +194,11 @@ pub fn sync_environment_water_presentation(
     }
 }
 
-fn log_water_configuration(settings: &WaterSettings, layout: &WaterPlaneLayout, entity_count: usize) {
+fn log_water_configuration(
+    settings: &WaterSettings,
+    layout: &WaterPlaneLayout,
+    entity_count: usize,
+) {
     bevy::log::info!(
         target: "chasma::environment::water",
         "Water configured: enabled={}, level={:.1}, plane={:.0}x{:.0} m, entities={}",

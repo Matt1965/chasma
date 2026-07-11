@@ -7,23 +7,23 @@ mod save;
 mod snapshot;
 
 pub use actions::{
-    clear_dev_world, delete_scene, init_dev_scene_registry, load_scene_by_id, save_current_world,
-    DevSceneRegistry,
+    DevSceneRegistry, clear_dev_world, delete_scene, init_dev_scene_registry, load_scene_by_id,
+    save_current_world,
 };
-pub use load::{apply_scene, clear_world_entities, SceneApplyReport};
+pub use load::{SceneApplyReport, apply_scene, clear_world_entities};
 pub use registry::{SceneCaptureContext, SceneRegistry, SceneRegistryEntry};
 pub use save::DEV_SCENES_DIR;
-pub use snapshot::{capture_scene, SceneDebugFlagsSnapshot};
+pub use snapshot::{SceneDebugFlagsSnapshot, capture_scene};
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bevy::prelude::Vec3;
     use crate::world::{
-        create_doodad, create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog,
-        DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition,
-        UnitCatalog, UnitDefinitionId, UnitSource, WorldData, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, DoodadDefinitionId,
+        DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition, UnitCatalog,
+        UnitDefinitionId, UnitSource, WorldData, WorldPosition, create_doodad, create_unit,
     };
+    use bevy::prelude::Vec3;
 
     fn flat_world() -> WorldData {
         let layout = ChunkLayout {
@@ -118,7 +118,11 @@ mod tests {
         let doodad_ids: Vec<_> = scene.doodad_records.iter().map(|d| d.id).collect();
         assert_eq!(unit_ids, vec![unit_ids[0]]);
         assert_eq!(doodad_ids, vec![doodad_ids[0]]);
-        assert!(super::save::scene_to_ron(&scene).unwrap().contains("version"));
+        assert!(
+            super::save::scene_to_ron(&scene)
+                .unwrap()
+                .contains("version")
+        );
     }
 
     #[test]
@@ -134,7 +138,9 @@ mod tests {
             debug_flags: None,
         };
         let scene = capture_scene(&world, &ctx);
-        let text = super::save::scene_to_ron(&scene).unwrap().to_ascii_lowercase();
+        let text = super::save::scene_to_ron(&scene)
+            .unwrap()
+            .to_ascii_lowercase();
         for forbidden in ["entity", "component", "query", "handle", "mesh"] {
             assert!(
                 !text.contains(forbidden),

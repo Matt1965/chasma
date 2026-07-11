@@ -91,6 +91,10 @@ Rules:
 - Optional locomotion columns default when absent from legacy sheets
 - Dev startup: import `Chasma Design.xlsx`; on failure warn and use starter catalog
 
+Stat columns (STR, DEX, CON, AGI, CHR, INT, PER when added) are **design inputs** per
+[ADR-070](ADR-070-progression-and-attributes.md). Workbook `Level` is authoring metadata —
+runtime progression will be use-based skills, not global level.
+
 ## Obstacle and navigation (future)
 
 Obstacle caches and pathfinding grids are **world systems**, not unit submodules.

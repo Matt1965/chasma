@@ -49,7 +49,9 @@ pub fn flush_intent_dispatch_trace(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::{ClientIntent, IntentDispatchRecord, IntentDispatchReport, IntentDispatchStatus};
+    use crate::client::{
+        ClientIntent, IntentDispatchRecord, IntentDispatchReport, IntentDispatchStatus,
+    };
     use crate::debug::dispatch_pending::PendingDispatchTraceRecord;
     use crate::debug::unit_ids_for_intent;
     use crate::world::{ChunkCoord, LocalPosition, UnitId, WorldPosition};
@@ -106,7 +108,9 @@ mod tests {
 
     #[test]
     fn overlay_toggle_state_does_not_require_world_mutation() {
-        let intent = ClientIntent::MoveCommand { target: pos(1.0, 2.0) };
+        let intent = ClientIntent::MoveCommand {
+            target: pos(1.0, 2.0),
+        };
         let ids = unit_ids_for_intent(&intent);
         assert!(ids.is_empty());
     }

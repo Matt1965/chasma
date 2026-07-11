@@ -19,11 +19,7 @@ pub struct ProceduralDoodadKey {
 }
 
 impl ProceduralDoodadKey {
-    pub fn new(
-        chunk: ChunkCoord,
-        definition_id: DoodadDefinitionId,
-        procedural_seed: u64,
-    ) -> Self {
+    pub fn new(chunk: ChunkCoord, definition_id: DoodadDefinitionId, procedural_seed: u64) -> Self {
         Self {
             chunk,
             definition_id,

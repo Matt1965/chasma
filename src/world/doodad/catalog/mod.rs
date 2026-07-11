@@ -6,9 +6,9 @@ mod registry;
 mod render_key;
 mod starter;
 
-pub use registry::{DoodadCatalog, DoodadCatalogError};
-pub use definition::{default_blocks_movement, DoodadDefinition};
+pub use definition::{DoodadDefinition, default_blocks_movement};
 pub use definition_id::DoodadDefinitionId;
+pub use registry::{DoodadCatalog, DoodadCatalogError};
 pub use render_key::DoodadRenderKey;
 #[cfg(test)]
 pub use starter::starter_definitions;

@@ -6,7 +6,7 @@ use crate::debug::DebugOverlayConfig;
 use crate::world::{DoodadCatalog, UnitCatalog};
 
 use super::catalog_cache::{
-    browse_catalog_entries, CatalogBrowseIndex, CatalogFilterCache, DevSearchDebounce,
+    CatalogBrowseIndex, CatalogFilterCache, DevSearchDebounce, browse_catalog_entries,
 };
 use super::dev_mode::{DefinitionId, DevModeState, DevTab, SpawnMode};
 
@@ -118,9 +118,9 @@ fn dev_ui_state_persists_across_tab_switches() {
     state.search_query = "oak".into();
     state.spawn_mode = SpawnMode::Doodad;
     state.enabled_only = false;
-    state.select_definition(DefinitionId::Doodad(
-        crate::world::DoodadDefinitionId::new("tree"),
-    ));
+    state.select_definition(DefinitionId::Doodad(crate::world::DoodadDefinitionId::new(
+        "tree",
+    )));
     state.active_tab = DevTab::Debug;
     assert_eq!(state.search_query, "oak");
     assert_eq!(state.spawn_mode, SpawnMode::Doodad);

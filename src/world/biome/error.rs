@@ -5,8 +5,12 @@ use bevy::prelude::*;
 pub enum BiomeImportError {
     Io(String),
     PngDecode(String),
-    UnsupportedColorType { color_type: String },
-    UnsupportedBitDepth { bit_depth: String },
+    UnsupportedColorType {
+        color_type: String,
+    },
+    UnsupportedBitDepth {
+        bit_depth: String,
+    },
     EmptyImage,
     DimensionMismatch {
         expected_len: usize,

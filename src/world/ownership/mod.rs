@@ -6,14 +6,11 @@ mod query;
 mod types;
 
 pub use controllability::{
-    filter_commandable_unit_ids, filter_selectable_unit_ids, unit_is_commandable,
-    unit_is_selectable, SelectionControllabilityPolicy,
+    SelectionControllabilityPolicy, filter_commandable_unit_ids, filter_selectable_unit_ids,
+    unit_is_commandable, unit_is_selectable,
 };
 pub use defaults::{DEFAULT_PLAYER_OWNER_ID, DEFAULT_PLAYER_TEAM_ID};
-pub use query::{
-    default_ownership_for_source, is_owned_by, is_player_controllable, player_units,
-    units_by_affiliation, units_by_owner,
-};
+pub use query::{default_ownership_for_source, is_owned_by, is_player_controllable, player_units};
 pub use types::{Affiliation, OwnerId, TeamId, UnitOwnership};
 
 #[cfg(test)]

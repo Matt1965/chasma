@@ -6,24 +6,32 @@ use crate::world::movement::feel::start_unit_move_to;
 use crate::world::navigation::xz_distance;
 use crate::world::unit::{CombatState, UnitId, UnitOrderError, UnitState};
 use crate::world::{
-    validate_attack_target, AttackTargetingPolicy, DoodadCatalog, NavigationConfig, UnitCatalog,
-    WeaponCatalog, WorldData, WorldPosition,
+    AttackTargetingPolicy, DoodadCatalog, NavigationConfig, UnitCatalog, WeaponCatalog, WorldData,
+    WorldPosition, validate_attack_target,
 };
 
+use super::cycle_lifecycle::{clear_attack_cycle, clear_attack_cycle_for_invalid_target};
 use super::range::{
-    is_in_weapon_range, is_outside_weapon_range_with_hysteresis, measure_weapon_range,
-    range_status_from_check, weapon_for_unit_record, RangeStatus, RANGE_HYSTERESIS_METERS,
+    RangeStatus, is_in_weapon_range, is_outside_weapon_range_with_hysteresis, measure_weapon_range,
+    range_status_from_check, weapon_for_unit_record,
 };
-use super::standoff::{compute_standoff_destination, StandoffError};
-use super::cycle_lifecycle::{
-    clear_attack_cycle, clear_attack_cycle_for_invalid_target, clear_attack_cycle_for_order_cancel,
-};
+use super::standoff::{StandoffError, compute_standoff_destination};
 use super::strike::CombatStrikeReport;
 use super::targeting::is_unit_alive;
 use crate::world::unit::unit_can_execute_actions;
 
 /// Radius for attack-move hostile acquisition scans.
 pub const ATTACK_MOVE_SCAN_RADIUS_METERS: f32 = 16.0;
+
+fn combat_pair<'a>(
+    world: &'a WorldData,
+    unit_id: UnitId,
+    target: UnitId,
+) -> Option<(&'a crate::world::UnitRecord, &'a crate::world::UnitRecord)> {
+    let attacker = world.get_unit(unit_id)?;
+    let target_record = world.get_unit(target)?;
+    Some((attacker, target_record))
+}
 
 /// Explicit combat positioning outcome for one unit this tick.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,7 +86,9 @@ pub fn step_all_combat_engagement(
         if !unit_can_execute_actions(world, unit_id) {
             continue;
         }
-        let Some(combat_state) = world.get_unit(unit_id).map(|record| record.combat_state.clone())
+        let Some(combat_state) = world
+            .get_unit(unit_id)
+            .map(|record| record.combat_state.clone())
         else {
             continue;
         };
@@ -137,7 +147,10 @@ fn step_unit_combat_engagement(
             None,
             strike_trace,
         )),
-        CombatState::AttackMoving { destination, target } => Some(handle_attack_moving(
+        CombatState::AttackMoving {
+            destination,
+            target,
+        } => Some(handle_attack_moving(
             world,
             unit_catalog,
             weapon_catalog,
@@ -198,8 +211,20 @@ fn handle_attacking_target(
         return trace;
     }
 
-    let attacker = world.get_unit(unit_id).unwrap();
-    let target_record = world.get_unit(target).unwrap();
+    let Some((attacker, target_record)) = combat_pair(world, unit_id, target) else {
+        apply_invalid_target_state(
+            world,
+            unit_id,
+            target,
+            invalid_target_state,
+            strike_trace,
+            unit_catalog,
+            weapon_catalog,
+        );
+        trace.status = CombatEngagementStatus::TargetInvalid;
+        trace.target = None;
+        return trace;
+    };
     let weapon = match weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) {
         Ok(weapon) => weapon,
         Err(_) => {
@@ -220,13 +245,8 @@ fn handle_attacking_target(
     trace.edge_distance_meters = Some(check.edge_distance_meters);
     trace.weapon_range_meters = Some(check.weapon_range_meters);
 
-    if is_outside_weapon_range_with_hysteresis(
-        world,
-        attacker,
-        target_record,
-        unit_catalog,
-        weapon,
-    ) {
+    if is_outside_weapon_range_with_hysteresis(world, attacker, target_record, unit_catalog, weapon)
+    {
         if invalid_target_state.is_none() {
             world
                 .set_unit_combat_state(unit_id, CombatState::Chasing { target })
@@ -304,8 +324,20 @@ fn handle_chasing_target(
         return trace;
     }
 
-    let attacker = world.get_unit(unit_id).unwrap();
-    let target_record = world.get_unit(target).unwrap();
+    let Some((attacker, target_record)) = combat_pair(world, unit_id, target) else {
+        apply_invalid_target_state(
+            world,
+            unit_id,
+            target,
+            invalid_target_state,
+            strike_trace,
+            unit_catalog,
+            weapon_catalog,
+        );
+        trace.status = CombatEngagementStatus::TargetInvalid;
+        trace.target = None;
+        return trace;
+    };
     let weapon = match weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) {
         Ok(weapon) => weapon,
         Err(_) => {
@@ -496,8 +528,7 @@ pub fn scan_attack_move_target(
         if !is_unit_alive(candidate) {
             continue;
         }
-        let distance =
-            xz_distance(attacker_pos, candidate.placement.position, layout);
+        let distance = xz_distance(attacker_pos, candidate.placement.position, layout);
         if distance > ATTACK_MOVE_SCAN_RADIUS_METERS {
             continue;
         }
@@ -505,8 +536,7 @@ pub fn scan_attack_move_target(
             None => true,
             Some((best_distance, best_id)) => {
                 distance < best_distance - f32::EPSILON
-                    || ((distance - best_distance).abs() <= f32::EPSILON
-                        && candidate_id < best_id)
+                    || ((distance - best_distance).abs() <= f32::EPSILON && candidate_id < best_id)
             }
         };
         if replace {
@@ -528,8 +558,13 @@ fn begin_chase_to_target(
     check: &super::range::RangeCheck,
     trace: &mut CombatEngagementTrace,
 ) {
-    let attacker_pos = world.get_unit(unit_id).unwrap().placement.position;
-    let target_pos = world.get_unit(target).unwrap().placement.position;
+    let Some((attacker, target_record)) = combat_pair(world, unit_id, target) else {
+        trace.status = CombatEngagementStatus::TargetInvalid;
+        trace.target = None;
+        return;
+    };
+    let attacker_pos = attacker.placement.position;
+    let target_pos = target_record.placement.position;
     let standoff = match compute_standoff_destination(world, attacker_pos, target_pos, check) {
         Ok(position) => position,
         Err(StandoffError::TerrainUnavailable) => {
@@ -605,28 +640,18 @@ pub fn initial_attack_combat_state(
     weapon_catalog: &WeaponCatalog,
 ) -> CombatState {
     let Some(attacker) = world.get_unit(attacker_id) else {
-        return CombatState::Attacking {
-            target: target_id,
-        };
+        return CombatState::Attacking { target: target_id };
     };
     let Some(target) = world.get_unit(target_id) else {
-        return CombatState::Attacking {
-            target: target_id,
-        };
+        return CombatState::Attacking { target: target_id };
     };
     let Ok(weapon) = weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) else {
-        return CombatState::Attacking {
-            target: target_id,
-        };
+        return CombatState::Attacking { target: target_id };
     };
     if is_in_weapon_range(world, attacker, target, unit_catalog, weapon) {
-        CombatState::Attacking {
-            target: target_id,
-        }
+        CombatState::Attacking { target: target_id }
     } else {
-        CombatState::Chasing {
-            target: target_id,
-        }
+        CombatState::Chasing { target: target_id }
     }
 }
 
@@ -635,10 +660,10 @@ mod tests {
     use super::*;
     use crate::world::combat::range::RANGE_HYSTERESIS_METERS;
     use crate::world::{
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatStrikeReport, Heightfield,
+        LocalPosition, UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource, WeaponCatalog,
         create_unit_with_ownership, issue_unit_order, resolve_all_pending_unit_orders,
-        starter_unit_definitions, ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatStrikeReport,
-        Heightfield, LocalPosition, UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource,
-        WeaponCatalog,
+        starter_unit_definitions,
     };
     use bevy::prelude::Vec3;
 
@@ -762,10 +787,12 @@ mod tests {
             CombatState::Attacking { .. }
         ));
         let report = tick_combat(&mut world, &catalog);
-        assert!(report
-            .traces
-            .iter()
-            .any(|trace| trace.status == CombatEngagementStatus::InRangeReady));
+        assert!(
+            report
+                .traces
+                .iter()
+                .any(|trace| trace.status == CombatEngagementStatus::InRangeReady)
+        );
         assert!(matches!(
             world.get_unit(player).unwrap().state,
             UnitState::Idle
@@ -790,9 +817,7 @@ mod tests {
         )
         .unwrap();
         tick_combat(&mut world, &catalog);
-        world
-            .relocate_unit(hostile, pos(40.0, 10.0))
-            .unwrap();
+        world.relocate_unit(hostile, pos(40.0, 10.0)).unwrap();
         tick_combat(&mut world, &catalog);
         assert!(matches!(
             world.get_unit(player).unwrap().combat_state,
@@ -835,9 +860,12 @@ mod tests {
         )
         .unwrap();
         let report = tick_combat(&mut world, &catalog);
-        assert!(report.traces.iter().any(|trace| {
-            trace.status == CombatEngagementStatus::AttackMoveAcquired
-        }));
+        assert!(
+            report
+                .traces
+                .iter()
+                .any(|trace| { trace.status == CombatEngagementStatus::AttackMoveAcquired })
+        );
         assert!(matches!(
             world.get_unit(player).unwrap().combat_state,
             CombatState::AttackMoving {
@@ -855,8 +883,8 @@ mod tests {
         let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
         let hostile_a = spawn_hostile(&mut world, &catalog, 15.0, 10.0);
         let hostile_b = spawn_hostile(&mut world, &catalog, 10.0, 15.0);
-        let acquired = scan_attack_move_target(&world, player, &catalog, &weapons(), policy())
-            .unwrap();
+        let acquired =
+            scan_attack_move_target(&world, player, &catalog, &weapons(), policy()).unwrap();
         let expected = hostile_a.min(hostile_b);
         assert_eq!(acquired, expected);
     }

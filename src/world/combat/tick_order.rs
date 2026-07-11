@@ -2,23 +2,23 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::simulation::{SimulationControlState, SIMULATION_TICK_SECONDS};
+    use crate::simulation::{SIMULATION_TICK_SECONDS, SimulationControlState};
     use crate::world::combat::{
-        step_all_combat_engagement, step_all_combat_strikes, step_combat_ai_acquisition,
-        CombatAiScanState, CombatAiSettings, CombatStrikeEvent,
+        CombatAiScanState, CombatAiSettings, CombatStrikeEvent, step_all_combat_engagement,
+        step_all_combat_strikes, step_combat_ai_acquisition,
     };
-    use crate::world::projectile::{step_all_projectiles, ProjectileEvent};
+    use crate::world::projectile::{ProjectileEvent, step_all_projectiles};
     use crate::world::unit::{
-        queue_unit_removal, step_unit_death_pipeline, AttackCycle,
-        AttackPhase, RemovalReason, UnitDeathEvent,
+        AttackCycle, AttackPhase, RemovalReason, UnitDeathEvent, queue_unit_removal,
+        step_unit_death_pipeline,
     };
     use crate::world::{
-        create_unit_with_ownership, issue_unit_order, starter_unit_definitions,
-        starter_weapon_definitions, AttackTargetingPolicy, ChunkCoord, ChunkData, ChunkId,
-        ChunkLayout, CombatEngagementStatus, CombatState, DamageType, DoodadCatalog,
-        Heightfield, HitMode, LocalPosition, NavigationConfig, ProjectileReport, TargetFilter,
-        UnitCatalog, UnitDefinitionId, UnitId, UnitOrder, UnitOwnership, UnitSource,
-        WeaponCatalog, WeaponDefinition, WeaponDefinitionId, WorldData, WorldPosition,
+        AttackTargetingPolicy, ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatEngagementStatus,
+        CombatState, DamageType, DoodadCatalog, Heightfield, HitMode, LocalPosition,
+        NavigationConfig, ProjectileReport, TargetFilter, UnitCatalog, UnitDefinitionId, UnitId,
+        UnitOrder, UnitOwnership, UnitSource, WeaponCatalog, WeaponDefinition, WeaponDefinitionId,
+        WorldData, WorldPosition, create_unit_with_ownership, issue_unit_order,
+        starter_unit_definitions, starter_weapon_definitions,
     };
     use bevy::prelude::Vec3;
 
@@ -122,7 +122,11 @@ mod tests {
             .unwrap();
     }
 
-    fn step_tick(world: &mut WorldData, catalog: &UnitCatalog, weapon_catalog: &WeaponCatalog) -> crate::simulation::SimulationTickReport {
+    fn step_tick(
+        world: &mut WorldData,
+        catalog: &UnitCatalog,
+        weapon_catalog: &WeaponCatalog,
+    ) -> crate::simulation::SimulationTickReport {
         let mut scan = CombatAiScanState::default();
         let settings = CombatAiSettings::default();
         crate::simulation::run_simulation_tick(
@@ -162,9 +166,11 @@ mod tests {
             .unwrap();
         reassign_position(&mut world, hostile, 50.0, 10.0);
         let report = step_tick(&mut world, &catalog, &weapons);
-        assert!(!report.combat_strike.traces.iter().any(|trace| {
-            matches!(trace.event, CombatStrikeEvent::AttackStrikeApplied { .. })
-        }));
+        assert!(
+            !report.combat_strike.traces.iter().any(|trace| {
+                matches!(trace.event, CombatStrikeEvent::AttackStrikeApplied { .. })
+            })
+        );
         assert!(world.get_unit(player).unwrap().attack_cycle.is_none());
         assert!(matches!(
             report.combat.traces.first().map(|trace| trace.status),
@@ -223,7 +229,10 @@ mod tests {
             UnitOrder::Idle,
             policy(),
         );
-        assert!(matches!(err, Err(crate::world::UnitOrderError::UnitNotFound)));
+        assert!(matches!(
+            err,
+            Err(crate::world::UnitOrderError::UnitNotFound)
+        ));
     }
 
     #[test]
@@ -292,12 +301,7 @@ mod tests {
             .combat_strike
             .traces
             .iter()
-            .filter(|trace| {
-                matches!(
-                    trace.event,
-                    CombatStrikeEvent::AttackStrikeApplied { .. }
-                )
-            })
+            .filter(|trace| matches!(trace.event, CombatStrikeEvent::AttackStrikeApplied { .. }))
             .collect();
         assert_eq!(applied.len(), 1);
         assert!(world.get_unit(hostile).is_none());
@@ -313,12 +317,7 @@ mod tests {
         let queued = report
             .traces
             .iter()
-            .filter(|trace| {
-                matches!(
-                    trace.event,
-                    UnitDeathEvent::UnitRemovalQueued { .. }
-                )
-            })
+            .filter(|trace| matches!(trace.event, UnitDeathEvent::UnitRemovalQueued { .. }))
             .count();
         assert_eq!(queued, 1);
     }
@@ -348,9 +347,13 @@ mod tests {
         let report = step_tick(&mut world, &catalog, &weapons);
         assert!(report.projectile.has_event(&ProjectileEvent::Spawned));
         let report = step_tick(&mut world, &catalog, &weapons);
-        assert!(report.death.traces.iter().any(|trace| {
-            matches!(trace.event, UnitDeathEvent::UnitDied { .. })
-        }));
+        assert!(
+            report
+                .death
+                .traces
+                .iter()
+                .any(|trace| { matches!(trace.event, UnitDeathEvent::UnitDied { .. }) })
+        );
         assert!(world.get_unit(hostile).is_none());
     }
 
@@ -450,7 +453,12 @@ mod tests {
             &mut scan,
             0.2,
         );
-        assert!(!ai_report.traces.iter().any(|trace| trace.target == Some(hostile)));
+        assert!(
+            !ai_report
+                .traces
+                .iter()
+                .any(|trace| trace.target == Some(hostile))
+        );
     }
 
     #[test]
@@ -467,8 +475,14 @@ mod tests {
             .map(|trace| &trace.event)
             .collect();
         assert!(matches!(events[0], UnitDeathEvent::UnitDied { .. }));
-        assert!(matches!(events[1], UnitDeathEvent::UnitRemovalQueued { .. }));
-        assert!(matches!(events.last(), Some(UnitDeathEvent::UnitRemoved { .. })));
+        assert!(matches!(
+            events[1],
+            UnitDeathEvent::UnitRemovalQueued { .. }
+        ));
+        assert!(matches!(
+            events.last(),
+            Some(UnitDeathEvent::UnitRemoved { .. })
+        ));
     }
 
     #[test]
@@ -517,9 +531,11 @@ mod tests {
             0.2,
             &mut projectile,
         );
-        assert!(!strikes.traces.iter().any(|trace| {
-            matches!(trace.event, CombatStrikeEvent::AttackStrikeApplied { .. })
-        }));
+        assert!(
+            !strikes.traces.iter().any(|trace| {
+                matches!(trace.event, CombatStrikeEvent::AttackStrikeApplied { .. })
+            })
+        );
     }
 
     #[test]

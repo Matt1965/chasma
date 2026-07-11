@@ -109,16 +109,6 @@ impl UnitDeathReport {
     }
 }
 
-/// Record the latest attacker for kill attribution at death time.
-pub fn record_kill_attribution(
-    world: &mut WorldData,
-    target_id: UnitId,
-    attacker_id: UnitId,
-    hp_before: u32,
-) {
-    world.record_kill_attribution(target_id, attacker_id, hp_before);
-}
-
 /// Queue a unit for deferred removal (dev/delete APIs reuse this).
 pub fn queue_unit_removal(
     world: &mut WorldData,
@@ -251,7 +241,10 @@ fn clear_targets_for_dead_units(
         let _ = world.set_unit_attack_cycle(unit_id, None);
         world.command_buffer_mut().clear_pending(unit_id);
         world.movement_smoothing_mut().clear_unit(unit_id);
-        if matches!(world.get_unit(unit_id).map(|r| &r.state), Some(UnitState::Moving { .. })) {
+        if matches!(
+            world.get_unit(unit_id).map(|r| &r.state),
+            Some(UnitState::Moving { .. })
+        ) {
             let _ = world.set_unit_state(unit_id, UnitState::Idle);
         }
 
@@ -295,10 +288,10 @@ mod tests {
     use crate::units::input::SelectedUnits;
     use crate::world::combat::{step_all_combat_engagement, step_all_combat_strikes};
     use crate::world::{
-        create_unit_with_ownership, issue_unit_order, starter_unit_definitions,
-        starter_weapon_definitions, AttackTargetingPolicy, ChunkCoord, ChunkData, ChunkId,
-        ChunkLayout, Heightfield, LocalPosition, UnitCatalog, UnitDefinitionId, UnitOrder,
-        UnitOwnership, UnitSource, WeaponCatalog, WorldPosition,
+        AttackTargetingPolicy, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield,
+        LocalPosition, UnitCatalog, UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource,
+        WeaponCatalog, WorldPosition, create_unit_with_ownership, issue_unit_order,
+        starter_unit_definitions, starter_weapon_definitions,
     };
     use bevy::prelude::Vec3;
 
@@ -366,15 +359,11 @@ mod tests {
         assert_ne!(world.get_unit(hostile).unwrap().state, UnitState::Dead);
 
         let report = step_unit_death_pipeline(&mut world, 1);
-        assert!(report.traces.iter().any(|trace| {
-            matches!(
-                trace.event,
-                UnitDeathEvent::UnitDied {
-                    hp_after: 0,
-                    ..
-                }
-            )
-        }));
+        assert!(
+            report.traces.iter().any(|trace| {
+                matches!(trace.event, UnitDeathEvent::UnitDied { hp_after: 0, .. })
+            })
+        );
     }
 
     #[test]
@@ -529,10 +518,7 @@ mod tests {
         step_unit_death_pipeline(&mut world, 1);
         assert!(matches!(
             world.get_unit(player).unwrap().combat_state,
-            CombatState::AttackMoving {
-                target: None,
-                ..
-            }
+            CombatState::AttackMoving { target: None, .. }
         ));
     }
 
@@ -586,7 +572,10 @@ mod tests {
             UnitOrder::Idle,
             AttackTargetingPolicy::default(),
         );
-        assert!(matches!(err, Err(crate::world::UnitOrderError::UnitNotFound)));
+        assert!(matches!(
+            err,
+            Err(crate::world::UnitOrderError::UnitNotFound)
+        ));
     }
 
     #[test]
@@ -616,7 +605,7 @@ mod tests {
         let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
         let hostile = spawn_hostile(&mut world, &catalog, 11.0, 10.0);
         world.set_unit_hp(hostile, 8).unwrap();
-        record_kill_attribution(&mut world, hostile, player, 8);
+        world.record_kill_attribution(hostile, player, 8);
         world.damage_unit(hostile, 8).unwrap();
         let report = step_unit_death_pipeline(&mut world, 1);
         assert!(report.traces.iter().any(|trace| {

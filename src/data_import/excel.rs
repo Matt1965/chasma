@@ -2,15 +2,17 @@ use std::collections::HashMap;
 
 use super::error::{DataImportError, RowImportError};
 use super::schema::{
-    normalize_doodad_definition_id, parse_bool_yn, parse_enabled_cell, DoodadImportRow,
     BIOME_COLUMN, BLOCK_RADIUS_COLUMN, BLOCKS_MOVEMENT_COLUMN, DEFINITION_ID_COLUMN_ALIASES,
-    RANDOM_ROTATION_COLUMN_ALIASES, REQUIRED_COLUMNS,
+    DoodadImportRow, RANDOM_ROTATION_COLUMN_ALIASES, REQUIRED_COLUMNS,
+    normalize_doodad_definition_id, parse_bool_yn, parse_enabled_cell,
 };
 
 pub const DOODADS_SHEET_NAME: &str = "Doodads";
 
 /// Map header row cells to column indices by exact trimmed header name.
-pub fn column_map_from_headers(headers: &[String]) -> Result<HashMap<String, usize>, DataImportError> {
+pub fn column_map_from_headers(
+    headers: &[String],
+) -> Result<HashMap<String, usize>, DataImportError> {
     let mut map = HashMap::new();
     for (index, header) in headers.iter().enumerate() {
         let key = header.trim();
@@ -43,18 +45,16 @@ pub fn column_map_from_headers(headers: &[String]) -> Result<HashMap<String, usi
 pub fn read_doodad_rows(
     path: &std::path::Path,
 ) -> Result<Vec<Result<DoodadImportRow, RowImportError>>, DataImportError> {
-    use calamine::{open_workbook, Reader, Xlsx, XlsxError};
+    use calamine::{Reader, Xlsx, XlsxError, open_workbook};
 
-    let mut workbook: Xlsx<_> =
-        open_workbook(path).map_err(|err: XlsxError| DataImportError::WorkbookOpen(err.to_string()))?;
+    let mut workbook: Xlsx<_> = open_workbook(path)
+        .map_err(|err: XlsxError| DataImportError::WorkbookOpen(err.to_string()))?;
     let range = workbook
         .worksheet_range(DOODADS_SHEET_NAME)
         .map_err(|err: XlsxError| DataImportError::WorkbookOpen(err.to_string()))?;
 
     let mut rows = range.rows();
-    let header_cells = rows
-        .next()
-        .ok_or_else(|| DataImportError::NoValidRows)?;
+    let header_cells = rows.next().ok_or_else(|| DataImportError::NoValidRows)?;
     let headers: Vec<String> = header_cells.iter().map(cell_to_string).collect();
     let columns = column_map_from_headers(&headers)?;
 
@@ -64,17 +64,21 @@ pub fn read_doodad_rows(
             continue;
         }
         let row_number = offset + 2;
-        parsed.push(parse_row(row_number, cells, &columns).map_err(|message| RowImportError {
-            row_number,
-            message,
-        }));
+        parsed.push(
+            parse_row(row_number, cells, &columns).map_err(|message| RowImportError {
+                row_number,
+                message,
+            }),
+        );
     }
 
     Ok(parsed)
 }
 
 fn row_is_empty(cells: &[calamine::Data]) -> bool {
-    cells.iter().all(|cell| cell_to_string(cell).trim().is_empty())
+    cells
+        .iter()
+        .all(|cell| cell_to_string(cell).trim().is_empty())
 }
 
 fn parse_row(
@@ -253,7 +257,15 @@ mod tests {
         ));
         let headers = standard_headers_v2();
         let row = vec![
-            "Basic Tree", "Basic", "Flora", r"\doodads\tree", "0.5", "1.5", "10", "Y", "Y",
+            "Basic Tree",
+            "Basic",
+            "Flora",
+            r"\doodads\tree",
+            "0.5",
+            "1.5",
+            "10",
+            "Y",
+            "Y",
         ];
         write_workbook(&path, &headers, &[row]);
         let rows = read_doodad_rows(&path).unwrap();
@@ -282,7 +294,15 @@ mod tests {
             "Name",
         ];
         let row = vec![
-            "Y", "Y", "5", "1.2", "0.8", "tree/oak.glb", "Tree", "Oak", "tree_oak",
+            "Y",
+            "Y",
+            "5",
+            "1.2",
+            "0.8",
+            "tree/oak.glb",
+            "Tree",
+            "Oak",
+            "tree_oak",
         ];
         write_workbook(&path, &headers, &[row]);
         let rows = read_doodad_rows(&path).unwrap();
@@ -304,10 +324,7 @@ mod tests {
             &[vec!["tree_oak", "Oak", "Tree"]],
         );
         let err = read_doodad_rows(&path).unwrap_err();
-        assert!(matches!(
-            err,
-            DataImportError::MissingRequiredColumn { .. }
-        ));
+        assert!(matches!(err, DataImportError::MissingRequiredColumn { .. }));
         let _ = std::fs::remove_file(path);
     }
 
@@ -320,7 +337,15 @@ mod tests {
         ));
         let headers = standard_headers_v2();
         let row = vec![
-            "tree_oak", "Oak", "Tree", "tree/oak.glb", "not-a-number", "1.2", "5", "Y", "Y",
+            "tree_oak",
+            "Oak",
+            "Tree",
+            "tree/oak.glb",
+            "not-a-number",
+            "1.2",
+            "5",
+            "Y",
+            "Y",
         ];
         write_workbook(&path, &headers, &[row]);
         let rows = read_doodad_rows(&path).unwrap();
@@ -365,7 +390,15 @@ mod tests {
         ));
         let headers = standard_headers_v2();
         let row = vec![
-            "tree_oak", "Oak", "Tree", "tree/oak.glb", "0.8", "1.2", "5", "Y", "",
+            "tree_oak",
+            "Oak",
+            "Tree",
+            "tree/oak.glb",
+            "0.8",
+            "1.2",
+            "5",
+            "Y",
+            "",
         ];
         write_workbook(&path, &headers, &[row]);
         let rows = read_doodad_rows(&path).unwrap();
@@ -386,7 +419,17 @@ mod tests {
         headers.push("Blocks Movement");
         headers.push("Block Radius");
         let row = vec![
-            "tree_oak", "Oak", "Tree", "tree/oak.glb", "0.8", "1.2", "5", "N", "Y", "No", "6.5",
+            "tree_oak",
+            "Oak",
+            "Tree",
+            "tree/oak.glb",
+            "0.8",
+            "1.2",
+            "5",
+            "N",
+            "Y",
+            "No",
+            "6.5",
         ];
         write_workbook(&path, &headers, &[row]);
         let rows = read_doodad_rows(&path).unwrap();

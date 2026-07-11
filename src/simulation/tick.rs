@@ -4,11 +4,11 @@
 //! Contains no movement/combat algorithms — only stage sequencing.
 
 use crate::world::{
+    AttackTargetingPolicy, CombatAiScanState, CombatAiSettings, CombatStrikeReport, DoodadCatalog,
+    NavigationConfig, ProjectileReport, UnitCatalog, WeaponCatalog, WorldData,
     resolve_pending_unit_orders, step_all_combat_engagement, step_all_combat_strikes,
     step_all_projectiles, step_all_unit_movement, step_combat_ai_acquisition,
-    step_unit_death_pipeline, AttackTargetingPolicy, CombatAiScanState, CombatAiSettings,
-    CombatStrikeReport, DoodadCatalog, NavigationConfig, ProjectileReport, UnitCatalog,
-    WeaponCatalog, WorldData,
+    step_unit_death_pipeline,
 };
 
 use super::report::SimulationTickReport;
@@ -91,10 +91,10 @@ mod tests {
     use super::*;
     use crate::simulation::SIMULATION_TICK_SECONDS;
     use crate::world::{
-        create_unit_with_ownership, starter_unit_definitions, starter_weapon_definitions,
         AttackCycle, AttackPhase, ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatState,
         Heightfield, LocalPosition, UnitCatalog, UnitDefinitionId, UnitOrder, UnitOwnership,
-        UnitSource, WeaponCatalog, WorldPosition,
+        UnitSource, WeaponCatalog, WorldPosition, create_unit_with_ownership,
+        starter_unit_definitions, starter_weapon_definitions,
     };
     use bevy::prelude::Vec3;
 
@@ -155,10 +155,7 @@ mod tests {
             .set_unit_combat_state(player, CombatState::Attacking { target: hostile })
             .unwrap();
         world
-            .set_unit_attack_cycle(
-                player,
-                Some(AttackCycle::start_windup(hostile, 0.5)),
-            )
+            .set_unit_attack_cycle(player, Some(AttackCycle::start_windup(hostile, 0.5)))
             .unwrap();
         let before = world.get_unit(player).unwrap().attack_cycle.clone();
 
@@ -201,10 +198,7 @@ mod tests {
             .set_unit_combat_state(player, CombatState::Attacking { target: hostile })
             .unwrap();
         world
-            .set_unit_attack_cycle(
-                player,
-                Some(AttackCycle::start_windup(hostile, 0.01)),
-            )
+            .set_unit_attack_cycle(player, Some(AttackCycle::start_windup(hostile, 0.01)))
             .unwrap();
 
         let mut scan = CombatAiScanState::default();
@@ -224,10 +218,7 @@ mod tests {
 
         assert!(!report.combat_strike.traces.is_empty() || report.combat.traces.is_empty());
         let after = world.get_unit(player).unwrap().attack_cycle.clone();
-        assert_ne!(
-            after.map(|c| c.phase),
-            Some(AttackPhase::Windup)
-        );
+        assert_ne!(after.map(|c| c.phase), Some(AttackPhase::Windup));
     }
 
     #[test]
@@ -251,7 +242,9 @@ mod tests {
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             unit_id,
-            UnitOrder::MoveTo { target: pos(5.0, 0.0) },
+            UnitOrder::MoveTo {
+                target: pos(5.0, 0.0),
+            },
             AttackTargetingPolicy::default(),
         )
         .unwrap();

@@ -3,8 +3,7 @@
 mod file;
 
 pub use file::{
-    append_log_block, append_log_line, append_log_line_buffered, write_session_header,
-    FileLogError,
+    FileLogError, append_log_block, append_log_line, append_log_line_buffered, write_session_header,
 };
 
 /// Directory for all runtime log files (relative to process working directory).

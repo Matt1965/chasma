@@ -7,16 +7,14 @@ use bevy::window::PrimaryWindow;
 
 use crate::camera::RtsCamera;
 use crate::debug::InspectorOverlayFocus;
-use crate::terrain::TerrainRenderAssets;
-use crate::units::input::{
-    cursor_world_ray, pick_unit_along_ray, terrain_click_to_world_position, BoxSelectDrag,
-};
-use crate::units::UnitRenderEntity;
 use crate::dev::{DevModeInputGate, DevModeState, DevPanelHoverState};
-
-use super::capture::{
-    capture_interaction_inspector_snapshot, capture_unit_inspector_snapshot,
+use crate::terrain::TerrainRenderAssets;
+use crate::units::UnitRenderEntity;
+use crate::units::input::{
+    BoxSelectDrag, cursor_world_ray, pick_unit_along_ray, terrain_click_to_world_position,
 };
+
+use super::capture::{capture_interaction_inspector_snapshot, capture_unit_inspector_snapshot};
 use super::params::InspectorCaptureParams;
 use super::state::{InspectorCacheKey, WorldInspectorState};
 
@@ -137,12 +135,9 @@ pub fn handle_inspector_input(
         .as_ref()
         .map(|a| a.vertical_scale)
         .unwrap_or(1.0);
-    if let Some(click) = terrain_click_to_world_position(
-        &ray,
-        &capture.world,
-        layout,
-        vertical_scale,
-    ) {
+    if let Some(click) =
+        terrain_click_to_world_position(&ray, &capture.world, layout, vertical_scale)
+    {
         gate.block_gameplay_mouse = true;
         inspector.interaction_snapshot = capture_interaction_inspector_snapshot(
             &capture.world,

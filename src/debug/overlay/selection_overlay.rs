@@ -2,11 +2,11 @@
 
 use bevy::prelude::*;
 
-use crate::debug::settings::{DebugOverlayCategory, DebugOverlaySettings};
 use crate::debug::InspectorOverlayFocus;
+use crate::debug::settings::{DebugOverlayCategory, DebugOverlaySettings};
 use crate::terrain::TerrainRenderAssets;
-use crate::units::input::SelectedUnits;
 use crate::units::UnitRenderIndex;
+use crate::units::input::SelectedUnits;
 use crate::world::{UnitCatalog, WorldData};
 
 use super::helpers::xz_to_render_y;
@@ -42,10 +42,7 @@ pub fn draw_selection_debug_overlay(
         let radius = selection_ring_radius(&world, &catalog, unit_id);
         let center = xz_to_render_y(transform.translation(), 0.05);
         gizmos.circle(
-            Isometry3d::new(
-                center,
-                Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2),
-            ),
+            Isometry3d::new(center, Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
             radius,
             Color::srgba(0.15, 0.95, 0.25, 0.55),
         );

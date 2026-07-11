@@ -26,9 +26,8 @@ impl ProjectileSceneAssets {
             return Some(scene.clone());
         }
         let path = format!("{PROJECTILE_ASSET_ROOT}/{projectile_key}.glb");
-        let scene: Handle<Scene> = asset_server.load(
-            GltfAssetLabel::Scene(DEFAULT_GLTF_SCENE_INDEX).from_asset(path),
-        );
+        let scene: Handle<Scene> =
+            asset_server.load(GltfAssetLabel::Scene(DEFAULT_GLTF_SCENE_INDEX).from_asset(path));
         self.scenes
             .insert(projectile_key.to_string(), scene.clone());
         Some(scene)

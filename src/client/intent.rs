@@ -14,15 +14,9 @@ pub enum ClientIntent {
     /// Shift-click toggle unit membership.
     ToggleUnitSelection { unit_id: UnitId },
     /// Marquee select — replace selection with units in the screen rect.
-    BoxSelect {
-        rect_min: Vec2,
-        rect_max: Vec2,
-    },
+    BoxSelect { rect_min: Vec2, rect_max: Vec2 },
     /// Marquee select — add units in the screen rect to selection.
-    BoxSelectAdd {
-        rect_min: Vec2,
-        rect_max: Vec2,
-    },
+    BoxSelectAdd { rect_min: Vec2, rect_max: Vec2 },
     /// Clear the local selection (left-click terrain, no shift).
     ClearSelection,
     /// Context-aware command from right-click (terrain or unit target).

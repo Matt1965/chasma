@@ -3,9 +3,7 @@
 use crate::world::interaction::InteractionType;
 use crate::world::ownership::{Affiliation, OwnerId, TeamId};
 use crate::world::unit::{UnitOrderError, UnitRecord, UnitState};
-use crate::world::{
-    TargetFilter, UnitCatalog, UnitId, WeaponCatalog, WeaponDefinition, WorldData,
-};
+use crate::world::{TargetFilter, UnitCatalog, UnitId, WeaponCatalog, WeaponDefinition, WorldData};
 
 /// Frozen attacker ownership and weapon filter state at projectile launch (ADR-060, REVIEW-A3).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -97,7 +95,11 @@ pub fn validate_projectile_impact_target(
         target,
         snapshot.dev_allow_all_targets,
     );
-    if !ownership_ok && !snapshot.weapon_target_filters.contains(&TargetFilter::Neutral) {
+    if !ownership_ok
+        && !snapshot
+            .weapon_target_filters
+            .contains(&TargetFilter::Neutral)
+    {
         return Err(ProjectileImpactRejection::TargetNowFriendly);
     }
     if !weapon_allows_target_filters(&snapshot.weapon_target_filters, target, ownership_ok) {
@@ -153,8 +155,7 @@ pub fn validate_attack_target(
     }
 
     let weapon = weapon_for_unit(attacker, unit_catalog, weapon_catalog)?;
-    let ownership_ok =
-        ownership_allows_attack(attacker, target, policy.dev_allow_all_targets);
+    let ownership_ok = ownership_allows_attack(attacker, target, policy.dev_allow_all_targets);
     if !ownership_ok && !weapon.target_filters.contains(&TargetFilter::Neutral) {
         return Err(UnitOrderError::InvalidOwnershipTarget);
     }
@@ -307,8 +308,8 @@ fn weapon_allows_target_filters(
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, create_unit_with_ownership, ChunkCoord, ChunkLayout, LocalPosition,
-        UnitDefinitionId, UnitOwnership, UnitSource, WorldPosition,
+        ChunkCoord, ChunkLayout, LocalPosition, UnitDefinitionId, UnitOwnership, UnitSource,
+        WorldPosition, create_unit, create_unit_with_ownership,
     };
     use bevy::prelude::Vec3;
 
@@ -485,8 +486,7 @@ mod tests {
         let mut wildlife_only = wolf_bite.clone();
         wildlife_only.target_filters = vec![TargetFilter::Wildlife];
         wildlife_only.id = crate::world::WeaponDefinitionId::new("weapon_test_wildlife");
-        let weapon_catalog =
-            WeaponCatalog::from_definitions(vec![wildlife_only]).unwrap();
+        let weapon_catalog = WeaponCatalog::from_definitions(vec![wildlife_only]).unwrap();
 
         let mut unit_catalog = catalog.clone();
         let mut bandit = unit_catalog

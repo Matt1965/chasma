@@ -22,7 +22,10 @@ impl MovementBlockObservability {
     }
 
     /// Returns only traces whose block reason changed since the last observation.
-    pub fn filter_new_block_traces(&mut self, traces: &[UnitMovementTrace]) -> Vec<UnitMovementTrace> {
+    pub fn filter_new_block_traces(
+        &mut self,
+        traces: &[UnitMovementTrace],
+    ) -> Vec<UnitMovementTrace> {
         let mut fresh = Vec::new();
         for trace in traces {
             let changed = self

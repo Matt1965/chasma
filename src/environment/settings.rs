@@ -42,9 +42,10 @@ pub struct EnvironmentSettings {
 
 impl Default for EnvironmentSettings {
     fn default() -> Self {
-        let directional_light_rotation = Transform::from_translation(DEFAULT_DIRECTIONAL_LIGHT_POSITION)
-            .looking_at(DEFAULT_DIRECTIONAL_LIGHT_LOOK_AT, Vec3::Y)
-            .rotation;
+        let directional_light_rotation =
+            Transform::from_translation(DEFAULT_DIRECTIONAL_LIGHT_POSITION)
+                .looking_at(DEFAULT_DIRECTIONAL_LIGHT_LOOK_AT, Vec3::Y)
+                .rotation;
 
         Self {
             skybox_set: DEFAULT_SKYBOX_SET.to_string(),

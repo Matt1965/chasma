@@ -4,25 +4,29 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use crate::camera::RtsCamera;
-use crate::debug::{unit_ids_for_intent, ClientBoundaryGuard, ClientFrameIndex, PendingDispatchTrace, PendingDispatchTraceRecord};
+use crate::debug::{
+    ClientBoundaryGuard, ClientFrameIndex, PendingDispatchTrace, PendingDispatchTraceRecord,
+    unit_ids_for_intent,
+};
 use crate::terrain::TerrainRenderAssets;
 use crate::ui::gameplay::MoveCommandFeedback;
-use crate::units::input::{
-    collect_units_in_screen_rect, issue_attack_move_orders_to_selection,
-    issue_attack_orders_to_selection, issue_idle_orders_to_selection, issue_move_orders_to_selection,
-    prune_non_commandable_from_selection, MoveOrdersReport, PlayerInteractionSettings, SelectedUnits,
-};
 use crate::units::UnitRenderEntity;
+use crate::units::input::{
+    MoveOrdersReport, PlayerInteractionSettings, SelectedUnits, collect_units_in_screen_rect,
+    issue_attack_move_orders_to_selection, issue_attack_orders_to_selection,
+    issue_idle_orders_to_selection, issue_move_orders_to_selection,
+    prune_non_commandable_from_selection,
+};
 use crate::world::{
     AttackTargetingPolicy, DoodadCatalog, InteractionOrderPlan, InteractionResolveContext,
     NavigationConfig, NavigationPath, UnitCatalog, UnitId, WeaponCatalog, WorldConfig, WorldData,
-    WorldPosition, xz_distance, resolve_unit_click_to_order, resolve_world_click_to_order,
+    WorldPosition, resolve_unit_click_to_order, resolve_world_click_to_order, xz_distance,
 };
 
 use super::commands::{
-    build_command_plan, command_availability, command_tooltip, resolve_contextual_command_with_armed,
-    resolve_palette_command, BuiltCommandPlan, CommandBuildError, CommandResolutionContext,
-    CommandTarget, CommandType, CommandUnavailableReason,
+    BuiltCommandPlan, CommandBuildError, CommandResolutionContext, CommandTarget, CommandType,
+    CommandUnavailableReason, build_command_plan, command_availability, command_tooltip,
+    resolve_contextual_command_with_armed, resolve_palette_command,
 };
 use super::intent::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
 use crate::ui::gameplay::PlayerHudState;
@@ -71,6 +75,32 @@ impl IntentDispatchReport {
             .iter()
             .filter(|record| record.status == IntentDispatchStatus::Ignored)
             .count() as u32
+    }
+
+    /// Intents that attempted a command/selection change but failed validation or availability.
+    pub fn rejected(&self) -> u32 {
+        self.records
+            .iter()
+            .filter(|record| matches!(record.status, IntentDispatchStatus::Rejected(_)))
+            .count() as u32
+    }
+
+    pub fn total(&self) -> u32 {
+        self.records.len() as u32
+    }
+
+    /// Group rejected intents by unavailable reason (deterministic first-seen order).
+    pub fn rejected_reason_counts(&self) -> Vec<(CommandUnavailableReason, u32)> {
+        use std::collections::HashMap;
+        let mut counts: HashMap<CommandUnavailableReason, u32> = HashMap::new();
+        for record in &self.records {
+            if let IntentDispatchStatus::Rejected(reason) = record.status {
+                *counts.entry(reason).or_insert(0) += 1;
+            }
+        }
+        let mut rows: Vec<_> = counts.into_iter().collect();
+        rows.sort_by_key(|(reason, _)| format!("{reason:?}"));
+        rows
     }
 }
 
@@ -267,14 +297,9 @@ fn dispatch_one(
                 (Some(camera), Some(units)) => (camera, units),
                 _ => return IntentDispatchStatus::Ignored,
             };
-            let Some(picked) = units_in_screen_rect(
-                *rect_min,
-                *rect_max,
-                camera,
-                world,
-                units,
-                selection_policy,
-            ) else {
+            let Some(picked) =
+                units_in_screen_rect(*rect_min, *rect_max, camera, world, units, selection_policy)
+            else {
                 return IntentDispatchStatus::Ignored;
             };
             selection.replace_with(picked);
@@ -285,14 +310,9 @@ fn dispatch_one(
                 (Some(camera), Some(units)) => (camera, units),
                 _ => return IntentDispatchStatus::Ignored,
             };
-            let Some(picked) = units_in_screen_rect(
-                *rect_min,
-                *rect_max,
-                camera,
-                world,
-                units,
-                selection_policy,
-            ) else {
+            let Some(picked) =
+                units_in_screen_rect(*rect_min, *rect_max, camera, world, units, selection_policy)
+            else {
                 return IntentDispatchStatus::Ignored;
             };
             selection.add_all(picked);
@@ -443,7 +463,12 @@ fn dispatch_contextual_command(
                 for unit_id in selected_ids {
                     if let Some(record) = world.get_unit(unit_id) {
                         if let crate::world::UnitState::Moving { ref path, .. } = record.state {
-                            log_generated_path(record.placement.position, resolved_target, path, layout);
+                            log_generated_path(
+                                record.placement.position,
+                                resolved_target,
+                                path,
+                                layout,
+                            );
                         }
                     }
                 }
@@ -657,10 +682,10 @@ mod tests {
     use crate::client::commands::CommandType;
     use crate::units::input::SelectedUnits;
     use crate::world::{
-        create_doodad, create_unit, create_unit_with_ownership, resolve_all_pending_unit_orders,
         ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, DoodadPlacementOverrides,
         DoodadSource, Heightfield, LocalPosition, UnitDefinitionId, UnitOwnership, UnitSource,
-        UnitState, WorldPosition,
+        UnitState, WorldPosition, create_doodad, create_unit, create_unit_with_ownership,
+        resolve_all_pending_unit_orders,
     };
     use bevy::prelude::{Vec2, Vec3};
 
@@ -1086,5 +1111,41 @@ mod tests {
             None,
         );
         assert!(modifiers.shift);
+    }
+
+    #[test]
+    fn dispatch_report_partitions_terminal_categories() {
+        let report = IntentDispatchReport {
+            records: vec![
+                IntentDispatchRecord {
+                    intent: ClientIntent::ShiftModifier { pressed: true },
+                    status: IntentDispatchStatus::Applied,
+                },
+                IntentDispatchRecord {
+                    intent: ClientIntent::ClearSelection,
+                    status: IntentDispatchStatus::Ignored,
+                },
+                IntentDispatchRecord {
+                    intent: ClientIntent::PaletteCommand {
+                        command_type: CommandType::HoldPosition,
+                    },
+                    status: IntentDispatchStatus::Rejected(
+                        CommandUnavailableReason::FeatureNotImplemented,
+                    ),
+                },
+            ],
+        };
+        assert_eq!(report.total(), 3);
+        assert_eq!(report.applied(), 1);
+        assert_eq!(report.ignored(), 1);
+        assert_eq!(report.rejected(), 1);
+        assert_eq!(
+            report.applied() + report.ignored() + report.rejected(),
+            report.total()
+        );
+        assert_eq!(
+            report.rejected_reason_counts(),
+            vec![(CommandUnavailableReason::FeatureNotImplemented, 1)]
+        );
     }
 }

@@ -10,7 +10,7 @@ use super::id::UnitId;
 use super::placement::UnitPlacement;
 use super::record::UnitRecord;
 use super::source::UnitSource;
-use crate::world::ownership::{default_ownership_for_source, UnitOwnership};
+use crate::world::ownership::{UnitOwnership, default_ownership_for_source};
 use crate::world::{UnitDefinitionId, UnitInsertError, WorldData, WorldPosition};
 
 /// Why an authoring operation failed (ADR-027 U2).
@@ -126,10 +126,7 @@ mod tests {
     }
 
     fn position(chunk_x: i32, chunk_z: i32, local: Vec3) -> WorldPosition {
-        WorldPosition::new(
-            ChunkCoord::new(chunk_x, chunk_z),
-            LocalPosition::new(local),
-        )
+        WorldPosition::new(ChunkCoord::new(chunk_x, chunk_z), LocalPosition::new(local))
     }
 
     #[test]

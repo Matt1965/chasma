@@ -1,9 +1,7 @@
 /// Starter weapon fixtures for unit tests only.
 #[cfg(any(test, feature = "dev"))]
 mod fixtures {
-    use crate::world::{
-        DamageType, HitMode, TargetFilter, WeaponDefinition, WeaponDefinitionId,
-    };
+    use crate::world::{DamageType, HitMode, TargetFilter, WeaponDefinition, WeaponDefinitionId};
 
     pub fn starter_definitions() -> Vec<WeaponDefinition> {
         vec![
@@ -80,8 +78,8 @@ mod tests {
 
     #[test]
     fn starter_units_reference_starter_weapons() {
-        let weapons = super::super::registry::WeaponCatalog::from_definitions(starter_definitions())
-            .unwrap();
+        let weapons =
+            super::super::registry::WeaponCatalog::from_definitions(starter_definitions()).unwrap();
         let units = UnitCatalog::default();
         weapons.validate_units(&units).expect("starter cross-refs");
     }

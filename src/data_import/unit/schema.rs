@@ -1,8 +1,6 @@
 //! Excel column schema and conversion into [`UnitDefinition`].
 
-use crate::world::{
-    UnitDefinition, UnitDefinitionId, UnitRenderKey, WeaponDefinitionId,
-};
+use crate::world::{UnitDefinition, UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
 
 use super::super::schema::normalize_file_path;
 
@@ -194,10 +192,7 @@ mod tests {
 
     #[test]
     fn file_path_normalization() {
-        assert_eq!(
-            normalize_file_path(r"\units\wolf.glb"),
-            "units/wolf.glb"
-        );
+        assert_eq!(normalize_file_path(r"\units\wolf.glb"), "units/wolf.glb");
         assert_eq!(
             normalize_file_path_to_render_key(r"\units\wolf.glb").unwrap(),
             "wolf"

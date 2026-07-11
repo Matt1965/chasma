@@ -1,7 +1,4 @@
-use bevy::{
-    light::GlobalAmbientLight,
-    prelude::*,
-};
+use bevy::{light::GlobalAmbientLight, prelude::*};
 
 use super::settings::EnvironmentSettings;
 
@@ -70,6 +67,10 @@ mod tests {
             .iter(&mut world)
             .count();
         assert_eq!(lights, 1);
-        assert!(world.get_resource::<EnvironmentLightingInitialized>().is_some());
+        assert!(
+            world
+                .get_resource::<EnvironmentLightingInitialized>()
+                .is_some()
+        );
     }
 }

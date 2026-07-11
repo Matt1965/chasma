@@ -7,8 +7,7 @@ use super::types::{Affiliation, OwnerId, UnitOwnership};
 
 /// Whether this record is commandable by the local human player.
 pub fn is_player_controllable(record: &UnitRecord) -> bool {
-    record.affiliation == Affiliation::Player
-        && record.owner_id == Some(DEFAULT_PLAYER_OWNER_ID)
+    record.affiliation == Affiliation::Player && record.owner_id == Some(DEFAULT_PLAYER_OWNER_ID)
 }
 
 /// Whether `record` is owned by `owner`.
@@ -25,7 +24,8 @@ pub fn player_units(world: &WorldData) -> Vec<UnitId> {
 }
 
 /// All units with the given owner id, sorted deterministically.
-pub fn units_by_owner(world: &WorldData, owner: OwnerId) -> Vec<UnitId> {
+#[cfg(test)]
+pub(crate) fn units_by_owner(world: &WorldData, owner: OwnerId) -> Vec<UnitId> {
     world
         .sorted_unit_ids()
         .into_iter()
@@ -61,8 +61,8 @@ pub fn default_ownership_for_source(source: crate::world::UnitSource) -> UnitOwn
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, create_unit_with_ownership, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
-        Heightfield, LocalPosition, UnitCatalog, UnitDefinitionId, UnitSource, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitCatalog,
+        UnitDefinitionId, UnitSource, WorldPosition, create_unit, create_unit_with_ownership,
     };
     use bevy::prelude::Vec3;
 

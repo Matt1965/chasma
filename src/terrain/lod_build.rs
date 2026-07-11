@@ -11,18 +11,18 @@ use bevy::tasks::{AsyncComputeTaskPool, Task};
 use crate::view::PrimaryViewFocus;
 use crate::world::{ChunkCoord, ChunkData, ChunkId, WorldConfig, WorldData};
 
-use super::albedo::{production_albedo_fallback, AlbedoFallback, ChunkAlbedoGrid, TerrainChunkAlbedo};
-use super::components::TerrainChunkMesh;
-use super::lod::{
-    LodPriority, TerrainLodSettings, desired_lod, predicted_lod_targets,
+use super::albedo::{
+    AlbedoFallback, ChunkAlbedoGrid, TerrainChunkAlbedo, production_albedo_fallback,
 };
+use super::catalog::TerrainWorldCatalog;
+use super::components::TerrainChunkMesh;
+use super::lod::{LodPriority, TerrainLodSettings, desired_lod, predicted_lod_targets};
 use super::lod_cache::TerrainChunkLodCache;
-use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled};
 #[cfg(feature = "dev")]
 use super::mesh::chunk_mesh_geometry;
+use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled};
 use super::spawn::{TerrainRenderAssets, seam_weld_heights};
 use super::streaming::{TerrainStreamingSettings, stable_focus_chunk};
-use super::catalog::TerrainWorldCatalog;
 
 /// Completed async LOD mesh build ready for main-thread cache registration.
 #[derive(Debug)]
@@ -302,7 +302,8 @@ pub(crate) fn request_missing_lod_builds_inner(
     query: Query<(&TerrainChunkMesh, &TerrainChunkLodCache)>,
 ) -> LodPrefetchFrameStats {
     let mut stats = LodPrefetchFrameStats::default();
-    let mut resident: std::collections::HashMap<ChunkId, ChunkCoord> = std::collections::HashMap::new();
+    let mut resident: std::collections::HashMap<ChunkId, ChunkCoord> =
+        std::collections::HashMap::new();
     for (marker, _) in &query {
         resident.insert(marker.chunk, marker.chunk.coord());
     }
@@ -343,12 +344,7 @@ pub(crate) fn request_missing_lod_builds_inner(
     // Phase 2: predictive prefetch for resident chunks in load+1 / load+2 bands.
     let max_prefetch = lod_settings.max_lod_prefetch_per_frame;
     let mut prefetch_enqueued = 0usize;
-    let targets = predicted_lod_targets(
-        focus_coord,
-        catalog,
-        lod_settings,
-        load_radius_chunks,
-    );
+    let targets = predicted_lod_targets(focus_coord, catalog, lod_settings, load_radius_chunks);
 
     for (coord, lod, priority) in targets {
         if max_prefetch != 0 && prefetch_enqueued >= max_prefetch {
@@ -358,10 +354,7 @@ pub(crate) fn request_missing_lod_builds_inner(
         if !resident.contains_key(&chunk_id) || !world.is_chunk_loaded(chunk_id) {
             continue;
         }
-        let Some((marker, cache)) = query
-            .iter()
-            .find(|(m, _)| m.chunk == chunk_id)
-        else {
+        let Some((marker, cache)) = query.iter().find(|(m, _)| m.chunk == chunk_id) else {
             continue;
         };
 
@@ -413,7 +406,12 @@ pub fn poll_lod_builds(
     world: Res<WorldData>,
     mut pending_builds: ResMut<PendingChunkLodBuilds>,
     mut meshes: ResMut<Assets<Mesh>>,
-    query: Query<(Entity, &mut TerrainChunkMesh, &mut Mesh3d, &mut TerrainChunkLodCache)>,
+    query: Query<(
+        Entity,
+        &mut TerrainChunkMesh,
+        &mut Mesh3d,
+        &mut TerrainChunkLodCache,
+    )>,
     #[cfg(feature = "dev")] perf_settings: Res<super::perf::TerrainStreamingPerfSettings>,
     #[cfg(feature = "dev")] mut perf_state: ResMut<super::perf::TerrainStreamingPerfState>,
 ) {
@@ -436,7 +434,12 @@ pub(crate) fn poll_lod_builds_inner(
     world: &WorldData,
     pending_builds: &mut PendingChunkLodBuilds,
     meshes: &mut Assets<Mesh>,
-    mut query: Query<(Entity, &mut TerrainChunkMesh, &mut Mesh3d, &mut TerrainChunkLodCache)>,
+    mut query: Query<(
+        Entity,
+        &mut TerrainChunkMesh,
+        &mut Mesh3d,
+        &mut TerrainChunkLodCache,
+    )>,
     #[cfg(feature = "dev")] mut perf_state: Option<&mut super::perf::TerrainStreamingPerfState>,
 ) {
     let completed = pending_builds.poll();
@@ -465,9 +468,10 @@ pub(crate) fn poll_lod_builds_inner(
             continue;
         }
 
-        let Some(entity) = query.iter().find_map(|(entity, marker, _, _)| {
-            (marker.chunk == output.chunk_id).then_some(entity)
-        }) else {
+        let Some(entity) = query
+            .iter()
+            .find_map(|(entity, marker, _, _)| (marker.chunk == output.chunk_id).then_some(entity))
+        else {
             continue;
         };
 
@@ -601,7 +605,12 @@ mod tests {
             Res<WorldData>,
             ResMut<PendingChunkLodBuilds>,
             ResMut<Assets<Mesh>>,
-            Query<(Entity, &mut TerrainChunkMesh, &mut Mesh3d, &mut TerrainChunkLodCache)>,
+            Query<(
+                Entity,
+                &mut TerrainChunkMesh,
+                &mut Mesh3d,
+                &mut TerrainChunkLodCache,
+            )>,
         )>::new(world);
         let (focus, config, lod_settings, world_data, mut pending, mut meshes, mut query) =
             state.get_mut(world);
@@ -633,8 +642,18 @@ mod tests {
             ResMut<PendingChunkLodBuilds>,
             Query<(&TerrainChunkMesh, &TerrainChunkLodCache)>,
         )>::new(world);
-        let (focus, config, catalog, streaming, lod_settings, render_assets, chunk_albedo, world_data, mut pending, query) =
-            state.get_mut(world);
+        let (
+            focus,
+            config,
+            catalog,
+            streaming,
+            lod_settings,
+            render_assets,
+            chunk_albedo,
+            world_data,
+            mut pending,
+            query,
+        ) = state.get_mut(world);
         let stats = request_missing_lod_builds_inner(
             crate::terrain::streaming::stable_focus_chunk(focus.position, config.chunk_layout()),
             &catalog,
@@ -655,7 +674,7 @@ mod tests {
     }
 
     fn test_catalog(coords: &[(i32, i32)]) -> TerrainWorldCatalog {
-        use crate::terrain::asset::{Manifest, ManifestChunk, MANIFEST_FORMAT_VERSION};
+        use crate::terrain::asset::{MANIFEST_FORMAT_VERSION, Manifest, ManifestChunk};
         use crate::terrain::load::config_snapshot;
         use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -673,11 +692,7 @@ mod tests {
             config: config_snapshot(&config),
             chunks,
         };
-        std::fs::write(
-            dir.join("manifest.ron"),
-            ron::to_string(&manifest).unwrap(),
-        )
-        .unwrap();
+        std::fs::write(dir.join("manifest.ron"), ron::to_string(&manifest).unwrap()).unwrap();
         let catalog =
             TerrainWorldCatalog::from_manifest(&dir.join("manifest.ron"), &config).unwrap();
         std::fs::remove_dir_all(&dir).ok();
@@ -699,12 +714,8 @@ mod tests {
     fn cache_hit_swaps_mesh_handle_and_active_lod() {
         let chunk_id = ChunkId::new(ChunkCoord::new(0, 0));
         let mut world = setup_lod_world(chunk_id);
-        let (entity, half_handle, extra) = spawn_chunk_entity(
-            &mut world,
-            chunk_id,
-            ChunkLod::Half,
-            &[ChunkLod::Full],
-        );
+        let (entity, half_handle, extra) =
+            spawn_chunk_entity(&mut world, chunk_id, ChunkLod::Half, &[ChunkLod::Full]);
         let full_handle = extra[0].clone();
         focus_on_chunk(&mut world, chunk_id);
 
@@ -729,10 +740,16 @@ mod tests {
         focus_on_chunk(&mut world, chunk_id);
 
         request_missing_in_world(&mut world);
-        assert_eq!(world.resource::<PendingChunkLodBuilds>().in_flight_count(), 1);
+        assert_eq!(
+            world.resource::<PendingChunkLodBuilds>().in_flight_count(),
+            1
+        );
 
         request_missing_in_world(&mut world);
-        assert_eq!(world.resource::<PendingChunkLodBuilds>().in_flight_count(), 1);
+        assert_eq!(
+            world.resource::<PendingChunkLodBuilds>().in_flight_count(),
+            1
+        );
     }
 
     #[test]
@@ -743,20 +760,8 @@ mod tests {
         let mut pending = PendingChunkLodBuilds::default();
         let seam = ChunkMeshSeamWeld::default();
 
-        assert!(pending.try_enqueue(
-            chunk_id,
-            ChunkLod::Full,
-            data.clone(),
-            1.0,
-            seam.clone()
-        ));
-        assert!(!pending.try_enqueue(
-            chunk_id,
-            ChunkLod::Full,
-            data,
-            1.0,
-            seam
-        ));
+        assert!(pending.try_enqueue(chunk_id, ChunkLod::Full, data.clone(), 1.0, seam.clone()));
+        assert!(!pending.try_enqueue(chunk_id, ChunkLod::Full, data, 1.0, seam));
         assert_eq!(pending.in_flight_count(), 1);
     }
 
@@ -771,15 +776,13 @@ mod tests {
 
         {
             let data = sample_chunk_data();
-            world
-                .resource_mut::<PendingChunkLodBuilds>()
-                .try_enqueue(
-                    chunk_id,
-                    ChunkLod::Full,
-                    data,
-                    1.0,
-                    ChunkMeshSeamWeld::default(),
-                );
+            world.resource_mut::<PendingChunkLodBuilds>().try_enqueue(
+                chunk_id,
+                ChunkLod::Full,
+                data,
+                1.0,
+                ChunkMeshSeamWeld::default(),
+            );
         }
 
         for _ in 0..64 {
@@ -804,22 +807,17 @@ mod tests {
 
         {
             let data = sample_chunk_data();
-            world
-                .resource_mut::<PendingChunkLodBuilds>()
-                .try_enqueue(
-                    chunk_id,
-                    ChunkLod::Full,
-                    data,
-                    1.0,
-                    ChunkMeshSeamWeld::default(),
-                );
+            world.resource_mut::<PendingChunkLodBuilds>().try_enqueue(
+                chunk_id,
+                ChunkLod::Full,
+                data,
+                1.0,
+                ChunkMeshSeamWeld::default(),
+            );
         }
 
         // Move focus before build completes so Full is no longer desired (still Half).
-        focus_on_chunk(
-            &mut world,
-            ChunkId::new(ChunkCoord::new(3, 0)),
-        );
+        focus_on_chunk(&mut world, ChunkId::new(ChunkCoord::new(3, 0)));
 
         for _ in 0..64 {
             if world.resource::<PendingChunkLodBuilds>().in_flight_count() == 0 {
@@ -896,13 +894,21 @@ mod tests {
             load_radius_chunks: 0,
             ..Default::default()
         });
-        spawn_chunk_entity(&mut world, chunk_id, ChunkLod::Eighth, &[ChunkLod::Full, ChunkLod::Half, ChunkLod::Quarter]);
+        spawn_chunk_entity(
+            &mut world,
+            chunk_id,
+            ChunkLod::Eighth,
+            &[ChunkLod::Full, ChunkLod::Half, ChunkLod::Quarter],
+        );
         focus_on_chunk(&mut world, chunk_id);
 
         let stats = request_missing_in_world_stats(&mut world);
 
         assert_eq!(stats.prefetch_requests, 0);
-        assert_eq!(world.resource::<PendingChunkLodBuilds>().in_flight_count(), 0);
+        assert_eq!(
+            world.resource::<PendingChunkLodBuilds>().in_flight_count(),
+            0
+        );
     }
 
     #[test]
@@ -952,10 +958,15 @@ mod tests {
 
         request_missing_in_world(&mut world);
 
-        assert_eq!(world.resource::<PendingChunkLodBuilds>().in_flight_count(), 1);
-        assert!(world
-            .resource::<PendingChunkLodBuilds>()
-            .has_in_flight(high, ChunkLod::Half));
+        assert_eq!(
+            world.resource::<PendingChunkLodBuilds>().in_flight_count(),
+            1
+        );
+        assert!(
+            world
+                .resource::<PendingChunkLodBuilds>()
+                .has_in_flight(high, ChunkLod::Half)
+        );
     }
 
     #[test]
@@ -978,7 +989,10 @@ mod tests {
         for _ in 0..4 {
             request_missing_in_world(&mut world);
         }
-        assert_eq!(world.resource::<PendingChunkLodBuilds>().in_flight_count(), 0);
+        assert_eq!(
+            world.resource::<PendingChunkLodBuilds>().in_flight_count(),
+            0
+        );
         assert_eq!(world.resource::<WorldData>().len(), 1);
     }
 }

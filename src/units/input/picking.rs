@@ -7,8 +7,8 @@ use bevy::window::PrimaryWindow;
 use crate::camera::RtsCamera;
 use crate::units::UnitRenderEntity;
 use crate::world::{
-    is_unit_alive, unit_is_selectable, SelectionControllabilityPolicy, UnitCatalog, UnitDefinition,
-    UnitId, WorldData,
+    SelectionControllabilityPolicy, UnitCatalog, UnitDefinition, UnitId, WorldData, is_unit_alive,
+    unit_is_selectable,
 };
 
 /// Minimum pick radius so small unit meshes remain clickable (meters).
@@ -39,7 +39,9 @@ pub fn world_position_to_screen(
     camera: &Camera,
     camera_transform: &GlobalTransform,
 ) -> Option<Vec2> {
-    camera.world_to_viewport(camera_transform, render_global).ok()
+    camera
+        .world_to_viewport(camera_transform, render_global)
+        .ok()
 }
 
 /// Pick the front-most visible unit render entity intersecting `ray`.

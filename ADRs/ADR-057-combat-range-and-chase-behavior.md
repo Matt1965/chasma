@@ -122,6 +122,15 @@ C4 proves positioning, range math, and movement integration are stable before
 adding strike timing and HP mutation. Separating concerns keeps C4 tests
 deterministic and avoids coupling pathing bugs to damage resolution.
 
+## Design direction (not yet fully implemented)
+
+See [ADR-069](ADR-069-combat-design-philosophy.md).
+
+- **Min/max weapon envelope** — auto-reposition when opponent leaves envelope; player units
+  prioritize command responsiveness over AI-style spacing maintenance
+- **Physical collision** — smaller than Warcraft III; no combat slots; chokepoints matter
+- **Unit-unit collision** — deferred beyond doodad blocking (ADR-031)
+
 # Consequences
 
 - Combat stages integrate via [`run_simulation_tick`](../src/simulation/tick.rs) (ADR-065)

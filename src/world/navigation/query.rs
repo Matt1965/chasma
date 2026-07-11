@@ -1,17 +1,15 @@
-﻿//! Navigation path requests (ADR-032).
+//! Navigation path requests (ADR-032).
 
 use bevy::prelude::*;
 
 use super::astar::astar_path;
 use super::grid::{
-    grid_cell_world_position, grid_coord_at_position, cell_terrain_available, is_position_walkable,
-    NavigationAgent, NavigationConfig,
+    NavigationAgent, NavigationConfig, cell_terrain_available, grid_cell_world_position,
+    grid_coord_at_position, is_position_walkable,
 };
 use super::path::{NavigationPath, xz_distance};
 use super::simplify::simplify_navigation_path;
-use crate::world::{
-    ground_world_position, DoodadCatalog, WorldData, WorldPosition,
-};
+use crate::world::{DoodadCatalog, WorldData, WorldPosition, ground_world_position};
 
 /// Why [`find_path`] failed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,7 +37,8 @@ pub fn find_path(
     let layout = world.layout();
     let grounded_start =
         ground_world_position(world, start).ok_or(NavigationError::TerrainUnavailable)?;
-    let grounded_goal = ground_world_position(world, goal).ok_or(NavigationError::TerrainUnavailable)?;
+    let grounded_goal =
+        ground_world_position(world, goal).ok_or(NavigationError::TerrainUnavailable)?;
     let start_cell = grid_coord_at_position(grounded_start, layout, *config);
     let goal_cell = grid_coord_at_position(grounded_goal, layout, *config);
 
@@ -63,15 +62,8 @@ pub fn find_path(
         return Ok(NavigationPath::new(vec![grounded_goal]));
     }
 
-    let mut waypoints = astar_path(
-        world,
-        doodad_catalog,
-        *config,
-        agent,
-        start_cell,
-        goal_cell,
-    )
-    .ok_or(NavigationError::NoPath)?;
+    let mut waypoints = astar_path(world, doodad_catalog, *config, agent, start_cell, goal_cell)
+        .ok_or(NavigationError::NoPath)?;
 
     if waypoints.is_empty() {
         if let Some(goal_pos) = grid_cell_world_position(world, goal_cell, *config) {
@@ -121,7 +113,10 @@ fn trim_waypoints_at_start(
 }
 
 /// Remove duplicate consecutive waypoints after simplification.
-fn dedupe_consecutive_waypoints(waypoints: &mut Vec<WorldPosition>, layout: crate::world::ChunkLayout) {
+fn dedupe_consecutive_waypoints(
+    waypoints: &mut Vec<WorldPosition>,
+    layout: crate::world::ChunkLayout,
+) {
     const EPSILON: f32 = 0.05;
     let mut index = 0;
     while index + 1 < waypoints.len() {
@@ -137,8 +132,8 @@ fn dedupe_consecutive_waypoints(waypoints: &mut Vec<WorldPosition>, layout: crat
 mod tests {
     use super::*;
     use crate::world::{
-        create_doodad, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog,
-        DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, DoodadDefinitionId,
+        DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition, create_doodad,
     };
 
     fn layout() -> ChunkLayout {
@@ -181,16 +176,7 @@ mod tests {
         let catalog = DoodadCatalog::default();
         let start = pos(4.0, 4.0);
         let goal = pos(40.0, 4.0);
-        let path = find_path(
-            &world,
-            &catalog,
-            &nav_config(),
-            0.5,
-            40.0,
-            start,
-            goal,
-        )
-        .unwrap();
+        let path = find_path(&world, &catalog, &nav_config(), 0.5, 40.0, start, goal).unwrap();
         assert!(path.len() >= 2);
         let last = *path.waypoints.last().unwrap();
         assert!((last.to_global(layout()).x - 40.0).abs() < 0.05);
@@ -210,16 +196,7 @@ mod tests {
         let catalog = DoodadCatalog::default();
         let start = pos(8.0, 8.0);
         let goal = pos(48.0, 48.0);
-        let path = find_path(
-            &world,
-            &catalog,
-            &nav_config(),
-            0.5,
-            40.0,
-            start,
-            goal,
-        )
-        .unwrap();
+        let path = find_path(&world, &catalog, &nav_config(), 0.5, 40.0, start, goal).unwrap();
         let straight = xz_distance(start, goal, layout());
         let ratio = path.length_meters(layout()) / straight;
         assert!(ratio <= 1.08, "diagonal path ratio {ratio} too high");
@@ -268,16 +245,7 @@ mod tests {
         }
         let start = pos(4.0, 28.0);
         let goal = pos(36.0, 28.0);
-        let path = find_path(
-            &world,
-            &catalog,
-            &nav_config(),
-            0.5,
-            40.0,
-            start,
-            goal,
-        )
-        .unwrap();
+        let path = find_path(&world, &catalog, &nav_config(), 0.5, 40.0, start, goal).unwrap();
         assert!(path.len() >= 3);
         let globals: Vec<_> = path
             .waypoints
@@ -474,7 +442,10 @@ mod tests {
     ) -> f32 {
         let start_global = start.to_global(layout);
         let goal_global = goal.to_global(layout);
-        let axis = Vec2::new(goal_global.x - start_global.x, goal_global.z - start_global.z);
+        let axis = Vec2::new(
+            goal_global.x - start_global.x,
+            goal_global.z - start_global.z,
+        );
         if axis.length_squared() <= 1e-6 {
             return 0.0;
         }

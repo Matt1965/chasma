@@ -44,10 +44,15 @@ impl TerrainChunkLodCache {
 
     /// Returns how many LOD slots currently hold a mesh handle.
     pub fn cached_lod_count(&self) -> usize {
-        [self.full.is_some(), self.half.is_some(), self.quarter.is_some(), self.eighth.is_some()]
-            .into_iter()
-            .filter(|present| *present)
-            .count()
+        [
+            self.full.is_some(),
+            self.half.is_some(),
+            self.quarter.is_some(),
+            self.eighth.is_some(),
+        ]
+        .into_iter()
+        .filter(|present| *present)
+        .count()
     }
 }
 

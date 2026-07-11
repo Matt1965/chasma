@@ -7,8 +7,8 @@ mod avoidance;
 mod cohesion;
 mod separation;
 
-pub use avoidance::{apply_steering, gather_steering_neighbors, SteeringContext, SteeringNeighbor};
 pub use alignment::alignment_force;
+pub use avoidance::{SteeringContext, SteeringNeighbor, apply_steering, gather_steering_neighbors};
 pub use cohesion::cohesion_force;
 pub use separation::separation_force;
 

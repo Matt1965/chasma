@@ -9,7 +9,7 @@ use crate::debug::{
 use crate::ui::gameplay::GameplayHoveredUnit;
 use crate::units::input::SelectedUnits;
 use crate::units::spawn::UnitRenderIndex;
-use crate::world::{is_unit_alive, UnitCatalog, UnitId, WorldData};
+use crate::world::{UnitCatalog, UnitId, WorldData, is_unit_alive};
 
 use super::visibility::{health_percent, should_show_health_bar};
 
@@ -20,10 +20,10 @@ pub struct UnitHealthBar {
 }
 
 #[derive(Component, Debug)]
-pub(crate) struct HealthBarBackground;
+pub struct HealthBarBackground;
 
 #[derive(Component, Debug)]
-pub(crate) struct HealthBarFill;
+pub struct HealthBarFill;
 
 #[derive(Debug, Clone, Copy)]
 struct HealthBarEntities {
@@ -220,7 +220,11 @@ fn spawn_health_bar(
                             0.0,
                             0.02,
                         ))
-                        .with_scale(Vec3::new(percent.max(0.04), 1.0, 1.0)),
+                        .with_scale(Vec3::new(
+                            percent.max(0.04),
+                            1.0,
+                            1.0,
+                        )),
                         Visibility::Visible,
                     ))
                     .id(),
@@ -236,14 +240,15 @@ fn spawn_health_bar(
         },
     );
     if params.debug.health {
-        push_health_bar_trace(&mut params.trace, unit_id, CommandTraceOutcome::HealthBarShown);
+        push_health_bar_trace(
+            &mut params.trace,
+            unit_id,
+            CommandTraceOutcome::HealthBarShown,
+        );
     }
 }
 
-fn bar_layout(
-    catalog: &UnitCatalog,
-    definition_id: &crate::world::UnitDefinitionId,
-) -> (f32, f32) {
+fn bar_layout(catalog: &UnitCatalog, definition_id: &crate::world::UnitDefinitionId) -> (f32, f32) {
     let radius = catalog
         .get(definition_id)
         .map(|def| def.collision_radius_meters)

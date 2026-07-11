@@ -13,9 +13,9 @@ use crate::world::{ChunkCoord, ChunkId, WorldData, WorldPosition};
 
 use super::components::TerrainChunkMesh;
 use super::lod_cache::TerrainChunkLodCache;
-use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled};
 #[cfg(feature = "dev")]
 use super::mesh::chunk_mesh_geometry;
+use super::mesh::{ChunkLod, ChunkMeshSeamWeld};
 #[cfg(feature = "dev")]
 use super::perf::TerrainStreamingPerfRecorder;
 
@@ -61,9 +61,8 @@ pub fn world_position_to_render_global(
 pub(crate) fn seam_weld_heights(world: &WorldData, chunk_id: ChunkId) -> ChunkMeshSeamWeld {
     let coord = chunk_id.coord();
     let edge = |data: &crate::world::ChunkData| data.heightfield.samples_per_edge() - 1;
-    let penultimate = |data: &crate::world::ChunkData| {
-        data.heightfield.samples_per_edge().saturating_sub(2)
-    };
+    let penultimate =
+        |data: &crate::world::ChunkData| data.heightfield.samples_per_edge().saturating_sub(2);
 
     let west = world
         .get(ChunkId::new(ChunkCoord::new(coord.x - 1, coord.z)))
@@ -94,27 +93,6 @@ pub(crate) fn seam_weld_heights(world: &WorldData, chunk_id: ChunkId) -> ChunkMe
     }
 }
 
-/// Shared mesh finalization for initial materialization and LOD rebuilds (REVIEW-B6).
-pub fn build_chunk_mesh_finalized(
-    heightfield: &crate::world::Heightfield,
-    world: &WorldData,
-    chunk_id: ChunkId,
-    lod: ChunkLod,
-    vertical_scale: f32,
-    albedo: Option<&super::albedo::ChunkAlbedoGrid>,
-    fallback: super::albedo::AlbedoFallback,
-) -> Mesh {
-    let seam_weld = seam_weld_heights(world, chunk_id);
-    build_chunk_mesh_scaled(
-        heightfield,
-        lod,
-        vertical_scale,
-        &seam_weld,
-        albedo,
-        fallback,
-    )
-}
-
 pub(crate) fn spawn_prebuilt_chunk_mesh_inner(
     commands: &mut Commands,
     chunk_id: ChunkId,
@@ -127,11 +105,7 @@ pub(crate) fn spawn_prebuilt_chunk_mesh_inner(
 ) {
     #[cfg(feature = "dev")]
     if let Some(perf) = perf.as_mut() {
-        perf.record_prebuilt_mesh_applied(
-            chunk_id.coord(),
-            active_lod,
-            chunk_mesh_geometry(&mesh),
-        );
+        perf.record_prebuilt_mesh_applied(chunk_id.coord(), active_lod, chunk_mesh_geometry(&mesh));
     }
 
     #[cfg(feature = "dev")]
@@ -182,7 +156,7 @@ pub fn despawn_chunk_meshes(
 mod tests {
     use super::*;
     use crate::terrain::albedo::AlbedoFallback;
-    use crate::terrain::mesh::{build_chunk_mesh_scaled, chunk_mesh_geometry, ChunkLod};
+    use crate::terrain::mesh::{ChunkLod, build_chunk_mesh_scaled, chunk_mesh_geometry};
     use crate::world::{ChunkCoord, ChunkData, ChunkId, Heightfield, WorldData};
 
     #[test]
@@ -211,7 +185,7 @@ mod tests {
     }
 
     #[test]
-    fn finalized_mesh_matches_explicit_seam_weld_path() {
+    fn seam_weld_heights_and_build_chunk_mesh_scaled_share_path() {
         let layout = crate::world::ChunkLayout {
             chunk_size_meters: 256.0,
             units_per_meter: 1.0,
@@ -245,7 +219,7 @@ mod tests {
 
         let center = world.get(center_id).unwrap();
         let seam_weld = seam_weld_heights(&world, center_id);
-        let explicit = build_chunk_mesh_scaled(
+        let mesh = build_chunk_mesh_scaled(
             &center.heightfield,
             ChunkLod::Full,
             1.0,
@@ -253,20 +227,11 @@ mod tests {
             None,
             AlbedoFallback::Neutral,
         );
-        let finalized = build_chunk_mesh_finalized(
-            &center.heightfield,
-            &world,
-            center_id,
-            ChunkLod::Full,
-            1.0,
-            None,
-            AlbedoFallback::Neutral,
-        );
-        assert_eq!(
-            chunk_mesh_geometry(&explicit),
-            chunk_mesh_geometry(&finalized),
-            "initial materialization and shared finalization must match"
-        );
+        let geometry = chunk_mesh_geometry(&mesh);
+        assert!(geometry.vertices > 0);
+        assert!(geometry.indices > 0);
+        assert!(seam_weld.west_edge.is_some());
+        assert!(seam_weld.east_interior.is_some());
     }
 
     #[test]

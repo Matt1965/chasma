@@ -2,10 +2,10 @@
 //!
 //! Produces orders only — movement/pathfinding remain authoritative downstream.
 
-use crate::world::combat::{classify_unit_target, AttackTargetingPolicy};
+use crate::world::combat::{AttackTargetingPolicy, classify_unit_target};
 use crate::world::{UnitId, UnitOrder, WorldData, WorldPosition};
 
-use super::query::{query_world_interaction, InteractionQueryContext};
+use super::query::{InteractionQueryContext, query_world_interaction};
 use super::types::{InteractionResult, InteractionTargetRef, InteractionType};
 
 /// Resolved interaction outcome before per-unit issuance.
@@ -34,7 +34,12 @@ impl<'a> InteractionResolveContext<'a> {
         selected_units: &'a [UnitId],
     ) -> Self {
         Self {
-            query: InteractionQueryContext::new(world, doodad_catalog, unit_catalog, weapon_catalog),
+            query: InteractionQueryContext::new(
+                world,
+                doodad_catalog,
+                unit_catalog,
+                weapon_catalog,
+            ),
             selected_units,
             targeting_policy: AttackTargetingPolicy::default(),
         }
@@ -158,11 +163,13 @@ pub fn resolve_world_click_to_unit_order(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::interaction::types::{InteractionMetadata, InteractionTargetRef, InteractionType};
+    use crate::world::interaction::types::{
+        InteractionMetadata, InteractionTargetRef, InteractionType,
+    };
     use crate::world::{
-        create_doodad, create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
-        DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition,
-        UnitDefinitionId, UnitSource, WorldData,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, DoodadPlacementOverrides,
+        DoodadSource, Heightfield, LocalPosition, UnitDefinitionId, UnitSource, WorldData,
+        create_doodad, create_unit,
     };
     use bevy::prelude::Vec3;
 
@@ -311,9 +318,7 @@ mod tests {
 
     #[test]
     fn unit_click_on_hostile_resolves_to_attack() {
-        use crate::world::{
-            create_unit_with_ownership, UnitOwnership,
-        };
+        use crate::world::{UnitOwnership, create_unit_with_ownership};
         let unit_catalog = crate::world::UnitCatalog::default();
         let catalog = crate::world::DoodadCatalog::default();
         let mut world = flat_world();
@@ -346,7 +351,7 @@ mod tests {
 
     #[test]
     fn unit_click_on_friendly_resolves_to_move() {
-        use crate::world::{create_unit_with_ownership, UnitOwnership};
+        use crate::world::{UnitOwnership, create_unit_with_ownership};
         let unit_catalog = crate::world::UnitCatalog::default();
         let catalog = crate::world::DoodadCatalog::default();
         let mut world = flat_world();

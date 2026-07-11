@@ -6,7 +6,7 @@ use bevy::camera::Camera;
 use bevy::prelude::*;
 
 use crate::units::UnitRenderEntity;
-use crate::world::{unit_is_selectable, SelectionControllabilityPolicy, UnitId, WorldData};
+use crate::world::{SelectionControllabilityPolicy, UnitId, WorldData, unit_is_selectable};
 
 use super::picking::world_position_to_screen;
 
@@ -49,10 +49,7 @@ pub fn normalized_screen_rect(a: Vec2, b: Vec2) -> (Vec2, Vec2) {
 }
 
 pub fn screen_point_in_rect(min: Vec2, max: Vec2, point: Vec2) -> bool {
-    point.x >= min.x
-        && point.x <= max.x
-        && point.y >= min.y
-        && point.y <= max.y
+    point.x >= min.x && point.x <= max.x && point.y >= min.y && point.y <= max.y
 }
 
 /// Pure selection test used by [`collect_units_in_screen_rect`] and unit tests.

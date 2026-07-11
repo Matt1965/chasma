@@ -8,13 +8,12 @@ use crate::ui::gameplay::combat_display::{
     attack_cycle_summary, combat_target_id, weapon_display_for_unit,
 };
 use crate::world::{
-    alignment_force, blocking_doodad_at_position, cohesion_force, gather_steering_neighbors,
-    ground_world_position, interaction_plan_to_unit_order, classify_slope_walkability,
-    SlopeWalkability,
-    query_world_interaction, resolve_interaction_to_order, separation_force, unit_spacing_meters,
-    ChunkCoord, DoodadCatalog, InteractionQueryContext, NavigationPath, SteeringContext,
-    SteeringSettings, UnitCatalog, UnitId, UnitMovementTrace, UnitState, WeaponCatalog, WorldData,
-    WorldPosition,
+    ChunkCoord, DoodadCatalog, InteractionQueryContext, NavigationPath, SlopeWalkability,
+    SteeringContext, SteeringSettings, UnitCatalog, UnitId, UnitMovementTrace, UnitState,
+    WeaponCatalog, WorldData, WorldPosition, alignment_force, blocking_doodad_at_position,
+    classify_slope_walkability, cohesion_force, gather_steering_neighbors, ground_world_position,
+    interaction_plan_to_unit_order, query_world_interaction, resolve_interaction_to_order,
+    separation_force, unit_spacing_meters,
 };
 
 use super::snapshot::{
@@ -42,7 +41,13 @@ pub fn capture_unit_inspector_snapshot(
     let position = record.placement.position;
 
     let path = capture_path_inspector(&record.state, position, layout);
-    let formation = capture_formation_inspector(world, unit_id, &record.state, layout, definition.collision_radius_meters);
+    let formation = capture_formation_inspector(
+        world,
+        unit_id,
+        &record.state,
+        layout,
+        definition.collision_radius_meters,
+    );
     let steering = capture_steering_inspector(
         world,
         unit_catalog,
@@ -130,17 +135,16 @@ fn capture_combat_inspector(
     weapon_catalog: &WeaponCatalog,
 ) -> CombatInspectorSnapshot {
     CombatInspectorSnapshot {
-        weapon_name: weapon_display_for_unit(record, unit_catalog, weapon_catalog)
-            .map(|w| w.name),
+        weapon_name: weapon_display_for_unit(record, unit_catalog, weapon_catalog).map(|w| w.name),
         target_unit_id: combat_target_id(&record.combat_state),
-        attack_phase: record
-            .attack_cycle
-            .as_ref()
-            .map(attack_cycle_summary),
+        attack_phase: record.attack_cycle.as_ref().map(attack_cycle_summary),
     }
 }
 
-fn capture_projectiles_for_unit(world: &WorldData, unit_id: UnitId) -> Vec<ProjectileInspectorSnapshot> {
+fn capture_projectiles_for_unit(
+    world: &WorldData,
+    unit_id: UnitId,
+) -> Vec<ProjectileInspectorSnapshot> {
     world
         .sorted_projectile_ids()
         .into_iter()
@@ -150,7 +154,8 @@ fn capture_projectiles_for_unit(world: &WorldData, unit_id: UnitId) -> Vec<Proje
         .collect()
 }
 
-pub fn capture_projectile_inspector_snapshot(
+#[cfg(test)]
+fn capture_projectile_inspector_snapshot(
     world: &WorldData,
     projectile_id: crate::world::ProjectileId,
 ) -> Option<ProjectileInspectorSnapshot> {
@@ -159,7 +164,9 @@ pub fn capture_projectile_inspector_snapshot(
         .map(projectile_inspector_from_record)
 }
 
-fn projectile_inspector_from_record(record: &crate::world::ProjectileRecord) -> ProjectileInspectorSnapshot {
+fn projectile_inspector_from_record(
+    record: &crate::world::ProjectileRecord,
+) -> ProjectileInspectorSnapshot {
     ProjectileInspectorSnapshot {
         projectile_id: record.id,
         source_unit_id: record.source_unit_id,
@@ -213,7 +220,9 @@ fn active_segment(
     let start = if waypoint_index == 0 {
         Some(unit_position)
     } else {
-        path.waypoints.get(waypoint_index.saturating_sub(1)).copied()
+        path.waypoints
+            .get(waypoint_index.saturating_sub(1))
+            .copied()
     };
     let end = path.waypoints.get(waypoint_index).copied();
     (start, end)
@@ -262,9 +271,10 @@ fn capture_formation_inspector(
             world
                 .get_unit(*id)
                 .and_then(|record| match &record.state {
-                    UnitState::Moving { target: peer_target, .. } => {
-                        Some(positions_close(*peer_target, *target, layout))
-                    }
+                    UnitState::Moving {
+                        target: peer_target,
+                        ..
+                    } => Some(positions_close(*peer_target, *target, layout)),
                     _ => None,
                 })
                 .unwrap_or(false)
@@ -368,10 +378,7 @@ fn path_direction_xz(
     };
     let current = position.to_global(layout);
     let waypoint_global = waypoint.to_global(layout);
-    let delta = Vec2::new(
-        waypoint_global.x - current.x,
-        waypoint_global.z - current.z,
-    );
+    let delta = Vec2::new(waypoint_global.x - current.x, waypoint_global.z - current.z);
     if delta.length_squared() <= 1e-8 {
         return Vec2::ZERO;
     }
@@ -421,8 +428,8 @@ fn capture_chunk_residency(world: &WorldData, unit_id: UnitId) -> Option<ChunkRe
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, Heightfield,
-        LocalPosition, NavigationPath, UnitDefinitionId, UnitOrder, UnitSource, UnitState,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, Heightfield, LocalPosition,
+        NavigationPath, UnitDefinitionId, UnitOrder, UnitSource, UnitState, create_unit,
     };
 
     fn flat_chunk() -> ChunkData {
@@ -606,7 +613,10 @@ mod tests {
         .unwrap();
         assert!(snap.terrain_hit);
         assert!(snap.interaction_type.contains("MoveTarget"));
-        assert!(matches!(snap.resolved_order, Some(UnitOrder::MoveTo { .. })));
+        assert!(matches!(
+            snap.resolved_order,
+            Some(UnitOrder::MoveTo { .. })
+        ));
     }
 
     #[test]
@@ -684,7 +694,8 @@ mod tests {
     #[test]
     fn projectile_inspector_reads_projectile_record_only() {
         use crate::world::{
-            DamageType, ProjectileId, ProjectileLaunchSnapshot, ProjectileRecord, WeaponDefinitionId,
+            DamageType, ProjectileId, ProjectileLaunchSnapshot, ProjectileRecord,
+            WeaponDefinitionId,
         };
         let mut world = WorldData::new(layout());
         insert_flat(&mut world);

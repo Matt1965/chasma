@@ -28,41 +28,40 @@ mod state;
 mod store;
 mod vitals;
 
-pub use authoring::{
-    create_unit, create_unit_with_ownership, lookup_unit, move_unit, remove_unit,
-    UnitAuthoringError,
-};
-pub use catalog::{
-    UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId, UnitRenderKey,
-};
 pub use attack_cycle::{AttackCycle, AttackPhase};
-pub use death::{
-    queue_unit_removal, record_kill_attribution, step_unit_death_pipeline, KillAttribution,
-    RemovalReason, UnitDeathEvent, UnitDeathReport, UnitDeathTrace, UnitRemovalEntry,
-    UnitRemovalQueue,
+pub use authoring::{
+    UnitAuthoringError, create_unit, create_unit_with_ownership, lookup_unit, move_unit,
+    remove_unit,
 };
-pub use eligibility::{unit_can_execute_actions, unit_record_can_execute_actions};
-#[cfg(any(test, feature = "dev"))]
-pub use restore::{normalize_restored_unit, restore_unit_record, validate_unit_for_restore, UnitRestoreError};
-pub use combat_state::CombatState;
 #[cfg(any(test, feature = "dev"))]
 pub use catalog::starter_definitions;
-pub use grounding::{
-    ground_unit_position, ground_unit_to_terrain, UnitGroundingError,
+pub use catalog::{UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId, UnitRenderKey};
+pub use combat_state::CombatState;
+pub use death::{
+    KillAttribution, RemovalReason, UnitDeathEvent, UnitDeathReport, UnitDeathTrace,
+    UnitRemovalEntry, UnitRemovalQueue, step_unit_death_pipeline,
 };
-pub use movement::{
-    step_all_unit_movement, step_unit_movement, BatchUnitMovementReport, BlockedMovementReason,
-    UnitMovementError, UnitMovementReport, UnitMovementStepOutcome, UnitMovementStepReport,
-    UnitMovementTrace, UnitSimulationStepReport,
-};
-pub use orders::{
-    issue_unit_order, resolve_all_pending_unit_orders, resolve_pending_unit_orders, UnitOrder,
-    UnitOrderError,
-};
+#[cfg(test)]
+pub use death::queue_unit_removal;
+pub use eligibility::{unit_can_execute_actions, unit_record_can_execute_actions};
+pub use grounding::{UnitGroundingError, ground_unit_position, ground_unit_to_terrain};
 pub use id::UnitId;
 pub use metadata::UnitMetadata;
+pub use movement::{
+    BatchUnitMovementReport, BlockedMovementReason, UnitMovementError, UnitMovementReport,
+    UnitMovementStepOutcome, UnitMovementStepReport, UnitMovementTrace, UnitSimulationStepReport,
+    step_all_unit_movement, step_unit_movement,
+};
+pub use orders::{
+    UnitOrder, UnitOrderError, issue_unit_order, resolve_all_pending_unit_orders,
+    resolve_pending_unit_orders,
+};
 pub use placement::UnitPlacement;
 pub use record::UnitRecord;
+#[cfg(any(test, feature = "dev"))]
+pub use restore::{
+    UnitRestoreError, normalize_restored_unit, restore_unit_record, validate_unit_for_restore,
+};
 pub use source::UnitSource;
 pub use state::UnitState;
 pub use store::ChunkUnitStore;
@@ -82,4 +81,3 @@ pub enum UnitInsertError {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct UnitSimulationState;
-

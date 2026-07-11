@@ -45,9 +45,7 @@ pub fn validate_row(row: &DoodadImportRow) -> Result<(), RowImportError> {
     }
     if let Some(radius) = row.block_radius_meters {
         if radius < 0.0 || !radius.is_finite() {
-            return Err(fail(format!(
-                "Block Radius must be >= 0 (got {radius})"
-            )));
+            return Err(fail(format!("Block Radius must be >= 0 (got {radius})")));
         }
     }
 

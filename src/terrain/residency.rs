@@ -52,10 +52,8 @@ impl ChunkResidencyTracker {
             ChunkResidencyState::Absent => {
                 let generation = self.next_generation;
                 self.next_generation += 1;
-                self.states.insert(
-                    chunk_id,
-                    ChunkResidencyState::Loading { generation },
-                );
+                self.states
+                    .insert(chunk_id, ChunkResidencyState::Loading { generation });
                 Some(generation)
             }
             ChunkResidencyState::Loading { .. } | ChunkResidencyState::Resident => None,

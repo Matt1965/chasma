@@ -4,8 +4,8 @@ use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
 use super::grid::{
-    diagonal_corner_clear, grid_cell_world_position, is_cell_walkable, neighbor_step_cost,
-    GridCoord, NavigationAgent, NEIGHBOR_OFFSETS, NavigationConfig,
+    GridCoord, NEIGHBOR_OFFSETS, NavigationAgent, NavigationConfig, diagonal_corner_clear,
+    grid_cell_world_position, is_cell_walkable, neighbor_step_cost,
 };
 use crate::world::{DoodadCatalog, WorldData, WorldPosition};
 
@@ -89,24 +89,10 @@ pub fn astar_path(
 
         for &(dx, dz) in &NEIGHBOR_OFFSETS {
             let next = GridCoord::new(current.coord.x + dx, current.coord.z + dz);
-            if !is_cell_walkable(
-                world,
-                doodad_catalog,
-                config,
-                agent,
-                next,
-            ) {
+            if !is_cell_walkable(world, doodad_catalog, config, agent, next) {
                 continue;
             }
-            if !diagonal_corner_clear(
-                world,
-                doodad_catalog,
-                config,
-                agent,
-                current.coord,
-                dx,
-                dz,
-            ) {
+            if !diagonal_corner_clear(world, doodad_catalog, config, agent, current.coord, dx, dz) {
                 continue;
             }
 

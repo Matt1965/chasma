@@ -10,7 +10,7 @@ use bevy::asset::LoadState;
 use bevy::prelude::*;
 
 use crate::terrain::residency::ChunkResidencyTracker;
-use crate::terrain::{world_position_to_render_global, TerrainRenderAssets};
+use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
 use crate::world::{DoodadCatalog, DoodadId, WorldConfig, WorldData};
 
 use super::assets::DoodadSceneAssets;
@@ -116,11 +116,9 @@ pub fn sync_doodad_render_entities(
             );
             continue;
         };
-        let Some(scene) = scene_assets.ensure_scene(
-            &definition.id,
-            &definition.render_key,
-            &asset_server,
-        ) else {
+        let Some(scene) =
+            scene_assets.ensure_scene(&definition.id, &definition.render_key, &asset_server)
+        else {
             if let Some(key) = definition.render_key.0.as_deref() {
                 scene_assets.log_missing_once(key);
             }
@@ -143,10 +141,7 @@ pub fn sync_doodad_render_entities(
 }
 
 fn scene_is_loaded(asset_server: &AssetServer, scene: &Handle<Scene>) -> bool {
-    matches!(
-        asset_server.get_load_state(scene),
-        Some(LoadState::Loaded)
-    )
+    matches!(asset_server.get_load_state(scene), Some(LoadState::Loaded))
 }
 
 #[cfg(test)]
@@ -154,9 +149,9 @@ mod tests {
     use super::*;
     use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
     use crate::world::{
-        create_doodad, Heightfield, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
-        DoodadDefinitionId, DoodadId, DoodadPlacementOverrides, DoodadSource, LocalPosition,
-        WorldConfig, WorldData, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, DoodadId,
+        DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition, WorldConfig, WorldData,
+        WorldPosition, create_doodad,
     };
     use bevy::asset::AssetPlugin;
     use bevy::prelude::{App, MinimalPlugins, Quat, StandardMaterial, Update, Vec3};

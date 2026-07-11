@@ -6,7 +6,9 @@ use bevy::prelude::*;
 
 use crate::client::{ClientIntent, CommandType, IntentDispatchStatus, ResolvedCommandFeedback};
 use crate::debug::IntentDispatchHistory;
-use crate::debug::{CommandTraceBuffer, CommandTraceEntry, CommandTraceIntentKind, CommandTraceOutcome};
+use crate::debug::{
+    CommandTraceBuffer, CommandTraceEntry, CommandTraceIntentKind, CommandTraceOutcome,
+};
 use crate::units::input::SelectedUnits;
 use crate::world::UnitId;
 
@@ -117,7 +119,11 @@ pub fn derive_command_state(
         return GameplayCommandState::Moving;
     }
 
-    for entry in trace.entries().rev().filter(|entry| is_gameplay_visible_trace(entry)) {
+    for entry in trace
+        .entries()
+        .rev()
+        .filter(|entry| is_gameplay_visible_trace(entry))
+    {
         if trace_entry_implies_moving(entry, &selected) {
             return GameplayCommandState::Moving;
         }
@@ -133,7 +139,9 @@ fn report_has_applied_move_for_selection(
     report.records.iter().any(|record| {
         command_intent_applied(&record.intent)
             && record.status == IntentDispatchStatus::Applied
-            && record.intent.affected_units_empty_implies_group_move(selected)
+            && record
+                .intent
+                .affected_units_empty_implies_group_move(selected)
     })
 }
 
@@ -163,11 +171,13 @@ fn trace_entry_implies_moving(
                         | CommandTraceOutcome::OrderResolved
                 )
         }
-        _ => affects_selection
-            && matches!(
-                entry.outcome,
-                CommandTraceOutcome::OrderQueued | CommandTraceOutcome::OrderResolved
-            ),
+        _ => {
+            affects_selection
+                && matches!(
+                    entry.outcome,
+                    CommandTraceOutcome::OrderQueued | CommandTraceOutcome::OrderResolved
+                )
+        }
     }
 }
 
@@ -329,7 +339,12 @@ mod tests {
         feedback.set_resolved(crate::client::CommandType::Move);
         let label = command_state_display(GameplayCommandState::Idle, feedback.command_type);
         assert_eq!(label, "Move");
-        assert!(feedback.tooltip.as_ref().is_some_and(|t| t.contains("Move")));
+        assert!(
+            feedback
+                .tooltip
+                .as_ref()
+                .is_some_and(|t| t.contains("Move"))
+        );
     }
 
     #[test]

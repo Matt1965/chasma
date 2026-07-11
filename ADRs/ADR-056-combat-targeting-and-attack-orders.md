@@ -153,6 +153,16 @@ filter-invalid:
 - **C4:** range validation, chase, attack-move target acquisition
 - **C5:** damage timing, cooldowns, death
 
+## Design direction (not yet fully implemented)
+
+See [ADR-069](ADR-069-combat-design-philosophy.md) and [DESIGN.md](../DESIGN.md#combat).
+
+- **Attack Move:** pursue fleeing targets, switch on closer valid target, resume movement
+  after combat; direct `Attack` overrides
+- **Target tiers:** active combatants → idle enemies → non-combatants; closest within tier
+- **Responsiveness:** player can cancel own windup/movement/target; cannot cancel enemy CC
+- **Retargeting** (implemented): new `Attack` target clears attack cycle (REVIEW-A2)
+
 # Consequences
 
 - `issue_unit_order` signature change propagates to dispatch and tests

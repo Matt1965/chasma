@@ -63,9 +63,8 @@ pub fn preload_unit_scenes(catalog: &UnitCatalog, asset_server: &AssetServer) ->
         let Some(path) = gltf_asset_path(&definition.render_key) else {
             continue;
         };
-        let scene: Handle<Scene> = asset_server.load(
-            GltfAssetLabel::Scene(DEFAULT_GLTF_SCENE_INDEX).from_asset(path),
-        );
+        let scene: Handle<Scene> =
+            asset_server.load(GltfAssetLabel::Scene(DEFAULT_GLTF_SCENE_INDEX).from_asset(path));
         scenes.insert(definition.id.clone(), scene);
     }
     UnitSceneAssets {

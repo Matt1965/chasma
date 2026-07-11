@@ -32,12 +32,7 @@ pub fn yaw_right_xz(yaw: f32) -> Vec3 {
 pub fn orbit_position(focus: Vec3, yaw: f32, pitch: f32, distance: f32) -> Vec3 {
     let horizontal = distance * pitch.cos();
     let height = distance * pitch.sin();
-    focus
-        + Vec3::new(
-            horizontal * yaw.sin(),
-            height,
-            horizontal * yaw.cos(),
-        )
+    focus + Vec3::new(horizontal * yaw.sin(), height, horizontal * yaw.cos())
 }
 
 /// Build a [`Transform`] that looks at `focus` from the orbit pose.
@@ -113,12 +108,9 @@ pub fn apply_rts_camera_control(
     // --- Rotate (middle mouse drag) ---
     if mouse_buttons.pressed(MouseButton::Middle) {
         let delta = mouse_motion.delta;
-        state.target_yaw = normalize_yaw(
-            state.target_yaw - delta.x * settings.rotate_sensitivity,
-        );
-        state.target_pitch = settings.clamp_pitch(
-            state.target_pitch + delta.y * settings.rotate_sensitivity,
-        );
+        state.target_yaw = normalize_yaw(state.target_yaw - delta.x * settings.rotate_sensitivity);
+        state.target_pitch =
+            settings.clamp_pitch(state.target_pitch + delta.y * settings.rotate_sensitivity);
     }
 
     // --- Zoom (mouse wheel) ---

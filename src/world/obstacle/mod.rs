@@ -8,6 +8,6 @@ mod query;
 
 pub use error::ObstacleQueryError;
 pub use query::{
-    blocking_doodad_at_position, is_position_blocked_by_doodads, query_obstacle_at_position,
-    ObstacleQueryResult,
+    ObstacleQueryResult, blocking_doodad_at_position, is_position_blocked_by_doodads,
+    query_obstacle_at_position,
 };

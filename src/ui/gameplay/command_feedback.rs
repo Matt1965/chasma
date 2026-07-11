@@ -19,7 +19,6 @@ struct MoveMarkerState {
 
 #[derive(Debug, Clone)]
 struct CommandPingState {
-    render_position: Vec3,
     elapsed_secs: f32,
 }
 
@@ -31,10 +30,7 @@ impl MoveCommandFeedback {
             render_position,
             remaining_secs: MOVE_MARKER_LIFETIME_SECS,
         });
-        self.ping = Some(CommandPingState {
-            render_position,
-            elapsed_secs: 0.0,
-        });
+        self.ping = Some(CommandPingState { elapsed_secs: 0.0 });
     }
 
     pub fn has_active_marker(&self) -> bool {
@@ -52,7 +48,7 @@ const COMMAND_PING_MAX_SCALE: f32 = 1.8;
 pub struct MoveCommandIndicator;
 
 #[derive(Component, Debug)]
-pub(crate) struct MoveCommandIndicatorFade {
+pub struct MoveCommandIndicatorFade {
     elapsed_secs: f32,
 }
 
@@ -61,7 +57,7 @@ pub(crate) struct MoveCommandIndicatorFade {
 pub struct CommandPingIndicator;
 
 #[derive(Component, Debug)]
-pub(crate) struct CommandPingPulse {
+pub struct CommandPingPulse {
     elapsed_secs: f32,
 }
 
@@ -91,9 +87,7 @@ pub fn sync_move_command_indicator(
         let entity = commands
             .spawn((
                 MoveCommandIndicator,
-                MoveCommandIndicatorFade {
-                    elapsed_secs: 0.0,
-                },
+                MoveCommandIndicatorFade { elapsed_secs: 0.0 },
                 Mesh3d(mesh),
                 MeshMaterial3d(material),
                 Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
@@ -120,9 +114,7 @@ pub fn sync_move_command_indicator(
         let entity = commands
             .spawn((
                 CommandPingIndicator,
-                CommandPingPulse {
-                    elapsed_secs: 0.0,
-                },
+                CommandPingPulse { elapsed_secs: 0.0 },
                 Mesh3d(mesh),
                 MeshMaterial3d(material),
                 Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
@@ -182,7 +174,9 @@ pub fn tick_move_command_indicator(
             .map(|marker| (marker.remaining_secs / MOVE_MARKER_LIFETIME_SECS).clamp(0.0, 1.0))
             .unwrap_or(0.0);
         let fade_in = (fade.elapsed_secs / MOVE_MARKER_FADE_IN_SECS).clamp(0.0, 1.0);
-        material.base_color.set_alpha(0.55 * fade_in * lifetime_alpha);
+        material
+            .base_color
+            .set_alpha(0.55 * fade_in * lifetime_alpha);
     }
 
     for (_entity, mut pulse, mut transform, material) in &mut pings {

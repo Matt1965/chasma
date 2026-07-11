@@ -3,7 +3,6 @@ use bevy::prelude::*;
 mod biome;
 mod chunk;
 mod combat;
-mod projectile;
 mod config;
 mod coordinates;
 mod data;
@@ -14,16 +13,17 @@ mod movement;
 mod navigation;
 mod obstacle;
 mod ownership;
+mod projectile;
 mod terrain;
 mod unit;
 mod weapon;
 
+#[cfg(any(test, feature = "dev"))]
+pub use weapon::starter_definitions as starter_weapon_definitions;
 pub use weapon::{
     DamageType, HitMode, TargetFilter, WeaponCatalog, WeaponCatalogError, WeaponDefinition,
     WeaponDefinitionId,
 };
-#[cfg(any(test, feature = "dev"))]
-pub use weapon::starter_definitions as starter_weapon_definitions;
 
 pub use biome::{
     BiomeColorEntry, BiomeColorMapping, BiomeId, BiomeImportError, BiomeMask, BiomeMaskBounds,
@@ -31,62 +31,54 @@ pub use biome::{
 };
 #[cfg(any(test, feature = "dev"))]
 pub use biome::{
-    dev_biome_mask_bounds, log_dev_biome_load_outcome, try_load_default_dev_biome_mask,
-    try_load_dev_biome_mask, biome_mask_path_for_world, DevBiomeLoadOutcome, DevBiomeLoadSummary,
-    DEV_BIOME_MASK_PATH, DEV_SOURCE_WORLD_DIR,
+    DEV_BIOME_MASK_PATH, DEV_SOURCE_WORLD_DIR, DevBiomeLoadOutcome, DevBiomeLoadSummary,
+    biome_mask_path_for_world, dev_biome_mask_bounds, log_dev_biome_load_outcome,
+    try_load_default_dev_biome_mask, try_load_dev_biome_mask,
 };
 pub use chunk::{ChunkData, ChunkId};
-pub use projectile::{
-    ProjectileEvent, ProjectileId, ProjectileRecord, ProjectileReport, ProjectileStatus,
-    ProjectileTrace, spawn_projectile_from_strike, step_all_projectiles,
-};
 pub use combat::{
-    classify_unit_target, clear_attack_cycle_for_order_cancel, find_auto_acquire_target,
-    initial_attack_combat_state, is_in_weapon_range, is_unit_alive, is_valid_attack_target,
-    reset_attack_cycle_for_retarget, step_all_combat_engagement, step_all_combat_strikes, step_combat_ai_acquisition, validate_attack_target,
-    weapon_for_unit_record, AttackTargetingPolicy, CombatAiReport, CombatAiScanState,
-    CombatAiSettings, CombatAiTrace, CombatAiTraceOutcome, CombatEngagementReport,
-    CombatEngagementStatus, CombatEngagementTrace, CombatStrikeEvent, CombatStrikeReport,
-    CombatStrikeTrace, ProjectileImpactRejection, ProjectileLaunchSnapshot,
-    RangeCheck, RANGE_HYSTERESIS_METERS, validate_projectile_impact_target,
+    AttackTargetingPolicy, CombatAiReport, CombatAiScanState, CombatAiSettings, CombatAiTrace,
+    CombatAiTraceOutcome, CombatEngagementReport, CombatEngagementStatus, CombatEngagementTrace,
+    CombatStrikeEvent, CombatStrikeReport, CombatStrikeTrace, ProjectileImpactRejection,
+    ProjectileLaunchSnapshot, RANGE_HYSTERESIS_METERS, RangeCheck, classify_unit_target,
+    clear_attack_cycle_for_order_cancel, find_auto_acquire_target, initial_attack_combat_state,
+    is_in_weapon_range, is_unit_alive, is_valid_attack_target, reset_attack_cycle_for_retarget,
+    step_all_combat_engagement, step_all_combat_strikes, step_combat_ai_acquisition,
+    validate_attack_target, validate_projectile_impact_target, weapon_for_unit_record,
 };
 pub use config::WorldConfig;
 pub use coordinates::{ChunkCoord, ChunkLayout, LocalPosition, WorldPosition};
 pub use data::{ChunkExtent, WorldData};
-pub use doodad::{
-    create_doodad, filter_candidates_by_biome, filter_candidates_by_exclusion_zones,
-    chunk_needs_procedural_materialization, filter_candidates_by_terrain, finalize_placements,
-    generate_chunk_doodads, generate_chunk_doodads_with_settings, lookup_doodad,
-    materialize_candidates, materialize_candidates_with_exclusion, materialize_candidates_with_options,
-    move_doodad, remove_doodad, try_materialize_procedural_chunk_doodads, ChunkDoodadStore,
-    ChunkProceduralMaterializeOutcome,
-    DoodadAuthoringError, DoodadCatalog, DoodadCatalogError, DoodadDefinition,
-    DoodadDefinitionId, DoodadExclusionZone, DoodadGenerationContext, DoodadGenerationSettings,
-    DoodadId, DoodadInsertError, DoodadKind, DoodadMaterializationReport, DoodadMetadata,
-    default_blocks_movement,
-    DoodadPlacement, DoodadPlacementOverrides, DoodadRecord, DoodadRenderKey, DoodadSource,
-    DoodadSpawnCandidate, BiomeFilterResult, ExclusionFilterOptions, ExclusionFilterResult,
-    DeterministicRng,
-    FinalizedDoodadPlacement, MaterializationOptions, PlacementFinalizationResult,
-    ProceduralDoodadKey, TerrainValidationResult,
-};
-#[cfg(any(test, feature = "dev"))]
-pub use doodad::{
-    restore_doodad_record, validate_doodad_for_restore, DoodadRestoreError,
-};
 #[cfg(test)]
 pub use doodad::starter_definitions;
+pub use doodad::{
+    BiomeFilterResult, ChunkDoodadStore, ChunkProceduralMaterializeOutcome, DeterministicRng,
+    DoodadAuthoringError, DoodadCatalog, DoodadCatalogError, DoodadDefinition, DoodadDefinitionId,
+    DoodadExclusionZone, DoodadGenerationContext, DoodadGenerationSettings, DoodadId,
+    DoodadInsertError, DoodadKind, DoodadMaterializationReport, DoodadMetadata, DoodadPlacement,
+    DoodadPlacementOverrides, DoodadRecord, DoodadRenderKey, DoodadSource, DoodadSpawnCandidate,
+    ExclusionFilterOptions, ExclusionFilterResult, FinalizedDoodadPlacement,
+    MaterializationOptions, PlacementFinalizationResult, ProceduralDoodadKey,
+    TerrainValidationResult, chunk_needs_procedural_materialization, create_doodad,
+    default_blocks_movement, filter_candidates_by_biome, filter_candidates_by_exclusion_zones,
+    filter_candidates_by_terrain, finalize_placements, generate_chunk_doodads,
+    generate_chunk_doodads_with_settings, lookup_doodad, materialize_candidates,
+    materialize_candidates_with_exclusion, materialize_candidates_with_options, move_doodad,
+    remove_doodad, try_materialize_procedural_chunk_doodads,
+};
+#[cfg(any(test, feature = "dev"))]
+pub use doodad::{DoodadRestoreError, restore_doodad_record, validate_doodad_for_restore};
 pub use formation::{
-    circle_formation_radius, formation_offsets, unit_spacing_meters, FormationAssignment,
-    FormationKind, FormationMovePlan, FormationPlanner,
+    FormationAssignment, FormationKind, FormationMovePlan, FormationPlanner,
+    circle_formation_radius, formation_offsets, unit_spacing_meters,
 };
 pub use interaction::{
-    interaction_plan_to_unit_order, query_world_interaction, resolve_interaction_to_order,
-    resolve_unit_click_to_order, resolve_world_click_to_order,
-    resolve_world_click_to_unit_order, InteractionMetadata,
-    InteractionOrderPlan, InteractionQueryContext, InteractionResolveContext, InteractionResult,
-    InteractionTargetRef, InteractionType, DEFAULT_INTERACTION_AGENT_RADIUS_METERS,
-    DEFAULT_INTERACTION_MAX_SLOPE_DEGREES, DEFAULT_INTERACTION_QUERY_RADIUS_METERS,
+    DEFAULT_INTERACTION_AGENT_RADIUS_METERS, DEFAULT_INTERACTION_MAX_SLOPE_DEGREES,
+    DEFAULT_INTERACTION_QUERY_RADIUS_METERS, InteractionMetadata, InteractionOrderPlan,
+    InteractionQueryContext, InteractionResolveContext, InteractionResult, InteractionTargetRef,
+    InteractionType, interaction_plan_to_unit_order, query_world_interaction,
+    resolve_interaction_to_order, resolve_unit_click_to_order, resolve_world_click_to_order,
+    resolve_world_click_to_unit_order,
 };
 pub use movement::feel::{
     CommandBufferResolveReport, CommandResolveSuccess, MovementFeelSettings,
@@ -94,58 +86,59 @@ pub use movement::feel::{
     stabilized_movement_heading,
 };
 pub use movement::steering::{
-    alignment_force, apply_steering, cohesion_force, gather_steering_neighbors, separation_force,
-    SteeringContext, SteeringSettings, SteeringNeighbor,
+    SteeringContext, SteeringNeighbor, SteeringSettings, alignment_force, apply_steering,
+    cohesion_force, gather_steering_neighbors, separation_force,
 };
 pub use navigation::{
-    find_path, GridCoord, NavigationConfig, NavigationError, NavigationPath, NEIGHBOR_OFFSETS,
+    GridCoord, NEIGHBOR_OFFSETS, NavigationConfig, NavigationError, NavigationPath, find_path,
     xz_distance,
 };
 pub use obstacle::{
-    blocking_doodad_at_position, is_position_blocked_by_doodads, query_obstacle_at_position,
-    ObstacleQueryError, ObstacleQueryResult,
+    ObstacleQueryError, ObstacleQueryResult, blocking_doodad_at_position,
+    is_position_blocked_by_doodads, query_obstacle_at_position,
 };
 pub use ownership::{
-    default_ownership_for_source, filter_commandable_unit_ids, filter_selectable_unit_ids,
-    is_owned_by, is_player_controllable, player_units, unit_is_commandable, unit_is_selectable,
-    Affiliation, OwnerId, SelectionControllabilityPolicy, TeamId, UnitOwnership,
-    DEFAULT_PLAYER_OWNER_ID, DEFAULT_PLAYER_TEAM_ID,
+    Affiliation, DEFAULT_PLAYER_OWNER_ID, DEFAULT_PLAYER_TEAM_ID, OwnerId,
+    SelectionControllabilityPolicy, TeamId, UnitOwnership, default_ownership_for_source,
+    filter_commandable_unit_ids, filter_selectable_unit_ids, is_owned_by, is_player_controllable,
+    player_units, unit_is_commandable, unit_is_selectable,
 };
-pub use unit::{
-    create_unit, create_unit_with_ownership, ground_unit_position, ground_unit_to_terrain, issue_unit_order, lookup_unit,
-    move_unit, remove_unit, resolve_all_pending_unit_orders, resolve_pending_unit_orders,
-    step_all_unit_movement,
-    step_unit_death_pipeline,
-    step_unit_movement,
-    unit_can_execute_actions, unit_record_can_execute_actions,
-    BatchUnitMovementReport, BlockedMovementReason, ChunkUnitStore,
-    UnitAuthoringError, UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId,
-    UnitGroundingError, UnitId, UnitInsertError, UnitMetadata, UnitMovementError,
-    UnitMovementReport, UnitMovementStepOutcome, UnitMovementStepReport, UnitMovementTrace, UnitOrder, UnitOrderError, UnitPlacement, UnitRecord, UnitRenderKey,
-    UnitSimulationStepReport, UnitSource, UnitState, UnitVitals, AttackCycle, AttackPhase, CombatState, RemovalReason,
-    UnitDeathReport, UnitDeathTrace, UnitDeathEvent,
-};
-#[cfg(any(test, feature = "dev"))]
-pub use unit::{
-    normalize_restored_unit, restore_unit_record, validate_unit_for_restore, UnitRestoreError,
-};
-#[cfg(any(test, feature = "dev"))]
-pub use unit::starter_definitions as starter_unit_definitions;
-pub use terrain::{
-    validate_heightfield_against_config, Heightfield, TerrainDataError, TerrainMask,
-    TerrainMetadata, TerrainQueryError,
-};
-pub use terrain::{
-    classify_slope_walkability, estimate_slope_degrees, ground_world_position,
-    is_position_slope_walkable, slope_at, try_ground_world_position,
-    try_sample_height_at_position, SlopeWalkability,
+pub use projectile::{
+    ProjectileEvent, ProjectileId, ProjectileRecord, ProjectileReport, ProjectileStatus,
+    ProjectileTrace, spawn_projectile_from_strike, step_all_projectiles,
 };
 #[cfg(feature = "terrain-import")]
 pub use terrain::{
     DecodeError, GaeaImportError, ImportError, SourceHeightfield, chunk_data_from_source_tile,
     decode_exr_heightfield, expected_chunk_samples_per_edge, gaea_color_dir, gaea_height_dir,
-    import_gaea_tile_directory, import_world, parse_gaea_export_filename, source_tile_samples_per_edge,
-    validate_gaea_tile_dimensions,
+    import_gaea_tile_directory, import_world, parse_gaea_export_filename,
+    source_tile_samples_per_edge, validate_gaea_tile_dimensions,
+};
+pub use terrain::{
+    Heightfield, TerrainDataError, TerrainMask, TerrainMetadata, TerrainQueryError,
+    validate_heightfield_against_config,
+};
+pub use terrain::{
+    SlopeWalkability, classify_slope_walkability, estimate_slope_degrees, ground_world_position,
+    is_position_slope_walkable, slope_at, try_ground_world_position, try_sample_height_at_position,
+};
+#[cfg(any(test, feature = "dev"))]
+pub use unit::starter_definitions as starter_unit_definitions;
+pub use unit::{
+    AttackCycle, AttackPhase, BatchUnitMovementReport, BlockedMovementReason, ChunkUnitStore,
+    CombatState, RemovalReason, UnitAuthoringError, UnitCatalog, UnitCatalogError, UnitDeathEvent,
+    UnitDeathReport, UnitDeathTrace, UnitDefinition, UnitDefinitionId, UnitGroundingError, UnitId,
+    UnitInsertError, UnitMetadata, UnitMovementError, UnitMovementReport, UnitMovementStepOutcome,
+    UnitMovementStepReport, UnitMovementTrace, UnitOrder, UnitOrderError, UnitPlacement,
+    UnitRecord, UnitRenderKey, UnitSimulationStepReport, UnitSource, UnitState, UnitVitals,
+    create_unit, create_unit_with_ownership, ground_unit_position, ground_unit_to_terrain,
+    issue_unit_order, lookup_unit, move_unit, remove_unit, resolve_all_pending_unit_orders,
+    resolve_pending_unit_orders, step_all_unit_movement, step_unit_death_pipeline,
+    step_unit_movement, unit_can_execute_actions, unit_record_can_execute_actions,
+};
+#[cfg(any(test, feature = "dev"))]
+pub use unit::{
+    UnitRestoreError, normalize_restored_unit, restore_unit_record, validate_unit_for_restore,
 };
 
 /// Owns the World Data Layer: the authoritative coordinate model (ADR-001),

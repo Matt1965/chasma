@@ -10,4 +10,6 @@ pub use assets::ProjectileSceneAssets;
 pub use components::{ProjectileRenderEntity, ProjectileSceneRoot};
 pub use plugin::ProjectilesRuntimePlugin;
 pub use spawn::ProjectileRenderIndex;
-pub use sync::{ProjectileRuntimeSystems, ProjectileSyncOverrides, sync_projectile_render_entities};
+pub use sync::{
+    ProjectileRuntimeSystems, ProjectileSyncOverrides, sync_projectile_render_entities,
+};

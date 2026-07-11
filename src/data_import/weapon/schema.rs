@@ -1,8 +1,6 @@
 //! Excel column schema and conversion into [`WeaponDefinition`].
 
-use crate::world::{
-    DamageType, HitMode, TargetFilter, WeaponDefinition, WeaponDefinitionId,
-};
+use crate::world::{DamageType, HitMode, TargetFilter, WeaponDefinition, WeaponDefinitionId};
 
 /// Required worksheet column headers from the workbook `Weapons` sheet.
 pub const REQUIRED_COLUMNS: &[&str] = &[
@@ -24,6 +22,7 @@ pub const REQUIRED_COLUMNS: &[&str] = &[
 ];
 
 /// Optional worksheet column for projectile weapons.
+#[allow(dead_code)] // documented schema seam
 pub const OPTIONAL_COLUMNS: &[&str] = &["Projectile Speed"];
 
 /// Raw row parsed from the `Weapons` sheet before validation.

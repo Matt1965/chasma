@@ -3,8 +3,8 @@
 use bevy::prelude::*;
 
 use crate::client::{
-    available_commands_for_selection, command_availability, command_tooltip, ClientIntent,
-    ClientIntentQueue, CommandType,
+    ClientIntent, ClientIntentQueue, CommandType, available_commands_for_selection,
+    command_availability,
 };
 use crate::units::input::SelectedUnits;
 use crate::world::UnitCatalog;
@@ -12,7 +12,7 @@ use crate::world::UnitCatalog;
 use super::layout::PlayerHudUi;
 use super::player_hud_state::PlayerHudState;
 use super::styles::{
-    command_button_bg, hud_body_font, CMD_BTN_BORDER, PANEL_BG, TEXT_MUTED, TEXT_PRIMARY,
+    CMD_BTN_BORDER, PANEL_BG, TEXT_MUTED, TEXT_PRIMARY, command_button_bg, hud_body_font,
 };
 
 /// Marker for the command panel root.
@@ -76,15 +76,6 @@ pub fn command_button_enabled(
     } else {
         command_availability(command_type, selection).is_available()
     }
-}
-
-/// Tooltip for a command button including unavailability reason.
-pub fn command_button_tooltip(
-    button: HudCommandButton,
-    selection: &SelectedUnits,
-) -> String {
-    let command_type = button.command_type();
-    command_tooltip(command_type, command_availability(command_type, selection))
 }
 
 pub const COMMAND_GRID: [HudCommandButton; 6] = [
@@ -163,11 +154,7 @@ pub fn sync_command_panel_buttons(
     selection: Res<SelectedUnits>,
     catalog: Res<UnitCatalog>,
     hud: Res<PlayerHudState>,
-    mut buttons: Query<(
-        &HudCommandButton,
-        &mut BackgroundColor,
-        &mut BorderColor,
-    )>,
+    mut buttons: Query<(&HudCommandButton, &mut BackgroundColor, &mut BorderColor)>,
 ) {
     if !selection.is_changed() && !hud.is_changed() {
         return;
@@ -196,14 +183,7 @@ pub fn update_command_button_hover(
     selection: Res<SelectedUnits>,
     catalog: Res<UnitCatalog>,
     hud: Res<PlayerHudState>,
-    mut query: Query<
-        (
-            &Interaction,
-            &HudCommandButton,
-            &mut BackgroundColor,
-        ),
-        Changed<Interaction>,
-    >,
+    mut query: Query<(&Interaction, &HudCommandButton, &mut BackgroundColor), Changed<Interaction>>,
 ) {
     for (interaction, button, mut bg) in &mut query {
         let enabled = command_button_enabled(*button, &selection, &catalog);
@@ -244,7 +224,14 @@ pub fn handle_command_button_clicks(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::{CommandAvailability, CommandPaletteEntry, CommandUnavailableReason};
+    use crate::client::{
+        CommandAvailability, CommandPaletteEntry, CommandUnavailableReason, command_tooltip,
+    };
+
+    fn command_button_tooltip(button: HudCommandButton, selection: &SelectedUnits) -> String {
+        let command_type = button.command_type();
+        command_tooltip(command_type, command_availability(command_type, selection))
+    }
 
     #[test]
     fn move_command_is_enabled_with_selection() {

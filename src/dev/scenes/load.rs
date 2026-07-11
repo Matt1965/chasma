@@ -6,13 +6,13 @@ use std::time::Instant;
 use bevy::prelude::*;
 
 use crate::world::{
-    restore_doodad_record, restore_unit_record, validate_doodad_for_restore,
-    validate_unit_for_restore, DoodadCatalog, DoodadRecord, DoodadRestoreError, UnitCatalog,
-    UnitRecord, UnitRestoreError, WorldData,
+    DoodadCatalog, DoodadRecord, DoodadRestoreError, UnitCatalog, UnitRecord, UnitRestoreError,
+    WorldData, restore_doodad_record, restore_unit_record, validate_doodad_for_restore,
+    validate_unit_for_restore,
 };
 
 use super::snapshot::{
-    parse_doodad_kind, SceneDefinition, SceneDoodadRecord, SceneUnitRecord, SCENE_VERSION,
+    SCENE_VERSION, SceneDefinition, SceneDoodadRecord, SceneUnitRecord, parse_doodad_kind,
 };
 
 /// Outcome of applying a scene to world data.
@@ -28,18 +28,51 @@ pub struct SceneApplyReport {
 /// Why scene application failed (world left unchanged when validation fails first).
 #[derive(Debug, Clone, PartialEq)]
 pub enum SceneApplyError {
-    UnsupportedVersion { found: u32, expected: u32 },
-    MissingUnitDefinition { unit_id: u64, definition_id: String },
-    DisabledUnitDefinition { unit_id: u64, definition_id: String },
-    MissingDoodadDefinition { doodad_id: u64, definition_id: String },
-    DisabledDoodadDefinition { doodad_id: u64, definition_id: String },
-    DuplicateUnitId { unit_id: u64 },
-    DuplicateDoodadId { doodad_id: u64 },
-    DuplicateProceduralKey { doodad_id: u64 },
-    InvalidUnitRecord { unit_id: u64, reason: String },
-    InvalidDoodadRecord { doodad_id: u64, reason: String },
-    InvalidVitals { unit_id: u64, reason: String },
-    PlacementChunkMismatch { entity: &'static str, id: u64 },
+    UnsupportedVersion {
+        found: u32,
+        expected: u32,
+    },
+    MissingUnitDefinition {
+        unit_id: u64,
+        definition_id: String,
+    },
+    DisabledUnitDefinition {
+        unit_id: u64,
+        definition_id: String,
+    },
+    MissingDoodadDefinition {
+        doodad_id: u64,
+        definition_id: String,
+    },
+    DisabledDoodadDefinition {
+        doodad_id: u64,
+        definition_id: String,
+    },
+    DuplicateUnitId {
+        unit_id: u64,
+    },
+    DuplicateDoodadId {
+        doodad_id: u64,
+    },
+    DuplicateProceduralKey {
+        doodad_id: u64,
+    },
+    InvalidUnitRecord {
+        unit_id: u64,
+        reason: String,
+    },
+    InvalidDoodadRecord {
+        doodad_id: u64,
+        reason: String,
+    },
+    InvalidVitals {
+        unit_id: u64,
+        reason: String,
+    },
+    PlacementChunkMismatch {
+        entity: &'static str,
+        id: u64,
+    },
     IndexConsistencyFailure(&'static str),
     UnitRestore(UnitRestoreError),
     DoodadRestore(DoodadRestoreError),
@@ -236,8 +269,7 @@ impl DevWorldEntityBackup {
                 &mut procedural_keys,
             )?;
         }
-        world
-            .dev_restore_id_counters(self.next_unit_id, self.next_doodad_id);
+        world.dev_restore_id_counters(self.next_unit_id, self.next_doodad_id);
         world
             .verify_instance_indexes()
             .map_err(SceneApplyError::IndexConsistencyFailure)?;
@@ -319,12 +351,7 @@ fn build_restore_plan(
     let mut procedural_keys = HashSet::new();
     for doodad in &scene.doodad_records {
         let record = scene_doodad_to_record(doodad, doodad_catalog)?;
-        validate_doodad_for_restore(
-            doodad_catalog,
-            &record,
-            &doodad_ids,
-            &procedural_keys,
-        )?;
+        validate_doodad_for_restore(doodad_catalog, &record, &doodad_ids, &procedural_keys)?;
         doodad_ids.insert(record.id);
         if let Some(key) = crate::world::ProceduralDoodadKey::from_record(&record) {
             procedural_keys.insert(key);
@@ -366,10 +393,11 @@ fn apply_restore_plan(
 }
 
 fn scene_unit_to_record(unit: &SceneUnitRecord) -> Result<UnitRecord, SceneApplyError> {
-    unit.to_record().map_err(|err| SceneApplyError::InvalidUnitRecord {
-        unit_id: unit.id,
-        reason: format!("{err:?}"),
-    })
+    unit.to_record()
+        .map_err(|err| SceneApplyError::InvalidUnitRecord {
+            unit_id: unit.id,
+            reason: format!("{err:?}"),
+        })
 }
 
 fn scene_doodad_to_record(
@@ -377,36 +405,40 @@ fn scene_doodad_to_record(
     catalog: &DoodadCatalog,
 ) -> Result<DoodadRecord, SceneApplyError> {
     let definition_id = crate::world::DoodadDefinitionId::new(&doodad.definition_id);
-    let definition = catalog.get(&definition_id).ok_or_else(|| {
-        SceneApplyError::MissingDoodadDefinition {
-            doodad_id: doodad.id,
-            definition_id: doodad.definition_id.clone(),
-        }
-    })?;
+    let definition =
+        catalog
+            .get(&definition_id)
+            .ok_or_else(|| SceneApplyError::MissingDoodadDefinition {
+                doodad_id: doodad.id,
+                definition_id: doodad.definition_id.clone(),
+            })?;
     if !definition.enabled {
         return Err(SceneApplyError::DisabledDoodadDefinition {
             doodad_id: doodad.id,
             definition_id: doodad.definition_id.clone(),
         });
     }
-    let kind = parse_doodad_kind(&doodad.kind).map_err(|err| SceneApplyError::InvalidDoodadRecord {
-        doodad_id: doodad.id,
-        reason: format!("{err:?}"),
-    })?;
-    doodad.to_record(kind).map_err(|err| SceneApplyError::InvalidDoodadRecord {
-        doodad_id: doodad.id,
-        reason: format!("{err:?}"),
-    })
+    let kind =
+        parse_doodad_kind(&doodad.kind).map_err(|err| SceneApplyError::InvalidDoodadRecord {
+            doodad_id: doodad.id,
+            reason: format!("{err:?}"),
+        })?;
+    doodad
+        .to_record(kind)
+        .map_err(|err| SceneApplyError::InvalidDoodadRecord {
+            doodad_id: doodad.id,
+            reason: format!("{err:?}"),
+        })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dev::scenes::{capture_scene, SceneCaptureContext};
+    use crate::dev::scenes::{SceneCaptureContext, capture_scene};
     use crate::world::{
-        create_doodad, create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId,
-        DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition, UnitDefinitionId,
-        UnitSource, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, DoodadPlacementOverrides,
+        DoodadSource, Heightfield, LocalPosition, UnitDefinitionId, UnitSource, WorldPosition,
+        create_doodad, create_unit,
     };
 
     fn flat_world() -> WorldData {
@@ -545,10 +577,7 @@ mod tests {
         let mut scene = sample_scene(&world);
         scene.unit_records[0].definition_id = "missing_unit".into();
         let err = apply_scene(&mut world, &unit_catalog, &doodad_catalog, &scene).unwrap_err();
-        assert!(matches!(
-            err,
-            SceneApplyError::MissingUnitDefinition { .. }
-        ));
+        assert!(matches!(err, SceneApplyError::MissingUnitDefinition { .. }));
         assert_eq!(world.sorted_unit_ids(), before);
     }
 
@@ -577,7 +606,10 @@ mod tests {
     fn disabled_definition_rejects_load() {
         let mut world = flat_world();
         let mut unit_catalog = UnitCatalog::default();
-        let mut wolf = unit_catalog.get(&UnitDefinitionId::new("wolf")).unwrap().clone();
+        let mut wolf = unit_catalog
+            .get(&UnitDefinitionId::new("wolf"))
+            .unwrap()
+            .clone();
         wolf.enabled = false;
         unit_catalog = UnitCatalog::from_definitions(vec![wolf]).unwrap();
         let doodad_catalog = DoodadCatalog::default();

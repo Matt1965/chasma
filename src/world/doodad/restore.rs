@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use bevy::prelude::Vec3;
 
-use super::catalog::{DoodadCatalog, DoodadDefinitionId};
+use super::catalog::DoodadCatalog;
 use super::id::DoodadId;
 use super::procedural_key::ProceduralDoodadKey;
 use super::record::DoodadRecord;
@@ -154,12 +154,7 @@ pub fn restore_doodad_record(
     seen_ids: &mut HashSet<DoodadId>,
     seen_procedural_keys: &mut HashSet<ProceduralDoodadKey>,
 ) -> Result<(), DoodadRestoreError> {
-    validate_doodad_record_fields(
-        catalog,
-        &record,
-        seen_ids,
-        seen_procedural_keys,
-    )?;
+    validate_doodad_record_fields(catalog, &record, seen_ids, seen_procedural_keys)?;
 
     let doodad_id = record.id.raw();
     seen_ids.insert(record.id);
@@ -185,6 +180,7 @@ pub fn restore_doodad_record(
 
 #[cfg(test)]
 mod tests {
+    use super::catalog::DoodadDefinitionId;
     use super::*;
     use crate::world::{ChunkCoord, DoodadPlacement, DoodadSource, LocalPosition, WorldPosition};
     use bevy::prelude::{Quat, Vec3};
@@ -256,6 +252,9 @@ mod tests {
             &mut seen_keys,
         )
         .unwrap_err();
-        assert!(matches!(err, DoodadRestoreError::DuplicateDoodadId { doodad_id: 1 }));
+        assert!(matches!(
+            err,
+            DoodadRestoreError::DuplicateDoodadId { doodad_id: 1 }
+        ));
     }
 }

@@ -28,6 +28,9 @@ impl Plugin for CameraPlugin {
             .init_resource::<CameraSettings>()
             .add_systems(Startup, setup::spawn_rts_camera)
             .configure_sets(Update, CameraControlSystems)
-            .add_systems(Update, control::apply_rts_camera_control.in_set(CameraControlSystems));
+            .add_systems(
+                Update,
+                control::apply_rts_camera_control.in_set(CameraControlSystems),
+            );
     }
 }

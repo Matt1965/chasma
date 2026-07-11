@@ -1,9 +1,9 @@
 //! Authoritative projectile movement and impact resolution (ADR-060 C7).
 
-use crate::world::coordinates::{ChunkLayout, WorldPosition};
-use crate::world::combat::validate_projectile_impact_target;
-use crate::world::is_unit_alive;
 use crate::world::WorldData;
+use crate::world::combat::{ProjectileImpactRejection, validate_projectile_impact_target};
+use crate::world::coordinates::{ChunkLayout, WorldPosition};
+use crate::world::is_unit_alive;
 
 use super::id::ProjectileId;
 use super::record::{ProjectileRecord, ProjectileStatus};
@@ -65,9 +65,8 @@ fn step_projectile(
 
     let target_position = world
         .get_unit(record.target_unit_id)
-        .expect("target alive")
-        .placement
-        .position;
+        .map(|unit| unit.placement.position)
+        .unwrap_or(record.target_position_snapshot);
 
     if delta_seconds <= 0.0 {
         let mut parked = record;
@@ -110,14 +109,15 @@ fn resolve_projectile_impact(
         event,
     };
 
-    match validate_projectile_impact_target(
-        world,
-        record.target_unit_id,
-        &record.launch_snapshot,
-    ) {
+    match validate_projectile_impact_target(world, record.target_unit_id, &record.launch_snapshot) {
         Ok(()) => {}
         Err(reason) => {
-            reject_projectile(world, id, report, trace(ProjectileEvent::ImpactRejected { reason }));
+            reject_projectile(
+                world,
+                id,
+                report,
+                trace(ProjectileEvent::ImpactRejected { reason }),
+            );
             return;
         }
     }
@@ -127,9 +127,20 @@ fn resolve_projectile_impact(
         .map(|unit| unit.vitals.current_hp)
         .unwrap_or(0);
     let damage = record.damage.max(0.0) as u32;
-    let vitals = world
-        .damage_unit(record.target_unit_id, damage)
-        .expect("target valid at impact");
+    let vitals = match world.damage_unit(record.target_unit_id, damage) {
+        Ok(vitals) => vitals,
+        Err(_) => {
+            reject_projectile(
+                world,
+                id,
+                report,
+                trace(ProjectileEvent::ImpactRejected {
+                    reason: ProjectileImpactRejection::TargetMissing,
+                }),
+            );
+            return;
+        }
+    };
     world.record_kill_attribution(record.target_unit_id, record.source_unit_id, hp_before);
 
     report.push(trace(ProjectileEvent::Hit));
@@ -195,17 +206,18 @@ pub fn spawn_projectile_from_strike(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bevy::prelude::Vec3;
     use crate::simulation::SIMULATION_TICK_SECONDS;
     use crate::world::{
+        AttackTargetingPolicy, ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatStrikeEvent,
+        CombatStrikeReport, DamageType, DoodadCatalog, Heightfield, HitMode, LocalPosition,
+        NavigationConfig, ProjectileEvent, ProjectileImpactRejection, ProjectileLaunchSnapshot,
+        ProjectileReport, TargetFilter, UnitDefinitionId, UnitId, UnitOrder, UnitOwnership,
+        UnitSource, WeaponCatalog, WeaponDefinition, WeaponDefinitionId, WorldPosition,
         create_unit_with_ownership, issue_unit_order, starter_unit_definitions,
         starter_weapon_definitions, step_all_combat_engagement, step_all_combat_strikes,
-        step_all_projectiles, AttackTargetingPolicy, ChunkCoord, ChunkData, ChunkId,
-        ChunkLayout, CombatStrikeEvent, CombatStrikeReport, DamageType, DoodadCatalog, Heightfield, HitMode,
-        LocalPosition, NavigationConfig, ProjectileEvent, ProjectileImpactRejection, ProjectileLaunchSnapshot,
-        ProjectileReport, TargetFilter, UnitDefinitionId, UnitId, UnitOrder, UnitOwnership, UnitSource,
-        WeaponCatalog, WeaponDefinition, WeaponDefinitionId, WorldPosition,
+        step_all_projectiles,
     };
+    use bevy::prelude::Vec3;
 
     fn flat_world() -> WorldData {
         let mut world = WorldData::new(ChunkLayout {
@@ -269,7 +281,12 @@ mod tests {
         .unwrap()
     }
 
-    fn spawn_player(world: &mut WorldData, catalog: &crate::world::UnitCatalog, x: f32, z: f32) -> UnitId {
+    fn spawn_player(
+        world: &mut WorldData,
+        catalog: &crate::world::UnitCatalog,
+        x: f32,
+        z: f32,
+    ) -> UnitId {
         create_unit_with_ownership(
             catalog,
             world,
@@ -282,7 +299,12 @@ mod tests {
         .id
     }
 
-    fn spawn_hostile(world: &mut WorldData, catalog: &crate::world::UnitCatalog, x: f32, z: f32) -> UnitId {
+    fn spawn_hostile(
+        world: &mut WorldData,
+        catalog: &crate::world::UnitCatalog,
+        x: f32,
+        z: f32,
+    ) -> UnitId {
         create_unit_with_ownership(
             catalog,
             world,
@@ -319,11 +341,7 @@ mod tests {
         step_all_projectiles(world, delta, &[])
     }
 
-    fn reassign_unit_ownership(
-        world: &mut WorldData,
-        unit_id: UnitId,
-        ownership: UnitOwnership,
-    ) {
+    fn reassign_unit_ownership(world: &mut WorldData, unit_id: UnitId, ownership: UnitOwnership) {
         let mut record = world.remove_unit_by_id(unit_id).expect("unit exists");
         record.owner_id = ownership.owner_id;
         record.team_id = ownership.team_id;
@@ -403,7 +421,12 @@ mod tests {
         .unwrap()
     }
 
-    fn spawn_neutral(world: &mut WorldData, catalog: &crate::world::UnitCatalog, x: f32, z: f32) -> UnitId {
+    fn spawn_neutral(
+        world: &mut WorldData,
+        catalog: &crate::world::UnitCatalog,
+        x: f32,
+        z: f32,
+    ) -> UnitId {
         create_unit_with_ownership(
             catalog,
             world,
@@ -498,11 +521,13 @@ mod tests {
             &mut CombatStrikeReport::default(),
         );
         let (strike_report, _) = step_strikes(&mut world, &catalog, &weapons, 0.2);
-        assert!(!strike_report.has_event(&CombatStrikeEvent::AttackStrikeApplied {
-            damage: 5.0,
-            target_hp_before: hp_before,
-            target_hp_after: hp_before.saturating_sub(5),
-        }));
+        assert!(
+            !strike_report.has_event(&CombatStrikeEvent::AttackStrikeApplied {
+                damage: 5.0,
+                target_hp_before: hp_before,
+                target_hp_after: hp_before.saturating_sub(5),
+            })
+        );
         assert_eq!(
             world.get_unit(hostile).unwrap().vitals.current_hp,
             hp_before
@@ -883,7 +908,10 @@ mod tests {
                 _ => None,
             })
             .collect();
-        assert_eq!(rejections, vec![ProjectileImpactRejection::TargetNowFriendly]);
+        assert_eq!(
+            rejections,
+            vec![ProjectileImpactRejection::TargetNowFriendly]
+        );
         assert_eq!(world.projectiles().count(), 0);
     }
 
@@ -908,7 +936,14 @@ mod tests {
             ));
         }
         let ids: Vec<_> = world.sorted_projectile_ids();
-        assert_eq!(ids, vec![ProjectileId::new(1), ProjectileId::new(2), ProjectileId::new(3)]);
+        assert_eq!(
+            ids,
+            vec![
+                ProjectileId::new(1),
+                ProjectileId::new(2),
+                ProjectileId::new(3)
+            ]
+        );
     }
 
     #[test]
@@ -949,7 +984,10 @@ mod tests {
         if let Some(record) = world.get_unit(hostile) {
             assert_eq!(record.vitals.current_hp, hp_before.saturating_sub(5));
         } else {
-            assert!(hp_before <= 5, "unit removed only after lethal projectile damage");
+            assert!(
+                hp_before <= 5,
+                "unit removed only after lethal projectile damage"
+            );
         }
     }
 }

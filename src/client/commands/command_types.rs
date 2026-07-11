@@ -48,7 +48,10 @@ impl CommandType {
 
     /// Whether the command has a full simulation implementation (REVIEW-B3).
     pub fn is_implemented(self) -> bool {
-        matches!(self, Self::Move | Self::Stop | Self::Attack | Self::AttackMove)
+        matches!(
+            self,
+            Self::Move | Self::Stop | Self::Attack | Self::AttackMove
+        )
     }
 
     /// Commands shown in the static player palette.
@@ -109,7 +112,9 @@ mod tests {
     fn contextual_intent_equality() {
         let a = ContextualCommandIntent {
             command_type: CommandType::Move,
-            target: CommandTarget::Terrain { position: pos(1.0, 2.0) },
+            target: CommandTarget::Terrain {
+                position: pos(1.0, 2.0),
+            },
         };
         let b = a.clone();
         assert_eq!(a, b);

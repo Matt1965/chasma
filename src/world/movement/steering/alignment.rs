@@ -2,8 +2,8 @@
 
 use bevy::prelude::Vec2;
 
-use super::SteeringSettings;
 use super::SteeringNeighbor;
+use super::SteeringSettings;
 
 /// Very weak bias toward neighbors' movement directions.
 pub fn alignment_force(neighbors: &[SteeringNeighbor], settings: &SteeringSettings) -> Vec2 {

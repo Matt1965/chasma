@@ -8,9 +8,7 @@ use crate::world::DoodadDefinitionId;
 #[derive(Debug, Clone, PartialEq)]
 pub enum ObstacleQueryError {
     /// A doodad record references a definition missing from the catalog.
-    MissingDoodadDefinition {
-        definition_id: DoodadDefinitionId,
-    },
+    MissingDoodadDefinition { definition_id: DoodadDefinitionId },
     /// Blocking radius resolved from fallback data was invalid.
     InvalidBlockingRadius { radius_meters: f32 },
     /// Record data was insufficient to evaluate blocking safely.
@@ -25,10 +23,9 @@ impl fmt::Display for ObstacleQueryError {
                 "doodad definition `{}` missing from catalog",
                 definition_id.as_str()
             ),
-            Self::InvalidBlockingRadius { radius_meters } => write!(
-                f,
-                "invalid blocking radius {radius_meters} m"
-            ),
+            Self::InvalidBlockingRadius { radius_meters } => {
+                write!(f, "invalid blocking radius {radius_meters} m")
+            }
             Self::CorruptDoodadRecord => write!(f, "corrupt doodad record for obstacle query"),
         }
     }

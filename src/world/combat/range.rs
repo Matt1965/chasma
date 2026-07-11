@@ -1,7 +1,9 @@
 //! Edge-to-edge weapon range checks (ADR-057 C4).
 
 use crate::world::navigation::xz_distance;
-use crate::world::unit::{UnitCatalog, UnitId, UnitOrderError, UnitRecord};
+#[cfg(test)]
+use crate::world::unit::UnitId;
+use crate::world::unit::{UnitCatalog, UnitOrderError, UnitRecord};
 use crate::world::{WeaponCatalog, WeaponDefinition, WorldData, WorldPosition};
 
 /// Extra meters before a unit resumes chasing after leaving attack range.
@@ -54,8 +56,11 @@ pub fn measure_weapon_range(
     weapon: &WeaponDefinition,
     unit_catalog: &UnitCatalog,
 ) -> RangeCheck {
-    let center_distance_meters =
-        center_distance_meters(world, attacker.placement.position, target.placement.position);
+    let center_distance_meters = center_distance_meters(
+        world,
+        attacker.placement.position,
+        target.placement.position,
+    );
     let attacker_radius_meters = collision_radius_for_record(attacker, unit_catalog);
     let target_radius_meters = collision_radius_for_record(target, unit_catalog);
     RangeCheck {
@@ -88,7 +93,11 @@ pub fn is_in_weapon_range(
 ) -> bool {
     matches!(
         range_status_from_check(&measure_weapon_range(
-            world, attacker, target, weapon, unit_catalog
+            world,
+            attacker,
+            target,
+            weapon,
+            unit_catalog
         )),
         RangeStatus::InRange
     )
@@ -124,7 +133,8 @@ pub fn weapon_for_unit_record<'a>(
     Ok(weapon)
 }
 
-pub fn range_check_for_units(
+#[cfg(test)]
+pub(crate) fn range_check_for_units(
     world: &WorldData,
     attacker_id: UnitId,
     target_id: UnitId,
@@ -151,9 +161,8 @@ pub fn range_check_for_units(
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit_with_ownership, ChunkCoord, ChunkLayout, LocalPosition, UnitDefinition,
-        UnitDefinitionId, UnitOwnership, UnitRenderKey, WeaponDefinition, WeaponDefinitionId,
-        WorldData,
+        ChunkCoord, ChunkLayout, LocalPosition, UnitDefinition, UnitDefinitionId, UnitOwnership,
+        UnitRenderKey, WeaponDefinition, WeaponDefinitionId, WorldData, create_unit_with_ownership,
     };
     use bevy::prelude::Vec3;
 
@@ -232,7 +241,7 @@ mod tests {
             1.0,
             0.1,
             0.1,
-            crate::world::            HitMode::Melee,
+            crate::world::HitMode::Melee,
             None,
             0.0,
             "attack",

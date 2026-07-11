@@ -3,8 +3,8 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    classify_slope_walkability, ground_world_position, is_position_blocked_by_doodads,
     DoodadCatalog, SlopeWalkability, UnitCatalog, WorldData, WorldPosition,
+    classify_slope_walkability, ground_world_position, is_position_blocked_by_doodads,
 };
 
 use super::super::dev_mode::DefinitionId;
@@ -57,6 +57,7 @@ pub struct PlacementValidateContext<'a> {
 }
 
 impl PlacementValidation {
+    #[cfg(test)]
     pub fn position(self) -> Option<WorldPosition> {
         match self {
             Self::Accepted(position) => Some(position),
@@ -74,7 +75,9 @@ pub fn validate_placement(
     let position = if ctx.rules.snap_to_terrain {
         match ground_world_position(ctx.world, candidate) {
             Some(grounded) => grounded,
-            None => return PlacementValidation::Rejected(PlacementRejectReason::TerrainUnavailable),
+            None => {
+                return PlacementValidation::Rejected(PlacementRejectReason::TerrainUnavailable);
+            }
         }
     } else {
         candidate
@@ -95,12 +98,7 @@ pub fn validate_placement(
 
     if ctx.rules.avoid_doodads {
         let agent_radius = agent_radius_for_definition(ctx);
-        if is_position_blocked_by_doodads(
-            ctx.world,
-            ctx.doodad_catalog,
-            position,
-            agent_radius,
-        ) {
+        if is_position_blocked_by_doodads(ctx.world, ctx.doodad_catalog, position, agent_radius) {
             return PlacementValidation::Rejected(PlacementRejectReason::BlockedByDoodad);
         }
     }
@@ -160,9 +158,9 @@ fn xz_distance(world: &WorldData, a: WorldPosition, b: WorldPosition) -> f32 {
 mod tests {
     use super::*;
     use crate::world::{
-        classify_slope_walkability, estimate_slope_degrees, ChunkCoord, ChunkData, ChunkId,
-        ChunkLayout, Heightfield, LocalPosition, SlopeWalkability, UnitDefinition,
-        UnitDefinitionId, UnitRenderKey,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, SlopeWalkability,
+        UnitDefinition, UnitDefinitionId, UnitRenderKey, classify_slope_walkability,
+        estimate_slope_degrees,
     };
 
     fn flat_world() -> WorldData {
@@ -295,9 +293,7 @@ mod tests {
             rules: &rules,
         };
         let candidate = pos(64.0, 64.0);
-        let chunk = world
-            .get(ChunkId::new(ChunkCoord::new(0, 0)))
-            .unwrap();
+        let chunk = world.get(ChunkId::new(ChunkCoord::new(0, 0))).unwrap();
         let slope = estimate_slope_degrees(&chunk.heightfield, 64.0, 64.0).unwrap();
         assert!(slope > 5.0);
         assert_eq!(

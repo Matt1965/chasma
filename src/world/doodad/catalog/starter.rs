@@ -1,11 +1,11 @@
 /// In-memory doodad fixtures for unit tests only. Runtime catalogs come from Excel import.
 #[cfg(test)]
 mod fixtures {
+    use crate::world::DoodadKind;
+    use crate::world::biome::BiomeId;
     use crate::world::doodad::catalog::definition::DoodadDefinition;
     use crate::world::doodad::catalog::definition_id::DoodadDefinitionId;
     use crate::world::doodad::catalog::render_key::DoodadRenderKey;
-    use crate::world::biome::BiomeId;
-    use crate::world::DoodadKind;
 
     fn all_assigned_biomes() -> Vec<BiomeId> {
         BiomeId::all_assigned().to_vec()

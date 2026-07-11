@@ -1,8 +1,6 @@
 //! In-memory catalog filtering for dev browser (ADR-043).
 
-use crate::world::{
-    DoodadCatalog, DoodadDefinition, DoodadKind, UnitCatalog, UnitDefinition,
-};
+use crate::world::{DoodadCatalog, DoodadDefinition, DoodadKind, UnitCatalog, UnitDefinition};
 
 use super::dev_mode::{DefinitionId, DevTab, SpawnMode};
 
@@ -29,9 +27,11 @@ pub fn filter_catalog_entries(
     let mut entries = match tab {
         DevTab::Units => unit_entries(unit_catalog, enabled_only),
         DevTab::Doodads => doodad_entries(doodad_catalog, enabled_only),
-        DevTab::Debug | DevTab::Placement | DevTab::Scenes | DevTab::Inspector | DevTab::WorldTools => {
-            Vec::new()
-        }
+        DevTab::Debug
+        | DevTab::Placement
+        | DevTab::Scenes
+        | DevTab::Inspector
+        | DevTab::WorldTools => Vec::new(),
     };
 
     if matches!(tab, DevTab::Units | DevTab::Doodads) {
@@ -124,30 +124,28 @@ mod tests {
     #[test]
     fn catalog_filter_respects_enabled_only() {
         let mut definitions = UnitCatalog::default().definitions().to_vec();
-        definitions.push(
-            UnitDefinition::new(
-                UnitDefinitionId::new("disabled_test"),
-                "Disabled Test",
-                "neutral",
-                1,
-                10,
-                10,
-                1,
-                1,
-                1,
-                1,
-                1,
-                1,
-                1.0,
-                "T1",
-                5.0,
-                0.5,
-                45.0,
-                crate::world::WeaponDefinitionId::new("weapon_fists"),
-                false,
-                crate::world::UnitRenderKey::unset(),
-            ),
-        );
+        definitions.push(UnitDefinition::new(
+            UnitDefinitionId::new("disabled_test"),
+            "Disabled Test",
+            "neutral",
+            1,
+            10,
+            10,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1.0,
+            "T1",
+            5.0,
+            0.5,
+            45.0,
+            crate::world::WeaponDefinitionId::new("weapon_fists"),
+            false,
+            crate::world::UnitRenderKey::unset(),
+        ));
         let catalog = UnitCatalog::from_definitions(definitions).unwrap();
         let all = filter_catalog_entries(
             &catalog,
@@ -181,8 +179,10 @@ mod tests {
             true,
         );
         assert!(!entries.is_empty());
-        assert!(entries
-            .iter()
-            .all(|entry| matches!(entry.definition, DefinitionId::Doodad(_))));
+        assert!(
+            entries
+                .iter()
+                .all(|entry| matches!(entry.definition, DefinitionId::Doodad(_)))
+        );
     }
 }

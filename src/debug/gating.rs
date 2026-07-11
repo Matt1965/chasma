@@ -2,10 +2,8 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::debug::{
-        DebugOverlayConfig, DebugOverlayCategory,
-    };
     use crate::debug::trace::{CommandTraceBuffer, IntentDispatchHistory};
+    use crate::debug::{DebugOverlayCategory, DebugOverlayConfig};
 
     #[test]
     fn command_trace_resources_exist_without_visualization_enabled() {
@@ -20,12 +18,30 @@ mod tests {
         let config = DebugOverlayConfig::production();
         assert!(!config.enabled);
         assert!(!debug_category_visible(&config, DebugOverlayCategory::Path));
-        assert!(!debug_category_visible(&config, DebugOverlayCategory::Interaction));
-        assert!(!debug_category_visible(&config, DebugOverlayCategory::Intent));
-        assert!(!debug_category_visible(&config, DebugOverlayCategory::Steering));
-        assert!(!debug_category_visible(&config, DebugOverlayCategory::Formation));
-        assert!(!debug_category_visible(&config, DebugOverlayCategory::Selection));
-        assert!(!debug_category_visible(&config, DebugOverlayCategory::Combat));
+        assert!(!debug_category_visible(
+            &config,
+            DebugOverlayCategory::Interaction
+        ));
+        assert!(!debug_category_visible(
+            &config,
+            DebugOverlayCategory::Intent
+        ));
+        assert!(!debug_category_visible(
+            &config,
+            DebugOverlayCategory::Steering
+        ));
+        assert!(!debug_category_visible(
+            &config,
+            DebugOverlayCategory::Formation
+        ));
+        assert!(!debug_category_visible(
+            &config,
+            DebugOverlayCategory::Selection
+        ));
+        assert!(!debug_category_visible(
+            &config,
+            DebugOverlayCategory::Combat
+        ));
         assert!(!debug_category_visible(&config, DebugOverlayCategory::Grid));
     }
 
@@ -41,10 +57,7 @@ mod tests {
         assert!(!crate::debug::debug_interaction_overlay_enabled(&config));
     }
 
-    fn debug_category_visible(
-        config: &DebugOverlayConfig,
-        category: DebugOverlayCategory,
-    ) -> bool {
+    fn debug_category_visible(config: &DebugOverlayConfig, category: DebugOverlayCategory) -> bool {
         config.category_enabled(category)
     }
 }

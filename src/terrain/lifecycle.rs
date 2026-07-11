@@ -12,26 +12,22 @@ use crate::view::PrimaryViewFocus;
 use crate::world::{ChunkCoord, ChunkId, WorldConfig, WorldData};
 
 use super::albedo::TerrainChunkAlbedo;
-use super::components::TerrainChunkMesh;
 use super::catalog::TerrainWorldCatalog;
+use super::components::TerrainChunkMesh;
 use super::grace::JustAppliedGrace;
-use super::materialize::{
-    MaterializedChunkPending, MaterializePollBudgets, MaterializePollStats,
-    PendingChunkMaterializations, materialized_result_may_apply,
-};
-use super::lod_build::PendingChunkLodBuilds;
 use super::load::validate_loaded_chunk;
-use super::residency::{
-    ChunkDiscardKind, ChunkResidencyTracker, discard_chunk_residency,
-};
-use super::spawn::{
-    TerrainRenderAssets, despawn_chunk_meshes, spawn_prebuilt_chunk_mesh_inner,
-};
-use super::streaming::{
-    TerrainStreamingSettings, chunks_in_radius, diff_streaming_residency, stable_focus_chunk,
+use super::lod_build::PendingChunkLodBuilds;
+use super::materialize::{
+    MaterializePollBudgets, MaterializePollStats, MaterializedChunkPending,
+    PendingChunkMaterializations, materialized_result_may_apply,
 };
 #[cfg(feature = "dev")]
 use super::perf::{TerrainStreamingPerfRecorder, TerrainStreamingPerfSettings, duration_to_ms};
+use super::residency::{ChunkDiscardKind, ChunkResidencyTracker, discard_chunk_residency};
+use super::spawn::{TerrainRenderAssets, despawn_chunk_meshes, spawn_prebuilt_chunk_mesh_inner};
+use super::streaming::{
+    TerrainStreamingSettings, chunks_in_radius, diff_streaming_residency, stable_focus_chunk,
+};
 
 /// Systems that drive terrain chunk residency.
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -63,25 +59,13 @@ pub fn stream_terrain_chunks(
 ) {
     let layout = config.chunk_layout();
     let focus_coord = stable_focus_chunk(focus.position, layout);
-    let desired_load =
-        chunks_in_radius(focus_coord, settings.load_radius_chunks, &catalog);
-    let keep_resident =
-        chunks_in_radius(focus_coord, settings.unload_radius_chunks, &catalog);
+    let desired_load = chunks_in_radius(focus_coord, settings.load_radius_chunks, &catalog);
+    let keep_resident = chunks_in_radius(focus_coord, settings.unload_radius_chunks, &catalog);
 
-    pending.discard_outside_residency_sets(
-        &mut residency,
-        &keep_resident,
-        &desired_load,
-    );
+    pending.discard_outside_residency_sets(&mut residency, &keep_resident, &desired_load);
 
-    let (to_load, _) = diff_streaming_residency(
-        &focus,
-        layout,
-        &settings,
-        &catalog,
-        &world,
-        &HashSet::new(),
-    );
+    let (to_load, _) =
+        diff_streaming_residency(&focus, layout, &settings, &catalog, &world, &HashSet::new());
 
     for coord in to_load {
         if catalog.get(coord).is_none() {
@@ -182,7 +166,9 @@ pub fn apply_chunk_materializations(
     #[cfg(feature = "dev")]
     let apply_start = perf_settings.enabled.then(Instant::now);
     #[cfg(feature = "dev")]
-    let mut mesh_perf = perf_settings.enabled.then(TerrainStreamingPerfRecorder::default);
+    let mut mesh_perf = perf_settings
+        .enabled
+        .then(TerrainStreamingPerfRecorder::default);
 
     let layout = config.chunk_layout();
     let focus_coord = stable_focus_chunk(focus.position, layout);
@@ -248,14 +234,8 @@ pub fn unload_terrain_chunks(
     #[cfg(feature = "dev")] mut perf_state: ResMut<super::perf::TerrainStreamingPerfState>,
 ) {
     let layout = config.chunk_layout();
-    let (_, to_unload) = diff_streaming_residency(
-        &focus,
-        layout,
-        &settings,
-        &catalog,
-        &world,
-        grace.as_set(),
-    );
+    let (_, to_unload) =
+        diff_streaming_residency(&focus, layout, &settings, &catalog, &world, grace.as_set());
 
     for chunk_id in &to_unload {
         pending.discard_chunk_state(&mut residency, *chunk_id, ChunkDiscardKind::Revoked);
@@ -398,7 +378,10 @@ mod apply_tests {
     use crate::terrain::catalog::TerrainWorldCatalog;
     use crate::terrain::lod_cache::TerrainChunkLodCache;
     use crate::terrain::materialize::{MaterializedChunkPending, PendingChunkMaterializations};
-    use crate::terrain::mesh::{ChunkLod, build_chunk_mesh, chunk_mesh_geometry, test_build_mesh_call_count, test_reset_build_mesh_calls};
+    use crate::terrain::mesh::{
+        ChunkLod, build_chunk_mesh, chunk_mesh_geometry, test_build_mesh_call_count,
+        test_reset_build_mesh_calls,
+    };
     use crate::world::{ChunkData, Heightfield};
     use bevy::ecs::system::SystemState;
 
@@ -483,16 +466,13 @@ mod apply_tests {
     }
 
     fn test_catalog_for_coords(coords: &[(i32, i32)]) -> TerrainWorldCatalog {
-        use crate::terrain::asset::{ManifestChunk, MANIFEST_FORMAT_VERSION};
+        use crate::terrain::asset::{MANIFEST_FORMAT_VERSION, ManifestChunk};
         use std::sync::atomic::{AtomicU64, Ordering};
 
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-        let dir = std::env::temp_dir().join(format!(
-            "chasma_apply_cat_{}_{}",
-            std::process::id(),
-            id
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("chasma_apply_cat_{}_{}", std::process::id(), id));
         std::fs::create_dir_all(&dir).unwrap();
         let cfg = test_world_config();
         let entries: Vec<_> = coords
@@ -508,11 +488,7 @@ mod apply_tests {
             },
             chunks: entries,
         };
-        std::fs::write(
-            dir.join("manifest.ron"),
-            ron::to_string(&manifest).unwrap(),
-        )
-        .unwrap();
+        std::fs::write(dir.join("manifest.ron"), ron::to_string(&manifest).unwrap()).unwrap();
         TerrainWorldCatalog::from_manifest(&dir.join("manifest.ron"), &cfg).unwrap()
     }
 
@@ -536,8 +512,14 @@ mod apply_tests {
         )>::new(world);
 
         {
-            let (mut commands, mut world_data, mut residency, mut chunk_albedo, mut meshes, mesh_entities) =
-                system_state.get_mut(world);
+            let (
+                mut commands,
+                mut world_data,
+                mut residency,
+                mut chunk_albedo,
+                mut meshes,
+                mesh_entities,
+            ) = system_state.get_mut(world);
             let (_, _) = apply_materialized_batch(
                 materialized,
                 usize::MAX,
@@ -574,7 +556,11 @@ mod apply_tests {
 
             apply_entries(
                 &mut world,
-                vec![sample_materialized_entry(chunk_id, generation, ChunkLod::Full)],
+                vec![sample_materialized_entry(
+                    chunk_id,
+                    generation,
+                    ChunkLod::Full,
+                )],
                 &keep,
                 &catalog,
             );
@@ -582,7 +568,11 @@ mod apply_tests {
 
         let world_data = world.resource::<WorldData>();
         assert!(world_data.is_chunk_loaded(chunk_id));
-        assert!(world.resource::<ChunkResidencyTracker>().is_resident(chunk_id));
+        assert!(
+            world
+                .resource::<ChunkResidencyTracker>()
+                .is_resident(chunk_id)
+        );
     }
 
     #[test]
@@ -599,7 +589,11 @@ mod apply_tests {
 
             apply_entries(
                 &mut world,
-                vec![sample_materialized_entry(chunk_id, generation, ChunkLod::Full)],
+                vec![sample_materialized_entry(
+                    chunk_id,
+                    generation,
+                    ChunkLod::Full,
+                )],
                 &keep,
                 &catalog,
             );
@@ -630,15 +624,27 @@ mod apply_tests {
 
         apply_entries(
             &mut world,
-            vec![sample_materialized_entry(chunk_id, stale_generation, ChunkLod::Full)],
+            vec![sample_materialized_entry(
+                chunk_id,
+                stale_generation,
+                ChunkLod::Full,
+            )],
             &keep,
             &catalog,
         );
 
         let world_data = world.resource::<WorldData>();
         assert!(!world_data.is_chunk_loaded(chunk_id));
-        assert!(!world.resource::<ChunkResidencyTracker>().is_resident(chunk_id));
-        assert!(world.resource::<ChunkResidencyTracker>().is_loading(chunk_id));
+        assert!(
+            !world
+                .resource::<ChunkResidencyTracker>()
+                .is_resident(chunk_id)
+        );
+        assert!(
+            world
+                .resource::<ChunkResidencyTracker>()
+                .is_loading(chunk_id)
+        );
 
         let mut query = world.query::<&TerrainChunkMesh>();
         assert_eq!(query.iter(&world).count(), 0);
@@ -661,13 +667,21 @@ mod apply_tests {
 
         apply_entries(
             &mut world,
-            vec![sample_materialized_entry(chunk_id, generation, ChunkLod::Full)],
+            vec![sample_materialized_entry(
+                chunk_id,
+                generation,
+                ChunkLod::Full,
+            )],
             &keep,
             &catalog,
         );
 
         assert!(!world.resource::<WorldData>().is_chunk_loaded(chunk_id));
-        assert!(!world.resource::<ChunkResidencyTracker>().is_loading(chunk_id));
+        assert!(
+            !world
+                .resource::<ChunkResidencyTracker>()
+                .is_loading(chunk_id)
+        );
         let mut query = world.query::<&TerrainChunkMesh>();
         assert_eq!(query.iter(&world).count(), 0);
     }
@@ -703,7 +717,11 @@ mod apply_tests {
         );
         apply_entries(
             &mut world,
-            vec![sample_materialized_entry(chunk_id, generation, ChunkLod::Full)],
+            vec![sample_materialized_entry(
+                chunk_id,
+                generation,
+                ChunkLod::Full,
+            )],
             &keep,
             &catalog,
         );
@@ -715,10 +733,10 @@ mod apply_tests {
 
     #[test]
     fn io_and_decode_pipeline_unchanged_after_apply_step() {
+        use crate::terrain::asset::{CHUNK_FORMAT_VERSION, ChunkFile};
         use crate::terrain::materialize::{
             decode_chunk_text, read_chunk_file_text, spawn_chunk_decode_task, spawn_chunk_io_task,
         };
-        use crate::terrain::asset::{CHUNK_FORMAT_VERSION, ChunkFile};
         use bevy::tasks::TaskPoolBuilder;
         use std::sync::Once;
 
@@ -746,10 +764,8 @@ mod apply_tests {
             height_min: 0.0,
             height_max: 22.0,
         };
-        let path = std::env::temp_dir().join(format!(
-            "chasma_apply_reg_{}_7_8.ron",
-            std::process::id(),
-        ));
+        let path =
+            std::env::temp_dir().join(format!("chasma_apply_reg_{}_7_8.ron", std::process::id(),));
         std::fs::write(&path, ron::to_string(&file).unwrap()).unwrap();
 
         let raw = read_chunk_file_text(&path).unwrap();
@@ -763,7 +779,12 @@ mod apply_tests {
         let (id, data) = bevy::tasks::block_on(&mut decode_task).unwrap();
         assert_eq!(id, ChunkId::new(ChunkCoord::new(7, 8)));
         assert_eq!(data.heightfield.samples_per_edge(), 3);
-        assert_eq!(decode_chunk_text(&std::fs::read_to_string(&path).unwrap()).unwrap().0, id);
+        assert_eq!(
+            decode_chunk_text(&std::fs::read_to_string(&path).unwrap())
+                .unwrap()
+                .0,
+            id
+        );
 
         let mut pending = PendingChunkMaterializations::default();
         assert!(pending.try_start_io(id, 1, path.clone(), None));
@@ -784,7 +805,11 @@ mod apply_tests {
                 let chunk_id = ChunkId::new(ChunkCoord::new(i, 0));
                 keep.insert(chunk_id.coord());
                 let generation = residency.begin_loading(chunk_id).unwrap();
-                entries.push(sample_materialized_entry(chunk_id, generation, ChunkLod::Full));
+                entries.push(sample_materialized_entry(
+                    chunk_id,
+                    generation,
+                    ChunkLod::Full,
+                ));
             }
         }
 
@@ -793,7 +818,10 @@ mod apply_tests {
         let budget = 2;
 
         let render_assets = sample_render_assets(&mut world);
-        let chunk_size_units = world.resource::<WorldConfig>().chunk_layout().chunk_size_units();
+        let chunk_size_units = world
+            .resource::<WorldConfig>()
+            .chunk_layout()
+            .chunk_size_units();
         let config = world.resource::<WorldConfig>().clone();
         let mut system_state = SystemState::<(
             Commands,
@@ -805,8 +833,14 @@ mod apply_tests {
         )>::new(&mut world);
 
         let (applied, deferred) = {
-            let (mut commands, mut world_data, mut residency, mut chunk_albedo, mut meshes, mesh_entities) =
-                system_state.get_mut(&mut world);
+            let (
+                mut commands,
+                mut world_data,
+                mut residency,
+                mut chunk_albedo,
+                mut meshes,
+                mesh_entities,
+            ) = system_state.get_mut(&mut world);
             apply_materialized_batch(
                 materialized,
                 budget,
@@ -845,11 +879,7 @@ mod apply_tests {
             });
         });
 
-        let catalog = test_catalog_for_coords(
-            &(0..8)
-                .map(|i| (i, 0))
-                .collect::<Vec<_>>(),
-        );
+        let catalog = test_catalog_for_coords(&(0..8).map(|i| (i, 0)).collect::<Vec<_>>());
         let mut pending = PendingChunkMaterializations::default();
         let mut world = setup_apply_world();
 
@@ -907,7 +937,10 @@ mod apply_tests {
 
         let materialized = pending.take_materialized();
         let render_assets = sample_render_assets(&mut world);
-        let chunk_size_units = world.resource::<WorldConfig>().chunk_layout().chunk_size_units();
+        let chunk_size_units = world
+            .resource::<WorldConfig>()
+            .chunk_layout()
+            .chunk_size_units();
         let config = world.resource::<WorldConfig>().clone();
         let mut system_state = SystemState::<(
             Commands,
@@ -919,8 +952,14 @@ mod apply_tests {
         )>::new(&mut world);
 
         let (applied, deferred) = {
-            let (mut commands, mut world_data, mut residency, mut chunk_albedo, mut meshes, mesh_entities) =
-                system_state.get_mut(&mut world);
+            let (
+                mut commands,
+                mut world_data,
+                mut residency,
+                mut chunk_albedo,
+                mut meshes,
+                mesh_entities,
+            ) = system_state.get_mut(&mut world);
             apply_materialized_batch(
                 materialized,
                 4,
@@ -994,7 +1033,11 @@ mod apply_tests {
 
             apply_entries(
                 &mut world,
-                vec![sample_materialized_entry(chunk_id, generation, ChunkLod::Half)],
+                vec![sample_materialized_entry(
+                    chunk_id,
+                    generation,
+                    ChunkLod::Half,
+                )],
                 &keep,
                 &catalog,
             );
@@ -1024,7 +1067,11 @@ mod apply_tests {
 
             apply_entries(
                 &mut world,
-                vec![sample_materialized_entry(chunk_id, generation, ChunkLod::Full)],
+                vec![sample_materialized_entry(
+                    chunk_id,
+                    generation,
+                    ChunkLod::Full,
+                )],
                 &keep,
                 &catalog,
             );
@@ -1048,7 +1095,11 @@ mod apply_tests {
 
             apply_entries(
                 &mut world,
-                vec![sample_materialized_entry(chunk_id, generation, ChunkLod::Half)],
+                vec![sample_materialized_entry(
+                    chunk_id,
+                    generation,
+                    ChunkLod::Half,
+                )],
                 &keep,
                 &catalog,
             );
@@ -1080,8 +1131,8 @@ mod apply_tests {
         keep.insert(chunk_id.coord());
 
         let mut bad_data = sample_chunk_data();
-        bad_data.heightfield = crate::world::Heightfield::from_samples(3, 64.0, vec![0.0; 9])
-            .unwrap();
+        bad_data.heightfield =
+            crate::world::Heightfield::from_samples(3, 64.0, vec![0.0; 9]).unwrap();
 
         apply_entries(
             &mut world,
@@ -1102,7 +1153,11 @@ mod apply_tests {
         );
 
         assert!(!world.resource::<WorldData>().is_chunk_loaded(chunk_id));
-        assert!(!world.resource::<ChunkResidencyTracker>().is_loading(chunk_id));
+        assert!(
+            !world
+                .resource::<ChunkResidencyTracker>()
+                .is_loading(chunk_id)
+        );
         let mut query = world.query::<&TerrainChunkMesh>();
         assert_eq!(query.iter(&world).count(), 0);
     }
@@ -1112,17 +1167,14 @@ mod apply_tests {
         use super::super::streaming::diff_streaming_residency;
 
         let catalog = {
-            use crate::terrain::asset::{ManifestChunk, MANIFEST_FORMAT_VERSION};
+            use crate::terrain::asset::{MANIFEST_FORMAT_VERSION, ManifestChunk};
             use crate::world::WorldConfig;
             use std::sync::atomic::{AtomicU64, Ordering};
 
             static NEXT_ID: AtomicU64 = AtomicU64::new(0);
             let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-            let dir = std::env::temp_dir().join(format!(
-                "chasma_grace_{}_{}",
-                std::process::id(),
-                id
-            ));
+            let dir =
+                std::env::temp_dir().join(format!("chasma_grace_{}_{}", std::process::id(), id));
             std::fs::create_dir_all(&dir).unwrap();
             let cfg = test_world_config();
             let manifest = crate::terrain::asset::Manifest {
@@ -1137,11 +1189,7 @@ mod apply_tests {
                     ManifestChunk::at(3, 0, "chunks/3_0.ron"),
                 ],
             };
-            std::fs::write(
-                dir.join("manifest.ron"),
-                ron::to_string(&manifest).unwrap(),
-            )
-            .unwrap();
+            std::fs::write(dir.join("manifest.ron"), ron::to_string(&manifest).unwrap()).unwrap();
             TerrainWorldCatalog::from_manifest(&dir.join("manifest.ron"), &cfg).unwrap()
         };
 

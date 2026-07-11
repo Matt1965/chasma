@@ -1,15 +1,17 @@
 use std::collections::HashMap;
 
 use super::schema::{
-    UnitImportRow, DEFAULT_COLLISION_RADIUS_METERS, DEFAULT_MAX_SLOPE_DEGREES,
-    DEFAULT_MOVE_SPEED_MPS, DEFAULT_RENDER_SCALE, REQUIRED_COLUMNS,
+    DEFAULT_COLLISION_RADIUS_METERS, DEFAULT_MAX_SLOPE_DEGREES, DEFAULT_MOVE_SPEED_MPS,
+    DEFAULT_RENDER_SCALE, REQUIRED_COLUMNS, UnitImportRow,
 };
 use crate::data_import::error::{DataImportError, RowImportError};
 use crate::data_import::schema::parse_enabled_cell;
 
 pub const UNITS_SHEET_NAME: &str = "Units";
 
-pub fn column_map_from_headers(headers: &[String]) -> Result<HashMap<String, usize>, DataImportError> {
+pub fn column_map_from_headers(
+    headers: &[String],
+) -> Result<HashMap<String, usize>, DataImportError> {
     let mut map = HashMap::new();
     for (index, header) in headers.iter().enumerate() {
         let key = header.trim();
@@ -33,20 +35,19 @@ pub fn column_map_from_headers(headers: &[String]) -> Result<HashMap<String, usi
 pub fn read_unit_rows(
     path: &std::path::Path,
 ) -> Result<Vec<Result<UnitImportRow, RowImportError>>, DataImportError> {
-    use calamine::{open_workbook, Reader, Xlsx, XlsxError};
+    use calamine::{Reader, Xlsx, XlsxError, open_workbook};
 
-    let mut workbook: Xlsx<_> =
-        open_workbook(path).map_err(|err: XlsxError| DataImportError::WorkbookOpen(err.to_string()))?;
-    let range = workbook
-        .worksheet_range(UNITS_SHEET_NAME)
-        .map_err(|_| DataImportError::SheetNotFound {
-            sheet: UNITS_SHEET_NAME.to_string(),
-        })?;
+    let mut workbook: Xlsx<_> = open_workbook(path)
+        .map_err(|err: XlsxError| DataImportError::WorkbookOpen(err.to_string()))?;
+    let range =
+        workbook
+            .worksheet_range(UNITS_SHEET_NAME)
+            .map_err(|_| DataImportError::SheetNotFound {
+                sheet: UNITS_SHEET_NAME.to_string(),
+            })?;
 
     let mut rows = range.rows();
-    let header_cells = rows
-        .next()
-        .ok_or(DataImportError::NoValidRows)?;
+    let header_cells = rows.next().ok_or(DataImportError::NoValidRows)?;
     let headers: Vec<String> = header_cells.iter().map(cell_to_string).collect();
     let columns = column_map_from_headers(&headers)?;
 
@@ -56,17 +57,21 @@ pub fn read_unit_rows(
             continue;
         }
         let row_number = offset + 2;
-        parsed.push(parse_row(row_number, cells, &columns).map_err(|message| RowImportError {
-            row_number,
-            message,
-        }));
+        parsed.push(
+            parse_row(row_number, cells, &columns).map_err(|message| RowImportError {
+                row_number,
+                message,
+            }),
+        );
     }
 
     Ok(parsed)
 }
 
 fn row_is_empty(cells: &[calamine::Data]) -> bool {
-    cells.iter().all(|cell| cell_to_string(cell).trim().is_empty())
+    cells
+        .iter()
+        .all(|cell| cell_to_string(cell).trim().is_empty())
 }
 
 fn parse_row(
@@ -91,7 +96,9 @@ fn parse_row(
             .map_err(|_| format!("{column} must be a number (got `{raw}`)"))
             .and_then(|v| {
                 if v < 0.0 || (v - v.round()).abs() > f32::EPSILON {
-                    Err(format!("{column} must be a non-negative integer (got `{raw}`)"))
+                    Err(format!(
+                        "{column} must be a non-negative integer (got `{raw}`)"
+                    ))
                 } else {
                     Ok(v.round() as u32)
                 }
@@ -303,8 +310,21 @@ mod tests {
             "Unit ID",
         ];
         let row = vec![
-            "Elite", "weapon_wolf_bite", "5", "26.5", "3", "2", "7", "3", "6", "4", "5", "2", "Wild",
-            "Wolf", "U-0001",
+            "Elite",
+            "weapon_wolf_bite",
+            "5",
+            "26.5",
+            "3",
+            "2",
+            "7",
+            "3",
+            "6",
+            "4",
+            "5",
+            "2",
+            "Wild",
+            "Wolf",
+            "U-0001",
         ];
         write_workbook(&path, &headers, &[row]);
         let rows = read_unit_rows(&path).unwrap();
@@ -325,8 +345,7 @@ mod tests {
         ));
         let headers = workbook_headers_legacy();
         let row = vec![
-            "U-0001", "Wolf", "Wild", "2", "5", "4", "6", "3", "7", "2", "3", "25", "26.5",
-            "Elite",
+            "U-0001", "Wolf", "Wild", "2", "5", "4", "6", "3", "7", "2", "3", "25", "26.5", "Elite",
         ];
         write_workbook(&path, &headers, &[row]);
         let err = read_unit_rows(&path).unwrap_err();

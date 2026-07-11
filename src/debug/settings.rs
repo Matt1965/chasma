@@ -143,7 +143,10 @@ debug_overlay_run_if!(run_debug_path_overlay, debug_path_overlay_enabled);
 debug_overlay_run_if!(run_debug_formation_overlay, debug_formation_overlay_enabled);
 debug_overlay_run_if!(run_debug_steering_overlay, debug_steering_overlay_enabled);
 debug_overlay_run_if!(run_debug_selection_overlay, debug_selection_overlay_enabled);
-debug_overlay_run_if!(run_debug_interaction_overlay, debug_interaction_overlay_enabled);
+debug_overlay_run_if!(
+    run_debug_interaction_overlay,
+    debug_interaction_overlay_enabled
+);
 debug_overlay_run_if!(run_debug_combat_overlay, debug_combat_overlay_enabled);
 
 #[cfg(test)]
@@ -174,7 +177,10 @@ mod tests {
 
     #[test]
     fn default_matches_production() {
-        assert_eq!(DebugOverlayConfig::default(), DebugOverlayConfig::production());
+        assert_eq!(
+            DebugOverlayConfig::default(),
+            DebugOverlayConfig::production()
+        );
     }
 
     #[cfg(any(test, feature = "dev"))]

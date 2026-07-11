@@ -61,7 +61,13 @@ impl BiomeMaskBounds {
     }
 
     /// Map global XZ to pixel coordinates. Returns `None` when out of bounds.
-    pub fn global_xz_to_pixel(&self, width: u32, height: u32, global_x: f32, global_z: f32) -> Option<(u32, u32)> {
+    pub fn global_xz_to_pixel(
+        &self,
+        width: u32,
+        height: u32,
+        global_x: f32,
+        global_z: f32,
+    ) -> Option<(u32, u32)> {
         if !self.contains_global_xz(global_x, global_z) {
             return None;
         }
@@ -75,14 +81,17 @@ impl BiomeMaskBounds {
         let pixel_x = (u * width as f32).floor() as u32;
         let pixel_z = (v * height as f32).floor() as u32;
 
-        Some((
-            pixel_x.min(width - 1),
-            pixel_z.min(height - 1),
-        ))
+        Some((pixel_x.min(width - 1), pixel_z.min(height - 1)))
     }
 
     /// Inverse mapping: pixel center to global XZ (for tests and tooling).
-    pub fn pixel_center_to_global_xz(&self, width: u32, height: u32, pixel_x: u32, pixel_z: u32) -> (f32, f32) {
+    pub fn pixel_center_to_global_xz(
+        &self,
+        width: u32,
+        height: u32,
+        pixel_x: u32,
+        pixel_z: u32,
+    ) -> (f32, f32) {
         let u = (pixel_x as f32 + 0.5) / width as f32;
         let v = (pixel_z as f32 + 0.5) / height as f32;
         (
@@ -106,7 +115,12 @@ pub struct BiomeMask {
 }
 
 impl BiomeMask {
-    pub fn new(width: u32, height: u32, bounds: BiomeMaskBounds, pixels: Vec<BiomeId>) -> Result<Self, BiomeImportError> {
+    pub fn new(
+        width: u32,
+        height: u32,
+        bounds: BiomeMaskBounds,
+        pixels: Vec<BiomeId>,
+    ) -> Result<Self, BiomeImportError> {
         if width == 0 || height == 0 {
             return Err(BiomeImportError::EmptyImage);
         }
@@ -139,7 +153,10 @@ impl BiomeMask {
 
     pub fn pixel_biome(&self, pixel_x: u32, pixel_z: u32) -> BiomeId {
         let index = pixel_z as usize * self.width as usize + pixel_x as usize;
-        self.pixels.get(index).copied().unwrap_or(BiomeId::Unassigned)
+        self.pixels
+            .get(index)
+            .copied()
+            .unwrap_or(BiomeId::Unassigned)
     }
 
     /// Deterministic biome lookup from global render-space XZ (Y ignored).
@@ -196,7 +213,7 @@ impl BiomeMask {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{biome::mapping::BiomeColorMapping, ChunkCoord, ChunkExtent, ChunkLayout};
+    use crate::world::{ChunkCoord, ChunkExtent, ChunkLayout, biome::mapping::BiomeColorMapping};
 
     fn test_bounds_4_chunks() -> BiomeMaskBounds {
         BiomeMaskBounds::from_chunk_extent(
@@ -223,7 +240,10 @@ mod tests {
     #[test]
     fn southwest_pixel_maps_to_origin() {
         let bounds = BiomeMaskBounds::new(0.0, 0.0, 512.0, 512.0);
-        assert_eq!(bounds.global_xz_to_pixel(1024, 1024, 0.0, 0.0), Some((0, 0)));
+        assert_eq!(
+            bounds.global_xz_to_pixel(1024, 1024, 0.0, 0.0),
+            Some((0, 0))
+        );
     }
 
     #[test]
@@ -274,15 +294,9 @@ mod tests {
     #[test]
     fn out_of_bounds_sample_is_unassigned() {
         let bounds = BiomeMaskBounds::new(0.0, 0.0, 4.0, 4.0);
-        let mask = BiomeMask::from_rgba_rows(
-            2,
-            2,
-            bounds,
-            &[0; 16],
-            4,
-            &BiomeColorMapping::starter(),
-        )
-        .unwrap();
+        let mask =
+            BiomeMask::from_rgba_rows(2, 2, bounds, &[0; 16], 4, &BiomeColorMapping::starter())
+                .unwrap();
         let sample = mask.sample_at_global(Vec3::new(10.0, 0.0, 10.0));
         assert_eq!(sample.biome, BiomeId::Unassigned);
     }

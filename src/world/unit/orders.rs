@@ -6,14 +6,13 @@ use super::catalog::UnitCatalog;
 use super::combat_state::CombatState;
 use super::id::UnitId;
 use super::state::UnitState;
+use crate::world::movement::feel::PATH_RESOLVE_BUDGET_PER_TICK;
 use crate::world::unit::unit_can_execute_actions;
 use crate::world::{
+    AttackTargetingPolicy, CommandBufferResolveReport, CommandResolveSuccess, DoodadCatalog,
+    NavigationConfig, WeaponCatalog, WorldData, WorldPosition, clear_attack_cycle_for_order_cancel,
     initial_attack_combat_state, reset_attack_cycle_for_retarget, validate_attack_target,
-    AttackTargetingPolicy, clear_attack_cycle_for_order_cancel,
-    CommandBufferResolveReport, CommandResolveSuccess, DoodadCatalog, NavigationConfig,
-    WeaponCatalog, WorldData, WorldPosition,
 };
-use crate::world::movement::feel::PATH_RESOLVE_BUDGET_PER_TICK;
 
 /// Authoritative command issued to a unit instance.
 #[derive(Debug, Clone, Copy, PartialEq, Reflect)]
@@ -99,13 +98,7 @@ pub fn issue_unit_order(
             world
                 .set_unit_state(unit_id, UnitState::Idle)
                 .map_err(|_| UnitOrderError::UnitNotFound)?;
-            clear_attack_cycle_for_order_cancel(
-                world,
-                unit_id,
-                None,
-                unit_catalog,
-                weapon_catalog,
-            );
+            clear_attack_cycle_for_order_cancel(world, unit_id, None, unit_catalog, weapon_catalog);
             world
                 .set_unit_combat_state(unit_id, CombatState::Peaceful)
                 .map_err(|_| UnitOrderError::UnitNotFound)?;
@@ -121,13 +114,7 @@ pub fn issue_unit_order(
             world
                 .set_unit_combat_state(unit_id, CombatState::Peaceful)
                 .map_err(|_| UnitOrderError::UnitNotFound)?;
-            clear_attack_cycle_for_order_cancel(
-                world,
-                unit_id,
-                None,
-                unit_catalog,
-                weapon_catalog,
-            );
+            clear_attack_cycle_for_order_cancel(world, unit_id, None, unit_catalog, weapon_catalog);
             world.command_buffer_mut().enqueue(unit_id, order);
             Ok(())
         }
@@ -157,13 +144,8 @@ pub fn issue_unit_order(
             }
             world.command_buffer_mut().clear_pending(unit_id);
             world.movement_smoothing_mut().clear_unit(unit_id);
-            let combat_state = initial_attack_combat_state(
-                world,
-                unit_id,
-                target,
-                unit_catalog,
-                weapon_catalog,
-            );
+            let combat_state =
+                initial_attack_combat_state(world, unit_id, target, unit_catalog, weapon_catalog);
             world
                 .set_unit_combat_state(unit_id, combat_state)
                 .map_err(|_| UnitOrderError::AttackerNotFound)?;
@@ -182,13 +164,7 @@ pub fn issue_unit_order(
             }
             world.command_buffer_mut().clear_pending(unit_id);
             world.movement_smoothing_mut().clear_unit(unit_id);
-            clear_attack_cycle_for_order_cancel(
-                world,
-                unit_id,
-                None,
-                unit_catalog,
-                weapon_catalog,
-            );
+            clear_attack_cycle_for_order_cancel(world, unit_id, None, unit_catalog, weapon_catalog);
             world
                 .set_unit_combat_state(
                     unit_id,
@@ -234,9 +210,7 @@ pub fn resolve_pending_unit_orders(
                 report.resolved += 1;
                 if let Some(record) = world.get_unit(entry.unit_id) {
                     if let UnitState::Moving {
-                        target,
-                        ref path,
-                        ..
+                        target, ref path, ..
                     } = record.state
                     {
                         report.successes.push(CommandResolveSuccess {
@@ -281,9 +255,9 @@ pub fn resolve_all_pending_unit_orders(
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, create_unit_with_ownership, resolve_pending_unit_orders, AttackTargetingPolicy,
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
-        UnitDefinitionId, UnitOwnership, UnitSource, WeaponCatalog,
+        AttackTargetingPolicy, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield,
+        LocalPosition, UnitDefinitionId, UnitOwnership, UnitSource, WeaponCatalog, create_unit,
+        create_unit_with_ownership, resolve_pending_unit_orders,
     };
 
     fn layout_world() -> WorldData {

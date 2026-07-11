@@ -8,6 +8,6 @@ mod snapshot;
 mod state;
 
 pub use capture::capture_unit_inspector_snapshot;
-pub use input::{handle_inspector_input, refresh_inspector_snapshot, DevInspectorUi};
+pub use input::{DevInspectorUi, handle_inspector_input, refresh_inspector_snapshot};
 pub(crate) use panel::{setup_inspector_panel, sync_inspector_panel};
 pub use state::WorldInspectorState;

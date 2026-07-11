@@ -57,7 +57,8 @@ impl SelectedUnits {
     /// Drop dead or removed units from the selection set (ADR-059 C6).
     pub fn prune_dead(&mut self, world: &WorldData) {
         use crate::world::is_unit_alive;
-        self.0.retain(|id| world.get_unit(*id).map(is_unit_alive).unwrap_or(false));
+        self.0
+            .retain(|id| world.get_unit(*id).map(is_unit_alive).unwrap_or(false));
     }
 
     pub fn iter(&self) -> impl Iterator<Item = UnitId> + '_ {
@@ -69,8 +70,8 @@ impl SelectedUnits {
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
-        UnitCatalog, UnitDefinitionId, UnitSource, WorldData, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitCatalog,
+        UnitDefinitionId, UnitSource, WorldData, WorldPosition, create_unit,
     };
 
     fn flat_world() -> WorldData {

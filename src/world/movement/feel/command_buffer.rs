@@ -2,11 +2,11 @@
 
 use bevy::prelude::*;
 
-use crate::world::{
-    find_path, DoodadCatalog, NavigationConfig, NavigationError, UnitCatalog, UnitId, UnitState,
-    WorldData, WorldPosition,
-};
 use crate::world::unit::{UnitOrder, UnitOrderError};
+use crate::world::{
+    DoodadCatalog, NavigationConfig, NavigationError, UnitCatalog, UnitId, UnitState, WorldData,
+    WorldPosition, find_path,
+};
 
 /// One deferred order awaiting path resolution.
 #[derive(Debug, Clone, PartialEq, Reflect)]
@@ -26,7 +26,11 @@ pub struct UnitCommandBuffer {
 
 impl UnitCommandBuffer {
     pub fn enqueue(&mut self, unit_id: UnitId, order: UnitOrder) {
-        if let Some(existing) = self.pending.iter_mut().find(|entry| entry.unit_id == unit_id) {
+        if let Some(existing) = self
+            .pending
+            .iter_mut()
+            .find(|entry| entry.unit_id == unit_id)
+        {
             existing.order = order;
             return;
         }
@@ -90,7 +94,9 @@ pub fn start_unit_move_to(
     unit_id: UnitId,
     target: WorldPosition,
 ) -> Result<(), UnitOrderError> {
-    let record = world.get_unit(unit_id).ok_or(UnitOrderError::UnitNotFound)?;
+    let record = world
+        .get_unit(unit_id)
+        .ok_or(UnitOrderError::UnitNotFound)?;
     let definition_id = record.definition_id.clone();
     let start = record.placement.position;
     let definition = unit_catalog
@@ -137,21 +143,17 @@ pub(crate) fn resolve_one(
     }
 
     match order {
-        UnitOrder::Idle => {
-            world
-                .set_unit_state(unit_id, UnitState::Idle)
-                .map_err(|_| UnitOrderError::UnitNotFound)
-        }
-        UnitOrder::MoveTo { target } => {
-            start_unit_move_to(
-                world,
-                unit_catalog,
-                doodad_catalog,
-                nav_config,
-                unit_id,
-                target,
-            )
-        }
+        UnitOrder::Idle => world
+            .set_unit_state(unit_id, UnitState::Idle)
+            .map_err(|_| UnitOrderError::UnitNotFound),
+        UnitOrder::MoveTo { target } => start_unit_move_to(
+            world,
+            unit_catalog,
+            doodad_catalog,
+            nav_config,
+            unit_id,
+            target,
+        ),
         UnitOrder::Attack { .. } | UnitOrder::AttackMove { .. } => {
             Err(UnitOrderError::AttackerNotFound)
         }
@@ -171,8 +173,8 @@ fn map_navigation_error(error: NavigationError) -> UnitOrderError {
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
-        UnitDefinitionId, UnitSource,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitDefinitionId,
+        UnitSource, create_unit,
     };
 
     fn flat_world() -> WorldData {
@@ -222,12 +224,8 @@ mod tests {
             );
         }
 
-        let first = crate::world::resolve_pending_unit_orders(
-            &mut world,
-            &catalog,
-            &doodad_catalog,
-            &nav,
-        );
+        let first =
+            crate::world::resolve_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav);
         assert_eq!(first.resolved, PATH_RESOLVE_BUDGET_PER_TICK);
         assert!(!world.command_buffer().is_empty());
 
@@ -260,18 +258,17 @@ mod tests {
         .unwrap()
         .id;
 
-        world
-            .command_buffer_mut()
-            .enqueue(unit_id, UnitOrder::MoveTo { target: pos(80.0, 40.0) });
+        world.command_buffer_mut().enqueue(
+            unit_id,
+            UnitOrder::MoveTo {
+                target: pos(80.0, 40.0),
+            },
+        );
         assert_eq!(world.get_unit(unit_id).unwrap().state, UnitState::Idle);
         assert!(world.command_buffer().pending_for(unit_id).is_some());
 
-        let report = crate::world::resolve_pending_unit_orders(
-            &mut world,
-            &catalog,
-            &doodad_catalog,
-            &nav,
-        );
+        let report =
+            crate::world::resolve_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav);
         assert_eq!(report.resolved, 1);
         assert!(matches!(
             world.get_unit(unit_id).unwrap().state,

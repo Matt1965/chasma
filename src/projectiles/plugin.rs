@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use super::assets::ProjectileSceneAssets;
 use super::components::{ProjectileRenderEntity, ProjectileSceneRoot};
 use super::spawn::ProjectileRenderIndex;
-use super::sync::{sync_projectile_render_entities, ProjectileRuntimeSystems};
+use super::sync::{ProjectileRuntimeSystems, sync_projectile_render_entities};
 
 /// Owns the Projectile Runtime Layer (ADR-060 C7).
 pub struct ProjectilesRuntimePlugin;

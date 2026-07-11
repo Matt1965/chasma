@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use super::candidate::DoodadSpawnCandidate;
 use super::rng::DeterministicRng;
-use crate::world::doodad::catalog::{DoodadCatalog, DoodadDefinition};
 use crate::world::DoodadDefinitionId;
+use crate::world::doodad::catalog::{DoodadCatalog, DoodadDefinition};
 
 /// Pick one enabled definition using catalog [`DoodadDefinition::spawn_weight`] values.
 ///
@@ -107,10 +107,18 @@ mod tests {
         let mut rng_a = DeterministicRng::new(42);
         let mut rng_b = DeterministicRng::new(42);
         let picks_a: Vec<_> = (0..8)
-            .map(|_| pick_weighted_definition(&definitions, &mut rng_a).id.as_str())
+            .map(|_| {
+                pick_weighted_definition(&definitions, &mut rng_a)
+                    .id
+                    .as_str()
+            })
             .collect();
         let picks_b: Vec<_> = (0..8)
-            .map(|_| pick_weighted_definition(&definitions, &mut rng_b).id.as_str())
+            .map(|_| {
+                pick_weighted_definition(&definitions, &mut rng_b)
+                    .id
+                    .as_str()
+            })
             .collect();
         assert_eq!(picks_a, picks_b);
     }

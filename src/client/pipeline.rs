@@ -7,12 +7,12 @@ use bevy::window::PrimaryWindow;
 
 use crate::camera::RtsCamera;
 use crate::terrain::TerrainRenderAssets;
-use crate::ui::gameplay::{gameplay_input_blocked_by_hud, PlayerHudHoverState};
-use crate::units::input::{
-    cursor_screen_position, cursor_world_ray, normalized_screen_rect, pick_unit_along_ray,
-    pick_unit_command_target_along_ray, terrain_click_to_world_position, BoxSelectDrag,
-};
+use crate::ui::gameplay::{PlayerHudHoverState, gameplay_input_blocked_by_hud};
 use crate::units::UnitRenderEntity;
+use crate::units::input::{
+    BoxSelectDrag, cursor_screen_position, cursor_world_ray, normalized_screen_rect,
+    pick_unit_along_ray, pick_unit_command_target_along_ray, terrain_click_to_world_position,
+};
 use crate::world::{UnitCatalog, WorldConfig, WorldData};
 
 use super::intent::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
@@ -103,8 +103,7 @@ pub fn collect_unit_input_intents(
     if mouse_buttons.just_released(MouseButton::Left) {
         if box_drag.active {
             if box_drag.is_box_drag() {
-                let (rect_min, rect_max) =
-                    normalized_screen_rect(box_drag.start, box_drag.current);
+                let (rect_min, rect_max) = normalized_screen_rect(box_drag.start, box_drag.current);
                 if shift {
                     queue.push(ClientIntent::BoxSelectAdd { rect_min, rect_max });
                 } else {
@@ -178,7 +177,10 @@ mod tests {
             unit_id: crate::world::UnitId::new(3),
         });
         let drained = queue.drain();
-        assert!(matches!(drained[0], ClientIntent::ShiftModifier { pressed: true }));
+        assert!(matches!(
+            drained[0],
+            ClientIntent::ShiftModifier { pressed: true }
+        ));
         assert!(matches!(
             drained[1],
             ClientIntent::ToggleUnitSelection { .. }

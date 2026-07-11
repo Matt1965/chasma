@@ -1,15 +1,11 @@
 //! Time-of-day lighting evaluation and Environment sync (ADR-052 E10).
 
-use bevy::{
-    core_pipeline::Skybox,
-    light::GlobalAmbientLight,
-    prelude::*,
-};
+use bevy::{core_pipeline::Skybox, light::GlobalAmbientLight, prelude::*};
 
 use super::lighting::EnvironmentDirectionalLight;
 use super::settings::EnvironmentSettings;
 use super::singleton::{
-    update_environment_directional_light, EnvironmentDirectionalLightResolution,
+    EnvironmentDirectionalLightResolution, update_environment_directional_light,
 };
 use super::skybox::SkyboxCamera;
 use super::time_of_day::TimeOfDaySettings;
@@ -24,7 +20,6 @@ pub struct TimeOfDayLighting {
     pub ambient_color: Color,
     pub skybox_brightness: f32,
 }
-
 
 const DAY_DIRECTIONAL_COLOR: Color = Color::srgb(1.0, 0.97, 0.92);
 const TWILIGHT_DIRECTIONAL_COLOR: Color = Color::srgb(1.0, 0.72, 0.38);
@@ -86,8 +81,7 @@ pub fn evaluate_time_of_day_lighting(settings: &TimeOfDaySettings) -> TimeOfDayL
     );
 
     // Twilight adds brightness even when daylight_factor is still low at dawn/dusk.
-    let effective_daylight =
-        (daylight + warmth * settings.twilight_daylight_blend).clamp(0.0, 1.0);
+    let effective_daylight = (daylight + warmth * settings.twilight_daylight_blend).clamp(0.0, 1.0);
 
     let directional_light_illuminance = lerp_f32(
         settings.night_directional_illuminance,
@@ -95,12 +89,19 @@ pub fn evaluate_time_of_day_lighting(settings: &TimeOfDaySettings) -> TimeOfDayL
         effective_daylight,
     );
 
-    let base_directional = lerp_color(NIGHT_DIRECTIONAL_COLOR, DAY_DIRECTIONAL_COLOR, effective_daylight);
+    let base_directional = lerp_color(
+        NIGHT_DIRECTIONAL_COLOR,
+        DAY_DIRECTIONAL_COLOR,
+        effective_daylight,
+    );
     let directional_light_color = lerp_color(base_directional, TWILIGHT_DIRECTIONAL_COLOR, warmth);
 
     let night_ambient = settings.noon_ambient_brightness * settings.night_ambient_multiplier;
-    let ambient_brightness =
-        lerp_f32(night_ambient, settings.noon_ambient_brightness, effective_daylight);
+    let ambient_brightness = lerp_f32(
+        night_ambient,
+        settings.noon_ambient_brightness,
+        effective_daylight,
+    );
     let ambient_color = lerp_color(NIGHT_AMBIENT_COLOR, DAY_AMBIENT_COLOR, effective_daylight);
 
     let skybox_brightness = lerp_f32(
@@ -161,10 +162,7 @@ pub fn update_environment_from_time_of_day(
 pub fn sync_environment_presentation(
     settings: Res<EnvironmentSettings>,
     mut ambient: ResMut<GlobalAmbientLight>,
-    lights: Query<
-        (&mut DirectionalLight, &mut Transform),
-        With<EnvironmentDirectionalLight>,
-    >,
+    lights: Query<(&mut DirectionalLight, &mut Transform), With<EnvironmentDirectionalLight>>,
     mut skyboxes: Query<&mut Skybox, With<SkyboxCamera>>,
 ) {
     ambient.color = settings.ambient_color;
@@ -242,7 +240,10 @@ pub enum TimeOfDayDevAction {
 }
 
 #[cfg(feature = "dev")]
-pub fn apply_time_of_day_dev_action(action: TimeOfDayDevAction, time_of_day: &mut TimeOfDaySettings) {
+pub fn apply_time_of_day_dev_action(
+    action: TimeOfDayDevAction,
+    time_of_day: &mut TimeOfDaySettings,
+) {
     match action {
         TimeOfDayDevAction::ToggleEnabled => {
             time_of_day.enabled = !time_of_day.enabled;
@@ -356,7 +357,10 @@ mod tests {
             time_hours: 3.0,
             ..Default::default()
         };
-        assert!(!apply_time_of_day_to_settings(&mut environment, &time_of_day));
+        assert!(!apply_time_of_day_to_settings(
+            &mut environment,
+            &time_of_day
+        ));
         assert_eq!(environment, before);
     }
 
@@ -368,7 +372,10 @@ mod tests {
             time_hours: 3.0,
             ..Default::default()
         };
-        assert!(apply_time_of_day_to_settings(&mut environment, &time_of_day));
+        assert!(apply_time_of_day_to_settings(
+            &mut environment,
+            &time_of_day
+        ));
         assert_ne!(
             environment.directional_light_illuminance,
             EnvironmentSettings::default().directional_light_illuminance

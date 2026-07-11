@@ -66,7 +66,10 @@ impl DoodadCatalog {
         self.by_id.get(id).map(|&index| &self.definitions[index])
     }
 
-    pub fn definitions_for_kind(&self, kind: DoodadKind) -> impl Iterator<Item = &DoodadDefinition> {
+    pub fn definitions_for_kind(
+        &self,
+        kind: DoodadKind,
+    ) -> impl Iterator<Item = &DoodadDefinition> {
         self.by_kind
             .get(&kind)
             .into_iter()
@@ -94,7 +97,11 @@ mod tests {
         let catalog = starter_catalog();
         assert_eq!(catalog.len(), starter_definitions().len());
         assert!(catalog.get(&DoodadDefinitionId::new("tree_oak")).is_some());
-        assert!(catalog.get(&DoodadDefinitionId::new("resource_node_iron")).is_some());
+        assert!(
+            catalog
+                .get(&DoodadDefinitionId::new("resource_node_iron"))
+                .is_some()
+        );
     }
 
     #[test]
@@ -148,10 +155,7 @@ mod tests {
     fn render_key_preserved() {
         let catalog = starter_catalog();
         let rock = catalog.get(&DoodadDefinitionId::new("rock_large")).unwrap();
-        assert_eq!(
-            rock.render_key,
-            DoodadRenderKey::reserved("rock/large")
-        );
+        assert_eq!(rock.render_key, DoodadRenderKey::reserved("rock/large"));
     }
 
     #[test]

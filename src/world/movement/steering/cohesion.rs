@@ -2,8 +2,8 @@
 
 use bevy::prelude::Vec2;
 
-use super::SteeringSettings;
 use super::SteeringNeighbor;
+use super::SteeringSettings;
 
 /// Weak pull toward the local formation center derived from neighbor move targets.
 pub fn cohesion_force(

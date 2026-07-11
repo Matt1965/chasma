@@ -12,15 +12,15 @@ use bevy::tasks::{AsyncComputeTaskPool, IoTaskPool, Task};
 
 use crate::world::{ChunkCoord, ChunkData, ChunkId, WorldData};
 
-use super::albedo::{production_albedo_fallback, AlbedoFallback, ChunkAlbedoGrid};
+use super::albedo::{AlbedoFallback, ChunkAlbedoGrid, production_albedo_fallback};
 use super::albedo_decode::{AlbedoSidecarIo, decode_albedo_sidecar_io, read_albedo_sidecar_bytes};
 use super::asset::TerrainAssetError;
 use super::decode::decode_chunk;
 use super::lod::{TerrainLodSettings, desired_lod};
 use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled, chunk_mesh_geometry};
+use super::residency::{ChunkDiscardKind, ChunkResidencyTracker, discard_chunk_residency};
 use super::spawn::seam_weld_heights;
 use super::streaming::{TerrainStreamingSettings, chunk_outside_residency_sets};
-use super::residency::{ChunkDiscardKind, ChunkResidencyTracker, discard_chunk_residency};
 
 /// Per-poll caps for materialization pipeline stage transitions (ADR-012).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,11 +32,7 @@ pub struct MaterializePollBudgets {
 
 impl MaterializePollBudgets {
     pub fn unlimited_if_zero(cap: usize) -> usize {
-        if cap == 0 {
-            usize::MAX
-        } else {
-            cap
-        }
+        if cap == 0 { usize::MAX } else { cap }
     }
 
     pub fn uniform(cap: usize) -> Self {
@@ -328,8 +324,15 @@ impl PendingChunkMaterializations {
             .sort_by_key(|entry| (entry.chunk_id.coord().z, entry.chunk_id.coord().x));
 
         let mut next = Vec::with_capacity(self.in_flight.len());
-        let mut completed: Vec<(ChunkId, u64, ChunkData, Option<ChunkAlbedoGrid>, Mesh, ChunkLod, f32)> =
-            Vec::new();
+        let mut completed: Vec<(
+            ChunkId,
+            u64,
+            ChunkData,
+            Option<ChunkAlbedoGrid>,
+            Mesh,
+            ChunkLod,
+            f32,
+        )> = Vec::new();
         let decode_cap = MaterializePollBudgets::unlimited_if_zero(budgets.max_decode_starts);
         let mesh_start_cap = MaterializePollBudgets::unlimited_if_zero(budgets.max_mesh_starts);
         let mesh_store_cap = MaterializePollBudgets::unlimited_if_zero(budgets.max_mesh_stores);
@@ -410,8 +413,7 @@ impl PendingChunkMaterializations {
 
                     if mesh_starts < mesh_start_cap {
                         mesh_starts += 1;
-                        let lod =
-                            desired_lod(focus_chunk, entry.chunk_id.coord(), lod_settings);
+                        let lod = desired_lod(focus_chunk, entry.chunk_id.coord(), lod_settings);
                         entry.mesh_lod = Some(lod);
                         let seam_weld = seam_weld_heights(world, entry.chunk_id);
                         entry.stage = MaterializeStage::MeshBuild(spawn_chunk_mesh_build_task(
@@ -544,23 +546,19 @@ impl PendingChunkMaterializations {
 
                             if mesh_starts < mesh_start_cap {
                                 mesh_starts += 1;
-                                let lod = desired_lod(
-                                    focus_chunk,
-                                    entry.chunk_id.coord(),
-                                    lod_settings,
-                                );
+                                let lod =
+                                    desired_lod(focus_chunk, entry.chunk_id.coord(), lod_settings);
                                 entry.mesh_lod = Some(lod);
                                 let seam_weld = seam_weld_heights(world, entry.chunk_id);
-                                entry.stage = MaterializeStage::MeshBuild(
-                                    spawn_chunk_mesh_build_task(
+                                entry.stage =
+                                    MaterializeStage::MeshBuild(spawn_chunk_mesh_build_task(
                                         data,
                                         entry.albedo_sidecar.take(),
                                         vertical_scale,
                                         lod,
                                         seam_weld,
                                         production_albedo_fallback(),
-                                    ),
-                                );
+                                    ));
                                 next.push(entry);
                             } else {
                                 entry.stage = MaterializeStage::DecodeReady { data };
@@ -828,17 +826,12 @@ pub(crate) fn read_chunk_file_text(path: &Path) -> Result<String, TerrainAssetEr
 }
 
 /// Decode chunk RON text (decode stage body; reuses [`decode_chunk`]).
-pub(crate) fn decode_chunk_text(
-    text: &str,
-) -> Result<(ChunkId, ChunkData), TerrainAssetError> {
+pub(crate) fn decode_chunk_text(text: &str) -> Result<(ChunkId, ChunkData), TerrainAssetError> {
     decode_chunk(text)
 }
 
 /// IO stage: read height chunk and optional albedo sidecar on [`IoTaskPool`].
-pub fn spawn_chunk_io_task(
-    height_path: PathBuf,
-    albedo_path: Option<PathBuf>,
-) -> ChunkIoTask {
+pub fn spawn_chunk_io_task(height_path: PathBuf, albedo_path: Option<PathBuf>) -> ChunkIoTask {
     IoTaskPool::get().spawn(async move {
         let height_text = read_chunk_file_text(&height_path)?;
         let albedo_sidecar = match albedo_path.as_deref() {
@@ -873,10 +866,7 @@ pub fn spawn_chunk_mesh_build_task(
             Some(sidecar) => match decode_albedo_sidecar_io(sidecar, spe) {
                 Ok(albedo) => albedo,
                 Err(err) => {
-                    bevy::log::error!(
-                        "albedo sidecar decode failed for {:?}: {err}",
-                        sidecar.path
-                    );
+                    bevy::log::error!("albedo sidecar decode failed for {:?}: {err}", sidecar.path);
                     None
                 }
             },
@@ -1039,19 +1029,13 @@ mod tests {
         keep.insert(ChunkCoord::new(2, 2));
 
         assert!(materialized_result_may_store(
-            &residency,
-            chunk_id,
-            generation,
-            &keep
+            &residency, chunk_id, generation, &keep
         ));
 
         residency.cancel(chunk_id);
 
         assert!(!materialized_result_may_store(
-            &residency,
-            chunk_id,
-            generation,
-            &keep
+            &residency, chunk_id, generation, &keep
         ));
     }
 
@@ -1063,10 +1047,7 @@ mod tests {
         let keep = HashSet::new();
 
         assert!(!materialized_result_may_store(
-            &residency,
-            chunk_id,
-            generation,
-            &keep
+            &residency, chunk_id, generation, &keep
         ));
     }
 
@@ -1081,8 +1062,12 @@ mod tests {
         let mut keep = HashSet::new();
         keep.insert(ChunkCoord::new(1, 1));
 
-        assert!(!materialized_result_may_store(&residency, chunk_id, 0, &keep));
-        assert!(materialized_result_may_store(&residency, chunk_id, second, &keep));
+        assert!(!materialized_result_may_store(
+            &residency, chunk_id, 0, &keep
+        ));
+        assert!(materialized_result_may_store(
+            &residency, chunk_id, second, &keep
+        ));
     }
 
     #[test]
@@ -1093,7 +1078,13 @@ mod tests {
         for i in 0..6 {
             let chunk_id = ChunkId::new(ChunkCoord::new(i, 0));
             let generation = residency.begin_loading(chunk_id).unwrap();
-            pending.push_materialized_test_only(chunk_id, generation, sample_chunk_data(i), 1.0, ChunkLod::Full);
+            pending.push_materialized_test_only(
+                chunk_id,
+                generation,
+                sample_chunk_data(i),
+                1.0,
+                ChunkLod::Full,
+            );
         }
 
         let budget = 2;
@@ -1131,14 +1122,7 @@ mod tests {
         let budgets = MaterializePollBudgets::uniform(16);
         for _ in 0..64 {
             pending.poll_in_flight(
-                residency,
-                keep,
-                budgets,
-                1.0,
-                focus,
-                &settings,
-                world,
-                &mut stats,
+                residency, keep, budgets, 1.0, focus, &settings, world, &mut stats,
             );
             if pending.materialized_len() > 0 {
                 break;
@@ -1154,10 +1138,8 @@ mod tests {
         let mut residency = ChunkResidencyTracker::default();
         let chunk_id = ChunkId::new(ChunkCoord::new(9, 9));
         let generation = residency.begin_loading(chunk_id).unwrap();
-        let path = std::env::temp_dir().join(format!(
-            "chasma_bad_decode_{}.ron",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("chasma_bad_decode_{}.ron", std::process::id()));
         std::fs::write(&path, "not valid chunk ron").unwrap();
         assert!(pending.try_start_io(chunk_id, generation, path.clone(), None));
 
@@ -1200,7 +1182,13 @@ mod tests {
         let mut residency = ChunkResidencyTracker::default();
         let chunk_id = ChunkId::new(ChunkCoord::new(3, 3));
         let generation = residency.begin_loading(chunk_id).unwrap();
-        pending.push_materialized_test_only(chunk_id, generation, sample_chunk_data(0), 1.0, ChunkLod::Full);
+        pending.push_materialized_test_only(
+            chunk_id,
+            generation,
+            sample_chunk_data(0),
+            1.0,
+            ChunkLod::Full,
+        );
 
         let keep = HashSet::new();
         let desired = HashSet::new();

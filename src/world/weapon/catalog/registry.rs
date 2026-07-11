@@ -57,7 +57,9 @@ impl std::fmt::Display for WeaponCatalogError {
 }
 
 impl WeaponCatalog {
-    pub fn from_definitions(definitions: Vec<WeaponDefinition>) -> Result<Self, WeaponCatalogError> {
+    pub fn from_definitions(
+        definitions: Vec<WeaponDefinition>,
+    ) -> Result<Self, WeaponCatalogError> {
         let mut by_id = HashMap::with_capacity(definitions.len());
 
         for (index, definition) in definitions.iter().enumerate() {
@@ -66,10 +68,7 @@ impl WeaponCatalog {
             }
         }
 
-        Ok(Self {
-            definitions,
-            by_id,
-        })
+        Ok(Self { definitions, by_id })
     }
 
     pub fn len(&self) -> usize {
@@ -89,7 +88,9 @@ impl WeaponCatalog {
     }
 
     pub fn enabled_definitions(&self) -> impl Iterator<Item = &WeaponDefinition> {
-        self.definitions.iter().filter(|definition| definition.enabled)
+        self.definitions
+            .iter()
+            .filter(|definition| definition.enabled)
     }
 
     /// Whether an enabled unit's default weapon exists and is enabled.
@@ -117,7 +118,10 @@ impl WeaponCatalog {
     }
 
     /// Validate every enabled unit references an enabled weapon.
-    pub fn validate_units(&self, units: &crate::world::UnitCatalog) -> Result<(), WeaponCatalogError> {
+    pub fn validate_units(
+        &self,
+        units: &crate::world::UnitCatalog,
+    ) -> Result<(), WeaponCatalogError> {
         for unit in units.enabled_definitions() {
             self.validate_unit_default_weapon(unit)?;
         }
@@ -133,15 +137,29 @@ mod tests {
     #[test]
     fn catalog_contains_starter_weapons() {
         let catalog = WeaponCatalog::default();
-        assert!(catalog.get(&WeaponDefinitionId::new("weapon_fists")).is_some());
-        assert!(catalog.get(&WeaponDefinitionId::new("weapon_wolf_bite")).is_some());
-        assert!(catalog.get(&WeaponDefinitionId::new("weapon_claws")).is_some());
+        assert!(
+            catalog
+                .get(&WeaponDefinitionId::new("weapon_fists"))
+                .is_some()
+        );
+        assert!(
+            catalog
+                .get(&WeaponDefinitionId::new("weapon_wolf_bite"))
+                .is_some()
+        );
+        assert!(
+            catalog
+                .get(&WeaponDefinitionId::new("weapon_claws"))
+                .is_some()
+        );
     }
 
     #[test]
     fn lookup_by_weapon_id() {
         let catalog = WeaponCatalog::default();
-        let fists = catalog.get(&WeaponDefinitionId::new("weapon_fists")).unwrap();
+        let fists = catalog
+            .get(&WeaponDefinitionId::new("weapon_fists"))
+            .unwrap();
         assert_eq!(fists.display_name, "Fists");
         assert!(catalog.get(&WeaponDefinitionId::new("missing")).is_none());
     }

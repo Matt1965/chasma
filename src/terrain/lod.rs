@@ -184,7 +184,7 @@ pub fn desired_lod(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::terrain::asset::{Manifest, ManifestChunk, MANIFEST_FORMAT_VERSION};
+    use crate::terrain::asset::{MANIFEST_FORMAT_VERSION, Manifest, ManifestChunk};
     use crate::terrain::load::config_snapshot;
     use crate::world::{ChunkCoord, WorldConfig};
     use std::fs;
@@ -209,11 +209,7 @@ mod tests {
             config: config_snapshot(&config),
             chunks,
         };
-        fs::write(
-            dir.join("manifest.ron"),
-            ron::to_string(&manifest).unwrap(),
-        )
-        .unwrap();
+        fs::write(dir.join("manifest.ron"), ron::to_string(&manifest).unwrap()).unwrap();
         let catalog =
             TerrainWorldCatalog::from_manifest(&dir.join("manifest.ron"), &config).unwrap();
         fs::remove_dir_all(&dir).ok();
@@ -246,15 +242,39 @@ mod tests {
             }
         }
 
-        assert_eq!(desired_lod(focus, coord(12, 10), &settings), ChunkLod::Quarter);
-        assert_eq!(desired_lod(focus, coord(10, 12), &settings), ChunkLod::Quarter);
-        assert_eq!(desired_lod(focus, coord(12, 12), &settings), ChunkLod::Quarter);
+        assert_eq!(
+            desired_lod(focus, coord(12, 10), &settings),
+            ChunkLod::Quarter
+        );
+        assert_eq!(
+            desired_lod(focus, coord(10, 12), &settings),
+            ChunkLod::Quarter
+        );
+        assert_eq!(
+            desired_lod(focus, coord(12, 12), &settings),
+            ChunkLod::Quarter
+        );
 
-        assert_eq!(desired_lod(focus, coord(13, 10), &settings), ChunkLod::Eighth);
-        assert_eq!(desired_lod(focus, coord(10, 13), &settings), ChunkLod::Eighth);
-        assert_eq!(desired_lod(focus, coord(13, 13), &settings), ChunkLod::Eighth);
-        assert_eq!(desired_lod(focus, coord(15, 10), &settings), ChunkLod::Eighth);
-        assert_eq!(desired_lod(focus, coord(10, 15), &settings), ChunkLod::Eighth);
+        assert_eq!(
+            desired_lod(focus, coord(13, 10), &settings),
+            ChunkLod::Eighth
+        );
+        assert_eq!(
+            desired_lod(focus, coord(10, 13), &settings),
+            ChunkLod::Eighth
+        );
+        assert_eq!(
+            desired_lod(focus, coord(13, 13), &settings),
+            ChunkLod::Eighth
+        );
+        assert_eq!(
+            desired_lod(focus, coord(15, 10), &settings),
+            ChunkLod::Eighth
+        );
+        assert_eq!(
+            desired_lod(focus, coord(10, 15), &settings),
+            ChunkLod::Eighth
+        );
     }
 
     #[test]
@@ -268,8 +288,14 @@ mod tests {
 
         assert_eq!(desired_lod(focus, focus, &settings), ChunkLod::Full);
         assert_eq!(desired_lod(focus, coord(11, 10), &settings), ChunkLod::Half);
-        assert_eq!(desired_lod(focus, coord(12, 10), &settings), ChunkLod::Quarter);
-        assert_eq!(desired_lod(focus, coord(13, 10), &settings), ChunkLod::Eighth);
+        assert_eq!(
+            desired_lod(focus, coord(12, 10), &settings),
+            ChunkLod::Quarter
+        );
+        assert_eq!(
+            desired_lod(focus, coord(13, 10), &settings),
+            ChunkLod::Eighth
+        );
     }
 
     #[test]
@@ -298,13 +324,7 @@ mod tests {
         let settings = TerrainLodSettings::default();
         let focus = coord(10, 10);
         let load_radius = 1;
-        let catalog = test_catalog(&[
-            (10, 10),
-            (11, 10),
-            (12, 10),
-            (13, 10),
-            (10, 13),
-        ]);
+        let catalog = test_catalog(&[(10, 10), (11, 10), (12, 10), (13, 10), (10, 13)]);
 
         let targets = predicted_lod_targets(focus, &catalog, &settings, load_radius);
 

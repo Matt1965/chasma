@@ -14,10 +14,5 @@ pub fn spawn_rts_camera(mut commands: Commands, settings: Res<CameraSettings>) {
     let state = RtsCameraState::new(focus, yaw, pitch, distance);
     let transform = orbit_transform(focus, yaw, pitch, distance);
 
-    commands.spawn((
-        Camera3d::default(),
-        RtsCamera,
-        state,
-        transform,
-    ));
+    commands.spawn((Camera3d::default(), RtsCamera, state, transform));
 }

@@ -9,10 +9,10 @@ mod finalized;
 mod pose;
 mod variation;
 
-pub use finalize::{finalize_placements, PlacementFinalizationResult};
+pub use finalize::{PlacementFinalizationResult, finalize_placements};
 pub use finalized::FinalizedDoodadPlacement;
 pub use pose::DoodadPlacement;
 #[allow(unused_imports)]
 pub use variation::{
-    apply_catalog_believability, apply_catalog_believability_batch, PlacementBelievabilitySummary,
+    PlacementBelievabilitySummary, apply_catalog_believability, apply_catalog_believability_batch,
 };

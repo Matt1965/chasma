@@ -1,9 +1,9 @@
-﻿//! Render-space terrain click â†’ authoritative [`WorldPosition`] (ADR-033).
+//! Render-space terrain click â†’ authoritative [`WorldPosition`] (ADR-033).
 
 use bevy::prelude::*;
 
 use crate::terrain::render_height;
-use crate::world::{ground_world_position, ChunkLayout, WorldData, WorldPosition};
+use crate::world::{ChunkLayout, WorldData, WorldPosition, ground_world_position};
 
 /// Maximum ray distance for terrain picking (meters).
 const TERRAIN_RAY_MAX_DISTANCE: f32 = 5_000.0;
@@ -35,7 +35,8 @@ pub fn terrain_click_to_world_position(
 ) -> Option<TerrainClickResult> {
     let t = find_terrain_ray_hit_distance(ray, world, layout, vertical_scale)?;
     let render_hit = ray.get_point(t);
-    let world_position = authoritative_position_at_global_xz(render_hit.x, render_hit.z, world, layout)?;
+    let world_position =
+        authoritative_position_at_global_xz(render_hit.x, render_hit.z, world, layout)?;
     Some(TerrainClickResult {
         render_hit,
         world_position,
@@ -61,7 +62,8 @@ fn find_terrain_ray_hit_distance(
 ) -> Option<f32> {
     let step = TERRAIN_RAY_MAX_DISTANCE / TERRAIN_RAY_COARSE_STEPS as f32;
     let mut previous_t = 0.0;
-    let mut previous_above = ray_height_error(ray, world, layout, vertical_scale, previous_t)? > 0.0;
+    let mut previous_above =
+        ray_height_error(ray, world, layout, vertical_scale, previous_t)? > 0.0;
 
     for step_index in 1..=TERRAIN_RAY_COARSE_STEPS {
         let t = step_index as f32 * step;
@@ -134,7 +136,12 @@ mod tests {
             units_per_meter: 1.0,
         };
         let mut world = WorldData::new(layout);
-        let heightfield = Heightfield::from_samples(3, 128.0, vec![0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0]).unwrap();
+        let heightfield = Heightfield::from_samples(
+            3,
+            128.0,
+            vec![0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0],
+        )
+        .unwrap();
         world.insert(
             ChunkId::new(ChunkCoord::new(0, 0)),
             ChunkData::new(heightfield, Vec::new()),

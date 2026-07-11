@@ -6,7 +6,7 @@ use super::assets::preload_unit_scenes;
 use super::components::{UnitRenderEntity, UnitSceneRoot, UnitSelectionIndicator};
 use super::settings::UnitsRuntimeSettings;
 use super::spawn::UnitRenderIndex;
-use super::sync::{sync_unit_render_entities, UnitRuntimeSystems};
+use super::sync::{UnitRuntimeSystems, sync_unit_render_entities};
 
 /// Owns the Unit Runtime Layer (ADR-028).
 pub struct UnitsRuntimePlugin;

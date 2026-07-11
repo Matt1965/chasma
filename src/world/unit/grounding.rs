@@ -3,9 +3,9 @@
 //! Snaps unit placement Y to resident heightfield samples. Does not use terrain
 //! runtime meshes, render exaggeration, or automatic per-frame updates.
 
+use super::UnitInsertError;
 use super::id::UnitId;
 use super::record::UnitRecord;
-use super::UnitInsertError;
 use crate::world::try_ground_world_position;
 use crate::world::{WorldData, WorldPosition};
 
@@ -39,10 +39,12 @@ pub fn ground_unit_to_terrain(
         .position;
     let grounded =
         ground_unit_position(world, position).ok_or(UnitGroundingError::TerrainUnavailable)?;
-    world.relocate_unit(unit_id, grounded).map_err(|error| match error {
-        UnitInsertError::UnitNotFound => UnitGroundingError::UnitNotFound,
-        UnitInsertError::ChunkPlacementMismatch => UnitGroundingError::TerrainUnavailable,
-    })
+    world
+        .relocate_unit(unit_id, grounded)
+        .map_err(|error| match error {
+            UnitInsertError::UnitNotFound => UnitGroundingError::UnitNotFound,
+            UnitInsertError::ChunkPlacementMismatch => UnitGroundingError::TerrainUnavailable,
+        })
 }
 
 #[cfg(test)]
@@ -50,12 +52,12 @@ mod tests {
     use super::*;
     use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
     use crate::units::{
-        sync_unit_render_entities, UnitRenderIndex, UnitSceneAssets, UnitSyncOverrides,
+        UnitRenderIndex, UnitSceneAssets, UnitSyncOverrides, sync_unit_render_entities,
     };
     use crate::world::{
-        create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
-        UnitCatalog, UnitDefinitionId, UnitMetadata, UnitPlacement, UnitRecord, UnitSource,
-        UnitState, WorldConfig, WorldData,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitCatalog,
+        UnitDefinitionId, UnitMetadata, UnitPlacement, UnitRecord, UnitSource, UnitState,
+        WorldConfig, WorldData, create_unit,
     };
     use bevy::asset::AssetPlugin;
     use bevy::prelude::{
@@ -215,7 +217,14 @@ mod tests {
         let err = ground_unit_to_terrain(&mut world, unit_id).unwrap_err();
         assert_eq!(err, UnitGroundingError::TerrainUnavailable);
         assert_eq!(
-            world.get_unit(unit_id).unwrap().placement.position.local.0.y,
+            world
+                .get_unit(unit_id)
+                .unwrap()
+                .placement
+                .position
+                .local
+                .0
+                .y,
             42.0
         );
     }
@@ -236,7 +245,14 @@ mod tests {
 
         ground_unit_to_terrain(&mut world, unit_id).unwrap();
         assert_eq!(
-            world.get_unit(unit_id).unwrap().placement.position.local.0.y,
+            world
+                .get_unit(unit_id)
+                .unwrap()
+                .placement
+                .position
+                .local
+                .0
+                .y,
             18.5
         );
     }
@@ -290,7 +306,11 @@ mod tests {
             .mark_resident(chunk);
         app.update();
 
-        let record = app.world().resource::<WorldData>().get_unit(unit_id).unwrap();
+        let record = app
+            .world()
+            .resource::<WorldData>()
+            .get_unit(unit_id)
+            .unwrap();
         assert_eq!(record.placement.position.local.0.y, 10.0);
 
         let entity = app.world().resource::<UnitRenderIndex>().0[&unit_id];

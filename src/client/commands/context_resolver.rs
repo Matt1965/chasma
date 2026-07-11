@@ -2,7 +2,9 @@
 
 use bevy::prelude::Vec3;
 
-use crate::world::{is_valid_attack_target, AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldData};
+use crate::world::{
+    AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldData, is_valid_attack_target,
+};
 
 use crate::world::{UnitId, WorldPosition};
 
@@ -40,9 +42,7 @@ pub fn resolve_contextual_command_with_armed(
     if let Some(armed_type) = armed {
         return match armed_type {
             CommandType::Attack => match ctx.target {
-                CommandTarget::Unit { unit_id }
-                    if any_selected_can_attack(ctx, unit_id) =>
-                {
+                CommandTarget::Unit { unit_id } if any_selected_can_attack(ctx, unit_id) => {
                     Some(ContextualCommandIntent {
                         command_type: CommandType::Attack,
                         target: CommandTarget::Unit { unit_id },
@@ -68,7 +68,9 @@ pub fn resolve_contextual_command_with_armed(
     match &ctx.target {
         CommandTarget::Terrain { position } => Some(ContextualCommandIntent {
             command_type: CommandType::Move,
-            target: CommandTarget::Terrain { position: *position },
+            target: CommandTarget::Terrain {
+                position: *position,
+            },
         }),
         CommandTarget::Unit { unit_id } => {
             let attacker = *ctx.selected_units.first()?;
@@ -125,15 +127,18 @@ pub fn resolve_palette_command(
         ),
     });
 
-    Some(ContextualCommandIntent { command_type, target })
+    Some(ContextualCommandIntent {
+        command_type,
+        target,
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit_with_ownership, ChunkCoord, ChunkLayout, LocalPosition, UnitDefinitionId,
-        UnitOwnership, UnitSource, WorldData, WorldPosition,
+        ChunkCoord, ChunkLayout, LocalPosition, UnitDefinitionId, UnitOwnership, UnitSource,
+        WorldData, WorldPosition, create_unit_with_ownership,
     };
     use bevy::prelude::Vec3;
 
@@ -172,7 +177,9 @@ mod tests {
         let units = [UnitId::new(1)];
         let resolved = resolve_contextual_command(&ctx(
             &units,
-            CommandTarget::Terrain { position: pos(10.0, 10.0) },
+            CommandTarget::Terrain {
+                position: pos(10.0, 10.0),
+            },
             &world,
             &unit_catalog,
             &weapons,
@@ -267,13 +274,17 @@ mod tests {
         });
         let unit_catalog = UnitCatalog::default();
         let weapons = WeaponCatalog::default();
-        assert!(resolve_contextual_command(&ctx(
-            &[],
-            CommandTarget::Terrain { position: pos(0.0, 0.0) },
-            &world,
-            &unit_catalog,
-            &weapons,
-        ))
-        .is_none());
+        assert!(
+            resolve_contextual_command(&ctx(
+                &[],
+                CommandTarget::Terrain {
+                    position: pos(0.0, 0.0)
+                },
+                &world,
+                &unit_catalog,
+                &weapons,
+            ))
+            .is_none()
+        );
     }
 }

@@ -1,6 +1,9 @@
 //! Excel column schema and conversion into [`DoodadDefinition`].
 
-use crate::world::{default_blocks_movement, BiomeId, DoodadDefinition, DoodadDefinitionId, DoodadKind, DoodadRenderKey};
+use crate::world::{
+    BiomeId, DoodadDefinition, DoodadDefinitionId, DoodadKind, DoodadRenderKey,
+    default_blocks_movement,
+};
 
 /// Required worksheet column headers (exact names; order irrelevant).
 ///
@@ -206,26 +209,24 @@ impl DoodadImportRow {
             self.description.trim()
         };
 
-        Ok(
-            DoodadDefinition::new(
-                DoodadDefinitionId::new(self.definition_id.trim()),
-                kind,
-                display_name,
-                placement_radius,
-                self.min_size,
-                self.max_size,
-                None,
-                None,
-                max_slope,
-                self.enabled,
-                DoodadRenderKey::reserved(render_key),
-            )
-            .with_allowed_biomes(allowed_biomes_for_row(&self.biome)?)
-            .with_spawn_weight(self.spawn_weight)
-            .with_random_rotation_y(self.random_rotation)
-            .with_blocks_movement(blocks_movement)
-            .with_block_radius_meters(block_radius_meters),
+        Ok(DoodadDefinition::new(
+            DoodadDefinitionId::new(self.definition_id.trim()),
+            kind,
+            display_name,
+            placement_radius,
+            self.min_size,
+            self.max_size,
+            None,
+            None,
+            max_slope,
+            self.enabled,
+            DoodadRenderKey::reserved(render_key),
         )
+        .with_allowed_biomes(allowed_biomes_for_row(&self.biome)?)
+        .with_spawn_weight(self.spawn_weight)
+        .with_random_rotation_y(self.random_rotation)
+        .with_blocks_movement(blocks_movement)
+        .with_block_radius_meters(block_radius_meters))
     }
 }
 
@@ -277,7 +278,10 @@ mod tests {
     fn category_parsing_includes_flora_alias() {
         assert_eq!(parse_category("Tree").unwrap(), DoodadKind::Tree);
         assert_eq!(parse_category("Flora").unwrap(), DoodadKind::Tree);
-        assert_eq!(parse_category("Resource").unwrap(), DoodadKind::ResourceNode);
+        assert_eq!(
+            parse_category("Resource").unwrap(),
+            DoodadKind::ResourceNode
+        );
         assert!(parse_category("Unknown").is_err());
     }
 
@@ -294,7 +298,9 @@ mod tests {
     #[test]
     fn legacy_tree_folder_path_maps_to_oak_mesh() {
         assert_eq!(
-            canonical_doodad_render_key(normalize_file_path_to_render_key(r"\doodads\tree").unwrap()),
+            canonical_doodad_render_key(
+                normalize_file_path_to_render_key(r"\doodads\tree").unwrap()
+            ),
             "tree/oak"
         );
     }

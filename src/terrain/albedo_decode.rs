@@ -30,9 +30,7 @@ pub fn decode_albedo_ron(text: &str) -> Result<ChunkAlbedoGrid, TerrainAssetErro
 }
 
 fn albedo_extension(path: &Path) -> &str {
-    path.extension()
-        .and_then(|s| s.to_str())
-        .unwrap_or("")
+    path.extension().and_then(|s| s.to_str()).unwrap_or("")
 }
 
 /// Decode an albedo sidecar from in-memory bytes (extension selects the decoder).
@@ -42,10 +40,11 @@ pub fn decode_albedo_from_bytes(
 ) -> Result<ChunkAlbedoGrid, TerrainAssetError> {
     match albedo_extension(path) {
         "ron" => {
-            let text = std::str::from_utf8(bytes).map_err(|err| TerrainAssetError::AlbedoDecode {
-                path: path.display().to_string(),
-                message: err.to_string(),
-            })?;
+            let text =
+                std::str::from_utf8(bytes).map_err(|err| TerrainAssetError::AlbedoDecode {
+                    path: path.display().to_string(),
+                    message: err.to_string(),
+                })?;
             decode_albedo_ron(text)
         }
         "exr" => decode_albedo_exr_bytes(path, bytes),
@@ -72,8 +71,8 @@ pub fn decode_albedo_exr(path: impl AsRef<Path>) -> Result<ChunkAlbedoGrid, Terr
     use exr::prelude::{FlatSamples, read_first_flat_layer_from_file};
 
     let path = path.as_ref();
-    let image = read_first_flat_layer_from_file(path)
-        .map_err(|err| TerrainAssetError::AlbedoDecode {
+    let image =
+        read_first_flat_layer_from_file(path).map_err(|err| TerrainAssetError::AlbedoDecode {
             path: path.display().to_string(),
             message: err.to_string(),
         })?;
@@ -163,10 +162,12 @@ pub fn decode_albedo_png(path: impl AsRef<Path>) -> Result<ChunkAlbedoGrid, Terr
         message: err.to_string(),
     })?;
     let decoder = png::Decoder::new(BufReader::new(file));
-    let mut reader = decoder.read_info().map_err(|err| TerrainAssetError::AlbedoDecode {
-        path: path.display().to_string(),
-        message: err.to_string(),
-    })?;
+    let mut reader = decoder
+        .read_info()
+        .map_err(|err| TerrainAssetError::AlbedoDecode {
+            path: path.display().to_string(),
+            message: err.to_string(),
+        })?;
 
     let width = reader.info().width as usize;
     let height = reader.info().height as usize;
@@ -201,7 +202,13 @@ pub fn decode_albedo_png(path: impl AsRef<Path>) -> Result<ChunkAlbedoGrid, Terr
 
     let data: Vec<[f32; 3]> = buf
         .chunks_exact(pixels)
-        .map(|px| [px[0] as f32 / 255.0, px[1] as f32 / 255.0, px[2] as f32 / 255.0])
+        .map(|px| {
+            [
+                px[0] as f32 / 255.0,
+                px[1] as f32 / 255.0,
+                px[2] as f32 / 255.0,
+            ]
+        })
         .collect();
 
     ChunkAlbedoGrid::from_samples(width, data).map_err(TerrainAssetError::AlbedoGrid)
@@ -224,10 +231,12 @@ fn decode_albedo_png_bytes(
     use std::io::Cursor;
 
     let decoder = png::Decoder::new(Cursor::new(bytes));
-    let mut reader = decoder.read_info().map_err(|err| TerrainAssetError::AlbedoDecode {
-        path: path.display().to_string(),
-        message: err.to_string(),
-    })?;
+    let mut reader = decoder
+        .read_info()
+        .map_err(|err| TerrainAssetError::AlbedoDecode {
+            path: path.display().to_string(),
+            message: err.to_string(),
+        })?;
 
     let width = reader.info().width as usize;
     let height = reader.info().height as usize;
@@ -262,7 +271,13 @@ fn decode_albedo_png_bytes(
 
     let data: Vec<[f32; 3]> = buf
         .chunks_exact(pixels)
-        .map(|px| [px[0] as f32 / 255.0, px[1] as f32 / 255.0, px[2] as f32 / 255.0])
+        .map(|px| {
+            [
+                px[0] as f32 / 255.0,
+                px[1] as f32 / 255.0,
+                px[2] as f32 / 255.0,
+            ]
+        })
         .collect();
 
     ChunkAlbedoGrid::from_samples(width, data).map_err(TerrainAssetError::AlbedoGrid)
@@ -321,7 +336,9 @@ fn decode_albedo_exr_bytes(
 }
 
 /// Read optional albedo sidecar bytes on the IO pool (no decode).
-pub fn read_albedo_sidecar_bytes(path: &Path) -> Result<Option<AlbedoSidecarIo>, TerrainAssetError> {
+pub fn read_albedo_sidecar_bytes(
+    path: &Path,
+) -> Result<Option<AlbedoSidecarIo>, TerrainAssetError> {
     if !path.is_file() {
         eprintln!(
             "terrain albedo: sidecar missing at {}, continuing without albedo",

@@ -52,12 +52,12 @@ pub fn read_scene_file(path: &Path) -> Result<SceneDefinition, SceneSaveError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bevy::prelude::Vec3;
-    use crate::dev::scenes::{capture_scene, SceneCaptureContext};
+    use crate::dev::scenes::{SceneCaptureContext, capture_scene};
     use crate::world::{
-        create_unit, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
-        UnitCatalog, UnitDefinitionId, UnitSource, WorldData, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitCatalog,
+        UnitDefinitionId, UnitSource, WorldData, WorldPosition, create_unit,
     };
+    use bevy::prelude::Vec3;
 
     fn flat_world() -> WorldData {
         let layout = ChunkLayout {

@@ -3,15 +3,16 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    create_doodad, create_unit_with_ownership, DoodadCatalog, DoodadPlacementOverrides,
-    DoodadSource, UnitCatalog, UnitOwnership, UnitSource, WorldData, WorldPosition,
+    DoodadCatalog, DoodadPlacementOverrides, DoodadSource, UnitCatalog, UnitOwnership, UnitSource,
+    WorldData, WorldPosition, create_doodad, create_unit_with_ownership,
 };
 
 use super::super::dev_mode::DefinitionId;
-use super::brush::{generate_brush_positions, BrushPointBuffer, BrushSettings, MAX_BRUSH_SPAWN_COUNT};
+use super::brush::{
+    BrushPointBuffer, BrushSettings, MAX_BRUSH_SPAWN_COUNT, generate_brush_positions,
+};
 use super::placement_rules::{
-    validate_placement, PlacementRules, PlacementValidateContext,
-    PlacementValidation,
+    PlacementRules, PlacementValidateContext, PlacementValidation, validate_placement,
 };
 
 /// Request to place many instances from one brush click.
@@ -88,7 +89,11 @@ pub fn plan_batch_spawn(
     };
 
     let mut report = BatchSpawnReport::default();
-    report.attempted = scratch.brush_buffer.positions().len().min(MAX_BRUSH_SPAWN_COUNT as usize) as u32;
+    report.attempted = scratch
+        .brush_buffer
+        .positions()
+        .len()
+        .min(MAX_BRUSH_SPAWN_COUNT as usize) as u32;
 
     for &candidate in scratch.brush_buffer.positions() {
         match validate_placement(&ctx, candidate, &scratch.accepted) {
@@ -170,18 +175,6 @@ fn spawn_at(
         )
         .is_ok(),
     }
-}
-
-/// Classify preview point validity without spawning.
-pub fn classify_preview_point(
-    ctx: &PlacementValidateContext<'_>,
-    candidate: WorldPosition,
-    accepted_peers: &[WorldPosition],
-) -> bool {
-    matches!(
-        validate_placement(ctx, candidate, accepted_peers),
-        PlacementValidation::Accepted(_)
-    )
 }
 
 #[cfg(test)]
@@ -324,6 +317,9 @@ mod tests {
             &doodad_catalog,
             &mut scratch,
         );
-        assert_eq!(world.doodads_in_chunk(ChunkId::new(ChunkCoord::new(0, 0))), None);
+        assert_eq!(
+            world.doodads_in_chunk(ChunkId::new(ChunkCoord::new(0, 0))),
+            None
+        );
     }
 }

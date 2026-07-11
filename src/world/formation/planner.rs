@@ -6,7 +6,7 @@ use crate::world::{ChunkLayout, UnitCatalog, UnitId, WorldData, WorldPosition};
 
 use super::distribution::formation_offsets;
 use super::layout::FormationKind;
-use super::offsets::{formation_jitter, unit_spacing_meters, FormationOffset};
+use super::offsets::{FormationOffset, formation_jitter, unit_spacing_meters};
 
 /// Per-unit move target derived from a group move command.
 #[derive(Debug, Clone, PartialEq)]
@@ -61,11 +61,7 @@ impl FormationPlanner {
             .into_iter()
             .zip(slot_offsets)
             .map(|(unit_id, offset)| {
-                let global = Vec3::new(
-                    center.x + offset.xz.x,
-                    center.y,
-                    center.z + offset.xz.y,
-                );
+                let global = Vec3::new(center.x + offset.xz.x, center.y, center.z + offset.xz.y);
                 FormationAssignment {
                     unit_id,
                     target: WorldPosition::from_global(global, layout),
@@ -102,8 +98,8 @@ fn apply_jitter(
 mod tests {
     use super::*;
     use crate::world::{
-        create_unit, ChunkCoord, ChunkData, ChunkId, Heightfield, LocalPosition, UnitDefinitionId,
-        DoodadCatalog, NavigationConfig, UnitSource,
+        ChunkCoord, ChunkData, ChunkId, DoodadCatalog, Heightfield, LocalPosition,
+        NavigationConfig, UnitDefinitionId, UnitSource, create_unit,
     };
 
     fn layout() -> ChunkLayout {

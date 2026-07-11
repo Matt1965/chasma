@@ -8,7 +8,53 @@ It does not define final project scope.
 
 The final project vision is described in ARCHITECTURE.md.
 
-Future systems may appear in ARCHITECTURE.md long before they appear in this roadmap.
+Game design goals and planned mechanics are described in [DESIGN.md](DESIGN.md).
+
+Future systems may appear in ARCHITECTURE.md or DESIGN.md long before they appear in this roadmap.
+
+---
+
+# Review Closure Status (REVIEW-CLOSE, July 2026)
+
+Pre-feature-development checkpoint after audit passes A1–B6.
+
+## Implemented foundations (not “complete game”)
+
+| Area | Status |
+|------|--------|
+| WorldData authority + chunk terrain heightfields | Foundation complete; runtime validation hardened (B6) |
+| Terrain streaming / LOD / materialization | Runtime path complete; fail-closed validation |
+| Doodad procedural + obstacle queries | Foundation complete; fail-closed obstacles (B6) |
+| Units: movement, orders, grounding, death | Foundation complete; ADR-066 outcomes |
+| Navigation (grid A*) | Foundation complete; consumes obstacle layer |
+| Client intent → command pipeline | Complete for current command set |
+| Selection, ownership, controllability | Foundation complete |
+| Formations / steering / movement feel | Foundation complete |
+| Weapons / combat engagement / strikes | Foundation complete; projectile path present |
+| Combat AI (auto-acquire) | Basic foundation |
+| Health bars | Presentation sync |
+| Fixed simulation tick orchestrator | ADR-065 in place |
+| Dev Mode (catalog, spawn, scenes, inspector) | Dev-gated; data-driven from Excel |
+| Environment (time-of-day, water, lighting) | Dev/runtime presentation; singleton-safe |
+
+## Explicitly deferred
+
+- Animation / locomotion blending
+- Economy, buildings, harvesting loops (see [ADR-072](ADRs/ADR-072-settlement-automation-and-production.md), DESIGN.md)
+- Full creature AI template stack ([ADR-071](ADRs/ADR-071-creature-ai-architecture.md); ADR-062 scan AI only)
+- Use-based skills and attribute-driven combat ([ADR-070](ADRs/ADR-070-progression-and-attributes.md))
+- Grid inventory and equipment ([ADR-073](ADRs/ADR-073-inventory-and-equipment.md))
+- Downed state, stagger, facing, weapon hit volumes ([ADR-069](ADRs/ADR-069-combat-design-philosophy.md))
+- Full pathfinding optimizations (pooling, hierarchical)
+- Multiplayer replication
+- Production Excel pipeline outside `feature = "dev"`
+- Combat polish (death animations, VFX, advanced AI)
+
+## Recommendation
+
+**Ready for feature development** with non-blocking caveats listed in `docs/reviews/REVIEW-CLOSE-feature-readiness.md`.
+
+---
 
 Implementation order exists to reduce architectural risk and avoid building systems on unstable foundations.
 
@@ -338,36 +384,45 @@ They are not current implementation targets.
 
 ## Settlements
 
-Potential future systems:
+Design direction: [ADR-072](ADRs/ADR-072-settlement-automation-and-production.md), [DESIGN.md](DESIGN.md#settlement-automation).
+
+- Professions with priority fall-through (not per-task micromanagement)
+- Buildings generate **tasks**; workers claim by profession
+- Production via building **requests** (Factorio-style logistics, individual workers)
+- Direct player orders override automation temporarily
+
+Potential systems:
 
 - population
 - needs
-- assignments
-- production
-- storage
+- assignments / professions
+- production and storage
 - ownership
 
 ---
 
 ## Resources
 
-Potential future systems:
+Design direction: [DESIGN.md](DESIGN.md#world-and-food) (staple crops and prepared foods).
 
-- harvesting
-- depletion
-- regrowth
-- extraction
+- Alien biology, recognizable food economy (Brim Grain, Knot Tubers, Glass Pods, etc.)
+- Harvesting, depletion, regrowth, extraction
 
 ---
 
 ## Units
 
-Potential future systems:
+Design direction: [ADR-070](ADRs/ADR-070-progression-and-attributes.md), [ADR-073](ADRs/ADR-073-inventory-and-equipment.md).
 
-- movement
-- equipment
-- injuries
-- progression
+**Implemented foundations:** movement, orders, selection, combat engagement, death.
+
+**Deferred:**
+
+- use-based skills (no global runtime level; workbook `Level` is authoring metadata)
+- attributes driving combat formulas (STR/DEX/CON/PER/AGI/CHR/INT — imported, not simulated)
+- injuries and downed state
+- grid inventory + equipment slots
+- progression and equipment
 
 ---
 
@@ -418,11 +473,21 @@ Potential future systems:
 
 ## Combat
 
-Potential future systems:
+Design direction: [ADR-069](ADRs/ADR-069-combat-design-philosophy.md), [DESIGN.md](DESIGN.md#combat).
 
-- local combat
-- squad combat
-- large encounters
+**Implemented foundations:** weapons, orders, range/chase, strikes, projectiles, basic AI acquire, death pipeline.
+
+**Target experience:** Warcraft III tactical engagements — not SC2 lethality.
+
+**Deferred design items:**
+
+- min/max weapon envelope and player-vs-AI reposition policy
+- facing and weapon-origin hit volumes
+- stagger, knockdown, enemy CC (player cannot cancel)
+- downed state replacing instant death
+- controlled randomness (misses, damage ranges, crits)
+- tiered target selection for AI
+- full attack-move pursue/resume semantics
 
 ---
 

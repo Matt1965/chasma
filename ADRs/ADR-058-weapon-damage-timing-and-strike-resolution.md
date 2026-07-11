@@ -138,6 +138,16 @@ Flushed through `PendingSimulationTrace` → `CommandTraceBuffer::record_combat_
 - HP may reach zero without removal until C6.
 - Projectile weapons are explicitly no-op for damage in C5.
 
+## Design direction (not yet fully implemented)
+
+See [ADR-069](ADR-069-combat-design-philosophy.md), [ADR-070](ADR-070-progression-and-attributes.md).
+
+- **Contact window** — damage only during contact phase (current strike is instant transition)
+- **Weapon-origin hits** — blade/tip/tail, not character center
+- **Stagger** — heavy weapons only; no permanent stun-lock
+- **Randomness** — misses, evasion, WC3-style damage ranges, crits (attribute-driven per ADR-070)
+- Flat `WeaponDefinition.damage` is an implementation placeholder, not final design
+
 # References
 
 - ADR-055 (C2 vitals)

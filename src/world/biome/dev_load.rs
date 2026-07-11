@@ -8,12 +8,12 @@ use std::path::{Path, PathBuf};
 
 use bevy::prelude::*;
 
+use super::BiomeImportError;
 use super::id::BiomeId;
 use super::import::import_biome_mask_from_png;
 use super::mapping::BiomeColorMapping;
 use super::mask::BiomeMaskBounds;
-use super::BiomeImportError;
-use crate::logging::{append_log_line, DEV_STARTUP_LOG_PATH};
+use crate::logging::{DEV_STARTUP_LOG_PATH, append_log_line};
 use crate::world::{ChunkExtent, WorldConfig, WorldData};
 
 const SESSION_HEADER: &str = "# chasma dev startup log";
@@ -64,10 +64,7 @@ impl DevBiomeLoadSummary {
 }
 
 /// Compute biome mask bounds from authored world extent and layout.
-pub fn dev_biome_mask_bounds(
-    extent: ChunkExtent,
-    config: &WorldConfig,
-) -> BiomeMaskBounds {
+pub fn dev_biome_mask_bounds(extent: ChunkExtent, config: &WorldConfig) -> BiomeMaskBounds {
     BiomeMaskBounds::from_chunk_extent(extent, config.chunk_layout())
 }
 
@@ -188,10 +185,7 @@ mod tests {
             encoder.set_color(png::ColorType::Rgb);
             encoder.set_depth(png::BitDepth::Eight);
             let mut writer = encoder.write_header().unwrap();
-            let data: Vec<u8> = pixels
-                .iter()
-                .flat_map(|(r, g, b)| [*r, *g, *b])
-                .collect();
+            let data: Vec<u8> = pixels.iter().flat_map(|(r, g, b)| [*r, *g, *b]).collect();
             writer.write_image_data(&data).unwrap();
         }
         std::fs::write(path, buf).unwrap();
@@ -254,12 +248,7 @@ mod tests {
     #[test]
     fn biome_lookup_works_after_startup_load() {
         let path = temp_mask_path("lookup");
-        write_test_png(
-            &path,
-            &[(0, 255, 0), (255, 0, 0)],
-            2,
-            1,
-        );
+        write_test_png(&path, &[(0, 255, 0), (255, 0, 0)], 2, 1);
 
         let mut world = WorldData::new(layout());
         world.set_authored_extent(ChunkExtent {

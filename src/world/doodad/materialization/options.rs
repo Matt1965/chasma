@@ -86,6 +86,9 @@ mod tests {
 
     #[test]
     fn default_is_procedural_default() {
-        assert_eq!(MaterializationOptions::default(), MaterializationOptions::procedural_default());
+        assert_eq!(
+            MaterializationOptions::default(),
+            MaterializationOptions::procedural_default()
+        );
     }
 }

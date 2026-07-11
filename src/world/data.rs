@@ -9,11 +9,11 @@ use super::doodad::{
     ChunkDoodadStore, DoodadExclusionZone, DoodadId, DoodadInsertError, DoodadRecord,
     ProceduralDoodadKey,
 };
+use super::projectile::{ProjectileId, ProjectileRecord};
 use super::unit::{
     ChunkUnitStore, KillAttribution, UnitId, UnitInsertError, UnitRecord, UnitRemovalEntry,
     UnitRemovalQueue,
 };
-use super::projectile::{ProjectileId, ProjectileRecord};
 
 /// Inclusive bounds of the authored world (ADR-006, ADR-012).
 ///
@@ -121,9 +121,7 @@ impl WorldData {
     }
 
     /// Mutably borrow per-unit movement smoothing state (ADR-037 U12).
-    pub fn movement_smoothing_mut(
-        &mut self,
-    ) -> &mut super::movement::feel::MovementSmoothingState {
+    pub fn movement_smoothing_mut(&mut self) -> &mut super::movement::feel::MovementSmoothingState {
         &mut self.movement_smoothing
     }
 
@@ -182,7 +180,11 @@ impl WorldData {
 
     /// Remove a doodad from a chunk store and the id index. Returns `true` when removed.
     pub fn remove_doodad(&mut self, chunk: ChunkId, id: DoodadId) -> bool {
-        let record = match self.doodads.get_mut(&chunk).and_then(|store| store.take(id)) {
+        let record = match self
+            .doodads
+            .get_mut(&chunk)
+            .and_then(|store| store.take(id))
+        {
             Some(record) => record,
             None => return false,
         };
@@ -218,11 +220,7 @@ impl WorldData {
     }
 
     /// Register a procedural doodad key after successful materialization.
-    pub(crate) fn register_procedural_doodad(
-        &mut self,
-        key: ProceduralDoodadKey,
-        id: DoodadId,
-    ) {
+    pub(crate) fn register_procedural_doodad(&mut self, key: ProceduralDoodadKey, id: DoodadId) {
         self.procedural_doodads.insert(key, id);
     }
 
@@ -322,25 +320,23 @@ impl WorldData {
         if record.placement.position.chunk != chunk.coord() {
             return Err(UnitInsertError::ChunkPlacementMismatch);
         }
-        self.units
-            .entry(chunk)
-            .or_default()
-            .insert(record.clone());
+        self.units.entry(chunk).or_default().insert(record.clone());
         self.unit_locations.insert(record.id, chunk);
         Ok(())
     }
 
     /// Remove a unit from a chunk store and the id index. Returns `true` when removed.
     pub fn remove_unit(&mut self, chunk: ChunkId, id: UnitId) -> bool {
-        if self.units.get_mut(&chunk).and_then(|store| store.take(id)).is_none() {
+        if self
+            .units
+            .get_mut(&chunk)
+            .and_then(|store| store.take(id))
+            .is_none()
+        {
             return false;
         }
         self.unit_locations.remove(&id);
-        if self
-            .units
-            .get(&chunk)
-            .is_some_and(|store| store.is_empty())
-        {
+        if self.units.get(&chunk).is_some_and(|store| store.is_empty()) {
             self.units.remove(&chunk);
         }
         true
@@ -498,13 +494,20 @@ impl WorldData {
     }
 
     /// Update simulation state without changing placement (ADR-030).
-    pub fn set_unit_state(&mut self, id: UnitId, state: super::unit::UnitState) -> Result<(), UnitInsertError> {
+    pub fn set_unit_state(
+        &mut self,
+        id: UnitId,
+        state: super::unit::UnitState,
+    ) -> Result<(), UnitInsertError> {
         let chunk = self
             .unit_locations
             .get(&id)
             .copied()
             .ok_or(UnitInsertError::UnitNotFound)?;
-        let store = self.units.get_mut(&chunk).ok_or(UnitInsertError::UnitNotFound)?;
+        let store = self
+            .units
+            .get_mut(&chunk)
+            .ok_or(UnitInsertError::UnitNotFound)?;
         let record = store.get_mut(id).ok_or(UnitInsertError::UnitNotFound)?;
         record.state = state;
         Ok(())
@@ -546,10 +549,7 @@ impl WorldData {
         amount: u32,
     ) -> Result<super::unit::UnitVitals, UnitInsertError> {
         let vitals = self.mutate_unit_vitals(id, |vitals| {
-            vitals.current_hp = vitals
-                .current_hp
-                .saturating_add(amount)
-                .min(vitals.max_hp);
+            vitals.current_hp = vitals.current_hp.saturating_add(amount).min(vitals.max_hp);
         })?;
         Ok(vitals)
     }
@@ -564,7 +564,10 @@ impl WorldData {
             .get(&id)
             .copied()
             .ok_or(UnitInsertError::UnitNotFound)?;
-        let store = self.units.get_mut(&chunk).ok_or(UnitInsertError::UnitNotFound)?;
+        let store = self
+            .units
+            .get_mut(&chunk)
+            .ok_or(UnitInsertError::UnitNotFound)?;
         let record = store.get_mut(id).ok_or(UnitInsertError::UnitNotFound)?;
         mutate(&mut record.vitals);
         Ok(record.vitals)
@@ -581,7 +584,10 @@ impl WorldData {
             .get(&id)
             .copied()
             .ok_or(UnitInsertError::UnitNotFound)?;
-        let store = self.units.get_mut(&chunk).ok_or(UnitInsertError::UnitNotFound)?;
+        let store = self
+            .units
+            .get_mut(&chunk)
+            .ok_or(UnitInsertError::UnitNotFound)?;
         let record = store.get_mut(id).ok_or(UnitInsertError::UnitNotFound)?;
         record.combat_state = combat_state;
         Ok(())
@@ -598,7 +604,10 @@ impl WorldData {
             .get(&id)
             .copied()
             .ok_or(UnitInsertError::UnitNotFound)?;
-        let store = self.units.get_mut(&chunk).ok_or(UnitInsertError::UnitNotFound)?;
+        let store = self
+            .units
+            .get_mut(&chunk)
+            .ok_or(UnitInsertError::UnitNotFound)?;
         let record = store.get_mut(id).ok_or(UnitInsertError::UnitNotFound)?;
         record.attack_cycle = attack_cycle;
         Ok(())
@@ -703,10 +712,7 @@ impl WorldData {
         let layout = self.layout();
         let center = position.to_global(layout);
         let center_xz = Vec2::new(center.x, center.z);
-        let chunk_span = (radius_meters / layout.chunk_size_units())
-            .ceil()
-            .max(0.0) as i32
-            + 1;
+        let chunk_span = (radius_meters / layout.chunk_size_units()).ceil().max(0.0) as i32 + 1;
 
         let mut matches = Vec::new();
         for dz in -chunk_span..=chunk_span {
@@ -751,7 +757,9 @@ impl WorldData {
 
     /// Sample biome classification at a global render-space position (ADR-024).
     pub fn sample_biome_at_global(&self, global: Vec3) -> Option<BiomeSample> {
-        self.biome_mask.as_ref().map(|mask| mask.sample_at_global(global))
+        self.biome_mask
+            .as_ref()
+            .map(|mask| mask.sample_at_global(global))
     }
 
     /// Append a world-scoped exclusion zone (data only; ADR-015).
@@ -865,9 +873,9 @@ impl WorldData {
     /// Verify procedural duplicate keys point at live records with matching identity.
     pub(crate) fn assert_procedural_doodad_index_consistent(&self) {
         for (key, id) in &self.procedural_doodads {
-            let record = self
-                .get_doodad(*id)
-                .unwrap_or_else(|| panic!("procedural key {:?} points at missing id {:?}", key, id));
+            let record = self.get_doodad(*id).unwrap_or_else(|| {
+                panic!("procedural key {:?} points at missing id {:?}", key, id)
+            });
             assert_eq!(
                 ProceduralDoodadKey::from_record(record),
                 Some(key.clone()),
@@ -1230,7 +1238,10 @@ mod tests {
                 .unwrap();
 
             let store = world.doodads_in_chunk(chunk).unwrap();
-            assert_eq!(store.get(authored_id).unwrap().source, DoodadSource::Authored);
+            assert_eq!(
+                store.get(authored_id).unwrap().source,
+                DoodadSource::Authored
+            );
             assert_eq!(
                 store.get(proc_id).unwrap().source,
                 DoodadSource::Procedural { seed: 42 }
@@ -1334,8 +1345,8 @@ mod tests {
     mod doodad_index_tests {
         use super::*;
         use crate::world::{
-            create_doodad, move_doodad, remove_doodad, DoodadCatalog, DoodadDefinitionId,
-            DoodadPlacementOverrides, DoodadSource, LocalPosition, WorldPosition,
+            DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource,
+            LocalPosition, WorldPosition, create_doodad, move_doodad, remove_doodad,
         };
 
         fn layout() -> ChunkLayout {
@@ -1346,10 +1357,7 @@ mod tests {
         }
 
         fn pos(chunk_x: i32, chunk_z: i32, local: Vec3) -> WorldPosition {
-            WorldPosition::new(
-                ChunkCoord::new(chunk_x, chunk_z),
-                LocalPosition::new(local),
-            )
+            WorldPosition::new(ChunkCoord::new(chunk_x, chunk_z), LocalPosition::new(local))
         }
 
         #[test]
@@ -1391,8 +1399,12 @@ mod tests {
             .unwrap();
             world.assert_doodad_index_consistent();
 
-            move_doodad(&mut world, record.id, pos(0, 0, Vec3::new(200.0, 0.0, 50.0)))
-                .unwrap();
+            move_doodad(
+                &mut world,
+                record.id,
+                pos(0, 0, Vec3::new(200.0, 0.0, 50.0)),
+            )
+            .unwrap();
 
             assert_eq!(world.doodad_chunk(record.id), Some(chunk));
             world.assert_doodad_index_consistent();
@@ -1422,9 +1434,11 @@ mod tests {
             .unwrap();
 
             assert_eq!(world.doodad_chunk(record.id), Some(new_chunk));
-            assert!(world
-                .doodads_in_chunk(ChunkId::new(ChunkCoord::new(0, 0)))
-                .is_none());
+            assert!(
+                world
+                    .doodads_in_chunk(ChunkId::new(ChunkCoord::new(0, 0)))
+                    .is_none()
+            );
             world.assert_doodad_index_consistent();
         }
 
@@ -1476,8 +1490,11 @@ mod tests {
 
     mod procedural_doodad_index_tests {
         use super::*;
-        use crate::world::{DoodadSpawnCandidate, materialize_candidates_with_options, move_doodad, DoodadCatalog, DoodadDefinitionId,
-            DoodadSource, LocalPosition, MaterializationOptions, ProceduralDoodadKey};
+        use crate::world::{
+            DoodadCatalog, DoodadDefinitionId, DoodadSource, DoodadSpawnCandidate, LocalPosition,
+            MaterializationOptions, ProceduralDoodadKey, materialize_candidates_with_options,
+            move_doodad,
+        };
         use bevy::prelude::{Quat, Vec3};
 
         fn layout() -> ChunkLayout {
@@ -1497,10 +1514,7 @@ mod tests {
         }
 
         fn pos(chunk_x: i32, chunk_z: i32, local: Vec3) -> WorldPosition {
-            WorldPosition::new(
-                ChunkCoord::new(chunk_x, chunk_z),
-                LocalPosition::new(local),
-            )
+            WorldPosition::new(ChunkCoord::new(chunk_x, chunk_z), LocalPosition::new(local))
         }
 
         fn materialize_one(world: &mut WorldData, candidate: &DoodadSpawnCandidate) {
@@ -1528,12 +1542,7 @@ mod tests {
             materialize_one(&mut world, &candidate);
             let id = world.procedural_doodad_id(&old_key).unwrap();
 
-            move_doodad(
-                &mut world,
-                id,
-                pos(0, 0, Vec3::new(64.0, 0.0, 64.0)),
-            )
-            .unwrap();
+            move_doodad(&mut world, id, pos(0, 0, Vec3::new(64.0, 0.0, 64.0))).unwrap();
 
             world.assert_procedural_doodad_index_consistent();
             assert_eq!(world.procedural_doodad_id(&old_key), Some(id));
@@ -1555,18 +1564,10 @@ mod tests {
             materialize_one(&mut world, &candidate);
             let id = world.procedural_doodad_id(&old_key).unwrap();
 
-            move_doodad(
-                &mut world,
-                id,
-                pos(1, 0, Vec3::new(128.0, 0.0, 128.0)),
-            )
-            .unwrap();
+            move_doodad(&mut world, id, pos(1, 0, Vec3::new(128.0, 0.0, 128.0))).unwrap();
 
-            let new_key = ProceduralDoodadKey::new(
-                ChunkCoord::new(1, 0),
-                candidate.definition_id.clone(),
-                7,
-            );
+            let new_key =
+                ProceduralDoodadKey::new(ChunkCoord::new(1, 0), candidate.definition_id.clone(), 7);
 
             world.assert_procedural_doodad_index_consistent();
             assert!(world.procedural_doodad_id(&old_key).is_none());
@@ -1589,12 +1590,7 @@ mod tests {
             materialize_one(&mut world, &candidate);
             let id = world.procedural_doodad_id(&old_key).unwrap();
 
-            move_doodad(
-                &mut world,
-                id,
-                pos(1, 0, Vec3::new(64.0, 0.0, 64.0)),
-            )
-            .unwrap();
+            move_doodad(&mut world, id, pos(1, 0, Vec3::new(64.0, 0.0, 64.0))).unwrap();
 
             let candidate_at_new = DoodadSpawnCandidate {
                 position: pos(1, 0, Vec3::new(64.0, 0.0, 64.0)),
@@ -1620,8 +1616,8 @@ mod tests {
     mod unit_tests {
         use super::*;
         use crate::world::{
-            create_unit, create_unit_with_ownership, move_unit, LocalPosition, UnitDefinitionId,
-            UnitMetadata, UnitPlacement, UnitRecord, UnitSource, UnitState,
+            LocalPosition, UnitDefinitionId, UnitMetadata, UnitPlacement, UnitRecord, UnitSource,
+            UnitState, create_unit, create_unit_with_ownership, move_unit,
         };
 
         fn chunk_id(x: i32, z: i32) -> ChunkId {
@@ -1836,8 +1832,7 @@ mod tests {
         fn state_preserved_after_relocate() {
             let mut world = WorldData::new(layout());
             let id = world.allocate_unit_id();
-            let mut record =
-                sample_record(id, ChunkCoord::new(0, 0), UnitSource::Authored);
+            let mut record = sample_record(id, ChunkCoord::new(0, 0), UnitSource::Authored);
             record.state = UnitState::Idle;
             world.insert_unit(chunk_id(0, 0), record).unwrap();
 
@@ -2051,15 +2046,12 @@ mod tests {
     mod unit_index_tests {
         use super::*;
         use crate::world::{
-            create_unit, move_unit, remove_unit, LocalPosition, UnitCatalog, UnitDefinitionId,
-            UnitSource,
+            LocalPosition, UnitCatalog, UnitDefinitionId, UnitSource, create_unit, move_unit,
+            remove_unit,
         };
 
         fn pos(chunk_x: i32, chunk_z: i32, local: Vec3) -> WorldPosition {
-            WorldPosition::new(
-                ChunkCoord::new(chunk_x, chunk_z),
-                LocalPosition::new(local),
-            )
+            WorldPosition::new(ChunkCoord::new(chunk_x, chunk_z), LocalPosition::new(local))
         }
 
         #[test]
@@ -2098,8 +2090,12 @@ mod tests {
             .unwrap();
             world.assert_unit_index_consistent();
 
-            move_unit(&mut world, record.id, pos(0, 0, Vec3::new(200.0, 0.0, 50.0)))
-                .unwrap();
+            move_unit(
+                &mut world,
+                record.id,
+                pos(0, 0, Vec3::new(200.0, 0.0, 50.0)),
+            )
+            .unwrap();
 
             assert_eq!(world.unit_chunk(record.id), Some(chunk));
             world.assert_unit_index_consistent();

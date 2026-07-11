@@ -2,9 +2,9 @@
 
 use bevy::prelude::Vec2;
 
+#[cfg(test)]
 use crate::world::navigation::xz_distance;
-use crate::world::unit::UnitOrderError;
-use crate::world::{ground_world_position, WorldData, WorldPosition};
+use crate::world::{WorldData, WorldPosition, ground_world_position};
 
 use super::range::RangeCheck;
 
@@ -46,7 +46,8 @@ pub fn compute_standoff_destination(
 }
 
 /// Verify standoff places attacker on the correct side of the target at weapon reach.
-pub fn standoff_center_distance_matches_weapon_range(
+#[cfg(test)]
+pub(crate) fn standoff_center_distance_matches_weapon_range(
     world: &WorldData,
     _attacker_pos: WorldPosition,
     target_pos: WorldPosition,

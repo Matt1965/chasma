@@ -30,10 +30,7 @@ pub fn resolve_environment_directional_light(
 /// Apply a mutation only when exactly one environment directional light exists.
 pub fn update_environment_directional_light(
     resolution: EnvironmentDirectionalLightResolution,
-    mut lights: Query<
-        (&mut DirectionalLight, &mut Transform),
-        With<EnvironmentDirectionalLight>,
-    >,
+    mut lights: Query<(&mut DirectionalLight, &mut Transform), With<EnvironmentDirectionalLight>>,
     mut apply: impl FnMut(&mut DirectionalLight, &mut Transform),
 ) -> EnvironmentDirectionalLightResolution {
     if !matches!(resolution, EnvironmentDirectionalLightResolution::Single) {

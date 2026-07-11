@@ -76,7 +76,11 @@ pub fn grid_offsets(unit_count: usize, spacing: f32) -> Vec<FormationOffset> {
         .collect()
 }
 
-pub fn formation_offsets(kind: FormationKind, unit_count: usize, spacing: f32) -> Vec<FormationOffset> {
+pub fn formation_offsets(
+    kind: FormationKind,
+    unit_count: usize,
+    spacing: f32,
+) -> Vec<FormationOffset> {
     match kind {
         FormationKind::Grid => grid_offsets(unit_count, spacing),
         FormationKind::Line => line_offsets(unit_count, spacing),

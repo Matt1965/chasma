@@ -216,11 +216,7 @@ impl TerrainStreamingFrameSample {
             .iter()
             .map(|e| e.geometry.vertices)
             .sum();
-        self.total_indices = self
-            .mesh_build_log
-            .iter()
-            .map(|e| e.geometry.indices)
-            .sum();
+        self.total_indices = self.mesh_build_log.iter().map(|e| e.geometry.indices).sum();
         self.total_triangles = self
             .mesh_build_log
             .iter()
@@ -323,11 +319,7 @@ pub struct TerrainStreamingPerfFileLog {
 }
 
 impl TerrainStreamingPerfFileLog {
-    pub fn append_block(
-        &mut self,
-        settings: &TerrainStreamingPerfSettings,
-        block: &str,
-    ) {
+    pub fn append_block(&mut self, settings: &TerrainStreamingPerfSettings, block: &str) {
         if !settings.log_to_file {
             return;
         }
@@ -359,7 +351,10 @@ fn write_session_header(path: &str) -> std::io::Result<()> {
         .duration_since(SystemTime::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
-    writeln!(file, "# terrain streaming perf session started_at={started}")?;
+    writeln!(
+        file,
+        "# terrain streaming perf session started_at={started}"
+    )?;
     writeln!(
         file,
         "# multi-line hitch summaries: poll/apply, mesh accounting, geometry, queues, per-mesh"
@@ -495,11 +490,7 @@ impl TerrainStreamingPerfState {
             self.last_summary = Some(now);
         }
 
-        if should_log {
-            Some(sample)
-        } else {
-            None
-        }
+        if should_log { Some(sample) } else { None }
     }
 }
 
@@ -509,8 +500,8 @@ pub fn duration_to_ms(d: Duration) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::mesh::ChunkLod;
+    use super::*;
 
     #[test]
     fn finish_frame_logs_on_hitch_without_waiting_for_summary() {
@@ -554,15 +545,15 @@ mod tests {
         assert_eq!(frame.prebuilt_meshes_applied, 1);
         assert_eq!(frame.lod_build_counts.half, 1);
         assert_eq!(frame.mesh_build_log.len(), 1);
-        assert_eq!(frame.mesh_build_log[0].reason, MeshBuildReason::AppliedPrebuilt);
+        assert_eq!(
+            frame.mesh_build_log[0].reason,
+            MeshBuildReason::AppliedPrebuilt
+        );
     }
 
     #[test]
     fn file_log_writes_header_and_block() {
-        let path = std::env::temp_dir().join(format!(
-            "chasma_perf_log_{}.txt",
-            std::process::id()
-        ));
+        let path = std::env::temp_dir().join(format!("chasma_perf_log_{}.txt", std::process::id()));
         let path_str = path.display().to_string();
         let settings = TerrainStreamingPerfSettings {
             enabled: true,
