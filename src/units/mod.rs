@@ -31,8 +31,8 @@ pub use animation::{
 pub use assets::{UNIT_ASSET_ROOT, UnitSceneAssets, gltf_asset_path, preload_unit_scenes};
 pub use components::{UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot, UnitSelectionIndicator};
 pub use health_bars::{
-    UnitHealthBar, UnitHealthBarState, health_bar_color, health_percent, should_show_health_bar,
-    sync_unit_health_bars,
+    UnitHealthBar, UnitHealthBarState, billboard_unit_health_bars, health_bar_color,
+    health_percent, should_show_health_bar, sync_unit_health_bars,
 };
 pub use plugin::UnitsRuntimePlugin;
 pub use settings::UnitsRuntimeSettings;

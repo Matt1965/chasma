@@ -3,6 +3,7 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
+use crate::camera::RtsCamera;
 use crate::debug::{
     CommandTraceBuffer, CommandTraceIntentKind, CommandTraceOutcome, DebugOverlaySettings,
 };
@@ -195,9 +196,11 @@ fn spawn_health_bar(
     let root = commands
         .spawn((
             UnitHealthBar { unit_id },
-            Transform::from_translation(Vec3::new(0.0, y_offset, 0.0))
-                .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
-                .with_scale(Vec3::new(width_scale, 1.0, 1.0)),
+            Transform::from_translation(Vec3::new(0.0, y_offset, 0.0)).with_scale(Vec3::new(
+                width_scale,
+                1.0,
+                1.0,
+            )),
             Visibility::Visible,
             ChildOf(render_entity),
         ))
@@ -256,6 +259,39 @@ fn bar_layout(catalog: &UnitCatalog, definition_id: &crate::world::UnitDefinitio
     let y_offset = (radius * 2.8).max(1.2);
     let width_scale = (radius * 3.5).max(1.4);
     (y_offset, width_scale)
+}
+
+/// Billboard health bars toward the active RTS camera (DV3).
+pub fn billboard_unit_health_bars(
+    camera: Query<&GlobalTransform, With<RtsCamera>>,
+    parents: Query<&GlobalTransform>,
+    mut bars: Query<(&ChildOf, &mut Transform), With<UnitHealthBar>>,
+) {
+    let Ok(camera_transform) = camera.single() else {
+        return;
+    };
+    let camera_position = camera_transform.translation();
+
+    for (child_of, mut transform) in &mut bars {
+        let Ok(parent_transform) = parents.get(child_of.parent()) else {
+            continue;
+        };
+        let bar_world = parent_transform.transform_point(transform.translation);
+        let to_camera = camera_position - bar_world;
+        if to_camera.length_squared() < 1e-6 {
+            continue;
+        }
+        let forward = to_camera.normalize();
+        let mut right = Vec3::Y.cross(forward);
+        if right.length_squared() < 1e-6 {
+            right = Vec3::X;
+        } else {
+            right = right.normalize();
+        }
+        let up = forward.cross(right);
+        let world_rotation = Quat::from_mat3(&Mat3::from_cols(right, up, forward));
+        transform.rotation = parent_transform.rotation().inverse() * world_rotation;
+    }
 }
 
 fn push_health_bar_trace(

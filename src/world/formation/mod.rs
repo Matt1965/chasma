@@ -3,10 +3,15 @@
 //! Spatial decomposition of a single click target into per-unit move destinations.
 //! Does not perform pathfinding or obstacle reasoning.
 
+mod destination_validation;
 mod distribution;
 mod layout;
 mod offsets;
 mod planner;
+
+pub use destination_validation::{
+    collision_separation_meters, resolve_move_destination, unit_collision_radius,
+};
 
 pub use distribution::{circle_formation_radius, formation_offsets};
 pub use layout::FormationKind;

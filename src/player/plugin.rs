@@ -9,7 +9,7 @@ use crate::simulation::{SimulationPlugin, SimulationSystems};
 use crate::ui::GameplayUiPlugin;
 use crate::ui::gameplay::{GameplayCommandInputSystems, GameplayInputGateSystems};
 use crate::units::input::{BoxSelectDrag, PlayerInteractionSettings, SelectedUnits};
-use crate::units::{UnitHealthBarState, sync_unit_health_bars};
+use crate::units::{UnitHealthBarState, billboard_unit_health_bars, sync_unit_health_bars};
 
 use super::box_select_overlay::{setup_box_select_overlay, sync_box_select_overlay};
 use super::indicator::{UnitSelectionIndicatorState, sync_unit_selection_indicators};
@@ -142,6 +142,7 @@ impl Plugin for PlayerPlugin {
                     sync_box_select_overlay,
                     sync_unit_selection_indicators,
                     sync_unit_health_bars,
+                    billboard_unit_health_bars,
                 )
                     .chain()
                     .after(crate::debug::flush_intent_dispatch_trace)

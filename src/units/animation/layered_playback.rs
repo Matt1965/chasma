@@ -229,7 +229,11 @@ pub fn layered_state_from_targets(targets: &LayeredPlaybackTargets) -> LayeredPl
         lower_node: targets.lower.as_ref().map(|t| t.node),
         upper_node: targets.upper.as_ref().map(|t| t.node),
         full_body_node: targets.full_body.as_ref().map(|t| t.node),
-        lower_speed: targets.lower.as_ref().map(|t| t.speed),
+        lower_speed: targets
+            .lower
+            .as_ref()
+            .or(targets.full_body.as_ref())
+            .map(|t| t.speed),
         lower_blend_ms: targets.lower.as_ref().map(|t| t.blend.as_millis() as u64),
     }
 }

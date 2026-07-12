@@ -434,6 +434,68 @@ mod tests {
     }
 
     #[test]
+    fn single_move_onto_idle_unit_projects_to_valid_destination() {
+        use crate::world::collision_separation_meters;
+
+        let catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let nav_config = NavigationConfig::default();
+        let mut world = flat_world();
+
+        let idle = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(20.0, 20.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let mover = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(4.0, 4.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+
+        let mut selection = SelectedUnits::default();
+        selection.set_single(mover);
+        let click = world.get_unit(idle).unwrap().placement.position;
+        let weapons = WeaponCatalog::default();
+        let policy = AttackTargetingPolicy::default();
+        issue_move_orders_to_selection(
+            &mut world,
+            &selection,
+            &catalog,
+            &weapons,
+            &doodad_catalog,
+            &nav_config,
+            click,
+            policy,
+        );
+        resolve_all_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav_config);
+
+        let resolved = moving_target(mover, &world);
+        let wolf_radius = catalog
+            .get(&UnitDefinitionId::new("wolf"))
+            .unwrap()
+            .collision_radius_meters;
+        let min_sep = collision_separation_meters(wolf_radius, wolf_radius);
+        let idle_pos = world.get_unit(idle).unwrap().placement.position;
+        let layout = world.layout();
+        let a = resolved.to_global(layout);
+        let b = idle_pos.to_global(layout);
+        let dist = Vec2::new(a.x - b.x, a.z - b.z).length();
+        assert!(dist + 1e-3 >= min_sep);
+        assert_ne!(resolved, click);
+    }
+
+    #[test]
     fn each_unit_receives_independent_path_state() {
         let catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();

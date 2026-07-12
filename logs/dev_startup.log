@@ -533,3 +533,63 @@ Unit catalog ids: U-0001
 Unit catalog render keys: U-0001
 Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
 dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Animation Profiles` not found); using starter profiles
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=0
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=7 valid=1 failed=6 warnings=6
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Base HP must be a number
+Unit import warning: row 30: Base HP must be a number
+Unit import warning: row 31: Base HP must be a number
+Unit import warning: row 32: Base HP must be a number
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001
+Unit catalog render keys: U-0001
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Animation Profiles` not found); using starter profiles
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=0
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=6
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=0
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=6
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Base HP must be a number
+Unit import warning: row 30: Base HP must be a number
+Unit import warning: row 31: Base HP must be a number
+Unit import warning: row 32: Base HP must be a number
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=0
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=6
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Base HP must be a number
+Unit import warning: row 30: Base HP must be a number
+Unit import warning: row 31: Base HP must be a number
+Unit import warning: row 32: Base HP must be a number
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)

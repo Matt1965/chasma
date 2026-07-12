@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use crate::debug::InspectorOverlayFocus;
 use crate::debug::settings::{DebugOverlayCategory, DebugOverlaySettings};
+use crate::player::selection_ring_radius;
 use crate::terrain::TerrainRenderAssets;
 use crate::units::UnitRenderIndex;
 use crate::units::input::SelectedUnits;
@@ -70,18 +71,4 @@ pub fn draw_selection_debug_overlay(
             }
         }
     }
-}
-
-fn selection_ring_radius(
-    world: &WorldData,
-    catalog: &UnitCatalog,
-    unit_id: crate::world::UnitId,
-) -> f32 {
-    let Some(record) = world.get_unit(unit_id) else {
-        return 1.0;
-    };
-    let Some(definition) = catalog.get(&record.definition_id) else {
-        return 1.0;
-    };
-    (definition.collision_radius_meters * 2.0).max(0.9)
 }

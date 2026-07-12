@@ -1,4 +1,4 @@
-use bevy::{light::GlobalAmbientLight, prelude::*};
+use bevy::{light::CascadeShadowConfigBuilder, light::GlobalAmbientLight, prelude::*};
 
 use super::settings::EnvironmentSettings;
 
@@ -34,8 +34,17 @@ pub fn setup_environment_lighting(
             color: settings.directional_light_color,
             illuminance: settings.directional_light_illuminance,
             shadows_enabled: settings.directional_shadows_enabled,
+            shadow_normal_bias: settings.directional_shadow_normal_bias,
             ..default()
         },
+        CascadeShadowConfigBuilder {
+            num_cascades: settings.shadow_cascade_count,
+            minimum_distance: settings.shadow_cascade_minimum_distance,
+            maximum_distance: settings.shadow_cascade_maximum_distance,
+            first_cascade_far_bound: settings.shadow_cascade_first_far_bound,
+            overlap_proportion: settings.shadow_cascade_overlap,
+        }
+        .build(),
         Transform::from_rotation(settings.directional_light_rotation),
         EnvironmentDirectionalLight,
     ));

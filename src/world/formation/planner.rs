@@ -44,10 +44,16 @@ impl FormationPlanner {
         sorted.sort_unstable();
 
         if sorted.len() == 1 {
+            let unit_id = sorted[0];
+            let mut batch = std::collections::HashMap::new();
+            let validated = super::destination_validation::resolve_move_destination(
+                unit_id, target, world, catalog, layout, &batch,
+            );
+            batch.insert(unit_id, validated);
             return FormationMovePlan {
                 assignments: vec![FormationAssignment {
-                    unit_id: sorted[0],
-                    target,
+                    unit_id,
+                    target: validated,
                 }],
             };
         }
@@ -57,14 +63,25 @@ impl FormationPlanner {
         apply_jitter(&mut slot_offsets, &sorted, target, layout);
 
         let center = target.to_global(layout);
+        let mut batch_resolved = std::collections::HashMap::new();
         let assignments = sorted
             .into_iter()
             .zip(slot_offsets)
             .map(|(unit_id, offset)| {
                 let global = Vec3::new(center.x + offset.xz.x, center.y, center.z + offset.xz.y);
+                let proposed = WorldPosition::from_global(global, layout);
+                let validated = super::destination_validation::resolve_move_destination(
+                    unit_id,
+                    proposed,
+                    world,
+                    catalog,
+                    layout,
+                    &batch_resolved,
+                );
+                batch_resolved.insert(unit_id, validated);
                 FormationAssignment {
                     unit_id,
-                    target: WorldPosition::from_global(global, layout),
+                    target: validated,
                 }
             })
             .collect();
@@ -275,6 +292,24 @@ mod tests {
             .unwrap()
             .collision_radius_meters;
         assert!((spacing - unit_spacing_meters(wolf_radius)).abs() < 1e-4);
+    }
+
+    #[test]
+    fn single_unit_move_onto_occupant_is_projected() {
+        let catalog = UnitCatalog::default();
+        let mut world = flat_world();
+        let idle = spawn(&catalog, &mut world, 20.0, 20.0);
+        let mover = spawn(&catalog, &mut world, 4.0, 4.0);
+        let click = world.get_unit(idle).unwrap().placement.position;
+        let plan = FormationPlanner::plan_move(
+            FormationKind::Grid,
+            &[mover],
+            click,
+            &world,
+            &catalog,
+            layout(),
+        );
+        assert_ne!(plan.assignments[0].target, click);
     }
 
     #[test]

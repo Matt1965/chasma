@@ -71,7 +71,8 @@ pub use doodad::{
 pub use doodad::{DoodadRestoreError, restore_doodad_record, validate_doodad_for_restore};
 pub use formation::{
     FormationAssignment, FormationKind, FormationMovePlan, FormationPlanner,
-    circle_formation_radius, formation_offsets, unit_spacing_meters,
+    circle_formation_radius, collision_separation_meters, formation_offsets,
+    resolve_move_destination, unit_spacing_meters,
 };
 pub use interaction::{
     DEFAULT_INTERACTION_AGENT_RADIUS_METERS, DEFAULT_INTERACTION_MAX_SLOPE_DEGREES,

@@ -38,6 +38,13 @@ pub struct EnvironmentSettings {
     pub ambient_brightness: f32,
     pub ambient_color: Color,
     pub directional_shadows_enabled: bool,
+    /// Shadow cascade tuning for RTS orbit distances (DV3).
+    pub shadow_cascade_count: usize,
+    pub shadow_cascade_minimum_distance: f32,
+    pub shadow_cascade_maximum_distance: f32,
+    pub shadow_cascade_first_far_bound: f32,
+    pub shadow_cascade_overlap: f32,
+    pub directional_shadow_normal_bias: f32,
 }
 
 impl Default for EnvironmentSettings {
@@ -57,6 +64,13 @@ impl Default for EnvironmentSettings {
             ambient_brightness: 349.0,
             ambient_color: Color::srgb(0.85, 0.88, 0.95),
             directional_shadows_enabled: true,
+            shadow_cascade_count: 4,
+            shadow_cascade_minimum_distance: 0.5,
+            // Bevy default maximum_distance (150) is too small for RTS orbit (40–5000+).
+            shadow_cascade_maximum_distance: 2_500.0,
+            shadow_cascade_first_far_bound: 120.0,
+            shadow_cascade_overlap: 0.2,
+            directional_shadow_normal_bias: 2.0,
         }
     }
 }
@@ -81,6 +95,8 @@ impl EnvironmentSettings {
              - illuminance: {:.0}\n\
              - rotation (yaw/pitch/roll deg): ({:.1}, {:.1}, {:.1})\n\
              - shadows enabled: {}\n\
+             - cascade max distance: {:.0}\n\
+             - cascade first bound: {:.0}\n\
              \n\
              Ambient Light:\n\
              - brightness: {:.0}\n\
@@ -93,6 +109,8 @@ impl EnvironmentSettings {
             pitch_deg,
             roll_deg,
             self.directional_shadows_enabled,
+            self.shadow_cascade_maximum_distance,
+            self.shadow_cascade_first_far_bound,
             self.ambient_brightness,
             self.skybox_set,
             self.skybox_brightness,
@@ -123,6 +141,13 @@ mod tests {
         assert!(settings.directional_light_illuminance > 0.0);
         assert!(settings.ambient_brightness > 0.0);
         assert!(settings.skybox_brightness > 0.0);
+    }
+
+    #[test]
+    fn defaults_use_rts_scaled_shadow_cascades() {
+        let settings = EnvironmentSettings::default();
+        assert!(settings.shadow_cascade_maximum_distance > 500.0);
+        assert!(settings.shadow_cascade_first_far_bound > 50.0);
     }
 
     #[test]

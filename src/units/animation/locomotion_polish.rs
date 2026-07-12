@@ -446,6 +446,29 @@ mod tests {
     }
 
     #[test]
+    fn high_move_speed_selects_run_while_moving() {
+        let settings = UnitAnimationSettings::default();
+        let profile = sample_profile();
+        let state = LocomotionPresentationState::default();
+        let record = sample_record(UnitState::Moving {
+            target: WorldPosition::new(
+                crate::world::ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::ONE),
+            ),
+            path: NavigationPath::new(vec![]),
+            waypoint_index: 0,
+        });
+        let clip = locomotion_clip_with_hysteresis(
+            &record,
+            &sample_definition(14.0),
+            &profile,
+            &settings,
+            &state,
+        );
+        assert_eq!(clip, AnimationClipKey::Run);
+    }
+
+    #[test]
     fn playback_speed_scales_with_move_speed() {
         let settings = UnitAnimationSettings::default();
         let profile = sample_profile();

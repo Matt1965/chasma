@@ -308,6 +308,13 @@ pub fn sync_unit_animation_playback(
                         previous_layers.as_ref(),
                         &params.settings,
                     );
+                } else if let Some(full_body) = &targets.full_body {
+                    update_full_body_playback_speed(
+                        &mut player,
+                        full_body,
+                        previous_layers.as_ref(),
+                        &params.settings,
+                    );
                 }
             }
             if let Some(id) = unit_id {
@@ -485,6 +492,16 @@ struct LayeredPlaybackApply {
     clear_upper_fade: bool,
 }
 
+fn apply_looping_playback_speed(
+    active: &mut bevy::animation::ActiveAnimation,
+    target: &super::layered_playback::LayerClipTarget,
+) {
+    active.set_speed(target.speed);
+    if target.looping {
+        active.repeat();
+    }
+}
+
 fn advance_upper_attack_weight_fade(
     player: &mut AnimationPlayer,
     fade: &mut UpperAttackWeightFade,
@@ -534,17 +551,26 @@ fn apply_layered_playback(
 
     if let Some(full_body) = &targets.full_body {
         result.clear_upper_fade = true;
-        if let Some(node) = previous.and_then(|state| state.full_body_node) {
-            player.stop(node);
-        }
+        let previous_node = previous.and_then(|state| state.full_body_node);
         if full_body.freeze_pose {
             player.pause_all();
             result.full_body_node = Some(full_body.node);
             return result;
         }
         player.resume_all();
-        let active = transitions.play(player, full_body.node, full_body.blend);
-        active.set_speed(full_body.speed);
+        let same_node = previous_node == Some(full_body.node);
+        if same_node {
+            if let Some(active) = player.animation_mut(full_body.node) {
+                apply_looping_playback_speed(active, full_body);
+            }
+            result.full_body_node = Some(full_body.node);
+            return result;
+        }
+        if let Some(node) = previous_node {
+            player.stop(node);
+        }
+        let mut active = transitions.play(player, full_body.node, full_body.blend);
+        apply_looping_playback_speed(&mut active, full_body);
         result.full_body_node = Some(full_body.node);
         return result;
     }
@@ -591,11 +617,8 @@ fn apply_layered_playback(
 
     if let Some(lower) = &targets.lower {
         if lower_node != Some(lower.node) {
-            let active = transitions.play(player, lower.node, lower.blend);
-            if lower.looping {
-                active.repeat();
-            }
-            active.set_speed(lower.speed);
+            let mut active = transitions.play(player, lower.node, lower.blend);
+            apply_looping_playback_speed(&mut active, lower);
             lower_node = Some(lower.node);
         }
     }
@@ -661,18 +684,46 @@ fn update_lower_playback_speed(
     previous: Option<&LayeredPlaybackState>,
     settings: &UnitAnimationSettings,
 ) {
-    let node = previous
-        .and_then(|state| state.lower_node)
-        .unwrap_or(lower.node);
-    let prev_speed = previous.and_then(|state| state.lower_speed);
-    let speed_changed = prev_speed
-        .map(|speed| (speed - lower.speed).abs() > settings.speed_update_epsilon)
+    update_layer_playback_speed(
+        player,
+        lower,
+        previous.and_then(|state| state.lower_node),
+        previous.and_then(|state| state.lower_speed),
+        settings,
+    );
+}
+
+fn update_full_body_playback_speed(
+    player: &mut AnimationPlayer,
+    full_body: &super::layered_playback::LayerClipTarget,
+    previous: Option<&LayeredPlaybackState>,
+    settings: &UnitAnimationSettings,
+) {
+    update_layer_playback_speed(
+        player,
+        full_body,
+        previous.and_then(|state| state.full_body_node),
+        previous.and_then(|state| state.lower_speed),
+        settings,
+    );
+}
+
+fn update_layer_playback_speed(
+    player: &mut AnimationPlayer,
+    target: &super::layered_playback::LayerClipTarget,
+    previous_node: Option<AnimationNodeIndex>,
+    previous_speed: Option<f32>,
+    settings: &UnitAnimationSettings,
+) {
+    let node = previous_node.unwrap_or(target.node);
+    let speed_changed = previous_speed
+        .map(|speed| (speed - target.speed).abs() > settings.speed_update_epsilon)
         .unwrap_or(false);
     if !speed_changed {
         return;
     }
     if let Some(active) = player.animation_mut(node) {
-        active.set_speed(lower.speed);
+        apply_looping_playback_speed(active, target);
     }
 }
 
