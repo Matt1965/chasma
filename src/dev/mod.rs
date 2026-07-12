@@ -25,12 +25,14 @@ pub use catalog_cache::{
 };
 pub use debug_controls::{apply_dev_debug_flags, dev_flags_from_overlay, sync_dev_debug_controls};
 pub use dev_mode::{
-    DefinitionId, DevDebugFlags, DevModeInputGate, DevModeState, DevTab, SpawnMode,
+    DefinitionId, DevDebugFlags, DevModeInputGate, DevModeState, DevTab, DevTextFieldFocus,
+    SpawnMode,
 };
 pub use history::{DevSpawnHistory, DevSpawnRecord};
 pub use input::{
-    DevPanelHoverState, DevPanelRoot, DevPanelUi, dev_mode_keyboard_input, handle_dev_spawn_click,
-    reset_dev_input_gate, update_dev_panel_hover_state, update_dev_preview_anchor,
+    DevPanelHoverState, DevPanelRoot, DevPanelUi, cancel_dev_placement, dev_mode_keyboard_input,
+    handle_dev_spawn_click, handle_dev_tool_cancel_input, reset_dev_input_gate,
+    update_dev_panel_hover_state, update_dev_preview_anchor,
 };
 pub use inspector::{WorldInspectorState, capture_unit_inspector_snapshot};
 pub use scenes::{
@@ -51,7 +53,7 @@ use inspector::{handle_inspector_input, refresh_inspector_snapshot, sync_inspect
 use panel::{
     handle_dev_panel_ui_interaction, setup_dev_panel, sync_dev_panel_button_styles,
     sync_dev_panel_content, sync_dev_panel_section_visibility, sync_dev_panel_tab_sections,
-    sync_dev_panel_visibility, sync_dev_simulation_status,
+    sync_dev_panel_visibility, sync_dev_search_box_style, sync_dev_simulation_status,
 };
 
 use bevy::prelude::*;
@@ -86,6 +88,7 @@ impl Plugin for DevModePlugin {
                 (
                     reset_dev_input_gate,
                     dev_mode_keyboard_input,
+                    handle_dev_tool_cancel_input,
                     tick_dev_search_debounce,
                     sync_catalog_browse_index,
                     update_dev_panel_hover_state,
@@ -106,6 +109,10 @@ impl Plugin for DevModePlugin {
                 )
                     .chain()
                     .in_set(DevModeInputSystems),
+            )
+            .add_systems(
+                Update,
+                sync_dev_search_box_style.in_set(DevModeInputSystems),
             )
             .add_systems(
                 Update,

@@ -143,3 +143,25 @@ fn spawn_gate_blocks_duplicate_handling_per_frame() {
     gate.spawn_handled_this_frame = true;
     assert!(gate.spawn_handled_this_frame);
 }
+
+#[test]
+fn tool_status_reflects_active_placement() {
+    let mut state = DevModeState::default();
+    state.select_definition(DefinitionId::Unit(crate::world::UnitDefinitionId::new(
+        "worker",
+    )));
+    let status = state.tool_status_text();
+    assert!(status.contains("Place Unit"));
+    assert!(status.contains("worker"));
+    assert!(status.contains("Player"));
+}
+
+#[test]
+fn cancel_placement_clears_tool_state() {
+    let mut state = DevModeState::default();
+    state.select_definition(DefinitionId::Unit(crate::world::UnitDefinitionId::new(
+        "wolf",
+    )));
+    state.cancel_placement_tool();
+    assert!(!state.placement_tool_active());
+}

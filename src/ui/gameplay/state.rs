@@ -191,10 +191,10 @@ pub fn derive_cursor_mode(
         return GameplayCursorMode::Default;
     }
     if let Some(crate::client::CommandType::Attack) = armed {
-        return if hover_attackable {
-            GameplayCursorMode::Attack
-        } else {
-            GameplayCursorMode::Default
+        return match hover {
+            CommandHoverContext::Terrain => GameplayCursorMode::AttackMove,
+            _ if hover_attackable => GameplayCursorMode::Attack,
+            _ => GameplayCursorMode::Default,
         };
     }
     if armed == Some(crate::client::CommandType::AttackMove) {

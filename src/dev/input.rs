@@ -1,4 +1,4 @@
-//! Dev mode keyboard, spawn clicks, and gameplay input gating (ADR-043/044/047).
+//! Dev mode keyboard, spawn clicks, and gameplay input gating (ADR-043/044/047, DV2).
 
 use bevy::input::keyboard::KeyCode;
 use bevy::input::mouse::MouseButton;
@@ -13,10 +13,13 @@ use crate::units::input::{BoxSelectDrag, cursor_world_ray, terrain_click_to_worl
 use crate::world::{DoodadCatalog, UnitCatalog, WorldConfig, WorldData};
 
 use super::catalog_cache::DevSearchDebounce;
-use super::dev_mode::{DevModeInputGate, DevModeState, DevTab};
+use super::dev_mode::{DevModeInputGate, DevModeState, DevTab, DevTextFieldFocus};
 use super::history::DevSpawnRecord;
 use super::spawn_tools::dev_spawn_position_from_terrain_click;
-use super::tools::{BatchSpawnRequest, BatchSpawnScratch, DevPreviewAnchor, execute_batch_spawn};
+use super::tools::{
+    BatchSpawnRequest, BatchSpawnScratch, DevPlacementPreview, DevPreviewAnchor,
+    execute_batch_spawn,
+};
 
 const SHIFT_BATCH_COUNT: u32 = 5;
 
@@ -25,12 +28,17 @@ pub fn reset_dev_input_gate(mut gate: ResMut<DevModeInputGate>) {
     gate.reset();
 }
 
+/// Cancel armed placement tool and clear preview ghosts.
+pub fn cancel_dev_placement(dev_state: &mut DevModeState, preview: &mut DevPlacementPreview) {
+    dev_state.cancel_placement_tool();
+    preview.clear();
+}
+
 /// F12 toggle, search typing, tab shortcuts, favorites, and quick-spawn hotkeys.
 pub fn dev_mode_keyboard_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut dev_state: ResMut<DevModeState>,
     mut debounce: ResMut<DevSearchDebounce>,
-    panel_hovered: Res<DevPanelHoverState>,
 ) {
     if keyboard.just_pressed(KeyCode::F12) {
         dev_state.toggle();
@@ -40,7 +48,18 @@ pub fn dev_mode_keyboard_input(
         return;
     }
 
-    if keyboard.just_pressed(KeyCode::Tab) {
+    let ctrl = keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight);
+
+    if keyboard.just_pressed(KeyCode::Slash) || (ctrl && keyboard.just_pressed(KeyCode::KeyF)) {
+        if dev_state.active_tab == DevTab::Scenes {
+            dev_state.focus_scene_name();
+        } else {
+            dev_state.focus_catalog_search();
+        }
+        return;
+    }
+
+    if keyboard.just_pressed(KeyCode::Tab) && !dev_state.has_text_focus() {
         dev_state.active_tab = match dev_state.active_tab {
             DevTab::Units => DevTab::Doodads,
             DevTab::Doodads => DevTab::Placement,
@@ -53,57 +72,98 @@ pub fn dev_mode_keyboard_input(
         dev_state.list_scroll = 0;
     }
 
-    if keyboard.just_pressed(KeyCode::KeyE) && !panel_hovered.hovered {
+    if dev_state.has_text_focus() {
+        handle_text_field_input(&keyboard, &mut dev_state, &mut debounce);
+        return;
+    }
+
+    if keyboard.just_pressed(KeyCode::KeyE) {
         dev_state.enabled_only = !dev_state.enabled_only;
     }
 
-    if keyboard.just_pressed(KeyCode::KeyT)
-        && (keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight))
-        && !panel_hovered.hovered
-    {
+    if keyboard.just_pressed(KeyCode::KeyT) {
         dev_state.cycle_spawn_affiliation();
     }
 
-    if !panel_hovered.hovered {
-        handle_favorite_hotkeys(&keyboard, &mut dev_state);
+    handle_favorite_hotkeys(&keyboard, &mut dev_state);
+}
+
+/// Esc cancels placement tool and clears search focus (DV2).
+pub fn handle_dev_tool_cancel_input(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    panel_hovered: Res<DevPanelHoverState>,
+    mut dev_state: ResMut<DevModeState>,
+    mut preview: ResMut<DevPlacementPreview>,
+    mut gate: ResMut<DevModeInputGate>,
+) {
+    if !dev_state.enabled {
+        return;
+    }
+
+    if keyboard.just_pressed(KeyCode::Escape) {
+        let had_tool = dev_state.placement_tool_active();
+        dev_state.clear_text_focus();
+        if had_tool {
+            cancel_dev_placement(&mut dev_state, &mut preview);
+            gate.block_gameplay_mouse = true;
+        }
+        return;
     }
 
     if panel_hovered.hovered {
         return;
     }
 
-    if dev_state.active_tab == DevTab::Scenes {
-        if keyboard.just_pressed(KeyCode::Backspace) {
-            dev_state.scene_name_input.pop();
-            dev_state.scene_list_scroll = 0;
-        }
-        for key in keyboard.get_just_pressed() {
-            if let Some(ch) = key_to_search_char(*key) {
-                dev_state.scene_name_input.push(ch);
-                dev_state.scene_list_scroll = 0;
-            }
-        }
+    if mouse_buttons.just_pressed(MouseButton::Right) && dev_state.placement_tool_active() {
+        cancel_dev_placement(&mut dev_state, &mut preview);
+        gate.block_gameplay_mouse = true;
+    }
+}
+
+fn handle_text_field_input(
+    keyboard: &ButtonInput<KeyCode>,
+    dev_state: &mut DevModeState,
+    debounce: &mut DevSearchDebounce,
+) {
+    if keyboard.just_pressed(KeyCode::Enter) {
+        dev_state.clear_text_focus();
         return;
     }
 
-    if keyboard.just_pressed(KeyCode::Backspace) {
-        dev_state.search_query.pop();
-        dev_state.list_scroll = 0;
-        debounce.note_input(&dev_state.search_query);
-    }
-
-    if keyboard.just_pressed(KeyCode::KeyF) {
-        if let Some(id) = dev_state.selected_definition.clone() {
-            dev_state.toggle_favorite(id);
+    match dev_state.text_focus {
+        DevTextFieldFocus::SceneName => {
+            if keyboard.just_pressed(KeyCode::Backspace) {
+                dev_state.scene_name_input.pop();
+                dev_state.scene_list_scroll = 0;
+            }
+            for key in keyboard.get_just_pressed() {
+                if let Some(ch) = key_to_search_char(*key) {
+                    dev_state.scene_name_input.push(ch);
+                    dev_state.scene_list_scroll = 0;
+                }
+            }
         }
-    }
-
-    for key in keyboard.get_just_pressed() {
-        if let Some(ch) = key_to_search_char(*key) {
-            dev_state.search_query.push(ch);
-            dev_state.list_scroll = 0;
-            debounce.note_input(&dev_state.search_query);
+        DevTextFieldFocus::CatalogSearch => {
+            if keyboard.just_pressed(KeyCode::Backspace) {
+                dev_state.search_query.pop();
+                dev_state.list_scroll = 0;
+                debounce.note_input(&dev_state.search_query);
+            }
+            if keyboard.just_pressed(KeyCode::KeyF) {
+                if let Some(id) = dev_state.selected_definition.clone() {
+                    dev_state.toggle_favorite(id);
+                }
+            }
+            for key in keyboard.get_just_pressed() {
+                if let Some(ch) = key_to_search_char(*key) {
+                    dev_state.search_query.push(ch);
+                    dev_state.list_scroll = 0;
+                    debounce.note_input(&dev_state.search_query);
+                }
+            }
         }
+        DevTextFieldFocus::None => {}
     }
 }
 
@@ -120,6 +180,12 @@ fn handle_favorite_hotkeys(keyboard: &ButtonInput<KeyCode>, dev_state: &mut DevM
             }
         } else if let Some(id) = dev_state.favorite_slot(slot).cloned() {
             dev_state.select_definition(id);
+        }
+    }
+
+    if keyboard.just_pressed(KeyCode::KeyF) {
+        if let Some(id) = dev_state.selected_definition.clone() {
+            dev_state.toggle_favorite(id);
         }
     }
 }
@@ -259,6 +325,8 @@ pub fn handle_dev_spawn_click(
     if !mouse_buttons.just_pressed(MouseButton::Left) || box_drag.is_box_drag() {
         return;
     }
+
+    dev_state.clear_text_focus();
 
     let ctrl = keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight);
     let shift = keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight);
@@ -437,5 +505,36 @@ mod tests {
         state.reset_tool_state();
         assert!(state.enabled);
         assert!(state.search_query.is_empty());
+    }
+
+    #[test]
+    fn text_focus_suppresses_global_shortcut_gate() {
+        let mut state = DevModeState::default();
+        state.enabled = true;
+        state.focus_catalog_search();
+        assert!(state.has_text_focus());
+        state.clear_text_focus();
+        assert!(!state.has_text_focus());
+    }
+
+    #[test]
+    fn cancel_placement_clears_selection_and_preview() {
+        let mut state = DevModeState::default();
+        state.select_definition(DefinitionId::Unit(crate::world::UnitDefinitionId::new(
+            "wolf",
+        )));
+        let mut preview = DevPlacementPreview::default();
+        preview.active = true;
+        cancel_dev_placement(&mut state, &mut preview);
+        assert!(!state.placement_tool_active());
+        assert!(!preview.active);
+    }
+
+    #[test]
+    fn search_query_survives_tab_switch() {
+        let mut state = DevModeState::default();
+        state.search_query = "oak".into();
+        state.active_tab = DevTab::Doodads;
+        assert_eq!(state.search_query, "oak");
     }
 }

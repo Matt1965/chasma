@@ -10,6 +10,15 @@ use crate::world::{DoodadDefinitionId, UnitDefinitionId, WorldPosition};
 use super::history::DevSpawnHistory;
 use super::tools::{BrushSettings, PlacementRules};
 
+/// Which dev panel text field owns keyboard input (DV2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash, Reflect)]
+pub enum DevTextFieldFocus {
+    #[default]
+    None,
+    CatalogSearch,
+    SceneName,
+}
+
 /// Active dev panel tab.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash, Reflect)]
 pub enum DevTab {
@@ -79,6 +88,8 @@ pub struct DevModeState {
     pub last_spawn: Option<(DefinitionId, WorldPosition)>,
     /// Affiliation assigned to the next dev unit spawn (O1).
     pub spawn_affiliation: crate::world::Affiliation,
+    /// Active text-field focus — global dev shortcuts are suppressed while set (DV2).
+    pub text_focus: DevTextFieldFocus,
 }
 
 impl Default for DevModeState {
@@ -108,6 +119,7 @@ impl Default for DevModeState {
             spawn_history: DevSpawnHistory::default(),
             last_spawn: None,
             spawn_affiliation: crate::world::Affiliation::Player,
+            text_focus: DevTextFieldFocus::None,
         }
     }
 }
@@ -122,6 +134,52 @@ impl DevModeState {
 
     pub fn clear_selection(&mut self) {
         self.selected_definition = None;
+    }
+
+    pub fn has_text_focus(&self) -> bool {
+        self.text_focus != DevTextFieldFocus::None
+    }
+
+    pub fn clear_text_focus(&mut self) {
+        self.text_focus = DevTextFieldFocus::None;
+    }
+
+    pub fn focus_catalog_search(&mut self) {
+        self.text_focus = DevTextFieldFocus::CatalogSearch;
+    }
+
+    pub fn focus_scene_name(&mut self) {
+        self.text_focus = DevTextFieldFocus::SceneName;
+    }
+
+    /// Whether a placement definition is armed for terrain clicks.
+    pub fn placement_tool_active(&self) -> bool {
+        self.selected_definition.is_some()
+    }
+
+    /// Clear armed placement selection (preview cleared separately).
+    pub fn cancel_placement_tool(&mut self) {
+        self.clear_selection();
+        self.last_spawn_message.clear();
+    }
+
+    /// Multi-line active-tool summary for the dev panel (DV2).
+    pub fn tool_status_text(&self) -> String {
+        let tool = match &self.selected_definition {
+            None => "none",
+            Some(DefinitionId::Unit(_)) => "Place Unit",
+            Some(DefinitionId::Doodad(_)) => "Place Doodad",
+        };
+        let selection = self
+            .selected_definition
+            .as_ref()
+            .map(DefinitionId::id_str)
+            .unwrap_or("none");
+        format!(
+            "Tool: {tool}\nSelection: {selection}\nTeam: {}\nBrush: {}",
+            self.spawn_team_label(),
+            self.brush.mode.label(),
+        )
     }
 
     pub fn select_definition(&mut self, id: DefinitionId) {

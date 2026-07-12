@@ -40,7 +40,7 @@ Pre-feature-development checkpoint after audit passes A1–B6.
 | Advanced locomotion polish (turns, hysteresis, speed blends) | A5 (ADR-076) |
 | Animation LOD, validation, shared graphs, audit stabilization | A6 + A1 (ADR-077) |
 | Fixed simulation tick orchestrator | ADR-065 in place |
-| Dev Mode (catalog, spawn, scenes, inspector) | Dev-gated; locomotion profiles + weapons from Excel; A3–A5 profile fields via starters/code |
+| Dev Mode (catalog, spawn, scenes, inspector) | Dev-gated; DV2 focus/cancel UX; locomotion profiles + weapons from Excel; A3–A5 profile fields via starters/code |
 | Environment (time-of-day, water, lighting) | Dev/runtime presentation; singleton-safe |
 
 ## Explicitly deferred

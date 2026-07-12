@@ -9,7 +9,7 @@ use super::catalog_browser::CatalogBrowserEntry;
 use super::catalog_cache::{
     CatalogBrowseIndex, CatalogFilterCache, DevSearchDebounce, browse_catalog_entries,
 };
-use super::dev_mode::{DefinitionId, DevDebugFlags, DevModeState, DevTab};
+use super::dev_mode::{DevDebugFlags, DevModeState, DevTab};
 use super::input::{DevPanelRoot, DevPanelUi};
 use super::scenes::{
     DevSceneRegistry, SceneDebugFlagsSnapshot, clear_dev_world, delete_scene, load_scene_by_id,
@@ -24,14 +24,20 @@ use crate::world::WorldData;
 
 const MAX_VISIBLE_ROWS: usize = 12;
 const ROW_HEIGHT_PX: f32 = 22.0;
-const PANEL_WIDTH_PX: f32 = 320.0;
-const MENU_BTN_WIDTH_PX: f32 = 96.0;
+const PANEL_WIDTH_PX: f32 = 368.0;
+const MENU_BTN_WIDTH_PX: f32 = 100.0;
 const MENU_BTN_HEIGHT_PX: f32 = 24.0;
+const TAB_BTN_WIDTH_PX: f32 = 50.0;
+const MAX_LIST_LABEL_CHARS: usize = 44;
 
 const BTN_BG_IDLE: Color = Color::srgba(0.14, 0.22, 0.28, 0.95);
 const BTN_BG_HOVER: Color = Color::srgba(0.20, 0.30, 0.38, 0.98);
 const BTN_BG_PRESSED: Color = Color::srgba(0.08, 0.12, 0.16, 1.0);
 const BTN_BG_ACTIVE: Color = Color::srgba(0.15, 0.45, 0.32, 0.95);
+const SEARCH_BG_IDLE: Color = Color::srgba(0.08, 0.11, 0.14, 0.95);
+const SEARCH_BG_FOCUSED: Color = Color::srgba(0.10, 0.18, 0.24, 0.98);
+const SEARCH_BORDER_IDLE: Color = Color::srgba(0.25, 0.32, 0.38, 0.9);
+const SEARCH_BORDER_FOCUSED: Color = Color::srgba(0.35, 0.75, 0.55, 1.0);
 
 fn menu_button_bg(interaction: &Interaction, selected: bool) -> BackgroundColor {
     if selected {
@@ -65,10 +71,16 @@ pub(crate) struct DevSimulationButton {
 pub(crate) struct DevSearchText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevListText;
+pub(crate) struct DevSearchBox;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSelectionText;
+pub(crate) struct DevSearchClearButton;
+
+#[derive(Component, Debug)]
+pub(crate) struct DevToolStatusText;
+
+#[derive(Component, Debug)]
+pub(crate) struct DevListText;
 
 #[derive(Component, Debug)]
 pub(crate) struct DevSpawnHintText;
@@ -220,7 +232,7 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
                         DevPanelUi,
                         Button,
                         Node {
-                            width: Val::Px(46.0),
+                            width: Val::Px(TAB_BTN_WIDTH_PX),
                             height: Val::Px(MENU_BTN_HEIGHT_PX),
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
@@ -291,6 +303,21 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
             });
 
             root.spawn((
+                DevToolStatusText,
+                DevPanelUi,
+                Text::new("Tool: none"),
+                TextFont {
+                    font_size: 11.0,
+                    ..default()
+                },
+                TextColor(Color::srgba(0.70, 0.88, 0.78, 1.0)),
+                Node {
+                    min_height: Val::Px(56.0),
+                    ..default()
+                },
+            ));
+
+            root.spawn((
                 DevCatalogSection,
                 DevPanelUi,
                 Node {
@@ -300,16 +327,62 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
                 },
             ))
             .with_children(|catalog| {
-                catalog.spawn((
-                    DevSearchText,
-                    DevPanelUi,
-                    Text::new("Search: (type when panel not hovered)"),
-                    TextFont {
-                        font_size: 12.0,
-                        ..default()
-                    },
-                    TextColor(Color::srgba(0.75, 0.82, 0.9, 1.0)),
-                ));
+                catalog
+                    .spawn((
+                        DevSearchBox,
+                        DevPanelUi,
+                        Button,
+                        Node {
+                            width: Val::Percent(100.0),
+                            min_height: Val::Px(MENU_BTN_HEIGHT_PX),
+                            flex_direction: FlexDirection::Row,
+                            align_items: AlignItems::Center,
+                            column_gap: Val::Px(4.0),
+                            padding: UiRect::horizontal(Val::Px(6.0)),
+                            border: UiRect::all(Val::Px(1.0)),
+                            overflow: Overflow::clip(),
+                            ..default()
+                        },
+                        BackgroundColor(SEARCH_BG_IDLE),
+                        BorderColor::all(SEARCH_BORDER_IDLE),
+                    ))
+                    .with_children(|row| {
+                        row.spawn((
+                            DevSearchText,
+                            DevPanelUi,
+                            Text::new("Search definitions… (Ctrl+F or /)"),
+                            TextFont {
+                                font_size: 12.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgba(0.65, 0.72, 0.80, 1.0)),
+                            Node {
+                                flex_grow: 1.0,
+                                overflow: Overflow::clip(),
+                                ..default()
+                            },
+                        ));
+                        row.spawn((
+                            DevSearchClearButton,
+                            DevPanelUi,
+                            Button,
+                            Node {
+                                width: Val::Px(20.0),
+                                height: Val::Px(20.0),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                            Visibility::Hidden,
+                            BackgroundColor(Color::srgba(0.18, 0.24, 0.30, 0.9)),
+                            Text::new("×"),
+                            TextFont {
+                                font_size: 14.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgba(0.85, 0.90, 0.95, 1.0)),
+                        ));
+                    });
 
                 catalog.spawn((
                     DevListText,
@@ -344,6 +417,7 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
                                     height: Val::Px(ROW_HEIGHT_PX),
                                     padding: UiRect::horizontal(Val::Px(4.0)),
                                     align_items: AlignItems::Center,
+                                    overflow: Overflow::clip(),
                                     ..default()
                                 },
                                 BackgroundColor(Color::srgba(0.1, 0.14, 0.18, 0.85)),
@@ -465,17 +539,6 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
                     ));
                 }
             });
-
-            root.spawn((
-                DevSelectionText,
-                DevPanelUi,
-                Text::new("Selected: none"),
-                TextFont {
-                    font_size: 12.0,
-                    ..default()
-                },
-                TextColor(Color::srgba(0.55, 0.95, 0.75, 1.0)),
-            ));
 
             root.spawn((
                 DevSpawnHintText,
@@ -638,13 +701,13 @@ pub(crate) fn sync_dev_panel_content(
             (
                 With<DevListText>,
                 Without<DevSearchText>,
-                Without<DevSelectionText>,
+                Without<DevToolStatusText>,
             ),
         >,
         Query<
             &mut Text,
             (
-                With<DevSelectionText>,
+                With<DevToolStatusText>,
                 Without<DevSearchText>,
                 Without<DevListText>,
             ),
@@ -654,7 +717,7 @@ pub(crate) fn sync_dev_panel_content(
             (
                 With<DevSpawnHintText>,
                 Without<DevSearchText>,
-                Without<DevSelectionText>,
+                Without<DevToolStatusText>,
             ),
         >,
         Query<
@@ -672,20 +735,7 @@ pub(crate) fn sync_dev_panel_content(
     }
 
     if let Ok(mut text) = texts.p0().single_mut() {
-        **text = if dev_state.active_tab == DevTab::Scenes {
-            format!(
-                "Scene name: \"{}\"  |  Tab: {}",
-                dev_state.scene_name_input,
-                tab_label(dev_state.active_tab)
-            )
-        } else {
-            format!(
-                "Search: \"{}\"  |  Enabled-only: {}  |  Tab: {}",
-                dev_state.search_query,
-                dev_state.enabled_only,
-                tab_label(dev_state.active_tab)
-            )
-        };
+        **text = format_search_field_display(&dev_state);
     }
 
     let catalog_entries = browse_catalog_entries(
@@ -716,8 +766,9 @@ pub(crate) fn sync_dev_panel_content(
         **text = match dev_state.active_tab {
             DevTab::Units | DevTab::Doodads => {
                 format!(
-                    "Definitions ({}) — scroll: ↑/↓ when not hovering panel",
-                    catalog_entries.len()
+                    "Definitions ({}) — enabled-only: {} — E toggles",
+                    catalog_entries.len(),
+                    dev_state.enabled_only,
                 )
             }
             DevTab::Placement => {
@@ -797,11 +848,7 @@ pub(crate) fn sync_dev_panel_content(
     }
 
     if let Ok(mut text) = texts.p2().single_mut() {
-        **text = match &dev_state.selected_definition {
-            Some(DefinitionId::Unit(id)) => format!("Selected unit: {}", id.as_str()),
-            Some(DefinitionId::Doodad(id)) => format!("Selected doodad: {}", id.as_str()),
-            None => "Selected: none".to_string(),
-        };
+        **text = dev_state.tool_status_text();
     }
 
     if let Ok(mut text) = texts.p3().single_mut() {
@@ -813,15 +860,9 @@ pub(crate) fn sync_dev_panel_content(
             }
         } else if dev_state.last_spawn_message.is_empty() {
             if show_placement {
-                format!(
-                    "Team: {} · Select definition, left-click terrain (T=cycle team, Shift=more, Ctrl=repeat)",
-                    dev_state.spawn_team_label()
-                )
+                "Left-click terrain to place · Esc or right-click cancels".into()
             } else {
-                format!(
-                    "Team: {} · Left-click spawn · T=cycle team · 1-9 favorites · Ctrl+1-9 assign · F=favorite",
-                    dev_state.spawn_team_label()
-                )
+                "Select a definition · T=cycle team · 1-9 favorites · Ctrl+1-9 assign".into()
             }
         } else {
             dev_state.last_spawn_message.clone()
@@ -1146,16 +1187,100 @@ pub(crate) fn sync_dev_panel_button_styles(
 
 fn format_list_row(entry: &CatalogBrowserEntry, favorite: bool) -> String {
     let star = if favorite { "★ " } else { "  " };
-    format!(
-        "{star}{}  [{}]  {}",
-        entry.label,
-        entry.category,
-        if entry.render_key.is_empty() {
-            entry.definition.id_str()
-        } else {
-            entry.render_key.as_str()
+    let label = truncate_label(&entry.label, MAX_LIST_LABEL_CHARS.saturating_sub(12));
+    let id_or_key = if entry.render_key.is_empty() {
+        entry.definition.id_str()
+    } else {
+        entry.render_key.as_str()
+    };
+    let id_or_key = truncate_label(id_or_key, 18);
+    format!("{star}{label}  [{}]  {id_or_key}", entry.category)
+}
+
+fn truncate_label(value: &str, max_chars: usize) -> String {
+    if value.chars().count() <= max_chars {
+        value.to_string()
+    } else {
+        format!(
+            "{}…",
+            value
+                .chars()
+                .take(max_chars.saturating_sub(1))
+                .collect::<String>()
+        )
+    }
+}
+
+fn format_search_field_display(dev_state: &DevModeState) -> String {
+    use super::dev_mode::DevTextFieldFocus;
+
+    if dev_state.active_tab == DevTab::Scenes {
+        let focused = dev_state.text_focus == DevTextFieldFocus::SceneName;
+        if dev_state.scene_name_input.is_empty() && !focused {
+            return "Scene name… (click or type)".to_string();
         }
-    )
+        return dev_state.scene_name_input.clone();
+    }
+
+    let focused = dev_state.text_focus == DevTextFieldFocus::CatalogSearch;
+    if dev_state.search_query.is_empty() && !focused {
+        return "Search definitions… (Ctrl+F or /)".to_string();
+    }
+    dev_state.search_query.clone()
+}
+
+/// Search box focus border/background (DV2).
+pub(crate) fn sync_dev_search_box_style(
+    dev_state: Res<DevModeState>,
+    mut boxes: Query<(&mut BackgroundColor, &mut BorderColor), With<DevSearchBox>>,
+    mut search_text: Query<&mut TextColor, With<DevSearchText>>,
+    mut clear_buttons: Query<&mut Visibility, With<DevSearchClearButton>>,
+) {
+    if !dev_state.enabled {
+        return;
+    }
+
+    let focused = dev_state.has_text_focus();
+    for (mut bg, mut border) in &mut boxes {
+        *bg = BackgroundColor(if focused {
+            SEARCH_BG_FOCUSED
+        } else {
+            SEARCH_BG_IDLE
+        });
+        border.set_all(if focused {
+            SEARCH_BORDER_FOCUSED
+        } else {
+            SEARCH_BORDER_IDLE
+        });
+    }
+
+    if let Ok(mut color) = search_text.single_mut() {
+        *color = TextColor(if focused {
+            Color::srgba(0.92, 0.95, 0.98, 1.0)
+        } else if dev_state.search_query.is_empty() && dev_state.active_tab != DevTab::Scenes {
+            Color::srgba(0.65, 0.72, 0.80, 1.0)
+        } else {
+            Color::srgba(0.85, 0.90, 0.95, 1.0)
+        });
+    }
+
+    let show_clear = match dev_state.active_tab {
+        DevTab::Scenes => {
+            !dev_state.scene_name_input.is_empty()
+                && dev_state.text_focus == super::dev_mode::DevTextFieldFocus::SceneName
+        }
+        _ => {
+            !dev_state.search_query.is_empty()
+                && dev_state.text_focus == super::dev_mode::DevTextFieldFocus::CatalogSearch
+        }
+    };
+    for mut visibility in &mut clear_buttons {
+        *visibility = if show_clear {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
 }
 
 fn format_debug_summary(flags: &DevDebugFlags) -> String {
@@ -1195,17 +1320,49 @@ pub(crate) fn handle_dev_panel_ui_interaction(
         Query<(&Interaction, &DevPlacementButton), Changed<Interaction>>,
         Query<(&Interaction, &DevSceneButton), Changed<Interaction>>,
         Query<(&Interaction, &DevSimulationButton), Changed<Interaction>>,
+        Query<&Interaction, (With<DevSearchBox>, Changed<Interaction>)>,
+        Query<&Interaction, (With<DevSearchClearButton>, Changed<Interaction>)>,
     )>,
 ) {
     if !dev_state.enabled {
         return;
     }
 
+    for interaction in buttons.p6().iter() {
+        if *interaction == Interaction::Pressed {
+            gate.block_gameplay_mouse = true;
+            if dev_state.active_tab == DevTab::Scenes {
+                dev_state.focus_scene_name();
+            } else {
+                dev_state.focus_catalog_search();
+            }
+        }
+    }
+
+    for interaction in buttons.p7().iter() {
+        if *interaction == Interaction::Pressed {
+            gate.block_gameplay_mouse = true;
+            if dev_state.active_tab == DevTab::Scenes {
+                dev_state.scene_name_input.clear();
+                dev_state.scene_list_scroll = 0;
+                dev_state.focus_scene_name();
+            } else {
+                dev_state.search_query.clear();
+                dev_state.list_scroll = 0;
+                debounce.note_input(&dev_state.search_query);
+                dev_state.focus_catalog_search();
+            }
+        }
+    }
+
+    let mut panel_click_without_search = false;
+
     for (interaction, button) in buttons.p5().iter() {
         if *interaction != Interaction::Pressed {
             continue;
         }
         gate.block_gameplay_mouse = true;
+        panel_click_without_search = true;
         match button.action {
             DevSimulationAction::TogglePause => sim_requests.toggle_pause = true,
             DevSimulationAction::StepOnce => sim_requests.step_once = true,
@@ -1215,6 +1372,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
     for (interaction, button) in buttons.p0().iter() {
         if *interaction == Interaction::Pressed {
             gate.block_gameplay_mouse = true;
+            panel_click_without_search = true;
             dev_state.active_tab = button.tab;
             dev_state.list_scroll = 0;
             dev_state.scene_list_scroll = 0;
@@ -1258,6 +1416,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
             continue;
         }
         gate.block_gameplay_mouse = true;
+        panel_click_without_search = true;
         if active_tab == DevTab::Scenes {
             let index = scene_list_scroll + row.index;
             if let Some(entry) = scene_entries.get(index) {
@@ -1298,6 +1457,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
             continue;
         }
         gate.block_gameplay_mouse = true;
+        panel_click_without_search = true;
         toggle_dev_flag(&mut dev_state, button.flag, &mut debounce);
     }
 
@@ -1306,6 +1466,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
             continue;
         }
         gate.block_gameplay_mouse = true;
+        panel_click_without_search = true;
         apply_placement_action(&mut dev_state, button.action);
     }
 
@@ -1314,6 +1475,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
             continue;
         }
         gate.block_gameplay_mouse = true;
+        panel_click_without_search = true;
         apply_scene_action(
             button.action,
             &mut dev_state,
@@ -1324,6 +1486,10 @@ pub(crate) fn handle_dev_panel_ui_interaction(
             runtime.as_deref(),
             camera_state.iter().next(),
         );
+    }
+
+    if panel_click_without_search {
+        dev_state.clear_text_focus();
     }
 }
 

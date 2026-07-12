@@ -78,12 +78,11 @@ pub fn command_button_enabled(
     }
 }
 
-pub const COMMAND_GRID: [HudCommandButton; 6] = [
+pub const COMMAND_GRID: [HudCommandButton; 5] = [
     HudCommandButton::Move,
     HudCommandButton::Stop,
     HudCommandButton::HoldPosition,
     HudCommandButton::Attack,
-    HudCommandButton::AttackMove,
     HudCommandButton::Interact,
 ];
 
@@ -211,7 +210,6 @@ pub fn handle_command_button_clicks(
         match *button {
             HudCommandButton::Move => hud.armed_command = Some(CommandType::Move),
             HudCommandButton::Attack => hud.armed_command = Some(CommandType::Attack),
-            HudCommandButton::AttackMove => hud.armed_command = Some(CommandType::AttackMove),
             HudCommandButton::Stop if button.emits_palette_intent() => {
                 queue.push(ClientIntent::PaletteCommand { command_type });
                 hud.armed_command = None;
@@ -270,7 +268,7 @@ mod tests {
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
         assert!(command_button_enabled(
-            HudCommandButton::AttackMove,
+            HudCommandButton::Attack,
             &selection,
             &UnitCatalog::default()
         ));

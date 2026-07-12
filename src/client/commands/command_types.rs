@@ -40,8 +40,8 @@ impl CommandType {
             Self::Move => "Move selected units to target",
             Self::Stop => "Stop selected units",
             Self::HoldPosition => "Hold position at current location",
-            Self::Attack => "Attack target unit",
-            Self::AttackMove => "Attack-move to destination",
+            Self::Attack => "Attack target or attack-move on ground",
+            Self::AttackMove => "Attack-move to destination (internal)",
             Self::Interact => "Interact with world object",
         }
     }
@@ -61,7 +61,6 @@ impl CommandType {
             CommandType::Stop,
             CommandType::HoldPosition,
             CommandType::Attack,
-            CommandType::AttackMove,
         ]
     }
 }

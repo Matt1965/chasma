@@ -133,3 +133,22 @@ button positions remain stable when tick/state labels change.
 - ADR-044 Dev Spawn Tools
 - ADR-039 Debug Overlay (U-UI3)
 - ADR-046 Simulation Pause
+- [docs/dev-mode.md](../docs/dev-mode.md) — DV2 shortcuts and focus model
+
+---
+
+## DV2 usability refresh
+
+Post-DV2 improvements (presentation only):
+
+| Area | Behavior |
+|------|----------|
+| Text focus | `DevTextFieldFocus` — shortcuts suppressed while search/scene field focused |
+| Search | Clickable field, Ctrl+F or `/`, Esc/Enter unfocus, clear (×) button |
+| Team hotkey | **T** cycles team when unfocused; types in search when focused |
+| Tool cancel | Esc and right-click clear placement + preview |
+| Tool status | Live Tool / Selection / Team / Brush block |
+| Panel | 368px width, clipped/truncated labels |
+| Attack UI | Single Attack button; ground click → attack-move via context resolver |
+
+Attack Move remains a simulation `CommandType` but is no longer a separate HUD button.

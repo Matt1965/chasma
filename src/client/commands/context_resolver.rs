@@ -48,6 +48,10 @@ pub fn resolve_contextual_command_with_armed(
                         target: CommandTarget::Unit { unit_id },
                     })
                 }
+                CommandTarget::Terrain { position } => Some(ContextualCommandIntent {
+                    command_type: CommandType::AttackMove,
+                    target: CommandTarget::Terrain { position },
+                }),
                 _ => None,
             },
             CommandType::Move => Some(ContextualCommandIntent {
@@ -286,5 +290,30 @@ mod tests {
             ))
             .is_none()
         );
+    }
+
+    #[test]
+    fn armed_attack_on_terrain_resolves_to_attack_move() {
+        let world = WorldData::new(ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let unit_catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let units = [UnitId::new(1)];
+        let resolved = resolve_contextual_command_with_armed(
+            &ctx(
+                &units,
+                CommandTarget::Terrain {
+                    position: pos(12.0, 8.0),
+                },
+                &world,
+                &unit_catalog,
+                &weapons,
+            ),
+            Some(CommandType::Attack),
+        )
+        .unwrap();
+        assert_eq!(resolved.command_type, CommandType::AttackMove);
     }
 }
