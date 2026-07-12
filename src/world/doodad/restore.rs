@@ -180,8 +180,8 @@ pub fn restore_doodad_record(
 
 #[cfg(test)]
 mod tests {
-    use super::catalog::DoodadDefinitionId;
     use super::*;
+    use crate::world::DoodadDefinitionId;
     use crate::world::{ChunkCoord, DoodadPlacement, DoodadSource, LocalPosition, WorldPosition};
     use bevy::prelude::{Quat, Vec3};
 

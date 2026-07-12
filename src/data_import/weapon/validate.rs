@@ -56,6 +56,29 @@ pub fn validate_row(row: &WeaponImportRow) -> Result<(), crate::data_import::Row
         return Err(fail("numeric fields must be finite".to_string()));
     }
 
+    if row.animation_key.trim().is_empty() {
+        return Err(fail(format!(
+            "Weapon `{}` row {}: Animation Key must be non-empty",
+            row.weapon_id, row.row_number
+        )));
+    }
+    let key = row.animation_key.trim();
+    if key.chars().any(char::is_whitespace) {
+        return Err(fail(format!(
+            "Weapon `{}` row {}: Animation Key must not contain whitespace (`{key}`)",
+            row.weapon_id, row.row_number
+        )));
+    }
+    if !key
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    {
+        return Err(fail(format!(
+            "Weapon `{}` row {}: Animation Key has invalid characters (`{key}`)",
+            row.weapon_id, row.row_number
+        )));
+    }
+
     Ok(())
 }
 
@@ -63,7 +86,7 @@ pub fn validate_row(row: &WeaponImportRow) -> Result<(), crate::data_import::Row
 mod tests {
     use super::*;
     use crate::data_import::weapon::schema::WeaponImportRow;
-    use crate::world::{DamageType, HitMode, TargetFilter};
+    use crate::world::{AttackPlaybackPolicy, DamageType, HitMode, TargetFilter};
 
     fn sample_row(aps: f32) -> WeaponImportRow {
         WeaponImportRow {
@@ -81,6 +104,12 @@ mod tests {
             projectile_key: None,
             projectile_speed_mps: 0.0,
             animation_key: "attack_fists".to_string(),
+            attack_playback_policy: AttackPlaybackPolicy::default(),
+            normalized_strike_time:
+                crate::data_import::weapon::schema::DEFAULT_NORMALIZED_STRIKE_TIME,
+            attack_blend_in_ms: crate::data_import::weapon::schema::DEFAULT_ATTACK_BLEND_MS,
+            attack_blend_out_ms: crate::data_import::weapon::schema::DEFAULT_ATTACK_BLEND_MS,
+            attack_variant: None,
             target_filters: vec![TargetFilter::Enemies],
             stat_scaling: None,
             enabled: true,
@@ -105,8 +134,26 @@ mod tests {
     }
 
     #[test]
-    fn derived_cooldown_from_row_definition() {
-        let def = sample_row(2.0).to_definition();
-        assert!((def.attack_cooldown_seconds() - 0.5).abs() < 1e-4);
+    fn blank_animation_key_rejected() {
+        let mut row = sample_row(1.5);
+        row.animation_key = "   ".to_string();
+        let err = validate_row(&row).unwrap_err();
+        assert!(err.message.contains("Animation Key"));
+        assert!(err.message.contains("weapon_fists"));
+    }
+
+    #[test]
+    fn malformed_animation_key_rejected() {
+        let mut row = sample_row(1.5);
+        row.animation_key = "attack clip".to_string();
+        let err = validate_row(&row).unwrap_err();
+        assert!(err.message.contains("whitespace"));
+    }
+
+    #[test]
+    fn valid_animation_key_accepted() {
+        let mut row = sample_row(1.5);
+        row.animation_key = "attack_bite".to_string();
+        assert!(validate_row(&row).is_ok());
     }
 }

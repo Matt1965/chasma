@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use super::definition_id::UnitDefinitionId;
 use super::render_key::UnitRenderKey;
+use crate::world::unit::animation_profile::AnimationProfileId;
 use crate::world::weapon::WeaponDefinitionId;
 
 /// Authoritative description of a unit type (ADR-027 U1).
@@ -40,6 +41,8 @@ pub struct UnitDefinition {
     pub default_weapon_id: WeaponDefinitionId,
     pub enabled: bool,
     pub render_key: UnitRenderKey,
+    /// Optional locomotion animation profile (A1). None = static model.
+    pub animation_profile_id: Option<AnimationProfileId>,
 }
 
 impl UnitDefinition {
@@ -90,6 +93,7 @@ impl UnitDefinition {
             default_weapon_id,
             enabled,
             render_key,
+            animation_profile_id: None,
         }
     }
 }

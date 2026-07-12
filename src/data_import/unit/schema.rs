@@ -1,5 +1,6 @@
 //! Excel column schema and conversion into [`UnitDefinition`].
 
+use crate::world::{AnimationProfile, AnimationProfileId};
 use crate::world::{UnitDefinition, UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
 
 use super::super::schema::normalize_file_path;
@@ -30,6 +31,7 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Collision Radius",
     "Max Slope",
     "Render Scale",
+    "Animation Profile",
     "Enabled",
 ];
 
@@ -74,6 +76,8 @@ pub struct UnitImportRow {
     pub has_file_path_column: bool,
     pub has_default_weapon_column: bool,
     pub has_render_scale_column: bool,
+    pub animation_profile: String,
+    pub has_animation_profile_column: bool,
 }
 
 /// Normalize a workbook file-path cell into a [`UnitRenderKey`] path segment (`wolf`).
@@ -129,7 +133,20 @@ impl UnitImportRow {
             render_key,
         );
         definition.render_scale = self.resolved_render_scale();
+        definition.animation_profile_id = self.resolved_animation_profile_id();
         Ok(definition)
+    }
+
+    fn resolved_animation_profile_id(&self) -> Option<AnimationProfileId> {
+        if !self.has_animation_profile_column {
+            return None;
+        }
+        let trimmed = self.animation_profile.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(AnimationProfileId::new(trimmed))
+        }
     }
 
     fn resolved_default_weapon_id(&self) -> &str {
@@ -187,6 +204,8 @@ mod tests {
             has_file_path_column: true,
             has_default_weapon_column: true,
             has_render_scale_column: false,
+            animation_profile: String::new(),
+            has_animation_profile_column: false,
         }
     }
 

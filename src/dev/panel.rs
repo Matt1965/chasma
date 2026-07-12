@@ -77,6 +77,9 @@ pub(crate) struct DevSpawnHintText;
 pub(crate) struct DevDebugText;
 
 #[derive(Component, Debug)]
+pub(crate) struct DevAnimationText;
+
+#[derive(Component, Debug)]
 pub(crate) struct DevWorldToolsText;
 
 #[derive(Component, Debug)]
@@ -483,6 +486,21 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
                     ..default()
                 },
                 TextColor(Color::srgba(0.65, 0.75, 0.85, 1.0)),
+            ));
+
+            root.spawn((
+                DevAnimationText,
+                DevPanelUi,
+                Text::new(""),
+                TextFont {
+                    font_size: 10.0,
+                    ..default()
+                },
+                TextColor(Color::srgba(0.72, 0.82, 0.9, 1.0)),
+                Node {
+                    display: Display::None,
+                    ..default()
+                },
             ));
 
             root.spawn((

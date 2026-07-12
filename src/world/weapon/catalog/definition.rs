@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use super::animation::WeaponAttackAnimation;
 use super::definition_id::WeaponDefinitionId;
 
 /// Damage classification for future resistance rules (ADR-054 C1).
@@ -103,7 +104,9 @@ pub struct WeaponDefinition {
     pub projectile_key: Option<String>,
     /// Travel speed for [`HitMode::Projectile`] weapons (m/s). Ignored for other hit modes.
     pub projectile_speed_mps: f32,
+    /// glTF clip name for this weapon's attack animation (A2).
     pub animation_key: String,
+    pub attack_animation: WeaponAttackAnimation,
     pub target_filters: Vec<TargetFilter>,
     /// Reserved for future stat scaling — ignored in C1 behavior.
     pub stat_scaling: Option<String>,
@@ -144,6 +147,7 @@ impl WeaponDefinition {
             projectile_key,
             projectile_speed_mps,
             animation_key: animation_key.into(),
+            attack_animation: WeaponAttackAnimation::default(),
             target_filters,
             stat_scaling,
             enabled,
@@ -157,5 +161,11 @@ impl WeaponDefinition {
         } else {
             1.0 / self.attacks_per_second
         }
+    }
+
+    /// Override weapon-owned attack animation parameters (A2).
+    pub fn with_attack_animation(mut self, attack_animation: WeaponAttackAnimation) -> Self {
+        self.attack_animation = attack_animation;
+        self
     }
 }

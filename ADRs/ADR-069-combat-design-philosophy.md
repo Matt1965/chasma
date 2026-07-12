@@ -102,8 +102,10 @@ instant strike transition. Stagger not implemented.
 **Design:** units downed by default; death requires additional circumstances; downed units
 lootable/treatable.
 
-**Implemented today:** 0 HP → dead → same-tick removal (ADR-059). Downed state replaces
-this in a future ADR when implemented.
+**Implemented today:** 0 HP → dead → same-tick removal (ADR-059). **Presentation:** death animation plays after world removal without delaying simulation
+(ADR-074 A3). Locomotion + attack layering is presentation-only (ADR-075 A4). Turn-in-place
+and heading-aware locomotion polish are presentation-only (ADR-076 A5) — simulation facing
+remains deferred per roadmap. Downed state replaces instant removal in a future ADR when implemented.
 
 ### Randomness
 

@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use crate::terrain::world_position_to_render_global;
 use crate::world::{UnitId, UnitRecord, WorldConfig};
 
-use super::components::{UnitRenderEntity, UnitSceneRoot};
+use super::components::{UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot};
 
 /// Spawn a glTF scene entity for an authoritative unit record.
 pub fn spawn_unit_render_entity(
@@ -22,6 +22,9 @@ pub fn spawn_unit_render_entity(
     commands
         .spawn((
             UnitRenderEntity { unit_id: record.id },
+            UnitRenderMetadata {
+                definition_id: record.definition_id.clone(),
+            },
             UnitSceneRoot,
             SceneRoot(scene),
             Transform {

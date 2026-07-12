@@ -76,15 +76,17 @@ pub fn sync_unit_render_entities(
         .copied()
         .filter(|id| !should_render.contains(id))
         .collect();
-    despawn_unit_render_entities(&mut commands, &mut index, stale);
+    for id in stale {
+        if world.get_unit(id).is_some() {
+            despawn_unit_render_entities(&mut commands, &mut index, [id]);
+        }
+    }
 
     for (entity, marker) in &existing {
         if !should_render.contains(&marker.unit_id) {
             continue;
         }
         let Some(record) = world.get_unit(marker.unit_id) else {
-            commands.entity(entity).despawn();
-            index.0.remove(&marker.unit_id);
             continue;
         };
         let render_scale = catalog
@@ -147,7 +149,11 @@ fn scene_is_loaded(asset_server: &AssetServer, scene: &Handle<Scene>) -> bool {
 mod tests {
     use super::*;
     use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
+    use crate::units::animation::{
+        DeathPresentation, UnitAnimationSettings, begin_death_presentations,
+    };
     use crate::units::{UnitSceneAssets, UnitSyncOverrides};
+    use crate::world::{AnimationProfileCatalog, AnimationProfileId};
     use crate::world::{
         ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitCatalog,
         UnitDefinition, UnitDefinitionId, UnitId, UnitRenderKey, UnitSource, WorldConfig,
@@ -207,6 +213,33 @@ mod tests {
             treat_scenes_loaded: true,
         });
         app.add_systems(Update, sync_unit_render_entities);
+        app
+    }
+
+    fn catalog_with_wolf_animation_profile() -> UnitCatalog {
+        let definitions: Vec<UnitDefinition> = UnitCatalog::default()
+            .definitions()
+            .iter()
+            .map(|definition| {
+                let mut definition = definition.clone();
+                if definition.id.as_str() == "wolf" {
+                    definition.animation_profile_id = Some(AnimationProfileId::new("quadruped"));
+                }
+                definition
+            })
+            .collect();
+        UnitCatalog::from_definitions(definitions).unwrap()
+    }
+
+    fn setup_sync_with_death_presentation_app() -> App {
+        let mut app = setup_sync_app();
+        app.insert_resource(catalog_with_wolf_animation_profile());
+        app.init_resource::<AnimationProfileCatalog>();
+        app.init_resource::<UnitAnimationSettings>();
+        app.add_systems(
+            Update,
+            begin_death_presentations.after(sync_unit_render_entities),
+        );
         app
     }
 
@@ -493,11 +526,16 @@ mod tests {
     }
 
     #[test]
-    fn death_pipeline_removal_despawns_render_entity() {
-        let mut app = setup_sync_app();
+    fn death_pipeline_leaves_render_entity_after_world_removal() {
+        let mut app = setup_sync_with_death_presentation_app();
         let unit_id = prepare_resident_unit(&mut app, 2, 2);
         app.update();
-        assert_eq!(app.world().resource::<UnitRenderIndex>().0.len(), 1);
+        let entity = *app
+            .world()
+            .resource::<UnitRenderIndex>()
+            .0
+            .get(&unit_id)
+            .unwrap();
 
         {
             let mut world = app.world_mut().resource_mut::<WorldData>();
@@ -506,19 +544,29 @@ mod tests {
         }
         app.update();
         assert!(app.world().resource::<UnitRenderIndex>().0.is_empty());
+        assert!(app.world().get_entity(entity).is_ok());
+        assert!(app.world().entity(entity).contains::<DeathPresentation>());
     }
 
     #[test]
-    fn removed_unit_record_despawns_entity() {
-        let mut app = setup_sync_app();
+    fn removed_unit_record_enters_death_presentation() {
+        let mut app = setup_sync_with_death_presentation_app();
         let unit_id = prepare_resident_unit(&mut app, 2, 2);
         app.update();
         assert_eq!(app.world().resource::<UnitRenderIndex>().0.len(), 1);
+        let entity = *app
+            .world()
+            .resource::<UnitRenderIndex>()
+            .0
+            .get(&unit_id)
+            .unwrap();
 
         app.world_mut()
             .resource_mut::<WorldData>()
             .remove_unit_by_id(unit_id);
         app.update();
         assert!(app.world().resource::<UnitRenderIndex>().0.is_empty());
+        assert!(app.world().get_entity(entity).is_ok());
+        assert!(app.world().entity(entity).contains::<DeathPresentation>());
     }
 }

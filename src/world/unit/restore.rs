@@ -148,8 +148,8 @@ pub fn restore_unit_record(
 
 #[cfg(test)]
 mod tests {
-    use super::catalog::UnitDefinitionId;
     use super::*;
+    use crate::world::UnitDefinitionId;
     use crate::world::ownership::UnitOwnership;
     use crate::world::{ChunkCoord, LocalPosition, UnitSource, WorldPosition};
     use bevy::prelude::{Quat, Vec3};

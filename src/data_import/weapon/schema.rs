@@ -1,6 +1,9 @@
 //! Excel column schema and conversion into [`WeaponDefinition`].
 
-use crate::world::{DamageType, HitMode, TargetFilter, WeaponDefinition, WeaponDefinitionId};
+use crate::world::{
+    AttackPlaybackPolicy, DamageType, HitMode, TargetFilter, WeaponAttackAnimation,
+    WeaponDefinition, WeaponDefinitionId,
+};
 
 /// Required worksheet column headers from the workbook `Weapons` sheet.
 pub const REQUIRED_COLUMNS: &[&str] = &[
@@ -21,9 +24,19 @@ pub const REQUIRED_COLUMNS: &[&str] = &[
     "Enabled",
 ];
 
-/// Optional worksheet column for projectile weapons.
-#[allow(dead_code)] // documented schema seam
-pub const OPTIONAL_COLUMNS: &[&str] = &["Projectile Speed"];
+/// Optional worksheet columns (A2 weapon animation).
+#[allow(dead_code)]
+pub const OPTIONAL_COLUMNS: &[&str] = &[
+    "Projectile Speed",
+    "Attack Playback Policy",
+    "Normalized Strike Time",
+    "Blend In",
+    "Blend Out",
+    "Attack Variant",
+];
+
+pub const DEFAULT_NORMALIZED_STRIKE_TIME: f32 = 0.42;
+pub const DEFAULT_ATTACK_BLEND_MS: u32 = 150;
 
 /// Raw row parsed from the `Weapons` sheet before validation.
 #[derive(Debug, Clone, PartialEq)]
@@ -42,6 +55,11 @@ pub struct WeaponImportRow {
     pub projectile_key: Option<String>,
     pub projectile_speed_mps: f32,
     pub animation_key: String,
+    pub attack_playback_policy: AttackPlaybackPolicy,
+    pub normalized_strike_time: f32,
+    pub attack_blend_in_ms: u32,
+    pub attack_blend_out_ms: u32,
+    pub attack_variant: Option<String>,
     pub target_filters: Vec<TargetFilter>,
     pub stat_scaling: Option<String>,
     pub enabled: bool,
@@ -68,6 +86,13 @@ impl WeaponImportRow {
             self.stat_scaling.clone(),
             self.enabled,
         )
+        .with_attack_animation(WeaponAttackAnimation {
+            playback_policy: self.attack_playback_policy,
+            normalized_strike_time: self.normalized_strike_time,
+            blend_in_ms: self.attack_blend_in_ms,
+            blend_out_ms: self.attack_blend_out_ms,
+            variant: self.attack_variant.clone(),
+        })
     }
 }
 

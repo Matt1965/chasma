@@ -96,6 +96,8 @@ mod tests {
             has_file_path_column: true,
             has_default_weapon_column: true,
             has_render_scale_column: false,
+            animation_profile: String::new(),
+            has_animation_profile_column: false,
         }
     }
 

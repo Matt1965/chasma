@@ -13,6 +13,10 @@ ADRs document **accepted technical decisions**. Game design direction lives in
 
 | ADR | Topic |
 |-----|-------|
+| [074](ADR-074-runtime-unit-animation-foundation.md) | Runtime unit animation (A1–A3 foundation) |
+| [075](ADR-075-animation-layering.md) | Animation layering (A4) |
+| [076](ADR-076-advanced-locomotion-animation-polish.md) | Locomotion polish (A5) |
+| [077](ADR-077-animation-scaling-lod-and-validation.md) | Scaling, LOD, validation (A6); A1 audit fixes |
 | [069](ADR-069-combat-design-philosophy.md) | Combat philosophy (WC3 tactical, responsiveness, collision, downed state) |
 | [070](ADR-070-progression-and-attributes.md) | Use-based skills, attributes, crits |
 | [071](ADR-071-creature-ai-architecture.md) | Species → behavior → personality → state → decision |

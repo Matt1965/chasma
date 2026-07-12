@@ -3,6 +3,7 @@
 //! Offline data only: reads authored spreadsheets, validates rows, and produces
 //! catalog definitions. No ECS systems, runtime Excel dependency, or rendering coupling.
 
+mod animation;
 mod error;
 mod schema;
 mod weapon;
@@ -27,6 +28,11 @@ pub use schema::{
     parse_enabled_cell,
 };
 
+#[cfg(feature = "data-import")]
+pub use animation::{
+    ANIMATION_PROFILES_SHEET_NAME, import_animation_profiles_from_excel,
+    resolve_dev_animation_profile_catalog,
+};
 #[cfg(feature = "data-import")]
 pub use dev_load::{DEV_DOODAD_CATALOG_RON_PATH, resolve_dev_doodad_catalog};
 /// Same workbook as [`DEV_DESIGN_WORKBOOK`]; kept for older call sites.

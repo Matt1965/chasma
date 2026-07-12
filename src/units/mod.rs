@@ -4,6 +4,7 @@
 //! ECS render entities, and sync with terrain residency. Authoritative instance
 //! data remains in [`crate::world::WorldData`].
 
+mod animation;
 mod assets;
 mod components;
 #[cfg(feature = "dev")]
@@ -21,8 +22,14 @@ pub use input::{
     unit_pick_radius, world_position_to_screen,
 };
 
+pub use animation::{
+    AnimationPresentationFocus, AnimationPresentationMetrics, UnitAnimationAssets,
+    UnitAnimationIntent, UnitAnimationPlayerLink, UnitAnimationPlugin, UnitAnimationRuntime,
+    UnitAnimationSettings, UnitAnimationStateIndex, UnitAnimationSystems, ValidationSeverity,
+    derive_unit_animation_intent, locomotion_debug_snapshot,
+};
 pub use assets::{UNIT_ASSET_ROOT, UnitSceneAssets, gltf_asset_path, preload_unit_scenes};
-pub use components::{UnitRenderEntity, UnitSceneRoot, UnitSelectionIndicator};
+pub use components::{UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot, UnitSelectionIndicator};
 pub use health_bars::{
     UnitHealthBar, UnitHealthBarState, health_bar_color, health_percent, should_show_health_bar,
     sync_unit_health_bars,

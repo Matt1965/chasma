@@ -21,8 +21,8 @@ mod weapon;
 #[cfg(any(test, feature = "dev"))]
 pub use weapon::starter_definitions as starter_weapon_definitions;
 pub use weapon::{
-    DamageType, HitMode, TargetFilter, WeaponCatalog, WeaponCatalogError, WeaponDefinition,
-    WeaponDefinitionId,
+    AttackPlaybackPolicy, DamageType, HitMode, TargetFilter, WeaponAttackAnimation, WeaponCatalog,
+    WeaponCatalogError, WeaponDefinition, WeaponDefinitionId,
 };
 
 pub use biome::{
@@ -40,11 +40,12 @@ pub use combat::{
     AttackTargetingPolicy, CombatAiReport, CombatAiScanState, CombatAiSettings, CombatAiTrace,
     CombatAiTraceOutcome, CombatEngagementReport, CombatEngagementStatus, CombatEngagementTrace,
     CombatStrikeEvent, CombatStrikeReport, CombatStrikeTrace, ProjectileImpactRejection,
-    ProjectileLaunchSnapshot, RANGE_HYSTERESIS_METERS, RangeCheck, classify_unit_target,
-    clear_attack_cycle_for_order_cancel, find_auto_acquire_target, initial_attack_combat_state,
-    is_in_weapon_range, is_unit_alive, is_valid_attack_target, reset_attack_cycle_for_retarget,
-    step_all_combat_engagement, step_all_combat_strikes, step_combat_ai_acquisition,
-    validate_attack_target, validate_projectile_impact_target, weapon_for_unit_record,
+    ProjectileLaunchSnapshot, RANGE_HYSTERESIS_METERS, RangeCheck, WeaponTiming,
+    classify_unit_target, clear_attack_cycle_for_order_cancel, find_auto_acquire_target,
+    initial_attack_combat_state, is_in_weapon_range, is_unit_alive, is_valid_attack_target,
+    reset_attack_cycle_for_retarget, step_all_combat_engagement, step_all_combat_strikes,
+    step_combat_ai_acquisition, validate_attack_target, validate_projectile_impact_target,
+    weapon_for_unit_record,
 };
 pub use config::WorldConfig;
 pub use coordinates::{ChunkCoord, ChunkLayout, LocalPosition, WorldPosition};
@@ -123,18 +124,22 @@ pub use terrain::{
     is_position_slope_walkable, slope_at, try_ground_world_position, try_sample_height_at_position,
 };
 #[cfg(any(test, feature = "dev"))]
+pub use unit::starter_animation_profile_definitions;
+#[cfg(any(test, feature = "dev"))]
 pub use unit::starter_definitions as starter_unit_definitions;
 pub use unit::{
-    AttackCycle, AttackPhase, BatchUnitMovementReport, BlockedMovementReason, ChunkUnitStore,
-    CombatState, RemovalReason, UnitAuthoringError, UnitCatalog, UnitCatalogError, UnitDeathEvent,
-    UnitDeathReport, UnitDeathTrace, UnitDefinition, UnitDefinitionId, UnitGroundingError, UnitId,
-    UnitInsertError, UnitMetadata, UnitMovementError, UnitMovementReport, UnitMovementStepOutcome,
-    UnitMovementStepReport, UnitMovementTrace, UnitOrder, UnitOrderError, UnitPlacement,
-    UnitRecord, UnitRenderKey, UnitSimulationStepReport, UnitSource, UnitState, UnitVitals,
-    create_unit, create_unit_with_ownership, ground_unit_position, ground_unit_to_terrain,
-    issue_unit_order, lookup_unit, move_unit, remove_unit, resolve_all_pending_unit_orders,
-    resolve_pending_unit_orders, step_all_unit_movement, step_unit_death_pipeline,
-    step_unit_movement, unit_can_execute_actions, unit_record_can_execute_actions,
+    AnimationClipKey, AnimationProfile, AnimationProfileCatalog, AnimationProfileCatalogError,
+    AnimationProfileId, AttackCycle, AttackPhase, BatchUnitMovementReport, BlockedMovementReason,
+    ChunkUnitStore, CombatState, RemovalReason, UnitAuthoringError, UnitCatalog, UnitCatalogError,
+    UnitDeathEvent, UnitDeathReport, UnitDeathTrace, UnitDefinition, UnitDefinitionId,
+    UnitGroundingError, UnitId, UnitInsertError, UnitMetadata, UnitMovementError,
+    UnitMovementReport, UnitMovementStepOutcome, UnitMovementStepReport, UnitMovementTrace,
+    UnitOrder, UnitOrderError, UnitPlacement, UnitRecord, UnitRenderKey, UnitSimulationStepReport,
+    UnitSource, UnitState, UnitVitals, create_unit, create_unit_with_ownership,
+    ground_unit_position, ground_unit_to_terrain, issue_unit_order, lookup_unit, move_unit,
+    remove_unit, resolve_all_pending_unit_orders, resolve_pending_unit_orders,
+    step_all_unit_movement, step_unit_death_pipeline, step_unit_movement, unit_can_execute_actions,
+    unit_record_can_execute_actions,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use unit::{
@@ -183,11 +188,17 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<UnitDefinition>()
             .register_type::<UnitCatalog>()
             .register_type::<WeaponDefinitionId>()
+            .register_type::<AttackPlaybackPolicy>()
+            .register_type::<WeaponAttackAnimation>()
             .register_type::<DamageType>()
             .register_type::<HitMode>()
             .register_type::<TargetFilter>()
             .register_type::<WeaponDefinition>()
             .register_type::<WeaponCatalog>()
+            .register_type::<AnimationProfileId>()
+            .register_type::<AnimationClipKey>()
+            .register_type::<AnimationProfile>()
+            .register_type::<AnimationProfileCatalog>()
             .register_type::<UnitId>()
             .register_type::<UnitPlacement>()
             .register_type::<UnitSource>()
@@ -216,13 +227,19 @@ impl Plugin for WorldFoundationPlugin {
             app.init_resource::<DoodadCatalog>();
             app.init_resource::<WeaponCatalog>();
             app.init_resource::<UnitCatalog>();
+            app.init_resource::<AnimationProfileCatalog>();
         }
         #[cfg(feature = "dev")]
         {
             let weapons = crate::data_import::resolve_dev_weapon_catalog();
+            let animation_profiles = crate::data_import::resolve_dev_animation_profile_catalog();
             app.insert_resource(weapons.clone());
+            app.insert_resource(animation_profiles.clone());
             app.insert_resource(crate::data_import::resolve_dev_doodad_catalog());
-            app.insert_resource(crate::data_import::resolve_dev_unit_catalog(&weapons));
+            app.insert_resource(crate::data_import::resolve_dev_unit_catalog(
+                &weapons,
+                &animation_profiles,
+            ));
         }
         app.init_resource::<WorldData>();
         app.init_resource::<NavigationConfig>();

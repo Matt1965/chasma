@@ -7,8 +7,7 @@ use crate::player::{PlayerControlSystems, PlayerPlugin, RuntimeSyncSystems};
 use crate::projectiles::{ProjectileRuntimeSystems, ProjectilesRuntimePlugin};
 use crate::simulation::{SimulationControlSystems, SimulationSystems};
 use crate::terrain::{TerrainRuntimePlugin, TerrainStreamingSystems};
-use crate::units::UnitRuntimeSystems;
-use crate::units::UnitsRuntimePlugin;
+use crate::units::{UnitAnimationSystems, UnitRuntimeSystems, UnitsRuntimePlugin};
 use crate::view::ViewPlugin;
 use crate::world::WorldFoundationPlugin;
 
@@ -52,6 +51,12 @@ impl Plugin for AppPlugin {
                 UnitRuntimeSystems
                     .after(DoodadRuntimeSystems)
                     .in_set(RuntimeSyncSystems),
+            )
+            .configure_sets(
+                Update,
+                UnitAnimationSystems
+                    .after(UnitRuntimeSystems)
+                    .after(SimulationSystems),
             )
             .configure_sets(
                 Update,

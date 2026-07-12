@@ -17,6 +17,7 @@ pub use ai::{
     CombatAiReport, CombatAiScanState, CombatAiSettings, CombatAiTrace, CombatAiTraceOutcome,
     find_auto_acquire_target, step_combat_ai_acquisition,
 };
+pub use attack_cycle::WeaponTiming;
 pub use cycle_lifecycle::{clear_attack_cycle_for_order_cancel, reset_attack_cycle_for_retarget};
 pub use engagement::{
     CombatEngagementReport, CombatEngagementStatus, CombatEngagementTrace,

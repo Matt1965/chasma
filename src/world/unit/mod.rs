@@ -1,4 +1,4 @@
-﻿//! Unit data layer (ADR-027).
+//! Unit data layer (ADR-027).
 //!
 //! U1 owns type definitions in [`catalog::UnitCatalog`]. U2 adds authoritative
 //! instance records on [`crate::world::WorldData`]. Runtime ECS sync (U3+) and
@@ -7,6 +7,7 @@
 //! Obstacle and navigation systems will live under `world/navigation/` or
 //! `world/obstacle/` — not under this module.
 
+pub mod animation_profile;
 mod attack_cycle;
 mod authoring;
 mod catalog;
@@ -28,6 +29,12 @@ mod state;
 mod store;
 mod vitals;
 
+#[cfg(any(test, feature = "dev"))]
+pub use animation_profile::starter_definitions as starter_animation_profile_definitions;
+pub use animation_profile::{
+    AnimationClipKey, AnimationProfile, AnimationProfileCatalog, AnimationProfileCatalogError,
+    AnimationProfileId,
+};
 pub use attack_cycle::{AttackCycle, AttackPhase};
 pub use authoring::{
     UnitAuthoringError, create_unit, create_unit_with_ownership, lookup_unit, move_unit,
@@ -37,12 +44,12 @@ pub use authoring::{
 pub use catalog::starter_definitions;
 pub use catalog::{UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId, UnitRenderKey};
 pub use combat_state::CombatState;
+#[cfg(test)]
+pub use death::queue_unit_removal;
 pub use death::{
     KillAttribution, RemovalReason, UnitDeathEvent, UnitDeathReport, UnitDeathTrace,
     UnitRemovalEntry, UnitRemovalQueue, step_unit_death_pipeline,
 };
-#[cfg(test)]
-pub use death::queue_unit_removal;
 pub use eligibility::{unit_can_execute_actions, unit_record_can_execute_actions};
 pub use grounding::{UnitGroundingError, ground_unit_position, ground_unit_to_terrain};
 pub use id::UnitId;

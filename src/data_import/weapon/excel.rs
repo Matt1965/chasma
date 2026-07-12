@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use super::schema::{REQUIRED_COLUMNS, WeaponImportRow};
 use crate::data_import::error::{DataImportError, RowImportError};
 use crate::data_import::schema::parse_enabled_cell;
-use crate::world::{DamageType, HitMode, TargetFilter};
+use crate::world::{AttackPlaybackPolicy, DamageType, HitMode, TargetFilter};
 
 pub const WEAPONS_SHEET_NAME: &str = "Weapons";
 
@@ -119,6 +119,20 @@ fn parse_row(
     let target_filters = TargetFilter::parse_list(&text("Target Filters"))?;
     let hit_mode = HitMode::parse(&text("Hit Mode"))?;
     let projectile_speed_mps = optional_f32("Projectile Speed")?.unwrap_or(0.0);
+    let normalized_strike_time = optional_f32("Normalized Strike Time")?
+        .unwrap_or(super::schema::DEFAULT_NORMALIZED_STRIKE_TIME);
+    let attack_blend_in_ms = optional_f32("Blend In")?
+        .map(|v| v.round().max(0.0) as u32)
+        .unwrap_or(super::schema::DEFAULT_ATTACK_BLEND_MS);
+    let attack_blend_out_ms = optional_f32("Blend Out")?
+        .map(|v| v.round().max(0.0) as u32)
+        .unwrap_or(super::schema::DEFAULT_ATTACK_BLEND_MS);
+    let attack_variant = optional_text("Attack Variant");
+    let attack_playback_policy = optional_text("Attack Playback Policy")
+        .map(|raw| AttackPlaybackPolicy::parse(&raw))
+        .transpose()
+        .map_err(|message| format!("Attack Playback Policy: {message}"))?
+        .unwrap_or_default();
 
     Ok(WeaponImportRow {
         row_number,
@@ -135,6 +149,11 @@ fn parse_row(
         projectile_key,
         projectile_speed_mps,
         animation_key: text("Animation Key"),
+        attack_playback_policy,
+        normalized_strike_time,
+        attack_blend_in_ms,
+        attack_blend_out_ms,
+        attack_variant,
         target_filters,
         stat_scaling,
         enabled,

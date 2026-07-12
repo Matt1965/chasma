@@ -180,6 +180,12 @@ fn parse_row(
         has_file_path_column: columns.contains_key("File Path"),
         has_default_weapon_column,
         has_render_scale_column: columns.contains_key("Render Scale"),
+        animation_profile: if columns.contains_key("Animation Profile") {
+            text("Animation Profile")
+        } else {
+            String::new()
+        },
+        has_animation_profile_column: columns.contains_key("Animation Profile"),
     })
 }
 

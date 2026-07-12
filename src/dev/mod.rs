@@ -1,5 +1,7 @@
 //! Dev mode plugin — runtime authoring layer (ADR-043/044).
 
+mod animation_focus;
+mod animation_panel;
 mod catalog_browser;
 mod catalog_cache;
 mod debug_controls;
@@ -99,6 +101,8 @@ impl Plugin for DevModePlugin {
                     time_of_day_panel::sync_time_of_day_panel_text,
                     lighting_panel::sync_lighting_section_visibility,
                     lighting_panel::sync_lighting_panel_text,
+                    animation_panel::sync_dev_animation_panel,
+                    animation_focus::sync_animation_presentation_focus,
                 )
                     .chain()
                     .in_set(DevModeInputSystems),

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::world::{DoodadDefinitionId, UnitDefinitionId, WeaponDefinitionId};
+use crate::world::{AnimationProfileId, DoodadDefinitionId, UnitDefinitionId, WeaponDefinitionId};
 
 /// Errors that abort the entire import (sheet layout, I/O, zero valid rows).
 #[derive(Debug, Clone, PartialEq)]
@@ -28,6 +28,11 @@ pub enum DataImportError {
     },
     DuplicateWeaponId {
         id: WeaponDefinitionId,
+        first_row: usize,
+        duplicate_row: usize,
+    },
+    DuplicateAnimationProfileId {
+        id: AnimationProfileId,
         first_row: usize,
         duplicate_row: usize,
     },
@@ -75,6 +80,15 @@ impl std::fmt::Display for DataImportError {
             } => write!(
                 f,
                 "duplicate Weapon ID `{}` (rows {first_row} and {duplicate_row})",
+                id.as_str()
+            ),
+            Self::DuplicateAnimationProfileId {
+                id,
+                first_row,
+                duplicate_row,
+            } => write!(
+                f,
+                "duplicate Animation Profile ID `{}` (rows {first_row} and {duplicate_row})",
                 id.as_str()
             ),
             Self::NoValidRows => write!(f, "no valid rows after import"),

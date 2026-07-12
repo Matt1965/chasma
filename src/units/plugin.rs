@@ -2,8 +2,11 @@ use bevy::prelude::*;
 
 use crate::world::UnitCatalog;
 
+use super::animation::UnitAnimationPlugin;
 use super::assets::preload_unit_scenes;
-use super::components::{UnitRenderEntity, UnitSceneRoot, UnitSelectionIndicator};
+use super::components::{
+    UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot, UnitSelectionIndicator,
+};
 use super::settings::UnitsRuntimeSettings;
 use super::spawn::UnitRenderIndex;
 use super::sync::{UnitRuntimeSystems, sync_unit_render_entities};
@@ -15,6 +18,7 @@ impl Plugin for UnitsRuntimePlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<UnitsRuntimeSettings>()
             .register_type::<UnitRenderEntity>()
+            .register_type::<UnitRenderMetadata>()
             .register_type::<UnitSceneRoot>()
             .register_type::<UnitSelectionIndicator>()
             .init_resource::<UnitsRuntimeSettings>()
@@ -23,7 +27,8 @@ impl Plugin for UnitsRuntimePlugin {
         #[cfg(feature = "dev")]
         app.init_resource::<crate::units::dev_spawn::DevPreviewUnitSpawnLedger>();
 
-        app.add_systems(Startup, init_unit_scene_assets)
+        app.add_plugins(UnitAnimationPlugin)
+            .add_systems(Startup, init_unit_scene_assets)
             .add_systems(
                 Update,
                 (

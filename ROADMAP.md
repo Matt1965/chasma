@@ -33,13 +33,20 @@ Pre-feature-development checkpoint after audit passes A1–B6.
 | Weapons / combat engagement / strikes | Foundation complete; projectile path present |
 | Combat AI (auto-acquire) | Basic foundation |
 | Health bars | Presentation sync |
+| Unit locomotion animation (Idle/Walk/Run) | A1 foundation (ADR-074) |
+| Weapon-driven combat animation | A2 (ADR-074) |
+| Death presentation + hit reactions | A3 (ADR-074) |
+| Animation layering (lower/upper body) | A4 (ADR-075) |
+| Advanced locomotion polish (turns, hysteresis, speed blends) | A5 (ADR-076) |
+| Animation LOD, validation, shared graphs, audit stabilization | A6 + A1 (ADR-077) |
 | Fixed simulation tick orchestrator | ADR-065 in place |
-| Dev Mode (catalog, spawn, scenes, inspector) | Dev-gated; data-driven from Excel |
+| Dev Mode (catalog, spawn, scenes, inspector) | Dev-gated; locomotion profiles + weapons from Excel; A3–A5 profile fields via starters/code |
 | Environment (time-of-day, water, lighting) | Dev/runtime presentation; singleton-safe |
 
 ## Explicitly deferred
 
-- Animation / locomotion blending
+- Overlay animation layer behavior (hit VFX on overlay slot — future per ADR-075)
+- Corpse fade-out / lootable corpse presentation
 - Economy, buildings, harvesting loops (see [ADR-072](ADRs/ADR-072-settlement-automation-and-production.md), DESIGN.md)
 - Full creature AI template stack ([ADR-071](ADRs/ADR-071-creature-ai-architecture.md); ADR-062 scan AI only)
 - Use-based skills and attribute-driven combat ([ADR-070](ADRs/ADR-070-progression-and-attributes.md))
@@ -48,7 +55,7 @@ Pre-feature-development checkpoint after audit passes A1–B6.
 - Full pathfinding optimizations (pooling, hierarchical)
 - Multiplayer replication
 - Production Excel pipeline outside `feature = "dev"`
-- Combat polish (death animations, VFX, advanced AI)
+- Combat polish (VFX, advanced AI)
 
 ## Recommendation
 
