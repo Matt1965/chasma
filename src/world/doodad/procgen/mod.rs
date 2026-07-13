@@ -328,6 +328,7 @@ mod tests {
             ),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
 

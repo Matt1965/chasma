@@ -6,13 +6,15 @@ use super::grid::{
     NavigationAgent, NavigationConfig, grid_coord_at_position, is_cell_walkable,
     is_position_walkable,
 };
-use crate::world::{ChunkLayout, DoodadCatalog, WorldData, WorldPosition, ground_world_position};
+use crate::world::{
+    ChunkLayout, PassabilityCatalogs, WorldData, WorldPosition, ground_world_position,
+};
 
 /// Remove collinear grid waypoints and apply greedy line-of-sight shortcuts.
 pub fn simplify_navigation_path(
     waypoints: &mut Vec<WorldPosition>,
     world: &WorldData,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     config: NavigationConfig,
     agent: NavigationAgent,
     layout: ChunkLayout,
@@ -21,7 +23,7 @@ pub fn simplify_navigation_path(
         return;
     }
     remove_collinear_waypoints(waypoints, layout);
-    apply_line_of_sight_shortcuts(waypoints, world, doodad_catalog, config, agent, layout);
+    apply_line_of_sight_shortcuts(waypoints, world, catalogs, config, agent, layout);
 }
 
 fn remove_collinear_waypoints(waypoints: &mut Vec<WorldPosition>, layout: ChunkLayout) {
@@ -46,7 +48,7 @@ fn remove_collinear_waypoints(waypoints: &mut Vec<WorldPosition>, layout: ChunkL
 fn apply_line_of_sight_shortcuts(
     waypoints: &mut Vec<WorldPosition>,
     world: &WorldData,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     config: NavigationConfig,
     agent: NavigationAgent,
     layout: ChunkLayout,
@@ -62,7 +64,7 @@ fn apply_line_of_sight_shortcuts(
         for probe in (anchor + 1..waypoints.len()).rev() {
             if has_walkable_line_of_sight(
                 world,
-                doodad_catalog,
+                catalogs,
                 config,
                 agent,
                 waypoints[anchor],
@@ -99,7 +101,7 @@ fn is_collinear_xz(
 
 fn has_walkable_line_of_sight(
     world: &WorldData,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     config: NavigationConfig,
     agent: NavigationAgent,
     from: WorldPosition,
@@ -124,10 +126,10 @@ fn has_walkable_line_of_sight(
             return false;
         };
         let cell = grid_coord_at_position(grounded, layout, config);
-        if !is_cell_walkable(world, doodad_catalog, config, agent, cell) {
+        if !is_cell_walkable(world, catalogs, config, agent, cell) {
             return false;
         }
-        if !is_position_walkable(world, doodad_catalog, grounded, agent) {
+        if !is_position_walkable(world, catalogs, grounded, agent) {
             return false;
         }
     }

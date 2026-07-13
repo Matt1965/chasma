@@ -18,9 +18,11 @@ use crate::units::input::{
     prune_non_commandable_from_selection,
 };
 use crate::world::{
-    AttackTargetingPolicy, DoodadCatalog, InteractionOrderPlan, InteractionResolveContext,
-    NavigationConfig, NavigationPath, UnitCatalog, UnitId, WeaponCatalog, WorldConfig, WorldData,
-    WorldPosition, resolve_unit_click_to_order, resolve_world_click_to_order, xz_distance,
+    AttackTargetingPolicy, BuildingCatalog, DoodadCatalog, FootprintCatalog, InteractionOrderPlan,
+    InteractionResolveContext, NavigationConfig, NavigationPath, PassabilityCatalogs, UnitCatalog,
+    UnitId, WeaponCatalog, WorldConfig, WorldData, WorldPosition, assign_construct_building_task,
+    assign_operate_workstation_task, filter_commandable_unit_ids, resolve_unit_click_to_order,
+    resolve_world_click_to_order, xz_distance,
 };
 
 use super::commands::{
@@ -30,7 +32,19 @@ use super::commands::{
 };
 use super::intent::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
 use crate::ui::gameplay::PlayerHudState;
-use crate::world::{SelectionControllabilityPolicy, unit_is_selectable};
+use crate::ui::gameplay::build_mode::BuildModeState;
+use crate::world::{
+    BuildingOwnership, BuildingPlacementConfig, BuildingPlacementContext, OccupancyCatalogs,
+    SelectionControllabilityPolicy, place_player_building, unit_is_selectable,
+    validate_building_placement,
+};
+
+/// Bundled player/build-mode params for intent dispatch.
+#[derive(SystemParam)]
+pub struct DispatchPlayerParams<'w> {
+    pub build_mode: ResMut<'w, BuildModeState>,
+    pub player_ownership: Res<'w, crate::player::LocalPlayerOwnership>,
+}
 
 /// Bundled simulation catalogs (keeps dispatch system param count under Bevy limit).
 #[derive(SystemParam)]
@@ -38,6 +52,9 @@ pub struct DispatchSimulationParams<'w> {
     pub unit_catalog: Res<'w, UnitCatalog>,
     pub weapon_catalog: Res<'w, WeaponCatalog>,
     pub doodad_catalog: Res<'w, DoodadCatalog>,
+    pub building_catalog: Res<'w, BuildingCatalog>,
+    pub footprint_catalog: Res<'w, FootprintCatalog>,
+    pub interaction_catalog: Res<'w, crate::world::BuildingInteractionProfileCatalog>,
     pub nav_config: Res<'w, NavigationConfig>,
 }
 
@@ -121,6 +138,7 @@ pub fn dispatch_client_intents(
     frame_index: Res<ClientFrameIndex>,
     mut boundary: ResMut<ClientBoundaryGuard>,
     mut hud: ResMut<PlayerHudState>,
+    mut player_params: DispatchPlayerParams,
 ) {
     boundary.begin_intent_dispatch();
     pending_trace.clear();
@@ -147,6 +165,9 @@ pub fn dispatch_client_intents(
         unit_catalog,
         weapon_catalog,
         doodad_catalog,
+        building_catalog,
+        footprint_catalog,
+        interaction_catalog,
         nav_config,
     } = catalogs;
 
@@ -162,6 +183,9 @@ pub fn dispatch_client_intents(
                 &unit_catalog,
                 &weapon_catalog,
                 &doodad_catalog,
+                &building_catalog,
+                &footprint_catalog,
+                &interaction_catalog,
                 &nav_config,
                 layout,
                 vertical_scale,
@@ -173,6 +197,9 @@ pub fn dispatch_client_intents(
                 &mut pending_trace,
                 selection_policy,
                 hud.armed_command,
+                &mut player_params.build_mode,
+                &player_params.player_ownership,
+                frame_index.0,
             );
             if status == IntentDispatchStatus::Applied
                 && matches!(
@@ -225,6 +252,9 @@ fn dispatch_one(
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
+    interaction_catalog: &crate::world::BuildingInteractionProfileCatalog,
     nav_config: &NavigationConfig,
     layout: crate::world::ChunkLayout,
     vertical_scale: f32,
@@ -236,6 +266,9 @@ fn dispatch_one(
     pending_trace: &mut PendingDispatchTrace,
     selection_policy: SelectionControllabilityPolicy,
     armed_command: Option<CommandType>,
+    build_mode: &mut BuildModeState,
+    player_ownership: &crate::player::LocalPlayerOwnership,
+    simulation_tick: u64,
 ) -> IntentDispatchStatus {
     match intent {
         ClientIntent::ContextualCommand { target } => dispatch_contextual_command(
@@ -246,6 +279,9 @@ fn dispatch_one(
             unit_catalog,
             weapon_catalog,
             doodad_catalog,
+            building_catalog,
+            footprint_catalog,
+            interaction_catalog,
             nav_config,
             layout,
             vertical_scale,
@@ -253,6 +289,7 @@ fn dispatch_one(
             move_report,
             pending_trace,
             armed_command,
+            simulation_tick,
         ),
         ClientIntent::MoveCommand { target } => dispatch_contextual_command(
             CommandTarget::Terrain { position: *target },
@@ -262,6 +299,9 @@ fn dispatch_one(
             unit_catalog,
             weapon_catalog,
             doodad_catalog,
+            building_catalog,
+            footprint_catalog,
+            interaction_catalog,
             nav_config,
             layout,
             vertical_scale,
@@ -269,6 +309,7 @@ fn dispatch_one(
             move_report,
             pending_trace,
             armed_command,
+            simulation_tick,
         ),
         ClientIntent::SelectUnit { unit_id } => {
             if world
@@ -341,12 +382,124 @@ fn dispatch_one(
             move_report,
             pending_trace,
         ),
+        ClientIntent::EnterBuildMode => {
+            build_mode.enter_catalog();
+            IntentDispatchStatus::Applied
+        }
+        ClientIntent::ExitBuildMode => {
+            build_mode.exit();
+            IntentDispatchStatus::Applied
+        }
+        ClientIntent::CancelBuildPlacement => {
+            if build_mode.is_ghost_placing() {
+                build_mode.cancel_ghost();
+            } else if build_mode.is_active() {
+                build_mode.exit();
+            } else {
+                return IntentDispatchStatus::Ignored;
+            }
+            IntentDispatchStatus::Applied
+        }
+        ClientIntent::RotateBuildGhost => {
+            if build_mode.is_ghost_placing() {
+                build_mode.rotate_ghost();
+                IntentDispatchStatus::Applied
+            } else {
+                IntentDispatchStatus::Ignored
+            }
+        }
+        ClientIntent::SelectBuildingDefinition { definition_id } => {
+            if building_catalog
+                .get(definition_id)
+                .is_some_and(|def| def.enabled)
+            {
+                build_mode.arm_definition(definition_id.clone());
+                IntentDispatchStatus::Applied
+            } else {
+                IntentDispatchStatus::Rejected(CommandUnavailableReason::InvalidPlacement)
+            }
+        }
+        ClientIntent::PlaceBuilding {
+            definition_id,
+            anchor,
+            rotation,
+        } => dispatch_place_building(
+            definition_id,
+            *anchor,
+            *rotation,
+            world,
+            unit_catalog,
+            building_catalog,
+            footprint_catalog,
+            doodad_catalog,
+            player_ownership,
+            build_mode,
+        ),
+    }
+}
+
+fn dispatch_place_building(
+    definition_id: &crate::world::BuildingDefinitionId,
+    anchor: WorldPosition,
+    rotation: Quat,
+    world: &mut WorldData,
+    unit_catalog: &UnitCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
+    doodad_catalog: &DoodadCatalog,
+    player_ownership: &crate::player::LocalPlayerOwnership,
+    build_mode: &mut BuildModeState,
+) -> IntentDispatchStatus {
+    let ownership = BuildingOwnership {
+        owner_id: Some(player_ownership.owner_id),
+        team_id: Some(player_ownership.team_id),
+        affiliation: crate::world::Affiliation::Player,
+    };
+    let ctx = BuildingPlacementContext {
+        world,
+        building_catalog,
+        footprint_catalog,
+        doodad_catalog,
+        unit_catalog,
+        config: BuildingPlacementConfig::default(),
+        player_authorized: true,
+    };
+    let validation = validate_building_placement(&ctx, definition_id, anchor, rotation, ownership);
+    if !validation.valid {
+        build_mode.last_validation = Some(validation);
+        return IntentDispatchStatus::Rejected(CommandUnavailableReason::InvalidPlacement);
+    }
+    let Some(grounded) = validation.grounded_anchor else {
+        return IntentDispatchStatus::Rejected(CommandUnavailableReason::InvalidPlacement);
+    };
+    let occupancy = OccupancyCatalogs {
+        doodad: doodad_catalog,
+        building: building_catalog,
+        footprint: footprint_catalog,
+    };
+    match place_player_building(
+        building_catalog,
+        world,
+        definition_id,
+        grounded,
+        rotation,
+        ownership,
+        occupancy,
+    ) {
+        Ok(_) => {
+            build_mode.cancel_ghost();
+            IntentDispatchStatus::Applied
+        }
+        Err(_) => IntentDispatchStatus::Rejected(CommandUnavailableReason::InvalidPlacement),
     }
 }
 
 fn resolve_move_target_from_interaction(
     world: &WorldData,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
+    interaction_catalog: &crate::world::BuildingInteractionProfileCatalog,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
     selected: &[UnitId],
@@ -355,6 +508,9 @@ fn resolve_move_target_from_interaction(
     let ctx = InteractionResolveContext::new(
         world,
         doodad_catalog,
+        building_catalog,
+        footprint_catalog,
+        interaction_catalog,
         unit_catalog,
         weapon_catalog,
         selected,
@@ -367,6 +523,82 @@ fn resolve_move_target_from_interaction(
         InteractionOrderPlan::MoveTo { target } => Some(target),
         InteractionOrderPlan::NoOp => None,
         InteractionOrderPlan::Attack { .. } | InteractionOrderPlan::AttackMove { .. } => None,
+        InteractionOrderPlan::ConstructBuilding { .. }
+        | InteractionOrderPlan::OperateWorkstation { .. } => None,
+    }
+}
+
+fn try_issue_building_work_orders(
+    world: &mut WorldData,
+    selection: &SelectedUnits,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
+    doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
+    interaction_catalog: &crate::world::BuildingInteractionProfileCatalog,
+    nav_config: &NavigationConfig,
+    position: WorldPosition,
+    simulation_tick: u64,
+) -> Option<MoveOrdersReport> {
+    let selected: Vec<_> = selection.iter().collect();
+    let ctx = InteractionResolveContext::new(
+        world,
+        doodad_catalog,
+        building_catalog,
+        footprint_catalog,
+        interaction_catalog,
+        unit_catalog,
+        weapon_catalog,
+        &selected,
+    );
+    let plan = resolve_world_click_to_order(&ctx, position)?;
+    let (building_id, construct) = match plan {
+        InteractionOrderPlan::ConstructBuilding { building_id } => (building_id, true),
+        InteractionOrderPlan::OperateWorkstation { building_id } => (building_id, false),
+        _ => return None,
+    };
+
+    let mut report = MoveOrdersReport::default();
+    for unit_id in filter_commandable_unit_ids(world, selection.iter()) {
+        let result = if construct {
+            assign_construct_building_task(
+                world,
+                unit_catalog,
+                weapon_catalog,
+                doodad_catalog,
+                building_catalog,
+                interaction_catalog,
+                nav_config,
+                unit_id,
+                building_id,
+                simulation_tick,
+            )
+        } else {
+            assign_operate_workstation_task(
+                world,
+                unit_catalog,
+                weapon_catalog,
+                doodad_catalog,
+                building_catalog,
+                interaction_catalog,
+                nav_config,
+                unit_id,
+                building_id,
+                simulation_tick,
+            )
+        };
+        match result {
+            Ok((_, _)) => {
+                report.issued += 1;
+            }
+            Err(_) => report.failed += 1,
+        }
+    }
+    if report.issued > 0 {
+        Some(report)
+    } else {
+        None
     }
 }
 
@@ -378,6 +610,9 @@ fn dispatch_contextual_command(
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
+    interaction_catalog: &crate::world::BuildingInteractionProfileCatalog,
     nav_config: &NavigationConfig,
     layout: crate::world::ChunkLayout,
     vertical_scale: f32,
@@ -385,6 +620,7 @@ fn dispatch_contextual_command(
     move_report: &mut Option<MoveOrdersReport>,
     pending_trace: &mut PendingDispatchTrace,
     armed_command: Option<CommandType>,
+    simulation_tick: u64,
 ) -> IntentDispatchStatus {
     if selection.is_empty() {
         return IntentDispatchStatus::Ignored;
@@ -433,10 +669,31 @@ fn dispatch_contextual_command(
 
     match plan {
         BuiltCommandPlan::MoveTo { .. } => {
+            if let CommandTarget::Terrain { position } = contextual.target {
+                if let Some(work_report) = try_issue_building_work_orders(
+                    world,
+                    selection,
+                    unit_catalog,
+                    weapon_catalog,
+                    doodad_catalog,
+                    building_catalog,
+                    footprint_catalog,
+                    interaction_catalog,
+                    nav_config,
+                    position,
+                    simulation_tick,
+                ) {
+                    *move_report = Some(work_report);
+                    return IntentDispatchStatus::Applied;
+                }
+            }
             let selected_ids: Vec<_> = selection.iter().collect();
             let Some(resolved_target) = resolve_move_target_from_interaction(
                 world,
                 doodad_catalog,
+                building_catalog,
+                footprint_catalog,
+                interaction_catalog,
                 unit_catalog,
                 weapon_catalog,
                 &selected_ids,
@@ -680,11 +937,14 @@ fn log_generated_path(
 mod tests {
     use super::*;
     use crate::client::commands::CommandType;
+    use crate::player::LocalPlayerOwnership;
+    use crate::ui::gameplay::BuildModeState;
     use crate::units::input::SelectedUnits;
     use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, DoodadPlacementOverrides,
-        DoodadSource, Heightfield, LocalPosition, UnitDefinitionId, UnitOwnership, UnitSource,
-        UnitState, WorldPosition, create_doodad, create_unit, create_unit_with_ownership,
+        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog,
+        DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog, Heightfield,
+        LocalPosition, PassabilityCatalogs, UnitDefinitionId, UnitOwnership, UnitSource, UnitState,
+        WorldPosition, create_doodad, create_unit, create_unit_with_ownership,
         resolve_all_pending_unit_orders,
     };
     use bevy::prelude::{Vec2, Vec3};
@@ -739,6 +999,9 @@ mod tests {
             &catalog,
             &WeaponCatalog::default(),
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             layout(),
             1.0,
@@ -750,6 +1013,9 @@ mod tests {
             &mut PendingDispatchTrace::default(),
             SelectionControllabilityPolicy::gameplay_default(),
             None,
+            &mut BuildModeState::default(),
+            &LocalPlayerOwnership::default(),
+            0,
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert!(selection.contains(unit_id));
@@ -785,6 +1051,9 @@ mod tests {
             &catalog,
             &WeaponCatalog::default(),
             &doodad_catalog,
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
             &nav_config,
             layout(),
             1.0,
@@ -796,9 +1065,21 @@ mod tests {
             &mut PendingDispatchTrace::default(),
             SelectionControllabilityPolicy::gameplay_default(),
             None,
+            &mut BuildModeState::default(),
+            &LocalPlayerOwnership::default(),
+            0,
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
-        resolve_all_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav_config);
+        resolve_all_pending_unit_orders(
+            &mut world,
+            &catalog,
+            PassabilityCatalogs {
+                doodad: &doodad_catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav_config,
+        );
         assert!(matches!(
             world.get_unit(unit_id).unwrap().state,
             UnitState::Moving { .. }
@@ -823,6 +1104,9 @@ mod tests {
             &catalog,
             &WeaponCatalog::default(),
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             layout(),
             1.0,
@@ -834,6 +1118,9 @@ mod tests {
             &mut PendingDispatchTrace::default(),
             SelectionControllabilityPolicy::gameplay_default(),
             None,
+            &mut BuildModeState::default(),
+            &LocalPlayerOwnership::default(),
+            0,
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
     }
@@ -866,6 +1153,7 @@ mod tests {
             tree_pos,
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
         let state_before = world.get_unit(unit_id).unwrap().state.clone();
@@ -878,6 +1166,9 @@ mod tests {
             &catalog,
             &WeaponCatalog::default(),
             &doodad_catalog,
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
             &nav_config,
             layout(),
             1.0,
@@ -889,6 +1180,9 @@ mod tests {
             &mut PendingDispatchTrace::default(),
             SelectionControllabilityPolicy::gameplay_default(),
             None,
+            &mut BuildModeState::default(),
+            &LocalPlayerOwnership::default(),
+            0,
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
         assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
@@ -914,6 +1208,9 @@ mod tests {
             &catalog,
             &WeaponCatalog::default(),
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             layout(),
             1.0,
@@ -925,6 +1222,9 @@ mod tests {
             &mut PendingDispatchTrace::default(),
             SelectionControllabilityPolicy::gameplay_default(),
             None,
+            &mut BuildModeState::default(),
+            &LocalPlayerOwnership::default(),
+            0,
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
     }
@@ -956,6 +1256,9 @@ mod tests {
             &catalog,
             &WeaponCatalog::default(),
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             layout(),
             1.0,
@@ -967,6 +1270,9 @@ mod tests {
             &mut PendingDispatchTrace::default(),
             SelectionControllabilityPolicy::gameplay_default(),
             None,
+            &mut BuildModeState::default(),
+            &LocalPlayerOwnership::default(),
+            0,
         );
 
         assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
@@ -1005,6 +1311,9 @@ mod tests {
             &catalog,
             &WeaponCatalog::default(),
             &doodad_catalog,
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
             &nav_config,
             layout(),
             1.0,
@@ -1016,10 +1325,22 @@ mod tests {
             &mut pending,
             SelectionControllabilityPolicy::gameplay_default(),
             None,
+            &mut BuildModeState::default(),
+            &LocalPlayerOwnership::default(),
+            0,
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert_eq!(pending.resolved_command, Some(CommandType::Move));
-        resolve_all_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav_config);
+        resolve_all_pending_unit_orders(
+            &mut world,
+            &catalog,
+            PassabilityCatalogs {
+                doodad: &doodad_catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav_config,
+        );
         assert!(matches!(
             world.get_unit(unit_id).unwrap().state,
             UnitState::Moving { .. }
@@ -1059,6 +1380,9 @@ mod tests {
             &catalog,
             &WeaponCatalog::default(),
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             layout(),
             1.0,
@@ -1070,6 +1394,9 @@ mod tests {
             &mut pending,
             SelectionControllabilityPolicy::gameplay_default(),
             None,
+            &mut BuildModeState::default(),
+            &LocalPlayerOwnership::default(),
+            0,
         );
         assert_eq!(
             status,
@@ -1098,6 +1425,9 @@ mod tests {
             &catalog,
             &WeaponCatalog::default(),
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             layout(),
             1.0,
@@ -1109,6 +1439,9 @@ mod tests {
             &mut PendingDispatchTrace::default(),
             SelectionControllabilityPolicy::gameplay_default(),
             None,
+            &mut BuildModeState::default(),
+            &LocalPlayerOwnership::default(),
+            0,
         );
         assert!(modifiers.shift);
     }

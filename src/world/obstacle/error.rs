@@ -13,6 +13,8 @@ pub enum ObstacleQueryError {
     InvalidBlockingRadius { radius_meters: f32 },
     /// Record data was insufficient to evaluate blocking safely.
     CorruptDoodadRecord,
+    /// Generalized occupancy evaluation failed.
+    Occupancy(crate::world::OccupancyError),
 }
 
 impl fmt::Display for ObstacleQueryError {
@@ -27,6 +29,7 @@ impl fmt::Display for ObstacleQueryError {
                 write!(f, "invalid blocking radius {radius_meters} m")
             }
             Self::CorruptDoodadRecord => write!(f, "corrupt doodad record for obstacle query"),
+            Self::Occupancy(error) => write!(f, "occupancy error: {error:?}"),
         }
     }
 }

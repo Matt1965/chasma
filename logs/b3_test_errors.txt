@@ -1,0 +1,2878 @@
+﻿cargo :    Compiling chasma v0.1.0 (C:\BevyFiles\chasma)
+At C:\Users\matt1\AppData\Local\Temp\ps-script-2b050195-ebd0-4df0-9ccf-5ecc345d9328.ps1:85 char:25
++ cd c:\BevyFiles\chasma; cargo test --lib 2>&1 | Out-File -FilePath lo ...
++                         ~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling ch...vyFiles\chasma):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+error[E0252]: the name `FootprintCatalog` is defined multiple times
+ --> src\world\obstacle\query_tests.rs:4:19
+  |
+4 |     DoodadSource, FootprintCatalog, Heightfield, LocalPosition, create_doodad,
+  |                   ^^^^^^^^^^^^^^^^--
+  |                   |
+  |                   `FootprintCatalog` reimported here
+  |                   help: remove unnecessary import
+  |
+ ::: src\world\obstacle\query.rs:6:47
+  |
+6 |     BuildingCatalog, DoodadCatalog, DoodadId, FootprintCatalog, OccupancyCatalogs, OccupancySource,
+  |                                               ---------------- previous import of the type `FootprintCatalog` here
+  |
+  = note: `FootprintCatalog` must be defined only once in the type namespace of this module
+
+error[E0433]: failed to resolve: use of undeclared type `BuildingCatalog`
+   --> src\debug\interaction_capture.rs:112:67
+    |
+112 | ...   let ctx = InteractionQueryContext::new(&world, &doodads, &BuildingCatalog::default(), 
+&FootprintCatalog::default(), &units, &weapons);
+    |                                                                 ^^^^^^^^^^^^^^^ use of undeclared type 
+`BuildingCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+ 73 +     use crate::world::BuildingCatalog;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `FootprintCatalog`
+   --> src\debug\interaction_capture.rs:112:96
+    |
+112 | ...oodads, &BuildingCatalog::default(), &FootprintCatalog::default(), &units, &weapons);
+    |                                          ^^^^^^^^^^^^^^^^ use of undeclared type `FootprintCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+ 73 +     use crate::world::FootprintCatalog;
+    |
+
+error[E0422]: cannot find struct, variant or union type `PassabilityCatalogs` in this scope
+   --> src\units\input\commands.rs:373:9
+    |
+373 |         PassabilityCatalogs {
+    |         ^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct through its public re-export
+    |
+291 +     use crate::world::PassabilityCatalogs;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `BuildingCatalog`
+   --> src\units\input\commands.rs:375:24
+    |
+375 |             building: &BuildingCatalog::default(),
+    |                        ^^^^^^^^^^^^^^^ use of undeclared type `BuildingCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+291 +     use crate::world::BuildingCatalog;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `FootprintCatalog`
+   --> src\units\input\commands.rs:376:25
+    |
+376 |             footprint: &FootprintCatalog::default(),
+    |                         ^^^^^^^^^^^^^^^^ use of undeclared type `FootprintCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+291 +     use crate::world::FootprintCatalog;
+    |
+
+error[E0422]: cannot find struct, variant or union type `PassabilityCatalogs` in this scope
+   --> src\units\input\commands.rs:438:9
+    |
+438 |         PassabilityCatalogs {
+    |         ^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct through its public re-export
+    |
+291 +     use crate::world::PassabilityCatalogs;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `BuildingCatalog`
+   --> src\units\input\commands.rs:440:24
+    |
+440 |             building: &BuildingCatalog::default(),
+    |                        ^^^^^^^^^^^^^^^ use of undeclared type `BuildingCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+291 +     use crate::world::BuildingCatalog;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `FootprintCatalog`
+   --> src\units\input\commands.rs:441:25
+    |
+441 |             footprint: &FootprintCatalog::default(),
+    |                         ^^^^^^^^^^^^^^^^ use of undeclared type `FootprintCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+291 +     use crate::world::FootprintCatalog;
+    |
+
+error[E0422]: cannot find struct, variant or union type `PassabilityCatalogs` in this scope
+   --> src\units\input\commands.rs:500:9
+    |
+500 |         PassabilityCatalogs {
+    |         ^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct through its public re-export
+    |
+291 +     use crate::world::PassabilityCatalogs;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `BuildingCatalog`
+   --> src\units\input\commands.rs:502:24
+    |
+502 |             building: &BuildingCatalog::default(),
+    |                        ^^^^^^^^^^^^^^^ use of undeclared type `BuildingCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+291 +     use crate::world::BuildingCatalog;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `FootprintCatalog`
+   --> src\units\input\commands.rs:503:25
+    |
+503 |             footprint: &FootprintCatalog::default(),
+    |                         ^^^^^^^^^^^^^^^^ use of undeclared type `FootprintCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+291 +     use crate::world::FootprintCatalog;
+    |
+
+error[E0422]: cannot find struct, variant or union type `PassabilityCatalogs` in this scope
+   --> src\units\input\commands.rs:567:9
+    |
+567 |         PassabilityCatalogs {
+    |         ^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct through its public re-export
+    |
+291 +     use crate::world::PassabilityCatalogs;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `BuildingCatalog`
+   --> src\units\input\commands.rs:569:24
+    |
+569 |             building: &BuildingCatalog::default(),
+    |                        ^^^^^^^^^^^^^^^ use of undeclared type `BuildingCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+291 +     use crate::world::BuildingCatalog;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `FootprintCatalog`
+   --> src\units\input\commands.rs:570:25
+    |
+570 |             footprint: &FootprintCatalog::default(),
+    |                         ^^^^^^^^^^^^^^^^ use of undeclared type `FootprintCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+291 +     use crate::world::FootprintCatalog;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `DoodadCatalog`
+   --> src\world\combat\engagement.rs:726:14
+    |
+726 |             &DoodadCatalog::default(),
+    |              ^^^^^^^^^^^^^ use of undeclared type `DoodadCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+653 +     use crate::world::DoodadCatalog;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `DoodadCatalog`
+   --> src\world\combat\engagement.rs:743:14
+    |
+743 |             &DoodadCatalog::default(),
+    |              ^^^^^^^^^^^^^ use of undeclared type `DoodadCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+653 +     use crate::world::DoodadCatalog;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `DoodadCatalog`
+   --> src\world\combat\engagement.rs:771:14
+    |
+771 |             &DoodadCatalog::default(),
+    |              ^^^^^^^^^^^^^ use of undeclared type `DoodadCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+653 +     use crate::world::DoodadCatalog;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `DoodadCatalog`
+   --> src\world\combat\engagement.rs:805:14
+    |
+805 |             &DoodadCatalog::default(),
+    |              ^^^^^^^^^^^^^ use of undeclared type `DoodadCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+653 +     use crate::world::DoodadCatalog;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `DoodadCatalog`
+   --> src\world\combat\engagement.rs:846:14
+    |
+846 |             &DoodadCatalog::default(),
+    |              ^^^^^^^^^^^^^ use of undeclared type `DoodadCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+653 +     use crate::world::DoodadCatalog;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `DoodadCatalog`
+   --> src\world\combat\engagement.rs:906:14
+    |
+906 |             &DoodadCatalog::default(),
+    |              ^^^^^^^^^^^^^ use of undeclared type `DoodadCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+653 +     use crate::world::DoodadCatalog;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `DoodadCatalog`
+   --> src\world\combat\engagement.rs:918:18
+    |
+918 |                 &DoodadCatalog::default(),
+    |                  ^^^^^^^^^^^^^ use of undeclared type `DoodadCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+653 +     use crate::world::DoodadCatalog;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `DoodadCatalog`
+   --> src\world\combat\engagement.rs:927:18
+    |
+927 |                 &DoodadCatalog::default(),
+    |                  ^^^^^^^^^^^^^ use of undeclared type `DoodadCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+653 +     use crate::world::DoodadCatalog;
+    |
+
+error[E0422]: cannot find struct, variant or union type `PassabilityCatalogs` in this scope
+   --> src\world\formation\planner.rs:352:9
+    |
+352 |         PassabilityCatalogs {
+    |         ^^^^^^^^^^^^^^^^^^^ not found in this scope
+    |
+help: consider importing this struct through its public re-export
+    |
+116 +     use crate::world::PassabilityCatalogs;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `BuildingCatalog`
+   --> src\world\formation\planner.rs:354:24
+    |
+354 |             building: &BuildingCatalog::default(),
+    |                        ^^^^^^^^^^^^^^^ use of undeclared type `BuildingCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+116 +     use crate::world::BuildingCatalog;
+    |
+
+error[E0433]: failed to resolve: use of undeclared type `FootprintCatalog`
+   --> src\world\formation\planner.rs:355:25
+    |
+355 |             footprint: &FootprintCatalog::default(),
+    |                         ^^^^^^^^^^^^^^^^ use of undeclared type `FootprintCatalog`
+    |
+help: consider importing this struct through its public re-export
+    |
+116 +     use crate::world::FootprintCatalog;
+    |
+
+error[E0603]: module `definition_id` is private
+   --> src\world\occupancy\footprint.rs:515:42
+    |
+515 |     use crate::world::building::catalog::definition_id::BuildingDefinitionId;
+    |                                          ^^^^^^^^^^^^^ private module
+    |
+note: the module `definition_id` is defined here
+   --> src\world\building\catalog\mod.rs:2:1
+    |
+  2 | mod definition_id;
+    | ^^^^^^^^^^^^^^^^^^
+
+error[E0603]: module `render_key` is private
+   --> src\world\occupancy\footprint.rs:516:42
+    |
+516 |     use crate::world::building::catalog::render_key::BuildingRenderKey;
+    |                                          ^^^^^^^^^^ private module
+    |
+note: the module `render_key` is defined here
+   --> src\world\building\catalog\mod.rs:4:1
+    |
+  4 | mod render_key;
+    | ^^^^^^^^^^^^^^^
+
+warning: unused import: `BuildingRecord`
+ --> src\buildings\picking.rs:4:49
+  |
+4 | use crate::world::{BuildingCatalog, BuildingId, BuildingRecord, WorldData};
+  |                                                 ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `crate::buildings::spawn::spawn_building_render_entity_for_test`
+   --> src\buildings\sync.rs:132:9
+    |
+132 |     use crate::buildings::spawn::spawn_building_render_entity_for_test;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `UnitOwnership` and `create_unit`
+   --> src\client\dispatcher.rs:707:69
+    |
+707 |         DoodadSource, Heightfield, LocalPosition, UnitDefinitionId, UnitOwnership, UnitSource,
+    |                                                                     ^^^^^^^^^^^^^
+708 |         UnitState, WorldPosition, create_doodad, create_unit, create_unit_with_ownership,
+    |                                                  ^^^^^^^^^^^
+
+warning: unused imports: `AnimationProfileImportRow`, `OPTIONAL_COLUMNS`, and `REQUIRED_COLUMNS`
+  --> src\data_import\animation\mod.rs:10:18
+   |
+10 | pub use schema::{AnimationProfileImportRow, OPTIONAL_COLUMNS, REQUIRED_COLUMNS};
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^
+
+warning: unused import: `CATEGORY_REQUIRED_COLUMNS as BUILDING_CATEGORY_REQUIRED_COLUMNS`
+  --> src\data_import\building\mod.rs:12:5
+   |
+12 |     CATEGORY_REQUIRED_COLUMNS as BUILDING_CATEGORY_REQUIRED_COLUMNS,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `AnimationProfile`
+ --> src\data_import\unit\schema.rs:3:20
+  |
+3 | use crate::world::{AnimationProfile, AnimationProfileId};
+  |                    ^^^^^^^^^^^^^^^^
+
+warning: unused import: `UnitId`
+  --> src\debug\flush.rs:57:51
+   |
+57 |     use crate::world::{ChunkCoord, LocalPosition, UnitId, WorldPosition};
+   |                                                   ^^^^^^
+
+warning: unused import: `combat_overlay::draw_combat_debug_overlay`
+  --> src\debug\overlay\mod.rs:12:9
+   |
+12 | pub use combat_overlay::draw_combat_debug_overlay;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `formation_overlay::draw_formation_debug_overlay`
+  --> src\debug\overlay\mod.rs:13:9
+   |
+13 | pub use formation_overlay::draw_formation_debug_overlay;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `intent_overlay::draw_intent_debug_overlay`
+  --> src\debug\overlay\mod.rs:14:9
+   |
+14 | pub use intent_overlay::draw_intent_debug_overlay;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `interaction_overlay::draw_interaction_debug_overlay`
+  --> src\debug\overlay\mod.rs:15:9
+   |
+15 | pub use interaction_overlay::draw_interaction_debug_overlay;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `path_overlay::draw_path_debug_overlay`
+  --> src\debug\overlay\mod.rs:16:9
+   |
+16 | pub use path_overlay::draw_path_debug_overlay;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `selection_overlay::draw_selection_debug_overlay`
+  --> src\debug\overlay\mod.rs:17:9
+   |
+17 | pub use selection_overlay::draw_selection_debug_overlay;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `steering_overlay::draw_steering_debug_overlay`
+  --> src\debug\overlay\mod.rs:18:9
+   |
+18 | pub use steering_overlay::draw_steering_debug_overlay;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `LocalPosition` and `WorldPosition`
+  --> src\player\selection_ring_mesh.rs:87:69
+   |
+87 |     use crate::world::{ChunkCoord, ChunkData, ChunkId, Heightfield, LocalPosition, WorldPosition};
+   |                                                                     ^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+
+warning: unused import: `ChunkLayout`
+   --> src\projectiles\sync.rs:148:41
+    |
+148 |         ChunkCoord, ChunkData, ChunkId, ChunkLayout, DamageType, Heightfield, HitMode,
+    |                                         ^^^^^^^^^^^
+
+warning: unused import: `crate::world::WorldConfig`
+    --> src\terrain\lifecycle.rs:1171:17
+     |
+1171 |             use crate::world::WorldConfig;
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `CommandUnavailableReason`
+   --> src\ui\gameplay\command_panel.rs:226:51
+    |
+226 |         CommandAvailability, CommandPaletteEntry, CommandUnavailableReason, command_tooltip,
+    |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `AnimationProfile` and `UnitRenderKey`
+   --> src\units\animation\assets.rs:510:24
+    |
+510 |     use crate::world::{AnimationProfile, AnimationProfileId, UnitRenderKey};
+    |                        ^^^^^^^^^^^^^^^^                      ^^^^^^^^^^^^^
+
+warning: unused import: `UnitDefinitionId`
+  --> src\units\animation\stress.rs:14:44
+   |
+14 |     use crate::world::{AnimationProfileId, UnitDefinitionId, WeaponDefinitionId};
+   |                                            ^^^^^^^^^^^^^^^^
+
+warning: unused import: `create_unit`
+  --> src\units\input\controllability.rs:32:82
+   |
+32 |         UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource, WorldPosition, create_unit,
+   |                                                                                  ^^^^^^^^^^^
+
+warning: unused import: `bevy::prelude::*`
+ --> src\world\building\insert.rs:1:5
+  |
+1 | use bevy::prelude::*;
+  |     ^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::id::BuildingId`
+ --> src\world\building\insert.rs:3:5
+  |
+3 | use super::id::BuildingId;
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `AttackPhase`
+   --> src\world\combat\cycle_lifecycle.rs:226:43
+    |
+226 |     use crate::world::unit::{AttackCycle, AttackPhase, CombatState};
+    |                                           ^^^^^^^^^^^
+
+warning: unused import: `create_unit`
+   --> src\world\combat\targeting.rs:312:24
+    |
+312 |         WorldPosition, create_unit, create_unit_with_ownership,
+    |                        ^^^^^^^^^^^
+
+warning: unused import: `default_space_id`
+  --> src\world\data.rs:14:65
+   |
+14 |     ChunkOccupancyGrid, OccupancyCellCoord, OccupancyCellEntry, default_space_id,
+   |                                                                 ^^^^^^^^^^^^^^^^
+
+warning: unused imports: `create_unit_with_ownership`, `create_unit`, and `move_unit`
+    --> src\world\data.rs:1839:24
+     |
+1839 |             UnitState, create_unit, create_unit_with_ownership, move_unit,
+     |                        ^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^
+
+warning: unused import: `unit_collision_radius`
+  --> src\world\formation\mod.rs:13:60
+   |
+13 |     collision_separation_meters, resolve_move_destination, unit_collision_radius,
+   |                                                            ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `create_unit`
+   --> src\world\interaction\resolver.rs:176:24
+    |
+176 |         create_doodad, create_unit,
+    |                        ^^^^^^^^^^^
+
+warning: unused imports: `DoodadCatalog`, `SlopeWalkability`, and `classify_slope_walkability`
+ --> src\world\navigation\grid.rs:6:35
+  |
+6 |     BuildingCatalog, ChunkLayout, DoodadCatalog, FootprintCatalog, PassabilityAgent,
+  |                                   ^^^^^^^^^^^^^
+7 |     PassabilityCatalogs, PassabilityResult, SlopeWalkability, WorldData, WorldPosition,
+  |                                             ^^^^^^^^^^^^^^^^
+8 |     classify_slope_walkability, ground_world_position, query_passability_at,
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `FootprintCatalog`
+ --> src\world\obstacle\query.rs:6:47
+  |
+6 |     BuildingCatalog, DoodadCatalog, DoodadId, FootprintCatalog, OccupancyCatalogs, OccupancySource,
+  |                                               ^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::*`
+ --> src\world\obstacle\query_tests.rs:1:5
+  |
+1 | use super::*;
+  |     ^^^^^^^^
+
+warning: unused import: `BakedCellMask`
+   --> src\world\occupancy\catalog.rs:106:46
+    |
+106 |     use crate::world::occupancy::footprint::{BakedCellMask, FootprintShape};
+    |                                              ^^^^^^^^^^^^^
+
+warning: unused import: `std::collections::BTreeSet`
+   --> src\world\occupancy\catalog.rs:107:9
+    |
+107 |     use std::collections::BTreeSet;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `FootprintType`
+  --> src\world\occupancy\footprint.rs:13:56
+   |
+13 | use crate::world::building::footprint::{FootprintSpec, FootprintType};
+   |                                                        ^^^^^^^^^^^^^
+
+warning: unused import: `is_position_blocked_by_static_occupancy`
+ --> src\world\occupancy\passability.rs:8:20
+  |
+8 | use super::query::{is_position_blocked_by_static_occupancy, query_static_occupancy_at};
+  |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `BuildingDefinitionId`, `BuildingOwnership`, `BuildingSource`, and `create_building`
+   --> src\world\occupancy\passability.rs:192:9
+    |
+192 |         BuildingDefinitionId, BuildingOwnership, BuildingSource, ChunkCoord, ChunkData, ChunkId,
+    |         ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+193 |         ChunkLayout, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, Heightfield,
+194 |         LocalPosition, WorldPosition, create_building, create_doodad,
+    |                                       ^^^^^^^^^^^^^^^
+
+warning: unused import: `ChunkOccupancyGrid`
+  --> src\world\occupancy\registration.rs:11:19
+   |
+11 | use super::grid::{ChunkOccupancyGrid, OccupancyCellEntry, OccupancyState};
+   |                   ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `DoodadKind`
+  --> src\world\occupancy\registration.rs:14:84
+   |
+14 |     BuildingCatalog, BuildingId, BuildingRecord, ChunkId, DoodadCatalog, DoodadId, DoodadKind,
+   |                                                                                    ^^^^^^^^^^
+
+warning: unused import: `std::path::Path`
+ --> src\world\occupancy\bake.rs:4:5
+  |
+4 | use std::path::Path;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused imports: `circle_overlap_blocked` and `occupancy_cell_at_global_xz`
+  --> src\world\occupancy\mod.rs:18:5
+   |
+18 |     circle_overlap_blocked, occupancy_cell_at_global_xz,
+   |     ^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `agent_overlaps_footprint`, `inline_footprint_from_building`, and 
+`occupied_cells_for_footprint`
+  --> src\world\occupancy\mod.rs:22:57
+   |
+22 |     BakedCellMask, FootprintDefinition, FootprintShape, agent_overlaps_footprint,
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^
+23 |     effective_building_footprint, inline_building_footprint, inline_footprint_from_building,
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+24 |     occupied_cells_for_footprint,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `plan_unregister_source`
+  --> src\world\occupancy\mod.rs:37:27
+   |
+37 |     plan_register_doodad, plan_unregister_source, rebuild_occupancy_index,
+   |                           ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `catalog::starter_footprint_definitions`
+  --> src\world\occupancy\mod.rs:43:9
+   |
+43 | pub use catalog::starter_footprint_definitions;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ProjectileLaunchSnapshot`
+   --> src\world\projectile\simulation.rs:213:71
+    |
+213 |         NavigationConfig, ProjectileEvent, ProjectileImpactRejection, ProjectileLaunchSnapshot,
+    |                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `BuildingCatalog`, `DoodadCatalog`, and `FootprintCatalog`
+  --> src\world\unit\movement.rs:21:5
+   |
+21 |     BuildingCatalog, ChunkLayout, DoodadCatalog, FootprintCatalog, PassabilityAgent,
+   |     ^^^^^^^^^^^^^^^               ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::world::AttackTargetingPolicy`
+   --> src\world\unit\movement.rs:540:9
+    |
+540 |     use crate::world::AttackTargetingPolicy;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `WeaponCatalog` and `resolve_pending_unit_orders`
+   --> src\world\unit\movement.rs:547:36
+    |
+547 |         UnitRenderKey, UnitSource, WeaponCatalog, WorldConfig, create_doodad, create_unit,
+    |                                    ^^^^^^^^^^^^^
+548 |         issue_unit_order, resolve_all_pending_unit_orders, resolve_pending_unit_orders,
+    |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `PassabilityCatalogs`
+   --> src\world\unit\orders.rs:260:24
+    |
+260 |         LocalPosition, PassabilityCatalogs, UnitDefinitionId, UnitOwnership, UnitSource,
+    |                        ^^^^^^^^^^^^^^^^^^^
+
+error[E0061]: this function takes 20 arguments but 18 arguments were supplied
+   --> src\client\dispatcher.rs:755:22
+    |
+755 |           let status = dispatch_one(
+    |                        ^^^^^^^^^^^^
+...
+763 | /             &NavigationConfig::default(),
+764 | |             layout(),
+    | |____________________- two arguments of type `&world::building::catalog::registry::BuildingCatalog` and 
+`&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\client\dispatcher.rs:227:4
+    |
+227 | fn dispatch_one(
+    |    ^^^^^^^^^^^^
+...
+235 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+236 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+755 -         let status = dispatch_one(
+756 -             &ClientIntent::SelectUnit { unit_id },
+757 -             &mut selection,
+758 -             &mut move_feedback,
+759 -             &mut world,
+760 -             &catalog,
+761 -             &WeaponCatalog::default(),
+762 -             &DoodadCatalog::default(),
+763 -             &NavigationConfig::default(),
+764 -             layout(),
+765 -             1.0,
+766 -             &PlayerInteractionSettings::default(),
+767 -             None,
+768 -             None,
+769 -             &mut modifiers,
+770 -             &mut None,
+771 -             &mut PendingDispatchTrace::default(),
+772 -             SelectionControllabilityPolicy::gameplay_default(),
+773 -             None,
+774 -         );
+755 +         let status = dispatch_one(&ClientIntent::SelectUnit { unit_id }, &mut selection, &mut move_feedback, 
+&mut world, &catalog, &WeaponCatalog::default(), &DoodadCatalog::default(), /* 
+&world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog */, 
+&NavigationConfig::default(), layout(), 1.0, &PlayerInteractionSettings::default(), None, None, &mut modifiers, &mut 
+None, &mut PendingDispatchTrace::default(), SelectionControllabilityPolicy::gameplay_default(), None);
+    |
+
+error[E0061]: this function takes 20 arguments but 18 arguments were supplied
+   --> src\client\dispatcher.rs:801:22
+    |
+801 |           let status = dispatch_one(
+    |                        ^^^^^^^^^^^^
+...
+809 | /             &nav_config,
+810 | |             layout(),
+    | |____________________- two arguments of type `&world::building::catalog::registry::BuildingCatalog` and 
+`&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\client\dispatcher.rs:227:4
+    |
+227 | fn dispatch_one(
+    |    ^^^^^^^^^^^^
+...
+235 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+236 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+801 -         let status = dispatch_one(
+802 -             &ClientIntent::MoveCommand { target },
+803 -             &mut selection,
+804 -             &mut move_feedback,
+805 -             &mut world,
+806 -             &catalog,
+807 -             &WeaponCatalog::default(),
+808 -             &doodad_catalog,
+809 -             &nav_config,
+810 -             layout(),
+811 -             1.0,
+812 -             &PlayerInteractionSettings::default(),
+813 -             None,
+814 -             None,
+815 -             &mut modifiers,
+816 -             &mut None,
+817 -             &mut PendingDispatchTrace::default(),
+818 -             SelectionControllabilityPolicy::gameplay_default(),
+819 -             None,
+820 -         );
+801 +         let status = dispatch_one(&ClientIntent::MoveCommand { target }, &mut selection, &mut move_feedback, 
+&mut world, &catalog, &WeaponCatalog::default(), &doodad_catalog, /* 
+&world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog */, &nav_config, 
+layout(), 1.0, &PlayerInteractionSettings::default(), None, None, &mut modifiers, &mut None, &mut 
+PendingDispatchTrace::default(), SelectionControllabilityPolicy::gameplay_default(), None);
+    |
+
+error[E0061]: this function takes 20 arguments but 18 arguments were supplied
+   --> src\client\dispatcher.rs:845:22
+    |
+845 |           let status = dispatch_one(
+    |                        ^^^^^^^^^^^^
+...
+855 | /             &NavigationConfig::default(),
+856 | |             layout(),
+    | |____________________- two arguments of type `&world::building::catalog::registry::BuildingCatalog` and 
+`&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\client\dispatcher.rs:227:4
+    |
+227 | fn dispatch_one(
+    |    ^^^^^^^^^^^^
+...
+235 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+236 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+845 ~         let status = dispatch_one(&ClientIntent::MoveCommand {
+846 +                 target: pos(10.0, 10.0),
+847 ~             }, &mut selection, &mut move_feedback, &mut world, &catalog, &WeaponCatalog::default(), 
+&DoodadCatalog::default(), /* &world::building::catalog::registry::BuildingCatalog */, /* 
+&occupancy::catalog::FootprintCatalog */, &NavigationConfig::default(), layout(), 1.0, 
+&PlayerInteractionSettings::default(), None, None, &mut modifiers, &mut None, &mut PendingDispatchTrace::default(), 
+SelectionControllabilityPolicy::gameplay_default(), None);
+    |
+
+error[E0061]: this function takes 20 arguments but 18 arguments were supplied
+   --> src\client\dispatcher.rs:903:22
+    |
+903 |           let status = dispatch_one(
+    |                        ^^^^^^^^^^^^
+...
+911 | /             &nav_config,
+912 | |             layout(),
+    | |____________________- two arguments of type `&world::building::catalog::registry::BuildingCatalog` and 
+`&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\client\dispatcher.rs:227:4
+    |
+227 | fn dispatch_one(
+    |    ^^^^^^^^^^^^
+...
+235 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+236 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+903 -         let status = dispatch_one(
+904 -             &ClientIntent::MoveCommand { target: tree_pos },
+905 -             &mut selection,
+906 -             &mut move_feedback,
+907 -             &mut world,
+908 -             &catalog,
+909 -             &WeaponCatalog::default(),
+910 -             &doodad_catalog,
+911 -             &nav_config,
+912 -             layout(),
+913 -             1.0,
+914 -             &PlayerInteractionSettings::default(),
+915 -             None,
+916 -             None,
+917 -             &mut modifiers,
+918 -             &mut None,
+919 -             &mut PendingDispatchTrace::default(),
+920 -             SelectionControllabilityPolicy::gameplay_default(),
+921 -             None,
+922 -         );
+903 +         let status = dispatch_one(&ClientIntent::MoveCommand { target: tree_pos }, &mut selection, &mut 
+move_feedback, &mut world, &catalog, &WeaponCatalog::default(), &doodad_catalog, /* 
+&world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog */, &nav_config, 
+layout(), 1.0, &PlayerInteractionSettings::default(), None, None, &mut modifiers, &mut None, &mut 
+PendingDispatchTrace::default(), SelectionControllabilityPolicy::gameplay_default(), None);
+    |
+
+error[E0061]: this function takes 20 arguments but 18 arguments were supplied
+   --> src\client\dispatcher.rs:936:22
+    |
+936 |           let status = dispatch_one(
+    |                        ^^^^^^^^^^^^
+...
+947 | /             &NavigationConfig::default(),
+948 | |             layout(),
+    | |____________________- two arguments of type `&world::building::catalog::registry::BuildingCatalog` and 
+`&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\client\dispatcher.rs:227:4
+    |
+227 | fn dispatch_one(
+    |    ^^^^^^^^^^^^
+...
+235 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+236 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+936 ~         let status = dispatch_one(&ClientIntent::BoxSelect {
+937 +                 rect_min: Vec2::ZERO,
+938 +                 rect_max: Vec2::ONE,
+939 ~             }, &mut selection, &mut move_feedback, &mut world, &catalog, &WeaponCatalog::default(), 
+&DoodadCatalog::default(), /* &world::building::catalog::registry::BuildingCatalog */, /* 
+&occupancy::catalog::FootprintCatalog */, &NavigationConfig::default(), layout(), 1.0, 
+&PlayerInteractionSettings::default(), None, None, &mut modifiers, &mut None, &mut PendingDispatchTrace::default(), 
+SelectionControllabilityPolicy::gameplay_default(), None);
+    |
+
+error[E0061]: this function takes 20 arguments but 18 arguments were supplied
+   --> src\client\dispatcher.rs:981:9
+    |
+981 |           dispatch_one(
+    |           ^^^^^^^^^^^^
+...
+989 | /             &NavigationConfig::default(),
+990 | |             layout(),
+    | |____________________- two arguments of type `&world::building::catalog::registry::BuildingCatalog` and 
+`&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\client\dispatcher.rs:227:4
+    |
+227 | fn dispatch_one(
+    |    ^^^^^^^^^^^^
+...
+235 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+236 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+981 -         dispatch_one(
+982 -             &ClientIntent::SelectUnit { unit_id },
+983 -             &mut selection,
+984 -             &mut move_feedback,
+985 -             &mut world,
+986 -             &catalog,
+987 -             &WeaponCatalog::default(),
+988 -             &DoodadCatalog::default(),
+989 -             &NavigationConfig::default(),
+990 -             layout(),
+991 -             1.0,
+992 -             &PlayerInteractionSettings::default(),
+993 -             None,
+994 -             None,
+995 -             &mut modifiers,
+996 -             &mut None,
+997 -             &mut PendingDispatchTrace::default(),
+998 -             SelectionControllabilityPolicy::gameplay_default(),
+999 -             None,
+1000-         );
+981 +         dispatch_one(&ClientIntent::SelectUnit { unit_id }, &mut selection, &mut move_feedback, &mut world, 
+&catalog, &WeaponCatalog::default(), &DoodadCatalog::default(), /* 
+&world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog */, 
+&NavigationConfig::default(), layout(), 1.0, &PlayerInteractionSettings::default(), None, None, &mut modifiers, &mut 
+None, &mut PendingDispatchTrace::default(), SelectionControllabilityPolicy::gameplay_default(), None);
+    |
+
+error[E0061]: this function takes 20 arguments but 18 arguments were supplied
+    --> src\client\dispatcher.rs:1028:22
+     |
+1028 |           let status = dispatch_one(
+     |                        ^^^^^^^^^^^^
+...
+1038 | /             &nav_config,
+1039 | |             layout(),
+     | |____________________- two arguments of type `&world::building::catalog::registry::BuildingCatalog` and 
+`&occupancy::catalog::FootprintCatalog` are missing
+     |
+note: function defined here
+    --> src\client\dispatcher.rs:227:4
+     |
+ 227 | fn dispatch_one(
+     |    ^^^^^^^^^^^^
+...
+ 235 |     building_catalog: &BuildingCatalog,
+     |     ----------------------------------
+ 236 |     footprint_catalog: &FootprintCatalog,
+     |     ------------------------------------
+help: provide the arguments
+     |
+1028 ~         let status = dispatch_one(&ClientIntent::ContextualCommand {
+1029 +                 target: CommandTarget::Terrain { position: target },
+1030 ~             }, &mut selection, &mut move_feedback, &mut world, &catalog, &WeaponCatalog::default(), 
+&doodad_catalog, /* &world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog 
+*/, &nav_config, layout(), 1.0, &PlayerInteractionSettings::default(), None, None, &mut modifiers, &mut None, &mut 
+pending, SelectionControllabilityPolicy::gameplay_default(), None);
+     |
+
+error[E0061]: this function takes 20 arguments but 18 arguments were supplied
+    --> src\client\dispatcher.rs:1090:22
+     |
+1090 |           let status = dispatch_one(
+     |                        ^^^^^^^^^^^^
+...
+1100 | /             &NavigationConfig::default(),
+1101 | |             layout(),
+     | |____________________- two arguments of type `&world::building::catalog::registry::BuildingCatalog` and 
+`&occupancy::catalog::FootprintCatalog` are missing
+     |
+note: function defined here
+    --> src\client\dispatcher.rs:227:4
+     |
+ 227 | fn dispatch_one(
+     |    ^^^^^^^^^^^^
+...
+ 235 |     building_catalog: &BuildingCatalog,
+     |     ----------------------------------
+ 236 |     footprint_catalog: &FootprintCatalog,
+     |     ------------------------------------
+help: provide the arguments
+     |
+1090 ~         let status = dispatch_one(&ClientIntent::PaletteCommand {
+1091 +                 command_type: CommandType::HoldPosition,
+1092 ~             }, &mut selection, &mut move_feedback, &mut world, &catalog, &WeaponCatalog::default(), 
+&DoodadCatalog::default(), /* &world::building::catalog::registry::BuildingCatalog */, /* 
+&occupancy::catalog::FootprintCatalog */, &NavigationConfig::default(), layout(), 1.0, 
+&PlayerInteractionSettings::default(), None, None, &mut modifiers, &mut None, &mut pending, 
+SelectionControllabilityPolicy::gameplay_default(), None);
+     |
+
+error[E0061]: this function takes 20 arguments but 18 arguments were supplied
+    --> src\client\dispatcher.rs:1131:9
+     |
+1131 |           dispatch_one(
+     |           ^^^^^^^^^^^^
+...
+1139 | /             &NavigationConfig::default(),
+1140 | |             layout(),
+     | |____________________- two arguments of type `&world::building::catalog::registry::BuildingCatalog` and 
+`&occupancy::catalog::FootprintCatalog` are missing
+     |
+note: function defined here
+    --> src\client\dispatcher.rs:227:4
+     |
+ 227 | fn dispatch_one(
+     |    ^^^^^^^^^^^^
+...
+ 235 |     building_catalog: &BuildingCatalog,
+     |     ----------------------------------
+ 236 |     footprint_catalog: &FootprintCatalog,
+     |     ------------------------------------
+help: provide the arguments
+     |
+1131 -         dispatch_one(
+1132 -             &ClientIntent::ShiftModifier { pressed: true },
+1133 -             &mut selection,
+1134 -             &mut move_feedback,
+1135 -             &mut world,
+1136 -             &catalog,
+1137 -             &WeaponCatalog::default(),
+1138 -             &DoodadCatalog::default(),
+1139 -             &NavigationConfig::default(),
+1140 -             layout(),
+1141 -             1.0,
+1142 -             &PlayerInteractionSettings::default(),
+1143 -             None,
+1144 -             None,
+1145 -             &mut modifiers,
+1146 -             &mut None,
+1147 -             &mut PendingDispatchTrace::default(),
+1148 -             SelectionControllabilityPolicy::gameplay_default(),
+1149 -             None,
+1150 -         );
+1131 +         dispatch_one(&ClientIntent::ShiftModifier { pressed: true }, &mut selection, &mut move_feedback, &mut 
+world, &catalog, &WeaponCatalog::default(), &DoodadCatalog::default(), /* 
+&world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog */, 
+&NavigationConfig::default(), layout(), 1.0, &PlayerInteractionSettings::default(), None, None, &mut modifiers, &mut 
+None, &mut PendingDispatchTrace::default(), SelectionControllabilityPolicy::gameplay_default(), None);
+     |
+
+error[E0061]: this function takes 7 arguments but 6 arguments were supplied
+   --> src\doodads\sync.rs:177:9
+    |
+177 |           create_doodad(
+    |  _________^^^^^^^^^^^^^-
+178 | |             catalog,
+179 | |             world,
+180 | |             &DoodadDefinitionId::new("tree_oak"),
+...   |
+189 | |             },
+190 | |         )
+    | |_________- argument #7 of type `std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+    |
+note: function defined here
+   --> src\world\doodad\authoring.rs:40:8
+    |
+ 40 | pub fn create_doodad(
+    |        ^^^^^^^^^^^^^
+...
+ 47 |     occupancy: Option<OccupancyCatalogs<'_>>,
+    |     ----------------------------------------
+help: provide the argument
+    |
+177 ~         create_doodad(catalog, world, &DoodadDefinitionId::new("tree_oak"), WorldPosition::new(
+178 +                 ChunkCoord::new(x, z),
+179 +                 LocalPosition::new(Vec3::new(20.0, 12.0, 30.0)),
+180 +             ), DoodadSource::Authored, DoodadPlacementOverrides {
+181 +                 rotation: Some(Quat::from_rotation_y(1.25)),
+182 +                 scale: Some(Vec3::splat(1.1)),
+183 +             }, /* std::option::Option<registration::OccupancyCatalogs<'_>> */)
+    |
+
+error[E0061]: this function takes 12 arguments but 10 arguments were supplied
+   --> src\player\simulation.rs:202:25
+    |
+202 |                   let _ = run_simulation_tick(
+    |                           ^^^^^^^^^^^^^^^^^^^
+...
+207 | /                     nav_config,
+208 | |                     AttackTargetingPolicy::default(),
+    | |____________________________________________________- two arguments of type 
+`&world::building::catalog::registry::BuildingCatalog` and `&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\simulation\tick.rs:26:8
+    |
+ 26 | pub fn run_simulation_tick(
+    |        ^^^^^^^^^^^^^^^^^^^
+...
+ 31 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+ 32 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+202 -                 let _ = run_simulation_tick(
+203 -                     world,
+204 -                     catalog,
+205 -                     weapon_catalog,
+206 -                     doodad_catalog,
+207 -                     nav_config,
+208 -                     AttackTargetingPolicy::default(),
+209 -                     combat_ai_settings,
+210 -                     combat_ai_scan,
+211 -                     SIMULATION_TICK_SECONDS,
+212 -                     tick,
+213 -                 );
+202 +                 let _ = run_simulation_tick(world, catalog, weapon_catalog, doodad_catalog, /* 
+&world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog */, nav_config, 
+AttackTargetingPolicy::default(), combat_ai_settings, combat_ai_scan, SIMULATION_TICK_SECONDS, tick);
+    |
+
+error[E0308]: mismatched types
+   --> src\player\simulation.rs:239:57
+    |
+239 |         resolve_all_pending_unit_orders(world, catalog, doodad_catalog, nav_config);
+    |         -------------------------------                 ^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found 
+`&DoodadCatalog`
+    |         |
+    |         arguments to this function are incorrect
+    |
+note: function defined here
+   --> src\world\unit\orders.rs:235:8
+    |
+235 | pub fn resolve_all_pending_unit_orders(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+238 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0061]: this function takes 11 arguments but 13 arguments were supplied
+   --> src\player\simulation.rs:255:9
+    |
+255 |         run_frames(
+    |         ^^^^^^^^^^
+...
+262 |             &BuildingCatalog::default(),
+    |             --------------------------- unexpected argument #7 of type 
+`&world::building::catalog::registry::BuildingCatalog`
+263 |             &FootprintCatalog::default(),
+    |             ---------------------------- unexpected argument #8 of type `&occupancy::catalog::FootprintCatalog`
+    |
+note: function defined here
+   --> src\player\simulation.rs:182:8
+    |
+182 |     fn run_frames(
+    |        ^^^^^^^^^^
+help: remove the extra arguments
+    |
+261 -             &doodad_catalog,
+262 -             &BuildingCatalog::default(),
+261 +             &doodad_catalog,
+    |
+
+error[E0061]: this function takes 7 arguments but 9 arguments were supplied
+   --> src\player\simulation.rs:294:9
+    |
+294 |         issue_move(
+    |         ^^^^^^^^^^
+...
+299 |             &BuildingCatalog::default(),
+    |             --------------------------- unexpected argument #5 of type 
+`&world::building::catalog::registry::BuildingCatalog`
+300 |             &FootprintCatalog::default(),
+    |             ---------------------------- unexpected argument #6 of type `&occupancy::catalog::FootprintCatalog`
+    |
+note: function defined here
+   --> src\player\simulation.rs:219:8
+    |
+219 |     fn issue_move(
+    |        ^^^^^^^^^^
+help: remove the extra arguments
+    |
+298 -             &doodad_catalog,
+299 -             &BuildingCatalog::default(),
+298 +             &doodad_catalog,
+    |
+
+error[E0061]: this function takes 7 arguments but 9 arguments were supplied
+   --> src\player\simulation.rs:316:9
+    |
+316 |         issue_move(
+    |         ^^^^^^^^^^
+...
+321 |             &BuildingCatalog::default(),
+    |             --------------------------- unexpected argument #5 of type 
+`&world::building::catalog::registry::BuildingCatalog`
+322 |             &FootprintCatalog::default(),
+    |             ---------------------------- unexpected argument #6 of type `&occupancy::catalog::FootprintCatalog`
+    |
+note: function defined here
+   --> src\player\simulation.rs:219:8
+    |
+219 |     fn issue_move(
+    |        ^^^^^^^^^^
+help: remove the extra arguments
+    |
+320 -             &doodad_catalog,
+321 -             &BuildingCatalog::default(),
+320 +             &doodad_catalog,
+    |
+
+error[E0061]: this function takes 11 arguments but 13 arguments were supplied
+   --> src\player\simulation.rs:336:9
+    |
+336 |         run_frames(
+    |         ^^^^^^^^^^
+...
+343 |             &BuildingCatalog::default(),
+    |             --------------------------- unexpected argument #7 of type 
+`&world::building::catalog::registry::BuildingCatalog`
+344 |             &FootprintCatalog::default(),
+    |             ---------------------------- unexpected argument #8 of type `&occupancy::catalog::FootprintCatalog`
+    |
+note: function defined here
+   --> src\player\simulation.rs:182:8
+    |
+182 |     fn run_frames(
+    |        ^^^^^^^^^^
+help: remove the extra arguments
+    |
+342 -             &doodad_catalog,
+343 -             &BuildingCatalog::default(),
+342 +             &doodad_catalog,
+    |
+
+error[E0061]: this function takes 11 arguments but 13 arguments were supplied
+   --> src\player\simulation.rs:351:9
+    |
+351 |         run_frames(
+    |         ^^^^^^^^^^
+...
+358 |             &BuildingCatalog::default(),
+    |             --------------------------- unexpected argument #7 of type 
+`&world::building::catalog::registry::BuildingCatalog`
+359 |             &FootprintCatalog::default(),
+    |             ---------------------------- unexpected argument #8 of type `&occupancy::catalog::FootprintCatalog`
+    |
+note: function defined here
+   --> src\player\simulation.rs:182:8
+    |
+182 |     fn run_frames(
+    |        ^^^^^^^^^^
+help: remove the extra arguments
+    |
+357 -             &doodad_catalog,
+358 -             &BuildingCatalog::default(),
+357 +             &doodad_catalog,
+    |
+
+error[E0061]: this function takes 11 arguments but 13 arguments were supplied
+   --> src\player\simulation.rs:425:9
+    |
+425 |         run_frames(
+    |         ^^^^^^^^^^
+...
+432 |             &BuildingCatalog::default(),
+    |             --------------------------- unexpected argument #7 of type 
+`&world::building::catalog::registry::BuildingCatalog`
+433 |             &FootprintCatalog::default(),
+    |             ---------------------------- unexpected argument #8 of type `&occupancy::catalog::FootprintCatalog`
+    |
+note: function defined here
+   --> src\player\simulation.rs:182:8
+    |
+182 |     fn run_frames(
+    |        ^^^^^^^^^^
+help: remove the extra arguments
+    |
+431 -             &doodad_catalog,
+432 -             &BuildingCatalog::default(),
+431 +             &doodad_catalog,
+    |
+
+error[E0061]: this function takes 11 arguments but 13 arguments were supplied
+   --> src\player\simulation.rs:440:9
+    |
+440 |         run_frames(
+    |         ^^^^^^^^^^
+...
+447 |             &BuildingCatalog::default(),
+    |             --------------------------- unexpected argument #7 of type 
+`&world::building::catalog::registry::BuildingCatalog`
+448 |             &FootprintCatalog::default(),
+    |             ---------------------------- unexpected argument #8 of type `&occupancy::catalog::FootprintCatalog`
+    |
+note: function defined here
+   --> src\player\simulation.rs:182:8
+    |
+182 |     fn run_frames(
+    |        ^^^^^^^^^^
+help: remove the extra arguments
+    |
+446 -             &doodad_catalog,
+447 -             &BuildingCatalog::default(),
+446 +             &doodad_catalog,
+    |
+
+error[E0061]: this function takes 11 arguments but 13 arguments were supplied
+   --> src\player\simulation.rs:509:9
+    |
+509 |         run_frames(
+    |         ^^^^^^^^^^
+...
+516 |             &BuildingCatalog::default(),
+    |             --------------------------- unexpected argument #7 of type 
+`&world::building::catalog::registry::BuildingCatalog`
+517 |             &FootprintCatalog::default(),
+    |             ---------------------------- unexpected argument #8 of type `&occupancy::catalog::FootprintCatalog`
+    |
+note: function defined here
+   --> src\player\simulation.rs:182:8
+    |
+182 |     fn run_frames(
+    |        ^^^^^^^^^^
+help: remove the extra arguments
+    |
+515 -             &doodad_catalog,
+516 -             &BuildingCatalog::default(),
+515 +             &doodad_catalog,
+    |
+
+error[E0061]: this function takes 11 arguments but 13 arguments were supplied
+   --> src\player\simulation.rs:524:9
+    |
+524 |         run_frames(
+    |         ^^^^^^^^^^
+...
+531 |             &BuildingCatalog::default(),
+    |             --------------------------- unexpected argument #7 of type 
+`&world::building::catalog::registry::BuildingCatalog`
+532 |             &FootprintCatalog::default(),
+    |             ---------------------------- unexpected argument #8 of type `&occupancy::catalog::FootprintCatalog`
+    |
+note: function defined here
+   --> src\player\simulation.rs:182:8
+    |
+182 |     fn run_frames(
+    |        ^^^^^^^^^^
+help: remove the extra arguments
+    |
+530 -             &doodad_catalog,
+531 -             &BuildingCatalog::default(),
+530 +             &doodad_catalog,
+    |
+
+error[E0061]: this function takes 7 arguments but 9 arguments were supplied
+   --> src\player\simulation.rs:551:9
+    |
+551 |         issue_move(
+    |         ^^^^^^^^^^
+...
+556 |             &BuildingCatalog::default(),
+    |             --------------------------- unexpected argument #5 of type 
+`&world::building::catalog::registry::BuildingCatalog`
+557 |             &FootprintCatalog::default(),
+    |             ---------------------------- unexpected argument #6 of type `&occupancy::catalog::FootprintCatalog`
+    |
+note: function defined here
+   --> src\player\simulation.rs:219:8
+    |
+219 |     fn issue_move(
+    |        ^^^^^^^^^^
+help: remove the extra arguments
+    |
+555 -             &doodad_catalog,
+556 -             &BuildingCatalog::default(),
+555 +             &doodad_catalog,
+    |
+
+error[E0061]: this function takes 11 arguments but 13 arguments were supplied
+   --> src\player\simulation.rs:570:9
+    |
+570 |         run_frames(
+    |         ^^^^^^^^^^
+...
+577 |             &BuildingCatalog::default(),
+    |             --------------------------- unexpected argument #7 of type 
+`&world::building::catalog::registry::BuildingCatalog`
+578 |             &FootprintCatalog::default(),
+    |             ---------------------------- unexpected argument #8 of type `&occupancy::catalog::FootprintCatalog`
+    |
+note: function defined here
+   --> src\player\simulation.rs:182:8
+    |
+182 |     fn run_frames(
+    |        ^^^^^^^^^^
+help: remove the extra arguments
+    |
+576 -             &doodad_catalog,
+577 -             &BuildingCatalog::default(),
+576 +             &doodad_catalog,
+    |
+
+error[E0061]: this function takes 11 arguments but 13 arguments were supplied
+   --> src\player\simulation.rs:673:9
+    |
+673 |         run_frames(
+    |         ^^^^^^^^^^
+...
+680 |             &BuildingCatalog::default(),
+    |             --------------------------- unexpected argument #7 of type 
+`&world::building::catalog::registry::BuildingCatalog`
+681 |             &FootprintCatalog::default(),
+    |             ---------------------------- unexpected argument #8 of type `&occupancy::catalog::FootprintCatalog`
+    |
+note: function defined here
+   --> src\player\simulation.rs:182:8
+    |
+182 |     fn run_frames(
+    |        ^^^^^^^^^^
+help: remove the extra arguments
+    |
+679 -             &doodad_catalog,
+680 -             &BuildingCatalog::default(),
+679 +             &doodad_catalog,
+    |
+
+error[E0061]: this function takes 11 arguments but 13 arguments were supplied
+   --> src\player\simulation.rs:688:9
+    |
+688 |         run_frames(
+    |         ^^^^^^^^^^
+...
+695 |             &BuildingCatalog::default(),
+    |             --------------------------- unexpected argument #7 of type 
+`&world::building::catalog::registry::BuildingCatalog`
+696 |             &FootprintCatalog::default(),
+    |             ---------------------------- unexpected argument #8 of type `&occupancy::catalog::FootprintCatalog`
+    |
+note: function defined here
+   --> src\player\simulation.rs:182:8
+    |
+182 |     fn run_frames(
+    |        ^^^^^^^^^^
+help: remove the extra arguments
+    |
+694 -             &doodad_catalog,
+695 -             &BuildingCatalog::default(),
+694 +             &doodad_catalog,
+    |
+
+error[E0308]: mismatched types
+   --> src\simulation\tick.rs:171:13
+    |
+168 |         let _ = step_all_unit_movement(
+    |                 ---------------------- arguments to this function are incorrect
+...
+171 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\unit\movement.rs:126:8
+    |
+126 | pub fn step_all_unit_movement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^
+...
+129 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0061]: this function takes 12 arguments but 10 arguments were supplied
+   --> src\simulation\tick.rs:212:22
+    |
+212 |           let report = run_simulation_tick(
+    |                        ^^^^^^^^^^^^^^^^^^^
+...
+217 | /             &NavigationConfig::default(),
+218 | |             AttackTargetingPolicy::default(),
+    | |____________________________________________- two arguments of type 
+`&world::building::catalog::registry::BuildingCatalog` and `&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\simulation\tick.rs:26:8
+    |
+ 26 | pub fn run_simulation_tick(
+    |        ^^^^^^^^^^^^^^^^^^^
+...
+ 31 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+ 32 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+212 -         let report = run_simulation_tick(
+213 -             &mut world,
+214 -             &catalog,
+215 -             &weapon_catalog,
+216 -             &DoodadCatalog::default(),
+217 -             &NavigationConfig::default(),
+218 -             AttackTargetingPolicy::default(),
+219 -             &settings,
+220 -             &mut scan,
+221 -             SIMULATION_TICK_SECONDS,
+222 -             1,
+223 -         );
+212 +         let report = run_simulation_tick(&mut world, &catalog, &weapon_catalog, &DoodadCatalog::default(), /* 
+&world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog */, 
+&NavigationConfig::default(), AttackTargetingPolicy::default(), &settings, &mut scan, SIMULATION_TICK_SECONDS, 1);
+    |
+
+error[E0061]: this function takes 12 arguments but 10 arguments were supplied
+   --> src\simulation\tick.rs:259:22
+    |
+259 |           let report = run_simulation_tick(
+    |                        ^^^^^^^^^^^^^^^^^^^
+...
+264 | /             &NavigationConfig::default(),
+265 | |             AttackTargetingPolicy::default(),
+    | |____________________________________________- two arguments of type 
+`&world::building::catalog::registry::BuildingCatalog` and `&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\simulation\tick.rs:26:8
+    |
+ 26 | pub fn run_simulation_tick(
+    |        ^^^^^^^^^^^^^^^^^^^
+...
+ 31 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+ 32 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+259 -         let report = run_simulation_tick(
+260 -             &mut world,
+261 -             &catalog,
+262 -             &weapons(),
+263 -             &DoodadCatalog::default(),
+264 -             &NavigationConfig::default(),
+265 -             AttackTargetingPolicy::default(),
+266 -             &CombatAiSettings::default(),
+267 -             &mut scan,
+268 -             SIMULATION_TICK_SECONDS,
+269 -             1,
+270 -         );
+259 +         let report = run_simulation_tick(&mut world, &catalog, &weapons(), &DoodadCatalog::default(), /* 
+&world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog */, 
+&NavigationConfig::default(), AttackTargetingPolicy::default(), &CombatAiSettings::default(), &mut scan, 
+SIMULATION_TICK_SECONDS, 1);
+    |
+
+error[E0061]: this function takes 12 arguments but 10 arguments were supplied
+   --> src\simulation\tick.rs:291:28
+    |
+291 |               let report_a = run_simulation_tick(
+    |                              ^^^^^^^^^^^^^^^^^^^
+...
+296 | /                 &nav,
+297 | |                 policy,
+    | |______________________- two arguments of type `&world::building::catalog::registry::BuildingCatalog` and 
+`&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\simulation\tick.rs:26:8
+    |
+ 26 | pub fn run_simulation_tick(
+    |        ^^^^^^^^^^^^^^^^^^^
+...
+ 31 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+ 32 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+291 -             let report_a = run_simulation_tick(
+292 -                 &mut world_a,
+293 -                 &catalog,
+294 -                 &weapon_catalog,
+295 -                 &doodads,
+296 -                 &nav,
+297 -                 policy,
+298 -                 &settings,
+299 -                 &mut scan_a,
+300 -                 SIMULATION_TICK_SECONDS,
+301 -                 tick,
+302 -             );
+291 +             let report_a = run_simulation_tick(&mut world_a, &catalog, &weapon_catalog, &doodads, /* 
+&world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog */, &nav, policy, 
+&settings, &mut scan_a, SIMULATION_TICK_SECONDS, tick);
+    |
+
+error[E0061]: this function takes 12 arguments but 10 arguments were supplied
+   --> src\simulation\tick.rs:303:28
+    |
+303 |               let report_b = run_simulation_tick(
+    |                              ^^^^^^^^^^^^^^^^^^^
+...
+308 | /                 &nav,
+309 | |                 policy,
+    | |______________________- two arguments of type `&world::building::catalog::registry::BuildingCatalog` and 
+`&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\simulation\tick.rs:26:8
+    |
+ 26 | pub fn run_simulation_tick(
+    |        ^^^^^^^^^^^^^^^^^^^
+...
+ 31 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+ 32 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+303 -             let report_b = run_simulation_tick(
+304 -                 &mut world_b,
+305 -                 &catalog,
+306 -                 &weapon_catalog,
+307 -                 &doodads,
+308 -                 &nav,
+309 -                 policy,
+310 -                 &settings,
+311 -                 &mut scan_b,
+312 -                 SIMULATION_TICK_SECONDS,
+313 -                 tick,
+314 -             );
+303 +             let report_b = run_simulation_tick(&mut world_b, &catalog, &weapon_catalog, &doodads, /* 
+&world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog */, &nav, policy, 
+&settings, &mut scan_b, SIMULATION_TICK_SECONDS, tick);
+    |
+
+error[E0308]: mismatched types
+   --> src\world\combat\cycle_lifecycle.rs:399:13
+    |
+395 |         let _ = step_all_combat_engagement(
+    |                 -------------------------- arguments to this function are incorrect
+...
+399 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+   --> src\world\combat\cycle_lifecycle.rs:629:13
+    |
+625 |         let _ = step_all_combat_engagement(
+    |                 -------------------------- arguments to this function are incorrect
+...
+629 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+   --> src\world\combat\cycle_lifecycle.rs:788:13
+    |
+784 |         let _ = step_all_combat_engagement(
+    |                 -------------------------- arguments to this function are incorrect
+...
+788 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0061]: this function takes 12 arguments but 10 arguments were supplied
+   --> src\world\combat\engagement.rs:923:13
+    |
+923 |               crate::simulation::run_simulation_tick(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+928 | /                 &NavigationConfig::default(),
+929 | |                 policy(),
+    | |________________________- two arguments of type `&world::building::catalog::registry::BuildingCatalog` and 
+`&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\simulation\tick.rs:26:8
+    |
+ 26 | pub fn run_simulation_tick(
+    |        ^^^^^^^^^^^^^^^^^^^
+...
+ 31 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+ 32 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+923 -             crate::simulation::run_simulation_tick(
+924 -                 &mut world,
+925 -                 &catalog,
+926 -                 &weapons(),
+927 -                 &DoodadCatalog::default(),
+928 -                 &NavigationConfig::default(),
+929 -                 policy(),
+930 -                 &settings,
+931 -                 &mut scan,
+932 -                 0.25,
+933 -                 0,
+934 -             );
+923 +             crate::simulation::run_simulation_tick(&mut world, &catalog, &weapons(), &DoodadCatalog::default(), 
+/* &world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog */, 
+&NavigationConfig::default(), policy(), &settings, &mut scan, 0.25, 0);
+    |
+
+error[E0308]: mismatched types
+   --> src\world\combat\strike.rs:659:13
+    |
+655 |         let _ = step_all_combat_engagement(
+    |                 -------------------------- arguments to this function are incorrect
+...
+659 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+   --> src\world\combat\strike.rs:924:13
+    |
+920 |         step_all_combat_engagement(
+    |         -------------------------- arguments to this function are incorrect
+...
+924 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+    --> src\world\combat\strike.rs:1004:13
+     |
+1000 |         step_all_combat_engagement(
+     |         -------------------------- arguments to this function are incorrect
+...
+1004 |             &DoodadCatalog::default(),
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+     |
+note: function defined here
+    --> src\world\combat\engagement.rs:74:8
+     |
+  74 | pub fn step_all_combat_engagement(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+  78 |     catalogs: PassabilityCatalogs<'_>,
+     |     ---------------------------------
+
+error[E0061]: this function takes 12 arguments but 10 arguments were supplied
+   --> src\world\combat\tick_order.rs:132:9
+    |
+132 |           crate::simulation::run_simulation_tick(
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+137 | /             &NavigationConfig::default(),
+138 | |             policy(),
+    | |____________________- two arguments of type `&world::building::catalog::registry::BuildingCatalog` and 
+`&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\simulation\tick.rs:26:8
+    |
+ 26 | pub fn run_simulation_tick(
+    |        ^^^^^^^^^^^^^^^^^^^
+...
+ 31 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+ 32 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+132 -         crate::simulation::run_simulation_tick(
+133 -             world,
+134 -             catalog,
+135 -             weapon_catalog,
+136 -             &DoodadCatalog::default(),
+137 -             &NavigationConfig::default(),
+138 -             policy(),
+139 -             &settings,
+140 -             &mut scan,
+141 -             0.2,
+142 -             1,
+143 -         )
+132 +         crate::simulation::run_simulation_tick(world, catalog, weapon_catalog, &DoodadCatalog::default(), /* 
+&world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog */, 
+&NavigationConfig::default(), policy(), &settings, &mut scan, 0.2, 1)
+    |
+
+error[E0308]: mismatched types
+   --> src\world\combat\tick_order.rs:514:13
+    |
+510 |         let engagement = step_all_combat_engagement(
+    |                          -------------------------- arguments to this function are incorrect
+...
+514 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+    --> src\world\data.rs:1618:13
+     |
+1618 |               move_doodad(
+     |  _____________^^^^^^^^^^^-
+1619 | |                 &mut world,
+1620 | |                 record.id,
+1621 | |                 pos(0, 0, Vec3::new(200.0, 0.0, 50.0)),
+1622 | |             )
+     | |_____________- argument #4 of type `std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+     |
+note: function defined here
+    --> src\world\doodad\authoring.rs:91:8
+     |
+  91 | pub fn move_doodad(
+     |        ^^^^^^^^^^^
+...
+  95 |     occupancy: Option<OccupancyCatalogs<'_>>,
+     |     ----------------------------------------
+help: provide the argument
+     |
+1618 -             move_doodad(
+1619 -                 &mut world,
+1620 -                 record.id,
+1621 -                 pos(0, 0, Vec3::new(200.0, 0.0, 50.0)),
+1622 -             )
+1618 +             move_doodad(&mut world, record.id, pos(0, 0, Vec3::new(200.0, 0.0, 50.0)), /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */)
+     |
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+    --> src\world\data.rs:1646:13
+     |
+1646 |               move_doodad(
+     |  _____________^^^^^^^^^^^-
+1647 | |                 &mut world,
+1648 | |                 record.id,
+1649 | |                 pos(1, 0, Vec3::new(128.0, 0.0, 128.0)),
+1650 | |             )
+     | |_____________- argument #4 of type `std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+     |
+note: function defined here
+    --> src\world\doodad\authoring.rs:91:8
+     |
+  91 | pub fn move_doodad(
+     |        ^^^^^^^^^^^
+...
+  95 |     occupancy: Option<OccupancyCatalogs<'_>>,
+     |     ----------------------------------------
+help: provide the argument
+     |
+1646 -             move_doodad(
+1647 -                 &mut world,
+1648 -                 record.id,
+1649 -                 pos(1, 0, Vec3::new(128.0, 0.0, 128.0)),
+1650 -             )
+1646 +             move_doodad(&mut world, record.id, pos(1, 0, Vec3::new(128.0, 0.0, 128.0)), /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */)
+     |
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+    --> src\world\data.rs:1678:13
+     |
+1678 |             remove_doodad(&mut world, record.id).unwrap();
+     |             ^^^^^^^^^^^^^----------------------- argument #3 of type 
+`std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+     |
+note: function defined here
+    --> src\world\doodad\authoring.rs:115:8
+     |
+ 115 | pub fn remove_doodad(
+     |        ^^^^^^^^^^^^^
+...
+ 118 |     occupancy: Option<OccupancyCatalogs<'_>>,
+     |     ----------------------------------------
+help: provide the argument
+     |
+1678 |             remove_doodad(&mut world, record.id, /* std::option::Option<registration::OccupancyCatalogs<'_>> 
+*/).unwrap();
+     |                                                ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+    --> src\world\data.rs:1764:13
+     |
+1764 |             move_doodad(&mut world, id, pos(0, 0, Vec3::new(64.0, 0.0, 64.0))).unwrap();
+     |             ^^^^^^^^^^^------------------------------------------------------- argument #4 of type 
+`std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+     |
+note: function defined here
+    --> src\world\doodad\authoring.rs:91:8
+     |
+  91 | pub fn move_doodad(
+     |        ^^^^^^^^^^^
+...
+  95 |     occupancy: Option<OccupancyCatalogs<'_>>,
+     |     ----------------------------------------
+help: provide the argument
+     |
+1764 |             move_doodad(&mut world, id, pos(0, 0, Vec3::new(64.0, 0.0, 64.0)), /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */).unwrap();
+     |                                                                              
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+    --> src\world\data.rs:1786:13
+     |
+1786 |             move_doodad(&mut world, id, pos(1, 0, Vec3::new(128.0, 0.0, 128.0))).unwrap();
+     |             ^^^^^^^^^^^--------------------------------------------------------- argument #4 of type 
+`std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+     |
+note: function defined here
+    --> src\world\doodad\authoring.rs:91:8
+     |
+  91 | pub fn move_doodad(
+     |        ^^^^^^^^^^^
+...
+  95 |     occupancy: Option<OccupancyCatalogs<'_>>,
+     |     ----------------------------------------
+help: provide the argument
+     |
+1786 |             move_doodad(&mut world, id, pos(1, 0, Vec3::new(128.0, 0.0, 128.0)), /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */).unwrap();
+     |                                                                                
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+    --> src\world\data.rs:1812:13
+     |
+1812 |             move_doodad(&mut world, id, pos(1, 0, Vec3::new(64.0, 0.0, 64.0))).unwrap();
+     |             ^^^^^^^^^^^------------------------------------------------------- argument #4 of type 
+`std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+     |
+note: function defined here
+    --> src\world\doodad\authoring.rs:91:8
+     |
+  91 | pub fn move_doodad(
+     |        ^^^^^^^^^^^
+...
+  95 |     occupancy: Option<OccupancyCatalogs<'_>>,
+     |     ----------------------------------------
+help: provide the argument
+     |
+1812 |             move_doodad(&mut world, id, pos(1, 0, Vec3::new(64.0, 0.0, 64.0)), /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */).unwrap();
+     |                                                                              
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 7 arguments but 6 arguments were supplied
+   --> src\world\doodad\authoring.rs:212:19
+    |
+212 |           let err = create_doodad(
+    |  ___________________^^^^^^^^^^^^^-
+213 | |             &cat,
+214 | |             &mut world,
+215 | |             &def,
+...   |
+221 | |             },
+222 | |         )
+    | |_________- argument #7 of type `std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+    |
+note: function defined here
+   --> src\world\doodad\authoring.rs:40:8
+    |
+ 40 | pub fn create_doodad(
+    |        ^^^^^^^^^^^^^
+...
+ 47 |     occupancy: Option<OccupancyCatalogs<'_>>,
+    |     ----------------------------------------
+help: provide the argument
+    |
+212 ~         let err = create_doodad(&cat, &mut world, &def, position(0, 0, Vec3::ZERO), DoodadSource::Authored, 
+DoodadPlacementOverrides {
+213 +                 scale: Some(Vec3::splat(2.0)),
+214 +                 ..Default::default()
+215 +             }, /* std::option::Option<registration::OccupancyCatalogs<'_>> */)
+    |
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> src\world\doodad\authoring.rs:244:21
+    |
+244 |         let moved = move_doodad(&mut world, record.id, new_pos).unwrap();
+    |                     ^^^^^^^^^^^-------------------------------- argument #4 of type 
+`std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+    |
+note: function defined here
+   --> src\world\doodad\authoring.rs:91:8
+    |
+ 91 | pub fn move_doodad(
+    |        ^^^^^^^^^^^
+...
+ 95 |     occupancy: Option<OccupancyCatalogs<'_>>,
+    |     ----------------------------------------
+help: provide the argument
+    |
+244 |         let moved = move_doodad(&mut world, record.id, new_pos, /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */).unwrap();
+    |                                                               
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> src\world\doodad\authoring.rs:270:21
+    |
+270 |         let moved = move_doodad(&mut world, record.id, new_pos).unwrap();
+    |                     ^^^^^^^^^^^-------------------------------- argument #4 of type 
+`std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+    |
+note: function defined here
+   --> src\world\doodad\authoring.rs:91:8
+    |
+ 91 | pub fn move_doodad(
+    |        ^^^^^^^^^^^
+...
+ 95 |     occupancy: Option<OccupancyCatalogs<'_>>,
+    |     ----------------------------------------
+help: provide the argument
+    |
+270 |         let moved = move_doodad(&mut world, record.id, new_pos, /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */).unwrap();
+    |                                                               
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+   --> src\world\doodad\authoring.rs:299:23
+    |
+299 |         let removed = remove_doodad(&mut world, record.id).unwrap();
+    |                       ^^^^^^^^^^^^^----------------------- argument #3 of type 
+`std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+    |
+note: function defined here
+   --> src\world\doodad\authoring.rs:115:8
+    |
+115 | pub fn remove_doodad(
+    |        ^^^^^^^^^^^^^
+...
+118 |     occupancy: Option<OccupancyCatalogs<'_>>,
+    |     ----------------------------------------
+help: provide the argument
+    |
+299 |         let removed = remove_doodad(&mut world, record.id, /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */).unwrap();
+    |                                                          
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> src\world\doodad\authoring.rs:341:9
+    |
+341 |           move_doodad(
+    |  _________^^^^^^^^^^^-
+342 | |             &mut world,
+343 | |             record.id,
+344 | |             position(3, 4, Vec3::new(50.0, 0.0, 50.0)),
+345 | |         )
+    | |_________- argument #4 of type `std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+    |
+note: function defined here
+   --> src\world\doodad\authoring.rs:91:8
+    |
+ 91 | pub fn move_doodad(
+    |        ^^^^^^^^^^^
+...
+ 95 |     occupancy: Option<OccupancyCatalogs<'_>>,
+    |     ----------------------------------------
+help: provide the argument
+    |
+341 -         move_doodad(
+342 -             &mut world,
+343 -             record.id,
+344 -             position(3, 4, Vec3::new(50.0, 0.0, 50.0)),
+345 -         )
+341 +         move_doodad(&mut world, record.id, position(3, 4, Vec3::new(50.0, 0.0, 50.0)), /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */)
+    |
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> src\world\doodad\authoring.rs:367:9
+    |
+367 |           move_doodad(
+    |  _________^^^^^^^^^^^-
+368 | |             &mut world,
+369 | |             record.id,
+370 | |             position(1, 1, Vec3::new(1.0, 0.0, 1.0)),
+371 | |         )
+    | |_________- argument #4 of type `std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+    |
+note: function defined here
+   --> src\world\doodad\authoring.rs:91:8
+    |
+ 91 | pub fn move_doodad(
+    |        ^^^^^^^^^^^
+...
+ 95 |     occupancy: Option<OccupancyCatalogs<'_>>,
+    |     ----------------------------------------
+help: provide the argument
+    |
+367 -         move_doodad(
+368 -             &mut world,
+369 -             record.id,
+370 -             position(1, 1, Vec3::new(1.0, 0.0, 1.0)),
+371 -         )
+367 +         move_doodad(&mut world, record.id, position(1, 1, Vec3::new(1.0, 0.0, 1.0)), /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */)
+    |
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> src\world\doodad\authoring.rs:395:9
+    |
+395 |           move_doodad(
+    |  _________^^^^^^^^^^^-
+396 | |             &mut world,
+397 | |             record.id,
+398 | |             position(1, 0, Vec3::new(1.0, 0.0, 1.0)),
+399 | |         )
+    | |_________- argument #4 of type `std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+    |
+note: function defined here
+   --> src\world\doodad\authoring.rs:91:8
+    |
+ 91 | pub fn move_doodad(
+    |        ^^^^^^^^^^^
+...
+ 95 |     occupancy: Option<OccupancyCatalogs<'_>>,
+    |     ----------------------------------------
+help: provide the argument
+    |
+395 -         move_doodad(
+396 -             &mut world,
+397 -             record.id,
+398 -             position(1, 0, Vec3::new(1.0, 0.0, 1.0)),
+399 -         )
+395 +         move_doodad(&mut world, record.id, position(1, 0, Vec3::new(1.0, 0.0, 1.0)), /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */)
+    |
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> src\world\doodad\authoring.rs:423:9
+    |
+423 |           move_doodad(
+    |  _________^^^^^^^^^^^-
+424 | |             &mut world,
+425 | |             record.id,
+426 | |             position(2, 0, Vec3::new(1.0, 0.0, 1.0)),
+427 | |         )
+    | |_________- argument #4 of type `std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+    |
+note: function defined here
+   --> src\world\doodad\authoring.rs:91:8
+    |
+ 91 | pub fn move_doodad(
+    |        ^^^^^^^^^^^
+...
+ 95 |     occupancy: Option<OccupancyCatalogs<'_>>,
+    |     ----------------------------------------
+help: provide the argument
+    |
+423 -         move_doodad(
+424 -             &mut world,
+425 -             record.id,
+426 -             position(2, 0, Vec3::new(1.0, 0.0, 1.0)),
+427 -         )
+423 +         move_doodad(&mut world, record.id, position(2, 0, Vec3::new(1.0, 0.0, 1.0)), /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */)
+    |
+
+error[E0061]: this function takes 6 arguments but 4 arguments were supplied
+   --> src\world\interaction\query.rs:278:9
+    |
+278 |         InteractionQueryContext::new(world, catalog, unit_catalog, weapon_catalog)
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^                 ---------------------------- two arguments of type 
+`&world::building::catalog::registry::BuildingCatalog` and `&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: associated function defined here
+   --> src\world\interaction\query.rs:41:12
+    |
+ 41 |     pub fn new(
+    |            ^^^
+...
+ 44 |         building_catalog: &'a BuildingCatalog,
+    |         -------------------------------------
+ 45 |         footprint_catalog: &'a FootprintCatalog,
+    |         ---------------------------------------
+help: provide the arguments
+    |
+278 |         InteractionQueryContext::new(world, catalog, /* &world::building::catalog::registry::BuildingCatalog */, 
+/* &occupancy::catalog::FootprintCatalog */, unit_catalog, weapon_catalog)
+    |                                                      
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 6 arguments but 4 arguments were supplied
+   --> src\world\interaction\query.rs:398:14
+    |
+398 |               &InteractionQueryContext::new(
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+401 | /                 &unit_catalog,
+402 | |                 &crate::world::WeaponCatalog::default(),
+    | |_______________________________________________________- two arguments of type 
+`&world::building::catalog::registry::BuildingCatalog` and `&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: associated function defined here
+   --> src\world\interaction\query.rs:41:12
+    |
+ 41 |     pub fn new(
+    |            ^^^
+...
+ 44 |         building_catalog: &'a BuildingCatalog,
+    |         -------------------------------------
+ 45 |         footprint_catalog: &'a FootprintCatalog,
+    |         ---------------------------------------
+help: provide the arguments
+    |
+398 -             &InteractionQueryContext::new(
+399 -                 &world,
+400 -                 &catalog,
+401 -                 &unit_catalog,
+402 -                 &crate::world::WeaponCatalog::default(),
+403 -             ),
+398 +             &InteractionQueryContext::new(&world, &catalog, /* 
+&world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog */, &unit_catalog, 
+&crate::world::WeaponCatalog::default()),
+    |
+
+error[E0061]: this function takes 7 arguments but 5 arguments were supplied
+   --> src\world\interaction\resolver.rs:215:9
+    |
+215 |         InteractionResolveContext::new(world, catalog, unit_catalog, weapon_catalog, selected)
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                 ---------------------------- two arguments of type 
+`&world::building::catalog::registry::BuildingCatalog` and `&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: associated function defined here
+   --> src\world\interaction\resolver.rs:29:12
+    |
+ 29 |     pub fn new(
+    |            ^^^
+...
+ 32 |         building_catalog: &'a crate::world::BuildingCatalog,
+    |         ---------------------------------------------------
+ 33 |         footprint_catalog: &'a crate::world::FootprintCatalog,
+    |         -----------------------------------------------------
+help: provide the arguments
+    |
+215 |         InteractionResolveContext::new(world, catalog, /* &world::building::catalog::registry::BuildingCatalog 
+*/, /* &occupancy::catalog::FootprintCatalog */, unit_catalog, weapon_catalog, selected)
+    |                                                        
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 8 arguments but 7 arguments were supplied
+   --> src\world\occupancy\query.rs:282:9
+    |
+282 |           create_building(
+    |  _________^^^^^^^^^^^^^^^-
+283 | |             &building,
+284 | |             &mut world,
+285 | |             &BuildingDefinitionId::new("hut"),
+...   |
+289 | |             BuildingOwnership::neutral(),
+290 | |         )
+    | |_________- argument #8 of type `std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+    |
+note: function defined here
+   --> src\world\building\authoring.rs:33:8
+    |
+ 33 | pub fn create_building(
+    |        ^^^^^^^^^^^^^^^
+...
+ 41 |     occupancy: Option<OccupancyCatalogs<'_>>,
+    |     ----------------------------------------
+help: provide the argument
+    |
+282 -         create_building(
+283 -             &building,
+284 -             &mut world,
+285 -             &BuildingDefinitionId::new("hut"),
+286 -             pos(50.0, 50.0),
+287 -             Quat::IDENTITY,
+288 -             BuildingSource::Authored,
+289 -             BuildingOwnership::neutral(),
+290 -         )
+282 +         create_building(&building, &mut world, &BuildingDefinitionId::new("hut"), pos(50.0, 50.0), 
+Quat::IDENTITY, BuildingSource::Authored, BuildingOwnership::neutral(), /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */)
+    |
+
+error[E0061]: this function takes 8 arguments but 7 arguments were supplied
+   --> src\world\occupancy\registration.rs:316:22
+    |
+316 |           let record = create_building(
+    |  ______________________^^^^^^^^^^^^^^^-
+317 | |             &building,
+318 | |             &mut world,
+319 | |             &BuildingDefinitionId::new("hut"),
+...   |
+323 | |             BuildingOwnership::neutral(),
+324 | |         )
+    | |_________- argument #8 of type `std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+    |
+note: function defined here
+   --> src\world\building\authoring.rs:33:8
+    |
+ 33 | pub fn create_building(
+    |        ^^^^^^^^^^^^^^^
+...
+ 41 |     occupancy: Option<OccupancyCatalogs<'_>>,
+    |     ----------------------------------------
+help: provide the argument
+    |
+316 -         let record = create_building(
+317 -             &building,
+318 -             &mut world,
+319 -             &BuildingDefinitionId::new("hut"),
+320 -             pos(50.0, 50.0),
+321 -             Quat::IDENTITY,
+322 -             BuildingSource::Authored,
+323 -             BuildingOwnership::neutral(),
+324 -         )
+316 +         let record = create_building(&building, &mut world, &BuildingDefinitionId::new("hut"), pos(50.0, 50.0), 
+Quat::IDENTITY, BuildingSource::Authored, BuildingOwnership::neutral(), /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */)
+    |
+
+error[E0061]: this function takes 8 arguments but 7 arguments were supplied
+   --> src\world\occupancy\registration.rs:362:17
+    |
+362 |           let b = create_building(
+    |  _________________^^^^^^^^^^^^^^^-
+363 | |             &building,
+364 | |             &mut incremental,
+365 | |             &BuildingDefinitionId::new("hut"),
+...   |
+369 | |             BuildingOwnership::neutral(),
+370 | |         )
+    | |_________- argument #8 of type `std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+    |
+note: function defined here
+   --> src\world\building\authoring.rs:33:8
+    |
+ 33 | pub fn create_building(
+    |        ^^^^^^^^^^^^^^^
+...
+ 41 |     occupancy: Option<OccupancyCatalogs<'_>>,
+    |     ----------------------------------------
+help: provide the argument
+    |
+362 -         let b = create_building(
+363 -             &building,
+364 -             &mut incremental,
+365 -             &BuildingDefinitionId::new("hut"),
+366 -             pos(60.0, 60.0),
+367 -             Quat::IDENTITY,
+368 -             BuildingSource::Authored,
+369 -             BuildingOwnership::neutral(),
+370 -         )
+362 +         let b = create_building(&building, &mut incremental, &BuildingDefinitionId::new("hut"), pos(60.0, 60.0), 
+Quat::IDENTITY, BuildingSource::Authored, BuildingOwnership::neutral(), /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */)
+    |
+
+error[E0061]: this function takes 8 arguments but 7 arguments were supplied
+   --> src\world\occupancy\registration.rs:374:9
+    |
+374 |           create_building(
+    |  _________^^^^^^^^^^^^^^^-
+375 | |             &building,
+376 | |             &mut rebuilt,
+377 | |             &BuildingDefinitionId::new("hut"),
+...   |
+381 | |             BuildingOwnership::neutral(),
+382 | |         )
+    | |_________- argument #8 of type `std::option::Option<registration::OccupancyCatalogs<'_>>` is missing
+    |
+note: function defined here
+   --> src\world\building\authoring.rs:33:8
+    |
+ 33 | pub fn create_building(
+    |        ^^^^^^^^^^^^^^^
+...
+ 41 |     occupancy: Option<OccupancyCatalogs<'_>>,
+    |     ----------------------------------------
+help: provide the argument
+    |
+374 -         create_building(
+375 -             &building,
+376 -             &mut rebuilt,
+377 -             &BuildingDefinitionId::new("hut"),
+378 -             pos(60.0, 60.0),
+379 -             Quat::IDENTITY,
+380 -             BuildingSource::Authored,
+381 -             BuildingOwnership::neutral(),
+382 -         )
+374 +         create_building(&building, &mut rebuilt, &BuildingDefinitionId::new("hut"), pos(60.0, 60.0), 
+Quat::IDENTITY, BuildingSource::Authored, BuildingOwnership::neutral(), /* 
+std::option::Option<registration::OccupancyCatalogs<'_>> */)
+    |
+
+error[E0308]: mismatched types
+   --> src\world\projectile\simulation.rs:382:13
+    |
+378 |         step_all_combat_engagement(
+    |         -------------------------- arguments to this function are incorrect
+...
+382 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+   --> src\world\projectile\simulation.rs:455:13
+    |
+451 |         step_all_combat_engagement(
+    |         -------------------------- arguments to this function are incorrect
+...
+455 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+   --> src\world\projectile\simulation.rs:485:13
+    |
+481 |         step_all_combat_engagement(
+    |         -------------------------- arguments to this function are incorrect
+...
+485 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+   --> src\world\projectile\simulation.rs:518:13
+    |
+514 |         step_all_combat_engagement(
+    |         -------------------------- arguments to this function are incorrect
+...
+518 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+   --> src\world\projectile\simulation.rs:561:17
+    |
+557 |             step_all_combat_engagement(
+    |             -------------------------- arguments to this function are incorrect
+...
+561 |                 &DoodadCatalog::default(),
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+   --> src\world\projectile\simulation.rs:599:13
+    |
+595 |         step_all_combat_engagement(
+    |         -------------------------- arguments to this function are incorrect
+...
+599 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+   --> src\world\projectile\simulation.rs:647:13
+    |
+643 |         step_all_combat_engagement(
+    |         -------------------------- arguments to this function are incorrect
+...
+647 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+   --> src\world\projectile\simulation.rs:708:13
+    |
+704 |         step_all_combat_engagement(
+    |         -------------------------- arguments to this function are incorrect
+...
+708 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+   --> src\world\projectile\simulation.rs:744:13
+    |
+740 |         step_all_combat_engagement(
+    |         -------------------------- arguments to this function are incorrect
+...
+744 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+   --> src\world\projectile\simulation.rs:781:13
+    |
+777 |         step_all_combat_engagement(
+    |         -------------------------- arguments to this function are incorrect
+...
+781 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0061]: this function takes 12 arguments but 10 arguments were supplied
+   --> src\world\projectile\simulation.rs:971:13
+    |
+971 |               crate::simulation::run_simulation_tick(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+976 | /                 &NavigationConfig::default(),
+977 | |                 policy(),
+    | |________________________- two arguments of type `&world::building::catalog::registry::BuildingCatalog` and 
+`&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\simulation\tick.rs:26:8
+    |
+ 26 | pub fn run_simulation_tick(
+    |        ^^^^^^^^^^^^^^^^^^^
+...
+ 31 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+ 32 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+971 -             crate::simulation::run_simulation_tick(
+972 -                 &mut world,
+973 -                 &catalog,
+974 -                 &weapons,
+975 -                 &DoodadCatalog::default(),
+976 -                 &NavigationConfig::default(),
+977 -                 policy(),
+978 -                 &settings,
+979 -                 &mut scan,
+980 -                 SIMULATION_TICK_SECONDS,
+981 -                 0,
+982 -             );
+971 +             crate::simulation::run_simulation_tick(&mut world, &catalog, &weapons, &DoodadCatalog::default(), /* 
+&world::building::catalog::registry::BuildingCatalog */, /* &occupancy::catalog::FootprintCatalog */, 
+&NavigationConfig::default(), policy(), &settings, &mut scan, SIMULATION_TICK_SECONDS, 0);
+    |
+
+error[E0308]: mismatched types
+   --> src\world\unit\death.rs:420:13
+    |
+416 |         step_all_combat_engagement(
+    |         -------------------------- arguments to this function are incorrect
+...
+420 |             &crate::world::DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\combat\engagement.rs:74:8
+    |
+ 74 | pub fn step_all_combat_engagement(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+ 78 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+   --> src\world\unit\death.rs:549:13
+    |
+546 |         let _ = step_unit_movement(
+    |                 ------------------ arguments to this function are incorrect
+...
+549 |             &crate::world::DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\unit\movement.rs:191:8
+    |
+191 | pub fn step_unit_movement(
+    |        ^^^^^^^^^^^^^^^^^^
+...
+194 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0308]: mismatched types
+   --> src\world\unit\orders.rs:335:13
+    |
+332 |         resolve_pending_unit_orders(
+    |         --------------------------- arguments to this function are incorrect
+...
+335 |             &DoodadCatalog::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `PassabilityCatalogs<'_>`, found `&DoodadCatalog`
+    |
+note: function defined here
+   --> src\world\unit\orders.rs:187:8
+    |
+187 | pub fn resolve_pending_unit_orders(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+190 |     catalogs: PassabilityCatalogs<'_>,
+    |     ---------------------------------
+
+error[E0061]: this function takes 12 arguments but 10 arguments were supplied
+   --> src\review\production_baseline.rs:146:18
+    |
+146 |       let report = crate::simulation::run_simulation_tick(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+151 | /         &crate::world::NavigationConfig::default(),
+152 | |         crate::world::AttackTargetingPolicy::default(),
+    | |______________________________________________________- two arguments of type 
+`&world::building::catalog::registry::BuildingCatalog` and `&occupancy::catalog::FootprintCatalog` are missing
+    |
+note: function defined here
+   --> src\simulation\tick.rs:26:8
+    |
+ 26 | pub fn run_simulation_tick(
+    |        ^^^^^^^^^^^^^^^^^^^
+...
+ 31 |     building_catalog: &BuildingCatalog,
+    |     ----------------------------------
+ 32 |     footprint_catalog: &FootprintCatalog,
+    |     ------------------------------------
+help: provide the arguments
+    |
+146 -     let report = crate::simulation::run_simulation_tick(
+147 -         &mut world,
+148 -         &catalog,
+149 -         &crate::world::WeaponCatalog::default(),
+150 -         &doodad_catalog,
+151 -         &crate::world::NavigationConfig::default(),
+152 -         crate::world::AttackTargetingPolicy::default(),
+153 -         &settings,
+154 -         &mut scan,
+155 -         1.0 / 60.0,
+156 -         0,
+157 -     );
+146 +     let report = crate::simulation::run_simulation_tick(&mut world, &catalog, 
+&crate::world::WeaponCatalog::default(), &doodad_catalog, /* &world::building::catalog::registry::BuildingCatalog */, 
+/* &occupancy::catalog::FootprintCatalog */, &crate::world::NavigationConfig::default(), 
+crate::world::AttackTargetingPolicy::default(), &settings, &mut scan, 1.0 / 60.0, 0);
+    |
+
+warning: unused import: `super`
+  --> src\debug\boundaries.rs:45:9
+   |
+45 |     use super::*;
+   |         ^^^^^
+
+error[E0716]: temporary value dropped while borrowed
+  --> src\debug\interaction_capture.rs:38:70
+   |
+38 | ...ew(&world, &doodad_catalog, &BuildingCatalog::default(), &FootprintCatalog::default(), &unit_catalog, 
+&weapon_catalog);
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still 
+in use   - temporary value is freed at the end of this statement
+39 | ... snapshot, &ctx, position);
+   |               ---- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+38 ~     let binding = BuildingCatalog::default();
+39 ~     let ctx = InteractionQueryContext::new(&world, &doodad_catalog, &binding, &FootprintCatalog::default(), 
+&unit_catalog, &weapon_catalog);
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> src\debug\interaction_capture.rs:38:99
+   |
+38 | ...ew(&world, &doodad_catalog, &BuildingCatalog::default(), &FootprintCatalog::default(), &unit_catalog, 
+&weapon_catalog);
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^                          
+       - temporary value is freed at the end of this statement
+   |                                                              |
+   |                                                              creates a temporary value which is freed while still 
+in use
+39 | ... snapshot, &ctx, position);
+   |               ---- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+38 ~     let binding = FootprintCatalog::default();
+39 ~     let ctx = InteractionQueryContext::new(&world, &doodad_catalog, &BuildingCatalog::default(), &binding, 
+&unit_catalog, &weapon_catalog);
+   |
+
+warning: variable does not need to be mutable
+   --> src\debug\overlay\combat_overlay.rs:174:13
+    |
+174 |         let mut world = WorldData::new(crate::world::ChunkLayout {
+    |             ----^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: variable does not need to be mutable
+  --> src\player\indicator.rs:35:5
+   |
+35 |     mut rings: Query<(&TerrainSelectionRing, &Mesh3d)>,
+   |     ----^^^^^
+   |     |
+   |     help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src\world\combat\targeting.rs:481:13
+    |
+481 |         let mut weapons = WeaponCatalog::default();
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `weapons`
+  --> src\world\combat\tick_order.rs:80:39
+   |
+80 |     fn catalog_with_projectile_weapon(weapons: &WeaponCatalog) -> UnitCatalog {
+   |                                       ^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_weapons`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `world`
+   --> src\world\interaction\resolver.rs:280:13
+    |
+280 |         let world = flat_world();
+    |             ^^^^^ help: if this is intentional, prefix it with an underscore: `_world`
+
+warning: unused variable: `catalog`
+   --> src\world\interaction\resolver.rs:281:13
+    |
+281 |         let catalog = crate::world::DoodadCatalog::default();
+    |             ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_catalog`
+
+warning: unused variable: `unit_catalog`
+   --> src\world\interaction\resolver.rs:282:13
+    |
+282 |         let unit_catalog = crate::world::UnitCatalog::default();
+    |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unit_catalog`
+
+warning: unused variable: `units`
+   --> src\world\interaction\resolver.rs:283:13
+    |
+283 |         let units = [UnitId::new(1)];
+    |             ^^^^^ help: if this is intentional, prefix it with an underscore: `_units`
+
+warning: unused variable: `weapon_catalog`
+   --> src\world\interaction\resolver.rs:284:13
+    |
+284 |         let weapon_catalog = weapons();
+    |             ^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_weapon_catalog`
+
+warning: unused variable: `radius_meters`
+   --> src\world\occupancy\footprint.rs:216:33
+    |
+216 |         FootprintSpec::Circle { radius_meters } => {
+    |                                 ^^^^^^^^^^^^^ help: try ignoring the field: `radius_meters: _`
+
+warning: unused variable: `radius`
+   --> src\world\occupancy\query.rs:185:13
+    |
+185 |         let radius = conservative_block_radius_for_kind(record.kind);
+    |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_radius`
+
+warning: variable does not need to be mutable
+  --> src\world\ownership\mod.rs:24:13
+   |
+24 |         let mut catalog = UnitCatalog::default();
+   |             ----^^^^^^^
+   |             |
+   |             help: remove this `mut`
+
+warning: unused variable: `weapons`
+   --> src\world\projectile\simulation.rs:273:39
+    |
+273 |     fn catalog_with_projectile_weapon(weapons: &WeaponCatalog) -> crate::world::UnitCatalog {
+    |                                       ^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_weapons`
+
+error[E0515]: cannot return value referencing temporary value
+   --> src\world\unit\movement.rs:557:9
+    |
+557 | /         PassabilityCatalogs {
+558 | |             doodad: doodad_catalog,
+559 | |             building: &BuildingCatalog::default(),
+560 | |             footprint: &FootprintCatalog::default(),
+    | |                         --------------------------- temporary value created here
+561 | |         }
+    | |_________^ returns a value referencing data owned by the current function
+
+error[E0515]: cannot return value referencing temporary value
+   --> src\world\unit\movement.rs:557:9
+    |
+557 | /         PassabilityCatalogs {
+558 | |             doodad: doodad_catalog,
+559 | |             building: &BuildingCatalog::default(),
+    | |                        -------------------------- temporary value created here
+560 | |             footprint: &FootprintCatalog::default(),
+561 | |         }
+    | |_________^ returns a value referencing data owned by the current function
+
+warning: variable does not need to be mutable
+   --> src\world\unit\movement.rs:835:13
+    |
+835 |         let mut record = UnitRecord::new(
+    |             ----^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+Some errors have detailed explanations: E0061, E0252, E0308, E0422, E0433, E0515, E0603, E0716.
+For more information about an error, try `rustc --explain E0061`.
+warning: `chasma` (lib test) generated 64 warnings
+error: could not compile `chasma` (lib test) due to 107 previous errors; 64 warnings emitted

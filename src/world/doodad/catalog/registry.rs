@@ -182,6 +182,7 @@ mod tests {
                 "bush_scrub",
                 "ruin_stone",
                 "resource_node_iron",
+                "interior_chair",
             ]
         );
     }

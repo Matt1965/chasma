@@ -31,6 +31,24 @@ pub enum ClientIntent {
     },
     /// Shift modifier edge (optional; also tracked on [`ClientInputModifiers`]).
     ShiftModifier { pressed: bool },
+    /// Enter player build mode (B4).
+    EnterBuildMode,
+    /// Exit player build mode (B4).
+    ExitBuildMode,
+    /// Cancel armed ghost or close catalog (B4).
+    CancelBuildPlacement,
+    /// Rotate armed ghost by 90° (B4).
+    RotateBuildGhost,
+    /// Arm a building definition for placement (B4).
+    SelectBuildingDefinition {
+        definition_id: crate::world::BuildingDefinitionId,
+    },
+    /// Commit a validated building placement (B4).
+    PlaceBuilding {
+        definition_id: crate::world::BuildingDefinitionId,
+        anchor: WorldPosition,
+        rotation: Quat,
+    },
 }
 #[derive(Resource, Default, Debug, Clone, PartialEq)]
 pub struct ClientIntentQueue {

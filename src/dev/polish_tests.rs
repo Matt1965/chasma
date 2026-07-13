@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 
 use crate::debug::DebugOverlayConfig;
-use crate::world::{DoodadCatalog, UnitCatalog};
+use crate::world::{BuildingCatalog, DoodadCatalog, UnitCatalog};
 
 use super::catalog_cache::{
     CatalogBrowseIndex, CatalogFilterCache, DevSearchDebounce, browse_catalog_entries,
@@ -39,6 +39,7 @@ fn search_debounce_does_not_change_final_filter_results() {
         &mut CatalogFilterCache::default(),
         &catalog,
         &DoodadCatalog::default(),
+        &BuildingCatalog::default(),
         DevTab::Units,
         SpawnMode::Unit,
         "wolf",
@@ -52,6 +53,7 @@ fn search_debounce_does_not_change_final_filter_results() {
         &mut cache,
         &catalog,
         &DoodadCatalog::default(),
+        &BuildingCatalog::default(),
         DevTab::Units,
         SpawnMode::Unit,
         &debounce.filtered_query,
@@ -76,6 +78,7 @@ fn catalog_filtering_is_deterministic_and_cached() {
         &mut cache,
         &catalog,
         &DoodadCatalog::default(),
+        &BuildingCatalog::default(),
         DevTab::Units,
         SpawnMode::Unit,
         "",
@@ -88,6 +91,7 @@ fn catalog_filtering_is_deterministic_and_cached() {
         &mut cache,
         &catalog,
         &DoodadCatalog::default(),
+        &BuildingCatalog::default(),
         DevTab::Units,
         SpawnMode::Unit,
         "",

@@ -145,6 +145,7 @@ fn try_begin_turn(
     let allow_turn = match &record.state {
         UnitState::Idle => abs_deg >= settings.turn_in_place_degrees,
         UnitState::Moving { .. } => abs_deg >= settings.turn_adjust_degrees,
+        UnitState::Working { .. } => abs_deg >= settings.turn_in_place_degrees,
         UnitState::Dead => false,
     };
     if !allow_turn {
@@ -173,6 +174,7 @@ fn locomotion_clip_with_hysteresis(
 ) -> AnimationClipKey {
     match &record.state {
         UnitState::Idle | UnitState::Dead => AnimationClipKey::Idle,
+        UnitState::Working { .. } => AnimationClipKey::Idle,
         UnitState::Moving { .. } => {
             let reference = profile.locomotion_reference_speed_mps.max(0.01);
             let speed = definition.move_speed_mps;
@@ -287,7 +289,7 @@ pub fn movement_direction_xz(record: &UnitRecord, layout: ChunkLayout) -> Option
             ..
         } => stabilized_movement_heading(record.placement.position, path, *waypoint_index, layout)
             .map(|heading| heading.direction_xz),
-        UnitState::Idle | UnitState::Dead => None,
+        UnitState::Idle | UnitState::Working { .. } | UnitState::Dead => None,
     }
 }
 
@@ -407,6 +409,7 @@ mod tests {
             vitals: UnitVitals::full(10),
             combat_state: CombatState::Peaceful,
             attack_cycle: None,
+            current_space_id: Default::default(),
         }
     }
 
@@ -423,7 +426,7 @@ mod tests {
                 crate::world::ChunkCoord::new(0, 0),
                 LocalPosition::new(Vec3::ONE),
             ),
-            path: NavigationPath::new(vec![]),
+            path: NavigationPath::default(),
             waypoint_index: 0,
         });
         let clip = locomotion_clip_with_hysteresis(
@@ -455,7 +458,7 @@ mod tests {
                 crate::world::ChunkCoord::new(0, 0),
                 LocalPosition::new(Vec3::ONE),
             ),
-            path: NavigationPath::new(vec![]),
+            path: NavigationPath::default(),
             waypoint_index: 0,
         });
         let clip = locomotion_clip_with_hysteresis(
@@ -504,12 +507,12 @@ mod tests {
         let mut state = LocomotionPresentationState::default();
         let mut record = sample_record(UnitState::Idle);
         record.placement.rotation = Quat::IDENTITY;
-        let path = NavigationPath::new(vec![WorldPosition::new(
+        let path = NavigationPath::from_surface_positions(vec![WorldPosition::new(
             crate::world::ChunkCoord::new(0, 0),
             LocalPosition::new(Vec3::new(0.0, 0.0, 10.0)),
         )]);
         record.state = UnitState::Moving {
-            target: path.waypoints[0],
+            target: path.waypoints[0].position,
             path,
             waypoint_index: 0,
         };

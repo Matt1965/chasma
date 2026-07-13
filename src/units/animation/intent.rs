@@ -199,6 +199,7 @@ mod tests {
                 target: crate::world::UnitId::new(2),
             },
             attack_cycle,
+            current_space_id: Default::default(),
         }
     }
 
@@ -245,7 +246,7 @@ mod tests {
                 crate::world::ChunkCoord::new(0, 0),
                 LocalPosition::new(Vec3::ONE),
             ),
-            path: NavigationPath::new(vec![]),
+            path: NavigationPath::default(),
             waypoint_index: 0,
         }
     }

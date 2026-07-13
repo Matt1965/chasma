@@ -18,8 +18,11 @@ use crate::world::movement::feel::{
 };
 use crate::world::movement::steering::SteeringSettings;
 use crate::world::{
-    ChunkLayout, DoodadCatalog, SlopeWalkability, WorldData, WorldPosition, apply_steering,
-    classify_slope_walkability, ground_world_position, is_position_blocked_by_doodads, xz_distance,
+    BuildingCatalog, ChunkLayout, DoodadCatalog, FootprintCatalog, NavigationWaypoint,
+    PassabilityAgent, PassabilityBlockReason, PassabilityCatalogs, PassabilityResult,
+    SlopeWalkability, SpaceId, WorldData, WorldPosition, apply_steering,
+    classify_slope_walkability, ground_position_in_space, query_passability_in_space,
+    try_open_door_at_portal_for_unit, try_portal_transition, xz_distance,
 };
 /// Distance below which a unit snaps to its move target (meters).
 const ARRIVAL_DISTANCE_METERS: f32 = 0.05;
@@ -38,6 +41,7 @@ pub enum BlockedMovementReason {
     SlopeUnavailable,
     SlopeTooSteep,
     BlockedByDoodad,
+    BlockedByBuilding,
     DestinationBlocked,
     PathUnavailable,
     InvalidWaypoint,
@@ -109,6 +113,7 @@ pub struct BatchUnitMovementReport {
     pub blocked_slope_unavailable: u32,
     pub blocked_slope_too_steep: u32,
     pub blocked_by_doodad: u32,
+    pub blocked_by_building: u32,
     pub blocked_path_unavailable: u32,
     pub failed_missing_definition: u32,
     pub failed_invalid_state: u32,
@@ -122,13 +127,12 @@ pub type UnitSimulationStepReport = crate::simulation::SimulationTickReport;
 pub fn step_all_unit_movement(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     delta_seconds: f32,
 ) -> BatchUnitMovementReport {
     let mut report = BatchUnitMovementReport::default();
     for unit_id in world.sorted_unit_ids() {
-        let outcome =
-            step_unit_movement(world, unit_catalog, doodad_catalog, unit_id, delta_seconds);
+        let outcome = step_unit_movement(world, unit_catalog, catalogs, unit_id, delta_seconds);
         record_batch_outcome(&mut report, unit_id, outcome, world);
     }
     report
@@ -152,6 +156,7 @@ fn record_batch_outcome(
                 BlockedMovementReason::SlopeUnavailable => report.blocked_slope_unavailable += 1,
                 BlockedMovementReason::SlopeTooSteep => report.blocked_slope_too_steep += 1,
                 BlockedMovementReason::BlockedByDoodad => report.blocked_by_doodad += 1,
+                BlockedMovementReason::BlockedByBuilding => report.blocked_by_building += 1,
                 BlockedMovementReason::PathUnavailable
                 | BlockedMovementReason::InvalidWaypoint
                 | BlockedMovementReason::DestinationBlocked
@@ -187,7 +192,7 @@ fn record_batch_outcome(
 pub fn step_unit_movement(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     unit_id: UnitId,
     delta_seconds: f32,
 ) -> UnitMovementStepOutcome {
@@ -196,6 +201,9 @@ pub fn step_unit_movement(
         None => return UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound),
     };
     if !unit_can_execute_actions(world, unit_id) {
+        return UnitMovementStepOutcome::Idle;
+    }
+    if matches!(record.state, UnitState::Working { .. }) {
         return UnitMovementStepOutcome::Idle;
     }
     let definition_id = record.definition_id.clone();
@@ -220,6 +228,7 @@ pub fn step_unit_movement(
     let effective_index = heading
         .map(|h| h.waypoint_index)
         .unwrap_or(waypoint_index.min(path.len().saturating_sub(1)));
+    let current_space = record.current_space_id;
     let Some(waypoint) = path.waypoints.get(effective_index).copied() else {
         if world.set_unit_state(unit_id, UnitState::Idle).is_err() {
             return UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound);
@@ -228,7 +237,7 @@ pub fn step_unit_movement(
         return UnitMovementStepOutcome::Arrived;
     };
 
-    let waypoint_global = waypoint.to_global(layout);
+    let waypoint_global = waypoint.position.to_global(layout);
     let mut to_waypoint = waypoint_global - current_global;
     to_waypoint.y = 0.0;
     let distance = to_waypoint.length();
@@ -249,6 +258,10 @@ pub fn step_unit_movement(
             }
             world.movement_smoothing_mut().clear_unit(unit_id);
             return UnitMovementStepOutcome::Arrived;
+        }
+        let next_waypoint = path.waypoints[next_index];
+        if next_waypoint.space_id != current_space {
+            let _ = world.set_unit_current_space(unit_id, next_waypoint.space_id);
         }
         if world
             .set_unit_state(
@@ -308,9 +321,69 @@ pub fn step_unit_movement(
     };
 
     let candidate = WorldPosition::from_global(destination_global, layout);
-    let grounded = match ground_world_position(world, candidate) {
-        Some(position) => position,
-        None => {
+    let active_space = waypoint.space_id;
+    let grounded =
+        match ground_position_in_space(world, world.space_registry(), active_space, candidate) {
+            Some(position) => position,
+            None => {
+                return apply_blocked_movement(
+                    BlockedMovementReason::TerrainUnavailable,
+                    world,
+                    unit_id,
+                    target,
+                    path,
+                    waypoint_index,
+                    effective_index,
+                    current_position,
+                    layout,
+                );
+            }
+        };
+
+    if active_space.is_surface() {
+        match classify_slope_walkability(world, grounded, definition.max_slope_degrees) {
+            SlopeWalkability::Walkable => {}
+            SlopeWalkability::Unavailable => {
+                return apply_blocked_movement(
+                    BlockedMovementReason::SlopeUnavailable,
+                    world,
+                    unit_id,
+                    target,
+                    path,
+                    waypoint_index,
+                    effective_index,
+                    current_position,
+                    layout,
+                );
+            }
+            SlopeWalkability::TooSteep => {
+                return apply_blocked_movement(
+                    BlockedMovementReason::SlopeTooSteep,
+                    world,
+                    unit_id,
+                    target,
+                    path,
+                    waypoint_index,
+                    effective_index,
+                    current_position,
+                    layout,
+                );
+            }
+        }
+    }
+
+    match query_passability_in_space(
+        world,
+        catalogs,
+        grounded,
+        PassabilityAgent {
+            radius_meters: definition.collision_radius_meters,
+            max_slope_degrees: definition.max_slope_degrees,
+        },
+        active_space,
+    ) {
+        PassabilityResult::Passable { .. } => {}
+        PassabilityResult::Unavailable { .. } => {
             return apply_blocked_movement(
                 BlockedMovementReason::TerrainUnavailable,
                 world,
@@ -323,13 +396,19 @@ pub fn step_unit_movement(
                 layout,
             );
         }
-    };
-
-    match classify_slope_walkability(world, grounded, definition.max_slope_degrees) {
-        SlopeWalkability::Walkable => {}
-        SlopeWalkability::Unavailable => {
+        PassabilityResult::Blocked { reason, .. } => {
+            let blocked_reason = match reason {
+                PassabilityBlockReason::BuildingOccupied => {
+                    BlockedMovementReason::BlockedByBuilding
+                }
+                PassabilityBlockReason::DoodadOccupied => BlockedMovementReason::BlockedByDoodad,
+                PassabilityBlockReason::SlopeTooSteep => BlockedMovementReason::SlopeTooSteep,
+                PassabilityBlockReason::MissingDefinition
+                | PassabilityBlockReason::CorruptFootprint
+                | PassabilityBlockReason::InvalidCell => BlockedMovementReason::BlockedByDoodad,
+            };
             return apply_blocked_movement(
-                BlockedMovementReason::SlopeUnavailable,
+                blocked_reason,
                 world,
                 unit_id,
                 target,
@@ -340,38 +419,6 @@ pub fn step_unit_movement(
                 layout,
             );
         }
-        SlopeWalkability::TooSteep => {
-            return apply_blocked_movement(
-                BlockedMovementReason::SlopeTooSteep,
-                world,
-                unit_id,
-                target,
-                path,
-                waypoint_index,
-                effective_index,
-                current_position,
-                layout,
-            );
-        }
-    }
-
-    if is_position_blocked_by_doodads(
-        world,
-        doodad_catalog,
-        grounded,
-        definition.collision_radius_meters,
-    ) {
-        return apply_blocked_movement(
-            BlockedMovementReason::BlockedByDoodad,
-            world,
-            unit_id,
-            target,
-            path,
-            waypoint_index,
-            effective_index,
-            current_position,
-            layout,
-        );
     }
 
     if world.relocate_unit(unit_id, grounded).is_err() {
@@ -386,6 +433,55 @@ pub fn step_unit_movement(
             current_position,
             layout,
         );
+    }
+
+    let mut grounded = grounded;
+    let space_after_relocate = world
+        .get_unit(unit_id)
+        .map(|record| record.current_space_id)
+        .unwrap_or(active_space);
+    let unit_ownership = world.get_unit(unit_id).map(|record| record.ownership());
+    let agent_xz = grounded.to_global(layout).xz();
+    let portal_ids: Vec<_> = world
+        .space_registry()
+        .portals_from_space(space_after_relocate)
+        .iter()
+        .copied()
+        .collect();
+    for portal_id in portal_ids {
+        let Some(portal) = world.space_registry().get_portal(portal_id) else {
+            continue;
+        };
+        if !portal.contains_agent_global(agent_xz) {
+            continue;
+        }
+        let building_ownership = portal
+            .owning_building_id
+            .and_then(|id| world.get_building(id))
+            .map(|record| record.ownership)
+            .unwrap_or_default();
+        if let Some(ownership) = unit_ownership {
+            let _ =
+                try_open_door_at_portal_for_unit(world, portal_id, building_ownership, ownership);
+        }
+    }
+    let registry = world.space_registry().clone();
+    let portal_transition = try_portal_transition(
+        &registry,
+        layout,
+        space_after_relocate,
+        grounded,
+        world.portal_transition_state_mut(unit_id),
+    );
+    if let Some((dest_space, dest_position, _portal_id)) = portal_transition {
+        let _ = world.set_unit_current_space(unit_id, dest_space);
+        if let Some(portal_grounded) =
+            ground_position_in_space(world, world.space_registry(), dest_space, dest_position)
+        {
+            if world.relocate_unit(unit_id, portal_grounded).is_ok() {
+                grounded = portal_grounded;
+            }
+        }
     }
 
     let grounded_global = grounded.to_global(layout);
@@ -403,6 +499,10 @@ pub fn step_unit_movement(
             world.movement_smoothing_mut().clear_unit(unit_id);
             UnitMovementStepOutcome::Arrived
         } else {
+            let next_waypoint = path.waypoints[next_index];
+            if next_waypoint.space_id != space_after_relocate {
+                let _ = world.set_unit_current_space(unit_id, next_waypoint.space_id);
+            }
             if world
                 .set_unit_state(
                     unit_id,
@@ -454,7 +554,7 @@ fn apply_blocked_movement(
         return UnitMovementStepOutcome::Arrived;
     };
 
-    let dist_to_waypoint = xz_distance(current_position, waypoint, layout);
+    let dist_to_waypoint = xz_distance(current_position, waypoint.position, layout);
     let dist_to_target = xz_distance(current_position, target, layout);
 
     if dist_to_waypoint <= WAYPOINT_SKIP_DISTANCE_METERS && waypoint_index + 1 < path.len() {
@@ -505,14 +605,15 @@ mod tests {
         UnitRenderIndex, UnitSceneAssets, UnitSyncOverrides, sync_unit_render_entities,
     };
     use crate::world::AttackTargetingPolicy;
+    use crate::world::TestPassabilityBundle;
     use crate::world::movement::feel::stabilized_movement_heading;
     use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, DoodadDefinitionId,
-        DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition, NavigationConfig,
-        NavigationPath, UnitCatalog, UnitDefinition, UnitDefinitionId, UnitMetadata, UnitOrder,
-        UnitPlacement, UnitRecord, UnitRenderKey, UnitSource, WeaponCatalog, WorldConfig,
-        create_doodad, create_unit, issue_unit_order, resolve_all_pending_unit_orders,
-        resolve_pending_unit_orders,
+        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog,
+        DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog, Heightfield,
+        LocalPosition, NavigationConfig, NavigationPath, PassabilityCatalogs, UnitCatalog,
+        UnitDefinition, UnitDefinitionId, UnitMetadata, UnitOrder, UnitPlacement, UnitRecord,
+        UnitRenderKey, UnitSource, WeaponCatalog, WorldConfig, create_doodad, create_unit,
+        issue_unit_order, resolve_all_pending_unit_orders, resolve_pending_unit_orders,
     };
     use bevy::asset::AssetPlugin;
     use bevy::prelude::{
@@ -527,7 +628,14 @@ mod tests {
         unit_id: UnitId,
         delta_seconds: f32,
     ) -> UnitMovementStepOutcome {
-        step_unit_movement(world, catalog, doodad_catalog, unit_id, delta_seconds)
+        let bundle = TestPassabilityBundle::new();
+        step_unit_movement(
+            world,
+            catalog,
+            bundle.catalogs_for(doodad_catalog),
+            unit_id,
+            delta_seconds,
+        )
     }
 
     fn step_report(
@@ -601,7 +709,13 @@ mod tests {
         doodad_catalog: &DoodadCatalog,
         delta_seconds: f32,
     ) -> BatchUnitMovementReport {
-        step_all_unit_movement(world, catalog, doodad_catalog, delta_seconds)
+        let bundle = TestPassabilityBundle::new();
+        step_all_unit_movement(
+            world,
+            catalog,
+            bundle.catalogs_for(doodad_catalog),
+            delta_seconds,
+        )
     }
 
     fn weapons() -> crate::world::WeaponCatalog {
@@ -626,13 +740,19 @@ mod tests {
             crate::world::AttackTargetingPolicy::default(),
         )
         .unwrap();
-        resolve_all_pending_unit_orders(world, catalog, doodad_catalog, &nav_config());
+        let bundle = TestPassabilityBundle::new();
+        resolve_all_pending_unit_orders(
+            world,
+            catalog,
+            bundle.catalogs_for(doodad_catalog),
+            &nav_config(),
+        );
     }
 
     fn moving_state(target: WorldPosition) -> UnitState {
         UnitState::Moving {
             target,
-            path: NavigationPath::new(vec![target]),
+            path: NavigationPath::from_surface_positions(vec![target]),
             waypoint_index: 0,
         }
     }
@@ -1095,6 +1215,7 @@ mod tests {
                 pos(0, 0, 20.0, 0.0, z as f32 * 4.0),
                 DoodadSource::Authored,
                 DoodadPlacementOverrides::default(),
+                None,
             )
             .unwrap();
         }
@@ -1165,6 +1286,7 @@ mod tests {
                 pos(0, 0, 20.0, 0.0, z as f32 * 4.0),
                 DoodadSource::Authored,
                 DoodadPlacementOverrides::default(),
+                None,
             )
             .unwrap();
         }
@@ -1365,7 +1487,16 @@ mod tests {
             )
             .unwrap();
         }
-        resolve_all_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav);
+        resolve_all_pending_unit_orders(
+            &mut world,
+            &catalog,
+            PassabilityCatalogs {
+                doodad: &doodad_catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav,
+        );
 
         for _ in 0..512 {
             step_all(&mut world, &catalog, &doodad_catalog, 0.25);
@@ -1519,6 +1650,7 @@ mod tests {
             pos(0, 0, 12.0, 0.0, 10.0),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
         let unit_id = spawn_wolf(&mut world, &unit_catalog, pos(0, 0, 8.0, 0.0, 10.0));
@@ -1617,6 +1749,7 @@ mod tests {
             pos(0, 0, 12.0, 0.0, 10.0),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
         let blocked = spawn_wolf(&mut world, &unit_catalog, pos(0, 0, 8.0, 0.0, 10.0));

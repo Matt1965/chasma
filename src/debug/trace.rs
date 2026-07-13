@@ -81,6 +81,7 @@ pub enum CommandTraceIntentKind {
     MoveCommand,
     PaletteCommand,
     ShiftModifier,
+    BuildMode,
     CommandResolve,
     CombatEngagement,
     CombatStrike,
@@ -103,6 +104,12 @@ impl CommandTraceIntentKind {
             ClientIntent::MoveCommand { .. } => Self::MoveCommand,
             ClientIntent::PaletteCommand { .. } => Self::PaletteCommand,
             ClientIntent::ShiftModifier { .. } => Self::ShiftModifier,
+            ClientIntent::EnterBuildMode
+            | ClientIntent::ExitBuildMode
+            | ClientIntent::CancelBuildPlacement
+            | ClientIntent::RotateBuildGhost
+            | ClientIntent::SelectBuildingDefinition { .. }
+            | ClientIntent::PlaceBuilding { .. } => Self::BuildMode,
         }
     }
 }
@@ -553,6 +560,7 @@ fn movement_block_order_error(reason: BlockedMovementReason) -> Option<UnitOrder
     Some(match reason {
         BlockedMovementReason::TerrainUnavailable => UnitOrderError::PathTerrainUnavailable,
         BlockedMovementReason::BlockedByDoodad
+        | BlockedMovementReason::BlockedByBuilding
         | BlockedMovementReason::SlopeTooSteep
         | BlockedMovementReason::SlopeUnavailable
         | BlockedMovementReason::DestinationBlocked

@@ -11,6 +11,7 @@ pub enum CommandUnavailableReason {
     FeatureNotImplemented,
     RequiresTerrainTarget,
     RequiresUnitTarget,
+    InvalidPlacement,
 }
 
 impl CommandUnavailableReason {
@@ -20,6 +21,7 @@ impl CommandUnavailableReason {
             Self::FeatureNotImplemented => "Not implemented",
             Self::RequiresTerrainTarget => "Requires terrain target",
             Self::RequiresUnitTarget => "Requires unit target",
+            Self::InvalidPlacement => "Invalid building placement",
         }
     }
 }

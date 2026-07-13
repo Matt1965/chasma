@@ -1,16 +1,18 @@
 //! Dev mode keyboard, spawn clicks, and gameplay input gating (ADR-043/044/047, DV2).
 
+use bevy::ecs::system::SystemParam;
 use bevy::input::keyboard::KeyCode;
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use crate::camera::RtsCamera;
-use crate::doodads::DoodadsRuntimeSettings;
 use crate::simulation::SimulationControlState;
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::{BoxSelectDrag, cursor_world_ray, terrain_click_to_world_position};
-use crate::world::{DoodadCatalog, UnitCatalog, WorldConfig, WorldData};
+use crate::world::{
+    BuildingCatalog, DoodadCatalog, FootprintCatalog, UnitCatalog, WorldConfig, WorldData,
+};
 
 use super::catalog_cache::DevSearchDebounce;
 use super::dev_mode::{DevModeInputGate, DevModeState, DevTab, DevTextFieldFocus};
@@ -22,6 +24,24 @@ use super::tools::{
 };
 
 const SHIFT_BATCH_COUNT: u32 = 5;
+
+/// Bundled state for dev spawn click (Bevy system param limit).
+#[derive(SystemParam)]
+pub struct DevSpawnClickParams<'w> {
+    pub panel_hovered: Res<'w, DevPanelHoverState>,
+    pub gate: ResMut<'w, DevModeInputGate>,
+    pub keyboard: Res<'w, ButtonInput<KeyCode>>,
+    pub mouse_buttons: Res<'w, ButtonInput<MouseButton>>,
+    pub box_drag: Res<'w, BoxSelectDrag>,
+    pub world: ResMut<'w, WorldData>,
+    pub config: Res<'w, WorldConfig>,
+    pub unit_catalog: Res<'w, UnitCatalog>,
+    pub doodad_catalog: Res<'w, DoodadCatalog>,
+    pub building_catalog: Res<'w, BuildingCatalog>,
+    pub footprint_catalog: Res<'w, FootprintCatalog>,
+    pub simulation: Res<'w, SimulationControlState>,
+    pub dev_state: ResMut<'w, DevModeState>,
+}
 
 /// Reset input gate at the start of each frame.
 pub fn reset_dev_input_gate(mut gate: ResMut<DevModeInputGate>) {
@@ -62,7 +82,8 @@ pub fn dev_mode_keyboard_input(
     if keyboard.just_pressed(KeyCode::Tab) && !dev_state.has_text_focus() {
         dev_state.active_tab = match dev_state.active_tab {
             DevTab::Units => DevTab::Doodads,
-            DevTab::Doodads => DevTab::Placement,
+            DevTab::Doodads => DevTab::Buildings,
+            DevTab::Buildings => DevTab::Placement,
             DevTab::Placement => DevTab::Scenes,
             DevTab::Scenes => DevTab::Inspector,
             DevTab::Inspector => DevTab::Debug,
@@ -292,53 +313,44 @@ pub fn update_dev_preview_anchor(
 
 /// Left-click terrain batch spawn when a definition is selected (before gameplay input).
 pub fn handle_dev_spawn_click(
-    panel_hovered: Res<DevPanelHoverState>,
-    mut gate: ResMut<DevModeInputGate>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    mut params: DevSpawnClickParams,
     windows: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform), With<RtsCamera>>,
-    box_drag: Res<BoxSelectDrag>,
-    mut world: ResMut<WorldData>,
-    config: Res<WorldConfig>,
-    unit_catalog: Res<UnitCatalog>,
-    doodad_catalog: Res<DoodadCatalog>,
-    render_assets: Option<Res<TerrainRenderAssets>>,
-    runtime: Option<Res<DoodadsRuntimeSettings>>,
-    simulation: Res<SimulationControlState>,
-    mut dev_state: ResMut<DevModeState>,
     mut batch_scratch: Local<BatchSpawnScratch>,
 ) {
-    if !dev_state.enabled {
+    if !params.dev_state.enabled {
         return;
     }
 
-    if panel_hovered.hovered {
-        gate.block_gameplay_mouse = true;
+    if params.panel_hovered.hovered {
+        params.gate.block_gameplay_mouse = true;
         return;
     }
 
-    if gate.spawn_handled_this_frame {
+    if params.gate.spawn_handled_this_frame {
         return;
     }
 
-    if !mouse_buttons.just_pressed(MouseButton::Left) || box_drag.is_box_drag() {
+    if !params.mouse_buttons.just_pressed(MouseButton::Left) || params.box_drag.is_box_drag() {
         return;
     }
 
-    dev_state.clear_text_focus();
+    params.dev_state.clear_text_focus();
 
-    let ctrl = keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight);
-    let shift = keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight);
+    let ctrl = params.keyboard.pressed(KeyCode::ControlLeft)
+        || params.keyboard.pressed(KeyCode::ControlRight);
+    let shift =
+        params.keyboard.pressed(KeyCode::ShiftLeft) || params.keyboard.pressed(KeyCode::ShiftRight);
 
     let definition = if ctrl {
-        dev_state
+        params
+            .dev_state
             .last_spawn
             .as_ref()
             .map(|(id, _)| id.clone())
-            .or_else(|| dev_state.selected_definition.clone())
+            .or_else(|| params.dev_state.selected_definition.clone())
     } else {
-        dev_state.selected_definition.clone()
+        params.dev_state.selected_definition.clone()
     };
 
     let Some(definition) = definition else {
@@ -349,33 +361,32 @@ pub fn handle_dev_spawn_click(
         return;
     };
 
-    let layout = config.chunk_layout();
-    let vertical_scale = render_assets
-        .as_ref()
-        .map(|assets| assets.vertical_scale)
-        .unwrap_or(1.0);
+    let layout = params.config.chunk_layout();
+    let vertical_scale = 1.0;
 
-    let Some(click) = terrain_click_to_world_position(&ray, &world, layout, vertical_scale) else {
-        dev_state.last_spawn_message = "Terrain raycast missed".to_string();
-        gate.block_gameplay_mouse = true;
-        gate.spawn_handled_this_frame = true;
+    let Some(click) = terrain_click_to_world_position(&ray, &params.world, layout, vertical_scale)
+    else {
+        params.dev_state.last_spawn_message = "Terrain raycast missed".to_string();
+        params.gate.block_gameplay_mouse = true;
+        params.gate.spawn_handled_this_frame = true;
         return;
     };
 
-    let Some(position) = dev_spawn_position_from_terrain_click(&world, click.world_position) else {
-        dev_state.last_spawn_message = "Ground query failed".to_string();
-        gate.block_gameplay_mouse = true;
-        gate.spawn_handled_this_frame = true;
+    let Some(position) = dev_spawn_position_from_terrain_click(&params.world, click.world_position)
+    else {
+        params.dev_state.last_spawn_message = "Ground query failed".to_string();
+        params.gate.block_gameplay_mouse = true;
+        params.gate.spawn_handled_this_frame = true;
         return;
     };
 
     let dir = Vec3::new(ray.direction.x, 0.0, ray.direction.z);
     if dir.length_squared() > 1e-6 {
         let flat = dir.normalize();
-        dev_state.last_line_direction = Vec2::new(flat.x, flat.z);
+        params.dev_state.last_line_direction = Vec2::new(flat.x, flat.z);
     }
 
-    let mut brush = dev_state.brush;
+    let mut brush = params.dev_state.brush;
     if shift {
         brush.count = brush.count.max(SHIFT_BATCH_COUNT);
     }
@@ -384,41 +395,40 @@ pub fn handle_dev_spawn_click(
         definition: definition.clone(),
         brush,
         anchor: position,
-        line_direction: dev_state.last_line_direction,
-        terrain_conforming: dev_state.terrain_conforming,
-        rules: dev_state.placement_rules,
-        world_seed: runtime
-            .as_ref()
-            .map(|r| r.world_seed)
-            .unwrap_or(crate::doodads::DEFAULT_DOODAD_WORLD_SEED),
+        line_direction: params.dev_state.last_line_direction,
+        terrain_conforming: params.dev_state.terrain_conforming,
+        rules: params.dev_state.placement_rules,
+        world_seed: crate::doodads::DEFAULT_DOODAD_WORLD_SEED,
         layout,
-        spawn_affiliation: dev_state.spawn_affiliation,
+        spawn_affiliation: params.dev_state.spawn_affiliation,
     };
 
     let report = execute_batch_spawn(
         &request,
         definition.id_str(),
-        &mut world,
-        &unit_catalog,
-        &doodad_catalog,
+        &mut params.world,
+        &params.unit_catalog,
+        &params.doodad_catalog,
+        &params.building_catalog,
+        &params.footprint_catalog,
         &mut batch_scratch,
     );
 
-    gate.block_gameplay_mouse = true;
-    gate.spawn_handled_this_frame = true;
+    params.gate.block_gameplay_mouse = true;
+    params.gate.spawn_handled_this_frame = true;
 
     if report.spawned > 0 {
-        let spawn_type = dev_state.spawn_mode;
-        dev_state.last_spawn = Some((definition.clone(), position));
-        dev_state.spawn_history.push(DevSpawnRecord {
+        let spawn_type = params.dev_state.spawn_mode;
+        params.dev_state.last_spawn = Some((definition.clone(), position));
+        params.dev_state.spawn_history.push(DevSpawnRecord {
             definition,
             position,
             spawn_type,
-            simulation_tick: simulation.current_tick,
+            simulation_tick: params.simulation.current_tick,
         });
     }
 
-    dev_state.last_spawn_message = format!(
+    params.dev_state.last_spawn_message = format!(
         "Batch spawn: {} placed, {} rejected, {} failed ({} attempted)",
         report.spawned, report.rejected, report.failures, report.attempted
     );

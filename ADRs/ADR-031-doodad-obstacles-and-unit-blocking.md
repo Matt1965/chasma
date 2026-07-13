@@ -2,7 +2,9 @@
 
 # Status
 
-Accepted (U6 — movement blocking foundation; REVIEW-B6 fail-closed queries)
+Accepted (U6 — movement blocking foundation; REVIEW-B6 fail-closed queries).
+**Updated B3:** blocking queries delegate to generalized occupancy / passability
+([ADR-080](ADR-080-generalized-occupancy-and-baked-footprints.md)).
 
 # Context
 
@@ -39,11 +41,14 @@ Excel optional columns: `Blocks Movement`, `Block Radius` (Y/N parsing).
 
 ## World obstacle module
 
-`src/world/obstacle/` owns spatial queries against doodad chunk stores:
+`src/world/obstacle/` owns the legacy API surface; **B3** delegates spatial blocking
+to `src/world/occupancy/`:
 
-- [`query_obstacle_at_position`] — structured result with diagnostics
+- [`query_obstacle_at_position`] — structured result with diagnostics (wraps passability)
 - [`is_position_blocked_by_doodads`] — convenience bool; **fail-closed on any error**
-- Checks owning chunk + eight neighbors
+- Doodad blocking uses `FootprintShape::Circle` from `block_radius_meters`
+- Building blocking uses building/doodad footprint definitions via the same passability path
+- Checks owning chunk + eight neighbors (geometric overlap, not render/ECS)
 - XZ circle overlap: `unit_radius + block_radius_meters` (inclusive `<=` boundary)
 - Deterministic chunk and record iteration order
 - No ECS / glTF / terrain mesh access
@@ -70,10 +75,11 @@ Before [`relocate_unit`] on a movement step:
 
 No sliding, avoidance, or pushing. Straight-line movement simply stops.
 
-## Pathfinding (deferred)
+## Pathfinding (U7 / B3)
 
-Future navigation will consume the same obstacle query layer. U6 does not build
-navgrids or A\*.
+Navigation ([ADR-032](ADR-032-chunk-grid-navigation.md)) and per-step movement consume
+[`query_passability_at`] (terrain + slope + static occupancy). The obstacle module
+remains a thin compatibility wrapper for doodad-specific diagnostics.
 
 ## Design direction (collision)
 
@@ -103,6 +109,9 @@ See [ADR-069](ADR-069-combat-design-philosophy.md), [DESIGN.md](../DESIGN.md#com
 - ADR-015, ADR-016 (doodad data)
 - ADR-027–030 (units)
 - ADR-023 (runtime not authoritative)
+- ADR-080 (generalized occupancy, B3)
+
+[`query_passability_at`]: ../src/world/occupancy/passability.rs
 
 [`DoodadRecord`]: ../src/world/doodad/record.rs
 [`DoodadCatalog`]: ../src/world/doodad/catalog/registry.rs

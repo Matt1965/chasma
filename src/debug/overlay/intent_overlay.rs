@@ -51,6 +51,12 @@ pub fn draw_intent_debug_overlay(
             }
             ClientIntent::ClearSelection | ClientIntent::ShiftModifier { .. } => {}
             ClientIntent::PaletteCommand { .. } => {}
+            ClientIntent::EnterBuildMode
+            | ClientIntent::ExitBuildMode
+            | ClientIntent::CancelBuildPlacement
+            | ClientIntent::RotateBuildGhost
+            | ClientIntent::SelectBuildingDefinition { .. }
+            | ClientIntent::PlaceBuilding { .. } => {}
         }
     }
 }

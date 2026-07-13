@@ -37,6 +37,13 @@ impl ChunkDoodadStore {
             .map(|index| &self.records[index])
     }
 
+    pub fn get_mut(&mut self, id: DoodadId) -> Option<&mut DoodadRecord> {
+        self.records
+            .binary_search_by_key(&id, |record| record.id)
+            .ok()
+            .map(|index| &mut self.records[index])
+    }
+
     /// Insert a record, replacing any existing entry with the same [`DoodadId`].
     pub fn insert(&mut self, record: DoodadRecord) {
         if let Ok(index) = self

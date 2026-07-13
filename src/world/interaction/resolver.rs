@@ -11,9 +11,21 @@ use super::types::{InteractionResult, InteractionTargetRef, InteractionType};
 /// Resolved interaction outcome before per-unit issuance.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum InteractionOrderPlan {
-    MoveTo { target: WorldPosition },
-    Attack { target: UnitId },
-    AttackMove { destination: WorldPosition },
+    MoveTo {
+        target: WorldPosition,
+    },
+    Attack {
+        target: UnitId,
+    },
+    AttackMove {
+        destination: WorldPosition,
+    },
+    ConstructBuilding {
+        building_id: crate::world::BuildingId,
+    },
+    OperateWorkstation {
+        building_id: crate::world::BuildingId,
+    },
     NoOp,
 }
 
@@ -29,6 +41,9 @@ impl<'a> InteractionResolveContext<'a> {
     pub fn new(
         world: &'a WorldData,
         doodad_catalog: &'a crate::world::DoodadCatalog,
+        building_catalog: &'a crate::world::BuildingCatalog,
+        footprint_catalog: &'a crate::world::FootprintCatalog,
+        interaction_catalog: &'a crate::world::BuildingInteractionProfileCatalog,
         unit_catalog: &'a crate::world::UnitCatalog,
         weapon_catalog: &'a crate::world::WeaponCatalog,
         selected_units: &'a [UnitId],
@@ -37,6 +52,9 @@ impl<'a> InteractionResolveContext<'a> {
             query: InteractionQueryContext::new(
                 world,
                 doodad_catalog,
+                building_catalog,
+                footprint_catalog,
+                interaction_catalog,
                 unit_catalog,
                 weapon_catalog,
             ),
@@ -66,6 +84,18 @@ pub fn resolve_interaction_to_order(interaction: &InteractionResult) -> Interact
         InteractionType::ResourceNode | InteractionType::InteractableObject => {
             InteractionOrderPlan::NoOp
         }
+        InteractionType::ConstructionSite => match interaction.target {
+            InteractionTargetRef::Building(building_id) if interaction.valid => {
+                InteractionOrderPlan::ConstructBuilding { building_id }
+            }
+            _ => InteractionOrderPlan::NoOp,
+        },
+        InteractionType::Workstation => match interaction.target {
+            InteractionTargetRef::Building(building_id) if interaction.valid => {
+                InteractionOrderPlan::OperateWorkstation { building_id }
+            }
+            _ => InteractionOrderPlan::NoOp,
+        },
         InteractionType::AttackableUnit => match interaction.target {
             InteractionTargetRef::Unit(target) => InteractionOrderPlan::Attack { target },
             _ => InteractionOrderPlan::NoOp,
@@ -148,6 +178,8 @@ pub fn interaction_plan_to_unit_order(plan: InteractionOrderPlan) -> Option<Unit
         InteractionOrderPlan::AttackMove { destination } => {
             Some(UnitOrder::AttackMove { destination })
         }
+        InteractionOrderPlan::ConstructBuilding { .. }
+        | InteractionOrderPlan::OperateWorkstation { .. } => None,
         InteractionOrderPlan::NoOp => None,
     }
 }
@@ -169,7 +201,7 @@ mod tests {
     use crate::world::{
         ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, DoodadPlacementOverrides,
         DoodadSource, Heightfield, LocalPosition, UnitDefinitionId, UnitSource, WorldData,
-        create_doodad, create_unit,
+        create_doodad, create_unit, default_building_catalog, default_footprint_catalog,
     };
     use bevy::prelude::Vec3;
 
@@ -201,6 +233,12 @@ mod tests {
         crate::world::WeaponCatalog::default()
     }
 
+    fn interaction_catalog() -> &'static crate::world::BuildingInteractionProfileCatalog {
+        use std::sync::OnceLock;
+        static CATALOG: OnceLock<crate::world::BuildingInteractionProfileCatalog> = OnceLock::new();
+        CATALOG.get_or_init(crate::world::BuildingInteractionProfileCatalog::default)
+    }
+
     fn resolve_ctx<'a>(
         world: &'a WorldData,
         catalog: &'a crate::world::DoodadCatalog,
@@ -208,7 +246,16 @@ mod tests {
         weapon_catalog: &'a crate::world::WeaponCatalog,
         selected: &'a [UnitId],
     ) -> InteractionResolveContext<'a> {
-        InteractionResolveContext::new(world, catalog, unit_catalog, weapon_catalog, selected)
+        InteractionResolveContext::new(
+            world,
+            catalog,
+            default_building_catalog(),
+            default_footprint_catalog(),
+            interaction_catalog(),
+            unit_catalog,
+            weapon_catalog,
+            selected,
+        )
     }
 
     #[test]
@@ -236,6 +283,7 @@ mod tests {
             pos(50.0, 50.0),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
         let unit_catalog = crate::world::UnitCatalog::default();
@@ -258,6 +306,7 @@ mod tests {
             pos(60.0, 60.0),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
         let unit_catalog = crate::world::UnitCatalog::default();

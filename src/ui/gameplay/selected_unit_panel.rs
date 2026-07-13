@@ -152,6 +152,7 @@ pub fn unit_state_label(state: &UnitState) -> &'static str {
     match state {
         UnitState::Idle => "Idle",
         UnitState::Moving { .. } => "Moving",
+        UnitState::Working { .. } => "Working",
         UnitState::Dead => "Dead",
     }
 }

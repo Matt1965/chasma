@@ -1,6 +1,9 @@
 //! In-memory catalog filtering for dev browser (ADR-043).
 
-use crate::world::{DoodadCatalog, DoodadDefinition, DoodadKind, UnitCatalog, UnitDefinition};
+use crate::world::{
+    BuildingCatalog, BuildingDefinition, BuildingDefinitionId, DoodadCatalog, DoodadDefinition,
+    DoodadKind, UnitCatalog, UnitDefinition,
+};
 
 use super::dev_mode::{DefinitionId, DevTab, SpawnMode};
 
@@ -18,6 +21,7 @@ pub struct CatalogBrowserEntry {
 pub fn filter_catalog_entries(
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
     tab: DevTab,
     spawn_mode: SpawnMode,
     search_query: &str,
@@ -27,6 +31,7 @@ pub fn filter_catalog_entries(
     let mut entries = match tab {
         DevTab::Units => unit_entries(unit_catalog, enabled_only),
         DevTab::Doodads => doodad_entries(doodad_catalog, enabled_only),
+        DevTab::Buildings => building_entries(building_catalog, enabled_only),
         DevTab::Debug
         | DevTab::Placement
         | DevTab::Scenes
@@ -34,7 +39,7 @@ pub fn filter_catalog_entries(
         | DevTab::WorldTools => Vec::new(),
     };
 
-    if matches!(tab, DevTab::Units | DevTab::Doodads) {
+    if matches!(tab, DevTab::Units | DevTab::Doodads | DevTab::Buildings) {
         // Keep spawn mode aligned when browsing a single-type tab.
         let _ = spawn_mode;
     }
@@ -94,6 +99,25 @@ fn doodad_row(def: &DoodadDefinition) -> CatalogBrowserEntry {
     }
 }
 
+fn building_entries(catalog: &BuildingCatalog, enabled_only: bool) -> Vec<CatalogBrowserEntry> {
+    catalog
+        .definitions()
+        .iter()
+        .filter(|def| !enabled_only || def.enabled)
+        .map(building_row)
+        .collect()
+}
+
+fn building_row(def: &BuildingDefinition) -> CatalogBrowserEntry {
+    CatalogBrowserEntry {
+        definition: DefinitionId::Building(def.id.clone()),
+        label: def.display_name.clone(),
+        category: def.category_id.as_str().to_string(),
+        render_key: def.render_key.0.clone().unwrap_or_default(),
+        enabled: def.enabled,
+    }
+}
+
 fn doodad_kind_label(kind: DoodadKind) -> String {
     format!("{kind:?}")
 }
@@ -101,7 +125,7 @@ fn doodad_kind_label(kind: DoodadKind) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{DoodadCatalog, UnitDefinition, UnitDefinitionId};
+    use crate::world::{BuildingCatalog, DoodadCatalog, UnitDefinition, UnitDefinitionId};
 
     #[test]
     fn catalog_filter_returns_unit_subset_by_search() {
@@ -109,6 +133,7 @@ mod tests {
         let entries = filter_catalog_entries(
             &catalog,
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
             DevTab::Units,
             SpawnMode::Unit,
             "wolf",
@@ -150,6 +175,7 @@ mod tests {
         let all = filter_catalog_entries(
             &catalog,
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
             DevTab::Units,
             SpawnMode::Unit,
             "",
@@ -158,6 +184,7 @@ mod tests {
         let enabled = filter_catalog_entries(
             &catalog,
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
             DevTab::Units,
             SpawnMode::Unit,
             "",
@@ -173,6 +200,7 @@ mod tests {
         let entries = filter_catalog_entries(
             &UnitCatalog::default(),
             &catalog,
+            &BuildingCatalog::default(),
             DevTab::Doodads,
             SpawnMode::Doodad,
             "tree",

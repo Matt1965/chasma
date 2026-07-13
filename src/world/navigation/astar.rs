@@ -7,7 +7,7 @@ use super::grid::{
     GridCoord, NEIGHBOR_OFFSETS, NavigationAgent, NavigationConfig, diagonal_corner_clear,
     grid_cell_world_position, is_cell_walkable, neighbor_step_cost,
 };
-use crate::world::{DoodadCatalog, WorldData, WorldPosition};
+use crate::world::{PassabilityCatalogs, WorldData, WorldPosition};
 
 const MAX_SEARCH_NODES: usize = 16_384;
 
@@ -49,7 +49,7 @@ fn octile_heuristic(a: GridCoord, b: GridCoord, cell_spacing_meters: f32) -> f32
 /// Run A* between grid cells and return grounded world waypoints (goal inclusive).
 pub fn astar_path(
     world: &WorldData,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     config: NavigationConfig,
     agent: NavigationAgent,
     start: GridCoord,
@@ -89,10 +89,10 @@ pub fn astar_path(
 
         for &(dx, dz) in &NEIGHBOR_OFFSETS {
             let next = GridCoord::new(current.coord.x + dx, current.coord.z + dz);
-            if !is_cell_walkable(world, doodad_catalog, config, agent, next) {
+            if !is_cell_walkable(world, catalogs, config, agent, next) {
                 continue;
             }
-            if !diagonal_corner_clear(world, doodad_catalog, config, agent, current.coord, dx, dz) {
+            if !diagonal_corner_clear(world, catalogs, config, agent, current.coord, dx, dz) {
                 continue;
             }
 

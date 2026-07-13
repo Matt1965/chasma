@@ -29,7 +29,7 @@ pub fn stabilized_movement_heading(
 
     let mut index = waypoint_index.min(path.len().saturating_sub(1));
     while index < path.len() {
-        let waypoint = path.waypoints[index];
+        let waypoint = path.waypoints[index].position;
         let distance = xz_distance(current, waypoint, layout);
         if distance <= WAYPOINT_DIRECTION_EPSILON_METERS && index + 1 < path.len() {
             index += 1;
@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn uses_first_non_consumed_waypoint_direction() {
-        let path = NavigationPath::new(vec![pos(10.0, 10.0), pos(40.0, 10.0)]);
+        let path = NavigationPath::from_surface_positions(vec![pos(10.0, 10.0), pos(40.0, 10.0)]);
         let heading = stabilized_movement_heading(pos(10.0, 10.0), &path, 0, layout()).unwrap();
         assert_eq!(heading.waypoint_index, 1);
         assert!((heading.direction_xz.x - 1.0).abs() < 1e-4);

@@ -50,7 +50,7 @@ pub fn draw_path_debug_overlay(
         let mut points: Vec<Vec3> = path
             .waypoints
             .iter()
-            .map(|waypoint| render_position(*waypoint, layout, vertical_scale))
+            .map(|waypoint| render_position(waypoint.position, layout, vertical_scale))
             .collect();
         if points.is_empty() {
             continue;
@@ -123,7 +123,10 @@ fn draw_focus_path(
     };
     let idx = highlight_index.unwrap_or(waypoint_index);
     if let Some(waypoint) = path.waypoints.get(idx) {
-        let center = xz_to_render_y(render_position(*waypoint, layout, vertical_scale), 0.35);
+        let center = xz_to_render_y(
+            render_position(waypoint.position, layout, vertical_scale),
+            0.35,
+        );
         gizmos.sphere(center, 0.35, Color::srgba(1.0, 0.55, 0.1, 0.95));
     }
 }
@@ -141,7 +144,7 @@ fn active_segment_start(
         path.waypoints
             .get(waypoint_index.saturating_sub(1) as usize)
             .copied()
-            .map(|waypoint| render_position(waypoint, layout, vertical_scale))
+            .map(|waypoint| render_position(waypoint.position, layout, vertical_scale))
     }
 }
 
@@ -154,5 +157,5 @@ fn active_segment_end(
     path.waypoints
         .get(waypoint_index as usize)
         .copied()
-        .map(|waypoint| render_position(waypoint, layout, vertical_scale))
+        .map(|waypoint| render_position(waypoint.position, layout, vertical_scale))
 }

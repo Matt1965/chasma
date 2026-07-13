@@ -3,8 +3,8 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    DoodadCatalog, SlopeWalkability, UnitCatalog, WorldData, WorldPosition,
-    classify_slope_walkability, ground_world_position, is_position_blocked_by_doodads,
+    BuildingCatalog, DoodadCatalog, FootprintCatalog, SlopeWalkability, UnitCatalog, WorldData,
+    WorldPosition, classify_slope_walkability, ground_world_position,
 };
 
 use super::super::dev_mode::DefinitionId;
@@ -52,6 +52,8 @@ pub struct PlacementValidateContext<'a> {
     pub world: &'a WorldData,
     pub unit_catalog: &'a UnitCatalog,
     pub doodad_catalog: &'a DoodadCatalog,
+    pub building_catalog: &'a BuildingCatalog,
+    pub footprint_catalog: &'a FootprintCatalog,
     pub definition: &'a DefinitionId,
     pub rules: &'a PlacementRules,
 }
@@ -98,7 +100,17 @@ pub fn validate_placement(
 
     if ctx.rules.avoid_doodads {
         let agent_radius = agent_radius_for_definition(ctx);
-        if is_position_blocked_by_doodads(ctx.world, ctx.doodad_catalog, position, agent_radius) {
+        if crate::world::is_position_blocked_for_agent(
+            ctx.world,
+            crate::world::PassabilityCatalogs {
+                doodad: ctx.doodad_catalog,
+                building: ctx.building_catalog,
+                footprint: ctx.footprint_catalog,
+            },
+            position,
+            agent_radius,
+            max_slope_for_definition(ctx),
+        ) {
             return PlacementValidation::Rejected(PlacementRejectReason::BlockedByDoodad);
         }
     }
@@ -129,6 +141,11 @@ fn max_slope_for_definition(ctx: &PlacementValidateContext<'_>) -> f32 {
             .get(id)
             .and_then(|def| def.max_slope_degrees)
             .unwrap_or(45.0),
+        DefinitionId::Building(id) => ctx
+            .building_catalog
+            .get(id)
+            .map(|def| def.max_slope_degrees)
+            .unwrap_or(45.0),
     }
 }
 
@@ -144,6 +161,18 @@ fn agent_radius_for_definition(ctx: &PlacementValidateContext<'_>) -> f32 {
             .get(id)
             .map(|def| def.placement_radius_meters.max(def.block_radius_meters))
             .unwrap_or(0.5),
+        DefinitionId::Building(id) => ctx
+            .building_catalog
+            .get(id)
+            .map(|def| match def.footprint {
+                crate::world::FootprintSpec::Circle { radius_meters } => radius_meters,
+                crate::world::FootprintSpec::Rectangle {
+                    width_meters,
+                    depth_meters,
+                } => width_meters.max(depth_meters) * 0.5,
+                crate::world::FootprintSpec::MeshDerived => 1.5,
+            })
+            .unwrap_or(1.0),
     }
 }
 
@@ -195,6 +224,8 @@ mod tests {
             world: &world,
             unit_catalog: &unit_catalog,
             doodad_catalog: &doodad_catalog,
+            building_catalog: &BuildingCatalog::default(),
+            footprint_catalog: &FootprintCatalog::default(),
             definition: &definition,
             rules: &rules,
         };
@@ -217,6 +248,8 @@ mod tests {
             world: &world,
             unit_catalog: &unit_catalog,
             doodad_catalog: &doodad_catalog,
+            building_catalog: &BuildingCatalog::default(),
+            footprint_catalog: &FootprintCatalog::default(),
             definition: &definition,
             rules: &rules,
         };
@@ -289,6 +322,8 @@ mod tests {
             world: &world,
             unit_catalog: &unit_catalog,
             doodad_catalog: &doodad_catalog,
+            building_catalog: &BuildingCatalog::default(),
+            footprint_catalog: &FootprintCatalog::default(),
             definition: &definition,
             rules: &rules,
         };
@@ -325,6 +360,8 @@ mod tests {
             world: &world,
             unit_catalog: &unit_catalog,
             doodad_catalog: &doodad_catalog,
+            building_catalog: &BuildingCatalog::default(),
+            footprint_catalog: &FootprintCatalog::default(),
             definition: &definition,
             rules: &rules,
         };

@@ -4,8 +4,9 @@ use bevy::prelude::*;
 
 use crate::world::unit::{UnitOrder, UnitOrderError};
 use crate::world::{
-    DoodadCatalog, NavigationConfig, NavigationError, UnitCatalog, UnitId, UnitState, WorldData,
-    WorldPosition, find_path,
+    BuildingCatalog, DoodadCatalog, FootprintCatalog, NavigationConfig, NavigationError,
+    PassabilityCatalogs, SpaceId, UnitCatalog, UnitId, UnitState, WorldData, WorldPosition,
+    find_path_with_spaces,
 };
 
 /// One deferred order awaiting path resolution.
@@ -89,7 +90,7 @@ pub struct CommandResolveSuccess {
 pub fn start_unit_move_to(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     unit_id: UnitId,
     target: WorldPosition,
@@ -99,17 +100,22 @@ pub fn start_unit_move_to(
         .ok_or(UnitOrderError::UnitNotFound)?;
     let definition_id = record.definition_id.clone();
     let start = record.placement.position;
+    let start_space = record.current_space_id;
     let definition = unit_catalog
         .get(&definition_id)
         .ok_or(UnitOrderError::DefinitionNotFound)?;
-    let path = find_path(
+    let unit_ownership = world.get_unit(unit_id).map(|record| record.ownership());
+    let path = find_path_with_spaces(
         world,
-        doodad_catalog,
+        catalogs,
         nav_config,
         definition.collision_radius_meters,
         definition.max_slope_degrees,
         start,
         target,
+        start_space,
+        SpaceId::SURFACE,
+        unit_ownership,
     )
     .map_err(map_navigation_error)?;
     if path.is_empty() {
@@ -130,7 +136,7 @@ pub fn start_unit_move_to(
 pub(crate) fn resolve_one(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     unit_id: UnitId,
     order: UnitOrder,
@@ -146,14 +152,12 @@ pub(crate) fn resolve_one(
         UnitOrder::Idle => world
             .set_unit_state(unit_id, UnitState::Idle)
             .map_err(|_| UnitOrderError::UnitNotFound),
-        UnitOrder::MoveTo { target } => start_unit_move_to(
-            world,
-            unit_catalog,
-            doodad_catalog,
-            nav_config,
-            unit_id,
-            target,
-        ),
+        UnitOrder::MoveTo { target } => {
+            start_unit_move_to(world, unit_catalog, catalogs, nav_config, unit_id, target)
+        }
+        UnitOrder::Work { target, .. } => {
+            start_unit_move_to(world, unit_catalog, catalogs, nav_config, unit_id, target)
+        }
         UnitOrder::Attack { .. } | UnitOrder::AttackMove { .. } => {
             Err(UnitOrderError::AttackerNotFound)
         }
@@ -173,7 +177,8 @@ fn map_navigation_error(error: NavigationError) -> UnitOrderError {
 mod tests {
     use super::*;
     use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitDefinitionId,
+        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog,
+        FootprintCatalog, Heightfield, LocalPosition, PassabilityCatalogs, UnitDefinitionId,
         UnitSource, create_unit,
     };
 
@@ -224,8 +229,16 @@ mod tests {
             );
         }
 
-        let first =
-            crate::world::resolve_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav);
+        let first = crate::world::resolve_pending_unit_orders(
+            &mut world,
+            &catalog,
+            PassabilityCatalogs {
+                doodad: &doodad_catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav,
+        );
         assert_eq!(first.resolved, PATH_RESOLVE_BUDGET_PER_TICK);
         assert!(!world.command_buffer().is_empty());
 
@@ -234,7 +247,11 @@ mod tests {
             let batch = crate::world::resolve_pending_unit_orders(
                 &mut world,
                 &catalog,
-                &doodad_catalog,
+                PassabilityCatalogs {
+                    doodad: &doodad_catalog,
+                    building: &BuildingCatalog::default(),
+                    footprint: &FootprintCatalog::default(),
+                },
                 &nav,
             );
             total += batch.resolved;
@@ -267,8 +284,16 @@ mod tests {
         assert_eq!(world.get_unit(unit_id).unwrap().state, UnitState::Idle);
         assert!(world.command_buffer().pending_for(unit_id).is_some());
 
-        let report =
-            crate::world::resolve_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav);
+        let report = crate::world::resolve_pending_unit_orders(
+            &mut world,
+            &catalog,
+            PassabilityCatalogs {
+                doodad: &doodad_catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav,
+        );
         assert_eq!(report.resolved, 1);
         assert!(matches!(
             world.get_unit(unit_id).unwrap().state,

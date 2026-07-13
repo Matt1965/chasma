@@ -5,7 +5,10 @@ use bevy::prelude::*;
 use crate::debug::{DebugOverlayCategory, DebugOverlaySettings};
 use crate::doodads::DoodadsRuntimeSettings;
 use crate::terrain::TerrainRenderAssets;
-use crate::world::{DoodadCatalog, UnitCatalog, WorldConfig, WorldData, WorldPosition};
+use crate::world::{
+    BuildingCatalog, DoodadCatalog, FootprintCatalog, UnitCatalog, WorldConfig, WorldData,
+    WorldPosition,
+};
 
 use super::super::dev_mode::DevModeState;
 use super::batch_spawn::{BatchSpawnRequest, BatchSpawnScratch, plan_batch_spawn};
@@ -64,6 +67,8 @@ pub fn update_dev_placement_preview(
     config: Res<WorldConfig>,
     unit_catalog: Res<UnitCatalog>,
     doodad_catalog: Res<DoodadCatalog>,
+    building_catalog: Res<BuildingCatalog>,
+    footprint_catalog: Res<FootprintCatalog>,
     runtime: Option<Res<DoodadsRuntimeSettings>>,
     anchor: Option<Res<DevPreviewAnchor>>,
 ) {
@@ -98,6 +103,8 @@ pub fn update_dev_placement_preview(
         world: &world,
         unit_catalog: &unit_catalog,
         doodad_catalog: &doodad_catalog,
+        building_catalog: &building_catalog,
+        footprint_catalog: &footprint_catalog,
         definition,
         rules: &dev_state.placement_rules,
     };
@@ -108,6 +115,7 @@ pub fn update_dev_placement_preview(
         &world,
         &unit_catalog,
         &doodad_catalog,
+        &building_catalog,
         &ctx,
         &mut scratch.batch,
         &mut preview.points,
@@ -121,6 +129,7 @@ fn generate_preview_points(
     world: &WorldData,
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
     ctx: &PlacementValidateContext<'_>,
     scratch: &mut BatchSpawnScratch,
     out: &mut Vec<PreviewPoint>,
@@ -131,6 +140,8 @@ fn generate_preview_points(
         world,
         unit_catalog,
         doodad_catalog,
+        building_catalog,
+        ctx.footprint_catalog,
         scratch,
     );
     let mut accepted: Vec<WorldPosition> = Vec::new();

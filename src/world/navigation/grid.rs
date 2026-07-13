@@ -3,8 +3,9 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    ChunkLayout, DoodadCatalog, SlopeWalkability, WorldData, WorldPosition,
-    classify_slope_walkability, ground_world_position, is_position_blocked_by_doodads,
+    BuildingCatalog, ChunkLayout, DoodadCatalog, FootprintCatalog, PassabilityAgent,
+    PassabilityCatalogs, PassabilityResult, SlopeWalkability, WorldData, WorldPosition,
+    classify_slope_walkability, ground_world_position, query_passability_at,
 };
 
 /// Grid configuration for pathfinding (ADR-032).
@@ -83,19 +84,16 @@ pub fn grid_cell_world_position(
 /// Whether a grounded position is walkable for the given agent.
 pub fn is_position_walkable(
     world: &WorldData,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     position: WorldPosition,
     agent: NavigationAgent,
 ) -> bool {
     let Some(grounded) = ground_world_position(world, position) else {
         return false;
     };
-    if is_position_blocked_by_doodads(world, doodad_catalog, grounded, agent.radius_meters) {
-        return false;
-    }
     matches!(
-        classify_slope_walkability(world, grounded, agent.max_slope_degrees),
-        SlopeWalkability::Walkable
+        query_passability_at(world, catalogs, grounded, PassabilityAgent::from(agent),),
+        PassabilityResult::Passable { .. }
     )
 }
 
@@ -120,7 +118,7 @@ fn cell_walkability_sample_globals(
 /// Whether a navigation cell is walkable for an agent (center + inset cardinal samples).
 pub fn is_cell_walkable(
     world: &WorldData,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     config: NavigationConfig,
     agent: NavigationAgent,
     coord: GridCoord,
@@ -128,7 +126,7 @@ pub fn is_cell_walkable(
     let layout = world.layout();
     for global in cell_walkability_sample_globals(coord, config, agent.radius_meters) {
         let position = WorldPosition::from_global(global, layout);
-        if !is_position_walkable(world, doodad_catalog, position, agent) {
+        if !is_position_walkable(world, catalogs, position, agent) {
             return false;
         }
     }
@@ -170,7 +168,7 @@ pub fn neighbor_step_cost(dx: i32, dz: i32, cell_spacing_meters: f32) -> f32 {
 
 pub fn diagonal_corner_clear(
     world: &WorldData,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     config: NavigationConfig,
     agent: NavigationAgent,
     from: GridCoord,
@@ -182,8 +180,8 @@ pub fn diagonal_corner_clear(
     }
     let cardinal_a = GridCoord::new(from.x + dx, from.z);
     let cardinal_b = GridCoord::new(from.x, from.z + dz);
-    is_cell_walkable(world, doodad_catalog, config, agent, cardinal_a)
-        && is_cell_walkable(world, doodad_catalog, config, agent, cardinal_b)
+    is_cell_walkable(world, catalogs, config, agent, cardinal_a)
+        && is_cell_walkable(world, catalogs, config, agent, cardinal_b)
 }
 
 #[cfg(test)]
@@ -227,11 +225,18 @@ mod tests {
             ChunkData::new(heightfield, Vec::new()),
         );
         let catalog = DoodadCatalog::default();
+        let building = BuildingCatalog::default();
+        let footprint = FootprintCatalog::default();
+        let pass = PassabilityCatalogs {
+            doodad: &catalog,
+            building: &building,
+            footprint: &footprint,
+        };
         let config = NavigationConfig::default();
         for x in 0..=30 {
             let coord = GridCoord::new(x, 0);
             assert!(
-                is_cell_walkable(&world, &catalog, config, agent(), coord),
+                is_cell_walkable(&world, pass, config, agent(), coord),
                 "cell {coord:?} not walkable"
             );
         }

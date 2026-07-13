@@ -15,6 +15,8 @@ pub enum UnitState {
         path: NavigationPath,
         waypoint_index: usize,
     },
+    /// Applying labor at an assigned task site (ADR-085 B8).
+    Working { task_id: crate::world::TaskId },
     /// HP depleted — queued for deferred removal (ADR-059 C6).
     Dead,
 }

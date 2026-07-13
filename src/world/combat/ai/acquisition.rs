@@ -176,6 +176,7 @@ pub fn unit_eligible_for_auto_acquire(
     }
     match &record.state {
         UnitState::Dead => false,
+        UnitState::Working { .. } => false,
         UnitState::Idle => true,
         UnitState::Moving { .. } => matches!(record.combat_state, CombatState::AttackMoving { .. }),
     }

@@ -21,6 +21,10 @@ pub enum InteractionType {
     NeutralUnit,
     /// Harvestable resource (read-only stub until U13+).
     ResourceNode,
+    /// Active construction site — worker build interaction (ADR-085 B8).
+    ConstructionSite,
+    /// Operational workstation — operator interaction (ADR-085 B8).
+    Workstation,
     /// Non-blocking interactable (doors, markers, ruins).
     InteractableObject,
     /// Movement-blocked area (obstacle footprint or unwalkable terrain).
@@ -38,6 +42,8 @@ impl InteractionType {
             Self::FriendlyUnit => "FriendlyUnit",
             Self::NeutralUnit => "NeutralUnit",
             Self::ResourceNode => "ResourceNode",
+            Self::ConstructionSite => "ConstructionSite",
+            Self::Workstation => "Workstation",
             Self::InteractableObject => "InteractableObject",
             Self::BlockedArea => "BlockedArea",
             Self::TerrainPoint => "TerrainPoint",
@@ -51,6 +57,7 @@ pub enum InteractionTargetRef {
     None,
     Doodad(DoodadId),
     Unit(UnitId),
+    Building(crate::world::BuildingId),
     Terrain(WorldPosition),
 }
 

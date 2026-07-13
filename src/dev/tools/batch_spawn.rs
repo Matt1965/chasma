@@ -3,8 +3,10 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    DoodadCatalog, DoodadPlacementOverrides, DoodadSource, UnitCatalog, UnitOwnership, UnitSource,
-    WorldData, WorldPosition, create_doodad, create_unit_with_ownership,
+    BuildingCatalog, BuildingDefinitionId, BuildingOwnership, BuildingSource, DoodadCatalog,
+    DoodadPlacementOverrides, DoodadSource, FootprintCatalog, UnitCatalog, UnitOwnership,
+    UnitSource, WorldData, WorldPosition, create_building, create_doodad,
+    create_unit_with_ownership,
 };
 
 use super::super::dev_mode::DefinitionId;
@@ -64,6 +66,8 @@ pub fn plan_batch_spawn(
     world: &WorldData,
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
     scratch: &mut BatchSpawnScratch,
 ) -> (Vec<WorldPosition>, BatchSpawnReport) {
     scratch.clear();
@@ -84,6 +88,8 @@ pub fn plan_batch_spawn(
         world,
         unit_catalog,
         doodad_catalog,
+        building_catalog,
+        footprint_catalog,
         definition: &request.definition,
         rules: &rules,
     };
@@ -117,6 +123,8 @@ pub fn execute_batch_spawn(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
     scratch: &mut BatchSpawnScratch,
 ) -> BatchSpawnReport {
     let (planned, mut report) = plan_batch_spawn(
@@ -125,6 +133,8 @@ pub fn execute_batch_spawn(
         world,
         unit_catalog,
         doodad_catalog,
+        building_catalog,
+        footprint_catalog,
         scratch,
     );
 
@@ -133,6 +143,7 @@ pub fn execute_batch_spawn(
             world,
             unit_catalog,
             doodad_catalog,
+            building_catalog,
             &request.definition,
             position,
             request.spawn_affiliation,
@@ -151,6 +162,7 @@ fn spawn_at(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
     definition: &DefinitionId,
     position: WorldPosition,
     spawn_affiliation: crate::world::Affiliation,
@@ -172,6 +184,18 @@ fn spawn_at(
             position,
             DoodadSource::Dev,
             DoodadPlacementOverrides::default(),
+            None,
+        )
+        .is_ok(),
+        DefinitionId::Building(definition_id) => create_building(
+            building_catalog,
+            world,
+            definition_id,
+            position,
+            Quat::IDENTITY,
+            BuildingSource::Dev,
+            BuildingOwnership::with_affiliation(spawn_affiliation),
+            None,
         )
         .is_ok(),
     }
@@ -219,6 +243,7 @@ mod tests {
         let mut world = flat_world();
         let unit_catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();
+        let building_catalog = BuildingCatalog::default();
         let request = BatchSpawnRequest {
             definition: DefinitionId::Unit(UnitDefinitionId::new("wolf")),
             brush: BrushSettings {
@@ -236,12 +261,15 @@ mod tests {
             spawn_affiliation: crate::world::Affiliation::Player,
         };
         let mut scratch = BatchSpawnScratch::default();
+        let footprint_catalog = FootprintCatalog::default();
         let report = execute_batch_spawn(
             &request,
             "wolf",
             &mut world,
             &unit_catalog,
             &doodad_catalog,
+            &building_catalog,
+            &footprint_catalog,
             &mut scratch,
         );
         assert_eq!(report.spawned, 4);
@@ -256,6 +284,7 @@ mod tests {
         let world = flat_world();
         let unit_catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();
+        let building_catalog = BuildingCatalog::default();
         let request = BatchSpawnRequest {
             definition: DefinitionId::Unit(UnitDefinitionId::new("wolf")),
             brush: BrushSettings {
@@ -276,12 +305,15 @@ mod tests {
             spawn_affiliation: crate::world::Affiliation::Player,
         };
         let mut scratch = BatchSpawnScratch::default();
+        let footprint_catalog = FootprintCatalog::default();
         let (planned, report) = plan_batch_spawn(
             &request,
             "wolf",
             &world,
             &unit_catalog,
             &doodad_catalog,
+            &building_catalog,
+            &footprint_catalog,
             &mut scratch,
         );
         assert!(report.rejected > 0);
@@ -293,6 +325,7 @@ mod tests {
         let world = flat_world();
         let unit_catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();
+        let building_catalog = BuildingCatalog::default();
         let request = BatchSpawnRequest {
             definition: DefinitionId::Doodad(DoodadDefinitionId::new("tree_oak")),
             brush: BrushSettings {
@@ -309,12 +342,15 @@ mod tests {
             spawn_affiliation: crate::world::Affiliation::Player,
         };
         let mut scratch = BatchSpawnScratch::default();
+        let footprint_catalog = FootprintCatalog::default();
         plan_batch_spawn(
             &request,
             "tree_oak",
             &world,
             &unit_catalog,
             &doodad_catalog,
+            &building_catalog,
+            &footprint_catalog,
             &mut scratch,
         );
         assert_eq!(

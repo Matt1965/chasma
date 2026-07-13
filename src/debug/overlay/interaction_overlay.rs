@@ -49,6 +49,8 @@ fn interaction_type_color(kind: InteractionType) -> Color {
     match kind {
         InteractionType::MoveTarget => Color::srgba(0.2, 0.85, 0.35, 0.85),
         InteractionType::ResourceNode => Color::srgba(0.95, 0.75, 0.15, 0.9),
+        InteractionType::ConstructionSite => Color::srgba(0.95, 0.55, 0.15, 0.9),
+        InteractionType::Workstation => Color::srgba(0.55, 0.35, 0.95, 0.9),
         InteractionType::InteractableObject => Color::srgba(0.35, 0.65, 1.0, 0.85),
         InteractionType::BlockedArea => Color::srgba(0.95, 0.25, 0.2, 0.85),
         InteractionType::TerrainPoint => Color::srgba(0.7, 0.7, 0.7, 0.8),

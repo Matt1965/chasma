@@ -415,6 +415,10 @@ Provides environmental world objects.
 
 Doodads should initially be treated as environmental content rather than gameplay entities.
 
+Building instances (ADR-079 B2) are authoritative records on `WorldData`, parallel to
+units and doodads. Type definitions remain in `BuildingCatalog`; render entities are
+derived in the Building Runtime Layer (`src/buildings/`).
+
 Occupancy Layer
 
 Contains:

@@ -5,7 +5,10 @@ use bevy::prelude::*;
 
 use crate::debug::MovementBlockObservability;
 use crate::simulation::SimulationControlState;
-use crate::world::{DoodadCatalog, UnitCatalog, WeaponCatalog, WorldConfig, WorldData};
+use crate::world::{
+    BuildingCatalog, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, UnitCatalog,
+    WeaponCatalog, WorldConfig, WorldData,
+};
 
 /// Shared read-only inputs for inspector snapshot capture systems.
 #[derive(SystemParam)]
@@ -15,6 +18,9 @@ pub struct InspectorCaptureParams<'w> {
     pub unit_catalog: Res<'w, UnitCatalog>,
     pub weapon_catalog: Res<'w, WeaponCatalog>,
     pub doodad_catalog: Res<'w, DoodadCatalog>,
+    pub building_catalog: Res<'w, BuildingCatalog>,
+    pub interior_catalog: Res<'w, InteriorProfileCatalog>,
+    pub footprint_catalog: Res<'w, FootprintCatalog>,
     pub simulation: Res<'w, SimulationControlState>,
     pub movement_blocks: Res<'w, MovementBlockObservability>,
 }

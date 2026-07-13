@@ -43,6 +43,8 @@ pub struct UnitDefinition {
     pub render_key: UnitRenderKey,
     /// Optional locomotion animation profile (A1). None = static model.
     pub animation_profile_id: Option<AnimationProfileId>,
+    /// Worker capability flags (ADR-085 B8).
+    pub work_capabilities: super::work::UnitWorkCapabilities,
 }
 
 impl UnitDefinition {
@@ -94,6 +96,15 @@ impl UnitDefinition {
             enabled,
             render_key,
             animation_profile_id: None,
+            work_capabilities: super::work::UnitWorkCapabilities::default(),
         }
+    }
+
+    pub fn with_work_capabilities(
+        mut self,
+        capabilities: super::work::UnitWorkCapabilities,
+    ) -> Self {
+        self.work_capabilities = capabilities;
+        self
     }
 }

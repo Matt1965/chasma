@@ -124,7 +124,7 @@ pub fn gather_steering_neighbors(
                     let target_global = target.to_global(layout);
                     Some(Vec2::new(target_global.x, target_global.z))
                 }
-                UnitState::Idle | UnitState::Dead => None,
+                UnitState::Idle | UnitState::Working { .. } | UnitState::Dead => None,
             };
             Some(SteeringNeighbor {
                 unit_id: neighbor_id,
@@ -154,7 +154,7 @@ fn unit_velocity_xz(
         return Vec2::ZERO;
     };
     let current = record.placement.position.to_global(layout);
-    let waypoint_global = waypoint.to_global(layout);
+    let waypoint_global = waypoint.position.to_global(layout);
     let mut delta = Vec2::new(waypoint_global.x - current.x, waypoint_global.z - current.z);
     if delta.length_squared() <= 1e-8 {
         return Vec2::ZERO;
@@ -286,7 +286,7 @@ mod tests {
                 b,
                 UnitState::Moving {
                     target: pos(10.0, 0.0),
-                    path: NavigationPath::new(vec![pos(10.0, 0.0)]),
+                    path: NavigationPath::from_surface_positions(vec![pos(10.0, 0.0)]),
                     waypoint_index: 0,
                 },
             )
@@ -338,7 +338,10 @@ mod tests {
                 unit_id,
                 UnitState::Moving {
                     target: pos(10.0, 0.0),
-                    path: NavigationPath::new(vec![pos(0.0, 0.0), pos(10.0, 0.0)]),
+                    path: NavigationPath::from_surface_positions(vec![
+                        pos(0.0, 0.0),
+                        pos(10.0, 0.0),
+                    ]),
                     waypoint_index: 0,
                 },
             )

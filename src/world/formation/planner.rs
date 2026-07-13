@@ -115,8 +115,9 @@ fn apply_jitter(
 mod tests {
     use super::*;
     use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, DoodadCatalog, Heightfield, LocalPosition,
-        NavigationConfig, UnitDefinitionId, UnitSource, create_unit,
+        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, DoodadCatalog, FootprintCatalog,
+        Heightfield, LocalPosition, NavigationConfig, PassabilityCatalogs, UnitDefinitionId,
+        UnitSource, create_unit,
     };
 
     fn layout() -> ChunkLayout {
@@ -349,7 +350,11 @@ mod tests {
         let report = crate::world::resolve_all_pending_unit_orders(
             &mut world,
             &catalog,
-            &doodad_catalog,
+            PassabilityCatalogs {
+                doodad: &doodad_catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
             &nav_config,
         );
         assert_eq!(report.resolved, 2);

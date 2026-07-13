@@ -2,12 +2,16 @@ use bevy::prelude::*;
 use std::collections::HashMap;
 
 use super::biome::{BiomeMask, BiomeSample};
+use super::building::{BuildingId, BuildingInsertError, BuildingRecord, ChunkBuildingStore};
 use super::chunk::{ChunkData, ChunkId};
 use super::config::WorldConfig;
 use super::coordinates::{ChunkCoord, ChunkLayout, WorldPosition};
 use super::doodad::{
     ChunkDoodadStore, DoodadExclusionZone, DoodadId, DoodadInsertError, DoodadRecord,
     ProceduralDoodadKey,
+};
+use super::occupancy::{
+    ChunkOccupancyGrid, OccupancyCellCoord, OccupancyCellEntry, default_space_id,
 };
 use super::projectile::{ProjectileId, ProjectileRecord};
 use super::unit::{
@@ -60,6 +64,12 @@ pub struct WorldData {
     /// Required O(1) index: unit id → owning chunk (ADR-027 U2).
     unit_locations: HashMap<UnitId, ChunkId>,
     next_unit_id: u64,
+    buildings: HashMap<ChunkId, ChunkBuildingStore>,
+    /// Required O(1) index: building id → owning chunk (ADR-079 B2).
+    building_locations: HashMap<BuildingId, ChunkId>,
+    next_building_id: u64,
+    /// Derived static occupancy index (ADR-080 B3). Rebuildable from records + catalogs.
+    occupancy: HashMap<ChunkId, ChunkOccupancyGrid>,
     authored_extent: Option<ChunkExtent>,
     /// Deferred MoveTo orders resolved before movement (ADR-037 U12).
     command_buffer: super::movement::feel::UnitCommandBuffer,
@@ -76,6 +86,15 @@ pub struct WorldData {
     #[reflect(ignore)]
     projectiles: HashMap<ProjectileId, ProjectileRecord>,
     next_projectile_id: u64,
+    /// Navigable spaces and portal graph (ADR-083 B6).
+    space_registry: super::space::SpaceRegistry,
+    /// Portal transition hysteresis per unit (ADR-083 B6).
+    #[reflect(ignore)]
+    portal_transition_states: HashMap<UnitId, super::space::UnitPortalTransitionState>,
+    /// Authoritative door instances (ADR-084 B7).
+    door_store: super::building::DoorStore,
+    /// Authoritative work tasks (ADR-085 B8).
+    task_store: super::task::TaskStore,
 }
 
 impl FromWorld for WorldData {
@@ -100,6 +119,10 @@ impl WorldData {
             units: HashMap::new(),
             unit_locations: HashMap::new(),
             next_unit_id: 1,
+            buildings: HashMap::new(),
+            building_locations: HashMap::new(),
+            next_building_id: 1,
+            occupancy: HashMap::new(),
             authored_extent: None,
             command_buffer: super::movement::feel::UnitCommandBuffer::default(),
             movement_smoothing: super::movement::feel::MovementSmoothingState::default(),
@@ -107,7 +130,73 @@ impl WorldData {
             kill_attributions: HashMap::new(),
             projectiles: HashMap::new(),
             next_projectile_id: 1,
+            space_registry: super::space::SpaceRegistry::new(),
+            portal_transition_states: HashMap::new(),
+            door_store: super::building::DoorStore::default(),
+            task_store: super::task::TaskStore::default(),
         }
+    }
+
+    pub fn task_store(&self) -> &super::task::TaskStore {
+        &self.task_store
+    }
+
+    pub fn task_store_mut(&mut self) -> &mut super::task::TaskStore {
+        &mut self.task_store
+    }
+
+    pub fn door_store(&self) -> &super::building::DoorStore {
+        &self.door_store
+    }
+
+    pub fn door_store_mut(&mut self) -> &mut super::building::DoorStore {
+        &mut self.door_store
+    }
+
+    pub fn space_registry(&self) -> &super::space::SpaceRegistry {
+        &self.space_registry
+    }
+
+    pub fn space_registry_mut(&mut self) -> &mut super::space::SpaceRegistry {
+        &mut self.space_registry
+    }
+
+    pub fn portal_transition_state(
+        &self,
+        unit_id: UnitId,
+    ) -> super::space::UnitPortalTransitionState {
+        self.portal_transition_states
+            .get(&unit_id)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    pub fn portal_transition_state_mut(
+        &mut self,
+        unit_id: UnitId,
+    ) -> &mut super::space::UnitPortalTransitionState {
+        self.portal_transition_states.entry(unit_id).or_default()
+    }
+
+    pub fn set_unit_current_space(
+        &mut self,
+        unit_id: UnitId,
+        space_id: super::space::SpaceId,
+    ) -> Result<(), UnitInsertError> {
+        let chunk = self
+            .unit_locations
+            .get(&unit_id)
+            .copied()
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        let store = self
+            .units
+            .get_mut(&chunk)
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        let record = store
+            .get_mut(unit_id)
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        record.current_space_id = space_id;
+        Ok(())
     }
 
     /// Borrow the deferred unit command buffer (ADR-037 U12).
@@ -251,6 +340,19 @@ impl WorldData {
         self.doodads.get(chunk)?.get(id)
     }
 
+    /// Mutate a doodad record in place, returning the updated clone.
+    pub fn mutate_doodad(
+        &mut self,
+        id: DoodadId,
+        mutate: impl FnOnce(&mut DoodadRecord),
+    ) -> Option<DoodadRecord> {
+        let chunk = self.doodad_locations.get(&id).copied()?;
+        let store = self.doodads.get_mut(&chunk)?;
+        let record = store.get_mut(id)?;
+        mutate(record);
+        Some(record.clone())
+    }
+
     /// The chunk that currently stores a doodad instance.
     pub fn doodad_chunk(&self, id: DoodadId) -> Option<ChunkId> {
         self.doodad_locations.get(&id).copied()
@@ -378,6 +480,131 @@ impl WorldData {
         ids
     }
 
+    /// Allocate the next monotonic [`BuildingId`] (ADR-079 B2).
+    pub fn allocate_building_id(&mut self) -> BuildingId {
+        let id = BuildingId::new(self.next_building_id);
+        self.next_building_id += 1;
+        id
+    }
+
+    /// Insert a building into the chunk-local store and update the id index.
+    pub fn insert_building(
+        &mut self,
+        chunk: ChunkId,
+        record: BuildingRecord,
+    ) -> Result<(), BuildingInsertError> {
+        if record.placement.position.chunk != chunk.coord() {
+            return Err(BuildingInsertError::ChunkPlacementMismatch);
+        }
+        self.buildings
+            .entry(chunk)
+            .or_default()
+            .insert(record.clone());
+        self.building_locations.insert(record.id, chunk);
+        Ok(())
+    }
+
+    /// Remove a building from a chunk store and the id index.
+    pub fn remove_building(&mut self, chunk: ChunkId, id: BuildingId) -> bool {
+        if self
+            .buildings
+            .get_mut(&chunk)
+            .and_then(|store| store.take(id))
+            .is_none()
+        {
+            return false;
+        }
+        self.building_locations.remove(&id);
+        if self
+            .buildings
+            .get(&chunk)
+            .is_some_and(|store| store.is_empty())
+        {
+            self.buildings.remove(&chunk);
+        }
+        true
+    }
+
+    /// Remove a building by id alone, returning the removed record.
+    pub fn remove_building_by_id(&mut self, id: BuildingId) -> Option<BuildingRecord> {
+        let chunk = self.building_locations.remove(&id)?;
+        let store = self.buildings.get_mut(&chunk)?;
+        let record = store.take(id)?;
+        if store.is_empty() {
+            self.buildings.remove(&chunk);
+        }
+        Some(record)
+    }
+
+    /// Borrow a building record by id via the O(1) id index.
+    pub fn get_building(&self, id: BuildingId) -> Option<&BuildingRecord> {
+        let chunk = self.building_locations.get(&id)?;
+        self.buildings.get(chunk)?.get(id)
+    }
+
+    /// Mutate a building record in place, returning the updated clone.
+    pub fn mutate_building(
+        &mut self,
+        id: BuildingId,
+        mutate: impl FnOnce(&mut BuildingRecord),
+    ) -> Option<BuildingRecord> {
+        let chunk = self.building_locations.get(&id).copied()?;
+        let store = self.buildings.get_mut(&chunk)?;
+        let record = store.get_mut(id)?;
+        mutate(record);
+        Some(record.clone())
+    }
+
+    /// The chunk that currently stores a building instance.
+    pub fn building_chunk(&self, id: BuildingId) -> Option<ChunkId> {
+        self.building_locations.get(&id).copied()
+    }
+
+    /// Move a building to a new [`WorldPosition`], including cross-chunk moves.
+    pub fn relocate_building(
+        &mut self,
+        id: BuildingId,
+        new_position: WorldPosition,
+    ) -> Result<BuildingRecord, BuildingInsertError> {
+        let old_chunk = self
+            .building_locations
+            .get(&id)
+            .copied()
+            .ok_or(BuildingInsertError::BuildingNotFound)?;
+
+        let new_chunk = ChunkId::new(new_position.chunk);
+        let mut record = self
+            .buildings
+            .get_mut(&old_chunk)
+            .and_then(|store| store.take(id))
+            .ok_or(BuildingInsertError::BuildingNotFound)?;
+
+        if self
+            .buildings
+            .get(&old_chunk)
+            .is_some_and(|store| store.is_empty())
+        {
+            self.buildings.remove(&old_chunk);
+        }
+
+        record.placement.position = new_position;
+        let moved = record.clone();
+        self.insert_building(new_chunk, record)?;
+        Ok(moved)
+    }
+
+    /// Borrow the building store for a chunk, if any records exist.
+    pub fn buildings_in_chunk(&self, chunk: ChunkId) -> Option<&ChunkBuildingStore> {
+        self.buildings.get(&chunk)
+    }
+
+    /// All building ids sorted for deterministic iteration (ADR-079 B2).
+    pub fn sorted_building_ids(&self) -> Vec<BuildingId> {
+        let mut ids: Vec<_> = self.building_locations.keys().copied().collect();
+        ids.sort();
+        ids
+    }
+
     /// Allocate the next monotonic [`ProjectileId`] (ADR-060 C7).
     pub fn allocate_projectile_id(&mut self) -> ProjectileId {
         let id = ProjectileId::new(self.next_projectile_id);
@@ -413,7 +640,7 @@ impl WorldData {
     }
 
     #[cfg(feature = "dev")]
-    /// Remove all unit and doodad instances without touching terrain (ADR-045).
+    /// Remove all unit, doodad, and building instances without touching terrain (ADR-045).
     pub fn dev_clear_units_and_doodads(&mut self) {
         for id in self.sorted_unit_ids() {
             let _ = self.remove_unit_by_id(id);
@@ -421,7 +648,13 @@ impl WorldData {
         for id in self.sorted_doodad_ids() {
             let _ = self.remove_doodad_by_id(id);
         }
+        for id in self.sorted_building_ids() {
+            let _ = self.remove_building_by_id(id);
+        }
         self.procedural_doodads.clear();
+        self.task_store_mut().clear();
+        self.door_store_mut().clear();
+        self.space_registry_mut().reset();
         let _ = self.command_buffer_mut().take_pending_sorted();
         self.movement_smoothing_mut().clear_all();
         self.dev_clear_transient_simulation_state();
@@ -473,14 +706,92 @@ impl WorldData {
             }
         }
 
+        let building_indexed = self.building_locations.len();
+        let building_stored: usize = self.buildings.values().map(|store| store.len()).sum();
+        if building_indexed != building_stored {
+            return Err("building index length mismatch");
+        }
+        for (chunk, store) in &self.buildings {
+            for record in store.records() {
+                if self.building_chunk(record.id) != Some(*chunk) {
+                    return Err("building location index mismatch");
+                }
+            }
+        }
+
         Ok(())
     }
 
-    #[cfg(feature = "dev")]
-    /// Ensure monotonic id allocators stay above restored instance ids (ADR-045).
-    pub fn dev_restore_id_counters(&mut self, next_unit_id: u64, next_doodad_id: u64) {
-        self.next_unit_id = self.next_unit_id.max(next_unit_id);
-        self.next_doodad_id = self.next_doodad_id.max(next_doodad_id);
+    /// Borrow the derived occupancy grid for a chunk, if any.
+    pub fn occupancy_in_chunk(&self, chunk: ChunkId) -> Option<&ChunkOccupancyGrid> {
+        self.occupancy.get(&chunk)
+    }
+
+    /// Iterate all chunk occupancy grids.
+    pub fn occupancy_grids(&self) -> impl Iterator<Item = (&ChunkId, &ChunkOccupancyGrid)> {
+        self.occupancy.iter()
+    }
+
+    /// Lookup a registered occupancy cell.
+    pub fn occupancy_cell(
+        &self,
+        chunk: ChunkId,
+        cell: OccupancyCellCoord,
+        space_id: u32,
+    ) -> Option<&OccupancyCellEntry> {
+        self.occupancy
+            .get(&chunk)
+            .and_then(|grid| grid.get(cell, space_id))
+    }
+
+    /// Total registered occupancy cells across all chunks.
+    pub fn occupancy_cell_count(&self) -> usize {
+        self.occupancy.values().map(|grid| grid.len()).sum()
+    }
+
+    /// Insert or replace an occupancy cell entry.
+    pub fn insert_occupancy_cell(
+        &mut self,
+        chunk: ChunkId,
+        cell: OccupancyCellCoord,
+        entry: OccupancyCellEntry,
+    ) -> Option<OccupancyCellEntry> {
+        self.occupancy
+            .entry(chunk)
+            .or_default()
+            .insert(cell, entry.space_id, entry)
+    }
+
+    /// Remove an occupancy cell entry.
+    pub fn remove_occupancy_cell(
+        &mut self,
+        chunk: ChunkId,
+        cell: OccupancyCellCoord,
+        space_id: u32,
+    ) -> Option<OccupancyCellEntry> {
+        let removed = self
+            .occupancy
+            .get_mut(&chunk)
+            .and_then(|grid| grid.remove(cell, space_id));
+        if self
+            .occupancy
+            .get(&chunk)
+            .is_some_and(|grid| grid.is_empty())
+        {
+            self.occupancy.remove(&chunk);
+        }
+        removed
+    }
+
+    /// Clear all derived occupancy (rebuildable).
+    pub fn clear_occupancy(&mut self) {
+        self.occupancy.clear();
+    }
+
+    #[cfg(any(test, feature = "dev"))]
+    pub(crate) fn assert_building_index_consistent(&self) {
+        self.verify_instance_indexes()
+            .expect("building index consistent");
     }
 
     #[cfg(feature = "dev")]
@@ -491,6 +802,37 @@ impl WorldData {
     #[cfg(feature = "dev")]
     pub fn dev_next_doodad_id(&self) -> u64 {
         self.next_doodad_id
+    }
+
+    #[cfg(feature = "dev")]
+    pub fn dev_next_building_id(&self) -> u64 {
+        self.next_building_id
+    }
+
+    #[cfg(feature = "dev")]
+    pub fn dev_restore_id_counters(
+        &mut self,
+        next_unit_id: u64,
+        next_doodad_id: u64,
+        next_building_id: u64,
+    ) {
+        self.next_unit_id = self.next_unit_id.max(next_unit_id);
+        self.next_doodad_id = self.next_doodad_id.max(next_doodad_id);
+        self.next_building_id = self.next_building_id.max(next_building_id);
+    }
+
+    #[cfg(feature = "dev")]
+    pub fn dev_restore_building_runtime_counters(
+        &mut self,
+        next_task_id: u32,
+        next_door_id: u32,
+        next_space_id: u32,
+        next_portal_id: u32,
+    ) {
+        self.task_store_mut().restore_next_id(next_task_id);
+        self.door_store_mut().restore_next_id(next_door_id);
+        self.space_registry_mut()
+            .restore_next_ids(next_space_id, next_portal_id);
     }
 
     /// Update simulation state without changing placement (ADR-030).
@@ -1372,6 +1714,7 @@ mod tests {
                 pos(2, 3, Vec3::new(64.0, 0.0, 128.0)),
                 DoodadSource::Authored,
                 DoodadPlacementOverrides::default(),
+                None,
             )
             .unwrap();
 
@@ -1395,6 +1738,7 @@ mod tests {
                 pos(0, 0, Vec3::new(10.0, 0.0, 20.0)),
                 DoodadSource::Authored,
                 DoodadPlacementOverrides::default(),
+                None,
             )
             .unwrap();
             world.assert_doodad_index_consistent();
@@ -1403,6 +1747,7 @@ mod tests {
                 &mut world,
                 record.id,
                 pos(0, 0, Vec3::new(200.0, 0.0, 50.0)),
+                None,
             )
             .unwrap();
 
@@ -1421,6 +1766,7 @@ mod tests {
                 pos(0, 0, Vec3::new(1.0, 0.0, 1.0)),
                 DoodadSource::Authored,
                 DoodadPlacementOverrides::default(),
+                None,
             )
             .unwrap();
             world.assert_doodad_index_consistent();
@@ -1430,6 +1776,7 @@ mod tests {
                 &mut world,
                 record.id,
                 pos(1, 0, Vec3::new(128.0, 0.0, 128.0)),
+                None,
             )
             .unwrap();
 
@@ -1453,11 +1800,12 @@ mod tests {
                 pos(4, 5, Vec3::new(64.0, 0.0, 64.0)),
                 DoodadSource::Authored,
                 DoodadPlacementOverrides::default(),
+                None,
             )
             .unwrap();
             world.assert_doodad_index_consistent();
 
-            remove_doodad(&mut world, record.id).unwrap();
+            remove_doodad(&mut world, record.id, None).unwrap();
 
             assert!(world.doodad_chunk(record.id).is_none());
             assert!(world.get_doodad(record.id).is_none());
@@ -1476,6 +1824,7 @@ mod tests {
                 pos(3, 3, Vec3::new(32.0, 0.0, 32.0)),
                 DoodadSource::Authored,
                 DoodadPlacementOverrides::default(),
+                None,
             )
             .unwrap();
             world.assert_doodad_index_consistent();
@@ -1542,7 +1891,7 @@ mod tests {
             materialize_one(&mut world, &candidate);
             let id = world.procedural_doodad_id(&old_key).unwrap();
 
-            move_doodad(&mut world, id, pos(0, 0, Vec3::new(64.0, 0.0, 64.0))).unwrap();
+            move_doodad(&mut world, id, pos(0, 0, Vec3::new(64.0, 0.0, 64.0)), None).unwrap();
 
             world.assert_procedural_doodad_index_consistent();
             assert_eq!(world.procedural_doodad_id(&old_key), Some(id));
@@ -1564,7 +1913,13 @@ mod tests {
             materialize_one(&mut world, &candidate);
             let id = world.procedural_doodad_id(&old_key).unwrap();
 
-            move_doodad(&mut world, id, pos(1, 0, Vec3::new(128.0, 0.0, 128.0))).unwrap();
+            move_doodad(
+                &mut world,
+                id,
+                pos(1, 0, Vec3::new(128.0, 0.0, 128.0)),
+                None,
+            )
+            .unwrap();
 
             let new_key =
                 ProceduralDoodadKey::new(ChunkCoord::new(1, 0), candidate.definition_id.clone(), 7);
@@ -1590,7 +1945,7 @@ mod tests {
             materialize_one(&mut world, &candidate);
             let id = world.procedural_doodad_id(&old_key).unwrap();
 
-            move_doodad(&mut world, id, pos(1, 0, Vec3::new(64.0, 0.0, 64.0))).unwrap();
+            move_doodad(&mut world, id, pos(1, 0, Vec3::new(64.0, 0.0, 64.0)), None).unwrap();
 
             let candidate_at_new = DoodadSpawnCandidate {
                 position: pos(1, 0, Vec3::new(64.0, 0.0, 64.0)),

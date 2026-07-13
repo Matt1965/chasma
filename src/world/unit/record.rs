@@ -31,6 +31,8 @@ pub struct UnitRecord {
     /// Broad classification for UI and controllability.
     pub affiliation: Affiliation,
     pub vitals: UnitVitals,
+    /// Authoritative navigable space (ADR-083 B6).
+    pub current_space_id: crate::world::SpaceId,
     pub combat_state: CombatState,
     /// Weapon attack cycle timing when in-range (ADR-058 C5).
     pub attack_cycle: Option<AttackCycle>,
@@ -56,6 +58,7 @@ impl UnitRecord {
             team_id: ownership.team_id,
             affiliation: ownership.affiliation,
             vitals: UnitVitals::full(max_hp),
+            current_space_id: crate::world::SpaceId::SURFACE,
             combat_state: CombatState::default(),
             attack_cycle: None,
         }

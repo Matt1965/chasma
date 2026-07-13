@@ -8,6 +8,7 @@ use super::combat_state::CombatState;
 use super::id::UnitId;
 use super::state::UnitState;
 use crate::world::WorldData;
+use crate::world::task::{TaskCancelReason, cancel_unit_task};
 
 /// Why a unit was queued for removal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect)]
@@ -178,6 +179,8 @@ fn detect_and_queue_deaths(world: &mut WorldData, tick: u64, report: &mut UnitDe
 }
 
 fn finalize_dead_unit_side_effects(world: &mut WorldData, unit_id: UnitId) {
+    let mut events = Vec::new();
+    cancel_unit_task(world, unit_id, TaskCancelReason::WorkerDied, &mut events);
     world.command_buffer_mut().clear_pending(unit_id);
     world.movement_smoothing_mut().clear_unit(unit_id);
     let _ = world.set_unit_attack_cycle(unit_id, None);
@@ -288,9 +291,10 @@ mod tests {
     use crate::units::input::SelectedUnits;
     use crate::world::combat::{step_all_combat_engagement, step_all_combat_strikes};
     use crate::world::{
-        AttackTargetingPolicy, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield,
-        LocalPosition, UnitCatalog, UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource,
-        WeaponCatalog, WorldPosition, create_unit_with_ownership, issue_unit_order,
+        AttackTargetingPolicy, BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+        DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition, PassabilityCatalogs,
+        UnitCatalog, UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource, WeaponCatalog,
+        WorldPosition, create_unit_with_ownership, default_passability, issue_unit_order,
         starter_unit_definitions, starter_weapon_definitions,
     };
     use bevy::prelude::Vec3;
@@ -417,7 +421,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
-            &crate::world::DoodadCatalog::default(),
+            default_passability(),
             &crate::world::NavigationConfig::default(),
             AttackTargetingPolicy::default(),
             &mut crate::world::CombatStrikeReport::default(),
@@ -535,7 +539,7 @@ mod tests {
                 UnitState::Moving {
                     target: pos(20.0, 10.0),
                     path: crate::world::NavigationPath {
-                        waypoints: vec![pos(20.0, 10.0)],
+                        waypoints: vec![crate::world::NavigationWaypoint::surface(pos(20.0, 10.0))],
                     },
                     waypoint_index: 0,
                 },
@@ -543,13 +547,7 @@ mod tests {
             .unwrap();
         world.damage_unit(unit, 999).unwrap();
         world.set_unit_state(unit, UnitState::Dead).unwrap();
-        let _ = step_unit_movement(
-            &mut world,
-            &catalog,
-            &crate::world::DoodadCatalog::default(),
-            unit,
-            0.2,
-        );
+        let _ = step_unit_movement(&mut world, &catalog, default_passability(), unit, 0.2);
         let after = world.get_unit(unit).unwrap().placement.position;
         assert_eq!(before, after);
     }

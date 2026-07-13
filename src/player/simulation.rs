@@ -12,9 +12,10 @@ use crate::simulation::{
 use crate::ui::gameplay::PlayerHudState;
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    AttackTargetingPolicy, CombatAiReport, CombatAiScanState, CombatAiSettings,
-    CombatEngagementReport, CombatStrikeReport, CommandBufferResolveReport, DoodadCatalog,
-    NavigationConfig, ProjectileReport, UnitCatalog, UnitDeathReport, WeaponCatalog, WorldData,
+    AttackTargetingPolicy, BuildingCatalog, BuildingConstructionSettings, CombatAiReport,
+    CombatAiScanState, CombatAiSettings, CombatEngagementReport, CombatStrikeReport,
+    CommandBufferResolveReport, DoodadCatalog, FootprintCatalog, NavigationConfig,
+    ProjectileReport, UnitCatalog, UnitDeathReport, WeaponCatalog, WorldData,
 };
 
 fn merge_step_trace(pending: &mut PendingSimulationTrace, step_report: &SimulationTickReport) {
@@ -82,11 +83,15 @@ pub fn tick_unit_movement(
     unit_catalog: Res<UnitCatalog>,
     weapon_catalog: Res<WeaponCatalog>,
     doodad_catalog: Res<DoodadCatalog>,
+    building_catalog: Res<BuildingCatalog>,
+    footprint_catalog: Res<FootprintCatalog>,
+    interaction_catalog: Res<crate::world::BuildingInteractionProfileCatalog>,
     nav_config: Res<NavigationConfig>,
     mut pending_trace: ResMut<PendingSimulationTrace>,
     mut movement_blocks: ResMut<MovementBlockObservability>,
     mut combat_ai_scan: ResMut<CombatAiScanState>,
     combat_ai_settings: Res<CombatAiSettings>,
+    interior_catalog: Res<crate::world::InteriorProfileCatalog>,
 ) {
     let plan = clock.plan_frame(time.delta_secs(), &control);
     for _ in 0..plan.tick_count {
@@ -100,10 +105,15 @@ pub fn tick_unit_movement(
             &unit_catalog,
             &weapon_catalog,
             &doodad_catalog,
+            &building_catalog,
+            &footprint_catalog,
+            &interaction_catalog,
             &nav_config,
             AttackTargetingPolicy::default(),
             &combat_ai_settings,
             &mut combat_ai_scan,
+            BuildingConstructionSettings::default(),
+            &interior_catalog,
             SIMULATION_TICK_SECONDS,
             tick,
         );
@@ -122,10 +132,11 @@ mod tests {
         SIMULATION_TICK_SECONDS, SimulationClock, SimulationControlState, run_simulation_tick,
     };
     use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitCatalog,
-        UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource, WeaponCatalog, WorldData,
-        WorldPosition, create_unit, create_unit_with_ownership, issue_unit_order,
-        resolve_all_pending_unit_orders, starter_unit_definitions, starter_weapon_definitions,
+        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, FootprintCatalog,
+        Heightfield, LocalPosition, UnitCatalog, UnitDefinitionId, UnitOrder, UnitOwnership,
+        UnitSource, WeaponCatalog, WorldData, WorldPosition, create_unit,
+        create_unit_with_ownership, issue_unit_order, resolve_all_pending_unit_orders,
+        starter_unit_definitions, starter_weapon_definitions,
     };
 
     fn test_world_with_unit() -> (WorldData, UnitCatalog, crate::world::UnitId) {
@@ -187,6 +198,8 @@ mod tests {
         frame_delta: f32,
         frame_count: u32,
     ) {
+        let building_catalog = BuildingCatalog::default();
+        let footprint_catalog = FootprintCatalog::default();
         for _ in 0..frame_count {
             let plan = clock.plan_frame(frame_delta, control);
             for _ in 0..plan.tick_count {
@@ -199,10 +212,15 @@ mod tests {
                     catalog,
                     weapon_catalog,
                     doodad_catalog,
+                    &building_catalog,
+                    &footprint_catalog,
+                    &crate::world::BuildingInteractionProfileCatalog::default(),
                     nav_config,
                     AttackTargetingPolicy::default(),
                     combat_ai_settings,
                     combat_ai_scan,
+                    crate::world::BuildingConstructionSettings::default(),
+                    &crate::world::InteriorProfileCatalog::default(),
                     SIMULATION_TICK_SECONDS,
                     tick,
                 );
@@ -231,7 +249,13 @@ mod tests {
             AttackTargetingPolicy::default(),
         )
         .unwrap();
-        resolve_all_pending_unit_orders(world, catalog, doodad_catalog, nav_config);
+        let bundle = crate::world::TestPassabilityBundle::new();
+        resolve_all_pending_unit_orders(
+            world,
+            catalog,
+            bundle.catalogs_for(doodad_catalog),
+            nav_config,
+        );
     }
 
     #[test]

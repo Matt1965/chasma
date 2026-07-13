@@ -4,6 +4,7 @@ mod fixtures {
     use crate::world::unit::catalog::definition::UnitDefinition;
     use crate::world::unit::catalog::definition_id::UnitDefinitionId;
     use crate::world::unit::catalog::render_key::UnitRenderKey;
+    use crate::world::unit::catalog::work::UnitWorkCapabilities;
     use crate::world::weapon::WeaponDefinitionId;
 
     pub fn starter_definitions() -> Vec<UnitDefinition> {
@@ -51,7 +52,8 @@ mod fixtures {
                 WeaponDefinitionId::new("weapon_fists"),
                 true,
                 UnitRenderKey::reserved("bandit"),
-            ),
+            )
+            .with_work_capabilities(UnitWorkCapabilities::builder(1.0)),
             UnitDefinition::new(
                 UnitDefinitionId::new("deer"),
                 "Deer",

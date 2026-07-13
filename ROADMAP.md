@@ -286,6 +286,113 @@ Support dynamic world modification.
 - Dynamic blockers
 - Occupancy queries
 
+## B1 — Building definitions (complete)
+
+- `BuildingDefinition` / `BuildingCategoryDefinition` catalogs
+- Excel sheets: `Buildings`, `Building Categories`
+- Dev import + `assets/buildings/catalog.ron` export
+- ADR-078
+
+**Not in B1:** placement, rendering, construction runtime, occupancy baking,
+navigation changes.
+
+## B2 — Building runtime foundation (complete)
+
+- `BuildingRecord` / `BuildingId` / `ChunkBuildingStore` on `WorldData`
+- Authoring API: `create_building`, `move_building`, `remove_building`
+- `BuildingsRuntimePlugin` — residency-gated placeholder cuboid sync
+- Dev Mode: Buildings tab, batch spawn, inspector pick
+- ADR-079
+
+**Not in B2:** player placement, occupancy, construction simulation, navigation,
+interiors, destruction.
+
+## B3 — Generalized occupancy and baked footprints (complete)
+
+- Shared `src/world/occupancy/` module: footprints, 2 m cells, chunk occupancy index
+- `FootprintShape`: Circle, Rectangle, offline `BakedCellMask`
+- Offline collision baker (`occupancy_collision` GLB node; `data-import` feature)
+- Registration lifecycle on `WorldData::occupancy` (buildings + doodads)
+- Composed [`query_passability_at`] (terrain → slope → static occupancy)
+- Navigation and movement consume passability (no A\* rewrite)
+- Doodad blocking migrated from parallel obstacle circles to footprint queries
+- ADR-080
+
+**Not in B3:** player build mode, ghosts, construction-state occupancy, spaces/portals,
+doors/stairs, underground, runtime mesh rasterization, dynamic unit occupancy grid.
+
+## B4 — Player build mode and ghost validation (complete)
+
+- Client-local `BuildModeState` + build catalog HUD (`B` toggle)
+- Terrain-snapped ghost with footprint gizmo + validity colors
+- `validate_building_placement` pure world API
+- `ClientIntent::PlaceBuilding` commit with revalidation
+- `place_player_building` → `BuildingLifecycleState::Planned` + `OccupancyState::Reserved`
+- ADR-081
+
+**Not in B4:** construction workers, resource costs, spaces/portals, terrain flattening,
+building relocation, demolition UI.
+
+## B5 — Building construction lifecycle, vitals, and ruins (complete)
+
+- `BuildingLifecycleState`: Planned, Foundation, InProgress, Complete, Destroyed, Ruins
+- `BuildingVitals` + `ConstructionState.progress_0_1` on `BuildingRecord`
+- `step_all_worker_tasks` applies construction labor from assigned workers (ADR-085 B8); `step_all_building_construction` auto-progress is dev-gated only
+- `damage_building` / `heal_building` / `destroy_building` / `transition_to_ruins`
+- `is_building_operational` gate for future production
+- Occupancy-by-state policy (Planned/Ruins reserved; construction stages blocked)
+- Runtime lifecycle tint sync; player building HUD panel; dev inspector actions
+- Dev scene v2 building snapshot/restore with occupancy rebuild
+- ADR-082
+
+**Not in B5:** worker AI, resource costs, repair tasks, upgrades, demolition refunds, production.
+
+## B6 — Navigable spaces, portals, stairs, and automatic interior visibility (complete)
+
+- `SpaceId` / `PortalId` model with `SpaceRegistry` on `WorldData`
+- Canonical `SpaceId::SURFACE` exterior; building spaces registered on hut completion
+- `UnitRecord.current_space_id` authoritative; portal transition with hysteresis
+- `NavigationWaypoint` with `space_id`; `find_path_with_spaces` cross-space grid A*
+- `query_passability_in_space` and `ground_position_in_space` per-space grounding
+- Client `ActiveViewedSpace` auto-follows primary selected unit; `ViewFollowLock` optional
+- Dev inspector space/floor display; scene v3 `current_space_id` persistence
+- ADR-083
+
+**Not in B6:** room simulation, door state (B7), underground content, manual up/down UX, navmesh,
+building stacking, roof mesh tagging (placeholder buildings only).
+
+## B7 — Building interiors, doors, and interior object integration (complete)
+
+- `InteriorProfileCatalog` with spaces, portals, doors, and child placements per building type
+- `DoorRecord` / `DoorStore` on `WorldData`; portal `enabled` derived from `DoorState`
+- Interior activation on **Complete**; deactivation on ruins/destruction/removal
+- Child **Doodads** (scenery) and child **Buildings** (functional) with parent linkage
+- `SpaceRecord.room_tag` metadata seam (no room simulation)
+- Movement auto-opens authorized closed doors; pathfinding door-aware routes
+- Scene v4 door/interior persistence; dev inspector door shortcuts (O/L)
+- ADR-084
+
+**Not in B7:** worker tasks, production, storage inventory, room bonuses, procedural furnishing,
+destructible wall pieces, door opening time simulation, underground content.
+
+## B8 — Building interactions, tasks, and construction labor (complete)
+
+- `TaskStore` / `TaskRecord` on `WorldData` (ADR-085)
+- `BuildingInteractionProfile` with construction and workstation points
+- `step_all_worker_tasks` applies construction labor; auto-timed progress dev-gated only
+- Player construct/operate orders via interaction dispatcher
+- `UnitState::Working { task_id }` and reservation semantics
+
+## B9 — Building persistence, performance baseline, and architecture freeze (complete)
+
+- Scene format **v5**: tasks, runtime ID counters, `Working` unit state
+- `validate_building_for_restore` + atomic scene apply with catalog validation
+- `rebuild_building_world_indexes` canonical derived-index rebuild
+- Dev scene load uses runtime `BuildingCatalog` / `FootprintCatalog` / `InteriorProfileCatalog`
+- ADR-086; readiness report `docs/reviews/BUILDINGS-B9-READINESS.md`
+
+**Not in B9:** production world save, economy, impostor LOD, underground content, advanced scheduler.
+
 ## Success Criteria
 
 The world can represent structures that affect movement and placement.

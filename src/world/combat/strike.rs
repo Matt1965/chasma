@@ -560,9 +560,10 @@ mod tests {
     use crate::world::combat::step_all_combat_engagement;
     use crate::world::projectile::{ProjectileEvent, ProjectileReport, step_all_projectiles};
     use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DamageType, Heightfield, HitMode,
-        LocalPosition, TargetFilter, UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource,
-        WeaponDefinition, WeaponDefinitionId, create_unit_with_ownership, issue_unit_order,
+        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DamageType, DoodadCatalog,
+        FootprintCatalog, Heightfield, HitMode, LocalPosition, PassabilityCatalogs, TargetFilter,
+        UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource, WeaponDefinition,
+        WeaponDefinitionId, create_unit_with_ownership, default_passability, issue_unit_order,
         starter_unit_definitions, starter_weapon_definitions,
     };
     use bevy::prelude::Vec3;
@@ -656,7 +657,7 @@ mod tests {
             world,
             catalog,
             &weapons(),
-            &DoodadCatalog::default(),
+            default_passability(),
             &NavigationConfig::default(),
             policy(),
             &mut strikes,
@@ -921,7 +922,7 @@ mod tests {
             &mut world,
             &custom_catalog,
             &weapons,
-            &DoodadCatalog::default(),
+            default_passability(),
             &NavigationConfig::default(),
             policy(),
             &mut CombatStrikeReport::default(),
@@ -1001,7 +1002,7 @@ mod tests {
             &mut world,
             &custom_catalog,
             &weapons,
-            &DoodadCatalog::default(),
+            default_passability(),
             &NavigationConfig::default(),
             policy(),
             &mut CombatStrikeReport::default(),

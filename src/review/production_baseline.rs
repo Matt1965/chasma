@@ -6,10 +6,11 @@ use crate::client::commands::{CommandBuildError, CommandResolutionContext, build
 use crate::client::commands::{CommandTarget, CommandType, ContextualCommandIntent};
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, DoodadDefinitionId,
-    DoodadGenerationContext, DoodadGenerationSettings, DoodadPlacementOverrides, DoodadSource,
-    Heightfield, LocalPosition, UnitCatalog, UnitDefinitionId, UnitSource, WorldData,
-    WorldPosition, create_doodad, create_unit, generate_chunk_doodads_with_settings,
+    BuildingConstructionSettings, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog,
+    DoodadDefinitionId, DoodadGenerationContext, DoodadGenerationSettings,
+    DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition, UnitCatalog,
+    UnitDefinitionId, UnitSource, WorldData, WorldPosition, create_doodad, create_unit,
+    generate_chunk_doodads_with_settings,
 };
 use bevy::prelude::Vec3;
 
@@ -70,6 +71,7 @@ fn create_doodad_fails_when_catalog_empty() {
         pos(1.0, 1.0),
         DoodadSource::Authored,
         DoodadPlacementOverrides::default(),
+        None,
     )
     .unwrap_err();
     assert!(matches!(
@@ -147,10 +149,15 @@ fn movement_with_empty_catalogs_does_not_panic_on_empty_world() {
         &catalog,
         &crate::world::WeaponCatalog::default(),
         &doodad_catalog,
+        &crate::world::BuildingCatalog::default(),
+        &crate::world::FootprintCatalog::default(),
+        &crate::world::BuildingInteractionProfileCatalog::default(),
         &crate::world::NavigationConfig::default(),
         crate::world::AttackTargetingPolicy::default(),
         &settings,
         &mut scan,
+        BuildingConstructionSettings::default(),
+        &crate::world::InteriorProfileCatalog::default(),
         1.0 / 60.0,
         0,
     );

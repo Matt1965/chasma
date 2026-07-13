@@ -26,6 +26,7 @@ pub use commands::{
 pub use controllability::{apply_selectable_filter, prune_non_commandable_from_selection};
 pub use picking::{
     cursor_screen_position, cursor_world_ray, pick_unit_along_ray,
-    pick_unit_command_target_along_ray, unit_pick_radius, world_position_to_screen,
+    pick_unit_command_target_along_ray, ray_sphere_hit_distance, unit_pick_radius,
+    world_position_to_screen,
 };
 pub use selection::SelectedUnits;

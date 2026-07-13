@@ -3,9 +3,24 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    ChunkCoord, DoodadDefinitionId, ProjectileId, UnitDefinitionId, UnitId, UnitOrder,
-    WorldPosition,
+    BuildingDefinitionId, ChunkCoord, DoodadDefinitionId, ProjectileId, SpaceId, UnitDefinitionId,
+    UnitId, UnitOrder, WorldPosition,
 };
+
+/// Full read-only inspection payload for one building (B2).
+#[derive(Debug, Clone, PartialEq)]
+pub struct BuildingInspectorSnapshot {
+    pub building_id: crate::world::BuildingId,
+    pub definition_id: BuildingDefinitionId,
+    pub display_name: String,
+    pub current_hp: u32,
+    pub max_hp: u32,
+    pub lifecycle_state: String,
+    pub progress_percent: f32,
+    pub operational: bool,
+    pub affiliation: String,
+    pub chunk: ChunkCoord,
+}
 
 /// Full read-only inspection payload for one unit.
 #[derive(Debug, Clone, PartialEq)]
@@ -24,6 +39,8 @@ pub struct UnitInspectorSnapshot {
     pub block_reason: Option<String>,
     pub chunk: ChunkResidencySnapshot,
     pub simulation_tick: u64,
+    pub current_space_id: SpaceId,
+    pub display_floor_label: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]

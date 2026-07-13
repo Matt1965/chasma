@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::buildings::{BuildingRuntimeSystems, BuildingsRuntimePlugin};
 use crate::camera::{CameraControlSystems, CameraPlugin};
 use crate::doodads::{DoodadRuntimeSystems, DoodadsRuntimePlugin};
 use crate::environment::EnvironmentPlugin;
@@ -33,6 +34,7 @@ impl Plugin for AppPlugin {
             .add_plugins(WorldFoundationPlugin)
             .add_plugins(TerrainRuntimePlugin)
             .add_plugins(DoodadsRuntimePlugin)
+            .add_plugins(BuildingsRuntimePlugin)
             .add_plugins(UnitsRuntimePlugin)
             .add_plugins(ProjectilesRuntimePlugin)
             .add_plugins(PlayerPlugin)
@@ -48,8 +50,14 @@ impl Plugin for AppPlugin {
             )
             .configure_sets(
                 Update,
-                UnitRuntimeSystems
+                BuildingRuntimeSystems
                     .after(DoodadRuntimeSystems)
+                    .in_set(RuntimeSyncSystems),
+            )
+            .configure_sets(
+                Update,
+                UnitRuntimeSystems
+                    .after(BuildingRuntimeSystems)
                     .in_set(RuntimeSyncSystems),
             )
             .configure_sets(

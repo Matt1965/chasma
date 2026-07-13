@@ -102,6 +102,7 @@ mod tests {
             pos(2.0, 2.0),
             DoodadSource::Dev,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
         let ctx = SceneCaptureContext {

@@ -49,7 +49,10 @@ pub use tools::{
 };
 
 use catalog_cache::{sync_catalog_browse_index, tick_dev_search_debounce};
-use inspector::{handle_inspector_input, refresh_inspector_snapshot, sync_inspector_panel};
+use inspector::{
+    handle_building_dev_actions, handle_inspector_input, refresh_inspector_snapshot,
+    sync_inspector_panel,
+};
 use panel::{
     handle_dev_panel_ui_interaction, setup_dev_panel, sync_dev_panel_button_styles,
     sync_dev_panel_content, sync_dev_panel_section_visibility, sync_dev_panel_tab_sections,
@@ -138,6 +141,10 @@ impl Plugin for DevModePlugin {
                     .after(sync_dev_panel_tab_sections)
                     .before(handle_dev_spawn_click)
                     .in_set(DevModeInputSystems),
+            )
+            .add_systems(
+                Update,
+                handle_building_dev_actions.in_set(DevModeInputSystems),
             )
             .add_systems(
                 Update,

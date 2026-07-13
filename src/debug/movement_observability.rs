@@ -53,6 +53,7 @@ pub fn blocked_reason_label(reason: crate::world::BlockedMovementReason) -> &'st
         BlockedMovementReason::SlopeUnavailable => "Slope unavailable",
         BlockedMovementReason::SlopeTooSteep => "Slope too steep",
         BlockedMovementReason::BlockedByDoodad => "Blocked by doodad",
+        BlockedMovementReason::BlockedByBuilding => "Blocked by building",
         BlockedMovementReason::DestinationBlocked => "Destination blocked",
         BlockedMovementReason::PathUnavailable => "Path unavailable",
         BlockedMovementReason::InvalidWaypoint => "Invalid waypoint",

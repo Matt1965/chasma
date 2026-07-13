@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 mod biome;
+mod building;
 mod chunk;
 mod combat;
 mod config;
@@ -12,8 +13,11 @@ mod interaction;
 mod movement;
 mod navigation;
 mod obstacle;
+mod occupancy;
 mod ownership;
 mod projectile;
+mod space;
+mod task;
 mod terrain;
 mod unit;
 mod weapon;
@@ -34,6 +38,32 @@ pub use biome::{
     DEV_BIOME_MASK_PATH, DEV_SOURCE_WORLD_DIR, DevBiomeLoadOutcome, DevBiomeLoadSummary,
     biome_mask_path_for_world, dev_biome_mask_bounds, log_dev_biome_load_outcome,
     try_load_default_dev_biome_mask, try_load_dev_biome_mask,
+};
+#[cfg(any(test, feature = "dev"))]
+pub use building::starter_building_category_definitions;
+#[cfg(any(test, feature = "dev"))]
+pub use building::starter_definitions as starter_building_definitions;
+pub use building::{
+    BuildingAuthoringError, BuildingCapabilities, BuildingCatalog, BuildingCatalogError,
+    BuildingCategoryCatalog, BuildingCategoryCatalogError, BuildingCategoryDefinition,
+    BuildingCategoryId, BuildingConstructionReport, BuildingConstructionSettings,
+    BuildingDefinition, BuildingDefinitionId, BuildingId, BuildingInsertError,
+    BuildingInteractionProfile, BuildingInteractionProfileCatalog, BuildingInteriorState,
+    BuildingLifecycleError, BuildingLifecycleEvent, BuildingLifecycleState, BuildingOwnership,
+    BuildingPlacement, BuildingPlacementConfig, BuildingPlacementContext,
+    BuildingPlacementRejectReason, BuildingPlacementValidation, BuildingRebuildError,
+    BuildingRecord, BuildingRenderKey, BuildingRestoreError, BuildingSource, BuildingSpaces,
+    BuildingVitals, ChunkBuildingStore, ConstructionState, DoorAccessPolicy, DoorId, DoorRecord,
+    DoorState, DoorStore, FootprintSpec, FootprintType, INTERACTION_WORK_RANGE_METERS,
+    InteractionPointDefinition, InteriorError, InteriorProfileCatalog, InteriorProfileId,
+    activate_building_interior, add_building_construction_progress, anchor_from_terrain_position,
+    close_door, create_building, damage_building, deactivate_building_interior, destroy_building,
+    destroy_door, heal_building, interaction_point_world_position, is_building_operational,
+    lock_door, lookup_building, move_building, open_door, place_player_building,
+    portal_traversable, rebuild_building_world_indexes, remove_building, rotation_from_quadrants,
+    set_building_lifecycle_stage, snap_anchor_global_xz, space_route_for_unit,
+    step_all_building_construction, transition_to_ruins, try_open_door_at_portal_for_unit,
+    try_open_door_for_unit, validate_building_for_restore, validate_building_placement,
 };
 pub use chunk::{ChunkData, ChunkId};
 pub use combat::{
@@ -92,12 +122,32 @@ pub use movement::steering::{
     cohesion_force, gather_steering_neighbors, separation_force,
 };
 pub use navigation::{
-    GridCoord, NEIGHBOR_OFFSETS, NavigationConfig, NavigationError, NavigationPath, find_path,
-    xz_distance,
+    GridCoord, NEIGHBOR_OFFSETS, NavigationAgent, NavigationConfig, NavigationError,
+    NavigationPath, NavigationWaypoint, find_path, find_path_in_spaces, find_path_with_spaces,
+    is_position_walkable_in_space, xz_distance,
 };
 pub use obstacle::{
     ObstacleQueryError, ObstacleQueryResult, blocking_doodad_at_position,
     is_position_blocked_by_doodads, query_obstacle_at_position,
+};
+#[cfg(test)]
+pub use occupancy::test_support::{
+    TestPassabilityBundle, default_building_catalog, default_footprint_catalog, default_passability,
+};
+pub use occupancy::{
+    BakedCellMask, ChunkOccupancyGrid, FootprintCatalog, FootprintCatalogError,
+    FootprintDefinition, FootprintId, FootprintShape, OCCUPANCY_CELL_SIZE_METERS,
+    OccupancyCatalogs, OccupancyCellCoord, OccupancyCellEntry, OccupancyError,
+    OccupancyRegistrationPlan, OccupancySource, OccupancyState, PassabilityAgent,
+    PassabilityBlockReason, PassabilityCatalogs, PassabilityResult, PassabilityUnavailableReason,
+    QuantizedRotation, SURFACE_SPACE_ID, StaticOccupancyResult, agent_overlaps_footprint,
+    apply_registration_plan, chunk_for_occupancy_cell, conservative_block_radius_for_kind,
+    default_space_id, effective_building_footprint, inline_building_footprint,
+    is_position_blocked_by_static_occupancy, is_position_blocked_for_agent, is_position_passable,
+    occupied_cells_for_footprint, plan_register_building, plan_register_doodad,
+    query_passability_at, query_passability_in_space, query_static_occupancy_at,
+    rebuild_occupancy_index, register_building_occupancy, register_doodad_occupancy,
+    unregister_source_occupancy, update_building_occupancy, update_doodad_occupancy,
 };
 pub use ownership::{
     Affiliation, DEFAULT_PLAYER_OWNER_ID, DEFAULT_PLAYER_TEAM_ID, OwnerId,
@@ -108,6 +158,21 @@ pub use ownership::{
 pub use projectile::{
     ProjectileEvent, ProjectileId, ProjectileRecord, ProjectileReport, ProjectileStatus,
     ProjectileTrace, spawn_projectile_from_strike, step_all_projectiles,
+};
+#[cfg(any(test, feature = "dev"))]
+pub use space::starter_space_profile;
+pub use space::{
+    PortalId, PortalRecord, PortalTemplate, PortalType, SpaceError, SpaceId, SpaceRecord,
+    SpaceRegistry, SpaceTemplate, UnitPortalTransitionState, ground_position_in_space,
+    register_building_space_profile, sample_support_height, space_hidden_by_default,
+    space_visible_in_view, try_portal_transition, two_story_hut_profile,
+};
+pub use task::{
+    TaskCancelReason, TaskError, TaskEvent, TaskId, TaskPriority, TaskRecord, TaskState, TaskStore,
+    TaskTarget, TaskTickReport, TaskType, assign_construct_building_task,
+    assign_operate_workstation_task, building_accepts_workstation_use, building_is_constructible,
+    cancel_unit_task, ensure_building_task, prune_invalid_building_tasks, step_all_worker_tasks,
+    sync_construction_tasks, unit_can_perform_task, unit_may_work_on_building,
 };
 #[cfg(feature = "terrain-import")]
 pub use terrain::{
@@ -136,11 +201,11 @@ pub use unit::{
     UnitGroundingError, UnitId, UnitInsertError, UnitMetadata, UnitMovementError,
     UnitMovementReport, UnitMovementStepOutcome, UnitMovementStepReport, UnitMovementTrace,
     UnitOrder, UnitOrderError, UnitPlacement, UnitRecord, UnitRenderKey, UnitSimulationStepReport,
-    UnitSource, UnitState, UnitVitals, create_unit, create_unit_with_ownership,
-    ground_unit_position, ground_unit_to_terrain, issue_unit_order, lookup_unit, move_unit,
-    remove_unit, resolve_all_pending_unit_orders, resolve_pending_unit_orders,
-    step_all_unit_movement, step_unit_death_pipeline, step_unit_movement, unit_can_execute_actions,
-    unit_record_can_execute_actions,
+    UnitSource, UnitState, UnitVitals, UnitWorkCapabilities, create_unit,
+    create_unit_with_ownership, ground_unit_position, ground_unit_to_terrain, issue_unit_order,
+    lookup_unit, move_unit, remove_unit, resolve_all_pending_unit_orders,
+    resolve_pending_unit_orders, step_all_unit_movement, step_unit_death_pipeline,
+    step_unit_movement, unit_can_execute_actions, unit_record_can_execute_actions,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use unit::{
@@ -220,6 +285,30 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<BiomeColorMapping>()
             .register_type::<BiomeMaskBounds>()
             .register_type::<BiomeMask>()
+            .register_type::<BuildingDefinitionId>()
+            .register_type::<BuildingCategoryId>()
+            .register_type::<BuildingRenderKey>()
+            .register_type::<FootprintType>()
+            .register_type::<FootprintSpec>()
+            .register_type::<BuildingCategoryDefinition>()
+            .register_type::<BuildingCategoryCatalog>()
+            .register_type::<BuildingDefinition>()
+            .register_type::<BuildingCatalog>()
+            .register_type::<BuildingId>()
+            .register_type::<BuildingPlacement>()
+            .register_type::<BuildingSource>()
+            .register_type::<BuildingOwnership>()
+            .register_type::<BuildingLifecycleState>()
+            .register_type::<BuildingSpaces>()
+            .register_type::<ConstructionState>()
+            .register_type::<BuildingRecord>()
+            .register_type::<ChunkBuildingStore>()
+            .register_type::<FootprintId>()
+            .register_type::<FootprintShape>()
+            .register_type::<FootprintDefinition>()
+            .register_type::<FootprintCatalog>()
+            .register_type::<ChunkOccupancyGrid>()
+            .register_type::<OccupancyCellEntry>()
             .register_type::<WorldData>();
 
         app.init_resource::<WorldConfig>();
@@ -229,13 +318,22 @@ impl Plugin for WorldFoundationPlugin {
             app.init_resource::<WeaponCatalog>();
             app.init_resource::<UnitCatalog>();
             app.init_resource::<AnimationProfileCatalog>();
+            app.init_resource::<BuildingCategoryCatalog>();
+            app.init_resource::<BuildingCatalog>();
+            app.init_resource::<FootprintCatalog>();
         }
         #[cfg(feature = "dev")]
         {
             let weapons = crate::data_import::resolve_dev_weapon_catalog();
             let animation_profiles = crate::data_import::resolve_dev_animation_profile_catalog();
+            let (building_categories, building_catalog) =
+                crate::data_import::resolve_dev_building_catalog();
+            let footprint_catalog = crate::data_import::resolve_dev_footprint_catalog();
             app.insert_resource(weapons.clone());
             app.insert_resource(animation_profiles.clone());
+            app.insert_resource(building_categories);
+            app.insert_resource(building_catalog);
+            app.insert_resource(footprint_catalog);
             app.insert_resource(crate::data_import::resolve_dev_doodad_catalog());
             app.insert_resource(crate::data_import::resolve_dev_unit_catalog(
                 &weapons,
@@ -244,5 +342,7 @@ impl Plugin for WorldFoundationPlugin {
         }
         app.init_resource::<WorldData>();
         app.init_resource::<NavigationConfig>();
+        app.init_resource::<InteriorProfileCatalog>();
+        app.init_resource::<BuildingInteractionProfileCatalog>();
     }
 }

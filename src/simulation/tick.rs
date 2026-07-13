@@ -4,11 +4,14 @@
 //! Contains no movement/combat algorithms — only stage sequencing.
 
 use crate::world::{
-    AttackTargetingPolicy, CombatAiScanState, CombatAiSettings, CombatStrikeReport, DoodadCatalog,
-    NavigationConfig, ProjectileReport, UnitCatalog, WeaponCatalog, WorldData,
-    resolve_pending_unit_orders, step_all_combat_engagement, step_all_combat_strikes,
-    step_all_projectiles, step_all_unit_movement, step_combat_ai_acquisition,
-    step_unit_death_pipeline,
+    AttackTargetingPolicy, BuildingCatalog, BuildingConstructionSettings,
+    BuildingInteractionProfileCatalog, CombatAiScanState, CombatAiSettings, CombatStrikeReport,
+    DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, NavigationConfig, OccupancyCatalogs,
+    PassabilityCatalogs, ProjectileReport, UnitCatalog, WeaponCatalog, WorldData,
+    prune_invalid_building_tasks, resolve_pending_unit_orders, step_all_building_construction,
+    step_all_combat_engagement, step_all_combat_strikes, step_all_projectiles,
+    step_all_unit_movement, step_all_worker_tasks, step_combat_ai_acquisition,
+    step_unit_death_pipeline, sync_construction_tasks,
 };
 
 use super::report::SimulationTickReport;
@@ -22,27 +25,43 @@ use super::report::SimulationTickReport;
 /// 4. step_all_projectiles (skips same-tick spawns)
 /// 5. step_unit_death_pipeline
 /// 6. step_combat_ai_acquisition
-/// 7. step_all_unit_movement
+/// 7. step_all_building_construction (auto labor dev-gated)
+/// 8. step_all_worker_tasks
+/// 9. step_all_unit_movement
 pub fn run_simulation_tick(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
     combat_ai_settings: &CombatAiSettings,
     combat_ai_scan: &mut CombatAiScanState,
+    building_construction_settings: BuildingConstructionSettings,
+    interior_catalog: &InteriorProfileCatalog,
     delta_seconds: f32,
     simulation_tick: u64,
 ) -> SimulationTickReport {
-    let command_resolve =
-        resolve_pending_unit_orders(world, unit_catalog, doodad_catalog, nav_config);
+    let passability = PassabilityCatalogs {
+        doodad: doodad_catalog,
+        building: building_catalog,
+        footprint: footprint_catalog,
+    };
+    let occupancy = OccupancyCatalogs {
+        doodad: doodad_catalog,
+        building: building_catalog,
+        footprint: footprint_catalog,
+    };
+    let command_resolve = resolve_pending_unit_orders(world, unit_catalog, passability, nav_config);
     let mut combat_strike = CombatStrikeReport::default();
     let combat = step_all_combat_engagement(
         world,
         unit_catalog,
         weapon_catalog,
-        doodad_catalog,
+        passability,
         nav_config,
         targeting_policy,
         &mut combat_strike,
@@ -74,7 +93,28 @@ pub fn run_simulation_tick(
         combat_ai_scan,
         delta_seconds,
     );
-    let movement = step_all_unit_movement(world, unit_catalog, doodad_catalog, delta_seconds);
+    let building_construction = step_all_building_construction(
+        world,
+        building_catalog,
+        interior_catalog,
+        doodad_catalog,
+        occupancy,
+        building_construction_settings,
+        delta_seconds,
+    );
+    sync_construction_tasks(world, building_catalog, simulation_tick);
+    prune_invalid_building_tasks(world);
+    let worker_tasks = step_all_worker_tasks(
+        world,
+        unit_catalog,
+        building_catalog,
+        interaction_catalog,
+        interior_catalog,
+        doodad_catalog,
+        occupancy,
+        delta_seconds,
+    );
+    let movement = step_all_unit_movement(world, unit_catalog, passability, delta_seconds);
     SimulationTickReport {
         movement,
         command_resolve,
@@ -83,6 +123,8 @@ pub fn run_simulation_tick(
         projectile,
         death,
         combat_ai,
+        building_construction,
+        worker_tasks,
     }
 }
 
@@ -91,10 +133,11 @@ mod tests {
     use super::*;
     use crate::simulation::SIMULATION_TICK_SECONDS;
     use crate::world::{
-        AttackCycle, AttackPhase, ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatState,
-        Heightfield, LocalPosition, UnitCatalog, UnitDefinitionId, UnitOrder, UnitOwnership,
-        UnitSource, WeaponCatalog, WorldPosition, create_unit_with_ownership,
-        starter_unit_definitions, starter_weapon_definitions,
+        AttackCycle, AttackPhase, BuildingCatalog, BuildingConstructionSettings, ChunkCoord,
+        ChunkData, ChunkId, ChunkLayout, CombatState, DoodadCatalog, FootprintCatalog, Heightfield,
+        LocalPosition, PassabilityCatalogs, UnitCatalog, UnitDefinitionId, UnitOrder,
+        UnitOwnership, UnitSource, WeaponCatalog, WorldPosition, create_unit_with_ownership,
+        default_passability, starter_unit_definitions, starter_weapon_definitions,
     };
     use bevy::prelude::Vec3;
 
@@ -162,7 +205,7 @@ mod tests {
         let _ = step_all_unit_movement(
             &mut world,
             &catalog,
-            &DoodadCatalog::default(),
+            default_passability(),
             SIMULATION_TICK_SECONDS,
         );
 
@@ -208,10 +251,15 @@ mod tests {
             &catalog,
             &weapon_catalog,
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
             &settings,
             &mut scan,
+            BuildingConstructionSettings::default(),
+            &InteriorProfileCatalog::default(),
             SIMULATION_TICK_SECONDS,
             1,
         );
@@ -255,10 +303,15 @@ mod tests {
             &catalog,
             &weapons(),
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
             &CombatAiSettings::default(),
             &mut scan,
+            BuildingConstructionSettings::default(),
+            &InteriorProfileCatalog::default(),
             SIMULATION_TICK_SECONDS,
             1,
         );
@@ -287,10 +340,15 @@ mod tests {
                 &catalog,
                 &weapon_catalog,
                 &doodads,
+                &BuildingCatalog::default(),
+                &FootprintCatalog::default(),
+                &crate::world::BuildingInteractionProfileCatalog::default(),
                 &nav,
                 policy,
                 &settings,
                 &mut scan_a,
+                BuildingConstructionSettings::default(),
+                &InteriorProfileCatalog::default(),
                 SIMULATION_TICK_SECONDS,
                 tick,
             );
@@ -299,10 +357,15 @@ mod tests {
                 &catalog,
                 &weapon_catalog,
                 &doodads,
+                &BuildingCatalog::default(),
+                &FootprintCatalog::default(),
+                &crate::world::BuildingInteractionProfileCatalog::default(),
                 &nav,
                 policy,
                 &settings,
                 &mut scan_b,
+                BuildingConstructionSettings::default(),
+                &InteriorProfileCatalog::default(),
                 SIMULATION_TICK_SECONDS,
                 tick,
             );

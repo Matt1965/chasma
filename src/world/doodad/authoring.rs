@@ -10,7 +10,13 @@ use super::id::DoodadId;
 use super::placement::DoodadPlacement;
 use super::record::DoodadRecord;
 use super::source::DoodadSource;
-use crate::world::{DoodadDefinitionId, DoodadInsertError, WorldData, WorldPosition};
+use crate::world::{
+    DoodadDefinitionId, DoodadInsertError, OccupancyCatalogs, OccupancySource, WorldData,
+    WorldPosition,
+};
+use crate::world::{
+    register_doodad_occupancy, unregister_source_occupancy, update_doodad_occupancy,
+};
 
 /// Optional pose overrides when creating a doodad from a catalog definition.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -27,6 +33,7 @@ pub enum DoodadAuthoringError {
     DoodadNotFound(DoodadId),
     ScaleOutOfRange { min: f32, max: f32, scale: Vec3 },
     ChunkPlacementMismatch,
+    Occupancy(crate::world::OccupancyError),
 }
 
 /// Create a doodad instance from a catalog definition and insert it into world data.
@@ -37,6 +44,7 @@ pub fn create_doodad(
     position: WorldPosition,
     source: DoodadSource,
     overrides: DoodadPlacementOverrides,
+    occupancy: Option<OccupancyCatalogs<'_>>,
 ) -> Result<DoodadRecord, DoodadAuthoringError> {
     let definition = catalog
         .get(definition_id)
@@ -71,6 +79,11 @@ pub fn create_doodad(
             DoodadInsertError::DoodadNotFound => DoodadAuthoringError::DoodadNotFound(id),
         })?;
 
+    if let Some(catalogs) = occupancy {
+        register_doodad_occupancy(world, catalogs, &record)
+            .map_err(DoodadAuthoringError::Occupancy)?;
+    }
+
     Ok(record)
 }
 
@@ -79,22 +92,34 @@ pub fn move_doodad(
     world: &mut WorldData,
     id: DoodadId,
     new_position: WorldPosition,
+    occupancy: Option<OccupancyCatalogs<'_>>,
 ) -> Result<DoodadRecord, DoodadAuthoringError> {
-    world
+    let moved = world
         .relocate_doodad(id, new_position)
         .map_err(|error| match error {
             DoodadInsertError::ChunkPlacementMismatch => {
                 DoodadAuthoringError::ChunkPlacementMismatch
             }
             DoodadInsertError::DoodadNotFound => DoodadAuthoringError::DoodadNotFound(id),
-        })
+        })?;
+
+    if let Some(catalogs) = occupancy {
+        update_doodad_occupancy(world, catalogs, &moved)
+            .map_err(DoodadAuthoringError::Occupancy)?;
+    }
+
+    Ok(moved)
 }
 
 /// Remove a doodad by id, returning the removed record.
 pub fn remove_doodad(
     world: &mut WorldData,
     id: DoodadId,
+    occupancy: Option<OccupancyCatalogs<'_>>,
 ) -> Result<DoodadRecord, DoodadAuthoringError> {
+    if occupancy.is_some() {
+        unregister_source_occupancy(world, OccupancySource::Doodad(id));
+    }
     world
         .remove_doodad_by_id(id)
         .ok_or(DoodadAuthoringError::DoodadNotFound(id))
@@ -148,6 +173,7 @@ mod tests {
             pos,
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
 
@@ -170,6 +196,7 @@ mod tests {
             position(0, 0, Vec3::ZERO),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap_err();
 
@@ -192,6 +219,7 @@ mod tests {
                 scale: Some(Vec3::splat(2.0)),
                 ..Default::default()
             },
+            None,
         )
         .unwrap_err();
 
@@ -209,11 +237,12 @@ mod tests {
             position(0, 0, Vec3::new(10.0, 0.0, 20.0)),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
 
         let new_pos = position(0, 0, Vec3::new(200.0, 5.0, 50.0));
-        let moved = move_doodad(&mut world, record.id, new_pos).unwrap();
+        let moved = move_doodad(&mut world, record.id, new_pos, None).unwrap();
 
         assert_eq!(moved.id, record.id);
         assert_eq!(moved.placement.position, new_pos);
@@ -234,11 +263,12 @@ mod tests {
             position(0, 0, Vec3::new(200.0, 0.0, 200.0)),
             DoodadSource::Procedural { seed: 99 },
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
 
         let new_pos = position(1, 0, Vec3::new(64.0, 0.0, 64.0));
-        let moved = move_doodad(&mut world, record.id, new_pos).unwrap();
+        let moved = move_doodad(&mut world, record.id, new_pos, None).unwrap();
 
         assert_eq!(moved.placement.position, new_pos);
         assert_eq!(
@@ -263,10 +293,11 @@ mod tests {
             position(2, 3, Vec3::new(128.0, 0.0, 128.0)),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
 
-        let removed = remove_doodad(&mut world, record.id).unwrap();
+        let removed = remove_doodad(&mut world, record.id, None).unwrap();
         assert_eq!(removed.id, record.id);
         assert!(lookup_doodad(&world, record.id).is_none());
         world.assert_doodad_index_consistent();
@@ -283,6 +314,7 @@ mod tests {
             position(0, 1, Vec3::new(1.0, 0.0, 2.0)),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
 
@@ -303,6 +335,7 @@ mod tests {
             position(0, 0, Vec3::new(1.0, 0.0, 1.0)),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
 
@@ -310,6 +343,7 @@ mod tests {
             &mut world,
             record.id,
             position(3, 4, Vec3::new(50.0, 0.0, 50.0)),
+            None,
         )
         .unwrap();
         assert_eq!(lookup_doodad(&world, record.id).unwrap().id, record.id);
@@ -328,6 +362,7 @@ mod tests {
             position(0, 0, Vec3::new(1.0, 0.0, 1.0)),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
 
@@ -335,6 +370,7 @@ mod tests {
             &mut world,
             record.id,
             position(1, 1, Vec3::new(1.0, 0.0, 1.0)),
+            None,
         )
         .unwrap();
         assert_eq!(lookup_doodad(&world, record.id).unwrap().definition_id, def);
@@ -351,22 +387,24 @@ mod tests {
             position(0, 0, Vec3::new(1.0, 0.0, 1.0)),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
         assert_eq!(
             lookup_doodad(&world, record.id).unwrap().metadata,
-            DoodadMetadata
+            DoodadMetadata::default()
         );
 
         move_doodad(
             &mut world,
             record.id,
             position(1, 0, Vec3::new(1.0, 0.0, 1.0)),
+            None,
         )
         .unwrap();
         assert_eq!(
             lookup_doodad(&world, record.id).unwrap().metadata,
-            DoodadMetadata
+            DoodadMetadata::default()
         );
     }
 
@@ -382,6 +420,7 @@ mod tests {
             position(0, 0, Vec3::new(1.0, 0.0, 1.0)),
             source,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
 
@@ -389,6 +428,7 @@ mod tests {
             &mut world,
             record.id,
             position(2, 0, Vec3::new(1.0, 0.0, 1.0)),
+            None,
         )
         .unwrap();
         assert_eq!(lookup_doodad(&world, record.id).unwrap().source, source);

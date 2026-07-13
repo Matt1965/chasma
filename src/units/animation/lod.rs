@@ -264,6 +264,7 @@ mod tests {
             vitals: UnitVitals::full(10),
             combat_state: combat,
             attack_cycle: None,
+            current_space_id: Default::default(),
         }
     }
 

@@ -6,6 +6,7 @@
 //! layer (`camera`) (ADR-010, ADR-014, ROADMAP Phase 2).
 
 pub mod app;
+pub mod buildings;
 pub mod camera;
 pub mod client;
 pub mod data_import;

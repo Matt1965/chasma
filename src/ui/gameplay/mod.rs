@@ -1,5 +1,7 @@
 //! Gameplay UI layer — SC2/Kenshi hybrid player HUD (ADR-040, ADR-050 P-UI1).
 
+pub mod build_mode;
+pub mod building_selection;
 pub mod combat_display;
 mod command_feedback;
 mod command_panel;
@@ -8,12 +10,19 @@ mod input_gate;
 mod layout;
 mod player_hud_state;
 mod plugin;
+mod selected_building_panel;
 mod selected_unit_panel;
 mod selection_ui;
 mod squad_panel;
 mod state;
 mod styles;
 
+pub use build_mode::{
+    BuildModeState, collect_build_mode_intents, draw_build_mode_ghost, handle_build_catalog_clicks,
+    handle_build_search_keyboard, spawn_build_catalog_panel, sync_build_catalog_contents,
+    sync_build_catalog_visibility, update_build_mode_ghost,
+};
+pub use building_selection::GameplayBuildingSelection;
 pub use command_feedback::{
     MoveCommandFeedback, sync_move_command_indicator, tick_move_command_indicator,
 };

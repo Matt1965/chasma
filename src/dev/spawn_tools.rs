@@ -3,9 +3,10 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, UnitCatalog,
-    UnitDefinitionId, UnitOwnership, UnitSource, WorldData, WorldPosition, create_doodad,
-    create_unit_with_ownership,
+    BuildingCatalog, BuildingDefinitionId, BuildingOwnership, BuildingSource, DoodadCatalog,
+    DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog, UnitCatalog,
+    UnitDefinitionId, UnitOwnership, UnitSource, WorldData, WorldPosition, create_building,
+    create_doodad, create_unit_with_ownership,
 };
 
 use super::dev_mode::{DefinitionId, SpawnMode};
@@ -15,6 +16,7 @@ use super::dev_mode::{DefinitionId, SpawnMode};
 pub enum DevSpawnOutcome {
     SpawnedUnit { definition_id: UnitDefinitionId },
     SpawnedDoodad { definition_id: DoodadDefinitionId },
+    SpawnedBuilding { definition_id: BuildingDefinitionId },
     NoDefinitionSelected,
     TerrainMiss,
     AuthoringFailed(String),
@@ -33,6 +35,8 @@ pub fn spawn_selected_at_position(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
     selected: Option<&DefinitionId>,
     position: WorldPosition,
     spawn_affiliation: crate::world::Affiliation,
@@ -65,12 +69,35 @@ pub fn spawn_selected_at_position(
             position,
             DoodadSource::Dev,
             DoodadPlacementOverrides::default(),
+            None,
         ) {
             Ok(_record) => DevSpawnOutcome::SpawnedDoodad {
                 definition_id: definition_id.clone(),
             },
             Err(error) => DevSpawnOutcome::AuthoringFailed(format!("{error:?}")),
         },
+        DefinitionId::Building(definition_id) => {
+            let ownership = BuildingOwnership::with_affiliation(spawn_affiliation);
+            match create_building(
+                building_catalog,
+                world,
+                definition_id,
+                position,
+                Quat::IDENTITY,
+                BuildingSource::Dev,
+                ownership,
+                Some(crate::world::OccupancyCatalogs {
+                    doodad: doodad_catalog,
+                    building: building_catalog,
+                    footprint: footprint_catalog,
+                }),
+            ) {
+                Ok(_record) => DevSpawnOutcome::SpawnedBuilding {
+                    definition_id: definition_id.clone(),
+                },
+                Err(error) => DevSpawnOutcome::AuthoringFailed(format!("{error:?}")),
+            }
+        }
     }
 }
 
@@ -79,6 +106,8 @@ pub fn spawn_by_mode_at_position(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
     mode: SpawnMode,
     definition_key: &str,
     position: WorldPosition,
@@ -86,11 +115,14 @@ pub fn spawn_by_mode_at_position(
     let selected = match mode {
         SpawnMode::Unit => DefinitionId::Unit(UnitDefinitionId::new(definition_key)),
         SpawnMode::Doodad => DefinitionId::Doodad(DoodadDefinitionId::new(definition_key)),
+        SpawnMode::Building => DefinitionId::Building(BuildingDefinitionId::new(definition_key)),
     };
     spawn_selected_at_position(
         world,
         unit_catalog,
         doodad_catalog,
+        building_catalog,
+        footprint_catalog,
         Some(&selected),
         position,
         crate::world::Affiliation::Player,
@@ -100,7 +132,9 @@ pub fn spawn_by_mode_at_position(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition};
+    use crate::world::{
+        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
+    };
     use bevy::prelude::Vec3;
 
     fn flat_world() -> WorldData {
@@ -130,10 +164,14 @@ mod tests {
         let unit_catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();
         let position = pos(40.0, 40.0);
+        let building_catalog = BuildingCatalog::default();
+        let footprint_catalog = FootprintCatalog::default();
         let outcome = spawn_by_mode_at_position(
             &mut world,
             &unit_catalog,
             &doodad_catalog,
+            &building_catalog,
+            &footprint_catalog,
             SpawnMode::Unit,
             "wolf",
             position,
@@ -153,10 +191,14 @@ mod tests {
         let unit_catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();
         let position = pos(50.0, 50.0);
+        let building_catalog = BuildingCatalog::default();
+        let footprint_catalog = FootprintCatalog::default();
         let outcome = spawn_by_mode_at_position(
             &mut world,
             &unit_catalog,
             &doodad_catalog,
+            &building_catalog,
+            &footprint_catalog,
             SpawnMode::Doodad,
             "tree_oak",
             position,

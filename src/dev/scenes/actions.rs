@@ -3,7 +3,10 @@
 use bevy::prelude::*;
 
 use crate::camera::RtsCameraState;
-use crate::world::{DoodadCatalog, UnitCatalog, WorldData};
+use crate::world::{
+    BuildingCatalog, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, UnitCatalog,
+    WorldData,
+};
 
 use super::{
     SceneApplyReport, SceneCaptureContext, SceneDebugFlagsSnapshot, SceneRegistry, apply_scene,
@@ -65,13 +68,25 @@ pub fn load_scene_by_id(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
+    interior_catalog: &InteriorProfileCatalog,
     registry: &SceneRegistry,
     scene_id: &str,
 ) -> Result<SceneApplyReport, String> {
     let scene = registry
         .load_scene(scene_id)
         .map_err(|err| err.to_string())?;
-    apply_scene(world, unit_catalog, doodad_catalog, &scene).map_err(|err| err.to_string())
+    apply_scene(
+        world,
+        unit_catalog,
+        doodad_catalog,
+        building_catalog,
+        footprint_catalog,
+        interior_catalog,
+        &scene,
+    )
+    .map_err(|err| err.to_string())
 }
 
 pub fn delete_scene(registry: &mut SceneRegistry, scene_id: &str) -> Result<(), String> {

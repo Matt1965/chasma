@@ -36,7 +36,7 @@ impl DoodadRecord {
             kind,
             placement,
             source,
-            metadata: DoodadMetadata,
+            metadata: DoodadMetadata::default(),
         }
     }
 }

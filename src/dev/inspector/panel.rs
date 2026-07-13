@@ -4,7 +4,9 @@ use bevy::prelude::*;
 
 use crate::debug::{CommandTraceBuffer, recent_combat_log_lines};
 
-use super::snapshot::{InteractionInspectorSnapshot, UnitInspectorSnapshot};
+use super::snapshot::{
+    BuildingInspectorSnapshot, InteractionInspectorSnapshot, UnitInspectorSnapshot,
+};
 use super::state::WorldInspectorState;
 
 #[derive(Component, Debug)]
@@ -47,7 +49,9 @@ pub(crate) fn sync_inspector_panel(
         return;
     }
 
-    **label = if let Some(snapshot) = inspector.unit_snapshot.as_ref() {
+    **label = if let Some(snapshot) = inspector.building_snapshot.as_ref() {
+        format_building_snapshot(snapshot)
+    } else if let Some(snapshot) = inspector.unit_snapshot.as_ref() {
         let mut body = format_unit_snapshot(snapshot);
         let unit_filter = inspector.selected_unit;
         let log_lines = recent_combat_log_lines(&trace, unit_filter, 6);
@@ -70,6 +74,7 @@ pub(crate) fn sync_inspector_panel(
 fn format_unit_snapshot(s: &UnitInspectorSnapshot) -> String {
     let mut out = format!(
         "Unit #{}  def={}  state={}  hp={}/{}  combat={}  tick={}\n\
+         Space: {} (id={})  floor={}\n\
          Chunk ({},{}) terrain={} doodads={} units={}\n\
          Block: {}\n",
         s.unit_id.raw(),
@@ -79,6 +84,9 @@ fn format_unit_snapshot(s: &UnitInspectorSnapshot) -> String {
         s.max_hp,
         s.combat_state_label,
         s.simulation_tick,
+        s.current_space_id.raw(),
+        s.current_space_id.raw(),
+        s.display_floor_label,
         s.chunk.unit_chunk.x,
         s.chunk.unit_chunk.z,
         s.chunk.terrain_loaded,
@@ -187,5 +195,26 @@ fn format_interaction_snapshot(s: &InteractionInspectorSnapshot) -> String {
             .as_ref()
             .map(|o| format!("{o:?}"))
             .unwrap_or_else(|| "none".into()),
+    )
+}
+
+fn format_building_snapshot(s: &BuildingInspectorSnapshot) -> String {
+    format!(
+        "Building #{}  {}  def={}\n\
+         state={}  progress={:.0}%  operational={}\n\
+         hp={}/{}  affiliation={}\n\
+         Chunk ({},{})\n\
+         Dev: [D]amage [H]eal [X]estroy [R]uins [C]omplete [P]+progress",
+        s.building_id.raw(),
+        s.display_name,
+        s.definition_id.as_str(),
+        s.lifecycle_state,
+        s.progress_percent,
+        s.operational,
+        s.current_hp,
+        s.max_hp,
+        s.affiliation,
+        s.chunk.x,
+        s.chunk.z,
     )
 }

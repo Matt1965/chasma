@@ -4,6 +4,7 @@
 //! catalog definitions. No ECS systems, runtime Excel dependency, or rendering coupling.
 
 mod animation;
+mod building;
 mod error;
 mod schema;
 mod weapon;
@@ -13,6 +14,8 @@ mod validate;
 
 #[cfg(feature = "data-import")]
 mod dev_load;
+#[cfg(feature = "data-import")]
+pub use dev_load::{DEV_DOODAD_CATALOG_RON_PATH, resolve_dev_doodad_catalog};
 #[cfg(feature = "data-import")]
 mod excel;
 #[cfg(feature = "data-import")]
@@ -34,7 +37,14 @@ pub use animation::{
     resolve_dev_animation_profile_catalog,
 };
 #[cfg(feature = "data-import")]
-pub use dev_load::{DEV_DOODAD_CATALOG_RON_PATH, resolve_dev_doodad_catalog};
+pub use building::{
+    BUILDING_CATEGORIES_SHEET_NAME, BUILDINGS_SHEET_NAME, DEV_BUILDING_CATALOG_RON_PATH,
+    import_building_catalog_from_excel, import_buildings_from_excel, resolve_dev_building_catalog,
+};
+pub use building::{
+    BUILDING_OPTIONAL_COLUMNS, BUILDING_REQUIRED_COLUMNS, BuildingCategoryImportRow,
+    BuildingImportRow, normalize_building_file_path_to_render_key,
+};
 /// Same workbook as [`DEV_DESIGN_WORKBOOK`]; kept for older call sites.
 #[cfg(feature = "data-import")]
 pub use paths::DEV_DESIGN_WORKBOOK as DEV_DOODAD_EXCEL_PATH;
@@ -44,7 +54,10 @@ pub use paths::DEV_DESIGN_WORKBOOK as DEV_UNIT_EXCEL_PATH;
 #[cfg(feature = "data-import")]
 pub use paths::{DEV_DESIGN_WORKBOOK, dev_design_workbook_path};
 #[cfg(feature = "data-import")]
-pub use ron::{DoodadCatalogRon, DoodadDefinitionRon, export_doodads_to_ron};
+pub use ron::{
+    BuildingCatalogRon, BuildingCategoryRon, BuildingDefinitionRon, DoodadCatalogRon,
+    DoodadDefinitionRon, export_buildings_to_ron, export_doodads_to_ron,
+};
 pub use unit::{
     DEFAULT_COLLISION_RADIUS_METERS, DEFAULT_MAX_SLOPE_DEGREES, DEFAULT_MOVE_SPEED_MPS,
     IGNORED_COLUMNS, OPTIONAL_COLUMNS, UnitImportRow,
@@ -58,7 +71,12 @@ pub use unit::{UNITS_SHEET_NAME, import_units_from_excel, resolve_dev_unit_catal
 #[cfg(feature = "data-import")]
 pub use weapon::{WEAPONS_SHEET_NAME, import_weapons_from_excel, resolve_dev_weapon_catalog};
 
-/// Outcome counters for a doodad Excel import pass.
+/// Dev footprint catalog (inline starter footprints + optional baked RON).
+#[cfg(feature = "data-import")]
+pub fn resolve_dev_footprint_catalog() -> crate::world::FootprintCatalog {
+    crate::world::FootprintCatalog::default()
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ImportSummary {
     pub rows_processed: usize,

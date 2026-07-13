@@ -2,14 +2,10 @@
 
 use bevy::prelude::*;
 
-use super::astar::astar_path;
-use super::grid::{
-    NavigationAgent, NavigationConfig, cell_terrain_available, grid_cell_world_position,
-    grid_coord_at_position, is_position_walkable,
-};
+use super::cross_space::find_path_in_spaces;
+use super::grid::NavigationConfig;
 use super::path::{NavigationPath, xz_distance};
-use super::simplify::simplify_navigation_path;
-use crate::world::{DoodadCatalog, WorldData, WorldPosition, ground_world_position};
+use crate::world::{PassabilityCatalogs, SpaceId, UnitOwnership, WorldData, WorldPosition};
 
 /// Why [`find_path`] failed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -20,81 +16,56 @@ pub enum NavigationError {
     TerrainUnavailable,
 }
 
-/// Request a grounded navigation path between two authoritative positions.
+/// Request a grounded navigation path on the surface space.
 pub fn find_path(
     world: &WorldData,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     config: &NavigationConfig,
     agent_radius_meters: f32,
     max_slope_degrees: f32,
     start: WorldPosition,
     goal: WorldPosition,
 ) -> Result<NavigationPath, NavigationError> {
-    let agent = NavigationAgent {
-        radius_meters: agent_radius_meters,
-        max_slope_degrees,
-    };
-    let layout = world.layout();
-    let grounded_start =
-        ground_world_position(world, start).ok_or(NavigationError::TerrainUnavailable)?;
-    let grounded_goal =
-        ground_world_position(world, goal).ok_or(NavigationError::TerrainUnavailable)?;
-    let start_cell = grid_coord_at_position(grounded_start, layout, *config);
-    let goal_cell = grid_coord_at_position(grounded_goal, layout, *config);
-
-    if !cell_terrain_available(world, start_cell, *config) {
-        return Err(NavigationError::TerrainUnavailable);
-    }
-    if !cell_terrain_available(world, goal_cell, *config)
-        || ground_world_position(world, grounded_goal).is_none()
-    {
-        return Err(NavigationError::TerrainUnavailable);
-    }
-
-    if !is_position_walkable(world, doodad_catalog, grounded_start, agent) {
-        return Err(NavigationError::StartBlocked);
-    }
-    if !is_position_walkable(world, doodad_catalog, grounded_goal, agent) {
-        return Err(NavigationError::GoalBlocked);
-    }
-
-    if start_cell == goal_cell {
-        return Ok(NavigationPath::new(vec![grounded_goal]));
-    }
-
-    let mut waypoints = astar_path(world, doodad_catalog, *config, agent, start_cell, goal_cell)
-        .ok_or(NavigationError::NoPath)?;
-
-    if waypoints.is_empty() {
-        if let Some(goal_pos) = grid_cell_world_position(world, goal_cell, *config) {
-            waypoints.push(goal_pos);
-        } else {
-            return Err(NavigationError::NoPath);
-        }
-    }
-
-    trim_waypoints_at_start(&mut waypoints, grounded_start, layout);
-    waypoints.insert(0, grounded_start);
-    if waypoints
-        .last()
-        .is_none_or(|last| xz_distance(*last, grounded_goal, layout) > 0.05)
-    {
-        waypoints.push(grounded_goal);
-    }
-    simplify_navigation_path(
-        &mut waypoints,
+    find_path_with_spaces(
         world,
-        doodad_catalog,
-        *config,
-        agent,
-        layout,
-    );
-    dedupe_consecutive_waypoints(&mut waypoints, layout);
-    if let Some(last) = waypoints.last_mut() {
-        *last = grounded_goal;
-    }
+        catalogs,
+        config,
+        agent_radius_meters,
+        max_slope_degrees,
+        start,
+        goal,
+        SpaceId::SURFACE,
+        SpaceId::SURFACE,
+        None,
+    )
+}
 
-    Ok(NavigationPath::new(waypoints))
+/// Space-aware path request (ADR-083 B6, ADR-084 B7).
+pub fn find_path_with_spaces(
+    world: &WorldData,
+    catalogs: PassabilityCatalogs<'_>,
+    config: &NavigationConfig,
+    agent_radius_meters: f32,
+    max_slope_degrees: f32,
+    start: WorldPosition,
+    goal: WorldPosition,
+    start_space: SpaceId,
+    goal_space: SpaceId,
+    unit_ownership: Option<UnitOwnership>,
+) -> Result<NavigationPath, NavigationError> {
+    find_path_in_spaces(
+        world,
+        world.space_registry(),
+        catalogs,
+        config,
+        agent_radius_meters,
+        max_slope_degrees,
+        start,
+        goal,
+        start_space,
+        goal_space,
+        unit_ownership,
+    )
 }
 
 fn trim_waypoints_at_start(
@@ -132,8 +103,9 @@ fn dedupe_consecutive_waypoints(
 mod tests {
     use super::*;
     use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, DoodadDefinitionId,
-        DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition, create_doodad,
+        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog,
+        DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog, Heightfield,
+        LocalPosition, PassabilityCatalogs, create_doodad,
     };
 
     fn layout() -> ChunkLayout {
@@ -176,9 +148,22 @@ mod tests {
         let catalog = DoodadCatalog::default();
         let start = pos(4.0, 4.0);
         let goal = pos(40.0, 4.0);
-        let path = find_path(&world, &catalog, &nav_config(), 0.5, 40.0, start, goal).unwrap();
+        let path = find_path(
+            &world,
+            PassabilityCatalogs {
+                doodad: &catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav_config(),
+            0.5,
+            40.0,
+            start,
+            goal,
+        )
+        .unwrap();
         assert!(path.len() >= 2);
-        let last = *path.waypoints.last().unwrap();
+        let last = path.waypoints.last().unwrap().position;
         assert!((last.to_global(layout()).x - 40.0).abs() < 0.05);
         let straight = xz_distance(start, goal, layout());
         let ratio = path.length_meters(layout()) / straight;
@@ -196,7 +181,20 @@ mod tests {
         let catalog = DoodadCatalog::default();
         let start = pos(8.0, 8.0);
         let goal = pos(48.0, 48.0);
-        let path = find_path(&world, &catalog, &nav_config(), 0.5, 40.0, start, goal).unwrap();
+        let path = find_path(
+            &world,
+            PassabilityCatalogs {
+                doodad: &catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav_config(),
+            0.5,
+            40.0,
+            start,
+            goal,
+        )
+        .unwrap();
         let straight = xz_distance(start, goal, layout());
         let ratio = path.length_meters(layout()) / straight;
         assert!(ratio <= 1.08, "diagonal path ratio {ratio} too high");
@@ -214,7 +212,11 @@ mod tests {
         let goal = pos(37.0, 19.0);
         let path = find_path(
             &world,
-            &catalog,
+            PassabilityCatalogs {
+                doodad: &catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
             &nav_config(),
             0.5,
             40.0,
@@ -222,7 +224,7 @@ mod tests {
             goal,
         )
         .unwrap();
-        let last = *path.waypoints.last().unwrap();
+        let last = path.waypoints.last().unwrap().position;
         assert!((last.to_global(layout()).x - 37.0).abs() < 0.05);
         assert!((last.to_global(layout()).z - 19.0).abs() < 0.05);
     }
@@ -240,17 +242,31 @@ mod tests {
                 pos(20.0, z as f32 * 4.0),
                 DoodadSource::Authored,
                 DoodadPlacementOverrides::default(),
+                None,
             )
             .unwrap();
         }
         let start = pos(4.0, 28.0);
         let goal = pos(36.0, 28.0);
-        let path = find_path(&world, &catalog, &nav_config(), 0.5, 40.0, start, goal).unwrap();
+        let path = find_path(
+            &world,
+            PassabilityCatalogs {
+                doodad: &catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav_config(),
+            0.5,
+            40.0,
+            start,
+            goal,
+        )
+        .unwrap();
         assert!(path.len() >= 3);
         let globals: Vec<_> = path
             .waypoints
             .iter()
-            .map(|p| p.to_global(layout()).x)
+            .map(|waypoint| waypoint.position.to_global(layout()).x)
             .collect();
         assert!(globals.iter().any(|&x| x < 18.0 || x > 22.0));
         let straight = xz_distance(start, goal, layout());
@@ -271,11 +287,16 @@ mod tests {
             pos(40.0, 40.0),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
         let err = find_path(
             &world,
-            &catalog,
+            PassabilityCatalogs {
+                doodad: &catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
             &nav_config(),
             0.5,
             40.0,
@@ -298,11 +319,16 @@ mod tests {
             pos(4.0, 4.0),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
         let err = find_path(
             &world,
-            &catalog,
+            PassabilityCatalogs {
+                doodad: &catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
             &nav_config(),
             0.5,
             40.0,
@@ -320,7 +346,11 @@ mod tests {
         let catalog = DoodadCatalog::default();
         let path = find_path(
             &world,
-            &catalog,
+            PassabilityCatalogs {
+                doodad: &catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
             &nav_config(),
             0.6,
             40.0,
@@ -344,12 +374,17 @@ mod tests {
                 pos(x as f32 * 2.0, 28.0),
                 DoodadSource::Authored,
                 DoodadPlacementOverrides::default(),
+                None,
             )
             .unwrap();
         }
         let err = find_path(
             &world,
-            &catalog,
+            PassabilityCatalogs {
+                doodad: &catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
             &nav_config(),
             0.5,
             40.0,
@@ -368,7 +403,11 @@ mod tests {
         let catalog = DoodadCatalog::default();
         let path = find_path(
             &world,
-            &catalog,
+            PassabilityCatalogs {
+                doodad: &catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
             &nav_config(),
             0.5,
             40.0,
@@ -377,7 +416,7 @@ mod tests {
         )
         .unwrap();
         assert!(path.len() >= 2);
-        assert_eq!(path.waypoints.last().unwrap().chunk.x, 1);
+        assert_eq!(path.waypoints.last().unwrap().position.chunk.x, 1);
     }
 
     #[test]
@@ -392,11 +431,16 @@ mod tests {
             pos(20.0, 20.0),
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
         let a = find_path(
             &world,
-            &catalog,
+            PassabilityCatalogs {
+                doodad: &catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
             &nav_config(),
             0.5,
             40.0,
@@ -406,7 +450,11 @@ mod tests {
         .unwrap();
         let b = find_path(
             &world,
-            &catalog,
+            PassabilityCatalogs {
+                doodad: &catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
             &nav_config(),
             0.5,
             40.0,
@@ -423,7 +471,11 @@ mod tests {
         let catalog = DoodadCatalog::default();
         let err = find_path(
             &world,
-            &catalog,
+            PassabilityCatalogs {
+                doodad: &catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
             &nav_config(),
             0.5,
             40.0,
@@ -435,7 +487,7 @@ mod tests {
     }
 
     fn max_lateral_deviation(
-        waypoints: &[WorldPosition],
+        waypoints: &[crate::world::NavigationWaypoint],
         start: WorldPosition,
         goal: WorldPosition,
         layout: ChunkLayout,
@@ -453,7 +505,7 @@ mod tests {
         waypoints
             .iter()
             .map(|waypoint| {
-                let point = waypoint.to_global(layout);
+                let point = waypoint.position.to_global(layout);
                 let delta = Vec2::new(point.x - start_global.x, point.z - start_global.z);
                 delta.x * axis.y - delta.y * axis.x
             })

@@ -7,7 +7,7 @@ use bevy::window::PrimaryWindow;
 
 use crate::camera::RtsCamera;
 use crate::terrain::TerrainRenderAssets;
-use crate::ui::gameplay::{PlayerHudHoverState, gameplay_input_blocked_by_hud};
+use crate::ui::gameplay::{BuildModeState, PlayerHudHoverState, gameplay_input_blocked_by_hud};
 use crate::units::UnitRenderEntity;
 use crate::units::input::{
     BoxSelectDrag, cursor_screen_position, cursor_world_ray, normalized_screen_rect,
@@ -60,6 +60,7 @@ pub fn collect_unit_input_intents(
     mut box_drag: ResMut<BoxSelectDrag>,
     mut boundary: ResMut<crate::debug::ClientBoundaryGuard>,
     hud_hover: Res<PlayerHudHoverState>,
+    build_mode: Res<BuildModeState>,
     #[cfg(feature = "dev")] gate: Res<crate::dev::DevModeInputGate>,
 ) {
     boundary.begin_input_collection();
@@ -76,6 +77,11 @@ pub fn collect_unit_input_intents(
     }
 
     if gameplay_input_blocked_by_hud(&hud_hover) {
+        boundary.end_input_collection();
+        return;
+    }
+
+    if build_mode.blocks_gameplay_world_intents() {
         boundary.end_input_collection();
         return;
     }

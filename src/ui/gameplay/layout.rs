@@ -54,6 +54,7 @@ pub fn setup_player_hud_layout(mut commands: Commands) {
             ))
             .with_children(|bar| {
                 spawn_selected_unit_panel(bar);
+                super::selected_building_panel::spawn_selected_building_panel(bar);
                 spawn_squad_panel(bar);
                 spawn_command_panel(bar);
             });

@@ -149,9 +149,9 @@ mod tests {
     use super::*;
     use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
     use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, DoodadId,
-        DoodadPlacementOverrides, DoodadSource, Heightfield, LocalPosition, WorldConfig, WorldData,
-        WorldPosition, create_doodad,
+        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog,
+        DoodadDefinitionId, DoodadId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog,
+        Heightfield, LocalPosition, WorldConfig, WorldData, WorldPosition, create_doodad,
     };
     use bevy::asset::AssetPlugin;
     use bevy::prelude::{App, MinimalPlugins, Quat, StandardMaterial, Update, Vec3};
@@ -187,6 +187,7 @@ mod tests {
                 rotation: Some(Quat::from_rotation_y(1.25)),
                 scale: Some(Vec3::splat(1.1)),
             },
+            None,
         )
         .unwrap();
     }

@@ -3,7 +3,9 @@
 use bevy::prelude::*;
 use bevy::ui::FocusPolicy;
 
-use crate::world::{DoodadCatalog, UnitCatalog};
+use crate::world::{
+    BuildingCatalog, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, UnitCatalog,
+};
 
 use super::catalog_browser::CatalogBrowserEntry;
 use super::catalog_cache::{
@@ -221,6 +223,7 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
                 for tab in [
                     DevTab::Units,
                     DevTab::Doodads,
+                    DevTab::Buildings,
                     DevTab::Placement,
                     DevTab::Scenes,
                     DevTab::Inspector,
@@ -660,6 +663,7 @@ fn tab_label(tab: DevTab) -> &'static str {
     match tab {
         DevTab::Units => "Units",
         DevTab::Doodads => "Doodads",
+        DevTab::Buildings => "Buildings",
         DevTab::Placement => "Placement",
         DevTab::Scenes => "Scenes",
         DevTab::Inspector => "Inspect",
@@ -690,6 +694,7 @@ pub(crate) fn sync_dev_panel_content(
     dev_state: Res<DevModeState>,
     unit_catalog: Res<UnitCatalog>,
     doodad_catalog: Res<DoodadCatalog>,
+    building_catalog: Res<BuildingCatalog>,
     scene_registry: Res<DevSceneRegistry>,
     browse_index: Res<CatalogBrowseIndex>,
     mut filter_cache: ResMut<CatalogFilterCache>,
@@ -743,6 +748,7 @@ pub(crate) fn sync_dev_panel_content(
         &mut filter_cache,
         &unit_catalog,
         &doodad_catalog,
+        &building_catalog,
         dev_state.active_tab,
         dev_state.spawn_mode,
         &debounce.filtered_query,
@@ -764,7 +770,7 @@ pub(crate) fn sync_dev_panel_content(
 
     if let Ok(mut text) = texts.p1().single_mut() {
         **text = match dev_state.active_tab {
-            DevTab::Units | DevTab::Doodads => {
+            DevTab::Units | DevTab::Doodads | DevTab::Buildings => {
                 format!(
                     "Definitions ({}) — enabled-only: {} — E toggles",
                     catalog_entries.len(),
@@ -786,7 +792,10 @@ pub(crate) fn sync_dev_panel_content(
         };
     }
 
-    let show_catalog = matches!(dev_state.active_tab, DevTab::Units | DevTab::Doodads);
+    let show_catalog = matches!(
+        dev_state.active_tab,
+        DevTab::Units | DevTab::Doodads | DevTab::Buildings
+    );
     let show_placement = dev_state.active_tab == DevTab::Placement;
     let show_scenes = dev_state.active_tab == DevTab::Scenes;
 
@@ -905,7 +914,10 @@ pub(crate) fn sync_dev_panel_section_visibility(
         return;
     }
 
-    let show_catalog = matches!(dev_state.active_tab, DevTab::Units | DevTab::Doodads);
+    let show_catalog = matches!(
+        dev_state.active_tab,
+        DevTab::Units | DevTab::Doodads | DevTab::Buildings
+    );
     let show_placement = dev_state.active_tab == DevTab::Placement;
     let show_scenes = dev_state.active_tab == DevTab::Scenes;
     let show_debug = dev_state.active_tab == DevTab::Debug;
@@ -1304,6 +1316,9 @@ pub(crate) fn handle_dev_panel_ui_interaction(
     mut dev_state: ResMut<DevModeState>,
     unit_catalog: Res<UnitCatalog>,
     doodad_catalog: Res<DoodadCatalog>,
+    building_catalog: Res<BuildingCatalog>,
+    footprint_catalog: Res<FootprintCatalog>,
+    interior_catalog: Res<InteriorProfileCatalog>,
     browse_index: Res<CatalogBrowseIndex>,
     mut filter_cache: ResMut<CatalogFilterCache>,
     mut debounce: ResMut<DevSearchDebounce>,
@@ -1392,6 +1407,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
         &mut filter_cache,
         &unit_catalog,
         &doodad_catalog,
+        &building_catalog,
         active_tab,
         spawn_mode,
         &search_query,
@@ -1425,6 +1441,9 @@ pub(crate) fn handle_dev_panel_ui_interaction(
                     &mut world,
                     &unit_catalog,
                     &doodad_catalog,
+                    &building_catalog,
+                    &footprint_catalog,
+                    &interior_catalog,
                     &scene_registry.registry,
                     &entry.scene_id,
                 ) {
@@ -1482,6 +1501,9 @@ pub(crate) fn handle_dev_panel_ui_interaction(
             &mut world,
             &unit_catalog,
             &doodad_catalog,
+            &building_catalog,
+            &footprint_catalog,
+            &interior_catalog,
             &mut scene_registry,
             runtime.as_deref(),
             camera_state.iter().next(),
@@ -1534,6 +1556,9 @@ fn apply_scene_action(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
+    interior_catalog: &InteriorProfileCatalog,
     scene_registry: &mut DevSceneRegistry,
     runtime: Option<&DoodadsRuntimeSettings>,
     camera: Option<&RtsCameraState>,
@@ -1575,6 +1600,9 @@ fn apply_scene_action(
                 world,
                 unit_catalog,
                 doodad_catalog,
+                building_catalog,
+                footprint_catalog,
+                interior_catalog,
                 &scene_registry.registry,
                 &scene_id,
             ) {

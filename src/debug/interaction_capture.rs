@@ -9,7 +9,8 @@ use crate::debug::settings::{
 };
 use crate::debug::trace::IntentDispatchHistory;
 use crate::world::{
-    DoodadCatalog, InteractionQueryContext, UnitCatalog, WeaponCatalog, WorldData, WorldPosition,
+    BuildingCatalog, DoodadCatalog, FootprintCatalog, InteractionQueryContext, UnitCatalog,
+    WeaponCatalog, WorldData, WorldPosition,
 };
 
 use super::interaction_snapshot::{InteractionDebugSnapshot, capture_interaction_at_position};
@@ -20,6 +21,8 @@ pub fn capture_interaction_debug_snapshot(
     history: Res<IntentDispatchHistory>,
     world: Res<WorldData>,
     doodad_catalog: Res<DoodadCatalog>,
+    building_catalog: Res<BuildingCatalog>,
+    footprint_catalog: Res<FootprintCatalog>,
     unit_catalog: Res<UnitCatalog>,
     weapon_catalog: Res<WeaponCatalog>,
     mut snapshot: ResMut<InteractionDebugSnapshot>,
@@ -34,7 +37,16 @@ pub fn capture_interaction_debug_snapshot(
         return;
     };
 
-    let ctx = InteractionQueryContext::new(&world, &doodad_catalog, &unit_catalog, &weapon_catalog);
+    let interaction_catalog = crate::world::BuildingInteractionProfileCatalog::default();
+    let ctx = InteractionQueryContext::new(
+        &world,
+        &doodad_catalog,
+        &building_catalog,
+        &footprint_catalog,
+        &interaction_catalog,
+        &unit_catalog,
+        &weapon_catalog,
+    );
     capture_interaction_at_position(&mut snapshot, &ctx, position);
 }
 
@@ -76,9 +88,9 @@ mod tests {
     };
     use crate::debug::settings::{DebugOverlayCategory, DebugOverlayConfig};
     use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, Heightfield,
-        InteractionQueryContext, LocalPosition, UnitCatalog, WeaponCatalog, WorldData,
-        WorldPosition,
+        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog,
+        FootprintCatalog, Heightfield, InteractionQueryContext, LocalPosition, UnitCatalog,
+        WeaponCatalog, WorldData, WorldPosition,
     };
 
     fn flat_world() -> WorldData {
@@ -106,9 +118,20 @@ mod tests {
     fn capture_populates_client_local_snapshot() {
         let world = flat_world();
         let doodads = DoodadCatalog::default();
+        let building = BuildingCatalog::default();
+        let footprint = FootprintCatalog::default();
         let units = UnitCatalog::default();
         let weapons = WeaponCatalog::default();
-        let ctx = InteractionQueryContext::new(&world, &doodads, &units, &weapons);
+        let interaction = crate::world::BuildingInteractionProfileCatalog::default();
+        let ctx = InteractionQueryContext::new(
+            &world,
+            &doodads,
+            &building,
+            &footprint,
+            &interaction,
+            &units,
+            &weapons,
+        );
         let mut snapshot = InteractionDebugSnapshot::default();
         capture_interaction_at_position(&mut snapshot, &ctx, pos(1.0, 2.0));
         assert!(snapshot.query.is_some());

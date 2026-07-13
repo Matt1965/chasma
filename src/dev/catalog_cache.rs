@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use bevy::prelude::*;
 
-use crate::world::{DoodadCatalog, DoodadDefinition, UnitCatalog, UnitDefinition};
+use crate::world::{BuildingCatalog, DoodadCatalog, DoodadDefinition, UnitCatalog, UnitDefinition};
 
 use super::catalog_browser::{CatalogBrowserEntry, filter_catalog_entries};
 use super::dev_mode::{DefinitionId, DevTab, SpawnMode};
@@ -101,6 +101,7 @@ pub fn browse_catalog_entries<'a>(
     cache: &'a mut CatalogFilterCache,
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
     tab: DevTab,
     spawn_mode: SpawnMode,
     search_query: &str,
@@ -128,6 +129,7 @@ pub fn browse_catalog_entries<'a>(
         filter_catalog_entries(
             unit_catalog,
             doodad_catalog,
+            building_catalog,
             tab,
             spawn_mode,
             search_query,
@@ -233,7 +235,7 @@ pub fn tick_dev_search_debounce(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{UnitCatalog, starter_unit_definitions};
+    use crate::world::{BuildingCatalog, UnitCatalog, starter_unit_definitions};
 
     #[test]
     fn search_debounce_delays_filtered_query() {
@@ -259,6 +261,7 @@ mod tests {
             &mut cache,
             &catalog,
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
             DevTab::Units,
             SpawnMode::Unit,
             "wolf",
@@ -271,6 +274,7 @@ mod tests {
             &mut cache,
             &catalog,
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
             DevTab::Units,
             SpawnMode::Unit,
             "wolf",
@@ -296,6 +300,7 @@ mod tests {
             &mut cache,
             &catalog,
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
             DevTab::Units,
             SpawnMode::Unit,
             "",

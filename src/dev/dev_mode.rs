@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use bevy::prelude::*;
 
 use crate::debug::DebugOverlayConfig;
-use crate::world::{DoodadDefinitionId, UnitDefinitionId, WorldPosition};
+use crate::world::{BuildingDefinitionId, DoodadDefinitionId, UnitDefinitionId, WorldPosition};
 
 use super::history::DevSpawnHistory;
 use super::tools::{BrushSettings, PlacementRules};
@@ -25,6 +25,7 @@ pub enum DevTab {
     #[default]
     Units,
     Doodads,
+    Buildings,
     Placement,
     Scenes,
     Inspector,
@@ -38,6 +39,7 @@ pub enum SpawnMode {
     #[default]
     Unit,
     Doodad,
+    Building,
 }
 
 /// Unified catalog selection for spawn tools.
@@ -45,6 +47,7 @@ pub enum SpawnMode {
 pub enum DefinitionId {
     Unit(UnitDefinitionId),
     Doodad(DoodadDefinitionId),
+    Building(BuildingDefinitionId),
 }
 
 impl DefinitionId {
@@ -52,6 +55,7 @@ impl DefinitionId {
         match self {
             DefinitionId::Unit(id) => id.as_str(),
             DefinitionId::Doodad(id) => id.as_str(),
+            DefinitionId::Building(id) => id.as_str(),
         }
     }
 }
@@ -169,6 +173,7 @@ impl DevModeState {
             None => "none",
             Some(DefinitionId::Unit(_)) => "Place Unit",
             Some(DefinitionId::Doodad(_)) => "Place Doodad",
+            Some(DefinitionId::Building(_)) => "Place Building",
         };
         let selection = self
             .selected_definition
@@ -186,6 +191,7 @@ impl DevModeState {
         self.spawn_mode = match &id {
             DefinitionId::Unit(_) => SpawnMode::Unit,
             DefinitionId::Doodad(_) => SpawnMode::Doodad,
+            DefinitionId::Building(_) => SpawnMode::Building,
         };
         self.selected_definition = Some(id);
     }

@@ -42,7 +42,10 @@ pub use authoring::{
 };
 #[cfg(any(test, feature = "dev"))]
 pub use catalog::starter_definitions;
-pub use catalog::{UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId, UnitRenderKey};
+pub use catalog::{
+    UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId, UnitRenderKey,
+    UnitWorkCapabilities,
+};
 pub use combat_state::CombatState;
 #[cfg(test)]
 pub use death::queue_unit_removal;

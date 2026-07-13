@@ -1,8 +1,9 @@
 //! Aggregated authoritative simulation tick reports (ADR-065).
 
 use crate::world::{
-    BatchUnitMovementReport, CombatAiReport, CombatEngagementReport, CombatStrikeReport,
-    CommandBufferResolveReport, ProjectileReport, UnitDeathReport,
+    BatchUnitMovementReport, BuildingConstructionReport, CombatAiReport, CombatEngagementReport,
+    CombatStrikeReport, CommandBufferResolveReport, ProjectileReport, TaskTickReport,
+    UnitDeathReport,
 };
 
 /// Outcome of one authoritative simulation tick (all stages).
@@ -15,6 +16,8 @@ pub struct SimulationTickReport {
     pub projectile: ProjectileReport,
     pub death: UnitDeathReport,
     pub combat_ai: CombatAiReport,
+    pub building_construction: BuildingConstructionReport,
+    pub worker_tasks: TaskTickReport,
 }
 
 impl SimulationTickReport {

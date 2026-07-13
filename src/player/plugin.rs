@@ -7,6 +7,7 @@ use crate::client::{
 use crate::debug::DebugOverlayPlugin;
 use crate::simulation::{SimulationPlugin, SimulationSystems};
 use crate::ui::GameplayUiPlugin;
+use crate::ui::gameplay::collect_build_mode_intents;
 use crate::ui::gameplay::{GameplayCommandInputSystems, GameplayInputGateSystems};
 use crate::units::input::{BoxSelectDrag, PlayerInteractionSettings, SelectedUnits};
 use crate::units::{UnitHealthBarState, billboard_unit_health_bars, sync_unit_health_bars};
@@ -18,6 +19,7 @@ use super::selection_policy::sync_selection_policy_state;
 use super::simulation::{
     apply_death_client_cleanup, flush_simulation_command_trace, tick_unit_movement,
 };
+use super::space_view::{ActiveViewedSpace, ViewFollowLock, sync_active_viewed_space};
 
 /// Runtime entity sync from authoritative world data (ADR-065).
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -93,6 +95,8 @@ impl Plugin for PlayerPlugin {
             .init_resource::<PlayerInteractionSettings>()
             .init_resource::<UnitSelectionIndicatorState>()
             .init_resource::<UnitHealthBarState>()
+            .init_resource::<ActiveViewedSpace>()
+            .init_resource::<ViewFollowLock>()
             .add_systems(Startup, setup_box_select_overlay)
             .add_systems(
                 Update,
@@ -122,8 +126,22 @@ impl Plugin for PlayerPlugin {
             )
             .add_systems(
                 Update,
-                collect_unit_input_intents
+                sync_active_viewed_space
                     .after(sync_selection_policy_state)
+                    .before(collect_build_mode_intents)
+                    .in_set(PlayerControlSystems),
+            )
+            .add_systems(
+                Update,
+                collect_build_mode_intents
+                    .after(sync_active_viewed_space)
+                    .before(collect_unit_input_intents)
+                    .in_set(ClientIntentCollectSystems),
+            )
+            .add_systems(
+                Update,
+                collect_unit_input_intents
+                    .after(collect_build_mode_intents)
                     .in_set(ClientIntentCollectSystems),
             )
             .add_systems(

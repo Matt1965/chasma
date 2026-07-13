@@ -167,6 +167,7 @@ fn materialize_finalized_slice(
                 rotation: Some(placement.rotation),
                 scale: Some(placement.scale),
             },
+            None,
         ) {
             Ok(record) => {
                 if let Some(key) = ProceduralDoodadKey::from_record(&record) {
@@ -187,6 +188,9 @@ fn materialize_finalized_slice(
                 report.skipped_validation_failed += 1;
             }
             Err(DoodadAuthoringError::DoodadNotFound(_)) => {
+                report.skipped_validation_failed += 1;
+            }
+            Err(DoodadAuthoringError::Occupancy(_)) => {
                 report.skipped_validation_failed += 1;
             }
         }
@@ -578,6 +582,7 @@ mod tests {
             position,
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
 
@@ -748,6 +753,7 @@ mod tests {
             position,
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
 
@@ -879,6 +885,7 @@ mod tests {
             position,
             DoodadSource::Authored,
             DoodadPlacementOverrides::default(),
+            None,
         )
         .unwrap();
 

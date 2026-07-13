@@ -13,11 +13,12 @@ mod tests {
         step_unit_death_pipeline,
     };
     use crate::world::{
-        AttackTargetingPolicy, ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatEngagementStatus,
-        CombatState, DamageType, DoodadCatalog, Heightfield, HitMode, LocalPosition,
-        NavigationConfig, ProjectileReport, TargetFilter, UnitCatalog, UnitDefinitionId, UnitId,
-        UnitOrder, UnitOwnership, UnitSource, WeaponCatalog, WeaponDefinition, WeaponDefinitionId,
-        WorldData, WorldPosition, create_unit_with_ownership, issue_unit_order,
+        AttackTargetingPolicy, BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+        CombatEngagementStatus, CombatState, DamageType, DoodadCatalog, FootprintCatalog,
+        Heightfield, HitMode, LocalPosition, NavigationConfig, PassabilityCatalogs,
+        ProjectileReport, TargetFilter, UnitCatalog, UnitDefinitionId, UnitId, UnitOrder,
+        UnitOwnership, UnitSource, WeaponCatalog, WeaponDefinition, WeaponDefinitionId, WorldData,
+        WorldPosition, create_unit_with_ownership, default_passability, issue_unit_order,
         starter_unit_definitions, starter_weapon_definitions,
     };
     use bevy::prelude::Vec3;
@@ -134,10 +135,15 @@ mod tests {
             catalog,
             weapon_catalog,
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             policy(),
             &settings,
             &mut scan,
+            crate::world::BuildingConstructionSettings::default(),
+            &crate::world::InteriorProfileCatalog::default(),
             0.2,
             1,
         )
@@ -511,7 +517,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
-            &DoodadCatalog::default(),
+            default_passability(),
             &NavigationConfig::default(),
             policy(),
             &mut strike_report,

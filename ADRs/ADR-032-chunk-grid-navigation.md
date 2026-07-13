@@ -29,8 +29,9 @@ systems (AI, caravans, combat) share one navigation service.
 ## Grid
 
 - Configurable [`NavigationConfig::cell_spacing_meters`] (default **4 m**)
-- Walkability from resident heightfields ([`ground_world_position`]) and
-  [`is_position_blocked_by_doodads`] (U6) with agent collision radius
+- Walkability from resident heightfields ([`ground_world_position`]), slope, and
+  [`query_passability_at`] (terrain + static occupancy — ADR-080 B3). Agent collision
+  radius is applied in the passability / footprint overlap layer.
 - No navmesh, no render mesh sampling
 
 ## A*
@@ -43,10 +44,11 @@ systems (AI, caravans, combat) share one navigation service.
 ## Path API
 
 ```rust
-find_path(world, doodad_catalog, config, agent_radius_meters, start, goal)
+find_path(world, catalogs, config, agent, start, goal)
     -> Result<NavigationPath, NavigationError>
 ```
 
+`catalogs` is [`PassabilityCatalogs`] (doodad + building + footprint catalogs).
 Errors: `StartBlocked`, `GoalBlocked`, `NoPath`, `TerrainUnavailable`.
 
 Waypoints are grounded [`WorldPosition`] samples. Grid cell centers are navigation

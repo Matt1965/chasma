@@ -6,8 +6,8 @@ use crate::world::movement::feel::start_unit_move_to;
 use crate::world::navigation::xz_distance;
 use crate::world::unit::{CombatState, UnitId, UnitOrderError, UnitState};
 use crate::world::{
-    AttackTargetingPolicy, DoodadCatalog, NavigationConfig, UnitCatalog, WeaponCatalog, WorldData,
-    WorldPosition, validate_attack_target,
+    AttackTargetingPolicy, NavigationConfig, PassabilityCatalogs, UnitCatalog, WeaponCatalog,
+    WorldData, WorldPosition, validate_attack_target,
 };
 
 use super::cycle_lifecycle::{clear_attack_cycle, clear_attack_cycle_for_invalid_target};
@@ -75,7 +75,7 @@ pub fn step_all_combat_engagement(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
     strike_trace: &mut CombatStrikeReport,
@@ -96,7 +96,7 @@ pub fn step_all_combat_engagement(
             world,
             unit_catalog,
             weapon_catalog,
-            doodad_catalog,
+            catalogs,
             nav_config,
             targeting_policy,
             unit_id,
@@ -114,7 +114,7 @@ fn step_unit_combat_engagement(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
     unit_id: UnitId,
@@ -127,7 +127,7 @@ fn step_unit_combat_engagement(
             world,
             unit_catalog,
             weapon_catalog,
-            doodad_catalog,
+            catalogs,
             nav_config,
             targeting_policy,
             unit_id,
@@ -139,7 +139,7 @@ fn step_unit_combat_engagement(
             world,
             unit_catalog,
             weapon_catalog,
-            doodad_catalog,
+            catalogs,
             nav_config,
             targeting_policy,
             unit_id,
@@ -154,7 +154,7 @@ fn step_unit_combat_engagement(
             world,
             unit_catalog,
             weapon_catalog,
-            doodad_catalog,
+            catalogs,
             nav_config,
             targeting_policy,
             unit_id,
@@ -169,7 +169,7 @@ fn handle_attacking_target(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
     unit_id: UnitId,
@@ -258,7 +258,7 @@ fn handle_attacking_target(
             world,
             unit_catalog,
             weapon_catalog,
-            doodad_catalog,
+            catalogs,
             nav_config,
             unit_id,
             target,
@@ -282,7 +282,7 @@ fn handle_chasing_target(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
     unit_id: UnitId,
@@ -373,7 +373,7 @@ fn handle_chasing_target(
         world,
         unit_catalog,
         weapon_catalog,
-        doodad_catalog,
+        catalogs,
         nav_config,
         unit_id,
         target,
@@ -387,7 +387,7 @@ fn handle_attack_moving(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
     unit_id: UnitId,
@@ -400,7 +400,7 @@ fn handle_attack_moving(
             world,
             unit_catalog,
             weapon_catalog,
-            doodad_catalog,
+            catalogs,
             nav_config,
             targeting_policy,
             unit_id,
@@ -433,7 +433,7 @@ fn handle_attack_moving(
             world,
             unit_catalog,
             weapon_catalog,
-            doodad_catalog,
+            catalogs,
             nav_config,
             targeting_policy,
             unit_id,
@@ -477,7 +477,7 @@ fn handle_attack_moving(
         match start_unit_move_to(
             world,
             unit_catalog,
-            doodad_catalog,
+            catalogs,
             nav_config,
             unit_id,
             destination,
@@ -551,7 +551,7 @@ fn begin_chase_to_target(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     unit_id: UnitId,
     target: UnitId,
@@ -573,14 +573,7 @@ fn begin_chase_to_target(
         }
     };
     trace.chase_destination = Some(standoff);
-    match start_unit_move_to(
-        world,
-        unit_catalog,
-        doodad_catalog,
-        nav_config,
-        unit_id,
-        standoff,
-    ) {
+    match start_unit_move_to(world, unit_catalog, catalogs, nav_config, unit_id, standoff) {
         Ok(()) => trace.status = CombatEngagementStatus::OutOfRangeChasing,
         Err(UnitOrderError::NoPath | UnitOrderError::PathGoalBlocked) => {
             trace.status = CombatEngagementStatus::PathUnavailable;
@@ -658,12 +651,14 @@ pub fn initial_attack_combat_state(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::TestPassabilityBundle;
     use crate::world::combat::range::RANGE_HYSTERESIS_METERS;
     use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatStrikeReport, Heightfield,
-        LocalPosition, UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource, WeaponCatalog,
-        create_unit_with_ownership, issue_unit_order, resolve_all_pending_unit_orders,
-        starter_unit_definitions,
+        BuildingCatalog, BuildingConstructionSettings, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+        CombatStrikeReport, DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition,
+        PassabilityCatalogs, UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource, WeaponCatalog,
+        create_unit_with_ownership, default_passability, issue_unit_order,
+        resolve_all_pending_unit_orders, starter_unit_definitions,
     };
     use bevy::prelude::Vec3;
 
@@ -726,11 +721,12 @@ mod tests {
     }
 
     fn tick_combat(world: &mut WorldData, catalog: &UnitCatalog) -> CombatEngagementReport {
+        let bundle = TestPassabilityBundle::new();
         step_all_combat_engagement(
             world,
             catalog,
             &weapons(),
-            &DoodadCatalog::default(),
+            bundle.catalogs(),
             &NavigationConfig::default(),
             policy(),
             &mut CombatStrikeReport::default(),
@@ -922,7 +918,7 @@ mod tests {
             resolve_all_pending_unit_orders(
                 &mut world,
                 &catalog,
-                &DoodadCatalog::default(),
+                default_passability(),
                 &NavigationConfig::default(),
             );
             let mut scan = crate::world::CombatAiScanState::default();
@@ -932,10 +928,15 @@ mod tests {
                 &catalog,
                 &weapons(),
                 &DoodadCatalog::default(),
+                &BuildingCatalog::default(),
+                &FootprintCatalog::default(),
+                &crate::world::BuildingInteractionProfileCatalog::default(),
                 &NavigationConfig::default(),
                 policy(),
                 &settings,
                 &mut scan,
+                BuildingConstructionSettings::default(),
+                &crate::world::InteriorProfileCatalog::default(),
                 0.25,
                 0,
             );

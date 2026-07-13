@@ -142,6 +142,21 @@ mod fixtures {
             .with_allowed_biomes(all_assigned_biomes())
             .with_spawn_weight(1.0)
             .with_block_radius_meters(1.5),
+            DoodadDefinition::new(
+                DoodadDefinitionId::new("interior_chair"),
+                DoodadKind::Bush,
+                "Interior Chair",
+                1.0,
+                1.0,
+                1.0,
+                None,
+                None,
+                None,
+                true,
+                DoodadRenderKey::reserved("interior/chair"),
+            )
+            .with_spawn_weight(0.0)
+            .with_block_radius_meters(0.0),
         ]
     }
 }

@@ -7,11 +7,13 @@ use super::combat_state::CombatState;
 use super::id::UnitId;
 use super::state::UnitState;
 use crate::world::movement::feel::PATH_RESOLVE_BUDGET_PER_TICK;
+use crate::world::task::{TaskCancelReason, cancel_unit_task};
 use crate::world::unit::unit_can_execute_actions;
 use crate::world::{
     AttackTargetingPolicy, CommandBufferResolveReport, CommandResolveSuccess, DoodadCatalog,
-    NavigationConfig, WeaponCatalog, WorldData, WorldPosition, clear_attack_cycle_for_order_cancel,
-    initial_attack_combat_state, reset_attack_cycle_for_retarget, validate_attack_target,
+    NavigationConfig, PassabilityCatalogs, WeaponCatalog, WorldData, WorldPosition,
+    clear_attack_cycle_for_order_cancel, initial_attack_combat_state,
+    reset_attack_cycle_for_retarget, validate_attack_target,
 };
 
 /// Authoritative command issued to a unit instance.
@@ -28,6 +30,11 @@ pub enum UnitOrder {
     /// Move while attack-scanning (ADR-057).
     AttackMove {
         destination: WorldPosition,
+    },
+    /// Travel to and perform an assigned work task (ADR-085 B8).
+    Work {
+        task_id: crate::world::TaskId,
+        target: WorldPosition,
     },
 }
 
@@ -93,6 +100,9 @@ pub fn issue_unit_order(
     }
     match order {
         UnitOrder::Idle => {
+            let mut events = Vec::new();
+            cancel_unit_task(world, unit_id, TaskCancelReason::PlayerOrder, &mut events);
+            let _ = events;
             world.command_buffer_mut().clear_pending(unit_id);
             world.movement_smoothing_mut().clear_unit(unit_id);
             world
@@ -105,6 +115,9 @@ pub fn issue_unit_order(
             Ok(())
         }
         UnitOrder::MoveTo { .. } => {
+            let mut events = Vec::new();
+            cancel_unit_task(world, unit_id, TaskCancelReason::PlayerOrder, &mut events);
+            let _ = events;
             let _ = (weapon_catalog, targeting_policy);
             if world.get_unit(unit_id).is_none() {
                 return Err(UnitOrderError::UnitNotFound);
@@ -119,6 +132,9 @@ pub fn issue_unit_order(
             Ok(())
         }
         UnitOrder::Attack { target } => {
+            let mut events = Vec::new();
+            cancel_unit_task(world, unit_id, TaskCancelReason::PlayerOrder, &mut events);
+            let _ = events;
             let _ = (doodad_catalog, nav_config);
             validate_attack_target(
                 world,
@@ -152,6 +168,9 @@ pub fn issue_unit_order(
             Ok(())
         }
         UnitOrder::AttackMove { destination } => {
+            let mut events = Vec::new();
+            cancel_unit_task(world, unit_id, TaskCancelReason::PlayerOrder, &mut events);
+            let _ = events;
             let _ = (
                 doodad_catalog,
                 nav_config,
@@ -176,6 +195,19 @@ pub fn issue_unit_order(
                 .map_err(|_| UnitOrderError::AttackerNotFound)?;
             Ok(())
         }
+        UnitOrder::Work { .. } => {
+            if world.get_unit(unit_id).is_none() {
+                return Err(UnitOrderError::UnitNotFound);
+            }
+            world.command_buffer_mut().clear_pending(unit_id);
+            world.movement_smoothing_mut().clear_unit(unit_id);
+            world
+                .set_unit_combat_state(unit_id, CombatState::Peaceful)
+                .map_err(|_| UnitOrderError::UnitNotFound)?;
+            clear_attack_cycle_for_order_cancel(world, unit_id, None, unit_catalog, weapon_catalog);
+            world.command_buffer_mut().enqueue(unit_id, order);
+            Ok(())
+        }
     }
 }
 
@@ -186,7 +218,7 @@ pub fn issue_unit_order(
 pub fn resolve_pending_unit_orders(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
 ) -> CommandBufferResolveReport {
     if world.command_buffer().is_empty() {
@@ -201,7 +233,7 @@ pub fn resolve_pending_unit_orders(
         match crate::world::movement::feel::resolve_one(
             world,
             unit_catalog,
-            doodad_catalog,
+            catalogs,
             nav_config,
             entry.unit_id,
             entry.order,
@@ -234,12 +266,12 @@ pub fn resolve_pending_unit_orders(
 pub fn resolve_all_pending_unit_orders(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
-    doodad_catalog: &DoodadCatalog,
+    catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
 ) -> CommandBufferResolveReport {
     let mut total = CommandBufferResolveReport::default();
     while !world.command_buffer().is_empty() {
-        let batch = resolve_pending_unit_orders(world, unit_catalog, doodad_catalog, nav_config);
+        let batch = resolve_pending_unit_orders(world, unit_catalog, catalogs, nav_config);
         if batch.resolved == 0 && batch.failed == 0 {
             break;
         }
@@ -255,9 +287,10 @@ pub fn resolve_all_pending_unit_orders(
 mod tests {
     use super::*;
     use crate::world::{
-        AttackTargetingPolicy, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield,
-        LocalPosition, UnitDefinitionId, UnitOwnership, UnitSource, WeaponCatalog, create_unit,
-        create_unit_with_ownership, resolve_pending_unit_orders,
+        AttackTargetingPolicy, BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+        DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition, PassabilityCatalogs,
+        UnitDefinitionId, UnitOwnership, UnitSource, WeaponCatalog, create_unit,
+        create_unit_with_ownership, default_passability, resolve_pending_unit_orders,
     };
 
     fn layout_world() -> WorldData {
@@ -331,7 +364,7 @@ mod tests {
         resolve_pending_unit_orders(
             &mut world,
             &catalog,
-            &DoodadCatalog::default(),
+            default_passability(),
             &NavigationConfig::default(),
         );
 

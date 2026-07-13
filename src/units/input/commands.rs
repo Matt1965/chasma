@@ -290,10 +290,10 @@ fn log_order_failure(unit_id: crate::world::UnitId, order: UnitOrder, error: Uni
 mod tests {
     use super::*;
     use crate::world::{
-        AttackTargetingPolicy, ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatState,
-        Heightfield, LocalPosition, UnitDefinitionId, UnitOwnership, UnitSource, UnitState,
-        WeaponCatalog, WorldPosition, create_unit, create_unit_with_ownership,
-        resolve_all_pending_unit_orders,
+        AttackTargetingPolicy, BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+        CombatState, DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition,
+        PassabilityCatalogs, UnitDefinitionId, UnitOwnership, UnitSource, UnitState, WeaponCatalog,
+        WorldPosition, create_unit, create_unit_with_ownership, resolve_all_pending_unit_orders,
     };
 
     fn flat_world() -> WorldData {
@@ -367,7 +367,16 @@ mod tests {
             target,
             policy,
         );
-        resolve_all_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav_config);
+        resolve_all_pending_unit_orders(
+            &mut world,
+            &catalog,
+            PassabilityCatalogs {
+                doodad: &doodad_catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav_config,
+        );
 
         assert_eq!(report.issued, 2);
         assert_eq!(report.failed, 0);
@@ -424,7 +433,16 @@ mod tests {
             click,
             policy,
         );
-        resolve_all_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav_config);
+        resolve_all_pending_unit_orders(
+            &mut world,
+            &catalog,
+            PassabilityCatalogs {
+                doodad: &doodad_catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav_config,
+        );
 
         let target_a = moving_target(a, &world);
         let target_b = moving_target(b, &world);
@@ -478,7 +496,16 @@ mod tests {
             click,
             policy,
         );
-        resolve_all_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav_config);
+        resolve_all_pending_unit_orders(
+            &mut world,
+            &catalog,
+            PassabilityCatalogs {
+                doodad: &doodad_catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav_config,
+        );
 
         let resolved = moving_target(mover, &world);
         let wolf_radius = catalog
@@ -537,7 +564,16 @@ mod tests {
             pos(40.0, 40.0),
             policy,
         );
-        resolve_all_pending_unit_orders(&mut world, &catalog, &doodad_catalog, &nav_config);
+        resolve_all_pending_unit_orders(
+            &mut world,
+            &catalog,
+            PassabilityCatalogs {
+                doodad: &doodad_catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav_config,
+        );
 
         let UnitState::Moving {
             path: ref path_a, ..

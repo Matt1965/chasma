@@ -8,18 +8,19 @@ use crate::ui::gameplay::combat_display::{
     attack_cycle_summary, combat_target_id, weapon_display_for_unit,
 };
 use crate::world::{
-    ChunkCoord, DoodadCatalog, InteractionQueryContext, NavigationPath, SlopeWalkability,
+    BuildingCatalog, BuildingId, ChunkCoord, DoodadCatalog, FootprintCatalog,
+    InteractionQueryContext, NavigationPath, NavigationWaypoint, SlopeWalkability, SpaceId,
     SteeringContext, SteeringSettings, UnitCatalog, UnitId, UnitMovementTrace, UnitState,
     WeaponCatalog, WorldData, WorldPosition, alignment_force, blocking_doodad_at_position,
     classify_slope_walkability, cohesion_force, gather_steering_neighbors, ground_world_position,
-    interaction_plan_to_unit_order, query_world_interaction, resolve_interaction_to_order,
-    separation_force, unit_spacing_meters,
+    interaction_plan_to_unit_order, is_building_operational, query_world_interaction,
+    resolve_interaction_to_order, separation_force, unit_spacing_meters,
 };
 
 use super::snapshot::{
-    ChunkResidencySnapshot, CombatInspectorSnapshot, FormationInspectorSnapshot,
-    InteractionInspectorSnapshot, PathInspectorSnapshot, ProjectileInspectorSnapshot,
-    SteeringInspectorSnapshot, UnitInspectorSnapshot,
+    BuildingInspectorSnapshot, ChunkResidencySnapshot, CombatInspectorSnapshot,
+    FormationInspectorSnapshot, InteractionInspectorSnapshot, PathInspectorSnapshot,
+    ProjectileInspectorSnapshot, SteeringInspectorSnapshot, UnitInspectorSnapshot,
 };
 
 const STEERING_SETTINGS: SteeringSettings = SteeringSettings::DEFAULT;
@@ -31,6 +32,8 @@ pub fn capture_unit_inspector_snapshot(
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
     unit_id: UnitId,
     simulation_tick: u64,
     last_block: Option<&UnitMovementTrace>,
@@ -63,11 +66,28 @@ pub fn capture_unit_inspector_snapshot(
             diagnose_block_reason(
                 world,
                 doodad_catalog,
+                building_catalog,
+                footprint_catalog,
                 position,
                 definition.collision_radius_meters,
             )
         });
     let chunk = capture_chunk_residency(world, unit_id)?;
+
+    let (display_floor_label, current_space_id) = if record.current_space_id.is_surface() {
+        ("Surface".to_string(), SpaceId::SURFACE)
+    } else {
+        world
+            .space_registry()
+            .get_space(record.current_space_id)
+            .map(|space| (space.display_floor_label.clone(), space.id))
+            .unwrap_or_else(|| {
+                (
+                    format!("Space {}", record.current_space_id.raw()),
+                    record.current_space_id,
+                )
+            })
+    };
 
     let combat = capture_combat_inspector(&record, unit_catalog, weapon_catalog);
     let projectiles = capture_projectiles_for_unit(world, unit_id);
@@ -87,6 +107,31 @@ pub fn capture_unit_inspector_snapshot(
         block_reason,
         chunk,
         simulation_tick,
+        current_space_id,
+        display_floor_label,
+    })
+}
+
+/// Capture a building inspection snapshot. Returns `None` if the building does not exist.
+pub fn capture_building_inspector_snapshot(
+    world: &WorldData,
+    building_catalog: &BuildingCatalog,
+    building_id: BuildingId,
+) -> Option<BuildingInspectorSnapshot> {
+    let record = world.get_building(building_id)?.clone();
+    let definition = building_catalog.get(&record.definition_id)?;
+    let chunk = world.building_chunk(building_id)?.coord();
+    Some(BuildingInspectorSnapshot {
+        building_id,
+        definition_id: record.definition_id.clone(),
+        display_name: definition.display_name.clone(),
+        current_hp: record.vitals.current_hp,
+        max_hp: record.vitals.max_hp,
+        lifecycle_state: record.lifecycle_state.label().to_string(),
+        progress_percent: (record.construction.progress_0_1 * 100.0).clamp(0.0, 100.0),
+        operational: is_building_operational(&record),
+        affiliation: record.ownership.affiliation.label().to_string(),
+        chunk,
     })
 }
 
@@ -95,10 +140,21 @@ pub fn capture_interaction_inspector_snapshot(
     world: &WorldData,
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
     weapon_catalog: &crate::world::WeaponCatalog,
     click_position: WorldPosition,
 ) -> Option<InteractionInspectorSnapshot> {
-    let ctx = InteractionQueryContext::new(world, doodad_catalog, unit_catalog, weapon_catalog);
+    let interaction_catalog = crate::world::BuildingInteractionProfileCatalog::default();
+    let ctx = InteractionQueryContext::new(
+        world,
+        doodad_catalog,
+        building_catalog,
+        footprint_catalog,
+        &interaction_catalog,
+        unit_catalog,
+        weapon_catalog,
+    );
     let terrain_hit = ground_world_position(world, click_position).is_some();
     let interaction = query_world_interaction(&ctx, click_position)?;
     let plan = resolve_interaction_to_order(&interaction);
@@ -125,6 +181,7 @@ fn state_label(state: &UnitState) -> String {
     match state {
         UnitState::Idle => "Idle".into(),
         UnitState::Moving { .. } => "Moving".into(),
+        UnitState::Working { task_id } => format!("Working({task_id:?})"),
         UnitState::Dead => "Dead".into(),
     }
 }
@@ -203,10 +260,14 @@ fn capture_path_inspector(
 
     let (segment_start, segment_end) = active_segment(*waypoint_index, unit_position, path);
     PathInspectorSnapshot {
-        waypoints: path.waypoints.clone(),
+        waypoints: path
+            .waypoints
+            .iter()
+            .map(|waypoint| waypoint.position)
+            .collect(),
         waypoint_index: *waypoint_index,
-        segment_start,
-        segment_end,
+        segment_start: segment_start.map(|waypoint| waypoint.position),
+        segment_end: segment_end.map(|waypoint| waypoint.position),
         length_meters: path.length_meters(layout),
         chunk_transitions: chunk_transitions_along_path(path),
     }
@@ -216,9 +277,9 @@ fn active_segment(
     waypoint_index: usize,
     unit_position: WorldPosition,
     path: &NavigationPath,
-) -> (Option<WorldPosition>, Option<WorldPosition>) {
+) -> (Option<NavigationWaypoint>, Option<NavigationWaypoint>) {
     let start = if waypoint_index == 0 {
-        Some(unit_position)
+        Some(NavigationWaypoint::surface(unit_position))
     } else {
         path.waypoints
             .get(waypoint_index.saturating_sub(1))
@@ -232,9 +293,9 @@ fn chunk_transitions_along_path(path: &NavigationPath) -> Vec<ChunkCoord> {
     let mut chunks = Vec::new();
     let mut last: Option<ChunkCoord> = None;
     for waypoint in &path.waypoints {
-        if last != Some(waypoint.chunk) {
-            chunks.push(waypoint.chunk);
-            last = Some(waypoint.chunk);
+        if last != Some(waypoint.position.chunk) {
+            chunks.push(waypoint.position.chunk);
+            last = Some(waypoint.position.chunk);
         }
     }
     chunks
@@ -377,7 +438,7 @@ fn path_direction_xz(
         return Vec2::ZERO;
     };
     let current = position.to_global(layout);
-    let waypoint_global = waypoint.to_global(layout);
+    let waypoint_global = waypoint.position.to_global(layout);
     let delta = Vec2::new(waypoint_global.x - current.x, waypoint_global.z - current.z);
     if delta.length_squared() <= 1e-8 {
         return Vec2::ZERO;
@@ -388,13 +449,22 @@ fn path_direction_xz(
 fn diagnose_block_reason(
     world: &WorldData,
     doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
     position: WorldPosition,
     radius: f32,
 ) -> Option<String> {
     if ground_world_position(world, position).is_none() {
         return Some("Missing terrain / chunk not resident".into());
     }
-    if let Some(doodad_id) = blocking_doodad_at_position(world, doodad_catalog, position, radius) {
+    if let Some(doodad_id) = blocking_doodad_at_position(
+        world,
+        doodad_catalog,
+        building_catalog,
+        footprint_catalog,
+        position,
+        radius,
+    ) {
         return Some(format!("Blocked by doodad #{}", doodad_id.raw()));
     }
     match classify_slope_walkability(world, position, 40.0) {
@@ -479,7 +549,10 @@ mod tests {
                 unit_id,
                 UnitState::Moving {
                     target: pos(10.0, 10.0),
-                    path: NavigationPath::new(vec![pos(5.0, 5.0), pos(10.0, 10.0)]),
+                    path: NavigationPath::from_surface_positions(vec![
+                        pos(5.0, 5.0),
+                        pos(10.0, 10.0),
+                    ]),
                     waypoint_index: 0,
                 },
             )
@@ -490,6 +563,8 @@ mod tests {
             &catalog,
             &crate::world::WeaponCatalog::default(),
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
             unit_id,
             7,
             None,
@@ -513,7 +588,7 @@ mod tests {
                 unit_id,
                 UnitState::Moving {
                     target: pos(20.0, 20.0),
-                    path: NavigationPath::new(waypoints.clone()),
+                    path: NavigationPath::from_surface_positions(waypoints.clone()),
                     waypoint_index: 1,
                 },
             )
@@ -524,6 +599,8 @@ mod tests {
             &catalog,
             &crate::world::WeaponCatalog::default(),
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
             unit_id,
             0,
             None,
@@ -545,7 +622,7 @@ mod tests {
                 unit_id,
                 UnitState::Moving {
                     target: pos(10.0, 0.0),
-                    path: NavigationPath::new(vec![pos(10.0, 0.0)]),
+                    path: NavigationPath::from_surface_positions(vec![pos(10.0, 0.0)]),
                     waypoint_index: 0,
                 },
             )
@@ -556,6 +633,8 @@ mod tests {
             &catalog,
             &crate::world::WeaponCatalog::default(),
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
             unit_id,
             0,
             None,
@@ -577,7 +656,7 @@ mod tests {
                 unit_id,
                 UnitState::Moving {
                     target,
-                    path: NavigationPath::new(vec![target]),
+                    path: NavigationPath::from_surface_positions(vec![target]),
                     waypoint_index: 0,
                 },
             )
@@ -588,6 +667,8 @@ mod tests {
             &catalog,
             &crate::world::WeaponCatalog::default(),
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
             unit_id,
             0,
             None,
@@ -607,6 +688,8 @@ mod tests {
             &world,
             &catalog,
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
             &crate::world::WeaponCatalog::default(),
             click,
         )
@@ -631,6 +714,8 @@ mod tests {
             &catalog,
             &crate::world::WeaponCatalog::default(),
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
             unit_id,
             0,
             None,
@@ -649,6 +734,8 @@ mod tests {
             &catalog,
             &crate::world::WeaponCatalog::default(),
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
             unit_id,
             3,
             None,
@@ -659,6 +746,8 @@ mod tests {
             &catalog,
             &crate::world::WeaponCatalog::default(),
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
             unit_id,
             3,
             None,
@@ -682,6 +771,8 @@ mod tests {
             &catalog,
             &weapons,
             &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
             unit_id,
             0,
             None,
