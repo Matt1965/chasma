@@ -11,7 +11,8 @@ use crate::simulation::SimulationControlState;
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::{BoxSelectDrag, cursor_world_ray, terrain_click_to_world_position};
 use crate::world::{
-    BuildingCatalog, DoodadCatalog, FootprintCatalog, UnitCatalog, WorldConfig, WorldData,
+    BuildingCatalog, DoodadCatalog, FootprintCatalog, InventoryCatalogCtx, InventoryProfileCatalog,
+    ItemCatalog, ItemCategoryCatalog, UnitCatalog, WorldConfig, WorldData,
 };
 
 use super::catalog_cache::DevSearchDebounce;
@@ -39,6 +40,10 @@ pub struct DevSpawnClickParams<'w> {
     pub doodad_catalog: Res<'w, DoodadCatalog>,
     pub building_catalog: Res<'w, BuildingCatalog>,
     pub footprint_catalog: Res<'w, FootprintCatalog>,
+    pub item_catalog: Res<'w, ItemCatalog>,
+    pub item_category_catalog: Res<'w, ItemCategoryCatalog>,
+    pub inventory_profile_catalog: Res<'w, InventoryProfileCatalog>,
+    pub render_assets: Option<Res<'w, TerrainRenderAssets>>,
     pub simulation: Res<'w, SimulationControlState>,
     pub dev_state: ResMut<'w, DevModeState>,
 }
@@ -365,7 +370,11 @@ pub fn handle_dev_spawn_click(
     };
 
     let layout = params.config.chunk_layout();
-    let vertical_scale = 1.0;
+    let vertical_scale = params
+        .render_assets
+        .as_ref()
+        .map(|assets| assets.vertical_scale)
+        .unwrap_or(1.0);
 
     let Some(click) = terrain_click_to_world_position(&ray, &params.world, layout, vertical_scale)
     else {
@@ -406,6 +415,11 @@ pub fn handle_dev_spawn_click(
         spawn_affiliation: params.dev_state.spawn_affiliation,
     };
 
+    let inventory_ctx = InventoryCatalogCtx::new(
+        &params.item_catalog,
+        &params.item_category_catalog,
+        &params.inventory_profile_catalog,
+    );
     let report = execute_batch_spawn(
         &request,
         definition.id_str(),
@@ -414,6 +428,7 @@ pub fn handle_dev_spawn_click(
         &params.doodad_catalog,
         &params.building_catalog,
         &params.footprint_catalog,
+        &inventory_ctx,
         &mut batch_scratch,
     );
 

@@ -653,9 +653,13 @@ fn dispatch_contextual_command(
                 target,
                 inventory_queue,
             ) {
+                pending_trace.resolved_command = Some(CommandType::Interact);
                 return IntentDispatchStatus::Applied;
             }
         }
+        pending_trace.resolved_command = Some(CommandType::Interact);
+        pending_trace.command_tooltip = Some("Nothing to interact with here.".to_string());
+        return IntentDispatchStatus::Ignored;
     }
 
     let selected: Vec<_> = selection.iter().collect();

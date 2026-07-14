@@ -14,13 +14,15 @@ use crate::world::{
 };
 
 use super::capture::capture_building_inspector_snapshot;
-use super::params::InspectorCaptureParams;
 use super::state::WorldInspectorState;
 
 pub fn handle_building_dev_actions(
     dev_state: Res<crate::dev::DevModeState>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    capture: InspectorCaptureParams,
+    doodad_catalog: Res<crate::world::DoodadCatalog>,
+    building_catalog: Res<crate::world::BuildingCatalog>,
+    footprint_catalog: Res<crate::world::FootprintCatalog>,
+    interior_catalog: Res<crate::world::InteriorProfileCatalog>,
     interaction_catalog: Res<BuildingInteractionProfileCatalog>,
     items: Res<ItemCatalog>,
     categories: Res<ItemCategoryCatalog>,
@@ -38,9 +40,9 @@ pub fn handle_building_dev_actions(
     };
 
     let occ = OccupancyCatalogs {
-        doodad: &capture.doodad_catalog,
-        building: &capture.building_catalog,
-        footprint: &capture.footprint_catalog,
+        doodad: &doodad_catalog,
+        building: &building_catalog,
+        footprint: &footprint_catalog,
     };
     let inventory_ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
     let inventory_cleanup = BuildingInventoryContext {
@@ -54,8 +56,8 @@ pub fn handle_building_dev_actions(
     if keyboard.just_pressed(KeyCode::KeyD) {
         let _ = damage_building(
             &mut world,
-            &capture.building_catalog,
-            &capture.doodad_catalog,
+            &building_catalog,
+            &doodad_catalog,
             occ,
             building_id,
             50,
@@ -74,8 +76,8 @@ pub fn handle_building_dev_actions(
     if keyboard.just_pressed(KeyCode::KeyX) {
         let _ = destroy_building(
             &mut world,
-            &capture.building_catalog,
-            &capture.doodad_catalog,
+            &building_catalog,
+            &doodad_catalog,
             occ,
             building_id,
             "dev_destroy",
@@ -87,9 +89,9 @@ pub fn handle_building_dev_actions(
     if keyboard.just_pressed(KeyCode::KeyR) {
         let _ = set_building_lifecycle_stage(
             &mut world,
-            &capture.building_catalog,
-            &capture.interior_catalog,
-            &capture.doodad_catalog,
+            &building_catalog,
+            &interior_catalog,
+            &doodad_catalog,
             occ,
             building_id,
             BuildingLifecycleState::Ruins,
@@ -101,9 +103,9 @@ pub fn handle_building_dev_actions(
     if keyboard.just_pressed(KeyCode::KeyC) {
         let _ = set_building_lifecycle_stage(
             &mut world,
-            &capture.building_catalog,
-            &capture.interior_catalog,
-            &capture.doodad_catalog,
+            &building_catalog,
+            &interior_catalog,
+            &doodad_catalog,
             occ,
             building_id,
             BuildingLifecycleState::Complete,
@@ -115,9 +117,9 @@ pub fn handle_building_dev_actions(
     if keyboard.just_pressed(KeyCode::KeyP) {
         let _ = add_building_construction_progress(
             &mut world,
-            &capture.building_catalog,
-            &capture.interior_catalog,
-            &capture.doodad_catalog,
+            &building_catalog,
+            &interior_catalog,
+            &doodad_catalog,
             occ,
             building_id,
             0.1,
@@ -258,7 +260,7 @@ pub fn handle_building_dev_actions(
     if refresh {
         inspector.building_snapshot = capture_building_inspector_snapshot(
             &world,
-            &capture.building_catalog,
+            &building_catalog,
             &interaction_catalog,
             building_id,
         );

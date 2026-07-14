@@ -56,10 +56,9 @@ pub fn command_availability(
     }
 
     match command_type {
-        CommandType::Move | CommandType::Stop | CommandType::Attack | CommandType::AttackMove => {
-            CommandAvailability::Available
-        }
-        CommandType::HoldPosition | CommandType::Interact => {
+        CommandType::Move | CommandType::Stop | CommandType::Attack | CommandType::AttackMove
+        | CommandType::Interact => CommandAvailability::Available,
+        CommandType::HoldPosition => {
             CommandAvailability::Unavailable(CommandUnavailableReason::FeatureNotImplemented)
         }
     }
@@ -90,19 +89,21 @@ mod tests {
     }
 
     #[test]
-    fn hold_and_interact_report_feature_not_implemented() {
+    fn hold_reports_feature_not_implemented() {
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
         let hold = command_availability(CommandType::HoldPosition, &selection);
-        let interact = command_availability(CommandType::Interact, &selection);
         assert_eq!(
             hold,
             CommandAvailability::Unavailable(CommandUnavailableReason::FeatureNotImplemented)
         );
-        assert_eq!(
-            interact,
-            CommandAvailability::Unavailable(CommandUnavailableReason::FeatureNotImplemented)
-        );
+    }
+
+    #[test]
+    fn interact_is_available_with_selection() {
+        let mut selection = SelectedUnits::default();
+        selection.set_single(crate::world::UnitId::new(1));
+        assert!(command_availability(CommandType::Interact, &selection).is_available());
     }
 
     #[test]

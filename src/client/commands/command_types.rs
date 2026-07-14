@@ -50,7 +50,7 @@ impl CommandType {
     pub fn is_implemented(self) -> bool {
         matches!(
             self,
-            Self::Move | Self::Stop | Self::Attack | Self::AttackMove
+            Self::Move | Self::Stop | Self::Attack | Self::AttackMove | Self::Interact
         )
     }
 
@@ -104,7 +104,7 @@ mod tests {
         assert!(CommandType::Attack.is_implemented());
         assert!(CommandType::AttackMove.is_implemented());
         assert!(!CommandType::HoldPosition.is_implemented());
-        assert!(!CommandType::Interact.is_implemented());
+        assert!(CommandType::Interact.is_implemented());
     }
 
     #[test]

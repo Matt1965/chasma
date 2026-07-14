@@ -24,6 +24,7 @@ pub enum InventoryUiError {
     PileGone,
     CorpseGone,
     TreasuryUnavailable,
+    UnitHasNoInventory,
     Other(String),
 }
 
@@ -48,6 +49,7 @@ impl InventoryUiError {
             Self::PileGone => "World pile is gone.".into(),
             Self::CorpseGone => "Corpse is gone.".into(),
             Self::TreasuryUnavailable => "Treasury is no longer available.".into(),
+            Self::UnitHasNoInventory => "This unit has no inventory.".into(),
             Self::Other(msg) => msg,
         }
     }

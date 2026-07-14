@@ -50,7 +50,8 @@ pub fn build_command_plan(
             Ok(BuiltCommandPlan::AttackMove { destination })
         }
         CommandType::Stop => Ok(BuiltCommandPlan::StopAll),
-        CommandType::HoldPosition | CommandType::Interact => Err(
+        CommandType::Interact => Ok(BuiltCommandPlan::NoOp),
+        CommandType::HoldPosition => Err(
             CommandBuildError::FeatureUnavailable(CommandUnavailableReason::FeatureNotImplemented),
         ),
     }
@@ -198,7 +199,7 @@ mod tests {
     }
 
     #[test]
-    fn interact_rejects_as_unimplemented() {
+    fn interact_builds_no_op_plan() {
         let world = flat_world();
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
@@ -208,12 +209,10 @@ mod tests {
                 position: pos(0.0, 0.0),
             },
         };
-        assert!(matches!(
-            build_command_plan(&intent, &selection, &world),
-            Err(CommandBuildError::FeatureUnavailable(
-                CommandUnavailableReason::FeatureNotImplemented
-            ))
-        ));
+        assert_eq!(
+            build_command_plan(&intent, &selection, &world).unwrap(),
+            BuiltCommandPlan::NoOp
+        );
     }
 
     #[test]

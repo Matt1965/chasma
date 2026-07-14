@@ -141,8 +141,19 @@ impl UnitImportRow {
             definition = definition.with_inventory_profile_id(
                 crate::world::InventoryProfileId::new(self.inventory_profile_id.trim()),
             );
+        } else if self.is_robot_row() {
+            definition = definition.with_inventory_profile_id(
+                crate::world::InventoryProfileId::new("unit_backpack_standard"),
+            );
         }
         Ok(definition)
+    }
+
+    fn is_robot_row(&self) -> bool {
+        if self.file_path.trim().is_empty() {
+            return false;
+        }
+        normalize_file_path_to_render_key(&self.file_path).ok().as_deref() == Some("robot")
     }
 
     fn resolved_animation_profile_id(&self) -> Option<AnimationProfileId> {
@@ -262,6 +273,19 @@ mod tests {
         row.file_path = String::new();
         let def = row.to_definition().unwrap();
         assert_eq!(def.render_key, UnitRenderKey::unset());
+    }
+
+    #[test]
+    fn robot_without_inventory_column_gets_default_backpack() {
+        let mut row = sample_row();
+        row.file_path = r"\units\robot.glb".to_string();
+        row.name = "Robot".to_string();
+        row.has_inventory_profile_column = false;
+        let def = row.to_definition().unwrap();
+        assert_eq!(
+            def.inventory_profile_id.as_ref().map(|id| id.as_str()),
+            Some("unit_backpack_standard")
+        );
     }
 
     #[test]

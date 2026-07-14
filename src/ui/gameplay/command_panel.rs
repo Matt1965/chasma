@@ -210,6 +210,7 @@ pub fn handle_command_button_clicks(
         match *button {
             HudCommandButton::Move => hud.armed_command = Some(CommandType::Move),
             HudCommandButton::Attack => hud.armed_command = Some(CommandType::Attack),
+            HudCommandButton::Interact => hud.armed_command = Some(CommandType::Interact),
             HudCommandButton::Stop if button.emits_palette_intent() => {
                 queue.push(ClientIntent::PaletteCommand { command_type });
                 hud.armed_command = None;
@@ -288,16 +289,14 @@ mod tests {
     }
 
     #[test]
-    fn interact_disabled_with_explicit_reason() {
+    fn interact_enabled_with_selection() {
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
-        assert!(!command_button_enabled(
+        assert!(command_button_enabled(
             HudCommandButton::Interact,
             &selection,
             &UnitCatalog::default()
         ));
-        let tooltip = command_button_tooltip(HudCommandButton::Interact, &selection);
-        assert!(tooltip.contains("Not implemented"));
     }
 
     #[test]

@@ -3,10 +3,10 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    BuildingCatalog, BuildingDefinitionId, BuildingOwnership, BuildingSource, DoodadCatalog,
-    DoodadPlacementOverrides, DoodadSource, FootprintCatalog, UnitCatalog, UnitOwnership,
-    UnitSource, WorldData, WorldPosition, create_building, create_doodad,
-    create_unit_with_ownership,
+    BuildingCatalog, BuildingOwnership, BuildingSource, DoodadCatalog,
+    DoodadPlacementOverrides, DoodadSource, FootprintCatalog, InventoryCatalogCtx, UnitCatalog,
+    UnitOwnership, UnitSource, WorldData, WorldPosition, create_building_with_inventory,
+    create_doodad, create_unit_with_inventory,
 };
 
 use super::super::dev_mode::DefinitionId;
@@ -117,6 +117,10 @@ pub fn plan_batch_spawn(
 }
 
 /// Execute batch spawn — mutates [`WorldData`] only through authoring APIs.
+///
+/// `inventory_ctx` supplies item/inventory catalogs so definitions carrying an
+/// inventory profile (unit backpacks, storage buildings) allocate their
+/// containers at create time. Definitions without a profile are unaffected.
 pub fn execute_batch_spawn(
     request: &BatchSpawnRequest,
     definition_key: &str,
@@ -125,6 +129,7 @@ pub fn execute_batch_spawn(
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
+    inventory_ctx: &InventoryCatalogCtx<'_>,
     scratch: &mut BatchSpawnScratch,
 ) -> BatchSpawnReport {
     let (planned, mut report) = plan_batch_spawn(
@@ -144,6 +149,7 @@ pub fn execute_batch_spawn(
             unit_catalog,
             doodad_catalog,
             building_catalog,
+            inventory_ctx,
             &request.definition,
             position,
             request.spawn_affiliation,
@@ -163,18 +169,20 @@ fn spawn_at(
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
+    inventory_ctx: &InventoryCatalogCtx<'_>,
     definition: &DefinitionId,
     position: WorldPosition,
     spawn_affiliation: crate::world::Affiliation,
 ) -> bool {
     match definition {
-        DefinitionId::Unit(definition_id) => create_unit_with_ownership(
+        DefinitionId::Unit(definition_id) => create_unit_with_inventory(
             unit_catalog,
             world,
             definition_id,
             position,
             UnitSource::Dev,
             UnitOwnership::with_affiliation(spawn_affiliation),
+            inventory_ctx,
         )
         .is_ok(),
         DefinitionId::Doodad(definition_id) => create_doodad(
@@ -187,7 +195,7 @@ fn spawn_at(
             None,
         )
         .is_ok(),
-        DefinitionId::Building(definition_id) => create_building(
+        DefinitionId::Building(definition_id) => create_building_with_inventory(
             building_catalog,
             world,
             definition_id,
@@ -196,6 +204,7 @@ fn spawn_at(
             BuildingSource::Dev,
             BuildingOwnership::with_affiliation(spawn_affiliation),
             None,
+            inventory_ctx,
         )
         .is_ok(),
     }
@@ -207,8 +216,20 @@ mod tests {
     use crate::dev::tools::brush::BrushMode;
     use crate::world::{
         ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, Heightfield,
-        LocalPosition, UnitDefinitionId,
+        InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, LocalPosition, UnitDefinitionId,
+        starter_inventory_profile_definitions, starter_item_category_definitions,
+        starter_item_definitions,
     };
+
+    fn item_catalogs() -> (ItemCategoryCatalog, ItemCatalog, InventoryProfileCatalog) {
+        let categories =
+            ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
+        let items = ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+        let profiles =
+            InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
+                .unwrap();
+        (categories, items, profiles)
+    }
 
     fn flat_world() -> WorldData {
         let layout = ChunkLayout {
@@ -262,6 +283,8 @@ mod tests {
         };
         let mut scratch = BatchSpawnScratch::default();
         let footprint_catalog = FootprintCatalog::default();
+        let (categories, items, profiles) = item_catalogs();
+        let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
         let report = execute_batch_spawn(
             &request,
             "wolf",
@@ -270,6 +293,7 @@ mod tests {
             &doodad_catalog,
             &building_catalog,
             &footprint_catalog,
+            &ctx,
             &mut scratch,
         );
         assert_eq!(report.spawned, 4);

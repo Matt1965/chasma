@@ -8,8 +8,9 @@ use crate::camera::CameraSettings;
 use crate::logging::{DEV_STARTUP_LOG_PATH, append_log_line};
 use crate::terrain::residency::ChunkResidencyTracker;
 use crate::world::{
-    ChunkId, UnitCatalog, UnitDefinition, UnitGroundingError, UnitOwnership, UnitSource,
-    WorldConfig, WorldData, WorldPosition, create_unit_with_ownership, ground_unit_to_terrain,
+    ChunkId, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog,
+    UnitCatalog, UnitDefinition, UnitGroundingError, UnitOwnership, UnitSource, WorldConfig,
+    WorldData, WorldPosition, create_unit_with_inventory, ground_unit_to_terrain,
 };
 
 const SESSION_HEADER: &str = "# chasma dev startup log";
@@ -49,6 +50,9 @@ pub fn spawn_dev_preview_units(
     camera: Res<CameraSettings>,
     config: Res<WorldConfig>,
     catalog: Res<UnitCatalog>,
+    items: Res<ItemCatalog>,
+    categories: Res<ItemCategoryCatalog>,
+    profiles: Res<InventoryProfileCatalog>,
     residency: Res<ChunkResidencyTracker>,
     mut world: ResMut<WorldData>,
     mut ledger: ResMut<DevPreviewUnitSpawnLedger>,
@@ -88,18 +92,21 @@ pub fn spawn_dev_preview_units(
         }
     }
 
+    let inventory_ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+
     let mut spawned = 0u32;
     for (definition, offset_x, offset_z) in spawn_plan {
         let global = Vec3::new(focus.x + offset_x, 0.0, focus.z + offset_z);
         let position = WorldPosition::from_global(global, layout);
 
-        let record = match create_unit_with_ownership(
+        let record = match create_unit_with_inventory(
             &catalog,
             &mut world,
             &definition.id,
             position,
             UnitSource::Authored,
             UnitOwnership::player_default(),
+            &inventory_ctx,
         ) {
             Ok(record) => record,
             Err(err) => {

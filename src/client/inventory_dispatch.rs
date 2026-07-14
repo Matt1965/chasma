@@ -578,6 +578,9 @@ fn apply_open_mode(ui: &mut InventoryUiState, world: &WorldData, mode: &Inventor
     match mode {
         InventoryOpenMode::UnitOnly { unit_id } => {
             state.left_inventory_id = world.get_unit(*unit_id).and_then(|u| u.inventory_id);
+            if state.left_inventory_id.is_none() {
+                state.feedback_message = InventoryUiError::UnitHasNoInventory.message();
+            }
         }
         InventoryOpenMode::DualTransfer {
             actor_unit_id,

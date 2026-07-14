@@ -705,8 +705,7 @@ pub fn handle_inventory_panel_buttons(
 pub fn handle_inventory_entry_clicks(
     mouse: Res<ButtonInput<MouseButton>>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    ui: Res<InventoryUiState>,
-    mut ui_mut: ResMut<InventoryUiState>,
+    mut ui: ResMut<InventoryUiState>,
     world: Res<WorldData>,
     mut queue: ResMut<InventoryIntentQueue>,
     entries: Query<(&Interaction, &InventoryEntryWidget), Changed<Interaction>>,
@@ -724,7 +723,7 @@ pub fn handle_inventory_entry_clicks(
         }
         let revision =
             entry_revision_for_inventory(world.as_ref(), widget.inventory_id, widget.entry_index);
-        ui_mut.selected = Some(InventorySelection {
+        ui.selected = Some(InventorySelection {
             inventory_id: widget.inventory_id,
             entry_index: widget.entry_index,
         });
@@ -763,7 +762,7 @@ pub fn handle_inventory_entry_clicks(
             continue;
         }
         if ui.dragging.is_none() {
-            ui_mut.dragging = Some(InventoryDragState {
+            ui.dragging = Some(InventoryDragState {
                 source_inventory_id: widget.inventory_id,
                 entry_index: widget.entry_index,
                 entry_revision: revision,
@@ -796,7 +795,7 @@ pub fn handle_inventory_entry_clicks(
                 entry_revision: drag.entry_revision,
             });
         }
-        ui_mut.dragging = None;
+        ui.dragging = None;
     }
 }
 
