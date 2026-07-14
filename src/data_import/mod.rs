@@ -6,6 +6,8 @@
 mod animation;
 mod building;
 mod error;
+mod inventory;
+mod item;
 mod schema;
 mod weapon;
 
@@ -45,6 +47,24 @@ pub use building::{
     BUILDING_OPTIONAL_COLUMNS, BUILDING_REQUIRED_COLUMNS, BuildingCategoryImportRow,
     BuildingImportRow, normalize_building_file_path_to_render_key,
 };
+#[cfg(feature = "data-import")]
+pub use inventory::{
+    DEV_INVENTORY_PROFILE_CATALOG_RON_PATH, INVENTORY_PROFILES_SHEET_NAME,
+    import_inventory_profiles_from_excel, resolve_dev_inventory_profile_catalog,
+};
+pub use inventory::{
+    INVENTORY_PROFILE_OPTIONAL_COLUMNS, INVENTORY_PROFILE_REQUIRED_COLUMNS,
+    InventoryProfileImportRow,
+};
+#[cfg(feature = "data-import")]
+pub use item::{
+    DEV_ITEM_CATALOG_RON_PATH, ITEM_CATEGORIES_SHEET_NAME, ITEMS_SHEET_NAME,
+    import_item_catalog_from_excel, resolve_dev_item_catalog,
+};
+pub use item::{
+    ITEM_CATEGORY_REQUIRED_COLUMNS, ITEM_OPTIONAL_COLUMNS, ITEM_REQUIRED_COLUMNS,
+    ItemCategoryImportRow, ItemImportRow,
+};
 /// Same workbook as [`DEV_DESIGN_WORKBOOK`]; kept for older call sites.
 #[cfg(feature = "data-import")]
 pub use paths::DEV_DESIGN_WORKBOOK as DEV_DOODAD_EXCEL_PATH;
@@ -58,6 +78,8 @@ pub use ron::{
     BuildingCatalogRon, BuildingCategoryRon, BuildingDefinitionRon, DoodadCatalogRon,
     DoodadDefinitionRon, export_buildings_to_ron, export_doodads_to_ron,
 };
+#[cfg(feature = "data-import")]
+pub use ron::{export_inventory_profiles_to_ron, export_items_to_ron};
 pub use unit::{
     DEFAULT_COLLISION_RADIUS_METERS, DEFAULT_MAX_SLOPE_DEGREES, DEFAULT_MOVE_SPEED_MPS,
     IGNORED_COLUMNS, OPTIONAL_COLUMNS, UnitImportRow,

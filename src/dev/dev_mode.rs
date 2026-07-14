@@ -81,6 +81,10 @@ pub struct DevModeState {
     pub last_line_direction: Vec2,
     pub list_scroll: usize,
     pub last_spawn_message: String,
+    /// Item pile dev harness status (ADR-090 I4).
+    pub pile_harness_message: String,
+    /// Settlement treasury dev harness status (ADR-093 I7).
+    pub treasury_harness_message: String,
     pub scene_name_input: String,
     pub selected_scene_id: Option<String>,
     pub last_loaded_scene_id: Option<String>,
@@ -113,6 +117,8 @@ impl Default for DevModeState {
             last_line_direction: Vec2::X,
             list_scroll: 0,
             last_spawn_message: String::new(),
+            pile_harness_message: String::new(),
+            treasury_harness_message: String::new(),
             scene_name_input: "Untitled Scene".to_string(),
             selected_scene_id: None,
             last_loaded_scene_id: None,

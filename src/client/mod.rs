@@ -5,6 +5,8 @@
 pub mod commands;
 mod dispatcher;
 mod intent;
+pub mod inventory_dispatch;
+pub mod inventory_intent;
 pub mod pipeline;
 
 pub use commands::{
@@ -17,6 +19,14 @@ pub use dispatcher::{
     IntentDispatchRecord, IntentDispatchReport, IntentDispatchStatus, dispatch_client_intents,
 };
 pub use intent::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
+pub use inventory_dispatch::{
+    dispatch_inventory_intents, try_open_container_inventory, try_open_corpse_inventory,
+    try_open_pile_inventory,
+};
+pub use inventory_intent::{
+    InventoryIntent, InventoryIntentQueue, InventoryIntentStatus, InventoryOpenMode,
+    entry_revision_for_inventory,
+};
 pub use pipeline::{
     ClientIntentCollectSystems, ClientIntentDispatchSystems, ClientIntentFlushSystems,
     ClientPipelinePlugin, ClientPipelineSystems, collect_unit_input_intents,

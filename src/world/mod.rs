@@ -6,16 +6,21 @@ mod chunk;
 mod combat;
 mod config;
 mod coordinates;
+mod corpse;
 mod data;
 mod doodad;
 mod formation;
 mod interaction;
+mod inventory;
+mod item;
+mod item_pile;
 mod movement;
 mod navigation;
 mod obstacle;
 mod occupancy;
 mod ownership;
 mod projectile;
+mod settlement;
 mod space;
 mod task;
 mod terrain;
@@ -57,13 +62,22 @@ pub use building::{
     DoorState, DoorStore, FootprintSpec, FootprintType, INTERACTION_WORK_RANGE_METERS,
     InteractionPointDefinition, InteriorError, InteriorProfileCatalog, InteriorProfileId,
     activate_building_interior, add_building_construction_progress, anchor_from_terrain_position,
-    close_door, create_building, damage_building, deactivate_building_interior, destroy_building,
-    destroy_door, heal_building, interaction_point_world_position, is_building_operational,
-    lock_door, lookup_building, move_building, open_door, place_player_building,
-    portal_traversable, rebuild_building_world_indexes, remove_building, rotation_from_quadrants,
-    set_building_lifecycle_stage, snap_anchor_global_xz, space_route_for_unit,
-    step_all_building_construction, transition_to_ruins, try_open_door_at_portal_for_unit,
-    try_open_door_for_unit, validate_building_for_restore, validate_building_placement,
+    building_container_access_policy, building_inventory_operational,
+    can_unit_access_building_inventory, can_unit_access_inventory, close_door, create_building,
+    create_building_with_inventory, damage_building, deactivate_building_interior,
+    destroy_building, destroy_door, heal_building, interaction_point_world_position,
+    is_building_operational, lock_door, lookup_building, move_building, open_door,
+    place_player_building, place_player_building_with_inventory, portal_traversable,
+    rebuild_building_world_indexes, remove_building, rotation_from_quadrants,
+    set_building_container_locked, set_building_lifecycle_stage, snap_anchor_global_xz,
+    space_route_for_unit, step_all_building_construction, transition_to_ruins,
+    try_open_door_at_portal_for_unit, try_open_door_for_unit, validate_building_for_restore,
+    validate_building_inventory_links, validate_building_inventory_owner,
+    validate_building_placement,
+};
+pub use building::{
+    BuildingInventoryContext, BuildingInventoryError, BuildingInventoryRemovalPolicy,
+    ContainerAccessPolicy, InventoryAccessDenialReason, InventoryAccessResult,
 };
 pub use chunk::{ChunkData, ChunkId};
 pub use combat::{
@@ -79,6 +93,13 @@ pub use combat::{
 };
 pub use config::WorldConfig;
 pub use coordinates::{ChunkCoord, ChunkLayout, LocalPosition, WorldPosition};
+#[cfg(feature = "dev")]
+pub use corpse::dev_expire_corpse;
+pub use corpse::{
+    CorpseError, CorpseId, CorpseLifecycleReport, CorpseRecord, CorpseSettings, CorpseState,
+    CorpseStore, DEFAULT_CORPSE_LIFETIME_TICKS, create_corpse_from_unit,
+    remove_corpse_with_inventory, step_corpse_lifecycle, transfer_inventory_to_corpse,
+};
 pub use data::{ChunkExtent, WorldData};
 #[cfg(test)]
 pub use doodad::starter_definitions;
@@ -111,6 +132,47 @@ pub use interaction::{
     InteractionType, interaction_plan_to_unit_order, query_world_interaction,
     resolve_interaction_to_order, resolve_unit_click_to_order, resolve_world_click_to_order,
     resolve_world_click_to_unit_order,
+};
+#[cfg(any(test, feature = "dev"))]
+pub use inventory::starter_definitions as starter_inventory_profile_definitions;
+pub use inventory::{
+    EntryIndex, InventoryAccessType, InventoryCatalogCtx, InventoryEntryContents, InventoryError,
+    InventoryId, InventoryInvariantReport, InventoryLeftover, InventoryOwnerRef,
+    InventoryProfileCatalog, InventoryProfileCatalogError, InventoryProfileDefinition,
+    InventoryProfileId, InventoryProfileValidationError, InventoryRecord, InventoryStore,
+    InventoryWeightQuery, ItemInstance, ItemInstanceId, ItemInstanceLocation, ItemInstanceMetadata,
+    ItemInstanceStore, MAX_INVENTORY_GRID_DIMENSION, MergeStacksOutcome, PlacedInventoryEntry,
+    ProfileMigrationResult, RemovedInventoryContents, SplitStackOutcome, TransferError,
+    TransferPlacementPolicy, TransferReport, TransferStatus, WorldInventoryValidationReport,
+    assert_inventory_stores, auto_sort, auto_sort_inventory, can_place_entry, can_place_footprint,
+    category_stack_cap_for, consume_stack_item, count_physical_gold, create_inventory,
+    create_item_instance, create_unit_inventory, destroy_item_instance, effective_stack_limit,
+    half_stack_quantity, loot_corpse_entry, merge_stacks, migrate_inventory_profile,
+    migrate_inventory_profile_with_leftovers, move_entry, physical_gold_item_id, place_stack,
+    place_stack_first_fit, place_unique, place_unique_first_fit, query_inventory_weight,
+    rebuild_all_inventory_derived, reference_weight_is_soft_encumbrance, remove_entry,
+    remove_inventory, remove_owned_inventory, split_stack, split_stack_half, swap_entries,
+    transfer_entry_full, transfer_half, transfer_inventory_owner, transfer_one,
+    transfer_stack_quantity, transfer_unique_item, validate_inventory, validate_inventory_profile,
+    validate_inventory_stores, validate_world_inventory_state,
+};
+#[cfg(any(test, feature = "dev"))]
+pub use item::starter_definitions as starter_item_definitions;
+#[cfg(any(test, feature = "dev"))]
+pub use item::starter_item_category_definitions;
+pub use item::{
+    ItemCatalog, ItemCatalogError, ItemCategoryCatalog, ItemCategoryCatalogError,
+    ItemCategoryDefinition, ItemCategoryId, ItemDefinition, ItemDefinitionId, ItemIconKey,
+    ItemRenderKey, ItemValidationError, MAX_ITEM_GRID_DIMENSION, normalize_tags,
+    validate_item_definition,
+};
+pub use item_pile::{
+    ChunkItemPileStore, DropReport, ItemPileError, ItemPileId, ItemPileInvariantReport,
+    ItemPileSettings, ItemPileSource, ItemPileStore, PickupReport, PileOwnership, SpillReport,
+    WorldItemPileRecord, WorldPileContents, drop_stack_from_inventory, drop_unique_from_inventory,
+    drop_unit_inventory_entry, item_piles_near, pickup_pile_into_inventory,
+    pile_item_definition_id, spill_inventory_to_world_piles, validate_item_instance_locations,
+    validate_item_pile_store,
 };
 pub use movement::feel::{
     CommandBufferResolveReport, CommandResolveSuccess, MovementFeelSettings,
@@ -159,6 +221,13 @@ pub use projectile::{
     ProjectileEvent, ProjectileId, ProjectileRecord, ProjectileReport, ProjectileStatus,
     ProjectileTrace, spawn_projectile_from_strike, step_all_projectiles,
 };
+pub use settlement::{
+    CreateSettlementReport, DepositGoldReport, SettlementId, SettlementOwnership, SettlementRecord,
+    SettlementStore, SettlementTreasuryRecord, TreasuryAccessPolicy, TreasuryAccessResult,
+    TreasuryError, TreasuryId, TreasuryTransactionRecord, building_supports_settlement_treasury,
+    can_unit_deposit_to_treasury, create_settlement_with_treasury, deposit_gold,
+    settlement_interaction_position,
+};
 #[cfg(any(test, feature = "dev"))]
 pub use space::starter_space_profile;
 pub use space::{
@@ -202,10 +271,11 @@ pub use unit::{
     UnitMovementReport, UnitMovementStepOutcome, UnitMovementStepReport, UnitMovementTrace,
     UnitOrder, UnitOrderError, UnitPlacement, UnitRecord, UnitRenderKey, UnitSimulationStepReport,
     UnitSource, UnitState, UnitVitals, UnitWorkCapabilities, create_unit,
-    create_unit_with_ownership, ground_unit_position, ground_unit_to_terrain, issue_unit_order,
-    lookup_unit, move_unit, remove_unit, resolve_all_pending_unit_orders,
-    resolve_pending_unit_orders, step_all_unit_movement, step_unit_death_pipeline,
-    step_unit_movement, unit_can_execute_actions, unit_record_can_execute_actions,
+    create_unit_with_inventory, create_unit_with_ownership, ground_unit_position,
+    ground_unit_to_terrain, issue_unit_order, lookup_unit, move_unit, remove_unit,
+    resolve_all_pending_unit_orders, resolve_pending_unit_orders, step_all_unit_movement,
+    step_unit_death_pipeline, step_unit_movement, unit_can_execute_actions,
+    unit_record_can_execute_actions,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use unit::{
@@ -309,6 +379,37 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<FootprintCatalog>()
             .register_type::<ChunkOccupancyGrid>()
             .register_type::<OccupancyCellEntry>()
+            .register_type::<ItemDefinitionId>()
+            .register_type::<ItemCategoryId>()
+            .register_type::<ItemRenderKey>()
+            .register_type::<ItemIconKey>()
+            .register_type::<ItemCategoryDefinition>()
+            .register_type::<ItemCategoryCatalog>()
+            .register_type::<ItemDefinition>()
+            .register_type::<ItemCatalog>()
+            .register_type::<InventoryProfileId>()
+            .register_type::<InventoryAccessType>()
+            .register_type::<InventoryProfileDefinition>()
+            .register_type::<InventoryProfileCatalog>()
+            .register_type::<crate::world::inventory::InventoryId>()
+            .register_type::<crate::world::inventory::ItemInstanceId>()
+            .register_type::<crate::world::inventory::InventoryOwnerRef>()
+            .register_type::<crate::world::inventory::InventoryRecord>()
+            .register_type::<crate::world::inventory::InventoryStore>()
+            .register_type::<crate::world::inventory::ItemInstance>()
+            .register_type::<crate::world::inventory::ItemInstanceMetadata>()
+            .register_type::<crate::world::inventory::ItemInstanceStore>()
+            .register_type::<crate::world::inventory::PlacedInventoryEntry>()
+            .register_type::<crate::world::inventory::InventoryEntryContents>()
+            .register_type::<crate::world::corpse::CorpseId>()
+            .register_type::<crate::world::corpse::CorpseRecord>()
+            .register_type::<crate::world::corpse::CorpseState>()
+            .register_type::<crate::world::corpse::CorpseSettings>()
+            .register_type::<crate::world::item_pile::ItemPileId>()
+            .register_type::<crate::world::item_pile::WorldItemPileRecord>()
+            .register_type::<crate::world::item_pile::WorldPileContents>()
+            .register_type::<crate::world::item_pile::ItemPileSettings>()
+            .register_type::<crate::world::inventory::ItemInstanceLocation>()
             .register_type::<WorldData>();
 
         app.init_resource::<WorldConfig>();
@@ -321,16 +422,24 @@ impl Plugin for WorldFoundationPlugin {
             app.init_resource::<BuildingCategoryCatalog>();
             app.init_resource::<BuildingCatalog>();
             app.init_resource::<FootprintCatalog>();
+            app.init_resource::<ItemCategoryCatalog>();
+            app.init_resource::<ItemCatalog>();
+            app.init_resource::<InventoryProfileCatalog>();
         }
         #[cfg(feature = "dev")]
         {
             let weapons = crate::data_import::resolve_dev_weapon_catalog();
             let animation_profiles = crate::data_import::resolve_dev_animation_profile_catalog();
+            let inventory_profiles = crate::data_import::resolve_dev_inventory_profile_catalog();
+            let (item_categories, item_catalog) = crate::data_import::resolve_dev_item_catalog();
             let (building_categories, building_catalog) =
-                crate::data_import::resolve_dev_building_catalog();
+                crate::data_import::resolve_dev_building_catalog(&inventory_profiles);
             let footprint_catalog = crate::data_import::resolve_dev_footprint_catalog();
             app.insert_resource(weapons.clone());
             app.insert_resource(animation_profiles.clone());
+            app.insert_resource(inventory_profiles.clone());
+            app.insert_resource(item_categories);
+            app.insert_resource(item_catalog);
             app.insert_resource(building_categories);
             app.insert_resource(building_catalog);
             app.insert_resource(footprint_catalog);
@@ -338,11 +447,14 @@ impl Plugin for WorldFoundationPlugin {
             app.insert_resource(crate::data_import::resolve_dev_unit_catalog(
                 &weapons,
                 &animation_profiles,
+                &inventory_profiles,
             ));
         }
         app.init_resource::<WorldData>();
         app.init_resource::<NavigationConfig>();
         app.init_resource::<InteriorProfileCatalog>();
         app.init_resource::<BuildingInteractionProfileCatalog>();
+        app.init_resource::<crate::world::CorpseSettings>();
+        app.init_resource::<crate::world::ItemPileSettings>();
     }
 }

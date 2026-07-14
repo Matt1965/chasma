@@ -16,6 +16,7 @@ pub mod dev;
 pub mod doodads;
 pub mod environment;
 pub mod input;
+pub mod item_piles;
 pub mod logging;
 pub mod player;
 pub mod projectiles;

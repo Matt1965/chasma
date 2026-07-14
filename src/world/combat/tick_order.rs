@@ -144,6 +144,10 @@ mod tests {
             &mut scan,
             crate::world::BuildingConstructionSettings::default(),
             &crate::world::InteriorProfileCatalog::default(),
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ItemCategoryCatalog::default(),
+            &crate::world::InventoryProfileCatalog::default(),
+            &crate::world::CorpseSettings::default(),
             0.2,
             1,
         )
@@ -319,7 +323,13 @@ mod tests {
         let mut world = flat_world();
         let hostile = spawn_hostile(&mut world, &catalog, 10.0, 10.0);
         world.damage_unit(hostile, 999).unwrap();
-        let report = step_unit_death_pipeline(&mut world, 1);
+        let report = step_unit_death_pipeline(
+            &mut world,
+            &catalog,
+            None,
+            &crate::world::CorpseSettings::default(),
+            7,
+        );
         let queued = report
             .traces
             .iter()
@@ -473,7 +483,13 @@ mod tests {
         let mut world = flat_world();
         let hostile = spawn_hostile(&mut world, &catalog, 10.0, 10.0);
         world.damage_unit(hostile, 999).unwrap();
-        let report = step_unit_death_pipeline(&mut world, 7);
+        let report = step_unit_death_pipeline(
+            &mut world,
+            &catalog,
+            None,
+            &crate::world::CorpseSettings::default(),
+            7,
+        );
         let events: Vec<_> = report
             .traces
             .iter()

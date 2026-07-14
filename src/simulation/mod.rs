@@ -5,12 +5,14 @@
 //! Pause gates [`SimulationSystems`] only — rendering, UI, and debug overlays
 //! continue on real time.
 
+mod catalog_params;
 mod control;
 mod input;
 mod plugin;
 mod report;
 mod tick;
 
+pub use catalog_params::SimulationCatalogParams;
 pub use control::{
     FrameTickPlan, MAX_SIMULATION_TICKS_PER_FRAME, SIMULATION_TICK_SECONDS, SimulationClock,
     SimulationControlRequests, SimulationControlState, apply_simulation_control_requests,

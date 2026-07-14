@@ -1049,7 +1049,26 @@ pub(crate) fn sync_dev_panel_tab_sections(
         } else {
             Display::None
         };
-        **text = "World tools — terrain/scenario utilities (sim controls are above)".into();
+        **text = if dev_state.pile_harness_message.is_empty()
+            && dev_state.treasury_harness_message.is_empty()
+        {
+            "World tools — piles: P/D/O/H/G/L/V · treasuries: C/Y/E/B/J (see ADR-090, ADR-093)"
+                .into()
+        } else {
+            format!(
+                "{}\n{}",
+                if dev_state.pile_harness_message.is_empty() {
+                    "Piles: (no status)".to_string()
+                } else {
+                    dev_state.pile_harness_message.clone()
+                },
+                if dev_state.treasury_harness_message.is_empty() {
+                    "Treasury: (no status)".to_string()
+                } else {
+                    dev_state.treasury_harness_message.clone()
+                }
+            )
+        };
     }
 }
 

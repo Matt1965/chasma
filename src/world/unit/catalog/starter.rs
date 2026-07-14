@@ -1,6 +1,7 @@
 /// In-memory unit fixtures for unit tests only. Runtime catalogs come from Excel import.
 #[cfg(test)]
 mod fixtures {
+    use crate::world::InventoryProfileId;
     use crate::world::unit::catalog::definition::UnitDefinition;
     use crate::world::unit::catalog::definition_id::UnitDefinitionId;
     use crate::world::unit::catalog::render_key::UnitRenderKey;
@@ -53,7 +54,8 @@ mod fixtures {
                 true,
                 UnitRenderKey::reserved("bandit"),
             )
-            .with_work_capabilities(UnitWorkCapabilities::builder(1.0)),
+            .with_work_capabilities(UnitWorkCapabilities::builder(1.0))
+            .with_inventory_profile_id(InventoryProfileId::new("unit_backpack_standard")),
             UnitDefinition::new(
                 UnitDefinitionId::new("deer"),
                 "Deer",

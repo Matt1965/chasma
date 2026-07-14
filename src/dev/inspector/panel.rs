@@ -96,6 +96,11 @@ fn format_unit_snapshot(s: &UnitInspectorSnapshot) -> String {
     );
 
     out.push_str(&format!(
+        "Inventory: {}\n",
+        s.inventory_summary.as_deref().unwrap_or("none"),
+    ));
+
+    out.push_str(&format!(
         "\nCombat detail: weapon={} target={} phase={}\n",
         s.combat.weapon_name.as_deref().unwrap_or("none"),
         s.combat
@@ -204,7 +209,10 @@ fn format_building_snapshot(s: &BuildingInspectorSnapshot) -> String {
          state={}  progress={:.0}%  operational={}\n\
          hp={}/{}  affiliation={}\n\
          Chunk ({},{})\n\
-         Dev: [D]amage [H]eal [X]estroy [R]uins [C]omplete [P]+progress",
+         {}\n\
+         interaction point: {}\n\
+         Dev: [D]amage [H]eal [X]estroy [R]uins [C]omplete [P]+progress\n\
+         Container: [I]nspect [G]old [T]ransfer [U]lock [V]alidate",
         s.building_id.raw(),
         s.display_name,
         s.definition_id.as_str(),
@@ -216,5 +224,7 @@ fn format_building_snapshot(s: &BuildingInspectorSnapshot) -> String {
         s.affiliation,
         s.chunk.x,
         s.chunk.z,
+        s.inventory_summary.as_deref().unwrap_or("no inventory"),
+        s.interaction_point.as_deref().unwrap_or("—"),
     )
 }

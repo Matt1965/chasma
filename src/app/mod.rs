@@ -4,6 +4,7 @@ use crate::buildings::{BuildingRuntimeSystems, BuildingsRuntimePlugin};
 use crate::camera::{CameraControlSystems, CameraPlugin};
 use crate::doodads::{DoodadRuntimeSystems, DoodadsRuntimePlugin};
 use crate::environment::EnvironmentPlugin;
+use crate::item_piles::{ItemPileRuntimePlugin, ItemPileRuntimeSystems};
 use crate::player::{PlayerControlSystems, PlayerPlugin, RuntimeSyncSystems};
 use crate::projectiles::{ProjectileRuntimeSystems, ProjectilesRuntimePlugin};
 use crate::simulation::{SimulationControlSystems, SimulationSystems};
@@ -34,6 +35,7 @@ impl Plugin for AppPlugin {
             .add_plugins(WorldFoundationPlugin)
             .add_plugins(TerrainRuntimePlugin)
             .add_plugins(DoodadsRuntimePlugin)
+            .add_plugins(ItemPileRuntimePlugin)
             .add_plugins(BuildingsRuntimePlugin)
             .add_plugins(UnitsRuntimePlugin)
             .add_plugins(ProjectilesRuntimePlugin)
@@ -50,8 +52,14 @@ impl Plugin for AppPlugin {
             )
             .configure_sets(
                 Update,
-                BuildingRuntimeSystems
+                ItemPileRuntimeSystems
                     .after(DoodadRuntimeSystems)
+                    .in_set(RuntimeSyncSystems),
+            )
+            .configure_sets(
+                Update,
+                BuildingRuntimeSystems
+                    .after(ItemPileRuntimeSystems)
                     .in_set(RuntimeSyncSystems),
             )
             .configure_sets(

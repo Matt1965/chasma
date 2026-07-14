@@ -23,6 +23,7 @@ pub fn import_units_from_excel(
     path: &std::path::Path,
     weapons: &crate::world::WeaponCatalog,
     animation_profiles: &crate::world::AnimationProfileCatalog,
+    inventory_profiles: &crate::world::InventoryProfileCatalog,
 ) -> Result<
     (
         Vec<crate::world::UnitDefinition>,
@@ -99,6 +100,21 @@ pub fn import_units_from_excel(
                     "row {}: unknown Animation Profile `{}`",
                     row.row_number,
                     profile_id.as_str()
+                ));
+                continue;
+            }
+        }
+
+        if let Some(profile_id) = &definition.inventory_profile_id {
+            if let Err(err) = inventory_profiles.validate_profile_reference(
+                "unit",
+                definition.id.as_str(),
+                profile_id,
+            ) {
+                summary.rows_failed += 1;
+                summary.warnings.push(format!(
+                    "row {}: inventory profile validation: {err}",
+                    row.row_number
                 ));
                 continue;
             }
@@ -226,9 +242,13 @@ mod integration_tests {
         row.extend_from_slice(&wolf_row_suffix());
         row.extend_from_slice(&wolf_row_tail());
         write_workbook(&path, &headers, &[row]);
-        let (definitions, summary) =
-            import_units_from_excel(&path, &starter_weapons(), &starter_animation_profiles())
-                .unwrap();
+        let (definitions, summary) = import_units_from_excel(
+            &path,
+            &starter_weapons(),
+            &starter_animation_profiles(),
+            &crate::world::InventoryProfileCatalog::default(),
+        )
+        .unwrap();
         assert_eq!(summary.rows_valid, 1);
         let def = &definitions[0];
         assert_eq!(def.id.as_str(), "U-0001");
@@ -278,9 +298,13 @@ mod integration_tests {
             ],
         ];
         write_workbook(&path, &headers, &rows);
-        let (definitions, summary) =
-            import_units_from_excel(&path, &starter_weapons(), &starter_animation_profiles())
-                .unwrap();
+        let (definitions, summary) = import_units_from_excel(
+            &path,
+            &starter_weapons(),
+            &starter_animation_profiles(),
+            &crate::world::InventoryProfileCatalog::default(),
+        )
+        .unwrap();
         assert_eq!(summary.rows_valid, 1);
         assert_eq!(definitions.len(), 1);
         assert_eq!(definitions[0].id.as_str(), "U-0001");
@@ -314,10 +338,21 @@ mod integration_tests {
             "Y",
         ]];
         write_workbook(&path, &headers, &rows);
-        let a = import_units_from_excel(&path, &starter_weapons(), &starter_animation_profiles())
-            .unwrap();
-        let b = import_units_from_excel(&path, &starter_weapons(), &starter_animation_profiles())
-            .unwrap();
+        let profiles = crate::world::InventoryProfileCatalog::default();
+        let a = import_units_from_excel(
+            &path,
+            &starter_weapons(),
+            &starter_animation_profiles(),
+            &profiles,
+        )
+        .unwrap();
+        let b = import_units_from_excel(
+            &path,
+            &starter_weapons(),
+            &starter_animation_profiles(),
+            &profiles,
+        )
+        .unwrap();
         assert_eq!(a, b);
         let _ = std::fs::remove_file(path);
     }
@@ -357,8 +392,13 @@ mod integration_tests {
             },
         ];
         write_workbook(&path, &headers, &rows);
-        let err = import_units_from_excel(&path, &starter_weapons(), &starter_animation_profiles())
-            .unwrap_err();
+        let err = import_units_from_excel(
+            &path,
+            &starter_weapons(),
+            &starter_animation_profiles(),
+            &crate::world::InventoryProfileCatalog::default(),
+        )
+        .unwrap_err();
         assert!(matches!(
             err,
             crate::data_import::DataImportError::DuplicateUnitId { .. }
@@ -379,9 +419,13 @@ mod integration_tests {
             row
         }];
         write_workbook(&path, &headers, &rows);
-        let (definitions, _) =
-            import_units_from_excel(&path, &starter_weapons(), &starter_animation_profiles())
-                .unwrap();
+        let (definitions, _) = import_units_from_excel(
+            &path,
+            &starter_weapons(),
+            &starter_animation_profiles(),
+            &crate::world::InventoryProfileCatalog::default(),
+        )
+        .unwrap();
         let catalog = crate::world::UnitCatalog::from_definitions(definitions).unwrap();
         assert!(catalog.get(&UnitDefinitionId::new("U-0001")).is_some());
         let _ = std::fs::remove_file(path);
@@ -415,8 +459,13 @@ mod integration_tests {
             "Y",
         ]];
         write_workbook(&path, &headers, &rows);
-        let err = import_units_from_excel(&path, &starter_weapons(), &starter_animation_profiles())
-            .unwrap_err();
+        let err = import_units_from_excel(
+            &path,
+            &starter_weapons(),
+            &starter_animation_profiles(),
+            &crate::world::InventoryProfileCatalog::default(),
+        )
+        .unwrap_err();
         assert!(matches!(
             err,
             crate::data_import::DataImportError::NoValidRows
@@ -432,8 +481,13 @@ mod integration_tests {
         }
 
         let weapons = starter_weapons();
-        let (definitions, summary) =
-            import_units_from_excel(path, &weapons, &starter_animation_profiles()).unwrap();
+        let (definitions, summary) = import_units_from_excel(
+            path,
+            &weapons,
+            &starter_animation_profiles(),
+            &crate::world::InventoryProfileCatalog::default(),
+        )
+        .unwrap();
         assert!(
             summary.rows_valid >= 1,
             "expected design units; valid={} failed={} warnings={:?}",

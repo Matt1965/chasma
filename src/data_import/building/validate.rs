@@ -127,6 +127,8 @@ mod tests {
             animation_profile: String::new(),
             interaction_profile: String::new(),
             default_space: String::new(),
+            inventory_profile_id: String::new(),
+            has_inventory_profile_column: false,
             enabled: true,
             enabled_was_blank: false,
             has_collision_file_path_column: false,

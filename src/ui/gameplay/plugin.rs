@@ -20,6 +20,11 @@ use super::cursor_feedback::{
     GameplayCursorPresentation, GameplayHoveredUnit, sample_gameplay_cursor_context,
 };
 use super::input_gate::{PlayerHudHoverState, update_player_hud_hover_state};
+use super::inventory::{
+    InventoryUiState, collect_inventory_keyboard_input, collect_inventory_mouse_transfers,
+    handle_inventory_entry_clicks, handle_inventory_panel_buttons, spawn_inventory_panel,
+    sync_inventory_panel_contents, sync_inventory_panel_visibility,
+};
 use super::layout::setup_player_hud_layout;
 use super::player_hud_state::{PlayerHudState, sync_primary_selection};
 use super::selected_building_panel::sync_selected_building_panel;
@@ -46,6 +51,7 @@ pub struct GameplayUiPlugin;
 impl Plugin for GameplayUiPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<GameplayUiState>()
+            .init_resource::<InventoryUiState>()
             .insert_resource(PlayerHudState::new_visible())
             .init_resource::<BuildModeState>()
             .init_resource::<BuildModeCursorAnchor>()
@@ -56,7 +62,11 @@ impl Plugin for GameplayUiPlugin {
             .init_resource::<MoveCommandFeedback>()
             .add_systems(
                 Startup,
-                (setup_player_hud_layout, spawn_build_catalog_panel),
+                (
+                    setup_player_hud_layout,
+                    spawn_build_catalog_panel,
+                    spawn_inventory_panel,
+                ),
             )
             .configure_sets(
                 Update,
@@ -116,8 +126,20 @@ impl Plugin for GameplayUiPlugin {
                     handle_command_button_clicks,
                     update_squad_entry_hover,
                     update_command_button_hover,
+                    sync_inventory_panel_visibility,
+                    sync_inventory_panel_contents,
+                    handle_inventory_panel_buttons,
+                    handle_inventory_entry_clicks,
+                    collect_inventory_mouse_transfers,
+                    collect_inventory_keyboard_input,
                 )
                     .chain()
+                    .in_set(GameplayCommandInputSystems),
+            )
+            .add_systems(
+                Update,
+                crate::client::dispatch_inventory_intents
+                    .after(collect_inventory_keyboard_input)
                     .in_set(GameplayCommandInputSystems),
             );
     }

@@ -98,6 +98,8 @@ mod tests {
             has_render_scale_column: false,
             animation_profile: String::new(),
             has_animation_profile_column: false,
+            inventory_profile_id: String::new(),
+            has_inventory_profile_column: false,
         }
     }
 

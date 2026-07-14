@@ -13,9 +13,11 @@ use crate::world::{
     validate_building_for_restore, validate_doodad_for_restore, validate_unit_for_restore,
 };
 
+use super::inventory_snapshot::SceneInventoryPersistence;
 use super::snapshot::{
-    SCENE_VERSION, SceneBuildingRecord, SceneDefinition, SceneDoodadRecord, SceneTaskRecord,
-    SceneUnitRecord, parse_doodad_kind, scene_version_supported,
+    SCENE_VERSION, SceneBuildingRecord, SceneDefinition, SceneDoodadRecord, SceneSettlementRecord,
+    SceneTaskRecord, SceneTreasuryRecord, SceneUnitRecord, parse_doodad_kind,
+    scene_version_supported,
 };
 
 /// Outcome of applying a scene to world data.
@@ -100,6 +102,12 @@ pub enum SceneApplyError {
         reason: String,
     },
     TaskRestore(crate::world::TaskError),
+    SettlementRestore {
+        reason: String,
+    },
+    InventoryRestore {
+        reason: String,
+    },
 }
 
 impl std::fmt::Display for SceneApplyError {
@@ -168,6 +176,8 @@ impl std::fmt::Display for SceneApplyError {
                 write!(f, "invalid task record {task_id}: {reason}")
             }
             Self::TaskRestore(err) => write!(f, "task restore failed: {err:?}"),
+            Self::SettlementRestore { reason } => write!(f, "settlement restore failed: {reason}"),
+            Self::InventoryRestore { reason } => write!(f, "inventory restore failed: {reason}"),
         }
     }
 }
@@ -264,6 +274,8 @@ struct RestorePlan {
     doodads: Vec<DoodadRecord>,
     buildings: Vec<BuildingRecord>,
     tasks: Vec<TaskRecord>,
+    settlements: Vec<crate::world::SettlementRecord>,
+    treasuries: Vec<crate::world::SettlementTreasuryRecord>,
     next_unit_id: u64,
     next_doodad_id: u64,
     next_building_id: u64,
@@ -271,6 +283,9 @@ struct RestorePlan {
     next_door_id: u32,
     next_space_id: u32,
     next_portal_id: u32,
+    next_settlement_id: u64,
+    next_treasury_id: u64,
+    inventory_persistence: SceneInventoryPersistence,
 }
 
 struct DevWorldEntityBackup {
@@ -407,6 +422,19 @@ pub fn apply_scene(
         .verify_instance_indexes()
         .map_err(SceneApplyError::IndexConsistencyFailure)?;
 
+    if !plan.inventory_persistence.inventory_records.is_empty()
+        || !plan.inventory_persistence.corpse_records.is_empty()
+        || !plan.inventory_persistence.item_pile_records.is_empty()
+    {
+        let ctx = dev_inventory_catalog_ctx();
+        let validation = crate::world::validate_world_inventory_state(world, &ctx);
+        if !validation.is_ok() {
+            return Err(SceneApplyError::InventoryRestore {
+                reason: format!("post-restore validation: {validation:?}"),
+            });
+        }
+    }
+
     let elapsed_ms = started.elapsed().as_millis().min(u64::MAX as u128) as u64;
     let report = SceneApplyReport {
         units_loaded: plan.units.len() as u32,
@@ -503,11 +531,57 @@ fn build_restore_plan(
         tasks.push(record);
     }
 
+    let mut settlements = Vec::with_capacity(scene.settlement_records.len());
+    let mut settlement_ids = HashSet::new();
+    for settlement in &scene.settlement_records {
+        let record = scene_settlement_to_record(settlement)?;
+        if settlement_ids.contains(&record.id) {
+            return Err(SceneApplyError::SettlementRestore {
+                reason: format!("duplicate settlement id {}", record.id.raw()),
+            });
+        }
+        if !building_ids.contains(&record.anchor_building_id) {
+            return Err(SceneApplyError::SettlementRestore {
+                reason: format!(
+                    "unknown anchor building {} for settlement {}",
+                    record.anchor_building_id.raw(),
+                    record.id.raw()
+                ),
+            });
+        }
+        settlement_ids.insert(record.id);
+        settlements.push(record);
+    }
+
+    let mut treasuries = Vec::with_capacity(scene.treasury_records.len());
+    let mut treasury_ids = HashSet::new();
+    for treasury in &scene.treasury_records {
+        let record = scene_treasury_to_record(treasury)?;
+        if treasury_ids.contains(&record.id) {
+            return Err(SceneApplyError::SettlementRestore {
+                reason: format!("duplicate treasury id {}", record.id.raw()),
+            });
+        }
+        if !settlement_ids.contains(&record.settlement_id) {
+            return Err(SceneApplyError::SettlementRestore {
+                reason: format!(
+                    "unknown settlement {} for treasury {}",
+                    record.settlement_id.raw(),
+                    record.id.raw()
+                ),
+            });
+        }
+        treasury_ids.insert(record.id);
+        treasuries.push(record);
+    }
+
     Ok(RestorePlan {
         units,
         doodads,
         buildings,
         tasks,
+        settlements,
+        treasuries,
         next_unit_id: scene.next_unit_id,
         next_doodad_id: scene.next_doodad_id,
         next_building_id: scene.next_building_id.max(1),
@@ -515,6 +589,9 @@ fn build_restore_plan(
         next_door_id: scene.next_door_id.max(1),
         next_space_id: scene.next_space_id.max(1),
         next_portal_id: scene.next_portal_id.max(1),
+        next_settlement_id: scene.next_settlement_id.max(1),
+        next_treasury_id: scene.next_treasury_id.max(1),
+        inventory_persistence: scene.inventory_persistence.clone(),
     })
 }
 
@@ -551,7 +628,63 @@ fn apply_restore_plan(
             })?;
     }
 
+    world.settlement_store_mut().clear();
+    if !plan.settlements.is_empty() || !plan.treasuries.is_empty() {
+        world
+            .settlement_store_mut()
+            .restore_snapshot(
+                plan.settlements.clone(),
+                plan.treasuries.clone(),
+                plan.next_settlement_id,
+                plan.next_treasury_id,
+            )
+            .map_err(|error| SceneApplyError::SettlementRestore {
+                reason: error.to_string(),
+            })?;
+    }
+
+    if !plan.inventory_persistence.inventory_records.is_empty()
+        || !plan.inventory_persistence.item_instance_records.is_empty()
+        || !plan.inventory_persistence.corpse_records.is_empty()
+        || !plan.inventory_persistence.item_pile_records.is_empty()
+    {
+        let ctx = dev_inventory_catalog_ctx();
+        super::inventory_snapshot::restore_inventory_persistence(
+            world,
+            &plan.inventory_persistence,
+            &ctx,
+        )
+        .map_err(|reason| SceneApplyError::InventoryRestore { reason })?;
+    }
+
     Ok(())
+}
+
+fn dev_inventory_catalog_ctx() -> &'static crate::world::InventoryCatalogCtx<'static> {
+    use std::sync::OnceLock;
+    static CTX: OnceLock<crate::world::InventoryCatalogCtx<'static>> = OnceLock::new();
+    CTX.get_or_init(|| {
+        let categories = Box::leak(Box::new(
+            crate::world::ItemCategoryCatalog::from_definitions(
+                crate::world::starter_item_category_definitions(),
+            )
+            .unwrap(),
+        ));
+        let items = Box::leak(Box::new(
+            crate::world::ItemCatalog::from_definitions(
+                crate::world::starter_item_definitions(),
+                categories,
+            )
+            .unwrap(),
+        ));
+        let profiles = Box::leak(Box::new(
+            crate::world::InventoryProfileCatalog::from_definitions(
+                crate::world::starter_inventory_profile_definitions(),
+            )
+            .unwrap(),
+        ));
+        crate::world::InventoryCatalogCtx::new(items, categories, profiles)
+    })
 }
 
 fn reconcile_building_interiors_after_scene_load(
@@ -654,6 +787,26 @@ fn scene_unit_to_record(unit: &SceneUnitRecord) -> Result<UnitRecord, SceneApply
         .map_err(|err| SceneApplyError::InvalidUnitRecord {
             unit_id: unit.id,
             reason: format!("{err:?}"),
+        })
+}
+
+fn scene_settlement_to_record(
+    settlement: &SceneSettlementRecord,
+) -> Result<crate::world::SettlementRecord, SceneApplyError> {
+    settlement
+        .to_record()
+        .map_err(|err| SceneApplyError::SettlementRestore {
+            reason: format!("settlement {}: {err:?}", settlement.id),
+        })
+}
+
+fn scene_treasury_to_record(
+    treasury: &SceneTreasuryRecord,
+) -> Result<crate::world::SettlementTreasuryRecord, SceneApplyError> {
+    treasury
+        .to_record()
+        .map_err(|err| SceneApplyError::SettlementRestore {
+            reason: format!("treasury {}: {err:?}", treasury.id),
         })
 }
 
@@ -939,6 +1092,7 @@ mod tests {
             team_id: None,
             affiliation: None,
             current_space_id: 0,
+            inventory_id: None,
         });
         let err = apply_scene(
             &mut world,
@@ -1102,6 +1256,8 @@ mod tests {
                 child_doodad_ids: Vec::new(),
                 child_building_ids: Vec::new(),
                 door_states: Vec::new(),
+                inventory_id: None,
+                container_locked: false,
             });
         let err = apply_scene(
             &mut world,
@@ -1148,5 +1304,84 @@ mod tests {
         assert_eq!(scene_a.version, super::super::snapshot::SCENE_VERSION);
         assert_eq!(scene_a.task_records, scene_b.task_records);
         assert!(scene_a.next_task_id >= 1);
+    }
+
+    #[test]
+    fn scene_v7_inventory_persistence_roundtrip() {
+        use crate::world::{
+            InventoryCatalogCtx, InventoryOwnerRef, InventoryProfileCatalog, InventoryRecord,
+            ItemCatalog, ItemCategoryCatalog, physical_gold_item_id, place_stack_first_fit,
+            starter_inventory_profile_definitions, starter_item_category_definitions,
+            starter_item_definitions, validate_world_inventory_state,
+        };
+
+        let categories =
+            ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
+        let items = ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+        let profiles =
+            InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
+                .unwrap();
+        let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+
+        let mut world = flat_world();
+        let inventory_id = world.inventory_store_mut().allocate_inventory_id();
+        let record = InventoryRecord::new(
+            inventory_id,
+            InventoryOwnerRef::Detached,
+            crate::world::InventoryProfileId::new("unit_backpack_standard"),
+            8,
+            8,
+        );
+        world.inventory_store_mut().insert(record).unwrap();
+        let (inventory_store, instance_store) = world.inventory_runtime_mut();
+        place_stack_first_fit(
+            inventory_store,
+            instance_store,
+            &ctx,
+            inventory_id,
+            physical_gold_item_id(),
+            99,
+        )
+        .unwrap();
+
+        let scene = sample_scene(&world);
+        assert_eq!(scene.version, super::super::snapshot::SCENE_VERSION);
+        assert_eq!(scene.version, 7);
+        assert_eq!(scene.inventory_persistence.inventory_records.len(), 1);
+        assert!(
+            scene
+                .inventory_persistence
+                .inventory_records
+                .iter()
+                .any(|record| record
+                    .entries
+                    .iter()
+                    .any(|entry| entry.quantity == Some(99))),
+            "expected gold stack in scene persistence"
+        );
+
+        let before_mass = world
+            .inventory_store()
+            .get(inventory_id)
+            .unwrap()
+            .total_mass_grams();
+
+        let mut restored = flat_world();
+        super::super::inventory_snapshot::restore_inventory_persistence(
+            &mut restored,
+            &scene.inventory_persistence,
+            &ctx,
+        )
+        .unwrap();
+
+        let after_mass = restored
+            .inventory_store()
+            .get(inventory_id)
+            .unwrap()
+            .total_mass_grams();
+        assert_eq!(before_mass, after_mass);
+
+        let report = validate_world_inventory_state(&restored, &ctx);
+        assert!(report.is_ok(), "{report:?}");
     }
 }

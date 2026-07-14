@@ -95,6 +95,15 @@ pub struct WorldData {
     door_store: super::building::DoorStore,
     /// Authoritative work tasks (ADR-085 B8).
     task_store: super::task::TaskStore,
+    /// Runtime inventory containers (ADR-088 I2).
+    inventory_store: super::inventory::InventoryStore,
+    /// Runtime unique item instances (ADR-088 I2).
+    item_instance_store: super::inventory::ItemInstanceStore,
+    /// Authoritative corpse records (ADR-089 I3).
+    corpse_store: super::corpse::CorpseStore,
+    /// Authoritative world item piles (ADR-090 I4).
+    item_pile_store: super::item_pile::ItemPileStore,
+    settlement_store: super::settlement::SettlementStore,
 }
 
 impl FromWorld for WorldData {
@@ -134,6 +143,11 @@ impl WorldData {
             portal_transition_states: HashMap::new(),
             door_store: super::building::DoorStore::default(),
             task_store: super::task::TaskStore::default(),
+            inventory_store: super::inventory::InventoryStore::default(),
+            item_instance_store: super::inventory::ItemInstanceStore::default(),
+            corpse_store: super::corpse::CorpseStore::default(),
+            item_pile_store: super::item_pile::ItemPileStore::default(),
+            settlement_store: super::settlement::SettlementStore::default(),
         }
     }
 
@@ -151,6 +165,55 @@ impl WorldData {
 
     pub fn door_store_mut(&mut self) -> &mut super::building::DoorStore {
         &mut self.door_store
+    }
+
+    pub fn inventory_store(&self) -> &super::inventory::InventoryStore {
+        &self.inventory_store
+    }
+
+    pub fn inventory_store_mut(&mut self) -> &mut super::inventory::InventoryStore {
+        &mut self.inventory_store
+    }
+
+    pub fn item_instance_store(&self) -> &super::inventory::ItemInstanceStore {
+        &self.item_instance_store
+    }
+
+    pub fn item_instance_store_mut(&mut self) -> &mut super::inventory::ItemInstanceStore {
+        &mut self.item_instance_store
+    }
+
+    pub fn inventory_runtime_mut(
+        &mut self,
+    ) -> (
+        &mut super::inventory::InventoryStore,
+        &mut super::inventory::ItemInstanceStore,
+    ) {
+        (&mut self.inventory_store, &mut self.item_instance_store)
+    }
+
+    pub fn corpse_store(&self) -> &super::corpse::CorpseStore {
+        &self.corpse_store
+    }
+
+    pub fn corpse_store_mut(&mut self) -> &mut super::corpse::CorpseStore {
+        &mut self.corpse_store
+    }
+
+    pub fn item_pile_store(&self) -> &super::item_pile::ItemPileStore {
+        &self.item_pile_store
+    }
+
+    pub fn item_pile_store_mut(&mut self) -> &mut super::item_pile::ItemPileStore {
+        &mut self.item_pile_store
+    }
+
+    pub fn settlement_store(&self) -> &super::settlement::SettlementStore {
+        &self.settlement_store
+    }
+
+    pub fn settlement_store_mut(&mut self) -> &mut super::settlement::SettlementStore {
+        &mut self.settlement_store
     }
 
     pub fn space_registry(&self) -> &super::space::SpaceRegistry {
@@ -654,6 +717,10 @@ impl WorldData {
         self.procedural_doodads.clear();
         self.task_store_mut().clear();
         self.door_store_mut().clear();
+        self.inventory_store_mut().clear();
+        self.item_instance_store_mut().clear();
+        self.corpse_store_mut().clear();
+        self.item_pile_store_mut().clear();
         self.space_registry_mut().reset();
         let _ = self.command_buffer_mut().take_pending_sorted();
         self.movement_smoothing_mut().clear_all();

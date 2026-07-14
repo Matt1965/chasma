@@ -27,6 +27,10 @@ pub struct BuildingRecord {
     pub source: BuildingSource,
     /// Parent building when this record is an interior child object (ADR-084 B7).
     pub parent_building_id: Option<BuildingId>,
+    /// Centralized inventory reference when definition has a profile (ADR-091 I5).
+    pub inventory_id: Option<crate::world::InventoryId>,
+    /// Runtime lock state for container access (ADR-091 I5).
+    pub container_locked: bool,
 }
 
 impl BuildingRecord {
@@ -50,6 +54,8 @@ impl BuildingRecord {
             construction: ConstructionState::default(),
             source,
             parent_building_id: None,
+            inventory_id: None,
+            container_locked: false,
         }
     }
 }

@@ -16,12 +16,14 @@ mod death;
 mod eligibility;
 mod grounding;
 mod id;
+mod inventory;
 mod metadata;
 mod movement;
 mod orders;
 mod placement;
 mod query;
 mod record;
+mod removal;
 #[cfg(any(test, feature = "dev"))]
 mod restore;
 mod source;
@@ -37,8 +39,8 @@ pub use animation_profile::{
 };
 pub use attack_cycle::{AttackCycle, AttackPhase};
 pub use authoring::{
-    UnitAuthoringError, create_unit, create_unit_with_ownership, lookup_unit, move_unit,
-    remove_unit,
+    UnitAuthoringError, create_unit, create_unit_with_inventory, create_unit_with_ownership,
+    lookup_unit, move_unit, remove_unit,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use catalog::starter_definitions;
@@ -56,6 +58,11 @@ pub use death::{
 pub use eligibility::{unit_can_execute_actions, unit_record_can_execute_actions};
 pub use grounding::{UnitGroundingError, ground_unit_position, ground_unit_to_terrain};
 pub use id::UnitId;
+pub use inventory::{
+    attach_inventory_on_unit_create, cleanup_unit_inventory_on_delete,
+    transfer_unit_inventory_to_corpse, unit_encumbrance_ratio, unit_inventory_weight_grams,
+    unit_over_reference_weight_grams, unit_reference_weight_grams, validate_unit_inventory_owner,
+};
 pub use metadata::UnitMetadata;
 pub use movement::{
     BatchUnitMovementReport, BlockedMovementReason, UnitMovementError, UnitMovementReport,
@@ -68,6 +75,7 @@ pub use orders::{
 };
 pub use placement::UnitPlacement;
 pub use record::UnitRecord;
+pub use removal::{UnitRemovalOutcome, finalize_unit_removal};
 #[cfg(any(test, feature = "dev"))]
 pub use restore::{
     UnitRestoreError, normalize_restored_unit, restore_unit_record, validate_unit_for_restore,

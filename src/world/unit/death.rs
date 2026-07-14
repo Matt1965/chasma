@@ -102,6 +102,7 @@ pub struct UnitDeathTrace {
 pub struct UnitDeathReport {
     pub traces: Vec<UnitDeathTrace>,
     pub removed_unit_ids: Vec<UnitId>,
+    pub corpse_ids: Vec<crate::world::CorpseId>,
 }
 
 impl UnitDeathReport {
@@ -126,12 +127,44 @@ pub fn queue_unit_removal(
     })
 }
 
+/// Structured unit removal failures (ADR-089 I3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UnitRemovalError {
+    MissingDefinition {
+        unit_id: UnitId,
+        definition_id: crate::world::UnitDefinitionId,
+    },
+    CorpseCreationFailed {
+        unit_id: UnitId,
+        error: crate::world::CorpseError,
+    },
+    InventoryTransferFailed {
+        unit_id: UnitId,
+        inventory_id: crate::world::InventoryId,
+        error: crate::world::CorpseError,
+    },
+}
+
 /// Death pipeline: detect → mark dead → queue → target cleanup → remove.
-pub fn step_unit_death_pipeline(world: &mut WorldData, tick: u64) -> UnitDeathReport {
+pub fn step_unit_death_pipeline(
+    world: &mut WorldData,
+    unit_catalog: &crate::world::UnitCatalog,
+    inventory_ctx: Option<&crate::world::InventoryCatalogCtx<'_>>,
+    corpse_settings: &crate::world::CorpseSettings,
+    tick: u64,
+) -> UnitDeathReport {
     let mut report = UnitDeathReport::default();
     detect_and_queue_deaths(world, tick, &mut report);
     let pending_removals = clear_targets_for_dead_units(world, &mut report);
-    apply_removals(world, pending_removals, &mut report);
+    apply_removals(
+        world,
+        pending_removals,
+        unit_catalog,
+        inventory_ctx,
+        corpse_settings,
+        tick,
+        &mut report,
+    );
     report
 }
 
@@ -263,14 +296,43 @@ fn clear_targets_for_dead_units(
 fn apply_removals(
     world: &mut WorldData,
     entries: Vec<UnitRemovalEntry>,
+    unit_catalog: &crate::world::UnitCatalog,
+    inventory_ctx: Option<&crate::world::InventoryCatalogCtx<'_>>,
+    corpse_settings: &crate::world::CorpseSettings,
+    tick: u64,
     report: &mut UnitDeathReport,
 ) {
     let mut sorted = entries;
     sorted.sort_by_key(|entry| entry.unit_id);
 
     for entry in sorted {
-        let removed = world.remove_unit_by_id(entry.unit_id);
-        if removed.is_some() {
+        let removed = if let Some(ctx) = inventory_ctx {
+            match super::removal::finalize_unit_removal(
+                world,
+                entry.unit_id,
+                entry.reason,
+                unit_catalog,
+                ctx,
+                corpse_settings,
+                tick,
+            ) {
+                Ok(outcome) => {
+                    if let Some(corpse_id) = outcome.corpse_id {
+                        report.corpse_ids.push(corpse_id);
+                    }
+                    true
+                }
+                Err(error) => {
+                    #[cfg(any(test, feature = "dev"))]
+                    eprintln!("unit removal failed for {:?}: {error:?}", entry.unit_id);
+                    false
+                }
+            }
+        } else {
+            world.remove_unit_by_id(entry.unit_id).is_some()
+        };
+
+        if removed {
             report.removed_unit_ids.push(entry.unit_id);
             report.push(UnitDeathTrace {
                 unit_id: entry.unit_id,
@@ -327,6 +389,16 @@ mod tests {
         WeaponCatalog::from_definitions(starter_weapon_definitions()).unwrap()
     }
 
+    fn death_pipeline(world: &mut WorldData, tick: u64) -> UnitDeathReport {
+        step_unit_death_pipeline(
+            world,
+            &catalog(),
+            None,
+            &crate::world::CorpseSettings::default(),
+            tick,
+        )
+    }
+
     fn spawn_player(world: &mut WorldData, catalog: &UnitCatalog, x: f32, z: f32) -> UnitId {
         create_unit_with_ownership(
             catalog,
@@ -362,7 +434,7 @@ mod tests {
         assert_eq!(world.get_unit(hostile).unwrap().vitals.current_hp, 0);
         assert_ne!(world.get_unit(hostile).unwrap().state, UnitState::Dead);
 
-        let report = step_unit_death_pipeline(&mut world, 1);
+        let report = death_pipeline(&mut world, 1);
         assert!(
             report.traces.iter().any(|trace| {
                 matches!(trace.event, UnitDeathEvent::UnitDied { hp_after: 0, .. })
@@ -376,7 +448,7 @@ mod tests {
         let mut world = flat_world();
         let unit = spawn_hostile(&mut world, &catalog, 10.0, 10.0);
         world.damage_unit(unit, 999).unwrap();
-        let report = step_unit_death_pipeline(&mut world, 1);
+        let report = death_pipeline(&mut world, 1);
         assert!(report.traces.iter().any(|trace| {
             matches!(
                 trace.event,
@@ -394,7 +466,7 @@ mod tests {
         let mut world = flat_world();
         let unit = spawn_hostile(&mut world, &catalog, 10.0, 10.0);
         world.damage_unit(unit, 999).unwrap();
-        let report = step_unit_death_pipeline(&mut world, 1);
+        let report = death_pipeline(&mut world, 1);
         assert!(world.get_unit(unit).is_none());
         assert!(report.removed_unit_ids.contains(&unit));
     }
@@ -452,7 +524,7 @@ mod tests {
         let mut selection = SelectedUnits::default();
         selection.set_single(unit);
         world.damage_unit(unit, 999).unwrap();
-        step_unit_death_pipeline(&mut world, 1);
+        death_pipeline(&mut world, 1);
         selection.prune_dead(&world);
         assert!(!selection.contains(unit));
     }
@@ -475,7 +547,7 @@ mod tests {
         )
         .unwrap();
         world.damage_unit(hostile, 999).unwrap();
-        let report = step_unit_death_pipeline(&mut world, 1);
+        let report = death_pipeline(&mut world, 1);
         assert!(report.traces.iter().any(|trace| {
             matches!(
                 trace.event,
@@ -519,7 +591,7 @@ mod tests {
             )
             .unwrap();
         world.damage_unit(hostile, 999).unwrap();
-        step_unit_death_pipeline(&mut world, 1);
+        death_pipeline(&mut world, 1);
         assert!(matches!(
             world.get_unit(player).unwrap().combat_state,
             CombatState::AttackMoving { target: None, .. }
@@ -558,7 +630,7 @@ mod tests {
         let mut world = flat_world();
         let unit = spawn_hostile(&mut world, &catalog, 10.0, 10.0);
         world.damage_unit(unit, 999).unwrap();
-        step_unit_death_pipeline(&mut world, 1);
+        death_pipeline(&mut world, 1);
         assert!(world.get_unit(unit).is_none());
         let err = issue_unit_order(
             &mut world,
@@ -605,7 +677,7 @@ mod tests {
         world.set_unit_hp(hostile, 8).unwrap();
         world.record_kill_attribution(hostile, player, 8);
         world.damage_unit(hostile, 8).unwrap();
-        let report = step_unit_death_pipeline(&mut world, 1);
+        let report = death_pipeline(&mut world, 1);
         assert!(report.traces.iter().any(|trace| {
             matches!(
                 trace.event,
@@ -632,8 +704,8 @@ mod tests {
         for unit in [b1, b2] {
             world_b.damage_unit(unit, 999).unwrap();
         }
-        let report_a = step_unit_death_pipeline(&mut world_a, 1);
-        let report_b = step_unit_death_pipeline(&mut world_b, 1);
+        let report_a = death_pipeline(&mut world_a, 1);
+        let report_b = death_pipeline(&mut world_b, 1);
         assert_eq!(report_a.removed_unit_ids, report_b.removed_unit_ids);
     }
 }

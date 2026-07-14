@@ -410,6 +410,7 @@ mod tests {
             combat_state: CombatState::Peaceful,
             attack_cycle: None,
             current_space_id: Default::default(),
+            inventory_id: None,
         }
     }
 

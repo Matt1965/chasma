@@ -20,6 +20,7 @@ pub enum UnitAuthoringError {
     DefinitionDisabled(UnitDefinitionId),
     UnitNotFound(UnitId),
     ChunkPlacementMismatch,
+    InventoryAllocationFailed(UnitId),
 }
 
 /// Create a unit with explicit runtime ownership.
@@ -30,6 +31,47 @@ pub fn create_unit_with_ownership(
     position: WorldPosition,
     source: UnitSource,
     ownership: UnitOwnership,
+) -> Result<UnitRecord, UnitAuthoringError> {
+    create_unit_with_ownership_impl(
+        catalog,
+        world,
+        definition_id,
+        position,
+        source,
+        ownership,
+        None,
+    )
+}
+
+/// Create a unit and attach an authoritative inventory from its definition profile.
+pub fn create_unit_with_inventory(
+    catalog: &UnitCatalog,
+    world: &mut WorldData,
+    definition_id: &UnitDefinitionId,
+    position: WorldPosition,
+    source: UnitSource,
+    ownership: UnitOwnership,
+    inventory_ctx: &crate::world::InventoryCatalogCtx<'_>,
+) -> Result<UnitRecord, UnitAuthoringError> {
+    create_unit_with_ownership_impl(
+        catalog,
+        world,
+        definition_id,
+        position,
+        source,
+        ownership,
+        Some(inventory_ctx),
+    )
+}
+
+fn create_unit_with_ownership_impl(
+    catalog: &UnitCatalog,
+    world: &mut WorldData,
+    definition_id: &UnitDefinitionId,
+    position: WorldPosition,
+    source: UnitSource,
+    ownership: UnitOwnership,
+    inventory_ctx: Option<&crate::world::InventoryCatalogCtx<'_>>,
 ) -> Result<UnitRecord, UnitAuthoringError> {
     let definition = catalog
         .get(definition_id)
@@ -42,7 +84,7 @@ pub fn create_unit_with_ownership(
     }
 
     let id = world.allocate_unit_id();
-    let record = UnitRecord::new(
+    let mut record = UnitRecord::new(
         id,
         definition.id.clone(),
         UnitPlacement::new(position, Quat::IDENTITY),
@@ -51,13 +93,23 @@ pub fn create_unit_with_ownership(
         definition.max_hp,
     );
 
+    if let Some(ctx) = inventory_ctx {
+        super::inventory::attach_inventory_on_unit_create(world, ctx, &mut record, definition)
+            .map_err(|_| UnitAuthoringError::InventoryAllocationFailed(id))?;
+    }
+
     let chunk = crate::world::ChunkId::new(position.chunk);
-    world
-        .insert_unit(chunk, record.clone())
-        .map_err(|error| match error {
+    if let Err(error) = world.insert_unit(chunk, record.clone()) {
+        if let Some(ctx) = inventory_ctx {
+            if record.inventory_id.is_some() {
+                let _ = super::inventory::cleanup_unit_inventory_on_delete(world, ctx, &record);
+            }
+        }
+        return Err(match error {
             UnitInsertError::ChunkPlacementMismatch => UnitAuthoringError::ChunkPlacementMismatch,
             UnitInsertError::UnitNotFound => UnitAuthoringError::UnitNotFound(id),
-        })?;
+        });
+    }
 
     Ok(record)
 }

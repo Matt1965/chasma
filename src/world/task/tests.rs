@@ -352,8 +352,16 @@ fn building_destruction_prunes_tasks() {
         1,
     )
     .unwrap();
-    crate::world::destroy_building(&mut world, &building, &doodad, occ, building_id, "test")
-        .unwrap();
+    crate::world::destroy_building(
+        &mut world,
+        &building,
+        &doodad,
+        occ,
+        building_id,
+        "test",
+        None,
+    )
+    .unwrap();
     prune_invalid_building_tasks(&mut world);
     assert!(world.task_store().building_task_ids(building_id).is_empty());
 }

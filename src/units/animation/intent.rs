@@ -200,6 +200,7 @@ mod tests {
             },
             attack_cycle,
             current_space_id: Default::default(),
+            inventory_id: None,
         }
     }
 

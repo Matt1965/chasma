@@ -82,6 +82,22 @@ gating.
 
 ## Future expansion
 
+Inventory UI (I6, ADR-092): modal panel via **I** key and interact; see ADR-092 for transfer
+semantics. Command panel Interact arms world interact including container/corpse/pile open.
+
+## Inventory panel (I6 — ADR-092)
+
+| Key / input | Action |
+|-------------|--------|
+| **I** | Open primary selected unit inventory |
+| **Esc** | Cancel drag → close panel |
+| **Right-click** item | Transfer full stack to other open inventory |
+| **Ctrl+click** | Transfer one |
+| **Shift+click** | Transfer half (ceil) |
+| Left-drag | Move/swap within grid or transfer to cell |
+
+Panel blocks world selection/commands while open (`inventory_panel_blocks_world_input`).
+
 - Command card abilities
 - Inventory / equipment panels
 - Squad persistence and Kenshi-style management

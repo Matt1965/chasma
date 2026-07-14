@@ -4,9 +4,10 @@ use bevy::prelude::*;
 
 use crate::world::{
     BuildingCatalog, BuildingDefinitionId, BuildingOwnership, BuildingSource, DoodadCatalog,
-    DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog, UnitCatalog,
+    DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog,
+    InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, UnitCatalog,
     UnitDefinitionId, UnitOwnership, UnitSource, WorldData, WorldPosition, create_building,
-    create_doodad, create_unit_with_ownership,
+    create_building_with_inventory, create_doodad, create_unit_with_ownership,
 };
 
 use super::dev_mode::{DefinitionId, SpawnMode};
@@ -78,20 +79,43 @@ pub fn spawn_selected_at_position(
         },
         DefinitionId::Building(definition_id) => {
             let ownership = BuildingOwnership::with_affiliation(spawn_affiliation);
-            match create_building(
-                building_catalog,
-                world,
-                definition_id,
-                position,
-                Quat::IDENTITY,
-                BuildingSource::Dev,
-                ownership,
-                Some(crate::world::OccupancyCatalogs {
-                    doodad: doodad_catalog,
-                    building: building_catalog,
-                    footprint: footprint_catalog,
-                }),
-            ) {
+            let occupancy = crate::world::OccupancyCatalogs {
+                doodad: doodad_catalog,
+                building: building_catalog,
+                footprint: footprint_catalog,
+            };
+            let result = if building_catalog
+                .get(definition_id)
+                .is_some_and(|def| def.inventory_profile_id.is_some())
+            {
+                let categories = ItemCategoryCatalog::default();
+                let items = ItemCatalog::default();
+                let profiles = InventoryProfileCatalog::default();
+                let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+                create_building_with_inventory(
+                    building_catalog,
+                    world,
+                    definition_id,
+                    position,
+                    Quat::IDENTITY,
+                    BuildingSource::Dev,
+                    ownership,
+                    Some(occupancy),
+                    &ctx,
+                )
+            } else {
+                create_building(
+                    building_catalog,
+                    world,
+                    definition_id,
+                    position,
+                    Quat::IDENTITY,
+                    BuildingSource::Dev,
+                    ownership,
+                    Some(occupancy),
+                )
+            };
+            match result {
                 Ok(_record) => DevSpawnOutcome::SpawnedBuilding {
                     definition_id: definition_id.clone(),
                 },

@@ -24,6 +24,12 @@ mod fixtures {
                 "Walls, towers, and fortifications",
                 true,
             ),
+            BuildingCategoryDefinition::new(
+                BuildingCategoryId::new("storage"),
+                "Storage",
+                "Chests, vaults, and warehouses",
+                true,
+            ),
         ]
     }
 }

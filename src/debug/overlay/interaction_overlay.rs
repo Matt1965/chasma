@@ -51,12 +51,16 @@ fn interaction_type_color(kind: InteractionType) -> Color {
         InteractionType::ResourceNode => Color::srgba(0.95, 0.75, 0.15, 0.9),
         InteractionType::ConstructionSite => Color::srgba(0.95, 0.55, 0.15, 0.9),
         InteractionType::Workstation => Color::srgba(0.55, 0.35, 0.95, 0.9),
+        InteractionType::Container => Color::srgba(0.75, 0.45, 0.15, 0.9),
+        InteractionType::Treasury => Color::srgba(0.95, 0.85, 0.2, 0.9),
         InteractionType::InteractableObject => Color::srgba(0.35, 0.65, 1.0, 0.85),
         InteractionType::BlockedArea => Color::srgba(0.95, 0.25, 0.2, 0.85),
         InteractionType::TerrainPoint => Color::srgba(0.7, 0.7, 0.7, 0.8),
         InteractionType::AttackableUnit => Color::srgba(0.95, 0.2, 0.2, 0.9),
         InteractionType::FriendlyUnit => Color::srgba(0.25, 0.55, 0.95, 0.85),
         InteractionType::NeutralUnit => Color::srgba(0.85, 0.85, 0.35, 0.85),
+        InteractionType::ItemPile => Color::srgba(0.85, 0.55, 0.2, 0.9),
+        InteractionType::Corpse => Color::srgba(0.45, 0.25, 0.2, 0.9),
         InteractionType::None => Color::srgba(0.5, 0.5, 0.5, 0.5),
     }
 }

@@ -537,10 +537,17 @@ mod tests {
             .get(&unit_id)
             .unwrap();
 
+        let catalog = app.world().resource::<UnitCatalog>().clone();
         {
             let mut world = app.world_mut().resource_mut::<WorldData>();
             world.damage_unit(unit_id, 999).unwrap();
-            crate::world::step_unit_death_pipeline(&mut world, 1);
+            crate::world::step_unit_death_pipeline(
+                &mut world,
+                &catalog,
+                None,
+                &crate::world::CorpseSettings::default(),
+                1,
+            );
         }
         app.update();
         assert!(app.world().resource::<UnitRenderIndex>().0.is_empty());

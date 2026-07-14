@@ -4,10 +4,13 @@ pub mod footprint;
 
 mod authoring;
 mod construction;
+pub mod container_access;
 mod id;
 mod insert;
 mod interaction_profile;
 mod interior;
+pub mod inventory;
+pub mod inventory_error;
 mod ownership;
 mod placement;
 mod placement_validation;
@@ -20,8 +23,8 @@ mod store;
 mod vitals;
 
 pub use authoring::{
-    BuildingAuthoringError, create_building, lookup_building, move_building, place_player_building,
-    remove_building,
+    BuildingAuthoringError, create_building, create_building_with_inventory, lookup_building,
+    move_building, place_player_building, place_player_building_with_inventory, remove_building,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use catalog::starter_definitions;
@@ -41,6 +44,9 @@ pub use construction::{
     heal_building, is_building_operational, set_building_lifecycle_stage,
     step_all_building_construction, transition_to_ruins,
 };
+pub use container_access::{
+    ContainerAccessPolicy, InventoryAccessDenialReason, InventoryAccessResult,
+};
 pub use footprint::{FootprintSpec, FootprintType};
 pub use id::BuildingId;
 pub use insert::BuildingInsertError;
@@ -56,6 +62,16 @@ pub use interior::{
     space_route_for_unit, starter_interior_profiles, try_open_door_at_portal_for_unit,
     try_open_door_for_unit, two_story_hut_interior_profile,
 };
+pub use inventory::{
+    BuildingInventoryContext, BuildingInventoryRemovalPolicy, attach_inventory_on_building_create,
+    building_container_access_policy, building_inventory_operational,
+    can_unit_access_building_inventory, can_unit_access_inventory,
+    cleanup_building_inventory_on_delete, create_building_inventory,
+    finalize_building_inventory_removal, set_building_container_locked, spill_building_inventory,
+    spill_position_for_building, validate_building_inventory_links,
+    validate_building_inventory_owner,
+};
+pub use inventory_error::BuildingInventoryError;
 pub use ownership::BuildingOwnership;
 pub use placement::BuildingPlacement;
 pub use placement_validation::{

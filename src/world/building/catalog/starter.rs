@@ -4,7 +4,9 @@ mod fixtures {
     use super::super::definition::BuildingDefinition;
     use super::super::definition_id::BuildingDefinitionId;
     use super::super::render_key::BuildingRenderKey;
+    use crate::world::InventoryProfileId;
     use crate::world::building::category::BuildingCategoryId;
+    use crate::world::building::container_access::ContainerAccessPolicy;
     use crate::world::building::footprint::FootprintSpec;
 
     pub fn starter_definitions() -> Vec<BuildingDefinition> {
@@ -53,6 +55,62 @@ mod fixtures {
                 true,
             )
             .with_task_provider_id("smelter_basic"),
+            BuildingDefinition::new(
+                BuildingDefinitionId::new("storage_chest"),
+                "Storage Chest",
+                BuildingCategoryId::new("storage"),
+                BuildingRenderKey::reserved("chest"),
+                BuildingRenderKey::reserved("chest"),
+                120,
+                15.0,
+                FootprintSpec::Rectangle {
+                    width_meters: 1.0,
+                    depth_meters: 0.8,
+                },
+                35.0,
+                true,
+            )
+            .with_inventory_profile_id(InventoryProfileId::new("chest_small"))
+            .with_inventory_access_policy(ContainerAccessPolicy::OwnerOnly)
+            .with_inventory_interaction_point_key("access")
+            .with_spill_on_destroy(true)
+            .with_interaction_profile_id("storage_chest"),
+            BuildingDefinition::new(
+                BuildingDefinitionId::new("barn"),
+                "Barn",
+                BuildingCategoryId::new("storage"),
+                BuildingRenderKey::reserved("barn"),
+                BuildingRenderKey::reserved("barn"),
+                400,
+                90.0,
+                FootprintSpec::Rectangle {
+                    width_meters: 8.0,
+                    depth_meters: 6.0,
+                },
+                35.0,
+                true,
+            )
+            .with_inventory_profile_id(InventoryProfileId::new("chest_large"))
+            .with_inventory_access_policy(ContainerAccessPolicy::OwnerOnly)
+            .with_inventory_interaction_point_key("access")
+            .with_spill_on_destroy(true)
+            .with_interaction_profile_id("storage_chest"),
+            BuildingDefinition::new(
+                BuildingDefinitionId::new("settlement_core"),
+                "Settlement Core",
+                BuildingCategoryId::new("residential"),
+                BuildingRenderKey::reserved("hut"),
+                BuildingRenderKey::reserved("hut_collision"),
+                500,
+                120.0,
+                FootprintSpec::Rectangle {
+                    width_meters: 6.0,
+                    depth_meters: 6.0,
+                },
+                35.0,
+                true,
+            )
+            .with_interaction_profile_id("settlement_core"),
         ]
     }
 }

@@ -21,10 +21,18 @@ pub enum InteractionType {
     NeutralUnit,
     /// Harvestable resource (read-only stub until U13+).
     ResourceNode,
+    /// World item pile — pickup interaction (ADR-090 I4).
+    ItemPile,
+    /// Corpse — loot interaction (ADR-090 I4).
+    Corpse,
     /// Active construction site — worker build interaction (ADR-085 B8).
     ConstructionSite,
     /// Operational workstation — operator interaction (ADR-085 B8).
     Workstation,
+    /// Inventory container — open/transfer interaction (ADR-091 I5).
+    Container,
+    /// Settlement treasury — deposit physical gold (ADR-093 I7).
+    Treasury,
     /// Non-blocking interactable (doors, markers, ruins).
     InteractableObject,
     /// Movement-blocked area (obstacle footprint or unwalkable terrain).
@@ -42,8 +50,12 @@ impl InteractionType {
             Self::FriendlyUnit => "FriendlyUnit",
             Self::NeutralUnit => "NeutralUnit",
             Self::ResourceNode => "ResourceNode",
+            Self::ItemPile => "ItemPile",
+            Self::Corpse => "Corpse",
             Self::ConstructionSite => "ConstructionSite",
             Self::Workstation => "Workstation",
+            Self::Container => "Container",
+            Self::Treasury => "Treasury",
             Self::InteractableObject => "InteractableObject",
             Self::BlockedArea => "BlockedArea",
             Self::TerrainPoint => "TerrainPoint",
@@ -58,6 +70,8 @@ pub enum InteractionTargetRef {
     Doodad(DoodadId),
     Unit(UnitId),
     Building(crate::world::BuildingId),
+    ItemPile(crate::world::ItemPileId),
+    Corpse(crate::world::CorpseId),
     Terrain(WorldPosition),
 }
 

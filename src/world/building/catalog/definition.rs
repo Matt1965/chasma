@@ -3,7 +3,9 @@ use bevy::prelude::*;
 use super::definition_id::BuildingDefinitionId;
 use super::render_key::BuildingRenderKey;
 use crate::world::AnimationProfileId;
+use crate::world::InventoryProfileId;
 use crate::world::building::category::BuildingCategoryId;
+use crate::world::building::container_access::ContainerAccessPolicy;
 use crate::world::building::footprint::{FootprintSpec, FootprintType};
 
 /// Authoritative description of a building type (ADR-078 B1).
@@ -41,6 +43,14 @@ pub struct BuildingDefinition {
     pub interior_profile_id: Option<String>,
     pub max_slope_degrees: f32,
     pub enabled: bool,
+    /// Optional inventory container profile (ADR-087 I1). None = no inventory.
+    pub inventory_profile_id: Option<InventoryProfileId>,
+    /// Who may access this container at runtime (ADR-091 I5).
+    pub inventory_access_policy: ContainerAccessPolicy,
+    /// Interaction point key for container access/spill placement (ADR-091 I5).
+    pub inventory_interaction_point_key: Option<String>,
+    /// When true, destruction spills surviving contents to world piles (ADR-091 I5).
+    pub spill_on_destroy: bool,
 }
 
 impl BuildingDefinition {
@@ -78,6 +88,10 @@ impl BuildingDefinition {
             interior_profile_id: None,
             max_slope_degrees,
             enabled,
+            inventory_profile_id: None,
+            inventory_access_policy: ContainerAccessPolicy::OwnerOnly,
+            inventory_interaction_point_key: None,
+            spill_on_destroy: true,
         }
     }
 
@@ -118,6 +132,26 @@ impl BuildingDefinition {
 
     pub fn with_interior_profile_id(mut self, value: impl Into<String>) -> Self {
         self.interior_profile_id = Some(value.into());
+        self
+    }
+
+    pub fn with_inventory_profile_id(mut self, profile_id: InventoryProfileId) -> Self {
+        self.inventory_profile_id = Some(profile_id);
+        self
+    }
+
+    pub fn with_inventory_access_policy(mut self, policy: ContainerAccessPolicy) -> Self {
+        self.inventory_access_policy = policy;
+        self
+    }
+
+    pub fn with_inventory_interaction_point_key(mut self, key: impl Into<String>) -> Self {
+        self.inventory_interaction_point_key = Some(key.into());
+        self
+    }
+
+    pub fn with_spill_on_destroy(mut self, spill_on_destroy: bool) -> Self {
+        self.spill_on_destroy = spill_on_destroy;
         self
     }
 }

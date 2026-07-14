@@ -54,6 +54,7 @@ pub enum BuildingLifecycleError {
     },
     Occupancy(OccupancyError),
     Interior(super::interior::InteriorError),
+    Inventory(super::inventory_error::BuildingInventoryError),
     InvalidTransition {
         from: BuildingLifecycleState,
         to: BuildingLifecycleState,
@@ -346,6 +347,7 @@ pub fn damage_building(
     id: BuildingId,
     amount: u32,
     source: &'static str,
+    inventory_cleanup: Option<&super::inventory::BuildingInventoryCleanup<'_>>,
 ) -> Result<Vec<BuildingLifecycleEvent>, BuildingLifecycleError> {
     let record = world
         .get_building(id)
@@ -379,6 +381,7 @@ pub fn damage_building(
             occupancy,
             id,
             source,
+            inventory_cleanup,
         )?);
     }
     Ok(events)
@@ -415,6 +418,7 @@ pub fn destroy_building(
     occupancy: OccupancyCatalogs<'_>,
     id: BuildingId,
     source: &'static str,
+    inventory_cleanup: Option<&super::inventory::BuildingInventoryCleanup<'_>>,
 ) -> Result<Vec<BuildingLifecycleEvent>, BuildingLifecycleError> {
     let record = world
         .get_building(id)
@@ -426,6 +430,20 @@ pub fn destroy_building(
 
     let _ = definition_for_record(building_catalog, &record)?;
     let mut events = Vec::new();
+
+    if record.inventory_id.is_some() {
+        if let Some(cleanup) = inventory_cleanup {
+            super::inventory::finalize_building_inventory_removal(
+                world,
+                building_catalog,
+                cleanup.interaction_catalog,
+                Some(cleanup),
+                &record,
+                super::inventory::BuildingInventoryRemovalPolicy::SpillToWorld,
+            )
+            .map_err(BuildingLifecycleError::Inventory)?;
+        }
+    }
 
     if record.lifecycle_state != BuildingLifecycleState::Destroyed {
         events.extend(apply_stage_transition(
@@ -827,7 +845,8 @@ mod tests {
         let occ = occ(&building, &doodad, &footprint);
         let mut world = layout_world();
         let id = place_hut(&mut world, occ);
-        let events = damage_building(&mut world, &building, &doodad, occ, id, 999, "test").unwrap();
+        let events =
+            damage_building(&mut world, &building, &doodad, occ, id, 999, "test", None).unwrap();
         assert!(
             events
                 .iter()
@@ -850,7 +869,7 @@ mod tests {
         let occ = occ(&building, &doodad, &footprint);
         let mut world = layout_world();
         let id = place_hut(&mut world, occ);
-        let _ = destroy_building(&mut world, &building, &doodad, occ, id, "test").unwrap();
+        let _ = destroy_building(&mut world, &building, &doodad, occ, id, "test", None).unwrap();
         let report = step_all_building_construction(
             &mut world,
             &building,
@@ -869,7 +888,7 @@ mod tests {
         let occ = occ(&building, &doodad, &footprint);
         let mut world = layout_world();
         let id = place_hut(&mut world, occ);
-        let _ = damage_building(&mut world, &building, &doodad, occ, id, 5, "test").unwrap();
+        let _ = damage_building(&mut world, &building, &doodad, occ, id, 5, "test", None).unwrap();
         let vitals = heal_building(&mut world, id, 999).unwrap();
         assert_eq!(vitals.current_hp, vitals.max_hp);
     }

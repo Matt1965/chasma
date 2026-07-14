@@ -333,6 +333,24 @@ fn classify_building_hit(
         && profile.is_some_and(|profile| profile.capabilities.workstation)
     {
         InteractionType::Workstation
+    } else if ctx
+        .world
+        .settlement_store()
+        .settlement_for_building(building_id)
+        .is_some()
+        && crate::world::building_supports_settlement_treasury(
+            ctx.building_catalog,
+            ctx.interaction_catalog,
+            building_id,
+            ctx.world,
+        )
+    {
+        InteractionType::Treasury
+    } else if record.inventory_id.is_some()
+        && crate::world::building_inventory_operational(record)
+        && profile.is_some_and(|profile| profile.capabilities.container)
+    {
+        InteractionType::Container
     } else if record.lifecycle_state.is_terminal_damage_state() {
         InteractionType::None
     } else {
@@ -340,7 +358,10 @@ fn classify_building_hit(
     };
 
     let valid = match interaction_type {
-        InteractionType::ConstructionSite | InteractionType::Workstation => true,
+        InteractionType::ConstructionSite
+        | InteractionType::Workstation
+        | InteractionType::Container
+        | InteractionType::Treasury => true,
         InteractionType::None => false,
         _ => true,
     };

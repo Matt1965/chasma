@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::world::{
     AnimationProfileId, BuildingCategoryId, BuildingDefinitionId, DoodadDefinitionId,
-    UnitDefinitionId, WeaponDefinitionId,
+    InventoryProfileId, ItemCategoryId, ItemDefinitionId, UnitDefinitionId, WeaponDefinitionId,
 };
 
 /// Errors that abort the entire import (sheet layout, I/O, zero valid rows).
@@ -46,6 +46,21 @@ pub enum DataImportError {
     },
     DuplicateBuildingCategoryId {
         id: BuildingCategoryId,
+        first_row: usize,
+        duplicate_row: usize,
+    },
+    DuplicateItemId {
+        id: ItemDefinitionId,
+        first_row: usize,
+        duplicate_row: usize,
+    },
+    DuplicateItemCategoryId {
+        id: ItemCategoryId,
+        first_row: usize,
+        duplicate_row: usize,
+    },
+    DuplicateInventoryProfileId {
+        id: InventoryProfileId,
         first_row: usize,
         duplicate_row: usize,
     },
@@ -120,6 +135,33 @@ impl std::fmt::Display for DataImportError {
             } => write!(
                 f,
                 "duplicate Building Category ID `{}` (rows {first_row} and {duplicate_row})",
+                id.as_str()
+            ),
+            Self::DuplicateItemId {
+                id,
+                first_row,
+                duplicate_row,
+            } => write!(
+                f,
+                "duplicate Item ID `{}` (rows {first_row} and {duplicate_row})",
+                id.as_str()
+            ),
+            Self::DuplicateItemCategoryId {
+                id,
+                first_row,
+                duplicate_row,
+            } => write!(
+                f,
+                "duplicate Item Category ID `{}` (rows {first_row} and {duplicate_row})",
+                id.as_str()
+            ),
+            Self::DuplicateInventoryProfileId {
+                id,
+                first_row,
+                duplicate_row,
+            } => write!(
+                f,
+                "duplicate Inventory Profile ID `{}` (rows {first_row} and {duplicate_row})",
                 id.as_str()
             ),
             Self::NoValidRows => write!(f, "no valid rows after import"),

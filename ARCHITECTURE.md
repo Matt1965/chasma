@@ -686,6 +686,19 @@ The architecture should permit them.
 
 The initial implementation should not attempt to solve them.
 
+## Items and Inventory Authority (I1–I8)
+
+Physical items, grid inventories, corpses, world piles, building containers, and settlement
+treasury balances are authoritative on **`WorldData`** (ADRs 087–094). ECS entities and UI state
+are never inventory truth.
+
+- **Physical gold** is a normal item stack everywhere except treasury records (abstract balance only).
+- **Derived caches** (`cell_owner`, `total_mass_grams`, spatial indexes) rebuild after load.
+- **`validate_world_inventory_state`** is the single validation entry point for dev and scene apply.
+- **Scene v7** persists full inventory world state for dev snapshots; see ADR-094.
+
+Final audit: [docs/items-inventory-final-audit.md](docs/items-inventory-final-audit.md).
+
 Development Rule
 
 When making design decisions:

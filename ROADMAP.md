@@ -51,7 +51,7 @@ Pre-feature-development checkpoint after audit passes A1–B6.
 - Economy, buildings, harvesting loops (see [ADR-072](ADRs/ADR-072-settlement-automation-and-production.md), DESIGN.md)
 - Full creature AI template stack ([ADR-071](ADRs/ADR-071-creature-ai-architecture.md); ADR-062 scan AI only)
 - Use-based skills and attribute-driven combat ([ADR-070](ADRs/ADR-070-progression-and-attributes.md))
-- Grid inventory and equipment ([ADR-073](ADRs/ADR-073-inventory-and-equipment.md))
+- Grid inventory and equipment ([ADR-073](ADRs/ADR-073-inventory-and-equipment.md); I1 catalog foundation in [ADR-087](ADRs/ADR-087-item-definitions-and-inventory-profiles.md))
 - Downed state, stagger, facing, weapon hit volumes ([ADR-069](ADRs/ADR-069-combat-design-philosophy.md))
 - Full pathfinding optimizations (pooling, hierarchical)
 - Multiplayer replication
@@ -531,12 +531,79 @@ Design direction: [ADR-070](ADRs/ADR-070-progression-and-attributes.md), [ADR-07
 
 **Implemented foundations:** movement, orders, selection, combat engagement, death.
 
+**I1 — item definitions and inventory profiles (ADR-087):** complete
+
+- `ItemDefinition`, `ItemCategoryDefinition`, `InventoryProfileDefinition` catalogs
+- Excel import (`Items`, `Item Categories`, `Inventory Profiles`) in dev builds
+- Physical gold item definition; optional unit/building `inventory_profile_id`
+- Dev Items browser (read-only)
+- Runtime inventory deferred to I2
+
+**I2 — authoritative inventory grid and item identity (ADR-088):** complete
+
+- `InventoryStore`, `ItemInstanceStore`, `InventoryRecord` on `WorldData`
+- Fixed-grid placement, stacks, unique instances, atomic ops, soft weight, auto-sort
+- Profile migration with explicit leftovers
+- Dev inventory harness (detached inventories only)
+
+**I3 — unit inventories, corpse ownership, weight (ADR-089):** complete
+
+- `UnitRecord.inventory_id`; `create_unit_with_inventory` attaches profile inventories
+- Death transfers same `InventoryId` to `CorpseRecord` via `finalize_unit_removal`
+- Fixed-tick corpse lifetime + expiration deletes inventory (no ground spill until I4 spill API)
+- Soft weight query seam; `SimulationCatalogParams` for tick integration
+- I3 unit/corpse/inventory tests in `world::unit::inventory::i3_tests`
+
+**I4 — cross-inventory transfers, world piles, drop/pickup/loot (ADR-090):** complete
+
+- Atomic `transfer_*` APIs with explicit full/one/half semantics and placement policies
+- `WorldItemPileRecord` on `WorldData.item_pile_store`; deterministic merge/overflow
+- `ItemInstanceLocation` index (`Inventory` | `WorldPile` | `Detached`)
+- Drop, pickup, spill, corpse loot via shared transfer pipeline
+- Runtime pile sync (`src/item_piles/`); dev pile harness on World Tools tab
+- Tests in `world::item_pile::tests`
+
+**I5 — building containers, access, destruction spill (ADR-091):** complete
+
+- `BuildingRecord.inventory_id` + `InventoryOwnerRef::Building` at create time (lifecycle-gated access)
+- `ContainerAccessPolicy`, `can_unit_access_inventory`, `InteractionType::Container`
+- Destruction spill via I4 `spill_inventory_to_world_piles`; typed removal policies
+- Starter `storage_chest` + interaction profile; dev building inspector container tools
+- Tests in `world::building::inventory`
+
+**I6 — player inventory UI, drag/drop, transfers (ADR-092):** complete
+
+- `InventoryUiState` client presentation; `InventoryIntent` + `dispatch_inventory_intents`
+- Modal inventory panel: grids, weight/gold, details, disabled equipment seam
+- Open unit (**I**), interact container/corpse/pile; dual transfer + loot-all
+- Right-click full, Ctrl one, Shift half, drag move/transfer, auto-sort button
+- World input blocked while panel open; commit-time access + stale revision checks
+- Tests in `client::inventory_dispatch`, `ui::gameplay::inventory`
+
+**I7 — settlement treasuries, physical gold deposits (ADR-093):** complete
+
+- `SettlementTreasuryRecord` abstract wealth on `WorldData::settlement_store`
+- `deposit_gold` atomic physical removal + treasury credit; no withdrawals
+- Settlement capability on `settlement_core` only (not chests)
+- `InteractionType::Treasury`; treasury deposit UI (Physical Gold / Treasury Gold separate)
+- Dev treasury harness; scene v6 persistence for settlements/treasuries
+- Tests in `world::settlement`, `client::inventory_dispatch`
+
+**I8 — inventory persistence, validation, audit (ADR-094):** complete
+
+- Scene v7: inventories, instances, corpses, piles, allocators, unit `inventory_id`
+- `rebuild_all_inventory_derived` on load; derived caches never serialized
+- `validate_world_inventory_state` unified entry point
+- Stress tests in `world::inventory::stress`
+- Dev inspector inventory summaries; harness **V** → world validation
+- Final audit: [docs/items-inventory-final-audit.md](docs/items-inventory-final-audit.md)
+
 **Deferred:**
 
 - use-based skills (no global runtime level; workbook `Level` is authoring metadata)
 - attributes driving combat formulas (STR/DEX/CON/PER/AGI/CHR/INT — imported, not simulated)
 - injuries and downed state
-- grid inventory + equipment slots
+- equipment runtime, move-to-loot orders
 - progression and equipment
 
 ---

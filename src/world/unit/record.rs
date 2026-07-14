@@ -36,6 +36,8 @@ pub struct UnitRecord {
     pub combat_state: CombatState,
     /// Weapon attack cycle timing when in-range (ADR-058 C5).
     pub attack_cycle: Option<AttackCycle>,
+    /// Centralized inventory reference when unit definition has a profile (ADR-089 I3).
+    pub inventory_id: Option<crate::world::InventoryId>,
 }
 
 impl UnitRecord {
@@ -61,6 +63,7 @@ impl UnitRecord {
             current_space_id: crate::world::SpaceId::SURFACE,
             combat_state: CombatState::default(),
             attack_cycle: None,
+            inventory_id: None,
         }
     }
 

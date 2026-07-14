@@ -984,6 +984,10 @@ mod tests {
                 &mut scan,
                 BuildingConstructionSettings::default(),
                 &InteriorProfileCatalog::default(),
+                &crate::world::ItemCatalog::default(),
+                &crate::world::ItemCategoryCatalog::default(),
+                &crate::world::InventoryProfileCatalog::default(),
+                &crate::world::CorpseSettings::default(),
                 SIMULATION_TICK_SECONDS,
                 0,
             );

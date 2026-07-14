@@ -8,6 +8,12 @@ use bevy::prelude::*;
 use super::catalog::BuildingCatalog;
 use super::id::BuildingId;
 use super::insert::BuildingInsertError;
+use super::interaction_profile::BuildingInteractionProfileCatalog;
+use super::inventory::{
+    BuildingInventoryCleanup, BuildingInventoryRemovalPolicy, attach_inventory_on_building_create,
+    finalize_building_inventory_removal,
+};
+use super::inventory_error::BuildingInventoryError;
 use super::ownership::BuildingOwnership;
 use super::placement::BuildingPlacement;
 use super::record::BuildingRecord;
@@ -15,9 +21,10 @@ use super::source::BuildingSource;
 use super::state::BuildingLifecycleState;
 use super::state::ConstructionState;
 use super::vitals::BuildingVitals;
+use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::{
-    BuildingDefinitionId, DoodadCatalog, DoodadDefinitionId, OccupancyCatalogs, OccupancySource,
-    WorldData, WorldPosition, deactivate_building_interior,
+    BuildingDefinitionId, DoodadCatalog, OccupancyCatalogs, OccupancySource, WorldData,
+    WorldPosition, deactivate_building_interior,
 };
 use crate::world::{
     register_building_occupancy, unregister_source_occupancy, update_building_occupancy,
@@ -31,6 +38,8 @@ pub enum BuildingAuthoringError {
     BuildingNotFound(BuildingId),
     ChunkPlacementMismatch,
     Occupancy(crate::world::OccupancyError),
+    InventoryAllocationFailed(BuildingId),
+    Inventory(BuildingInventoryError),
 }
 
 /// Create a building instance from a catalog definition and insert it into world data.
@@ -44,6 +53,55 @@ pub fn create_building(
     ownership: BuildingOwnership,
     occupancy: Option<OccupancyCatalogs<'_>>,
 ) -> Result<BuildingRecord, BuildingAuthoringError> {
+    create_building_impl(
+        catalog,
+        world,
+        definition_id,
+        position,
+        rotation,
+        source,
+        ownership,
+        occupancy,
+        None,
+    )
+}
+
+/// Create a building and allocate its container inventory when the definition has a profile.
+pub fn create_building_with_inventory(
+    catalog: &BuildingCatalog,
+    world: &mut WorldData,
+    definition_id: &BuildingDefinitionId,
+    position: WorldPosition,
+    rotation: Quat,
+    source: BuildingSource,
+    ownership: BuildingOwnership,
+    occupancy: Option<OccupancyCatalogs<'_>>,
+    inventory_ctx: &InventoryCatalogCtx<'_>,
+) -> Result<BuildingRecord, BuildingAuthoringError> {
+    create_building_impl(
+        catalog,
+        world,
+        definition_id,
+        position,
+        rotation,
+        source,
+        ownership,
+        occupancy,
+        Some(inventory_ctx),
+    )
+}
+
+fn create_building_impl(
+    catalog: &BuildingCatalog,
+    world: &mut WorldData,
+    definition_id: &BuildingDefinitionId,
+    position: WorldPosition,
+    rotation: Quat,
+    source: BuildingSource,
+    ownership: BuildingOwnership,
+    occupancy: Option<OccupancyCatalogs<'_>>,
+    inventory_ctx: Option<&InventoryCatalogCtx<'_>>,
+) -> Result<BuildingRecord, BuildingAuthoringError> {
     let definition = catalog
         .get(definition_id)
         .ok_or_else(|| BuildingAuthoringError::DefinitionNotFound(definition_id.clone()))?;
@@ -55,7 +113,7 @@ pub fn create_building(
     }
 
     let id = world.allocate_building_id();
-    let record = BuildingRecord::new(
+    let mut record = BuildingRecord::new(
         id,
         definition.id.clone(),
         BuildingPlacement::new(position, rotation),
@@ -64,19 +122,48 @@ pub fn create_building(
         source,
     );
 
+    if definition.inventory_profile_id.is_some() {
+        let Some(ctx) = inventory_ctx else {
+            return Err(BuildingAuthoringError::InventoryAllocationFailed(id));
+        };
+        attach_inventory_on_building_create(world, ctx, &mut record, definition).map_err(
+            |error| match error {
+                BuildingInventoryError::Inventory(inventory_error) => {
+                    BuildingAuthoringError::Inventory(BuildingInventoryError::Inventory(
+                        inventory_error,
+                    ))
+                }
+                other => BuildingAuthoringError::Inventory(other),
+            },
+        )?;
+    }
+
     let chunk = crate::world::ChunkId::new(position.chunk);
-    world
-        .insert_building(chunk, record.clone())
-        .map_err(|error| match error {
+    if let Err(error) = world.insert_building(chunk, record.clone()) {
+        if record.inventory_id.is_some() {
+            if let Some(ctx) = inventory_ctx {
+                let _ = super::inventory::cleanup_building_inventory_on_delete(world, ctx, &record);
+            }
+        }
+        return Err(match error {
             BuildingInsertError::ChunkPlacementMismatch => {
                 BuildingAuthoringError::ChunkPlacementMismatch
             }
             BuildingInsertError::BuildingNotFound => BuildingAuthoringError::BuildingNotFound(id),
-        })?;
+        });
+    }
 
     if let Some(catalogs) = occupancy {
-        register_building_occupancy(world, catalogs, &record)
-            .map_err(BuildingAuthoringError::Occupancy)?;
+        if let Err(error) = register_building_occupancy(world, catalogs, &record) {
+            let _ = world.remove_building_by_id(id);
+            if record.inventory_id.is_some() {
+                if let Some(ctx) = inventory_ctx {
+                    let _ =
+                        super::inventory::cleanup_building_inventory_on_delete(world, ctx, &record);
+                }
+            }
+            return Err(BuildingAuthoringError::Occupancy(error));
+        }
     }
 
     Ok(record)
@@ -94,6 +181,51 @@ pub fn place_player_building(
     rotation: Quat,
     ownership: BuildingOwnership,
     occupancy: OccupancyCatalogs<'_>,
+) -> Result<BuildingRecord, BuildingAuthoringError> {
+    place_player_building_impl(
+        catalog,
+        world,
+        definition_id,
+        position,
+        rotation,
+        ownership,
+        occupancy,
+        None,
+    )
+}
+
+/// Planned player placement with container inventory allocation at create time.
+pub fn place_player_building_with_inventory(
+    catalog: &BuildingCatalog,
+    world: &mut WorldData,
+    definition_id: &BuildingDefinitionId,
+    position: WorldPosition,
+    rotation: Quat,
+    ownership: BuildingOwnership,
+    occupancy: OccupancyCatalogs<'_>,
+    inventory_ctx: &InventoryCatalogCtx<'_>,
+) -> Result<BuildingRecord, BuildingAuthoringError> {
+    place_player_building_impl(
+        catalog,
+        world,
+        definition_id,
+        position,
+        rotation,
+        ownership,
+        occupancy,
+        Some(inventory_ctx),
+    )
+}
+
+fn place_player_building_impl(
+    catalog: &BuildingCatalog,
+    world: &mut WorldData,
+    definition_id: &BuildingDefinitionId,
+    position: WorldPosition,
+    rotation: Quat,
+    ownership: BuildingOwnership,
+    occupancy: OccupancyCatalogs<'_>,
+    inventory_ctx: Option<&InventoryCatalogCtx<'_>>,
 ) -> Result<BuildingRecord, BuildingAuthoringError> {
     let definition = catalog
         .get(definition_id)
@@ -118,6 +250,14 @@ pub fn place_player_building(
     record.construction = ConstructionState::default();
     record.vitals = BuildingVitals::construction_vulnerable(definition.max_hp);
 
+    if definition.inventory_profile_id.is_some() {
+        let Some(ctx) = inventory_ctx else {
+            return Err(BuildingAuthoringError::InventoryAllocationFailed(id));
+        };
+        attach_inventory_on_building_create(world, ctx, &mut record, definition)
+            .map_err(BuildingAuthoringError::Inventory)?;
+    }
+
     let chunk = crate::world::ChunkId::new(position.chunk);
     world
         .insert_building(chunk, record.clone())
@@ -130,6 +270,11 @@ pub fn place_player_building(
 
     if let Err(error) = register_building_occupancy(world, occupancy, &record) {
         let _ = world.remove_building_by_id(id);
+        if record.inventory_id.is_some() {
+            if let Some(ctx) = inventory_ctx {
+                let _ = super::inventory::cleanup_building_inventory_on_delete(world, ctx, &record);
+            }
+        }
         return Err(BuildingAuthoringError::Occupancy(error));
     }
 
@@ -169,7 +314,33 @@ pub fn remove_building(
     occupancy: Option<OccupancyCatalogs<'_>>,
     building_catalog: Option<&BuildingCatalog>,
     doodad_catalog: Option<&DoodadCatalog>,
+    interaction_catalog: Option<&BuildingInteractionProfileCatalog>,
+    inventory_cleanup: Option<(
+        &BuildingInventoryCleanup<'_>,
+        BuildingInventoryRemovalPolicy,
+    )>,
 ) -> Result<BuildingRecord, BuildingAuthoringError> {
+    let record = world
+        .get_building(id)
+        .cloned()
+        .ok_or(BuildingAuthoringError::BuildingNotFound(id))?;
+
+    if let (Some(catalog), Some(interaction), Some((cleanup, policy))) =
+        (building_catalog, interaction_catalog, inventory_cleanup)
+    {
+        if record.inventory_id.is_some() {
+            finalize_building_inventory_removal(
+                world,
+                catalog,
+                interaction,
+                Some(cleanup),
+                &record,
+                policy,
+            )
+            .map_err(BuildingAuthoringError::Inventory)?;
+        }
+    }
+
     if let (Some(building_catalog), Some(doodad_catalog)) = (building_catalog, doodad_catalog) {
         let _ =
             deactivate_building_interior(world, doodad_catalog, building_catalog, occupancy, id);
@@ -192,7 +363,8 @@ mod tests {
     use super::*;
     use crate::world::{
         BuildingCatalog, BuildingLifecycleState, BuildingOwnership, ChunkCoord, ChunkLayout,
-        DoodadCatalog, FootprintCatalog, LocalPosition, OccupancyCatalogs,
+        DoodadCatalog, FootprintCatalog, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog,
+        ItemCategoryCatalog, LocalPosition, OccupancyCatalogs,
     };
 
     fn layout_world() -> WorldData {
@@ -204,6 +376,24 @@ mod tests {
 
     fn catalog() -> BuildingCatalog {
         BuildingCatalog::default()
+    }
+
+    fn inventory_ctx() -> InventoryCatalogCtx<'static> {
+        let categories = ItemCategoryCatalog::from_definitions(
+            crate::world::starter_item_category_definitions(),
+        )
+        .unwrap();
+        let items =
+            ItemCatalog::from_definitions(crate::world::starter_item_definitions(), &categories)
+                .unwrap();
+        let profiles = InventoryProfileCatalog::from_definitions(
+            crate::world::starter_inventory_profile_definitions(),
+        )
+        .unwrap();
+        let items = Box::leak(Box::new(items));
+        let categories = Box::leak(Box::new(categories));
+        let profiles = Box::leak(Box::new(profiles));
+        InventoryCatalogCtx::new(items, categories, profiles)
     }
 
     fn position(chunk_x: i32, chunk_z: i32, local: Vec3) -> WorldPosition {
@@ -327,9 +517,50 @@ mod tests {
         )
         .unwrap();
 
-        let removed = remove_building(&mut world, record.id, None, None, None).unwrap();
+        let removed = remove_building(&mut world, record.id, None, None, None, None, None).unwrap();
         assert_eq!(removed.id, record.id);
         assert!(lookup_building(&world, record.id).is_none());
         world.assert_building_index_consistent();
+    }
+
+    #[test]
+    fn chest_requires_inventory_ctx() {
+        let cat = catalog();
+        let mut world = layout_world();
+        let err = create_building(
+            &cat,
+            &mut world,
+            &BuildingDefinitionId::new("storage_chest"),
+            position(0, 0, Vec3::new(64.0, 0.0, 64.0)),
+            Quat::IDENTITY,
+            BuildingSource::Dev,
+            BuildingOwnership::neutral(),
+            None,
+        )
+        .unwrap_err();
+        assert!(matches!(
+            err,
+            BuildingAuthoringError::InventoryAllocationFailed(_)
+        ));
+    }
+
+    #[test]
+    fn chest_allocates_inventory_with_ctx() {
+        let cat = catalog();
+        let mut world = layout_world();
+        let ctx = inventory_ctx();
+        let record = create_building_with_inventory(
+            &cat,
+            &mut world,
+            &BuildingDefinitionId::new("storage_chest"),
+            position(0, 0, Vec3::new(64.0, 0.0, 64.0)),
+            Quat::IDENTITY,
+            BuildingSource::Dev,
+            BuildingOwnership::neutral(),
+            None,
+            &ctx,
+        )
+        .unwrap();
+        assert!(record.inventory_id.is_some());
     }
 }

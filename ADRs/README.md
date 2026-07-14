@@ -22,6 +22,14 @@ ADRs document **accepted technical decisions**. Game design direction lives in
 | [071](ADR-071-creature-ai-architecture.md) | Species → behavior → personality → state → decision |
 | [072](ADR-072-settlement-automation-and-production.md) | Professions, tasks, building requests |
 | [073](ADR-073-inventory-and-equipment.md) | Grid inventory + equipment slots |
+| [087](ADR-087-item-definitions-and-inventory-profiles.md) | Item definitions, categories, inventory profiles (I1) |
+| [088](ADR-088-authoritative-inventory-grid-and-item-identity.md) | Authoritative inventory grid and item identity (I2) |
+| [089](ADR-089-unit-inventories-corpse-ownership-and-item-survival.md) | Unit inventories, corpse ownership, item survival (I3) |
+| [090](ADR-090-item-transfers-world-piles-dropping-and-looting.md) | Item transfers, world piles, drop/pickup/loot (I4) |
+| [091](ADR-091-building-containers-and-inventory-ownership.md) | Building containers, access, destruction spill (I5) |
+| [092](ADR-092-player-inventory-ui-and-transfer-interaction.md) | Player inventory UI, drag/drop, transfers (I6) |
+| [093](ADR-093-settlement-treasuries-and-physical-gold.md) | Settlement treasuries, physical gold deposits (I7) |
+| [094](ADR-094-inventory-persistence-validation-and-audit.md) | Inventory persistence, validation, audit (I8) |
 
 ## Combat implementation chain
 

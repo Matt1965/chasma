@@ -15,9 +15,10 @@ const SESSION_HEADER: &str = "# chasma dev startup log";
 pub fn resolve_dev_unit_catalog(
     weapons: &crate::world::WeaponCatalog,
     animation_profiles: &crate::world::AnimationProfileCatalog,
+    inventory_profiles: &crate::world::InventoryProfileCatalog,
 ) -> UnitCatalog {
     let path = dev_design_workbook_path();
-    match try_import_dev_unit_catalog(&path, weapons, animation_profiles) {
+    match try_import_dev_unit_catalog(&path, weapons, animation_profiles, inventory_profiles) {
         Ok((catalog, summary)) => {
             append_log_line(
                 DEV_STARTUP_LOG_PATH,
@@ -88,8 +89,10 @@ fn try_import_dev_unit_catalog(
     path: &Path,
     weapons: &crate::world::WeaponCatalog,
     animation_profiles: &crate::world::AnimationProfileCatalog,
+    inventory_profiles: &crate::world::InventoryProfileCatalog,
 ) -> Result<(UnitCatalog, crate::data_import::ImportSummary), DataImportError> {
-    let (definitions, summary) = import_units_from_excel(path, weapons, animation_profiles)?;
+    let (definitions, summary) =
+        import_units_from_excel(path, weapons, animation_profiles, inventory_profiles)?;
     let catalog = UnitCatalog::from_definitions(definitions).map_err(|err| {
         DataImportError::WorkbookOpen(format!("unit catalog build failed: {err:?}"))
     })?;

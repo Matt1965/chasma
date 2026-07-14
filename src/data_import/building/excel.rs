@@ -214,6 +214,8 @@ fn parse_building_row(
         animation_profile: text("Animation Profile"),
         interaction_profile: text("Interaction Profile"),
         default_space: text("Default Space"),
+        inventory_profile_id: text("Inventory Profile ID"),
+        has_inventory_profile_column: columns.contains_key("Inventory Profile ID"),
         enabled,
         enabled_was_blank,
         has_collision_file_path_column: columns.contains_key("Collision File Path"),

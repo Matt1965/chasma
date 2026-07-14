@@ -265,6 +265,7 @@ mod tests {
             combat_state: combat,
             attack_cycle: None,
             current_space_id: Default::default(),
+            inventory_id: None,
         }
     }
 

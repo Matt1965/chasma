@@ -14,9 +14,11 @@ const SESSION_HEADER: &str = "# chasma dev startup log";
 pub const DEV_BUILDING_CATALOG_RON_PATH: &str = "assets/buildings/catalog.ron";
 
 /// Load building categories and definitions for dev startup from the design workbook.
-pub fn resolve_dev_building_catalog() -> (BuildingCategoryCatalog, BuildingCatalog) {
+pub fn resolve_dev_building_catalog(
+    inventory_profiles: &crate::world::InventoryProfileCatalog,
+) -> (BuildingCategoryCatalog, BuildingCatalog) {
     let path = dev_design_workbook_path();
-    match try_import_dev_building_catalog(&path) {
+    match try_import_dev_building_catalog(&path, inventory_profiles) {
         Ok((categories, buildings, summary)) => {
             append_log_line(
                 DEV_STARTUP_LOG_PATH,
@@ -58,6 +60,7 @@ pub fn resolve_dev_building_catalog() -> (BuildingCategoryCatalog, BuildingCatal
 
 fn try_import_dev_building_catalog(
     path: &Path,
+    inventory_profiles: &crate::world::InventoryProfileCatalog,
 ) -> Result<
     (
         BuildingCategoryCatalog,
@@ -66,7 +69,8 @@ fn try_import_dev_building_catalog(
     ),
     DataImportError,
 > {
-    let (categories, buildings, summary) = import_building_catalog_from_excel(path)?;
+    let (categories, buildings, summary) =
+        import_building_catalog_from_excel(path, inventory_profiles)?;
     if let Err(err) = super::super::ron::export_buildings_to_ron(
         Path::new(DEV_BUILDING_CATALOG_RON_PATH),
         categories.definitions(),

@@ -7,6 +7,7 @@ mod command_feedback;
 mod command_panel;
 mod cursor_feedback;
 mod input_gate;
+mod inventory;
 mod layout;
 mod player_hud_state;
 mod plugin;
@@ -32,6 +33,12 @@ pub use cursor_feedback::{
 };
 pub use input_gate::{
     PlayerHudHoverState, gameplay_input_blocked_by_hud, update_player_hud_hover_state,
+};
+pub use inventory::{
+    InventoryUiError, InventoryUiState, collect_inventory_keyboard_input,
+    collect_inventory_mouse_transfers, handle_inventory_entry_clicks,
+    handle_inventory_panel_buttons, inventory_panel_blocks_world_input, spawn_inventory_panel,
+    sync_inventory_panel_contents, sync_inventory_panel_visibility,
 };
 pub use layout::{GameplayHudRoot, PlayerHudUi, setup_player_hud_layout};
 pub use player_hud_state::{

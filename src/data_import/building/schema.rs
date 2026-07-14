@@ -2,7 +2,7 @@
 
 use crate::world::{
     AnimationProfileId, BuildingCategoryDefinition, BuildingCategoryId, BuildingDefinition,
-    BuildingDefinitionId, BuildingRenderKey, FootprintSpec, FootprintType,
+    BuildingDefinitionId, BuildingRenderKey, FootprintSpec, FootprintType, InventoryProfileId,
 };
 
 /// Required worksheet column headers from the workbook `Buildings` sheet.
@@ -30,6 +30,7 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Animation Profile",
     "Interaction Profile",
     "Default Space",
+    "Inventory Profile ID",
 ];
 
 pub const DEFAULT_MAX_SLOPE_DEGREES: f32 = 40.0;
@@ -81,6 +82,8 @@ pub struct BuildingImportRow {
     pub animation_profile: String,
     pub interaction_profile: String,
     pub default_space: String,
+    pub inventory_profile_id: String,
+    pub has_inventory_profile_column: bool,
     pub enabled: bool,
     pub enabled_was_blank: bool,
     pub has_collision_file_path_column: bool,
@@ -164,6 +167,11 @@ impl BuildingImportRow {
         if !self.default_space.trim().is_empty() {
             definition = definition.with_default_space_id(self.default_space.trim());
         }
+        if self.has_inventory_profile_column && !self.inventory_profile_id.trim().is_empty() {
+            definition = definition.with_inventory_profile_id(InventoryProfileId::new(
+                self.inventory_profile_id.trim(),
+            ));
+        }
 
         Ok(definition)
     }
@@ -227,6 +235,8 @@ mod tests {
             animation_profile: String::new(),
             interaction_profile: String::new(),
             default_space: String::new(),
+            inventory_profile_id: String::new(),
+            has_inventory_profile_column: false,
             enabled: true,
             enabled_was_blank: false,
             has_collision_file_path_column: false,

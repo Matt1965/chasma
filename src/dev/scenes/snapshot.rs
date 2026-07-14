@@ -14,11 +14,11 @@ use crate::world::{
 use super::SceneCaptureContext;
 
 /// On-disk scene format version.
-pub const SCENE_VERSION: u32 = 5;
+pub const SCENE_VERSION: u32 = 7;
 
 /// Whether a scene file version can be loaded by the current runtime.
 pub fn scene_version_supported(version: u32) -> bool {
-    matches!(version, 1 | 4 | 5)
+    matches!(version, 1 | 4 | 5 | 6 | 7)
 }
 
 /// Pure-data scene snapshot — no logic (ADR-045).
@@ -51,6 +51,17 @@ pub struct SceneDefinition {
     pub next_space_id: u32,
     #[serde(default = "default_next_portal_id")]
     pub next_portal_id: u32,
+    #[serde(default)]
+    pub settlement_records: Vec<SceneSettlementRecord>,
+    #[serde(default)]
+    pub treasury_records: Vec<SceneTreasuryRecord>,
+    #[serde(default = "default_next_settlement_id")]
+    pub next_settlement_id: u64,
+    #[serde(default = "default_next_treasury_id")]
+    pub next_treasury_id: u64,
+    /// Full inventory world persistence (ADR-094 I8). Absent in v6 and earlier.
+    #[serde(flatten, default)]
+    pub inventory_persistence: super::inventory_snapshot::SceneInventoryPersistence,
 }
 
 fn default_next_task_id() -> u32 {
@@ -67,6 +78,48 @@ fn default_next_space_id() -> u32 {
 
 fn default_next_portal_id() -> u32 {
     1
+}
+
+fn default_next_settlement_id() -> u64 {
+    1
+}
+
+fn default_next_treasury_id() -> u64 {
+    1
+}
+
+/// Serializable settlement instance for dev scenes (ADR-093 I7).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SceneSettlementRecord {
+    pub id: u64,
+    pub display_name: String,
+    pub treasury_id: u64,
+    pub anchor_building_id: u64,
+    #[serde(default)]
+    pub owner_id: Option<u64>,
+    #[serde(default)]
+    pub team_id: Option<u64>,
+    #[serde(default)]
+    pub affiliation: Option<String>,
+    pub interaction_position: SceneWorldPosition,
+    pub created_tick: u64,
+}
+
+/// Serializable treasury instance for dev scenes (ADR-093 I7).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SceneTreasuryRecord {
+    pub id: u64,
+    pub settlement_id: u64,
+    pub balance_gold: u64,
+    pub created_tick: u64,
+    #[serde(default)]
+    pub metadata: String,
+    #[serde(default)]
+    pub owner_id: Option<u64>,
+    #[serde(default)]
+    pub team_id: Option<u64>,
+    #[serde(default)]
+    pub affiliation: Option<String>,
 }
 
 /// Serializable task instance for dev scenes (ADR-086 B9).
@@ -104,6 +157,9 @@ pub struct SceneUnitRecord {
     /// Authoritative navigable space (ADR-083 B6). Defaults to surface (0).
     #[serde(default)]
     pub current_space_id: u32,
+    /// Unit inventory link (ADR-094 I8).
+    #[serde(default)]
+    pub inventory_id: Option<u32>,
 }
 
 /// Serializable building instance for dev scenes (ADR-082 B5).
@@ -137,6 +193,10 @@ pub struct SceneBuildingRecord {
     pub child_building_ids: Vec<u64>,
     #[serde(default)]
     pub door_states: Vec<SceneDoorSnapshot>,
+    #[serde(default)]
+    pub inventory_id: Option<u64>,
+    #[serde(default)]
+    pub container_locked: bool,
 }
 
 /// Serializable door state for scene restore (ADR-084 B7).
@@ -264,6 +324,11 @@ impl SceneDefinition {
             next_door_id: 1,
             next_space_id: 1,
             next_portal_id: 1,
+            settlement_records: Vec::new(),
+            treasury_records: Vec::new(),
+            next_settlement_id: 1,
+            next_treasury_id: 1,
+            inventory_persistence: super::inventory_snapshot::SceneInventoryPersistence::default(),
         }
     }
 
@@ -288,6 +353,20 @@ impl SceneDefinition {
         self.next_door_id = next_door_id;
         self.next_space_id = next_space_id;
         self.next_portal_id = next_portal_id;
+        self
+    }
+
+    pub fn with_settlement_records(
+        mut self,
+        settlement_records: Vec<SceneSettlementRecord>,
+        treasury_records: Vec<SceneTreasuryRecord>,
+        next_settlement_id: u64,
+        next_treasury_id: u64,
+    ) -> Self {
+        self.settlement_records = settlement_records;
+        self.treasury_records = treasury_records;
+        self.next_settlement_id = next_settlement_id;
+        self.next_treasury_id = next_treasury_id;
         self
     }
 }
@@ -321,7 +400,23 @@ pub fn capture_scene(world: &WorldData, ctx: &SceneCaptureContext) -> SceneDefin
             .expect("sorted task id must resolve");
         task_records.push(SceneTaskRecord::from_record(record));
     }
-    SceneDefinition::new(
+    let mut settlement_records = Vec::new();
+    for settlement_id in world.settlement_store().sorted_settlement_ids() {
+        let record = world
+            .settlement_store()
+            .get_settlement(settlement_id)
+            .expect("sorted settlement id must resolve");
+        settlement_records.push(SceneSettlementRecord::from_record(record));
+    }
+    let mut treasury_records = Vec::new();
+    for treasury_id in world.settlement_store().sorted_treasury_ids() {
+        let record = world
+            .settlement_store()
+            .get_treasury(treasury_id)
+            .expect("sorted treasury id must resolve");
+        treasury_records.push(SceneTreasuryRecord::from_record(record));
+    }
+    let mut scene = SceneDefinition::new(
         scene_id,
         ctx,
         unit_records,
@@ -338,6 +433,14 @@ pub fn capture_scene(world: &WorldData, ctx: &SceneCaptureContext) -> SceneDefin
         world.space_registry().next_space_id(),
         world.space_registry().next_portal_id(),
     )
+    .with_settlement_records(
+        settlement_records,
+        treasury_records,
+        world.settlement_store().next_settlement_id(),
+        world.settlement_store().next_treasury_id(),
+    );
+    scene.inventory_persistence = super::inventory_snapshot::capture_inventory_persistence(world);
+    scene
 }
 
 impl SceneUnitRecord {
@@ -353,6 +456,7 @@ impl SceneUnitRecord {
             team_id: record.team_id.map(|id| id.raw()),
             affiliation: Some(record.affiliation.label().to_string()),
             current_space_id: record.current_space_id.raw(),
+            inventory_id: record.inventory_id.map(|id| id.raw()),
         }
     }
 
@@ -378,6 +482,7 @@ impl SceneUnitRecord {
         );
         record.current_space_id = crate::world::SpaceId::new(self.current_space_id);
         record.state = self.state.to_state()?;
+        record.inventory_id = self.inventory_id.map(crate::world::InventoryId::new);
         Ok(record)
     }
 }
@@ -418,6 +523,8 @@ impl SceneBuildingRecord {
             child_doodad_ids: record.interior.child_doodad_ids.clone(),
             child_building_ids: record.interior.child_building_ids.clone(),
             door_states,
+            inventory_id: record.inventory_id.map(|id| u64::from(id.raw())),
+            container_locked: record.container_locked,
         }
     }
 
@@ -464,6 +571,13 @@ impl SceneBuildingRecord {
                 interior_space_id: None,
             },
             parent_building_id: self.parent_building_id.map(crate::world::BuildingId::new),
+            inventory_id: match self.inventory_id {
+                Some(id) => Some(crate::world::InventoryId::new(
+                    u32::try_from(id).map_err(|_| SceneRecordError::InvalidBuildingProgress)?,
+                )),
+                None => None,
+            },
+            container_locked: self.container_locked,
         })
     }
 
@@ -808,7 +922,7 @@ pub fn parse_doodad_kind(label: &str) -> Result<DoodadKind, SceneRecordError> {
     }
 }
 
-fn affiliation_from_label(label: &str) -> Affiliation {
+pub(crate) fn affiliation_from_label(label: &str) -> Affiliation {
     match label {
         "Player" => Affiliation::Player,
         "Neutral" => Affiliation::Neutral,
@@ -816,6 +930,80 @@ fn affiliation_from_label(label: &str) -> Affiliation {
         "Wildlife" => Affiliation::Wildlife,
         "Dev" => Affiliation::Dev,
         _ => Affiliation::Unknown,
+    }
+}
+
+impl SceneSettlementRecord {
+    pub fn from_record(record: &crate::world::SettlementRecord) -> Self {
+        Self {
+            id: record.id.raw(),
+            display_name: record.display_name.clone(),
+            treasury_id: record.treasury_id.raw(),
+            anchor_building_id: record.anchor_building_id.raw(),
+            owner_id: record.ownership.owner_id.map(|id| id.raw()),
+            team_id: record.ownership.team_id.map(|id| id.raw()),
+            affiliation: Some(record.ownership.affiliation.label().to_string()),
+            interaction_position: SceneWorldPosition::from_world(record.interaction_position),
+            created_tick: record.created_tick,
+        }
+    }
+
+    pub fn to_record(&self) -> Result<crate::world::SettlementRecord, SceneRecordError> {
+        let mut ownership = crate::world::SettlementOwnership::player_default();
+        if let Some(owner) = self.owner_id {
+            ownership.owner_id = Some(OwnerId::new(owner));
+        }
+        if let Some(team) = self.team_id {
+            ownership.team_id = Some(TeamId::new(team));
+        }
+        if let Some(label) = self.affiliation.as_deref() {
+            ownership.affiliation = affiliation_from_label(label);
+        }
+        Ok(crate::world::SettlementRecord {
+            id: crate::world::SettlementId::new(self.id),
+            display_name: self.display_name.clone(),
+            treasury_id: crate::world::TreasuryId::new(self.treasury_id),
+            anchor_building_id: crate::world::BuildingId::new(self.anchor_building_id),
+            ownership,
+            interaction_position: self.interaction_position.to_world()?,
+            created_tick: self.created_tick,
+        })
+    }
+}
+
+impl SceneTreasuryRecord {
+    pub fn from_record(record: &crate::world::SettlementTreasuryRecord) -> Self {
+        Self {
+            id: record.id.raw(),
+            settlement_id: record.settlement_id.raw(),
+            balance_gold: record.balance_gold,
+            created_tick: record.created_tick,
+            metadata: record.metadata.clone(),
+            owner_id: record.ownership.owner_id.map(|id| id.raw()),
+            team_id: record.ownership.team_id.map(|id| id.raw()),
+            affiliation: Some(record.ownership.affiliation.label().to_string()),
+        }
+    }
+
+    pub fn to_record(&self) -> Result<crate::world::SettlementTreasuryRecord, SceneRecordError> {
+        let mut ownership = crate::world::SettlementOwnership::player_default();
+        if let Some(owner) = self.owner_id {
+            ownership.owner_id = Some(OwnerId::new(owner));
+        }
+        if let Some(team) = self.team_id {
+            ownership.team_id = Some(TeamId::new(team));
+        }
+        if let Some(label) = self.affiliation.as_deref() {
+            ownership.affiliation = affiliation_from_label(label);
+        }
+        Ok(crate::world::SettlementTreasuryRecord {
+            id: crate::world::TreasuryId::new(self.id),
+            settlement_id: crate::world::SettlementId::new(self.settlement_id),
+            ownership,
+            balance_gold: self.balance_gold,
+            created_tick: self.created_tick,
+            metadata: self.metadata.clone(),
+        })
     }
 }
 

@@ -33,6 +33,7 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Render Scale",
     "Animation Profile",
     "Enabled",
+    "Inventory Profile ID",
 ];
 
 /// Computed workbook column — never imported as authoritative data.
@@ -78,6 +79,8 @@ pub struct UnitImportRow {
     pub has_render_scale_column: bool,
     pub animation_profile: String,
     pub has_animation_profile_column: bool,
+    pub inventory_profile_id: String,
+    pub has_inventory_profile_column: bool,
 }
 
 /// Normalize a workbook file-path cell into a [`UnitRenderKey`] path segment (`wolf`).
@@ -134,6 +137,11 @@ impl UnitImportRow {
         );
         definition.render_scale = self.resolved_render_scale();
         definition.animation_profile_id = self.resolved_animation_profile_id();
+        if self.has_inventory_profile_column && !self.inventory_profile_id.trim().is_empty() {
+            definition = definition.with_inventory_profile_id(
+                crate::world::InventoryProfileId::new(self.inventory_profile_id.trim()),
+            );
+        }
         Ok(definition)
     }
 
@@ -206,6 +214,8 @@ mod tests {
             has_render_scale_column: false,
             animation_profile: String::new(),
             has_animation_profile_column: false,
+            inventory_profile_id: String::new(),
+            has_inventory_profile_column: false,
         }
     }
 

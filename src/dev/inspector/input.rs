@@ -151,6 +151,7 @@ pub fn handle_inspector_input(
         inspector.building_snapshot = capture_building_inspector_snapshot(
             &capture.world,
             &capture.building_catalog,
+            &crate::world::BuildingInteractionProfileCatalog::default(),
             building_id,
         );
         overlay_focus.set_unit(None);

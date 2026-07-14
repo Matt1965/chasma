@@ -26,6 +26,12 @@ pub enum InteractionOrderPlan {
     OperateWorkstation {
         building_id: crate::world::BuildingId,
     },
+    AccessContainer {
+        building_id: crate::world::BuildingId,
+    },
+    AccessTreasury {
+        building_id: crate::world::BuildingId,
+    },
     NoOp,
 }
 
@@ -96,6 +102,18 @@ pub fn resolve_interaction_to_order(interaction: &InteractionResult) -> Interact
             }
             _ => InteractionOrderPlan::NoOp,
         },
+        InteractionType::Container => match interaction.target {
+            InteractionTargetRef::Building(building_id) if interaction.valid => {
+                InteractionOrderPlan::AccessContainer { building_id }
+            }
+            _ => InteractionOrderPlan::NoOp,
+        },
+        InteractionType::Treasury => match interaction.target {
+            InteractionTargetRef::Building(building_id) if interaction.valid => {
+                InteractionOrderPlan::AccessTreasury { building_id }
+            }
+            _ => InteractionOrderPlan::NoOp,
+        },
         InteractionType::AttackableUnit => match interaction.target {
             InteractionTargetRef::Unit(target) => InteractionOrderPlan::Attack { target },
             _ => InteractionOrderPlan::NoOp,
@@ -110,6 +128,8 @@ pub fn resolve_interaction_to_order(interaction: &InteractionResult) -> Interact
             }
         }
         InteractionType::BlockedArea | InteractionType::None => InteractionOrderPlan::NoOp,
+        // Pickup/loot orders deferred to I6 — authoritative APIs exist in dev mode (ADR-090 I4).
+        InteractionType::ItemPile | InteractionType::Corpse => InteractionOrderPlan::NoOp,
     }
 }
 
@@ -179,7 +199,9 @@ pub fn interaction_plan_to_unit_order(plan: InteractionOrderPlan) -> Option<Unit
             Some(UnitOrder::AttackMove { destination })
         }
         InteractionOrderPlan::ConstructBuilding { .. }
-        | InteractionOrderPlan::OperateWorkstation { .. } => None,
+        | InteractionOrderPlan::OperateWorkstation { .. }
+        | InteractionOrderPlan::AccessContainer { .. }
+        | InteractionOrderPlan::AccessTreasury { .. } => None,
         InteractionOrderPlan::NoOp => None,
     }
 }

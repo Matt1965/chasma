@@ -20,6 +20,8 @@ pub struct BuildingInspectorSnapshot {
     pub operational: bool,
     pub affiliation: String,
     pub chunk: ChunkCoord,
+    pub inventory_summary: Option<String>,
+    pub interaction_point: Option<String>,
 }
 
 /// Full read-only inspection payload for one unit.
@@ -41,6 +43,7 @@ pub struct UnitInspectorSnapshot {
     pub simulation_tick: u64,
     pub current_space_id: SpaceId,
     pub display_floor_label: String,
+    pub inventory_summary: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]

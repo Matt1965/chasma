@@ -227,12 +227,209 @@ pub fn export_buildings_to_ron(
     })
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ItemCatalogRon {
+    pub categories: Vec<ItemCategoryRon>,
+    pub definitions: Vec<ItemDefinitionRon>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ItemCategoryRon {
+    pub id: String,
+    pub display_name: String,
+    pub description: String,
+    pub enabled: bool,
+    pub sort_priority: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ItemDefinitionRon {
+    pub id: String,
+    pub display_name: String,
+    pub description: String,
+    pub category_id: String,
+    pub grid_width: u8,
+    pub grid_height: u8,
+    pub stackable: bool,
+    pub max_stack: u32,
+    pub mass_grams_per_unit: u32,
+    pub render_key: Option<String>,
+    pub icon_key: Option<String>,
+    pub base_value_gold: u32,
+    pub tags: Vec<String>,
+    pub unique_instance_required: bool,
+    pub enabled: bool,
+}
+
+impl From<&crate::world::ItemCategoryDefinition> for ItemCategoryRon {
+    fn from(definition: &crate::world::ItemCategoryDefinition) -> Self {
+        Self {
+            id: definition.id.as_str().to_string(),
+            display_name: definition.display_name.clone(),
+            description: definition.description.clone(),
+            enabled: definition.enabled,
+            sort_priority: definition.sort_priority,
+        }
+    }
+}
+
+impl From<&crate::world::ItemDefinition> for ItemDefinitionRon {
+    fn from(definition: &crate::world::ItemDefinition) -> Self {
+        Self {
+            id: definition.id.as_str().to_string(),
+            display_name: definition.display_name.clone(),
+            description: definition.description.clone(),
+            category_id: definition.category_id.as_str().to_string(),
+            grid_width: definition.grid_width,
+            grid_height: definition.grid_height,
+            stackable: definition.stackable,
+            max_stack: definition.max_stack,
+            mass_grams_per_unit: definition.mass_grams_per_unit,
+            render_key: definition.render_key.0.clone(),
+            icon_key: definition.icon_key.0.clone(),
+            base_value_gold: definition.base_value_gold,
+            tags: definition.tags.clone(),
+            unique_instance_required: definition.unique_instance_required,
+            enabled: definition.enabled,
+        }
+    }
+}
+
+pub fn export_items_to_ron(
+    path: &Path,
+    categories: &[crate::world::ItemCategoryDefinition],
+    definitions: &[crate::world::ItemDefinition],
+) -> Result<(), DataImportError> {
+    let catalog = ItemCatalogRon {
+        categories: categories.iter().map(ItemCategoryRon::from).collect(),
+        definitions: definitions.iter().map(ItemDefinitionRon::from).collect(),
+    };
+    let text =
+        ron::ser::to_string_pretty(&catalog, ron::ser::PrettyConfig::default()).map_err(|err| {
+            DataImportError::Io {
+                path: path.to_path_buf(),
+                message: err.to_string(),
+            }
+        })?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| DataImportError::Io {
+            path: parent.to_path_buf(),
+            message: err.to_string(),
+        })?;
+    }
+    fs::write(path, text).map_err(|err| DataImportError::Io {
+        path: path.to_path_buf(),
+        message: err.to_string(),
+    })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct InventoryProfileCatalogRon {
+    pub definitions: Vec<InventoryProfileRon>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct InventoryProfileRon {
+    pub id: String,
+    pub display_name: String,
+    pub grid_width: u8,
+    pub grid_height: u8,
+    pub reference_weight_grams: Option<u32>,
+    pub global_stack_cap: Option<u32>,
+    pub access_type: String,
+    pub enabled: bool,
+}
+
+impl From<&crate::world::InventoryProfileDefinition> for InventoryProfileRon {
+    fn from(definition: &crate::world::InventoryProfileDefinition) -> Self {
+        Self {
+            id: definition.id.as_str().to_string(),
+            display_name: definition.display_name.clone(),
+            grid_width: definition.grid_width,
+            grid_height: definition.grid_height,
+            reference_weight_grams: definition.reference_weight_grams,
+            global_stack_cap: definition.global_stack_cap,
+            access_type: format!("{:?}", definition.access_type),
+            enabled: definition.enabled,
+        }
+    }
+}
+
+pub fn export_inventory_profiles_to_ron(
+    path: &Path,
+    definitions: &[crate::world::InventoryProfileDefinition],
+) -> Result<(), DataImportError> {
+    let catalog = InventoryProfileCatalogRon {
+        definitions: definitions.iter().map(InventoryProfileRon::from).collect(),
+    };
+    let text =
+        ron::ser::to_string_pretty(&catalog, ron::ser::PrettyConfig::default()).map_err(|err| {
+            DataImportError::Io {
+                path: path.to_path_buf(),
+                message: err.to_string(),
+            }
+        })?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| DataImportError::Io {
+            path: parent.to_path_buf(),
+            message: err.to_string(),
+        })?;
+    }
+    fs::write(path, text).map_err(|err| DataImportError::Io {
+        path: path.to_path_buf(),
+        message: err.to_string(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::world::{
         BiomeId, DoodadDefinition, DoodadDefinitionId, DoodadKind, DoodadRenderKey,
     };
+
+    #[test]
+    fn item_catalog_ron_round_trip_fields() {
+        use crate::world::{
+            ItemCatalog, ItemCategoryCatalog, ItemCategoryDefinition, ItemCategoryId,
+            ItemDefinition, ItemDefinitionId,
+        };
+
+        let categories = vec![ItemCategoryDefinition::new(
+            ItemCategoryId::new("currency"),
+            "Currency",
+            "",
+            true,
+        )];
+        let items = vec![ItemDefinition::new(
+            ItemDefinitionId::new("gold"),
+            "Gold",
+            "",
+            ItemCategoryId::new("currency"),
+            1,
+            1,
+            true,
+            999,
+            1,
+            1,
+            true,
+        )];
+        let path = std::env::temp_dir().join(format!("chasma_item_catalog_{}", std::process::id()));
+        export_items_to_ron(&path, &categories, &items).unwrap();
+        let text = fs::read_to_string(&path).unwrap();
+        assert!(text.contains("gold"));
+        assert!(text.contains("currency"));
+        let _ = fs::remove_file(path);
+        let cat = ItemCategoryCatalog::from_definitions(categories).unwrap();
+        let catalog = ItemCatalog::from_definitions(items, &cat).unwrap();
+        assert_eq!(
+            catalog
+                .get(&ItemDefinitionId::new("gold"))
+                .unwrap()
+                .max_stack,
+            999
+        );
+    }
 
     #[test]
     fn exports_definitions_to_ron_text() {

@@ -235,6 +235,8 @@ pub fn deactivate_building_interior(
             occupancy,
             Some(building_catalog),
             Some(doodad_catalog),
+            None,
+            None,
         );
     }
 

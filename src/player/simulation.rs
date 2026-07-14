@@ -6,8 +6,8 @@ use crate::debug::{
     ClientFrameIndex, CommandTraceBuffer, MovementBlockObservability, PendingSimulationTrace,
 };
 use crate::simulation::{
-    SIMULATION_TICK_SECONDS, SimulationClock, SimulationControlState, SimulationTickReport,
-    run_simulation_tick,
+    SIMULATION_TICK_SECONDS, SimulationCatalogParams, SimulationClock, SimulationControlState,
+    SimulationTickReport, run_simulation_tick,
 };
 use crate::ui::gameplay::PlayerHudState;
 use crate::units::input::SelectedUnits;
@@ -80,18 +80,10 @@ pub fn tick_unit_movement(
     mut control: ResMut<SimulationControlState>,
     mut clock: ResMut<SimulationClock>,
     mut world: ResMut<WorldData>,
-    unit_catalog: Res<UnitCatalog>,
-    weapon_catalog: Res<WeaponCatalog>,
-    doodad_catalog: Res<DoodadCatalog>,
-    building_catalog: Res<BuildingCatalog>,
-    footprint_catalog: Res<FootprintCatalog>,
-    interaction_catalog: Res<crate::world::BuildingInteractionProfileCatalog>,
-    nav_config: Res<NavigationConfig>,
     mut pending_trace: ResMut<PendingSimulationTrace>,
     mut movement_blocks: ResMut<MovementBlockObservability>,
     mut combat_ai_scan: ResMut<CombatAiScanState>,
-    combat_ai_settings: Res<CombatAiSettings>,
-    interior_catalog: Res<crate::world::InteriorProfileCatalog>,
+    catalogs: SimulationCatalogParams,
 ) {
     let plan = clock.plan_frame(time.delta_secs(), &control);
     for _ in 0..plan.tick_count {
@@ -100,20 +92,25 @@ pub fn tick_unit_movement(
         }
 
         let tick = control.current_tick;
+        let inventory_ctx = catalogs.inventory_ctx();
         let step_report = run_simulation_tick(
             &mut world,
-            &unit_catalog,
-            &weapon_catalog,
-            &doodad_catalog,
-            &building_catalog,
-            &footprint_catalog,
-            &interaction_catalog,
-            &nav_config,
+            &catalogs.unit_catalog,
+            &catalogs.weapon_catalog,
+            &catalogs.doodad_catalog,
+            &catalogs.building_catalog,
+            &catalogs.footprint_catalog,
+            &catalogs.interaction_catalog,
+            &catalogs.nav_config,
             AttackTargetingPolicy::default(),
-            &combat_ai_settings,
+            &catalogs.combat_ai_settings,
             &mut combat_ai_scan,
             BuildingConstructionSettings::default(),
-            &interior_catalog,
+            &catalogs.interior_catalog,
+            inventory_ctx.items,
+            inventory_ctx.categories,
+            inventory_ctx.profiles,
+            &catalogs.corpse_settings,
             SIMULATION_TICK_SECONDS,
             tick,
         );
@@ -221,6 +218,10 @@ mod tests {
                     combat_ai_scan,
                     crate::world::BuildingConstructionSettings::default(),
                     &crate::world::InteriorProfileCatalog::default(),
+                    &crate::world::ItemCatalog::default(),
+                    &crate::world::ItemCategoryCatalog::default(),
+                    &crate::world::InventoryProfileCatalog::default(),
+                    &crate::world::CorpseSettings::default(),
                     SIMULATION_TICK_SECONDS,
                     tick,
                 );

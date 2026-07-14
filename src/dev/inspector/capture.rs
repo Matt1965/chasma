@@ -74,6 +74,20 @@ pub fn capture_unit_inspector_snapshot(
         });
     let chunk = capture_chunk_residency(world, unit_id)?;
 
+    let inventory_summary = record.inventory_id.map(|inventory_id| {
+        world
+            .inventory_store()
+            .get(inventory_id)
+            .map(|inv| {
+                format!(
+                    "inventory={inventory_id:?} {} entries, {}g carried",
+                    inv.placed_entries().len(),
+                    inv.total_mass_grams()
+                )
+            })
+            .unwrap_or_else(|| format!("inventory={inventory_id:?} missing"))
+    });
+
     let (display_floor_label, current_space_id) = if record.current_space_id.is_surface() {
         ("Surface".to_string(), SpaceId::SURFACE)
     } else {
@@ -109,6 +123,7 @@ pub fn capture_unit_inspector_snapshot(
         simulation_tick,
         current_space_id,
         display_floor_label,
+        inventory_summary,
     })
 }
 
@@ -116,11 +131,38 @@ pub fn capture_unit_inspector_snapshot(
 pub fn capture_building_inspector_snapshot(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
+    interaction_catalog: &crate::world::BuildingInteractionProfileCatalog,
     building_id: BuildingId,
 ) -> Option<BuildingInspectorSnapshot> {
     let record = world.get_building(building_id)?.clone();
     let definition = building_catalog.get(&record.definition_id)?;
     let chunk = world.building_chunk(building_id)?.coord();
+    let inventory_summary = record.inventory_id.map(|inventory_id| {
+        let entries = world
+            .inventory_store()
+            .get(inventory_id)
+            .map(|inv| {
+                format!(
+                    "{} entries, {}g",
+                    inv.placed_entries().len(),
+                    inv.total_mass_grams()
+                )
+            })
+            .unwrap_or_else(|| "missing".to_string());
+        format!(
+            "inventory={inventory_id:?} {entries} locked={}",
+            record.container_locked
+        )
+    });
+    let interaction_point = definition
+        .inventory_interaction_point_key
+        .as_deref()
+        .and_then(|key| {
+            interaction_catalog
+                .profile_for_definition(definition)
+                .and_then(|profile| profile.points.iter().find(|p| p.key == key))
+                .map(|point| point.key.to_string())
+        });
     Some(BuildingInspectorSnapshot {
         building_id,
         definition_id: record.definition_id.clone(),
@@ -132,6 +174,8 @@ pub fn capture_building_inspector_snapshot(
         operational: is_building_operational(&record),
         affiliation: record.ownership.affiliation.label().to_string(),
         chunk,
+        inventory_summary,
+        interaction_point,
     })
 }
 

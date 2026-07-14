@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use super::definition_id::UnitDefinitionId;
 use super::render_key::UnitRenderKey;
+use crate::world::InventoryProfileId;
 use crate::world::unit::animation_profile::AnimationProfileId;
 use crate::world::weapon::WeaponDefinitionId;
 
@@ -45,6 +46,10 @@ pub struct UnitDefinition {
     pub animation_profile_id: Option<AnimationProfileId>,
     /// Worker capability flags (ADR-085 B8).
     pub work_capabilities: super::work::UnitWorkCapabilities,
+    /// Optional inventory container profile (ADR-087 I1). None = no inventory.
+    pub inventory_profile_id: Option<InventoryProfileId>,
+    /// Authoritative corpse lifetime override in simulation ticks (ADR-089 I3).
+    pub corpse_lifetime_ticks: Option<u64>,
 }
 
 impl UnitDefinition {
@@ -97,7 +102,19 @@ impl UnitDefinition {
             render_key,
             animation_profile_id: None,
             work_capabilities: super::work::UnitWorkCapabilities::default(),
+            inventory_profile_id: None,
+            corpse_lifetime_ticks: None,
         }
+    }
+
+    pub fn with_corpse_lifetime_ticks(mut self, ticks: u64) -> Self {
+        self.corpse_lifetime_ticks = Some(ticks);
+        self
+    }
+
+    pub fn with_inventory_profile_id(mut self, profile_id: InventoryProfileId) -> Self {
+        self.inventory_profile_id = Some(profile_id);
+        self
     }
 
     pub fn with_work_capabilities(

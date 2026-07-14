@@ -69,6 +69,47 @@ When Attack is armed:
 
 Gameplay simulation is unchanged; only presentation simplified.
 
+## Items tab shortcuts
+
+| Key | Action |
+|-----|--------|
+| **I** | Items subtab (definitions) |
+| **P** | Inventory profiles subtab |
+| **H** | Inventory harness subtab (ADR-088 I2) |
+
+### Inventory harness (H subtab)
+
+Detached inventories only — no unit/building attachment in I2.
+
+| Key | Action |
+|-----|--------|
+| **N** | Create detached inventory (selected profile, or `unit_backpack_standard`) |
+| **A** | Add stack of selected item (qty 5, first-fit) |
+| **U** | Create and place unique instance of selected item |
+| **H** | Split half of entry 0 |
+| **M** | Merge entry 1 into entry 0 |
+| **O** | Auto-sort |
+| **V** | Validate inventory and store invariants |
+| **Del** / **Backspace** | Delete detached test inventory |
+
+## World Tools — piles and treasuries (ADR-090, ADR-093, ADR-094)
+
+| Key | Action |
+|-----|--------|
+| **V** | Run `validate_world_inventory_state` (full I1–I7 inventory audit) |
+| **P/D/O/H/G/L** | Item pile harness (see ADR-090) |
+| **C/Y/E/B/J** | Treasury harness (see ADR-093) |
+
+Scene save/load (v7) round-trips inventories, instances, corpses, piles, and treasuries.
+
+## Player inventory UI (I6 — ADR-092)
+
+Separate from the F12 Items harness. Toggle with **I** on the gameplay HUD (primary selected unit).
+Interact command opens containers, corpses, and world piles when armed.
+
+Dev inspection of open inventory IDs and authoritative entries is via building inspector (I/G) and
+pile harness (World Tools); player UI state lives in `InventoryUiState` (read-only in future dev overlay).
+
 ## Panel layout
 
 - Panel width: 368px (top-right)

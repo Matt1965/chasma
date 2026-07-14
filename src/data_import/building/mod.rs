@@ -106,6 +106,7 @@ pub fn import_building_categories_from_excel(
 pub fn import_buildings_from_excel(
     path: &std::path::Path,
     categories: &crate::world::BuildingCategoryCatalog,
+    inventory_profiles: &crate::world::InventoryProfileCatalog,
 ) -> Result<
     (
         Vec<crate::world::BuildingDefinition>,
@@ -177,6 +178,21 @@ pub fn import_buildings_from_excel(
             }
         };
 
+        if let Some(profile_id) = &definition.inventory_profile_id {
+            if let Err(err) = inventory_profiles.validate_profile_reference(
+                "building",
+                definition.id.as_str(),
+                profile_id,
+            ) {
+                summary.rows_failed += 1;
+                summary.warnings.push(format!(
+                    "row {}: inventory profile validation: {err}",
+                    row.row_number
+                ));
+                continue;
+            }
+        }
+
         warn_if_asset_missing(&definition, &mut summary, row.row_number);
 
         let id = definition.id.clone();
@@ -209,6 +225,7 @@ pub fn import_buildings_from_excel(
 #[cfg(feature = "data-import")]
 pub fn import_building_catalog_from_excel(
     path: &std::path::Path,
+    inventory_profiles: &crate::world::InventoryProfileCatalog,
 ) -> Result<
     (
         crate::world::BuildingCategoryCatalog,
@@ -225,7 +242,8 @@ pub fn import_building_catalog_from_excel(
             ))
         })?;
 
-    let (building_defs, building_summary) = import_buildings_from_excel(path, &categories)?;
+    let (building_defs, building_summary) =
+        import_buildings_from_excel(path, &categories, inventory_profiles)?;
     let buildings = crate::world::BuildingCatalog::from_definitions(building_defs, &categories)
         .map_err(|err| {
             crate::data_import::DataImportError::WorkbookOpen(format!(
@@ -370,7 +388,9 @@ mod tests {
                 "Y",
             ]],
         );
-        let (categories, buildings, summary) = import_building_catalog_from_excel(&path).unwrap();
+        let profiles = crate::world::InventoryProfileCatalog::default();
+        let (categories, buildings, summary) =
+            import_building_catalog_from_excel(&path, &profiles).unwrap();
         assert_eq!(summary.rows_valid, 2);
         assert_eq!(categories.len(), 1);
         assert_eq!(buildings.len(), 1);
@@ -415,7 +435,8 @@ mod tests {
                 ],
             ],
         );
-        let err = import_building_catalog_from_excel(&path).unwrap_err();
+        let profiles = crate::world::InventoryProfileCatalog::default();
+        let err = import_building_catalog_from_excel(&path, &profiles).unwrap_err();
         assert!(matches!(
             err,
             crate::data_import::DataImportError::DuplicateBuildingId { .. }
@@ -445,8 +466,12 @@ mod tests {
                 "Y",
             ]],
         );
-        let err =
-            import_buildings_from_excel(&path, &BuildingCategoryCatalog::default()).unwrap_err();
+        let err = import_buildings_from_excel(
+            &path,
+            &BuildingCategoryCatalog::default(),
+            &crate::world::InventoryProfileCatalog::default(),
+        )
+        .unwrap_err();
         assert!(matches!(
             err,
             crate::data_import::DataImportError::NoValidRows
@@ -512,7 +537,9 @@ mod tests {
                 "Y",
             ]],
         );
-        let (categories, buildings, _) = import_building_catalog_from_excel(&path).unwrap();
+        let profiles = crate::world::InventoryProfileCatalog::default();
+        let (categories, buildings, _) =
+            import_building_catalog_from_excel(&path, &profiles).unwrap();
         assert_eq!(categories.len(), 1);
         let def = &buildings.definitions()[0];
         assert_eq!(def.footprint_type, FootprintType::Circle);

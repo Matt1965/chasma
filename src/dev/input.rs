@@ -269,11 +269,14 @@ pub struct DevPanelHoverState {
 /// Track panel hover from UI interaction states.
 pub fn update_dev_panel_hover_state(
     dev_state: Res<DevModeState>,
+    gate: Res<DevModeInputGate>,
     interactions: Query<&Interaction, With<DevPanelUi>>,
     mut hover: ResMut<DevPanelHoverState>,
+    mut gameplay_hud: ResMut<crate::ui::gameplay::PlayerHudHoverState>,
 ) {
     hover.hovered =
         dev_state.enabled && interactions.iter().any(|state| *state != Interaction::None);
+    gameplay_hud.dev_panel_blocks = DevModeInputGate::should_block(&gate);
 }
 
 /// Update terrain anchor under cursor for brush preview.

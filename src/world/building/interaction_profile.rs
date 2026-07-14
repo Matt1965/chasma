@@ -9,6 +9,10 @@ pub struct BuildingCapabilities {
     pub construction_site: bool,
     pub workstation: bool,
     pub door_control: bool,
+    /// Inventory container access (ADR-091 I5).
+    pub container: bool,
+    /// Settlement treasury deposit anchor (ADR-093 I7). Not a generic chest.
+    pub settlement_treasury: bool,
 }
 
 /// Authored interaction point relative to building anchor (ADR-085 B8).
@@ -155,6 +159,32 @@ pub fn starter_interaction_profiles() -> Vec<BuildingInteractionProfile> {
             .with_points(vec![InteractionPointDefinition {
                 key: "operate",
                 local_position: Vec3::new(0.0, 0.0, 0.8),
+                local_facing: Quat::IDENTITY,
+                capacity: 1,
+                task_type: TaskType::OperateWorkstation,
+                enabled_states: complete,
+            }]),
+        BuildingInteractionProfile::new("storage_chest")
+            .with_capabilities(BuildingCapabilities {
+                container: true,
+                ..Default::default()
+            })
+            .with_points(vec![InteractionPointDefinition {
+                key: "access",
+                local_position: Vec3::new(0.0, 0.0, 0.6),
+                local_facing: Quat::IDENTITY,
+                capacity: 1,
+                task_type: TaskType::OperateWorkstation,
+                enabled_states: complete,
+            }]),
+        BuildingInteractionProfile::new("settlement_core")
+            .with_capabilities(BuildingCapabilities {
+                settlement_treasury: true,
+                ..Default::default()
+            })
+            .with_points(vec![InteractionPointDefinition {
+                key: "treasury",
+                local_position: Vec3::new(0.0, 0.0, 1.0),
                 local_facing: Quat::IDENTITY,
                 capacity: 1,
                 task_type: TaskType::OperateWorkstation,

@@ -42,6 +42,10 @@ pub fn run_simulation_tick(
     combat_ai_scan: &mut CombatAiScanState,
     building_construction_settings: BuildingConstructionSettings,
     interior_catalog: &InteriorProfileCatalog,
+    item_catalog: &crate::world::ItemCatalog,
+    item_categories: &crate::world::ItemCategoryCatalog,
+    inventory_profiles: &crate::world::InventoryProfileCatalog,
+    corpse_settings: &crate::world::CorpseSettings,
     delta_seconds: f32,
     simulation_tick: u64,
 ) -> SimulationTickReport {
@@ -81,7 +85,16 @@ pub fn run_simulation_tick(
     let mut projectile_step = step_all_projectiles(world, delta_seconds, &spawned_this_tick);
     let mut projectile = projectile_spawn;
     projectile.traces.append(&mut projectile_step.traces);
-    let death = step_unit_death_pipeline(world, simulation_tick);
+    let inventory_ctx =
+        crate::world::InventoryCatalogCtx::new(item_catalog, item_categories, inventory_profiles);
+    let death = step_unit_death_pipeline(
+        world,
+        unit_catalog,
+        Some(&inventory_ctx),
+        corpse_settings,
+        simulation_tick,
+    );
+    let _corpse_lifecycle = crate::world::step_corpse_lifecycle(world, &inventory_ctx);
     let combat_ai = step_combat_ai_acquisition(
         world,
         unit_catalog,
@@ -260,6 +273,10 @@ mod tests {
             &mut scan,
             BuildingConstructionSettings::default(),
             &InteriorProfileCatalog::default(),
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ItemCategoryCatalog::default(),
+            &crate::world::InventoryProfileCatalog::default(),
+            &crate::world::CorpseSettings::default(),
             SIMULATION_TICK_SECONDS,
             1,
         );
@@ -312,6 +329,10 @@ mod tests {
             &mut scan,
             BuildingConstructionSettings::default(),
             &InteriorProfileCatalog::default(),
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ItemCategoryCatalog::default(),
+            &crate::world::InventoryProfileCatalog::default(),
+            &crate::world::CorpseSettings::default(),
             SIMULATION_TICK_SECONDS,
             1,
         );
@@ -349,6 +370,10 @@ mod tests {
                 &mut scan_a,
                 BuildingConstructionSettings::default(),
                 &InteriorProfileCatalog::default(),
+                &crate::world::ItemCatalog::default(),
+                &crate::world::ItemCategoryCatalog::default(),
+                &crate::world::InventoryProfileCatalog::default(),
+                &crate::world::CorpseSettings::default(),
                 SIMULATION_TICK_SECONDS,
                 tick,
             );
@@ -366,6 +391,10 @@ mod tests {
                 &mut scan_b,
                 BuildingConstructionSettings::default(),
                 &InteriorProfileCatalog::default(),
+                &crate::world::ItemCatalog::default(),
+                &crate::world::ItemCategoryCatalog::default(),
+                &crate::world::InventoryProfileCatalog::default(),
+                &crate::world::CorpseSettings::default(),
                 SIMULATION_TICK_SECONDS,
                 tick,
             );

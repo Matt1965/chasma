@@ -186,6 +186,12 @@ fn parse_row(
             String::new()
         },
         has_animation_profile_column: columns.contains_key("Animation Profile"),
+        inventory_profile_id: if columns.contains_key("Inventory Profile ID") {
+            text("Inventory Profile ID")
+        } else {
+            String::new()
+        },
+        has_inventory_profile_column: columns.contains_key("Inventory Profile ID"),
     })
 }
 

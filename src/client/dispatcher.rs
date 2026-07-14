@@ -44,6 +44,7 @@ use crate::world::{
 pub struct DispatchPlayerParams<'w> {
     pub build_mode: ResMut<'w, BuildModeState>,
     pub player_ownership: Res<'w, crate::player::LocalPlayerOwnership>,
+    pub inventory_queue: ResMut<'w, crate::client::inventory_intent::InventoryIntentQueue>,
 }
 
 /// Bundled simulation catalogs (keeps dispatch system param count under Bevy limit).
@@ -200,6 +201,7 @@ pub fn dispatch_client_intents(
                 &mut player_params.build_mode,
                 &player_params.player_ownership,
                 frame_index.0,
+                &mut player_params.inventory_queue,
             );
             if status == IntentDispatchStatus::Applied
                 && matches!(
@@ -269,6 +271,7 @@ fn dispatch_one(
     build_mode: &mut BuildModeState,
     player_ownership: &crate::player::LocalPlayerOwnership,
     simulation_tick: u64,
+    inventory_queue: &mut crate::client::inventory_intent::InventoryIntentQueue,
 ) -> IntentDispatchStatus {
     match intent {
         ClientIntent::ContextualCommand { target } => dispatch_contextual_command(
@@ -290,6 +293,7 @@ fn dispatch_one(
             pending_trace,
             armed_command,
             simulation_tick,
+            inventory_queue,
         ),
         ClientIntent::MoveCommand { target } => dispatch_contextual_command(
             CommandTarget::Terrain { position: *target },
@@ -310,6 +314,7 @@ fn dispatch_one(
             pending_trace,
             armed_command,
             simulation_tick,
+            inventory_queue,
         ),
         ClientIntent::SelectUnit { unit_id } => {
             if world
@@ -524,7 +529,9 @@ fn resolve_move_target_from_interaction(
         InteractionOrderPlan::NoOp => None,
         InteractionOrderPlan::Attack { .. } | InteractionOrderPlan::AttackMove { .. } => None,
         InteractionOrderPlan::ConstructBuilding { .. }
-        | InteractionOrderPlan::OperateWorkstation { .. } => None,
+        | InteractionOrderPlan::OperateWorkstation { .. }
+        | InteractionOrderPlan::AccessContainer { .. }
+        | InteractionOrderPlan::AccessTreasury { .. } => None,
     }
 }
 
@@ -621,6 +628,7 @@ fn dispatch_contextual_command(
     pending_trace: &mut PendingDispatchTrace,
     armed_command: Option<CommandType>,
     simulation_tick: u64,
+    inventory_queue: &mut crate::client::inventory_intent::InventoryIntentQueue,
 ) -> IntentDispatchStatus {
     if selection.is_empty() {
         return IntentDispatchStatus::Ignored;
@@ -629,6 +637,25 @@ fn dispatch_contextual_command(
     prune_non_commandable_from_selection(world, selection);
     if selection.is_empty() {
         return IntentDispatchStatus::Ignored;
+    }
+
+    if armed_command == Some(CommandType::Interact) {
+        if let Some(actor) = selection.iter().next() {
+            if crate::client::inventory_dispatch::try_queue_inventory_open_from_interact(
+                world,
+                building_catalog,
+                doodad_catalog,
+                footprint_catalog,
+                interaction_catalog,
+                unit_catalog,
+                weapon_catalog,
+                actor,
+                target,
+                inventory_queue,
+            ) {
+                return IntentDispatchStatus::Applied;
+            }
+        }
     }
 
     let selected: Vec<_> = selection.iter().collect();
@@ -979,6 +1006,7 @@ mod tests {
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
         let catalog = UnitCatalog::default();
         let unit_id = create_unit_with_ownership(
             &catalog,
@@ -1016,6 +1044,7 @@ mod tests {
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
             0,
+            &mut inventory_queue,
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert!(selection.contains(unit_id));
@@ -1027,6 +1056,7 @@ mod tests {
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
         let catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();
         let nav_config = NavigationConfig::default();
@@ -1068,6 +1098,7 @@ mod tests {
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
             0,
+            &mut inventory_queue,
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         resolve_all_pending_unit_orders(
@@ -1092,6 +1123,7 @@ mod tests {
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
         let catalog = UnitCatalog::default();
 
         let status = dispatch_one(
@@ -1121,6 +1153,7 @@ mod tests {
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
             0,
+            &mut inventory_queue,
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
     }
@@ -1131,6 +1164,7 @@ mod tests {
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
         let catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();
         let nav_config = NavigationConfig::default();
@@ -1183,6 +1217,7 @@ mod tests {
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
             0,
+            &mut inventory_queue,
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
         assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
@@ -1195,6 +1230,7 @@ mod tests {
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
         let catalog = UnitCatalog::default();
 
         let status = dispatch_one(
@@ -1225,6 +1261,7 @@ mod tests {
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
             0,
+            &mut inventory_queue,
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
     }
@@ -1235,6 +1272,7 @@ mod tests {
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
         let catalog = UnitCatalog::default();
         let unit_id = create_unit_with_ownership(
             &catalog,
@@ -1273,6 +1311,7 @@ mod tests {
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
             0,
+            &mut inventory_queue,
         );
 
         assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
@@ -1284,6 +1323,7 @@ mod tests {
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
         let mut pending = PendingDispatchTrace::default();
         let catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();
@@ -1328,6 +1368,7 @@ mod tests {
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
             0,
+            &mut inventory_queue,
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert_eq!(pending.resolved_command, Some(CommandType::Move));
@@ -1355,6 +1396,7 @@ mod tests {
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
         let mut pending = PendingDispatchTrace::default();
         let catalog = UnitCatalog::default();
         let unit_id = create_unit_with_ownership(
@@ -1397,6 +1439,7 @@ mod tests {
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
             0,
+            &mut inventory_queue,
         );
         assert_eq!(
             status,
@@ -1415,6 +1458,7 @@ mod tests {
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
         let catalog = UnitCatalog::default();
 
         dispatch_one(
@@ -1442,6 +1486,7 @@ mod tests {
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
             0,
+            &mut inventory_queue,
         );
         assert!(modifiers.shift);
     }

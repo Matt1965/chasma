@@ -11,10 +11,12 @@ mod input;
 mod inspector;
 mod lighting_panel;
 mod panel;
+mod pile_harness;
 mod scenes;
 mod spawn_tools;
 mod time_of_day_panel;
 mod tools;
+mod treasury_harness;
 
 #[cfg(test)]
 mod polish_tests;
@@ -150,6 +152,14 @@ impl Plugin for DevModePlugin {
                 Update,
                 handle_dev_spawn_click
                     .after(sync_dev_panel_tab_sections)
+                    .in_set(DevModeInputSystems),
+            )
+            .add_systems(
+                Update,
+                (
+                    pile_harness::handle_pile_harness_keyboard,
+                    treasury_harness::handle_treasury_harness_keyboard,
+                )
                     .in_set(DevModeInputSystems),
             )
             .add_systems(
