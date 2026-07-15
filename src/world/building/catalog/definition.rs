@@ -51,6 +51,10 @@ pub struct BuildingDefinition {
     pub inventory_interaction_point_key: Option<String>,
     /// When true, destruction spills surviving contents to world piles (ADR-091 I5).
     pub spill_on_destroy: bool,
+    /// Visual model offset from authoritative anchor in local space (ADR-096 BP-CLEANUP).
+    pub model_local_offset: Vec3,
+    /// Additional yaw correction (degrees) applied to render root only (ADR-096).
+    pub model_yaw_correction_degrees: f32,
 }
 
 impl BuildingDefinition {
@@ -92,7 +96,23 @@ impl BuildingDefinition {
             inventory_access_policy: ContainerAccessPolicy::OwnerOnly,
             inventory_interaction_point_key: None,
             spill_on_destroy: true,
+            model_local_offset: Vec3::ZERO,
+            model_yaw_correction_degrees: 0.0,
         }
+    }
+
+    pub fn model_yaw_correction_radians(&self) -> f32 {
+        self.model_yaw_correction_degrees.to_radians()
+    }
+
+    pub fn with_model_local_offset(mut self, offset: Vec3) -> Self {
+        self.model_local_offset = offset;
+        self
+    }
+
+    pub fn with_model_yaw_correction_degrees(mut self, degrees: f32) -> Self {
+        self.model_yaw_correction_degrees = degrees;
+        self
     }
 
     pub fn with_footprint_id(mut self, footprint_id: crate::world::FootprintId) -> Self {

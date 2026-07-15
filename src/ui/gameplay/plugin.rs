@@ -7,7 +7,8 @@ use crate::player::GameplayPresentationSystems;
 use super::build_mode::{
     BuildModeCursorAnchor, BuildModeState, draw_build_mode_ghost, handle_build_catalog_clicks,
     handle_build_search_keyboard, spawn_build_catalog_panel, sync_build_catalog_contents,
-    sync_build_catalog_visibility, update_build_mode_ghost,
+    sync_build_catalog_visibility, sync_build_mode_ghost_scene, tint_build_mode_ghost_scene,
+    update_build_mode_ghost,
 };
 use super::building_selection::GameplayBuildingSelection;
 use super::command_feedback::{
@@ -106,6 +107,8 @@ impl Plugin for GameplayUiPlugin {
                 Update,
                 (
                     update_build_mode_ghost,
+                    sync_build_mode_ghost_scene,
+                    tint_build_mode_ghost_scene,
                     sync_build_catalog_visibility,
                     sync_build_catalog_contents,
                     draw_build_mode_ghost,

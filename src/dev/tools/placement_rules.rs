@@ -126,7 +126,18 @@ pub fn validate_placement(
         }
     }
 
-    PlacementValidation::Accepted(position)
+    PlacementValidation::Accepted(finalize_dev_placement_position(ctx, position))
+}
+
+fn finalize_dev_placement_position(
+    ctx: &PlacementValidateContext<'_>,
+    position: WorldPosition,
+) -> WorldPosition {
+    if matches!(ctx.definition, DefinitionId::Building(_)) {
+        return crate::world::ground_and_quantize_building_anchor(ctx.world, position)
+            .unwrap_or(position);
+    }
+    position
 }
 
 fn max_slope_for_definition(ctx: &PlacementValidateContext<'_>) -> f32 {

@@ -300,12 +300,34 @@ navigation changes.
 
 - `BuildingRecord` / `BuildingId` / `ChunkBuildingStore` on `WorldData`
 - Authoring API: `create_building`, `move_building`, `remove_building`
-- `BuildingsRuntimePlugin` — residency-gated placeholder cuboid sync
+- `BuildingsRuntimePlugin` — residency-gated render sync (cuboid placeholders superseded by BA1)
 - Dev Mode: Buildings tab, batch spawn, inspector pick
 - ADR-079
 
 **Not in B2:** player placement, occupancy, construction simulation, navigation,
 interiors, destruction.
+
+## BA1 — Building runtime GLB assets (complete)
+
+- `BuildingSceneAssets` shared glTF cache (`assets/buildings/{render_key}.glb`)
+- `SceneRoot` spawn with async load gating; lifecycle tint on construction states
+- Diagnostic magenta fallback for missing/failed assets (never neutral cubes)
+- Build mode GLB ghost + footprint gizmo overlay
+- Dev inspector asset diagnostics; optional `space:` / `roof:` scene tag discovery
+- ADR-095
+
+**Not in BA1:** per-lifecycle GLB variants, roof hide wiring, impostor LOD, new building mechanics.
+
+## BP-CLEANUP — Placement transform and dev Complete spawn (complete)
+
+- Fine 0.1 m anchor quantization (continuous feel, discrete occupancy)
+- `BuildingPlacementPlan` shared by ghost, validation, and commit
+- `building_model_render_transform` for ghost + runtime GLB alignment
+- `model_local_offset` / `model_yaw_correction_degrees` on definitions
+- `create_dev_complete_building` — Complete, full HP, progress 1.0
+- ADR-096
+
+**Not in BP-CLEANUP:** arbitrary rotation, terrain flattening, bake format migration.
 
 ## B3 — Generalized occupancy and baked footprints (complete)
 

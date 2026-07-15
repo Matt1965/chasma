@@ -56,7 +56,10 @@ pub fn command_availability(
     }
 
     match command_type {
-        CommandType::Move | CommandType::Stop | CommandType::Attack | CommandType::AttackMove
+        CommandType::Move
+        | CommandType::Stop
+        | CommandType::Attack
+        | CommandType::AttackMove
         | CommandType::Interact => CommandAvailability::Available,
         CommandType::HoldPosition => {
             CommandAvailability::Unavailable(CommandUnavailableReason::FeatureNotImplemented)

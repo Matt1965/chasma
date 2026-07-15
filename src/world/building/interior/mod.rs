@@ -11,7 +11,9 @@ mod profile;
 #[cfg(test)]
 mod tests;
 
-pub use activate::{activate_building_interior, deactivate_building_interior};
+pub use activate::{
+    activate_building_interior, deactivate_building_interior, try_activate_interior_if_complete,
+};
 pub use catalog::{
     DoorTemplate, InteriorChildKind, InteriorChildPlacement, InteriorProfile,
     InteriorProfileCatalog, starter_interior_profiles,
@@ -26,4 +28,4 @@ pub use door_store::{
 };
 pub use error::InteriorError;
 pub use id::{DoorId, InteriorProfileId};
-pub use profile::two_story_hut_interior_profile;
+pub use profile::{barn_interior_profile, two_story_hut_interior_profile};

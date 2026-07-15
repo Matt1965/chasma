@@ -32,7 +32,7 @@ Sheets live in `Chasma Design.xlsx` at the repo root.
 | Column | Notes |
 |--------|-------|
 | Collision File Path | Collision mesh for baker input; **required** for `MeshDerived` |
-| Preview File Path | Optional ghost/preview mesh (later phases) |
+| Preview File Path | Optional ghost/preview mesh; falls back to Model when unset |
 | Footprint Width / Depth | Required for `Rectangle` |
 | Footprint Radius | Required for `Circle` |
 | Max Slope | Placement slope limit (default 40°) |
@@ -74,6 +74,21 @@ Model and collision paths normalize like other catalogs:
 - `assets/buildings/fort/wall.glb` → `fort/wall`
 
 Import warns (does not fail) when expected `.glb` files are missing on disk.
+
+At runtime (ADR-095 BA1), valid `render_key` values load `assets/buildings/{key}.glb`
+as shared `SceneRoot` instances. Missing or failed assets show a magenta diagnostic
+cuboid sized from the footprint — not a neutral placeholder cube.
+
+Optional glTF node names for future interior visibility (presentation only):
+
+- `space:{space_id}` — must match catalog Space ids when present
+- `roof:` prefix — roof/ceiling hide candidates
+
+### Placement anchor (ADR-096)
+
+- Player/dev building anchors use **0.1 m** XZ quantization (not 2 m cell snapping).
+- Footprint cells are rasterized from the continuous anchor.
+- Optional `model_local_offset` and `model_yaw_correction_degrees` correct GLB pivot vs footprint.
 
 ## Dev export
 

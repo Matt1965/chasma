@@ -18,9 +18,10 @@ use crate::world::{
 };
 
 use super::snapshot::{
-    BuildingInspectorSnapshot, ChunkResidencySnapshot, CombatInspectorSnapshot,
-    FormationInspectorSnapshot, InteractionInspectorSnapshot, PathInspectorSnapshot,
-    ProjectileInspectorSnapshot, SteeringInspectorSnapshot, UnitInspectorSnapshot,
+    BuildingAssetPresentationInfo, BuildingInspectorSnapshot, ChunkResidencySnapshot,
+    CombatInspectorSnapshot, FormationInspectorSnapshot, InteractionInspectorSnapshot,
+    PathInspectorSnapshot, ProjectileInspectorSnapshot, SteeringInspectorSnapshot,
+    UnitInspectorSnapshot,
 };
 
 const STEERING_SETTINGS: SteeringSettings = SteeringSettings::DEFAULT;
@@ -133,6 +134,7 @@ pub fn capture_building_inspector_snapshot(
     building_catalog: &BuildingCatalog,
     interaction_catalog: &crate::world::BuildingInteractionProfileCatalog,
     building_id: BuildingId,
+    presentation: Option<BuildingAssetPresentationInfo>,
 ) -> Option<BuildingInspectorSnapshot> {
     let record = world.get_building(building_id)?.clone();
     let definition = building_catalog.get(&record.definition_id)?;
@@ -163,6 +165,7 @@ pub fn capture_building_inspector_snapshot(
                 .and_then(|profile| profile.points.iter().find(|p| p.key == key))
                 .map(|point| point.key.to_string())
         });
+    let presentation = presentation.unwrap_or_default();
     Some(BuildingInspectorSnapshot {
         building_id,
         definition_id: record.definition_id.clone(),
@@ -176,7 +179,70 @@ pub fn capture_building_inspector_snapshot(
         chunk,
         inventory_summary,
         interaction_point,
+        desired_render_key: presentation.desired_render_key,
+        resolved_asset_path: presentation.resolved_asset_path,
+        asset_load_state: presentation.asset_load_state,
+        runtime_entity: presentation.runtime_entity,
+        uses_diagnostic_fallback: presentation.uses_diagnostic_fallback,
+        fallback_reason: presentation.fallback_reason,
+        space_tag_count: presentation.space_tag_count,
+        roof_tag_count: presentation.roof_tag_count,
     })
+}
+
+/// Capture runtime building asset presentation for dev inspector (ADR-095 BA1).
+pub fn capture_building_asset_presentation(
+    building_id: BuildingId,
+    world: &WorldData,
+    catalog: &BuildingCatalog,
+    asset_server: &AssetServer,
+    scene_assets: &crate::buildings::BuildingSceneAssets,
+    render_index: &crate::buildings::BuildingRenderIndex,
+    render_entities: &Query<(
+        Entity,
+        &crate::buildings::BuildingRenderEntity,
+        Option<&crate::buildings::BuildingDiagnosticFallback>,
+        Option<&crate::buildings::BuildingSceneTags>,
+    )>,
+) -> BuildingAssetPresentationInfo {
+    let Some(record) = world.get_building(building_id) else {
+        return BuildingAssetPresentationInfo::default();
+    };
+    let desired_render_key = catalog.get(&record.definition_id).and_then(|definition| {
+        crate::buildings::lifecycle_render_key(definition, record.lifecycle_state)
+    });
+    let resolved_asset_path = desired_render_key
+        .as_ref()
+        .map(|key| format!("assets/buildings/{key}.glb"));
+    let asset_load_state = desired_render_key.as_ref().and_then(|key| {
+        scene_assets
+            .scene_for_key(key)
+            .and_then(|scene| asset_server.get_load_state(scene))
+            .map(|state| format!("{state:?}"))
+    });
+    let runtime_entity = render_index
+        .0
+        .get(&building_id)
+        .map(|entity| entity.to_bits());
+    let mut info = BuildingAssetPresentationInfo {
+        desired_render_key,
+        resolved_asset_path,
+        asset_load_state,
+        runtime_entity,
+        ..Default::default()
+    };
+    let Some(entity) = render_index.0.get(&building_id) else {
+        return info;
+    };
+    if let Ok((_, marker, fallback, tags)) = render_entities.get(*entity) {
+        info.uses_diagnostic_fallback = marker.uses_diagnostic_fallback;
+        info.fallback_reason = fallback.map(|value| value.reason.label().to_string());
+        if let Some(tags) = tags {
+            info.space_tag_count = Some(tags.space_node_names.len() as u32);
+            info.roof_tag_count = Some(tags.roof_entities.len() as u32);
+        }
+    }
+    info
 }
 
 /// Capture interaction classification at a world click (U6 + U-UI5).

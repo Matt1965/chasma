@@ -11,8 +11,8 @@ use crate::simulation::SimulationControlState;
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::{BoxSelectDrag, cursor_world_ray, terrain_click_to_world_position};
 use crate::world::{
-    BuildingCatalog, DoodadCatalog, FootprintCatalog, InventoryCatalogCtx, InventoryProfileCatalog,
-    ItemCatalog, ItemCategoryCatalog, UnitCatalog, WorldConfig, WorldData,
+    BuildingCatalog, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, InventoryCatalogCtx,
+    InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, UnitCatalog, WorldConfig, WorldData,
 };
 
 use super::catalog_cache::DevSearchDebounce;
@@ -40,6 +40,7 @@ pub struct DevSpawnClickParams<'w> {
     pub doodad_catalog: Res<'w, DoodadCatalog>,
     pub building_catalog: Res<'w, BuildingCatalog>,
     pub footprint_catalog: Res<'w, FootprintCatalog>,
+    pub interior_catalog: Res<'w, InteriorProfileCatalog>,
     pub item_catalog: Res<'w, ItemCatalog>,
     pub item_category_catalog: Res<'w, ItemCategoryCatalog>,
     pub inventory_profile_catalog: Res<'w, InventoryProfileCatalog>,
@@ -428,6 +429,7 @@ pub fn handle_dev_spawn_click(
         &params.doodad_catalog,
         &params.building_catalog,
         &params.footprint_catalog,
+        &params.interior_catalog,
         &inventory_ctx,
         &mut batch_scratch,
     );

@@ -3,10 +3,11 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    BuildingCatalog, BuildingOwnership, BuildingSource, DoodadCatalog,
-    DoodadPlacementOverrides, DoodadSource, FootprintCatalog, InventoryCatalogCtx, UnitCatalog,
-    UnitOwnership, UnitSource, WorldData, WorldPosition, create_building_with_inventory,
-    create_doodad, create_unit_with_inventory,
+    BuildingCatalog, BuildingOwnership, BuildingSource, DoodadCatalog, DoodadPlacementOverrides,
+    DoodadSource, FootprintCatalog, InteriorProfileCatalog, InventoryCatalogCtx, OccupancyCatalogs,
+    UnitCatalog, UnitOwnership, UnitSource, WorldData, WorldPosition,
+    create_dev_complete_building, create_dev_complete_building_with_inventory, create_doodad,
+    create_unit_with_inventory, try_activate_interior_if_complete,
 };
 
 use super::super::dev_mode::DefinitionId;
@@ -129,6 +130,7 @@ pub fn execute_batch_spawn(
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
+    interior_catalog: &InteriorProfileCatalog,
     inventory_ctx: &InventoryCatalogCtx<'_>,
     scratch: &mut BatchSpawnScratch,
 ) -> BatchSpawnReport {
@@ -149,6 +151,8 @@ pub fn execute_batch_spawn(
             unit_catalog,
             doodad_catalog,
             building_catalog,
+            footprint_catalog,
+            interior_catalog,
             inventory_ctx,
             &request.definition,
             position,
@@ -169,6 +173,8 @@ fn spawn_at(
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
+    interior_catalog: &InteriorProfileCatalog,
     inventory_ctx: &InventoryCatalogCtx<'_>,
     definition: &DefinitionId,
     position: WorldPosition,
@@ -195,18 +201,53 @@ fn spawn_at(
             None,
         )
         .is_ok(),
-        DefinitionId::Building(definition_id) => create_building_with_inventory(
-            building_catalog,
-            world,
-            definition_id,
-            position,
-            Quat::IDENTITY,
-            BuildingSource::Dev,
-            BuildingOwnership::with_affiliation(spawn_affiliation),
-            None,
-            inventory_ctx,
-        )
-        .is_ok(),
+        DefinitionId::Building(definition_id) => {
+            let occupancy = OccupancyCatalogs {
+                doodad: doodad_catalog,
+                building: building_catalog,
+                footprint: footprint_catalog,
+            };
+            let ownership = BuildingOwnership::with_affiliation(spawn_affiliation);
+            let spawned = if building_catalog
+                .get(definition_id)
+                .is_some_and(|def| def.inventory_profile_id.is_some())
+            {
+                create_dev_complete_building_with_inventory(
+                    building_catalog,
+                    world,
+                    definition_id,
+                    position,
+                    Quat::IDENTITY,
+                    ownership,
+                    Some(occupancy),
+                    inventory_ctx,
+                )
+            } else {
+                create_dev_complete_building(
+                    building_catalog,
+                    world,
+                    definition_id,
+                    position,
+                    Quat::IDENTITY,
+                    ownership,
+                    Some(occupancy),
+                )
+            };
+            match spawned {
+                Ok(record) => {
+                    let _ = try_activate_interior_if_complete(
+                        world,
+                        building_catalog,
+                        interior_catalog,
+                        doodad_catalog,
+                        occupancy,
+                        record.id,
+                    );
+                    true
+                }
+                Err(_) => false,
+            }
+        }
     }
 }
 
@@ -216,9 +257,9 @@ mod tests {
     use crate::dev::tools::brush::BrushMode;
     use crate::world::{
         ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, Heightfield,
-        InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, LocalPosition, UnitDefinitionId,
-        starter_inventory_profile_definitions, starter_item_category_definitions,
-        starter_item_definitions,
+        InteriorProfileCatalog, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog,
+        LocalPosition, UnitDefinitionId, starter_inventory_profile_definitions,
+        starter_item_category_definitions, starter_item_definitions,
     };
 
     fn item_catalogs() -> (ItemCategoryCatalog, ItemCatalog, InventoryProfileCatalog) {
@@ -284,6 +325,7 @@ mod tests {
         let mut scratch = BatchSpawnScratch::default();
         let footprint_catalog = FootprintCatalog::default();
         let (categories, items, profiles) = item_catalogs();
+        let interior_catalog = InteriorProfileCatalog::default();
         let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
         let report = execute_batch_spawn(
             &request,
@@ -293,6 +335,7 @@ mod tests {
             &doodad_catalog,
             &building_catalog,
             &footprint_catalog,
+            &interior_catalog,
             &ctx,
             &mut scratch,
         );

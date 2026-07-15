@@ -110,7 +110,10 @@ impl InteriorProfileCatalog {
 
 #[cfg(any(test, feature = "dev"))]
 pub fn starter_interior_profiles() -> Vec<InteriorProfile> {
-    vec![super::profile::two_story_hut_interior_profile()]
+    vec![
+        super::profile::two_story_hut_interior_profile(),
+        super::profile::barn_interior_profile(),
+    ]
 }
 
 #[cfg(not(any(test, feature = "dev")))]

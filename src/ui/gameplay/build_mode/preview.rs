@@ -8,7 +8,8 @@ use crate::units::input::{cursor_world_ray, terrain_click_to_world_position};
 use crate::world::{
     BuildingCatalog, BuildingOwnership, BuildingPlacementConfig, BuildingPlacementContext,
     DoodadCatalog, FootprintCatalog, UnitCatalog, WorldConfig, WorldData,
-    anchor_from_terrain_position, rotation_from_quadrants, validate_building_placement,
+    anchor_from_terrain_position, build_building_placement_plan, rotation_from_quadrants,
+    validate_building_placement,
 };
 
 use super::state::BuildModeState;
@@ -36,6 +37,7 @@ pub fn update_build_mode_ghost(
     anchor.position = None;
     if !build_mode.is_ghost_placing() {
         build_mode.last_validation = None;
+        build_mode.last_plan = None;
         return;
     }
 
@@ -77,6 +79,17 @@ pub fn update_build_mode_ghost(
         crate::world::BuildingPlacementValidation::rejected(
             crate::world::BuildingPlacementRejectReason::TerrainUnavailable,
         )
+    };
+    build_mode.last_plan = if snapped.is_some() {
+        Some(build_building_placement_plan(
+            &ctx,
+            &definition_id,
+            snapped.unwrap(),
+            rotation,
+            ownership,
+        ))
+    } else {
+        None
     };
     build_mode.last_validation = Some(validation);
 }

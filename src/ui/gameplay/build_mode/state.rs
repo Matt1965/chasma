@@ -2,7 +2,9 @@
 
 use bevy::prelude::*;
 
-use crate::world::{BuildingCategoryId, BuildingDefinitionId, BuildingPlacementValidation};
+use crate::world::{
+    BuildingCategoryId, BuildingDefinitionId, BuildingPlacementPlan, BuildingPlacementValidation,
+};
 
 /// Client-only build mode phases — never stored on [`WorldData`].
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -26,6 +28,7 @@ pub struct BuildModeState {
     pub selected_category: Option<BuildingCategoryId>,
     pub search_focused: bool,
     pub last_validation: Option<BuildingPlacementValidation>,
+    pub last_plan: Option<BuildingPlacementPlan>,
 }
 
 impl BuildModeState {
@@ -44,18 +47,21 @@ impl BuildModeState {
     pub fn enter_catalog(&mut self) {
         self.phase = BuildModePhase::CatalogOpen;
         self.last_validation = None;
+        self.last_plan = None;
     }
 
     pub fn exit(&mut self) {
         self.phase = BuildModePhase::Inactive;
         self.search_focused = false;
         self.last_validation = None;
+        self.last_plan = None;
     }
 
     pub fn cancel_ghost(&mut self) {
         if self.is_ghost_placing() {
             self.phase = BuildModePhase::CatalogOpen;
             self.last_validation = None;
+            self.last_plan = None;
         }
     }
 
@@ -65,6 +71,7 @@ impl BuildModeState {
             rotation_quadrants: 0,
         };
         self.last_validation = None;
+        self.last_plan = None;
     }
 
     pub fn rotate_ghost(&mut self) {
@@ -74,6 +81,7 @@ impl BuildModeState {
         {
             *rotation_quadrants = rotation_quadrants.wrapping_add(1) % 4;
             self.last_validation = None;
+            self.last_plan = None;
         }
     }
 

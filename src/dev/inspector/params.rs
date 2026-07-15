@@ -24,3 +24,21 @@ pub struct InspectorCaptureParams<'w> {
     pub simulation: Res<'w, SimulationControlState>,
     pub movement_blocks: Res<'w, MovementBlockObservability>,
 }
+
+/// Runtime building presentation inputs for dev inspector asset diagnostics (ADR-095 BA1).
+#[derive(SystemParam)]
+pub struct BuildingInspectorPresentationParams<'w, 's> {
+    pub asset_server: Res<'w, AssetServer>,
+    pub scene_assets: Res<'w, crate::buildings::BuildingSceneAssets>,
+    pub render_index: Res<'w, crate::buildings::BuildingRenderIndex>,
+    pub render_entities: Query<
+        'w,
+        's,
+        (
+            Entity,
+            &'static crate::buildings::BuildingRenderEntity,
+            Option<&'static crate::buildings::BuildingDiagnosticFallback>,
+            Option<&'static crate::buildings::BuildingSceneTags>,
+        ),
+    >,
+}

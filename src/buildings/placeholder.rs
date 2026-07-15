@@ -50,7 +50,23 @@ pub fn planned_building_color(affiliation: Affiliation) -> Color {
     Color::srgba(s.red, s.green, s.blue, 0.45)
 }
 
-/// Lifecycle-specific placeholder tint (B5).
+/// Magenta/error diagnostic tint for missing or failed building assets (ADR-095 BA1).
+pub fn diagnostic_fallback_color(
+    lifecycle: crate::world::BuildingLifecycleState,
+    affiliation: Affiliation,
+) -> Color {
+    let _ = affiliation;
+    let lifecycle_tint = lifecycle_building_color(lifecycle, Affiliation::Dev);
+    let s = lifecycle_tint.to_srgba();
+    Color::srgba(
+        (s.red * 0.35 + 0.95 * 0.65).min(1.0),
+        (s.green * 0.35 + 0.1 * 0.65).min(1.0),
+        (s.blue * 0.35 + 0.95 * 0.65).min(1.0),
+        0.92,
+    )
+}
+
+/// Lifecycle-specific scene tint (B5, ADR-095 BA1).
 pub fn lifecycle_building_color(
     lifecycle: crate::world::BuildingLifecycleState,
     affiliation: Affiliation,

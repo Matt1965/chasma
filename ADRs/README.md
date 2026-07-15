@@ -30,6 +30,8 @@ ADRs document **accepted technical decisions**. Game design direction lives in
 | [092](ADR-092-player-inventory-ui-and-transfer-interaction.md) | Player inventory UI, drag/drop, transfers (I6) |
 | [093](ADR-093-settlement-treasuries-and-physical-gold.md) | Settlement treasuries, physical gold deposits (I7) |
 | [094](ADR-094-inventory-persistence-validation-and-audit.md) | Inventory persistence, validation, audit (I8) |
+| [095](ADR-095-building-runtime-asset-and-scene-integration.md) | Building runtime GLB assets and scene integration (BA1) |
+| [096](ADR-096-building-placement-transform-and-dev-spawn-policy.md) | Placement transform, freeform anchoring, dev Complete spawn (BP-CLEANUP) |
 
 ## Combat implementation chain
 

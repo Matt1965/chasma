@@ -7,6 +7,19 @@ use crate::world::{
     UnitId, UnitOrder, WorldPosition,
 };
 
+/// Optional runtime presentation metadata for dev inspector (ADR-095 BA1).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct BuildingAssetPresentationInfo {
+    pub desired_render_key: Option<String>,
+    pub resolved_asset_path: Option<String>,
+    pub asset_load_state: Option<String>,
+    pub runtime_entity: Option<u64>,
+    pub uses_diagnostic_fallback: bool,
+    pub fallback_reason: Option<String>,
+    pub space_tag_count: Option<u32>,
+    pub roof_tag_count: Option<u32>,
+}
+
 /// Full read-only inspection payload for one building (B2).
 #[derive(Debug, Clone, PartialEq)]
 pub struct BuildingInspectorSnapshot {
@@ -22,6 +35,14 @@ pub struct BuildingInspectorSnapshot {
     pub chunk: ChunkCoord,
     pub inventory_summary: Option<String>,
     pub interaction_point: Option<String>,
+    pub desired_render_key: Option<String>,
+    pub resolved_asset_path: Option<String>,
+    pub asset_load_state: Option<String>,
+    pub runtime_entity: Option<u64>,
+    pub uses_diagnostic_fallback: bool,
+    pub fallback_reason: Option<String>,
+    pub space_tag_count: Option<u32>,
+    pub roof_tag_count: Option<u32>,
 }
 
 /// Full read-only inspection payload for one unit.

@@ -211,6 +211,10 @@ fn format_building_snapshot(s: &BuildingInspectorSnapshot) -> String {
          Chunk ({},{})\n\
          {}\n\
          interaction point: {}\n\
+         render key: {}\n\
+         asset: {}  load: {}\n\
+         runtime entity: {}  fallback: {} {}\n\
+         scene tags: space={} roof={}\n\
          Dev: [D]amage [H]eal [X]estroy [R]uins [C]omplete [P]+progress\n\
          Container: [I]nspect [G]old [T]ransfer [U]lock [V]alidate",
         s.building_id.raw(),
@@ -226,5 +230,19 @@ fn format_building_snapshot(s: &BuildingInspectorSnapshot) -> String {
         s.chunk.z,
         s.inventory_summary.as_deref().unwrap_or("no inventory"),
         s.interaction_point.as_deref().unwrap_or("—"),
+        s.desired_render_key.as_deref().unwrap_or("—"),
+        s.resolved_asset_path.as_deref().unwrap_or("—"),
+        s.asset_load_state.as_deref().unwrap_or("—"),
+        s.runtime_entity
+            .map(|bits| bits.to_string())
+            .unwrap_or_else(|| "—".into()),
+        s.uses_diagnostic_fallback,
+        s.fallback_reason.as_deref().unwrap_or("—"),
+        s.space_tag_count
+            .map(|count| count.to_string())
+            .unwrap_or_else(|| "—".into()),
+        s.roof_tag_count
+            .map(|count| count.to_string())
+            .unwrap_or_else(|| "—".into()),
     )
 }

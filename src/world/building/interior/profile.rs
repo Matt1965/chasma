@@ -90,3 +90,29 @@ pub fn two_story_hut_interior_profile() -> InteriorProfile {
         .with_doors(doors)
         .with_children(children)
 }
+
+/// Single-room barn interior — wide open entrance aligned to 8×6 m footprint (B7 dev).
+pub fn barn_interior_profile() -> InteriorProfile {
+    let spaces = vec![SpaceTemplate {
+        key: "barn_interior",
+        display_floor_label: "Barn Floor",
+        visibility_group_id: 1,
+        reference_elevation: 0.0,
+        local_floor_y: 0.0,
+        room_tag: Some("storage_hall"),
+    }];
+    let portals = vec![PortalTemplate {
+        key: "exterior_entrance",
+        portal_type: PortalType::ExteriorEntrance,
+        from_space_key: "surface",
+        to_space_key: "barn_interior",
+        // Center of the 8 m front edge (local +Z is depth).
+        from_local_xz: Vec2::new(4.0, 0.0),
+        from_radius_meters: 2.5,
+        to_local_position: Vec3::new(4.0, 0.0, 2.0),
+        bidirectional: true,
+    }];
+    InteriorProfile::new(InteriorProfileId::new("barn_interior"))
+        .with_spaces(spaces)
+        .with_portals(portals)
+}

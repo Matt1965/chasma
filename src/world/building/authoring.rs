@@ -169,6 +169,82 @@ fn create_building_impl(
     Ok(record)
 }
 
+/// Apply dev Complete spawn policy to an existing building record (ADR-096).
+pub fn apply_dev_complete_building_state(
+    world: &mut WorldData,
+    building_id: BuildingId,
+) -> Result<(), BuildingAuthoringError> {
+    let Some(record) = world.get_building(building_id) else {
+        return Err(BuildingAuthoringError::BuildingNotFound(building_id));
+    };
+    let max_hp = record.vitals.max_hp.max(1);
+    world
+        .mutate_building(building_id, |record| {
+            record.lifecycle_state = BuildingLifecycleState::Complete;
+            record.construction.progress_0_1 = 1.0;
+            record.vitals = BuildingVitals::full(max_hp);
+            record.source = BuildingSource::Dev;
+        })
+        .ok_or(BuildingAuthoringError::BuildingNotFound(building_id))?;
+    Ok(())
+}
+
+/// Create a dev-spawned building in Complete state with full HP and finished construction.
+pub fn create_dev_complete_building(
+    catalog: &BuildingCatalog,
+    world: &mut WorldData,
+    definition_id: &BuildingDefinitionId,
+    position: WorldPosition,
+    rotation: Quat,
+    ownership: BuildingOwnership,
+    occupancy: Option<OccupancyCatalogs<'_>>,
+) -> Result<BuildingRecord, BuildingAuthoringError> {
+    let record = create_building(
+        catalog,
+        world,
+        definition_id,
+        position,
+        rotation,
+        BuildingSource::Dev,
+        ownership,
+        occupancy,
+    )?;
+    apply_dev_complete_building_state(world, record.id)?;
+    world
+        .get_building(record.id)
+        .cloned()
+        .ok_or(BuildingAuthoringError::BuildingNotFound(record.id))
+}
+
+/// Dev Complete building creation with optional container inventory.
+pub fn create_dev_complete_building_with_inventory(
+    catalog: &BuildingCatalog,
+    world: &mut WorldData,
+    definition_id: &BuildingDefinitionId,
+    position: WorldPosition,
+    rotation: Quat,
+    ownership: BuildingOwnership,
+    occupancy: Option<OccupancyCatalogs<'_>>,
+    inventory_ctx: &InventoryCatalogCtx<'_>,
+) -> Result<BuildingRecord, BuildingAuthoringError> {
+    let record = create_building_with_inventory(
+        catalog,
+        world,
+        definition_id,
+        position,
+        rotation,
+        BuildingSource::Dev,
+        ownership,
+        occupancy,
+        inventory_ctx,
+    )?;
+    apply_dev_complete_building_state(world, record.id)?;
+    world
+        .get_building(record.id)
+        .cloned()
+        .ok_or(BuildingAuthoringError::BuildingNotFound(record.id))
+}
+
 /// Place a player-owned building in [`BuildingLifecycleState::Planned`] with atomic occupancy.
 ///
 /// Validation must be performed by the caller before commit. Rolls back the record if occupancy
@@ -364,7 +440,7 @@ mod tests {
     use crate::world::{
         BuildingCatalog, BuildingLifecycleState, BuildingOwnership, ChunkCoord, ChunkLayout,
         DoodadCatalog, FootprintCatalog, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog,
-        ItemCategoryCatalog, LocalPosition, OccupancyCatalogs,
+        ItemCategoryCatalog, LocalPosition, OccupancyCatalogs, is_building_operational,
     };
 
     fn layout_world() -> WorldData {
@@ -562,5 +638,25 @@ mod tests {
         )
         .unwrap();
         assert!(record.inventory_id.is_some());
+    }
+
+    #[test]
+    fn dev_complete_building_has_full_hp_and_progress() {
+        let cat = catalog();
+        let mut world = layout_world();
+        let record = create_dev_complete_building(
+            &cat,
+            &mut world,
+            &BuildingDefinitionId::new("hut"),
+            position(0, 0, Vec3::new(64.0, 0.0, 64.0)),
+            Quat::IDENTITY,
+            BuildingOwnership::with_affiliation(crate::world::Affiliation::Dev),
+            None,
+        )
+        .unwrap();
+        assert_eq!(record.lifecycle_state, BuildingLifecycleState::Complete);
+        assert_eq!(record.construction.progress_0_1, 1.0);
+        assert_eq!(record.vitals.current_hp, record.vitals.max_hp);
+        assert!(is_building_operational(&record));
     }
 }

@@ -153,7 +153,10 @@ impl UnitImportRow {
         if self.file_path.trim().is_empty() {
             return false;
         }
-        normalize_file_path_to_render_key(&self.file_path).ok().as_deref() == Some("robot")
+        normalize_file_path_to_render_key(&self.file_path)
+            .ok()
+            .as_deref()
+            == Some("robot")
     }
 
     fn resolved_animation_profile_id(&self) -> Option<AnimationProfileId> {

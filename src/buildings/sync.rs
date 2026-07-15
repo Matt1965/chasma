@@ -1,23 +1,34 @@
-//! Sync building render entities with authoritative world data and terrain residency (ADR-079 B2).
+//! Sync building render entities with authoritative world data and terrain residency (ADR-079 B2, ADR-095 BA1).
 
 use std::collections::HashSet;
 
+use bevy::asset::LoadState;
 use bevy::prelude::*;
 
+use crate::terrain::TerrainRenderAssets;
 use crate::terrain::residency::ChunkResidencyTracker;
-use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
-use crate::world::{BuildingCatalog, BuildingId, WorldConfig, WorldData};
+use crate::world::{
+    BuildingCatalog, BuildingId, WorldConfig, WorldData, building_anchor_render_transform,
+    building_has_model_correction,
+};
 
+use super::assets::{BuildingSceneAssets, lifecycle_render_key};
 use super::components::BuildingRenderEntity;
-use super::placeholder::{lifecycle_building_color, placeholder_mesh_size};
+use super::fallback::{BuildingFallbackAssets, BuildingFallbackReason};
 use super::spawn::{
-    BuildingRenderAssets, BuildingRenderIndex, despawn_building_render_entities,
-    spawn_building_render_entity,
+    BuildingRenderIndex, building_render_translation, despawn_building_render_entities,
+    spawn_building_fallback_entity, spawn_building_scene_entity,
 };
 
 /// Systems that sync building render entities with world data.
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct BuildingRuntimeSystems;
+
+/// Test-only override for sync integration tests (not inserted in production).
+#[derive(Resource, Default, Debug)]
+pub struct BuildingSyncOverrides {
+    pub treat_scenes_loaded: bool,
+}
 
 /// Collect building ids that should have render entities this frame.
 pub(crate) fn visible_building_ids(
@@ -46,21 +57,23 @@ pub fn sync_building_render_entities(
     catalog: Res<BuildingCatalog>,
     config: Res<WorldConfig>,
     residency: Res<ChunkResidencyTracker>,
+    asset_server: Res<AssetServer>,
+    mut scene_assets: ResMut<BuildingSceneAssets>,
+    mut fallback_assets: ResMut<BuildingFallbackAssets>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut render_assets: ResMut<BuildingRenderAssets>,
     mut index: ResMut<BuildingRenderIndex>,
-    existing: Query<(
-        Entity,
-        &BuildingRenderEntity,
-        &MeshMaterial3d<StandardMaterial>,
-    )>,
+    existing: Query<(Entity, &BuildingRenderEntity)>,
     render_terrain: Option<Res<TerrainRenderAssets>>,
+    overrides: Option<Res<BuildingSyncOverrides>>,
 ) {
     let vertical_scale = render_terrain
         .as_ref()
         .map(|assets| assets.vertical_scale)
         .unwrap_or(1.0);
+    let force_scenes_loaded = overrides
+        .as_ref()
+        .is_some_and(|value| value.treat_scenes_loaded);
     let should_render = visible_building_ids(&world, &residency);
 
     let stale: Vec<BuildingId> = index
@@ -71,7 +84,7 @@ pub fn sync_building_render_entities(
         .collect();
     despawn_building_render_entities(&mut commands, &mut index, stale);
 
-    for (entity, marker, material_handle) in &existing {
+    for (entity, marker) in &existing {
         if !should_render.contains(&marker.building_id) {
             continue;
         }
@@ -83,27 +96,61 @@ pub fn sync_building_render_entities(
         let Some(definition) = catalog.get(&record.definition_id) else {
             continue;
         };
-        let layout = config.chunk_layout();
-        let mut translation =
-            world_position_to_render_global(record.placement.position, layout, vertical_scale);
-        let mesh_size = placeholder_mesh_size(definition);
-        translation.y += mesh_size.y * 0.5;
-        commands.entity(entity).insert(Transform {
-            translation,
-            rotation: record.placement.rotation,
-            scale: Vec3::ONE,
-        });
+
+        let desired_key = lifecycle_render_key(definition, record.lifecycle_state);
+        if marker.active_render_key != desired_key {
+            commands.entity(entity).despawn();
+            index.0.remove(&marker.building_id);
+            continue;
+        }
+
+        let translation = building_render_translation(&record, &config, vertical_scale);
+        if marker.uses_diagnostic_fallback {
+            let mesh_size = super::placeholder::placeholder_mesh_size(definition);
+            let mut fallback_translation = translation;
+            fallback_translation.y += mesh_size.y * 0.5;
+            commands.entity(entity).insert(Transform {
+                translation: fallback_translation,
+                rotation: record.placement.rotation,
+                scale: Vec3::ONE,
+            });
+        } else {
+            let layout = config.chunk_layout();
+            let transform = if building_has_model_correction(definition) {
+                building_anchor_render_transform(
+                    definition,
+                    &record.placement,
+                    layout,
+                    vertical_scale,
+                )
+            } else {
+                crate::world::building_model_render_transform(
+                    definition,
+                    &record.placement,
+                    layout,
+                    vertical_scale,
+                )
+            };
+            commands.entity(entity).insert(transform);
+        }
+
         if marker.lifecycle_state != record.lifecycle_state {
-            let color =
-                lifecycle_building_color(record.lifecycle_state, record.ownership.affiliation);
-            if let Some(material) = materials.get_mut(&material_handle.0) {
-                material.base_color = color;
-            }
             commands.entity(entity).insert(BuildingRenderEntity {
                 building_id: marker.building_id,
                 chunk_id: marker.chunk_id,
                 lifecycle_state: record.lifecycle_state,
+                active_render_key: marker.active_render_key.clone(),
+                uses_diagnostic_fallback: marker.uses_diagnostic_fallback,
             });
+            if marker.uses_diagnostic_fallback {
+                commands
+                    .entity(entity)
+                    .remove::<BuildingLifecycleTintApplied>();
+            } else {
+                commands
+                    .entity(entity)
+                    .remove::<super::components::BuildingLifecycleTintApplied>();
+            }
         }
     }
 
@@ -124,17 +171,91 @@ pub fn sync_building_render_entities(
                 record.id.raw(),
                 record.definition_id.as_str()
             );
+            let placeholder = missing_definition_placeholder(record);
+            let entity = spawn_building_fallback_entity(
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                &mut fallback_assets,
+                record,
+                &placeholder,
+                chunk_id,
+                &config,
+                vertical_scale,
+                BuildingFallbackReason::MissingDefinition,
+            );
+            index.0.insert(id, entity);
             continue;
         };
 
-        let entity = spawn_building_render_entity(
+        let Some(render_key) = lifecycle_render_key(definition, record.lifecycle_state) else {
+            scene_assets.log_missing_once(&record.definition_id.as_str());
+            let entity = spawn_building_fallback_entity(
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                &mut fallback_assets,
+                record,
+                definition,
+                chunk_id,
+                &config,
+                vertical_scale,
+                BuildingFallbackReason::MissingRenderKey,
+            );
+            index.0.insert(id, entity);
+            continue;
+        };
+
+        let Some(scene) = scene_assets.ensure_scene(&render_key, &asset_server) else {
+            scene_assets.log_missing_once(&render_key);
+            let entity = spawn_building_fallback_entity(
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                &mut fallback_assets,
+                record,
+                definition,
+                chunk_id,
+                &config,
+                vertical_scale,
+                BuildingFallbackReason::MissingRenderKey,
+            );
+            index.0.insert(id, entity);
+            continue;
+        };
+
+        let load_state = asset_server.get_load_state(&scene);
+        if !force_scenes_loaded {
+            match load_state {
+                Some(LoadState::Loaded) => {}
+                Some(LoadState::Failed(_)) => {
+                    scene_assets.log_failed_once(&render_key);
+                    let entity = spawn_building_fallback_entity(
+                        &mut commands,
+                        &mut meshes,
+                        &mut materials,
+                        &mut fallback_assets,
+                        record,
+                        definition,
+                        chunk_id,
+                        &config,
+                        vertical_scale,
+                        BuildingFallbackReason::AssetLoadFailed,
+                    );
+                    index.0.insert(id, entity);
+                    continue;
+                }
+                _ => continue,
+            }
+        }
+
+        let entity = spawn_building_scene_entity(
             &mut commands,
-            &mut meshes,
-            &mut materials,
-            &mut render_assets,
             record,
             definition,
             chunk_id,
+            scene,
+            render_key,
             &config,
             vertical_scale,
         );
@@ -142,17 +263,47 @@ pub fn sync_building_render_entities(
     }
 }
 
+use super::components::BuildingLifecycleTintApplied;
+
+fn missing_definition_placeholder(
+    record: &crate::world::BuildingRecord,
+) -> crate::world::BuildingDefinition {
+    use crate::world::{
+        BuildingCategoryId, BuildingDefinition, BuildingDefinitionId, BuildingRenderKey,
+        FootprintSpec,
+    };
+    BuildingDefinition::new(
+        record.definition_id.clone(),
+        "Missing Definition",
+        BuildingCategoryId::new("unknown"),
+        BuildingRenderKey::unset(),
+        BuildingRenderKey::unset(),
+        record.vitals.max_hp.max(1),
+        0.0,
+        FootprintSpec::Rectangle {
+            width_meters: 2.0,
+            depth_meters: 2.0,
+        },
+        0.0,
+        false,
+    )
+}
+
 #[cfg(test)]
 mod tests {
+    use super::super::components::BuildingDiagnosticFallback;
     use super::*;
-    use crate::buildings::spawn::spawn_building_render_entity_for_test;
-    use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
+    use crate::buildings::assets::BuildingSceneAssets;
+    use crate::terrain::world_position_to_render_global;
     use crate::world::{
-        BuildingCatalog, BuildingDefinitionId, BuildingId, BuildingOwnership, BuildingPlacement,
-        BuildingRecord, BuildingSource, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield,
-        LocalPosition, WorldConfig, WorldData, WorldPosition,
+        BuildingCatalog, BuildingCategoryCatalog, BuildingDefinitionId, BuildingId,
+        BuildingOwnership, BuildingPlacement, BuildingRecord, BuildingRenderKey, BuildingSource,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, WorldConfig,
+        WorldData, WorldPosition, starter_building_definitions,
     };
+    use bevy::asset::AssetPlugin;
     use bevy::prelude::{App, MinimalPlugins, Quat, StandardMaterial, Update, Vec3};
+    use std::collections::HashMap;
 
     fn layout() -> ChunkLayout {
         ChunkLayout {
@@ -193,26 +344,38 @@ mod tests {
 
     fn setup_sync_app() -> App {
         let mut app = App::new();
-        app.add_plugins(MinimalPlugins);
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()));
         app.init_resource::<WorldConfig>();
         app.init_resource::<WorldData>();
         app.init_resource::<BuildingCatalog>();
         app.init_resource::<ChunkResidencyTracker>();
         app.init_resource::<BuildingRenderIndex>();
-        app.init_resource::<BuildingRenderAssets>();
+        app.init_resource::<BuildingFallbackAssets>();
         app.init_resource::<Assets<Mesh>>();
         app.init_resource::<Assets<StandardMaterial>>();
+        app.init_resource::<Assets<Scene>>();
+        app.insert_resource(BuildingSyncOverrides {
+            treat_scenes_loaded: true,
+        });
         app.add_systems(Update, sync_building_render_entities);
         app
     }
 
     fn prepare_resident_building(app: &mut App, x: i32, z: i32) -> BuildingId {
         let chunk = ChunkId::new(ChunkCoord::new(x, z));
+        let scene = {
+            let mut scenes = app.world_mut().resource_mut::<Assets<Scene>>();
+            scenes.add(Scene::new(World::new()))
+        };
+        app.insert_resource(BuildingSceneAssets::from_test_scenes(HashMap::from([(
+            "hut".to_string(),
+            scene,
+        )])));
         {
             let mut world = app.world_mut().resource_mut::<WorldData>();
             insert_terrain(&mut world, x, z);
-            insert_authored_building(&mut world, x, z)
-        };
+            insert_authored_building(&mut world, x, z);
+        }
         app.world_mut()
             .resource_mut::<ChunkResidencyTracker>()
             .mark_resident(chunk);
@@ -241,14 +404,26 @@ mod tests {
     }
 
     #[test]
-    fn sync_spawns_render_entity_for_resident_record() {
+    fn sync_spawns_scene_root_for_valid_asset() {
         let mut app = setup_sync_app();
         let building_id = prepare_resident_building(&mut app, 1, 2);
         app.update();
 
         let index = app.world().resource::<BuildingRenderIndex>();
         assert_eq!(index.0.len(), 1);
-        assert!(index.0.contains_key(&building_id));
+        let entity = index.0[&building_id];
+        assert!(
+            app.world()
+                .entity(entity)
+                .get::<super::super::components::BuildingSceneRoot>()
+                .is_some()
+        );
+        assert!(
+            app.world()
+                .entity(entity)
+                .get::<BuildingDiagnosticFallback>()
+                .is_none()
+        );
     }
 
     #[test]
@@ -279,7 +454,7 @@ mod tests {
     }
 
     #[test]
-    fn sync_transform_matches_world_data_with_vertical_scale() {
+    fn sync_transform_uses_ground_anchor_without_cuboid_offset() {
         let mut app = setup_sync_app();
         let building_id = prepare_resident_building(&mut app, 7, 8);
         let record = app
@@ -305,32 +480,53 @@ mod tests {
             .entity(entity)
             .get::<Transform>()
             .expect("render entity transform");
-        let catalog = app.world().resource::<BuildingCatalog>();
-        let definition = catalog.get(&record.definition_id).unwrap();
-        let mut expected = world_position_to_render_global(
+        let expected = world_position_to_render_global(
             record.placement.position,
             config.chunk_layout(),
             vertical_scale,
         );
-        expected.y += super::super::placeholder::placeholder_mesh_size(definition).y * 0.5;
         assert_eq!(transform.translation, expected);
         assert_eq!(record.placement.position.local.0.y, 12.0);
+        assert_eq!(transform.translation.y, 12.0 * vertical_scale);
     }
 
     #[test]
-    fn world_data_remains_authoritative_after_sync() {
+    fn missing_render_key_uses_diagnostic_fallback() {
         let mut app = setup_sync_app();
-        let building_id = prepare_resident_building(&mut app, 9, 10);
+        app.insert_resource(BuildingSceneAssets::default());
+        let chunk = ChunkId::new(ChunkCoord::new(0, 0));
+        let categories = BuildingCategoryCatalog::default();
+        let mut defs = starter_building_definitions();
+        for def in &mut defs {
+            if def.id.as_str() == "hut" {
+                def.render_key = BuildingRenderKey::unset();
+            }
+        }
+        let catalog = BuildingCatalog::from_definitions(defs, &categories).unwrap();
+        app.insert_resource(catalog);
+        {
+            let mut world = app.world_mut().resource_mut::<WorldData>();
+            insert_terrain(&mut world, 0, 0);
+            insert_authored_building(&mut world, 0, 0);
+        }
+        app.world_mut()
+            .resource_mut::<ChunkResidencyTracker>()
+            .mark_resident(chunk);
         app.update();
-
-        let hp = app
+        let entity = app
             .world()
-            .resource::<WorldData>()
-            .get_building(building_id)
-            .unwrap()
-            .vitals
-            .current_hp;
-        assert_eq!(hp, 250);
+            .resource::<BuildingRenderIndex>()
+            .0
+            .values()
+            .next()
+            .copied()
+            .unwrap();
+        assert!(
+            app.world()
+                .entity(entity)
+                .get::<BuildingDiagnosticFallback>()
+                .is_some()
+        );
     }
 
     #[test]

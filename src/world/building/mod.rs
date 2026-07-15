@@ -2,6 +2,7 @@ pub mod catalog;
 pub mod category;
 pub mod footprint;
 
+mod asset_pivot;
 mod authoring;
 mod construction;
 pub mod container_access;
@@ -13,6 +14,7 @@ pub mod inventory;
 pub mod inventory_error;
 mod ownership;
 mod placement;
+mod placement_plan;
 mod placement_validation;
 mod rebuild;
 mod record;
@@ -22,8 +24,11 @@ mod state;
 mod store;
 mod vitals;
 
+pub use asset_pivot::{builtin_model_local_offset, effective_model_local_offset};
 pub use authoring::{
-    BuildingAuthoringError, create_building, create_building_with_inventory, lookup_building,
+    BuildingAuthoringError, create_building, create_building_with_inventory,
+    create_dev_complete_building, create_dev_complete_building_with_inventory,
+    apply_dev_complete_building_state, lookup_building,
     move_building, place_player_building, place_player_building_with_inventory, remove_building,
 };
 #[cfg(any(test, feature = "dev"))]
@@ -59,8 +64,8 @@ pub use interior::{
     DoorAccessPolicy, DoorId, DoorRecord, DoorState, DoorStore, InteriorError,
     InteriorProfileCatalog, InteriorProfileId, activate_building_interior, close_door,
     deactivate_building_interior, destroy_door, lock_door, open_door, portal_traversable,
-    space_route_for_unit, starter_interior_profiles, try_open_door_at_portal_for_unit,
-    try_open_door_for_unit, two_story_hut_interior_profile,
+    space_route_for_unit, starter_interior_profiles, try_activate_interior_if_complete,
+    try_open_door_at_portal_for_unit, try_open_door_for_unit, two_story_hut_interior_profile,
 };
 pub use inventory::{
     BuildingInventoryContext, BuildingInventoryRemovalPolicy, attach_inventory_on_building_create,
@@ -74,10 +79,16 @@ pub use inventory::{
 pub use inventory_error::BuildingInventoryError;
 pub use ownership::BuildingOwnership;
 pub use placement::BuildingPlacement;
+pub use placement_plan::{
+    BuildingPlacementPlan, PLACEMENT_QUANTIZE_METERS, anchor_from_terrain_position,
+    build_building_placement_plan, building_anchor_render_transform,
+    building_model_correction_local_transform, building_model_render_transform,
+    building_model_world_transform, building_has_model_correction,
+    ground_and_quantize_building_anchor, quantize_placement_anchor_xz, snap_anchor_global_xz,
+};
 pub use placement_validation::{
     BuildingPlacementConfig, BuildingPlacementContext, BuildingPlacementRejectReason,
-    BuildingPlacementValidation, anchor_from_terrain_position, rotation_from_quadrants,
-    snap_anchor_global_xz, validate_building_placement,
+    BuildingPlacementValidation, rotation_from_quadrants, validate_building_placement,
 };
 pub use rebuild::{BuildingRebuildError, rebuild_building_world_indexes};
 pub use record::BuildingRecord;

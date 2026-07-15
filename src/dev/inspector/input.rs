@@ -17,10 +17,10 @@ use crate::units::input::{
 };
 
 use super::capture::{
-    capture_building_inspector_snapshot, capture_interaction_inspector_snapshot,
-    capture_unit_inspector_snapshot,
+    capture_building_asset_presentation, capture_building_inspector_snapshot,
+    capture_interaction_inspector_snapshot, capture_unit_inspector_snapshot,
 };
-use super::params::InspectorCaptureParams;
+use super::params::{BuildingInspectorPresentationParams, InspectorCaptureParams};
 use super::state::{InspectorCacheKey, WorldInspectorState};
 use crate::debug::InspectorOverlayFocus;
 
@@ -83,6 +83,7 @@ pub fn handle_inspector_input(
     camera: Query<(&Camera, &GlobalTransform), With<RtsCamera>>,
     units: Query<(&UnitRenderEntity, &GlobalTransform)>,
     buildings: Query<(&BuildingRenderEntity, &GlobalTransform)>,
+    presentation: BuildingInspectorPresentationParams,
     capture: InspectorCaptureParams,
     render_assets: Option<Res<TerrainRenderAssets>>,
     mut inspector: ResMut<WorldInspectorState>,
@@ -148,11 +149,21 @@ pub fn handle_inspector_input(
         inspector.select_building(building_id);
         building_selection.set(Some(building_id));
         inspector.last_message = format!("Inspecting building #{}", building_id.raw());
+        let presentation_info = capture_building_asset_presentation(
+            building_id,
+            &capture.world,
+            &capture.building_catalog,
+            &presentation.asset_server,
+            &presentation.scene_assets,
+            &presentation.render_index,
+            &presentation.render_entities,
+        );
         inspector.building_snapshot = capture_building_inspector_snapshot(
             &capture.world,
             &capture.building_catalog,
             &crate::world::BuildingInteractionProfileCatalog::default(),
             building_id,
+            Some(presentation_info),
         );
         overlay_focus.set_unit(None);
         return;

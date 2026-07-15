@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
-/// Future rendering asset lookup key (ADR-078 B1).
+/// Future rendering asset lookup key (ADR-078 B1, ADR-095 BA1).
 ///
-/// Placeholder only: does not load assets or reference the asset pipeline.
+/// Resolved at runtime to `assets/buildings/{key}.glb` by [`crate::buildings::BuildingSceneAssets`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Reflect)]
 pub struct BuildingRenderKey(pub Option<String>);
 

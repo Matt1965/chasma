@@ -94,7 +94,11 @@ pub fn draw_build_mode_ghost(
         build_mode.ghost_rotation_quadrants(),
     ))
     .unwrap_or(QuantizedRotation::Deg0);
-    let cells = occupied_cells_for_footprint(shape.as_ref(), anchor_xz, rotation);
+    let cells = build_mode
+        .last_plan
+        .as_ref()
+        .map(|plan| plan.occupied_cells.clone())
+        .unwrap_or_else(|| occupied_cells_for_footprint(shape.as_ref(), anchor_xz, rotation));
     let cell_size = crate::world::OCCUPANCY_CELL_SIZE_METERS;
 
     for cell in cells {

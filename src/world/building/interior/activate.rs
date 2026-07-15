@@ -5,9 +5,10 @@ use super::door::DoorRecord;
 use super::door_store::DoorStore;
 use super::error::InteriorError;
 use super::id::InteriorProfileId;
-use crate::world::building::catalog::BuildingCatalog;
+use crate::world::building::catalog::{BuildingCatalog, BuildingDefinition};
 use crate::world::building::record::BuildingRecord;
 use crate::world::building::state::BuildingInteriorState;
+use crate::world::building::state::BuildingLifecycleState;
 use crate::world::{
     BuildingId, BuildingSource, DoodadCatalog, DoodadPlacementOverrides, DoodadSource,
     OccupancyCatalogs, PortalId, SpaceId, WorldData, WorldPosition, create_building, create_doodad,
@@ -116,6 +117,66 @@ pub fn activate_building_interior(
     });
 
     Ok(())
+}
+
+/// Activate interior data when a building is already [`BuildingLifecycleState::Complete`].
+///
+/// Used by dev spawn and other instant-complete authoring paths that skip construction.
+pub fn try_activate_interior_if_complete(
+    world: &mut WorldData,
+    building_catalog: &BuildingCatalog,
+    interior_catalog: &super::catalog::InteriorProfileCatalog,
+    doodad_catalog: &DoodadCatalog,
+    occupancy: OccupancyCatalogs<'_>,
+    building_id: BuildingId,
+) -> Result<(), InteriorError> {
+    let record = world
+        .get_building(building_id)
+        .ok_or(InteriorError::ParentBuildingMissing(building_id))?;
+    if record.lifecycle_state != BuildingLifecycleState::Complete {
+        return Ok(());
+    }
+    if record.interior.activated {
+        return Ok(());
+    }
+    let definition = building_catalog.get(&record.definition_id).ok_or_else(|| {
+        InteriorError::InteriorSpawnFailed {
+            building_id,
+            reason: format!("missing definition `{}`", record.definition_id.as_str()),
+        }
+    })?;
+    activate_interior_for_definition(
+        world,
+        building_catalog,
+        interior_catalog,
+        doodad_catalog,
+        occupancy,
+        building_id,
+        definition,
+    )
+}
+
+fn activate_interior_for_definition(
+    world: &mut WorldData,
+    building_catalog: &BuildingCatalog,
+    interior_catalog: &super::catalog::InteriorProfileCatalog,
+    doodad_catalog: &DoodadCatalog,
+    occupancy: OccupancyCatalogs<'_>,
+    building_id: BuildingId,
+    definition: &BuildingDefinition,
+) -> Result<(), InteriorError> {
+    let Some(profile_key) = definition.interior_profile_id.as_deref() else {
+        return Ok(());
+    };
+    activate_building_interior(
+        world,
+        building_catalog,
+        interior_catalog,
+        doodad_catalog,
+        occupancy,
+        building_id,
+        &InteriorProfileId::new(profile_key),
+    )
 }
 
 fn spawn_interior_children(

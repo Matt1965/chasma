@@ -7,7 +7,7 @@ use super::door::{DoorAccessPolicy, DoorState};
 use super::id::{DoorId, InteriorProfileId};
 use super::{
     activate_building_interior, close_door, deactivate_building_interior, open_door,
-    portal_traversable, try_open_door_for_unit,
+    portal_traversable, try_activate_interior_if_complete, try_open_door_for_unit,
 };
 use crate::world::{
     Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingLifecycleState, BuildingOwnership,
@@ -55,6 +55,59 @@ fn interior_profile_loads_with_room_tags() {
     assert_eq!(profile.spaces.len(), 2);
     assert_eq!(profile.spaces[0].room_tag, Some("hall"));
     assert_eq!(profile.spaces[1].room_tag, Some("bedroom"));
+}
+
+#[test]
+fn barn_interior_profile_has_open_entrance() {
+    let catalog = interior_catalog();
+    let profile = catalog
+        .get(&InteriorProfileId::new("barn_interior"))
+        .expect("barn profile");
+    assert_eq!(profile.spaces.len(), 1);
+    assert!(profile.doors.is_empty());
+    assert_eq!(profile.portals.len(), 1);
+    assert_eq!(profile.portals[0].key, "exterior_entrance");
+}
+
+#[test]
+fn try_activate_interior_if_complete_on_dev_spawned_hut() {
+    let building_catalog = BuildingCatalog::default();
+    let doodad_catalog = DoodadCatalog::default();
+    let footprint = FootprintCatalog::default();
+    let occupancy = occ(&building_catalog, &doodad_catalog, &footprint);
+    let interior = interior_catalog();
+    let mut world = layout_world();
+
+    let record = create_building(
+        &building_catalog,
+        &mut world,
+        &BuildingDefinitionId::new("hut"),
+        position(80.0, 80.0),
+        Quat::IDENTITY,
+        BuildingSource::Dev,
+        BuildingOwnership::with_affiliation(Affiliation::Player),
+        Some(occupancy),
+    )
+    .unwrap();
+
+    try_activate_interior_if_complete(
+        &mut world,
+        &building_catalog,
+        &interior,
+        &doodad_catalog,
+        occupancy,
+        record.id,
+    )
+    .unwrap();
+
+    let activated = world.get_building(record.id).unwrap();
+    assert!(activated.interior.activated);
+    assert!(
+        !world
+            .space_registry()
+            .building_space_ids(record.id)
+            .is_empty()
+    );
 }
 
 #[test]

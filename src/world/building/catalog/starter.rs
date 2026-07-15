@@ -1,6 +1,8 @@
 /// Starter building definitions for tests and dev fallback when the workbook is absent.
 #[cfg(any(test, feature = "dev"))]
 mod fixtures {
+    use bevy::prelude::Vec3;
+
     use super::super::definition::BuildingDefinition;
     use super::super::definition_id::BuildingDefinitionId;
     use super::super::render_key::BuildingRenderKey;
@@ -94,7 +96,9 @@ mod fixtures {
             .with_inventory_access_policy(ContainerAccessPolicy::OwnerOnly)
             .with_inventory_interaction_point_key("access")
             .with_spill_on_destroy(true)
-            .with_interaction_profile_id("storage_chest"),
+            .with_interaction_profile_id("storage_chest")
+            .with_interior_profile_id("barn_interior")
+            .with_model_local_offset(Vec3::new(7.05, 0.35, -18.65)),
             BuildingDefinition::new(
                 BuildingDefinitionId::new("settlement_core"),
                 "Settlement Core",

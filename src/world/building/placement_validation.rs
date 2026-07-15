@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use super::catalog::{BuildingCatalog, BuildingDefinitionId};
 use super::ownership::BuildingOwnership;
+use super::placement_plan::quantize_placement_anchor_xz;
 use crate::world::{
     ChunkCoord, ChunkId, DoodadCatalog, FootprintCatalog, OccupancySource, OccupancyState,
     QuantizedRotation, SlopeWalkability, UnitCatalog, WorldData, WorldPosition,
@@ -120,15 +121,6 @@ pub struct BuildingPlacementContext<'a> {
     pub player_authorized: bool,
 }
 
-/// Snap global XZ to the occupancy-cell grid (2 m).
-pub fn snap_anchor_global_xz(global_xz: Vec2) -> Vec2 {
-    let size = crate::world::OCCUPANCY_CELL_SIZE_METERS;
-    Vec2::new(
-        (global_xz.x / size).round() * size,
-        (global_xz.y / size).round() * size,
-    )
-}
-
 /// Quantized yaw from 0..4 quadrant steps.
 pub fn rotation_from_quadrants(quadrants: u8) -> Quat {
     Quat::from_rotation_y((quadrants % 4) as f32 * std::f32::consts::FRAC_PI_2)
@@ -181,22 +173,23 @@ pub fn validate_building_placement(
         return BuildingPlacementValidation::rejected(BuildingPlacementRejectReason::OutOfBounds);
     }
 
-    let snapped_xz = snap_anchor_global_xz(Vec2::new(anchor_global.x, anchor_global.z));
-    let snapped = WorldPosition::from_global(
-        Vec3::new(snapped_xz.x, anchor_global.y, snapped_xz.y),
+    let quantized_xz = quantize_placement_anchor_xz(Vec2::new(anchor_global.x, anchor_global.z));
+    let quantized_position = WorldPosition::from_global(
+        Vec3::new(quantized_xz.x, anchor_global.y, quantized_xz.y),
         layout,
     );
 
-    let Some(grounded) = ground_world_position(ctx.world, snapped) else {
+    let Some(grounded) = ground_world_position(ctx.world, quantized_position) else {
         return BuildingPlacementValidation::rejected(
             BuildingPlacementRejectReason::TerrainUnavailable,
         );
     };
 
-    let anchor_xz = {
-        let g = grounded.to_global(layout);
-        Vec2::new(g.x, g.z)
-    };
+    let g = grounded.to_global(layout);
+    let final_xz = quantize_placement_anchor_xz(Vec2::new(g.x, g.z));
+    let grounded = WorldPosition::from_global(Vec3::new(final_xz.x, g.y, final_xz.y), layout);
+
+    let anchor_xz = Vec2::new(final_xz.x, final_xz.y);
     let cells = occupied_cells_for_footprint(shape.as_ref(), anchor_xz, quantized);
     if cells.is_empty() {
         return BuildingPlacementValidation::rejected(
@@ -480,19 +473,6 @@ fn unit_overlaps_footprint(
         }
     }
     false
-}
-
-/// Ground and snap a terrain click into a build anchor.
-pub fn anchor_from_terrain_position(
-    world: &WorldData,
-    click: WorldPosition,
-) -> Option<WorldPosition> {
-    let layout = world.layout();
-    let global = click.to_global(layout);
-    let snapped_xz = snap_anchor_global_xz(Vec2::new(global.x, global.z));
-    let snapped =
-        WorldPosition::from_global(Vec3::new(snapped_xz.x, global.y, snapped_xz.y), layout);
-    ground_world_position(world, snapped)
 }
 
 #[cfg(test)]

@@ -6,8 +6,9 @@ use crate::world::{
     BuildingCatalog, BuildingDefinitionId, BuildingOwnership, BuildingSource, DoodadCatalog,
     DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog,
     InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, UnitCatalog,
-    UnitDefinitionId, UnitOwnership, UnitSource, WorldData, WorldPosition, create_building,
-    create_building_with_inventory, create_doodad, create_unit_with_ownership,
+    UnitDefinitionId, UnitOwnership, UnitSource, WorldData, WorldPosition,
+    create_dev_complete_building, create_dev_complete_building_with_inventory, create_doodad,
+    create_unit_with_ownership,
 };
 
 use super::dev_mode::{DefinitionId, SpawnMode};
@@ -79,6 +80,8 @@ pub fn spawn_selected_at_position(
         },
         DefinitionId::Building(definition_id) => {
             let ownership = BuildingOwnership::with_affiliation(spawn_affiliation);
+            let position = crate::world::ground_and_quantize_building_anchor(world, position)
+                .unwrap_or(position);
             let occupancy = crate::world::OccupancyCatalogs {
                 doodad: doodad_catalog,
                 building: building_catalog,
@@ -92,25 +95,23 @@ pub fn spawn_selected_at_position(
                 let items = ItemCatalog::default();
                 let profiles = InventoryProfileCatalog::default();
                 let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
-                create_building_with_inventory(
+                create_dev_complete_building_with_inventory(
                     building_catalog,
                     world,
                     definition_id,
                     position,
                     Quat::IDENTITY,
-                    BuildingSource::Dev,
                     ownership,
                     Some(occupancy),
                     &ctx,
                 )
             } else {
-                create_building(
+                create_dev_complete_building(
                     building_catalog,
                     world,
                     definition_id,
                     position,
                     Quat::IDENTITY,
-                    BuildingSource::Dev,
                     ownership,
                     Some(occupancy),
                 )

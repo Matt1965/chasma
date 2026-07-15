@@ -51,9 +51,9 @@ pub fn build_command_plan(
         }
         CommandType::Stop => Ok(BuiltCommandPlan::StopAll),
         CommandType::Interact => Ok(BuiltCommandPlan::NoOp),
-        CommandType::HoldPosition => Err(
-            CommandBuildError::FeatureUnavailable(CommandUnavailableReason::FeatureNotImplemented),
-        ),
+        CommandType::HoldPosition => Err(CommandBuildError::FeatureUnavailable(
+            CommandUnavailableReason::FeatureNotImplemented,
+        )),
     }
 }
 
