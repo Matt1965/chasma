@@ -5,9 +5,9 @@ use bevy::prelude::*;
 use crate::world::{
     BuildingCatalog, BuildingOwnership, BuildingSource, DoodadCatalog, DoodadPlacementOverrides,
     DoodadSource, FootprintCatalog, InteriorProfileCatalog, InventoryCatalogCtx, OccupancyCatalogs,
-    UnitCatalog, UnitOwnership, UnitSource, WorldData, WorldPosition,
-    create_dev_complete_building, create_dev_complete_building_with_inventory, create_doodad,
-    create_unit_with_inventory, try_activate_interior_if_complete,
+    UnitCatalog, UnitOwnership, UnitSource, WorldData, WorldPosition, create_dev_complete_building,
+    create_dev_complete_building_with_inventory, create_doodad, create_unit_with_inventory,
+    try_activate_interior_if_complete,
 };
 
 use super::super::dev_mode::DefinitionId;

@@ -14,6 +14,7 @@ use super::occupancy::{
     ChunkOccupancyGrid, OccupancyCellCoord, OccupancyCellEntry, default_space_id,
 };
 use super::projectile::{ProjectileId, ProjectileRecord};
+use super::terrain_field::{TerrainFieldModifierStore, TerrainFieldStore};
 use super::unit::{
     ChunkUnitStore, KillAttribution, UnitId, UnitInsertError, UnitRecord, UnitRemovalEntry,
     UnitRemovalQueue,
@@ -50,6 +51,10 @@ pub struct WorldData {
     doodads: HashMap<ChunkId, ChunkDoodadStore>,
     /// World-scale biome classification raster (ADR-024).
     biome_mask: Option<BiomeMask>,
+    /// Authoritative terrain field layers (ADR-101 TF1).
+    terrain_fields: TerrainFieldStore,
+    /// Sparse runtime field modifiers (ADR-106 TF6 seam; empty by default).
+    terrain_field_modifiers: TerrainFieldModifierStore,
     /// Required O(1) index: doodad id → owning chunk (ADR-017).
     ///
     /// Must stay synchronized with [`Self::doodads`] on every insert, move, and
@@ -121,6 +126,8 @@ impl WorldData {
             chunks: HashMap::new(),
             doodads: HashMap::new(),
             biome_mask: None,
+            terrain_fields: TerrainFieldStore::new(),
+            terrain_field_modifiers: TerrainFieldModifierStore::default(),
             doodad_locations: HashMap::new(),
             procedural_doodads: HashMap::new(),
             exclusion_zones: Vec::new(),
@@ -1171,6 +1178,36 @@ impl WorldData {
             .map(|mask| mask.sample_at_global(global))
     }
 
+    /// Borrow authoritative terrain field storage (ADR-101).
+    pub fn terrain_fields(&self) -> &TerrainFieldStore {
+        &self.terrain_fields
+    }
+
+    /// Mutably borrow authoritative terrain field storage (ADR-101).
+    pub fn terrain_fields_mut(&mut self) -> &mut TerrainFieldStore {
+        &mut self.terrain_fields
+    }
+
+    /// Replace all terrain field layers (ADR-101).
+    pub fn set_terrain_fields(&mut self, store: TerrainFieldStore) {
+        self.terrain_fields = store;
+    }
+
+    /// Clear terrain field data without touching definitions (ADR-101).
+    pub fn clear_terrain_fields(&mut self) {
+        self.terrain_fields.clear();
+    }
+
+    /// Borrow sparse runtime field modifiers (ADR-106 TF6).
+    pub fn terrain_field_modifiers(&self) -> &TerrainFieldModifierStore {
+        &self.terrain_field_modifiers
+    }
+
+    /// Mutably borrow sparse runtime field modifiers (ADR-106 TF6).
+    pub fn terrain_field_modifiers_mut(&mut self) -> &mut TerrainFieldModifierStore {
+        &mut self.terrain_field_modifiers
+    }
+
     /// Append a world-scoped exclusion zone (data only; ADR-015).
     pub fn add_doodad_exclusion_zone(&mut self, zone: DoodadExclusionZone) {
         self.exclusion_zones.push(zone);
@@ -1541,11 +1578,12 @@ mod tests {
         }
 
         fn placement_at(chunk: ChunkCoord, local: Vec3) -> DoodadPlacement {
-            DoodadPlacement::new(
+            DoodadPlacement::from_legacy(
                 WorldPosition::new(chunk, LocalPosition::new(local)),
                 Quat::from_rotation_y(0.5),
                 Vec3::new(1.0, 1.0, 1.0),
             )
+            .unwrap()
         }
 
         fn sample_record(id: DoodadId, chunk: ChunkCoord, source: DoodadSource) -> DoodadRecord {

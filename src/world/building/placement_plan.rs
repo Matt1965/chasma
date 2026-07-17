@@ -13,9 +13,11 @@ use super::placement_validation::{
     BuildingPlacementConfig, BuildingPlacementContext, BuildingPlacementValidation,
     rotation_from_quadrants,
 };
+use crate::world::building_baseline_render_scale;
 use crate::world::{
-    FootprintCatalog, QuantizedRotation, WorldData, WorldPosition, effective_building_footprint,
-    ground_world_position, occupied_cells_for_footprint,
+    FootprintCatalog, QuantizedRotation, WorldData, WorldPosition,
+    effective_building_footprint_for_placement, ground_world_position,
+    occupied_cells_for_footprint,
 };
 
 /// Fine deterministic placement quantization (meters). Smaller than occupancy cells (2 m).
@@ -81,6 +83,14 @@ impl BuildingPlacementPlan {
     pub fn placement(&self) -> BuildingPlacement {
         BuildingPlacement::new(self.grounded_anchor, self.rotation)
     }
+
+    pub fn placement_with_scale(
+        self,
+        uniform_scale: crate::world::FixedScale,
+    ) -> BuildingPlacement {
+        BuildingPlacement::new(self.grounded_anchor, self.rotation)
+            .with_uniform_scale(uniform_scale)
+    }
 }
 
 /// Build a placement plan without mutating world data.
@@ -118,7 +128,9 @@ pub fn build_building_placement_plan(
             validation,
         };
     };
-    let Ok(shape) = effective_building_footprint(definition, ctx.footprint_catalog) else {
+    let Ok(shape) =
+        effective_building_footprint_for_placement(definition, ctx.footprint_catalog, 1.0)
+    else {
         return BuildingPlacementPlan {
             grounded_anchor: candidate_anchor,
             rotation,
@@ -197,11 +209,13 @@ pub fn building_model_world_transform(
     layout: crate::world::ChunkLayout,
 ) -> Transform {
     let anchor = building_anchor_world_transform(definition, placement, layout);
-    let offset = anchor.rotation * effective_model_local_offset(definition);
+    let instance_scale = placement.uniform_scale_f32();
+    let offset = anchor.rotation * effective_model_local_offset(definition) * instance_scale;
+    let render_scale = building_baseline_render_scale(definition) * instance_scale;
     Transform {
         translation: anchor.translation + offset,
         rotation: anchor.rotation,
-        scale: Vec3::ONE,
+        scale: Vec3::splat(render_scale),
     }
 }
 
@@ -301,7 +315,7 @@ mod tests {
         assert!(plan.is_valid());
         assert!(!plan.occupied_cells.is_empty());
         let recomputed = occupied_cells_for_footprint(
-            &effective_building_footprint(
+            &crate::world::effective_building_footprint(
                 building.get(&BuildingDefinitionId::new("hut")).unwrap(),
                 &footprint,
             )

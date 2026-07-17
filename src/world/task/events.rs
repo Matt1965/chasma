@@ -53,6 +53,20 @@ pub enum TaskEvent {
         unit_id: UnitId,
         reason: TaskCancelReason,
     },
+    WorkstationOperationProgress {
+        task_id: TaskId,
+        building_id: BuildingId,
+        unit_id: UnitId,
+        scaled_progress: u64,
+        accumulated_progress: u64,
+        completions: u32,
+    },
+    WorkstationOperationBlocked {
+        task_id: TaskId,
+        building_id: BuildingId,
+        unit_id: UnitId,
+        limiting_factor: String,
+    },
 }
 
 /// Aggregated task tick report.

@@ -136,6 +136,11 @@ mod tests {
             has_footprint_width_column: true,
             has_footprint_depth_column: true,
             has_footprint_radius_column: false,
+            asset_sizing: Default::default(),
+            transform_safety_class: crate::world::BuildingTransformSafetyClass::Navigable,
+            allow_instance_scale: false,
+            min_uniform_instance_scale: None,
+            max_uniform_instance_scale: None,
         }
     }
 

@@ -6,6 +6,7 @@ mod ghost_scene;
 mod input;
 mod preview;
 mod state;
+mod terrain_overlay;
 
 pub use catalog::{
     BuildCatalogRoot, handle_build_catalog_clicks, handle_build_search_keyboard,
@@ -16,3 +17,6 @@ pub use ghost_scene::{sync_build_mode_ghost_scene, tint_build_mode_ghost_scene};
 pub use input::collect_build_mode_intents;
 pub use preview::{BuildModeCursorAnchor, update_build_mode_ghost};
 pub use state::{BuildModePhase, BuildModeState};
+pub use terrain_overlay::{
+    clear_build_mode_terrain_overlay_on_exit, sync_build_mode_terrain_overlay,
+};

@@ -9,6 +9,8 @@ use bevy::prelude::*;
 pub mod assets;
 pub mod components;
 #[cfg(feature = "dev")]
+pub mod picking;
+#[cfg(feature = "dev")]
 pub mod procgen;
 pub mod settings;
 pub mod spawn;

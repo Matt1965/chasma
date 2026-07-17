@@ -85,14 +85,15 @@ mod tests {
             DoodadId::new(id),
             DoodadDefinitionId::new("tree_oak"),
             kind,
-            DoodadPlacement::new(
+            DoodadPlacement::from_legacy(
                 WorldPosition::new(
                     ChunkCoord::new(0, 0),
                     LocalPosition::new(Vec3::new(10.0, 0.0, 20.0)),
                 ),
                 Quat::IDENTITY,
                 Vec3::ONE,
-            ),
+            )
+            .unwrap(),
             DoodadSource::Authored,
         )
     }

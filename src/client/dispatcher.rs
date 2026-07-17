@@ -57,6 +57,12 @@ pub struct DispatchSimulationParams<'w> {
     pub footprint_catalog: Res<'w, FootprintCatalog>,
     pub interaction_catalog: Res<'w, crate::world::BuildingInteractionProfileCatalog>,
     pub nav_config: Res<'w, NavigationConfig>,
+    pub field_catalog: Res<'w, crate::world::TerrainFieldCatalog>,
+    pub profile_catalog: Res<'w, crate::world::FieldResponseProfileCatalog>,
+    pub requirement_catalog: Res<'w, crate::world::BuildingFieldRequirementCatalog>,
+    pub profile_revision: Res<'w, crate::world::FieldResponseProfileCatalogRevision>,
+    pub requirement_revision: Res<'w, crate::world::BuildingFieldRequirementCatalogRevision>,
+    pub assessment_store: ResMut<'w, crate::world::BuildingTerrainAssessmentStore>,
 }
 
 /// Outcome of dispatching one intent.
@@ -170,6 +176,12 @@ pub fn dispatch_client_intents(
         footprint_catalog,
         interaction_catalog,
         nav_config,
+        field_catalog,
+        profile_catalog,
+        requirement_catalog,
+        profile_revision,
+        requirement_revision,
+        mut assessment_store,
     } = catalogs;
 
     for intent in intents {
@@ -202,6 +214,12 @@ pub fn dispatch_client_intents(
                 &player_params.player_ownership,
                 frame_index.0,
                 &mut player_params.inventory_queue,
+                &field_catalog,
+                &profile_catalog,
+                &requirement_catalog,
+                profile_revision.0,
+                requirement_revision.0,
+                &mut assessment_store,
             );
             if status == IntentDispatchStatus::Applied
                 && matches!(
@@ -272,6 +290,12 @@ fn dispatch_one(
     player_ownership: &crate::player::LocalPlayerOwnership,
     simulation_tick: u64,
     inventory_queue: &mut crate::client::inventory_intent::InventoryIntentQueue,
+    field_catalog: &crate::world::TerrainFieldCatalog,
+    profile_catalog: &crate::world::FieldResponseProfileCatalog,
+    requirement_catalog: &crate::world::BuildingFieldRequirementCatalog,
+    profile_revision: u64,
+    requirement_revision: u64,
+    assessment_store: &mut crate::world::BuildingTerrainAssessmentStore,
 ) -> IntentDispatchStatus {
     match intent {
         ClientIntent::ContextualCommand { target } => dispatch_contextual_command(
@@ -439,6 +463,13 @@ fn dispatch_one(
             doodad_catalog,
             player_ownership,
             build_mode,
+            layout,
+            field_catalog,
+            profile_catalog,
+            requirement_catalog,
+            profile_revision,
+            requirement_revision,
+            assessment_store,
         ),
     }
 }
@@ -454,6 +485,13 @@ fn dispatch_place_building(
     doodad_catalog: &DoodadCatalog,
     player_ownership: &crate::player::LocalPlayerOwnership,
     build_mode: &mut BuildModeState,
+    layout: crate::world::ChunkLayout,
+    field_catalog: &crate::world::TerrainFieldCatalog,
+    profile_catalog: &crate::world::FieldResponseProfileCatalog,
+    requirement_catalog: &crate::world::BuildingFieldRequirementCatalog,
+    profile_revision: u64,
+    requirement_revision: u64,
+    assessment_store: &mut crate::world::BuildingTerrainAssessmentStore,
 ) -> IntentDispatchStatus {
     let ownership = BuildingOwnership {
         owner_id: Some(player_ownership.owner_id),
@@ -491,7 +529,23 @@ fn dispatch_place_building(
         ownership,
         occupancy,
     ) {
-        Ok(_) => {
+        Ok(record) => {
+            let catalogs = crate::world::TerrainAssessmentCatalogs {
+                buildings: building_catalog,
+                requirements: requirement_catalog,
+                profiles: profile_catalog,
+                fields: field_catalog,
+                footprints: footprint_catalog,
+                requirement_revision,
+                profile_revision,
+            };
+            let assessment =
+                crate::world::assess_building_terrain(world, &catalogs, &record, layout);
+            let key = crate::world::BuildingTerrainAssessmentKey::from_assessment(
+                record.placement,
+                &assessment,
+            );
+            assessment_store.insert(record.id, key, assessment);
             build_mode.cancel_ghost();
             IntentDispatchStatus::Applied
         }
@@ -1004,6 +1058,44 @@ mod tests {
         )
     }
 
+    struct DispatchTerrainBundle {
+        field_catalog: crate::world::TerrainFieldCatalog,
+        profile_catalog: crate::world::FieldResponseProfileCatalog,
+        requirement_catalog: crate::world::BuildingFieldRequirementCatalog,
+        assessment_store: crate::world::BuildingTerrainAssessmentStore,
+    }
+
+    impl DispatchTerrainBundle {
+        fn new() -> Self {
+            Self {
+                field_catalog: crate::world::TerrainFieldCatalog::default(),
+                profile_catalog: crate::world::FieldResponseProfileCatalog::default(),
+                requirement_catalog: crate::world::BuildingFieldRequirementCatalog::default(),
+                assessment_store: crate::world::BuildingTerrainAssessmentStore::default(),
+            }
+        }
+    }
+
+    fn terrain_args(
+        bundle: &mut DispatchTerrainBundle,
+    ) -> (
+        &crate::world::TerrainFieldCatalog,
+        &crate::world::FieldResponseProfileCatalog,
+        &crate::world::BuildingFieldRequirementCatalog,
+        u64,
+        u64,
+        &mut crate::world::BuildingTerrainAssessmentStore,
+    ) {
+        (
+            &bundle.field_catalog,
+            &bundle.profile_catalog,
+            &bundle.requirement_catalog,
+            0,
+            0,
+            &mut bundle.assessment_store,
+        )
+    }
+
     #[test]
     fn dispatcher_routes_select_unit_intent() {
         let mut selection = SelectedUnits::default();
@@ -1011,6 +1103,7 @@ mod tests {
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
         let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        let mut terrain = DispatchTerrainBundle::new();
         let catalog = UnitCatalog::default();
         let unit_id = create_unit_with_ownership(
             &catalog,
@@ -1049,6 +1142,12 @@ mod tests {
             &LocalPlayerOwnership::default(),
             0,
             &mut inventory_queue,
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert!(selection.contains(unit_id));
@@ -1061,6 +1160,7 @@ mod tests {
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
         let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        let mut terrain = DispatchTerrainBundle::new();
         let catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();
         let nav_config = NavigationConfig::default();
@@ -1103,6 +1203,12 @@ mod tests {
             &LocalPlayerOwnership::default(),
             0,
             &mut inventory_queue,
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         resolve_all_pending_unit_orders(
@@ -1128,6 +1234,7 @@ mod tests {
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
         let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        let mut terrain = DispatchTerrainBundle::new();
         let catalog = UnitCatalog::default();
 
         let status = dispatch_one(
@@ -1158,6 +1265,12 @@ mod tests {
             &LocalPlayerOwnership::default(),
             0,
             &mut inventory_queue,
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
     }
@@ -1169,6 +1282,7 @@ mod tests {
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
         let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        let mut terrain = DispatchTerrainBundle::new();
         let catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();
         let nav_config = NavigationConfig::default();
@@ -1222,6 +1336,12 @@ mod tests {
             &LocalPlayerOwnership::default(),
             0,
             &mut inventory_queue,
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
         assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
@@ -1235,6 +1355,7 @@ mod tests {
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
         let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        let mut terrain = DispatchTerrainBundle::new();
         let catalog = UnitCatalog::default();
 
         let status = dispatch_one(
@@ -1266,6 +1387,12 @@ mod tests {
             &LocalPlayerOwnership::default(),
             0,
             &mut inventory_queue,
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
     }
@@ -1277,6 +1404,8 @@ mod tests {
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
         let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        let mut terrain = DispatchTerrainBundle::new();
+        let mut terrain = DispatchTerrainBundle::new();
         let catalog = UnitCatalog::default();
         let unit_id = create_unit_with_ownership(
             &catalog,
@@ -1316,6 +1445,12 @@ mod tests {
             &LocalPlayerOwnership::default(),
             0,
             &mut inventory_queue,
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
         );
 
         assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
@@ -1328,6 +1463,7 @@ mod tests {
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
         let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        let mut terrain = DispatchTerrainBundle::new();
         let mut pending = PendingDispatchTrace::default();
         let catalog = UnitCatalog::default();
         let doodad_catalog = DoodadCatalog::default();
@@ -1373,6 +1509,12 @@ mod tests {
             &LocalPlayerOwnership::default(),
             0,
             &mut inventory_queue,
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert_eq!(pending.resolved_command, Some(CommandType::Move));
@@ -1401,6 +1543,7 @@ mod tests {
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
         let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        let mut terrain = DispatchTerrainBundle::new();
         let mut pending = PendingDispatchTrace::default();
         let catalog = UnitCatalog::default();
         let unit_id = create_unit_with_ownership(
@@ -1444,6 +1587,12 @@ mod tests {
             &LocalPlayerOwnership::default(),
             0,
             &mut inventory_queue,
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
         );
         assert_eq!(
             status,
@@ -1463,6 +1612,7 @@ mod tests {
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
         let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        let mut terrain = DispatchTerrainBundle::new();
         let catalog = UnitCatalog::default();
 
         dispatch_one(
@@ -1491,6 +1641,12 @@ mod tests {
             &LocalPlayerOwnership::default(),
             0,
             &mut inventory_queue,
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
         );
         assert!(modifiers.shift);
     }

@@ -199,17 +199,50 @@ fn build_status_line(build_mode: &BuildModeState, building_catalog: &BuildingCat
                 .map(|def| def.display_name.as_str())
                 .unwrap_or(definition_id.as_str());
             let rotation = build_mode.ghost_rotation_quadrants() * 90;
-            if let Some(validation) = &build_mode.last_validation {
+            let placement_line = if let Some(validation) = &build_mode.last_validation {
                 if validation.valid {
-                    return format!("{name} • {rotation}° • Valid — click to place");
+                    "Valid — click to place".to_string()
+                } else if let Some(reason) = validation.primary_reason {
+                    reason.label().to_string()
+                } else {
+                    "Unavailable".to_string()
                 }
-                if let Some(reason) = validation.primary_reason {
-                    return format!("{name} • {rotation}° • {}", reason.label());
-                }
+            } else {
+                "...".to_string()
+            };
+            let terrain_line = build_mode
+                .last_terrain_assessment
+                .as_ref()
+                .filter(|assessment| !assessment.per_requirement.is_empty())
+                .map(format_build_terrain_status)
+                .unwrap_or_default();
+            if terrain_line.is_empty() {
+                format!("{name} • {rotation}° • {placement_line}")
+            } else {
+                format!("{name} • {rotation}° • {placement_line}\n{terrain_line}")
             }
-            format!("{name} • {rotation}° • ...")
         }
     }
+}
+
+fn format_build_terrain_status(assessment: &crate::world::BuildingTerrainAssessment) -> String {
+    let mut lines = Vec::new();
+    for requirement in &assessment.per_requirement {
+        let field = requirement.field_id.as_str();
+        let average = crate::world::format_field_average_display(requirement.average_value);
+        let coverage =
+            crate::world::format_coverage_display(requirement.usable_coverage_basis_points);
+        lines.push(format!("{field}: {average} • Coverage {coverage}"));
+    }
+    lines.push(format!(
+        "Expected Output Rate: {}",
+        crate::world::format_efficiency_display(assessment.terrain_efficiency_basis_points)
+    ));
+    lines.push(format!("Status: {}", assessment.status_label()));
+    if !assessment.can_operate {
+        lines.push("Placement Allowed".to_string());
+    }
+    lines.join("\n")
 }
 
 fn category_matches(build_mode: &BuildModeState, definition: &BuildingDefinition) -> bool {

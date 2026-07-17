@@ -14,6 +14,7 @@ pub mod asset;
 pub mod catalog;
 pub mod components;
 pub mod decode;
+pub mod field_overlay;
 pub mod grace;
 pub mod lifecycle;
 pub mod load;
@@ -48,6 +49,11 @@ pub use components::TerrainChunkMesh;
 #[cfg(any(test, feature = "terrain-import"))]
 pub use decode::decode_chunk_payload;
 pub use decode::{decode_chunk, decode_manifest};
+pub use field_overlay::{
+    DEFAULT_OVERLAY_OPACITY_BP, MAX_PLAYER_OVERLAY_OPACITY_BP, TerrainFieldOverlayAssets,
+    TerrainFieldOverlayDiagnostics, TerrainFieldOverlayMesh, TerrainFieldOverlayPlugin,
+    TerrainOverlaySelection, TerrainOverlayState,
+};
 pub use lifecycle::TerrainStreamingSystems;
 #[cfg(any(test, feature = "terrain-import"))]
 pub use load::{load_chunk_from_path, load_chunk_payload_from_paths, load_world_from_manifest};
@@ -107,6 +113,8 @@ impl Plugin for TerrainRuntimePlugin {
                 .init_resource::<TerrainStreamingPerfLatest>()
                 .init_resource::<TerrainStreamingPerfFileLog>();
         }
+
+        app.add_plugins(field_overlay::TerrainFieldOverlayPlugin);
 
         app.add_systems(
             Update,

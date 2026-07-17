@@ -44,8 +44,16 @@ impl SpaceRegistry {
         self.spaces.get(&id)
     }
 
+    pub fn get_space_mut(&mut self, id: SpaceId) -> Option<&mut SpaceRecord> {
+        self.spaces.get_mut(&id)
+    }
+
     pub fn get_portal(&self, id: PortalId) -> Option<&PortalRecord> {
         self.portals.get(&id)
+    }
+
+    pub fn get_portal_mut(&mut self, id: PortalId) -> Option<&mut PortalRecord> {
+        self.portals.get_mut(&id)
     }
 
     pub fn spaces(&self) -> impl Iterator<Item = (&SpaceId, &SpaceRecord)> {

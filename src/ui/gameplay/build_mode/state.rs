@@ -29,6 +29,8 @@ pub struct BuildModeState {
     pub search_focused: bool,
     pub last_validation: Option<BuildingPlacementValidation>,
     pub last_plan: Option<BuildingPlacementPlan>,
+    pub last_terrain_assessment: Option<crate::world::BuildingTerrainAssessment>,
+    pub last_terrain_assessment_signature: Option<u64>,
 }
 
 impl BuildModeState {
@@ -48,6 +50,8 @@ impl BuildModeState {
         self.phase = BuildModePhase::CatalogOpen;
         self.last_validation = None;
         self.last_plan = None;
+        self.last_terrain_assessment = None;
+        self.last_terrain_assessment_signature = None;
     }
 
     pub fn exit(&mut self) {
@@ -55,6 +59,8 @@ impl BuildModeState {
         self.search_focused = false;
         self.last_validation = None;
         self.last_plan = None;
+        self.last_terrain_assessment = None;
+        self.last_terrain_assessment_signature = None;
     }
 
     pub fn cancel_ghost(&mut self) {
@@ -62,6 +68,8 @@ impl BuildModeState {
             self.phase = BuildModePhase::CatalogOpen;
             self.last_validation = None;
             self.last_plan = None;
+            self.last_terrain_assessment = None;
+            self.last_terrain_assessment_signature = None;
         }
     }
 
@@ -72,6 +80,8 @@ impl BuildModeState {
         };
         self.last_validation = None;
         self.last_plan = None;
+        self.last_terrain_assessment = None;
+        self.last_terrain_assessment_signature = None;
     }
 
     pub fn rotate_ghost(&mut self) {
@@ -82,6 +92,8 @@ impl BuildModeState {
             *rotation_quadrants = rotation_quadrants.wrapping_add(1) % 4;
             self.last_validation = None;
             self.last_plan = None;
+            self.last_terrain_assessment = None;
+            self.last_terrain_assessment_signature = None;
         }
     }
 

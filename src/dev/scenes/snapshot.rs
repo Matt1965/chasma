@@ -14,11 +14,11 @@ use crate::world::{
 use super::SceneCaptureContext;
 
 /// On-disk scene format version.
-pub const SCENE_VERSION: u32 = 7;
+pub const SCENE_VERSION: u32 = 9;
 
 /// Whether a scene file version can be loaded by the current runtime.
 pub fn scene_version_supported(version: u32) -> bool {
-    matches!(version, 1 | 4 | 5 | 6 | 7)
+    matches!(version, 1 | 4 | 5 | 6 | 7 | 8)
 }
 
 /// Pure-data scene snapshot — no logic (ADR-045).
@@ -162,6 +162,10 @@ pub struct SceneUnitRecord {
     pub inventory_id: Option<u32>,
 }
 
+fn default_building_uniform_scale_milli() -> i32 {
+    1_000
+}
+
 /// Serializable building instance for dev scenes (ADR-082 B5).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SceneBuildingRecord {
@@ -169,6 +173,9 @@ pub struct SceneBuildingRecord {
     pub definition_id: String,
     pub position: SceneWorldPosition,
     pub rotation: SceneQuat,
+    /// Dev instance uniform scale (v9+). Milliunits (`1000` = 1.0).
+    #[serde(default = "default_building_uniform_scale_milli")]
+    pub uniform_scale_milli: i32,
     pub lifecycle_state: String,
     pub progress_0_1: f32,
     pub current_hp: u32,
@@ -220,7 +227,23 @@ pub struct SceneDoodadRecord {
     pub definition_id: String,
     pub kind: String,
     pub position: SceneWorldPosition,
+    /// Canonical orientation (v8+). Millidegrees per axis.
+    #[serde(default)]
+    pub orientation_yaw_mdeg: i32,
+    #[serde(default)]
+    pub orientation_pitch_mdeg: i32,
+    #[serde(default)]
+    pub orientation_roll_mdeg: i32,
+    /// Canonical non-uniform scale (v8+). Milliunits per axis (`1000` = 1.0).
+    #[serde(default)]
+    pub scale_x_milli: i32,
+    #[serde(default)]
+    pub scale_y_milli: i32,
+    #[serde(default)]
+    pub scale_z_milli: i32,
+    /// Legacy v7 rotation — used when quantized scale fields are absent.
     pub rotation: SceneQuat,
+    /// Legacy v7 scale — used when `scale_x_milli` is zero.
     pub scale: [f32; 3],
     pub source: SceneDoodadSource,
     #[serde(default)]
@@ -509,6 +532,7 @@ impl SceneBuildingRecord {
             definition_id: record.definition_id.as_str().to_string(),
             position: SceneWorldPosition::from_world(record.placement.position),
             rotation: SceneQuat::from_quat(record.placement.rotation),
+            uniform_scale_milli: record.placement.uniform_scale.milli(),
             lifecycle_state: record.lifecycle_state.label().to_string(),
             progress_0_1: record.construction.progress_0_1,
             current_hp: record.vitals.current_hp,
@@ -547,13 +571,16 @@ impl SceneBuildingRecord {
         if self.max_hp == 0 || self.current_hp > self.max_hp {
             return Err(SceneRecordError::InvalidBuildingVitals);
         }
+        let uniform_scale = crate::world::FixedScale::from_milli(self.uniform_scale_milli)
+            .unwrap_or(crate::world::FixedScale::ONE);
         Ok(BuildingRecord {
             id: crate::world::BuildingId::new(self.id),
             definition_id: crate::world::BuildingDefinitionId::new(&self.definition_id),
             placement: crate::world::BuildingPlacement::new(
                 self.position.to_world()?,
                 self.rotation.to_quat(),
-            ),
+            )
+            .with_uniform_scale(uniform_scale),
             ownership,
             vitals: BuildingVitals::clamped(self.current_hp, self.max_hp),
             lifecycle_state,
@@ -616,33 +643,64 @@ fn parse_building_lifecycle(label: &str) -> Result<BuildingLifecycleState, Scene
 
 impl SceneDoodadRecord {
     pub fn from_record(record: &DoodadRecord) -> Self {
+        let scale_vec = record.placement.scale_vec3();
+        let (scale_x_milli, scale_y_milli, scale_z_milli) = match record.placement.scale {
+            crate::world::AuthoringScale::Uniform(fixed) => {
+                let m = fixed.milli();
+                (m, m, m)
+            }
+            crate::world::AuthoringScale::NonUniform { x, y, z } => {
+                (x.milli(), y.milli(), z.milli())
+            }
+        };
         Self {
             id: record.id.raw(),
             definition_id: record.definition_id.as_str().to_string(),
             kind: doodad_kind_label(record.kind).to_string(),
             position: SceneWorldPosition::from_world(record.placement.position),
-            rotation: SceneQuat::from_quat(record.placement.rotation),
-            scale: [
-                record.placement.scale.x,
-                record.placement.scale.y,
-                record.placement.scale.z,
-            ],
+            orientation_yaw_mdeg: record.placement.orientation.yaw_millidegrees,
+            orientation_pitch_mdeg: record.placement.orientation.pitch_millidegrees,
+            orientation_roll_mdeg: record.placement.orientation.roll_millidegrees,
+            scale_x_milli,
+            scale_y_milli,
+            scale_z_milli,
+            rotation: SceneQuat::from_quat(record.placement.rotation_quat()),
+            scale: [scale_vec.x, scale_vec.y, scale_vec.z],
             source: SceneDoodadSource::from_source(record.source),
             parent_building_id: record.metadata.parent_building_id.map(|id| id.raw()),
             interior_space_id: record.metadata.interior_space_id.map(|id| id.raw()),
         }
     }
 
+    fn uses_quantized_scale(&self) -> bool {
+        self.scale_x_milli != 0
+    }
+
     pub fn to_record(&self, kind: DoodadKind) -> Result<DoodadRecord, SceneRecordError> {
+        let placement = if self.uses_quantized_scale() {
+            crate::world::DoodadPlacement::from_millidegrees_and_scale(
+                self.position.to_world()?,
+                self.orientation_yaw_mdeg,
+                self.orientation_pitch_mdeg,
+                self.orientation_roll_mdeg,
+                self.scale_x_milli,
+                self.scale_y_milli,
+                self.scale_z_milli,
+            )
+            .map_err(|_| SceneRecordError::InvalidPosition)?
+        } else {
+            crate::world::DoodadPlacement::from_legacy(
+                self.position.to_world()?,
+                self.rotation.to_quat(),
+                Vec3::new(self.scale[0], self.scale[1], self.scale[2]),
+            )
+            .map_err(|_| SceneRecordError::InvalidPosition)?
+        };
         let mut record = DoodadRecord::new(
             DoodadId::new(self.id),
             crate::world::DoodadDefinitionId::new(&self.definition_id),
             kind,
-            crate::world::DoodadPlacement::new(
-                self.position.to_world()?,
-                self.rotation.to_quat(),
-                Vec3::new(self.scale[0], self.scale[1], self.scale[2]),
-            ),
+            placement,
             self.source.to_source(),
         );
         record.metadata.parent_building_id =
@@ -791,6 +849,7 @@ fn task_state_label(state: TaskState) -> String {
         TaskState::Available => "Available".into(),
         TaskState::Assigned => "Assigned".into(),
         TaskState::InProgress => "InProgress".into(),
+        TaskState::BlockedWaiting => "BlockedWaiting".into(),
         TaskState::Completed => "Completed".into(),
         TaskState::Canceled => "Canceled".into(),
     }
@@ -818,6 +877,7 @@ fn parse_task_state(label: &str) -> Result<TaskState, SceneRecordError> {
         "Available" => TaskState::Available,
         "Assigned" => TaskState::Assigned,
         "InProgress" => TaskState::InProgress,
+        "BlockedWaiting" => TaskState::BlockedWaiting,
         "Completed" => TaskState::Completed,
         "Canceled" => TaskState::Canceled,
         _ => return Err(SceneRecordError::InvalidTaskState),

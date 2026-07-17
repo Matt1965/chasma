@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use crate::terrain::world_position_to_render_global;
-use crate::world::{ChunkId, DoodadId, DoodadRecord, WorldConfig};
+use crate::world::{ChunkId, DoodadId, DoodadRecord, WorldConfig, doodad_final_render_scale};
 
 use super::components::DoodadRenderEntity;
 
@@ -11,6 +11,7 @@ use super::components::DoodadRenderEntity;
 pub fn spawn_doodad_render_entity(
     commands: &mut Commands,
     record: &DoodadRecord,
+    definition: &crate::world::DoodadDefinition,
     chunk_id: ChunkId,
     scene: Handle<Scene>,
     config: &WorldConfig,
@@ -19,6 +20,7 @@ pub fn spawn_doodad_render_entity(
     let layout = config.chunk_layout();
     let translation =
         world_position_to_render_global(record.placement.position, layout, vertical_scale);
+    let scale = doodad_final_render_scale(definition, record.placement.scale_vec3());
     commands
         .spawn((
             DoodadRenderEntity {
@@ -28,8 +30,8 @@ pub fn spawn_doodad_render_entity(
             SceneRoot(scene),
             Transform {
                 translation,
-                rotation: record.placement.rotation,
-                scale: record.placement.scale,
+                rotation: record.placement.rotation_quat(),
+                scale,
             },
             Visibility::default(),
         ))

@@ -5,6 +5,7 @@
 use bevy::prelude::*;
 
 use super::catalog::{BuildingCatalog, BuildingDefinitionId};
+use super::id::BuildingId;
 use super::ownership::BuildingOwnership;
 use super::placement_plan::quantize_placement_anchor_xz;
 use crate::world::{
@@ -270,6 +271,191 @@ pub fn validate_building_placement(
     validation
 }
 
+/// Validate a dev building transform candidate, excluding the edited building from overlap checks.
+pub fn validate_building_transform_placement(
+    ctx: &BuildingPlacementContext<'_>,
+    definition_id: &BuildingDefinitionId,
+    placement: super::placement::BuildingPlacement,
+    exclude_building_id: BuildingId,
+) -> BuildingPlacementValidation {
+    if !ctx.player_authorized {
+        return BuildingPlacementValidation::rejected(BuildingPlacementRejectReason::NotAuthorized);
+    }
+
+    let Some(definition) = ctx.building_catalog.get(definition_id) else {
+        return BuildingPlacementValidation::rejected(
+            BuildingPlacementRejectReason::MissingDefinition,
+        );
+    };
+    if !definition.enabled {
+        return BuildingPlacementValidation::rejected(
+            BuildingPlacementRejectReason::DisabledDefinition,
+        );
+    }
+
+    let quantized = match QuantizedRotation::from_quat(placement.rotation) {
+        Ok(value) => value,
+        Err(_) => {
+            return BuildingPlacementValidation::rejected(
+                BuildingPlacementRejectReason::UnsupportedRotation,
+            );
+        }
+    };
+
+    let shape = match crate::world::effective_building_footprint_for_placement(
+        definition,
+        ctx.footprint_catalog,
+        placement.uniform_scale_f32(),
+    ) {
+        Ok(shape) => shape,
+        Err(_) => {
+            return BuildingPlacementValidation::rejected(
+                BuildingPlacementRejectReason::CorruptFootprint,
+            );
+        }
+    };
+
+    let layout = ctx.world.layout();
+    let anchor_global = placement.position.to_global(layout);
+    if !anchor_global.is_finite() {
+        return BuildingPlacementValidation::rejected(BuildingPlacementRejectReason::OutOfBounds);
+    }
+
+    let quantized_xz = quantize_placement_anchor_xz(Vec2::new(anchor_global.x, anchor_global.z));
+    let quantized_position = WorldPosition::from_global(
+        Vec3::new(quantized_xz.x, anchor_global.y, quantized_xz.y),
+        layout,
+    );
+
+    let Some(grounded) = ground_world_position(ctx.world, quantized_position) else {
+        return BuildingPlacementValidation::rejected(
+            BuildingPlacementRejectReason::TerrainUnavailable,
+        );
+    };
+
+    let g = grounded.to_global(layout);
+    let final_xz = quantize_placement_anchor_xz(Vec2::new(g.x, g.z));
+    let grounded = WorldPosition::from_global(Vec3::new(final_xz.x, g.y, final_xz.y), layout);
+
+    let anchor_xz = Vec2::new(final_xz.x, final_xz.y);
+    let cells = occupied_cells_for_footprint(shape.as_ref(), anchor_xz, quantized);
+    if cells.is_empty() {
+        return BuildingPlacementValidation::rejected(
+            BuildingPlacementRejectReason::CorruptFootprint,
+        );
+    }
+
+    let mut validation = BuildingPlacementValidation {
+        valid: true,
+        primary_reason: None,
+        reasons: Vec::new(),
+        grounded_anchor: Some(grounded),
+    };
+
+    let exclude = Some(OccupancySource::Building(exclude_building_id));
+    if let Some(source) = footprint_occupancy_conflict(ctx, &cells, exclude) {
+        match source {
+            OccupancySource::Building(_) => {
+                validation.push_reason(BuildingPlacementRejectReason::OccupiedByBuilding);
+            }
+            OccupancySource::Doodad(_) => {
+                validation.push_reason(BuildingPlacementRejectReason::OccupiedByDoodad);
+            }
+        }
+    }
+
+    if building_record_overlap_excluding(
+        ctx,
+        shape.as_ref(),
+        anchor_xz,
+        quantized,
+        exclude_building_id,
+    ) {
+        validation.push_reason(BuildingPlacementRejectReason::OccupiedByBuilding);
+    }
+
+    if doodad_footprint_overlap(ctx, shape.as_ref(), anchor_xz, quantized) {
+        validation.push_reason(BuildingPlacementRejectReason::OccupiedByDoodad);
+    }
+
+    if unit_overlaps_footprint(ctx, shape.as_ref(), anchor_xz, quantized) {
+        validation.push_reason(BuildingPlacementRejectReason::OccupiedByUnit);
+    }
+
+    validation
+}
+
+fn building_record_overlap_excluding(
+    ctx: &BuildingPlacementContext<'_>,
+    shape: &crate::world::FootprintShape,
+    anchor_xz: Vec2,
+    rotation: QuantizedRotation,
+    exclude_building_id: BuildingId,
+) -> bool {
+    let layout = ctx.world.layout();
+    let probe_cells = occupied_cells_for_footprint(shape, anchor_xz, rotation);
+    let mut chunks: Vec<ChunkCoord> = Vec::new();
+    for cell in probe_cells {
+        let chunk = chunk_for_occupancy_cell(cell, layout);
+        if !chunks.contains(&chunk) {
+            chunks.push(chunk);
+        }
+    }
+    let base_chunks = chunks.clone();
+    for chunk in base_chunks {
+        for dz in -1..=1 {
+            for dx in -1..=1 {
+                let neighbor = ChunkCoord::new(chunk.x + dx, chunk.z + dz);
+                if !chunks.contains(&neighbor) {
+                    chunks.push(neighbor);
+                }
+            }
+        }
+    }
+    chunks.sort_by_key(|c| (c.x, c.z));
+
+    for chunk_coord in chunks {
+        let chunk_id = ChunkId::new(chunk_coord);
+        let Some(store) = ctx.world.buildings_in_chunk(chunk_id) else {
+            continue;
+        };
+        for record in store.records() {
+            if record.id == exclude_building_id {
+                continue;
+            }
+            let definition = match ctx.building_catalog.get(&record.definition_id) {
+                Some(def) => def,
+                None => continue,
+            };
+            let other_shape = match crate::world::effective_building_footprint_for_placement(
+                definition,
+                ctx.footprint_catalog,
+                record.placement.uniform_scale_f32(),
+            ) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            let other_rot = match QuantizedRotation::from_quat(record.placement.rotation) {
+                Ok(r) => r,
+                Err(_) => continue,
+            };
+            let other_global = record.placement.position.to_global(layout);
+            let other_xz = Vec2::new(other_global.x, other_global.z);
+            if footprints_overlap(
+                shape,
+                anchor_xz,
+                rotation,
+                other_shape.as_ref(),
+                other_xz,
+                other_rot,
+            ) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn footprint_occupancy_conflict(
     ctx: &BuildingPlacementContext<'_>,
     cells: &[crate::world::OccupancyCellCoord],
@@ -359,6 +545,25 @@ fn building_record_overlap(
     false
 }
 
+fn footprints_overlap_continuous(
+    a_shape: &crate::world::FootprintShape,
+    a_anchor: Vec2,
+    a_yaw_radians: f32,
+    b_shape: &crate::world::FootprintShape,
+    b_anchor: Vec2,
+    b_yaw_radians: f32,
+) -> bool {
+    use crate::world::{agent_overlaps_footprint_continuous, occupied_cells_for_footprint_yaw};
+    let cells = occupied_cells_for_footprint_yaw(a_shape, a_anchor, a_yaw_radians);
+    for cell in cells {
+        let center = cell.center_global();
+        if agent_overlaps_footprint_continuous(center, 0.01, b_shape, b_anchor, b_yaw_radians) {
+            return true;
+        }
+    }
+    false
+}
+
 fn footprints_overlap(
     a_shape: &crate::world::FootprintShape,
     a_anchor: Vec2,
@@ -402,34 +607,20 @@ fn doodad_footprint_overlap(
             continue;
         };
         for record in store.records() {
-            let (blocks, radius) = if let Some(def) = ctx.doodad_catalog.get(&record.definition_id)
-            {
-                (def.blocks_movement, def.block_radius_meters)
-            } else if default_blocks_movement(record.kind) {
-                (
-                    true,
-                    crate::world::conservative_block_radius_for_kind(record.kind),
-                )
-            } else {
-                continue;
-            };
-            if !blocks || radius <= 0.0 {
+            let collision =
+                crate::world::resolve_doodad_collision_from_catalog(record, ctx.doodad_catalog);
+            if !collision.blocks_movement {
                 continue;
             }
-            let doodad_shape = FootprintShape::Circle {
-                radius_meters: radius,
-            };
             let doodad_global = record.placement.position.to_global(layout);
             let doodad_xz = Vec2::new(doodad_global.x, doodad_global.z);
-            let doodad_rot = QuantizedRotation::from_quat(record.placement.rotation)
-                .unwrap_or(QuantizedRotation::Deg0);
-            if footprints_overlap(
+            if footprints_overlap_continuous(
                 shape,
                 anchor_xz,
-                rotation,
-                &doodad_shape,
+                rotation.radians(),
+                &collision.shape,
                 doodad_xz,
-                doodad_rot,
+                collision.yaw_radians,
             ) {
                 return true;
             }

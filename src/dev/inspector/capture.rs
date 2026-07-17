@@ -135,6 +135,7 @@ pub fn capture_building_inspector_snapshot(
     interaction_catalog: &crate::world::BuildingInteractionProfileCatalog,
     building_id: BuildingId,
     presentation: Option<BuildingAssetPresentationInfo>,
+    operation_probe: Option<BuildingOperationProbe>,
 ) -> Option<BuildingInspectorSnapshot> {
     let record = world.get_building(building_id)?.clone();
     let definition = building_catalog.get(&record.definition_id)?;
@@ -166,6 +167,7 @@ pub fn capture_building_inspector_snapshot(
                 .map(|point| point.key.to_string())
         });
     let presentation = presentation.unwrap_or_default();
+    let probe = operation_probe.unwrap_or_default();
     Some(BuildingInspectorSnapshot {
         building_id,
         definition_id: record.definition_id.clone(),
@@ -187,7 +189,58 @@ pub fn capture_building_inspector_snapshot(
         fallback_reason: presentation.fallback_reason,
         space_tag_count: presentation.space_tag_count,
         roof_tag_count: presentation.roof_tag_count,
+        terrain_output_rate: probe.terrain_output_rate,
+        final_output_rate: probe.final_output_rate,
+        operation_progress: probe.operation_progress,
+        operation_completions: probe.operation_completions,
+        operation_limiting_factor: probe.operation_limiting_factor,
     })
+}
+
+/// Optional TF5 operation probe fields for dev inspector.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct BuildingOperationProbe {
+    pub terrain_output_rate: Option<String>,
+    pub final_output_rate: Option<String>,
+    pub operation_progress: Option<String>,
+    pub operation_completions: Option<u32>,
+    pub operation_limiting_factor: Option<String>,
+}
+
+/// Probe authoritative operational efficiency and progress for dev inspector (ADR-105 TF5).
+pub fn probe_building_operation(
+    world: &WorldData,
+    building_catalog: &BuildingCatalog,
+    operation: &mut crate::world::BuildingOperationParams<'_>,
+    operation_store: &crate::world::BuildingOperationStore,
+    building_id: BuildingId,
+) -> BuildingOperationProbe {
+    let mut probe = BuildingOperationProbe::default();
+    if !world
+        .get_building(building_id)
+        .is_some_and(is_building_operational)
+    {
+        return probe;
+    }
+    let mut ctx = operation.efficiency_context(world, building_catalog);
+    if let Ok(report) = crate::world::building_operational_efficiency(&mut ctx, building_id) {
+        probe.terrain_output_rate = Some(crate::world::format_efficiency_display(
+            report.terrain_efficiency_basis_points,
+        ));
+        probe.final_output_rate = Some(crate::world::format_efficiency_display(
+            report.final_output_efficiency_basis_points,
+        ));
+        if report.limiting_factor != crate::world::OperationalLimitingFactor::None {
+            probe.operation_limiting_factor = Some(report.limiting_factor.label().to_string());
+        }
+    }
+    if let Some(state) = operation_store.get(building_id) {
+        let pct = state.progress.value() as f32 / crate::world::PRODUCTION_PROGRESS_ONE_UNIT as f32
+            * 100.0;
+        probe.operation_progress = Some(format!("{pct:.1}%"));
+        probe.operation_completions = Some(state.completion_count);
+    }
+    probe
 }
 
 /// Capture runtime building asset presentation for dev inspector (ADR-095 BA1).

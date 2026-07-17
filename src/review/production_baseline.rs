@@ -164,6 +164,7 @@ fn movement_with_empty_catalogs_does_not_panic_on_empty_world() {
         &crate::world::CorpseSettings::default(),
         1.0 / 60.0,
         0,
+        None,
     );
     assert_eq!(report.movement.moved, 0);
 }

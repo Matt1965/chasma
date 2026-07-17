@@ -7,6 +7,7 @@ use crate::world::{
     BuildingCatalog, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, UnitCatalog,
 };
 
+use super::asset_sizing::format_asset_sizing_panel;
 use super::catalog_browser::CatalogBrowserEntry;
 use super::catalog_cache::{
     CatalogBrowseIndex, CatalogFilterCache, DevSearchDebounce, browse_catalog_entries,
@@ -80,6 +81,9 @@ pub(crate) struct DevSearchClearButton;
 
 #[derive(Component, Debug)]
 pub(crate) struct DevToolStatusText;
+
+#[derive(Component, Debug)]
+pub(crate) struct DevAssetSizingText;
 
 #[derive(Component, Debug)]
 pub(crate) struct DevListText;
@@ -229,6 +233,7 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
                     DevTab::Inspector,
                     DevTab::Debug,
                     DevTab::WorldTools,
+                    DevTab::TerrainFields,
                 ] {
                     tabs.spawn((
                         DevTabButton { tab },
@@ -316,6 +321,21 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
                 TextColor(Color::srgba(0.70, 0.88, 0.78, 1.0)),
                 Node {
                     min_height: Val::Px(56.0),
+                    ..default()
+                },
+            ));
+
+            root.spawn((
+                DevAssetSizingText,
+                DevPanelUi,
+                Text::new("Asset sizing: select a definition"),
+                TextFont {
+                    font_size: 10.0,
+                    ..default()
+                },
+                TextColor(Color::srgba(0.65, 0.78, 0.88, 1.0)),
+                Node {
+                    min_height: Val::Px(72.0),
                     ..default()
                 },
             ));
@@ -599,6 +619,8 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
                 },
             ));
 
+            super::terrain_field::spawn_terrain_field_section(root);
+
             super::time_of_day_panel::spawn_time_of_day_section(root);
             super::lighting_panel::spawn_lighting_section(root);
 
@@ -669,6 +691,7 @@ fn tab_label(tab: DevTab) -> &'static str {
         DevTab::Inspector => "Inspect",
         DevTab::Debug => "Debug",
         DevTab::WorldTools => "World",
+        DevTab::TerrainFields => "Fields",
     }
 }
 
@@ -723,6 +746,16 @@ pub(crate) fn sync_dev_panel_content(
                 With<DevSpawnHintText>,
                 Without<DevSearchText>,
                 Without<DevToolStatusText>,
+                Without<DevAssetSizingText>,
+            ),
+        >,
+        Query<
+            &mut Text,
+            (
+                With<DevAssetSizingText>,
+                Without<DevSearchText>,
+                Without<DevToolStatusText>,
+                Without<DevSpawnHintText>,
             ),
         >,
         Query<
@@ -789,6 +822,7 @@ pub(crate) fn sync_dev_panel_content(
             }
             DevTab::Debug => "Debug overlay toggles".to_string(),
             DevTab::WorldTools => "World authoring tools".to_string(),
+            DevTab::TerrainFields => "Terrain field browser and cursor probe".to_string(),
         };
     }
 
@@ -819,7 +853,7 @@ pub(crate) fn sync_dev_panel_content(
         Vec::new()
     };
 
-    for (row, interaction, mut text, mut bg) in texts.p4().iter_mut() {
+    for (row, interaction, mut text, mut bg) in texts.p5().iter_mut() {
         if show_scenes {
             if row.index < visible_scenes.len() {
                 let entry = &visible_scenes[row.index];
@@ -861,6 +895,15 @@ pub(crate) fn sync_dev_panel_content(
     }
 
     if let Ok(mut text) = texts.p3().single_mut() {
+        **text = format_asset_sizing_panel(
+            dev_state.selected_definition.as_ref(),
+            &unit_catalog,
+            &doodad_catalog,
+            &building_catalog,
+        );
+    }
+
+    if let Ok(mut text) = texts.p4().single_mut() {
         **text = if dev_state.active_tab == DevTab::Scenes {
             if dev_state.last_scene_message.is_empty() {
                 "Scenes tab: type name, Save Current World, click row to load".into()

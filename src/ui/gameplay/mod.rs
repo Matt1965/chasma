@@ -17,6 +17,7 @@ mod selection_ui;
 mod squad_panel;
 mod state;
 mod styles;
+pub mod terrain_analysis;
 
 pub use build_mode::{
     BuildModeState, collect_build_mode_intents, draw_build_mode_ghost, handle_build_catalog_clicks,
@@ -58,3 +59,4 @@ pub use state::{
     GameplayUiState, command_state_display, derive_command_state, derive_cursor_mode,
     derive_gameplay_snapshot,
 };
+pub use terrain_analysis::TerrainAnalysisToggleButton;

@@ -17,7 +17,9 @@ use crate::world::{
 
 use super::catalog_cache::DevSearchDebounce;
 use super::dev_mode::{DevModeInputGate, DevModeState, DevTab, DevTextFieldFocus};
+use super::gizmo::TransformEditState;
 use super::history::DevSpawnRecord;
+use super::inspector::WorldInspectorState;
 use super::spawn_tools::dev_spawn_position_from_terrain_click;
 use super::tools::{
     BatchSpawnRequest, BatchSpawnScratch, DevPlacementPreview, DevPreviewAnchor,
@@ -65,6 +67,7 @@ pub fn dev_mode_keyboard_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut dev_state: ResMut<DevModeState>,
     mut debounce: ResMut<DevSearchDebounce>,
+    inspector: Res<crate::dev::inspector::WorldInspectorState>,
 ) {
     if keyboard.just_pressed(KeyCode::F12) {
         dev_state.toggle();
@@ -77,12 +80,16 @@ pub fn dev_mode_keyboard_input(
     let ctrl = keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight);
 
     if keyboard.just_pressed(KeyCode::Slash) || (ctrl && keyboard.just_pressed(KeyCode::KeyF)) {
-        if dev_state.active_tab == DevTab::Scenes {
-            dev_state.focus_scene_name();
-        } else {
-            dev_state.focus_catalog_search();
+        let transform_target =
+            inspector.selected_doodad.is_some() || inspector.selected_building.is_some();
+        if !transform_target {
+            if dev_state.active_tab == DevTab::Scenes {
+                dev_state.focus_scene_name();
+            } else {
+                dev_state.focus_catalog_search();
+            }
+            return;
         }
-        return;
     }
 
     if keyboard.just_pressed(KeyCode::Tab) && !dev_state.has_text_focus() {
@@ -94,7 +101,8 @@ pub fn dev_mode_keyboard_input(
             DevTab::Scenes => DevTab::Inspector,
             DevTab::Inspector => DevTab::Debug,
             DevTab::Debug => DevTab::WorldTools,
-            DevTab::WorldTools => DevTab::Units,
+            DevTab::WorldTools => DevTab::TerrainFields,
+            DevTab::TerrainFields => DevTab::Units,
         };
         dev_state.list_scroll = 0;
     }
@@ -105,7 +113,11 @@ pub fn dev_mode_keyboard_input(
     }
 
     if keyboard.just_pressed(KeyCode::KeyE) {
-        dev_state.enabled_only = !dev_state.enabled_only;
+        let gizmo_context =
+            inspector.selected_doodad.is_some() || inspector.selected_building.is_some();
+        if !gizmo_context {
+            dev_state.enabled_only = !dev_state.enabled_only;
+        }
     }
 
     if keyboard.just_pressed(KeyCode::KeyT) {
@@ -275,14 +287,25 @@ pub struct DevPanelHoverState {
 /// Track panel hover from UI interaction states.
 pub fn update_dev_panel_hover_state(
     dev_state: Res<DevModeState>,
-    gate: Res<DevModeInputGate>,
     interactions: Query<&Interaction, With<DevPanelUi>>,
     mut hover: ResMut<DevPanelHoverState>,
-    mut gameplay_hud: ResMut<crate::ui::gameplay::PlayerHudHoverState>,
 ) {
     hover.hovered =
         dev_state.enabled && interactions.iter().any(|state| *state != Interaction::None);
-    gameplay_hud.dev_panel_blocks = DevModeInputGate::should_block(&gate);
+}
+
+/// Copy dev input gate into gameplay HUD after all dev click handlers run.
+pub fn sync_dev_gameplay_input_block(
+    dev_state: Res<DevModeState>,
+    gate: Res<DevModeInputGate>,
+    transform_edit: Res<TransformEditState>,
+    inspector: Res<WorldInspectorState>,
+    mut gameplay_hud: ResMut<crate::ui::gameplay::PlayerHudHoverState>,
+) {
+    let transform_editing = dev_state.enabled
+        && transform_edit.mode.is_transform()
+        && (inspector.selected_doodad.is_some() || inspector.selected_building.is_some());
+    gameplay_hud.dev_panel_blocks = DevModeInputGate::should_block(&gate) || transform_editing;
 }
 
 /// Update terrain anchor under cursor for brush preview.
@@ -323,6 +346,8 @@ pub fn update_dev_preview_anchor(
 /// Left-click terrain batch spawn when a definition is selected (before gameplay input).
 pub fn handle_dev_spawn_click(
     mut params: DevSpawnClickParams,
+    inspector: Res<WorldInspectorState>,
+    transform_edit: Res<TransformEditState>,
     windows: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform), With<RtsCamera>>,
     mut batch_scratch: Local<BatchSpawnScratch>,
@@ -337,6 +362,14 @@ pub fn handle_dev_spawn_click(
     }
 
     if params.gate.spawn_handled_this_frame {
+        return;
+    }
+
+    if inspector.selected_doodad.is_some() || inspector.selected_building.is_some() {
+        return;
+    }
+
+    if transform_edit.mode.is_transform() || transform_edit.dragging {
         return;
     }
 

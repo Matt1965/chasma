@@ -6,8 +6,8 @@ use crate::debug::{
     ClientFrameIndex, CommandTraceBuffer, MovementBlockObservability, PendingSimulationTrace,
 };
 use crate::simulation::{
-    SIMULATION_TICK_SECONDS, SimulationCatalogParams, SimulationClock, SimulationControlState,
-    SimulationTickReport, run_simulation_tick,
+    BuildingSimulationParams, SIMULATION_TICK_SECONDS, SimulationCatalogParams, SimulationClock,
+    SimulationControlState, SimulationTickReport, run_simulation_tick,
 };
 use crate::ui::gameplay::PlayerHudState;
 use crate::units::input::SelectedUnits;
@@ -84,6 +84,7 @@ pub fn tick_unit_movement(
     mut movement_blocks: ResMut<MovementBlockObservability>,
     mut combat_ai_scan: ResMut<CombatAiScanState>,
     catalogs: SimulationCatalogParams,
+    mut building_sim: BuildingSimulationParams,
 ) {
     let plan = clock.plan_frame(time.delta_secs(), &control);
     for _ in 0..plan.tick_count {
@@ -93,6 +94,8 @@ pub fn tick_unit_movement(
 
         let tick = control.current_tick;
         let inventory_ctx = catalogs.inventory_ctx();
+        let mut operation =
+            building_sim.operation_params(&catalogs.building_catalog, &catalogs.footprint_catalog);
         let step_report = run_simulation_tick(
             &mut world,
             &catalogs.unit_catalog,
@@ -113,6 +116,7 @@ pub fn tick_unit_movement(
             &catalogs.corpse_settings,
             SIMULATION_TICK_SECONDS,
             tick,
+            Some(&mut operation),
         );
         control.complete_tick();
         merge_step_trace(&mut pending_trace, &step_report);
@@ -224,6 +228,7 @@ mod tests {
                     &crate::world::CorpseSettings::default(),
                     SIMULATION_TICK_SECONDS,
                     tick,
+                    None,
                 );
                 control.complete_tick();
             }

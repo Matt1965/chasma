@@ -1,0 +1,89 @@
+(
+    profiles: [
+        (
+            id: ("water_generated_v1"),
+            display_name: "Generated Water Potential",
+            source_kind: Generated,
+            output_field_id: ("water"),
+            enabled: true,
+            profile_revision: "1",
+            imported: None,
+            generated: Some((
+                generator: LowlandWaterPotential(
+                    aquifer_scale_meters: 512.0,
+                    lowland_bias: 0.65,
+                    mountain_suppression: 0.35,
+                ),
+                generator_version: 1,
+                world_seed: 42001,
+                dependencies: [
+                    Heightfield,
+                ],
+            )),
+        ),
+        (
+            id: ("iron_generated_v1"),
+            display_name: "Generated Iron Veins",
+            source_kind: Generated,
+            output_field_id: ("iron"),
+            enabled: true,
+            profile_revision: "1",
+            imported: None,
+            generated: Some((
+                generator: GeologicalVeins(
+                    domain_scale_meters: 768.0,
+                    vein_scale_meters: 96.0,
+                    warp_strength: 0.45,
+                    concentration_threshold: 0.62,
+                    background: 4000,
+                    rich_value: 58000,
+                ),
+                generator_version: 1,
+                world_seed: 42002,
+                dependencies: [],
+            )),
+        ),
+        (
+            id: ("copper_generated_v1"),
+            display_name: "Generated Copper Pockets",
+            source_kind: Generated,
+            output_field_id: ("copper"),
+            enabled: true,
+            profile_revision: "1",
+            imported: None,
+            generated: Some((
+                generator: CopperPockets(
+                    pocket_scale_meters: 64.0,
+                    pocket_density: 0.18,
+                    background: 2500,
+                    rich_value: 52000,
+                ),
+                generator_version: 1,
+                world_seed: 42003,
+                dependencies: [],
+            )),
+        ),
+        (
+            id: ("stone_generated_v1"),
+            display_name: "Generated Stone Exposure",
+            source_kind: Generated,
+            output_field_id: ("stone"),
+            enabled: true,
+            profile_revision: "1",
+            imported: None,
+            generated: Some((
+                generator: StoneExposure(
+                    elevation_weight: 0.55,
+                    slope_weight: 0.35,
+                    noise_scale_meters: 256.0,
+                ),
+                generator_version: 1,
+                world_seed: 42004,
+                dependencies: [
+                    Heightfield,
+                    BiomeMask,
+                ],
+            )),
+        ),
+    ],
+)

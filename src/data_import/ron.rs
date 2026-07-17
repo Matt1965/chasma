@@ -3,6 +3,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use crate::world::asset_sizing::AssetSizingDefinition;
 use crate::world::{BiomeId, DoodadDefinition, DoodadKind};
 use crate::world::{BuildingCategoryDefinition, BuildingDefinition, FootprintSpec, FootprintType};
 
@@ -28,6 +29,8 @@ pub struct DoodadDefinitionRon {
     pub spawn_weight: f32,
     pub random_rotation_y: bool,
     pub placement_tags: Vec<String>,
+    #[serde(default)]
+    pub asset_sizing: AssetSizingDefinition,
 }
 
 impl From<&DoodadDefinition> for DoodadDefinitionRon {
@@ -50,6 +53,7 @@ impl From<&DoodadDefinition> for DoodadDefinitionRon {
             spawn_weight: definition.spawn_weight,
             random_rotation_y: definition.random_rotation_y,
             placement_tags: definition.placement_tags.clone(),
+            asset_sizing: definition.asset_sizing.clone(),
         }
     }
 }
@@ -137,6 +141,8 @@ pub struct BuildingDefinitionRon {
     pub default_space_id: Option<String>,
     pub max_slope_degrees: f32,
     pub enabled: bool,
+    #[serde(default)]
+    pub asset_sizing: AssetSizingDefinition,
 }
 
 impl From<&BuildingCategoryDefinition> for BuildingCategoryRon {
@@ -192,6 +198,7 @@ impl From<&BuildingDefinition> for BuildingDefinitionRon {
             default_space_id: definition.default_space_id.clone(),
             max_slope_degrees: definition.max_slope_degrees,
             enabled: definition.enabled,
+            asset_sizing: definition.asset_sizing.clone(),
         }
     }
 }
@@ -361,6 +368,35 @@ pub fn export_inventory_profiles_to_ron(
 ) -> Result<(), DataImportError> {
     let catalog = InventoryProfileCatalogRon {
         definitions: definitions.iter().map(InventoryProfileRon::from).collect(),
+    };
+    let text =
+        ron::ser::to_string_pretty(&catalog, ron::ser::PrettyConfig::default()).map_err(|err| {
+            DataImportError::Io {
+                path: path.to_path_buf(),
+                message: err.to_string(),
+            }
+        })?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| DataImportError::Io {
+            path: parent.to_path_buf(),
+            message: err.to_string(),
+        })?;
+    }
+    fs::write(path, text).map_err(|err| DataImportError::Io {
+        path: path.to_path_buf(),
+        message: err.to_string(),
+    })
+}
+
+/// Export terrain field definitions to committed production RON (ADR-101 TF1).
+pub fn export_terrain_fields_to_ron(
+    path: &Path,
+    definitions: &[crate::world::TerrainFieldDefinition],
+) -> Result<(), DataImportError> {
+    use crate::world::TerrainFieldCatalogRon;
+
+    let catalog = TerrainFieldCatalogRon {
+        definitions: definitions.to_vec(),
     };
     let text =
         ron::ser::to_string_pretty(&catalog, ron::ser::PrettyConfig::default()).map_err(|err| {

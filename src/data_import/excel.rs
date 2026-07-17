@@ -6,6 +6,12 @@ use super::schema::{
     DoodadImportRow, RANDOM_ROTATION_COLUMN_ALIASES, REQUIRED_COLUMNS,
     normalize_doodad_definition_id, parse_bool_yn, parse_enabled_cell,
 };
+use crate::data_import::asset_sizing::{
+    DOODAD_COLLISION_SHAPE, DOODAD_GROUNDING_MODE, asset_sizing_from_columns,
+    parse_asset_sizing_columns, parse_optional_f32,
+};
+use crate::world::asset_sizing::{DoodadCollisionShape, DoodadGroundingMode};
+use crate::world::authoring_transform::AuthoringScale;
 
 pub const DOODADS_SHEET_NAME: &str = "Doodads";
 
@@ -142,7 +148,71 @@ fn parse_row(
         enabled_was_blank,
         blocks_movement,
         block_radius_meters,
+        asset_sizing: asset_sizing_from_columns(&parse_asset_sizing_columns(
+            columns,
+            cells,
+            &|col| text(col),
+        ))
+        .unwrap_or_default(),
+        default_instance_scale: default_instance_scale_from_columns(columns, cells, &text)?,
+        allow_nonuniform_instance_scale: optional_bool(columns, cells, "Allow Nonuniform Scale")?
+            .unwrap_or(true),
+        collision_shape: text(DOODAD_COLLISION_SHAPE)
+            .parse_shape()
+            .unwrap_or(DoodadCollisionShape::None),
+        base_collision_radius_x_meters: optional_float(
+            columns,
+            cells,
+            "Base Collision Radius X M",
+        )?,
+        base_collision_radius_z_meters: optional_float(
+            columns,
+            cells,
+            "Base Collision Radius Z M",
+        )?,
+        grounding_mode: text(DOODAD_GROUNDING_MODE)
+            .parse_grounding()
+            .unwrap_or(DoodadGroundingMode::TerrainGrounded),
     })
+}
+
+fn default_instance_scale_from_columns(
+    columns: &HashMap<String, usize>,
+    cells: &[calamine::Data],
+    text: &dyn Fn(&str) -> String,
+) -> Result<AuthoringScale, String> {
+    let x = parse_optional_f32(&text("Default Instance Scale X"));
+    let y = parse_optional_f32(&text("Default Instance Scale Y"));
+    let z = parse_optional_f32(&text("Default Instance Scale Z"));
+    match (x, y, z) {
+        (None, None, None) => Ok(AuthoringScale::uniform_one()),
+        (Some(x), Some(y), Some(z)) => AuthoringScale::from_non_uniform_f32(x, y, z)
+            .map_err(|_| "default instance scale out of range".to_string()),
+        _ => Err("Default Instance Scale X/Y/Z must all be set together".to_string()),
+    }
+}
+
+trait DoodadColumnParsing {
+    fn parse_shape(self) -> Option<DoodadCollisionShape>;
+    fn parse_grounding(self) -> Option<DoodadGroundingMode>;
+}
+
+impl DoodadColumnParsing for String {
+    fn parse_shape(self) -> Option<DoodadCollisionShape> {
+        if self.trim().is_empty() {
+            None
+        } else {
+            DoodadCollisionShape::parse(&self)
+        }
+    }
+
+    fn parse_grounding(self) -> Option<DoodadGroundingMode> {
+        if self.trim().is_empty() {
+            None
+        } else {
+            DoodadGroundingMode::parse(&self)
+        }
+    }
 }
 
 fn optional_bool(

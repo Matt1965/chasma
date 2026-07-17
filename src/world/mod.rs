@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+pub mod asset_sizing;
+pub mod authoring_transform;
 mod biome;
 mod building;
 mod chunk;
@@ -24,6 +26,7 @@ mod settlement;
 mod space;
 mod task;
 mod terrain;
+mod terrain_field;
 mod unit;
 mod weapon;
 
@@ -34,6 +37,21 @@ pub use weapon::{
     WeaponCatalogError, WeaponDefinition, WeaponDefinitionId,
 };
 
+pub use asset_sizing::{
+    AssetSizingDefinition, AssetSizingError, AssetSizingReport, BaselineScaleResult,
+    DoodadCollisionShape, DoodadGroundingMode, SizeReferenceAxis, SizingMigrationState,
+    SizingPolicy, SourceBoundsOrigin, SourceDimensions, building_baseline_render_scale,
+    building_model_child_local_transform, building_uses_model_child, calculate_baseline_scale,
+    doodad_baseline_render_scale, doodad_final_render_scale,
+    doodad_visual_collision_mismatch_warning, finalize_building_definition,
+    finalize_doodad_definition, finalize_unit_definition, quantize_baseline_scale, sort_reports,
+    unit_baseline_render_scale,
+};
+pub use authoring_transform::{
+    AuthoringScale, AuthoringTransform, BuildingTransformSafetyClass, FixedScale, OrientationError,
+    QuantizedOrientation, SCALE_MILLI_MAX, SCALE_MILLI_MIN, SCALE_MILLI_ONE, ScaleError,
+    TransformCapabilities,
+};
 pub use biome::{
     BiomeColorEntry, BiomeColorMapping, BiomeId, BiomeImportError, BiomeMask, BiomeMaskBounds,
     BiomeSample, import_biome_mask_from_png, import_biome_mask_from_png_bytes,
@@ -49,37 +67,57 @@ pub use building::starter_building_category_definitions;
 #[cfg(any(test, feature = "dev"))]
 pub use building::starter_definitions as starter_building_definitions;
 pub use building::{
-    BuildingAuthoringError, BuildingCapabilities, BuildingCatalog, BuildingCatalogError,
-    BuildingCategoryCatalog, BuildingCategoryCatalogError, BuildingCategoryDefinition,
-    BuildingCategoryId, BuildingConstructionReport, BuildingConstructionSettings,
-    BuildingDefinition, BuildingDefinitionId, BuildingId, BuildingInsertError,
+    AssessmentRebuildReport, BuildingAuthoringError, BuildingCapabilities, BuildingCatalog,
+    BuildingCatalogError, BuildingCategoryCatalog, BuildingCategoryCatalogError,
+    BuildingCategoryDefinition, BuildingCategoryId, BuildingConstructionReport,
+    BuildingConstructionSettings, BuildingDefinition, BuildingDefinitionId,
+    BuildingFieldRequirementAssessment, BuildingFieldRequirementCatalog,
+    BuildingFieldRequirementCatalogRevision, BuildingFieldRequirementDefinition,
+    BuildingFieldRequirementError, BuildingFieldRequirementKind, BuildingId, BuildingInsertError,
     BuildingInteractionProfile, BuildingInteractionProfileCatalog, BuildingInteriorState,
-    BuildingLifecycleError, BuildingLifecycleEvent, BuildingLifecycleState, BuildingOwnership,
-    BuildingPlacement, BuildingPlacementConfig, BuildingPlacementContext,
-    BuildingPlacementRejectReason, BuildingPlacementValidation, BuildingRebuildError,
-    BuildingRecord, BuildingRenderKey, BuildingRestoreError, BuildingSource, BuildingSpaces,
-    BuildingVitals, ChunkBuildingStore, ConstructionState, DoorAccessPolicy, DoorId, DoorRecord,
-    DoorState, DoorStore, FootprintSpec, FootprintType, INTERACTION_WORK_RANGE_METERS,
-    InteractionPointDefinition, InteriorError, InteriorProfileCatalog, InteriorProfileId,
-    activate_building_interior, add_building_construction_progress, anchor_from_terrain_position,
-    apply_dev_complete_building_state, build_building_placement_plan,
-    building_container_access_policy, building_inventory_operational,
-    building_anchor_render_transform, building_has_model_correction,
+    BuildingLifecycleError, BuildingLifecycleEvent, BuildingLifecycleState,
+    BuildingOperationParams, BuildingOperationSaveState, BuildingOperationState,
+    BuildingOperationStore, BuildingOwnership, BuildingPlacement, BuildingPlacementConfig,
+    BuildingPlacementContext, BuildingPlacementPlan, BuildingPlacementRejectReason,
+    BuildingPlacementValidation, BuildingRebuildError, BuildingRecord, BuildingRenderKey,
+    BuildingRestoreError, BuildingSource, BuildingSpaces, BuildingTerrainAssessment,
+    BuildingTerrainAssessmentKey, BuildingTerrainAssessmentStore, BuildingTerrainWarning,
+    BuildingTransformCandidate, BuildingTransformCatalogs, BuildingTransformEditError,
+    BuildingTransformEditOptions, BuildingTransformEditReport, BuildingVitals, ChunkBuildingStore,
+    ConstructionState, DoorAccessPolicy, DoorId, DoorRecord, DoorState, DoorStore,
+    EfficiencyBasisPoints, FieldResponseEvaluationError, FieldResponsePoint,
+    FieldResponseProfileCatalog, FieldResponseProfileCatalogRevision,
+    FieldResponseProfileDefinition, FieldResponseProfileError, FieldResponseProfileId,
+    FootprintSpec, FootprintType, INTERACTION_WORK_RANGE_METERS, InteractionPointDefinition,
+    InteriorError, InteriorProfileCatalog, InteriorProfileId, MAX_EFFICIENCY_BASIS_POINTS,
+    OperationalEfficiencyContext, OperationalEfficiencyError, OperationalEfficiencyReport,
+    OperationalLimitingFactor, PLACEMENT_QUANTIZE_METERS, PRODUCTION_PROGRESS_ONE_UNIT,
+    TerrainAssessmentCatalogs, TerrainAssessmentError, activate_building_interior,
+    add_building_construction_progress, anchor_from_terrain_position,
+    apply_dev_complete_building_state, assess_building_terrain,
+    assess_building_terrain_at_placement, build_building_placement_plan,
+    building_anchor_render_transform, building_container_access_policy,
+    building_has_model_correction, building_inventory_operational,
     building_model_correction_local_transform, building_model_render_transform,
-    building_model_world_transform,
-    can_unit_access_building_inventory, can_unit_access_inventory, close_door, create_building,
-    create_building_with_inventory, create_dev_complete_building,
-    create_dev_complete_building_with_inventory, damage_building, deactivate_building_interior,
-    destroy_building, destroy_door, heal_building, interaction_point_world_position,
-    is_building_operational, lock_door, lookup_building, move_building, open_door, place_player_building, place_player_building_with_inventory,
-    portal_traversable, quantize_placement_anchor_xz, rebuild_building_world_indexes,
-    remove_building, rotation_from_quadrants, set_building_container_locked,
+    building_model_world_transform, building_operational_efficiency,
+    can_unit_access_building_inventory, can_unit_access_inventory, close_door,
+    combine_output_efficiency, create_building, create_building_with_inventory,
+    create_dev_complete_building, create_dev_complete_building_with_inventory, damage_building,
+    deactivate_building_interior, destroy_building, destroy_door, evaluate_field_response,
+    field_value_from_percent, field_value_to_percent_display, format_coverage_display,
+    format_efficiency_display, format_field_average_display, ground_and_quantize_building_anchor,
+    hash_sample_cells, heal_building, interaction_point_world_position, is_building_operational,
+    load_building_field_requirement_catalog, load_field_response_profile_catalog, lock_door,
+    lookup_building, move_building, open_door, place_player_building,
+    place_player_building_with_inventory, portal_traversable, quantize_placement_anchor_xz,
+    rebuild_all_building_terrain_assessments, rebuild_building_world_indexes, remove_building,
+    resolve_building_field_sample_cells, rotation_from_quadrants, set_building_container_locked,
     set_building_lifecycle_stage, snap_anchor_global_xz, space_route_for_unit,
-    step_all_building_construction, transition_to_ruins, try_activate_interior_if_complete,
-    try_open_door_at_portal_for_unit, try_open_door_for_unit, validate_building_for_restore,
-    validate_building_inventory_links, validate_building_inventory_owner,
-    validate_building_placement, BuildingPlacementPlan, PLACEMENT_QUANTIZE_METERS,
-    ground_and_quantize_building_anchor,
+    step_all_building_construction, step_workstation_operation, transition_to_ruins,
+    try_activate_interior_if_complete, try_open_door_at_portal_for_unit, try_open_door_for_unit,
+    update_building_transform, validate_building_for_restore, validate_building_inventory_links,
+    validate_building_inventory_owner, validate_building_placement,
+    validate_building_transform_placement,
 };
 pub use building::{
     BuildingInventoryContext, BuildingInventoryError, BuildingInventoryRemovalPolicy,
@@ -113,16 +151,20 @@ pub use doodad::{
     BiomeFilterResult, ChunkDoodadStore, ChunkProceduralMaterializeOutcome, DeterministicRng,
     DoodadAuthoringError, DoodadCatalog, DoodadCatalogError, DoodadDefinition, DoodadDefinitionId,
     DoodadExclusionZone, DoodadGenerationContext, DoodadGenerationSettings, DoodadId,
-    DoodadInsertError, DoodadKind, DoodadMaterializationReport, DoodadMetadata, DoodadPlacement,
-    DoodadPlacementOverrides, DoodadRecord, DoodadRenderKey, DoodadSource, DoodadSpawnCandidate,
+    DoodadInsertError, DoodadInstanceCollision, DoodadKind, DoodadMaterializationReport,
+    DoodadMetadata, DoodadPlacement, DoodadPlacementOverrides, DoodadRecord, DoodadRenderKey,
+    DoodadSource, DoodadSpawnCandidate, DoodadTransformCandidate, DoodadTransformEditOptions,
     ExclusionFilterOptions, ExclusionFilterResult, FinalizedDoodadPlacement,
     MaterializationOptions, PlacementFinalizationResult, ProceduralDoodadKey,
-    TerrainValidationResult, chunk_needs_procedural_materialization, create_doodad,
-    default_blocks_movement, filter_candidates_by_biome, filter_candidates_by_exclusion_zones,
-    filter_candidates_by_terrain, finalize_placements, generate_chunk_doodads,
-    generate_chunk_doodads_with_settings, lookup_doodad, materialize_candidates,
-    materialize_candidates_with_exclusion, materialize_candidates_with_options, move_doodad,
-    remove_doodad, try_materialize_procedural_chunk_doodads,
+    TerrainValidationResult, TransformEditError, TransformEditReport,
+    chunk_needs_procedural_materialization, create_doodad, default_blocks_movement,
+    filter_candidates_by_biome, filter_candidates_by_exclusion_zones, filter_candidates_by_terrain,
+    finalize_placements, generate_chunk_doodads, generate_chunk_doodads_with_settings,
+    lookup_doodad, materialize_candidates, materialize_candidates_with_exclusion,
+    materialize_candidates_with_options, move_doodad, nudge_doodad_position, remove_doodad,
+    resolve_doodad_collision, resolve_doodad_collision_from_catalog,
+    tilted_blocker_projection_warning, try_materialize_procedural_chunk_doodads,
+    update_doodad_transform,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use doodad::{DoodadRestoreError, restore_doodad_record, validate_doodad_for_restore};
@@ -209,13 +251,15 @@ pub use occupancy::{
     OccupancyRegistrationPlan, OccupancySource, OccupancyState, PassabilityAgent,
     PassabilityBlockReason, PassabilityCatalogs, PassabilityResult, PassabilityUnavailableReason,
     QuantizedRotation, SURFACE_SPACE_ID, StaticOccupancyResult, agent_overlaps_footprint,
-    apply_registration_plan, chunk_for_occupancy_cell, conservative_block_radius_for_kind,
-    default_space_id, effective_building_footprint, inline_building_footprint,
+    agent_overlaps_footprint_continuous, apply_registration_plan, chunk_for_occupancy_cell,
+    conservative_block_radius_for_kind, default_space_id, effective_building_footprint,
+    effective_building_footprint_for_placement, inline_building_footprint,
     is_position_blocked_by_static_occupancy, is_position_blocked_for_agent, is_position_passable,
-    occupied_cells_for_footprint, plan_register_building, plan_register_doodad,
-    query_passability_at, query_passability_in_space, query_static_occupancy_at,
-    rebuild_occupancy_index, register_building_occupancy, register_doodad_occupancy,
-    unregister_source_occupancy, update_building_occupancy, update_doodad_occupancy,
+    occupied_cells_for_footprint, occupied_cells_for_footprint_yaw, plan_register_building,
+    plan_register_doodad, query_passability_at, query_passability_in_space,
+    query_static_occupancy_at, rebuild_occupancy_index, register_building_occupancy,
+    register_doodad_occupancy, unregister_source_occupancy, update_building_occupancy,
+    update_doodad_occupancy,
 };
 pub use ownership::{
     Affiliation, DEFAULT_PLAYER_OWNER_ID, DEFAULT_PLAYER_TEAM_ID, OwnerId,
@@ -263,6 +307,44 @@ pub use terrain::{
 pub use terrain::{
     SlopeWalkability, classify_slope_walkability, estimate_slope_degrees, ground_world_position,
     is_position_slope_walkable, slope_at, try_ground_world_position, try_sample_height_at_position,
+};
+#[cfg(any(test, feature = "dev"))]
+pub use terrain_field::starter_definitions as starter_terrain_field_definitions;
+#[cfg(any(test, feature = "dev"))]
+pub use terrain_field::starter_source_profiles;
+pub use terrain_field::{
+    BASIS_POINTS_ONE_HUNDRED_PERCENT, BasisPoints, BasisPointsError, BiomeDependencyRef,
+    BuildDependencies, DEFAULT_TERRAIN_FIELD_MANIFEST_PATH, FieldAreaAvailability,
+    FieldAvailability, FieldAvailabilityReason, FieldBuildReport, FieldLocalSampleCoord,
+    FieldMappingError, FieldSampleRegion, FieldSampleSource, FieldValueSemantics, PackageReport,
+    SharedEdgeAxis, TERRAIN_FIELD_BYTES_PER_TILE, TERRAIN_FIELD_CATALOG_RON_PATH,
+    TERRAIN_FIELD_INTERVALS_PER_CHUNK, TERRAIN_FIELD_MANIFEST_VERSION,
+    TERRAIN_FIELD_SAMPLE_SPACING_METERS, TERRAIN_FIELD_SAMPLES_PER_EDGE,
+    TERRAIN_FIELD_SAMPLES_PER_TILE, TERRAIN_FIELD_SOURCE_PROFILES_RON_PATH,
+    TERRAIN_FIELD_TILE_VERSION, TerrainFieldAreaReport, TerrainFieldCatalog,
+    TerrainFieldCatalogError, TerrainFieldCatalogRon, TerrainFieldCategory,
+    TerrainFieldContractError, TerrainFieldDefinition, TerrainFieldDefinitionError, TerrainFieldId,
+    TerrainFieldImageChannel, TerrainFieldImageOrientation, TerrainFieldInterpolationDebug,
+    TerrainFieldLayer, TerrainFieldLoadError, TerrainFieldLoadSummary, TerrainFieldManifest,
+    TerrainFieldManifestConfig, TerrainFieldManifestEntry, TerrainFieldModifierEntry,
+    TerrainFieldModifierKind, TerrainFieldModifierStore, TerrainFieldOverlayStyle,
+    TerrainFieldPackageDiff, TerrainFieldQueryError, TerrainFieldResampling, TerrainFieldSample,
+    TerrainFieldSourceKind, TerrainFieldSourceProfileCatalog, TerrainFieldSourceProfileCatalogRon,
+    TerrainFieldSourceProfileDefinition, TerrainFieldSourceProfileId, TerrainFieldSourceProvenance,
+    TerrainFieldStatistics, TerrainFieldStorageError, TerrainFieldStore, TerrainFieldTile,
+    TerrainFieldTileFile, TerrainFieldValueRemap, TerrainFieldWorldBounds, bilinear_sample_u16,
+    bootstrap_constant_field, bootstrap_dev_synthetic_fields, bootstrap_diagonal_gradient_field,
+    bootstrap_terrain_fields_on_startup, bootstrap_with_extent, bootstrap_world_terrain_fields,
+    bootstrap_x_gradient_field, bootstrap_z_gradient_field, build_and_package_all_enabled,
+    build_and_package_field, build_field_layer_from_profile, compose_terrain_field_value,
+    decode_manifest, decode_tile, diff_terrain_field_stores, expand_u8_to_u16,
+    expected_samples_per_edge, field_local_to_debug, field_sample_region_from_cells,
+    fraction_to_q8, load_terrain_field_catalog, load_terrain_field_source_profile_catalog,
+    load_terrain_fields_from_manifest, package_field_layers, partition_raster_to_tiles,
+    reload_terrain_fields_with_invalidation, resample_imported_image, sample_terrain_field_area,
+    sample_terrain_field_at, target_sample_dimensions, terrain_field_tile_path,
+    tile_path_for_chunk, try_load_terrain_fields_from_manifest, validate_terrain_field_id,
+    validate_world_config_for_fields, world_position_to_field_local,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use unit::starter_animation_profile_definitions;
@@ -431,6 +513,14 @@ impl Plugin for WorldFoundationPlugin {
             app.init_resource::<ItemCategoryCatalog>();
             app.init_resource::<ItemCatalog>();
             app.init_resource::<InventoryProfileCatalog>();
+            app.insert_resource(crate::world::load_terrain_field_catalog());
+            app.insert_resource(crate::world::load_terrain_field_source_profile_catalog());
+            app.insert_resource(crate::world::load_field_response_profile_catalog());
+            app.insert_resource(crate::world::load_building_field_requirement_catalog());
+            app.init_resource::<crate::world::FieldResponseProfileCatalogRevision>();
+            app.init_resource::<crate::world::BuildingFieldRequirementCatalogRevision>();
+            app.init_resource::<crate::world::BuildingTerrainAssessmentStore>();
+            app.init_resource::<crate::world::BuildingOperationStore>();
         }
         #[cfg(feature = "dev")]
         {
@@ -438,8 +528,12 @@ impl Plugin for WorldFoundationPlugin {
             let animation_profiles = crate::data_import::resolve_dev_animation_profile_catalog();
             let inventory_profiles = crate::data_import::resolve_dev_inventory_profile_catalog();
             let (item_categories, item_catalog) = crate::data_import::resolve_dev_item_catalog();
+            let mut sizing_reports = Vec::new();
             let (building_categories, building_catalog) =
-                crate::data_import::resolve_dev_building_catalog(&inventory_profiles);
+                crate::data_import::resolve_dev_building_catalog(
+                    &inventory_profiles,
+                    Some(&mut sizing_reports),
+                );
             let footprint_catalog = crate::data_import::resolve_dev_footprint_catalog();
             app.insert_resource(weapons.clone());
             app.insert_resource(animation_profiles.clone());
@@ -449,12 +543,24 @@ impl Plugin for WorldFoundationPlugin {
             app.insert_resource(building_categories);
             app.insert_resource(building_catalog);
             app.insert_resource(footprint_catalog);
-            app.insert_resource(crate::data_import::resolve_dev_doodad_catalog());
+            app.insert_resource(crate::data_import::resolve_dev_doodad_catalog(Some(
+                &mut sizing_reports,
+            )));
             app.insert_resource(crate::data_import::resolve_dev_unit_catalog(
                 &weapons,
                 &animation_profiles,
                 &inventory_profiles,
+                Some(&mut sizing_reports),
             ));
+            app.insert_resource(crate::data_import::resolve_dev_terrain_field_catalog());
+            app.insert_resource(crate::world::load_terrain_field_source_profile_catalog());
+            app.insert_resource(crate::world::FieldResponseProfileCatalog::default());
+            app.insert_resource(crate::world::BuildingFieldRequirementCatalog::default());
+            app.init_resource::<crate::world::FieldResponseProfileCatalogRevision>();
+            app.init_resource::<crate::world::BuildingFieldRequirementCatalogRevision>();
+            app.init_resource::<crate::world::BuildingTerrainAssessmentStore>();
+            app.init_resource::<crate::world::BuildingOperationStore>();
+            crate::data_import::export_dev_asset_sizing_reports(&mut sizing_reports);
         }
         app.init_resource::<WorldData>();
         app.init_resource::<NavigationConfig>();
@@ -462,5 +568,6 @@ impl Plugin for WorldFoundationPlugin {
         app.init_resource::<BuildingInteractionProfileCatalog>();
         app.init_resource::<crate::world::CorpseSettings>();
         app.init_resource::<crate::world::ItemPileSettings>();
+        app.add_systems(Startup, crate::world::bootstrap_terrain_fields_on_startup);
     }
 }

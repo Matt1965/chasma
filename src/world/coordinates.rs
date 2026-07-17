@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// Integer chunk coordinate on the 2D horizontal grid.
 ///
@@ -10,7 +11,9 @@ use bevy::prelude::*;
 ///
 /// The chunk coordinate is also the authoritative chunk identity (see
 /// [`crate::world::ChunkId`]).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Serialize, Deserialize, PartialOrd, Ord,
+)]
 pub struct ChunkCoord {
     pub x: i32,
     pub z: i32,

@@ -4,6 +4,7 @@ use super::schema::{
     DEFAULT_COLLISION_RADIUS_METERS, DEFAULT_MAX_SLOPE_DEGREES, DEFAULT_MOVE_SPEED_MPS,
     DEFAULT_RENDER_SCALE, REQUIRED_COLUMNS, UnitImportRow,
 };
+use crate::data_import::asset_sizing::{asset_sizing_from_columns, parse_asset_sizing_columns};
 use crate::data_import::error::{DataImportError, RowImportError};
 use crate::data_import::schema::parse_enabled_cell;
 
@@ -192,6 +193,12 @@ fn parse_row(
             String::new()
         },
         has_inventory_profile_column: columns.contains_key("Inventory Profile ID"),
+        asset_sizing: asset_sizing_from_columns(&parse_asset_sizing_columns(
+            columns,
+            cells,
+            &|col| text(col),
+        ))
+        .unwrap_or_default(),
     })
 }
 

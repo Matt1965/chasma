@@ -42,6 +42,12 @@ Pre-feature-development checkpoint after audit passes A1–B6.
 | Fixed simulation tick orchestrator | ADR-065 in place |
 | Gameplay presentation polish (DV3) | Move destination validation, billboards, terrain rings, shadow cascades — `docs/presentation-dv3.md` |
 | Dev Mode (catalog, spawn, scenes, inspector) | Dev-gated; DV2 focus/cancel UX; locomotion profiles + weapons from Excel; A3–A5 profile fields via starters/code |
+| Terrain Fields TF1 (definitions, store, queries) | `TerrainFieldStore` on `WorldData`; world-package tiles; Dev **Fields** tab + cursor probe — ADR-101 |
+| Terrain Fields TF2 (import, generation, packaging) | Source profiles; PNG import + deterministic resample; seeded generators (water/iron/copper/stone); atomic world-package bake; Dev build/validate/reload — ADR-102 |
+| Terrain Fields TF3 (overlay, Terrain Analysis UI) | Client overlay state; per-chunk vertex-color meshes; panel + cursor CPU probe; streaming sync — ADR-103 |
+| Terrain Fields TF4 (building requirements, assessment) | Response profiles; requirement catalog; operational sampling; Build Mode preview + temporary overlay; cached assessments — ADR-104 |
+| Terrain Fields TF5 (operational efficiency, output rate) | Efficiency query; fixed-point operation progress; `OperateWorkstation` integration; selected-building + dev probe — ADR-105 |
+| Terrain Fields TF6 (persistence, packaging, readiness) | Package bootstrap; assessment rebuild; modifier seam; save boundary; diff/invalidation — ADR-106 |
 | Environment (time-of-day, water, lighting) | Dev/runtime presentation; singleton-safe |
 
 ## Explicitly deferred
@@ -702,6 +708,21 @@ Potential future systems:
 - replication
 - synchronization
 - authority management
+
+---
+
+## Dev Transform Editing (ADR-097)
+
+| Phase | Status | Scope |
+|-------|--------|-------|
+| **DT1** | **Done** | Authoring transform types, metric asset sizing, offline GLB bounds, baseline scale, presentation integration, dev sizing report |
+| **DT2** | **Done** | Doodad authoritative transform editing, true ellipse occupancy, dev inspector picking/hotkeys, scene v8 |
+| **DT3** | **Done** | On-screen translate/rotate/scale gizmos, drag preview, authoritative commit |
+| DT4 | Done | Building Dev transform editing (yaw + uniform scale policy) |
+
+DT1 does **not** include transform gizmos, doodad transform APIs, or gameplay collision changes.
+DT2 adds doodad transform APIs and collision scaling.
+DT3 adds on-screen gizmos; DT4 adds authoritative building transform commit, persistence, and calibration export.
 
 ---
 

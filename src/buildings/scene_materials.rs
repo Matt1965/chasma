@@ -21,10 +21,7 @@ pub fn prepare_scene_materials(
 ) -> bool {
     let mut touched = false;
     if let Ok(mesh_material) = mesh_materials.get(entity) {
-        let mut cloned = materials
-            .get(&mesh_material.0)
-            .cloned()
-            .unwrap_or_default();
+        let mut cloned = materials.get(&mesh_material.0).cloned().unwrap_or_default();
         apply_lifecycle_material_style(&mut cloned, lifecycle, affiliation);
         let handle = materials.add(cloned);
         commands.entity(entity).insert(MeshMaterial3d(handle));

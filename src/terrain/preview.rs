@@ -16,7 +16,8 @@ use std::path::Path;
 use bevy::prelude::*;
 
 use crate::world::{
-    WorldConfig, WorldData, log_dev_biome_load_outcome, try_load_default_dev_biome_mask,
+    DEFAULT_TERRAIN_FIELD_MANIFEST_PATH, WorldConfig, WorldData, bootstrap_dev_synthetic_fields,
+    try_load_terrain_fields_from_manifest,
 };
 
 use super::catalog::TerrainWorldCatalog;
@@ -80,6 +81,7 @@ impl Plugin for TerrainPreviewPlugin {
 fn setup_preview(
     mut commands: Commands,
     config: Res<WorldConfig>,
+    field_catalog: Res<crate::world::TerrainFieldCatalog>,
     mut world: ResMut<WorldData>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -97,8 +99,32 @@ fn setup_preview(
 
     world.set_authored_extent(catalog.authored_extent());
 
-    let biome_outcome = try_load_default_dev_biome_mask(&mut world, &config);
-    log_dev_biome_load_outcome(&biome_outcome);
+    let biome_outcome = crate::world::try_load_default_dev_biome_mask(&mut world, &config);
+    crate::world::log_dev_biome_load_outcome(&biome_outcome);
+
+    let extent = catalog.authored_extent();
+    match try_load_terrain_fields_from_manifest(
+        world.terrain_fields_mut(),
+        &field_catalog,
+        Path::new(DEFAULT_TERRAIN_FIELD_MANIFEST_PATH),
+        &config,
+    ) {
+        Some(Ok(summary)) => {
+            bevy::log::info!(
+                "dev preview loaded {} terrain field tiles from world package",
+                summary.tiles_loaded
+            );
+        }
+        Some(Err(err)) => {
+            bevy::log::warn!(
+                "dev preview terrain field manifest load failed ({err}); using synthetic fixtures"
+            );
+            bootstrap_dev_synthetic_fields(world.terrain_fields_mut(), extent.min, extent.max);
+        }
+        None => {
+            bootstrap_dev_synthetic_fields(world.terrain_fields_mut(), extent.min, extent.max);
+        }
+    }
 
     let material = materials.add(StandardMaterial {
         // Vertex colors multiply with base_color; white passes albedo through unchanged.

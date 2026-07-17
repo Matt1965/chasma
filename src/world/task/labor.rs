@@ -12,8 +12,11 @@ use crate::world::{
     BuildingInteractionProfileCatalog, INTERACTION_WORK_RANGE_METERS,
     interaction_point_world_position,
 };
+use crate::world::{
+    BuildingOperationParams, OperationalLimitingFactor, step_workstation_operation,
+};
 
-/// Apply worker labor on fixed simulation ticks (ADR-085 B8).
+/// Apply worker labor on fixed simulation ticks (ADR-085 B8, ADR-105 TF5).
 pub fn step_all_worker_tasks(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
@@ -23,6 +26,7 @@ pub fn step_all_worker_tasks(
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
     delta_seconds: f32,
+    mut operation: Option<&mut BuildingOperationParams<'_>>,
 ) -> TaskTickReport {
     let mut report = TaskTickReport::default();
     if delta_seconds <= 0.0 {
@@ -204,7 +208,57 @@ pub fn step_all_worker_tasks(
                 }
             }
             TaskType::OperateWorkstation => {
-                // Foundation only — no production output in B8.
+                let Some(operation) = operation.as_mut() else {
+                    continue;
+                };
+                let building_id = task.target_building_id();
+                match step_workstation_operation(
+                    world,
+                    operation,
+                    building_catalog,
+                    building_id,
+                    unit_id,
+                ) {
+                    Ok(step_report) => {
+                        if step_report.can_operate {
+                            if let Some(task) = world.task_store_mut().get_mut(task_id) {
+                                task.state = TaskState::InProgress;
+                            }
+                            report.labor_applied += 1;
+                            report.events.push(TaskEvent::WorkstationOperationProgress {
+                                task_id,
+                                building_id,
+                                unit_id,
+                                scaled_progress: step_report.scaled_progress,
+                                accumulated_progress: step_report.accumulated_progress,
+                                completions: step_report.completions,
+                            });
+                        } else {
+                            if let Some(task) = world.task_store_mut().get_mut(task_id) {
+                                task.state = TaskState::BlockedWaiting;
+                            }
+                            report.events.push(TaskEvent::WorkstationOperationBlocked {
+                                task_id,
+                                building_id,
+                                unit_id,
+                                limiting_factor: step_report.limiting_factor.label().to_string(),
+                            });
+                        }
+                    }
+                    Err(_) => {
+                        if let Some(task) = world.task_store_mut().get_mut(task_id) {
+                            task.state = TaskState::BlockedWaiting;
+                        }
+                        report.events.push(TaskEvent::WorkstationOperationBlocked {
+                            task_id,
+                            building_id,
+                            unit_id,
+                            limiting_factor: OperationalLimitingFactor::MissingTerrainAssessment
+                                .label()
+                                .to_string(),
+                        });
+                    }
+                }
             }
         }
     }

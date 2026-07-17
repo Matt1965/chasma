@@ -11,7 +11,7 @@ use bevy::prelude::*;
 
 use crate::terrain::residency::ChunkResidencyTracker;
 use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
-use crate::world::{DoodadCatalog, DoodadId, WorldConfig, WorldData};
+use crate::world::{DoodadCatalog, DoodadId, WorldConfig, WorldData, doodad_final_render_scale};
 
 use super::assets::DoodadSceneAssets;
 use super::components::DoodadRenderEntity;
@@ -90,10 +90,14 @@ pub fn sync_doodad_render_entities(
         let layout = config.chunk_layout();
         let translation =
             world_position_to_render_global(record.placement.position, layout, vertical_scale);
+        let scale = catalog
+            .get(&record.definition_id)
+            .map(|definition| doodad_final_render_scale(definition, record.placement.scale_vec3()))
+            .unwrap_or_else(|| record.placement.scale_vec3());
         commands.entity(entity).insert(Transform {
             translation,
-            rotation: record.placement.rotation,
-            scale: record.placement.scale,
+            rotation: record.placement.rotation_quat(),
+            scale,
         });
     }
 
@@ -131,6 +135,7 @@ pub fn sync_doodad_render_entities(
         let entity = spawn_doodad_render_entity(
             &mut commands,
             record,
+            definition,
             chunk_id,
             scene,
             &config,
@@ -304,6 +309,7 @@ mod tests {
             .unwrap()
             .clone();
         let config = app.world().resource::<WorldConfig>().clone();
+        let catalog = app.world().resource::<DoodadCatalog>().clone();
         let vertical_scale = 2.5;
         let mut materials = app.world_mut().resource_mut::<Assets<StandardMaterial>>();
         let material = materials.add(StandardMaterial::default());
@@ -328,8 +334,14 @@ mod tests {
         assert_eq!(transform.translation, expected);
         assert_eq!(record.placement.position.local.0.y, 12.0);
         assert_eq!(transform.translation.y, 12.0 * vertical_scale);
-        assert_eq!(transform.rotation, record.placement.rotation);
-        assert_eq!(transform.scale, record.placement.scale);
+        assert_eq!(transform.rotation, record.placement.rotation_quat());
+        let expected_scale = catalog
+            .get(&record.definition_id)
+            .map(|definition| {
+                crate::world::doodad_final_render_scale(definition, record.placement.scale_vec3())
+            })
+            .unwrap_or_else(|| record.placement.scale_vec3());
+        assert_eq!(transform.scale, expected_scale);
     }
 
     #[test]

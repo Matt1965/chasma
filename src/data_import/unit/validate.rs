@@ -100,6 +100,7 @@ mod tests {
             has_animation_profile_column: false,
             inventory_profile_id: String::new(),
             has_inventory_profile_column: false,
+            asset_sizing: Default::default(),
         }
     }
 

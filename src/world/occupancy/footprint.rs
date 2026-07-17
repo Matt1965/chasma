@@ -19,6 +19,10 @@ pub enum FootprintShape {
     Circle {
         radius_meters: f32,
     },
+    Ellipse {
+        radius_x_meters: f32,
+        radius_z_meters: f32,
+    },
     Rectangle {
         width_meters: f32,
         depth_meters: f32,
@@ -91,6 +95,20 @@ impl FootprintDefinition {
                     });
                 }
             }
+            FootprintShape::Ellipse {
+                radius_x_meters,
+                radius_z_meters,
+            } => {
+                if !radius_x_meters.is_finite()
+                    || !radius_z_meters.is_finite()
+                    || *radius_x_meters < 0.0
+                    || *radius_z_meters < 0.0
+                {
+                    return Err(OccupancyError::InvalidBlockingRadius {
+                        radius_meters: radius_x_meters.max(*radius_z_meters),
+                    });
+                }
+            }
             FootprintShape::Rectangle {
                 width_meters,
                 depth_meters,
@@ -145,11 +163,12 @@ impl BakedCellMask {
                 });
             }
         }
-        for index in self
+        if let Some(&index) = self
             .forced_open_cells
             .intersection(&self.forced_blocked_cells)
+            .next()
         {
-            let (x, z) = self.cell_coords(*index);
+            let (x, z) = self.cell_coords(index);
             return Err(OccupancyError::OverrideConflict {
                 cell_x: x,
                 cell_z: z,
@@ -264,22 +283,98 @@ pub fn effective_building_footprint<'a>(
     Ok(Cow::Owned(inline_building_footprint(definition)?))
 }
 
-/// Enumerate global occupancy cells occupied by a footprint at a world pose.
+/// Scale footprint geometry uniformly (ADR-100 DT4 dev instance scale).
+pub fn scale_footprint_shape(shape: &FootprintShape, uniform_scale: f32) -> FootprintShape {
+    if (uniform_scale - 1.0).abs() < 0.0001 {
+        return shape.clone();
+    }
+    match shape {
+        FootprintShape::Circle { radius_meters } => FootprintShape::Circle {
+            radius_meters: radius_meters * uniform_scale,
+        },
+        FootprintShape::Ellipse {
+            radius_x_meters,
+            radius_z_meters,
+        } => FootprintShape::Ellipse {
+            radius_x_meters: radius_x_meters * uniform_scale,
+            radius_z_meters: radius_z_meters * uniform_scale,
+        },
+        FootprintShape::Rectangle {
+            width_meters,
+            depth_meters,
+        } => FootprintShape::Rectangle {
+            width_meters: width_meters * uniform_scale,
+            depth_meters: depth_meters * uniform_scale,
+        },
+        FootprintShape::BakedCellMask(mask) => FootprintShape::BakedCellMask(BakedCellMask {
+            cell_size_meters: mask.cell_size_meters * uniform_scale,
+            width_cells: mask.width_cells,
+            depth_cells: mask.depth_cells,
+            local_origin: mask.local_origin * uniform_scale,
+            blocked_cells: mask.blocked_cells.clone(),
+            forced_open_cells: mask.forced_open_cells.clone(),
+            forced_blocked_cells: mask.forced_blocked_cells.clone(),
+            space_id: mask.space_id,
+        }),
+    }
+}
+
+/// Definition footprint scaled by a building instance uniform scale.
+pub fn effective_building_footprint_for_placement<'a>(
+    definition: &BuildingDefinition,
+    catalog: &'a super::catalog::FootprintCatalog,
+    uniform_scale: f32,
+) -> Result<Cow<'a, FootprintShape>, OccupancyError> {
+    let base = effective_building_footprint(definition, catalog)?;
+    if (uniform_scale - 1.0).abs() < 0.0001 {
+        Ok(base)
+    } else {
+        Ok(Cow::Owned(scale_footprint_shape(
+            base.as_ref(),
+            uniform_scale,
+        )))
+    }
+}
+
+/// Enumerate global occupancy cells occupied by a footprint at a world pose (quantized yaw).
 pub fn occupied_cells_for_footprint(
     shape: &FootprintShape,
     anchor_global_xz: Vec2,
     rotation: QuantizedRotation,
 ) -> Vec<super::cell::OccupancyCellCoord> {
+    occupied_cells_for_footprint_yaw(shape, anchor_global_xz, rotation.radians())
+}
+
+/// Enumerate cells for doodads/buildings using continuous yaw (ADR-098 DT2).
+pub fn occupied_cells_for_footprint_yaw(
+    shape: &FootprintShape,
+    anchor_global_xz: Vec2,
+    yaw_radians: f32,
+) -> Vec<super::cell::OccupancyCellCoord> {
     match shape {
         FootprintShape::Circle { radius_meters } => {
             cells_for_circle(anchor_global_xz, *radius_meters)
         }
+        FootprintShape::Ellipse {
+            radius_x_meters,
+            radius_z_meters,
+        } => super::ellipse::cells_for_circle_or_ellipse(
+            anchor_global_xz,
+            *radius_x_meters,
+            *radius_z_meters,
+            yaw_radians,
+        ),
         FootprintShape::Rectangle {
             width_meters,
             depth_meters,
-        } => cells_for_rectangle(anchor_global_xz, *width_meters, *depth_meters, rotation),
+        } => cells_for_rectangle_continuous(
+            anchor_global_xz,
+            *width_meters,
+            *depth_meters,
+            yaw_radians,
+        ),
         FootprintShape::BakedCellMask(mask) => {
-            cells_for_baked_mask(anchor_global_xz, mask, rotation)
+            cells_for_baked_mask_continuous(anchor_global_xz, mask, yaw_radians)
         }
     }
 }
@@ -305,6 +400,91 @@ fn cells_for_circle(center: Vec2, radius: f32) -> Vec<super::cell::OccupancyCell
     cells.sort_unstable();
     cells.dedup();
     cells
+}
+
+fn cells_for_rectangle_continuous(
+    anchor: Vec2,
+    width: f32,
+    depth: f32,
+    yaw_radians: f32,
+) -> Vec<super::cell::OccupancyCellCoord> {
+    let half = Vec2::new(width * 0.5, depth * 0.5);
+    let corners = [
+        Vec2::new(-half.x, -half.y),
+        Vec2::new(half.x, -half.y),
+        Vec2::new(half.x, half.y),
+        Vec2::new(-half.x, half.y),
+    ];
+    let (sin, cos) = yaw_radians.sin_cos();
+    let mut min = Vec2::splat(f32::INFINITY);
+    let mut max = Vec2::splat(f32::NEG_INFINITY);
+    for corner in corners {
+        let rotated = Vec2::new(
+            corner.x * cos - corner.y * sin,
+            corner.x * sin + corner.y * cos,
+        ) + anchor;
+        min = min.min(rotated);
+        max = max.max(rotated);
+    }
+    let size = OCCUPANCY_CELL_SIZE_METERS;
+    let min_x = (min.x / size).floor() as i32;
+    let max_x = (max.x / size).floor() as i32;
+    let min_z = (min.y / size).floor() as i32;
+    let max_z = (max.y / size).floor() as i32;
+    let mut cells = Vec::new();
+    for z in min_z..=max_z {
+        for x in min_x..=max_x {
+            let cell = super::cell::OccupancyCellCoord::new(x, z);
+            let center = cell.center_global();
+            if point_in_oriented_rectangle_continuous(center, anchor, width, depth, yaw_radians) {
+                cells.push(cell);
+            }
+        }
+    }
+    cells.sort_unstable();
+    cells.dedup();
+    cells
+}
+
+fn cells_for_baked_mask_continuous(
+    anchor: Vec2,
+    mask: &BakedCellMask,
+    yaw_radians: f32,
+) -> Vec<super::cell::OccupancyCellCoord> {
+    let (sin, cos) = yaw_radians.sin_cos();
+    let mut cells = Vec::new();
+    let cell_size = mask.cell_size_meters;
+    for z in 0..mask.depth_cells {
+        for x in 0..mask.width_cells {
+            if !mask.is_blocked_local(x as i32, z as i32) {
+                continue;
+            }
+            let local = mask.local_origin
+                + Vec2::new((x as f32 + 0.5) * cell_size, (z as f32 + 0.5) * cell_size);
+            let rotated =
+                Vec2::new(local.x * cos - local.y * sin, local.x * sin + local.y * cos) + anchor;
+            cells.push(occupancy_cell_at_global_xz(rotated));
+        }
+    }
+    cells.sort_unstable();
+    cells.dedup();
+    cells
+}
+
+pub fn point_in_oriented_rectangle_continuous(
+    point: Vec2,
+    anchor: Vec2,
+    width: f32,
+    depth: f32,
+    yaw_radians: f32,
+) -> bool {
+    let delta = point - anchor;
+    let (sin, cos) = yaw_radians.sin_cos();
+    let local = Vec2::new(
+        delta.x * cos + delta.y * sin,
+        -delta.x * sin + delta.y * cos,
+    );
+    local.x.abs() <= width * 0.5 && local.y.abs() <= depth * 0.5
 }
 
 fn cells_for_rectangle(
@@ -402,6 +582,126 @@ pub fn point_in_oriented_rectangle(
     local.x.abs() <= width * 0.5 && local.y.abs() <= depth * 0.5
 }
 
+/// Whether an agent circle overlaps a footprint at continuous yaw.
+pub fn agent_overlaps_footprint_continuous(
+    agent_center: Vec2,
+    agent_radius: f32,
+    shape: &FootprintShape,
+    anchor: Vec2,
+    yaw_radians: f32,
+) -> bool {
+    match shape {
+        FootprintShape::Circle { radius_meters } => {
+            super::cell::circle_overlap_blocked(agent_center, anchor, agent_radius, *radius_meters)
+        }
+        FootprintShape::Ellipse {
+            radius_x_meters,
+            radius_z_meters,
+        } => super::ellipse::circle_overlaps_rotated_ellipse(
+            agent_center,
+            agent_radius,
+            super::ellipse::RotatedEllipse::new(
+                anchor,
+                *radius_x_meters,
+                *radius_z_meters,
+                yaw_radians,
+            ),
+        ),
+        FootprintShape::Rectangle {
+            width_meters,
+            depth_meters,
+        } => circle_intersects_oriented_rectangle_continuous(
+            agent_center,
+            agent_radius,
+            anchor,
+            *width_meters,
+            *depth_meters,
+            yaw_radians,
+        ),
+        FootprintShape::BakedCellMask(mask) => {
+            let local = world_to_footprint_local_continuous(agent_center, anchor, yaw_radians)
+                - mask.local_origin;
+            let half = agent_radius;
+            let min_x = ((local.x - half) / mask.cell_size_meters).floor() as i32;
+            let max_x = ((local.x + half) / mask.cell_size_meters).floor() as i32;
+            let min_z = ((local.y - half) / mask.cell_size_meters).floor() as i32;
+            let max_z = ((local.y + half) / mask.cell_size_meters).floor() as i32;
+            for z in min_z..=max_z {
+                for x in min_x..=max_x {
+                    if x < 0
+                        || z < 0
+                        || x >= mask.width_cells as i32
+                        || z >= mask.depth_cells as i32
+                    {
+                        continue;
+                    }
+                    if !mask.is_blocked_local(x, z) {
+                        continue;
+                    }
+                    let cell_min = mask.local_origin
+                        + Vec2::new(
+                            x as f32 * mask.cell_size_meters,
+                            z as f32 * mask.cell_size_meters,
+                        );
+                    let cell_max = cell_min + Vec2::splat(mask.cell_size_meters);
+                    let closest = Vec2::new(
+                        agent_center
+                            .x
+                            .clamp(cell_min.x + anchor.x, cell_max.x + anchor.x),
+                        agent_center
+                            .y
+                            .clamp(cell_min.y + anchor.y, cell_max.y + anchor.y),
+                    );
+                    if closest.distance(agent_center) <= agent_radius {
+                        return true;
+                    }
+                }
+            }
+            false
+        }
+    }
+}
+
+fn world_to_footprint_local_continuous(world_xz: Vec2, anchor: Vec2, yaw_radians: f32) -> Vec2 {
+    let delta = world_xz - anchor;
+    let (sin, cos) = yaw_radians.sin_cos();
+    Vec2::new(
+        delta.x * cos + delta.y * sin,
+        -delta.x * sin + delta.y * cos,
+    )
+}
+
+fn circle_intersects_oriented_rectangle_continuous(
+    circle_center: Vec2,
+    circle_radius: f32,
+    anchor: Vec2,
+    width: f32,
+    depth: f32,
+    yaw_radians: f32,
+) -> bool {
+    if point_in_oriented_rectangle_continuous(circle_center, anchor, width, depth, yaw_radians) {
+        return true;
+    }
+    let half = Vec2::new(width * 0.5, depth * 0.5);
+    let corners = [
+        Vec2::new(-half.x, -half.y),
+        Vec2::new(half.x, -half.y),
+        Vec2::new(half.x, half.y),
+        Vec2::new(-half.x, half.y),
+    ];
+    let (sin, cos) = yaw_radians.sin_cos();
+    for corner in corners {
+        let world = Vec2::new(
+            corner.x * cos - corner.y * sin,
+            corner.x * sin + corner.y * cos,
+        ) + anchor;
+        if world.distance(circle_center) <= circle_radius {
+            return true;
+        }
+    }
+    false
+}
+
 /// Whether an agent circle overlaps a footprint at the given pose.
 pub fn agent_overlaps_footprint(
     agent_center: Vec2,
@@ -414,6 +714,19 @@ pub fn agent_overlaps_footprint(
         FootprintShape::Circle { radius_meters } => {
             super::cell::circle_overlap_blocked(agent_center, anchor, agent_radius, *radius_meters)
         }
+        FootprintShape::Ellipse {
+            radius_x_meters,
+            radius_z_meters,
+        } => super::ellipse::circle_overlaps_rotated_ellipse(
+            agent_center,
+            agent_radius,
+            super::ellipse::RotatedEllipse::new(
+                anchor,
+                *radius_x_meters,
+                *radius_z_meters,
+                rotation.radians(),
+            ),
+        ),
         FootprintShape::Rectangle {
             width_meters,
             depth_meters,

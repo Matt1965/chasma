@@ -6,10 +6,12 @@ use crate::camera::RtsCamera;
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::{cursor_world_ray, terrain_click_to_world_position};
 use crate::world::{
-    BuildingCatalog, BuildingOwnership, BuildingPlacementConfig, BuildingPlacementContext,
-    DoodadCatalog, FootprintCatalog, UnitCatalog, WorldConfig, WorldData,
-    anchor_from_terrain_position, build_building_placement_plan, rotation_from_quadrants,
-    validate_building_placement,
+    BuildingCatalog, BuildingFieldRequirementCatalog, BuildingOwnership, BuildingPlacementConfig,
+    BuildingPlacementContext, DoodadCatalog, FieldResponseProfileCatalog,
+    FieldResponseProfileCatalogRevision, FootprintCatalog, TerrainAssessmentCatalogs,
+    TerrainFieldCatalog, UnitCatalog, WorldConfig, WorldData, anchor_from_terrain_position,
+    assess_building_terrain_at_placement, build_building_placement_plan, hash_sample_cells,
+    rotation_from_quadrants, validate_building_placement,
 };
 
 use super::state::BuildModeState;
@@ -33,11 +35,18 @@ pub fn update_build_mode_ghost(
     footprint_catalog: Res<FootprintCatalog>,
     doodad_catalog: Res<DoodadCatalog>,
     unit_catalog: Res<UnitCatalog>,
+    field_catalog: Res<TerrainFieldCatalog>,
+    requirement_catalog: Res<BuildingFieldRequirementCatalog>,
+    profile_catalog: Res<FieldResponseProfileCatalog>,
+    requirement_revision: Res<crate::world::BuildingFieldRequirementCatalogRevision>,
+    profile_revision: Res<FieldResponseProfileCatalogRevision>,
 ) {
     anchor.position = None;
     if !build_mode.is_ghost_placing() {
         build_mode.last_validation = None;
         build_mode.last_plan = None;
+        build_mode.last_terrain_assessment = None;
+        build_mode.last_terrain_assessment_signature = None;
         return;
     }
 
@@ -92,4 +101,36 @@ pub fn update_build_mode_ghost(
         None
     };
     build_mode.last_validation = Some(validation);
+
+    if let (Some(plan), Some(definition_id)) =
+        (&build_mode.last_plan, build_mode.ghost_definition_id())
+    {
+        let signature = hash_sample_cells(&plan.occupied_cells)
+            ^ plan.quantized_rotation as u64
+            ^ plan.anchor_global_xz.x.to_bits() as u64
+            ^ plan.anchor_global_xz.y.to_bits() as u64;
+        if build_mode.last_terrain_assessment_signature != Some(signature) {
+            let catalogs = TerrainAssessmentCatalogs {
+                buildings: &building_catalog,
+                requirements: &requirement_catalog,
+                profiles: &profile_catalog,
+                fields: &field_catalog,
+                footprints: &footprint_catalog,
+                requirement_revision: requirement_revision.0,
+                profile_revision: profile_revision.0,
+            };
+            let assessment = assess_building_terrain_at_placement(
+                &world,
+                &catalogs,
+                definition_id,
+                plan.placement(),
+                config.chunk_layout(),
+            );
+            build_mode.last_terrain_assessment = Some(assessment);
+            build_mode.last_terrain_assessment_signature = Some(signature);
+        }
+    } else {
+        build_mode.last_terrain_assessment = None;
+        build_mode.last_terrain_assessment_signature = None;
+    }
 }

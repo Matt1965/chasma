@@ -3,9 +3,13 @@ use std::collections::HashMap;
 use super::schema::{
     BuildingCategoryImportRow, BuildingImportRow, CATEGORY_REQUIRED_COLUMNS, REQUIRED_COLUMNS,
 };
+use crate::data_import::asset_sizing::{
+    BUILDING_TRANSFORM_SAFETY_CLASS, asset_sizing_from_columns, parse_asset_sizing_columns,
+};
 use crate::data_import::error::{DataImportError, RowImportError};
 use crate::data_import::schema::parse_enabled_cell;
 use crate::world::FootprintType;
+use crate::world::authoring_transform::BuildingTransformSafetyClass;
 
 pub const BUILDINGS_SHEET_NAME: &str = "Buildings";
 pub const BUILDING_CATEGORIES_SHEET_NAME: &str = "Building Categories";
@@ -223,7 +227,42 @@ fn parse_building_row(
         has_footprint_width_column: columns.contains_key("Footprint Width"),
         has_footprint_depth_column: columns.contains_key("Footprint Depth"),
         has_footprint_radius_column: columns.contains_key("Footprint Radius"),
+        asset_sizing: asset_sizing_from_columns(&parse_asset_sizing_columns(
+            columns,
+            cells,
+            &|col| text(col),
+        ))
+        .unwrap_or_default(),
+        transform_safety_class: parse_building_safety_class(&text(BUILDING_TRANSFORM_SAFETY_CLASS)),
+        allow_instance_scale: optional_bool(columns, cells, "Allow Instance Scale")?
+            .unwrap_or(false),
+        min_uniform_instance_scale: optional_f32("Min Uniform Scale")?,
+        max_uniform_instance_scale: optional_f32("Max Uniform Scale")?,
     })
+}
+
+fn optional_bool(
+    columns: &std::collections::HashMap<String, usize>,
+    cells: &[calamine::Data],
+    column: &str,
+) -> Result<Option<bool>, String> {
+    let Some(&index) = columns.get(column) else {
+        return Ok(None);
+    };
+    let raw = cells.get(index).map(cell_to_string).unwrap_or_default();
+    if raw.trim().is_empty() {
+        return Ok(None);
+    }
+    crate::data_import::schema::parse_bool_yn(&raw).map(Some)
+}
+
+fn parse_building_safety_class(raw: &str) -> BuildingTransformSafetyClass {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "decorative" | "decorative_non_navigable" | "non_navigable" => {
+            BuildingTransformSafetyClass::DecorativeNonNavigable
+        }
+        _ => BuildingTransformSafetyClass::Navigable,
+    }
 }
 
 fn row_is_empty(cells: &[calamine::Data]) -> bool {

@@ -102,7 +102,7 @@ fn missing_definition_fails_closed_for_blocking_kind() {
         DoodadId::new(99),
         DoodadDefinitionId::new("missing_tree_def"),
         DoodadKind::Tree,
-        DoodadPlacement::new(position, Quat::IDENTITY, Vec3::ONE),
+        DoodadPlacement::from_legacy(position, Quat::IDENTITY, Vec3::ONE).unwrap(),
         DoodadSource::Authored,
     );
     world

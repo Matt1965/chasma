@@ -1,5 +1,6 @@
 //! Excel column schema and conversion into [`UnitDefinition`].
 
+use crate::world::asset_sizing::AssetSizingDefinition;
 use crate::world::{AnimationProfile, AnimationProfileId};
 use crate::world::{UnitDefinition, UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
 
@@ -34,6 +35,21 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Animation Profile",
     "Enabled",
     "Inventory Profile ID",
+    "Desired Width M",
+    "Desired Height M",
+    "Desired Depth M",
+    "Size Reference Axis",
+    "Source Bounds Node",
+    "Source Width M",
+    "Source Height M",
+    "Source Depth M",
+    "Model Offset X M",
+    "Model Offset Y M",
+    "Model Offset Z M",
+    "Rotation Correction X Deg",
+    "Rotation Correction Y Deg",
+    "Rotation Correction Z Deg",
+    "Explicit Baseline Scale Uniform",
 ];
 
 /// Computed workbook column — never imported as authoritative data.
@@ -81,6 +97,7 @@ pub struct UnitImportRow {
     pub has_animation_profile_column: bool,
     pub inventory_profile_id: String,
     pub has_inventory_profile_column: bool,
+    pub asset_sizing: AssetSizingDefinition,
 }
 
 /// Normalize a workbook file-path cell into a [`UnitRenderKey`] path segment (`wolf`).
@@ -146,6 +163,7 @@ impl UnitImportRow {
                 crate::world::InventoryProfileId::new("unit_backpack_standard"),
             );
         }
+        definition.asset_sizing = self.asset_sizing.clone();
         Ok(definition)
     }
 
@@ -230,6 +248,7 @@ mod tests {
             has_animation_profile_column: false,
             inventory_profile_id: String::new(),
             has_inventory_profile_column: false,
+            asset_sizing: AssetSizingDefinition::default(),
         }
     }
 

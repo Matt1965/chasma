@@ -8,6 +8,7 @@
 mod authoring;
 mod biome_filter;
 mod catalog;
+mod collision;
 mod exclusion;
 mod generation;
 mod id;
@@ -23,6 +24,7 @@ mod restore;
 mod source;
 mod store;
 mod terrain_validation;
+mod transform_edit;
 
 pub use authoring::{
     DoodadAuthoringError, DoodadPlacementOverrides, create_doodad, lookup_doodad, move_doodad,
@@ -34,6 +36,10 @@ pub use catalog::starter_definitions;
 pub use catalog::{
     DoodadCatalog, DoodadCatalogError, DoodadDefinition, DoodadDefinitionId, DoodadRenderKey,
     default_blocks_movement,
+};
+pub use collision::{
+    DoodadInstanceCollision, resolve_doodad_collision, resolve_doodad_collision_from_catalog,
+    tilted_blocker_projection_warning,
 };
 pub use exclusion::{
     DoodadExclusionZone, ExclusionFilterOptions, ExclusionFilterResult,
@@ -65,6 +71,10 @@ pub use restore::{DoodadRestoreError, restore_doodad_record, validate_doodad_for
 pub use source::DoodadSource;
 pub use store::ChunkDoodadStore;
 pub use terrain_validation::{TerrainValidationResult, filter_candidates_by_terrain};
+pub use transform_edit::{
+    DoodadTransformCandidate, DoodadTransformEditOptions, TransformEditError, TransformEditReport,
+    nudge_doodad_position, update_doodad_transform,
+};
 
 /// Why [`crate::world::WorldData::insert_doodad`] or relocation rejected a record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

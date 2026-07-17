@@ -74,6 +74,13 @@ mod tests {
             enabled_was_blank: false,
             blocks_movement: None,
             block_radius_meters: None,
+            asset_sizing: Default::default(),
+            default_instance_scale: crate::world::AuthoringScale::uniform_one(),
+            allow_nonuniform_instance_scale: true,
+            collision_shape: Default::default(),
+            base_collision_radius_x_meters: None,
+            base_collision_radius_z_meters: None,
+            grounding_mode: Default::default(),
         }
     }
 

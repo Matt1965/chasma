@@ -4,11 +4,14 @@
 //! catalog definitions. No ECS systems, runtime Excel dependency, or rendering coupling.
 
 mod animation;
+#[cfg(feature = "data-import")]
+pub mod asset_sizing;
 mod building;
 mod error;
 mod inventory;
 mod item;
 mod schema;
+mod terrain_field;
 mod weapon;
 
 pub mod unit;
@@ -79,7 +82,16 @@ pub use ron::{
     DoodadDefinitionRon, export_buildings_to_ron, export_doodads_to_ron,
 };
 #[cfg(feature = "data-import")]
-pub use ron::{export_inventory_profiles_to_ron, export_items_to_ron};
+pub use ron::{
+    export_inventory_profiles_to_ron, export_items_to_ron, export_terrain_fields_to_ron,
+};
+#[cfg(feature = "data-import")]
+pub use terrain_field::{
+    DEV_TERRAIN_FIELD_CATALOG_RON_PATH, TERRAIN_FIELD_OPTIONAL_COLUMNS,
+    TERRAIN_FIELD_REQUIRED_COLUMNS, TERRAIN_FIELDS_SHEET_NAME, TerrainFieldImportRow,
+    import_terrain_field_catalog_from_excel, import_terrain_fields_from_excel, parse_color_cell,
+    resolve_dev_terrain_field_catalog,
+};
 pub use unit::{
     DEFAULT_COLLISION_RADIUS_METERS, DEFAULT_MAX_SLOPE_DEGREES, DEFAULT_MOVE_SPEED_MPS,
     IGNORED_COLUMNS, OPTIONAL_COLUMNS, UnitImportRow,
@@ -99,12 +111,52 @@ pub fn resolve_dev_footprint_catalog() -> crate::world::FootprintCatalog {
     crate::world::FootprintCatalog::default()
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ImportSummary {
     pub rows_processed: usize,
     pub rows_valid: usize,
     pub rows_failed: usize,
     pub warnings: Vec<String>,
+    pub sizing_reports: Vec<crate::world::AssetSizingReport>,
+}
+
+/// Dev startup path for aggregated asset sizing validation output (ADR-097 DT1).
+#[cfg(feature = "data-import")]
+pub const DEV_ASSET_SIZING_REPORT_PATH: &str = "logs/asset_sizing_report.md";
+
+#[cfg(feature = "data-import")]
+pub fn export_dev_asset_sizing_reports(reports: &mut Vec<crate::world::AssetSizingReport>) {
+    use std::path::Path;
+
+    use crate::logging::{DEV_STARTUP_LOG_PATH, append_log_line};
+    use crate::world::asset_sizing::sort_reports;
+
+    const SESSION_HEADER: &str = "# chasma dev startup log";
+
+    sort_reports(reports);
+    match asset_sizing::export_sizing_reports_markdown(
+        Path::new(DEV_ASSET_SIZING_REPORT_PATH),
+        reports,
+    ) {
+        Ok(()) => {
+            append_log_line(
+                DEV_STARTUP_LOG_PATH,
+                SESSION_HEADER,
+                &format!(
+                    "Asset sizing report: {} definitions → {}",
+                    reports.len(),
+                    DEV_ASSET_SIZING_REPORT_PATH
+                ),
+            );
+        }
+        Err(err) => {
+            append_log_line(
+                DEV_STARTUP_LOG_PATH,
+                SESSION_HEADER,
+                &format!("Asset sizing report export failed: {err}"),
+            );
+        }
+    }
 }
 
 /// Import doodad definitions from an Excel workbook (`Doodads` sheet).
@@ -155,7 +207,7 @@ pub fn import_doodads_from_excel(
             continue;
         }
 
-        let definition = match row.to_definition() {
+        let mut definition = match row.to_definition() {
             Ok(definition) => definition,
             Err(message) => {
                 summary.rows_failed += 1;
@@ -180,6 +232,19 @@ pub fn import_doodads_from_excel(
                 "row {}: Enabled blank — defaulting to true",
                 row.row_number
             ));
+        }
+
+        let sizing_report = crate::world::finalize_doodad_definition(&mut definition);
+        summary.sizing_reports.push(sizing_report.clone());
+        for warning in sizing_report.warnings {
+            summary
+                .warnings
+                .push(format!("row {} sizing: {warning}", row.row_number));
+        }
+        for error in sizing_report.errors {
+            summary
+                .warnings
+                .push(format!("row {} sizing error: {error}", row.row_number));
         }
 
         definitions.push(definition);

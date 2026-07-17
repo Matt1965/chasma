@@ -167,7 +167,7 @@ pub fn import_buildings_from_excel(
             continue;
         }
 
-        let definition = match row.to_definition() {
+        let mut definition = match row.to_definition() {
             Ok(definition) => definition,
             Err(message) => {
                 summary.rows_failed += 1;
@@ -209,6 +209,19 @@ pub fn import_buildings_from_excel(
                 "row {}: Enabled blank — defaulting to true",
                 row.row_number
             ));
+        }
+
+        let sizing_report = crate::world::finalize_building_definition(&mut definition);
+        summary.sizing_reports.push(sizing_report.clone());
+        for warning in sizing_report.warnings {
+            summary
+                .warnings
+                .push(format!("row {} sizing: {warning}", row.row_number));
+        }
+        for error in sizing_report.errors {
+            summary
+                .warnings
+                .push(format!("row {} sizing error: {error}", row.row_number));
         }
 
         definitions.push(definition);

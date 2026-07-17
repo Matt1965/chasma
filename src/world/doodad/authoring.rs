@@ -59,13 +59,20 @@ pub fn create_doodad(
     let rotation = overrides.rotation.unwrap_or(Quat::IDENTITY);
     let scale = overrides.scale.unwrap_or(Vec3::ONE);
     validate_scale(definition.min_scale, definition.max_scale, scale)?;
+    let placement = DoodadPlacement::from_legacy(position, rotation, scale).map_err(|_| {
+        DoodadAuthoringError::ScaleOutOfRange {
+            min: definition.min_scale,
+            max: definition.max_scale,
+            scale,
+        }
+    })?;
 
     let id = world.allocate_doodad_id();
     let record = DoodadRecord::new(
         id,
         definition.id.clone(),
         definition.kind,
-        DoodadPlacement::new(position, rotation, scale),
+        placement,
         source,
     );
 
@@ -94,21 +101,47 @@ pub fn move_doodad(
     new_position: WorldPosition,
     occupancy: Option<OccupancyCatalogs<'_>>,
 ) -> Result<DoodadRecord, DoodadAuthoringError> {
-    let moved = world
+    let record = world
+        .get_doodad(id)
+        .cloned()
+        .ok_or(DoodadAuthoringError::DoodadNotFound(id))?;
+
+    if let Some(catalogs) = occupancy {
+        let report = super::transform_edit::update_doodad_transform(
+            world,
+            catalogs.doodad,
+            id,
+            super::transform_edit::DoodadTransformCandidate {
+                position: new_position,
+                orientation: record.placement.orientation,
+                scale: record.placement.scale,
+            },
+            super::transform_edit::DoodadTransformEditOptions::default(),
+            Some(catalogs),
+        )
+        .map_err(|err| match err {
+            super::transform_edit::TransformEditError::DoodadNotFound(doodad_id) => {
+                DoodadAuthoringError::DoodadNotFound(doodad_id)
+            }
+            super::transform_edit::TransformEditError::OccupancyRegistrationFailed(occ) => {
+                DoodadAuthoringError::Occupancy(occ)
+            }
+            _ => DoodadAuthoringError::ChunkPlacementMismatch,
+        })?;
+        return world
+            .get_doodad(id)
+            .cloned()
+            .ok_or(DoodadAuthoringError::DoodadNotFound(report.doodad_id));
+    }
+
+    world
         .relocate_doodad(id, new_position)
         .map_err(|error| match error {
             DoodadInsertError::ChunkPlacementMismatch => {
                 DoodadAuthoringError::ChunkPlacementMismatch
             }
             DoodadInsertError::DoodadNotFound => DoodadAuthoringError::DoodadNotFound(id),
-        })?;
-
-    if let Some(catalogs) = occupancy {
-        update_doodad_occupancy(world, catalogs, &moved)
-            .map_err(DoodadAuthoringError::Occupancy)?;
-    }
-
-    Ok(moved)
+        })
 }
 
 /// Remove a doodad by id, returning the removed record.

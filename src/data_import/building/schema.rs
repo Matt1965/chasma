@@ -1,5 +1,9 @@
 //! Excel column schema and conversion into building catalog types (B1).
 
+use bevy::prelude::*;
+
+use crate::world::asset_sizing::AssetSizingDefinition;
+use crate::world::authoring_transform::BuildingTransformSafetyClass;
 use crate::world::{
     AnimationProfileId, BuildingCategoryDefinition, BuildingCategoryId, BuildingDefinition,
     BuildingDefinitionId, BuildingRenderKey, FootprintSpec, FootprintType, InventoryProfileId,
@@ -31,6 +35,11 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Interaction Profile",
     "Default Space",
     "Inventory Profile ID",
+    "Desired Width M",
+    "Desired Height M",
+    "Desired Depth M",
+    "Size Reference Axis",
+    "Building Transform Safety Class",
 ];
 
 pub const DEFAULT_MAX_SLOPE_DEGREES: f32 = 40.0;
@@ -91,6 +100,11 @@ pub struct BuildingImportRow {
     pub has_footprint_width_column: bool,
     pub has_footprint_depth_column: bool,
     pub has_footprint_radius_column: bool,
+    pub asset_sizing: AssetSizingDefinition,
+    pub transform_safety_class: BuildingTransformSafetyClass,
+    pub allow_instance_scale: bool,
+    pub min_uniform_instance_scale: Option<f32>,
+    pub max_uniform_instance_scale: Option<f32>,
 }
 
 impl BuildingImportRow {
@@ -173,6 +187,26 @@ impl BuildingImportRow {
             ));
         }
 
+        let model_offset = self.asset_sizing.model_local_offset_meters;
+        let rotation_correction = self.asset_sizing.rotation_correction;
+        definition.asset_sizing = self.asset_sizing.clone();
+        definition.transform_safety_class = self.transform_safety_class;
+        definition.allow_instance_scale = self.allow_instance_scale;
+        if let Some(min) = self.min_uniform_instance_scale {
+            definition.min_uniform_instance_scale = min;
+        }
+        if let Some(max) = self.max_uniform_instance_scale {
+            definition.max_uniform_instance_scale = max;
+        }
+        if model_offset != Vec3::ZERO {
+            definition = definition.with_model_local_offset(model_offset);
+        }
+        if rotation_correction != crate::world::authoring_transform::QuantizedOrientation::IDENTITY
+        {
+            definition =
+                definition.with_model_yaw_correction_degrees(rotation_correction.yaw_degrees());
+        }
+
         Ok(definition)
     }
 }
@@ -244,6 +278,11 @@ mod tests {
             has_footprint_width_column: true,
             has_footprint_depth_column: true,
             has_footprint_radius_column: false,
+            asset_sizing: AssetSizingDefinition::default(),
+            transform_safety_class: BuildingTransformSafetyClass::Navigable,
+            allow_instance_scale: false,
+            min_uniform_instance_scale: None,
+            max_uniform_instance_scale: None,
         };
         let def = row.to_definition().unwrap();
         assert_eq!(def.id.as_str(), "hut");

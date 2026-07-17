@@ -31,6 +31,7 @@ pub enum DevTab {
     Inspector,
     Debug,
     WorldTools,
+    TerrainFields,
 }
 
 /// What the spawn tool will place at the next world click.
@@ -249,12 +250,15 @@ impl DevModeState {
 pub struct DevModeInputGate {
     pub block_gameplay_mouse: bool,
     pub spawn_handled_this_frame: bool,
+    /// Suppress RTS camera pan/orbit/zoom during gizmo drag (ADR-099).
+    pub block_camera_input: bool,
 }
 
 impl DevModeInputGate {
     pub fn reset(&mut self) {
         self.block_gameplay_mouse = false;
         self.spawn_handled_this_frame = false;
+        self.block_camera_input = false;
     }
 
     pub fn should_block(gate: &DevModeInputGate) -> bool {

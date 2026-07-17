@@ -1242,6 +1242,7 @@ mod tests {
                     z: 0.0,
                     w: 1.0,
                 },
+                uniform_scale_milli: 1_000,
                 lifecycle_state: "Planned".into(),
                 progress_0_1: 0.0,
                 current_hp: 100,
@@ -1346,7 +1347,7 @@ mod tests {
 
         let scene = sample_scene(&world);
         assert_eq!(scene.version, super::super::snapshot::SCENE_VERSION);
-        assert_eq!(scene.version, 7);
+        assert_eq!(scene.version, 8);
         assert_eq!(scene.inventory_persistence.inventory_records.len(), 1);
         assert!(
             scene

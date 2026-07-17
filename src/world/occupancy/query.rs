@@ -180,33 +180,28 @@ fn doodad_overlap(
     agent_center: Vec2,
     agent_radius: f32,
 ) -> Result<bool, OccupancyError> {
-    let (blocks, block_radius) = if let Some(definition) = catalog.get(&record.definition_id) {
-        (definition.blocks_movement, definition.block_radius_meters)
-    } else if !default_blocks_movement(record.kind) {
-        return Ok(false);
-    } else {
-        let radius = conservative_block_radius_for_kind(record.kind);
+    let Some(definition) = catalog.get(&record.definition_id) else {
+        if !default_blocks_movement(record.kind) {
+            return Ok(false);
+        }
         return Err(OccupancyError::MissingDoodadDefinition {
             definition_id: record.definition_id.clone(),
         });
     };
 
-    if !blocks {
+    let collision = crate::world::resolve_doodad_collision(record, definition);
+    if !collision.blocks_movement {
         return Ok(false);
-    }
-    if !(block_radius >= 0.0) || !block_radius.is_finite() {
-        return Err(OccupancyError::InvalidBlockingRadius {
-            radius_meters: block_radius,
-        });
     }
 
     let doodad_global = record.placement.position.to_global(layout);
     let doodad_xz = Vec2::new(doodad_global.x, doodad_global.z);
-    Ok(circle_overlap_blocked(
+    Ok(crate::world::agent_overlaps_footprint_continuous(
         agent_center,
-        doodad_xz,
         agent_radius,
-        block_radius,
+        &collision.shape,
+        doodad_xz,
+        collision.yaw_radians,
     ))
 }
 

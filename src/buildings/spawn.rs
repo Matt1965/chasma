@@ -7,8 +7,8 @@ use bevy::prelude::*;
 use crate::terrain::world_position_to_render_global;
 use crate::world::{
     BuildingDefinition, BuildingRecord, ChunkId, WorldConfig, building_anchor_render_transform,
-    building_has_model_correction, building_model_correction_local_transform,
-    building_model_render_transform,
+    building_model_child_local_transform, building_model_render_transform,
+    building_uses_model_child,
 };
 
 use super::components::{BuildingRenderEntity, BuildingSceneRoot};
@@ -71,14 +71,11 @@ pub fn spawn_building_scene_entity(
         Visibility::default(),
     );
 
-    if building_has_model_correction(definition) {
-        let anchor = building_anchor_render_transform(
-            definition,
-            &record.placement,
-            layout,
-            vertical_scale,
-        );
-        let correction = building_model_correction_local_transform(definition);
+    if building_uses_model_child(definition) {
+        let anchor =
+            building_anchor_render_transform(definition, &record.placement, layout, vertical_scale);
+        let correction =
+            building_model_child_local_transform(definition, record.placement.uniform_scale_f32());
         return commands
             .spawn((marker, anchor))
             .with_children(|parent| {
@@ -87,15 +84,9 @@ pub fn spawn_building_scene_entity(
             .id();
     }
 
-    let transform = building_model_render_transform(
-        definition,
-        &record.placement,
-        layout,
-        vertical_scale,
-    );
-    commands
-        .spawn((marker, SceneRoot(scene), transform))
-        .id()
+    let transform =
+        building_model_render_transform(definition, &record.placement, layout, vertical_scale);
+    commands.spawn((marker, SceneRoot(scene), transform)).id()
 }
 
 /// Spawn a diagnostic fallback cuboid when no valid GLB is available.

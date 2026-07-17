@@ -16,6 +16,7 @@ pub const DEV_BUILDING_CATALOG_RON_PATH: &str = "assets/buildings/catalog.ron";
 /// Load building categories and definitions for dev startup from the design workbook.
 pub fn resolve_dev_building_catalog(
     inventory_profiles: &crate::world::InventoryProfileCatalog,
+    sizing_reports: Option<&mut Vec<crate::world::AssetSizingReport>>,
 ) -> (BuildingCategoryCatalog, BuildingCatalog) {
     let path = dev_design_workbook_path();
     match try_import_dev_building_catalog(&path, inventory_profiles) {
@@ -38,6 +39,9 @@ pub fn resolve_dev_building_catalog(
                     SESSION_HEADER,
                     &format!("Building import warning: {warning}"),
                 );
+            }
+            if let Some(reports) = sizing_reports {
+                reports.extend(summary.sizing_reports);
             }
             (categories, buildings)
         }

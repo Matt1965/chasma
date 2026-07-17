@@ -966,3 +966,507 @@ Unit catalog ids: U-0001, U-0002
 Unit catalog render keys: U-0001, U-0002
 Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
 dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=3
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=0
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=6
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Terrain field Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Terrain Fields` not found); using starter terrain field catalog
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Terrain field Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Terrain Fields` not found); using starter terrain field catalog
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=7
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 4 sizing: missing sizing metadata — using scale 1.0
+Building import warning: row 5 sizing: missing sizing metadata — using scale 1.0
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: missing sizing metadata — using scale 1.0
+Doodad import warning: row 2 sizing: visual baseline scale (1.00×) differs from block radius (4.00 m) — collision updates in DT2
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=8
+Unit import warning: row 2 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Terrain field Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Terrain Fields` not found); using starter terrain field catalog
+Asset sizing report: 3 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)

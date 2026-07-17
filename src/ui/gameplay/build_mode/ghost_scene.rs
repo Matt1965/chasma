@@ -8,9 +8,8 @@ use crate::buildings::scene_materials::prepare_scene_materials;
 use crate::terrain::TerrainRenderAssets;
 use crate::world::{
     Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingLifecycleState, BuildingPlacement,
-    WorldConfig, building_anchor_render_transform, building_has_model_correction,
-    building_model_correction_local_transform, building_model_render_transform,
-    rotation_from_quadrants,
+    WorldConfig, building_anchor_render_transform, building_model_child_local_transform,
+    building_model_render_transform, building_uses_model_child, rotation_from_quadrants,
 };
 
 use super::preview::BuildModeCursorAnchor;
@@ -38,11 +37,7 @@ pub fn sync_build_mode_ghost_scene(
     render_assets: Option<Res<TerrainRenderAssets>>,
     mut existing: Query<(Entity, &BuildModeGhostScene)>,
 ) {
-    let has_anchor = build_mode
-        .last_plan
-        .as_ref()
-        .is_some()
-        || anchor.position.is_some();
+    let has_anchor = build_mode.last_plan.as_ref().is_some() || anchor.position.is_some();
     let should_show =
         build_mode.is_ghost_placing() && build_mode.ghost_definition_id().is_some() && has_anchor;
 
@@ -104,7 +99,7 @@ pub fn sync_build_mode_ghost_scene(
         if marker.definition_id != definition_id || marker.render_key != render_key {
             commands.entity(entity).despawn();
         } else {
-            if building_has_model_correction(definition) {
+            if building_uses_model_child(definition) {
                 let anchor_transform = building_anchor_render_transform(
                     definition,
                     &placement,
@@ -113,12 +108,8 @@ pub fn sync_build_mode_ghost_scene(
                 );
                 commands.entity(entity).insert(anchor_transform);
             } else {
-                let transform = building_model_render_transform(
-                    definition,
-                    &placement,
-                    layout,
-                    vertical_scale,
-                );
+                let transform =
+                    building_model_render_transform(definition, &placement, layout, vertical_scale);
                 commands.entity(entity).insert(transform);
             }
             commands.entity(entity).insert(BuildModeGhostTintPending);
@@ -135,10 +126,11 @@ pub fn sync_build_mode_ghost_scene(
         Visibility::default(),
     );
 
-    if building_has_model_correction(definition) {
+    if building_uses_model_child(definition) {
         let anchor_transform =
             building_anchor_render_transform(definition, &placement, layout, vertical_scale);
-        let correction = building_model_correction_local_transform(definition);
+        let correction =
+            building_model_child_local_transform(definition, placement.uniform_scale_f32());
         commands
             .spawn((ghost, anchor_transform))
             .with_children(|parent| {

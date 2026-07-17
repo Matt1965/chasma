@@ -1,5 +1,7 @@
 //! Read-only inspector snapshot types (ADR-048).
 
+pub use super::doodad_snapshot::{DoodadInspectorSnapshot, capture_doodad_inspector_snapshot};
+
 use bevy::prelude::*;
 
 use crate::world::{
@@ -43,6 +45,11 @@ pub struct BuildingInspectorSnapshot {
     pub fallback_reason: Option<String>,
     pub space_tag_count: Option<u32>,
     pub roof_tag_count: Option<u32>,
+    pub terrain_output_rate: Option<String>,
+    pub final_output_rate: Option<String>,
+    pub operation_progress: Option<String>,
+    pub operation_completions: Option<u32>,
+    pub operation_limiting_factor: Option<String>,
 }
 
 /// Full read-only inspection payload for one unit.

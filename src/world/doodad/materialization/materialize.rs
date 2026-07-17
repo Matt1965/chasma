@@ -865,8 +865,9 @@ mod tests {
             .unwrap();
         assert_eq!(record.placement.position.local.0.y, 55.0);
         // R7 catalog believability overwrites candidate rotation/scale from definition bounds.
-        assert_ne!(record.placement.rotation, Quat::from_rotation_y(1.2));
-        assert!(record.placement.scale.x >= 0.85 && record.placement.scale.x <= 1.15);
+        assert_ne!(record.placement.rotation_quat(), Quat::from_rotation_y(1.2));
+        let scale_x = record.placement.scale_vec3().x;
+        assert!(scale_x >= 0.85 && scale_x <= 1.15);
     }
 
     #[test]

@@ -28,7 +28,8 @@ mod fixtures {
                 35.0,
                 true,
             )
-            .with_interior_profile_id("two_story_hut"),
+            .with_interior_profile_id("two_story_hut")
+            .with_allow_instance_scale(true),
             BuildingDefinition::new(
                 BuildingDefinitionId::new("workbench"),
                 "Workbench",
@@ -115,7 +116,98 @@ mod fixtures {
                 true,
             )
             .with_interaction_profile_id("settlement_core"),
+            tf4_iron_mine(),
+            tf4_copper_mine(),
+            tf4_stone_quarry(),
+            tf4_prispod_farm(),
+            tf4_water_well(),
         ]
+    }
+
+    fn tf4_iron_mine() -> BuildingDefinition {
+        BuildingDefinition::new(
+            BuildingDefinitionId::new("iron_mine"),
+            "Iron Mine",
+            BuildingCategoryId::new("production"),
+            BuildingRenderKey::reserved("smelter"),
+            BuildingRenderKey::reserved("smelter_collision"),
+            500,
+            120.0,
+            FootprintSpec::Circle { radius_meters: 3.0 },
+            30.0,
+            true,
+        )
+        .with_task_provider_id("iron_mine_basic")
+    }
+
+    fn tf4_copper_mine() -> BuildingDefinition {
+        BuildingDefinition::new(
+            BuildingDefinitionId::new("copper_mine"),
+            "Copper Mine",
+            BuildingCategoryId::new("production"),
+            BuildingRenderKey::reserved("smelter"),
+            BuildingRenderKey::reserved("smelter_collision"),
+            500,
+            120.0,
+            FootprintSpec::Circle { radius_meters: 3.0 },
+            30.0,
+            true,
+        )
+        .with_task_provider_id("copper_mine_basic")
+    }
+
+    fn tf4_stone_quarry() -> BuildingDefinition {
+        BuildingDefinition::new(
+            BuildingDefinitionId::new("stone_quarry"),
+            "Stone Quarry",
+            BuildingCategoryId::new("production"),
+            BuildingRenderKey::reserved("smelter"),
+            BuildingRenderKey::reserved("smelter_collision"),
+            450,
+            100.0,
+            FootprintSpec::Rectangle {
+                width_meters: 6.0,
+                depth_meters: 6.0,
+            },
+            30.0,
+            true,
+        )
+        .with_field_sampling_footprint_id(crate::world::FootprintId::new("quarry_excavation"))
+    }
+
+    fn tf4_prispod_farm() -> BuildingDefinition {
+        BuildingDefinition::new(
+            BuildingDefinitionId::new("prispod_farm"),
+            "Prispod Farm",
+            BuildingCategoryId::new("production"),
+            BuildingRenderKey::reserved("hut"),
+            BuildingRenderKey::reserved("hut_collision"),
+            300,
+            80.0,
+            FootprintSpec::Rectangle {
+                width_meters: 4.0,
+                depth_meters: 4.0,
+            },
+            35.0,
+            true,
+        )
+        .with_field_sampling_footprint_id(crate::world::FootprintId::new("farm_cultivation"))
+    }
+
+    fn tf4_water_well() -> BuildingDefinition {
+        BuildingDefinition::new(
+            BuildingDefinitionId::new("water_well"),
+            "Water Well",
+            BuildingCategoryId::new("production"),
+            BuildingRenderKey::reserved("workbench"),
+            BuildingRenderKey::reserved("workbench_collision"),
+            120,
+            30.0,
+            FootprintSpec::Circle { radius_meters: 1.0 },
+            35.0,
+            true,
+        )
+        .with_field_sampling_footprint_id(crate::world::FootprintId::new("well_extraction"))
     }
 }
 

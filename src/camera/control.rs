@@ -65,6 +65,7 @@ pub fn apply_rts_camera_control(
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     mouse_motion: Res<AccumulatedMouseMotion>,
     mouse_scroll: Res<AccumulatedMouseScroll>,
+    #[cfg(feature = "dev")] dev_gate: Option<Res<crate::dev::DevModeInputGate>>,
     mut query: Query<(&mut RtsCameraState, &mut Transform), With<RtsCamera>>,
 ) {
     let vertical_scale = render_assets
@@ -72,6 +73,11 @@ pub fn apply_rts_camera_control(
         .map(|assets| assets.vertical_scale)
         .unwrap_or(1.0);
     let dt = time.delta_secs().min(settings.max_frame_delta);
+
+    #[cfg(feature = "dev")]
+    if dev_gate.is_some_and(|gate| gate.block_camera_input) {
+        return;
+    }
 
     let Ok((mut state, mut transform)) = query.single_mut() else {
         return;

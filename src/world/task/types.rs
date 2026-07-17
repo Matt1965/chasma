@@ -26,6 +26,8 @@ pub enum TaskState {
     Available,
     Assigned,
     InProgress,
+    /// Waiting for operational conditions (terrain, output, etc.) (ADR-105 TF5).
+    BlockedWaiting,
     Completed,
     Canceled,
 }

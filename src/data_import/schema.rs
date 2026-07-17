@@ -1,5 +1,9 @@
 //! Excel column schema and conversion into [`DoodadDefinition`].
 
+use crate::world::asset_sizing::{
+    AssetSizingDefinition, DoodadCollisionShape, DoodadGroundingMode,
+};
+use crate::world::authoring_transform::AuthoringScale;
 use crate::world::{
     BiomeId, DoodadDefinition, DoodadDefinitionId, DoodadKind, DoodadRenderKey,
     default_blocks_movement,
@@ -54,6 +58,13 @@ pub struct DoodadImportRow {
     pub blocks_movement: Option<bool>,
     /// `None` when column absent or blank — defaults to placement radius.
     pub block_radius_meters: Option<f32>,
+    pub asset_sizing: AssetSizingDefinition,
+    pub default_instance_scale: AuthoringScale,
+    pub allow_nonuniform_instance_scale: bool,
+    pub collision_shape: DoodadCollisionShape,
+    pub base_collision_radius_x_meters: Option<f32>,
+    pub base_collision_radius_z_meters: Option<f32>,
+    pub grounding_mode: DoodadGroundingMode,
 }
 
 pub fn parse_category(value: &str) -> Result<DoodadKind, String> {
@@ -202,6 +213,12 @@ impl DoodadImportRow {
             .blocks_movement
             .unwrap_or_else(|| default_blocks_movement(kind));
         let block_radius_meters = self.block_radius_meters.unwrap_or(placement_radius);
+        let base_rx = self
+            .base_collision_radius_x_meters
+            .unwrap_or(block_radius_meters);
+        let base_rz = self
+            .base_collision_radius_z_meters
+            .unwrap_or(block_radius_meters);
 
         let display_name = if self.description.trim().is_empty() {
             self.name.trim()
@@ -209,7 +226,7 @@ impl DoodadImportRow {
             self.description.trim()
         };
 
-        Ok(DoodadDefinition::new(
+        let mut definition = DoodadDefinition::new(
             DoodadDefinitionId::new(self.definition_id.trim()),
             kind,
             display_name,
@@ -226,7 +243,15 @@ impl DoodadImportRow {
         .with_spawn_weight(self.spawn_weight)
         .with_random_rotation_y(self.random_rotation)
         .with_blocks_movement(blocks_movement)
-        .with_block_radius_meters(block_radius_meters))
+        .with_block_radius_meters(block_radius_meters);
+        definition.asset_sizing = self.asset_sizing.clone();
+        definition.default_instance_scale = self.default_instance_scale;
+        definition.allow_nonuniform_instance_scale = self.allow_nonuniform_instance_scale;
+        definition.collision_shape = self.collision_shape;
+        definition.base_collision_radius_x_meters = base_rx;
+        definition.base_collision_radius_z_meters = base_rz;
+        definition.grounding_mode = self.grounding_mode;
+        Ok(definition)
     }
 }
 
@@ -251,6 +276,13 @@ mod tests {
             enabled_was_blank: false,
             blocks_movement: None,
             block_radius_meters: None,
+            asset_sizing: AssetSizingDefinition::default(),
+            default_instance_scale: AuthoringScale::uniform_one(),
+            allow_nonuniform_instance_scale: true,
+            collision_shape: DoodadCollisionShape::None,
+            base_collision_radius_x_meters: None,
+            base_collision_radius_z_meters: None,
+            grounding_mode: DoodadGroundingMode::TerrainGrounded,
         }
     }
 
@@ -271,6 +303,13 @@ mod tests {
             enabled_was_blank: false,
             blocks_movement: None,
             block_radius_meters: None,
+            asset_sizing: AssetSizingDefinition::default(),
+            default_instance_scale: AuthoringScale::uniform_one(),
+            allow_nonuniform_instance_scale: true,
+            collision_shape: DoodadCollisionShape::None,
+            base_collision_radius_x_meters: None,
+            base_collision_radius_z_meters: None,
+            grounding_mode: DoodadGroundingMode::TerrainGrounded,
         }
     }
 

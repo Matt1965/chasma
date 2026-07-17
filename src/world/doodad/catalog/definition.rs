@@ -3,6 +3,10 @@ use bevy::prelude::*;
 use super::definition_id::DoodadDefinitionId;
 use super::render_key::DoodadRenderKey;
 use crate::world::DoodadKind;
+use crate::world::asset_sizing::{
+    AssetSizingDefinition, DoodadCollisionShape, DoodadGroundingMode,
+};
+use crate::world::authoring_transform::AuthoringScale;
 use crate::world::biome::BiomeId;
 
 /// Authoritative description of a doodad type (ADR-016).
@@ -47,6 +51,16 @@ pub struct DoodadDefinition {
     pub block_radius_meters: f32,
     /// Reserved reference to a future placement rule set.
     pub rule_ref: Option<String>,
+    /// Metric asset sizing metadata (ADR-097 DT1).
+    pub asset_sizing: AssetSizingDefinition,
+    /// Default per-instance scale applied at spawn (multiplies baseline).
+    pub default_instance_scale: AuthoringScale,
+    pub allow_nonuniform_instance_scale: bool,
+    /// DT2 collision seam — parsed in DT1, occupancy unchanged until DT2.
+    pub collision_shape: DoodadCollisionShape,
+    pub base_collision_radius_x_meters: f32,
+    pub base_collision_radius_z_meters: f32,
+    pub grounding_mode: DoodadGroundingMode,
 }
 
 impl DoodadDefinition {
@@ -84,6 +98,13 @@ impl DoodadDefinition {
             blocks_movement: default_blocks_movement(kind),
             block_radius_meters: placement_radius_meters,
             rule_ref: None,
+            asset_sizing: AssetSizingDefinition::default(),
+            default_instance_scale: AuthoringScale::uniform_one(),
+            allow_nonuniform_instance_scale: true,
+            collision_shape: DoodadCollisionShape::None,
+            base_collision_radius_x_meters: placement_radius_meters,
+            base_collision_radius_z_meters: placement_radius_meters,
+            grounding_mode: DoodadGroundingMode::TerrainGrounded,
         }
     }
 

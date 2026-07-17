@@ -4,6 +4,8 @@ use super::definition_id::BuildingDefinitionId;
 use super::render_key::BuildingRenderKey;
 use crate::world::AnimationProfileId;
 use crate::world::InventoryProfileId;
+use crate::world::asset_sizing::AssetSizingDefinition;
+use crate::world::authoring_transform::BuildingTransformSafetyClass;
 use crate::world::building::category::BuildingCategoryId;
 use crate::world::building::container_access::ContainerAccessPolicy;
 use crate::world::building::footprint::{FootprintSpec, FootprintType};
@@ -30,6 +32,8 @@ pub struct BuildingDefinition {
     pub footprint: FootprintSpec,
     /// Optional catalog footprint reference. When unset, inline [`Self::footprint`] is used.
     pub footprint_id: Option<crate::world::FootprintId>,
+    /// Default operational terrain-field sampling footprint when requirements do not override.
+    pub field_sampling_footprint_id: Option<crate::world::FootprintId>,
     /// Reserved construction stage set id (B4+).
     pub construction_stages_ref: Option<String>,
     /// Reserved task-generation profile id (ADR-072).
@@ -55,6 +59,13 @@ pub struct BuildingDefinition {
     pub model_local_offset: Vec3,
     /// Additional yaw correction (degrees) applied to render root only (ADR-096).
     pub model_yaw_correction_degrees: f32,
+    /// Metric asset sizing metadata (ADR-097 DT1).
+    pub asset_sizing: AssetSizingDefinition,
+    pub transform_safety_class: BuildingTransformSafetyClass,
+    /// Dev-only instance uniform scale seam (player Build Mode uses definition default).
+    pub allow_instance_scale: bool,
+    pub min_uniform_instance_scale: f32,
+    pub max_uniform_instance_scale: f32,
 }
 
 impl BuildingDefinition {
@@ -84,6 +95,7 @@ impl BuildingDefinition {
             footprint_type,
             footprint,
             footprint_id: None,
+            field_sampling_footprint_id: None,
             construction_stages_ref: None,
             task_provider_id: None,
             animation_profile_id: None,
@@ -98,6 +110,11 @@ impl BuildingDefinition {
             spill_on_destroy: true,
             model_local_offset: Vec3::ZERO,
             model_yaw_correction_degrees: 0.0,
+            asset_sizing: AssetSizingDefinition::default(),
+            transform_safety_class: BuildingTransformSafetyClass::Navigable,
+            allow_instance_scale: false,
+            min_uniform_instance_scale: 0.05,
+            max_uniform_instance_scale: 20.0,
         }
     }
 
@@ -117,6 +134,14 @@ impl BuildingDefinition {
 
     pub fn with_footprint_id(mut self, footprint_id: crate::world::FootprintId) -> Self {
         self.footprint_id = Some(footprint_id);
+        self
+    }
+
+    pub fn with_field_sampling_footprint_id(
+        mut self,
+        footprint_id: crate::world::FootprintId,
+    ) -> Self {
+        self.field_sampling_footprint_id = Some(footprint_id);
         self
     }
 
@@ -172,6 +197,11 @@ impl BuildingDefinition {
 
     pub fn with_spill_on_destroy(mut self, spill_on_destroy: bool) -> Self {
         self.spill_on_destroy = spill_on_destroy;
+        self
+    }
+
+    pub fn with_allow_instance_scale(mut self, allow: bool) -> Self {
+        self.allow_instance_scale = allow;
         self
     }
 }

@@ -943,6 +943,7 @@ mod tests {
                 &crate::world::CorpseSettings::default(),
                 0.25,
                 0,
+                None,
             );
         }
         assert_eq!(

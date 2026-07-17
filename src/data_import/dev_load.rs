@@ -14,7 +14,9 @@ const SESSION_HEADER: &str = "# chasma dev startup log";
 pub const DEV_DOODAD_CATALOG_RON_PATH: &str = "assets/doodads/catalog.ron";
 
 /// Load [`DoodadCatalog`] for dev startup from the design workbook `Doodads` sheet.
-pub fn resolve_dev_doodad_catalog() -> DoodadCatalog {
+pub fn resolve_dev_doodad_catalog(
+    sizing_reports: Option<&mut Vec<crate::world::AssetSizingReport>>,
+) -> DoodadCatalog {
     let path = dev_design_workbook_path();
     match try_import_dev_doodad_catalog(&path) {
         Ok((catalog, summary)) => {
@@ -36,6 +38,9 @@ pub fn resolve_dev_doodad_catalog() -> DoodadCatalog {
                     SESSION_HEADER,
                     &format!("Doodad import warning: {warning}"),
                 );
+            }
+            if let Some(reports) = sizing_reports {
+                reports.extend(summary.sizing_reports);
             }
             catalog
         }

@@ -359,7 +359,7 @@ mod tests {
             DoodadId::new(99),
             DoodadDefinitionId::new("missing_tree_def"),
             DoodadKind::Tree,
-            DoodadPlacement::new(tree_position, Quat::IDENTITY, Vec3::ONE),
+            DoodadPlacement::from_legacy(tree_position, Quat::IDENTITY, Vec3::ONE).unwrap(),
             DoodadSource::Authored,
         );
         world

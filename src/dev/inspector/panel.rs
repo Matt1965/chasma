@@ -5,7 +5,8 @@ use bevy::prelude::*;
 use crate::debug::{CommandTraceBuffer, recent_combat_log_lines};
 
 use super::snapshot::{
-    BuildingInspectorSnapshot, InteractionInspectorSnapshot, UnitInspectorSnapshot,
+    BuildingInspectorSnapshot, DoodadInspectorSnapshot, InteractionInspectorSnapshot,
+    UnitInspectorSnapshot,
 };
 use super::state::WorldInspectorState;
 
@@ -35,6 +36,8 @@ pub(crate) fn setup_inspector_panel(parent: &mut ChildSpawnerCommands<'_>) {
 pub(crate) fn sync_inspector_panel(
     dev_state: Res<crate::dev::DevModeState>,
     inspector: Res<WorldInspectorState>,
+    tool_state: Res<crate::dev::gizmo::DevToolState>,
+    edit: Res<crate::dev::gizmo::TransformEditState>,
     trace: Res<CommandTraceBuffer>,
     mut text: Query<(&mut Text, &mut Node), With<DevInspectorText>>,
 ) {
@@ -49,7 +52,9 @@ pub(crate) fn sync_inspector_panel(
         return;
     }
 
-    **label = if let Some(snapshot) = inspector.building_snapshot.as_ref() {
+    **label = if let Some(snapshot) = inspector.doodad_snapshot.as_ref() {
+        format_doodad_snapshot(snapshot, &tool_state, &edit)
+    } else if let Some(snapshot) = inspector.building_snapshot.as_ref() {
         format_building_snapshot(snapshot)
     } else if let Some(snapshot) = inspector.unit_snapshot.as_ref() {
         let mut body = format_unit_snapshot(snapshot);
@@ -65,7 +70,7 @@ pub(crate) fn sync_inspector_panel(
     } else if let Some(interaction) = inspector.interaction_snapshot.as_ref() {
         format_interaction_snapshot(interaction)
     } else if inspector.last_message.is_empty() {
-        "Inspector: Alt+click unit or click terrain (Dev Mode) for interaction probe".into()
+        "Inspector: Alt+click unit, click doodad/building (Dev Mode), or terrain probe".into()
     } else {
         inspector.last_message.clone()
     };
@@ -203,6 +208,53 @@ fn format_interaction_snapshot(s: &InteractionInspectorSnapshot) -> String {
     )
 }
 
+fn format_doodad_snapshot(
+    s: &DoodadInspectorSnapshot,
+    tool_state: &crate::dev::gizmo::DevToolState,
+    edit: &crate::dev::gizmo::TransformEditState,
+) -> String {
+    let mut out = format!(
+        "Doodad #{}  def={}\n\
+         Position (m): ({:.2}, {:.2}, {:.2})\n\
+         Rotation (deg): pitch={:.1} yaw={:.1} roll={:.1}\n\
+         Scale: ({:.3}, {:.3}, {:.3})\n\
+         Visual size (m): ({:.2}, {:.2}, {:.2})\n\
+         Collision: {}  cells={}\n",
+        s.doodad_id.raw(),
+        s.definition_id,
+        s.position.x,
+        s.position.y,
+        s.position.z,
+        s.rotation_deg.x,
+        s.rotation_deg.y,
+        s.rotation_deg.z,
+        s.scale.x,
+        s.scale.y,
+        s.scale.z,
+        s.visual_size.x,
+        s.visual_size.y,
+        s.visual_size.z,
+        s.collision_shape,
+        s.occupied_cell_count,
+    );
+    if let Some(warning) = &s.tilt_warning {
+        out.push_str(&format!("Tilt warning: {warning}\n"));
+    }
+    out.push_str(&format!(
+        "\nGizmo: {}  space={}  drag={}  valid={}\n\
+         W/E/R = Translate/Rotate/Scale  L = World/Local  Esc = cancel\n\
+         Hotkeys: arrows move  [ ] yaw  hold G ground  hold O overlap\n",
+        tool_state.active_tool.label(),
+        edit.coordinate_space.label(),
+        edit.dragging,
+        edit.preview_valid,
+    ));
+    if !edit.last_error.is_empty() {
+        out.push_str(&format!("Gizmo error: {}\n", edit.last_error));
+    }
+    out
+}
+
 fn format_building_snapshot(s: &BuildingInspectorSnapshot) -> String {
     format!(
         "Building #{}  {}  def={}\n\
@@ -215,6 +267,8 @@ fn format_building_snapshot(s: &BuildingInspectorSnapshot) -> String {
          asset: {}  load: {}\n\
          runtime entity: {}  fallback: {} {}\n\
          scene tags: space={} roof={}\n\
+         terrain output: {}  final output: {}\n\
+         operation progress: {}  completions: {}  limiting: {}\n\
          Dev: [D]amage [H]eal [X]estroy [R]uins [C]omplete [P]+progress\n\
          Container: [I]nspect [G]old [T]ransfer [U]lock [V]alidate",
         s.building_id.raw(),
@@ -244,5 +298,12 @@ fn format_building_snapshot(s: &BuildingInspectorSnapshot) -> String {
         s.roof_tag_count
             .map(|count| count.to_string())
             .unwrap_or_else(|| "—".into()),
+        s.terrain_output_rate.as_deref().unwrap_or("—"),
+        s.final_output_rate.as_deref().unwrap_or("—"),
+        s.operation_progress.as_deref().unwrap_or("—"),
+        s.operation_completions
+            .map(|count| count.to_string())
+            .unwrap_or_else(|| "—".into()),
+        s.operation_limiting_factor.as_deref().unwrap_or("—"),
     )
 }

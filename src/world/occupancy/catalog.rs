@@ -81,10 +81,36 @@ mod fixtures {
     use crate::world::occupancy::footprint::inline_footprint_from_building;
 
     pub fn starter_footprint_definitions() -> Vec<FootprintDefinition> {
-        starter_definitions()
+        let mut definitions: Vec<FootprintDefinition> = starter_definitions()
             .iter()
             .filter_map(inline_footprint_from_building)
-            .collect()
+            .collect();
+        definitions.extend(field_sampling_footprints());
+        definitions
+    }
+
+    fn field_sampling_footprints() -> Vec<FootprintDefinition> {
+        use crate::world::FootprintShape;
+        vec![
+            FootprintDefinition::new(
+                FootprintId::new("quarry_excavation"),
+                FootprintShape::Rectangle {
+                    width_meters: 12.0,
+                    depth_meters: 12.0,
+                },
+            ),
+            FootprintDefinition::new(
+                FootprintId::new("farm_cultivation"),
+                FootprintShape::Rectangle {
+                    width_meters: 16.0,
+                    depth_meters: 12.0,
+                },
+            ),
+            FootprintDefinition::new(
+                FootprintId::new("well_extraction"),
+                FootprintShape::Circle { radius_meters: 1.5 },
+            ),
+        ]
     }
 }
 

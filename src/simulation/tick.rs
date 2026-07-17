@@ -3,6 +3,7 @@
 //! Coordinates subsystem APIs in the canonical order established in REVIEW-A4.
 //! Contains no movement/combat algorithms — only stage sequencing.
 
+use crate::world::BuildingOperationParams;
 use crate::world::{
     AttackTargetingPolicy, BuildingCatalog, BuildingConstructionSettings,
     BuildingInteractionProfileCatalog, CombatAiScanState, CombatAiSettings, CombatStrikeReport,
@@ -48,6 +49,7 @@ pub fn run_simulation_tick(
     corpse_settings: &crate::world::CorpseSettings,
     delta_seconds: f32,
     simulation_tick: u64,
+    mut operation: Option<&mut BuildingOperationParams<'_>>,
 ) -> SimulationTickReport {
     let passability = PassabilityCatalogs {
         doodad: doodad_catalog,
@@ -126,6 +128,7 @@ pub fn run_simulation_tick(
         doodad_catalog,
         occupancy,
         delta_seconds,
+        operation.as_deref_mut(),
     );
     let movement = step_all_unit_movement(world, unit_catalog, passability, delta_seconds);
     SimulationTickReport {
@@ -279,6 +282,7 @@ mod tests {
             &crate::world::CorpseSettings::default(),
             SIMULATION_TICK_SECONDS,
             1,
+            None,
         );
 
         assert!(!report.combat_strike.traces.is_empty() || report.combat.traces.is_empty());
@@ -335,6 +339,7 @@ mod tests {
             &crate::world::CorpseSettings::default(),
             SIMULATION_TICK_SECONDS,
             1,
+            None,
         );
 
         assert!(report.orders_resolved() > 0 || report.units_moved() > 0);
@@ -376,6 +381,7 @@ mod tests {
                 &crate::world::CorpseSettings::default(),
                 SIMULATION_TICK_SECONDS,
                 tick,
+                None,
             );
             let report_b = run_simulation_tick(
                 &mut world_b,
@@ -397,6 +403,7 @@ mod tests {
                 &crate::world::CorpseSettings::default(),
                 SIMULATION_TICK_SECONDS,
                 tick,
+                None,
             );
             assert_eq!(report_a, report_b);
         }

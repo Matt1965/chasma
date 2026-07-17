@@ -990,6 +990,7 @@ mod tests {
                 &crate::world::CorpseSettings::default(),
                 SIMULATION_TICK_SECONDS,
                 0,
+                None,
             );
         }
         if let Some(record) = world.get_unit(hostile) {

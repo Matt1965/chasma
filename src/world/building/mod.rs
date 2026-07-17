@@ -1,6 +1,11 @@
 pub mod catalog;
 pub mod category;
+pub mod field_requirement;
+pub mod field_response;
 pub mod footprint;
+pub mod operation;
+pub mod operational_efficiency;
+pub mod terrain_assessment;
 
 mod asset_pivot;
 mod authoring;
@@ -22,14 +27,15 @@ mod restore;
 mod source;
 mod state;
 mod store;
+mod transform_edit;
 mod vitals;
 
 pub use asset_pivot::{builtin_model_local_offset, effective_model_local_offset};
 pub use authoring::{
-    BuildingAuthoringError, create_building, create_building_with_inventory,
-    create_dev_complete_building, create_dev_complete_building_with_inventory,
-    apply_dev_complete_building_state, lookup_building,
-    move_building, place_player_building, place_player_building_with_inventory, remove_building,
+    BuildingAuthoringError, apply_dev_complete_building_state, create_building,
+    create_building_with_inventory, create_dev_complete_building,
+    create_dev_complete_building_with_inventory, lookup_building, move_building,
+    place_player_building, place_player_building_with_inventory, remove_building,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use catalog::starter_definitions;
@@ -51,6 +57,18 @@ pub use construction::{
 };
 pub use container_access::{
     ContainerAccessPolicy, InventoryAccessDenialReason, InventoryAccessResult,
+};
+pub use field_requirement::{
+    BuildingFieldRequirementCatalog, BuildingFieldRequirementCatalogRevision,
+    BuildingFieldRequirementDefinition, BuildingFieldRequirementError,
+    BuildingFieldRequirementKind, load_building_field_requirement_catalog,
+};
+pub use field_response::{
+    EfficiencyBasisPoints, FieldResponseEvaluationError, FieldResponsePoint,
+    FieldResponseProfileCatalog, FieldResponseProfileCatalogRevision,
+    FieldResponseProfileDefinition, FieldResponseProfileError, FieldResponseProfileId,
+    MAX_EFFICIENCY_BASIS_POINTS, evaluate_field_response, field_value_from_percent,
+    field_value_to_percent_display, load_field_response_profile_catalog,
 };
 pub use footprint::{FootprintSpec, FootprintType};
 pub use id::BuildingId;
@@ -77,18 +95,29 @@ pub use inventory::{
     validate_building_inventory_owner,
 };
 pub use inventory_error::BuildingInventoryError;
+pub use operation::{
+    BASE_OPERATION_PROGRESS_PER_TICK, BuildingOperationParams, BuildingOperationSaveState,
+    BuildingOperationState, BuildingOperationStore, OperationCompletionReport, OperationError,
+    OperationStepReport, PRODUCTION_PROGRESS_ONE_UNIT, ProductionProgress, apply_operation_ticks,
+    expected_ticks_to_complete, scale_progress, step_workstation_operation,
+};
+pub use operational_efficiency::{
+    OperationalEfficiencyContext, OperationalEfficiencyError, OperationalEfficiencyReport,
+    OperationalLimitingFactor, building_operational_efficiency, combine_output_efficiency,
+};
 pub use ownership::BuildingOwnership;
 pub use placement::BuildingPlacement;
 pub use placement_plan::{
     BuildingPlacementPlan, PLACEMENT_QUANTIZE_METERS, anchor_from_terrain_position,
-    build_building_placement_plan, building_anchor_render_transform,
+    build_building_placement_plan, building_anchor_render_transform, building_has_model_correction,
     building_model_correction_local_transform, building_model_render_transform,
-    building_model_world_transform, building_has_model_correction,
-    ground_and_quantize_building_anchor, quantize_placement_anchor_xz, snap_anchor_global_xz,
+    building_model_world_transform, ground_and_quantize_building_anchor,
+    quantize_placement_anchor_xz, snap_anchor_global_xz,
 };
 pub use placement_validation::{
     BuildingPlacementConfig, BuildingPlacementContext, BuildingPlacementRejectReason,
     BuildingPlacementValidation, rotation_from_quadrants, validate_building_placement,
+    validate_building_transform_placement,
 };
 pub use rebuild::{BuildingRebuildError, rebuild_building_world_indexes};
 pub use record::BuildingRecord;
@@ -96,4 +125,18 @@ pub use restore::{BuildingRestoreError, validate_building_for_restore};
 pub use source::BuildingSource;
 pub use state::{BuildingInteriorState, BuildingLifecycleState, BuildingSpaces, ConstructionState};
 pub use store::ChunkBuildingStore;
+pub use terrain_assessment::{
+    AssessmentRebuildOutcome, AssessmentRebuildReport, BuildingFieldRequirementAssessment,
+    BuildingTerrainAssessment, BuildingTerrainAssessmentKey, BuildingTerrainAssessmentStore,
+    BuildingTerrainWarning, TerrainAssessmentCatalogs, TerrainAssessmentError,
+    assess_building_terrain, assess_building_terrain_at_placement, assessment_revision_fingerprint,
+    ensure_building_terrain_assessment, format_coverage_display, format_efficiency_display,
+    format_field_average_display, hash_sample_cells, invalidate_buildings_for_changed_fields,
+    rebuild_all_building_terrain_assessments, rebuild_building_terrain_assessment,
+    resolve_building_field_sample_cells,
+};
+pub use transform_edit::{
+    BuildingTransformCandidate, BuildingTransformCatalogs, BuildingTransformEditError,
+    BuildingTransformEditOptions, BuildingTransformEditReport, update_building_transform,
+};
 pub use vitals::BuildingVitals;

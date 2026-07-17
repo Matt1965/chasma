@@ -47,6 +47,11 @@ pub fn import_item_catalog_from_excel(
             .into_iter()
             .chain(item_summary.warnings)
             .collect(),
+        sizing_reports: category_summary
+            .sizing_reports
+            .into_iter()
+            .chain(item_summary.sizing_reports)
+            .collect(),
     };
     let catalog =
         crate::world::ItemCatalog::from_definitions(items, &categories).map_err(|err| {

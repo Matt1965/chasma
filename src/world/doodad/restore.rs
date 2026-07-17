@@ -115,7 +115,7 @@ fn validate_doodad_record_fields(
     validate_scale(
         definition.min_scale,
         definition.max_scale,
-        record.placement.scale,
+        record.placement.scale_vec3(),
         doodad_id,
     )?;
 
@@ -208,7 +208,7 @@ mod tests {
             DoodadId::new(id),
             DoodadDefinitionId::new("tree_oak"),
             DoodadKind::Tree,
-            DoodadPlacement::new(pos(1.0, 2.0), Quat::IDENTITY, Vec3::ONE),
+            DoodadPlacement::from_legacy(pos(1.0, 2.0), Quat::IDENTITY, Vec3::ONE).unwrap(),
             DoodadSource::Dev,
         )
     }

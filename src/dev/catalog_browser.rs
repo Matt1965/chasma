@@ -36,7 +36,8 @@ pub fn filter_catalog_entries(
         | DevTab::Placement
         | DevTab::Scenes
         | DevTab::Inspector
-        | DevTab::WorldTools => Vec::new(),
+        | DevTab::WorldTools
+        | DevTab::TerrainFields => Vec::new(),
     };
 
     if matches!(tab, DevTab::Units | DevTab::Doodads | DevTab::Buildings) {

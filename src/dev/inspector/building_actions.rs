@@ -264,6 +264,7 @@ pub fn handle_building_dev_actions(
             &interaction_catalog,
             building_id,
             None,
+            None,
         );
     }
 }

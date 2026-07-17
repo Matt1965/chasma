@@ -91,7 +91,7 @@ pub fn sync_unit_render_entities(
         };
         let render_scale = catalog
             .get(&record.definition_id)
-            .map(|definition| definition.render_scale)
+            .map(crate::world::unit_baseline_render_scale)
             .unwrap_or(1.0);
         let layout = config.chunk_layout();
         let translation =
@@ -135,7 +135,7 @@ pub fn sync_unit_render_entities(
             scene,
             &config,
             vertical_scale,
-            definition.render_scale,
+            crate::world::unit_baseline_render_scale(definition),
         );
         index.0.insert(id, entity);
     }
@@ -406,7 +406,8 @@ mod tests {
             true,
             UnitRenderKey::reserved("wolf"),
         );
-        definition.render_scale = 2.15;
+        definition.asset_sizing.explicit_baseline_scale =
+            Some(crate::world::AuthoringScale::from_uniform_f32(2.15).unwrap());
         let catalog = UnitCatalog::from_definitions(vec![definition]).unwrap();
         app.insert_resource(catalog);
         let unit_id = prepare_resident_unit(&mut app, 9, 10);

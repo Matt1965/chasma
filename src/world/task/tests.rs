@@ -262,6 +262,7 @@ fn worker_labor_advances_construction_deterministically() {
             &doodad,
             occ,
             delta,
+            None,
         );
     }
     let record = world.get_building(building_id).unwrap();

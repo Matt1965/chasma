@@ -9,7 +9,6 @@ use crate::terrain::TerrainRenderAssets;
 use crate::terrain::residency::ChunkResidencyTracker;
 use crate::world::{
     BuildingCatalog, BuildingId, WorldConfig, WorldData, building_anchor_render_transform,
-    building_has_model_correction,
 };
 
 use super::assets::{BuildingSceneAssets, lifecycle_render_key};
@@ -64,6 +63,7 @@ pub fn sync_building_render_entities(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut index: ResMut<BuildingRenderIndex>,
     existing: Query<(Entity, &BuildingRenderEntity)>,
+    children: Query<&Children>,
     render_terrain: Option<Res<TerrainRenderAssets>>,
     overrides: Option<Res<BuildingSyncOverrides>>,
 ) {
@@ -116,22 +116,35 @@ pub fn sync_building_render_entities(
             });
         } else {
             let layout = config.chunk_layout();
-            let transform = if building_has_model_correction(definition) {
-                building_anchor_render_transform(
+            if crate::world::building_uses_model_child(definition) {
+                let anchor = building_anchor_render_transform(
                     definition,
                     &record.placement,
                     layout,
                     vertical_scale,
-                )
+                );
+                commands.entity(entity).insert(anchor);
+                // Instance uniform scale lives on the model child; keep it in sync so
+                // dev scale edits persist after the object is deselected (the gizmo
+                // preview otherwise masks a stale child transform).
+                let correction = crate::world::building_model_child_local_transform(
+                    definition,
+                    record.placement.uniform_scale_f32(),
+                );
+                if let Ok(child_entities) = children.get(entity) {
+                    for child in child_entities.iter() {
+                        commands.entity(child).insert(correction);
+                    }
+                }
             } else {
-                crate::world::building_model_render_transform(
+                let transform = crate::world::building_model_render_transform(
                     definition,
                     &record.placement,
                     layout,
                     vertical_scale,
-                )
-            };
-            commands.entity(entity).insert(transform);
+                );
+                commands.entity(entity).insert(transform);
+            }
         }
 
         if marker.lifecycle_state != record.lifecycle_state {

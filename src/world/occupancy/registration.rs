@@ -5,15 +5,24 @@ use bevy::prelude::*;
 use super::catalog::FootprintCatalog;
 use super::cell::{OccupancyCellCoord, QuantizedRotation, chunk_for_occupancy_cell};
 use super::footprint::{
-    FootprintShape, effective_building_footprint, occupied_cells_for_footprint,
+    FootprintShape, effective_building_footprint_for_placement, occupied_cells_for_footprint,
 };
 use super::grid::default_space_id;
 use super::grid::{ChunkOccupancyGrid, OccupancyCellEntry, OccupancyState};
 use super::{OccupancyError, OccupancySource, conservative_block_radius_for_kind};
+use crate::world::occupancy::occupied_cells_for_footprint_yaw;
+use crate::world::resolve_doodad_collision;
 use crate::world::{
     BuildingCatalog, BuildingId, BuildingLifecycleState, BuildingRecord, ChunkId, DoodadCatalog,
     DoodadId, DoodadKind, DoodadRecord, WorldData, default_blocks_movement,
 };
+
+/// Options for doodad occupancy registration (ADR-098 DT2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct DoodadRegistrationOptions {
+    /// When true, doodad-vs-doodad cell conflicts do not fail registration.
+    pub allow_overlap: bool,
+}
 
 /// Catalog bundle for occupancy registration and queries.
 #[derive(Debug, Clone, Copy)]
@@ -48,7 +57,11 @@ pub fn plan_register_building(
         .get(&record.definition_id)
         .ok_or_else(|| OccupancyError::MissingBuildingDefinition(record.definition_id.clone()))?;
 
-    let shape = effective_building_footprint(definition, catalogs.footprint)?;
+    let shape = effective_building_footprint_for_placement(
+        definition,
+        catalogs.footprint,
+        record.placement.uniform_scale_f32(),
+    )?;
     let occupancy_state = occupancy_state_for_building(record.lifecycle_state);
     plan_register_shape(
         world,
@@ -75,22 +88,54 @@ pub fn plan_register_doodad(
     world: &WorldData,
     catalogs: OccupancyCatalogs<'_>,
     record: &DoodadRecord,
+    options: DoodadRegistrationOptions,
 ) -> Result<OccupancyRegistrationPlan, OccupancyError> {
-    let (blocks, radius) = doodad_blocking_params(record, catalogs.doodad)?;
-    if !blocks || radius <= 0.0 {
+    let Some(definition) = catalogs.doodad.get(&record.definition_id) else {
+        if !default_blocks_movement(record.kind) {
+            return Ok(OccupancyRegistrationPlan::default());
+        }
+        return Err(OccupancyError::MissingDoodadDefinition {
+            definition_id: record.definition_id.clone(),
+        });
+    };
+
+    let collision = resolve_doodad_collision(record, definition);
+    if !collision.blocks_movement {
         return Ok(OccupancyRegistrationPlan::default());
     }
-    let shape = FootprintShape::Circle {
-        radius_meters: radius,
-    };
-    plan_register_shape(
-        world,
-        OccupancySource::Doodad(record.id),
-        record.placement.position.to_global(world.layout()),
-        record.placement.rotation,
-        &shape,
-        OccupancyState::Blocked,
-    )
+
+    let anchor_global = record.placement.position.to_global(world.layout());
+    let anchor_xz = Vec2::new(anchor_global.x, anchor_global.z);
+    let cells =
+        occupied_cells_for_footprint_yaw(&collision.shape, anchor_xz, collision.yaw_radians);
+    let source = OccupancySource::Doodad(record.id);
+    let space_id = default_space_id();
+    let mut plan = OccupancyRegistrationPlan::default();
+
+    for cell in cells {
+        let chunk = ChunkId::new(chunk_for_occupancy_cell(cell, world.layout()));
+        let entry = OccupancyCellEntry {
+            state: OccupancyState::Blocked,
+            source,
+            space_id,
+        };
+        if let Some(existing) = world.occupancy_cell(chunk, cell, space_id) {
+            if existing.source == source {
+                continue;
+            }
+            if options.allow_overlap && matches!(existing.source, OccupancySource::Doodad(_)) {
+                continue;
+            }
+            return Err(OccupancyError::OccupancyConflict {
+                cell_x: cell.x,
+                cell_z: cell.z,
+                existing: existing.source,
+                incoming: source,
+            });
+        }
+        plan.register.push((chunk, cell, entry));
+    }
+    Ok(plan)
 }
 
 fn doodad_blocking_params(
@@ -219,7 +264,12 @@ pub fn register_doodad_occupancy(
     catalogs: OccupancyCatalogs<'_>,
     record: &DoodadRecord,
 ) -> Result<(), OccupancyError> {
-    let plan = plan_register_doodad(world, catalogs, record)?;
+    let plan = plan_register_doodad(
+        world,
+        catalogs,
+        record,
+        DoodadRegistrationOptions::default(),
+    )?;
     apply_registration_plan(world, &plan)
 }
 
@@ -247,7 +297,12 @@ pub fn update_doodad_occupancy(
     catalogs: OccupancyCatalogs<'_>,
     record: &DoodadRecord,
 ) -> Result<(), OccupancyError> {
-    let register = plan_register_doodad(world, catalogs, record)?;
+    let register = plan_register_doodad(
+        world,
+        catalogs,
+        record,
+        DoodadRegistrationOptions::default(),
+    )?;
     let mut plan = plan_unregister_source(world, OccupancySource::Doodad(record.id));
     plan.register = register.register;
     apply_registration_plan(world, &plan)

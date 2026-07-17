@@ -150,6 +150,7 @@ mod tests {
             &crate::world::CorpseSettings::default(),
             0.2,
             1,
+            None,
         )
     }
 

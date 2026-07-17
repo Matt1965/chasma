@@ -3,15 +3,15 @@
 use bevy::input::keyboard::KeyCode;
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
 
-use crate::buildings::components::BuildingRenderEntity;
 use crate::buildings::picking::pick_building_along_ray;
-use crate::camera::RtsCamera;
-use crate::dev::{DevModeInputGate, DevModeState, DevPanelHoverState};
+use crate::dev::gizmo::TransformEditState;
+use crate::dev::{
+    DevModeInputGate, DevModeState, DevPanelHoverState, DevPlacementPreview, cancel_dev_placement,
+};
+use crate::doodads::picking::pick_doodad_along_ray;
 use crate::terrain::TerrainRenderAssets;
 use crate::ui::gameplay::GameplayBuildingSelection;
-use crate::units::UnitRenderEntity;
 use crate::units::input::{
     BoxSelectDrag, cursor_world_ray, pick_unit_along_ray, terrain_click_to_world_position,
 };
@@ -20,7 +20,10 @@ use super::capture::{
     capture_building_asset_presentation, capture_building_inspector_snapshot,
     capture_interaction_inspector_snapshot, capture_unit_inspector_snapshot,
 };
-use super::params::{BuildingInspectorPresentationParams, InspectorCaptureParams};
+use super::params::{
+    BuildingInspectorPresentationParams, InspectorCaptureParams, InspectorPickParams,
+};
+use super::snapshot::capture_doodad_inspector_snapshot;
 use super::state::{InspectorCacheKey, WorldInspectorState};
 use crate::debug::InspectorOverlayFocus;
 
@@ -30,13 +33,36 @@ pub fn refresh_inspector_snapshot(
     mut inspector: ResMut<WorldInspectorState>,
     mut overlay_focus: ResMut<InspectorOverlayFocus>,
 ) {
-    let Some(unit_id) = inspector.selected_unit else {
-        inspector.unit_snapshot = None;
+    if let Some(unit_id) = inspector.selected_unit {
+        refresh_unit_snapshot(&capture, &mut inspector, &mut overlay_focus, unit_id);
+        return;
+    }
+
+    if let Some(doodad_id) = inspector.selected_doodad {
+        refresh_doodad_snapshot(&capture, &mut inspector, doodad_id);
         overlay_focus.set_unit(None);
         return;
-    };
+    }
 
+    inspector.unit_snapshot = None;
+    inspector.doodad_snapshot = None;
+    overlay_focus.set_unit(None);
+}
+
+fn refresh_unit_snapshot(
+    capture: &InspectorCaptureParams,
+    inspector: &mut WorldInspectorState,
+    overlay_focus: &mut InspectorOverlayFocus,
+    unit_id: crate::world::UnitId,
+) {
     let paused = capture.simulation.paused;
+    let key = InspectorCacheKey {
+        unit_id: Some(unit_id),
+        building_id: None,
+        doodad_id: None,
+        simulation_tick: capture.simulation.current_tick,
+        paused,
+    };
     let selection_changed = inspector.cache_key.unit_id != Some(unit_id);
     let pause_edge = paused && !inspector.cache_key.paused;
 
@@ -62,27 +88,53 @@ pub fn refresh_inspector_snapshot(
 
     overlay_focus.path_waypoint_index = Some(snapshot.path.waypoint_index);
     inspector.unit_snapshot = Some(snapshot);
-    inspector.cache_key = InspectorCacheKey {
-        unit_id: Some(unit_id),
+    inspector.cache_key = key;
+    overlay_focus.set_unit(Some(unit_id));
+}
+
+fn refresh_doodad_snapshot(
+    capture: &InspectorCaptureParams,
+    inspector: &mut WorldInspectorState,
+    doodad_id: crate::world::DoodadId,
+) {
+    let paused = capture.simulation.paused;
+    let key = InspectorCacheKey {
+        unit_id: None,
         building_id: None,
+        doodad_id: Some(doodad_id),
         simulation_tick: capture.simulation.current_tick,
         paused,
     };
-    overlay_focus.set_unit(Some(unit_id));
+    if !inspector.needs_refresh(key) {
+        return;
+    }
+
+    let Some(snapshot) = capture_doodad_inspector_snapshot(
+        &capture.world,
+        &capture.doodad_catalog,
+        &capture.footprint_catalog,
+        doodad_id,
+    ) else {
+        inspector.selected_doodad = None;
+        inspector.doodad_snapshot = None;
+        return;
+    };
+
+    inspector.doodad_snapshot = Some(snapshot);
+    inspector.cache_key = key;
 }
 
 /// Pick units / probe terrain for inspector (dev mode or Alt modifier).
 pub fn handle_inspector_input(
-    dev_state: Res<DevModeState>,
+    mut dev_state: ResMut<DevModeState>,
+    mut placement_preview: ResMut<DevPlacementPreview>,
     panel_hovered: Res<DevPanelHoverState>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut gate: ResMut<DevModeInputGate>,
     box_drag: Res<BoxSelectDrag>,
-    windows: Query<&Window, With<PrimaryWindow>>,
-    camera: Query<(&Camera, &GlobalTransform), With<RtsCamera>>,
-    units: Query<(&UnitRenderEntity, &GlobalTransform)>,
-    buildings: Query<(&BuildingRenderEntity, &GlobalTransform)>,
+    gizmo_edit: Res<TransformEditState>,
+    pick: InspectorPickParams,
     presentation: BuildingInspectorPresentationParams,
     capture: InspectorCaptureParams,
     render_assets: Option<Res<TerrainRenderAssets>>,
@@ -95,7 +147,10 @@ pub fn handle_inspector_input(
         return;
     }
 
-    if panel_hovered.hovered || gate.spawn_handled_this_frame {
+    // The gizmo runs first: if it grabbed a handle this frame (or is mid-drag) it sets
+    // `spawn_handled_this_frame`, so clicks that miss the gizmo still fall through here
+    // and can re-select or deselect a world object.
+    if panel_hovered.hovered || gate.spawn_handled_this_frame || gizmo_edit.dragging {
         return;
     }
 
@@ -103,7 +158,7 @@ pub fn handle_inspector_input(
         return;
     }
 
-    let Some(ray) = cursor_world_ray(&windows, &camera) else {
+    let Some(ray) = cursor_world_ray(&pick.windows, &pick.camera) else {
         return;
     };
 
@@ -111,7 +166,7 @@ pub fn handle_inspector_input(
         &ray,
         &capture.world,
         &capture.unit_catalog,
-        &units,
+        &pick.units,
         crate::world::SelectionControllabilityPolicy::dev_inspect(),
     ) {
         gate.block_gameplay_mouse = true;
@@ -134,6 +189,7 @@ pub fn handle_inspector_input(
             inspector.cache_key = InspectorCacheKey {
                 unit_id: Some(unit_id),
                 building_id: None,
+                doodad_id: None,
                 simulation_tick: capture.simulation.current_tick,
                 paused: capture.simulation.paused,
             };
@@ -142,10 +198,46 @@ pub fn handle_inspector_input(
         return;
     }
 
-    if let Some(building_id) =
-        pick_building_along_ray(&ray, &capture.world, &capture.building_catalog, &buildings)
-    {
+    if dev_state.enabled {
+        if let Some(doodad_id) = pick_doodad_along_ray(
+            &ray,
+            &capture.world,
+            &capture.doodad_catalog,
+            &capture.config,
+            &render_assets,
+            &pick.doodads,
+        ) {
+            gate.block_gameplay_mouse = true;
+            cancel_dev_placement(&mut dev_state, &mut placement_preview);
+            inspector.select_doodad(doodad_id);
+            building_selection.set(None);
+            inspector.last_message = format!("Inspecting doodad #{}", doodad_id.raw());
+            inspector.doodad_snapshot = capture_doodad_inspector_snapshot(
+                &capture.world,
+                &capture.doodad_catalog,
+                &capture.footprint_catalog,
+                doodad_id,
+            );
+            inspector.cache_key = InspectorCacheKey {
+                unit_id: None,
+                building_id: None,
+                doodad_id: Some(doodad_id),
+                simulation_tick: capture.simulation.current_tick,
+                paused: capture.simulation.paused,
+            };
+            overlay_focus.set_unit(None);
+            return;
+        }
+    }
+
+    if let Some(building_id) = pick_building_along_ray(
+        &ray,
+        &capture.world,
+        &capture.building_catalog,
+        &pick.buildings,
+    ) {
         gate.block_gameplay_mouse = true;
+        cancel_dev_placement(&mut dev_state, &mut placement_preview);
         inspector.select_building(building_id);
         building_selection.set(Some(building_id));
         inspector.last_message = format!("Inspecting building #{}", building_id.raw());
@@ -164,6 +256,7 @@ pub fn handle_inspector_input(
             &crate::world::BuildingInteractionProfileCatalog::default(),
             building_id,
             Some(presentation_info),
+            None,
         );
         overlay_focus.set_unit(None);
         return;

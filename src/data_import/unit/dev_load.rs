@@ -16,6 +16,7 @@ pub fn resolve_dev_unit_catalog(
     weapons: &crate::world::WeaponCatalog,
     animation_profiles: &crate::world::AnimationProfileCatalog,
     inventory_profiles: &crate::world::InventoryProfileCatalog,
+    sizing_reports: Option<&mut Vec<crate::world::AssetSizingReport>>,
 ) -> UnitCatalog {
     let path = dev_design_workbook_path();
     match try_import_dev_unit_catalog(&path, weapons, animation_profiles, inventory_profiles) {
@@ -38,6 +39,9 @@ pub fn resolve_dev_unit_catalog(
                     SESSION_HEADER,
                     &format!("Unit import warning: {warning}"),
                 );
+            }
+            if let Some(reports) = sizing_reports {
+                reports.extend(summary.sizing_reports);
             }
             let ids: Vec<_> = catalog
                 .definitions()

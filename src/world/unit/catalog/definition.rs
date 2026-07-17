@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use super::definition_id::UnitDefinitionId;
 use super::render_key::UnitRenderKey;
 use crate::world::InventoryProfileId;
+use crate::world::asset_sizing::AssetSizingDefinition;
 use crate::world::unit::animation_profile::AnimationProfileId;
 use crate::world::weapon::WeaponDefinitionId;
 
@@ -37,8 +38,10 @@ pub struct UnitDefinition {
     pub move_speed_mps: f32,
     pub collision_radius_meters: f32,
     pub max_slope_degrees: f32,
-    /// Uniform glTF scene scale at spawn (1.0 = mesh units as authored).
+    /// Uniform glTF scene scale at spawn (resolved baseline; legacy fallback when sizing unset).
     pub render_scale: f32,
+    /// Metric asset sizing metadata and calculated baseline scale (ADR-097 DT1).
+    pub asset_sizing: AssetSizingDefinition,
     pub default_weapon_id: WeaponDefinitionId,
     pub enabled: bool,
     pub render_key: UnitRenderKey,
@@ -97,6 +100,7 @@ impl UnitDefinition {
             collision_radius_meters,
             max_slope_degrees,
             render_scale: 1.0,
+            asset_sizing: AssetSizingDefinition::default(),
             default_weapon_id,
             enabled,
             render_key,
