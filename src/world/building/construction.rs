@@ -428,8 +428,11 @@ pub fn destroy_building(
         return Ok(Vec::new());
     }
 
-    let _ = definition_for_record(building_catalog, &record)?;
+    let definition = definition_for_record(building_catalog, &record)?;
     let mut events = Vec::new();
+
+    crate::world::cancel_logistics_for_building_removal(world, id);
+    crate::world::unregister_building_logistics_endpoints(world, definition, id);
 
     if record.inventory_id.is_some() {
         if let Some(cleanup) = inventory_cleanup {
@@ -473,6 +476,8 @@ pub fn destroy_building(
         id,
     )?);
     crate::world::prune_invalid_building_tasks(world);
+    world.building_production_store_mut().remove(id);
+    world.building_inventory_binding_store_mut().remove(id);
     Ok(events)
 }
 

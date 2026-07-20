@@ -29,6 +29,13 @@ pub fn unit_can_perform_task(
     match task_type {
         TaskType::ConstructBuilding => caps.can_construct,
         TaskType::OperateWorkstation => caps.can_operate_workstation,
+        TaskType::Haul => caps.can_operate_workstation,
+        // Strategic kinds stay Available until future assignment/execution phases (SA7+).
+        TaskType::StrategicConstruct
+        | TaskType::RepairBuilding
+        | TaskType::ClearRubble
+        | TaskType::RecruitWorker
+        | TaskType::ExpandStorage => false,
     }
 }
 

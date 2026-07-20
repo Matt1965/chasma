@@ -103,6 +103,7 @@ fn setup_preview(
     crate::world::log_dev_biome_load_outcome(&biome_outcome);
 
     let extent = catalog.authored_extent();
+    world.clear_terrain_fields();
     match try_load_terrain_fields_from_manifest(
         world.terrain_fields_mut(),
         &field_catalog,
@@ -116,6 +117,7 @@ fn setup_preview(
             );
         }
         Some(Err(err)) => {
+            world.clear_terrain_fields();
             bevy::log::warn!(
                 "dev preview terrain field manifest load failed ({err}); using synthetic fixtures"
             );

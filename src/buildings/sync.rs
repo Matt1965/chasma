@@ -97,8 +97,11 @@ pub fn sync_building_render_entities(
             continue;
         };
 
+        // Diagnostic fallbacks intentionally carry `active_render_key: None` even when a
+        // desired render key exists (e.g. the GLB failed to load). Excluding them here
+        // prevents an every-frame despawn/respawn churn that floods commands and logs.
         let desired_key = lifecycle_render_key(definition, record.lifecycle_state);
-        if marker.active_render_key != desired_key {
+        if !marker.uses_diagnostic_fallback && marker.active_render_key != desired_key {
             commands.entity(entity).despawn();
             index.0.remove(&marker.building_id);
             continue;

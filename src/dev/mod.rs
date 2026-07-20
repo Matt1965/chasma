@@ -165,13 +165,18 @@ impl Plugin for DevModePlugin {
                     handle_dev_panel_ui_interaction,
                     time_of_day_panel::handle_time_of_day_buttons,
                     lighting_panel::handle_lighting_tune_buttons,
-                    handle_terrain_field_buttons,
-                    sync_dev_debug_controls,
                 )
                     .chain()
                     .after(sync_dev_panel_tab_sections)
                     .in_set(DevModeInputSystems),
             )
+            .add_systems(
+                Update,
+                handle_terrain_field_buttons
+                    .after(sync_dev_panel_tab_sections)
+                    .in_set(DevModeInputSystems),
+            )
+            .add_systems(Update, sync_dev_debug_controls.in_set(DevModeInputSystems))
             .add_systems(
                 Update,
                 sync_gizmo_target

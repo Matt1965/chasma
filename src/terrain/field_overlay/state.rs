@@ -1,5 +1,7 @@
 //! Client-local terrain field overlay state (ADR-103 TF3).
 
+use std::collections::BTreeSet;
+
 use bevy::prelude::*;
 
 use crate::world::TerrainFieldId;
@@ -49,6 +51,33 @@ impl Default for TerrainOverlayState {
             panel_open: false,
             request_revision: 0,
             stale_completions_ignored: 0,
+        }
+    }
+}
+
+/// Additional simultaneous field overlays (dev toggles; player path uses one manual field).
+#[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
+pub struct TerrainFieldAuxiliaryOverlays {
+    pub visible: BTreeSet<TerrainFieldId>,
+    pub revision: u64,
+}
+
+impl TerrainFieldAuxiliaryOverlays {
+    pub fn set_visible(&mut self, field_id: TerrainFieldId, on: bool) {
+        let changed = if on {
+            self.visible.insert(field_id)
+        } else {
+            self.visible.remove(&field_id)
+        };
+        if changed {
+            self.revision = self.revision.saturating_add(1);
+        }
+    }
+
+    pub fn clear(&mut self) {
+        if !self.visible.is_empty() {
+            self.visible.clear();
+            self.revision = self.revision.saturating_add(1);
         }
     }
 }

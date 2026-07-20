@@ -16,11 +16,24 @@ pub enum OperationalLimitingFactor {
     TerrainResponseZero(TerrainFieldId),
     MissingTerrainAssessment,
     StaleTerrainAssessment,
-    /// Future seam — not active in TF5.
+    /// Required recipe input unavailable in bound inventory (EP5).
     MissingInput,
+    /// Required input present but reserved for hauling (EP8).
+    InputReserved,
+    /// Output destination cannot accept produced items (EP5).
     OutputBlocked,
+    /// Bound inventory record missing at runtime (EP5).
+    MissingInventory,
     NoWorker,
     NoPower,
+    /// Policy explicitly paused production (EP2).
+    Paused,
+    /// No operation selected or operation reference invalid (EP2).
+    InvalidOperation,
+    /// Building record missing while production state exists (EP2 validation).
+    MissingBuilding,
+    /// Operation references missing or incompatible inventory bindings (EP4).
+    InvalidInventoryBinding,
 }
 
 impl OperationalLimitingFactor {
@@ -37,9 +50,15 @@ impl OperationalLimitingFactor {
             Self::MissingTerrainAssessment => "Terrain assessment missing",
             Self::StaleTerrainAssessment => "Terrain assessment stale",
             Self::MissingInput => "Missing input",
-            Self::OutputBlocked => "Output destination blocked",
+            Self::InputReserved => "Input reserved",
+            Self::OutputBlocked => "Output full",
+            Self::MissingInventory => "Missing inventory",
             Self::NoWorker => "No worker assigned",
             Self::NoPower => "No power",
+            Self::Paused => "Production paused",
+            Self::InvalidOperation => "No valid operation selected",
+            Self::MissingBuilding => "Building missing",
+            Self::InvalidInventoryBinding => "Invalid inventory binding",
         }
     }
 }

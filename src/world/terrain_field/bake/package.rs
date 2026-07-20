@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use super::super::asset::{
     TERRAIN_FIELD_MANIFEST_VERSION, TerrainFieldManifest, TerrainFieldManifestConfig,
-    TerrainFieldManifestEntry, TerrainFieldTileFile,
+    TerrainFieldManifestEntry, TerrainFieldTileFile, decode_manifest,
 };
 use super::super::contract::{TERRAIN_FIELD_SAMPLE_SPACING_METERS, TERRAIN_FIELD_SAMPLES_PER_EDGE};
 use super::super::id::TerrainFieldId;
@@ -64,7 +64,7 @@ pub fn package_field_layers(
             tile_dir: field_id.as_str().to_string(),
         });
     }
-    manifest_fields.sort_by(|a, b| a.field_id.cmp(&b.field_id));
+    manifest_fields = merge_manifest_fields(output_dir, manifest_fields);
 
     let manifest = TerrainFieldManifest {
         version: TERRAIN_FIELD_MANIFEST_VERSION,
@@ -90,6 +90,31 @@ pub fn package_field_layers(
         manifest_path: output_dir.join("manifest.ron"),
         source_version: source_version.to_string(),
     })
+}
+
+/// Preserve manifest entries for fields not rebuilt in this package pass.
+fn merge_manifest_fields(
+    output_dir: &Path,
+    rebuilt: Vec<TerrainFieldManifestEntry>,
+) -> Vec<TerrainFieldManifestEntry> {
+    let mut merged: std::collections::BTreeMap<String, TerrainFieldManifestEntry> =
+        std::collections::BTreeMap::new();
+    let manifest_path = output_dir.join("manifest.ron");
+    if manifest_path.exists() {
+        if let Ok(text) = fs::read_to_string(&manifest_path) {
+            if let Ok(existing) = decode_manifest(&text) {
+                for entry in existing.fields {
+                    merged.insert(entry.field_id.clone(), entry);
+                }
+            }
+        }
+    }
+    for entry in rebuilt {
+        merged.insert(entry.field_id.clone(), entry);
+    }
+    let mut fields: Vec<_> = merged.into_values().collect();
+    fields.sort_by(|a, b| a.field_id.cmp(&b.field_id));
+    fields
 }
 
 fn commit_package(tmp: &Path, output_dir: &Path) -> Result<(), TerrainFieldSourceError> {

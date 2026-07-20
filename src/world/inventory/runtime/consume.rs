@@ -13,6 +13,21 @@ pub fn physical_gold_item_id() -> ItemDefinitionId {
     ItemDefinitionId::new("gold")
 }
 
+/// Count stackable item quantity across all stacks in an inventory.
+pub fn count_stack_item(record: &InventoryRecord, item_definition_id: &ItemDefinitionId) -> u32 {
+    record
+        .placed_entries()
+        .iter()
+        .filter_map(|entry| match &entry.contents {
+            InventoryEntryContents::Stack {
+                item_definition_id: stack_id,
+                quantity,
+            } if stack_id == item_definition_id => Some(*quantity),
+            _ => None,
+        })
+        .sum()
+}
+
 pub fn count_physical_gold(record: &InventoryRecord) -> u32 {
     let gold_id = physical_gold_item_id();
     record

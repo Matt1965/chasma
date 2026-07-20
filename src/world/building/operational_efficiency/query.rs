@@ -6,8 +6,9 @@ use crate::world::building::state::BuildingLifecycleState;
 use crate::world::building::terrain_assessment::{
     BuildingFieldRequirementAssessment, BuildingTerrainAssessmentStore, BuildingTerrainWarning,
     RequirementAssessmentAvailability, TerrainAssessmentCatalogs, assessment_revision_fingerprint,
-    ensure_building_terrain_assessment,
+    ensure_building_terrain_assessment, terrain_efficiency_for_operation,
 };
+use crate::world::operation::OperationDefinition;
 use crate::world::{BuildingId, WorldData};
 
 use super::combine::combine_output_efficiency;
@@ -22,10 +23,11 @@ pub struct OperationalEfficiencyContext<'a> {
     pub assessment_store: &'a mut BuildingTerrainAssessmentStore,
 }
 
-/// One authoritative operational-efficiency query (ADR-105 TF5).
+/// One authoritative operational-efficiency query (ADR-105 TF5, EP6 operation scope).
 pub fn building_operational_efficiency(
     ctx: &mut OperationalEfficiencyContext<'_>,
     building_id: BuildingId,
+    selected_operation: Option<&OperationDefinition>,
 ) -> Result<OperationalEfficiencyReport, OperationalEfficiencyError> {
     let record = ctx
         .world
@@ -83,10 +85,20 @@ pub fn building_operational_efficiency(
                 &record,
             );
             let revision = assessment_revision_fingerprint(&assessment);
-            let (limiting, reasons) = limiting_from_assessment(&assessment);
+            let scoped = selected_operation
+                .map(|operation| terrain_efficiency_for_operation(&assessment, operation))
+                .unwrap_or_else(|| {
+                    crate::world::building::terrain_assessment::OperationScopedTerrainEfficiency {
+                        terrain_efficiency_basis_points: assessment.terrain_efficiency_basis_points,
+                        can_operate: assessment.can_operate,
+                        limiting_field: assessment.limiting_field.clone(),
+                    }
+                });
+            let scoped_assessment = assessment_with_operation_scope(&assessment, &scoped);
+            let (limiting, reasons) = limiting_from_assessment(&scoped_assessment);
             (
-                assessment.terrain_efficiency_basis_points,
-                assessment.can_operate,
+                scoped.terrain_efficiency_basis_points,
+                scoped.can_operate,
                 limiting,
                 reasons,
                 revision,
@@ -127,6 +139,17 @@ pub fn building_operational_efficiency(
         reasons,
         assessment_revision,
     })
+}
+
+fn assessment_with_operation_scope(
+    assessment: &crate::world::building::terrain_assessment::BuildingTerrainAssessment,
+    scoped: &crate::world::building::terrain_assessment::OperationScopedTerrainEfficiency,
+) -> crate::world::building::terrain_assessment::BuildingTerrainAssessment {
+    let mut narrowed = assessment.clone();
+    narrowed.terrain_efficiency_basis_points = scoped.terrain_efficiency_basis_points;
+    narrowed.can_operate = scoped.can_operate;
+    narrowed.limiting_field = scoped.limiting_field.clone();
+    narrowed
 }
 
 fn blocked_report(

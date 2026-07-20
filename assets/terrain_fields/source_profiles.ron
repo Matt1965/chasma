@@ -6,13 +6,13 @@
             source_kind: Generated,
             output_field_id: ("water"),
             enabled: true,
-            profile_revision: "1",
+            profile_revision: "4",
             imported: None,
             generated: Some((
                 generator: LowlandWaterPotential(
-                    aquifer_scale_meters: 512.0,
-                    lowland_bias: 0.65,
-                    mountain_suppression: 0.35,
+                    aquifer_scale_meters: 384.0,
+                    lowland_bias: 0.02,
+                    mountain_suppression: 0.92,
                 ),
                 generator_version: 1,
                 world_seed: 42001,

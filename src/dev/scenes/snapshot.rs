@@ -14,11 +14,11 @@ use crate::world::{
 use super::SceneCaptureContext;
 
 /// On-disk scene format version.
-pub const SCENE_VERSION: u32 = 9;
+pub const SCENE_VERSION: u32 = 14;
 
 /// Whether a scene file version can be loaded by the current runtime.
 pub fn scene_version_supported(version: u32) -> bool {
-    matches!(version, 1 | 4 | 5 | 6 | 7 | 8)
+    matches!(version, 1 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14)
 }
 
 /// Pure-data scene snapshot — no logic (ADR-045).
@@ -62,6 +62,23 @@ pub struct SceneDefinition {
     /// Full inventory world persistence (ADR-094 I8). Absent in v6 and earlier.
     #[serde(flatten, default)]
     pub inventory_persistence: super::inventory_snapshot::SceneInventoryPersistence,
+    /// Building production runtime (EP1). Absent in v9 and earlier.
+    #[serde(default)]
+    pub production_persistence: super::production_snapshot::SceneProductionPersistence,
+    /// Hauling logistics runtime (EP7). Absent in v10 and earlier.
+    #[serde(default)]
+    pub logistics_persistence: super::logistics_snapshot::SceneLogisticsPersistence,
+    /// Settlement production planners (EP9). Absent in v11 and earlier.
+    #[serde(default)]
+    pub planner_persistence: super::planner_snapshot::SceneProductionPlannerPersistence,
+    /// SettlementState runtime (SA1). Absent in v12 and earlier.
+    #[serde(default)]
+    pub settlement_state_persistence:
+        super::settlement_state_snapshot::SceneSettlementStatePersistence,
+    /// Construction plans (SA9). Absent in v13 and earlier.
+    #[serde(default)]
+    pub construction_plan_persistence:
+        super::construction_snapshot::SceneConstructionPlanPersistence,
 }
 
 fn default_next_task_id() -> u32 {
@@ -136,7 +153,18 @@ pub struct SceneTaskRecord {
     pub assigned_unit_id: Option<u64>,
     #[serde(default)]
     pub reserved_point_key: Option<String>,
+    #[serde(default)]
+    pub hauling_request_id: Option<u32>,
     pub created_tick: u64,
+    /// SA6 strategic origin (optional; rebuild-safe).
+    #[serde(default)]
+    pub strategic_settlement_id: Option<u64>,
+    #[serde(default)]
+    pub strategic_intent_id: Option<String>,
+    #[serde(default)]
+    pub strategic_response_id: Option<String>,
+    #[serde(default)]
+    pub strategic_template_id: Option<String>,
 }
 
 /// Serializable unit instance for dev scenes.
@@ -352,6 +380,13 @@ impl SceneDefinition {
             next_settlement_id: 1,
             next_treasury_id: 1,
             inventory_persistence: super::inventory_snapshot::SceneInventoryPersistence::default(),
+            production_persistence: super::production_snapshot::SceneProductionPersistence::default(),
+            logistics_persistence: super::logistics_snapshot::SceneLogisticsPersistence::default(),
+            planner_persistence: super::planner_snapshot::SceneProductionPlannerPersistence::default(),
+            settlement_state_persistence:
+                super::settlement_state_snapshot::SceneSettlementStatePersistence::default(),
+            construction_plan_persistence:
+                super::construction_snapshot::SceneConstructionPlanPersistence::default(),
         }
     }
 
@@ -463,6 +498,14 @@ pub fn capture_scene(world: &WorldData, ctx: &SceneCaptureContext) -> SceneDefin
         world.settlement_store().next_treasury_id(),
     );
     scene.inventory_persistence = super::inventory_snapshot::capture_inventory_persistence(world);
+    scene.production_persistence = super::production_snapshot::capture_production_persistence(world);
+    scene.logistics_persistence = super::logistics_snapshot::capture_logistics_persistence(world);
+    scene.planner_persistence =
+        super::planner_snapshot::capture_production_planner_persistence(world);
+    scene.settlement_state_persistence =
+        super::settlement_state_snapshot::capture_settlement_state_persistence(world);
+    scene.construction_plan_persistence =
+        super::construction_snapshot::capture_construction_plan_persistence(world);
     scene
 }
 
@@ -805,7 +848,15 @@ impl SceneTaskRecord {
                 building_id,
                 point_key,
             } => (building_id.raw(), Some(point_key.clone())),
+            TaskTarget::HaulRequest {
+                owning_building_id, ..
+            } => (owning_building_id.raw(), None),
         };
+        let hauling_request_id = match &record.target {
+            TaskTarget::HaulRequest { request_id, .. } => Some(request_id.raw()),
+            _ => None,
+        };
+        let strategic = record.strategic.as_ref();
         Self {
             id: record.id.raw(),
             task_type: record.task_type.label().to_string(),
@@ -815,7 +866,12 @@ impl SceneTaskRecord {
             priority: task_priority_label(record.priority),
             assigned_unit_id: record.assigned_unit_id.map(|id| id.raw()),
             reserved_point_key: record.reserved_point_key.clone(),
+            hauling_request_id,
             created_tick: record.created_tick,
+            strategic_settlement_id: strategic.map(|s| s.settlement_id),
+            strategic_intent_id: strategic.map(|s| s.intent_id.clone()),
+            strategic_response_id: strategic.map(|s| s.response_id.clone()),
+            strategic_template_id: strategic.map(|s| s.template_id.clone()),
         }
     }
 
@@ -823,13 +879,34 @@ impl SceneTaskRecord {
         let task_type = parse_task_type(&self.task_type)?;
         let state = parse_task_state(&self.state)?;
         let priority = parse_task_priority(&self.priority)?;
-        let target = if let Some(point_key) = &self.interaction_point_key {
-            TaskTarget::InteractionPoint {
+        let target = match task_type {
+            TaskType::Haul => TaskTarget::HaulRequest {
+                request_id: crate::world::HaulingRequestId::new(
+                    self.hauling_request_id.unwrap_or(0),
+                ),
+                owning_building_id: crate::world::BuildingId::new(self.target_building_id),
+            },
+            _ if self.interaction_point_key.is_some() => TaskTarget::InteractionPoint {
                 building_id: crate::world::BuildingId::new(self.target_building_id),
-                point_key: point_key.clone(),
+                point_key: self.interaction_point_key.clone().unwrap_or_default(),
+            },
+            _ => TaskTarget::Building(crate::world::BuildingId::new(self.target_building_id)),
+        };
+        let strategic = match (
+            self.strategic_settlement_id,
+            self.strategic_intent_id.as_ref(),
+            self.strategic_response_id.as_ref(),
+            self.strategic_template_id.as_ref(),
+        ) {
+            (Some(settlement_id), Some(intent_id), Some(response_id), Some(template_id)) => {
+                Some(crate::world::StrategicTaskOrigin {
+                    settlement_id,
+                    intent_id: intent_id.clone(),
+                    response_id: response_id.clone(),
+                    template_id: template_id.clone(),
+                })
             }
-        } else {
-            TaskTarget::Building(crate::world::BuildingId::new(self.target_building_id))
+            _ => None,
         };
         Ok(TaskRecord {
             id: TaskId::new(self.id),
@@ -840,6 +917,7 @@ impl SceneTaskRecord {
             assigned_unit_id: self.assigned_unit_id.map(UnitId::new),
             reserved_point_key: self.reserved_point_key.clone(),
             created_tick: self.created_tick,
+            strategic,
         })
     }
 }
@@ -868,6 +946,12 @@ fn parse_task_type(label: &str) -> Result<TaskType, SceneRecordError> {
     Ok(match label {
         "ConstructBuilding" => TaskType::ConstructBuilding,
         "OperateWorkstation" => TaskType::OperateWorkstation,
+        "Haul" => TaskType::Haul,
+        "StrategicConstruct" => TaskType::StrategicConstruct,
+        "RepairBuilding" => TaskType::RepairBuilding,
+        "ClearRubble" => TaskType::ClearRubble,
+        "RecruitWorker" => TaskType::RecruitWorker,
+        "ExpandStorage" => TaskType::ExpandStorage,
         _ => return Err(SceneRecordError::InvalidTaskType),
     })
 }

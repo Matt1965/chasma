@@ -1,10 +1,15 @@
 //! Dev scene snapshots — WorldData authoring persistence (ADR-045).
 
 mod actions;
+mod construction_snapshot;
 mod inventory_snapshot;
 mod load;
+mod logistics_snapshot;
+mod planner_snapshot;
+mod production_snapshot;
 mod registry;
 mod save;
+mod settlement_state_snapshot;
 mod snapshot;
 
 pub use actions::{

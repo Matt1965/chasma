@@ -16,6 +16,7 @@ mod insert;
 mod interaction_profile;
 mod interior;
 pub mod inventory;
+pub mod inventory_binding;
 pub mod inventory_error;
 mod ownership;
 mod placement;
@@ -95,11 +96,31 @@ pub use inventory::{
     validate_building_inventory_owner,
 };
 pub use inventory_error::BuildingInventoryError;
+pub use inventory_binding::{
+    BuildingInventoryBinding, BuildingInventoryBindingDefinition, BuildingInventoryBindingId,
+    BuildingInventoryBindingSet, BuildingInventoryBindingStore, BuildingInventoryBindingValidationIssue,
+    BuildingInventoryRole, building_inventories_with_role, building_inventory_bindings,
+    default_building_inventory_binding, effective_inventory_binding_definitions,
+    primary_building_inventory_id, resolve_building_inventory_binding,
+    validate_building_catalog_inventory_bindings, validate_building_definition_inventory_bindings,
+    validate_building_runtime_inventory_bindings, validate_operation_inventory_bindings,
+    validate_selected_operation_inventory_bindings, validate_world_building_inventory_bindings,
+};
 pub use operation::{
-    BASE_OPERATION_PROGRESS_PER_TICK, BuildingOperationParams, BuildingOperationSaveState,
-    BuildingOperationState, BuildingOperationStore, OperationCompletionReport, OperationError,
-    OperationStepReport, PRODUCTION_PROGRESS_ONE_UNIT, ProductionProgress, apply_operation_ticks,
-    expected_ticks_to_complete, scale_progress, step_workstation_operation,
+    BASE_OPERATION_PROGRESS_PER_TICK,
+    BuildingOperationParams, BuildingOperationPolicy, BuildingOperationSaveState,
+    BuildingOperationState, BuildingOperationStore, BuildingProductionSaveState,
+    BuildingProductionStore, ControlSource, OperationCompletionReport, OperationDefinitionId,
+    OperationError, OperationLifecycle, OperationStepReport, PRODUCTION_PROGRESS_ONE_UNIT,
+    ProductionCommandError, ProductionExecutionAssessment, ProductionExecutionFailure,
+    ProductionProgress, ProductionValidationIssue, PRODUCTION_STEPPING_MODEL, RepeatMode,
+    ResolvedProductionInput, ResolvedProductionOutput, apply_operation_ticks,
+    assess_production_execution, expected_ticks_to_complete, execute_production_cycle,
+    production_policy, reset_production_progress, scale_progress, set_production_enabled,
+    set_production_execution_mode, set_production_paused, set_production_repeat_count,
+    set_production_selected_operation, step_workstation_operation,
+    validate_production_runtime, validate_production_runtime_with_catalogs,
+    cycle_production_selected_operation, workstation_workers_for_building,
 };
 pub use operational_efficiency::{
     OperationalEfficiencyContext, OperationalEfficiencyError, OperationalEfficiencyReport,

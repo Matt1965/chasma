@@ -1,5 +1,7 @@
 //! Settlement and treasury storage on WorldData (ADR-093 I7).
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use bevy::prelude::*;
 
 use super::id::{SettlementId, TreasuryId};
@@ -10,10 +12,11 @@ use crate::world::BuildingId;
 pub struct SettlementStore {
     next_settlement_id: u64,
     next_treasury_id: u64,
-    settlements: std::collections::BTreeMap<SettlementId, SettlementRecord>,
-    treasuries: std::collections::BTreeMap<TreasuryId, SettlementTreasuryRecord>,
-    settlement_by_building: std::collections::BTreeMap<BuildingId, SettlementId>,
-    treasury_by_settlement: std::collections::BTreeMap<SettlementId, TreasuryId>,
+    settlements: BTreeMap<SettlementId, SettlementRecord>,
+    treasuries: BTreeMap<TreasuryId, SettlementTreasuryRecord>,
+    settlement_by_building: BTreeMap<BuildingId, SettlementId>,
+    settlement_buildings: BTreeMap<SettlementId, BTreeSet<BuildingId>>,
+    treasury_by_settlement: BTreeMap<SettlementId, TreasuryId>,
     transaction_log: Vec<TreasuryTransactionRecord>,
 }
 
@@ -61,6 +64,46 @@ impl SettlementStore {
 
     pub fn settlement_for_building(&self, building_id: BuildingId) -> Option<SettlementId> {
         self.settlement_by_building.get(&building_id).copied()
+    }
+
+    pub fn buildings_for_settlement(&self, settlement_id: SettlementId) -> Vec<BuildingId> {
+        self.settlement_buildings
+            .get(&settlement_id)
+            .map(|set| set.iter().copied().collect())
+            .unwrap_or_default()
+    }
+
+    pub fn link_building_to_settlement(
+        &mut self,
+        settlement_id: SettlementId,
+        building_id: BuildingId,
+    ) -> Result<(), super::error::TreasuryError> {
+        if !self.settlements.contains_key(&settlement_id) {
+            return Err(super::error::TreasuryError::SettlementNotFound(settlement_id));
+        }
+        if let Some(existing) = self.settlement_by_building.get(&building_id) {
+            if *existing != settlement_id {
+                return Err(super::error::TreasuryError::BuildingAlreadyLinked(
+                    building_id,
+                ));
+            }
+            return Ok(());
+        }
+        self.settlement_by_building
+            .insert(building_id, settlement_id);
+        self.settlement_buildings
+            .entry(settlement_id)
+            .or_default()
+            .insert(building_id);
+        Ok(())
+    }
+
+    pub fn unlink_building(&mut self, building_id: BuildingId) {
+        if let Some(settlement_id) = self.settlement_by_building.remove(&building_id) {
+            if let Some(set) = self.settlement_buildings.get_mut(&settlement_id) {
+                set.remove(&building_id);
+            }
+        }
     }
 
     pub fn treasury_for_settlement(&self, settlement_id: SettlementId) -> Option<TreasuryId> {
@@ -145,6 +188,10 @@ impl SettlementStore {
         }
         self.settlement_by_building
             .insert(settlement.anchor_building_id, settlement.id);
+        self.settlement_buildings
+            .entry(settlement.id)
+            .or_default()
+            .insert(settlement.anchor_building_id);
         self.treasury_by_settlement
             .insert(settlement.id, treasury.id);
         self.treasuries.insert(treasury.id, treasury);
@@ -154,10 +201,13 @@ impl SettlementStore {
 
     pub fn remove_settlement(&mut self, id: SettlementId) -> Option<SettlementRecord> {
         let settlement = self.settlements.remove(&id)?;
-        self.treasury_by_settlement.remove(&id);
-        self.settlement_by_building
-            .remove(&settlement.anchor_building_id);
-        if let Some(treasury_id) = self.treasury_by_settlement.remove(&id) {
+        let treasury_id = self.treasury_by_settlement.remove(&id);
+        if let Some(members) = self.settlement_buildings.remove(&id) {
+            for building_id in members {
+                self.settlement_by_building.remove(&building_id);
+            }
+        }
+        if let Some(treasury_id) = treasury_id {
             self.treasuries.remove(&treasury_id);
         }
         Some(settlement)

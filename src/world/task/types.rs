@@ -1,13 +1,22 @@
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use super::id::TaskId;
 use crate::world::{BuildingId, UnitId};
 
-/// Active task kinds for B8 (ADR-085).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
+/// Active task kinds for B8 (ADR-085) plus strategic kinds (SA6 / ADR-121).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum TaskType {
     ConstructBuilding,
     OperateWorkstation,
+    Haul,
+    /// Settlement wants a new building site (may not be site-bound yet).
+    StrategicConstruct,
+    RepairBuilding,
+    ClearRubble,
+    RecruitWorker,
+    ExpandStorage,
 }
 
 impl TaskType {
@@ -15,7 +24,25 @@ impl TaskType {
         match self {
             Self::ConstructBuilding => "ConstructBuilding",
             Self::OperateWorkstation => "OperateWorkstation",
+            Self::Haul => "Haul",
+            Self::StrategicConstruct => "StrategicConstruct",
+            Self::RepairBuilding => "RepairBuilding",
+            Self::ClearRubble => "ClearRubble",
+            Self::RecruitWorker => "RecruitWorker",
+            Self::ExpandStorage => "ExpandStorage",
         }
+    }
+
+    /// Strategic marketplace kinds emitted by Settlement AI (SA6). Not production/haul.
+    pub fn is_strategic(self) -> bool {
+        matches!(
+            self,
+            Self::StrategicConstruct
+                | Self::RepairBuilding
+                | Self::ClearRubble
+                | Self::RecruitWorker
+                | Self::ExpandStorage
+        )
     }
 }
 
@@ -33,7 +60,8 @@ pub enum TaskState {
 }
 
 /// Deterministic priority ordering (lower = higher priority).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum TaskPriority {
     PlayerAssigned = 0,
     High = 1,
@@ -60,6 +88,10 @@ pub enum TaskTarget {
     InteractionPoint {
         building_id: BuildingId,
         point_key: String,
+    },
+    HaulRequest {
+        request_id: crate::world::HaulingRequestId,
+        owning_building_id: BuildingId,
     },
 }
 

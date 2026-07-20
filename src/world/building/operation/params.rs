@@ -1,20 +1,21 @@
 use crate::world::building::field_requirement::BuildingFieldRequirementCatalog;
 use crate::world::building::field_response::FieldResponseProfileCatalog;
 use crate::world::building::terrain_assessment::BuildingTerrainAssessmentStore;
+use crate::world::inventory::InventoryCatalogCtx;
+use crate::world::operation::OperationCatalog;
 use crate::world::{BuildingCatalog, FootprintCatalog, TerrainFieldCatalog, WorldData};
 
-use super::store::BuildingOperationStore;
-
-/// Catalog bundle for workstation operation stepping (ADR-105 TF5).
+/// Catalog bundle for workstation operation stepping (ADR-105 TF5, EP1/EP3/EP5).
 pub struct BuildingOperationParams<'a> {
     pub field_catalog: &'a TerrainFieldCatalog,
     pub requirement_catalog: &'a BuildingFieldRequirementCatalog,
     pub profile_catalog: &'a FieldResponseProfileCatalog,
     pub footprint_catalog: &'a FootprintCatalog,
+    pub operation_catalog: &'a OperationCatalog,
+    pub inventory_ctx: &'a InventoryCatalogCtx<'a>,
     pub requirement_revision: u64,
     pub profile_revision: u64,
     pub assessment_store: &'a mut BuildingTerrainAssessmentStore,
-    pub operation_store: &'a mut BuildingOperationStore,
 }
 
 impl<'a> BuildingOperationParams<'a> {

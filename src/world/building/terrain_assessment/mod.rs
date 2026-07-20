@@ -1,6 +1,7 @@
 mod assess;
 mod ensure;
 mod error;
+mod operation_scope;
 mod rebuild;
 mod revision;
 mod sample_cells;
@@ -13,6 +14,9 @@ pub use assess::{
 };
 pub use ensure::{assessment_revision_fingerprint, ensure_building_terrain_assessment};
 pub use error::{TerrainAssessmentCatalogs, TerrainAssessmentError, TerrainAssessmentUiError};
+pub use operation_scope::{
+    OperationScopedTerrainEfficiency, terrain_efficiency_for_operation,
+};
 pub use rebuild::{
     AssessmentRebuildOutcome, AssessmentRebuildReport, invalidate_buildings_for_changed_fields,
     rebuild_all_building_terrain_assessments, rebuild_building_terrain_assessment,

@@ -41,6 +41,9 @@ pub fn step_all_worker_tasks(
         let Some(task) = world.task_store().get(task_id).cloned() else {
             continue;
         };
+        if task.task_type == TaskType::Haul {
+            continue;
+        }
         let building_id = task.target_building_id();
         let Some(building) = world.get_building(building_id).cloned() else {
             cancel_unit_task(
@@ -260,6 +263,13 @@ pub fn step_all_worker_tasks(
                     }
                 }
             }
+            TaskType::Haul => {}
+            // Strategic kinds: marketplace only in SA6 — no labor progress yet.
+            TaskType::StrategicConstruct
+            | TaskType::RepairBuilding
+            | TaskType::ClearRubble
+            | TaskType::RecruitWorker
+            | TaskType::ExpandStorage => {}
         }
     }
     report
@@ -274,6 +284,9 @@ impl TaskLaborExt for super::record::TaskRecord {
         match &self.target {
             super::types::TaskTarget::Building(id) => *id,
             super::types::TaskTarget::InteractionPoint { building_id, .. } => *building_id,
+            super::types::TaskTarget::HaulRequest {
+                owning_building_id, ..
+            } => *owning_building_id,
         }
     }
 }

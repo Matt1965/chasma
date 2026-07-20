@@ -6,9 +6,13 @@ use bevy::window::PrimaryWindow;
 
 use crate::camera::RtsCamera;
 use crate::debug::MovementBlockObservability;
-use crate::simulation::SimulationControlState;
+use crate::simulation::{BuildingSimulationParams, SimulationControlState};
 use crate::world::{
-    BuildingCatalog, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, UnitCatalog,
+    BuildingCatalog, BuildingFieldRequirementCatalog, BuildingFieldRequirementCatalogRevision,
+    BuildingInteractionProfileCatalog, BuildingTerrainAssessmentStore, DoodadCatalog,
+    FieldResponseProfileCatalog, FieldResponseProfileCatalogRevision, FootprintCatalog,
+    InteriorProfileCatalog, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog,
+    ItemCategoryCatalog, ItemPileSettings, OperationCatalog, TerrainFieldCatalog, UnitCatalog,
     WeaponCatalog, WorldConfig, WorldData,
 };
 
@@ -23,8 +27,38 @@ pub struct InspectorCaptureParams<'w> {
     pub building_catalog: Res<'w, BuildingCatalog>,
     pub interior_catalog: Res<'w, InteriorProfileCatalog>,
     pub footprint_catalog: Res<'w, FootprintCatalog>,
+    pub operation_catalog: Res<'w, OperationCatalog>,
+    pub items: Res<'w, ItemCatalog>,
+    pub item_categories: Res<'w, ItemCategoryCatalog>,
+    pub inventory_profiles: Res<'w, InventoryProfileCatalog>,
+    pub field_catalog: Res<'w, TerrainFieldCatalog>,
+    pub requirements: Res<'w, BuildingFieldRequirementCatalog>,
+    pub profile_catalog: Res<'w, FieldResponseProfileCatalog>,
+    pub requirement_revision: Res<'w, BuildingFieldRequirementCatalogRevision>,
+    pub profile_revision: Res<'w, FieldResponseProfileCatalogRevision>,
+    pub assessments: ResMut<'w, BuildingTerrainAssessmentStore>,
     pub simulation: Res<'w, SimulationControlState>,
     pub movement_blocks: Res<'w, MovementBlockObservability>,
+}
+
+/// Bundled catalogs for building dev shortcuts (Bevy 16-param system limit, EP9).
+#[derive(SystemParam)]
+pub struct DevBuildingActionParams<'w> {
+    pub doodad_catalog: Res<'w, DoodadCatalog>,
+    pub building_catalog: Res<'w, BuildingCatalog>,
+    pub footprint_catalog: Res<'w, FootprintCatalog>,
+    pub interior_catalog: Res<'w, InteriorProfileCatalog>,
+    pub interaction_catalog: Res<'w, BuildingInteractionProfileCatalog>,
+    pub items: Res<'w, ItemCatalog>,
+    pub item_categories: Res<'w, ItemCategoryCatalog>,
+    pub inventory_profiles: Res<'w, InventoryProfileCatalog>,
+    pub pile_settings: Res<'w, ItemPileSettings>,
+}
+
+impl DevBuildingActionParams<'_> {
+    pub fn inventory_ctx(&self) -> InventoryCatalogCtx<'_> {
+        InventoryCatalogCtx::new(&self.items, &self.item_categories, &self.inventory_profiles)
+    }
 }
 
 /// World picking queries for inspector input (Bevy system param limit).

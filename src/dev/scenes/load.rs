@@ -286,6 +286,11 @@ struct RestorePlan {
     next_settlement_id: u64,
     next_treasury_id: u64,
     inventory_persistence: SceneInventoryPersistence,
+    production_persistence: super::production_snapshot::SceneProductionPersistence,
+    logistics_persistence: super::logistics_snapshot::SceneLogisticsPersistence,
+    planner_persistence: super::planner_snapshot::SceneProductionPlannerPersistence,
+    settlement_state_persistence: super::settlement_state_snapshot::SceneSettlementStatePersistence,
+    construction_plan_persistence: super::construction_snapshot::SceneConstructionPlanPersistence,
 }
 
 struct DevWorldEntityBackup {
@@ -592,6 +597,11 @@ fn build_restore_plan(
         next_settlement_id: scene.next_settlement_id.max(1),
         next_treasury_id: scene.next_treasury_id.max(1),
         inventory_persistence: scene.inventory_persistence.clone(),
+        production_persistence: scene.production_persistence.clone(),
+        logistics_persistence: scene.logistics_persistence.clone(),
+        planner_persistence: scene.planner_persistence.clone(),
+        settlement_state_persistence: scene.settlement_state_persistence.clone(),
+        construction_plan_persistence: scene.construction_plan_persistence.clone(),
     })
 }
 
@@ -656,6 +666,30 @@ fn apply_restore_plan(
         )
         .map_err(|reason| SceneApplyError::InventoryRestore { reason })?;
     }
+
+    super::production_snapshot::restore_production_persistence(
+        world,
+        &plan.production_persistence,
+    );
+
+    super::logistics_snapshot::restore_logistics_persistence(world, &plan.logistics_persistence);
+
+    super::planner_snapshot::restore_production_planner_persistence(
+        world,
+        &plan.planner_persistence,
+    );
+
+    super::settlement_state_snapshot::restore_settlement_state_persistence(
+        world,
+        &plan.settlement_state_persistence,
+    );
+
+    super::construction_snapshot::restore_construction_plan_persistence(
+        world,
+        &plan.construction_plan_persistence,
+    );
+
+    crate::world::reconcile_settlement_building_membership(world);
 
     Ok(())
 }

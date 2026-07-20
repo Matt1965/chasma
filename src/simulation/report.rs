@@ -2,8 +2,8 @@
 
 use crate::world::{
     BatchUnitMovementReport, BuildingConstructionReport, CombatAiReport, CombatEngagementReport,
-    CombatStrikeReport, CommandBufferResolveReport, ProjectileReport, TaskTickReport,
-    UnitDeathReport,
+    CombatStrikeReport, CommandBufferResolveReport, HaulTickReport, ProjectileReport,
+    TaskTickReport, UnitDeathReport,
 };
 
 /// Outcome of one authoritative simulation tick (all stages).
@@ -18,6 +18,7 @@ pub struct SimulationTickReport {
     pub combat_ai: CombatAiReport,
     pub building_construction: BuildingConstructionReport,
     pub worker_tasks: TaskTickReport,
+    pub hauling: HaulTickReport,
 }
 
 impl SimulationTickReport {

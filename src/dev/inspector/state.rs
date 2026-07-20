@@ -23,6 +23,7 @@ pub struct WorldInspectorState {
     pub interaction_snapshot: Option<InteractionInspectorSnapshot>,
     pub cache_key: InspectorCacheKey,
     pub last_message: String,
+    pub production_advanced_expanded: bool,
 }
 
 /// Invalidates cached snapshots when selection or pause state changes.

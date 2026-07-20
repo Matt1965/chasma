@@ -10,8 +10,8 @@ pub use mesh::{
     TerrainFieldOverlayAssets, build_field_overlay_mesh, setup_terrain_field_overlay_assets,
 };
 pub use state::{
-    DEFAULT_OVERLAY_OPACITY_BP, MAX_PLAYER_OVERLAY_OPACITY_BP, TerrainOverlaySelection,
-    TerrainOverlayState,
+    DEFAULT_OVERLAY_OPACITY_BP, MAX_PLAYER_OVERLAY_OPACITY_BP, TerrainFieldAuxiliaryOverlays,
+    TerrainOverlaySelection, TerrainOverlayState,
 };
 pub use sync::{
     TerrainFieldOverlayDiagnostics, cleanup_orphan_field_overlays, despawn_all_field_overlays,
@@ -28,6 +28,7 @@ impl Plugin for TerrainFieldOverlayPlugin {
         app.register_type::<TerrainOverlayState>()
             .register_type::<TerrainOverlaySelection>()
             .init_resource::<TerrainOverlayState>()
+            .init_resource::<TerrainFieldAuxiliaryOverlays>()
             .init_resource::<TerrainFieldOverlayDiagnostics>()
             .add_systems(Startup, setup_terrain_field_overlay_assets)
             .add_systems(

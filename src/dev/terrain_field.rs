@@ -5,6 +5,8 @@ use std::path::Path;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
+use crate::terrain::field_overlay::TerrainFieldAuxiliaryOverlays;
+use crate::terrain::field_overlay::TerrainOverlayState;
 use crate::terrain::spawn::TerrainRenderAssets;
 use crate::units::input::{cursor_world_ray, terrain_click_to_world_position};
 use crate::world::{
@@ -13,6 +15,8 @@ use crate::world::{
     TerrainFieldSourceProfileCatalog, WorldConfig, WorldData, build_and_package_all_enabled,
     build_and_package_field, sample_terrain_field_at, world_position_to_field_local,
 };
+
+use bevy::ecs::system::SystemParam;
 
 use super::DevModeState;
 use super::dev_mode::DevTab;
@@ -66,6 +70,11 @@ pub(crate) struct DevTerrainFieldButton {
     pub action: DevTerrainFieldAction,
 }
 
+#[derive(Component, Debug, Clone)]
+pub(crate) struct DevTerrainFieldOverlayButton {
+    pub field_id: TerrainFieldId,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DevTerrainFieldAction {
     BuildSelected,
@@ -83,6 +92,7 @@ pub fn setup_dev_terrain_field_state(mut commands: Commands) {
 }
 
 pub(crate) fn spawn_terrain_field_section(parent: &mut ChildSpawnerCommands<'_>) {
+    let catalog = crate::world::load_terrain_field_catalog();
     parent
         .spawn((
             DevTerrainFieldSection,
@@ -123,6 +133,54 @@ pub(crate) fn spawn_terrain_field_section(parent: &mut ChildSpawnerCommands<'_>)
                     ("Gizmos", DevTerrainFieldAction::ToggleGizmos),
                 ],
             );
+            section.spawn((
+                DevPanelUi,
+                Text::new("Overlays (toggle on map)"),
+                TextFont {
+                    font_size: 10.0,
+                    ..default()
+                },
+                TextColor(Color::srgba(0.65, 0.78, 0.88, 1.0)),
+            ));
+            spawn_overlay_toggle_row(section, &catalog);
+        });
+}
+
+fn spawn_overlay_toggle_row(parent: &mut ChildSpawnerCommands<'_>, catalog: &TerrainFieldCatalog) {
+    parent
+        .spawn((
+            DevPanelUi,
+            Node {
+                flex_direction: FlexDirection::Row,
+                column_gap: Val::Px(4.0),
+                flex_wrap: FlexWrap::Wrap,
+                ..default()
+            },
+        ))
+        .with_children(|row| {
+            for definition in catalog.definitions() {
+                if !definition.enabled {
+                    continue;
+                }
+                row.spawn((
+                    DevTerrainFieldOverlayButton {
+                        field_id: definition.id.clone(),
+                    },
+                    DevPanelUi,
+                    Button,
+                    Node {
+                        padding: UiRect::axes(Val::Px(6.0), Val::Px(3.0)),
+                        ..default()
+                    },
+                    BackgroundColor(BTN_BG_IDLE),
+                    Text::new(definition.display_name.as_str()),
+                    TextFont {
+                        font_size: 10.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgba(0.88, 0.94, 0.98, 1.0)),
+                ));
+            }
         });
 }
 
@@ -193,17 +251,33 @@ pub(crate) fn sync_terrain_field_section_visibility(
 pub(crate) fn sync_terrain_field_button_styles(
     dev_state: Res<DevModeState>,
     field_state: Res<DevTerrainFieldState>,
-    mut buttons: Query<(&Interaction, &DevTerrainFieldButton, &mut BackgroundColor), With<Button>>,
+    auxiliary: Res<TerrainFieldAuxiliaryOverlays>,
+    mut action_buttons: Query<
+        (&Interaction, &DevTerrainFieldButton, &mut BackgroundColor),
+        (With<Button>, Without<DevTerrainFieldOverlayButton>),
+    >,
+    mut overlay_buttons: Query<
+        (
+            &Interaction,
+            &DevTerrainFieldOverlayButton,
+            &mut BackgroundColor,
+        ),
+        (With<Button>, Without<DevTerrainFieldButton>),
+    >,
 ) {
     if !dev_state.enabled || dev_state.active_tab != DevTab::TerrainFields {
         return;
     }
-    for (interaction, button, mut bg) in &mut buttons {
+    for (interaction, button, mut bg) in &mut action_buttons {
         let active = match button.action {
             DevTerrainFieldAction::ToggleProbe => field_state.probe_enabled,
             DevTerrainFieldAction::ToggleGizmos => field_state.show_sample_gizmos,
             _ => false,
         };
+        *bg = field_button_bg(interaction, active);
+    }
+    for (interaction, button, mut bg) in &mut overlay_buttons {
+        let active = auxiliary.visible.contains(&button.field_id);
         *bg = field_button_bg(interaction, active);
     }
 }
@@ -416,6 +490,63 @@ fn assessment_catalogs<'a>(
     }
 }
 
+fn dev_reload_field_package(
+    world: &mut WorldData,
+    catalog: &TerrainFieldCatalog,
+    config: &WorldConfig,
+    building_catalog: &crate::world::BuildingCatalog,
+    footprint_catalog: &crate::world::FootprintCatalog,
+    requirement_catalog: &crate::world::BuildingFieldRequirementCatalog,
+    profile_catalog: &crate::world::FieldResponseProfileCatalog,
+    requirement_revision: u64,
+    profile_revision: u64,
+    assessments: &mut crate::world::BuildingTerrainAssessmentStore,
+) -> Result<String, String> {
+    let assessment_catalogs = assessment_catalogs(
+        building_catalog,
+        requirement_catalog,
+        profile_catalog,
+        catalog,
+        footprint_catalog,
+        requirement_revision,
+        profile_revision,
+    );
+    crate::world::reload_terrain_fields_with_invalidation(
+        world,
+        catalog,
+        config,
+        &assessment_catalogs,
+        assessments,
+        Path::new(DEFAULT_TERRAIN_FIELD_MANIFEST_PATH),
+    )
+    .map(|(summary, diff, rebuild)| {
+        format!(
+            "reloaded {} tiles; {} field changes; reassessed {}",
+            summary.tiles_loaded,
+            diff.changed_tiles.len(),
+            rebuild.assessed
+        )
+    })
+    .map_err(|err| format!("reload failed: {err}"))
+}
+
+fn enable_field_overlay(
+    field_id: &TerrainFieldId,
+    auxiliary: &mut TerrainFieldAuxiliaryOverlays,
+    overlay_state: &mut TerrainOverlayState,
+    catalog: &TerrainFieldCatalog,
+) {
+    auxiliary.set_visible(field_id.clone(), true);
+    overlay_state.set_manual_field(Some(field_id.clone()));
+    overlay_state.panel_open = true;
+    if let Some(def) = catalog.get(field_id) {
+        if !overlay_state.opacity_user_override {
+            overlay_state.opacity_basis_points =
+                (def.overlay_style.default_opacity * 10_000.0) as u16;
+        }
+    }
+}
+
 fn cycle_selected_field(field_state: &mut DevTerrainFieldState, catalog: &TerrainFieldCatalog) {
     let ids = catalog.sorted_ids();
     if ids.is_empty() {
@@ -429,98 +560,120 @@ fn cycle_selected_field(field_state: &mut DevTerrainFieldState, catalog: &Terrai
     field_state.selected_field = ids[next].clone();
 }
 
+#[derive(SystemParam)]
+pub(crate) struct DevTerrainFieldButtonParams<'w> {
+    pub dev_state: Res<'w, DevModeState>,
+    pub gate: ResMut<'w, DevModeInputGate>,
+    pub field_state: ResMut<'w, DevTerrainFieldState>,
+    pub world: ResMut<'w, WorldData>,
+    pub catalog: Res<'w, TerrainFieldCatalog>,
+    pub source_catalog: Res<'w, TerrainFieldSourceProfileCatalog>,
+    pub config: Res<'w, WorldConfig>,
+    pub building_catalog: Res<'w, crate::world::BuildingCatalog>,
+    pub footprint_catalog: Res<'w, crate::world::FootprintCatalog>,
+    pub requirement_catalog: Res<'w, crate::world::BuildingFieldRequirementCatalog>,
+    pub profile_catalog: Res<'w, crate::world::FieldResponseProfileCatalog>,
+    pub requirement_revision: Res<'w, crate::world::BuildingFieldRequirementCatalogRevision>,
+    pub profile_revision: Res<'w, crate::world::FieldResponseProfileCatalogRevision>,
+    pub assessments: ResMut<'w, crate::world::BuildingTerrainAssessmentStore>,
+    pub auxiliary: ResMut<'w, TerrainFieldAuxiliaryOverlays>,
+    pub overlay_state: ResMut<'w, TerrainOverlayState>,
+}
+
 pub(crate) fn handle_terrain_field_buttons(
-    dev_state: Res<DevModeState>,
-    mut gate: ResMut<DevModeInputGate>,
-    mut field_state: ResMut<DevTerrainFieldState>,
-    mut world: ResMut<WorldData>,
-    catalog: Res<TerrainFieldCatalog>,
-    source_catalog: Res<TerrainFieldSourceProfileCatalog>,
-    config: Res<WorldConfig>,
-    building_catalog: Res<crate::world::BuildingCatalog>,
-    footprint_catalog: Res<crate::world::FootprintCatalog>,
-    requirement_catalog: Res<crate::world::BuildingFieldRequirementCatalog>,
-    profile_catalog: Res<crate::world::FieldResponseProfileCatalog>,
-    requirement_revision: Res<crate::world::BuildingFieldRequirementCatalogRevision>,
-    profile_revision: Res<crate::world::FieldResponseProfileCatalogRevision>,
-    mut assessments: ResMut<crate::world::BuildingTerrainAssessmentStore>,
-    buttons: Query<(&Interaction, &DevTerrainFieldButton), Changed<Interaction>>,
+    mut params: DevTerrainFieldButtonParams,
+    action_buttons: Query<(&Interaction, &DevTerrainFieldButton), Changed<Interaction>>,
+    overlay_buttons: Query<
+        (&Interaction, &DevTerrainFieldOverlayButton),
+        (Changed<Interaction>, Without<DevTerrainFieldButton>),
+    >,
 ) {
-    if !dev_state.enabled || dev_state.active_tab != DevTab::TerrainFields {
+    if !params.dev_state.enabled || params.dev_state.active_tab != DevTab::TerrainFields {
         return;
     }
 
-    for (interaction, button) in &buttons {
+    for (interaction, button) in &overlay_buttons {
         if *interaction != Interaction::Pressed {
             continue;
         }
-        gate.block_gameplay_mouse = true;
+        params.gate.block_gameplay_mouse = true;
+        let on = !params.auxiliary.visible.contains(&button.field_id);
+        params.auxiliary.set_visible(button.field_id.clone(), on);
+        if on {
+            params.overlay_state.panel_open = true;
+            if params.overlay_state.selection.manual.is_none() {
+                params
+                    .overlay_state
+                    .set_manual_field(Some(button.field_id.clone()));
+            }
+        }
+    }
+
+    for (interaction, button) in &action_buttons {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        params.gate.block_gameplay_mouse = true;
 
         match button.action {
             DevTerrainFieldAction::CycleField => {
-                cycle_selected_field(&mut field_state, &catalog);
+                cycle_selected_field(&mut params.field_state, &params.catalog);
             }
             DevTerrainFieldAction::ToggleProbe => {
-                field_state.probe_enabled = !field_state.probe_enabled;
+                params.field_state.probe_enabled = !params.field_state.probe_enabled;
             }
             DevTerrainFieldAction::ToggleGizmos => {
-                field_state.show_sample_gizmos = !field_state.show_sample_gizmos;
+                params.field_state.show_sample_gizmos = !params.field_state.show_sample_gizmos;
             }
             DevTerrainFieldAction::Validate => {
-                let Some(profile) = source_catalog.for_field(&field_state.selected_field) else {
-                    field_state.last_action_message =
+                let Some(profile) = params
+                    .source_catalog
+                    .for_field(&params.field_state.selected_field)
+                else {
+                    params.field_state.last_action_message =
                         Some("no source profile for field".to_string());
                     continue;
                 };
-                field_state.last_action_message = Some(match profile.validate() {
+                params.field_state.last_action_message = Some(match profile.validate() {
                     Ok(()) => format!("valid: {}", profile.id),
                     Err(err) => format!("invalid: {err}"),
                 });
             }
             DevTerrainFieldAction::Reload => {
-                let assessment_catalogs = assessment_catalogs(
-                    &building_catalog,
-                    &requirement_catalog,
-                    &profile_catalog,
-                    &catalog,
-                    &footprint_catalog,
-                    requirement_revision.0,
-                    profile_revision.0,
-                );
-                field_state.last_action_message =
-                    match crate::world::reload_terrain_fields_with_invalidation(
-                        &mut world,
-                        &catalog,
-                        &config,
-                        &assessment_catalogs,
-                        &mut assessments,
-                        Path::new(DEFAULT_TERRAIN_FIELD_MANIFEST_PATH),
-                    ) {
-                        Ok((summary, diff, rebuild)) => Some(format!(
-                            "reloaded {} tiles; {} field changes; reassessed {}",
-                            summary.tiles_loaded,
-                            diff.changed_tiles.len(),
-                            rebuild.assessed
-                        )),
-                        Err(err) => Some(format!("reload failed: {err}")),
-                    };
+                params.field_state.last_action_message = dev_reload_field_package(
+                    &mut params.world,
+                    &params.catalog,
+                    &params.config,
+                    &params.building_catalog,
+                    &params.footprint_catalog,
+                    &params.requirement_catalog,
+                    &params.profile_catalog,
+                    params.requirement_revision.0,
+                    params.profile_revision.0,
+                    &mut params.assessments,
+                )
+                .ok();
+                params.overlay_state.request_revision = params
+                    .overlay_state
+                    .request_revision
+                    .saturating_add(1);
             }
             DevTerrainFieldAction::RebuildAssessments => {
                 let assessment_catalogs = assessment_catalogs(
-                    &building_catalog,
-                    &requirement_catalog,
-                    &profile_catalog,
-                    &catalog,
-                    &footprint_catalog,
-                    requirement_revision.0,
-                    profile_revision.0,
+                    &params.building_catalog,
+                    &params.requirement_catalog,
+                    &params.profile_catalog,
+                    &params.catalog,
+                    &params.footprint_catalog,
+                    params.requirement_revision.0,
+                    params.profile_revision.0,
                 );
                 let report = crate::world::rebuild_all_building_terrain_assessments(
-                    &world,
+                    &params.world,
                     &assessment_catalogs,
-                    &mut assessments,
+                    &mut params.assessments,
                 );
-                field_state.last_action_message = Some(format!(
+                params.field_state.last_action_message = Some(format!(
                     "rebuilt {} assessments ({} skipped, {} failed)",
                     report.assessed,
                     report.skipped_no_requirements,
@@ -528,17 +681,20 @@ pub(crate) fn handle_terrain_field_buttons(
                 ));
             }
             DevTerrainFieldAction::BuildSelected | DevTerrainFieldAction::BuildAll => {
-                let Some(extent) = world.extent() else {
-                    field_state.last_action_message = Some("no authored world extent".to_string());
+                let Some(extent) = params.world.extent() else {
+                    params.field_state.last_action_message =
+                        Some("no authored world extent".to_string());
                     continue;
                 };
-                let deps = build_dependencies(&world);
+                let built_field = params.field_state.selected_field.clone();
+                let build_all = button.action == DevTerrainFieldAction::BuildAll;
+                let deps = build_dependencies(&params.world);
                 let output = Path::new(FIELD_PACKAGE_DIR);
-                let result = if button.action == DevTerrainFieldAction::BuildAll {
+                let result = if build_all {
                     build_and_package_all_enabled(
-                        source_catalog.profiles(),
+                        params.source_catalog.profiles(),
                         extent,
-                        &config,
+                        &params.config,
                         output,
                         "main",
                         &deps,
@@ -552,13 +708,16 @@ pub(crate) fn handle_terrain_field_buttons(
                         )
                     })
                 } else {
-                    let Some(profile) = source_catalog.for_field(&field_state.selected_field)
+                    let Some(profile) = params
+                        .source_catalog
+                        .for_field(&params.field_state.selected_field)
                     else {
-                        field_state.last_action_message = Some("no source profile".to_string());
+                        params.field_state.last_action_message =
+                            Some("no source profile".to_string());
                         continue;
                     };
-                    build_and_package_field(profile, extent, &config, output, "main", &deps).map(
-                        |(report, package)| {
+                    build_and_package_field(profile, extent, &params.config, output, "main", &deps)
+                        .map(|(report, package)| {
                             format!(
                                 "built {} tiles min={} max={} avg={:.0} version={}",
                                 package.tiles_written,
@@ -567,13 +726,53 @@ pub(crate) fn handle_terrain_field_buttons(
                                 report.statistics.average,
                                 report.source_version
                             )
-                        },
-                    )
+                        })
                 };
-                field_state.last_action_message = Some(match result {
-                    Ok(msg) => msg,
-                    Err(err) => format!("build failed: {err}"),
-                });
+                match result {
+                    Ok(msg) => {
+                        let reload_msg = dev_reload_field_package(
+                            &mut params.world,
+                            &params.catalog,
+                            &params.config,
+                            &params.building_catalog,
+                            &params.footprint_catalog,
+                            &params.requirement_catalog,
+                            &params.profile_catalog,
+                            params.requirement_revision.0,
+                            params.profile_revision.0,
+                            &mut params.assessments,
+                        );
+                        params.overlay_state.request_revision = params
+                            .overlay_state
+                            .request_revision
+                            .saturating_add(1);
+                        if build_all {
+                            for definition in params.catalog.definitions() {
+                                if definition.enabled {
+                                    params.auxiliary.set_visible(definition.id.clone(), true);
+                                }
+                            }
+                        } else {
+                            enable_field_overlay(
+                                &built_field,
+                                &mut params.auxiliary,
+                                &mut params.overlay_state,
+                                &params.catalog,
+                            );
+                        }
+                        params.overlay_state.panel_open = true;
+                        params.field_state.last_action_message = Some(match reload_msg {
+                            Ok(reload) => format!(
+                                "{msg}; {reload}; toggle overlays below or use Terrain Analysis (O)"
+                            ),
+                            Err(err) => format!("{msg}; {err}"),
+                        });
+                    }
+                    Err(err) => {
+                        params.field_state.last_action_message =
+                            Some(format!("build failed: {err}"));
+                    }
+                }
             }
         }
     }

@@ -19,11 +19,13 @@ use crate::units::input::{
 use super::capture::{
     capture_building_asset_presentation, capture_building_inspector_snapshot,
     capture_interaction_inspector_snapshot, capture_unit_inspector_snapshot,
+    probe_building_operation,
 };
 use super::params::{
     BuildingInspectorPresentationParams, InspectorCaptureParams, InspectorPickParams,
 };
 use super::snapshot::capture_doodad_inspector_snapshot;
+use crate::world::InventoryCatalogCtx;
 use super::state::{InspectorCacheKey, WorldInspectorState};
 use crate::debug::InspectorOverlayFocus;
 
@@ -136,7 +138,7 @@ pub fn handle_inspector_input(
     gizmo_edit: Res<TransformEditState>,
     pick: InspectorPickParams,
     presentation: BuildingInspectorPresentationParams,
-    capture: InspectorCaptureParams,
+    mut capture: InspectorCaptureParams,
     render_assets: Option<Res<TerrainRenderAssets>>,
     mut inspector: ResMut<WorldInspectorState>,
     mut overlay_focus: ResMut<InspectorOverlayFocus>,
@@ -250,13 +252,35 @@ pub fn handle_inspector_input(
             &presentation.render_index,
             &presentation.render_entities,
         );
+        let inventory_ctx = InventoryCatalogCtx::new(
+            &capture.items,
+            &capture.item_categories,
+            &capture.inventory_profiles,
+        );
+        let mut operation = crate::world::BuildingOperationParams {
+            field_catalog: &capture.field_catalog,
+            requirement_catalog: &capture.requirements,
+            profile_catalog: &capture.profile_catalog,
+            footprint_catalog: &capture.footprint_catalog,
+            operation_catalog: &capture.operation_catalog,
+            inventory_ctx: &inventory_ctx,
+            requirement_revision: capture.requirement_revision.0,
+            profile_revision: capture.profile_revision.0,
+            assessment_store: &mut capture.assessments,
+        };
+        let operation_probe = probe_building_operation(
+            &capture.world,
+            &capture.building_catalog,
+            &mut operation,
+            building_id,
+        );
         inspector.building_snapshot = capture_building_inspector_snapshot(
             &capture.world,
             &capture.building_catalog,
             &crate::world::BuildingInteractionProfileCatalog::default(),
             building_id,
             Some(presentation_info),
-            None,
+            Some(operation_probe),
         );
         overlay_focus.set_unit(None);
         return;

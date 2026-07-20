@@ -14,6 +14,7 @@ pub enum TreasuryError {
     SettlementAlreadyExists(BuildingId),
     DuplicateTreasuryId(TreasuryId),
     DuplicateSettlementId(SettlementId),
+    BuildingAlreadyLinked(BuildingId),
     RequesterMissing(UnitId),
     SourceInventoryNotFound(InventoryId),
     SourceInventoryNotOwnedByUnit {
@@ -48,6 +49,9 @@ impl fmt::Display for TreasuryError {
             }
             Self::DuplicateTreasuryId(id) => write!(f, "duplicate treasury id {id:?}"),
             Self::DuplicateSettlementId(id) => write!(f, "duplicate settlement id {id:?}"),
+            Self::BuildingAlreadyLinked(id) => {
+                write!(f, "building {id:?} already linked to another settlement")
+            }
             Self::RequesterMissing(id) => write!(f, "unit {id:?} not found"),
             Self::SourceInventoryNotFound(id) => write!(f, "inventory {id:?} not found"),
             Self::SourceInventoryNotOwnedByUnit {

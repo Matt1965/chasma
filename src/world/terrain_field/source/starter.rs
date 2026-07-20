@@ -22,9 +22,9 @@ fn water_profile() -> TerrainFieldSourceProfileDefinition {
         "water",
         GeneratedTerrainFieldSource {
             generator: TerrainFieldGeneratorKind::LowlandWaterPotential {
-                aquifer_scale_meters: 512.0,
-                lowland_bias: 0.65,
-                mountain_suppression: 0.35,
+                aquifer_scale_meters: 384.0,
+                lowland_bias: 0.02,
+                mountain_suppression: 0.92,
             },
             generator_version: TERRAIN_FIELD_GENERATOR_VERSION,
             world_seed: 42_001,

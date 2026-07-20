@@ -109,6 +109,38 @@ pub struct WorldData {
     /// Authoritative world item piles (ADR-090 I4).
     item_pile_store: super::item_pile::ItemPileStore,
     settlement_store: super::settlement::SettlementStore,
+    /// Persistent SettlementState runtime (SA1).
+    settlement_state_store: super::settlement::SettlementStateStore,
+    /// Transient need evaluation snapshots (SA2). Never persisted.
+    need_evaluation_store: super::settlement::NeedEvaluationStore,
+    /// Transient response candidates (SA3). Never persisted.
+    response_candidate_store: super::settlement::ResponseCandidateStore,
+    /// Transient settlement intent plans (SA4). Never persisted.
+    settlement_intent_store: super::settlement::SettlementIntentStore,
+    /// Transient Building Intent Propagation reports (SA5). Never persisted.
+    building_intent_propagation_store: super::settlement::BuildingIntentPropagationStore,
+    /// Transient strategic task generation reports (SA6). Never persisted.
+    strategic_task_generation_store: super::settlement::StrategicTaskGenerationStore,
+    /// Transient emergency evaluation reports (SA8). Never persisted.
+    emergency_evaluation_store: super::settlement::EmergencyEvaluationStore,
+    /// Transient worker assignment / marketplace state (SA7). Never persisted.
+    worker_assignment_store: super::task::WorkerAssignmentStore,
+    /// Authoritative construction plans (SA9). Persisted.
+    construction_plan_store: super::settlement::ConstructionPlanStore,
+    /// Transient construction planning reports (SA9). Never persisted.
+    construction_planning_report_store: super::settlement::ConstructionPlanningReportStore,
+    /// Settlement production planners (EP9).
+    production_planner_store: super::settlement::ProductionPlannerStore,
+    /// Authoritative building production runtime (EP1).
+    building_production: super::building::operation::BuildingProductionStore,
+    /// Role-tagged building inventory bindings (EP4).
+    building_inventory_bindings: super::building::inventory_binding::BuildingInventoryBindingStore,
+    /// Authoritative hauling requests (EP7).
+    hauling_requests: super::logistics::HaulingRequestStore,
+    /// Inventory reservations for hauling (EP7).
+    inventory_reservations: super::logistics::InventoryReservationStore,
+    /// Logistics endpoint lookup index (EP7).
+    logistics_endpoint_index: super::logistics::LogisticsEndpointIndex,
 }
 
 impl FromWorld for WorldData {
@@ -155,6 +187,25 @@ impl WorldData {
             corpse_store: super::corpse::CorpseStore::default(),
             item_pile_store: super::item_pile::ItemPileStore::default(),
             settlement_store: super::settlement::SettlementStore::default(),
+            settlement_state_store: super::settlement::SettlementStateStore::default(),
+            need_evaluation_store: super::settlement::NeedEvaluationStore::default(),
+            response_candidate_store: super::settlement::ResponseCandidateStore::default(),
+            settlement_intent_store: super::settlement::SettlementIntentStore::default(),
+            building_intent_propagation_store:
+                super::settlement::BuildingIntentPropagationStore::default(),
+            strategic_task_generation_store: super::settlement::StrategicTaskGenerationStore::default(),
+            emergency_evaluation_store: super::settlement::EmergencyEvaluationStore::default(),
+            worker_assignment_store: super::task::WorkerAssignmentStore::default(),
+            construction_plan_store: super::settlement::ConstructionPlanStore::default(),
+            construction_planning_report_store:
+                super::settlement::ConstructionPlanningReportStore::default(),
+            production_planner_store: super::settlement::ProductionPlannerStore::default(),
+            building_production: super::building::operation::BuildingProductionStore::default(),
+            building_inventory_bindings:
+                super::building::inventory_binding::BuildingInventoryBindingStore::default(),
+            hauling_requests: super::logistics::HaulingRequestStore::default(),
+            inventory_reservations: super::logistics::InventoryReservationStore::default(),
+            logistics_endpoint_index: super::logistics::LogisticsEndpointIndex::default(),
         }
     }
 
@@ -221,6 +272,176 @@ impl WorldData {
 
     pub fn settlement_store_mut(&mut self) -> &mut super::settlement::SettlementStore {
         &mut self.settlement_store
+    }
+
+    pub fn settlement_state_store(&self) -> &super::settlement::SettlementStateStore {
+        &self.settlement_state_store
+    }
+
+    pub fn settlement_state_store_mut(&mut self) -> &mut super::settlement::SettlementStateStore {
+        &mut self.settlement_state_store
+    }
+
+    pub fn need_evaluation_store(&self) -> &super::settlement::NeedEvaluationStore {
+        &self.need_evaluation_store
+    }
+
+    pub fn need_evaluation_store_mut(&mut self) -> &mut super::settlement::NeedEvaluationStore {
+        &mut self.need_evaluation_store
+    }
+
+    pub fn response_candidate_store(&self) -> &super::settlement::ResponseCandidateStore {
+        &self.response_candidate_store
+    }
+
+    pub fn response_candidate_store_mut(
+        &mut self,
+    ) -> &mut super::settlement::ResponseCandidateStore {
+        &mut self.response_candidate_store
+    }
+
+    pub fn settlement_intent_store(&self) -> &super::settlement::SettlementIntentStore {
+        &self.settlement_intent_store
+    }
+
+    pub fn settlement_intent_store_mut(
+        &mut self,
+    ) -> &mut super::settlement::SettlementIntentStore {
+        &mut self.settlement_intent_store
+    }
+
+    pub fn building_intent_propagation_store(
+        &self,
+    ) -> &super::settlement::BuildingIntentPropagationStore {
+        &self.building_intent_propagation_store
+    }
+
+    pub fn building_intent_propagation_store_mut(
+        &mut self,
+    ) -> &mut super::settlement::BuildingIntentPropagationStore {
+        &mut self.building_intent_propagation_store
+    }
+
+    pub fn strategic_task_generation_store(
+        &self,
+    ) -> &super::settlement::StrategicTaskGenerationStore {
+        &self.strategic_task_generation_store
+    }
+
+    pub fn strategic_task_generation_store_mut(
+        &mut self,
+    ) -> &mut super::settlement::StrategicTaskGenerationStore {
+        &mut self.strategic_task_generation_store
+    }
+
+    pub fn emergency_evaluation_store(&self) -> &super::settlement::EmergencyEvaluationStore {
+        &self.emergency_evaluation_store
+    }
+
+    pub fn emergency_evaluation_store_mut(
+        &mut self,
+    ) -> &mut super::settlement::EmergencyEvaluationStore {
+        &mut self.emergency_evaluation_store
+    }
+
+    pub fn worker_assignment_store(&self) -> &super::task::WorkerAssignmentStore {
+        &self.worker_assignment_store
+    }
+
+    pub fn worker_assignment_store_mut(&mut self) -> &mut super::task::WorkerAssignmentStore {
+        &mut self.worker_assignment_store
+    }
+
+    pub fn production_planner_store(&self) -> &super::settlement::ProductionPlannerStore {
+        &self.production_planner_store
+    }
+
+    pub fn production_planner_store_mut(
+        &mut self,
+    ) -> &mut super::settlement::ProductionPlannerStore {
+        &mut self.production_planner_store
+    }
+
+    pub fn construction_plan_store(&self) -> &super::settlement::ConstructionPlanStore {
+        &self.construction_plan_store
+    }
+
+    pub fn construction_plan_store_mut(
+        &mut self,
+    ) -> &mut super::settlement::ConstructionPlanStore {
+        &mut self.construction_plan_store
+    }
+
+    pub fn construction_planning_report_store(
+        &self,
+    ) -> &super::settlement::ConstructionPlanningReportStore {
+        &self.construction_planning_report_store
+    }
+
+    pub fn construction_planning_report_store_mut(
+        &mut self,
+    ) -> &mut super::settlement::ConstructionPlanningReportStore {
+        &mut self.construction_planning_report_store
+    }
+
+    pub fn building_production_store(&self) -> &super::building::operation::BuildingProductionStore {
+        &self.building_production
+    }
+
+    pub fn building_production_store_mut(
+        &mut self,
+    ) -> &mut super::building::operation::BuildingProductionStore {
+        &mut self.building_production
+    }
+
+    pub fn building_inventory_binding_store(
+        &self,
+    ) -> &super::building::inventory_binding::BuildingInventoryBindingStore {
+        &self.building_inventory_bindings
+    }
+
+    pub fn building_inventory_binding_store_mut(
+        &mut self,
+    ) -> &mut super::building::inventory_binding::BuildingInventoryBindingStore {
+        &mut self.building_inventory_bindings
+    }
+
+    pub fn hauling_request_store(&self) -> &super::logistics::HaulingRequestStore {
+        &self.hauling_requests
+    }
+
+    pub fn hauling_request_store_mut(&mut self) -> &mut super::logistics::HaulingRequestStore {
+        &mut self.hauling_requests
+    }
+
+    pub fn inventory_reservation_store(&self) -> &super::logistics::InventoryReservationStore {
+        &self.inventory_reservations
+    }
+
+    pub fn inventory_reservation_store_mut(
+        &mut self,
+    ) -> &mut super::logistics::InventoryReservationStore {
+        &mut self.inventory_reservations
+    }
+
+    pub fn logistics_endpoint_index(&self) -> &super::logistics::LogisticsEndpointIndex {
+        &self.logistics_endpoint_index
+    }
+
+    pub fn logistics_endpoint_index_mut(&mut self) -> &mut super::logistics::LogisticsEndpointIndex {
+        &mut self.logistics_endpoint_index
+    }
+
+    pub fn hauling_reserve_borrow_split(
+        &mut self,
+    ) -> (
+        &super::inventory::InventoryStore,
+        &mut super::logistics::InventoryReservationStore,
+    ) {
+        (
+            &self.inventory_store,
+            &mut self.inventory_reservations,
+        )
     }
 
     pub fn space_registry(&self) -> &super::space::SpaceRegistry {
@@ -728,6 +949,11 @@ impl WorldData {
         self.item_instance_store_mut().clear();
         self.corpse_store_mut().clear();
         self.item_pile_store_mut().clear();
+        self.building_production_store_mut().clear();
+        self.building_inventory_binding_store_mut().clear();
+        self.hauling_request_store_mut().clear();
+        self.inventory_reservation_store_mut().clear();
+        self.logistics_endpoint_index_mut().clear();
         self.space_registry_mut().reset();
         let _ = self.command_buffer_mut().take_pending_sorted();
         self.movement_smoothing_mut().clear_all();

@@ -1,7 +1,8 @@
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// Stable string identifier for an item type definition (ADR-087 I1).
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Reflect)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Reflect, Serialize, Deserialize)]
 pub struct ItemDefinitionId(pub String);
 
 impl ItemDefinitionId {

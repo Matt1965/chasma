@@ -6,6 +6,10 @@ use super::container_access::{
 };
 use super::id::BuildingId;
 use super::interaction_profile::BuildingInteractionProfileCatalog;
+use super::inventory_binding::{
+    BuildingInventoryBinding, BuildingInventoryBindingId, BuildingInventoryBindingSet,
+    effective_inventory_binding_definitions, primary_building_inventory_id,
+};
 use super::inventory_error::BuildingInventoryError;
 use super::record::BuildingRecord;
 use crate::world::inventory::{
@@ -62,20 +66,66 @@ pub fn attach_inventory_on_building_create(
     building: &mut BuildingRecord,
     definition: &BuildingDefinition,
 ) -> Result<(), BuildingInventoryError> {
-    let Some(profile_id) = definition.inventory_profile_id.clone() else {
+    let binding_definitions = effective_inventory_binding_definitions(definition);
+    if binding_definitions.is_empty() {
         building.inventory_id = None;
+        world.building_inventory_binding_store_mut().remove(building.id);
         return Ok(());
-    };
-    ctx.require_profile(&profile_id).map_err(|_| {
-        BuildingInventoryError::InventoryProfileMissing {
-            building_id: building.id,
-            profile_id: profile_id.clone(),
-        }
-    })?;
-    let inventory_id =
-        create_building_inventory(world.inventory_store_mut(), ctx, profile_id, building.id)?;
-    building.inventory_id = Some(inventory_id);
+    }
+
+    let mut runtime_bindings = Vec::with_capacity(binding_definitions.len());
+    for binding_definition in binding_definitions {
+        ctx.require_profile(&binding_definition.profile_id).map_err(|_| {
+            BuildingInventoryError::InventoryProfileMissing {
+                building_id: building.id,
+                profile_id: binding_definition.profile_id.clone(),
+            }
+        })?;
+        let inventory_id = create_building_inventory(
+            world.inventory_store_mut(),
+            ctx,
+            binding_definition.profile_id.clone(),
+            building.id,
+        )?;
+        runtime_bindings.push(
+            BuildingInventoryBinding::new(
+                binding_definition.binding_id.clone(),
+                binding_definition.role,
+                inventory_id,
+            )
+            .with_label(binding_definition.label.clone().unwrap_or_default())
+            .with_default(binding_definition.is_default),
+        );
+    }
+
+    building.inventory_id = resolve_legacy_inventory_id(definition, &runtime_bindings);
+    world
+        .building_inventory_binding_store_mut()
+        .set(
+            building.id,
+            BuildingInventoryBindingSet::from_bindings(runtime_bindings),
+        );
+    crate::world::register_building_logistics_endpoints(world, definition, building.id);
     Ok(())
+}
+
+fn resolve_legacy_inventory_id(
+    definition: &BuildingDefinition,
+    bindings: &[BuildingInventoryBinding],
+) -> Option<InventoryId> {
+    if let Some(default_id) = &definition.default_inventory_binding_id {
+        if let Some(binding) = bindings.iter().find(|binding| &binding.binding_id == default_id) {
+            return Some(binding.inventory_id);
+        }
+        return None;
+    }
+    if let Some(binding) = bindings.iter().find(|binding| binding.is_default) {
+        return Some(binding.inventory_id);
+    }
+    if bindings.len() == 1 {
+        return Some(bindings[0].inventory_id);
+    }
+    None
 }
 
 pub fn cleanup_building_inventory_on_delete(
@@ -83,21 +133,55 @@ pub fn cleanup_building_inventory_on_delete(
     ctx: &InventoryCatalogCtx<'_>,
     building: &BuildingRecord,
 ) -> Result<RemovedInventoryContents, BuildingInventoryError> {
-    let Some(inventory_id) = building.inventory_id else {
-        return Ok(RemovedInventoryContents {
-            inventory_id: None,
-            destroyed_instance_ids: Vec::new(),
-        });
-    };
-    let (inventory_store, instance_store) = world.inventory_runtime_mut();
-    remove_owned_inventory(
-        inventory_store,
-        instance_store,
-        ctx,
-        inventory_id,
-        InventoryOwnerRef::Building(building.id),
-    )
-    .map_err(BuildingInventoryError::from)
+    let mut destroyed_instances = Vec::new();
+    let mut last_inventory_id = None;
+
+    let binding_ids: Vec<InventoryId> = world
+        .building_inventory_binding_store()
+        .get(building.id)
+        .map(|set| {
+            set.bindings()
+                .iter()
+                .map(|binding| binding.inventory_id)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    if !binding_ids.is_empty() {
+        let (inventory_store, instance_store) = world.inventory_runtime_mut();
+        for inventory_id in binding_ids {
+            let removed = remove_owned_inventory(
+                inventory_store,
+                instance_store,
+                ctx,
+                inventory_id,
+                InventoryOwnerRef::Building(building.id),
+            )
+            .map_err(BuildingInventoryError::from)?;
+            destroyed_instances.extend(removed.destroyed_instance_ids);
+            last_inventory_id = Some(inventory_id);
+        }
+        world
+            .building_inventory_binding_store_mut()
+            .remove(building.id);
+    } else if let Some(inventory_id) = building.inventory_id {
+        let (inventory_store, instance_store) = world.inventory_runtime_mut();
+        let removed = remove_owned_inventory(
+            inventory_store,
+            instance_store,
+            ctx,
+            inventory_id,
+            InventoryOwnerRef::Building(building.id),
+        )
+        .map_err(BuildingInventoryError::from)?;
+        destroyed_instances = removed.destroyed_instance_ids;
+        last_inventory_id = Some(inventory_id);
+    }
+
+    Ok(RemovedInventoryContents {
+        inventory_id: last_inventory_id,
+        destroyed_instance_ids: destroyed_instances,
+    })
 }
 
 pub fn validate_building_inventory_owner(
@@ -127,6 +211,20 @@ pub fn building_inventory_operational(record: &BuildingRecord) -> bool {
     record.inventory_id.is_some() && is_building_operational(record)
 }
 
+fn building_inventory_ids(world: &WorldData, building: &BuildingRecord) -> Vec<InventoryId> {
+    world
+        .building_inventory_binding_store()
+        .get(building.id)
+        .map(|set| {
+            set.bindings()
+                .iter()
+                .map(|binding| binding.inventory_id)
+                .collect()
+        })
+        .filter(|ids: &Vec<InventoryId>| !ids.is_empty())
+        .unwrap_or_else(|| building.inventory_id.into_iter().collect())
+}
+
 pub fn can_unit_access_building_inventory(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
@@ -143,9 +241,9 @@ pub fn can_unit_access_building_inventory(
             building_id,
         ));
     };
-    if building.inventory_id.is_none() {
+    let _inventory_id = primary_building_inventory_id(world, building_id) else {
         return InventoryAccessResult::Denied(InventoryAccessDenialReason::BuildingHasNoInventory);
-    }
+    };
     if !building_inventory_operational(building) {
         return InventoryAccessResult::Denied(InventoryAccessDenialReason::BuildingNotOperational);
     }
@@ -235,16 +333,8 @@ pub fn spill_building_inventory(
     inventory_ctx: &BuildingInventoryContext<'_>,
     building: &BuildingRecord,
 ) -> Result<Option<SpillReport>, BuildingInventoryError> {
-    let Some(inventory_id) = building.inventory_id else {
-        return Ok(None);
-    };
-    if world
-        .inventory_store()
-        .get(inventory_id)
-        .is_none_or(|record| record.placed_entries().is_empty())
-    {
-        cleanup_building_inventory_on_delete(world, inventory_ctx.ctx, building)?;
-        clear_building_inventory_link(world, building.id);
+    let inventory_ids = building_inventory_ids(world, building);
+    if inventory_ids.is_empty() {
         return Ok(None);
     }
 
@@ -255,22 +345,42 @@ pub fn spill_building_inventory(
         team_id: building.ownership.team_id,
         affiliation: building.ownership.affiliation,
     };
-    let report = spill_inventory_to_world_piles(
-        world,
-        inventory_ctx.ctx,
-        inventory_ctx.pile_settings,
-        inventory_id,
-        position,
-        space_id,
-        ownership,
-        inventory_ctx.tick,
-    )?;
+
+    let mut combined: Option<SpillReport> = None;
+    for inventory_id in inventory_ids {
+        if world
+            .inventory_store()
+            .get(inventory_id)
+            .is_none_or(|record| record.placed_entries().is_empty())
+        {
+            continue;
+        }
+        let report = spill_inventory_to_world_piles(
+            world,
+            inventory_ctx.ctx,
+            inventory_ctx.pile_settings,
+            inventory_id,
+            position,
+            space_id,
+            ownership.clone(),
+            inventory_ctx.tick,
+        )?;
+        combined = Some(match combined {
+            Some(mut existing) => {
+                existing.spilled_entries += report.spilled_entries;
+                existing
+            }
+            None => report,
+        });
+    }
+
     cleanup_building_inventory_on_delete(world, inventory_ctx.ctx, building)?;
     clear_building_inventory_link(world, building.id);
-    Ok(Some(report))
+    Ok(combined)
 }
 
 fn clear_building_inventory_link(world: &mut WorldData, building_id: super::id::BuildingId) {
+    world.building_inventory_binding_store_mut().remove(building_id);
     world.mutate_building(building_id, |record| record.inventory_id = None);
 }
 
@@ -346,6 +456,27 @@ pub fn validate_building_inventory_links(world: &WorldData) -> Vec<BuildingInven
         let Some(record) = world.get_building(building_id) else {
             continue;
         };
+
+        if let Some(binding_set) = world.building_inventory_binding_store().get(building_id) {
+            let mut claimed = HashSet::new();
+            for binding in binding_set.bindings() {
+                if !claimed.insert(binding.inventory_id) {
+                    errors.push(BuildingInventoryError::OrphanedBuildingInventory {
+                        building_id,
+                        inventory_id: binding.inventory_id,
+                    });
+                }
+                if let Err(error) = validate_binding_inventory_owner(
+                    world,
+                    building_id,
+                    binding.inventory_id,
+                ) {
+                    errors.push(error);
+                }
+            }
+            continue;
+        }
+
         let Some(inventory_id) = record.inventory_id else {
             continue;
         };
@@ -375,7 +506,20 @@ pub fn validate_building_inventory_links(world: &WorldData) -> Vec<BuildingInven
         };
         if let InventoryOwnerRef::Building(building_id) = record.owner() {
             let building = world.get_building(*building_id);
-            if building.is_none_or(|b| b.inventory_id != Some(inventory_id)) {
+            let linked = building.is_some_and(|b| {
+                if b.inventory_id == Some(inventory_id) {
+                    return true;
+                }
+                world
+                    .building_inventory_binding_store()
+                    .get(*building_id)
+                    .is_some_and(|set| {
+                        set.bindings()
+                            .iter()
+                            .any(|binding| binding.inventory_id == inventory_id)
+                    })
+            });
+            if !linked {
                 errors.push(BuildingInventoryError::OrphanedBuildingInventory {
                     building_id: *building_id,
                     inventory_id,
@@ -385,6 +529,24 @@ pub fn validate_building_inventory_links(world: &WorldData) -> Vec<BuildingInven
     }
 
     errors
+}
+
+fn validate_binding_inventory_owner(
+    world: &WorldData,
+    building_id: BuildingId,
+    inventory_id: InventoryId,
+) -> Result<(), BuildingInventoryError> {
+    let inventory = world
+        .inventory_store()
+        .get(inventory_id)
+        .ok_or(InventoryError::InventoryNotFound(inventory_id))?;
+    match inventory.owner() {
+        InventoryOwnerRef::Building(owner) if owner == &building_id => Ok(()),
+        _ => Err(BuildingInventoryError::BuildingInventoryOwnerMismatch {
+            building_id,
+            inventory_id,
+        }),
+    }
 }
 
 #[cfg(test)]

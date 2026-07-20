@@ -55,7 +55,7 @@ pub(crate) fn sync_inspector_panel(
     **label = if let Some(snapshot) = inspector.doodad_snapshot.as_ref() {
         format_doodad_snapshot(snapshot, &tool_state, &edit)
     } else if let Some(snapshot) = inspector.building_snapshot.as_ref() {
-        format_building_snapshot(snapshot)
+        format_building_snapshot(snapshot, inspector.production_advanced_expanded)
     } else if let Some(snapshot) = inspector.unit_snapshot.as_ref() {
         let mut body = format_unit_snapshot(snapshot);
         let unit_filter = inspector.selected_unit;
@@ -255,21 +255,41 @@ fn format_doodad_snapshot(
     out
 }
 
-fn format_building_snapshot(s: &BuildingInspectorSnapshot) -> String {
-    format!(
+fn format_building_snapshot(s: &BuildingInspectorSnapshot, advanced: bool) -> String {
+    let mut out = format!(
         "Building #{}  {}  def={}\n\
          state={}  progress={:.0}%  operational={}\n\
          hp={}/{}  affiliation={}\n\
          Chunk ({},{})\n\
          {}\n\
+         bindings: {}\n\
          interaction point: {}\n\
          render key: {}\n\
          asset: {}  load: {}\n\
          runtime entity: {}  fallback: {} {}\n\
          scene tags: space={} roof={}\n\
-         terrain output: {}  final output: {}\n\
-         operation progress: {}  completions: {}  limiting: {}\n\
+         --- Production ---\n\
+         operation: {}  lifecycle: {}\n\
+         blocking: {}  progress: {}  completions: {}\n\
+         mode: {}  remaining: {}  workers: {} (active {})\n\
+         supported: {}  default: {}  category: {}  base labor: {}  max workers: {}\n\
+         validation: {}\n\
+         execution inputs: {}\n\
+         execution outputs: {}\n\
+         inventories: {}\n\
+         execution blocking: {}\n\
+         terrain assessment: {}\n\
+         assessment revision: {}  stale: {}\n\
+         --- Logistics ---\n\
+         {}\n\
+         --- Settlement Runtime ---\n\
+{}\n\
+         policy enabled: {}  paused: {}  control: {}  priority: {}\n\
+         efficiency terrain: {}  final: {}  limiting: {}\n\
          Dev: [D]amage [H]eal [X]estroy [R]uins [C]omplete [P]+progress\n\
+         Production: [,] enable [.] pause [/] mode []] reset [`] advanced [\\] validate [';/] op [M] force exec [K] clear inv [F] refresh terrain\n\
+         Logistics: [Q] spawn [Shift+Q] cancel [Ctrl+Q] complete\n\
+         Planner: [Shift+P] force replan\n\
          Container: [I]nspect [G]old [T]ransfer [U]lock [V]alidate",
         s.building_id.raw(),
         s.display_name,
@@ -283,6 +303,7 @@ fn format_building_snapshot(s: &BuildingInspectorSnapshot) -> String {
         s.chunk.x,
         s.chunk.z,
         s.inventory_summary.as_deref().unwrap_or("no inventory"),
+        s.inventory_bindings_summary.as_deref().unwrap_or("—"),
         s.interaction_point.as_deref().unwrap_or("—"),
         s.desired_render_key.as_deref().unwrap_or("—"),
         s.resolved_asset_path.as_deref().unwrap_or("—"),
@@ -298,12 +319,68 @@ fn format_building_snapshot(s: &BuildingInspectorSnapshot) -> String {
         s.roof_tag_count
             .map(|count| count.to_string())
             .unwrap_or_else(|| "—".into()),
-        s.terrain_output_rate.as_deref().unwrap_or("—"),
-        s.final_output_rate.as_deref().unwrap_or("—"),
+        s.selected_operation.as_deref().unwrap_or("None"),
+        s.production_lifecycle.as_deref().unwrap_or("—"),
+        s.production_blocking_reason.as_deref().unwrap_or("—"),
         s.operation_progress.as_deref().unwrap_or("—"),
         s.operation_completions
             .map(|count| count.to_string())
             .unwrap_or_else(|| "—".into()),
+        s.repeat_mode.as_deref().unwrap_or("—"),
+        s.remaining_repeat_count
+            .map(|count| count.to_string())
+            .unwrap_or_else(|| "—".into()),
+        s.assigned_workers.as_deref().unwrap_or("—"),
+        s.active_worker_count
+            .map(|count| count.to_string())
+            .unwrap_or_else(|| "—".into()),
+        s.supported_operations.as_deref().unwrap_or("—"),
+        s.default_operation.as_deref().unwrap_or("—"),
+        s.operation_category.as_deref().unwrap_or("—"),
+        s.base_labor
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "—".into()),
+        s.max_workers
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "—".into()),
+        s.validation_state.as_deref().unwrap_or("—"),
+        s.execution_inputs_summary.as_deref().unwrap_or("—"),
+        s.execution_outputs_summary.as_deref().unwrap_or("—"),
+        s.execution_inventory_summary.as_deref().unwrap_or("—"),
+        s.execution_blocking.as_deref().unwrap_or("—"),
+        s.terrain_assessment_summary.as_deref().unwrap_or("—"),
+        s.terrain_assessment_revision
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "—".into()),
+        s.terrain_assessment_stale
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "—".into()),
+        s.hauling_requests_summary.as_deref().unwrap_or("—"),
+        s.planner_summary.as_deref().unwrap_or("—"),
+        s.policy_enabled
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "—".into()),
+        s.policy_paused
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "—".into()),
+        s.control_source.as_deref().unwrap_or("—"),
+        s.policy_priority
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "—".into()),
+        s.terrain_output_rate.as_deref().unwrap_or("—"),
+        s.final_output_rate.as_deref().unwrap_or("—"),
         s.operation_limiting_factor.as_deref().unwrap_or("—"),
-    )
+    );
+    if advanced {
+        out.push_str(&format!(
+            "\n--- Production Advanced ---\n\
+             efficiency revision: {}\n\
+             assigned worker ids: {}",
+            s.last_efficiency_revision
+                .map(|value| value.to_string())
+                .unwrap_or_else(|| "—".into()),
+            s.assigned_workers.as_deref().unwrap_or("—"),
+        ));
+    }
+    out
 }

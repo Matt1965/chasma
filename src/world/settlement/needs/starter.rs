@@ -1,0 +1,97 @@
+//! Starter NeedDefinitions — enough to exercise SA2 architecture.
+
+use super::definition::{
+    NeedDefinition, NeedEvaluationMethod, NeedMeasurementType, NeedResponseCategory,
+    NeedTargetSource,
+};
+use crate::world::settlement::planner::ProductionPriorityCategory;
+use crate::world::settlement::state::NeedCategory;
+
+pub fn starter_need_definitions() -> Vec<NeedDefinition> {
+    vec![
+        NeedDefinition::new(
+            "food",
+            "Food",
+            "Settlement food stock versus authored food target.",
+            NeedMeasurementType::InventoryStock,
+            NeedTargetSource::SettlementNeedTarget,
+            NeedCategory::Food,
+            NeedEvaluationMethod::FoodStock,
+            ProductionPriorityCategory::Food,
+            NeedResponseCategory::Production,
+            100,
+        ),
+        NeedDefinition::new(
+            "construction",
+            "Construction",
+            "Incomplete construction sites versus construction target.",
+            NeedMeasurementType::BuildingCount,
+            NeedTargetSource::SettlementNeedTarget,
+            NeedCategory::Construction,
+            NeedEvaluationMethod::ConstructionSites,
+            ProductionPriorityCategory::Construction,
+            NeedResponseCategory::Construction,
+            0,
+        ),
+        NeedDefinition::new(
+            "housing",
+            "Housing",
+            "Complete residential buildings versus housing target.",
+            NeedMeasurementType::BuildingCount,
+            NeedTargetSource::SettlementNeedTarget,
+            NeedCategory::Housing,
+            NeedEvaluationMethod::HousingCapacity,
+            ProductionPriorityCategory::General,
+            NeedResponseCategory::Construction,
+            20,
+        ),
+        NeedDefinition::new(
+            "defense",
+            "Defense",
+            "Defense posture versus defense target and threat flags.",
+            NeedMeasurementType::PolicyScalar,
+            NeedTargetSource::SettlementNeedTarget,
+            NeedCategory::Defense,
+            NeedEvaluationMethod::DefensePosture,
+            ProductionPriorityCategory::General,
+            NeedResponseCategory::Defense,
+            10,
+        ),
+        NeedDefinition::new(
+            "research",
+            "Research",
+            "Research progress stub versus research target.",
+            NeedMeasurementType::Stub,
+            NeedTargetSource::SettlementNeedTarget,
+            NeedCategory::Research,
+            NeedEvaluationMethod::ResearchStub,
+            ProductionPriorityCategory::General,
+            NeedResponseCategory::Research,
+            0,
+        ),
+        NeedDefinition::new(
+            "expansion",
+            "Expansion",
+            "Growth/expansion desire versus growth target (low-weight progress seam).",
+            NeedMeasurementType::BuildingCount,
+            NeedTargetSource::SettlementNeedTarget,
+            NeedCategory::Growth,
+            NeedEvaluationMethod::ExpansionGrowth,
+            ProductionPriorityCategory::General,
+            NeedResponseCategory::Expansion,
+            1,
+        ),
+        NeedDefinition::new(
+            "luxury",
+            "Luxury",
+            "Luxury goods stock versus luxury target.",
+            NeedMeasurementType::InventoryStock,
+            NeedTargetSource::SettlementNeedTarget,
+            NeedCategory::Luxury,
+            NeedEvaluationMethod::LuxuryStock,
+            ProductionPriorityCategory::Luxury,
+            NeedResponseCategory::Luxury,
+            0,
+        ),
+    ]
+}

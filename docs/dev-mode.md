@@ -60,6 +60,10 @@ Open the **Fields** tab in Dev Mode. All terrain field actions are panel buttons
 | **Probe** | Toggle cursor field probe |
 | **Gizmos** | Toggle sample gizmos |
 
+**Overlay toggles** (Water / Iron / Copper / Stone): show colored field maps on terrain. Multiple can stay on at once. Overlays only appear where terrain chunks are loaded — pan the camera to streamed areas.
+
+After **Build field** or **Build all**, the game auto-reloads packages and turns on the relevant overlay(s). You can also use **Terrain Analysis** (`O`) for the same overlays with opacity controls.
+
 Dev Fields tab also shows TF3 overlay diagnostics (revision, resident overlays, uploads).
 
 ## Terrain Analysis (TF3, ADR-103)

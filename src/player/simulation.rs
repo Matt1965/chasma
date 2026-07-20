@@ -94,8 +94,11 @@ pub fn tick_unit_movement(
 
         let tick = control.current_tick;
         let inventory_ctx = catalogs.inventory_ctx();
-        let mut operation =
-            building_sim.operation_params(&catalogs.building_catalog, &catalogs.footprint_catalog);
+        let mut operation = building_sim.operation_params(
+            &catalogs.building_catalog,
+            &catalogs.footprint_catalog,
+            &inventory_ctx,
+        );
         let step_report = run_simulation_tick(
             &mut world,
             &catalogs.unit_catalog,

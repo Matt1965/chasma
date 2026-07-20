@@ -6,10 +6,121 @@ mod fixtures {
     use super::super::definition::BuildingDefinition;
     use super::super::definition_id::BuildingDefinitionId;
     use super::super::render_key::BuildingRenderKey;
+    use crate::world::operation::OperationDefinitionId;
     use crate::world::InventoryProfileId;
     use crate::world::building::category::BuildingCategoryId;
     use crate::world::building::container_access::ContainerAccessPolicy;
     use crate::world::building::footprint::FootprintSpec;
+    use crate::world::building::inventory_binding::{
+        BuildingInventoryBindingDefinition, BuildingInventoryBindingId, BuildingInventoryRole,
+    };
+    use crate::world::logistics::BuildingLogisticsRouteDefinition;
+    use crate::world::ItemDefinitionId;
+
+    fn warehouse_route_output(
+        local_binding: &str,
+        item: &str,
+    ) -> BuildingLogisticsRouteDefinition {
+        BuildingLogisticsRouteDefinition::output_surplus(
+            BuildingInventoryBindingId::new(local_binding),
+            ItemDefinitionId::new(item),
+            BuildingDefinitionId::new("storage_chest"),
+            BuildingInventoryBindingId::new("primary"),
+        )
+    }
+
+    fn warehouse_route_input(
+        local_binding: &str,
+        item: &str,
+    ) -> BuildingLogisticsRouteDefinition {
+        BuildingLogisticsRouteDefinition::input_deficit(
+            BuildingInventoryBindingId::new(local_binding),
+            ItemDefinitionId::new(item),
+            BuildingDefinitionId::new("storage_chest"),
+            BuildingInventoryBindingId::new("primary"),
+        )
+    }
+    fn primary_output_binding() -> BuildingInventoryBindingDefinition {
+        BuildingInventoryBindingDefinition::new(
+            "primary_output",
+            BuildingInventoryRole::Output,
+            InventoryProfileId::new("chest_large"),
+        )
+        .with_default(true)
+    }
+
+    fn smelter_inventory_bindings() -> Vec<BuildingInventoryBindingDefinition> {
+        vec![
+            BuildingInventoryBindingDefinition::new(
+                "ore_input",
+                BuildingInventoryRole::Input,
+                InventoryProfileId::new("chest_large"),
+            ),
+            BuildingInventoryBindingDefinition::new(
+                "fuel_input",
+                BuildingInventoryRole::Fuel,
+                InventoryProfileId::new("chest_small"),
+            ),
+            BuildingInventoryBindingDefinition::new(
+                "metal_output",
+                BuildingInventoryRole::Output,
+                InventoryProfileId::new("chest_small"),
+            ),
+            BuildingInventoryBindingDefinition::new(
+                "slag_output",
+                BuildingInventoryRole::Waste,
+                InventoryProfileId::new("chest_small"),
+            ),
+        ]
+    }
+
+    fn bakery_inventory_bindings() -> Vec<BuildingInventoryBindingDefinition> {
+        vec![
+            BuildingInventoryBindingDefinition::new(
+                "flour_input",
+                BuildingInventoryRole::Input,
+                InventoryProfileId::new("chest_small"),
+            ),
+            BuildingInventoryBindingDefinition::new(
+                "water_input",
+                BuildingInventoryRole::Input,
+                InventoryProfileId::new("chest_small"),
+            ),
+            BuildingInventoryBindingDefinition::new(
+                "fuel_input",
+                BuildingInventoryRole::Fuel,
+                InventoryProfileId::new("chest_small"),
+            ),
+            BuildingInventoryBindingDefinition::new(
+                "bread_output",
+                BuildingInventoryRole::Output,
+                InventoryProfileId::new("chest_small"),
+            )
+            .with_default(true),
+            BuildingInventoryBindingDefinition::new(
+                "materials_input",
+                BuildingInventoryRole::Input,
+                InventoryProfileId::new("chest_small"),
+            ),
+        ]
+    }
+
+    #[allow(dead_code)]
+    fn research_desk_inventory_bindings() -> Vec<BuildingInventoryBindingDefinition> {
+        vec![
+            BuildingInventoryBindingDefinition::new(
+                "materials_input",
+                BuildingInventoryRole::Input,
+                InventoryProfileId::new("chest_small"),
+            ),
+            BuildingInventoryBindingDefinition::new(
+                "general_storage",
+                BuildingInventoryRole::General,
+                InventoryProfileId::new("chest_small"),
+            )
+            .with_default(true),
+        ]
+    }
 
     pub fn starter_definitions() -> Vec<BuildingDefinition> {
         vec![
@@ -44,7 +155,19 @@ mod fixtures {
                 },
                 35.0,
                 true,
-            ),
+            )
+            .with_supported_operations([
+                OperationDefinitionId::new("bake_bread"),
+                OperationDefinitionId::new("research"),
+            ])
+            .with_default_operation_id(OperationDefinitionId::new("bake_bread"))
+            .with_inventory_bindings(bakery_inventory_bindings())
+            .with_default_inventory_binding_id(BuildingInventoryBindingId::new("bread_output"))
+            .with_logistics_routes([
+                warehouse_route_input("flour_input", "flour"),
+                warehouse_route_input("water_input", "water"),
+                warehouse_route_output("bread_output", "bread"),
+            ]),
             BuildingDefinition::new(
                 BuildingDefinitionId::new("smelter"),
                 "Smelter",
@@ -57,7 +180,14 @@ mod fixtures {
                 30.0,
                 true,
             )
-            .with_task_provider_id("smelter_basic"),
+            .with_supported_operations([OperationDefinitionId::new("smelt_iron")])
+            .with_default_operation_id(OperationDefinitionId::new("smelt_iron"))
+            .with_inventory_bindings(smelter_inventory_bindings())
+            .with_logistics_routes([
+                warehouse_route_input("ore_input", "iron_ore"),
+                warehouse_route_output("metal_output", "iron_bar"),
+                warehouse_route_output("slag_output", "slag"),
+            ]),
             BuildingDefinition::new(
                 BuildingDefinitionId::new("storage_chest"),
                 "Storage Chest",
@@ -137,7 +267,11 @@ mod fixtures {
             30.0,
             true,
         )
-        .with_task_provider_id("iron_mine_basic")
+        .with_supported_operations([OperationDefinitionId::new("mine_iron")])
+        .with_default_operation_id(OperationDefinitionId::new("mine_iron"))
+        .with_inventory_bindings(vec![primary_output_binding()])
+        .with_default_inventory_binding_id(BuildingInventoryBindingId::new("primary_output"))
+        .with_logistics_routes([warehouse_route_output("primary_output", "iron_ore")])
     }
 
     fn tf4_copper_mine() -> BuildingDefinition {
@@ -153,7 +287,6 @@ mod fixtures {
             30.0,
             true,
         )
-        .with_task_provider_id("copper_mine_basic")
     }
 
     fn tf4_stone_quarry() -> BuildingDefinition {
@@ -173,6 +306,10 @@ mod fixtures {
             true,
         )
         .with_field_sampling_footprint_id(crate::world::FootprintId::new("quarry_excavation"))
+        .with_supported_operations([OperationDefinitionId::new("mine_stone")])
+        .with_default_operation_id(OperationDefinitionId::new("mine_stone"))
+        .with_inventory_bindings(vec![primary_output_binding()])
+        .with_default_inventory_binding_id(BuildingInventoryBindingId::new("primary_output"))
     }
 
     fn tf4_prispod_farm() -> BuildingDefinition {
@@ -192,6 +329,8 @@ mod fixtures {
             true,
         )
         .with_field_sampling_footprint_id(crate::world::FootprintId::new("farm_cultivation"))
+        .with_supported_operations([OperationDefinitionId::new("grow_prispods")])
+        .with_default_operation_id(OperationDefinitionId::new("grow_prispods"))
     }
 
     fn tf4_water_well() -> BuildingDefinition {
@@ -208,6 +347,10 @@ mod fixtures {
             true,
         )
         .with_field_sampling_footprint_id(crate::world::FootprintId::new("well_extraction"))
+        .with_supported_operations([OperationDefinitionId::new("pump_water")])
+        .with_default_operation_id(OperationDefinitionId::new("pump_water"))
+        .with_inventory_bindings(vec![primary_output_binding()])
+        .with_default_inventory_binding_id(BuildingInventoryBindingId::new("primary_output"))
     }
 }
 

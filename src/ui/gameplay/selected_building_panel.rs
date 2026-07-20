@@ -1,14 +1,15 @@
-//! Bottom-left building info when a building is selected (ADR-082 B5, ADR-104 TF4, ADR-105 TF5).
+//! Bottom-left building info when a building is selected (ADR-082 B5, ADR-104 TF4, ADR-105 TF5, EP1).
 
 use bevy::prelude::*;
 
 use crate::world::{
     BuildingCatalog, BuildingFieldRequirementCatalog, BuildingFieldRequirementCatalogRevision,
-    BuildingOperationParams, BuildingOperationStore, BuildingTerrainAssessmentStore,
-    FieldResponseProfileCatalog, FieldResponseProfileCatalogRevision, FootprintCatalog,
-    OperationalLimitingFactor, PRODUCTION_PROGRESS_ONE_UNIT, TerrainFieldCatalog, WorldData,
-    building_operational_efficiency, field_value_to_percent_display, format_efficiency_display,
-    is_building_operational,
+    BuildingOperationParams, BuildingTerrainAssessmentStore, FieldResponseProfileCatalog,
+    FieldResponseProfileCatalogRevision, FootprintCatalog, InventoryCatalogCtx,
+    InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, OperationalLimitingFactor,
+    PRODUCTION_PROGRESS_ONE_UNIT, TerrainFieldCatalog, WorldData, building_operational_efficiency,
+    field_value_to_percent_display, format_efficiency_display, is_building_operational,
+    workstation_workers_for_building,
 };
 
 use super::building_selection::GameplayBuildingSelection;
@@ -47,8 +48,11 @@ pub fn sync_selected_building_panel(
     footprint_catalog: Res<FootprintCatalog>,
     requirement_revision: Res<BuildingFieldRequirementCatalogRevision>,
     profile_revision: Res<FieldResponseProfileCatalogRevision>,
+    operation_catalog: Res<crate::world::OperationCatalog>,
+    items: Res<ItemCatalog>,
+    item_categories: Res<ItemCategoryCatalog>,
+    inventory_profiles: Res<InventoryProfileCatalog>,
     mut assessments: ResMut<BuildingTerrainAssessmentStore>,
-    operation_store: Res<BuildingOperationStore>,
     mut text: Query<(&mut Text, &mut Node), With<SelectedBuildingPanelText>>,
 ) {
     let Ok((mut label, mut node)) = text.single_mut() else {
@@ -137,19 +141,30 @@ pub fn sync_selected_building_panel(
     }
 
     if is_building_operational(record) {
-        let mut operation_store_scratch = BuildingOperationStore::default();
+        let inventory_ctx =
+            InventoryCatalogCtx::new(&items, &item_categories, &inventory_profiles);
         let mut operation = BuildingOperationParams {
             field_catalog: &field_catalog,
             requirement_catalog: &requirements,
             profile_catalog: &profile_catalog,
             footprint_catalog: &footprint_catalog,
+            operation_catalog: &operation_catalog,
+            inventory_ctx: &inventory_ctx,
             requirement_revision: requirement_revision.0,
             profile_revision: profile_revision.0,
             assessment_store: &mut assessments,
-            operation_store: &mut operation_store_scratch,
         };
+        let selected_operation = world
+            .building_production_store()
+            .get_policy(building_id)
+            .and_then(|policy| policy.selected_operation.as_ref())
+            .and_then(|id| operation_catalog.get(id));
         let mut efficiency_ctx = operation.efficiency_context(&world, &catalog);
-        if let Ok(report) = building_operational_efficiency(&mut efficiency_ctx, building_id) {
+        if let Ok(report) = building_operational_efficiency(
+            &mut efficiency_ctx,
+            building_id,
+            selected_operation,
+        ) {
             body.push_str("\n\nOperational Efficiency");
             body.push_str(&format!(
                 "\nTerrain Output: {}",
@@ -167,11 +182,42 @@ pub fn sync_selected_building_panel(
             }
             body.push_str(&format!("\nCan Produce: {}", report.can_operate));
         }
-        if let Some(state) = operation_store.get(building_id) {
+        let production = world.building_production_store();
+        if let Some(state) = production.get_state(building_id) {
             let progress_pct =
                 state.progress.value() as f32 / PRODUCTION_PROGRESS_ONE_UNIT as f32 * 100.0;
+            body.push_str(&format!("\nLifecycle: {}", state.lifecycle.label()));
             body.push_str(&format!("\nOperation Progress: {progress_pct:.1}%"));
             body.push_str(&format!("\nCompletions: {}", state.completion_count));
+        }
+        if let Some(policy) = production.get_policy(building_id) {
+            body.push_str(&format!(
+                "\nOperation: {}",
+                policy
+                    .selected_operation
+                    .as_ref()
+                    .map(|id| id.as_str())
+                    .unwrap_or("—")
+            ));
+            body.push_str(&format!(
+                "\nPolicy: enabled={} paused={} repeat={} control={} priority={}",
+                policy.enabled,
+                policy.paused,
+                policy.repeat_mode.display_label(),
+                policy.control_source.label(),
+                policy.priority
+            ));
+        }
+        let workers = workstation_workers_for_building(&world, building_id);
+        if !workers.is_empty() {
+            body.push_str(&format!(
+                "\nWorkers: {}",
+                workers
+                    .iter()
+                    .map(|id| id.raw().to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
         }
     }
 

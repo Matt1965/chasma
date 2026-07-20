@@ -45,6 +45,7 @@ pub fn create_settlement_with_treasury(
 
     let settlement_id = world.settlement_store_mut().allocate_settlement_id();
     let treasury_id = world.settlement_store_mut().allocate_treasury_id();
+    let player_controlled = ownership.affiliation == crate::world::Affiliation::Player;
     let settlement = SettlementRecord {
         id: settlement_id,
         display_name: display_name.into(),
@@ -65,6 +66,16 @@ pub fn create_settlement_with_treasury(
     world
         .settlement_store_mut()
         .insert_settlement(settlement, treasury)?;
+
+    // SA1: every settlement owns a SettlementState (identical structure for player and AI).
+    world.settlement_state_store_mut().ensure(
+        settlement_id,
+        super::state::SettlementKind::Town,
+        player_controlled,
+    );
+    // EP9: ensure production planner entry so interval replan can run.
+    world.production_planner_store_mut().ensure(settlement_id);
+
     Ok(CreateSettlementReport {
         settlement_id,
         treasury_id,

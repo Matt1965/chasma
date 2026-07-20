@@ -9,6 +9,10 @@ use crate::world::authoring_transform::BuildingTransformSafetyClass;
 use crate::world::building::category::BuildingCategoryId;
 use crate::world::building::container_access::ContainerAccessPolicy;
 use crate::world::building::footprint::{FootprintSpec, FootprintType};
+use crate::world::building::inventory_binding::{
+    BuildingInventoryBindingDefinition, BuildingInventoryBindingId,
+};
+use crate::world::operation::OperationDefinitionId;
 
 /// Authoritative description of a building type (ADR-078 B1).
 ///
@@ -36,8 +40,12 @@ pub struct BuildingDefinition {
     pub field_sampling_footprint_id: Option<crate::world::FootprintId>,
     /// Reserved construction stage set id (B4+).
     pub construction_stages_ref: Option<String>,
-    /// Reserved task-generation profile id (ADR-072).
+    /// Reserved task-generation profile id (ADR-072). Deprecated — use [`Self::supported_operations`].
     pub task_provider_id: Option<String>,
+    /// Explicit supported production operations (EP3).
+    pub supported_operations: Vec<OperationDefinitionId>,
+    /// Authored default operation when multiple are supported (EP3).
+    pub default_operation_id: Option<OperationDefinitionId>,
     pub animation_profile_id: Option<AnimationProfileId>,
     /// Reserved interaction profile id (ADR-042 extension).
     pub interaction_profile_id: Option<String>,
@@ -55,6 +63,10 @@ pub struct BuildingDefinition {
     pub inventory_interaction_point_key: Option<String>,
     /// When true, destruction spills surviving contents to world piles (ADR-091 I5).
     pub spill_on_destroy: bool,
+    /// Role-tagged inventory layout (EP4). When empty, [`Self::inventory_profile_id`] migrates as `primary`.
+    pub inventory_bindings: Vec<BuildingInventoryBindingDefinition>,
+    /// Explicit default binding for generic container access (EP4).
+    pub default_inventory_binding_id: Option<BuildingInventoryBindingId>,
     /// Visual model offset from authoritative anchor in local space (ADR-096 BP-CLEANUP).
     pub model_local_offset: Vec3,
     /// Additional yaw correction (degrees) applied to render root only (ADR-096).
@@ -66,6 +78,8 @@ pub struct BuildingDefinition {
     pub allow_instance_scale: bool,
     pub min_uniform_instance_scale: f32,
     pub max_uniform_instance_scale: f32,
+    /// Authored logistics routes for hauling request generation (EP7).
+    pub logistics_routes: Vec<crate::world::logistics::BuildingLogisticsRouteDefinition>,
 }
 
 impl BuildingDefinition {
@@ -98,6 +112,8 @@ impl BuildingDefinition {
             field_sampling_footprint_id: None,
             construction_stages_ref: None,
             task_provider_id: None,
+            supported_operations: Vec::new(),
+            default_operation_id: None,
             animation_profile_id: None,
             interaction_profile_id: None,
             default_space_id: None,
@@ -108,6 +124,8 @@ impl BuildingDefinition {
             inventory_access_policy: ContainerAccessPolicy::OwnerOnly,
             inventory_interaction_point_key: None,
             spill_on_destroy: true,
+            inventory_bindings: Vec::new(),
+            default_inventory_binding_id: None,
             model_local_offset: Vec3::ZERO,
             model_yaw_correction_degrees: 0.0,
             asset_sizing: AssetSizingDefinition::default(),
@@ -115,6 +133,7 @@ impl BuildingDefinition {
             allow_instance_scale: false,
             min_uniform_instance_scale: 0.05,
             max_uniform_instance_scale: 20.0,
+            logistics_routes: Vec::new(),
         }
     }
 
@@ -160,6 +179,41 @@ impl BuildingDefinition {
         self
     }
 
+    pub fn with_supported_operations(
+        mut self,
+        operations: impl IntoIterator<Item = OperationDefinitionId>,
+    ) -> Self {
+        self.supported_operations = operations.into_iter().collect();
+        self
+    }
+
+    pub fn with_default_operation_id(mut self, operation_id: OperationDefinitionId) -> Self {
+        self.default_operation_id = Some(operation_id);
+        self
+    }
+
+    pub fn supports_operation(&self, operation_id: &OperationDefinitionId) -> bool {
+        self.supported_operations
+            .iter()
+            .any(|supported| supported == operation_id)
+    }
+
+    /// Resolve the authored or implicit default operation (EP3).
+    ///
+    /// Never chooses the first supported operation when multiple exist without an authored default.
+    pub fn resolved_default_operation(&self) -> Option<OperationDefinitionId> {
+        if let Some(default_id) = &self.default_operation_id {
+            if self.supports_operation(default_id) {
+                return Some(default_id.clone());
+            }
+            return None;
+        }
+        if self.supported_operations.len() == 1 {
+            return Some(self.supported_operations[0].clone());
+        }
+        None
+    }
+
     pub fn with_animation_profile_id(mut self, profile_id: AnimationProfileId) -> Self {
         self.animation_profile_id = Some(profile_id);
         self
@@ -200,8 +254,32 @@ impl BuildingDefinition {
         self
     }
 
+    pub fn with_inventory_bindings(
+        mut self,
+        bindings: impl IntoIterator<Item = BuildingInventoryBindingDefinition>,
+    ) -> Self {
+        self.inventory_bindings = bindings.into_iter().collect();
+        self
+    }
+
+    pub fn with_default_inventory_binding_id(
+        mut self,
+        binding_id: BuildingInventoryBindingId,
+    ) -> Self {
+        self.default_inventory_binding_id = Some(binding_id);
+        self
+    }
+
     pub fn with_allow_instance_scale(mut self, allow: bool) -> Self {
         self.allow_instance_scale = allow;
+        self
+    }
+
+    pub fn with_logistics_routes(
+        mut self,
+        routes: impl IntoIterator<Item = crate::world::logistics::BuildingLogisticsRouteDefinition>,
+    ) -> Self {
+        self.logistics_routes = routes.into_iter().collect();
         self
     }
 }

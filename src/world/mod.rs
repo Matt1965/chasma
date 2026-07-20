@@ -16,11 +16,13 @@ mod interaction;
 mod inventory;
 mod item;
 mod item_pile;
+mod logistics;
 mod movement;
 mod navigation;
 mod obstacle;
 mod occupancy;
 mod ownership;
+mod operation;
 mod projectile;
 mod settlement;
 mod space;
@@ -67,7 +69,7 @@ pub use building::starter_building_category_definitions;
 #[cfg(any(test, feature = "dev"))]
 pub use building::starter_definitions as starter_building_definitions;
 pub use building::{
-    AssessmentRebuildReport, BuildingAuthoringError, BuildingCapabilities, BuildingCatalog,
+    AssessmentRebuildOutcome, AssessmentRebuildReport, BuildingAuthoringError, BuildingCapabilities, BuildingCatalog,
     BuildingCatalogError, BuildingCategoryCatalog, BuildingCategoryCatalogError,
     BuildingCategoryDefinition, BuildingCategoryId, BuildingConstructionReport,
     BuildingConstructionSettings, BuildingDefinition, BuildingDefinitionId,
@@ -75,11 +77,20 @@ pub use building::{
     BuildingFieldRequirementCatalogRevision, BuildingFieldRequirementDefinition,
     BuildingFieldRequirementError, BuildingFieldRequirementKind, BuildingId, BuildingInsertError,
     BuildingInteractionProfile, BuildingInteractionProfileCatalog, BuildingInteriorState,
+    BuildingInventoryBinding, BuildingInventoryBindingDefinition, BuildingInventoryBindingId,
+    BuildingInventoryBindingSet, BuildingInventoryBindingStore, BuildingInventoryBindingValidationIssue,
+    BuildingInventoryRole, building_inventories_with_role, building_inventory_bindings,
+    default_building_inventory_binding, effective_inventory_binding_definitions,
+    primary_building_inventory_id, resolve_building_inventory_binding,
+    validate_building_catalog_inventory_bindings, validate_building_definition_inventory_bindings,
+    validate_building_runtime_inventory_bindings, validate_operation_inventory_bindings,
+    validate_selected_operation_inventory_bindings, validate_world_building_inventory_bindings,
     BuildingLifecycleError, BuildingLifecycleEvent, BuildingLifecycleState,
-    BuildingOperationParams, BuildingOperationSaveState, BuildingOperationState,
-    BuildingOperationStore, BuildingOwnership, BuildingPlacement, BuildingPlacementConfig,
-    BuildingPlacementContext, BuildingPlacementPlan, BuildingPlacementRejectReason,
-    BuildingPlacementValidation, BuildingRebuildError, BuildingRecord, BuildingRenderKey,
+    BuildingOperationParams, BuildingOperationPolicy, BuildingOperationSaveState,
+    BuildingOperationState, BuildingOperationStore, BuildingOwnership, BuildingPlacement,
+    BuildingPlacementConfig, BuildingPlacementContext, BuildingPlacementPlan,
+    BuildingPlacementRejectReason, BuildingPlacementValidation, BuildingProductionSaveState,
+    BuildingProductionStore, BuildingRebuildError, BuildingRecord, BuildingRenderKey,
     BuildingRestoreError, BuildingSource, BuildingSpaces, BuildingTerrainAssessment,
     BuildingTerrainAssessmentKey, BuildingTerrainAssessmentStore, BuildingTerrainWarning,
     BuildingTransformCandidate, BuildingTransformCatalogs, BuildingTransformEditError,
@@ -91,7 +102,9 @@ pub use building::{
     FootprintSpec, FootprintType, INTERACTION_WORK_RANGE_METERS, InteractionPointDefinition,
     InteriorError, InteriorProfileCatalog, InteriorProfileId, MAX_EFFICIENCY_BASIS_POINTS,
     OperationalEfficiencyContext, OperationalEfficiencyError, OperationalEfficiencyReport,
-    OperationalLimitingFactor, PLACEMENT_QUANTIZE_METERS, PRODUCTION_PROGRESS_ONE_UNIT,
+    OperationalLimitingFactor, OperationDefinitionId, OperationLifecycle,
+    PLACEMENT_QUANTIZE_METERS, PRODUCTION_PROGRESS_ONE_UNIT, PRODUCTION_STEPPING_MODEL,
+    ProductionCommandError, ProductionProgress, ProductionValidationIssue, RepeatMode, ControlSource,
     TerrainAssessmentCatalogs, TerrainAssessmentError, activate_building_interior,
     add_building_construction_progress, anchor_from_terrain_position,
     apply_dev_complete_building_state, assess_building_terrain,
@@ -110,14 +123,18 @@ pub use building::{
     load_building_field_requirement_catalog, load_field_response_profile_catalog, lock_door,
     lookup_building, move_building, open_door, place_player_building,
     place_player_building_with_inventory, portal_traversable, quantize_placement_anchor_xz,
-    rebuild_all_building_terrain_assessments, rebuild_building_world_indexes, remove_building,
-    resolve_building_field_sample_cells, rotation_from_quadrants, set_building_container_locked,
-    set_building_lifecycle_stage, snap_anchor_global_xz, space_route_for_unit,
-    step_all_building_construction, step_workstation_operation, transition_to_ruins,
+    rebuild_all_building_terrain_assessments, rebuild_building_terrain_assessment, rebuild_building_world_indexes, remove_building,
+    reset_production_progress, resolve_building_field_sample_cells, rotation_from_quadrants,
+    set_building_container_locked, set_building_lifecycle_stage, set_production_enabled,
+    set_production_execution_mode, set_production_paused, set_production_repeat_count,
+    set_production_selected_operation, snap_anchor_global_xz, space_route_for_unit,
+    cycle_production_selected_operation, validate_production_runtime_with_catalogs,
+    assess_production_execution, execute_production_cycle, step_all_building_construction, step_workstation_operation, transition_to_ruins,
     try_activate_interior_if_complete, try_open_door_at_portal_for_unit, try_open_door_for_unit,
     update_building_transform, validate_building_for_restore, validate_building_inventory_links,
     validate_building_inventory_owner, validate_building_placement,
-    validate_building_transform_placement,
+    validate_building_transform_placement, validate_production_runtime,
+    workstation_workers_for_building,
 };
 pub use building::{
     BuildingInventoryContext, BuildingInventoryError, BuildingInventoryRemovalPolicy,
@@ -193,7 +210,8 @@ pub use inventory::{
     ProfileMigrationResult, RemovedInventoryContents, SplitStackOutcome, TransferError,
     TransferPlacementPolicy, TransferReport, TransferStatus, WorldInventoryValidationReport,
     assert_inventory_stores, auto_sort, auto_sort_inventory, can_place_entry, can_place_footprint,
-    category_stack_cap_for, consume_stack_item, count_physical_gold, create_inventory,
+    category_stack_cap_for, consume_stack_item, count_physical_gold, count_stack_item,
+    create_inventory,
     create_item_instance, create_unit_inventory, destroy_item_instance, effective_stack_limit,
     half_stack_quantity, loot_corpse_entry, merge_stacks, migrate_inventory_profile,
     migrate_inventory_profile_with_leftovers, move_entry, physical_gold_item_id, place_stack,
@@ -214,6 +232,16 @@ pub use item::{
     ItemRenderKey, ItemValidationError, MAX_ITEM_GRID_DIMENSION, normalize_tags,
     validate_item_definition,
 };
+pub use operation::{
+    BuildingOperationBindingError, OperationCatalog, OperationCatalogError, OperationCategory,
+    OperationDefinition, OperationEffectKind, OperationId, OperationInputDefinition,
+    OperationOutputDefinition, OperationSelectionError,
+    starter_definitions as starter_operation_definitions,
+    validate_building_definition_operations, validate_building_operation_bindings,
+    validate_operation_selection,
+};
+#[cfg(any(test, feature = "dev"))]
+pub use operation::test_workbench_operation;
 pub use item_pile::{
     ChunkItemPileStore, DropReport, ItemPileError, ItemPileId, ItemPileInvariantReport,
     ItemPileSettings, ItemPileSource, ItemPileStore, PickupReport, PileOwnership, SpillReport,
@@ -271,12 +299,87 @@ pub use projectile::{
     ProjectileEvent, ProjectileId, ProjectileRecord, ProjectileReport, ProjectileStatus,
     ProjectileTrace, spawn_projectile_from_strike, step_all_projectiles,
 };
+pub use logistics::{
+    assign_hauling_task, assign_hauling_task_with_priority, available_stack_quantity,
+    cancel_hauling_request,
+    cancel_logistics_for_building_removal, deposit_haul_cargo, export_logistics_save_state,
+    force_complete_hauling_request,
+    import_logistics_save_state, pickup_haul_cargo, register_building_logistics_endpoints,
+    reserve_hauling_request, spawn_manual_hauling_request, step_haul_worker_tasks, sync_logistics_requests_from_assessment,
+    sync_output_surplus_after_production, unregister_building_logistics_endpoints, BuildingLogisticsRouteDefinition, HaulingRequest,
+    HaulingRequestId, HaulingRequestPriority, HaulingRequestStatus, HaulTickReport,
+    LogisticsEndpointIndex, LogisticsRouteTrigger, LogisticsSaveState,
+};
 pub use settlement::{
-    CreateSettlementReport, DepositGoldReport, SettlementId, SettlementOwnership, SettlementRecord,
-    SettlementStore, SettlementTreasuryRecord, TreasuryAccessPolicy, TreasuryAccessResult,
-    TreasuryError, TreasuryId, TreasuryTransactionRecord, building_supports_settlement_treasury,
-    can_unit_deposit_to_treasury, create_settlement_with_treasury, deposit_gold,
-    settlement_interaction_position,
+    aggregate_settlement_stock, apply_pressure_modifiers, arbitrate_settlement_intent,
+    arbitrate_settlement_intent_now, arbitration_score, building_owned_by_intent_propagation,
+    building_supports_settlement_treasury, can_unit_deposit_to_treasury,
+    create_settlement_with_treasury, default_need_targets_for_kind, deposit_gold,
+    discover_capable_buildings, discover_settlement_responses, discover_settlement_responses_now,
+    ensure_settlement_states_for_world, evaluate_settlement_emergencies,
+    evaluate_settlement_emergencies_now, evaluate_settlement_needs, evaluate_settlement_needs_now,
+    execute_settlement_replan, mark_all_settlement_states_dirty, mark_settlement_planner_dirty,
+    mark_settlement_state_dirty, mark_settlement_state_dirty_for_building, normalize_pressure,
+    primary_operation_requirement, propagate_building_intent_now,
+    propagate_settlement_intent_to_buildings, reconcile_settlement_building_membership,
+    replan_settlement_production, score_candidate, settlement_interaction_position,
+    starter_emergency_definitions, starter_need_definitions, starter_response_definitions,
+    step_building_intent_propagation, step_settlement_construction_planning,
+    step_settlement_emergency_evaluation, step_settlement_need_evaluation,
+    step_settlement_production_planners, step_settlement_response_arbitration,
+    step_settlement_response_discovery, validate_candidate,
+    validate_intent, validate_need_catalog, validate_need_snapshot, validate_planner_config,
+    validate_propagation_report, validate_response_catalog_against_needs,
+    validate_response_catalog_definitions, validate_response_catalog_definitions_with_needs,
+    validate_settlement_intent_plan, validate_settlement_need_evaluation,
+    validate_settlement_response_candidates, validate_settlement_state,
+    validate_construction_plans, validate_emergency_catalog, validate_settlement_states,
+    validate_strategic_task_report, validate_world_construction_plans,
+    validate_world_settlement_states, ActiveEmergencyInstance, ArbitrationContext,
+    BuildingIntentPropagationReport, BuildingIntentPropagationStore, BuildingLocalRetention,
+    BuildingPolicyAssignment, CandidateResponse, CapableBuilding, CapabilityRequirement,
+    approve_construction_plan, best_building_candidate, cancel_construction_plan,
+    create_plan_from_manual_placement, estimate_capacity_gap, mark_construction_planning_dirty_from_intents,
+    plan_construction_for_settlement, plan_construction_now, search_placement_candidates,
+    select_building_candidates, starter_construction_costs, starter_construction_mappings,
+    BuildingCandidateScore, BuildingConstructionCostCatalog, BuildingConstructionCostDefinition,
+    CapacityGapEstimate, ConstructionCapabilityKind, ConstructionCatalogError,
+    ConstructionMaterialRequirement, ConstructionPlacementCandidate, ConstructionPlan,
+    ConstructionPlanId, ConstructionPlanSaveState, ConstructionPlanSource, ConstructionPlanStatus,
+    ConstructionPlanStore, ConstructionPlanningContext, ConstructionPlanningReport,
+    ConstructionPlanningReportStore, ConstructionResponseCatalog, ConstructionResponseMapping,
+    ConstructionValidationError, PlacementSearchBudget, PlacementSearchResult,
+    RejectedSiteDiagnostic, CONSTRUCTION_PLANNING_CADENCE_TICKS, CreateSettlementReport,
+    DepositGoldReport, EmergencyCatalog, EmergencyDefinition, EmergencyEvaluationReport,
+    EmergencyEvaluationStore, EmergencyEvaluatorKind, EmergencyId, EmergencyInterruptionPolicy,
+    EmergencyValidationError, ExpectedEffect, HIGH_INTENT_PRIORITY,
+    IgnoredBuilding, IntentId, IntentPersistence, IntentRejectionReason, IntentValidationError,
+    ItemDemandEntry, NeedBlockingReason, NeedCatalog, NeedCatalogError, NeedCategory,
+    NeedDefinition, NeedEvalContext, NeedEvaluationMethod, NeedEvaluationStore,
+    NeedEvaluationValidationError, NeedId, NeedMeasurementType, NeedResponseCategory, NeedSnapshot,
+    NeedTarget, NeedTargetSource, NeedTrend, PlannerBuildingDecision, PlannerDiagnostics,
+    PlannerShortageKind, PlannerValidationError, ProductionPlannerSaveState, ProductionPlannerStore,
+    ProductionPriorityCategory, PropagationContext, PropagationValidationError,
+    RejectedIntentCandidate, ResponseAvailability, ResponseBlockingReason, ResponseCandidateStore,
+    ResponseCandidateValidationError, ResponseCatalog, ResponseCatalogError, ResponseDefinition,
+    ResponseDiscoveryContext, ResponseId, ResponseType, SettlementEmergencyState, SettlementId,
+    SettlementIntent, SettlementIntentPlan, SettlementIntentStore, SettlementKind,
+    SettlementModifier, SettlementModifierSource, SettlementNeedEvaluation, SettlementOwnership,
+    SettlementPlannerLifecycle, SettlementPolicies, SettlementProductionPlanner, SettlementRecord,
+    SettlementResponseCandidates, SettlementState, SettlementStateSaveState, SettlementStateStore,
+    SettlementStateValidationError, SettlementStore, SettlementTreasuryRecord, StockGoal,
+    StrategicTaskCatalogError, StrategicTaskEmission, StrategicTaskGenContext,
+    StrategicTaskGenerationReport, StrategicTaskGenerationStore, StrategicTaskTemplate,
+    StrategicTaskTemplateCatalog, StrategicTaskTemplateId, StrategicTaskValidationError,
+    TreasuryAccessPolicy, TreasuryAccessResult, TreasuryError, TreasuryId,
+    TreasuryTransactionRecord, generate_strategic_tasks_for_settlement, generate_strategic_tasks_now,
+    intent_to_task_priority, starter_strategic_task_templates,
+    step_settlement_strategic_task_generation, HIGH_PRESSURE_THRESHOLD,
+    INTENT_ARBITRATION_CADENCE_TICKS, INTENT_PROPAGATION_CADENCE_TICKS,
+    MAX_BUILDINGS_PER_INTENT_HIGH, MAX_BUILDINGS_PER_INTENT_NORMAL, MAX_INTENTS_PER_NEED_HIGH,
+    MAX_INTENTS_PER_NEED_NORMAL, MAX_SETTLEMENT_INTENTS, MIN_ARBITRATION_SCORE,
+    EMERGENCY_EVAL_CADENCE_TICKS, NEED_EVAL_CADENCE_TICKS, RESPONSE_DISCOVERY_CADENCE_TICKS,
+    STRATEGIC_TASK_GEN_CADENCE_TICKS,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use space::starter_space_profile;
@@ -288,10 +391,17 @@ pub use space::{
 };
 pub use task::{
     TaskCancelReason, TaskError, TaskEvent, TaskId, TaskPriority, TaskRecord, TaskState, TaskStore,
-    TaskTarget, TaskTickReport, TaskType, assign_construct_building_task,
+    TaskTarget, TaskTickReport, TaskType, StrategicTaskOrigin, AssignmentDecision, AssignmentScore,
+    AssignmentValidationError, MarketplaceCandidate, MarketplaceListing, WorkerAssignmentContext,
+    WorkerAssignmentReport, WorkerAssignmentStore, WorkerEvaluation, assign_construct_building_task,
     assign_operate_workstation_task, building_accepts_workstation_use, building_is_constructible,
-    cancel_unit_task, ensure_building_task, prune_invalid_building_tasks, step_all_worker_tasks,
-    sync_construction_tasks, unit_can_perform_task, unit_may_work_on_building,
+    cancel_unit_task, claim_building_task, ensure_building_task, PreemptPolicyOverride,
+    prune_invalid_building_tasks, release_unit_task_to_marketplace,
+    may_preempt, may_preempt_with_override, score_marketplace_listing, step_all_worker_tasks,
+    step_worker_assignment, sync_construction_tasks,
+    sync_operate_workstation_tasks, unit_can_perform_task, unit_may_work_on_building,
+    validate_worker_assignments, MIN_PREEMPT_PRIORITY_RANKS, MIN_STICK_TICKS,
+    WORKER_ASSIGNMENT_CADENCE_TICKS,
 };
 #[cfg(feature = "terrain-import")]
 pub use terrain::{
@@ -512,6 +622,13 @@ impl Plugin for WorldFoundationPlugin {
             app.init_resource::<FootprintCatalog>();
             app.init_resource::<ItemCategoryCatalog>();
             app.init_resource::<ItemCatalog>();
+            app.init_resource::<OperationCatalog>();
+            app.init_resource::<NeedCatalog>();
+            app.init_resource::<ResponseCatalog>();
+            app.init_resource::<EmergencyCatalog>();
+            app.init_resource::<StrategicTaskTemplateCatalog>();
+            app.init_resource::<ConstructionResponseCatalog>();
+            app.init_resource::<BuildingConstructionCostCatalog>();
             app.init_resource::<InventoryProfileCatalog>();
             app.insert_resource(crate::world::load_terrain_field_catalog());
             app.insert_resource(crate::world::load_terrain_field_source_profile_catalog());
@@ -520,7 +637,6 @@ impl Plugin for WorldFoundationPlugin {
             app.init_resource::<crate::world::FieldResponseProfileCatalogRevision>();
             app.init_resource::<crate::world::BuildingFieldRequirementCatalogRevision>();
             app.init_resource::<crate::world::BuildingTerrainAssessmentStore>();
-            app.init_resource::<crate::world::BuildingOperationStore>();
         }
         #[cfg(feature = "dev")]
         {
@@ -540,6 +656,13 @@ impl Plugin for WorldFoundationPlugin {
             app.insert_resource(inventory_profiles.clone());
             app.insert_resource(item_categories);
             app.insert_resource(item_catalog);
+            app.init_resource::<OperationCatalog>();
+            app.init_resource::<NeedCatalog>();
+            app.init_resource::<ResponseCatalog>();
+            app.init_resource::<ConstructionResponseCatalog>();
+            app.init_resource::<BuildingConstructionCostCatalog>();
+            app.init_resource::<EmergencyCatalog>();
+            app.init_resource::<StrategicTaskTemplateCatalog>();
             app.insert_resource(building_categories);
             app.insert_resource(building_catalog);
             app.insert_resource(footprint_catalog);
@@ -559,7 +682,6 @@ impl Plugin for WorldFoundationPlugin {
             app.init_resource::<crate::world::FieldResponseProfileCatalogRevision>();
             app.init_resource::<crate::world::BuildingFieldRequirementCatalogRevision>();
             app.init_resource::<crate::world::BuildingTerrainAssessmentStore>();
-            app.init_resource::<crate::world::BuildingOperationStore>();
             crate::data_import::export_dev_asset_sizing_reports(&mut sizing_reports);
         }
         app.init_resource::<WorldData>();

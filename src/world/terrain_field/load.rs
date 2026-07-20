@@ -51,6 +51,7 @@ pub fn load_terrain_fields_from_manifest(
     validate_manifest_config(&manifest, config)?;
     let base_dir = manifest_path.parent().unwrap_or(Path::new(""));
 
+    let mut temp_store = TerrainFieldStore::new();
     let mut summary = TerrainFieldLoadSummary::default();
     for entry in &manifest.fields {
         let field_id = TerrainFieldId::new(entry.field_id.trim());
@@ -97,11 +98,12 @@ pub fn load_terrain_fields_from_manifest(
             }
             tile.validate(&field_id)
                 .map_err(TerrainFieldLoadError::Storage)?;
-            store.replace_tile(field_id.clone(), tile, manifest.source_version.clone())?;
+            temp_store.replace_tile(field_id.clone(), tile, manifest.source_version.clone())?;
             summary.tiles_loaded += 1;
         }
     }
     summary.manifest_version = TERRAIN_FIELD_MANIFEST_VERSION;
+    *store = temp_store;
     Ok(summary)
 }
 

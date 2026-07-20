@@ -23,7 +23,9 @@ mod weight;
 mod tests;
 
 pub use catalog_ctx::InventoryCatalogCtx;
-pub use consume::{consume_stack_item, count_physical_gold, physical_gold_item_id};
+pub use consume::{
+    consume_stack_item, count_physical_gold, count_stack_item, physical_gold_item_id,
+};
 pub use entry::{EntryIndex, InventoryEntryContents, PlacedInventoryEntry};
 pub use error::InventoryError;
 pub use grid::{

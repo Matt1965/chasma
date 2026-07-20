@@ -13,6 +13,7 @@ use super::inventory::{
     BuildingInventoryCleanup, BuildingInventoryRemovalPolicy, attach_inventory_on_building_create,
     finalize_building_inventory_removal,
 };
+use super::inventory_binding::effective_inventory_binding_definitions;
 use super::inventory_error::BuildingInventoryError;
 use super::ownership::BuildingOwnership;
 use super::placement::BuildingPlacement;
@@ -122,20 +123,23 @@ fn create_building_impl(
         source,
     );
 
-    if definition.inventory_profile_id.is_some() {
-        let Some(ctx) = inventory_ctx else {
-            return Err(BuildingAuthoringError::InventoryAllocationFailed(id));
-        };
-        attach_inventory_on_building_create(world, ctx, &mut record, definition).map_err(
-            |error| match error {
-                BuildingInventoryError::Inventory(inventory_error) => {
-                    BuildingAuthoringError::Inventory(BuildingInventoryError::Inventory(
-                        inventory_error,
-                    ))
-                }
-                other => BuildingAuthoringError::Inventory(other),
-            },
-        )?;
+    if definition.inventory_profile_id.is_some() && inventory_ctx.is_none() {
+        return Err(BuildingAuthoringError::InventoryAllocationFailed(id));
+    }
+
+    if let Some(ctx) = inventory_ctx {
+        if !effective_inventory_binding_definitions(definition).is_empty() {
+            attach_inventory_on_building_create(world, ctx, &mut record, definition).map_err(
+                |error| match error {
+                    BuildingInventoryError::Inventory(inventory_error) => {
+                        BuildingAuthoringError::Inventory(BuildingInventoryError::Inventory(
+                            inventory_error,
+                        ))
+                    }
+                    other => BuildingAuthoringError::Inventory(other),
+                },
+            )?;
+        }
     }
 
     let chunk = crate::world::ChunkId::new(position.chunk);
@@ -326,7 +330,7 @@ fn place_player_building_impl(
     record.construction = ConstructionState::default();
     record.vitals = BuildingVitals::construction_vulnerable(definition.max_hp);
 
-    if definition.inventory_profile_id.is_some() {
+    if !effective_inventory_binding_definitions(definition).is_empty() {
         let Some(ctx) = inventory_ctx else {
             return Err(BuildingAuthoringError::InventoryAllocationFailed(id));
         };
@@ -404,7 +408,12 @@ pub fn remove_building(
     if let (Some(catalog), Some(interaction), Some((cleanup, policy))) =
         (building_catalog, interaction_catalog, inventory_cleanup)
     {
-        if record.inventory_id.is_some() {
+        if record.inventory_id.is_some()
+            || world
+                .building_inventory_binding_store()
+                .get(id)
+                .is_some_and(|set| !set.is_empty())
+        {
             finalize_building_inventory_removal(
                 world,
                 catalog,
@@ -424,6 +433,8 @@ pub fn remove_building(
     if occupancy.is_some() {
         unregister_source_occupancy(world, OccupancySource::Building(id));
     }
+    world.building_production_store_mut().remove(id);
+    world.building_inventory_binding_store_mut().remove(id);
     world
         .remove_building_by_id(id)
         .ok_or(BuildingAuthoringError::BuildingNotFound(id))

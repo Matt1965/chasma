@@ -179,16 +179,53 @@ fn lowland_water(
     lowland_bias: f32,
     mountain_suppression: f32,
 ) -> Result<f32, TerrainFieldSourceError> {
-    let aquifer = fbm_01(seed, x, z, aquifer_scale, 4, 0.5, 2.0);
-    let mut value = aquifer * 0.7 + lowland_bias * 0.3;
-    if let Some(hf) = heightfield {
-        let height = hf.sample_height(x, z).unwrap_or(0.0);
-        let normalized = (height / 400.0).clamp(0.0, 1.0);
-        value *= 1.0 - normalized * mountain_suppression;
-        let lowland = 1.0 - normalized;
-        value += lowland * lowland_bias * 0.25;
+    let Some(hf) = heightfield else {
+        return Ok(0.0);
+    };
+
+    let Some(elev) = hf.normalized_elevation(x, z) else {
+        return Ok(0.0);
+    };
+    let slope = hf.sample_slope_degrees(x, z).unwrap_or(0.0);
+    let slope_t = (slope / 28.0).clamp(0.0, 1.0);
+
+    // Peaks and steep faces drain — always dry regardless of noise.
+    let peak_cutoff = (0.58 - mountain_suppression * 0.26).clamp(0.34, 0.58);
+    if elev > peak_cutoff || slope_t > 0.30 {
+        return Ok(0.0);
     }
-    Ok(value.clamp(0.0, 1.0))
+
+    let lowland = (1.0 - elev / peak_cutoff).powf(2.4);
+    let flat = (1.0 - slope_t).powf(2.0);
+    let depression = hf.local_depression(x, z).unwrap_or(0.0);
+    let terrain_capacity = lowland * flat * (0.50 + depression * 0.50);
+    if terrain_capacity < 0.06 {
+        return Ok(0.0);
+    }
+
+    // Noise only modulates how wet collectable low terrain is — not where mountains sit.
+    let aquifer = fbm_01(seed, x, z, aquifer_scale, 4, 0.5, 2.0);
+    let channels = ridged_01(seed.wrapping_add(40), x, z, aquifer_scale * 0.55);
+    let wet_signal = (aquifer * 0.52 + channels * 0.48) * terrain_capacity;
+
+    Ok(quantize_water_contrast(wet_signal, lowland_bias))
+}
+
+/// Push moisture toward hard dry (0%) or saturated wet (80–100%).
+fn quantize_water_contrast(signal: f32, lowland_bias: f32) -> f32 {
+    let dry_cutoff = (0.20 - lowland_bias * 0.40).clamp(0.06, 0.18);
+    let wet_cutoff = (0.46 - lowland_bias * 0.12).clamp(0.32, 0.48);
+
+    if signal < dry_cutoff {
+        return 0.0;
+    }
+    if signal >= wet_cutoff {
+        let t = ((signal - wet_cutoff) / (1.0 - wet_cutoff)).clamp(0.0, 1.0);
+        return 0.80 + t.powf(0.50) * 0.20;
+    }
+
+    let t = (signal - dry_cutoff) / (wet_cutoff - dry_cutoff);
+    (t.powf(1.6) * 0.24).clamp(0.0, 1.0)
 }
 
 fn copper_pockets(
@@ -363,5 +400,80 @@ mod tests {
             }
         }
         assert!(different);
+    }
+
+    #[test]
+    fn water_contrast_snaps_to_extremes() {
+        assert_eq!(quantize_water_contrast(0.05, 0.02), 0.0);
+        assert!(quantize_water_contrast(0.70, 0.02) >= 0.80);
+        let mid = quantize_water_contrast(0.30, 0.02);
+        assert!(mid > 0.0 && mid < 0.30);
+    }
+
+    #[test]
+    fn peaks_are_dry_lowlands_can_be_wet() {
+        use super::super::dependencies::HeightfieldDependency;
+        use crate::world::{ChunkCoord, ChunkExtent, ChunkLayout};
+        use std::collections::HashMap;
+
+        let layout = ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        };
+        let extent = ChunkExtent {
+            min: ChunkCoord::new(0, 0),
+            max: ChunkCoord::new(0, 0),
+        };
+        let ramp_samples = (0..9)
+            .map(|index| (index / 3) as f32 / 2.0 * 0.02)
+            .collect();
+        let ramp = crate::world::Heightfield::from_samples(3, 128.0, ramp_samples).unwrap();
+        let plain = crate::world::Heightfield::from_samples(3, 128.0, vec![0.0; 9]).unwrap();
+        let mut tiles = HashMap::new();
+        tiles.insert(ChunkCoord::new(0, 0), ramp);
+        let hf = HeightfieldDependency::from_heightfields(layout, extent, tiles);
+
+        let generated = GeneratedTerrainFieldSource {
+            generator: TerrainFieldGeneratorKind::LowlandWaterPotential {
+                aquifer_scale_meters: 384.0,
+                lowland_bias: 0.02,
+                mountain_suppression: 0.92,
+            },
+            generator_version: TERRAIN_FIELD_GENERATOR_VERSION,
+            world_seed: 42_001,
+            dependencies: vec![TerrainFieldGeneratorDependency::Heightfield],
+        };
+        let field_id = TerrainFieldId::new("water");
+        let profile_id = TerrainFieldSourceProfileId::new("water_generated_v1");
+        let ctx = GenerationContext {
+            field_id: &field_id,
+            profile_id: &profile_id,
+            generated: &generated,
+            heightfield: Some(&hf),
+            biome: None,
+        };
+
+        let peak = generate_field_value(&ctx, 128.0, 240.0).unwrap();
+        assert_eq!(peak, 0);
+
+        let mut plain_tiles = HashMap::new();
+        plain_tiles.insert(ChunkCoord::new(0, 0), plain);
+        let flat_hf = HeightfieldDependency::from_heightfields(layout, extent, plain_tiles);
+        let flat_ctx = GenerationContext {
+            field_id: &field_id,
+            profile_id: &profile_id,
+            generated: &generated,
+            heightfield: Some(&flat_hf),
+            biome: None,
+        };
+        let mut any_wet = false;
+        for offset in 0..12 {
+            let value = generate_field_value(&flat_ctx, 32.0 + offset as f32 * 16.0, 128.0).unwrap();
+            if value > 0 {
+                any_wet = true;
+                break;
+            }
+        }
+        assert!(any_wet);
     }
 }

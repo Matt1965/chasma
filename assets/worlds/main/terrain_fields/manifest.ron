@@ -1,13 +1,17 @@
 (
     version: 1,
     world_id: "main",
-    source_version: "tf2_ce4f1bde6b74b48c",
+    source_version: "tf2_0ad3e3058ea86d82",
     config: (
         chunk_size_meters: 256.0,
         sample_spacing_meters: 8.0,
         samples_per_edge: 33,
     ),
     fields: [
+        (
+            field_id: "copper",
+            tile_dir: "copper",
+        ),
         (
             field_id: "water",
             tile_dir: "water",

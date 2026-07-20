@@ -26,12 +26,12 @@ fn water_definition() -> TerrainFieldDefinition {
     .with_description("Relative accessible water potential for roots, wells, and irrigation.")
     .with_overlay_style(TerrainFieldOverlayStyle {
         enabled: true,
-        low_color: Color::srgba(0.55, 0.45, 0.25, 1.0),
-        mid_color: Some(Color::srgba(0.2, 0.45, 0.85, 1.0)),
-        high_color: Color::srgba(0.1, 0.2, 0.9, 1.0),
-        default_opacity: 0.55,
-        visibility_cutoff: 2_000,
-        qualitative_thresholds: vec![8_192, 32_768, 52_000],
+        low_color: Color::srgba(0.68, 0.58, 0.40, 1.0),
+        mid_color: Some(Color::srgba(0.42, 0.62, 0.38, 1.0)),
+        high_color: Color::srgba(0.12, 0.32, 0.82, 1.0),
+        default_opacity: 0.65,
+        visibility_cutoff: 0,
+        qualitative_thresholds: vec![9_830, 26_214, 42_598],
         qualitative_labels: vec!["Dry".to_string(), "Moderate".to_string(), "Wet".to_string()],
         icon_key: Some("water".to_string()),
     })

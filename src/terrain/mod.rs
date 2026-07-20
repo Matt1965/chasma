@@ -50,9 +50,9 @@ pub use components::TerrainChunkMesh;
 pub use decode::decode_chunk_payload;
 pub use decode::{decode_chunk, decode_manifest};
 pub use field_overlay::{
-    DEFAULT_OVERLAY_OPACITY_BP, MAX_PLAYER_OVERLAY_OPACITY_BP, TerrainFieldOverlayAssets,
-    TerrainFieldOverlayDiagnostics, TerrainFieldOverlayMesh, TerrainFieldOverlayPlugin,
-    TerrainOverlaySelection, TerrainOverlayState,
+    DEFAULT_OVERLAY_OPACITY_BP, MAX_PLAYER_OVERLAY_OPACITY_BP, TerrainFieldAuxiliaryOverlays,
+    TerrainFieldOverlayAssets, TerrainFieldOverlayDiagnostics, TerrainFieldOverlayMesh,
+    TerrainFieldOverlayPlugin, TerrainOverlaySelection, TerrainOverlayState,
 };
 pub use lifecycle::TerrainStreamingSystems;
 #[cfg(any(test, feature = "terrain-import"))]

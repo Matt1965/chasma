@@ -48,6 +48,8 @@ pub struct OperationStepReport {
     pub completions: u32,
     pub can_operate: bool,
     pub limiting_factor: OperationalLimitingFactor,
+    pub lifecycle: super::lifecycle::OperationLifecycle,
+    pub selected_operation: Option<super::operation_id::OperationDefinitionId>,
 }
 
 /// Completion summary for one operation threshold crossing (ADR-105 TF5).

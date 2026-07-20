@@ -69,9 +69,34 @@ impl TerrainFieldOverlayStyle {
         if value < self.visibility_cutoff {
             return Color::srgba(0.0, 0.0, 0.0, 0.0);
         }
-        let t = value as f32 / 65_535.0;
+        let t = self.display_gradient_t(value);
         let rgb = gradient_rgb(self.low_color, self.mid_color, self.high_color, t);
-        Color::srgba(rgb.x, rgb.y, rgb.z, player_alpha)
+        // Dry areas stay faint; wet areas read stronger so placement decisions pop.
+        let value_strength = (t.sqrt() * 0.88 + 0.08).clamp(0.08, 1.0);
+        let alpha = player_alpha * value_strength;
+        Color::srgba(rgb.x, rgb.y, rgb.z, alpha)
+    }
+
+    /// Stretch authored qualitative bands across the full dry→wet gradient.
+    fn display_gradient_t(&self, value: u16) -> f32 {
+        let thresholds = &self.qualitative_thresholds;
+        if thresholds.len() < 2 {
+            return value as f32 / 65_535.0;
+        }
+        let v = value as f32;
+        let segment = 1.0 / thresholds.len() as f32;
+        if v <= thresholds[0] as f32 {
+            return (v / thresholds[0] as f32) * segment;
+        }
+        for index in 1..thresholds.len() {
+            let prev = thresholds[index - 1] as f32;
+            let next = thresholds[index] as f32;
+            if v <= next {
+                let local = (v - prev) / (next - prev);
+                return index as f32 * segment + local * segment;
+            }
+        }
+        1.0
     }
 
     /// Distinct unknown/unavailable presentation (checker modulation via `phase`).
@@ -132,4 +157,29 @@ fn gradient_rgb(low: Color, mid: Option<Color>, high: Color, t: f32) -> Vec3 {
 
 fn lerp3(a: Vec3, b: Vec3, t: f32) -> Vec3 {
     a + (b - a) * t.clamp(0.0, 1.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn display_gradient_stretches_low_values_across_dry_band() {
+        let style = TerrainFieldOverlayStyle {
+            qualitative_thresholds: vec![9_830, 26_214, 42_598],
+            qualitative_labels: vec!["Dry".into(), "Moderate".into(), "Wet".into()],
+            ..Default::default()
+        };
+        assert!(style.display_gradient_t(0) < 0.01);
+        assert!(style.display_gradient_t(4_915) < 0.2);
+        assert!((style.display_gradient_t(26_214) - 0.66).abs() < 0.05);
+    }
+
+    #[test]
+    fn dry_values_still_render_with_faint_alpha() {
+        let style = TerrainFieldOverlayStyle::default();
+        let dry = style.vertex_color_for_value(2_000, 5_500);
+        assert!(dry.alpha() > 0.05);
+        assert!(dry.alpha() < 0.35);
+    }
 }

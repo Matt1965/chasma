@@ -119,6 +119,120 @@ pub fn run_simulation_tick(
     );
     sync_construction_tasks(world, building_catalog, simulation_tick);
     prune_invalid_building_tasks(world);
+    {
+        let need_catalog = crate::world::NeedCatalog::default();
+        let emergency_catalog = crate::world::EmergencyCatalog::default();
+        let inventory_ctx_for_needs = crate::world::InventoryCatalogCtx::new(
+            item_catalog,
+            item_categories,
+            inventory_profiles,
+        );
+        // SA8: Emergency evaluation — updates persistent emergency state, then SA2+ consumes it.
+        let _emergencies = crate::world::step_settlement_emergency_evaluation(
+            world,
+            &emergency_catalog,
+            building_catalog,
+            item_catalog,
+            &inventory_ctx_for_needs,
+            simulation_tick,
+        );
+        // SA2: Need Evaluation (includes authored emergency pressure modifiers).
+        let _needs = crate::world::step_settlement_need_evaluation(
+            world,
+            &need_catalog,
+            building_catalog,
+            item_catalog,
+            &inventory_ctx_for_needs,
+            &emergency_catalog,
+            simulation_tick,
+        );
+        // SA3: Response Engine — discover/score options only (no execution).
+        let response_catalog = crate::world::ResponseCatalog::default();
+        let _responses = crate::world::step_settlement_response_discovery(
+            world,
+            &need_catalog,
+            &response_catalog,
+            &emergency_catalog,
+            building_catalog,
+            simulation_tick,
+        );
+        // SA4: Response Arbiter — SettlementIntent only (no execution).
+        let _intent = crate::world::step_settlement_response_arbitration(
+            world,
+            &response_catalog,
+            simulation_tick,
+        );
+        // SA5: Building Intent Propagation — SettlementIntent → BuildingOperationPolicy.
+        let operation_catalog = crate::world::OperationCatalog::default();
+        let _propagation = crate::world::step_building_intent_propagation(
+            world,
+            &response_catalog,
+            building_catalog,
+            &operation_catalog,
+            simulation_tick,
+        );
+        // SA9: mark construction planning dirty when ConstructBuilding intents exist.
+        crate::world::mark_construction_planning_dirty_from_intents(world);
+    }
+    if let Some(operation) = operation.as_deref() {
+        let _planner = crate::world::step_settlement_production_planners(
+            world,
+            building_catalog,
+            operation.operation_catalog,
+            operation.inventory_ctx,
+            simulation_tick,
+        );
+    }
+    {
+        // SA9: Strategic Construction Planning — SettlementIntent → ConstructionPlan (before SA6).
+        let construction_responses = crate::world::ConstructionResponseCatalog::default();
+        let construction_costs = crate::world::BuildingConstructionCostCatalog::default();
+        let inventory_ctx_construction = crate::world::InventoryCatalogCtx::new(
+            item_catalog,
+            item_categories,
+            inventory_profiles,
+        );
+        let _construction = crate::world::step_settlement_construction_planning(
+            world,
+            &construction_responses,
+            &construction_costs,
+            building_catalog,
+            footprint_catalog,
+            doodad_catalog,
+            unit_catalog,
+            &inventory_ctx_construction,
+            simulation_tick,
+        );
+    }
+    {
+        // SA6: Strategic Task Generation — SettlementIntent → TaskStore (no assignment).
+        let task_templates = crate::world::StrategicTaskTemplateCatalog::default();
+        let _strategic_tasks = crate::world::step_settlement_strategic_task_generation(
+            world,
+            &task_templates,
+            simulation_tick,
+        );
+    }
+    {
+        // SA7: Task marketplace — idle workers claim Available tasks / open hauls.
+        let inventory_ctx_assign = crate::world::InventoryCatalogCtx::new(
+            item_catalog,
+            item_categories,
+            inventory_profiles,
+        );
+        let mut assign_ctx = crate::world::WorkerAssignmentContext {
+            world,
+            unit_catalog,
+            weapon_catalog,
+            doodad_catalog,
+            building_catalog,
+            interaction_catalog,
+            nav_config,
+            inventory_ctx: &inventory_ctx_assign,
+            simulation_tick,
+        };
+        let _assignment = crate::world::step_worker_assignment(&mut assign_ctx);
+    }
     let worker_tasks = step_all_worker_tasks(
         world,
         unit_catalog,
@@ -129,6 +243,13 @@ pub fn run_simulation_tick(
         occupancy,
         delta_seconds,
         operation.as_deref_mut(),
+    );
+    let inventory_ctx =
+        crate::world::InventoryCatalogCtx::new(item_catalog, item_categories, inventory_profiles);
+    let hauling = crate::world::step_haul_worker_tasks(
+        world,
+        building_catalog,
+        &inventory_ctx,
     );
     let movement = step_all_unit_movement(world, unit_catalog, passability, delta_seconds);
     SimulationTickReport {
@@ -141,6 +262,7 @@ pub fn run_simulation_tick(
         combat_ai,
         building_construction,
         worker_tasks,
+        hauling,
     }
 }
 

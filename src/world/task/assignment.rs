@@ -30,7 +30,7 @@ pub fn assign_construct_building_task(
     building_id: BuildingId,
     simulation_tick: u64,
 ) -> Result<(TaskId, Vec<TaskEvent>), TaskError> {
-    assign_building_task(
+    claim_building_task(
         world,
         unit_catalog,
         weapon_catalog,
@@ -58,7 +58,7 @@ pub fn assign_operate_workstation_task(
     building_id: BuildingId,
     simulation_tick: u64,
 ) -> Result<(TaskId, Vec<TaskEvent>), TaskError> {
-    assign_building_task(
+    claim_building_task(
         world,
         unit_catalog,
         weapon_catalog,
@@ -74,7 +74,8 @@ pub fn assign_operate_workstation_task(
     )
 }
 
-fn assign_building_task(
+/// Claim an existing or ensured building task (player or autonomous marketplace / SA7).
+pub fn claim_building_task(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &crate::world::WeaponCatalog,
@@ -122,6 +123,9 @@ fn assign_building_task(
             if !super::eligibility::building_accepts_workstation_use(&building) =>
         {
             return Err(TaskError::BuildingNotOperational(building_id));
+        }
+        TaskType::Haul => {
+            return Err(TaskError::TaskInvalidated(TaskId::new(0)));
         }
         _ => {}
     }
@@ -282,4 +286,35 @@ pub fn cancel_unit_task(
         events.push(TaskEvent::TaskCanceled { task_id, reason });
     }
     let _ = world.set_unit_state(unit_id, crate::world::UnitState::Idle);
+}
+
+/// Release a worker back to Idle and return the task to Available (SA7 preemption).
+///
+/// Unlike [`cancel_unit_task`], the marketplace listing survives for other workers.
+pub fn release_unit_task_to_marketplace(
+    world: &mut WorldData,
+    unit_id: UnitId,
+    events: &mut Vec<TaskEvent>,
+) {
+    let Some(task_id) = world.task_store().unit_task_id(unit_id) else {
+        return;
+    };
+    if let Some(task) = world.task_store().get(task_id).cloned() {
+        if let Some(point_key) = task.reserved_point_key.as_deref() {
+            world.task_store_mut().release_reservation(
+                task.target_building_id(),
+                point_key,
+                unit_id,
+            );
+            events.push(TaskEvent::ReservationReleased {
+                building_id: task.target_building_id(),
+                point_key: point_key.to_string(),
+                unit_id,
+            });
+        }
+    }
+    // clear_unit_assignment returns Assigned/InProgress → Available.
+    world.task_store_mut().clear_unit_assignment(unit_id);
+    let _ = world.set_unit_state(unit_id, crate::world::UnitState::Idle);
+    let _ = task_id;
 }

@@ -148,7 +148,14 @@ pub fn reload_terrain_fields_with_invalidation(
         field_catalog,
         manifest_path,
         config,
-    )?;
+    );
+    let summary = match summary {
+        Ok(summary) => summary,
+        Err(err) => {
+            *world.terrain_fields_mut() = before;
+            return Err(err);
+        }
+    };
     let after = world.terrain_fields().clone();
     let diff = diff_terrain_field_stores(&before, &after);
     let changed_fields: Vec<_> = diff.affected_field_ids().into_iter().collect();

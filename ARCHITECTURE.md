@@ -419,6 +419,153 @@ Building instances (ADR-079 B2) are authoritative records on `WorldData`, parall
 units and doodads. Type definitions remain in `BuildingCatalog`; render entities are
 derived in the Building Runtime Layer (`src/buildings/`).
 
+Building production (ADR-107 EP2) is authoritative runtime state on `WorldData` via
+`BuildingProductionStore`, keyed by `BuildingId`. Buildings own operation progress,
+lifecycle, and future input/output consumption. Workers contribute labor through
+`TaskType::OperateWorkstation` but do not own production state. Policy intent
+(`BuildingOperationPolicy`) is separate from runtime state (`BuildingOperationState`).
+
+Operation definitions (ADR-108 EP3) live in the immutable `OperationCatalog` Bevy resource.
+`OperationDefinition` describes what an operation can produce (labor, workers, category,
+future input/output seams). `BuildingOperationPolicy.selected_operation` stores only
+`OperationDefinitionId`; definitions are resolved at runtime from the catalog and are never
+serialized in saves. `BuildingDefinition.supported_operations` declares explicit building
+compatibility; `default_operation_id` is optional and never inferred arbitrarily when
+multiple operations are supported. Role-tagged building inventories (ADR-109 EP4) are
+authored on `BuildingDefinition.inventory_bindings` and instantiated at building create into
+`BuildingInventoryBindingStore` on `WorldData`. Each binding maps a stable
+`BuildingInventoryBindingId` and `BuildingInventoryRole` to a runtime `InventoryId`.
+`OperationDefinition` future I/O references binding IDs, not inventory instances.
+`BuildingRecord.inventory_id` remains a compatibility accessor for the explicit default
+binding. Generic production execution (ADR-110 EP5) runs when operation progress completes
+a cycle: `execute_production_cycle` resolves authored `OperationDefinition` inputs/outputs
+through inventory bindings, validates availability and output capacity, then atomically
+consumes inputs and produces outputs via inventory runtime APIs. Failures block production
+through `OperationalLimitingFactor` (`MissingInput`, `OutputBlocked`, `MissingInventory`,
+`InvalidInventoryBinding`) without partial mutations. Mine Iron, Smelt Iron, and Bake Bread
+are starter catalog content exercising the same runtime.
+
+Building production extraction (ADR-111 EP6) integrates permanent Terrain Fields into
+operational efficiency without changing execution. `OperationDefinition.terrain_requirements`
+declares which fields influence a selected operation. `terrain_efficiency_for_operation`
+filters the cached `BuildingTerrainAssessment` to those requirements; production steps never
+resample terrain. Terrain Fields store environmental potential only — nothing is depleted.
+Mine Iron, Mine Stone, and Pump Water produce `iron_ore`, `stone`, and `water` through the
+same `execute_production_cycle` path as crafting operations. Poor terrain reduces efficiency
+to zero via existing `OperationalLimitingFactor` values; buildings are never destroyed for
+invalid placement.
+
+Generic hauling and logistics (ADR-112 EP7) move items between building inventories through
+authoritative `HaulingRequest` records on `WorldData`. Buildings declare `logistics_routes` on
+`BuildingDefinition`; production assessment and completion hooks generate requests for output
+surplus and input deficits. Remote endpoints resolve via `LogisticsEndpointIndex` — workers never
+scan all inventories. `InventoryReservationStore` reserves source items and destination capacity;
+`pickup_haul_cargo` and `deposit_haul_cargo` move items through worker inventories atomically.
+Workers execute `TaskType::Haul` via `assign_hauling_task` and `step_haul_worker_tasks`.
+
+Multi-building production chains (ADR-113 EP8) prove complete vertical slices on the same
+generic runtime. `smelt_iron` consumes Iron Ore and produces Iron Bar and Slag; `bake_bread`
+consumes Flour and Water and produces Bread. Fuel is deferred (Option A): `fuel_input` bindings
+exist as seams but operations do not require fuel items. Production validates inputs using
+unreserved quantities from the shared `InventoryReservationStore`; `InputReserved` blocks cycles
+when haul reservations hold required items. Logistics routes connect mines, processors, and
+`storage_chest` without production searching remote inventories. Input bindings accept deliveries;
+output bindings advertise supply for surplus hauling.
+
+Settlement production planning (ADR-114 EP9) decides what buildings should produce without
+executing production or moving items. Each settlement owns a `SettlementProductionPlanner` on
+`WorldData` with authored `StockGoal` targets. The planner aggregates storage inventory,
+propagates demand through a catalog-derived production graph, detects circular recipes, and
+updates `BuildingOperationPolicy` (enable, selected operation, priority, repeat). Runtime
+diagnostics and derived graphs are not persisted. `step_settlement_production_planners` runs
+before worker tasks when operation catalogs are available.
+
+Settlement AI architecture (ADR-115) defines the authoritative long-term structure for all future
+Settlement AI (SA) phases that build on EP1–EP9. Authority flows strictly downward — World →
+(Faction) → Settlement → Building → Task → Worker — with each layer commanding only the layer
+beneath it. Settlements own strategy as a single **weighted-need arbiter**: need pressures are
+computed, one generic loop services the most pressing unmet need by applying that need's
+**data-defined Response**, and the settlement self-corrects as needs re-weigh. There is no
+separate Goals planner and no stack of domain decision engines — player, faction, and any future
+top-level AI all write the same **directive** nudges (need weights/targets). Buildings own
+operations and report capabilities/status; workers (units holding a task) execute only.
+Emergencies and interrupts are priority reweighting, not separate systems. The
+`BuildingOperationPolicy` (intent) vs `BuildingOperationState` (truth) boundary, data-first
+authority on `WorldData`, event-driven (dirty-flag) reevaluation, and one shared simulation model
+for player and AI settlements are enforced invariants.
+
+Settlement runtime (ADR-116 SA1) introduces authoritative **`SettlementState`** on `WorldData`
+(`SettlementStateStore`), parallel to treasury identity (`SettlementRecord`). It stores persistent
+memory only: kind/archetype, policies, need targets, modifiers, emergency flags, planner lifecycle
+scheduling, and extension seams. It does **not** evaluate needs, plan, assign workers, or generate
+tasks. Derived analysis (pressures, priorities, response graphs, planner caches, temporary
+diagnostics) is never authoritative and must be rebuildable entirely from SettlementState after
+load (rebuild principle). Player and AI/wildlife/pack settlements use the identical runtime type;
+differences are authored data. Scene format v13 persists SettlementState.
+
+Need evaluation (ADR-117 SA2) computes transient **`NeedSnapshot`** pressures from SettlementState
+plus read-only world sensors (inventories, buildings, policies). Authored **`NeedDefinition`**
+entries live in `NeedCatalog`; runtime results live in `NeedEvaluationStore` on `WorldData` and are
+never persisted. Evaluation is dirty/cadence driven (not every frame), independent per need, and
+produces normalized pressure `0..=100` as the only output future systems should consume. It does
+not plan, generate tasks, or mutate production/buildings/workers.
+
+Response Engine (ADR-118 SA3) converts pressures into scored **`CandidateResponse`** options via an
+authored **`ResponseCatalog`**. Discovery is NeedSnapshot → catalog `supported_need_ids` →
+capability/policy validation → score. Results live in transient `ResponseCandidateStore` (never
+persisted). Needs never know responses; responses never know workers; the engine never executes —
+no tasks, policy writes, construction, or inventory changes. Future selection/planning consumes
+candidates only.
+
+Response Arbiter (ADR-119 SA4) evaluates CandidateResponses and produces transient
+**`SettlementIntent`** / `SettlementIntentPlan` on `SettlementIntentStore`. It ranks and selects
+multiple intents under budgets (pressure, scores, policies, workload, emergencies) without modifying
+buildings, tasks, workers, or inventories. Intent is never persisted and rebuilds after load.
+Execution remains a later phase.
+
+Building Intent Propagation (ADR-120 SA5) converts SettlementIntent into
+**`BuildingOperationPolicy`** changes via capability-based building discovery (`supported_operations`).
+It is the first SA phase that influences the world. It never touches `BuildingOperationState`, tasks,
+logistics, or construction. EP9 skips SA5-assigned buildings so settlement strategy remains
+authoritative for those policies. Workers remain unaware of settlement strategy.
+
+Emergency Pressure & Priority Reweighting (ADR-123 SA8) evaluates authored `EmergencyDefinition`s
+into persistent `ActiveEmergencyInstance` records (severity, hysteresis, manual overrides). Emergencies
+reweight need pressure (SA2) and response scores/availability (SA3), optionally bump strategic task
+priority one tier, and relax SA7 preemption when interruption policy allows. They never command
+workers or buildings. Evaluation reports are transient; active instances persist with SettlementState.
+
+Strategic Construction Planning (ADR-124 SA9) converts construction `SettlementIntent` into persistent
+**`ConstructionPlan`** records. Authored response→capability→building mappings and capacity-gap checks
+decide whether to build; bounded placement search (hard validity vs soft preference) selects sites
+inside settlement reach; committing a plan places a `Planned` building as spatial reservation.
+`SettlementIntent` stays transient; committed plans survive pressure dips. Player and AI share one
+model (approval/autonomy policies). The planner never spawns Complete buildings, assigns workers, or
+moves materials — SA6 tasks and existing construct/haul runtimes execute. Planning reports are
+transient; plans and reservations persist (scene v14+).
+
+Strategic Task Generation (ADR-121 SA6) converts SettlementIntent into executable **Tasks** in the
+shared `TaskStore` via authored `StrategicTaskTemplate` mappings (ResponseId/Type → task kind).
+Tasks remain owned by `WorldData`; Settlement AI contributes, merges, and cancels Available strategic
+tasks but never assigns workers. Production/haul/crafting/mining tasks stay owned by their runtimes.
+**Runtime order places SA9 before SA6** so construct tasks attach to reserved ConstructionPlan sites.
+Intent → need pressure → response priority → task priority. Reports are transient; authoritative
+tasks (optional `StrategicTaskOrigin`) persist and regenerate safely after load.
+
+Worker Assignment (ADR-122 SA7) treats `TaskStore` (+ open hauling requests) as a **marketplace**.
+Idle workers evaluate priority, distance, capability, and reservations, then claim work through
+existing reservation APIs. Settlement never selects workers. Higher-priority work may preempt with
+hysteresis; interrupted tasks return to Available. PlayerAssigned work is immune to autonomous
+preemption. Assignment reports are transient; authoritative assignments/reservations persist.
+
+Planning Scheduler (ADR-125 SA10) determines **when** settlement planner stages run (event-driven dirty
+flags, fallback cadence, budgets, stagger, priority). Stages keep their own evaluation logic; the
+scheduler never plans. Invalidation is strictly downstream — later stages must not dirty earlier ones;
+Worker Assignment never invalidates planning. Implementation consolidates per-stage poll loops; it
+does not change Need/Response/Intent/Construction decisions.
+
+**Authoritative SA runtime pipeline:** SA8 → SA2 → SA3 → SA4 → SA5 → (EP9) → SA9 → SA6 → SA7.
+
 Occupancy Layer
 
 Contains:

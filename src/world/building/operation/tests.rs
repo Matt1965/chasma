@@ -2,8 +2,8 @@
 
 use crate::world::building::field_response::EFFICIENCY_BASIS_POINTS_ONE_HUNDRED_PERCENT;
 use crate::world::building::operation::{
-    BuildingOperationParams, BuildingOperationStore, apply_operation_ticks,
-    expected_ticks_to_complete, step_workstation_operation,
+    BuildingOperationParams, apply_operation_ticks, expected_ticks_to_complete,
+    step_workstation_operation,
 };
 use crate::world::building::operational_efficiency::building_operational_efficiency;
 use crate::world::building::terrain_assessment::{
@@ -13,9 +13,16 @@ use crate::world::{
     BuildingCategoryCatalog, BuildingDefinition, BuildingDefinitionId, BuildingId,
     BuildingLifecycleState, BuildingOwnership, BuildingPlacement, BuildingRecord,
     BuildingRenderKey, BuildingSource, ChunkCoord, ChunkExtent, ChunkId, FootprintCatalog,
-    FootprintSpec, LocalPosition, UnitCatalog, UnitDefinitionId, UnitId, UnitSource, WorldData,
-    WorldPosition, create_unit,
+    FootprintSpec, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog,
+    LocalPosition, UnitCatalog, UnitDefinitionId, UnitId, UnitSource, WorldData,
+    WorldPosition, create_unit, starter_inventory_profile_definitions,
+    starter_item_category_definitions, starter_item_definitions,
 };
+use crate::world::building::inventory::attach_inventory_on_building_create;
+use crate::world::building::inventory_binding::{
+    BuildingInventoryBindingDefinition, BuildingInventoryBindingId, BuildingInventoryRole,
+};
+use crate::world::InventoryProfileId;
 use bevy::prelude::{Quat, Vec3};
 
 fn flat_world() -> WorldData {
@@ -58,18 +65,28 @@ fn iron_mine_catalogs() -> (
     let requirement_catalog = crate::world::BuildingFieldRequirementCatalog::default();
     let categories = BuildingCategoryCatalog::default();
     let building_catalog = crate::world::BuildingCatalog::from_definitions(
-        vec![BuildingDefinition::new(
-            BuildingDefinitionId::new("iron_mine"),
-            "Iron Mine",
-            crate::world::BuildingCategoryId::new("production"),
-            BuildingRenderKey::reserved("smelter"),
-            BuildingRenderKey::reserved("smelter_collision"),
-            400,
-            90.0,
-            FootprintSpec::Circle { radius_meters: 2.5 },
-            30.0,
-            true,
-        )],
+        vec![
+            BuildingDefinition::new(
+                BuildingDefinitionId::new("iron_mine"),
+                "Iron Mine",
+                crate::world::BuildingCategoryId::new("production"),
+                BuildingRenderKey::reserved("smelter"),
+                BuildingRenderKey::reserved("smelter_collision"),
+                400,
+                90.0,
+                FootprintSpec::Circle { radius_meters: 2.5 },
+                30.0,
+                true,
+            )
+            .with_supported_operations([crate::world::OperationDefinitionId::new("mine_iron")])
+            .with_default_operation_id(crate::world::OperationDefinitionId::new("mine_iron"))
+            .with_inventory_bindings(vec![BuildingInventoryBindingDefinition::new(
+                "primary_output",
+                BuildingInventoryRole::Output,
+                InventoryProfileId::new("chest_large"),
+            )
+            .with_default(true)]),
+        ],
         &categories,
     )
     .unwrap();
@@ -103,10 +120,17 @@ fn setup_iron_mine_world(
         crate::world::field_value_from_percent(iron_percent),
     );
     let building_id = world.allocate_building_id();
+    let (catalogs, building_catalog) = iron_mine_catalogs();
+    let mut record = iron_mine_record(building_id);
+    let definition = building_catalog
+        .get(&record.definition_id)
+        .expect("iron mine definition");
+    attach_inventory_on_building_create(&mut world, test_inventory_ctx(), &mut record, definition)
+        .unwrap();
     world
         .insert_building(
             ChunkId::new(ChunkCoord::new(0, 0)),
-            iron_mine_record(building_id),
+            record,
         )
         .unwrap();
     let unit_catalog = UnitCatalog::default();
@@ -119,24 +143,42 @@ fn setup_iron_mine_world(
     )
     .unwrap()
     .id;
-    let (catalogs, building_catalog) = iron_mine_catalogs();
     (world, building_id, worker, catalogs, building_catalog)
+}
+
+fn test_inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
+    static CTX: std::sync::OnceLock<InventoryCatalogCtx<'static>> = std::sync::OnceLock::new();
+    CTX.get_or_init(|| {
+        let categories =
+            ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
+        let items =
+            ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+        let profiles =
+            InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
+                .unwrap();
+        let items = Box::leak(Box::new(items));
+        let categories = Box::leak(Box::new(categories));
+        let profiles = Box::leak(Box::new(profiles));
+        InventoryCatalogCtx::new(items, categories, profiles)
+    })
 }
 
 fn operation_params<'a>(
     catalogs: &'a TerrainAssessmentCatalogs<'a>,
     assessment_store: &'a mut BuildingTerrainAssessmentStore,
-    operation_store: &'a mut BuildingOperationStore,
+    operation_catalog: &'a crate::world::OperationCatalog,
+    inventory_ctx: &'a InventoryCatalogCtx<'a>,
 ) -> BuildingOperationParams<'a> {
     BuildingOperationParams {
         field_catalog: catalogs.fields,
         requirement_catalog: catalogs.requirements,
         profile_catalog: catalogs.profiles,
         footprint_catalog: catalogs.footprints,
+        operation_catalog,
+        inventory_ctx,
         requirement_revision: catalogs.requirement_revision,
         profile_revision: catalogs.profile_revision,
         assessment_store,
-        operation_store,
     }
 }
 
@@ -151,17 +193,31 @@ fn progress_parity_at_half_full_and_rich_efficiency() {
 
 #[test]
 fn workstation_operation_reaches_completion_at_rated_efficiency() {
-    let (world, building_id, worker, catalogs, building_catalog) = setup_iron_mine_world(94.0);
+    let (mut world, building_id, worker, catalogs, building_catalog) = setup_iron_mine_world(100.0);
+    let operation_catalog = crate::world::OperationCatalog::default();
+    let mine_iron_id = crate::world::OperationDefinitionId::new("mine_iron");
+    let mine_iron = operation_catalog.get(&mine_iron_id).unwrap();
+    let definition = building_catalog
+        .get(&BuildingDefinitionId::new("iron_mine"))
+        .unwrap();
+    world
+        .building_production_store_mut()
+        .ensure_policy_for_building(building_id, definition, &operation_catalog);
     let mut assessment_store = BuildingTerrainAssessmentStore::default();
-    let mut operation_store = BuildingOperationStore::default();
-    let mut params = operation_params(&catalogs, &mut assessment_store, &mut operation_store);
+    let mut params = operation_params(
+        &catalogs,
+        &mut assessment_store,
+        &operation_catalog,
+        test_inventory_ctx(),
+    );
 
     let mut ctx = params.efficiency_context(&world, &building_catalog);
-    let efficiency = building_operational_efficiency(&mut ctx, building_id).unwrap();
+    let efficiency =
+        building_operational_efficiency(&mut ctx, building_id, Some(mine_iron)).unwrap();
     let ticks =
         expected_ticks_to_complete(efficiency.final_output_efficiency_basis_points.value()) as u32;
     let report = apply_operation_ticks(
-        &world,
+        &mut world,
         &mut params,
         &building_catalog,
         building_id,
@@ -175,19 +231,30 @@ fn workstation_operation_reaches_completion_at_rated_efficiency() {
 
 #[test]
 fn blocked_workstation_emits_zero_progress_until_terrain_recovers() {
-    let (world, building_id, worker, catalogs, building_catalog) = setup_iron_mine_world(0.0);
+    let (mut world, building_id, worker, catalogs, building_catalog) = setup_iron_mine_world(0.0);
+    let operation_catalog = crate::world::OperationCatalog::default();
     let mut assessment_store = BuildingTerrainAssessmentStore::default();
-    let mut operation_store = BuildingOperationStore::default();
-    let mut params = operation_params(&catalogs, &mut assessment_store, &mut operation_store);
+    let mut params = operation_params(
+        &catalogs,
+        &mut assessment_store,
+        &operation_catalog,
+        test_inventory_ctx(),
+    );
 
-    let blocked =
-        step_workstation_operation(&world, &mut params, &building_catalog, building_id, worker)
-            .unwrap();
+    let blocked = step_workstation_operation(
+        &mut world,
+        &mut params,
+        &building_catalog,
+        building_id,
+        worker,
+    )
+    .unwrap();
     assert!(!blocked.can_operate);
     assert_eq!(blocked.scaled_progress, 0);
     assert_eq!(
-        operation_store
-            .get(building_id)
+        world
+            .building_production_store()
+            .get_state(building_id)
             .map(|s| s.progress.value())
             .unwrap_or(0),
         0
@@ -200,10 +267,15 @@ fn preview_efficiency_matches_runtime_query() {
     let record = world.get_building(building_id).unwrap().clone();
     let preview = crate::world::assess_building_terrain(&world, &catalogs, &record, world.layout());
     let mut assessment_store = BuildingTerrainAssessmentStore::default();
-    let mut operation_store = BuildingOperationStore::default();
-    let mut params = operation_params(&catalogs, &mut assessment_store, &mut operation_store);
+    let operation_catalog = crate::world::OperationCatalog::default();
+    let mut params = operation_params(
+        &catalogs,
+        &mut assessment_store,
+        &operation_catalog,
+        test_inventory_ctx(),
+    );
     let mut ctx = params.efficiency_context(&world, &building_catalog);
-    let runtime = building_operational_efficiency(&mut ctx, building_id).unwrap();
+    let runtime = building_operational_efficiency(&mut ctx, building_id, None).unwrap();
     assert_eq!(
         runtime.terrain_efficiency_basis_points,
         preview.terrain_efficiency_basis_points

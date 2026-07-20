@@ -3,7 +3,8 @@
 use bevy::prelude::*;
 
 use crate::terrain::{
-    MAX_PLAYER_OVERLAY_OPACITY_BP, TerrainFieldOverlayDiagnostics, TerrainOverlayState,
+    MAX_PLAYER_OVERLAY_OPACITY_BP, TerrainFieldAuxiliaryOverlays, TerrainFieldOverlayDiagnostics,
+    TerrainOverlayState,
 };
 use crate::world::{
     TerrainFieldCatalog, TerrainFieldId, TerrainFieldSample, sample_terrain_field_at,
@@ -265,6 +266,7 @@ pub fn sync_terrain_analysis_panel(
 
 pub fn handle_terrain_analysis_clicks(
     mut overlay_state: ResMut<TerrainOverlayState>,
+    mut auxiliary: ResMut<TerrainFieldAuxiliaryOverlays>,
     catalog: Res<TerrainFieldCatalog>,
     toggle: Query<&Interaction, (Changed<Interaction>, With<TerrainAnalysisToggleButton>)>,
     field_buttons: Query<
@@ -293,6 +295,9 @@ pub fn handle_terrain_analysis_clicks(
                         (def.overlay_style.default_opacity * 10_000.0) as u16;
                 }
             }
+            auxiliary.set_visible(id.clone(), true);
+        } else {
+            auxiliary.clear();
         }
         overlay_state.set_manual_field(field);
     }

@@ -157,6 +157,24 @@ pub fn capture_building_inspector_snapshot(
             record.container_locked
         )
     });
+    let inventory_bindings_summary = world
+        .building_inventory_binding_store()
+        .get(building_id)
+        .map(|set| {
+            set.bindings()
+                .iter()
+                .map(|binding| {
+                    format!(
+                        "{} [{}] inv={:?}{}",
+                        binding.binding_id,
+                        binding.role.label(),
+                        binding.inventory_id,
+                        if binding.is_default { " (default)" } else { "" }
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("; ")
+        });
     let interaction_point = definition
         .inventory_interaction_point_key
         .as_deref()
@@ -194,10 +212,544 @@ pub fn capture_building_inspector_snapshot(
         operation_progress: probe.operation_progress,
         operation_completions: probe.operation_completions,
         operation_limiting_factor: probe.operation_limiting_factor,
+        production_lifecycle: probe.lifecycle,
+        selected_operation: probe.selected_operation,
+        policy_enabled: probe.policy_enabled,
+        policy_paused: probe.policy_paused,
+        repeat_mode: probe.repeat_mode,
+        control_source: probe.control_source,
+        policy_priority: probe.priority,
+        assigned_workers: probe.assigned_workers,
+        production_blocking_reason: probe.blocking_reason,
+        active_worker_count: probe.active_worker_count,
+        remaining_repeat_count: probe.remaining_repeat_count,
+        last_efficiency_revision: probe.last_efficiency_revision,
+        supported_operations: probe.supported_operations,
+        default_operation: probe.default_operation,
+        operation_category: probe.operation_category,
+        base_labor: probe.base_labor,
+        max_workers: probe.max_workers,
+        validation_state: probe.validation_state,
+        execution_inputs_summary: probe.execution_inputs_summary,
+        execution_outputs_summary: probe.execution_outputs_summary,
+        execution_inventory_summary: probe.execution_inventory_summary,
+        execution_blocking: probe.execution_blocking,
+        terrain_assessment_summary: probe.terrain_assessment_summary,
+        terrain_assessment_revision: probe.terrain_assessment_revision,
+        terrain_assessment_stale: probe.terrain_assessment_stale,
+        inventory_bindings_summary,
+        hauling_requests_summary: Some(format_hauling_requests_for_building(world, building_id)),
+        planner_summary: format_settlement_planner_summary(world, building_id),
     })
 }
 
-/// Optional TF5 operation probe fields for dev inspector.
+fn format_settlement_planner_summary(
+    world: &WorldData,
+    building_id: crate::world::BuildingId,
+) -> Option<String> {
+    let settlement_id = world.settlement_store().settlement_for_building(building_id)?;
+    let mut lines = Vec::new();
+    if let Some(state) = world.settlement_state_store().get(settlement_id) {
+        lines.push(format!(
+            "SettlementState #{} kind={} player_controlled={}",
+            settlement_id.raw(),
+            state.kind.as_str(),
+            state.policies.player_controlled
+        ));
+        lines.push(format!(
+            "  policies: aggression={} expand={} auto={} planner_enabled={}",
+            state.policies.aggression,
+            state.policies.expansion_enabled,
+            state.policies.automation_enabled,
+            state.policies.planner_enabled
+        ));
+        lines.push(format!(
+            "  need_targets={} modifiers={} emergencies={{starvation={}, attack={}, disease={}, evacuate={}, instances={}}} auto_em={{resp={}, prod={}, irq={}}}",
+            state.need_targets.len(),
+            state.modifiers.len(),
+            state.emergencies.starvation,
+            state.emergencies.under_attack,
+            state.emergencies.disease,
+            state.emergencies.evacuation,
+            state.emergencies.instances.len(),
+            state.policies.auto_emergency_response,
+            state.policies.auto_production_reprioritize,
+            state.policies.auto_task_interruption
+        ));
+        for inst in &state.emergencies.instances {
+            lines.push(format!(
+                "    active `{}` sev={:.2} signal={:.2} since={} force={} suppress={} ack={}",
+                inst.emergency_id,
+                inst.severity,
+                inst.last_signal,
+                inst.activated_tick,
+                inst.manual_force,
+                inst.manual_suppress,
+                inst.acknowledged
+            ));
+        }
+        if let Some(report) = world.emergency_evaluation_store().get(settlement_id) {
+            lines.push(format!(
+                "Emergency evaluation @ tick {}:",
+                report.evaluated_tick
+            ));
+            for sig in &report.signals {
+                lines.push(format!(
+                    "  signal `{}`={:.2} act>={:.2} deact<={:.2} ({})",
+                    sig.emergency_id,
+                    sig.signal,
+                    sig.activation_threshold,
+                    sig.deactivation_threshold,
+                    sig.evaluator
+                ));
+            }
+            for id in &report.activated {
+                lines.push(format!("  activated: {id}"));
+            }
+            for id in &report.deactivated {
+                lines.push(format!("  deactivated: {id}"));
+            }
+            for diag in &report.diagnostics {
+                lines.push(format!("  diag: {diag}"));
+            }
+        }
+        lines.push(format!(
+            "  planner_lifecycle: enabled={} paused={} dirty={} last={} next={} interval={}",
+            state.planner.enabled,
+            state.planner.paused,
+            state.planner.dirty,
+            state.planner.last_evaluation_tick,
+            state.planner.next_scheduled_evaluation_tick,
+            state.planner.evaluation_interval_ticks
+        ));
+        if !state.need_targets.is_empty() {
+            lines.push("  targets:".to_string());
+            for target in &state.need_targets {
+                lines.push(format!(
+                    "    {} value={} weight={:.2}",
+                    target.category.as_str(),
+                    target.target_value,
+                    target.weight
+                ));
+            }
+        }
+        if !state.modifiers.is_empty() {
+            lines.push("  modifiers:".to_string());
+            for modifier in &state.modifiers {
+                lines.push(format!(
+                    "    {} mag={:.2} expires={:?}",
+                    modifier.key, modifier.magnitude, modifier.expires_tick
+                ));
+            }
+        }
+    } else {
+        lines.push(format!(
+            "SettlementState #{}: MISSING",
+            settlement_id.raw()
+        ));
+    }
+
+    if let Some(eval) = world.need_evaluation_store().get(settlement_id) {
+        lines.push(format!(
+            "Need evaluation @ tick {} ({} needs):",
+            eval.evaluated_tick,
+            eval.snapshots.len()
+        ));
+        for snap in &eval.snapshots {
+            lines.push(format!(
+                "  {} cur={:.1} tgt={:.1} pressure={} src={}",
+                snap.need_id.as_str(),
+                snap.current_value,
+                snap.desired_value,
+                snap.pressure,
+                snap.evaluation_source
+            ));
+        }
+        for diag in &eval.diagnostics {
+            lines.push(format!("  diag: {diag}"));
+        }
+    } else {
+        lines.push("Need evaluation: (none — awaiting SA2 step)".to_string());
+    }
+
+    if let Some(responses) = world.response_candidate_store().get(settlement_id) {
+        lines.push(format!(
+            "Response candidates @ tick {} (from needs @ {}, {} options):",
+            responses.evaluated_tick,
+            responses.source_need_tick,
+            responses.candidates.len()
+        ));
+        for candidate in &responses.candidates {
+            let blocking = candidate
+                .blocking_reason
+                .as_ref()
+                .map(|r| r.label())
+                .unwrap_or_else(|| "-".into());
+            lines.push(format!(
+                "  {} need={} score={:.1} {} impact={:.2} cost={:.1} block={}",
+                candidate.response_id.as_str(),
+                candidate.need_id.as_str(),
+                candidate.priority_score,
+                candidate.availability.as_str(),
+                candidate.expected_impact,
+                candidate.estimated_cost,
+                blocking
+            ));
+        }
+        for diag in &responses.diagnostics {
+            lines.push(format!("  diag: {diag}"));
+        }
+    } else {
+        lines.push("Response candidates: (none — awaiting SA3 step)".to_string());
+    }
+
+    if let Some(plan) = world.settlement_intent_store().get(settlement_id) {
+        lines.push(format!(
+            "Settlement intent @ tick {} (from responses @ {}, needs @ {}):",
+            plan.planned_tick, plan.source_response_tick, plan.source_need_tick
+        ));
+        if plan.intents.is_empty() {
+            lines.push("  chosen: (none)".to_string());
+        } else {
+            lines.push("  chosen (priority order):".to_string());
+            for intent in &plan.intents {
+                lines.push(format!(
+                    "    {} need={} resp={} pri={:.1} persist={} | {}",
+                    intent.intent_id.as_str(),
+                    intent.source_need.as_str(),
+                    intent.chosen_response.as_str(),
+                    intent.priority,
+                    intent.desired_persistence.as_str(),
+                    intent.reasoning
+                ));
+            }
+        }
+        if !plan.rejected.is_empty() {
+            lines.push(format!("  rejected ({})", plan.rejected.len()));
+            for rejected in plan.rejected.iter().take(12) {
+                lines.push(format!(
+                    "    {} need={} score={:.1} arb={:.1} ({})",
+                    rejected.response_id.as_str(),
+                    rejected.need_id.as_str(),
+                    rejected.candidate_score,
+                    rejected.arbitration_score,
+                    rejected.reason.label()
+                ));
+            }
+            if plan.rejected.len() > 12 {
+                lines.push(format!(
+                    "    … {} more",
+                    plan.rejected.len().saturating_sub(12)
+                ));
+            }
+        }
+        for diag in &plan.diagnostics {
+            lines.push(format!("  diag: {diag}"));
+        }
+    } else {
+        lines.push("Settlement intent: (none — awaiting SA4 step)".to_string());
+    }
+
+    if let Some(report) = world.building_intent_propagation_store().get(settlement_id) {
+        lines.push(format!(
+            "Building intent propagation @ tick {} (from intent @ {}):",
+            report.propagated_tick, report.source_intent_tick
+        ));
+        if report.assignments.is_empty() {
+            lines.push("  assignments: (none)".to_string());
+        } else {
+            lines.push("  assignments:".to_string());
+            for a in &report.assignments {
+                let op = a
+                    .selected_operation
+                    .as_ref()
+                    .map(|o| o.as_str())
+                    .unwrap_or("-");
+                lines.push(format!(
+                    "    building#{} op={} enabled={} pri={} resp={} | {}",
+                    a.building_id.raw(),
+                    op,
+                    a.enabled,
+                    a.priority,
+                    a.response_id.as_str(),
+                    a.reason
+                ));
+            }
+        }
+        if !report.ignored_buildings.is_empty() {
+            lines.push(format!("  ignored ({})", report.ignored_buildings.len()));
+            for ignored in report.ignored_buildings.iter().take(8) {
+                lines.push(format!(
+                    "    building#{} resp={} ({})",
+                    ignored.building_id.raw(),
+                    ignored.response_id.as_str(),
+                    ignored.reason
+                ));
+            }
+        }
+        for deferred in &report.deferred_intents {
+            lines.push(format!("  deferred: {deferred}"));
+        }
+        for diag in &report.diagnostics {
+            lines.push(format!("  diag: {diag}"));
+        }
+    } else {
+        lines.push("Building intent propagation: (none — awaiting SA5 step)".to_string());
+    }
+
+    let construction_plans: Vec<_> = world
+        .construction_plan_store()
+        .plans_for_settlement(settlement_id);
+    if !construction_plans.is_empty() {
+        lines.push(format!(
+            "Construction plans ({}):",
+            construction_plans.len()
+        ));
+        for plan in construction_plans {
+            lines.push(format!(
+                "  plan#{} status={} def={} cap={} pri={:.1} reserved={:?} block={:?} key={}",
+                plan.id.raw(),
+                plan.status.as_str(),
+                plan.building_definition_id.as_str(),
+                plan.required_capability,
+                plan.priority,
+                plan.reserved_building_id.map(|id| id.raw()),
+                plan.blocking_reason,
+                plan.fulfillment_key
+            ));
+            if !plan.required_materials.is_empty() {
+                for mat in &plan.required_materials {
+                    lines.push(format!(
+                        "    material {} req={} del={} miss={}",
+                        mat.item_id.as_str(),
+                        mat.required,
+                        mat.delivered,
+                        mat.missing()
+                    ));
+                }
+            }
+            if let Some(site) = &plan.placement {
+                lines.push(format!(
+                    "    site soft={} yaw_q={} ({},{}) local=({:.1},{:.1},{:.1})",
+                    site.soft_score,
+                    site.yaw_quadrants,
+                    site.chunk_x,
+                    site.chunk_z,
+                    site.local_x,
+                    site.local_y,
+                    site.local_z
+                ));
+            }
+            for diag in plan.diagnostics.iter().take(4) {
+                lines.push(format!("    plan_diag: {diag}"));
+            }
+        }
+    }
+    if let Some(report) = world.construction_planning_report_store().get(settlement_id) {
+        lines.push(format!(
+            "Construction planning @ tick {}:",
+            report.planned_tick
+        ));
+        for note in &report.capacity_notes {
+            lines.push(format!("  capacity: {note}"));
+        }
+        for cand in report.considered_buildings.iter().take(6) {
+            lines.push(format!(
+                "  candidate {} score={}",
+                cand.building_definition_id.as_str(),
+                cand.score
+            ));
+        }
+        for rej in report.rejected_sites.iter().take(4) {
+            lines.push(format!(
+                "  rejected_site ({:.1},{:.1}): {}",
+                rej.offset_x, rej.offset_z, rej.reason
+            ));
+        }
+        for diag in &report.diagnostics {
+            lines.push(format!("  diag: {diag}"));
+        }
+    }
+
+    if let Some(report) = world.strategic_task_generation_store().get(settlement_id) {
+        lines.push(format!(
+            "Strategic tasks @ tick {} (from intent @ {}):",
+            report.generated_tick, report.source_intent_tick
+        ));
+        if report.emissions.is_empty() {
+            lines.push("  generated: (none)".to_string());
+        } else {
+            lines.push("  generated:".to_string());
+            for e in &report.emissions {
+                let task_state = world
+                    .task_store()
+                    .get(e.task_id)
+                    .map(|t| format!("{:?}", t.state))
+                    .unwrap_or_else(|| "missing".into());
+                lines.push(format!(
+                    "    task#{} {:?} pri={:?} state={} intent={} resp={} tpl={} | {}",
+                    e.task_id.raw(),
+                    e.task_type,
+                    e.priority,
+                    task_state,
+                    e.intent_id,
+                    e.response_id,
+                    e.template_id,
+                    e.reason
+                ));
+            }
+        }
+        if !report.cancelled_task_ids.is_empty() {
+            lines.push(format!(
+                "  cancelled: {}",
+                report
+                    .cancelled_task_ids
+                    .iter()
+                    .map(|id| format!("#{}", id.raw()))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
+        for diag in &report.diagnostics {
+            lines.push(format!("  diag: {diag}"));
+        }
+    } else {
+        lines.push("Strategic tasks: (none — awaiting SA6 step)".to_string());
+    }
+
+    {
+        let report = &world.worker_assignment_store().last_report;
+        if report.generated_tick > 0 {
+            lines.push(format!(
+                "Worker assignment @ tick {} (idle={} listings={}):",
+                report.generated_tick, report.idle_workers, report.open_listings
+            ));
+            for a in report.assignments.iter().take(12) {
+                lines.push(format!(
+                    "  unit#{} → task#{:?} score={:.1} pri={:?} preempt={} | {}",
+                    a.unit_id.raw(),
+                    a.task_id.map(|id| id.raw()),
+                    a.score,
+                    a.priority,
+                    a.preempted,
+                    a.reason
+                ));
+            }
+            for e in report.evaluations.iter().take(8) {
+                lines.push(format!(
+                    "  eval unit#{} chosen={:?} score={:.1} cands={} idle={} | {}",
+                    e.unit_id.raw(),
+                    e.chosen_task_id.map(|id| id.raw()),
+                    e.chosen_score,
+                    e.candidate_count,
+                    e.idle,
+                    e.notes
+                ));
+                for c in e.top_candidates.iter().take(3) {
+                    lines.push(format!("    cand: {c}"));
+                }
+                if let Some(point) = &e.reservation_point {
+                    lines.push(format!("    reservation: {point}"));
+                }
+            }
+            for diag in &report.diagnostics {
+                lines.push(format!("  diag: {diag}"));
+            }
+        } else {
+            lines.push("Worker assignment: (none — awaiting SA7 step)".to_string());
+        }
+    }
+
+    let Some(planner) = world.production_planner_store().get(settlement_id) else {
+        lines.push("Production planner: (none)".to_string());
+        return Some(lines.join("\n"));
+    };
+    let diagnostics = &planner.last_diagnostics;
+    lines.push(format!(
+        "Production planner: enabled={}",
+        planner.enabled
+    ));
+    lines.push(format!("Stock goals: {}", planner.stock_goals.len()));
+    for entry in &diagnostics.stock_entries {
+        lines.push(format!(
+            "  {} current={} desired={} demand={}",
+            entry.item_id.as_str(),
+            entry.current_stock,
+            entry.desired_stock,
+            entry.demand
+        ));
+    }
+    if !diagnostics.chosen_producers.is_empty() {
+        lines.push("Chosen producers:".to_string());
+        for decision in &diagnostics.chosen_producers {
+            lines.push(format!(
+                "  #{} op={} enabled={} ({})",
+                decision.building_id.raw(),
+                decision.operation_id.as_str(),
+                decision.enabled,
+                decision.reason
+            ));
+        }
+    }
+    if !diagnostics.shortages.is_empty() {
+        lines.push("Shortages:".to_string());
+        for (item, kind) in &diagnostics.shortages {
+            lines.push(format!("  {} {:?}", item.as_str(), kind));
+        }
+    }
+    if !diagnostics.blocked_chains.is_empty() {
+        lines.push(format!("Blocked: {}", diagnostics.blocked_chains.join("; ")));
+    }
+    Some(lines.join("\n"))
+}
+
+fn format_hauling_requests_for_building(
+    world: &WorldData,
+    building_id: crate::world::BuildingId,
+) -> String {
+    let store = world.hauling_request_store();
+    let reservation_store = world.inventory_reservation_store();
+    let request_ids = store.requests_for_building(building_id);
+    if request_ids.is_empty() {
+        return "no hauling requests".to_string();
+    }
+    request_ids
+        .iter()
+        .filter_map(|request_id| store.get(*request_id))
+        .map(|request| {
+            let reservation = reservation_store
+                .request_record(request.id)
+                .map(|record| {
+                    format!(
+                        "src={:?} dst_cap={:?}",
+                        record.source.map(|source| source.quantity),
+                        record.destination.map(|dest| dest.quantity)
+                    )
+                })
+                .unwrap_or_else(|| "none".to_string());
+            format!(
+                "#{} {} x{} rem={} {}→{} status={} phase={} worker={:?} block={:?} res={}",
+                request.id.raw(),
+                request.item_id.as_str(),
+                request.quantity,
+                request.remaining_quantity,
+                request.source_inventory_id.raw(),
+                request.destination_inventory_id.raw(),
+                request.status.label(),
+                request.execution_phase.label(),
+                request.assigned_unit_id,
+                request
+                    .blocking_reason
+                    .as_ref()
+                    .map(|reason| reason.clone().label()),
+                reservation
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Optional production probe fields for dev inspector (EP1).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct BuildingOperationProbe {
     pub terrain_output_rate: Option<String>,
@@ -205,14 +757,38 @@ pub struct BuildingOperationProbe {
     pub operation_progress: Option<String>,
     pub operation_completions: Option<u32>,
     pub operation_limiting_factor: Option<String>,
+    pub lifecycle: Option<String>,
+    pub selected_operation: Option<String>,
+    pub policy_enabled: Option<bool>,
+    pub policy_paused: Option<bool>,
+    pub repeat_mode: Option<String>,
+    pub control_source: Option<String>,
+    pub priority: Option<u8>,
+    pub assigned_workers: Option<String>,
+    pub blocking_reason: Option<String>,
+    pub active_worker_count: Option<u32>,
+    pub remaining_repeat_count: Option<u32>,
+    pub last_efficiency_revision: Option<u64>,
+    pub supported_operations: Option<String>,
+    pub default_operation: Option<String>,
+    pub operation_category: Option<String>,
+    pub base_labor: Option<u32>,
+    pub max_workers: Option<u32>,
+    pub validation_state: Option<String>,
+    pub execution_inputs_summary: Option<String>,
+    pub execution_outputs_summary: Option<String>,
+    pub execution_inventory_summary: Option<String>,
+    pub execution_blocking: Option<String>,
+    pub terrain_assessment_summary: Option<String>,
+    pub terrain_assessment_revision: Option<u64>,
+    pub terrain_assessment_stale: Option<bool>,
 }
 
-/// Probe authoritative operational efficiency and progress for dev inspector (ADR-105 TF5).
+/// Probe authoritative operational efficiency and progress for dev inspector (EP2).
 pub fn probe_building_operation(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
     operation: &mut crate::world::BuildingOperationParams<'_>,
-    operation_store: &crate::world::BuildingOperationStore,
     building_id: BuildingId,
 ) -> BuildingOperationProbe {
     let mut probe = BuildingOperationProbe::default();
@@ -222,8 +798,17 @@ pub fn probe_building_operation(
     {
         return probe;
     }
+    let selected_operation = world
+        .building_production_store()
+        .get_policy(building_id)
+        .and_then(|policy| policy.selected_operation.as_ref())
+        .and_then(|id| operation.operation_catalog.get(id));
     let mut ctx = operation.efficiency_context(world, building_catalog);
-    if let Ok(report) = crate::world::building_operational_efficiency(&mut ctx, building_id) {
+    if let Ok(report) = crate::world::building_operational_efficiency(
+        &mut ctx,
+        building_id,
+        selected_operation,
+    ) {
         probe.terrain_output_rate = Some(crate::world::format_efficiency_display(
             report.terrain_efficiency_basis_points,
         ));
@@ -233,12 +818,188 @@ pub fn probe_building_operation(
         if report.limiting_factor != crate::world::OperationalLimitingFactor::None {
             probe.operation_limiting_factor = Some(report.limiting_factor.label().to_string());
         }
+        probe.terrain_assessment_revision = Some(report.assessment_revision);
     }
-    if let Some(state) = operation_store.get(building_id) {
+    if let Some(assessment) = operation.assessment_store.get(building_id) {
+        probe.terrain_assessment_stale = Some(assessment.stale);
+        probe.terrain_assessment_summary = Some(
+            assessment
+                .per_requirement
+                .iter()
+                .map(|req| {
+                    format!(
+                        "{} avg={} eff={} can_operate={}",
+                        req.field_id,
+                        crate::world::format_field_average_display(req.average_value),
+                        crate::world::format_efficiency_display(
+                            req.response_efficiency_basis_points,
+                        ),
+                        req.can_operate
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("; "),
+        );
+    }
+    let production = world.building_production_store();
+    if let Some(state) = production.get_state(building_id) {
         let pct = state.progress.value() as f32 / crate::world::PRODUCTION_PROGRESS_ONE_UNIT as f32
             * 100.0;
         probe.operation_progress = Some(format!("{pct:.1}%"));
         probe.operation_completions = Some(state.completion_count);
+        probe.lifecycle = Some(state.lifecycle.label().to_string());
+        probe.active_worker_count = Some(state.active_worker_count);
+        probe.last_efficiency_revision = Some(state.last_efficiency_revision);
+        probe.blocking_reason = state
+            .blocked_reason
+            .as_ref()
+            .map(|reason| reason.label().to_string());
+    }
+    if let Some(policy) = production.get_policy(building_id) {
+        probe.selected_operation = policy
+            .selected_operation
+            .as_ref()
+            .map(|id| id.to_string());
+        probe.policy_enabled = Some(policy.enabled);
+        probe.policy_paused = Some(policy.paused);
+        probe.repeat_mode = Some(policy.repeat_mode.display_label());
+        probe.control_source = Some(policy.control_source.label().to_string());
+        probe.priority = Some(policy.priority);
+        probe.remaining_repeat_count =
+            policy.repeat_mode.remaining_repeats(production.get_state(building_id).map(|s| s.completion_count).unwrap_or(0));
+    }
+    let workers = crate::world::workstation_workers_for_building(
+        world, building_id,
+    );
+    if !workers.is_empty() {
+        probe.assigned_workers = Some(
+            workers
+                .iter()
+                .map(|id| id.raw().to_string())
+                .collect::<Vec<_>>()
+                .join(", "),
+        );
+    }
+    if let Some(record) = world.get_building(building_id) {
+        if let Some(definition) = building_catalog.get(&record.definition_id) {
+            if !definition.supported_operations.is_empty() {
+                probe.supported_operations = Some(
+                    definition
+                        .supported_operations
+                        .iter()
+                        .map(|id| id.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                );
+            }
+            probe.default_operation = definition
+                .resolved_default_operation()
+                .map(|id| id.to_string());
+            if let Some(selected) = production
+                .get_policy(building_id)
+                .and_then(|policy| policy.selected_operation.as_ref())
+            {
+                if let Some(op_def) = operation.operation_catalog.get(selected) {
+                    probe.operation_category = Some(op_def.category.label().to_string());
+                    probe.base_labor = Some(op_def.base_labor);
+                    probe.max_workers = Some(op_def.max_workers);
+                    probe.validation_state = Some(
+                        crate::world::validate_operation_selection(
+                            definition,
+                            building_id,
+                            operation.operation_catalog,
+                            selected,
+                        )
+                        .map(|_| "OK".to_string())
+                        .unwrap_or_else(|err| err.to_string()),
+                    );
+                    let assessment = crate::world::assess_production_execution(
+                        world,
+                        operation.inventory_ctx,
+                        building_id,
+                        op_def,
+                        definition,
+                    );
+                if !assessment.inputs.is_empty() {
+                    probe.execution_inputs_summary = Some(
+                        assessment
+                            .inputs
+                            .iter()
+                            .map(|input| {
+                                format!(
+                                    "{}: avail={}/{} phys={} res={} {}",
+                                    input.binding_id,
+                                    input.available,
+                                    input.required,
+                                    input.physical,
+                                    input.reserved,
+                                    input.item_id.as_str()
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join("; "),
+                    );
+                }
+                if !assessment.outputs.is_empty() {
+                    probe.execution_outputs_summary = Some(
+                        assessment
+                            .outputs
+                            .iter()
+                            .map(|output| {
+                                format!(
+                                    "{}: {} {} ({})",
+                                    output.binding_id,
+                                    output.quantity,
+                                    output.item_id.as_str(),
+                                    if output.can_accept { "ok" } else { "full" }
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join("; "),
+                    );
+                }
+                probe.execution_inventory_summary = Some(
+                    world
+                        .building_inventory_binding_store()
+                        .get(building_id)
+                        .map(|set| {
+                            set.bindings()
+                                .iter()
+                                .map(|binding| {
+                                    let entries = world
+                                        .inventory_store()
+                                        .get(binding.inventory_id)
+                                        .map(|record| {
+                                            record
+                                                .placed_entries()
+                                                .iter()
+                                                .filter_map(|entry| match &entry.contents {
+                                                    crate::world::InventoryEntryContents::Stack {
+                                                        item_definition_id,
+                                                        quantity,
+                                                    } => Some(format!(
+                                                        "{}x{quantity}",
+                                                        item_definition_id.as_str()
+                                                    )),
+                                                    _ => None,
+                                                })
+                                                .collect::<Vec<_>>()
+                                                .join(",")
+                                        })
+                                        .unwrap_or_else(|| "missing".to_string());
+                                    format!("{}={entries}", binding.binding_id)
+                                })
+                                .collect::<Vec<_>>()
+                                .join("; ")
+                        })
+                        .unwrap_or_else(|| "no bindings".to_string()),
+                );
+                probe.execution_blocking = assessment.blocking_label().map(str::to_string);
+                }
+            } else {
+                probe.validation_state = Some("No operation selected".into());
+            }
+        }
     }
     probe
 }
