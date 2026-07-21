@@ -1,4 +1,7 @@
-//! Doodad instance collision shape resolution (ADR-098 DT2).
+//! Doodad instance collision shape resolution (ADR-098 DT2, ADR-126/129 AT3).
+//!
+//! Ground gameplay extents use one composition:
+//! `authored collision meters × (definition baseline × instance)_xz`.
 
 use bevy::prelude::*;
 
@@ -15,16 +18,46 @@ pub struct DoodadInstanceCollision {
     pub yaw_radians: f32,
 }
 
-/// Ground collision uses yaw only; X/Z instance scale affects horizontal extents.
+/// Composed XZ scale for doodad ground gameplay (baseline × instance X/Z).
+pub fn doodad_composed_xz_scale(definition: &DoodadDefinition, instance_scale_xz: Vec2) -> Vec2 {
+    let baseline = definition.asset_sizing.resolved_baseline_scale().to_vec3();
+    Vec2::new(baseline.x * instance_scale_xz.x, baseline.z * instance_scale_xz.y)
+}
+
+/// Authored placement/pick radius (meters) before composed XZ scale.
+pub fn doodad_authored_interaction_radius_meters(definition: &DoodadDefinition) -> f32 {
+    definition
+        .placement_radius_meters
+        .max(definition.block_radius_meters)
+        .max(0.0)
+}
+
+/// Interaction / pick radius in meters for a placed doodad (same compose as collision).
+pub fn doodad_interaction_radius_meters(
+    record: &DoodadRecord,
+    definition: &DoodadDefinition,
+) -> f32 {
+    let base = doodad_authored_interaction_radius_meters(definition);
+    let composed = doodad_composed_xz_scale(definition, record.placement.collision_scale_xz());
+    base * composed.x.max(composed.y).max(0.0)
+}
+
+/// Definition-only placement radius (instance scale = 1) for Dev spawn spacing.
+pub fn doodad_definition_placement_radius_meters(definition: &DoodadDefinition) -> f32 {
+    let base = doodad_authored_interaction_radius_meters(definition);
+    let composed = doodad_composed_xz_scale(definition, Vec2::ONE);
+    base * composed.x.max(composed.y).max(0.0)
+}
+
+/// Ground collision uses yaw only; X/Z composed scale affects horizontal extents.
 pub fn resolve_doodad_collision(
     record: &DoodadRecord,
     definition: &DoodadDefinition,
 ) -> DoodadInstanceCollision {
     let blocks = definition.blocks_movement;
     let yaw = record.placement.collision_yaw_radians();
-    let scale_xz = record.placement.collision_scale_xz();
-    let baseline = definition.asset_sizing.resolved_baseline_scale().to_vec3();
-    let combined_xz = Vec2::new(baseline.x * scale_xz.x, baseline.z * scale_xz.y);
+    let combined_xz =
+        doodad_composed_xz_scale(definition, record.placement.collision_scale_xz());
 
     if !blocks {
         return DoodadInstanceCollision {
@@ -47,16 +80,15 @@ fn resolve_collision_shape(definition: &DoodadDefinition, scale_xz: Vec2) -> Foo
     let base_z = effective_base_radius_z(definition);
     let radius_x = base_x * scale_xz.x;
     let radius_z = base_z * scale_xz.y;
+    let uniform_fallback = definition.block_radius_meters.max(0.0) * uniform_xz(scale_xz);
 
     match definition.collision_shape {
-        DoodadCollisionShape::None => FootprintShape::Circle {
-            radius_meters: definition.block_radius_meters.max(0.0),
-        },
-        DoodadCollisionShape::Circle => {
+        // AT3: None is authored circle meters — must honor the same compose as Circle.
+        DoodadCollisionShape::None | DoodadCollisionShape::Circle => {
             let uniform = if radius_x > 0.0 && radius_z > 0.0 {
                 (radius_x + radius_z) * 0.5
             } else {
-                definition.block_radius_meters
+                uniform_fallback
             };
             FootprintShape::Circle {
                 radius_meters: uniform.max(0.0),
@@ -76,13 +108,22 @@ fn resolve_collision_shape(definition: &DoodadDefinition, scale_xz: Vec2) -> Foo
                 }
             } else {
                 FootprintShape::Circle {
-                    radius_meters: definition.block_radius_meters.max(0.0),
+                    radius_meters: uniform_fallback,
                 }
             }
         }
+        // Baked masks are not yet loaded at runtime; fall back to scaled circle until AT4+.
         DoodadCollisionShape::Baked => FootprintShape::Circle {
-            radius_meters: definition.block_radius_meters.max(0.0),
+            radius_meters: uniform_fallback,
         },
+    }
+}
+
+fn uniform_xz(scale_xz: Vec2) -> f32 {
+    if scale_xz.x > 0.0 && scale_xz.y > 0.0 {
+        (scale_xz.x + scale_xz.y) * 0.5
+    } else {
+        scale_xz.x.max(scale_xz.y).max(0.0)
     }
 }
 
@@ -212,5 +253,35 @@ mod tests {
                 radius_z_meters,
             } if radius_x_meters > radius_z_meters
         ));
+    }
+
+    #[test]
+    fn none_shape_scales_with_baseline_and_instance() {
+        let mut def = sample_def();
+        def.collision_shape = DoodadCollisionShape::None;
+        def.block_radius_meters = 1.0;
+        def.base_collision_radius_x_meters = 1.0;
+        def.base_collision_radius_z_meters = 1.0;
+        def.asset_sizing.calculated_baseline_scale =
+            Some(AuthoringScale::from_uniform_f32(2.0).unwrap());
+        let mut placement = DoodadPlacement::identity_at(WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::ZERO),
+        ));
+        placement.scale = AuthoringScale::from_uniform_f32(1.5).unwrap();
+        let record = DoodadRecord::new(
+            crate::world::DoodadId::new(1),
+            def.id.clone(),
+            def.kind,
+            placement,
+            DoodadSource::Authored,
+        );
+        let collision = resolve_doodad_collision(&record, &def);
+        match collision.shape {
+            FootprintShape::Circle { radius_meters } => {
+                assert!((radius_meters - 3.0).abs() < 0.01, "got {radius_meters}");
+            }
+            other => panic!("expected scaled circle, got {other:?}"),
+        }
     }
 }

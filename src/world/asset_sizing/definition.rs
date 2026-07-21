@@ -74,6 +74,15 @@ impl SourceDimensions {
 }
 
 /// Shared metric sizing fields embedded by Unit, Doodad, and Building definitions.
+///
+/// AT1 (ADR-126/127): this struct is the **authoritative** catalog home for:
+/// - desired metric dimensions
+/// - measured / explicit source dimensions
+/// - baked baseline import scale
+/// - pivot correction (`model_local_offset_meters`)
+/// - import rotation correction
+///
+/// Building legacy fields (`model_local_offset`, `model_yaw_correction_degrees`) are mirrors only.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Reflect)]
 pub struct AssetSizingDefinition {
     pub desired_width_meters: Option<f32>,
@@ -88,7 +97,16 @@ pub struct AssetSizingDefinition {
     pub calculated_source_bounds: Option<SourceDimensions>,
     pub calculated_baseline_scale: Option<AuthoringScale>,
     pub source_bounds_origin: Option<SourceBoundsOrigin>,
+    /// Offline import may normalize mm/cm GLB bounds before baseline quantization.
+    /// Runtime presentation divides the baked baseline by this factor so the raw
+    /// mesh vertices (still in export units) reach desired meters.
+    #[serde(default = "default_source_bounds_unit_divisor")]
+    pub source_bounds_unit_divisor: f32,
     pub migration_state: SizingMigrationState,
+}
+
+fn default_source_bounds_unit_divisor() -> f32 {
+    1.0
 }
 
 impl Default for AssetSizingDefinition {
@@ -106,6 +124,7 @@ impl Default for AssetSizingDefinition {
             calculated_source_bounds: None,
             calculated_baseline_scale: None,
             source_bounds_origin: None,
+            source_bounds_unit_divisor: default_source_bounds_unit_divisor(),
             migration_state: SizingMigrationState::MissingSizingData,
         }
     }

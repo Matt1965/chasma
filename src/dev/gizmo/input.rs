@@ -16,11 +16,17 @@ use crate::terrain::world_position_to_render_global;
 use crate::ui::gameplay::GameplayBuildingSelection;
 use crate::units::input::cursor_world_ray;
 use crate::world::{
-    BuildingTransformEditOptions, DoodadCatalog, DoodadTransformEditOptions, FootprintCatalog,
-    InteriorProfileCatalog, UnitCatalog, WorldConfig, WorldData,
+    BuildingTransformSafetyClass, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog,
+    UnitCatalog, WorldConfig, WorldData,
+};
+use crate::world::authoring_transform::{
+    AUTHORING_INSTANCE_SCALE_MAX, AUTHORING_INSTANCE_SCALE_MIN,
 };
 
-use super::commit::try_commit_edit;
+use super::commit::{
+    dev_gizmo_building_commit_options, dev_gizmo_doodad_commit_options, preview_differs_from_authoritative,
+    try_commit_edit,
+};
 use super::drag::apply_drag;
 use super::handles::policy_for_target;
 use super::math::apparent_gizmo_scale;
@@ -69,6 +75,38 @@ pub fn selected_object(inspector: &WorldInspectorState) -> Option<SelectedWorldO
 }
 
 pub fn sync_gizmo_target(mut params: GizmoInputParams) {
+    let prev_target = params.edit.target;
+    let target = selected_object(&params.inspector);
+
+    if let Some(prev) = prev_target {
+        if Some(prev) != target && !params.edit.dragging {
+            if let Some(preview) = params.edit.preview_placement {
+                if preview_differs_from_authoritative(&params.world, prev, preview) {
+                    let doodad_options = dev_gizmo_doodad_commit_options(&params.keyboard);
+                    let building_options = dev_gizmo_building_commit_options(&params.keyboard);
+                    let committed = try_commit_edit(
+                        &mut params.edit,
+                        &mut params.world,
+                        &params.doodad_catalog,
+                        &params.building_catalog,
+                        &params.footprint_catalog,
+                        &params.interior_catalog,
+                        &params.unit_catalog,
+                        doodad_options,
+                        building_options,
+                        Some(&mut params.assessment_store),
+                    );
+                    if committed {
+                        params.inspector.last_message =
+                            format!("Gizmo commit: {:?}", prev);
+                    } else if !params.edit.last_error.is_empty() {
+                        params.inspector.last_message = params.edit.last_error.clone();
+                    }
+                }
+            }
+        }
+    }
+
     if !params.dev_state.enabled {
         params.edit.full_cancel();
         params.tool_state.active_tool = DevTool::Select;
@@ -86,19 +124,21 @@ pub fn sync_gizmo_target(mut params: GizmoInputParams) {
         return;
     }
 
+    if params.dev_state.clear_world_selection_for_place {
+        params.dev_state.clear_world_selection_for_place = false;
+        params.inspector.selected_doodad = None;
+        params.inspector.selected_building = None;
+        params.inspector.doodad_snapshot = None;
+        params.inspector.building_snapshot = None;
+        params.inspector.cache_key.doodad_id = None;
+        params.inspector.cache_key.building_id = None;
+        params.building_selection.set(None);
+        params.edit.clear();
+    }
+
     if params.dev_state.placement_tool_active() {
-        // Arming a catalog item for placement takes precedence over an existing
-        // transform selection: drop the selection + gizmo so the placement can proceed
-        // (otherwise the user is stuck unable to place after editing something).
-        if !params.edit.dragging && selected_object(&params.inspector).is_some() {
-            params.inspector.selected_doodad = None;
-            params.inspector.selected_building = None;
-            params.inspector.doodad_snapshot = None;
-            params.inspector.building_snapshot = None;
-            params.inspector.cache_key.doodad_id = None;
-            params.inspector.cache_key.building_id = None;
-            params.building_selection.set(None);
-        }
+        // Placement is armed: suppress transform gizmos only. Do not wipe world
+        // selection every frame — that fought click-to-inspect (select → sync cleared it).
         params.tool_state.active_tool = DevTool::Place;
         if !params.edit.dragging {
             params.edit.clear();
@@ -130,16 +170,17 @@ pub fn sync_gizmo_target(mut params: GizmoInputParams) {
         .edit
         .sync_target_from_selection(target, tool, authoritative);
 
-    if target != prev_target {
-        if let Some(selected) = target {
-            let policy = policy_for_target(selected, &params.building_catalog, &params.world);
-            if policy.capabilities != crate::world::TransformCapabilities::NONE {
-                params.tool_state.active_tool = DevTool::Translate;
-                params.edit.mode = DevTool::Translate;
-                params.edit.target = Some(selected);
-                if let Some(placement) = authoritative {
-                    params.edit.preview_placement = Some(placement);
-                }
+    if let Some(selected) = target {
+        let policy = policy_for_target(selected, &params.building_catalog, &params.world);
+        if policy.capabilities != crate::world::TransformCapabilities::NONE
+            && !params.edit.dragging
+            && (target != prev_target || !params.edit.mode.is_transform())
+        {
+            params.tool_state.active_tool = DevTool::Translate;
+            params.edit.mode = DevTool::Translate;
+            params.edit.target = Some(selected);
+            if let Some(placement) = authoritative {
+                params.edit.preview_placement = Some(placement);
             }
         }
     }
@@ -289,6 +330,9 @@ pub fn handle_gizmo_mouse(mut params: GizmoInputParams) {
     let Ok((camera, camera_transform)) = params.camera.single() else {
         return;
     };
+    let Some(cursor) = crate::units::input::cursor_screen_position(&params.windows) else {
+        return;
+    };
     let gizmo_scale = apparent_gizmo_scale(
         camera_transform.translation(),
         anchor,
@@ -304,6 +348,21 @@ pub fn handle_gizmo_mouse(mut params: GizmoInputParams) {
         .as_ref()
         .map(|a| a.vertical_scale)
         .unwrap_or(1.0);
+    let yaw_snap_degrees = match target {
+        SelectedWorldObject::Building(id) => params
+            .world
+            .get_building(id)
+            .and_then(|record| params.building_catalog.get(&record.definition_id))
+            .filter(|definition| {
+                definition.transform_safety_class == BuildingTransformSafetyClass::Navigable
+            })
+            .map(|_| 90.0),
+        _ => None,
+    };
+    let scale_view_dir = params.edit.drag_scale_view_dir.or_else(|| {
+        let dir = (camera_transform.translation() - anchor).normalize_or_zero();
+        (dir.length_squared() > 1e-6).then_some(dir)
+    });
 
     if params.edit.dragging {
         params.gate.block_gameplay_mouse = true;
@@ -335,6 +394,8 @@ pub fn handle_gizmo_mouse(mut params: GizmoInputParams) {
                 params.edit.axis_constraint,
                 min_scale,
                 max_scale,
+                yaw_snap_degrees,
+                scale_view_dir,
             ) {
                 params.edit.preview_placement = Some(preview);
                 params.edit.preview_valid = true;
@@ -342,17 +403,8 @@ pub fn handle_gizmo_mouse(mut params: GizmoInputParams) {
         }
 
         if params.mouse_buttons.just_released(MouseButton::Left) {
-            let doodad_options = DoodadTransformEditOptions {
-                allow_overlap: params.keyboard.pressed(KeyCode::KeyO),
-                follow_ground: params.keyboard.pressed(KeyCode::KeyG),
-                bypass_placement_validation: false,
-            };
-            let building_options = BuildingTransformEditOptions {
-                allow_overlap: params.keyboard.pressed(KeyCode::KeyO),
-                follow_ground: params.keyboard.pressed(KeyCode::KeyG),
-                bypass_placement_validation: false,
-                cancel_dependencies: params.keyboard.pressed(KeyCode::KeyC),
-            };
+            let doodad_options = dev_gizmo_doodad_commit_options(&params.keyboard);
+            let building_options = dev_gizmo_building_commit_options(&params.keyboard);
             let committed = try_commit_edit(
                 &mut params.edit,
                 &mut params.world,
@@ -406,7 +458,9 @@ pub fn handle_gizmo_mouse(mut params: GizmoInputParams) {
     }
 
     params.edit.hovered_handle = pick_gizmo_handle(
-        &ray,
+        camera,
+        camera_transform,
+        cursor,
         anchor,
         rotation,
         gizmo_scale,
@@ -414,6 +468,10 @@ pub fn handle_gizmo_mouse(mut params: GizmoInputParams) {
         policy.capabilities,
         params.edit.coordinate_space,
     );
+
+    if params.edit.hovered_handle.is_some() {
+        params.gate.block_gameplay_mouse = true;
+    }
 
     if params.mouse_buttons.just_pressed(MouseButton::Left) {
         let Some(handle) = params.edit.hovered_handle else {
@@ -424,7 +482,8 @@ pub fn handle_gizmo_mouse(mut params: GizmoInputParams) {
         };
         params.gate.block_gameplay_mouse = true;
         params.gate.spawn_handled_this_frame = true;
-        params.edit.begin_drag(handle, ray, start);
+        let scale_view_dir = (camera_transform.translation() - anchor).normalize_or_zero();
+        params.edit.begin_drag(handle, ray, start, scale_view_dir);
     }
 }
 
@@ -446,7 +505,7 @@ fn drag_anchor_placement(edit: &TransformEditState) -> Option<DoodadPreviewPlace
 fn doodad_drag_context(
     world: &WorldData,
     config: &WorldConfig,
-    catalog: &DoodadCatalog,
+    _catalog: &DoodadCatalog,
     edit: &TransformEditState,
     id: crate::world::DoodadId,
     render_assets: &Option<Res<crate::terrain::TerrainRenderAssets>>,
@@ -454,9 +513,8 @@ fn doodad_drag_context(
     let Some(record) = world.get_doodad(id) else {
         return (None, Quat::IDENTITY, 0.05, 20.0);
     };
-    let definition = catalog.get(&record.definition_id);
-    let min_scale = definition.map(|d| d.min_scale).unwrap_or(0.05);
-    let max_scale = definition.map(|d| d.max_scale).unwrap_or(20.0);
+    let min_scale = AUTHORING_INSTANCE_SCALE_MIN;
+    let max_scale = AUTHORING_INSTANCE_SCALE_MAX;
     let placement = drag_anchor_placement(edit)
         .unwrap_or_else(|| DoodadPreviewPlacement::from_placement(record.placement));
     let vertical_scale = render_assets
@@ -476,7 +534,7 @@ fn doodad_drag_context(
 fn building_drag_context(
     world: &WorldData,
     config: &WorldConfig,
-    catalog: &crate::world::BuildingCatalog,
+    _catalog: &crate::world::BuildingCatalog,
     edit: &TransformEditState,
     id: crate::world::BuildingId,
     render_assets: &Option<Res<crate::terrain::TerrainRenderAssets>>,
@@ -484,13 +542,8 @@ fn building_drag_context(
     let Some(record) = world.get_building(id) else {
         return (None, Quat::IDENTITY, 0.05, 20.0);
     };
-    let definition = catalog.get(&record.definition_id);
-    let min_scale = definition
-        .map(|d| d.min_uniform_instance_scale)
-        .unwrap_or(0.05);
-    let max_scale = definition
-        .map(|d| d.max_uniform_instance_scale)
-        .unwrap_or(20.0);
+    let min_scale = AUTHORING_INSTANCE_SCALE_MIN;
+    let max_scale = AUTHORING_INSTANCE_SCALE_MAX;
     let placement = drag_anchor_placement(edit)
         .map(|preview| {
             (

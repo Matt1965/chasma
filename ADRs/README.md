@@ -32,6 +32,11 @@ ADRs document **accepted technical decisions**. Game design direction lives in
 | [094](ADR-094-inventory-persistence-validation-and-audit.md) | Inventory persistence, validation, audit (I8) |
 | [095](ADR-095-building-runtime-asset-and-scene-integration.md) | Building runtime GLB assets and scene integration (BA1) |
 | [096](ADR-096-building-placement-transform-and-dev-spawn-policy.md) | Placement transform, freeform anchoring, dev Complete spawn (BP-CLEANUP) |
+| [097](ADR-097-metric-asset-sizing-and-authoring-transform-foundations.md) | Metric asset sizing foundations (DT1) |
+| [126](ADR-126-asset-transform-standardization.md) | Asset transform standardization (AT0 design) |
+| [127](ADR-127-asset-transform-catalog-authority.md) | Catalog sizing authority (AT1) |
+| [128](ADR-128-asset-transform-composition.md) | Runtime transform composition (AT2) |
+| [129](ADR-129-collision-gameplay-metric-sync.md) | Collision & gameplay metric sync (AT3) |
 
 ## Combat implementation chain
 

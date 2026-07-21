@@ -19,8 +19,8 @@ pub fn placeholder_mesh_size(definition: &BuildingDefinition) -> Vec3 {
     }
 }
 
-/// Ray-pick radius from catalog footprint (XZ).
-pub fn building_pick_radius(definition: &BuildingDefinition) -> f32 {
+/// Ray-pick radius from catalog footprint × instance uniform scale (ADR-126 AT3).
+pub fn building_pick_radius(definition: &BuildingDefinition, uniform_scale: f32) -> f32 {
     let radius = match &definition.footprint {
         FootprintSpec::Rectangle {
             width_meters,
@@ -29,7 +29,7 @@ pub fn building_pick_radius(definition: &BuildingDefinition) -> f32 {
         FootprintSpec::Circle { radius_meters } => *radius_meters,
         FootprintSpec::MeshDerived => 1.5,
     };
-    radius.max(1.0)
+    (radius * uniform_scale.max(0.0)).max(1.0)
 }
 
 pub fn affiliation_color(affiliation: Affiliation) -> Color {
@@ -115,6 +115,6 @@ mod tests {
 
     #[test]
     fn pick_radius_from_footprint() {
-        assert_eq!(building_pick_radius(&hut_definition()), 2.0);
+        assert_eq!(building_pick_radius(&hut_definition(), 1.0), 2.0);
     }
 }

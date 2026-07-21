@@ -22,7 +22,7 @@ pub fn pick_building_along_ray(
         let Some(definition) = catalog.get(&record.definition_id) else {
             continue;
         };
-        let radius = building_pick_radius(definition);
+        let radius = building_pick_radius(definition, record.placement.uniform_scale_f32());
         let center = transform.translation() + Vec3::Y * (radius * 0.35);
         let Some(distance) = ray_sphere_hit_distance(ray, center, radius) else {
             continue;

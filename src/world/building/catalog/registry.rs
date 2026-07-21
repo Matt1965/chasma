@@ -56,6 +56,15 @@ impl BuildingCatalog {
         definitions: Vec<BuildingDefinition>,
         categories: &BuildingCategoryCatalog,
     ) -> Result<Self, BuildingCatalogError> {
+        let mut definitions = definitions;
+        for definition in &mut definitions {
+            crate::world::asset_sizing::normalize_building_sizing_authority(definition);
+            #[cfg(feature = "data-import")]
+            {
+                let _ = crate::world::asset_sizing::finalize_building_definition(definition);
+            }
+        }
+
         let mut by_id = HashMap::with_capacity(definitions.len());
         let mut by_category = HashMap::new();
 

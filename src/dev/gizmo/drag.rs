@@ -36,6 +36,8 @@ pub fn apply_drag(
     axis_constraint: Option<GizmoAxisConstraint>,
     min_scale: f32,
     max_scale: f32,
+    yaw_snap_degrees: Option<f32>,
+    scale_view_dir: Option<Vec3>,
 ) -> Option<DoodadPreviewPlacement> {
     match handle {
         GizmoHandle::TranslateX
@@ -67,6 +69,7 @@ pub fn apply_drag(
             space,
             snap,
             finer_snap,
+            yaw_snap_degrees,
         ),
         GizmoHandle::ScaleX
         | GizmoHandle::ScaleY
@@ -82,6 +85,7 @@ pub fn apply_drag(
             finer_snap,
             min_scale,
             max_scale,
+            scale_view_dir,
         ),
     }
 }
@@ -203,6 +207,7 @@ fn apply_rotate_drag(
     space: GizmoCoordinateSpace,
     snap: TransformSnapSettings,
     finer_snap: bool,
+    yaw_snap_degrees: Option<f32>,
 ) -> Option<DoodadPreviewPlacement> {
     let axis = oriented_axis(handle.axis()?, object_rotation, space);
     let start_hit = ray_plane_intersection(start_ray, anchor, axis)?;
@@ -220,7 +225,12 @@ fn apply_rotate_drag(
         GizmoCoordinateSpace::World => delta_quat * start_quat,
         GizmoCoordinateSpace::Local => start_quat * delta_quat,
     };
-    let orientation = QuantizedOrientation::from_quat(new_quat).ok()?;
+    let mut orientation = QuantizedOrientation::from_quat(new_quat).ok()?;
+    if let Some(step) = yaw_snap_degrees.filter(|step| *step > 0.0) {
+        let yaw = orientation.yaw_degrees().rem_euclid(360.0);
+        let snapped = ((yaw / step).round() * step).rem_euclid(360.0);
+        orientation = QuantizedOrientation::from_degrees(snapped, 0.0, 0.0).ok()?;
+    }
     Some(DoodadPreviewPlacement {
         position: start.position,
         orientation,
@@ -239,29 +249,42 @@ fn apply_scale_drag(
     finer_snap: bool,
     min_scale: f32,
     max_scale: f32,
+    scale_view_dir: Option<Vec3>,
 ) -> Option<DoodadPreviewPlacement> {
     let start_scale = start.scale_vec3();
-    let plane_normal = match handle {
-        GizmoHandle::ScaleUniform => (current_ray.origin - anchor).normalize_or_zero(),
-        GizmoHandle::ScaleX => object_rotation * Vec3::X,
-        GizmoHandle::ScaleY => object_rotation * Vec3::Y,
-        GizmoHandle::ScaleZ => object_rotation * Vec3::Z,
-        _ => return None,
-    };
-    let start_hit = ray_plane_intersection(start_ray, anchor, plane_normal)?;
-    let current_hit = ray_plane_intersection(current_ray, anchor, plane_normal)?;
-    let signed_delta = (current_hit - start_hit).dot(plane_normal);
-    let sensitivity = 0.01;
+    let view = scale_view_dir
+        .filter(|dir| dir.length_squared() > 1e-6)
+        .unwrap_or(Vec3::Y)
+        .normalize();
     let mut new_scale = start_scale;
     match handle {
         GizmoHandle::ScaleUniform => {
-            let factor = 1.0 + signed_delta * sensitivity;
-            new_scale *= factor;
+            // Plane faces the camera so the pick ray always intersects it.
+            let start_hit = ray_plane_intersection(start_ray, anchor, view)?;
+            let current_hit = ray_plane_intersection(current_ray, anchor, view)?;
+            let start_len = (start_hit - anchor).length().max(0.05);
+            let current_len = (current_hit - anchor).length().max(0.05);
+            let factor = current_len / start_len;
+            new_scale = start_scale * factor;
         }
-        GizmoHandle::ScaleX => new_scale.x = start_scale.x + signed_delta * sensitivity,
-        GizmoHandle::ScaleY => new_scale.y = start_scale.y + signed_delta * sensitivity,
-        GizmoHandle::ScaleZ => new_scale.z = start_scale.z + signed_delta * sensitivity,
-        _ => {}
+        GizmoHandle::ScaleX | GizmoHandle::ScaleY | GizmoHandle::ScaleZ => {
+            let axis = oriented_axis(handle.axis()?, object_rotation, GizmoCoordinateSpace::Local)
+                .normalize_or_zero();
+            if axis.length_squared() < 1e-8 {
+                return None;
+            }
+            let t_start = ray_axis_closest_param(start_ray, anchor, axis)?;
+            let t_current = ray_axis_closest_param(current_ray, anchor, axis)?;
+            let signed_delta = t_current - t_start;
+            let sensitivity = 0.35;
+            match handle {
+                GizmoHandle::ScaleX => new_scale.x = start_scale.x + signed_delta * sensitivity,
+                GizmoHandle::ScaleY => new_scale.y = start_scale.y + signed_delta * sensitivity,
+                GizmoHandle::ScaleZ => new_scale.z = start_scale.z + signed_delta * sensitivity,
+                _ => {}
+            }
+        }
+        _ => return None,
     }
 
     new_scale.x = snap
@@ -323,6 +346,8 @@ mod tests {
             None,
             0.05,
             20.0,
+            None,
+            None,
         );
         assert!(
             result.is_none(),
@@ -356,6 +381,8 @@ mod tests {
             None,
             0.05,
             20.0,
+            None,
+            None,
         )
         .expect("horizontal drag should produce a placement");
         let moved = result.position.to_global(layout());
@@ -392,6 +419,8 @@ mod tests {
             None,
             0.05,
             20.0,
+            None,
+            None,
         )
         .expect("vertical drag should produce a placement");
         let stored_world_y = result.position.to_global(layout()).y;
@@ -399,6 +428,80 @@ mod tests {
         assert!(
             (stored_world_y - world_y).abs() < 5.0,
             "world Y must not compound with vertical_scale, got {stored_world_y}"
+        );
+    }
+
+    #[test]
+    fn uniform_scale_drag_increases_with_cursor_distance() {
+        let anchor = Vec3::ZERO;
+        let view = Vec3::new(0.0, 1.0, 1.0).normalize();
+        let start_ray = Ray3d::new(
+            Vec3::new(0.0, 10.0, 10.0),
+            Dir3::new_unchecked(Vec3::new(0.0, -0.7071, -0.7071)),
+        );
+        let current_ray = Ray3d::new(
+            Vec3::new(2.0, 10.0, 10.0),
+            Dir3::new_unchecked(Vec3::new(0.0, -0.7071, -0.7071)),
+        );
+        let result = apply_drag(
+            GizmoHandle::ScaleUniform,
+            &start_ray,
+            &current_ray,
+            start_placement(),
+            anchor,
+            layout(),
+            1.0,
+            Quat::IDENTITY,
+            GizmoCoordinateSpace::World,
+            TransformSnapSettings::default(),
+            false,
+            None,
+            0.05,
+            20.0,
+            None,
+            Some(view),
+        )
+        .expect("uniform scale drag should produce a placement");
+        assert!(
+            result.scale_vec3().x > 1.0,
+            "scale should grow when cursor moves away from anchor"
+        );
+    }
+
+    #[test]
+    fn axis_scale_drag_changes_component() {
+        let anchor = Vec3::ZERO;
+        let view = Vec3::new(0.0, 1.0, 1.0).normalize();
+        let start_ray = Ray3d::new(
+            Vec3::new(0.0, 10.0, 10.0),
+            Dir3::new_unchecked(Vec3::new(0.0, -0.7071, -0.7071)),
+        );
+        let current_ray = Ray3d::new(
+            Vec3::new(2.0, 10.0, 10.0),
+            Dir3::new_unchecked(Vec3::new(0.0, -0.7071, -0.7071)),
+        );
+        let result = apply_drag(
+            GizmoHandle::ScaleX,
+            &start_ray,
+            &current_ray,
+            start_placement(),
+            anchor,
+            layout(),
+            1.0,
+            Quat::IDENTITY,
+            GizmoCoordinateSpace::World,
+            TransformSnapSettings::default(),
+            false,
+            None,
+            0.05,
+            20.0,
+            None,
+            Some(view),
+        )
+        .expect("axis scale drag should produce a placement");
+        assert!(
+            result.scale_vec3().x > 1.0,
+            "X scale should increase along the dragged axis"
         );
     }
 }

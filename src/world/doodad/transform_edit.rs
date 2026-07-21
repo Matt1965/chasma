@@ -10,6 +10,7 @@ use super::placement::DoodadPlacement;
 use super::record::DoodadRecord;
 use crate::world::authoring_transform::{
     AuthoringScale, QuantizedOrientation, TransformCapabilities,
+    AUTHORING_INSTANCE_SCALE_MAX, AUTHORING_INSTANCE_SCALE_MIN,
 };
 use crate::world::occupancy::{
     DoodadRegistrationOptions, OccupancyCatalogs, apply_registration_plan,
@@ -31,6 +32,9 @@ pub struct DoodadTransformEditOptions {
     pub allow_overlap: bool,
     pub follow_ground: bool,
     pub bypass_placement_validation: bool,
+    /// Dev authoring: validate against [`AUTHORING_INSTANCE_SCALE_*`] instead of
+    /// definition procgen variation bounds (`min_scale` / `max_scale`).
+    pub bypass_definition_scale_range: bool,
 }
 
 /// Successful transform edit report.
@@ -94,7 +98,7 @@ pub fn update_doodad_transform(
         position = ground_position(world, position)?;
     }
     validate_translation(world, position)?;
-    validate_scale(definition, candidate.scale)?;
+    validate_scale(definition, candidate.scale, &options)?;
 
     let new_placement = DoodadPlacement::new(position, candidate.orientation, candidate.scale);
     let mut warnings = Vec::new();
@@ -178,14 +182,17 @@ fn validate_translation(
 fn validate_scale(
     definition: &DoodadDefinition,
     scale: AuthoringScale,
+    options: &DoodadTransformEditOptions,
 ) -> Result<(), TransformEditError> {
+    let (min, max) = if options.bypass_definition_scale_range {
+        (AUTHORING_INSTANCE_SCALE_MIN, AUTHORING_INSTANCE_SCALE_MAX)
+    } else {
+        (definition.min_scale, definition.max_scale)
+    };
     let vec = scale.to_vec3();
     for component in [vec.x, vec.y, vec.z] {
-        if component < definition.min_scale || component > definition.max_scale {
-            return Err(TransformEditError::ScaleOutOfRange {
-                min: definition.min_scale,
-                max: definition.max_scale,
-            });
+        if component < min || component > max {
+            return Err(TransformEditError::ScaleOutOfRange { min, max });
         }
     }
     if !definition.allow_nonuniform_instance_scale {

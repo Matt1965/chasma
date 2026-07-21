@@ -227,7 +227,8 @@ fn nearest_doodad_in_radius<'a>(
             };
             let doodad_global = record.placement.position.to_global(layout);
             let doodad_xz = Vec2::new(doodad_global.x, doodad_global.z);
-            let reach = radius_meters + definition.placement_radius_meters.max(0.5);
+            let reach = radius_meters
+                + crate::world::doodad_interaction_radius_meters(record, definition).max(0.5);
             let distance = center_xz.distance(doodad_xz);
             if distance > reach {
                 continue;
@@ -254,14 +255,17 @@ fn nearest_doodad_in_radius<'a>(
     }
 }
 
-fn building_pick_radius(definition: &crate::world::BuildingDefinition) -> f32 {
+fn building_pick_radius(
+    definition: &crate::world::BuildingDefinition,
+    uniform_scale: f32,
+) -> f32 {
     match &definition.footprint {
         FootprintSpec::Rectangle {
             width_meters,
             depth_meters,
-        } => (width_meters.max(*depth_meters) * 0.5).max(1.0),
-        FootprintSpec::Circle { radius_meters } => (*radius_meters).max(1.0),
-        FootprintSpec::MeshDerived => 2.0,
+        } => (width_meters.max(*depth_meters) * 0.5 * uniform_scale).max(1.0),
+        FootprintSpec::Circle { radius_meters } => (*radius_meters * uniform_scale).max(1.0),
+        FootprintSpec::MeshDerived => (2.0 * uniform_scale).max(1.0),
     }
 }
 
@@ -290,7 +294,8 @@ fn nearest_building_in_radius<'a>(
         };
         let building_global = record.placement.position.to_global(layout);
         let building_xz = Vec2::new(building_global.x, building_global.z);
-        let reach = radius_meters + building_pick_radius(definition);
+        let reach = radius_meters
+            + building_pick_radius(definition, record.placement.uniform_scale_f32());
         let distance = center_xz.distance(building_xz);
         if distance > reach {
             continue;

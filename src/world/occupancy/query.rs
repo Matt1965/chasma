@@ -4,7 +4,9 @@ use bevy::prelude::*;
 
 use super::catalog::FootprintCatalog;
 use super::cell::{QuantizedRotation, circle_overlap_blocked};
-use super::footprint::{agent_overlaps_footprint, effective_building_footprint};
+use super::footprint::{
+    agent_overlaps_footprint, effective_building_footprint_for_placement,
+};
 use super::registration::OccupancyCatalogs;
 use super::{OccupancyError, OccupancySource, conservative_block_radius_for_kind};
 use crate::world::{
@@ -160,7 +162,11 @@ fn building_overlap(
     let definition = building_catalog
         .get(&record.definition_id)
         .ok_or_else(|| OccupancyError::MissingBuildingDefinition(record.definition_id.clone()))?;
-    let shape = effective_building_footprint(definition, footprint_catalog)?;
+    let shape = effective_building_footprint_for_placement(
+        definition,
+        footprint_catalog,
+        record.placement.uniform_scale_f32(),
+    )?;
     let rotation = QuantizedRotation::from_quat(record.placement.rotation)?;
     let anchor_global = record.placement.position.to_global(layout);
     let anchor_xz = Vec2::new(anchor_global.x, anchor_global.z);

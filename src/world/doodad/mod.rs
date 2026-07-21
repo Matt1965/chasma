@@ -38,7 +38,9 @@ pub use catalog::{
     default_blocks_movement,
 };
 pub use collision::{
-    DoodadInstanceCollision, resolve_doodad_collision, resolve_doodad_collision_from_catalog,
+    DoodadInstanceCollision, doodad_authored_interaction_radius_meters, doodad_composed_xz_scale,
+    doodad_definition_placement_radius_meters, doodad_interaction_radius_meters,
+    resolve_doodad_collision, resolve_doodad_collision_from_catalog,
     tilted_blocker_projection_warning,
 };
 pub use exclusion::{

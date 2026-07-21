@@ -207,6 +207,8 @@ impl BuildingImportRow {
                 definition.with_model_yaw_correction_degrees(rotation_correction.yaw_degrees());
         }
 
+        crate::world::asset_sizing::normalize_building_sizing_authority(&mut definition);
+
         Ok(definition)
     }
 }

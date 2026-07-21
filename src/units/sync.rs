@@ -91,15 +91,15 @@ pub fn sync_unit_render_entities(
         };
         let render_scale = catalog
             .get(&record.definition_id)
-            .map(crate::world::unit_baseline_render_scale)
-            .unwrap_or(1.0);
+            .map(crate::world::unit_visual_scale)
+            .unwrap_or(Vec3::ONE);
         let layout = config.chunk_layout();
         let translation =
             world_position_to_render_global(record.placement.position, layout, vertical_scale);
         commands.entity(entity).insert(Transform {
             translation,
             rotation: record.placement.rotation,
-            scale: Vec3::splat(render_scale),
+            scale: render_scale,
         });
     }
 
@@ -135,7 +135,7 @@ pub fn sync_unit_render_entities(
             scene,
             &config,
             vertical_scale,
-            crate::world::unit_baseline_render_scale(definition),
+            crate::world::unit_visual_scale(definition),
         );
         index.0.insert(id, entity);
     }

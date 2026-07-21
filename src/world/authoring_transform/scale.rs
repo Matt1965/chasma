@@ -19,6 +19,10 @@ pub const SCALE_MILLI_ONE: i32 = 1_000;
 pub const SCALE_MILLI_MIN: i32 = 50;
 pub const SCALE_MILLI_MAX: i32 = 20_000;
 
+/// Authoritative per-instance scale bounds for transform editing (ADR-097).
+pub const AUTHORING_INSTANCE_SCALE_MIN: f32 = SCALE_MILLI_MIN as f32 / SCALE_MILLI_ONE as f32;
+pub const AUTHORING_INSTANCE_SCALE_MAX: f32 = SCALE_MILLI_MAX as f32 / SCALE_MILLI_ONE as f32;
+
 impl FixedScale {
     pub const ONE: Self = Self(SCALE_MILLI_ONE);
 

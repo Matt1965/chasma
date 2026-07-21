@@ -5,11 +5,13 @@ use std::path::Path;
 use crate::world::asset_sizing::{
     AssetSizingDefinition, AssetSizingError, AssetSizingReport, BaselineScaleResult,
     SizeReferenceAxis, SizingMigrationState, SizingPolicy, SourceBoundsOrigin, SourceDimensions,
-    calculate_baseline_scale, check_suspected_unit_mismatch, quantize_baseline_scale,
+    calculate_baseline_scale, check_suspected_unit_mismatch,
+    normalize_source_dimensions_to_desired, quantize_baseline_scale,
 };
 use crate::world::authoring_transform::{AuthoringScale, BuildingTransformSafetyClass};
 
 use super::bounds::{asset_path_for_render_key, measure_glb_source_bounds};
+use super::targets::apply_building_footprint_sizing_targets;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ContentSizingKind {
@@ -29,6 +31,10 @@ pub struct SizingResolveInput<'a> {
     pub legacy_uniform_scale: Option<f32>,
     pub building_footprint_width_meters: Option<f32>,
     pub building_footprint_depth_meters: Option<f32>,
+    /// When Desired*M columns are absent, doodad import may infer height from kind defaults.
+    pub doodad_kind_height_hint_meters: Option<f32>,
+    /// When Desired Height M is absent, unit import may infer from id / collision radius.
+    pub unit_height_hint_meters: Option<f32>,
 }
 
 pub fn resolve_content_sizing(mut input: SizingResolveInput<'_>) -> AssetSizingReport {
@@ -87,6 +93,10 @@ pub fn resolve_content_sizing(mut input: SizingResolveInput<'_>) -> AssetSizingR
         return report;
     }
 
+    if try_infer_metric_targets(&mut input, &mut report) {
+        return report;
+    }
+
     if let Some(legacy) = input.legacy_uniform_scale {
         input.sizing.calculated_baseline_scale = AuthoringScale::from_uniform_f32(legacy).ok();
         input.sizing.migration_state = SizingMigrationState::LegacyExplicitScale;
@@ -100,23 +110,104 @@ pub fn resolve_content_sizing(mut input: SizingResolveInput<'_>) -> AssetSizingR
     } else {
         input.sizing.calculated_baseline_scale = Some(AuthoringScale::uniform_one());
         input.sizing.migration_state = SizingMigrationState::MissingSizingData;
-        report
-            .warnings
-            .push("missing sizing metadata — using scale 1.0".into());
+        report.errors.push(
+            "AT1 MissingSizingData: no Desired meters and no explicit baseline — using scale 1.0; author Desired*M or ExplicitBaselineScale and re-import"
+                .into(),
+        );
+        report.warnings.push(
+            "AT1: catalog lacks metric sizing — runtime presentation may be microscopic or enormous until migrated"
+                .into(),
+        );
     }
 
     report
+}
+
+fn try_infer_metric_targets(
+    input: &mut SizingResolveInput<'_>,
+    report: &mut AssetSizingReport,
+) -> bool {
+    if input.sizing.has_desired_dimensions() {
+        return false;
+    }
+
+    let backup = input.sizing.clone();
+    let inferred = match input.kind {
+        ContentSizingKind::Unit => {
+            let Some(height) = input
+                .unit_height_hint_meters
+                .filter(|height| *height > 0.0)
+            else {
+                return false;
+            };
+            input.sizing.desired_height_meters = Some(height);
+            input.sizing.size_reference_axis = Some(SizeReferenceAxis::Height);
+            "unit height hint"
+        }
+        ContentSizingKind::Doodad => {
+            let Some(height) = input
+                .doodad_kind_height_hint_meters
+                .filter(|height| *height > 0.0)
+            else {
+                return false;
+            };
+            input.sizing.desired_height_meters = Some(height);
+            input.sizing.size_reference_axis = Some(SizeReferenceAxis::Height);
+            "doodad kind height"
+        }
+        ContentSizingKind::Building { .. } => {
+            let (Some(width), Some(depth)) = (
+                input.building_footprint_width_meters,
+                input.building_footprint_depth_meters,
+            ) else {
+                return false;
+            };
+            apply_building_footprint_sizing_targets(input.sizing, width, depth);
+            "building footprint"
+        }
+    };
+
+    match resolve_from_desired_dimensions(input) {
+        Ok((result, warnings)) => {
+            apply_baseline_result(input.sizing, &result);
+            fill_report_success(report, input.sizing, &result);
+            report.warnings.extend(warnings);
+            report.warnings.push(format!(
+                "inferred desired meters from {inferred} — add Desired*M to Excel for explicit authoring"
+            ));
+            true
+        }
+        Err(err) => {
+            *input.sizing = backup;
+            report
+                .warnings
+                .push(format!("{inferred} sizing inference failed: {err}"));
+            false
+        }
+    }
 }
 
 fn resolve_from_desired_dimensions(
     input: &mut SizingResolveInput<'_>,
 ) -> Result<(BaselineScaleResult, Vec<String>), AssetSizingError> {
     let path = asset_path_for_render_key(input.asset_root, input.render_key);
-    let (source, origin, mut warnings) = measure_glb_source_bounds(
+    let (mut source, origin, mut warnings) = measure_glb_source_bounds(
         &path,
         input.sizing.explicit_source_dimensions,
         input.sizing.source_bounds_node.as_deref(),
     )?;
+
+    let (normalized, unit_note, unit_divisor) = normalize_source_dimensions_to_desired(
+        source,
+        input.sizing.desired_width_meters,
+        input.sizing.desired_height_meters,
+        input.sizing.desired_depth_meters,
+    );
+    source = normalized;
+    input.sizing.source_bounds_unit_divisor = unit_divisor;
+    if let Some(note) = unit_note {
+        warnings.push(note);
+    }
 
     input.sizing.calculated_source_bounds = Some(source);
     input.sizing.source_bounds_origin = Some(origin);
@@ -149,6 +240,9 @@ fn resolve_from_desired_dimensions(
 
     let policy = match input.kind {
         ContentSizingKind::Doodad if desired_count == 3 => SizingPolicy::DoodadNonUniform,
+        ContentSizingKind::Building { .. } if desired_count == 3 => {
+            SizingPolicy::DoodadNonUniform
+        }
         ContentSizingKind::Doodad => SizingPolicy::ReferenceAxisUniform,
         _ => SizingPolicy::ReferenceAxisUniform,
     };

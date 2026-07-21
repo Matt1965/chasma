@@ -5,7 +5,6 @@
 
 use bevy::prelude::*;
 
-use super::asset_pivot::effective_model_local_offset;
 use super::catalog::{BuildingCatalog, BuildingDefinition, BuildingDefinitionId};
 use super::ownership::BuildingOwnership;
 use super::placement::BuildingPlacement;
@@ -13,7 +12,9 @@ use super::placement_validation::{
     BuildingPlacementConfig, BuildingPlacementContext, BuildingPlacementValidation,
     rotation_from_quadrants,
 };
-use crate::world::building_baseline_render_scale;
+use crate::world::asset_sizing::{
+    building_effective_model_offset, building_visual_scale, sizing_rotation_correction,
+};
 use crate::world::{
     FootprintCatalog, QuantizedRotation, WorldData, WorldPosition,
     effective_building_footprint_for_placement, ground_world_position,
@@ -162,31 +163,36 @@ pub fn build_building_placement_plan(
     }
 }
 
-/// Authoritative anchor transform (footprint pivot) without model correction.
+/// Authoritative anchor transform (footprint pivot) — placement pose only.
+///
+/// AT2: definition rotation correction and visual scale live on the model child / flat
+/// composed transform so yaw is not applied twice.
 pub fn building_anchor_world_transform(
-    definition: &BuildingDefinition,
+    _definition: &BuildingDefinition,
     placement: &BuildingPlacement,
     layout: crate::world::ChunkLayout,
 ) -> Transform {
-    let yaw_correction = definition.model_yaw_correction_radians();
     Transform {
         translation: placement.position.to_global(layout),
-        rotation: placement.rotation * Quat::from_rotation_y(yaw_correction),
+        rotation: placement.rotation,
         scale: Vec3::ONE,
     }
 }
 
 /// Local model correction for off-origin GLBs (child transform under anchor).
+///
+/// Prefer [`crate::world::building_model_child_local_transform`] which includes rotation
+/// correction and composed visual scale (AT2).
 pub fn building_model_correction_local_transform(definition: &BuildingDefinition) -> Transform {
     Transform {
-        translation: effective_model_local_offset(definition),
+        translation: building_effective_model_offset(definition),
         rotation: Quat::IDENTITY,
         scale: Vec3::ONE,
     }
 }
 
 pub fn building_has_model_correction(definition: &BuildingDefinition) -> bool {
-    effective_model_local_offset(definition) != Vec3::ZERO
+    building_effective_model_offset(definition) != Vec3::ZERO
 }
 
 /// Anchor transform in render space (terrain vertical scale on ground Y only).
@@ -202,20 +208,23 @@ pub fn building_anchor_render_transform(
     transform
 }
 
-/// Authoritative model placement transform in world space (before render vertical scale).
+/// Composed model presentation transform in world space (before render vertical scale).
+///
+/// Scale = definition baseline × instance (AT2). Rotation = placement × definition correction.
+/// Offset is local and not multiplied by visual scale (matches model-child TRS).
 pub fn building_model_world_transform(
     definition: &BuildingDefinition,
     placement: &BuildingPlacement,
     layout: crate::world::ChunkLayout,
 ) -> Transform {
     let anchor = building_anchor_world_transform(definition, placement, layout);
-    let instance_scale = placement.uniform_scale_f32();
-    let offset = anchor.rotation * effective_model_local_offset(definition) * instance_scale;
-    let render_scale = building_baseline_render_scale(definition) * instance_scale;
+    let correction = sizing_rotation_correction(definition.asset_sizing.rotation_correction);
+    let world_rotation = anchor.rotation * correction;
+    let offset = world_rotation * building_effective_model_offset(definition);
     Transform {
         translation: anchor.translation + offset,
-        rotation: anchor.rotation,
-        scale: Vec3::splat(render_scale),
+        rotation: world_rotation,
+        scale: building_visual_scale(definition, placement.uniform_scale_f32()),
     }
 }
 

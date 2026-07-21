@@ -180,6 +180,60 @@ pub fn check_suspected_unit_mismatch(
     }
 }
 
+/// Rescale measured GLB bounds when they look like mm/cm but desired targets are meters.
+///
+/// Many Blender exports arrive as millimeters while the sizing pipeline assumes meters.
+/// Without this pass a 1.2 m chest authored at 1200 units needs baseline 0.0008, below
+/// [`FixedScale`] quantization — import would fail and runtime stays at 1.0× (mountain chest).
+pub fn normalize_source_dimensions_to_desired(
+    source: SourceDimensions,
+    desired_width: Option<f32>,
+    desired_height: Option<f32>,
+    desired_depth: Option<f32>,
+) -> (SourceDimensions, Option<String>, f32) {
+    let target = [desired_width, desired_height, desired_depth]
+        .into_iter()
+        .flatten()
+        .find(|value| value.is_finite() && *value > 0.0);
+    let Some(target) = target else {
+        return (source, None, 1.0);
+    };
+
+    let max_source = source
+        .width_meters
+        .max(source.height_meters)
+        .max(source.depth_meters);
+    if max_source <= target * 25.0 {
+        return (source, None, 1.0);
+    }
+
+    for divisor in [1000.0_f32, 100.0, 10.0] {
+        let corrected = SourceDimensions {
+            width_meters: source.width_meters / divisor,
+            height_meters: source.height_meters / divisor,
+            depth_meters: source.depth_meters / divisor,
+        };
+        if !corrected.is_valid() {
+            continue;
+        }
+        let max_corrected = corrected
+            .width_meters
+            .max(corrected.height_meters)
+            .max(corrected.depth_meters);
+        if max_corrected <= target * 25.0 && max_corrected >= target / 25.0 {
+            return (
+                corrected,
+                Some(format!(
+                    "source bounds rescaled ÷{divisor:.0} (suspected non-meter export vs {target:.2} m desired)"
+                )),
+                divisor,
+            );
+        }
+    }
+
+    (source, None, 1.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -250,5 +304,15 @@ mod tests {
             err,
             AssetSizingError::SourceBoundsInvalid { .. } | AssetSizingError::SourceAxisZero { .. }
         ));
+    }
+
+    #[test]
+    fn mm_export_normalizes_with_divisor() {
+        let source = source(1200.0, 800.0, 600.0);
+        let (normalized, note, divisor) =
+            normalize_source_dimensions_to_desired(source, Some(1.0), Some(0.85), Some(0.8));
+        assert!((divisor - 1000.0).abs() < f32::EPSILON);
+        assert!((normalized.width_meters - 1.2).abs() < 0.01);
+        assert!(note.is_some());
     }
 }

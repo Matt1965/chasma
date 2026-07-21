@@ -14,4 +14,8 @@ impl DoodadRenderKey {
     pub fn reserved(key: impl Into<String>) -> Self {
         Self(Some(key.into()))
     }
+
+    pub fn as_str(&self) -> Option<&str> {
+        self.0.as_deref()
+    }
 }

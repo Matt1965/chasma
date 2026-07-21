@@ -8,13 +8,16 @@ use crate::world::{UnitId, UnitRecord, WorldConfig};
 use super::components::{UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot};
 
 /// Spawn a glTF scene entity for an authoritative unit record.
+///
+/// `visual_scale` is the composed presentation scale (definition baseline × instance;
+/// units have no instance scale today — pass [`crate::world::unit_visual_scale`]).
 pub fn spawn_unit_render_entity(
     commands: &mut Commands,
     record: &UnitRecord,
     scene: Handle<Scene>,
     config: &WorldConfig,
     vertical_scale: f32,
-    render_scale: f32,
+    visual_scale: Vec3,
 ) -> Entity {
     let layout = config.chunk_layout();
     let translation =
@@ -30,7 +33,7 @@ pub fn spawn_unit_render_entity(
             Transform {
                 translation,
                 rotation: record.placement.rotation,
-                scale: Vec3::splat(render_scale),
+                scale: visual_scale,
             },
             Visibility::default(),
         ))

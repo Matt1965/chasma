@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use crate::terrain::TerrainRenderAssets;
 use crate::world::{
     BuildingCatalog, BuildingPlacementRejectReason, FootprintCatalog, QuantizedRotation,
-    WorldConfig, WorldData, effective_building_footprint, occupied_cells_for_footprint,
+    WorldConfig, WorldData, effective_building_footprint_for_placement, occupied_cells_for_footprint,
     rotation_from_quadrants,
 };
 
@@ -71,7 +71,8 @@ pub fn draw_build_mode_ghost(
     let Some(definition) = building_catalog.get(definition_id) else {
         return;
     };
-    let Ok(shape) = effective_building_footprint(definition, &footprint_catalog) else {
+    let Ok(shape) = effective_building_footprint_for_placement(definition, &footprint_catalog, 1.0)
+    else {
         return;
     };
 

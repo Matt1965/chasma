@@ -41,6 +41,7 @@ pub fn handle_doodad_transform_hotkeys(
         follow_ground: keyboard.pressed(KeyCode::KeyG),
         allow_overlap: keyboard.pressed(KeyCode::KeyO),
         bypass_placement_validation: false,
+        bypass_definition_scale_range: false,
     };
     let occ = OccupancyCatalogs {
         doodad: &doodad_catalog,

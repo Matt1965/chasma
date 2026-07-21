@@ -196,6 +196,28 @@ fn kind_defaults(kind: DoodadKind) -> (f32, Option<f32>) {
     }
 }
 
+/// Default trunk/obstacle radius when the workbook omits Block Radius (not placement spacing).
+fn kind_default_block_radius_meters(kind: DoodadKind) -> f32 {
+    match kind {
+        DoodadKind::Tree => 1.0,
+        DoodadKind::Rock => 1.0,
+        DoodadKind::Bush => 0.75,
+        DoodadKind::Ruin => 4.0,
+        DoodadKind::ResourceNode => 1.5,
+    }
+}
+
+/// Typical visual height for import sizing when Desired*M columns are absent.
+pub fn kind_default_visual_height_meters(kind: DoodadKind) -> f32 {
+    match kind {
+        DoodadKind::Tree => 8.0,
+        DoodadKind::Rock => 2.0,
+        DoodadKind::Bush => 1.5,
+        DoodadKind::Ruin => 6.0,
+        DoodadKind::ResourceNode => 2.0,
+    }
+}
+
 fn allowed_biomes_for_row(biome: &str) -> Result<Vec<BiomeId>, String> {
     if biome.trim().is_empty() {
         return Ok(BiomeId::all_assigned().to_vec());
@@ -212,7 +234,9 @@ impl DoodadImportRow {
         let blocks_movement = self
             .blocks_movement
             .unwrap_or_else(|| default_blocks_movement(kind));
-        let block_radius_meters = self.block_radius_meters.unwrap_or(placement_radius);
+        let block_radius_meters = self
+            .block_radius_meters
+            .unwrap_or_else(|| kind_default_block_radius_meters(kind));
         let base_rx = self
             .base_collision_radius_x_meters
             .unwrap_or(block_radius_meters);
@@ -379,7 +403,7 @@ mod tests {
         assert!((def.min_scale - 0.85).abs() < f32::EPSILON);
         assert!((def.max_scale - 1.15).abs() < f32::EPSILON);
         assert!(def.blocks_movement);
-        assert_eq!(def.block_radius_meters, def.placement_radius_meters);
+        assert_eq!(def.block_radius_meters, 1.0);
     }
 
     #[test]

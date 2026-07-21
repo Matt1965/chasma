@@ -143,11 +143,23 @@ impl BuildingDefinition {
 
     pub fn with_model_local_offset(mut self, offset: Vec3) -> Self {
         self.model_local_offset = offset;
+        // AT1: asset_sizing is authoritative; keep legacy field as mirror.
+        self.asset_sizing.model_local_offset_meters = offset;
         self
     }
 
     pub fn with_model_yaw_correction_degrees(mut self, degrees: f32) -> Self {
         self.model_yaw_correction_degrees = degrees;
+        if let Ok(rot) = crate::world::QuantizedOrientation::from_degrees(degrees, 0.0, 0.0) {
+            self.asset_sizing.rotation_correction = rot;
+        }
+        self
+    }
+
+    /// AT1: attach full metric sizing block (desired meters, source, baseline, corrections).
+    pub fn with_asset_sizing(mut self, asset_sizing: AssetSizingDefinition) -> Self {
+        self.asset_sizing = asset_sizing;
+        crate::world::asset_sizing::sync_building_legacy_mirrors_from_sizing(&mut self);
         self
     }
 

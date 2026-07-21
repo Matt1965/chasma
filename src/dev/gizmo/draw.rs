@@ -200,6 +200,7 @@ fn draw_handle(
             );
         }
         GizmoHandle::ScaleX | GizmoHandle::ScaleY | GizmoHandle::ScaleZ => {
+            // Instance scale is always edited in local axes (independent of L world/local toggle).
             let axis = oriented_axis(
                 handle.axis().unwrap(),
                 object_rotation,

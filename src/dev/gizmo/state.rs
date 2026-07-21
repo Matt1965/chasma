@@ -68,6 +68,10 @@ pub struct TransformEditState {
     pub dragging: bool,
     pub drag_start_ray: Option<Ray3d>,
     pub drag_start_placement: Option<DoodadPreviewPlacement>,
+    /// Camera-facing direction frozen at drag start (anchor → camera). Used for stable
+    /// uniform scale drags; recomputing from the cursor ray each frame makes the scale
+    /// plane spin and the drag math returns `None` or near-zero deltas.
+    pub drag_scale_view_dir: Option<Vec3>,
     pub preview_placement: Option<DoodadPreviewPlacement>,
     pub snap: TransformSnapSettings,
     pub preview_valid: bool,
@@ -92,11 +96,22 @@ impl TransformEditState {
         self.target.is_some() && self.mode.is_transform()
     }
 
-    pub fn begin_drag(&mut self, handle: GizmoHandle, ray: Ray3d, start: DoodadPreviewPlacement) {
+    pub fn begin_drag(
+        &mut self,
+        handle: GizmoHandle,
+        ray: Ray3d,
+        start: DoodadPreviewPlacement,
+        scale_view_dir: Vec3,
+    ) {
         self.active_handle = Some(handle);
         self.dragging = true;
         self.drag_start_ray = Some(ray);
         self.drag_start_placement = Some(start);
+        self.drag_scale_view_dir = if scale_view_dir.length_squared() > 1e-6 {
+            Some(scale_view_dir.normalize())
+        } else {
+            None
+        };
         self.preview_placement = Some(start);
         self.preview_valid = true;
         self.last_error.clear();
@@ -110,6 +125,7 @@ impl TransformEditState {
         self.dragging = false;
         self.drag_start_ray = None;
         self.drag_start_placement = None;
+        self.drag_scale_view_dir = None;
         self.axis_constraint = None;
         self.preview_valid = true;
         self.last_error.clear();
@@ -120,6 +136,7 @@ impl TransformEditState {
         self.dragging = false;
         self.drag_start_ray = None;
         self.drag_start_placement = None;
+        self.drag_scale_view_dir = None;
         self.axis_constraint = None;
     }
 

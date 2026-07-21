@@ -27,6 +27,7 @@ mod tool_state_tests {
             GizmoHandle::TranslateX,
             Ray3d::new(Vec3::ZERO, Dir3::X),
             start,
+            Vec3::Y,
         );
         edit.preview_placement = Some(DoodadPreviewPlacement {
             position: WorldPosition::new(

@@ -72,6 +72,8 @@ pub struct DevModeState {
     /// Raw search text (persisted); filtered via [`super::catalog_cache::DevSearchDebounce`].
     pub search_query: String,
     pub selected_definition: Option<DefinitionId>,
+    /// Set when a catalog Place tool is armed; consumed by gizmo sync to clear world selection once.
+    pub clear_world_selection_for_place: bool,
     pub spawn_mode: SpawnMode,
     pub enabled_only: bool,
     pub debug_config: DebugOverlayConfig,
@@ -108,6 +110,7 @@ impl Default for DevModeState {
             active_tab: DevTab::Units,
             search_query: String::new(),
             selected_definition: None,
+            clear_world_selection_for_place: false,
             spawn_mode: SpawnMode::Unit,
             enabled_only: true,
             debug_config: DebugOverlayConfig::production(),
@@ -201,6 +204,7 @@ impl DevModeState {
             DefinitionId::Building(_) => SpawnMode::Building,
         };
         self.selected_definition = Some(id);
+        self.clear_world_selection_for_place = true;
     }
 
     pub fn cycle_spawn_affiliation(&mut self) {

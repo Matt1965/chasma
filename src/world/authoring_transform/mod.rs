@@ -12,6 +12,7 @@ pub use orientation::{
     OrientationError, QuantizedOrientation, canonicalize_millidegrees, degrees_to_millidegrees,
 };
 pub use scale::{
-    AuthoringScale, FixedScale, SCALE_MILLI_MAX, SCALE_MILLI_MIN, SCALE_MILLI_ONE, ScaleError,
+    AuthoringScale, FixedScale, AUTHORING_INSTANCE_SCALE_MAX, AUTHORING_INSTANCE_SCALE_MIN,
+    SCALE_MILLI_MAX, SCALE_MILLI_MIN, SCALE_MILLI_ONE, ScaleError,
 };
 pub use transform::AuthoringTransform;

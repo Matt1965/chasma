@@ -720,6 +720,16 @@ Potential future systems:
 | **DT3** | **Done** | On-screen translate/rotate/scale gizmos, drag preview, authoritative commit |
 | DT4 | Done | Building Dev transform editing (yaw + uniform scale policy) |
 
+### AT — Asset Transform Standardization (post-DT)
+
+| Phase | Status | Scope |
+|-------|--------|-------|
+| **AT0** | **Design** | ADR-126: meters-first architecture; catalog authority; import bake; definition vs instance; doodad/building rules; collision one-truth; Dev meters UI; migration + AT1–AT5 roadmap. No code/assets/Excel in AT0. |
+| **AT1** | **Done** | ADR-127: catalog `AssetSizingDefinition` authority; building legacy mirror sync; Dev meters panel; louder MissingSizingData. No runtime transform pipeline change. |
+| **AT2** | **Done** | ADR-128: single composed visual scale (definition baseline × instance); ECS Transform presentation-only; building yaw applied once. Collision deferred to AT3. |
+| **AT3** | **Done** | ADR-129: gameplay collision/pick/placement/occupancy share metric composition; doodad None/Baked scaled; building instance scale on queries; visual↔footprint validation. |
+| AT4+ | Planned | See ADR-126 (bake guarantees, CI gates, unit collision validation). |
+
 DT1 does **not** include transform gizmos, doodad transform APIs, or gameplay collision changes.
 DT2 adds doodad transform APIs and collision scaling.
 DT3 adds on-screen gizmos; DT4 adds authoritative building transform commit, persistence, and calibration export.

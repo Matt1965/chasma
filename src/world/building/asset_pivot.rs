@@ -1,7 +1,8 @@
 //! Built-in render pivot corrections for GLBs exported off-origin (ADR-096 BP-CLEANUP).
 //!
-//! [`super::catalog::BuildingDefinition::model_local_offset`] takes precedence. When zero,
-//! known render keys may supply a documented correction before catalog migration.
+//! AT1 (ADR-126/127): [`super::catalog::BuildingDefinition::asset_sizing`] is authoritative.
+//! Legacy `model_local_offset` is a mirror. Builtins remain a temporary fallback until AT2
+//! content bake migrates them into catalog `asset_sizing` permanently.
 
 use bevy::prelude::*;
 
@@ -16,8 +17,11 @@ pub fn builtin_model_local_offset(render_key: &str) -> Option<Vec3> {
     }
 }
 
-/// Effective model offset: explicit catalog data, else built-in correction for the render key.
+/// Effective model offset: `asset_sizing` first, then legacy mirror, then builtin.
 pub fn effective_model_local_offset(definition: &BuildingDefinition) -> Vec3 {
+    if definition.asset_sizing.model_local_offset_meters != Vec3::ZERO {
+        return definition.asset_sizing.model_local_offset_meters;
+    }
     if definition.model_local_offset != Vec3::ZERO {
         return definition.model_local_offset;
     }

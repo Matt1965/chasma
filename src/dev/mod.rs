@@ -155,8 +155,13 @@ impl Plugin for DevModePlugin {
             )
             .add_systems(
                 Update,
-                (sync_inspector_panel, refresh_inspector_snapshot)
-                    .chain()
+                sync_inspector_panel.in_set(DevModeInputSystems),
+            )
+            .add_systems(
+                Update,
+                refresh_inspector_snapshot
+                    .after(handle_inspector_input)
+                    .after(sync_gizmo_target)
                     .in_set(DevModeInputSystems),
             )
             .add_systems(
@@ -179,15 +184,7 @@ impl Plugin for DevModePlugin {
             .add_systems(Update, sync_dev_debug_controls.in_set(DevModeInputSystems))
             .add_systems(
                 Update,
-                sync_gizmo_target
-                    .after(refresh_inspector_snapshot)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                handle_gizmo_keyboard
-                    .after(sync_gizmo_target)
-                    .in_set(DevModeInputSystems),
+                handle_gizmo_keyboard.in_set(DevModeInputSystems),
             )
             .add_systems(
                 Update,
@@ -200,6 +197,15 @@ impl Plugin for DevModePlugin {
                 Update,
                 handle_inspector_input
                     .after(sync_dev_panel_tab_sections)
+                    .before(handle_dev_spawn_click)
+                    .in_set(DevModeInputSystems),
+            )
+            // After inspector so a fresh doodad/building pick arms gizmos the same frame
+            // without letting handle_gizmo_mouse treat that click as a TranslateXZ grab.
+            .add_systems(
+                Update,
+                sync_gizmo_target
+                    .after(handle_inspector_input)
                     .before(handle_dev_spawn_click)
                     .in_set(DevModeInputSystems),
             )
@@ -234,6 +240,9 @@ impl Plugin for DevModePlugin {
             .add_systems(
                 Update,
                 (
+                    apply_doodad_transform_preview,
+                    apply_building_transform_preview,
+                    draw_transform_gizmo,
                     sync_dev_terrain_field_panel,
                     update_dev_terrain_field_probe,
                     draw_dev_terrain_field_gizmos,

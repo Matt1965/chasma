@@ -41,13 +41,17 @@ pub use weapon::{
 
 pub use asset_sizing::{
     AssetSizingDefinition, AssetSizingError, AssetSizingReport, BaselineScaleResult,
-    DoodadCollisionShape, DoodadGroundingMode, SizeReferenceAxis, SizingMigrationState,
-    SizingPolicy, SourceBoundsOrigin, SourceDimensions, building_baseline_render_scale,
-    building_model_child_local_transform, building_uses_model_child, calculate_baseline_scale,
-    doodad_baseline_render_scale, doodad_final_render_scale,
-    doodad_visual_collision_mismatch_warning, finalize_building_definition,
-    finalize_doodad_definition, finalize_unit_definition, quantize_baseline_scale, sort_reports,
-    unit_baseline_render_scale,
+    DoodadCollisionShape, DoodadGroundingMode, SizeReferenceAxis, SizingAuthorityIssue,
+    SizingMigrationState, SizingPolicy, SourceBoundsOrigin, SourceDimensions,
+    building_baseline_render_scale, building_model_child_local_transform, building_uses_model_child,
+    building_visual_footprint_mismatch_warning, building_visual_scale, calculate_baseline_scale,
+    compose_visual_scale, definition_visual_baseline, doodad_baseline_render_scale,
+    doodad_final_render_scale, doodad_visual_collision_mismatch_warning, doodad_visual_scale,
+    finalize_building_definition,
+    finalize_doodad_definition, finalize_unit_definition, normalize_building_sizing_authority,
+    quantize_baseline_scale, sort_reports, sync_building_legacy_mirrors_from_sizing,
+    unit_baseline_render_scale, unit_visual_scale, validate_building_sizing_authority,
+    validate_sizing_migration_state,
 };
 pub use authoring_transform::{
     AuthoringScale, AuthoringTransform, BuildingTransformSafetyClass, FixedScale, OrientationError,
@@ -180,6 +184,8 @@ pub use doodad::{
     lookup_doodad, materialize_candidates, materialize_candidates_with_exclusion,
     materialize_candidates_with_options, move_doodad, nudge_doodad_position, remove_doodad,
     resolve_doodad_collision, resolve_doodad_collision_from_catalog,
+    doodad_authored_interaction_radius_meters, doodad_composed_xz_scale,
+    doodad_definition_placement_radius_meters, doodad_interaction_radius_meters,
     tilted_blocker_projection_warning, try_materialize_procedural_chunk_doodads,
     update_doodad_transform,
 };

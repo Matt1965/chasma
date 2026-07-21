@@ -18,6 +18,8 @@ pub struct DoodadCatalog {
     definitions: Vec<DoodadDefinition>,
     by_id: HashMap<DoodadDefinitionId, usize>,
     by_kind: HashMap<DoodadKind, Vec<usize>>,
+    /// Legacy scene/procgen ids that resolve to an existing definition (same index, no duplicate row).
+    legacy_aliases: HashMap<DoodadDefinitionId, usize>,
 }
 
 impl Default for DoodadCatalog {
@@ -46,7 +48,29 @@ impl DoodadCatalog {
             definitions,
             by_id,
             by_kind,
+            legacy_aliases: HashMap::new(),
         })
+    }
+
+    /// Map legacy definition ids (e.g. scene `tree_oak`) onto canonical Excel-imported rows by id.
+    ///
+    /// Skips aliases when the canonical id is missing or the alias id already owns a definition.
+    pub fn with_legacy_aliases(
+        mut self,
+        aliases: impl IntoIterator<Item = (DoodadDefinitionId, DoodadDefinitionId)>,
+    ) -> Result<Self, DoodadCatalogError> {
+        for (alias, canonical) in aliases {
+            if self.by_id.contains_key(&alias) {
+                continue;
+            }
+            let Some(&index) = self.by_id.get(&canonical) else {
+                continue;
+            };
+            if self.legacy_aliases.insert(alias, index).is_some() {
+                return Err(DoodadCatalogError::DuplicateId(canonical));
+            }
+        }
+        Ok(self)
     }
 
     pub fn len(&self) -> usize {
@@ -63,7 +87,10 @@ impl DoodadCatalog {
     }
 
     pub fn get(&self, id: &DoodadDefinitionId) -> Option<&DoodadDefinition> {
-        self.by_id.get(id).map(|&index| &self.definitions[index])
+        self.by_id
+            .get(id)
+            .or_else(|| self.legacy_aliases.get(id))
+            .map(|&index| &self.definitions[index])
     }
 
     pub fn definitions_for_kind(
@@ -86,6 +113,7 @@ pub enum DoodadCatalogError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::doodad::catalog::definition::DoodadDefinition;
     use crate::world::DoodadRenderKey;
 
     fn starter_catalog() -> DoodadCatalog {
@@ -191,5 +219,33 @@ mod tests {
     fn default_catalog_is_empty_without_test_fixtures() {
         let catalog = DoodadCatalog::from_definitions(Vec::new()).unwrap();
         assert!(catalog.is_empty());
+    }
+
+    #[test]
+    fn legacy_alias_resolves_to_canonical_definition() {
+        let defs = vec![DoodadDefinition::new(
+            DoodadDefinitionId::new("d_0001"),
+            DoodadKind::Tree,
+            "Oak",
+            4.0,
+            0.5,
+            1.5,
+            None,
+            None,
+            Some(25.0),
+            true,
+            DoodadRenderKey::reserved("tree/oak"),
+        )];
+        let catalog = DoodadCatalog::from_definitions(defs)
+            .unwrap()
+            .with_legacy_aliases([(
+                DoodadDefinitionId::new("tree_oak"),
+                DoodadDefinitionId::new("d_0001"),
+            )])
+            .unwrap();
+        assert!(catalog.get(&DoodadDefinitionId::new("d_0001")).is_some());
+        let oak = catalog.get(&DoodadDefinitionId::new("tree_oak")).unwrap();
+        assert_eq!(oak.id.as_str(), "d_0001");
+        assert_eq!(oak.render_key.as_str(), Some("tree/oak"));
     }
 }

@@ -170,7 +170,7 @@ fn agent_radius_for_definition(ctx: &PlacementValidateContext<'_>) -> f32 {
         DefinitionId::Doodad(id) => ctx
             .doodad_catalog
             .get(id)
-            .map(|def| def.placement_radius_meters.max(def.block_radius_meters))
+            .map(crate::world::doodad_definition_placement_radius_meters)
             .unwrap_or(0.5),
         DefinitionId::Building(id) => ctx
             .building_catalog

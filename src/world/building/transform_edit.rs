@@ -19,6 +19,7 @@ use super::record::BuildingRecord;
 use crate::world::TransformEditError as DoodadTransformEditError;
 use crate::world::authoring_transform::{
     BuildingTransformSafetyClass, FixedScale, QuantizedOrientation, TransformCapabilities,
+    AUTHORING_INSTANCE_SCALE_MAX, AUTHORING_INSTANCE_SCALE_MIN,
 };
 use crate::world::occupancy::{
     OccupancyCatalogs, OccupancySource, apply_registration_plan, plan_register_building,
@@ -44,6 +45,8 @@ pub struct BuildingTransformEditOptions {
     pub follow_ground: bool,
     pub bypass_placement_validation: bool,
     pub cancel_dependencies: bool,
+    /// Dev gizmo: allow uniform instance scale even when the catalog forbids it.
+    pub allow_instance_scale_override: bool,
 }
 
 /// Catalog bundle for building transform commits.
@@ -161,7 +164,7 @@ pub fn update_building_transform(
         position = ground_position(world, position)?;
     }
     validate_translation(world, position)?;
-    validate_scale(definition, candidate.uniform_scale)?;
+    validate_scale(definition, candidate.uniform_scale, &options)?;
 
     let rotation = candidate.orientation.to_quat();
     let new_placement =
@@ -395,18 +398,25 @@ fn validate_translation(
 fn validate_scale(
     definition: &super::catalog::BuildingDefinition,
     scale: FixedScale,
+    options: &BuildingTransformEditOptions,
 ) -> Result<(), BuildingTransformEditError> {
-    if !definition.allow_instance_scale && scale != FixedScale::ONE {
+    if !options.allow_instance_scale_override
+        && !definition.allow_instance_scale
+        && scale != FixedScale::ONE
+    {
         return Err(BuildingTransformEditError::InstanceScaleNotAllowed);
     }
     let value = scale.to_f32();
-    if value < definition.min_uniform_instance_scale
-        || value > definition.max_uniform_instance_scale
-    {
-        return Err(BuildingTransformEditError::ScaleOutOfRange {
-            min: definition.min_uniform_instance_scale,
-            max: definition.max_uniform_instance_scale,
-        });
+    let (min, max) = if options.allow_instance_scale_override {
+        (AUTHORING_INSTANCE_SCALE_MIN, AUTHORING_INSTANCE_SCALE_MAX)
+    } else {
+        (
+            definition.min_uniform_instance_scale,
+            definition.max_uniform_instance_scale,
+        )
+    };
+    if value < min || value > max {
+        return Err(BuildingTransformEditError::ScaleOutOfRange { min, max });
     }
     Ok(())
 }

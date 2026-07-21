@@ -72,6 +72,66 @@ pub fn commit_building_preview(
     Ok(())
 }
 
+/// Whether the live preview differs from authoritative world placement.
+pub fn preview_differs_from_authoritative(
+    world: &crate::world::WorldData,
+    target: SelectedWorldObject,
+    preview: DoodadPreviewPlacement,
+) -> bool {
+    match target {
+        SelectedWorldObject::Doodad(id) => {
+            let Some(record) = world.get_doodad(id) else {
+                return false;
+            };
+            let placement = record.placement;
+            preview.position != placement.position
+                || preview.orientation != placement.orientation
+                || preview.scale != placement.scale
+        }
+        SelectedWorldObject::Building(id) => {
+            let Some(record) = world.get_building(id) else {
+                return false;
+            };
+            let placement = record.placement;
+            let preview_yaw = preview.orientation.yaw_degrees();
+            let authored_yaw = crate::world::QuantizedOrientation::from_quat(placement.rotation)
+                .map(|orientation| orientation.yaw_degrees())
+                .unwrap_or(0.0);
+            preview.position != placement.position
+                || (preview_yaw - authored_yaw).abs() > 0.05
+                || (building_uniform_scale_from_preview(preview).to_f32()
+                    - placement.uniform_scale_f32())
+                    .abs()
+                    > 0.001
+        }
+        SelectedWorldObject::ItemPile(_) => false,
+    }
+}
+
+/// Dev gizmo commit options — bypass strict placement gates that fight interactive edits.
+pub fn dev_gizmo_doodad_commit_options(
+    keyboard: &bevy::input::ButtonInput<bevy::input::keyboard::KeyCode>,
+) -> DoodadTransformEditOptions {
+    DoodadTransformEditOptions {
+        allow_overlap: keyboard.pressed(bevy::input::keyboard::KeyCode::KeyO),
+        follow_ground: keyboard.pressed(bevy::input::keyboard::KeyCode::KeyG),
+        bypass_placement_validation: true,
+        bypass_definition_scale_range: true,
+    }
+}
+
+pub fn dev_gizmo_building_commit_options(
+    keyboard: &bevy::input::ButtonInput<bevy::input::keyboard::KeyCode>,
+) -> BuildingTransformEditOptions {
+    BuildingTransformEditOptions {
+        allow_overlap: keyboard.pressed(bevy::input::keyboard::KeyCode::KeyO),
+        follow_ground: keyboard.pressed(bevy::input::keyboard::KeyCode::KeyG),
+        bypass_placement_validation: true,
+        cancel_dependencies: keyboard.pressed(bevy::input::keyboard::KeyCode::KeyC),
+        allow_instance_scale_override: true,
+    }
+}
+
 pub fn try_commit_edit(
     edit: &mut TransformEditState,
     world: &mut crate::world::WorldData,

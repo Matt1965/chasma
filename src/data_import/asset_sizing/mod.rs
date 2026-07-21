@@ -6,6 +6,8 @@ mod bounds;
 mod columns;
 #[cfg(feature = "data-import")]
 mod pipeline;
+#[cfg(feature = "data-import")]
+mod targets;
 
 #[cfg(feature = "data-import")]
 pub use bounds::{
@@ -29,4 +31,8 @@ pub use columns::{
 #[cfg(feature = "data-import")]
 pub use pipeline::{
     ContentSizingKind, SizingResolveInput, export_sizing_reports_markdown, resolve_content_sizing,
+};
+#[cfg(feature = "data-import")]
+pub use targets::{
+    apply_building_footprint_sizing_targets, unit_default_desired_height_meters,
 };

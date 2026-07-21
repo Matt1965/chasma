@@ -117,8 +117,7 @@ fn refresh_doodad_snapshot(
         &capture.footprint_catalog,
         doodad_id,
     ) else {
-        inspector.selected_doodad = None;
-        inspector.doodad_snapshot = None;
+        // Keep selection even when the catalog row is missing — gizmos still arm from WorldData.
         return;
     };
 

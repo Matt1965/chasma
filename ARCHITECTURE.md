@@ -566,6 +566,14 @@ does not change Need/Response/Intent/Construction decisions.
 
 **Authoritative SA runtime pipeline:** SA8 → SA2 → SA3 → SA4 → SA5 → (EP9) → SA9 → SA6 → SA7.
 
+Asset sizing (ADR-097, ADR-126–129) treats **meters** as the authoring language: catalog
+`AssetSizingDefinition` owns desired dimensions, baked baseline scale, pivot, and import rotation
+correction. Runtime presentation scale is composed once as **definition baseline × instance scale**
+(ADR-128); ECS `Transform` is presentation-only. Gameplay shapes use the same metric rules
+(ADR-129): doodads scale collision/pick with baseline×instance XZ; buildings use footprint×instance
+with visual↔footprint validation (baseline does not silently resize footprints). Building legacy
+offset/yaw fields are mirrors.
+
 Occupancy Layer
 
 Contains:

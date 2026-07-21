@@ -268,6 +268,9 @@ pub fn import_building_catalog_from_excel(
     category_summary.rows_valid += building_summary.rows_valid;
     category_summary.rows_failed += building_summary.rows_failed;
     category_summary.warnings.extend(building_summary.warnings);
+    category_summary
+        .sizing_reports
+        .extend(building_summary.sizing_reports);
 
     Ok((categories, buildings, category_summary))
 }
