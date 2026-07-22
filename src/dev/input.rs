@@ -96,7 +96,8 @@ pub fn dev_mode_keyboard_input(
         dev_state.active_tab = match dev_state.active_tab {
             DevTab::Units => DevTab::Doodads,
             DevTab::Doodads => DevTab::Buildings,
-            DevTab::Buildings => DevTab::Placement,
+            DevTab::Buildings => DevTab::Items,
+            DevTab::Items => DevTab::Placement,
             DevTab::Placement => DevTab::Scenes,
             DevTab::Scenes => DevTab::Inspector,
             DevTab::Inspector => DevTab::Debug,
@@ -203,6 +204,34 @@ fn handle_text_field_input(
             }
         }
         DevTextFieldFocus::None => {}
+        DevTextFieldFocus::ItemQuantity => {
+            if keyboard.just_pressed(KeyCode::Backspace) {
+                dev_state.inventory.quantity_input.pop();
+            }
+            for key in keyboard.get_just_pressed() {
+                if let Some(digit) = key_to_digit_char(*key) {
+                    if dev_state.inventory.quantity_input.len() < 8 {
+                        dev_state.inventory.quantity_input.push(digit);
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn key_to_digit_char(key: KeyCode) -> Option<char> {
+    match key {
+        KeyCode::Digit0 | KeyCode::Numpad0 => Some('0'),
+        KeyCode::Digit1 | KeyCode::Numpad1 => Some('1'),
+        KeyCode::Digit2 | KeyCode::Numpad2 => Some('2'),
+        KeyCode::Digit3 | KeyCode::Numpad3 => Some('3'),
+        KeyCode::Digit4 | KeyCode::Numpad4 => Some('4'),
+        KeyCode::Digit5 | KeyCode::Numpad5 => Some('5'),
+        KeyCode::Digit6 | KeyCode::Numpad6 => Some('6'),
+        KeyCode::Digit7 | KeyCode::Numpad7 => Some('7'),
+        KeyCode::Digit8 | KeyCode::Numpad8 => Some('8'),
+        KeyCode::Digit9 | KeyCode::Numpad9 => Some('9'),
+        _ => None,
     }
 }
 

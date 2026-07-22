@@ -17,6 +17,7 @@ pub struct WorldInspectorState {
     pub selected_unit: Option<UnitId>,
     pub selected_building: Option<BuildingId>,
     pub selected_doodad: Option<DoodadId>,
+    pub selected_pile: Option<crate::world::ItemPileId>,
     pub unit_snapshot: Option<UnitInspectorSnapshot>,
     pub building_snapshot: Option<BuildingInspectorSnapshot>,
     pub doodad_snapshot: Option<DoodadInspectorSnapshot>,
@@ -45,6 +46,7 @@ impl WorldInspectorState {
         self.selected_doodad = Some(doodad_id);
         self.selected_unit = None;
         self.selected_building = None;
+        self.selected_pile = None;
         self.interaction_snapshot = None;
         self.unit_snapshot = None;
         self.building_snapshot = None;
@@ -56,6 +58,7 @@ impl WorldInspectorState {
         self.selected_unit = Some(unit_id);
         self.selected_building = None;
         self.selected_doodad = None;
+        self.selected_pile = None;
         self.interaction_snapshot = None;
         self.unit_snapshot = None;
         self.building_snapshot = None;
@@ -66,6 +69,19 @@ impl WorldInspectorState {
     pub fn select_building(&mut self, building_id: BuildingId) {
         self.selected_building = Some(building_id);
         self.selected_unit = None;
+        self.selected_doodad = None;
+        self.selected_pile = None;
+        self.interaction_snapshot = None;
+        self.unit_snapshot = None;
+        self.building_snapshot = None;
+        self.doodad_snapshot = None;
+        self.cache_key = InspectorCacheKey::default();
+    }
+
+    pub fn select_pile(&mut self, pile_id: crate::world::ItemPileId) {
+        self.selected_pile = Some(pile_id);
+        self.selected_unit = None;
+        self.selected_building = None;
         self.selected_doodad = None;
         self.interaction_snapshot = None;
         self.unit_snapshot = None;

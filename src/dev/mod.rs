@@ -11,6 +11,8 @@ mod gizmo;
 mod history;
 mod input;
 mod inspector;
+mod inventory_tools;
+mod items_browser;
 mod lighting_panel;
 mod panel;
 mod pile_harness;
@@ -30,8 +32,8 @@ pub use catalog_cache::{
 };
 pub use debug_controls::{apply_dev_debug_flags, dev_flags_from_overlay, sync_dev_debug_controls};
 pub use dev_mode::{
-    DefinitionId, DevDebugFlags, DevModeInputGate, DevModeState, DevTab, DevTextFieldFocus,
-    SpawnMode,
+    DefinitionId, DevDebugFlags, DevInventoryEndpoint, DevInventoryToolState, DevModeInputGate,
+    DevModeState, DevTab, DevTextFieldFocus, ItemsBrowserSubtab, SpawnMode,
 };
 pub use gizmo::{
     DevTool, DevToolState, DevTransformPreview, GizmoCoordinateSpace, SelectedWorldObject,
@@ -171,7 +173,6 @@ impl Plugin for DevModePlugin {
                     time_of_day_panel::handle_time_of_day_buttons,
                     lighting_panel::handle_lighting_tune_buttons,
                 )
-                    .chain()
                     .after(sync_dev_panel_tab_sections)
                     .in_set(DevModeInputSystems),
             )
@@ -231,9 +232,20 @@ impl Plugin for DevModePlugin {
             )
             .add_systems(
                 Update,
+                inventory_tools::handle_dev_items_ground_click
+                    .after(handle_dev_spawn_click)
+                    .in_set(DevModeInputSystems),
+            )
+            .add_systems(
+                Update,
                 (
                     pile_harness::handle_pile_harness_keyboard,
                     treasury_harness::handle_treasury_harness_keyboard,
+                    inventory_tools::handle_dev_items_keyboard_system,
+                    inventory_tools::handle_dev_items_buttons,
+                    inventory_tools::sync_items_section_visibility,
+                    inventory_tools::sync_item_quantity_controls,
+                    inventory_tools::sync_items_panel_text,
                 )
                     .in_set(DevModeInputSystems),
             )

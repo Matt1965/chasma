@@ -44,6 +44,7 @@ pub fn format_asset_sizing_panel(
             };
             (&def.asset_sizing, def.render_key.0.as_deref(), Some(footprint))
         }),
+        DefinitionId::Item(_) | DefinitionId::InventoryProfile(_) => None,
     };
 
     let Some((sizing, render_key, gameplay)) = sizing else {

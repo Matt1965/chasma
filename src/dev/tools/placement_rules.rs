@@ -157,6 +157,7 @@ fn max_slope_for_definition(ctx: &PlacementValidateContext<'_>) -> f32 {
             .get(id)
             .map(|def| def.max_slope_degrees)
             .unwrap_or(45.0),
+        DefinitionId::Item(_) | DefinitionId::InventoryProfile(_) => 45.0,
     }
 }
 
@@ -184,6 +185,7 @@ fn agent_radius_for_definition(ctx: &PlacementValidateContext<'_>) -> f32 {
                 crate::world::FootprintSpec::MeshDerived => 1.5,
             })
             .unwrap_or(1.0),
+        DefinitionId::Item(_) | DefinitionId::InventoryProfile(_) => 0.5,
     }
 }
 

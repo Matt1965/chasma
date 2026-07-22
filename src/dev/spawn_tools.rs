@@ -123,6 +123,9 @@ pub fn spawn_selected_at_position(
                 Err(error) => DevSpawnOutcome::AuthoringFailed(format!("{error:?}")),
             }
         }
+        DefinitionId::Item(_) | DefinitionId::InventoryProfile(_) => {
+            DevSpawnOutcome::NoDefinitionSelected
+        }
     }
 }
 

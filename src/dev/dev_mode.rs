@@ -5,10 +5,20 @@ use std::collections::HashSet;
 use bevy::prelude::*;
 
 use crate::debug::DebugOverlayConfig;
-use crate::world::{BuildingDefinitionId, DoodadDefinitionId, UnitDefinitionId, WorldPosition};
+use crate::world::{
+    BuildingDefinitionId, DoodadDefinitionId, InventoryId, InventoryProfileId, ItemDefinitionId,
+    ItemPileId, UnitDefinitionId, WorldPosition,
+};
 
 use super::history::DevSpawnHistory;
 use super::tools::{BrushSettings, PlacementRules};
+
+/// Any dev-editable inventory-backed container (grid or world pile) — DV0.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DevInventoryEndpoint {
+    Grid(InventoryId),
+    Pile(ItemPileId),
+}
 
 /// Which dev panel text field owns keyboard input (DV2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash, Reflect)]
@@ -17,6 +27,47 @@ pub enum DevTextFieldFocus {
     None,
     CatalogSearch,
     SceneName,
+    ItemQuantity,
+}
+
+/// Items tab sub-views (DV0).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash, Reflect)]
+pub enum ItemsBrowserSubtab {
+    #[default]
+    Items,
+    InventoryProfiles,
+    InventoryManage,
+}
+
+/// Client-local dev inventory tool state (DV0).
+#[derive(Debug, Clone, PartialEq)]
+pub struct DevInventoryToolState {
+    pub subtab: ItemsBrowserSubtab,
+    pub quantity: u32,
+    /// Editable quantity text while [`DevTextFieldFocus::ItemQuantity`] is active.
+    pub quantity_input: String,
+    pub selected_endpoint_index: usize,
+    pub selected_entry_index: Option<usize>,
+    pub transfer_source: Option<DevInventoryEndpoint>,
+    pub transfer_dest: Option<DevInventoryEndpoint>,
+    pub pile_placement_armed: bool,
+    pub message: String,
+}
+
+impl Default for DevInventoryToolState {
+    fn default() -> Self {
+        Self {
+            subtab: ItemsBrowserSubtab::Items,
+            quantity: 10,
+            quantity_input: "10".to_string(),
+            selected_endpoint_index: 0,
+            selected_entry_index: Some(0),
+            transfer_source: None,
+            transfer_dest: None,
+            pile_placement_armed: false,
+            message: String::new(),
+        }
+    }
 }
 
 /// Active dev panel tab.
@@ -26,6 +77,7 @@ pub enum DevTab {
     Units,
     Doodads,
     Buildings,
+    Items,
     Placement,
     Scenes,
     Inspector,
@@ -49,6 +101,8 @@ pub enum DefinitionId {
     Unit(UnitDefinitionId),
     Doodad(DoodadDefinitionId),
     Building(BuildingDefinitionId),
+    Item(ItemDefinitionId),
+    InventoryProfile(InventoryProfileId),
 }
 
 impl DefinitionId {
@@ -57,6 +111,8 @@ impl DefinitionId {
             DefinitionId::Unit(id) => id.as_str(),
             DefinitionId::Doodad(id) => id.as_str(),
             DefinitionId::Building(id) => id.as_str(),
+            DefinitionId::Item(id) => id.as_str(),
+            DefinitionId::InventoryProfile(id) => id.as_str(),
         }
     }
 }
@@ -84,7 +140,9 @@ pub struct DevModeState {
     pub last_line_direction: Vec2,
     pub list_scroll: usize,
     pub last_spawn_message: String,
-    /// Item pile dev harness status (ADR-090 I4).
+    /// Item / inventory dev tools (DV0).
+    pub inventory: DevInventoryToolState,
+    /// Legacy harness message (pile tools tab).
     pub pile_harness_message: String,
     /// Settlement treasury dev harness status (ADR-093 I7).
     pub treasury_harness_message: String,
@@ -134,6 +192,7 @@ impl Default for DevModeState {
             last_spawn: None,
             spawn_affiliation: crate::world::Affiliation::Player,
             text_focus: DevTextFieldFocus::None,
+            inventory: DevInventoryToolState::default(),
         }
     }
 }
@@ -155,6 +214,9 @@ impl DevModeState {
     }
 
     pub fn clear_text_focus(&mut self) {
+        if self.text_focus == DevTextFieldFocus::ItemQuantity {
+            self.apply_item_quantity_input();
+        }
         self.text_focus = DevTextFieldFocus::None;
     }
 
@@ -166,9 +228,52 @@ impl DevModeState {
         self.text_focus = DevTextFieldFocus::SceneName;
     }
 
+    pub fn focus_item_quantity(&mut self) {
+        self.inventory.quantity_input = self.inventory.quantity.to_string();
+        self.text_focus = DevTextFieldFocus::ItemQuantity;
+    }
+
+    pub fn apply_item_quantity_input(&mut self) {
+        let parsed = self
+            .inventory
+            .quantity_input
+            .parse::<u32>()
+            .unwrap_or(self.inventory.quantity)
+            .clamp(1, 10_000);
+        self.inventory.quantity = parsed;
+        self.inventory.quantity_input = parsed.to_string();
+    }
+
+    pub fn bump_item_quantity(&mut self, delta: i32) {
+        let current = if self.text_focus == DevTextFieldFocus::ItemQuantity {
+            self.inventory
+                .quantity_input
+                .parse()
+                .unwrap_or(self.inventory.quantity)
+        } else {
+            self.inventory.quantity
+        };
+        let next = (current as i32 + delta).clamp(1, 10_000) as u32;
+        self.inventory.quantity = next;
+        self.inventory.quantity_input = next.to_string();
+    }
+
+    pub fn set_item_quantity_to_max_stack(&mut self, items: &crate::world::ItemCatalog) {
+        let max = selected_item_max_stack(self.selected_definition.as_ref(), items).unwrap_or(1);
+        self.inventory.quantity = max.max(1);
+        self.inventory.quantity_input = self.inventory.quantity.to_string();
+    }
+
     /// Whether a placement definition is armed for terrain clicks.
     pub fn placement_tool_active(&self) -> bool {
-        self.selected_definition.is_some()
+        matches!(
+            self.selected_definition,
+            Some(
+                DefinitionId::Unit(_)
+                    | DefinitionId::Doodad(_)
+                    | DefinitionId::Building(_)
+            )
+        )
     }
 
     /// Clear armed placement selection (preview cleared separately).
@@ -184,6 +289,8 @@ impl DevModeState {
             Some(DefinitionId::Unit(_)) => "Place Unit",
             Some(DefinitionId::Doodad(_)) => "Place Doodad",
             Some(DefinitionId::Building(_)) => "Place Building",
+            Some(DefinitionId::Item(_)) => "Item selected",
+            Some(DefinitionId::InventoryProfile(_)) => "Profile selected",
         };
         let selection = self
             .selected_definition
@@ -198,13 +305,19 @@ impl DevModeState {
     }
 
     pub fn select_definition(&mut self, id: DefinitionId) {
-        self.spawn_mode = match &id {
-            DefinitionId::Unit(_) => SpawnMode::Unit,
-            DefinitionId::Doodad(_) => SpawnMode::Doodad,
-            DefinitionId::Building(_) => SpawnMode::Building,
-        };
+        match &id {
+            DefinitionId::Unit(_) => self.spawn_mode = SpawnMode::Unit,
+            DefinitionId::Doodad(_) => self.spawn_mode = SpawnMode::Doodad,
+            DefinitionId::Building(_) => self.spawn_mode = SpawnMode::Building,
+            DefinitionId::Item(_) | DefinitionId::InventoryProfile(_) => {}
+        }
+        if matches!(
+            id,
+            DefinitionId::Unit(_) | DefinitionId::Doodad(_) | DefinitionId::Building(_)
+        ) {
+            self.clear_world_selection_for_place = true;
+        }
         self.selected_definition = Some(id);
-        self.clear_world_selection_for_place = true;
     }
 
     pub fn cycle_spawn_affiliation(&mut self) {
@@ -247,6 +360,16 @@ impl DevModeState {
         *self = Self::default();
         self.enabled = enabled;
     }
+}
+
+pub fn selected_item_max_stack(
+    selected: Option<&DefinitionId>,
+    items: &crate::world::ItemCatalog,
+) -> Option<u32> {
+    let DefinitionId::Item(item_id) = selected? else {
+        return None;
+    };
+    items.get(item_id).map(|item| item.max_stack)
 }
 
 /// When true, gameplay mouse input is skipped for the current frame.

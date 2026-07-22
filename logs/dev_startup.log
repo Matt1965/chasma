@@ -2438,3 +2438,39 @@ Terrain field Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sh
 Asset sizing report: 7 definitions → logs/asset_sizing_report.md
 Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
 dev preview spawned 1 unit(s) near camera focus (256, 128)
+# chasma dev startup log
+Weapon Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Animation profile Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=3 valid=3 failed=0 warnings=0
+Inventory profile Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Inventory Profiles` not found); using starter profiles
+Item Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Item Categories` not found); using starter item catalogs
+Building Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=8 failed=0 warnings=11
+Building import warning: row 2: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\hut_collision.glb`
+Building import warning: row 2 sizing: inferred desired meters from building footprint — add Desired*M to Excel for explicit authoring
+Building import warning: row 3: Model asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter.glb`
+Building import warning: row 3: Collision asset missing at `C:\BevyFiles\chasma\assets/buildings\smelter_collision.glb`
+Building import warning: row 3 sizing: building footprint sizing inference failed: asset not found: assets\buildings\smelter.glb
+Building import warning: row 3 sizing: AT1: catalog lacks metric sizing — runtime presentation may be microscopic or enormous until migrated
+Building import warning: row 3 sizing error: AT1 MissingSizingData: no Desired meters and no explicit baseline — using scale 1.0; author Desired*M or ExplicitBaselineScale and re-import
+Building import warning: row 4 sizing: source bounds rescaled ÷1000 (suspected non-meter export vs 1.00 m desired)
+Building import warning: row 4 sizing: inferred desired meters from building footprint — add Desired*M to Excel for explicit authoring
+Building import warning: row 5 sizing: root node scale (1.812, 1.158, 4.269) is not identity
+Building import warning: row 5 sizing: inferred desired meters from building footprint — add Desired*M to Excel for explicit authoring
+Doodad Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=1 valid=1 failed=0 warnings=2
+Doodad import warning: row 2 sizing: inferred desired meters from doodad kind height — add Desired*M to Excel for explicit authoring
+Doodad import warning: row 2 sizing: visual XZ half-extent (~2.58 m) differs from collision radius (1.00 m) — author collision meters to match desired size
+Unit Excel import (C:\BevyFiles\chasma\Chasma Design.xlsx): processed=8 valid=2 failed=6 warnings=9
+Unit import warning: row 2 sizing: inferred desired meters from unit height hint — add Desired*M to Excel for explicit authoring
+Unit import warning: row 3 sizing: unit height hint sizing inference failed: baseline scale out of allowed range
+Unit import warning: row 3 sizing: using legacy explicit render scale — add Desired dimensions to migrate
+Unit import warning: row 28: Base HP must be a number
+Unit import warning: row 29: Level must be a number (got `Elite Units:`)
+Unit import warning: row 30: Level must be a number (got `Veteran Units:`)
+Unit import warning: row 31: Level must be a number (got `Regular Units:`)
+Unit import warning: row 32: Level must be a number (got `Rookie Units:`)
+Unit import warning: row 33: Base HP must be a number
+Unit catalog ids: U-0001, U-0002
+Unit catalog render keys: U-0001, U-0002
+Terrain field Excel import failed for C:\BevyFiles\chasma\Chasma Design.xlsx (sheet `Terrain Fields` not found); using starter terrain field catalog
+Asset sizing report: 7 definitions → logs/asset_sizing_report.md
+Biome mask loaded: size=256x256 bounds=(0,0)-(8192,8192) Desert=4662 Forest=8837 Marsh=5486 Plains=0 Unassigned=46551
+dev preview spawned 1 unit(s) near camera focus (256, 128)

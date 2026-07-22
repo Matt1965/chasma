@@ -248,6 +248,7 @@ fn spawn_at(
                 Err(_) => false,
             }
         }
+        DefinitionId::Item(_) | DefinitionId::InventoryProfile(_) => false,
     }
 }
 

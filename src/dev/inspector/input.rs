@@ -137,6 +137,7 @@ pub fn handle_inspector_input(
     gizmo_edit: Res<TransformEditState>,
     pick: InspectorPickParams,
     presentation: BuildingInspectorPresentationParams,
+    pile_settings: Res<crate::world::ItemPileSettings>,
     mut capture: InspectorCaptureParams,
     render_assets: Option<Res<TerrainRenderAssets>>,
     mut inspector: ResMut<WorldInspectorState>,
@@ -298,6 +299,15 @@ pub fn handle_inspector_input(
         terrain_click_to_world_position(&ray, &capture.world, layout, vertical_scale)
     {
         gate.block_gameplay_mouse = true;
+        if let Some(pile_id) = crate::dev::inventory_tools::nearest_pile_at_position(
+            &capture.world,
+            click.world_position,
+            &pile_settings,
+        ) {
+            inspector.select_pile(pile_id);
+            inspector.last_message = format!("Inspecting ground pile #{pile_id:?}");
+            return;
+        }
         inspector.interaction_snapshot = capture_interaction_inspector_snapshot(
             &capture.world,
             &capture.unit_catalog,

@@ -26,7 +26,7 @@ pub fn filter_items_browser_entries(
 ) -> Vec<ItemsBrowserEntry> {
     let query = search_query.trim().to_ascii_lowercase();
     let mut entries = match subtab {
-        ItemsBrowserSubtab::Items | ItemsBrowserSubtab::InventoryHarness => {
+        ItemsBrowserSubtab::Items | ItemsBrowserSubtab::InventoryManage => {
             item_entries(item_catalog, item_categories, enabled_only)
         }
         ItemsBrowserSubtab::InventoryProfiles => profile_entries(profile_catalog, enabled_only),
@@ -261,6 +261,33 @@ fn buildings_with_profile_for_item(
     } else {
         format!("{with_inventory} buildings reference profiles")
     }
+}
+
+pub fn items_catalog_browser_entries(
+    item_catalog: &ItemCatalog,
+    item_categories: &ItemCategoryCatalog,
+    profile_catalog: &InventoryProfileCatalog,
+    subtab: ItemsBrowserSubtab,
+    search_query: &str,
+    enabled_only: bool,
+) -> Vec<super::catalog_browser::CatalogBrowserEntry> {
+    filter_items_browser_entries(
+        item_catalog,
+        item_categories,
+        profile_catalog,
+        subtab,
+        search_query,
+        enabled_only,
+    )
+    .into_iter()
+    .map(|entry| super::catalog_browser::CatalogBrowserEntry {
+        definition: entry.definition,
+        label: entry.label,
+        category: entry.category,
+        render_key: entry.detail_key,
+        enabled: entry.enabled,
+    })
+    .collect()
 }
 
 #[cfg(test)]

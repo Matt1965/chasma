@@ -160,28 +160,47 @@ When Attack is armed:
 
 Gameplay simulation is unchanged; only presentation simplified.
 
-## Items tab shortcuts
+## Items tab (DV0 — developer inventory management)
+
+The **Items** tab provides catalog browsing plus generic inventory editing for any inventory owner:
+units, building bindings, chests/containers, and ground item piles.
 
 | Key | Action |
 |-----|--------|
-| **I** | Items subtab (definitions) |
+| **I** | Items subtab (item definitions) |
 | **P** | Inventory profiles subtab |
-| **H** | Inventory harness subtab (ADR-088 I2) |
+| **H** | Inventory manage subtab |
 
-### Inventory harness (H subtab)
+Catalog search/filter works on **I** and **P** subtabs (same search field as other dev tabs).
 
-Detached inventories only — no unit/building attachment in I2.
+### Inventory manage (H subtab)
 
-| Key | Action |
-|-----|--------|
-| **N** | Create detached inventory (selected profile, or `unit_backpack_standard`) |
-| **A** | Add stack of selected item (qty 5, first-fit) |
-| **U** | Create and place unique instance of selected item |
-| **H** | Split half of entry 0 |
-| **M** | Merge entry 1 into entry 0 |
-| **O** | Auto-sort |
-| **V** | Validate inventory and store invariants |
-| **Del** / **Backspace** | Delete detached test inventory |
+Select a target in the **Inspector** tab (unit, building, or Alt+click ground pile). The manage panel lists
+all inventory endpoints on that selection (unit backpack, building bindings, selected pile).
+
+| Key / UI | Action |
+|----------|--------|
+| **`[` / `]`** | Divide / multiply quantity by 10 |
+| **`+` / `-`** | Increment / decrement quantity |
+| **Qty field** | Click to type quantity; Enter commits |
+| **− / + / Max** | Panel buttons for −1, +1, and max stack size |
+| **T** | Cycle inventory endpoint |
+| **Y** | Cycle entry within endpoint |
+| **A** | Add selected catalog item (quantity from panel) |
+| **R** | Remove selected entry |
+| **S** | Set selected stack quantity |
+| **C** | Clear inventory |
+| **F** | Fill inventory with selected item |
+| **G** | Arm ground pile placement (select item + quantity, then click terrain) |
+| **V** | Run `validate_world_inventory_state` |
+| **Xfer src / dst / run** | Transfer between endpoints (grid ↔ grid, grid ↔ pile) |
+
+Ground piles are normal inventory entities with a world transform — no separate dropped-item system.
+Transfers reuse the same pile ↔ inventory APIs as gameplay.
+
+Quantity defaults to **10**; use bracket keys or panel buttons for large stacks (e.g. 500 logs).
+
+**Note:** **T** on the Manage subtab cycles endpoints; **T** elsewhere still cycles spawn team affiliation.
 
 ## World Tools — piles and treasuries (ADR-090, ADR-093, ADR-094)
 
@@ -198,8 +217,8 @@ Scene save/load (v7) round-trips inventories, instances, corpses, piles, and tre
 Separate from the F12 Items harness. Toggle with **I** on the gameplay HUD (primary selected unit).
 Interact command opens containers, corpses, and world piles when armed.
 
-Dev inspection of open inventory IDs and authoritative entries is via building inspector (I/G) and
-pile harness (World Tools); player UI state lives in `InventoryUiState` (read-only in future dev overlay).
+Dev inspection of open inventory IDs and authoritative entries is via the Items tab (H subtab),
+building inspector (I/G), and pile harness (World Tools); player UI state lives in `InventoryUiState`.
 
 ## Panel layout
 

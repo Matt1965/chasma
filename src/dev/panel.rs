@@ -1,6 +1,7 @@
 //! Dev mode panel UI (Bevy UI, ADR-043).
 
 use bevy::prelude::*;
+use bevy::ecs::system::SystemParam;
 use bevy::ui::FocusPolicy;
 
 use crate::world::{
@@ -12,7 +13,7 @@ use super::catalog_browser::CatalogBrowserEntry;
 use super::catalog_cache::{
     CatalogBrowseIndex, CatalogFilterCache, DevSearchDebounce, browse_catalog_entries,
 };
-use super::dev_mode::{DevDebugFlags, DevModeState, DevTab};
+use super::dev_mode::{DevDebugFlags, DevModeState, DevTab, ItemsBrowserSubtab};
 use super::input::{DevPanelRoot, DevPanelUi};
 use super::scenes::{
     DevSceneRegistry, SceneDebugFlagsSnapshot, clear_dev_world, delete_scene, load_scene_by_id,
@@ -41,6 +42,19 @@ const SEARCH_BG_IDLE: Color = Color::srgba(0.08, 0.11, 0.14, 0.95);
 const SEARCH_BG_FOCUSED: Color = Color::srgba(0.10, 0.18, 0.24, 0.98);
 const SEARCH_BORDER_IDLE: Color = Color::srgba(0.25, 0.32, 0.38, 0.9);
 const SEARCH_BORDER_FOCUSED: Color = Color::srgba(0.35, 0.75, 0.55, 1.0);
+
+#[derive(SystemParam)]
+pub(crate) struct DevPanelCatalogResources<'w> {
+    unit_catalog: Res<'w, UnitCatalog>,
+    doodad_catalog: Res<'w, DoodadCatalog>,
+    building_catalog: Res<'w, BuildingCatalog>,
+    item_catalog: Res<'w, crate::world::ItemCatalog>,
+    item_categories: Res<'w, crate::world::ItemCategoryCatalog>,
+    inventory_profiles: Res<'w, crate::world::InventoryProfileCatalog>,
+    footprint_catalog: Res<'w, FootprintCatalog>,
+    interior_catalog: Res<'w, InteriorProfileCatalog>,
+    browse_index: Res<'w, CatalogBrowseIndex>,
+}
 
 fn menu_button_bg(interaction: &Interaction, selected: bool) -> BackgroundColor {
     if selected {
@@ -228,6 +242,7 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
                     DevTab::Units,
                     DevTab::Doodads,
                     DevTab::Buildings,
+                    DevTab::Items,
                     DevTab::Placement,
                     DevTab::Scenes,
                     DevTab::Inspector,
@@ -619,6 +634,8 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
                 },
             ));
 
+            super::inventory_tools::panel::spawn_items_section(root);
+
             super::terrain_field::spawn_terrain_field_section(root);
 
             super::time_of_day_panel::spawn_time_of_day_section(root);
@@ -686,6 +703,7 @@ fn tab_label(tab: DevTab) -> &'static str {
         DevTab::Units => "Units",
         DevTab::Doodads => "Doodads",
         DevTab::Buildings => "Buildings",
+        DevTab::Items => "Items",
         DevTab::Placement => "Placement",
         DevTab::Scenes => "Scenes",
         DevTab::Inspector => "Inspect",
@@ -718,6 +736,9 @@ pub(crate) fn sync_dev_panel_content(
     unit_catalog: Res<UnitCatalog>,
     doodad_catalog: Res<DoodadCatalog>,
     building_catalog: Res<BuildingCatalog>,
+    item_catalog: Res<crate::world::ItemCatalog>,
+    item_categories: Res<crate::world::ItemCategoryCatalog>,
+    inventory_profiles: Res<crate::world::InventoryProfileCatalog>,
     scene_registry: Res<DevSceneRegistry>,
     browse_index: Res<CatalogBrowseIndex>,
     mut filter_cache: ResMut<CatalogFilterCache>,
@@ -776,19 +797,30 @@ pub(crate) fn sync_dev_panel_content(
         **text = format_search_field_display(&dev_state);
     }
 
-    let catalog_entries = browse_catalog_entries(
-        &browse_index,
-        &mut filter_cache,
-        &unit_catalog,
-        &doodad_catalog,
-        &building_catalog,
-        dev_state.active_tab,
-        dev_state.spawn_mode,
-        &debounce.filtered_query,
-        dev_state.enabled_only,
-        &dev_state.favorites,
-    )
-    .to_vec();
+    let catalog_entries: Vec<CatalogBrowserEntry> = if dev_state.active_tab == DevTab::Items {
+        super::items_browser::items_catalog_browser_entries(
+            &item_catalog,
+            &item_categories,
+            &inventory_profiles,
+            dev_state.inventory.subtab,
+            &debounce.filtered_query,
+            dev_state.enabled_only,
+        )
+    } else {
+        browse_catalog_entries(
+            &browse_index,
+            &mut filter_cache,
+            &unit_catalog,
+            &doodad_catalog,
+            &building_catalog,
+            dev_state.active_tab,
+            dev_state.spawn_mode,
+            &debounce.filtered_query,
+            dev_state.enabled_only,
+            &dev_state.favorites,
+        )
+        .to_vec()
+    };
 
     let scene_entries: Vec<_> = if dev_state.active_tab == DevTab::Scenes {
         scene_registry
@@ -810,6 +842,18 @@ pub(crate) fn sync_dev_panel_content(
                     dev_state.enabled_only,
                 )
             }
+            DevTab::Items => match dev_state.inventory.subtab {
+                ItemsBrowserSubtab::InventoryManage => {
+                    "Inventory manage — inspect unit/building/pile, use H subtab tools".to_string()
+                }
+                ItemsBrowserSubtab::Items | ItemsBrowserSubtab::InventoryProfiles => {
+                    format!(
+                        "Item catalog ({}) — enabled-only: {} — I/P/H subtabs",
+                        catalog_entries.len(),
+                        dev_state.enabled_only,
+                    )
+                }
+            },
             DevTab::Placement => {
                 "Placement tools — select definition on Units/Doodads tab".to_string()
             }
@@ -828,7 +872,7 @@ pub(crate) fn sync_dev_panel_content(
 
     let show_catalog = matches!(
         dev_state.active_tab,
-        DevTab::Units | DevTab::Doodads | DevTab::Buildings
+        DevTab::Units | DevTab::Doodads | DevTab::Buildings | DevTab::Items
     );
     let show_placement = dev_state.active_tab == DevTab::Placement;
     let show_scenes = dev_state.active_tab == DevTab::Scenes;
@@ -959,7 +1003,7 @@ pub(crate) fn sync_dev_panel_section_visibility(
 
     let show_catalog = matches!(
         dev_state.active_tab,
-        DevTab::Units | DevTab::Doodads | DevTab::Buildings
+        DevTab::Units | DevTab::Doodads | DevTab::Buildings | DevTab::Items
     );
     let show_placement = dev_state.active_tab == DevTab::Placement;
     let show_scenes = dev_state.active_tab == DevTab::Scenes;
@@ -1376,12 +1420,7 @@ fn format_debug_summary(flags: &DevDebugFlags) -> String {
 /// Handle tab, list, and debug toggle button presses.
 pub(crate) fn handle_dev_panel_ui_interaction(
     mut dev_state: ResMut<DevModeState>,
-    unit_catalog: Res<UnitCatalog>,
-    doodad_catalog: Res<DoodadCatalog>,
-    building_catalog: Res<BuildingCatalog>,
-    footprint_catalog: Res<FootprintCatalog>,
-    interior_catalog: Res<InteriorProfileCatalog>,
-    browse_index: Res<CatalogBrowseIndex>,
+    catalogs: DevPanelCatalogResources,
     mut filter_cache: ResMut<CatalogFilterCache>,
     mut debounce: ResMut<DevSearchDebounce>,
     mut world: ResMut<WorldData>,
@@ -1464,19 +1503,30 @@ pub(crate) fn handle_dev_panel_ui_interaction(
     let spawn_mode = dev_state.spawn_mode;
     let enabled_only = dev_state.enabled_only;
 
-    let entries = browse_catalog_entries(
-        &browse_index,
-        &mut filter_cache,
-        &unit_catalog,
-        &doodad_catalog,
-        &building_catalog,
-        active_tab,
-        spawn_mode,
-        &search_query,
-        enabled_only,
-        &dev_state.favorites,
-    )
-    .to_vec();
+    let entries: Vec<CatalogBrowserEntry> = if active_tab == DevTab::Items {
+        super::items_browser::items_catalog_browser_entries(
+            &catalogs.item_catalog,
+            &catalogs.item_categories,
+            &catalogs.inventory_profiles,
+            dev_state.inventory.subtab,
+            &search_query,
+            enabled_only,
+        )
+    } else {
+        browse_catalog_entries(
+            &catalogs.browse_index,
+            &mut filter_cache,
+            &catalogs.unit_catalog,
+            &catalogs.doodad_catalog,
+            &catalogs.building_catalog,
+            active_tab,
+            spawn_mode,
+            &search_query,
+            enabled_only,
+            &dev_state.favorites,
+        )
+        .to_vec()
+    };
 
     let scene_entries: Vec<_> = if active_tab == DevTab::Scenes {
         scene_registry
@@ -1501,11 +1551,11 @@ pub(crate) fn handle_dev_panel_ui_interaction(
                 dev_state.selected_scene_id = Some(entry.scene_id.clone());
                 match load_scene_by_id(
                     &mut world,
-                    &unit_catalog,
-                    &doodad_catalog,
-                    &building_catalog,
-                    &footprint_catalog,
-                    &interior_catalog,
+                    &catalogs.unit_catalog,
+                    &catalogs.doodad_catalog,
+                    &catalogs.building_catalog,
+                    &catalogs.footprint_catalog,
+                    &catalogs.interior_catalog,
                     &scene_registry.registry,
                     &entry.scene_id,
                 ) {
@@ -1561,11 +1611,11 @@ pub(crate) fn handle_dev_panel_ui_interaction(
             button.action,
             &mut dev_state,
             &mut world,
-            &unit_catalog,
-            &doodad_catalog,
-            &building_catalog,
-            &footprint_catalog,
-            &interior_catalog,
+            &catalogs.unit_catalog,
+            &catalogs.doodad_catalog,
+            &catalogs.building_catalog,
+            &catalogs.footprint_catalog,
+            &catalogs.interior_catalog,
             &mut scene_registry,
             runtime.as_deref(),
             camera_state.iter().next(),
