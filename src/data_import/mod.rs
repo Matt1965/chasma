@@ -51,6 +51,7 @@ pub use animation::{
 pub use building::{
     BUILDING_CATEGORIES_SHEET_NAME, BUILDINGS_SHEET_NAME, DEV_BUILDING_CATALOG_RON_PATH,
     import_building_catalog_from_excel, import_buildings_from_excel, resolve_dev_building_catalog,
+    resolve_dev_navigation_blueprint_catalog,
 };
 pub use building::{
     BUILDING_OPTIONAL_COLUMNS, BUILDING_REQUIRED_COLUMNS, BuildingCategoryImportRow,

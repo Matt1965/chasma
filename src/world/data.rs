@@ -141,6 +141,9 @@ pub struct WorldData {
     inventory_reservations: super::logistics::InventoryReservationStore,
     /// Logistics endpoint lookup index (EP7).
     logistics_endpoint_index: super::logistics::LogisticsEndpointIndex,
+    /// Runtime navigation derived from building blueprints (NV1.3).
+    #[reflect(ignore)]
+    building_navigation_runtime: crate::world::BuildingNavigationRuntimeStore,
 }
 
 impl FromWorld for WorldData {
@@ -206,7 +209,20 @@ impl WorldData {
             hauling_requests: super::logistics::HaulingRequestStore::default(),
             inventory_reservations: super::logistics::InventoryReservationStore::default(),
             logistics_endpoint_index: super::logistics::LogisticsEndpointIndex::default(),
+            building_navigation_runtime: crate::world::BuildingNavigationRuntimeStore::default(),
         }
+    }
+
+    pub fn building_navigation_runtime(
+        &self,
+    ) -> &crate::world::BuildingNavigationRuntimeStore {
+        &self.building_navigation_runtime
+    }
+
+    pub fn building_navigation_runtime_mut(
+        &mut self,
+    ) -> &mut crate::world::BuildingNavigationRuntimeStore {
+        &mut self.building_navigation_runtime
     }
 
     pub fn task_store(&self) -> &super::task::TaskStore {

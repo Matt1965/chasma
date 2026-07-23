@@ -97,7 +97,12 @@ Dev Debug tab toggles map directly to [`DebugOverlaySettings`](../src/debug/sett
 | `show_selection_circles` | `selection` |
 | `show_interaction_hits` | `interaction` |
 | `show_command_trace` | `intent` |
-| `show_grid_overlay` | Reserved (no grid overlay yet) |
+| `show_grid_overlay` | Walkable navigation cells (`grid`) |
+| `show_nav_blockers` | Blocked nav cells by passability reason |
+| `show_nav_footprints` | Building footprint outlines |
+| `show_nav_entrances` | Portal / entrance markers |
+| `show_nav_reservations` | Construction-reserved occupancy |
+| `show_nav_occupancy` | Static blocked occupancy cells |
 
 Overlays remain read-only gizmo systems (ADR-039). **REVIEW-A6:** overlay draw systems
 compile and register only with `feature = "dev"`; production builds use

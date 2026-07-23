@@ -24,6 +24,7 @@ pub fn handle_building_dev_actions(
     dev_state: Res<crate::dev::DevModeState>,
     keyboard: Res<ButtonInput<KeyCode>>,
     simulation: Res<SimulationControlState>,
+    inspection: Res<super::BlueprintInspectionState>,
     mut building_sim: BuildingSimulationParams,
     mut params: DevBuildingActionParams,
     mut world: ResMut<crate::world::WorldData>,
@@ -90,6 +91,7 @@ pub fn handle_building_dev_actions(
             &params.interior_catalog,
             &params.doodad_catalog,
             occ,
+            None,
             building_id,
             BuildingLifecycleState::Ruins,
             1.0,
@@ -104,6 +106,7 @@ pub fn handle_building_dev_actions(
             &params.interior_catalog,
             &params.doodad_catalog,
             occ,
+            None,
             building_id,
             BuildingLifecycleState::Complete,
             1.0,
@@ -324,7 +327,7 @@ pub fn handle_building_dev_actions(
             Err(error) => inspector.last_message = format!("Production mode failed: {error}"),
         }
     }
-    if keyboard.just_pressed(KeyCode::BracketRight) {
+    if keyboard.just_pressed(KeyCode::BracketRight) && !inspection.active {
         match reset_production_progress(&mut world, building_id) {
             Ok(()) => {
                 inspector.last_message =

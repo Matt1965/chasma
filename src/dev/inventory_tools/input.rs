@@ -12,17 +12,19 @@ use crate::dev::dev_mode::{
 };
 use crate::dev::inspector::WorldInspectorState;
 use crate::dev::dev_mode::DevInventoryEndpoint;
-use crate::dev::inventory_tools::endpoint::resolve_inspector_endpoints;
+use crate::dev::inventory_tools::endpoint::{
+    resolve_active_endpoint, resolve_inspector_endpoints, resolve_target_unit,
+};
 use crate::dev::inventory_tools::ops::{
     dev_add_item, dev_clear_inventory, dev_fill_inventory, dev_remove_entry, dev_set_stack_quantity,
-    dev_spawn_ground_pile, dev_transfer,
+    dev_spawn_ground_pile, dev_transfer, ensure_dev_unit_inventory,
 };
 use crate::dev::{DevPanelHoverState, input::DevSpawnClickParams};
 use crate::simulation::SimulationControlState;
-use crate::units::input::{cursor_world_ray, terrain_click_to_world_position};
+use crate::units::input::{cursor_world_ray, terrain_click_to_world_position, SelectedUnits};
 use crate::world::{
     InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog,
-    ItemDefinitionId, ItemPileSettings, WorldConfig, WorldData,
+    ItemDefinitionId, ItemPileSettings, UnitCatalog, WorldConfig, WorldData,
 };
 
 use super::panel::DevItemsAction;
@@ -32,6 +34,8 @@ pub fn handle_dev_items_keyboard(
     keyboard: &ButtonInput<KeyCode>,
     world: &mut WorldData,
     inspector: &WorldInspectorState,
+    selection: &SelectedUnits,
+    unit_catalog: &UnitCatalog,
     items: &ItemCatalog,
     categories: &ItemCategoryCatalog,
     profiles: &InventoryProfileCatalog,
@@ -80,20 +84,32 @@ pub fn handle_dev_items_keyboard(
     }
 
     if keyboard.just_pressed(KeyCode::KeyT) {
-        cycle_endpoint(dev_state, inspector, world, 1);
+        cycle_endpoint(dev_state, inspector, selection, world, 1);
     }
     if keyboard.just_pressed(KeyCode::KeyY) {
-        cycle_entry(dev_state, world, inspector, 1);
+        cycle_entry(dev_state, world, inspector, selection, 1);
     }
 
     if keyboard.just_pressed(KeyCode::KeyA) {
-        run_action(dev_state, world, inspector, &ctx, pile_settings, tick, DevItemsAction::AddItem);
+        run_action(
+            dev_state,
+            world,
+            inspector,
+            selection,
+            unit_catalog,
+            &ctx,
+            pile_settings,
+            tick,
+            DevItemsAction::AddItem,
+        );
     }
     if keyboard.just_pressed(KeyCode::KeyR) {
         run_action(
             dev_state,
             world,
             inspector,
+            selection,
+            unit_catalog,
             &ctx,
             pile_settings,
             tick,
@@ -105,6 +121,8 @@ pub fn handle_dev_items_keyboard(
             dev_state,
             world,
             inspector,
+            selection,
+            unit_catalog,
             &ctx,
             pile_settings,
             tick,
@@ -116,6 +134,8 @@ pub fn handle_dev_items_keyboard(
             dev_state,
             world,
             inspector,
+            selection,
+            unit_catalog,
             &ctx,
             pile_settings,
             tick,
@@ -127,6 +147,8 @@ pub fn handle_dev_items_keyboard(
             dev_state,
             world,
             inspector,
+            selection,
+            unit_catalog,
             &ctx,
             pile_settings,
             tick,
@@ -155,6 +177,8 @@ pub fn handle_dev_items_panel_action(
     dev_state: &mut DevModeState,
     world: &mut WorldData,
     inspector: &WorldInspectorState,
+    selection: &SelectedUnits,
+    unit_catalog: &UnitCatalog,
     items: &ItemCatalog,
     categories: &ItemCategoryCatalog,
     profiles: &InventoryProfileCatalog,
@@ -174,12 +198,14 @@ pub fn handle_dev_items_panel_action(
         DevItemsAction::SubtabManage => {
             dev_state.inventory.subtab = ItemsBrowserSubtab::InventoryManage;
         }
-        DevItemsAction::CycleEndpoint => cycle_endpoint(dev_state, inspector, world, 1),
-        DevItemsAction::CycleEntry => cycle_entry(dev_state, world, inspector, 1),
+        DevItemsAction::CycleEndpoint => cycle_endpoint(dev_state, inspector, selection, world, 1),
+        DevItemsAction::CycleEntry => cycle_entry(dev_state, world, inspector, selection, 1),
         other => run_action(
             dev_state,
             world,
             inspector,
+            selection,
+            unit_catalog,
             &ctx,
             pile_settings,
             simulation.current_tick,
@@ -191,7 +217,7 @@ pub fn handle_dev_items_panel_action(
 pub fn handle_dev_items_ground_click(
     mut params: DevSpawnClickParams,
     panel_hovered: Res<DevPanelHoverState>,
-    _inspector: Res<WorldInspectorState>,
+    mut inspector: ResMut<WorldInspectorState>,
     windows: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform), With<RtsCamera>>,
 ) {
@@ -238,8 +264,12 @@ pub fn handle_dev_items_ground_click(
         click.world_position,
         tick,
     ) {
-        Ok(message) => {
-            params.dev_state.inventory.message = message;
+        Ok(pile_id) => {
+            let message = format!("Spawned ground pile #{pile_id:?} x{quantity}");
+            params.dev_state.inventory.message = message.clone();
+            params.dev_state.last_spawn_message = message;
+            inspector.select_pile(pile_id);
+            inspector.last_message = format!("Spawned ground pile #{pile_id:?}");
             params.dev_state.inventory.pile_placement_armed = false;
         }
         Err(err) => params.dev_state.inventory.message = err.to_string(),
@@ -249,10 +279,11 @@ pub fn handle_dev_items_ground_click(
 fn cycle_endpoint(
     dev_state: &mut DevModeState,
     inspector: &WorldInspectorState,
+    selection: &SelectedUnits,
     world: &WorldData,
     delta: isize,
 ) {
-    let count = resolve_inspector_endpoints(world, inspector).len();
+    let count = resolve_inspector_endpoints(world, inspector, selection).len();
     if count == 0 {
         dev_state.inventory.selected_endpoint_index = 0;
         return;
@@ -266,9 +297,11 @@ fn cycle_entry(
     dev_state: &mut DevModeState,
     world: &WorldData,
     inspector: &WorldInspectorState,
+    selection: &SelectedUnits,
     delta: isize,
 ) {
-    let Some(endpoint) = selected_endpoint(world, inspector, dev_state) else {
+    let Some(endpoint) = resolve_active_endpoint(world, inspector, selection, &dev_state.inventory)
+    else {
         return;
     };
     let count = entry_count(world, endpoint);
@@ -292,42 +325,40 @@ fn entry_count(world: &WorldData, endpoint: DevInventoryEndpoint) -> usize {
     }
 }
 
-fn selected_endpoint(
-    world: &WorldData,
-    inspector: &WorldInspectorState,
-    dev_state: &DevModeState,
-) -> Option<DevInventoryEndpoint> {
-    let endpoints = resolve_inspector_endpoints(world, inspector);
-    if endpoints.is_empty() {
-        return None;
-    }
-    let idx = dev_state
-        .inventory
-        .selected_endpoint_index
-        .min(endpoints.len() - 1);
-    Some(endpoints[idx].endpoint)
-}
-
 fn run_action(
     dev_state: &mut DevModeState,
     world: &mut WorldData,
     inspector: &WorldInspectorState,
+    selection: &SelectedUnits,
+    unit_catalog: &UnitCatalog,
     ctx: &InventoryCatalogCtx<'_>,
     pile_settings: &ItemPileSettings,
     tick: u64,
     action: DevItemsAction,
 ) {
     let result: Result<String, super::ops::DevInventoryOpError> = (|| {
+        if matches!(
+            action,
+            DevItemsAction::AddItem | DevItemsAction::FillInventory
+        ) {
+            if let Some(unit_id) = resolve_target_unit(inspector, selection) {
+                ensure_dev_unit_inventory(world, unit_catalog, ctx, unit_id)?;
+            }
+        }
+
+        let endpoint = || {
+            resolve_active_endpoint(world, inspector, selection, &dev_state.inventory)
+                .ok_or(super::ops::DevInventoryOpError::NoEndpoint)
+        };
+
         match action {
         DevItemsAction::AddItem => {
-            let endpoint = selected_endpoint(world, inspector, dev_state)
-                .ok_or(super::ops::DevInventoryOpError::NoEndpoint)?;
+            let endpoint = endpoint()?;
             let item_id = match dev_state.selected_definition.clone() {
                 Some(DefinitionId::Item(item_id)) => item_id,
                 _ => return Err(super::ops::DevInventoryOpError::NoItemSelected),
             };
-            let position = inspector
-                .selected_unit
+            let position = resolve_target_unit(inspector, selection)
                 .and_then(|id| world.get_unit(id))
                 .map(|unit| unit.placement.position)
                 .or_else(|| {
@@ -353,8 +384,7 @@ fn run_action(
             )
         }
         DevItemsAction::RemoveEntry => {
-            let endpoint = selected_endpoint(world, inspector, dev_state)
-                .ok_or(super::ops::DevInventoryOpError::NoEndpoint)?;
+            let endpoint = endpoint()?;
             let entry = dev_state
                 .inventory
                 .selected_entry_index
@@ -362,8 +392,7 @@ fn run_action(
             dev_remove_entry(world, ctx, endpoint, entry)
         }
         DevItemsAction::SetQuantity => {
-            let endpoint = selected_endpoint(world, inspector, dev_state)
-                .ok_or(super::ops::DevInventoryOpError::NoEndpoint)?;
+            let endpoint = endpoint()?;
             let entry = dev_state
                 .inventory
                 .selected_entry_index
@@ -371,13 +400,11 @@ fn run_action(
             dev_set_stack_quantity(world, ctx, endpoint, entry, dev_state.inventory.quantity)
         }
         DevItemsAction::ClearInventory => {
-            let endpoint = selected_endpoint(world, inspector, dev_state)
-                .ok_or(super::ops::DevInventoryOpError::NoEndpoint)?;
+            let endpoint = endpoint()?;
             dev_clear_inventory(world, ctx, endpoint)
         }
         DevItemsAction::FillInventory => {
-            let endpoint = selected_endpoint(world, inspector, dev_state)
-                .ok_or(super::ops::DevInventoryOpError::NoEndpoint)?;
+            let endpoint = endpoint()?;
             let item_id = match dev_state.selected_definition.clone() {
                 Some(DefinitionId::Item(item_id)) => item_id,
                 _ => return Err(super::ops::DevInventoryOpError::NoItemSelected),
@@ -391,14 +418,12 @@ fn run_action(
             )
         }
         DevItemsAction::SetTransferSource => {
-            let endpoint = selected_endpoint(world, inspector, dev_state)
-                .ok_or(super::ops::DevInventoryOpError::NoEndpoint)?;
+            let endpoint = endpoint()?;
             dev_state.inventory.transfer_source = Some(endpoint);
             return Ok(String::new());
         }
         DevItemsAction::SetTransferDest => {
-            let endpoint = selected_endpoint(world, inspector, dev_state)
-                .ok_or(super::ops::DevInventoryOpError::NoEndpoint)?;
+            let endpoint = endpoint()?;
             dev_state.inventory.transfer_dest = Some(endpoint);
             return Ok(String::new());
         }
@@ -456,6 +481,8 @@ pub fn handle_dev_items_keyboard_system(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut world: ResMut<WorldData>,
     inspector: Res<WorldInspectorState>,
+    selection: Res<SelectedUnits>,
+    unit_catalog: Res<UnitCatalog>,
     items: Res<ItemCatalog>,
     categories: Res<ItemCategoryCatalog>,
     profiles: Res<InventoryProfileCatalog>,
@@ -467,6 +494,8 @@ pub fn handle_dev_items_keyboard_system(
         &keyboard,
         &mut world,
         &inspector,
+        &selection,
+        &unit_catalog,
         &items,
         &categories,
         &profiles,

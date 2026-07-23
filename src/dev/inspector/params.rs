@@ -37,6 +37,7 @@ pub struct InspectorCaptureParams<'w> {
     pub requirement_revision: Res<'w, BuildingFieldRequirementCatalogRevision>,
     pub profile_revision: Res<'w, FieldResponseProfileCatalogRevision>,
     pub assessments: ResMut<'w, BuildingTerrainAssessmentStore>,
+    pub nav_blueprint_catalog: Res<'w, crate::world::BuildingNavigationBlueprintCatalog>,
     pub simulation: Res<'w, SimulationControlState>,
     pub movement_blocks: Res<'w, MovementBlockObservability>,
 }

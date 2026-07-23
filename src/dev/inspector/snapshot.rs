@@ -80,6 +80,38 @@ pub struct BuildingInspectorSnapshot {
     pub planner_summary: Option<String>,
 }
 
+/// Read-only navigation blueprint inspection payload (NV1.2.5).
+#[derive(Debug, Clone, PartialEq)]
+pub struct BuildingBlueprintInspectorSnapshot {
+    pub blueprint_id: Option<String>,
+    pub blueprint_source: String,
+    pub generator_version: u32,
+    pub generation_status: String,
+    pub cache_fresh: bool,
+    pub source_fingerprint: Option<String>,
+    pub floor_ids: Vec<i32>,
+    pub selected_floor_id: Option<i32>,
+    pub selected_floor_vertex_count: usize,
+    pub selected_floor_elevation: Option<f32>,
+    pub selected_floor_entrances: Vec<String>,
+    pub selected_floor_transitions: Vec<String>,
+    pub entrance_count: usize,
+    pub transition_count: usize,
+    pub validation: crate::world::BlueprintInspectionValidation,
+    pub inspection_active: bool,
+    pub edit_active: bool,
+    pub edit_dirty: bool,
+    pub selected_element: Option<String>,
+    pub variant_draft_active: bool,
+    pub variant_draft_display_name: Option<String>,
+    pub variant_draft_asset_id: Option<String>,
+    pub variant_draft_description: Option<String>,
+    pub variant_draft_active_field: Option<String>,
+    pub building_center: Vec3,
+    pub world_bounds_radius: f32,
+    pub resolved_blueprint: Option<crate::world::BuildingNavigationBlueprint>,
+}
+
 /// Full read-only inspection payload for one unit.
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnitInspectorSnapshot {

@@ -18,10 +18,10 @@ use crate::world::{
 };
 
 use super::snapshot::{
-    BuildingAssetPresentationInfo, BuildingInspectorSnapshot, ChunkResidencySnapshot,
-    CombatInspectorSnapshot, FormationInspectorSnapshot, InteractionInspectorSnapshot,
-    PathInspectorSnapshot, ProjectileInspectorSnapshot, SteeringInspectorSnapshot,
-    UnitInspectorSnapshot,
+    BuildingAssetPresentationInfo, BuildingBlueprintInspectorSnapshot, BuildingInspectorSnapshot,
+    ChunkResidencySnapshot, CombatInspectorSnapshot, FormationInspectorSnapshot,
+    InteractionInspectorSnapshot, PathInspectorSnapshot, ProjectileInspectorSnapshot,
+    SteeringInspectorSnapshot, UnitInspectorSnapshot,
 };
 
 const STEERING_SETTINGS: SteeringSettings = SteeringSettings::DEFAULT;
@@ -240,6 +240,223 @@ pub fn capture_building_inspector_snapshot(
         inventory_bindings_summary,
         hauling_requests_summary: Some(format_hauling_requests_for_building(world, building_id)),
         planner_summary: format_settlement_planner_summary(world, building_id),
+    })
+}
+
+/// Capture navigation blueprint inspection data for a building (NV1.2.5).
+pub fn capture_building_blueprint_inspection_snapshot(
+    world: &WorldData,
+    building_catalog: &BuildingCatalog,
+    nav_catalog: &crate::world::BuildingNavigationBlueprintCatalog,
+    building_id: BuildingId,
+    selected_floor_id: Option<i32>,
+) -> Option<BuildingBlueprintInspectorSnapshot> {
+    use crate::world::{
+        NAVIGATION_BLUEPRINT_CACHE_MANIFEST_PATH, NAVIGATION_BLUEPRINT_GENERATOR_VERSION,
+        NavigationBlueprintCacheManifest, building_model_world_transform,
+        resolve_building_navigation_blueprint, should_generate_navigation_blueprint,
+        validate_blueprint_for_inspection,
+    };
+    #[cfg(feature = "data-import")]
+    use crate::world::{blueprint_id_for_building, hash_asset_path};
+
+    let record = world.get_building(building_id)?;
+    let definition = building_catalog.get(&record.definition_id)?;
+    let layout = world.layout();
+
+    let resolved = resolve_building_navigation_blueprint(
+        definition,
+        nav_catalog,
+        record.interior.navigation_blueprint_override.as_ref(),
+    )
+    .ok()
+    .flatten();
+
+    let blueprint_source = crate::world::classify_blueprint_authority(
+        definition,
+        nav_catalog,
+        record.interior.navigation_blueprint_override.as_ref(),
+    )
+    .label()
+    .to_string();
+
+    let manifest_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join(NAVIGATION_BLUEPRINT_CACHE_MANIFEST_PATH);
+    let manifest = NavigationBlueprintCacheManifest::load_from_path(&manifest_path);
+
+    #[cfg(feature = "data-import")]
+    let (cache_fresh, source_fingerprint, generation_status) = {
+        if !should_generate_navigation_blueprint(definition) {
+            (
+                false,
+                None,
+                if resolved.is_some() {
+                    "authored (not auto-generated)".to_string()
+                } else {
+                    "not configured".to_string()
+                },
+            )
+        } else {
+            let blueprint_id = blueprint_id_for_building(definition);
+            let collision_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("assets/buildings")
+                .join(format!(
+                    "{}.glb",
+                    definition
+                        .collision_render_key
+                        .0
+                        .clone()
+                        .or(definition.render_key.0.clone())
+                        .unwrap_or_default()
+                ));
+            let collision_hash = hash_asset_path(&collision_path).unwrap_or_default();
+            let render_hash = definition.render_key.0.as_deref().and_then(|key| {
+                hash_asset_path(
+                    &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("assets/buildings")
+                        .join(format!("{key}.glb")),
+                )
+            });
+            let baseline_scale_milli = {
+                let vec = definition.asset_sizing.resolved_baseline_scale().to_vec3();
+                Some((vec.x * 1000.0).round() as i32)
+            };
+            let fresh = manifest.is_fresh(
+                &blueprint_id,
+                &collision_hash,
+                render_hash.as_deref(),
+                baseline_scale_milli,
+            );
+            let in_catalog = nav_catalog.get(&blueprint_id).is_some();
+            let status = if resolved.is_none() {
+                "missing".to_string()
+            } else if !in_catalog {
+                "missing from catalog".to_string()
+            } else if manifest.generator_version != NAVIGATION_BLUEPRINT_GENERATOR_VERSION {
+                "stale generator version".to_string()
+            } else if fresh {
+                "cached".to_string()
+            } else {
+                "stale inputs".to_string()
+            };
+            (fresh, Some(collision_hash), status)
+        }
+    };
+
+    #[cfg(not(feature = "data-import"))]
+    let (cache_fresh, source_fingerprint, generation_status) = (
+        false,
+        None,
+        if resolved.is_some() {
+            "loaded".to_string()
+        } else {
+            "not configured".to_string()
+        },
+    );
+
+    let blueprint = resolved.as_ref().map(|r| r.blueprint().clone());
+    let validation = blueprint
+        .as_ref()
+        .map(validate_blueprint_for_inspection)
+        .unwrap_or_default();
+
+    let floor_ids = blueprint
+        .as_ref()
+        .map(|bp| bp.floors.iter().map(|f| f.floor_id).collect::<Vec<_>>())
+        .unwrap_or_default();
+    let floor_id = selected_floor_id
+        .filter(|id| floor_ids.contains(id))
+        .or_else(|| floor_ids.first().copied());
+
+    let transform = building_model_world_transform(definition, &record.placement, layout);
+    let building_center = transform.translation;
+    let world_bounds_radius = blueprint
+        .as_ref()
+        .map(|bp| {
+            bp.floors
+                .iter()
+                .flat_map(|floor| {
+                    floor.walkable_outline.vertices_xz.iter().map(|&[x, z]| {
+                        transform
+                            .transform_point(Vec3::new(x, floor.elevation_meters, z))
+                            .xz()
+                            .distance(building_center.xz())
+                    })
+                })
+                .fold(4.0_f32, f32::max)
+        })
+        .unwrap_or(6.0);
+
+    let (selected_floor_vertex_count, selected_floor_elevation, selected_floor_entrances, selected_floor_transitions) =
+        if let (Some(bp), Some(fid)) = (blueprint.as_ref(), floor_id) {
+            if let Some(floor) = bp.floors.iter().find(|f| f.floor_id == fid) {
+                let entrances = bp
+                    .entrances
+                    .iter()
+                    .filter(|e| e.floor_key == floor.key)
+                    .map(|e| {
+                        format!(
+                            "{} @ [{:.1},{:.1}] r={:.1}m",
+                            e.key, e.local_position_xz[0], e.local_position_xz[1], e.radius_meters
+                        )
+                    })
+                    .collect();
+                let transitions = bp
+                    .vertical_transitions
+                    .iter()
+                    .filter(|t| {
+                        bp.floors
+                            .iter()
+                            .find(|f| f.key == t.from_floor_key)
+                            .map(|f| f.floor_id == fid)
+                            .unwrap_or(false)
+                    })
+                    .map(|t| format!("{} {:?} → {}", t.key, t.kind, t.to_floor_key))
+                    .collect();
+                (
+                    floor.walkable_outline.vertices_xz.len(),
+                    Some(floor.elevation_meters),
+                    entrances,
+                    transitions,
+                )
+            } else {
+                (0, None, Vec::new(), Vec::new())
+            }
+        } else {
+            (0, None, Vec::new(), Vec::new())
+        };
+
+    Some(BuildingBlueprintInspectorSnapshot {
+        blueprint_id: blueprint.as_ref().map(|bp| bp.id.as_str().to_string()),
+        blueprint_source,
+        generator_version: NAVIGATION_BLUEPRINT_GENERATOR_VERSION,
+        generation_status,
+        cache_fresh,
+        source_fingerprint,
+        floor_ids,
+        selected_floor_id: floor_id,
+        selected_floor_vertex_count,
+        selected_floor_elevation,
+        selected_floor_entrances,
+        selected_floor_transitions,
+        entrance_count: blueprint.as_ref().map(|bp| bp.entrances.len()).unwrap_or(0),
+        transition_count: blueprint
+            .as_ref()
+            .map(|bp| bp.vertical_transitions.len())
+            .unwrap_or(0),
+        validation,
+        inspection_active: false,
+        edit_active: false,
+        edit_dirty: false,
+        selected_element: None,
+        variant_draft_active: false,
+        variant_draft_display_name: None,
+        variant_draft_asset_id: None,
+        variant_draft_description: None,
+        variant_draft_active_field: None,
+        building_center,
+        world_bounds_radius,
+        resolved_blueprint: blueprint,
     })
 }
 

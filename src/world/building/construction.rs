@@ -164,6 +164,7 @@ pub fn step_all_building_construction(
     interior_catalog: &InteriorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
+    nav_catalog: Option<&super::navigation_blueprint::BuildingNavigationBlueprintCatalog>,
     settings: BuildingConstructionSettings,
     delta_seconds: f32,
 ) -> BuildingConstructionReport {
@@ -190,6 +191,7 @@ pub fn step_all_building_construction(
             interior_catalog,
             doodad_catalog,
             occupancy,
+            nav_catalog,
             id,
             definition,
             delta_seconds,
@@ -219,6 +221,7 @@ fn advance_one_building_construction(
     interior_catalog: &InteriorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
+    nav_catalog: Option<&super::navigation_blueprint::BuildingNavigationBlueprintCatalog>,
     id: BuildingId,
     definition: &BuildingDefinition,
     delta_seconds: f32,
@@ -278,6 +281,7 @@ fn advance_one_building_construction(
                     building_catalog,
                     interior_catalog,
                     doodad_catalog,
+                    nav_catalog,
                     id,
                 )?);
                 completed = true;
@@ -299,6 +303,7 @@ fn complete_building(
     building_catalog: &BuildingCatalog,
     interior_catalog: &InteriorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
+    nav_catalog: Option<&super::navigation_blueprint::BuildingNavigationBlueprintCatalog>,
     id: BuildingId,
 ) -> Result<Vec<BuildingLifecycleEvent>, BuildingLifecycleError> {
     let record = world
@@ -330,6 +335,7 @@ fn complete_building(
             interior_catalog,
             doodad_catalog,
             occupancy,
+            nav_catalog,
             id,
             &InteriorProfileId::new(profile_id),
         )
@@ -523,6 +529,7 @@ pub fn set_building_lifecycle_stage(
     interior_catalog: &InteriorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
+    nav_catalog: Option<&super::navigation_blueprint::BuildingNavigationBlueprintCatalog>,
     id: BuildingId,
     new_state: BuildingLifecycleState,
     progress_0_1: f32,
@@ -559,6 +566,7 @@ pub fn set_building_lifecycle_stage(
                 interior_catalog,
                 doodad_catalog,
                 occupancy,
+                nav_catalog,
                 id,
                 &InteriorProfileId::new(profile_id),
             )
@@ -611,6 +619,7 @@ pub fn add_building_construction_progress(
             interior_catalog,
             doodad_catalog,
             occupancy,
+            None,
             id,
             BuildingLifecycleState::InProgress,
             0.0,
@@ -635,6 +644,7 @@ pub fn add_building_construction_progress(
             building_catalog,
             interior_catalog,
             doodad_catalog,
+            None,
             id,
         )?);
     }
@@ -783,6 +793,7 @@ mod tests {
                 &interior_catalog(),
                 &doodad,
                 occ,
+                None,
                 settings,
                 delta,
             );
@@ -805,6 +816,7 @@ mod tests {
             &interior_catalog(),
             &doodad,
             occ,
+            None,
             BuildingConstructionSettings {
                 auto_timed_progress: false,
             },
@@ -829,6 +841,7 @@ mod tests {
             &interior_catalog(),
             &doodad,
             occ,
+            None,
             BuildingConstructionSettings::dev_auto_timed(),
             1.0 / 60.0,
         );
@@ -881,6 +894,7 @@ mod tests {
             &interior_catalog(),
             &doodad,
             occ,
+            None,
             BuildingConstructionSettings::default(),
             10.0,
         );

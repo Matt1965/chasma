@@ -53,6 +53,8 @@ pub struct BuildingDefinition {
     pub default_space_id: Option<String>,
     /// Interior profile reference (ADR-084 B7).
     pub interior_profile_id: Option<String>,
+    /// Navigation blueprint reference (NV1.1). Gameplay interior navigation metadata.
+    pub navigation_blueprint_id: Option<String>,
     pub max_slope_degrees: f32,
     pub enabled: bool,
     /// Optional inventory container profile (ADR-087 I1). None = no inventory.
@@ -118,6 +120,7 @@ impl BuildingDefinition {
             interaction_profile_id: None,
             default_space_id: None,
             interior_profile_id: None,
+            navigation_blueprint_id: None,
             max_slope_degrees,
             enabled,
             inventory_profile_id: None,
@@ -243,6 +246,11 @@ impl BuildingDefinition {
 
     pub fn with_interior_profile_id(mut self, value: impl Into<String>) -> Self {
         self.interior_profile_id = Some(value.into());
+        self
+    }
+
+    pub fn with_navigation_blueprint_id(mut self, value: impl Into<String>) -> Self {
+        self.navigation_blueprint_id = Some(value.into());
         self
     }
 

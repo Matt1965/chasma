@@ -8,7 +8,8 @@ use crate::world::{
     InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, UnitCatalog,
     UnitDefinitionId, UnitOwnership, UnitSource, WorldData, WorldPosition,
     create_dev_complete_building, create_dev_complete_building_with_inventory, create_doodad,
-    create_unit_with_ownership,
+    create_unit_with_inventory, starter_inventory_profile_definitions, starter_item_category_definitions,
+    starter_item_definitions,
 };
 
 use super::dev_mode::{DefinitionId, SpawnMode};
@@ -39,6 +40,7 @@ pub fn spawn_selected_at_position(
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
+    inventory_ctx: &InventoryCatalogCtx<'_>,
     selected: Option<&DefinitionId>,
     position: WorldPosition,
     spawn_affiliation: crate::world::Affiliation,
@@ -50,13 +52,14 @@ pub fn spawn_selected_at_position(
     match definition {
         DefinitionId::Unit(definition_id) => {
             let ownership = UnitOwnership::with_affiliation(spawn_affiliation);
-            match create_unit_with_ownership(
+            match create_unit_with_inventory(
                 unit_catalog,
                 world,
                 definition_id,
                 position,
                 UnitSource::Dev,
                 ownership,
+                inventory_ctx,
             ) {
                 Ok(_record) => DevSpawnOutcome::SpawnedUnit {
                     definition_id: definition_id.clone(),
@@ -91,10 +94,6 @@ pub fn spawn_selected_at_position(
                 .get(definition_id)
                 .is_some_and(|def| def.inventory_profile_id.is_some())
             {
-                let categories = ItemCategoryCatalog::default();
-                let items = ItemCatalog::default();
-                let profiles = InventoryProfileCatalog::default();
-                let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
                 create_dev_complete_building_with_inventory(
                     building_catalog,
                     world,
@@ -103,7 +102,7 @@ pub fn spawn_selected_at_position(
                     Quat::IDENTITY,
                     ownership,
                     Some(occupancy),
-                    &ctx,
+                    inventory_ctx,
                 )
             } else {
                 create_dev_complete_building(
@@ -136,6 +135,7 @@ pub fn spawn_by_mode_at_position(
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
+    inventory_ctx: &InventoryCatalogCtx<'_>,
     mode: SpawnMode,
     definition_key: &str,
     position: WorldPosition,
@@ -151,6 +151,7 @@ pub fn spawn_by_mode_at_position(
         doodad_catalog,
         building_catalog,
         footprint_catalog,
+        inventory_ctx,
         Some(&selected),
         position,
         crate::world::Affiliation::Player,
@@ -186,6 +187,19 @@ mod tests {
         )
     }
 
+    fn inventory_ctx() -> InventoryCatalogCtx<'static> {
+        let categories = Box::leak(Box::new(
+            ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap(),
+        ));
+        let items = Box::leak(Box::new(
+            ItemCatalog::from_definitions(starter_item_definitions(), categories).unwrap(),
+        ));
+        let profiles = Box::leak(Box::new(
+            InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions()).unwrap(),
+        ));
+        InventoryCatalogCtx::new(items, categories, profiles)
+    }
+
     #[test]
     fn spawn_uses_world_data_unit_api() {
         let mut world = flat_world();
@@ -194,12 +208,14 @@ mod tests {
         let position = pos(40.0, 40.0);
         let building_catalog = BuildingCatalog::default();
         let footprint_catalog = FootprintCatalog::default();
+        let ctx = inventory_ctx();
         let outcome = spawn_by_mode_at_position(
             &mut world,
             &unit_catalog,
             &doodad_catalog,
             &building_catalog,
             &footprint_catalog,
+            &ctx,
             SpawnMode::Unit,
             "wolf",
             position,
@@ -221,12 +237,14 @@ mod tests {
         let position = pos(50.0, 50.0);
         let building_catalog = BuildingCatalog::default();
         let footprint_catalog = FootprintCatalog::default();
+        let ctx = inventory_ctx();
         let outcome = spawn_by_mode_at_position(
             &mut world,
             &unit_catalog,
             &doodad_catalog,
             &building_catalog,
             &footprint_catalog,
+            &ctx,
             SpawnMode::Doodad,
             "tree_oak",
             position,

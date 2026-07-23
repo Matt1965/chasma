@@ -5,9 +5,9 @@ use std::collections::{BinaryHeap, HashMap};
 
 use super::grid::{
     GridCoord, NEIGHBOR_OFFSETS, NavigationAgent, NavigationConfig, diagonal_corner_clear,
-    grid_cell_world_position, is_cell_walkable, neighbor_step_cost,
+    grid_cell_world_position, is_cell_walkable, is_cell_walkable_in_space, neighbor_step_cost,
 };
-use crate::world::{PassabilityCatalogs, WorldData, WorldPosition};
+use crate::world::{PassabilityCatalogs, SpaceRegistry, WorldData, WorldPosition};
 
 const MAX_SEARCH_NODES: usize = 16_384;
 
@@ -30,7 +30,6 @@ impl Ord for SearchNode {
     fn cmp(&self, other: &Self) -> Ordering {
         let f_self = self.g + self.h;
         let f_other = other.g + other.h;
-        // BinaryHeap is a max-heap; invert f so the lowest f-score is popped first.
         f_other
             .total_cmp(&f_self)
             .then_with(|| other.h.total_cmp(&self.h))
@@ -54,6 +53,81 @@ pub fn astar_path(
     agent: NavigationAgent,
     start: GridCoord,
     goal: GridCoord,
+) -> Option<Vec<WorldPosition>> {
+    run_astar(
+        world,
+        config,
+        agent,
+        start,
+        goal,
+        |coord| is_cell_walkable(world, catalogs, config, agent, coord),
+        |from, dx, dz| diagonal_corner_clear(world, catalogs, config, agent, from, dx, dz),
+    )
+}
+
+/// Space-aware A* (NV1.3).
+pub fn astar_path_in_space(
+    world: &WorldData,
+    space_registry: &SpaceRegistry,
+    catalogs: PassabilityCatalogs<'_>,
+    config: NavigationConfig,
+    agent: NavigationAgent,
+    start: GridCoord,
+    goal: GridCoord,
+    space_id: crate::world::SpaceId,
+) -> Option<Vec<WorldPosition>> {
+    run_astar(
+        world,
+        config,
+        agent,
+        start,
+        goal,
+        |coord| {
+            is_cell_walkable_in_space(
+                world,
+                space_registry,
+                catalogs,
+                config,
+                agent,
+                coord,
+                space_id,
+            )
+        },
+        |from, dx, dz| {
+            if dx == 0 || dz == 0 {
+                return true;
+            }
+            let cardinal_a = GridCoord::new(from.x + dx, from.z);
+            let cardinal_b = GridCoord::new(from.x, from.z + dz);
+            is_cell_walkable_in_space(
+                world,
+                space_registry,
+                catalogs,
+                config,
+                agent,
+                cardinal_a,
+                space_id,
+            ) && is_cell_walkable_in_space(
+                world,
+                space_registry,
+                catalogs,
+                config,
+                agent,
+                cardinal_b,
+                space_id,
+            )
+        },
+    )
+}
+
+fn run_astar(
+    world: &WorldData,
+    config: NavigationConfig,
+    agent: NavigationAgent,
+    start: GridCoord,
+    goal: GridCoord,
+    mut is_walkable: impl FnMut(GridCoord) -> bool,
+    mut corner_clear: impl FnMut(GridCoord, i32, i32) -> bool,
 ) -> Option<Vec<WorldPosition>> {
     if start == goal {
         return grid_cell_world_position(world, goal, config).map(|p| vec![p]);
@@ -89,10 +163,10 @@ pub fn astar_path(
 
         for &(dx, dz) in &NEIGHBOR_OFFSETS {
             let next = GridCoord::new(current.coord.x + dx, current.coord.z + dz);
-            if !is_cell_walkable(world, catalogs, config, agent, next) {
+            if !is_walkable(next) {
                 continue;
             }
-            if !diagonal_corner_clear(world, catalogs, config, agent, current.coord, dx, dz) {
+            if !corner_clear(current.coord, dx, dz) {
                 continue;
             }
 

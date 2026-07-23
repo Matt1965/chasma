@@ -5,9 +5,9 @@ use crate::world::{
     Affiliation, ChunkId, EntryIndex, InventoryCatalogCtx, InventoryEntryContents, InventoryError,
     InventoryId, InventoryOwnerRef, InventoryProfileId, ItemDefinitionId, ItemInstanceMetadata,
     ItemInstanceStore, ItemPileId, ItemPileSettings, ItemPileSource, PileOwnership, PlacedInventoryEntry,
-    SpaceId, TransferPlacementPolicy, WorldData, WorldPosition, WorldPileContents,
-    create_inventory, create_item_instance, drop_stack_from_inventory, pickup_pile_into_inventory,
-    place_stack, place_stack_first_fit, place_unique_first_fit, remove_entry,
+    SpaceId, TransferPlacementPolicy, UnitCatalog, UnitId, WorldData, WorldPileContents, WorldPosition,
+    create_inventory, create_item_instance, create_unit_inventory, drop_stack_from_inventory,
+    pickup_pile_into_inventory, place_stack, place_stack_first_fit, place_unique_first_fit, remove_entry,
     transfer_entry_full, transfer_stack_quantity,
 };
 
@@ -38,6 +38,45 @@ impl From<InventoryError> for DevInventoryOpError {
     fn from(value: InventoryError) -> Self {
         Self::Message(value.to_string())
     }
+}
+
+/// Attach a dev backpack when the inspected unit has no inventory yet.
+pub fn ensure_dev_unit_inventory(
+    world: &mut WorldData,
+    unit_catalog: &UnitCatalog,
+    ctx: &InventoryCatalogCtx<'_>,
+    unit_id: UnitId,
+) -> Result<InventoryId, DevInventoryOpError> {
+    if let Some(inventory_id) = world.get_unit(unit_id).and_then(|unit| unit.inventory_id) {
+        return Ok(inventory_id);
+    }
+
+    let mut record = world
+        .remove_unit_by_id(unit_id)
+        .ok_or_else(|| DevInventoryOpError::Message(format!("unit #{unit_id:?} not found")))?;
+
+    let definition = unit_catalog
+        .get(&record.definition_id)
+        .ok_or_else(|| {
+            DevInventoryOpError::Message(format!(
+                "unit definition `{}` not found",
+                record.definition_id.as_str()
+            ))
+        })?;
+
+    let profile_id = definition
+        .inventory_profile_id
+        .clone()
+        .unwrap_or_else(|| InventoryProfileId::new("unit_backpack_standard"));
+    let inventory_id = create_unit_inventory(world.inventory_store_mut(), ctx, profile_id, unit_id)?;
+    record.inventory_id = Some(inventory_id);
+
+    let chunk = ChunkId::new(record.placement.position.chunk);
+    world
+        .insert_unit(chunk, record)
+        .map_err(|err| DevInventoryOpError::Message(format!("{err:?}")))?;
+
+    Ok(inventory_id)
 }
 
 pub fn dev_add_item(
@@ -135,7 +174,7 @@ pub fn dev_spawn_ground_pile(
     quantity: u32,
     position: WorldPosition,
     tick: u64,
-) -> Result<String, DevInventoryOpError> {
+) -> Result<ItemPileId, DevInventoryOpError> {
     if quantity == 0 {
         return Err(DevInventoryOpError::Message("quantity must be > 0".into()));
     }
@@ -157,7 +196,7 @@ pub fn dev_spawn_ground_pile(
         .item_pile_store_mut()
         .insert(chunk, record)
         .map_err(|err| DevInventoryOpError::Message(err.to_string()))?;
-    Ok(format!("Spawned ground pile #{pile_id:?} x{quantity}"))
+    Ok(pile_id)
 }
 
 pub fn dev_remove_entry(
@@ -474,5 +513,49 @@ mod tests {
             .unwrap()
             .placed_entries()
             .is_empty());
+    }
+
+    #[test]
+    fn ensure_dev_unit_inventory_attaches_backpack() {
+        use crate::world::{
+            ChunkCoord, ChunkData, ChunkId, Heightfield, LocalPosition, UnitCatalog,
+            UnitDefinitionId, UnitOwnership, UnitSource, WorldPosition, create_unit_with_ownership,
+        };
+        use bevy::prelude::{Quat, Vec3};
+
+        let mut world = crate::world::WorldData::new(crate::world::ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let heightfield = Heightfield::from_samples(3, 128.0, vec![0.0; 9]).unwrap();
+        world.insert(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            ChunkData::new(heightfield, Vec::new()),
+        );
+        let unit_catalog = UnitCatalog::default();
+        let items = crate::world::ItemCatalog::default();
+        let categories = crate::world::ItemCategoryCatalog::default();
+        let profiles = crate::world::InventoryProfileCatalog::default();
+        let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+        let position = WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::new(10.0, 0.0, 10.0)),
+        );
+        let unit = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            position,
+            UnitSource::Dev,
+            UnitOwnership::player_default(),
+        )
+        .unwrap();
+        assert!(unit.inventory_id.is_none());
+
+        let inventory_id =
+            ensure_dev_unit_inventory(&mut world, &unit_catalog, &ctx, unit.id).unwrap();
+        let restored = world.get_unit(unit.id).unwrap();
+        assert_eq!(restored.inventory_id, Some(inventory_id));
+        assert!(world.inventory_store().get(inventory_id).is_some());
     }
 }

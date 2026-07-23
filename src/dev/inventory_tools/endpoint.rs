@@ -1,8 +1,20 @@
 //! Generic inventory container resolution for dev tools (DV0).
 
-use crate::dev::dev_mode::DevInventoryEndpoint;
+use crate::dev::dev_mode::{DevInventoryEndpoint, DevInventoryToolState};
 use crate::dev::inspector::WorldInspectorState;
+use crate::units::input::SelectedUnits;
+use crate::ui::gameplay::primary_selected_unit;
 use crate::world::{BuildingId, InventoryId, ItemPileId, UnitId, WorldData};
+
+/// Unit/building/pile the dev inventory tools should target.
+pub fn resolve_target_unit(
+    inspector: &WorldInspectorState,
+    selection: &SelectedUnits,
+) -> Option<UnitId> {
+    inspector
+        .selected_unit
+        .or_else(|| primary_selected_unit(selection))
+}
 
 /// Resolved container with human-readable context for the dev panel.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,15 +40,36 @@ impl DevInventoryEndpoint {
     }
 }
 
-/// List inventory containers reachable from the current inspector selection.
+/// Pick the active dev inventory endpoint from the inspector/gameplay selection.
+pub fn resolve_active_endpoint(
+    world: &WorldData,
+    inspector: &WorldInspectorState,
+    selection: &SelectedUnits,
+    dev_state: &DevInventoryToolState,
+) -> Option<DevInventoryEndpoint> {
+    let endpoints = resolve_inspector_endpoints(world, inspector, selection);
+    if let Some(info) = endpoints.get(
+        dev_state
+            .selected_endpoint_index
+            .min(endpoints.len().saturating_sub(1)),
+    ) {
+        return Some(info.endpoint);
+    }
+    let unit_id = resolve_target_unit(inspector, selection)?;
+    let inventory_id = world.get_unit(unit_id)?.inventory_id?;
+    Some(DevInventoryEndpoint::Grid(inventory_id))
+}
+
+/// List inventory containers reachable from inspector or gameplay unit selection.
 pub fn resolve_inspector_endpoints(
     world: &WorldData,
     inspector: &WorldInspectorState,
+    selection: &SelectedUnits,
 ) -> Vec<DevInventoryEndpointInfo> {
     let mut endpoints = Vec::new();
     let mut seen_inventories = Vec::new();
 
-    if let Some(unit_id) = inspector.selected_unit {
+    if let Some(unit_id) = resolve_target_unit(inspector, selection) {
         push_unit_inventory(world, unit_id, &mut endpoints, &mut seen_inventories);
     }
 

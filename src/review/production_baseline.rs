@@ -158,6 +158,7 @@ fn movement_with_empty_catalogs_does_not_panic_on_empty_world() {
         &mut scan,
         BuildingConstructionSettings::default(),
         &crate::world::InteriorProfileCatalog::default(),
+        None,
         &crate::world::ItemCatalog::default(),
         &crate::world::ItemCategoryCatalog::default(),
         &crate::world::InventoryProfileCatalog::default(),

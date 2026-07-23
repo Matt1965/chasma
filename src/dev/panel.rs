@@ -5,7 +5,8 @@ use bevy::ecs::system::SystemParam;
 use bevy::ui::FocusPolicy;
 
 use crate::world::{
-    BuildingCatalog, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, UnitCatalog,
+    BuildingCatalog, BuildingCatalogRevision, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog,
+    UnitCatalog,
 };
 
 use super::asset_sizing::format_asset_sizing_panel;
@@ -48,11 +49,13 @@ pub(crate) struct DevPanelCatalogResources<'w> {
     unit_catalog: Res<'w, UnitCatalog>,
     doodad_catalog: Res<'w, DoodadCatalog>,
     building_catalog: Res<'w, BuildingCatalog>,
+    building_revision: Res<'w, BuildingCatalogRevision>,
     item_catalog: Res<'w, crate::world::ItemCatalog>,
     item_categories: Res<'w, crate::world::ItemCategoryCatalog>,
     inventory_profiles: Res<'w, crate::world::InventoryProfileCatalog>,
     footprint_catalog: Res<'w, FootprintCatalog>,
     interior_catalog: Res<'w, InteriorProfileCatalog>,
+    nav_catalog: Res<'w, crate::world::BuildingNavigationBlueprintCatalog>,
     browse_index: Res<'w, CatalogBrowseIndex>,
 }
 
@@ -191,7 +194,13 @@ enum DevToggleFlag {
     Combat,
     Health,
     CommandTrace,
-    Grid,
+    NavWalkable,
+    NavBlockers,
+    NavFootprints,
+    NavEntrances,
+    NavReservations,
+    NavOccupancy,
+    NavBlueprint,
     ResetDevState,
 }
 
@@ -650,7 +659,13 @@ pub(crate) fn setup_dev_panel(mut commands: Commands) {
             spawn_debug_toggle_row(root, "Combat overlay", DevToggleFlag::Combat);
             spawn_debug_toggle_row(root, "Health bars (all)", DevToggleFlag::Health);
             spawn_debug_toggle_row(root, "Command trace", DevToggleFlag::CommandTrace);
-            spawn_debug_toggle_row(root, "Grid overlay", DevToggleFlag::Grid);
+            spawn_debug_toggle_row(root, "Nav walkable", DevToggleFlag::NavWalkable);
+            spawn_debug_toggle_row(root, "Nav blockers", DevToggleFlag::NavBlockers);
+            spawn_debug_toggle_row(root, "Nav footprints", DevToggleFlag::NavFootprints);
+            spawn_debug_toggle_row(root, "Nav entrances", DevToggleFlag::NavEntrances);
+            spawn_debug_toggle_row(root, "Nav reservations", DevToggleFlag::NavReservations);
+            spawn_debug_toggle_row(root, "Nav occupancy", DevToggleFlag::NavOccupancy);
+            spawn_debug_toggle_row(root, "Nav blueprint", DevToggleFlag::NavBlueprint);
             spawn_debug_toggle_row(root, "Enabled only (E)", DevToggleFlag::EnabledOnly);
             spawn_debug_toggle_row(root, "Reset dev state", DevToggleFlag::ResetDevState);
 
@@ -736,6 +751,7 @@ pub(crate) fn sync_dev_panel_content(
     unit_catalog: Res<UnitCatalog>,
     doodad_catalog: Res<DoodadCatalog>,
     building_catalog: Res<BuildingCatalog>,
+    building_revision: Res<BuildingCatalogRevision>,
     item_catalog: Res<crate::world::ItemCatalog>,
     item_categories: Res<crate::world::ItemCategoryCatalog>,
     inventory_profiles: Res<crate::world::InventoryProfileCatalog>,
@@ -813,6 +829,7 @@ pub(crate) fn sync_dev_panel_content(
             &unit_catalog,
             &doodad_catalog,
             &building_catalog,
+            building_revision.0,
             dev_state.active_tab,
             dev_state.spawn_mode,
             &debounce.filtered_query,
@@ -1295,7 +1312,13 @@ pub(crate) fn sync_dev_panel_button_styles(
             DevToggleFlag::Combat => flags.combat,
             DevToggleFlag::Health => flags.health,
             DevToggleFlag::CommandTrace => flags.intent,
-            DevToggleFlag::Grid => flags.grid,
+            DevToggleFlag::NavWalkable => flags.grid,
+            DevToggleFlag::NavBlockers => flags.nav_blockers,
+            DevToggleFlag::NavFootprints => flags.nav_footprints,
+            DevToggleFlag::NavEntrances => flags.nav_entrances,
+            DevToggleFlag::NavReservations => flags.nav_reservations,
+            DevToggleFlag::NavOccupancy => flags.nav_occupancy,
+            DevToggleFlag::NavBlueprint => flags.nav_blueprint,
             DevToggleFlag::EnabledOnly => dev_state.enabled_only,
             DevToggleFlag::ResetDevState => false,
         };
@@ -1403,7 +1426,7 @@ pub(crate) fn sync_dev_search_box_style(
 
 fn format_debug_summary(flags: &DevDebugFlags) -> String {
     format!(
-        "Overlay master: {}\nPaths: {}  Steering: {}  Formations: {}\nSelection: {}  Interaction: {}  Combat: {}  Health: {}  Trace: {}  Grid: {}",
+        "Overlay master: {}\nPaths: {}  Steering: {}  Formations: {}\nSelection: {}  Interaction: {}  Combat: {}  Health: {}  Trace: {}\nNav walk: {}  Block: {}  Foot: {}  Entr: {}  Rsv: {}  Occ: {}  Blueprint: {}",
         flags.enabled,
         flags.path,
         flags.steering,
@@ -1414,6 +1437,12 @@ fn format_debug_summary(flags: &DevDebugFlags) -> String {
         flags.health,
         flags.intent,
         flags.grid,
+        flags.nav_blockers,
+        flags.nav_footprints,
+        flags.nav_entrances,
+        flags.nav_reservations,
+        flags.nav_occupancy,
+        flags.nav_blueprint,
     )
 }
 
@@ -1519,6 +1548,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
             &catalogs.unit_catalog,
             &catalogs.doodad_catalog,
             &catalogs.building_catalog,
+            catalogs.building_revision.0,
             active_tab,
             spawn_mode,
             &search_query,
@@ -1556,6 +1586,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
                     &catalogs.building_catalog,
                     &catalogs.footprint_catalog,
                     &catalogs.interior_catalog,
+                    Some(&catalogs.nav_catalog),
                     &scene_registry.registry,
                     &entry.scene_id,
                 ) {
@@ -1616,6 +1647,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
             &catalogs.building_catalog,
             &catalogs.footprint_catalog,
             &catalogs.interior_catalog,
+            Some(&catalogs.nav_catalog),
             &mut scene_registry,
             runtime.as_deref(),
             camera_state.iter().next(),
@@ -1671,6 +1703,7 @@ fn apply_scene_action(
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
     interior_catalog: &InteriorProfileCatalog,
+    nav_catalog: Option<&crate::world::BuildingNavigationBlueprintCatalog>,
     scene_registry: &mut DevSceneRegistry,
     runtime: Option<&DoodadsRuntimeSettings>,
     camera: Option<&RtsCameraState>,
@@ -1715,6 +1748,7 @@ fn apply_scene_action(
                 building_catalog,
                 footprint_catalog,
                 interior_catalog,
+                nav_catalog,
                 &scene_registry.registry,
                 &scene_id,
             ) {
@@ -1768,7 +1802,25 @@ fn toggle_dev_flag(
         DevToggleFlag::Combat => state.debug_config.combat = !state.debug_config.combat,
         DevToggleFlag::Health => state.debug_config.health = !state.debug_config.health,
         DevToggleFlag::CommandTrace => state.debug_config.intent = !state.debug_config.intent,
-        DevToggleFlag::Grid => state.debug_config.grid = !state.debug_config.grid,
+        DevToggleFlag::NavWalkable => state.debug_config.grid = !state.debug_config.grid,
+        DevToggleFlag::NavBlockers => {
+            state.debug_config.nav_blockers = !state.debug_config.nav_blockers
+        }
+        DevToggleFlag::NavFootprints => {
+            state.debug_config.nav_footprints = !state.debug_config.nav_footprints
+        }
+        DevToggleFlag::NavEntrances => {
+            state.debug_config.nav_entrances = !state.debug_config.nav_entrances
+        }
+        DevToggleFlag::NavReservations => {
+            state.debug_config.nav_reservations = !state.debug_config.nav_reservations
+        }
+        DevToggleFlag::NavOccupancy => {
+            state.debug_config.nav_occupancy = !state.debug_config.nav_occupancy
+        }
+        DevToggleFlag::NavBlueprint => {
+            state.debug_config.nav_blueprint = !state.debug_config.nav_blueprint
+        }
         DevToggleFlag::ResetDevState => {
             let enabled = state.enabled;
             let active_tab = state.active_tab;

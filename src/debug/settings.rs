@@ -18,8 +18,20 @@ pub struct DebugOverlayConfig {
     pub combat: bool,
     /// Show health bars for all living units (ADR-062 C9 dev debug).
     pub health: bool,
-    /// Reserved grid overlay (not rendered yet).
+    /// Reserved grid overlay — walkable navigation cells (NV0).
     pub grid: bool,
+    /// Blocked navigation cells colored by passability reason (NV0).
+    pub nav_blockers: bool,
+    /// Building footprint outlines from occupancy shapes (NV0).
+    pub nav_footprints: bool,
+    /// Portal / entrance markers (NV0).
+    pub nav_entrances: bool,
+    /// Construction-reserved occupancy cells (NV0).
+    pub nav_reservations: bool,
+    /// Static occupancy blocked cells (NV0).
+    pub nav_occupancy: bool,
+    /// Generated navigation blueprint overlay (NV1.2.5).
+    pub nav_blueprint: bool,
     /// Cap per-frame debug draws for moving/selected units.
     pub max_draw_units: u32,
 }
@@ -47,6 +59,12 @@ impl DebugOverlayConfig {
             combat: false,
             health: false,
             grid: false,
+            nav_blockers: false,
+            nav_footprints: false,
+            nav_entrances: false,
+            nav_reservations: false,
+            nav_occupancy: false,
+            nav_blueprint: false,
             max_draw_units: 64,
         }
     }
@@ -65,6 +83,12 @@ impl DebugOverlayConfig {
             combat: false,
             health: false,
             grid: false,
+            nav_blockers: false,
+            nav_footprints: false,
+            nav_entrances: false,
+            nav_reservations: false,
+            nav_occupancy: false,
+            nav_blueprint: false,
             max_draw_units: 64,
         }
     }
@@ -83,7 +107,29 @@ impl DebugOverlayConfig {
             DebugOverlayCategory::Combat => self.combat,
             DebugOverlayCategory::Health => self.health,
             DebugOverlayCategory::Grid => self.grid,
+            DebugOverlayCategory::NavBlockers => self.nav_blockers,
+            DebugOverlayCategory::NavFootprints => self.nav_footprints,
+            DebugOverlayCategory::NavEntrances => self.nav_entrances,
+            DebugOverlayCategory::NavReservations => self.nav_reservations,
+            DebugOverlayCategory::NavOccupancy => self.nav_occupancy,
+            DebugOverlayCategory::NavBlueprint => self.nav_blueprint,
         }
+    }
+
+    /// True when any NV0 navigation grid overlay category is enabled.
+    pub fn navigation_overlay_active(&self) -> bool {
+        self.enabled
+            && (self.grid
+                || self.nav_blockers
+                || self.nav_footprints
+                || self.nav_entrances
+                || self.nav_reservations
+                || self.nav_occupancy)
+    }
+
+    /// True when generated blueprint inspection overlay should draw (NV1.2.5).
+    pub fn blueprint_overlay_active(&self) -> bool {
+        self.enabled && self.nav_blueprint
     }
 }
 
@@ -98,6 +144,12 @@ pub enum DebugOverlayCategory {
     Combat,
     Health,
     Grid,
+    NavBlockers,
+    NavFootprints,
+    NavEntrances,
+    NavReservations,
+    NavOccupancy,
+    NavBlueprint,
 }
 
 // --- run_if helpers (REVIEW-A6: skip systems when category disabled) ---
@@ -108,6 +160,10 @@ pub fn debug_intent_overlay_enabled(settings: &DebugOverlaySettings) -> bool {
 
 pub fn debug_path_overlay_enabled(settings: &DebugOverlaySettings) -> bool {
     settings.category_enabled(DebugOverlayCategory::Path)
+}
+
+pub fn debug_navigation_overlay_enabled(settings: &DebugOverlaySettings) -> bool {
+    settings.navigation_overlay_active()
 }
 
 pub fn debug_formation_overlay_enabled(settings: &DebugOverlaySettings) -> bool {
@@ -140,6 +196,7 @@ macro_rules! debug_overlay_run_if {
 
 debug_overlay_run_if!(run_debug_intent_overlay, debug_intent_overlay_enabled);
 debug_overlay_run_if!(run_debug_path_overlay, debug_path_overlay_enabled);
+debug_overlay_run_if!(run_debug_navigation_overlay, debug_navigation_overlay_enabled);
 debug_overlay_run_if!(run_debug_formation_overlay, debug_formation_overlay_enabled);
 debug_overlay_run_if!(run_debug_steering_overlay, debug_steering_overlay_enabled);
 debug_overlay_run_if!(run_debug_selection_overlay, debug_selection_overlay_enabled);
@@ -148,6 +205,31 @@ debug_overlay_run_if!(
     debug_interaction_overlay_enabled
 );
 debug_overlay_run_if!(run_debug_combat_overlay, debug_combat_overlay_enabled);
+
+pub fn debug_blueprint_overlay_enabled(settings: &DebugOverlaySettings) -> bool {
+    settings.blueprint_overlay_active()
+}
+
+#[cfg(feature = "dev")]
+pub fn debug_blueprint_overlay_or_inspection(
+    settings: &DebugOverlaySettings,
+    inspection_active: bool,
+) -> bool {
+    settings.blueprint_overlay_active() || inspection_active
+}
+
+#[cfg(feature = "dev")]
+pub fn run_debug_blueprint_overlay(
+    settings: Res<DebugOverlaySettings>,
+    inspection: Res<crate::dev::BlueprintInspectionState>,
+) -> bool {
+    debug_blueprint_overlay_or_inspection(&settings, inspection.active)
+}
+
+#[cfg(not(feature = "dev"))]
+pub fn run_debug_blueprint_overlay(settings: Res<DebugOverlaySettings>) -> bool {
+    debug_blueprint_overlay_enabled(&settings)
+}
 
 #[cfg(test)]
 mod tests {
@@ -167,6 +249,12 @@ mod tests {
             DebugOverlayCategory::Combat,
             DebugOverlayCategory::Health,
             DebugOverlayCategory::Grid,
+            DebugOverlayCategory::NavBlockers,
+            DebugOverlayCategory::NavFootprints,
+            DebugOverlayCategory::NavEntrances,
+            DebugOverlayCategory::NavReservations,
+            DebugOverlayCategory::NavOccupancy,
+            DebugOverlayCategory::NavBlueprint,
         ] {
             assert!(
                 !config.category_enabled(category),

@@ -6,11 +6,12 @@ use std::time::Instant;
 use bevy::prelude::*;
 
 use crate::world::{
-    BuildingCatalog, BuildingRecord, ChunkId, DoodadCatalog, DoodadRecord, DoodadRestoreError,
-    DoorAccessPolicy, DoorState, FootprintCatalog, InteriorProfileCatalog, OccupancyCatalogs,
-    TaskRecord, UnitCatalog, UnitRecord, UnitRestoreError, WorldData,
-    rebuild_building_world_indexes, restore_doodad_record, restore_unit_record,
-    validate_building_for_restore, validate_doodad_for_restore, validate_unit_for_restore,
+    BuildingCatalog, BuildingNavigationBlueprintCatalog, BuildingRecord, ChunkId, DoodadCatalog,
+    DoodadRecord, DoodadRestoreError, DoorAccessPolicy, DoorState, FootprintCatalog,
+    InteriorProfileCatalog, OccupancyCatalogs, TaskRecord, UnitCatalog, UnitRecord,
+    UnitRestoreError, WorldData, rebuild_building_world_indexes, restore_doodad_record,
+    restore_unit_record, validate_building_for_restore, validate_doodad_for_restore,
+    validate_unit_for_restore,
 };
 
 use super::inventory_snapshot::SceneInventoryPersistence;
@@ -363,6 +364,7 @@ pub fn apply_scene(
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
     interior_catalog: &InteriorProfileCatalog,
+    nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
     scene: &SceneDefinition,
 ) -> Result<SceneApplyReport, SceneApplyError> {
     let plan = build_restore_plan(unit_catalog, doodad_catalog, building_catalog, scene)?;
@@ -390,6 +392,7 @@ pub fn apply_scene(
         interior_catalog,
         doodad_catalog,
         occ,
+        nav_catalog,
         &scene.building_records,
     );
 
@@ -727,6 +730,7 @@ fn reconcile_building_interiors_after_scene_load(
     interior_catalog: &crate::world::InteriorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
+    nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
     scene_buildings: &[SceneBuildingRecord],
 ) {
     use crate::world::{BuildingId, InteriorProfileId, activate_building_interior};
@@ -752,6 +756,7 @@ fn reconcile_building_interiors_after_scene_load(
                 interior_catalog,
                 doodad_catalog,
                 occupancy,
+                nav_catalog,
                 building_id,
                 &InteriorProfileId::new(profile_key),
             );
@@ -951,6 +956,7 @@ mod tests {
             &BuildingCatalog::default(),
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
+            None,
             &scene,
         )
         .unwrap();
@@ -983,6 +989,7 @@ mod tests {
             &BuildingCatalog::default(),
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
+            None,
             &scene,
         )
         .unwrap();
@@ -1026,6 +1033,7 @@ mod tests {
             &BuildingCatalog::default(),
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
+            None,
             &scene,
         )
         .unwrap();
@@ -1055,6 +1063,7 @@ mod tests {
             &BuildingCatalog::default(),
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
+            None,
             &scene,
         )
         .unwrap_err();
@@ -1085,6 +1094,7 @@ mod tests {
             &BuildingCatalog::default(),
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
+            None,
             &scene,
         )
         .unwrap_err();
@@ -1135,6 +1145,7 @@ mod tests {
             &BuildingCatalog::default(),
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
+            None,
             &scene,
         )
         .unwrap_err();
@@ -1165,6 +1176,7 @@ mod tests {
             &BuildingCatalog::default(),
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
+            None,
             &scene_a,
         )
         .unwrap();
@@ -1195,6 +1207,7 @@ mod tests {
             &BuildingCatalog::default(),
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
+            None,
             &scene,
         )
         .unwrap();
@@ -1240,6 +1253,7 @@ mod tests {
             &building_catalog,
             &footprint_catalog,
             &InteriorProfileCatalog::default(),
+            None,
             &scene,
         )
         .unwrap();
@@ -1293,6 +1307,7 @@ mod tests {
                 door_states: Vec::new(),
                 inventory_id: None,
                 container_locked: false,
+                navigation_blueprint_override: None,
             });
         let err = apply_scene(
             &mut world,
@@ -1301,6 +1316,7 @@ mod tests {
             &building_catalog,
             &footprint_catalog,
             &InteriorProfileCatalog::default(),
+            None,
             &scene,
         )
         .unwrap_err();

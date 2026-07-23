@@ -74,6 +74,8 @@
                 source_bounds_unit_divisor: 1.0,
                 migration_state: MetricConfigured,
             ),
+            interior_profile_id: None,
+            navigation_blueprint_id: None,
         ),
         (
             id: "smelter",
@@ -115,6 +117,8 @@
                 source_bounds_unit_divisor: 1.0,
                 migration_state: MissingSizingData,
             ),
+            interior_profile_id: None,
+            navigation_blueprint_id: None,
         ),
         (
             id: "storage_chest",
@@ -164,6 +168,8 @@
                 source_bounds_unit_divisor: 1000.0,
                 migration_state: MetricConfigured,
             ),
+            interior_profile_id: None,
+            navigation_blueprint_id: None,
         ),
         (
             id: "barn",
@@ -213,6 +219,8 @@
                 source_bounds_unit_divisor: 1.0,
                 migration_state: MetricConfigured,
             ),
+            interior_profile_id: None,
+            navigation_blueprint_id: None,
         ),
     ],
 )

@@ -7,7 +7,10 @@ mod ops;
 pub mod panel;
 
 pub use crate::dev::dev_mode::DevInventoryEndpoint;
-pub use endpoint::{DevInventoryEndpointInfo, nearest_pile_at_position, resolve_inspector_endpoints};
+pub use endpoint::{
+    nearest_pile_at_position, resolve_active_endpoint, resolve_inspector_endpoints,
+    resolve_target_unit, DevInventoryEndpointInfo,
+};
 pub use input::{
     handle_dev_items_ground_click, handle_dev_items_keyboard, handle_dev_items_keyboard_system,
 };

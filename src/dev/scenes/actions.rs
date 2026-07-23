@@ -4,8 +4,8 @@ use bevy::prelude::*;
 
 use crate::camera::RtsCameraState;
 use crate::world::{
-    BuildingCatalog, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, UnitCatalog,
-    WorldData,
+    BuildingCatalog, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog,
+    BuildingNavigationBlueprintCatalog, UnitCatalog, WorldData,
 };
 
 use super::{
@@ -71,6 +71,7 @@ pub fn load_scene_by_id(
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
     interior_catalog: &InteriorProfileCatalog,
+    nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
     registry: &SceneRegistry,
     scene_id: &str,
 ) -> Result<SceneApplyReport, String> {
@@ -84,6 +85,7 @@ pub fn load_scene_by_id(
         building_catalog,
         footprint_catalog,
         interior_catalog,
+        nav_catalog,
         &scene,
     )
     .map_err(|err| err.to_string())

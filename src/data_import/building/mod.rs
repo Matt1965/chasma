@@ -3,6 +3,8 @@
 #[cfg(feature = "data-import")]
 mod dev_load;
 #[cfg(feature = "data-import")]
+mod nav_load;
+#[cfg(feature = "data-import")]
 mod excel;
 mod schema;
 mod validate;
@@ -16,6 +18,8 @@ pub use schema::{
 
 #[cfg(feature = "data-import")]
 pub use dev_load::{DEV_BUILDING_CATALOG_RON_PATH, resolve_dev_building_catalog};
+#[cfg(feature = "data-import")]
+pub use nav_load::resolve_dev_navigation_blueprint_catalog;
 #[cfg(feature = "data-import")]
 pub use excel::{BUILDING_CATEGORIES_SHEET_NAME, BUILDINGS_SHEET_NAME};
 

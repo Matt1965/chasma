@@ -28,7 +28,7 @@ Add these sheets to the dev design workbook (`data/design/chasma_design.xlsx`):
 | Mass Grams | yes | Integer grams per unit (> 0) |
 | Enabled | yes | |
 | Description | no | |
-| Render Key | no | Future mesh key |
+| Render Key | no | World mesh key — `items/{key}.glb` when set; generic sphere fallback when unset (IA0) |
 | Icon Key | no | Future UI icon |
 | Base Value | no | Gold value baseline (defaults to 1) |
 | Tags | no | Comma-separated; normalized to lowercase sorted tags |
@@ -81,6 +81,19 @@ F12 → **Items** tab. Press **I** for item definitions, **P** for inventory pro
 ## Runtime inventory (I2)
 
 Authoritative `InventoryStore` and `ItemInstanceStore` live on `WorldData`. See [ADR-088](../ADRs/ADR-088-authoritative-inventory-grid-and-item-identity.md).
+
+## World item presentation (IA0)
+
+Every item can exist as a **world pile** (`WorldItemPileRecord` on `WorldData`). Presentation is derived — quantity and item type remain authoritative on the world record, not on ECS.
+
+| `ItemDefinition.render_key` | Runtime behavior |
+|-----------------------------|------------------|
+| Set + GLB loaded | Renders `assets/items/{key}.glb` |
+| Unset or loading | Renders configurable generic sphere fallback |
+
+Fallback settings live in `ItemPilePresentationSettings` (`fallback_sphere_radius`, colors, dev label offset).
+
+In **dev mode** (F12), floating labels show pile contents (e.g. `Iron Ore x37`, `Unknown Item`) above each visible pile.
 
 ## Generated assets
 

@@ -105,3 +105,16 @@ Runtime instances live on [`WorldData`] in chunk-keyed stores (ADR-079 B2).
 Presentation is derived in `src/buildings/` and must not become authority.
 
 See [ADR-079](ADRs/ADR-079-building-runtime-foundation.md).
+
+Interior navigation metadata (floors, entrances, vertical transitions) is authored separately via [navigation blueprints](navigation-blueprint.md) (`navigation_blueprint_id` on definitions).
+
+## Variant promotion (NV1.6)
+
+In dev mode, edited navigation blueprints can be promoted into new independent building assets via **Save As Variant** (`Ctrl+Shift+V` in blueprint edit mode). See [navigation-blueprint.md — Variant promotion](navigation-blueprint.md#variant-promotion-nv16).
+
+- Clones the source `BuildingDefinition` with a new id and display name.
+- Forks the edited blueprint into `{variant_id}_nav` (fully independent after creation).
+- Shares mesh references and asset sizing with the source; does not duplicate GLB files.
+- Upserts in-memory catalogs and exports to `assets/buildings/catalog.ron` and `assets/buildings/navigation_blueprints/catalog.ron`.
+- Excel is not modified directly; the RON snapshots are the dev-side artifacts for later pipeline emission.
+- New variants appear in the dev Buildings tab immediately and can be placed without restart.

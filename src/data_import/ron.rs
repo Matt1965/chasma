@@ -143,6 +143,10 @@ pub struct BuildingDefinitionRon {
     pub enabled: bool,
     #[serde(default)]
     pub asset_sizing: AssetSizingDefinition,
+    #[serde(default)]
+    pub interior_profile_id: Option<String>,
+    #[serde(default)]
+    pub navigation_blueprint_id: Option<String>,
 }
 
 impl From<&BuildingCategoryDefinition> for BuildingCategoryRon {
@@ -199,6 +203,8 @@ impl From<&BuildingDefinition> for BuildingDefinitionRon {
             max_slope_degrees: definition.max_slope_degrees,
             enabled: definition.enabled,
             asset_sizing: definition.asset_sizing.clone(),
+            interior_profile_id: definition.interior_profile_id.clone(),
+            navigation_blueprint_id: definition.navigation_blueprint_id.clone(),
         }
     }
 }
@@ -228,7 +234,12 @@ pub fn export_buildings_to_ron(
             message: err.to_string(),
         })?;
     }
-    fs::write(path, text).map_err(|err| DataImportError::Io {
+    let temp_path = path.with_extension("ron.tmp");
+    fs::write(&temp_path, text).map_err(|err| DataImportError::Io {
+        path: temp_path.clone(),
+        message: err.to_string(),
+    })?;
+    fs::rename(&temp_path, path).map_err(|err| DataImportError::Io {
         path: path.to_path_buf(),
         message: err.to_string(),
     })

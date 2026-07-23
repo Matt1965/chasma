@@ -283,6 +283,7 @@ fn auto_progress_disabled_only_worker_labor_completes() {
         &interior,
         &doodad,
         occ,
+        None,
         BuildingConstructionSettings::default(),
         1.0,
     );

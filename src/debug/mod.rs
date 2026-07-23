@@ -29,8 +29,8 @@ pub use movement_observability::{MovementBlockObservability, blocked_reason_labe
 #[cfg(feature = "dev")]
 pub use overlay::{
     DebugOverlaySystems, draw_combat_debug_overlay, draw_formation_debug_overlay,
-    draw_intent_debug_overlay, draw_interaction_debug_overlay, draw_path_debug_overlay,
-    draw_selection_debug_overlay, draw_steering_debug_overlay,
+    draw_intent_debug_overlay, draw_interaction_debug_overlay, draw_navigation_debug_overlay,
+    draw_path_debug_overlay, draw_selection_debug_overlay, draw_steering_debug_overlay,
 };
 pub use pending::PendingSimulationTrace;
 pub use plugin::DebugOverlayPlugin;

@@ -144,6 +144,7 @@ mod tests {
             &mut scan,
             crate::world::BuildingConstructionSettings::default(),
             &crate::world::InteriorProfileCatalog::default(),
+            None,
             &crate::world::ItemCatalog::default(),
             &crate::world::ItemCategoryCatalog::default(),
             &crate::world::InventoryProfileCatalog::default(),

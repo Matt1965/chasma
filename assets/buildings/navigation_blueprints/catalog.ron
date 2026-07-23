@@ -1,0 +1,186 @@
+(
+    definitions: [
+        (
+            id: ("barn_interior"),
+            display_name: "Barn Navigation",
+            schema_version: 1,
+            metadata: (
+                source_render_key: None,
+                generation_revision: None,
+                tags: [],
+                extensions: {},
+            ),
+            floors: [
+                (
+                    floor_id: 0,
+                    key: "barn_interior",
+                    display_label: "Barn Floor",
+                    elevation_meters: 0.0,
+                    visibility_group_id: 1,
+                    room_tag: Some("storage_hall"),
+                    walkable_outline: (
+                        vertices_xz: [
+                            (0.0, 0.0),
+                            (8.0, 0.0),
+                            (8.0, 6.0),
+                            (0.0, 6.0),
+                        ],
+                    ),
+                ),
+            ],
+            entrances: [
+                (
+                    key: "exterior_entrance",
+                    floor_key: "barn_interior",
+                    local_position_xz: (4.0, 0.0),
+                    radius_meters: 2.5,
+                    interior_spawn_local: (4.0, 0.0, 2.0),
+                    bidirectional: true,
+                ),
+            ],
+            vertical_transitions: [],
+            enabled: true,
+        ),
+        (
+            id: ("hut_open_front_nav"),
+            display_name: "Hut Open Front Navigation",
+            schema_version: 1,
+            metadata: (
+                source_render_key: None,
+                generation_revision: Some(1),
+                tags: [],
+                extensions: {
+                    "created_by": "dev_variant",
+                    "description": "Test variant",
+                    "edited_by": "dev_editor",
+                    "variant_of": "hut",
+                },
+            ),
+            floors: [
+                (
+                    floor_id: 0,
+                    key: "ground_interior",
+                    display_label: "Ground Floor",
+                    elevation_meters: 0.0,
+                    visibility_group_id: 1,
+                    room_tag: Some("hall"),
+                    walkable_outline: (
+                        vertices_xz: [
+                            (0.0, 0.0),
+                            (4.0, 0.0),
+                            (4.0, 4.0),
+                            (0.0, 4.0),
+                        ],
+                    ),
+                ),
+                (
+                    floor_id: 1,
+                    key: "upper_interior",
+                    display_label: "Upper Floor",
+                    elevation_meters: 4.0,
+                    visibility_group_id: 2,
+                    room_tag: Some("bedroom"),
+                    walkable_outline: (
+                        vertices_xz: [
+                            (0.0, 0.0),
+                            (4.0, 0.0),
+                            (4.0, 4.0),
+                            (0.0, 4.0),
+                        ],
+                    ),
+                ),
+            ],
+            entrances: [
+                (
+                    key: "exterior_entrance",
+                    floor_key: "ground_interior",
+                    local_position_xz: (2.0, 0.0),
+                    radius_meters: 1.5,
+                    interior_spawn_local: (2.0, 0.0, 1.0),
+                    bidirectional: true,
+                ),
+            ],
+            vertical_transitions: [
+                (
+                    key: "stairs",
+                    kind: Stair,
+                    from_floor_key: "ground_interior",
+                    to_floor_key: "upper_interior",
+                    from_local_position_xz: (3.0, 3.0),
+                    from_radius_meters: 1.25,
+                    to_local_position: (3.0, 4.0, 3.0),
+                    bidirectional: true,
+                ),
+            ],
+            enabled: true,
+        ),
+        (
+            id: ("two_story_hut"),
+            display_name: "Two Story Hut Navigation",
+            schema_version: 1,
+            metadata: (
+                source_render_key: None,
+                generation_revision: None,
+                tags: [],
+                extensions: {},
+            ),
+            floors: [
+                (
+                    floor_id: 0,
+                    key: "ground_interior",
+                    display_label: "Ground Floor",
+                    elevation_meters: 0.0,
+                    visibility_group_id: 1,
+                    room_tag: Some("hall"),
+                    walkable_outline: (
+                        vertices_xz: [
+                            (0.0, 0.0),
+                            (4.0, 0.0),
+                            (4.0, 4.0),
+                            (0.0, 4.0),
+                        ],
+                    ),
+                ),
+                (
+                    floor_id: 1,
+                    key: "upper_interior",
+                    display_label: "Upper Floor",
+                    elevation_meters: 4.0,
+                    visibility_group_id: 2,
+                    room_tag: Some("bedroom"),
+                    walkable_outline: (
+                        vertices_xz: [
+                            (0.0, 0.0),
+                            (4.0, 0.0),
+                            (4.0, 4.0),
+                            (0.0, 4.0),
+                        ],
+                    ),
+                ),
+            ],
+            entrances: [
+                (
+                    key: "exterior_entrance",
+                    floor_key: "ground_interior",
+                    local_position_xz: (2.0, 0.0),
+                    radius_meters: 1.5,
+                    interior_spawn_local: (2.0, 0.0, 1.0),
+                    bidirectional: true,
+                ),
+            ],
+            vertical_transitions: [
+                (
+                    key: "stairs",
+                    kind: Stair,
+                    from_floor_key: "ground_interior",
+                    to_floor_key: "upper_interior",
+                    from_local_position_xz: (3.0, 3.0),
+                    from_radius_meters: 1.25,
+                    to_local_position: (3.0, 4.0, 3.0),
+                    bidirectional: true,
+                ),
+            ],
+            enabled: true,
+        ),
+    ],
+)

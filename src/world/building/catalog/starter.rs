@@ -140,6 +140,7 @@ mod fixtures {
                 true,
             )
             .with_interior_profile_id("two_story_hut")
+            .with_navigation_blueprint_id("two_story_hut")
             .with_allow_instance_scale(true),
             BuildingDefinition::new(
                 BuildingDefinitionId::new("workbench"),
@@ -229,6 +230,7 @@ mod fixtures {
             .with_spill_on_destroy(true)
             .with_interaction_profile_id("storage_chest")
             .with_interior_profile_id("barn_interior")
+            .with_navigation_blueprint_id("barn_interior")
             .with_model_local_offset(Vec3::new(7.05, 0.35, -18.65)),
             BuildingDefinition::new(
                 BuildingDefinitionId::new("settlement_core"),

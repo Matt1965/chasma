@@ -18,6 +18,7 @@ pub fn try_portal_transition(
     current_space: SpaceId,
     agent_position: WorldPosition,
     transition_state: &mut UnitPortalTransitionState,
+    preferred_portal: Option<PortalId>,
 ) -> Option<(SpaceId, WorldPosition, PortalId)> {
     let agent_global = agent_position.to_global(layout);
     let agent_xz = Vec2::new(agent_global.x, agent_global.z);
@@ -27,6 +28,16 @@ pub fn try_portal_transition(
         .into_iter()
         .filter(|portal| portal.from_space == current_space || portal.bidirectional)
         .collect();
+
+    if let Some(preferred) = preferred_portal {
+        candidates.sort_by_key(|portal| {
+            if portal.id == preferred {
+                0
+            } else {
+                1
+            }
+        });
+    }
 
     for portal in &mut candidates {
         if transition_state.lockout_portal == Some(portal.id) {

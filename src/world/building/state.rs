@@ -67,6 +67,9 @@ pub struct BuildingSpaces {
 #[derive(Debug, Clone, Default, PartialEq, Reflect)]
 pub struct BuildingInteriorState {
     pub profile_id: Option<String>,
+    /// Instance-only navigation blueprint override (NV1.1).
+    pub navigation_blueprint_override:
+        Option<super::navigation_blueprint::BuildingNavigationBlueprintInstanceOverride>,
     pub door_ids: Vec<u32>,
     pub child_doodad_ids: Vec<u64>,
     pub child_building_ids: Vec<u64>,

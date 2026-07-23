@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::astar::astar_path;
+use super::astar::astar_path_in_space as run_astar_in_space;
 use super::grid::{
     GridCoord, NavigationAgent, NavigationConfig, grid_cell_world_position, grid_coord_at_position,
     is_position_walkable,
@@ -282,7 +282,16 @@ fn astar_path_in_space(
     goal: GridCoord,
     space_id: SpaceId,
 ) -> Option<Vec<WorldPosition>> {
-    let positions = astar_path(world, catalogs, config, agent, start, goal)?;
+    let positions = run_astar_in_space(
+        world,
+        space_registry,
+        catalogs,
+        config,
+        agent,
+        start,
+        goal,
+        space_id,
+    )?;
     let mut grounded = Vec::new();
     for position in positions {
         grounded.push(ground_position_in_space(
@@ -317,8 +326,14 @@ pub fn is_position_walkable_in_space(
     let Some(grounded) = ground_position_in_space(world, space_registry, space_id, position) else {
         return false;
     };
+    let layout = world.layout();
     if space_id.is_surface() {
-        return is_position_walkable(world, catalogs, grounded, agent);
+        return is_position_walkable(world, catalogs, grounded, agent)
+            || crate::world::position_in_surface_entrance_portal(
+                world.space_registry(),
+                layout,
+                grounded,
+            );
     }
     matches!(
         query_passability_in_space(

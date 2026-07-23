@@ -38,14 +38,15 @@ impl Plugin for DebugOverlayPlugin {
             };
             use super::interaction_snapshot::InteractionDebugSnapshot;
             use super::overlay::{
-                DebugOverlaySystems, draw_combat_debug_overlay, draw_formation_debug_overlay,
-                draw_intent_debug_overlay, draw_interaction_debug_overlay, draw_path_debug_overlay,
-                draw_selection_debug_overlay, draw_steering_debug_overlay,
+                DebugOverlaySystems, draw_blueprint_debug_overlay, draw_combat_debug_overlay,
+                draw_formation_debug_overlay, draw_intent_debug_overlay,
+                draw_interaction_debug_overlay, draw_navigation_debug_overlay,
+                draw_path_debug_overlay, draw_selection_debug_overlay, draw_steering_debug_overlay,
             };
             use super::settings::{
-                run_debug_combat_overlay, run_debug_formation_overlay, run_debug_intent_overlay,
-                run_debug_interaction_overlay, run_debug_path_overlay, run_debug_selection_overlay,
-                run_debug_steering_overlay,
+                run_debug_blueprint_overlay, run_debug_combat_overlay, run_debug_formation_overlay,
+                run_debug_intent_overlay, run_debug_interaction_overlay, run_debug_navigation_overlay,
+                run_debug_path_overlay, run_debug_selection_overlay, run_debug_steering_overlay,
             };
 
             app.init_resource::<InteractionDebugSnapshot>().add_systems(
@@ -56,6 +57,8 @@ impl Plugin for DebugOverlayPlugin {
                     draw_intent_debug_overlay.run_if(run_debug_intent_overlay),
                     draw_interaction_debug_overlay.run_if(run_debug_interaction_overlay),
                     draw_path_debug_overlay.run_if(run_debug_path_overlay),
+                    draw_navigation_debug_overlay.run_if(run_debug_navigation_overlay),
+                    draw_blueprint_debug_overlay.run_if(run_debug_blueprint_overlay),
                     draw_formation_debug_overlay.run_if(run_debug_formation_overlay),
                     draw_steering_debug_overlay.run_if(run_debug_steering_overlay),
                     draw_selection_debug_overlay.run_if(run_debug_selection_overlay),

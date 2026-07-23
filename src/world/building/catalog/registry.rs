@@ -91,6 +91,22 @@ impl BuildingCatalog {
         })
     }
 
+    /// Insert or replace one building definition (NV1.6 dev variant creation).
+    pub fn upsert(
+        &mut self,
+        definition: BuildingDefinition,
+        categories: &BuildingCategoryCatalog,
+    ) -> Result<(), BuildingCatalogError> {
+        let mut definitions = self.definitions.clone();
+        if let Some(index) = self.by_id.get(&definition.id).copied() {
+            definitions[index] = definition;
+        } else {
+            definitions.push(definition);
+        }
+        *self = Self::from_definitions(definitions, categories)?;
+        Ok(())
+    }
+
     pub fn len(&self) -> usize {
         self.definitions.len()
     }

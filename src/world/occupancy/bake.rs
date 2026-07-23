@@ -235,6 +235,11 @@ fn collect_node_triangles(
 }
 
 #[cfg(feature = "data-import")]
+pub fn source_file_hash_hex(path: &Path) -> Result<String, OccupancyError> {
+    file_hash_hex(path)
+}
+
+#[cfg(feature = "data-import")]
 fn file_hash_hex(path: &Path) -> Result<String, OccupancyError> {
     use std::hash::{Hash, Hasher};
     let metadata = std::fs::metadata(path)

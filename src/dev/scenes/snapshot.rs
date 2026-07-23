@@ -14,11 +14,11 @@ use crate::world::{
 use super::SceneCaptureContext;
 
 /// On-disk scene format version.
-pub const SCENE_VERSION: u32 = 14;
+pub const SCENE_VERSION: u32 = 15;
 
 /// Whether a scene file version can be loaded by the current runtime.
 pub fn scene_version_supported(version: u32) -> bool {
-    matches!(version, 1 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14)
+    matches!(version, 1 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15)
 }
 
 /// Pure-data scene snapshot — no logic (ADR-045).
@@ -232,6 +232,10 @@ pub struct SceneBuildingRecord {
     pub inventory_id: Option<u64>,
     #[serde(default)]
     pub container_locked: bool,
+    /// Per-instance navigation blueprint override (NV1.5).
+    #[serde(default)]
+    pub navigation_blueprint_override:
+        Option<crate::world::BuildingNavigationBlueprintInstanceOverride>,
 }
 
 /// Serializable door state for scene restore (ADR-084 B7).
@@ -341,6 +345,18 @@ pub struct SceneDebugFlagsSnapshot {
     pub show_interaction_hits: bool,
     pub show_command_trace: bool,
     pub show_grid_overlay: bool,
+    #[serde(default)]
+    pub show_nav_blockers: bool,
+    #[serde(default)]
+    pub show_nav_footprints: bool,
+    #[serde(default)]
+    pub show_nav_entrances: bool,
+    #[serde(default)]
+    pub show_nav_reservations: bool,
+    #[serde(default)]
+    pub show_nav_occupancy: bool,
+    #[serde(default)]
+    pub show_nav_blueprint: bool,
     pub master_enabled: bool,
 }
 
@@ -592,6 +608,7 @@ impl SceneBuildingRecord {
             door_states,
             inventory_id: record.inventory_id.map(|id| u64::from(id.raw())),
             container_locked: record.container_locked,
+            navigation_blueprint_override: record.interior.navigation_blueprint_override.clone(),
         }
     }
 
@@ -634,6 +651,7 @@ impl SceneBuildingRecord {
             source,
             interior: crate::world::BuildingInteriorState {
                 profile_id: self.interior_profile_id.clone(),
+                navigation_blueprint_override: self.navigation_blueprint_override.clone(),
                 door_ids: Vec::new(),
                 child_doodad_ids: self.child_doodad_ids.clone(),
                 child_building_ids: self.child_building_ids.clone(),
@@ -1025,6 +1043,12 @@ impl From<DevDebugFlags> for SceneDebugFlagsSnapshot {
             show_interaction_hits: flags.interaction,
             show_command_trace: flags.intent,
             show_grid_overlay: flags.grid,
+            show_nav_blockers: flags.nav_blockers,
+            show_nav_footprints: flags.nav_footprints,
+            show_nav_entrances: flags.nav_entrances,
+            show_nav_reservations: flags.nav_reservations,
+            show_nav_occupancy: flags.nav_occupancy,
+            show_nav_blueprint: flags.nav_blueprint,
         }
     }
 }
@@ -1040,6 +1064,12 @@ impl From<SceneDebugFlagsSnapshot> for DevDebugFlags {
             interaction: flags.show_interaction_hits,
             intent: flags.show_command_trace,
             grid: flags.show_grid_overlay,
+            nav_blockers: flags.show_nav_blockers,
+            nav_footprints: flags.show_nav_footprints,
+            nav_entrances: flags.show_nav_entrances,
+            nav_reservations: flags.show_nav_reservations,
+            nav_occupancy: flags.show_nav_occupancy,
+            nav_blueprint: flags.show_nav_blueprint,
             ..Default::default()
         }
     }

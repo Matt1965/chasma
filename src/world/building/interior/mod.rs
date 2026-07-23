@@ -12,7 +12,8 @@ mod profile;
 mod tests;
 
 pub use activate::{
-    activate_building_interior, deactivate_building_interior, try_activate_interior_if_complete,
+    activate_building_interior, deactivate_building_interior,
+    refresh_building_navigation_runtime, try_activate_interior_if_complete,
 };
 pub use catalog::{
     DoorTemplate, InteriorChildKind, InteriorChildPlacement, InteriorProfile,

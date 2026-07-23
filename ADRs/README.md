@@ -37,6 +37,7 @@ ADRs document **accepted technical decisions**. Game design direction lives in
 | [127](ADR-127-asset-transform-catalog-authority.md) | Catalog sizing authority (AT1) |
 | [128](ADR-128-asset-transform-composition.md) | Runtime transform composition (AT2) |
 | [129](ADR-129-collision-gameplay-metric-sync.md) | Collision & gameplay metric sync (AT3) |
+| [130](ADR-130-generic-world-item-representation.md) | Generic world item representation (IA0) |
 
 ## Combat implementation chain
 

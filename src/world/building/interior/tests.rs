@@ -11,9 +11,10 @@ use super::{
 };
 use crate::world::{
     Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingLifecycleState, BuildingOwnership,
-    BuildingSource, ChunkCoord, ChunkLayout, DoodadCatalog, FootprintCatalog, LocalPosition,
-    OccupancyCatalogs, OwnerId, UnitOwnership, WorldData, WorldPosition, create_building,
-    place_player_building, set_building_lifecycle_stage,
+    BuildingSource, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, FootprintCatalog,
+    Heightfield, LocalPosition, NavigationConfig, OccupancyCatalogs, OwnerId, PassabilityCatalogs,
+    UnitOwnership, WorldData, WorldPosition, create_building, find_path_with_spaces,
+    place_player_building, set_building_lifecycle_stage, BuildingNavigationBlueprintCatalog,
 };
 
 fn layout_world() -> WorldData {
@@ -96,6 +97,7 @@ fn try_activate_interior_if_complete_on_dev_spawned_hut() {
         &interior,
         &doodad_catalog,
         occupancy,
+        None,
         record.id,
     )
     .unwrap();
@@ -137,6 +139,7 @@ fn completion_spawns_interior_children_and_doors_once() {
         &interior,
         &doodad_catalog,
         occupancy,
+        None,
         id,
         BuildingLifecycleState::Complete,
         1.0,
@@ -167,6 +170,7 @@ fn completion_spawns_interior_children_and_doors_once() {
         &interior,
         &doodad_catalog,
         occupancy,
+        None,
         id,
         &InteriorProfileId::new("two_story_hut"),
     );
@@ -201,6 +205,7 @@ fn door_open_close_updates_portal_passability() {
         &interior,
         &doodad_catalog,
         occupancy,
+        None,
         id,
         &InteriorProfileId::new("two_story_hut"),
     )
@@ -263,6 +268,7 @@ fn authorized_unit_can_open_closed_door() {
         &interior,
         &doodad_catalog,
         occupancy,
+        None,
         id,
         &InteriorProfileId::new("two_story_hut"),
     )
@@ -313,6 +319,7 @@ fn locked_door_blocks_unauthorized_open() {
         &interior,
         &doodad_catalog,
         occupancy,
+        None,
         id,
         &InteriorProfileId::new("two_story_hut"),
     )
@@ -361,6 +368,7 @@ fn ruins_transition_cleans_interior_state() {
         &interior,
         &doodad_catalog,
         occupancy,
+        None,
         id,
         &InteriorProfileId::new("two_story_hut"),
     )
@@ -393,4 +401,113 @@ fn ruins_transition_cleans_interior_state() {
         assert!(world.get_doodad(crate::world::DoodadId::new(raw)).is_none());
     }
     assert!(world.space_registry().building_space_ids(id).is_empty());
+}
+
+fn flat_world_with_terrain() -> WorldData {
+    let layout = ChunkLayout {
+        chunk_size_meters: 256.0,
+        units_per_meter: 1.0,
+    };
+    let mut world = WorldData::new(layout);
+    let heightfield = Heightfield::from_samples(3, 128.0, vec![0.0; 9]).unwrap();
+    world.insert(
+        ChunkId::new(ChunkCoord::new(0, 0)),
+        ChunkData::new(heightfield, Vec::new()),
+    );
+    world
+}
+
+fn interior_centroid(
+    outline: &[Vec2],
+    layout: ChunkLayout,
+    space_id: crate::world::SpaceId,
+    world: &WorldData,
+) -> WorldPosition {
+    let centroid_xz = outline.iter().fold(Vec2::ZERO, |acc, v| acc + *v) / outline.len() as f32;
+    let floor_y = world
+        .space_registry()
+        .get_space(space_id)
+        .map(|space| space.floor_y_global)
+        .unwrap_or(0.0);
+    WorldPosition::from_global(Vec3::new(centroid_xz.x, floor_y, centroid_xz.y), layout)
+}
+
+#[test]
+fn blueprint_runtime_registers_floors_and_paths_to_upper_level() {
+    let building_catalog = BuildingCatalog::default();
+    let doodad_catalog = DoodadCatalog::default();
+    let footprint = FootprintCatalog::default();
+    let occupancy = occ(&building_catalog, &doodad_catalog, &footprint);
+    let interior = interior_catalog();
+    let nav_catalog = BuildingNavigationBlueprintCatalog::default();
+    let mut world = flat_world_with_terrain();
+
+    let id = place_player_building(
+        &building_catalog,
+        &mut world,
+        &BuildingDefinitionId::new("hut"),
+        position(80.0, 80.0),
+        Quat::IDENTITY,
+        BuildingOwnership::with_affiliation(Affiliation::Player),
+        occupancy,
+    )
+    .unwrap()
+    .id;
+
+    set_building_lifecycle_stage(
+        &mut world,
+        &building_catalog,
+        &interior,
+        &doodad_catalog,
+        occupancy,
+        Some(&nav_catalog),
+        id,
+        BuildingLifecycleState::Complete,
+        1.0,
+    )
+    .unwrap();
+
+    let runtime = world
+        .building_navigation_runtime()
+        .get(id)
+        .expect("runtime navigation cache");
+    assert_eq!(runtime.floors.len(), 2);
+
+    let ground = runtime
+        .floors
+        .iter()
+        .find(|floor| floor.floor_key == "ground_interior")
+        .expect("ground floor");
+    let upper = runtime
+        .floors
+        .iter()
+        .find(|floor| floor.floor_key == "upper_interior")
+        .expect("upper floor");
+
+    let layout = world.layout();
+    let ground_pos = interior_centroid(&ground.world_outline_xz, layout, ground.space_id, &world);
+    let upper_pos = interior_centroid(&upper.world_outline_xz, layout, upper.space_id, &world);
+
+    let catalogs = PassabilityCatalogs {
+        doodad: &doodad_catalog,
+        building: &building_catalog,
+        footprint: &footprint,
+    };
+
+    let path = find_path_with_spaces(
+        &world,
+        catalogs,
+        &NavigationConfig::default(),
+        0.5,
+        45.0,
+        ground_pos,
+        upper_pos,
+        ground.space_id,
+        upper.space_id,
+        None,
+    )
+    .expect("interior path across blueprint stairs");
+
+    assert!(path.waypoints.iter().any(|wp| wp.space_id == upper.space_id));
+    assert!(path.waypoints.iter().any(|wp| wp.portal_id.is_some()));
 }

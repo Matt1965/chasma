@@ -241,6 +241,7 @@ fn spawn_at(
                         interior_catalog,
                         doodad_catalog,
                         occupancy,
+                        None,
                         record.id,
                     );
                     true

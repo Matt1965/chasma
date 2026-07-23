@@ -45,7 +45,10 @@ pub use input::{
     handle_dev_spawn_click, handle_dev_tool_cancel_input, reset_dev_input_gate,
     sync_dev_gameplay_input_block, update_dev_panel_hover_state, update_dev_preview_anchor,
 };
-pub use inspector::{WorldInspectorState, capture_unit_inspector_snapshot};
+pub use inspector::{
+    BlueprintEditDrag, BlueprintEditSelection, BlueprintEditTool, BlueprintInspectionState,
+    WorldInspectorState, capture_unit_inspector_snapshot,
+};
 pub use scenes::{
     DEV_SCENES_DIR, SceneApplyReport, SceneCaptureContext, SceneDebugFlagsSnapshot, SceneRegistry,
     SceneRegistryEntry, apply_scene, capture_scene, clear_world_entities,
@@ -66,8 +69,9 @@ use gizmo::{
     handle_gizmo_keyboard, handle_gizmo_mouse, sync_gizmo_target,
 };
 use inspector::{
-    handle_building_dev_actions, handle_doodad_transform_hotkeys, handle_inspector_input,
-    refresh_inspector_snapshot, sync_inspector_panel,
+    handle_blueprint_edit_input, handle_blueprint_inspection_input, handle_building_dev_actions,
+    handle_doodad_transform_hotkeys, handle_inspector_input, refresh_inspector_snapshot,
+    sync_inspector_panel,
 };
 use panel::{
     handle_dev_panel_ui_interaction, setup_dev_panel, sync_dev_panel_button_styles,
@@ -101,6 +105,7 @@ impl Plugin for DevModePlugin {
             .init_resource::<CatalogFilterCache>()
             .init_resource::<DevSearchDebounce>()
             .init_resource::<inspector::WorldInspectorState>()
+            .init_resource::<inspector::BlueprintInspectionState>()
             .init_resource::<gizmo::DevToolState>()
             .init_resource::<gizmo::TransformEditState>()
             .init_resource::<DevPanelHoverState>()
@@ -216,7 +221,24 @@ impl Plugin for DevModePlugin {
             )
             .add_systems(
                 Update,
+                handle_blueprint_inspection_input.in_set(DevModeInputSystems),
+            )
+            .add_systems(
+                Update,
+                handle_blueprint_edit_input
+                    .after(handle_blueprint_inspection_input)
+                    .in_set(DevModeInputSystems),
+            )
+            .add_systems(
+                Update,
                 handle_doodad_transform_hotkeys.in_set(DevModeInputSystems),
+            )
+            .add_systems(
+                Update,
+                inventory_tools::handle_dev_items_ground_click
+                    .after(sync_dev_panel_tab_sections)
+                    .before(handle_dev_spawn_click)
+                    .in_set(DevModeInputSystems),
             )
             .add_systems(
                 Update,
@@ -227,12 +249,6 @@ impl Plugin for DevModePlugin {
             .add_systems(
                 Update,
                 sync_dev_gameplay_input_block
-                    .after(handle_dev_spawn_click)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                inventory_tools::handle_dev_items_ground_click
                     .after(handle_dev_spawn_click)
                     .in_set(DevModeInputSystems),
             )

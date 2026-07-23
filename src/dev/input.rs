@@ -16,7 +16,7 @@ use crate::world::{
 };
 
 use super::catalog_cache::DevSearchDebounce;
-use super::dev_mode::{DevModeInputGate, DevModeState, DevTab, DevTextFieldFocus};
+use super::dev_mode::{DefinitionId, DevModeInputGate, DevModeState, DevTab, DevTextFieldFocus};
 use super::gizmo::TransformEditState;
 use super::history::DevSpawnRecord;
 use super::inspector::WorldInspectorState;
@@ -392,6 +392,18 @@ pub fn handle_dev_spawn_click(
 
     if params.gate.spawn_handled_this_frame {
         return;
+    }
+
+    if params.dev_state.active_tab == DevTab::Items {
+        if params.dev_state.inventory.pile_placement_armed {
+            return;
+        }
+        if matches!(
+            params.dev_state.selected_definition,
+            Some(DefinitionId::Item(_) | DefinitionId::InventoryProfile(_))
+        ) {
+            return;
+        }
     }
 
     if inspector.selected_doodad.is_some() || inspector.selected_building.is_some() {

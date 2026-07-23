@@ -58,11 +58,13 @@ pub struct GizmoInputParams<'w, 's> {
     pub footprint_catalog: Res<'w, FootprintCatalog>,
     pub interior_catalog: Res<'w, InteriorProfileCatalog>,
     pub unit_catalog: Res<'w, UnitCatalog>,
+    pub nav_catalog: Res<'w, crate::world::BuildingNavigationBlueprintCatalog>,
     pub render_index: Res<'w, DoodadRenderIndex>,
     pub render_assets: Option<Res<'w, crate::terrain::TerrainRenderAssets>>,
     pub preview: ResMut<'w, crate::dev::tools::DevPlacementPreview>,
     pub building_selection: ResMut<'w, GameplayBuildingSelection>,
     pub assessment_store: ResMut<'w, crate::world::BuildingTerrainAssessmentStore>,
+    pub blueprint_inspection: Res<'w, crate::dev::BlueprintInspectionState>,
 }
 
 pub fn selected_object(inspector: &WorldInspectorState) -> Option<SelectedWorldObject> {
@@ -92,6 +94,7 @@ pub fn sync_gizmo_target(mut params: GizmoInputParams) {
                         &params.footprint_catalog,
                         &params.interior_catalog,
                         &params.unit_catalog,
+                        Some(&params.nav_catalog),
                         doodad_options,
                         building_options,
                         Some(&mut params.assessment_store),
@@ -274,6 +277,9 @@ pub fn handle_gizmo_mouse(mut params: GizmoInputParams) {
     if !params.dev_state.enabled || params.panel_hovered.hovered {
         return;
     }
+    if params.blueprint_inspection.editing {
+        return;
+    }
     if params.dev_state.text_focus != DevTextFieldFocus::None {
         return;
     }
@@ -413,6 +419,7 @@ pub fn handle_gizmo_mouse(mut params: GizmoInputParams) {
                 &params.footprint_catalog,
                 &params.interior_catalog,
                 &params.unit_catalog,
+                Some(&params.nav_catalog),
                 doodad_options,
                 building_options,
                 Some(&mut params.assessment_store),

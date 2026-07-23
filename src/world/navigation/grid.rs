@@ -3,9 +3,9 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    BuildingCatalog, ChunkLayout, DoodadCatalog, FootprintCatalog, PassabilityAgent,
-    PassabilityCatalogs, PassabilityResult, SlopeWalkability, WorldData, WorldPosition,
-    classify_slope_walkability, ground_world_position, query_passability_at,
+    ChunkLayout, PassabilityAgent, PassabilityCatalogs, PassabilityResult, SlopeWalkability,
+    WorldData, WorldPosition, classify_slope_walkability, ground_position_in_space,
+    ground_world_position, query_passability_at, query_passability_in_space,
 };
 
 /// Grid configuration for pathfinding (ADR-032).
@@ -133,6 +133,59 @@ pub fn is_cell_walkable(
     true
 }
 
+/// Whether a navigation cell is walkable in a specific space (NV1.3).
+pub fn is_cell_walkable_in_space(
+    world: &WorldData,
+    space_registry: &crate::world::SpaceRegistry,
+    catalogs: PassabilityCatalogs<'_>,
+    config: NavigationConfig,
+    agent: NavigationAgent,
+    coord: GridCoord,
+    space_id: crate::world::SpaceId,
+) -> bool {
+    let layout = world.layout();
+    let samples = cell_walkability_sample_globals(coord, config, agent.radius_meters);
+    if space_id.is_surface() {
+        for global in samples {
+            let position = WorldPosition::from_global(global, layout);
+            let Some(grounded) = ground_position_in_space(world, space_registry, space_id, position)
+            else {
+                continue;
+            };
+            if is_position_walkable(world, catalogs, grounded, agent)
+                || crate::world::position_in_surface_entrance_portal(
+                    world.space_registry(),
+                    layout,
+                    grounded,
+                )
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    for global in samples {
+        let position = WorldPosition::from_global(global, layout);
+        let Some(grounded) = ground_position_in_space(world, space_registry, space_id, position) else {
+            return false;
+        };
+        if !matches!(
+            query_passability_in_space(
+                world,
+                catalogs,
+                grounded,
+                PassabilityAgent::from(agent),
+                space_id,
+            ),
+            PassabilityResult::Passable { .. }
+        ) {
+            return false;
+        }
+    }
+    true
+}
+
 /// Whether terrain heightfield is resident for this cell.
 pub fn cell_terrain_available(
     world: &WorldData,
@@ -188,7 +241,8 @@ pub fn diagonal_corner_clear(
 mod tests {
     use super::*;
     use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, DoodadCatalog, Heightfield, LocalPosition, WorldData,
+        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, DoodadCatalog, FootprintCatalog,
+        Heightfield, LocalPosition, WorldData,
     };
 
     fn layout() -> ChunkLayout {

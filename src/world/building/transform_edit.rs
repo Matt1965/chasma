@@ -57,6 +57,7 @@ pub struct BuildingTransformCatalogs<'a> {
     pub doodad: &'a DoodadCatalog,
     pub interior: &'a InteriorProfileCatalog,
     pub unit: &'a UnitCatalog,
+    pub nav_blueprint: Option<&'a super::navigation_blueprint::BuildingNavigationBlueprintCatalog>,
 }
 
 /// Successful building transform edit report.
@@ -505,6 +506,19 @@ fn update_dependent_topology(
                 })?;
             update_interior_topology_in_place(world, &record, profile, new_placement)?;
         }
+        if world.building_navigation_runtime().get(building_id).is_some() {
+            if let Some(nav_catalog) = catalogs.nav_blueprint {
+                super::navigation_blueprint::reposition_building_navigation_runtime(
+                    world,
+                    catalogs.building,
+                    nav_catalog,
+                    building_id,
+                )
+                .map_err(|err| BuildingTransformEditError::UnsupportedTransformCapability {
+                    message: err,
+                })?;
+            }
+        }
     }
 
     transform_interior_children(
@@ -811,6 +825,7 @@ mod tests {
             doodad,
             interior,
             unit,
+            nav_blueprint: None,
         }
     }
 

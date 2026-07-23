@@ -105,9 +105,23 @@ fn portal_transition_is_deterministic_with_hysteresis() {
 
     let agent = pos(10.0, 10.0);
     let mut state = UnitPortalTransitionState::default();
-    let first = try_portal_transition(&registry, layout(), SpaceId::SURFACE, agent, &mut state);
+    let first = try_portal_transition(
+        &registry,
+        layout(),
+        SpaceId::SURFACE,
+        agent,
+        &mut state,
+        None,
+    );
     assert!(first.is_some());
-    let second = try_portal_transition(&registry, layout(), SpaceId::SURFACE, agent, &mut state);
+    let second = try_portal_transition(
+        &registry,
+        layout(),
+        SpaceId::SURFACE,
+        agent,
+        &mut state,
+        None,
+    );
     assert!(second.is_none());
 }
 

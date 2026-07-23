@@ -20,6 +20,7 @@ pub struct WorldInspectorState {
     pub selected_pile: Option<crate::world::ItemPileId>,
     pub unit_snapshot: Option<UnitInspectorSnapshot>,
     pub building_snapshot: Option<BuildingInspectorSnapshot>,
+    pub blueprint_snapshot: Option<super::snapshot::BuildingBlueprintInspectorSnapshot>,
     pub doodad_snapshot: Option<DoodadInspectorSnapshot>,
     pub interaction_snapshot: Option<InteractionInspectorSnapshot>,
     pub cache_key: InspectorCacheKey,
@@ -51,6 +52,7 @@ impl WorldInspectorState {
         self.unit_snapshot = None;
         self.building_snapshot = None;
         self.doodad_snapshot = None;
+        self.blueprint_snapshot = None;
         self.cache_key = InspectorCacheKey::default();
     }
 
@@ -63,6 +65,7 @@ impl WorldInspectorState {
         self.unit_snapshot = None;
         self.building_snapshot = None;
         self.doodad_snapshot = None;
+        self.blueprint_snapshot = None;
         self.cache_key = InspectorCacheKey::default();
     }
 
@@ -75,6 +78,7 @@ impl WorldInspectorState {
         self.unit_snapshot = None;
         self.building_snapshot = None;
         self.doodad_snapshot = None;
+        self.blueprint_snapshot = None;
         self.cache_key = InspectorCacheKey::default();
     }
 
@@ -87,6 +91,7 @@ impl WorldInspectorState {
         self.unit_snapshot = None;
         self.building_snapshot = None;
         self.doodad_snapshot = None;
+        self.blueprint_snapshot = None;
         self.cache_key = InspectorCacheKey::default();
     }
 

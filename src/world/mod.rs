@@ -73,8 +73,8 @@ pub use building::starter_building_category_definitions;
 #[cfg(any(test, feature = "dev"))]
 pub use building::starter_definitions as starter_building_definitions;
 pub use building::{
-    AssessmentRebuildOutcome, AssessmentRebuildReport, BuildingAuthoringError, BuildingCapabilities, BuildingCatalog,
-    BuildingCatalogError, BuildingCategoryCatalog, BuildingCategoryCatalogError,
+    AssessmentRebuildOutcome, AssessmentRebuildReport, BuildingAuthoringError, BuildingCapabilities,
+    BuildingCatalog, BuildingCatalogError, BuildingCatalogRevision, BuildingCategoryCatalog, BuildingCategoryCatalogError,
     BuildingCategoryDefinition, BuildingCategoryId, BuildingConstructionReport,
     BuildingConstructionSettings, BuildingDefinition, BuildingDefinitionId,
     BuildingFieldRequirementAssessment, BuildingFieldRequirementCatalog,
@@ -105,6 +105,29 @@ pub use building::{
     FieldResponseProfileDefinition, FieldResponseProfileError, FieldResponseProfileId,
     FootprintSpec, FootprintType, INTERACTION_WORK_RANGE_METERS, InteractionPointDefinition,
     InteriorError, InteriorProfileCatalog, InteriorProfileId, MAX_EFFICIENCY_BASIS_POINTS,
+    BuildingNavigationBlueprint, BuildingNavigationBlueprintCatalog,
+    BuildingNavigationBlueprintCatalogRevision, BuildingNavigationBlueprintError,
+    BuildingNavigationBlueprintId, BuildingNavigationBlueprintInstanceOverride,
+    BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH, NAVIGATION_BLUEPRINT_CACHE_MANIFEST_PATH,
+    NAVIGATION_BLUEPRINT_GENERATOR_VERSION, NavigationBlueprintCacheManifest,
+    NavigationBlueprintGenerationStatus, NavigationEntranceDefinition, NavigationFloorDefinition,
+    NavigationPolygon2d, NavigationVerticalTransitionDefinition,
+    NavigationVerticalTransitionKind, ResolvedBuildingNavigationBlueprint,
+    BlueprintDiagnosticFocus, BlueprintDiagnosticLevel, BlueprintInspectionValidation,
+    validate_blueprint_for_inspection,
+    BlueprintEditOutcome, add_entrance_on_floor, add_stair_transition, delete_entrance,
+    delete_floor_vertex, delete_transition, export_navigation_blueprint_catalog,
+    insert_vertex_on_edge, move_entrance, move_floor_vertex, move_transition_from,
+    move_transition_to, prepare_blueprint_for_save, set_entrance_radius, set_transition_radius,
+    BlueprintAuthoritySource, BlueprintPersistenceOutcome, apply_blueprint_to_asset,
+    classify_blueprint_authority, count_inheriting_instances, create_building_variant,
+    export_building_catalog_snapshot, replace_building_instance_definition,
+    reset_instance_to_asset, save_instance_blueprint, suggest_variant_definition_id,
+    validate_building_definition_id, BuildingVariantCreateInput, BuildingVariantCreateOutcome,
+    BuildingNavigationRuntime, BuildingNavigationRuntimeStore, interior_position_walkable,
+    position_in_surface_entrance_portal, reposition_building_navigation_runtime,
+    resolve_navigation_space_at_position, resolve_navigation_start_space,
+    load_building_navigation_blueprint_catalog, resolve_building_navigation_blueprint,
     OperationalEfficiencyContext, OperationalEfficiencyError, OperationalEfficiencyReport,
     OperationalLimitingFactor, OperationDefinitionId, OperationLifecycle,
     PLACEMENT_QUANTIZE_METERS, PRODUCTION_PROGRESS_ONE_UNIT, PRODUCTION_STEPPING_MODEL,
@@ -121,6 +144,7 @@ pub use building::{
     combine_output_efficiency, create_building, create_building_with_inventory,
     create_dev_complete_building, create_dev_complete_building_with_inventory, damage_building,
     deactivate_building_interior, destroy_building, destroy_door, evaluate_field_response,
+    refresh_building_navigation_runtime,
     field_value_from_percent, field_value_to_percent_display, format_coverage_display,
     format_efficiency_display, format_field_average_display, ground_and_quantize_building_anchor,
     hash_sample_cells, heal_building, interaction_point_world_position, is_building_operational,
@@ -139,6 +163,11 @@ pub use building::{
     validate_building_inventory_owner, validate_building_placement,
     validate_building_transform_placement, validate_production_runtime,
     workstation_workers_for_building,
+};
+#[cfg(feature = "data-import")]
+pub use building::{
+    blueprint_id_for_building, hash_asset_path, import_navigation_blueprints_for_catalog,
+    regenerate_navigation_blueprint_for_building, should_generate_navigation_blueprint,
 };
 pub use building::{
     BuildingInventoryContext, BuildingInventoryError, BuildingInventoryRemovalPolicy,
@@ -268,6 +297,8 @@ pub use movement::steering::{
 pub use navigation::{
     GridCoord, NEIGHBOR_OFFSETS, NavigationAgent, NavigationConfig, NavigationError,
     NavigationPath, NavigationWaypoint, find_path, find_path_in_spaces, find_path_with_spaces,
+    grid_cell_center_global, grid_cell_world_position, grid_coord_at_global_xz,
+    grid_coord_at_position, is_cell_walkable, is_position_walkable,
     is_position_walkable_in_space, xz_distance,
 };
 pub use obstacle::{
@@ -625,6 +656,7 @@ impl Plugin for WorldFoundationPlugin {
             app.init_resource::<AnimationProfileCatalog>();
             app.init_resource::<BuildingCategoryCatalog>();
             app.init_resource::<BuildingCatalog>();
+            app.init_resource::<BuildingCatalogRevision>();
             app.init_resource::<FootprintCatalog>();
             app.init_resource::<ItemCategoryCatalog>();
             app.init_resource::<ItemCatalog>();
@@ -640,8 +672,11 @@ impl Plugin for WorldFoundationPlugin {
             app.insert_resource(crate::world::load_terrain_field_source_profile_catalog());
             app.insert_resource(crate::world::load_field_response_profile_catalog());
             app.insert_resource(crate::world::load_building_field_requirement_catalog());
+            app.insert_resource(crate::world::load_building_navigation_blueprint_catalog());
             app.init_resource::<crate::world::FieldResponseProfileCatalogRevision>();
             app.init_resource::<crate::world::BuildingFieldRequirementCatalogRevision>();
+            app.init_resource::<crate::world::BuildingNavigationBlueprintCatalogRevision>();
+            app.init_resource::<crate::world::BuildingCatalogRevision>();
             app.init_resource::<crate::world::BuildingTerrainAssessmentStore>();
         }
         #[cfg(feature = "dev")]
@@ -670,6 +705,8 @@ impl Plugin for WorldFoundationPlugin {
             app.init_resource::<EmergencyCatalog>();
             app.init_resource::<StrategicTaskTemplateCatalog>();
             app.insert_resource(building_categories);
+            let nav_catalog =
+                crate::data_import::resolve_dev_navigation_blueprint_catalog(&building_catalog);
             app.insert_resource(building_catalog);
             app.insert_resource(footprint_catalog);
             app.insert_resource(crate::data_import::resolve_dev_doodad_catalog(Some(
@@ -685,8 +722,11 @@ impl Plugin for WorldFoundationPlugin {
             app.insert_resource(crate::world::load_terrain_field_source_profile_catalog());
             app.insert_resource(crate::world::FieldResponseProfileCatalog::default());
             app.insert_resource(crate::world::BuildingFieldRequirementCatalog::default());
+            app.insert_resource(nav_catalog);
             app.init_resource::<crate::world::FieldResponseProfileCatalogRevision>();
             app.init_resource::<crate::world::BuildingFieldRequirementCatalogRevision>();
+            app.init_resource::<crate::world::BuildingNavigationBlueprintCatalogRevision>();
+            app.init_resource::<crate::world::BuildingCatalogRevision>();
             app.init_resource::<crate::world::BuildingTerrainAssessmentStore>();
             crate::data_import::export_dev_asset_sizing_reports(&mut sizing_reports);
         }

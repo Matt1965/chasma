@@ -17,9 +17,9 @@ use crate::units::input::{
 };
 
 use super::capture::{
-    capture_building_asset_presentation, capture_building_inspector_snapshot,
-    capture_interaction_inspector_snapshot, capture_unit_inspector_snapshot,
-    probe_building_operation,
+    capture_building_asset_presentation, capture_building_blueprint_inspection_snapshot,
+    capture_building_inspector_snapshot, capture_interaction_inspector_snapshot,
+    capture_unit_inspector_snapshot, probe_building_operation,
 };
 use super::params::{
     BuildingInspectorPresentationParams, InspectorCaptureParams, InspectorPickParams,
@@ -155,6 +155,13 @@ pub fn handle_inspector_input(
     if panel_hovered.hovered || gate.spawn_handled_this_frame || gizmo_edit.dragging {
         return;
     }
+    if inspector
+        .blueprint_snapshot
+        .as_ref()
+        .is_some_and(|snap| snap.edit_active)
+    {
+        return;
+    }
 
     if !mouse_buttons.just_pressed(MouseButton::Left) || box_drag.is_box_drag() {
         return;
@@ -282,11 +289,22 @@ pub fn handle_inspector_input(
             Some(presentation_info),
             Some(operation_probe),
         );
+        inspector.blueprint_snapshot = capture_building_blueprint_inspection_snapshot(
+            &capture.world,
+            &capture.building_catalog,
+            &capture.nav_blueprint_catalog,
+            building_id,
+            None,
+        );
         overlay_focus.set_unit(None);
         return;
     }
 
     if !dev_state.enabled {
+        return;
+    }
+
+    if dev_state.inventory.pile_placement_armed {
         return;
     }
 

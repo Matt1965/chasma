@@ -42,6 +42,7 @@ struct CacheKey {
     enabled_only: bool,
     query: String,
     favorites_hash: u64,
+    building_revision: u64,
 }
 
 /// Cached filter output keyed by tab + query + favorites.
@@ -102,6 +103,7 @@ pub fn browse_catalog_entries<'a>(
     unit_catalog: &UnitCatalog,
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
+    building_revision: u64,
     tab: DevTab,
     spawn_mode: SpawnMode,
     search_query: &str,
@@ -113,6 +115,7 @@ pub fn browse_catalog_entries<'a>(
         enabled_only,
         query: search_query.to_string(),
         favorites_hash: favorites_hash(favorites),
+        building_revision,
     };
     if cache.key.as_ref() == Some(&key) {
         return &cache.entries;
@@ -262,6 +265,7 @@ mod tests {
             &catalog,
             &DoodadCatalog::default(),
             &BuildingCatalog::default(),
+            0,
             DevTab::Units,
             SpawnMode::Unit,
             "wolf",
@@ -275,6 +279,7 @@ mod tests {
             &catalog,
             &DoodadCatalog::default(),
             &BuildingCatalog::default(),
+            0,
             DevTab::Units,
             SpawnMode::Unit,
             "wolf",
@@ -301,6 +306,7 @@ mod tests {
             &catalog,
             &DoodadCatalog::default(),
             &BuildingCatalog::default(),
+            0,
             DevTab::Units,
             SpawnMode::Unit,
             "",

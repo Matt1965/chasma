@@ -7,8 +7,10 @@ use crate::dev::dev_mode::{selected_item_max_stack, DevModeState, DevTab, DevTex
 use crate::dev::input::DevPanelUi;
 use crate::dev::inspector::WorldInspectorState;
 use crate::simulation::SimulationControlState;
+use crate::units::input::SelectedUnits;
 use crate::world::{
-    InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, ItemPileSettings, WorldData,
+    InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, ItemPileSettings, UnitCatalog,
+    WorldData,
 };
 
 const QTY_FIELD_BG_IDLE: Color = Color::srgba(0.08, 0.11, 0.14, 0.95);
@@ -305,6 +307,7 @@ pub fn sync_items_panel_text(
     dev_state: Res<DevModeState>,
     world: Res<WorldData>,
     inspector: Res<WorldInspectorState>,
+    selection: Res<SelectedUnits>,
     items: Res<ItemCatalog>,
     categories: Res<ItemCategoryCatalog>,
     profiles: Res<InventoryProfileCatalog>,
@@ -320,6 +323,7 @@ pub fn sync_items_panel_text(
     **text = super::format::format_inventory_tool_panel(
         &world,
         &inspector,
+        &selection,
         &items,
         &categories,
         &ctx,
@@ -333,6 +337,8 @@ pub fn handle_dev_items_buttons(
     mut dev_state: ResMut<DevModeState>,
     mut world: ResMut<WorldData>,
     inspector: Res<WorldInspectorState>,
+    selection: Res<SelectedUnits>,
+    unit_catalog: Res<UnitCatalog>,
     items: Res<ItemCatalog>,
     categories: Res<ItemCategoryCatalog>,
     profiles: Res<InventoryProfileCatalog>,
@@ -366,6 +372,8 @@ pub fn handle_dev_items_buttons(
                 &mut dev_state,
                 &mut world,
                 &inspector,
+                &selection,
+                &unit_catalog,
                 &items,
                 &categories,
                 &profiles,

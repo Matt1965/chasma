@@ -196,6 +196,8 @@ all inventory endpoints on that selection (unit backpack, building bindings, sel
 | **Xfer src / dst / run** | Transfer between endpoints (grid ↔ grid, grid ↔ pile) |
 
 Ground piles are normal inventory entities with a world transform — no separate dropped-item system.
+World piles render an authored GLB when `render_key` is set, otherwise a generic sphere fallback (IA0).
+In dev mode, floating labels show pile contents above each visible pile.
 Transfers reuse the same pile ↔ inventory APIs as gameplay.
 
 Quantity defaults to **10**; use bracket keys or panel buttons for large stacks (e.g. 500 logs).
@@ -219,6 +221,50 @@ Interact command opens containers, corpses, and world piles when armed.
 
 Dev inspection of open inventory IDs and authoritative entries is via the Items tab (H subtab),
 building inspector (I/G), and pile harness (World Tools); player UI state lives in `InventoryUiState`.
+
+## Navigation debug overlays (NV0)
+
+Dev Mode **Debug** toggles (master overlay must be on). Each category is independent — enable only what you need.
+
+| Toggle | Shows |
+|--------|--------|
+| **Paths** | Active path polyline, start (blue) / end (red) markers, waypoint spheres (cyan; portal = magenta; active = yellow) |
+| **Nav walkable** | Green quads on walkable 4 m navigation cells near focus |
+| **Nav blockers** | Blocked nav cells colored by passability reason (slope, building, doodad, …) |
+| **Nav footprints** | Building occupancy footprint outlines (highlighted when building selected in inspector) |
+| **Nav entrances** | Portal rings + lines to destination (highlighted for selected building) |
+| **Nav reservations** | Yellow occupancy cells reserved for construction |
+| **Nav occupancy** | Red static blocked occupancy cells |
+| **Nav blueprint** | Generated navigation blueprint polygons, entrances, and vertical transitions (NV1.2.5; from blueprint data, not mesh re-analysis) |
+
+Overlays draw in a **48 m** radius around the camera, selected unit, or inspector-selected building/unit. They observe navigation and occupancy state only — pathfinding is unchanged when overlays are off.
+
+**Inspector:** select a unit to see path status text (waypoints, index, length) and path highlight via overlay focus. Select a building to highlight its entrances and footprint.
+
+### Building navigation blueprint inspection (NV1.2.5)
+
+With a building selected in the Inspector tab:
+
+| Key | Action |
+|-----|--------|
+| **N** | Enter blueprint inspection (bird's-eye camera, enable Nav blueprint overlay) |
+| **Esc** | Exit inspection and restore camera |
+| **`[`** / **`]`** | Previous / next floor |
+| **1–9** | Focus validation diagnostic in overlay |
+| **Shift+R** | Regenerate from mesh (confirms when authored/generated data exists) |
+| **E** | Enter blueprint edit (or from inspection) |
+| **Ctrl+S** | Save instance override (edit mode) |
+| **Ctrl+Shift+S** | Apply to asset default — confirms inheriting instance count (edit mode) |
+| **Ctrl+Shift+V** | Save as variant — fork new building asset (edit mode) |
+| **Ctrl+Alt+R** | Reset instance to asset/generated (edit mode) |
+| **Enter** / **Esc** | Confirm / cancel pending blueprint action |
+| **1–3** | Edit tools: select / add vertex / add entrance (edit mode) |
+| **Del** | Delete selected blueprint element (edit mode) |
+| **+** / **-** | Adjust entrance/transition radius (edit mode) |
+
+See `docs/navigation-blueprint.md` for validation rules, editor workflow, and cache status fields shown in the inspector.
+
+Requires `cargo run --features dev`.
 
 ## Panel layout
 

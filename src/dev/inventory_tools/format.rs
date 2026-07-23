@@ -4,8 +4,9 @@ use crate::dev::dev_mode::{DefinitionId, DevInventoryToolState, ItemsBrowserSubt
 use crate::dev::DevInventoryEndpoint;
 use crate::dev::inspector::WorldInspectorState;
 use crate::dev::inventory_tools::endpoint::{
-    DevInventoryEndpointInfo, resolve_inspector_endpoints,
+    resolve_inspector_endpoints, resolve_target_unit, DevInventoryEndpointInfo,
 };
+use crate::units::input::SelectedUnits;
 use crate::world::{
     InventoryCatalogCtx, ItemInstanceStore, PlacedInventoryEntry, ItemCatalog, ItemCategoryCatalog,
     WorldData, WorldPileContents, InventoryEntryContents,
@@ -14,6 +15,7 @@ use crate::world::{
 pub fn format_inventory_tool_panel(
     world: &WorldData,
     inspector: &WorldInspectorState,
+    selection: &SelectedUnits,
     items: &ItemCatalog,
     categories: &ItemCategoryCatalog,
     ctx: &InventoryCatalogCtx<'_>,
@@ -21,7 +23,7 @@ pub fn format_inventory_tool_panel(
     tool: &DevInventoryToolState,
     selected_item: Option<&DefinitionId>,
 ) -> String {
-    let endpoints = resolve_inspector_endpoints(world, inspector);
+    let endpoints = resolve_inspector_endpoints(world, inspector, selection);
     let mut lines = vec![
         format!("Subtab: {:?}", tool.subtab),
         tool.message.clone(),
@@ -29,7 +31,18 @@ pub fn format_inventory_tool_panel(
     ];
 
     if endpoints.is_empty() {
-        lines.push("Target: none — inspect unit/building or click ground pile".into());
+        if let Some(unit_id) = resolve_target_unit(inspector, selection) {
+            if world.get_unit(unit_id).is_some() {
+                lines.push(format!(
+                    "Target: Unit #{} has no inventory — Add attaches `unit_backpack_standard`",
+                    unit_id.raw()
+                ));
+            } else {
+                lines.push("Target: none — select a unit or inspect unit/building/pile".into());
+            }
+        } else {
+            lines.push("Target: none — select a unit or inspect unit/building/pile".into());
+        }
     } else {
         let idx = tool.selected_endpoint_index.min(endpoints.len().saturating_sub(1));
         lines.push(format!(

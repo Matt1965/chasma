@@ -15,6 +15,7 @@ mod id;
 mod insert;
 mod interaction_profile;
 mod interior;
+mod navigation_blueprint;
 pub mod inventory;
 pub mod inventory_binding;
 pub mod inventory_error;
@@ -41,8 +42,11 @@ pub use authoring::{
 #[cfg(any(test, feature = "dev"))]
 pub use catalog::starter_definitions;
 pub use catalog::{
-    BuildingCatalog, BuildingCatalogError, BuildingDefinition, BuildingDefinitionId,
-    BuildingRenderKey,
+    BuildingCatalog, BuildingCatalogError, BuildingCatalogRevision, BuildingDefinition,
+    BuildingDefinitionId, BuildingRenderKey, BuildingVariantCreateInput,
+    BuildingVariantCreateOutcome, create_building_variant, export_building_catalog_snapshot,
+    replace_building_instance_definition, suggest_variant_definition_id,
+    validate_building_definition_id,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use category::starter_definitions as starter_building_category_definitions;
@@ -83,8 +87,48 @@ pub use interior::{
     DoorAccessPolicy, DoorId, DoorRecord, DoorState, DoorStore, InteriorError,
     InteriorProfileCatalog, InteriorProfileId, activate_building_interior, close_door,
     deactivate_building_interior, destroy_door, lock_door, open_door, portal_traversable,
+    refresh_building_navigation_runtime,
     space_route_for_unit, starter_interior_profiles, try_activate_interior_if_complete,
     try_open_door_at_portal_for_unit, try_open_door_for_unit, two_story_hut_interior_profile,
+};
+pub use navigation_blueprint::{
+    BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH,
+    BUILDING_NAVIGATION_BLUEPRINT_SCHEMA_VERSION, BlueprintPortalTemplate, BlueprintSpaceTemplate,
+    BuildingNavigationBlueprint, BuildingNavigationBlueprintCatalog,
+    BuildingNavigationBlueprintCatalogRevision, BuildingNavigationBlueprintCatalogRon,
+    BuildingNavigationBlueprintError, BuildingNavigationBlueprintId,
+    BuildingNavigationBlueprintInstanceOverride, BuildingNavigationBlueprintMetadata,
+    NavigationEntranceDefinition, NavigationFloorDefinition, NavigationPolygon2d,
+    NavigationVerticalTransitionDefinition, NavigationVerticalTransitionKind,
+    ResolvedBuildingNavigationBlueprint, barn_navigation_blueprint,
+    blueprint_portal_templates, blueprint_space_templates,
+    load_building_navigation_blueprint_catalog, resolve_building_navigation_blueprint,
+    starter_navigation_blueprints, two_story_hut_navigation_blueprint,
+    validate_navigation_blueprint_id, NAVIGATION_BLUEPRINT_CACHE_MANIFEST_PATH,
+    NAVIGATION_BLUEPRINT_GENERATOR_VERSION, NavigationBlueprintCacheEntry,
+    NavigationBlueprintCacheManifest, NavigationBlueprintGenerationReport,
+    NavigationBlueprintGenerationStatus, export_generation_reports_markdown,
+    BlueprintDiagnosticFocus, BlueprintDiagnosticLevel, BlueprintInspectionValidation,
+    BlueprintValidationDiagnostic, validate_blueprint_for_inspection,
+    BlueprintEditOutcome, add_entrance_on_floor, add_stair_transition, delete_entrance,
+    delete_floor_vertex, delete_transition, insert_vertex_on_edge, move_entrance,
+    move_floor_vertex, move_transition_from, move_transition_to, prepare_blueprint_for_save,
+    set_entrance_radius, set_transition_radius,
+    BlueprintAuthoritySource, BlueprintPersistenceOutcome, apply_blueprint_to_asset,
+    classify_blueprint_authority, count_inheriting_instances, reset_instance_to_asset,
+    save_instance_blueprint,
+    BuildingNavigationRuntime, BuildingNavigationRuntimeStore, RuntimeNavigationFloor,
+    build_navigation_runtime, interior_position_walkable, position_in_surface_entrance_portal,
+    register_building_navigation_profile, reposition_building_navigation_runtime,
+    resolve_navigation_space_at_position, resolve_navigation_start_space,
+};
+#[cfg(feature = "data-import")]
+pub use navigation_blueprint::{
+    NAVIGATION_BLUEPRINT_REPORT_PATH, NavigationBlueprintGenerateInput,
+    NavigationBlueprintGenerateOutput, blueprint_id_for_building, export_navigation_blueprint_catalog,
+    generate_navigation_blueprint, hash_asset_path, import_navigation_blueprints_for_catalog,
+    load_building_mesh_for_navigation, regenerate_navigation_blueprint_for_building,
+    should_generate_navigation_blueprint,
 };
 pub use inventory::{
     BuildingInventoryContext, BuildingInventoryRemovalPolicy, attach_inventory_on_building_create,

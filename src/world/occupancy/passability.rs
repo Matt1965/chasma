@@ -137,6 +137,16 @@ fn query_surface_passability(
         }
     }
 
+    if crate::world::position_in_surface_entrance_portal(
+        world.space_registry(),
+        world.layout(),
+        grounded,
+    ) {
+        return PassabilityResult::Passable {
+            movement_cost_multiplier: 1.0,
+        };
+    }
+
     let occupancy =
         query_static_occupancy_at(world, catalogs.occupancy(), grounded, agent.radius_meters);
     if occupancy.blocked {
@@ -174,6 +184,18 @@ fn query_interior_passability(
         };
     }
     let layout = world.layout();
+    if !crate::world::interior_position_walkable(
+        world.building_navigation_runtime(),
+        world.space_registry(),
+        layout,
+        position,
+        space_id,
+    ) {
+        return PassabilityResult::Blocked {
+            reason: PassabilityBlockReason::BuildingOccupied,
+            source: None,
+        };
+    }
     let center = position.to_global(layout);
     let center_xz = Vec2::new(center.x, center.z);
     let cell = super::cell::occupancy_cell_at_global_xz(center_xz);

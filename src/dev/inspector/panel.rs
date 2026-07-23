@@ -5,8 +5,8 @@ use bevy::prelude::*;
 use crate::debug::{CommandTraceBuffer, recent_combat_log_lines};
 
 use super::snapshot::{
-    BuildingInspectorSnapshot, DoodadInspectorSnapshot, InteractionInspectorSnapshot,
-    UnitInspectorSnapshot,
+    BuildingBlueprintInspectorSnapshot, BuildingInspectorSnapshot, DoodadInspectorSnapshot,
+    InteractionInspectorSnapshot, UnitInspectorSnapshot,
 };
 use super::state::WorldInspectorState;
 
@@ -55,7 +55,11 @@ pub(crate) fn sync_inspector_panel(
     **label = if let Some(snapshot) = inspector.doodad_snapshot.as_ref() {
         format_doodad_snapshot(snapshot, &tool_state, &edit)
     } else if let Some(snapshot) = inspector.building_snapshot.as_ref() {
-        format_building_snapshot(snapshot, inspector.production_advanced_expanded)
+        format_building_snapshot(
+            snapshot,
+            inspector.production_advanced_expanded,
+            inspector.blueprint_snapshot.as_ref(),
+        )
     } else if let Some(snapshot) = inspector.unit_snapshot.as_ref() {
         let mut body = format_unit_snapshot(snapshot);
         let unit_filter = inspector.selected_unit;
@@ -255,7 +259,11 @@ fn format_doodad_snapshot(
     out
 }
 
-fn format_building_snapshot(s: &BuildingInspectorSnapshot, advanced: bool) -> String {
+fn format_building_snapshot(
+    s: &BuildingInspectorSnapshot,
+    advanced: bool,
+    blueprint: Option<&BuildingBlueprintInspectorSnapshot>,
+) -> String {
     let mut out = format!(
         "Building #{}  {}  def={}\n\
          state={}  progress={:.0}%  operational={}\n\
@@ -290,7 +298,8 @@ fn format_building_snapshot(s: &BuildingInspectorSnapshot, advanced: bool) -> St
          Production: [,] enable [.] pause [/] mode []] reset [`] advanced [\\] validate [';/] op [M] force exec [K] clear inv [F] refresh terrain\n\
          Logistics: [Q] spawn [Shift+Q] cancel [Ctrl+Q] complete\n\
          Planner: [Shift+P] force replan\n\
-         Container: [I]nspect [G]old [T]ransfer [U]lock [V]alidate",
+         Container: [I]nspect [G]old [T]ransfer [U]lock [V]alidate\n\
+         Navigation: [N] inspect blueprint [Esc] exit [[ ]]/[]] floor [Shift+R] regenerate",
         s.building_id.raw(),
         s.display_name,
         s.definition_id.as_str(),
@@ -382,5 +391,111 @@ fn format_building_snapshot(s: &BuildingInspectorSnapshot, advanced: bool) -> St
             s.assigned_workers.as_deref().unwrap_or("—"),
         ));
     }
+    if let Some(bp) = blueprint {
+        out.push_str(&format_blueprint_section(bp));
+    }
     out
+}
+
+fn format_blueprint_section(bp: &BuildingBlueprintInspectorSnapshot) -> String {
+    let mut section = format!(
+        "\n--- Building Navigation Blueprint ---\n\
+         id: {}  source: {}\n\
+         generator v{}  status: {}  cache fresh: {}\n\
+         fingerprint: {}\n\
+         floors: {:?}  selected: {}  vertices: {}\n\
+         elevation: {}  entrances: {}  transitions: {}\n\
+         validation: {} errors, {} warnings, {} info\n",
+        bp.blueprint_id.as_deref().unwrap_or("—"),
+        bp.blueprint_source,
+        bp.generator_version,
+        bp.generation_status,
+        bp.cache_fresh,
+        bp.source_fingerprint.as_deref().unwrap_or("—"),
+        bp.floor_ids,
+        bp.selected_floor_id
+            .map(|id| id.to_string())
+            .unwrap_or_else(|| "—".into()),
+        bp.selected_floor_vertex_count,
+        bp.selected_floor_elevation
+            .map(|v| format!("{v:.2}m"))
+            .unwrap_or_else(|| "—".into()),
+        bp.entrance_count,
+        bp.transition_count,
+        bp.validation.error_count,
+        bp.validation.warning_count,
+        bp.validation.info_count,
+    );
+    if bp.inspection_active {
+        section.push_str("inspection: ACTIVE (bird's-eye)\n");
+    } else {
+        section.push_str("inspection: press [N] to enter\n");
+    }
+    if bp.edit_active {
+        section.push_str(&format!(
+            "edit: ACTIVE{}",
+            if bp.edit_dirty { " (unsaved)" } else { "" }
+        ));
+        section.push_str("\n[Ctrl+S] save instance  [Ctrl+Shift+S] apply to asset  [Ctrl+Shift+V] save as variant\n");
+        section.push_str("[Ctrl+Alt+R] reset instance  [Esc] exit edit  [Enter/Esc] confirm pending action\n");
+        section.push_str("tools: [1] select [2] add vertex [3] add entrance\n");
+        section.push_str("[Del] delete  [+/-] radius  [/[] floor\n");
+        if let Some(selected) = &bp.selected_element {
+            section.push_str(&format!("selected: {selected}\n"));
+        }
+        if bp.variant_draft_active {
+            section.push_str("--- Save As Variant ---\n");
+            section.push_str(&format!(
+                "name{}: {}\n",
+                active_marker(bp.variant_draft_active_field.as_deref(), "display name"),
+                bp.variant_draft_display_name.as_deref().unwrap_or("—")
+            ));
+            section.push_str(&format!(
+                "asset id{}: {}\n",
+                active_marker(bp.variant_draft_active_field.as_deref(), "asset id"),
+                bp.variant_draft_asset_id.as_deref().unwrap_or("—")
+            ));
+            section.push_str(&format!(
+                "description{}: {}\n",
+                active_marker(bp.variant_draft_active_field.as_deref(), "description"),
+                bp.variant_draft_description.as_deref().unwrap_or("—")
+            ));
+            section.push_str("[Tab] next field  [Enter] create  [Esc] cancel\n");
+        }
+    } else if bp.inspection_active {
+        section.push_str("edit: press [E] to edit blueprint\n");
+        section.push_str("[Shift+R] regenerate from mesh (confirms when authored)\n");
+    }
+    for (index, diag) in bp.validation.diagnostics.iter().enumerate().take(12) {
+        let level = match diag.level {
+            crate::world::BlueprintDiagnosticLevel::Error => "ERR",
+            crate::world::BlueprintDiagnosticLevel::Warning => "WRN",
+            crate::world::BlueprintDiagnosticLevel::Info => "INF",
+        };
+        section.push_str(&format!(
+            "  [{index}] {level} {}: {}\n",
+            diag.code, diag.message
+        ));
+    }
+    if !bp.selected_floor_entrances.is_empty() {
+        section.push_str("floor entrances:\n");
+        for line in &bp.selected_floor_entrances {
+            section.push_str(&format!("  {line}\n"));
+        }
+    }
+    if !bp.selected_floor_transitions.is_empty() {
+        section.push_str("floor transitions:\n");
+        for line in &bp.selected_floor_transitions {
+            section.push_str(&format!("  {line}\n"));
+        }
+    }
+    section
+}
+
+fn active_marker(active_field: Option<&str>, field: &str) -> &'static str {
+    if active_field == Some(field) {
+        " *"
+    } else {
+        ""
+    }
 }

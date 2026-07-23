@@ -224,11 +224,21 @@ pub fn step_unit_movement(
 
     let layout = world.layout();
     let current_global = current_position.to_global(layout);
+    let resolved_space = crate::world::resolve_navigation_start_space(
+        world.building_navigation_runtime(),
+        world.space_registry(),
+        layout,
+        current_position,
+        record.current_space_id,
+    );
+    if resolved_space != record.current_space_id {
+        let _ = world.set_unit_current_space(unit_id, resolved_space);
+    }
+    let current_space = resolved_space;
     let mut heading = stabilized_movement_heading(current_position, &path, waypoint_index, layout);
     let effective_index = heading
         .map(|h| h.waypoint_index)
         .unwrap_or(waypoint_index.min(path.len().saturating_sub(1)));
-    let current_space = record.current_space_id;
     let Some(waypoint) = path.waypoints.get(effective_index).copied() else {
         if world.set_unit_state(unit_id, UnitState::Idle).is_err() {
             return UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound);
@@ -466,12 +476,22 @@ pub fn step_unit_movement(
         }
     }
     let registry = world.space_registry().clone();
+    let preferred_portal = path
+        .waypoints
+        .get(effective_index)
+        .and_then(|waypoint| waypoint.portal_id)
+        .or_else(|| {
+            path.waypoints
+                .get(effective_index + 1)
+                .and_then(|waypoint| waypoint.portal_id)
+        });
     let portal_transition = try_portal_transition(
         &registry,
         layout,
         space_after_relocate,
         grounded,
         world.portal_transition_state_mut(unit_id),
+        preferred_portal,
     );
     if let Some((dest_space, dest_position, _portal_id)) = portal_transition {
         let _ = world.set_unit_current_space(unit_id, dest_space);
