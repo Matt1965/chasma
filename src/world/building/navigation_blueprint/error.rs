@@ -50,7 +50,10 @@ impl std::fmt::Display for BuildingNavigationBlueprintError {
             Self::BlueprintMissing(id) => write!(f, "navigation blueprint `{id}` missing"),
             Self::BlueprintDisabled(id) => write!(f, "navigation blueprint `{id}` disabled"),
             Self::InvalidBlueprintId(id) => write!(f, "invalid navigation blueprint id `{id}`"),
-            Self::InvalidSchemaVersion { blueprint_id, version } => write!(
+            Self::InvalidSchemaVersion {
+                blueprint_id,
+                version,
+            } => write!(
                 f,
                 "navigation blueprint `{blueprint_id}` schema version {version} unsupported"
             ),
@@ -93,10 +96,7 @@ impl std::fmt::Display for BuildingNavigationBlueprintError {
                 f,
                 "floor `{floor_key}` in blueprint `{blueprint_id}` has degenerate walkable outline"
             ),
-            Self::InvalidRadius {
-                blueprint_id,
-                key,
-            } => write!(
+            Self::InvalidRadius { blueprint_id, key } => write!(
                 f,
                 "navigation feature `{key}` in blueprint `{blueprint_id}` has invalid radius"
             ),

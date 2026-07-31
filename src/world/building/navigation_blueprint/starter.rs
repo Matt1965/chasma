@@ -2,13 +2,15 @@
 
 use super::definition::{
     BuildingNavigationBlueprint, NavigationEntranceDefinition, NavigationFloorDefinition,
-    NavigationPolygon2d, NavigationVerticalTransitionDefinition,
-    NavigationVerticalTransitionKind,
+    NavigationPolygon2d, NavigationVerticalTransitionDefinition, NavigationVerticalTransitionKind,
 };
 use super::id::BuildingNavigationBlueprintId;
 
 pub fn starter_navigation_blueprints() -> Vec<BuildingNavigationBlueprint> {
-    vec![two_story_hut_navigation_blueprint(), barn_navigation_blueprint()]
+    vec![
+        two_story_hut_navigation_blueprint(),
+        barn_navigation_blueprint(),
+    ]
 }
 
 /// Matches [`two_story_hut_interior_profile`] space/portal layout.

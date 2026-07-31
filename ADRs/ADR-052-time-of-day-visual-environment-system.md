@@ -48,17 +48,20 @@ When `enabled == false`, the cycle does not mutate [`EnvironmentSettings`].
 
 ## Dev controls (feature `dev`)
 
-Keyboard when F12 dev mode is active:
+World window UI (Slice 11) is the primary authoring surface. Transitional keyboard when the World window is open and no text field is focused:
 
 | Key | Action |
 |-----|--------|
-| T | Toggle cycle enabled |
-| P | Toggle pause |
 | `[` / `]` | Step time ±1 hour |
 | `,` / `.` | Decrease / increase day length |
-| `6` | Jump to sunrise |
-| `1` | Jump to noon |
-| `0` | Jump to midnight |
+
+Legacy global keys (T/P/6/1/0) were removed from the keyboard path in favor of World window toggles and presets; audit remaining bindings in Slice 12.
+
+## Project defaults (Slice 11)
+
+Authored environment baselines live in `assets/environment/project_defaults.ron` (versioned RON). Loaded at startup in dev and release builds. Dev-only **Save as Project Defaults** writes atomically (`.ron.tmp` → rename). Scene saves remain independent.
+
+Persisted fields: cycle config, day/night/twilight tuning, skybox set/yaw, manual lighting baseline. Transient runtime: `time_hours`, `paused`.
 
 # Future hooks
 
@@ -66,7 +69,7 @@ Keyboard when F12 dev mode is active:
 - **Water** — reflect sky tint from evaluated lighting
 - **Gameplay time** — separate simulation clock may *read* visual time for UI only, or
   drive Environment settings from authoritative sim time later; not coupled in E10
-- **Save/load** — persist visual time in client settings or scene metadata, not WorldData
+- **Save/load** — project defaults in `assets/environment/project_defaults.ron` (Slice 11); not in WorldData
 
 # Non-goals (E10)
 

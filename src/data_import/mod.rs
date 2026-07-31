@@ -20,13 +20,13 @@ mod validate;
 #[cfg(feature = "data-import")]
 mod dev_load;
 #[cfg(feature = "data-import")]
-pub use dev_load::{DEV_DOODAD_CATALOG_RON_PATH, resolve_dev_doodad_catalog};
-#[cfg(feature = "data-import")]
-pub use schema::kind_default_visual_height_meters;
-#[cfg(feature = "data-import")]
 pub use asset_sizing::{
     apply_building_footprint_sizing_targets, unit_default_desired_height_meters,
 };
+#[cfg(feature = "data-import")]
+pub use dev_load::{DEV_DOODAD_CATALOG_RON_PATH, resolve_dev_doodad_catalog};
+#[cfg(feature = "data-import")]
+pub use schema::kind_default_visual_height_meters;
 #[cfg(feature = "data-import")]
 mod excel;
 #[cfg(feature = "data-import")]

@@ -670,10 +670,7 @@ fn apply_restore_plan(
         .map_err(|reason| SceneApplyError::InventoryRestore { reason })?;
     }
 
-    super::production_snapshot::restore_production_persistence(
-        world,
-        &plan.production_persistence,
-    );
+    super::production_snapshot::restore_production_persistence(world, &plan.production_persistence);
 
     super::logistics_snapshot::restore_logistics_persistence(world, &plan.logistics_persistence);
 

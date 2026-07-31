@@ -31,6 +31,10 @@ pub struct BatchSpawnRequest {
     pub layout: crate::world::ChunkLayout,
     /// Runtime affiliation for dev unit spawns (O1).
     pub spawn_affiliation: crate::world::Affiliation,
+    /// Initial placement yaw (degrees) for doodads/buildings (Slice 4).
+    pub placement_yaw_deg: f32,
+    /// Initial uniform scale for doodads/buildings when supported (Slice 4).
+    pub placement_uniform_scale: f32,
 }
 
 /// Summary of a committed batch spawn.
@@ -157,6 +161,8 @@ pub fn execute_batch_spawn(
             &request.definition,
             position,
             request.spawn_affiliation,
+            request.placement_yaw_deg,
+            request.placement_uniform_scale,
         );
         if outcome {
             report.spawned += 1;
@@ -179,6 +185,8 @@ fn spawn_at(
     definition: &DefinitionId,
     position: WorldPosition,
     spawn_affiliation: crate::world::Affiliation,
+    placement_yaw_deg: f32,
+    placement_uniform_scale: f32,
 ) -> bool {
     match definition {
         DefinitionId::Unit(definition_id) => create_unit_with_inventory(
@@ -191,17 +199,25 @@ fn spawn_at(
             inventory_ctx,
         )
         .is_ok(),
-        DefinitionId::Doodad(definition_id) => create_doodad(
-            doodad_catalog,
-            world,
-            definition_id,
-            position,
-            DoodadSource::Dev,
-            DoodadPlacementOverrides::default(),
-            None,
-        )
-        .is_ok(),
+        DefinitionId::Doodad(definition_id) => {
+            let rotation = Quat::from_rotation_y(placement_yaw_deg.to_radians());
+            let scale = Vec3::splat(placement_uniform_scale.max(0.01));
+            create_doodad(
+                doodad_catalog,
+                world,
+                definition_id,
+                position,
+                DoodadSource::Dev,
+                DoodadPlacementOverrides {
+                    rotation: Some(rotation),
+                    scale: Some(scale),
+                },
+                None,
+            )
+            .is_ok()
+        }
         DefinitionId::Building(definition_id) => {
+            let rotation = Quat::from_rotation_y(placement_yaw_deg.to_radians());
             let occupancy = OccupancyCatalogs {
                 doodad: doodad_catalog,
                 building: building_catalog,
@@ -217,7 +233,7 @@ fn spawn_at(
                     world,
                     definition_id,
                     position,
-                    Quat::IDENTITY,
+                    rotation,
                     ownership,
                     Some(occupancy),
                     inventory_ctx,
@@ -228,7 +244,7 @@ fn spawn_at(
                     world,
                     definition_id,
                     position,
-                    Quat::IDENTITY,
+                    rotation,
                     ownership,
                     Some(occupancy),
                 )
@@ -323,6 +339,8 @@ mod tests {
             world_seed: 7,
             layout: layout(),
             spawn_affiliation: crate::world::Affiliation::Player,
+            placement_yaw_deg: 0.0,
+            placement_uniform_scale: 1.0,
         };
         let mut scratch = BatchSpawnScratch::default();
         let footprint_catalog = FootprintCatalog::default();
@@ -372,6 +390,8 @@ mod tests {
             world_seed: 1,
             layout: layout(),
             spawn_affiliation: crate::world::Affiliation::Player,
+            placement_yaw_deg: 0.0,
+            placement_uniform_scale: 1.0,
         };
         let mut scratch = BatchSpawnScratch::default();
         let footprint_catalog = FootprintCatalog::default();
@@ -409,6 +429,8 @@ mod tests {
             world_seed: 0,
             layout: layout(),
             spawn_affiliation: crate::world::Affiliation::Player,
+            placement_yaw_deg: 0.0,
+            placement_uniform_scale: 1.0,
         };
         let mut scratch = BatchSpawnScratch::default();
         let footprint_catalog = FootprintCatalog::default();

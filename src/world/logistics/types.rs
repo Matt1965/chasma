@@ -45,7 +45,11 @@ impl HaulingRequestStatus {
     pub fn is_open(self) -> bool {
         matches!(
             self,
-            Self::Pending | Self::Assigned | Self::InProgress | Self::PartiallyFulfilled | Self::Blocked
+            Self::Pending
+                | Self::Assigned
+                | Self::InProgress
+                | Self::PartiallyFulfilled
+                | Self::Blocked
         )
     }
 

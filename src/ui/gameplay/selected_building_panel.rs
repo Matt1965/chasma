@@ -141,8 +141,7 @@ pub fn sync_selected_building_panel(
     }
 
     if is_building_operational(record) {
-        let inventory_ctx =
-            InventoryCatalogCtx::new(&items, &item_categories, &inventory_profiles);
+        let inventory_ctx = InventoryCatalogCtx::new(&items, &item_categories, &inventory_profiles);
         let mut operation = BuildingOperationParams {
             field_catalog: &field_catalog,
             requirement_catalog: &requirements,
@@ -160,11 +159,9 @@ pub fn sync_selected_building_panel(
             .and_then(|policy| policy.selected_operation.as_ref())
             .and_then(|id| operation_catalog.get(id));
         let mut efficiency_ctx = operation.efficiency_context(&world, &catalog);
-        if let Ok(report) = building_operational_efficiency(
-            &mut efficiency_ctx,
-            building_id,
-            selected_operation,
-        ) {
+        if let Ok(report) =
+            building_operational_efficiency(&mut efficiency_ctx, building_id, selected_operation)
+        {
             body.push_str("\n\nOperational Efficiency");
             body.push_str(&format!(
                 "\nTerrain Output: {}",

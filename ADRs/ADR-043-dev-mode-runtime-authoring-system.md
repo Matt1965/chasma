@@ -38,7 +38,9 @@ Dev mode **must not**:
 | `catalog_browser.rs` | In-memory filter/search over unit + doodad catalogs |
 | `spawn_tools.rs` | Terrain-grounded spawn via [`create_unit`](../src/world/unit/authoring.rs) / [`create_doodad`](../src/world/doodad/authoring.rs) |
 | `debug_controls.rs` | Maps dev flags → [`DebugOverlaySettings`](../src/debug/settings.rs) |
-| `panel.rs` | Bevy UI panel (tabs, list, toggles) |
+| `panel.rs` | Bevy UI panel content (tabs, list, toggles) |
+| `catalog/` | Catalog window — tab routing, Advanced Mode, contextual placement (Slice 4) |
+| `window/` | Draggable dev-window framework (Slice 3) |
 | `input.rs` | F12 toggle, search keys, spawn click, [`DevModeInputGate`](../src/dev/dev_mode.rs) |
 | `mod.rs` | [`DevModePlugin`](../src/dev/mod.rs) registration |
 
@@ -51,9 +53,10 @@ The entire module is behind `#[cfg(feature = "dev")]` and registered from
 truth). Key fields:
 
 - `enabled` — F12 toggle
-- `active_tab` — Units | Doodads | Debug | World Tools
+- `active_tab` — Units | Doodads | Buildings | Items | Scenes | Inspect (transitional) | World | Fields | Debug (advanced)
 - `search_query`, `enabled_only`, `selected_definition`
-- `debug_flags` — mirrors U-UI3 overlay categories
+- `catalog` — [`CatalogSessionState`](../src/dev/catalog/state.rs): Advanced Mode, tab memory, compact status (Slice 4; client-local, not scene-persisted)
+- `debug_config` — mirrors U-UI3 overlay categories
 
 ## Source tagging
 
@@ -111,8 +114,64 @@ Toggle changes persist for the session via [`DevModeState::debug_config`](../src
 
 ## UI approach
 
-Bevy UI (`Node`, `Button`, `Text`) — same pattern as gameplay HUD (ADR-040). Panel is
-right-docked, hidden until F12. Search uses keyboard capture when the panel is not hovered.
+Bevy UI (`Node`, `Button`, `Text`) — same pattern as gameplay HUD (ADR-040). As of Dev UI
+Slice 3, the legacy panel lives inside a draggable **Catalog** window
+([`src/dev/window/`](../src/dev/window/mod.rs)); session layout is client-local only.
+A **Windows** launcher (top-left) reopens hidden windows. Search uses keyboard capture
+when a text field is focused (DV2).
+
+## Catalog workspace (Slice 4)
+
+The **Catalog** window is the primary dev surface for asset discovery and placement.
+
+**Standard tabs:** Units, Doodads, Buildings, Items, Scenes.
+
+**Advanced Mode** (session-only toggle, default off): reveals World, Fields, Editor, and Debug tabs as **launchers** for dedicated windows (Slice 8).
+Underlying systems keep running when launchers are hidden; open windows stay open when Advanced Mode turns off; enabled debug overlays stay on.
+
+**Dedicated windows (Slice 8):** `DevWindowId::Debug`, `World`, `Fields` — draggable shells in [`src/dev/window/`](../src/dev/window/), content in `debug_window/`, `world_window/`, `fields_window/`. Window visibility is session-only; overlay flags, lighting, and field state are not reset on hide.
+
+**Transitional:** Pile/treasury harness keyboards remain while World window is open (Slice 12 migration).
+
+**Placement:** The standalone Placement tab is removed. Select a definition on Units,
+Doodads, or Buildings; contextual placement controls appear below the catalog list.
+Active placement persists across tab switches; a banner shows when viewing other tabs.
+Cancel via **Cancel placement** or right-click (centralized policy in [`handle_dev_right_click_input`](../src/dev/input.rs)).
+
+**Dev overlap:** [`PlacementRules::avoid_doodads`](../src/dev/tools/placement_rules.rs) defaults
+to `false` so dev placement allows overlap (unrelated validity checks remain). Transform commit
+overlap is unconditional ([`dev_gizmo_*_commit_options`](../src/dev/gizmo/commit.rs)).
+
+Deferred to later slices: lighting sliders and project-default persistence (11), full building-action and harness hotkey migration (12).
+
+## Shared dev widgets and tooltips (Slice 9)
+
+- Widget library: [`src/dev/widgets/`](../src/dev/widgets/) — toggles, steppers, collapsible sections, badges, status lines, confirmation bars, numeric draft helpers, search styling
+- Tooltip foundation extended in [`src/dev/tooltip/`](../src/dev/tooltip/) — `DevTooltipContent`, hover delay, viewport clamp, `DevTooltipHoverZone` for disabled controls
+- Presentation-only: widgets emit existing domain actions; no second authoritative value except ephemeral numeric drafts while focused
+- Retrofit priority: Navigation Editor, Debug, World, Fields, Selected Object, Catalog placement
+- Not in scope: lighting sliders/persistence (11), full building-action migration (12), final styling (13)
+
+## Dev hotkey infrastructure (Slice 6)
+
+- Code registry: [`src/dev/hotkeys.rs`](../src/dev/hotkeys.rs) (`DEV_HOTKEY_REGISTRY`, `dev_shortcuts_suppressed()`)
+- **Esc** removed from dev handlers (reserved for pause menu)
+- **L** coordinate-space toggle removed; gizmos world-aligned (`DEV_GIZMO_COORDINATE_SPACE`)
+- Hold **O** / **G** transform modifiers removed; initial placement terrain snap unchanged
+- **/** retained as Scale only; suppressed during text focus and modals
+- Right-click precedence centralized in [`handle_dev_right_click_input`](../src/dev/input.rs)
+- Blueprint Esc replacements: Selected Object buttons (exit inspection/edit, cancel pending, cancel variant draft)
+
+## Selected Object window (Slice 5)
+
+World-object inspection lives in a dedicated **Selected Object** draggable window
+([`DevWindowId::SelectedObject`](../src/dev/window/id.rs)), driven entirely by
+[`WorldSelectionState`](../src/client/selection/mod.rs). The legacy Catalog **Inspect** tab is removed.
+
+- Summary view by default; diagnostics collapsed behind a toggle
+- Building navigation strip + temporary authoring section (Slice 7 migrates to Navigation Editor)
+- Transform buttons share [`activate_dev_transform_tool`](../src/dev/gizmo/input.rs) with `,` `.` `/` hotkeys
+- Catalog definition selection remains separate from world-object selection
 
 # Consequences
 

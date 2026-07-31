@@ -8,7 +8,7 @@ use crate::player::RuntimeSyncSystems;
 
 #[cfg(feature = "dev")]
 use super::dev_labels::{
-    billboard_item_pile_dev_labels, sync_item_pile_dev_labels, ItemPileDevLabelIndex,
+    ItemPileDevLabelIndex, billboard_item_pile_dev_labels, sync_item_pile_dev_labels,
 };
 
 /// Registers item pile runtime presentation (ADR-090 I4, IA0).
@@ -32,15 +32,14 @@ impl Plugin for ItemPileRuntimePlugin {
 
         #[cfg(feature = "dev")]
         {
-            app.init_resource::<ItemPileDevLabelIndex>()
-                .add_systems(
-                    Update,
-                    (
-                        sync_item_pile_dev_labels.after(sync_item_pile_render_entities),
-                        billboard_item_pile_dev_labels.after(sync_item_pile_dev_labels),
-                    )
-                        .in_set(ItemPileRuntimeSystems),
-                );
+            app.init_resource::<ItemPileDevLabelIndex>().add_systems(
+                Update,
+                (
+                    sync_item_pile_dev_labels.after(sync_item_pile_render_entities),
+                    billboard_item_pile_dev_labels.after(sync_item_pile_dev_labels),
+                )
+                    .in_set(ItemPileRuntimeSystems),
+            );
         }
 
         app.configure_sets(

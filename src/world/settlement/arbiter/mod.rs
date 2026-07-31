@@ -13,19 +13,17 @@ mod validation;
 mod tests;
 
 pub use arbitrate::{
-    arbitrate_settlement_intent, arbitration_score, ArbitrationContext, HIGH_PRESSURE_THRESHOLD,
-    MAX_INTENTS_PER_NEED_HIGH, MAX_INTENTS_PER_NEED_NORMAL, MAX_SETTLEMENT_INTENTS,
-    MIN_ARBITRATION_SCORE,
+    ArbitrationContext, HIGH_PRESSURE_THRESHOLD, MAX_INTENTS_PER_NEED_HIGH,
+    MAX_INTENTS_PER_NEED_NORMAL, MAX_SETTLEMENT_INTENTS, MIN_ARBITRATION_SCORE,
+    arbitrate_settlement_intent, arbitration_score,
 };
 pub use intent::{
     IntentId, IntentPersistence, IntentRejectionReason, RejectedIntentCandidate, SettlementIntent,
     SettlementIntentPlan,
 };
 pub use step::{
-    arbitrate_settlement_intent_now, step_settlement_response_arbitration,
-    INTENT_ARBITRATION_CADENCE_TICKS,
+    INTENT_ARBITRATION_CADENCE_TICKS, arbitrate_settlement_intent_now,
+    step_settlement_response_arbitration,
 };
 pub use store::SettlementIntentStore;
-pub use validation::{
-    validate_intent, validate_settlement_intent_plan, IntentValidationError,
-};
+pub use validation::{IntentValidationError, validate_intent, validate_settlement_intent_plan};

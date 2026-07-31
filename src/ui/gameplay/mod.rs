@@ -17,6 +17,7 @@ mod selection_ui;
 mod squad_panel;
 mod state;
 mod styles;
+#[cfg(feature = "dev")]
 pub mod terrain_analysis;
 
 pub use build_mode::{
@@ -59,4 +60,5 @@ pub use state::{
     GameplayUiState, command_state_display, derive_command_state, derive_cursor_mode,
     derive_gameplay_snapshot,
 };
+#[cfg(feature = "dev")]
 pub use terrain_analysis::TerrainAnalysisToggleButton;

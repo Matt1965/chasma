@@ -1,4 +1,7 @@
-//! Selection debug overlay — enhanced selection highlight rings.
+//! Selection debug overlay — inspector focus highlight (diagnostic only).
+//!
+//! Normal green unit selection rings are owned by [`crate::player::indicator`].
+//! This overlay draws the orange inspector-focus ring when focus diverges from selection.
 
 use bevy::prelude::*;
 
@@ -12,7 +15,7 @@ use crate::world::{UnitCatalog, WorldData};
 
 use super::helpers::xz_to_render_y;
 
-/// Draw extra gizmo rings at selected unit feet (complements mesh selection indicators).
+/// Draw inspector-focus diagnostic ring (does not duplicate normal selection presentation).
 pub fn draw_selection_debug_overlay(
     mut gizmos: Gizmos,
     selection: Res<SelectedUnits>,
@@ -28,33 +31,8 @@ pub fn draw_selection_debug_overlay(
         return;
     }
 
-    let mut drawn = 0_u32;
-
-    for unit_id in selection.iter() {
-        if drawn >= settings.max_draw_units {
-            break;
-        }
-        let Some(&render_entity) = index.0.get(&unit_id) else {
-            continue;
-        };
-        let Ok(transform) = transforms.get(render_entity) else {
-            continue;
-        };
-        let radius = selection_ring_radius(&world, &catalog, unit_id);
-        let center = xz_to_render_y(transform.translation(), 0.05);
-        gizmos.circle(
-            Isometry3d::new(center, Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
-            radius,
-            Color::srgba(0.15, 0.95, 0.25, 0.55),
-        );
-        drawn += 1;
-    }
-
     if let Some(focus_id) = focus.unit_id {
         if !selection.contains(focus_id) {
-            if drawn >= settings.max_draw_units {
-                return;
-            }
             if let Some(&render_entity) = index.0.get(&focus_id) {
                 if let Ok(transform) = transforms.get(render_entity) {
                     let radius = selection_ring_radius(&world, &catalog, focus_id) * 1.15;

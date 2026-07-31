@@ -50,13 +50,13 @@ fn default_operation_must_be_supported() {
     )
     .with_supported_operations(vec![OperationDefinitionId::new("mine_stone")])
     .with_default_operation_id(OperationDefinitionId::new("mine_iron"));
-    let issues = validate_building_definition_operations(
-        &building,
-        &operations,
-        &items,
-        &field_catalog(),
+    let issues =
+        validate_building_definition_operations(&building, &operations, &items, &field_catalog());
+    assert!(
+        issues
+            .iter()
+            .any(|issue| issue.message().contains("default operation"))
     );
-    assert!(issues.iter().any(|issue| issue.message().contains("default operation")));
 }
 
 #[test]
@@ -64,13 +64,13 @@ fn unsupported_operation_reference_fails_validation() {
     let operations = OperationCatalog::default();
     let items = ItemCatalog::default();
     let building = sample_building(vec![OperationDefinitionId::new("missing_op")]);
-    let issues = validate_building_definition_operations(
-        &building,
-        &operations,
-        &items,
-        &field_catalog(),
+    let issues =
+        validate_building_definition_operations(&building, &operations, &items, &field_catalog());
+    assert!(
+        issues
+            .iter()
+            .any(|issue| issue.message().contains("unknown operation"))
     );
-    assert!(issues.iter().any(|issue| issue.message().contains("unknown operation")));
 }
 
 #[test]
@@ -79,13 +79,13 @@ fn duplicate_supported_operations_fail_validation() {
     let items = ItemCatalog::default();
     let op = OperationDefinitionId::new("mine_iron");
     let building = sample_building(vec![op.clone(), op]);
-    let issues = validate_building_definition_operations(
-        &building,
-        &operations,
-        &items,
-        &field_catalog(),
+    let issues =
+        validate_building_definition_operations(&building, &operations, &items, &field_catalog());
+    assert!(
+        issues
+            .iter()
+            .any(|issue| issue.message().contains("more than once"))
     );
-    assert!(issues.iter().any(|issue| issue.message().contains("more than once")));
 }
 
 #[test]
@@ -94,14 +94,9 @@ fn building_catalog_cross_validation_reports_building_and_operation() {
     let operations = OperationCatalog::default();
     let items = ItemCatalog::default();
     let building = sample_building(vec![OperationDefinitionId::new("mine_iron")]);
-    let buildings =
-        BuildingCatalog::from_definitions(vec![building], &categories).unwrap();
-    let issues = validate_building_operation_bindings(
-        &buildings,
-        &operations,
-        &items,
-        &field_catalog(),
-    );
+    let buildings = BuildingCatalog::from_definitions(vec![building], &categories).unwrap();
+    let issues =
+        validate_building_operation_bindings(&buildings, &operations, &items, &field_catalog());
     assert!(issues.is_empty());
 }
 
@@ -121,7 +116,9 @@ fn resolved_default_uses_single_supported_operation() {
     )
     .with_supported_operations(vec![OperationDefinitionId::new("mine_iron")]);
     assert_eq!(
-        building.resolved_default_operation().map(|id| id.as_str().to_string()),
+        building
+            .resolved_default_operation()
+            .map(|id| id.as_str().to_string()),
         Some("mine_iron".into())
     );
 }
@@ -157,7 +154,10 @@ fn runtime_selection_rejects_missing_operation_definition() {
         &operations,
         &OperationDefinitionId::new("removed_operation"),
     );
-    assert!(matches!(err, Err(OperationSelectionError::MissingDefinition(_))));
+    assert!(matches!(
+        err,
+        Err(OperationSelectionError::MissingDefinition(_))
+    ));
 }
 
 #[test]

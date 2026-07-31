@@ -51,17 +51,10 @@ fn policy_score_bonus(definition: &ResponseDefinition, state: &SettlementState) 
     {
         bonus += 5.0;
     }
-    if state.policies.aggression >= 128
-        && definition.ai_tags.iter().any(|t| t == "defense")
-    {
+    if state.policies.aggression >= 128 && definition.ai_tags.iter().any(|t| t == "defense") {
         bonus += 5.0;
     }
-    if !state.policies.automation_enabled
-        && definition
-            .ai_tags
-            .iter()
-            .any(|t| t == "production")
-    {
+    if !state.policies.automation_enabled && definition.ai_tags.iter().any(|t| t == "production") {
         bonus -= 10.0;
     }
     bonus
@@ -70,12 +63,12 @@ fn policy_score_bonus(definition: &ResponseDefinition, state: &SettlementState) 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::settlement::SettlementId;
     use crate::world::settlement::needs::{NeedId, NeedSnapshot};
     use crate::world::settlement::response::definition::{
         ExpectedEffect, ResponseDefinition, ResponseType,
     };
     use crate::world::settlement::state::{SettlementKind, SettlementState};
-    use crate::world::settlement::SettlementId;
 
     #[test]
     fn higher_pressure_scores_higher() {
@@ -113,6 +106,9 @@ mod tests {
         let state = SettlementState::new(SettlementId::new(1), SettlementKind::Town, false);
         let snap = NeedSnapshot::with_values(NeedId::new("food"), 0.0, 100.0, 100, 0, "t");
         let emergencies = crate::world::settlement::emergency::EmergencyCatalog::default();
-        assert_eq!(score_candidate(&def, &snap, &state, &emergencies, false), 0.0);
+        assert_eq!(
+            score_candidate(&def, &snap, &state, &emergencies, false),
+            0.0
+        );
     }
 }

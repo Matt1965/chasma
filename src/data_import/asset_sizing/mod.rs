@@ -33,6 +33,4 @@ pub use pipeline::{
     ContentSizingKind, SizingResolveInput, export_sizing_reports_markdown, resolve_content_sizing,
 };
 #[cfg(feature = "data-import")]
-pub use targets::{
-    apply_building_footprint_sizing_targets, unit_default_desired_height_meters,
-};
+pub use targets::{apply_building_footprint_sizing_targets, unit_default_desired_height_meters};

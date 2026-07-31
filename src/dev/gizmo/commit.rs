@@ -103,33 +103,29 @@ pub fn preview_differs_from_authoritative(
                 || (preview_yaw - authored_yaw).abs() > 0.05
                 || (building_uniform_scale_from_preview(preview).to_f32()
                     - placement.uniform_scale_f32())
-                    .abs()
+                .abs()
                     > 0.001
         }
         SelectedWorldObject::ItemPile(_) => false,
     }
 }
 
-/// Dev gizmo commit options — bypass strict placement gates that fight interactive edits.
-pub fn dev_gizmo_doodad_commit_options(
-    keyboard: &bevy::input::ButtonInput<bevy::input::keyboard::KeyCode>,
-) -> DoodadTransformEditOptions {
+/// Dev gizmo commit options — overlap always allowed; moved objects keep committed height.
+pub fn dev_gizmo_doodad_commit_options() -> DoodadTransformEditOptions {
     DoodadTransformEditOptions {
-        allow_overlap: keyboard.pressed(bevy::input::keyboard::KeyCode::KeyO),
-        follow_ground: keyboard.pressed(bevy::input::keyboard::KeyCode::KeyG),
+        allow_overlap: true,
+        follow_ground: false,
         bypass_placement_validation: true,
         bypass_definition_scale_range: true,
     }
 }
 
-pub fn dev_gizmo_building_commit_options(
-    keyboard: &bevy::input::ButtonInput<bevy::input::keyboard::KeyCode>,
-) -> BuildingTransformEditOptions {
+pub fn dev_gizmo_building_commit_options() -> BuildingTransformEditOptions {
     BuildingTransformEditOptions {
-        allow_overlap: keyboard.pressed(bevy::input::keyboard::KeyCode::KeyO),
-        follow_ground: keyboard.pressed(bevy::input::keyboard::KeyCode::KeyG),
+        allow_overlap: true,
+        follow_ground: false,
         bypass_placement_validation: true,
-        cancel_dependencies: keyboard.pressed(bevy::input::keyboard::KeyCode::KeyC),
+        cancel_dependencies: false,
         allow_instance_scale_override: true,
     }
 }

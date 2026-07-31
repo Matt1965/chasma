@@ -3,15 +3,13 @@
 use super::*;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::item::{ItemCatalog, ItemCategoryCatalog};
+use crate::world::settlement::SettlementId;
 use crate::world::settlement::emergency::EmergencyCatalog;
-use crate::world::settlement::needs::{
-    evaluate_settlement_needs_now, NeedCatalog,
-};
+use crate::world::settlement::needs::{NeedCatalog, evaluate_settlement_needs_now};
 use crate::world::settlement::response::{
-    discover_settlement_responses_now, ResponseCatalog, ResponseType,
+    ResponseCatalog, ResponseType, discover_settlement_responses_now,
 };
 use crate::world::settlement::state::{SettlementKind, SettlementState};
-use crate::world::settlement::SettlementId;
 use crate::world::{BuildingCatalog, ChunkLayout, InventoryProfileCatalog, WorldData};
 
 fn layout() -> ChunkLayout {
@@ -185,7 +183,14 @@ fn intent_not_serialized_clear_rebuilds() {
     assert!(world.settlement_intent_store().is_dirty(id));
 
     arbitrate_settlement_intent_now(&mut world, &catalog, id, 2);
-    assert!(!world.settlement_intent_store().get(id).unwrap().intents.is_empty());
+    assert!(
+        !world
+            .settlement_intent_store()
+            .get(id)
+            .unwrap()
+            .intents
+            .is_empty()
+    );
 }
 
 #[test]

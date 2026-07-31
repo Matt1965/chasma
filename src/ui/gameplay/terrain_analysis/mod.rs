@@ -1,5 +1,6 @@
 //! Terrain Analysis player panel (ADR-103 TF3).
 
+use bevy::ecs::system::ParamSet;
 use bevy::prelude::*;
 
 use crate::terrain::{
@@ -189,32 +190,55 @@ pub fn populate_terrain_analysis_field_buttons(
 }
 
 pub fn sync_terrain_analysis_panel(
+    dev_state: Res<crate::dev::DevModeState>,
     overlay_state: Res<TerrainOverlayState>,
     catalog: Res<TerrainFieldCatalog>,
     mut roots: Query<&mut Node, With<TerrainAnalysisRoot>>,
-    mut legend: Query<
-        &mut Text,
-        (
-            With<TerrainAnalysisLegendText>,
-            Without<TerrainAnalysisCursorText>,
-        ),
-    >,
-    mut cursor_text: Query<
-        &mut Text,
-        (
-            With<TerrainAnalysisCursorText>,
-            Without<TerrainAnalysisLegendText>,
-        ),
-    >,
-    mut opacity_label: Query<
-        &mut Text,
-        (
-            With<TerrainAnalysisOpacityLabel>,
-            Without<TerrainAnalysisLegendText>,
-            Without<TerrainAnalysisCursorText>,
-        ),
-    >,
+    mut toggle_buttons: Query<&mut Visibility, With<TerrainAnalysisToggleButton>>,
+    mut texts: ParamSet<(
+        Query<
+            &mut Text,
+            (
+                With<TerrainAnalysisLegendText>,
+                Without<TerrainAnalysisCursorText>,
+                Without<TerrainAnalysisOpacityLabel>,
+            ),
+        >,
+        Query<
+            &mut Text,
+            (
+                With<TerrainAnalysisCursorText>,
+                Without<TerrainAnalysisLegendText>,
+                Without<TerrainAnalysisOpacityLabel>,
+            ),
+        >,
+        Query<
+            &mut Text,
+            (
+                With<TerrainAnalysisOpacityLabel>,
+                Without<TerrainAnalysisLegendText>,
+                Without<TerrainAnalysisCursorText>,
+            ),
+        >,
+    )>,
 ) {
+    let dev_active = dev_state.enabled;
+
+    for mut visibility in &mut toggle_buttons {
+        *visibility = if dev_active {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
+    }
+
+    if !dev_active {
+        if let Ok(mut root_node) = roots.single_mut() {
+            root_node.display = Display::None;
+        }
+        return;
+    }
+
     let Ok(mut root_node) = roots.single_mut() else {
         return;
     };
@@ -224,9 +248,6 @@ pub fn sync_terrain_analysis_panel(
         Display::None
     };
 
-    let Ok(mut legend_text) = legend.single_mut() else {
-        return;
-    };
     let field_line = match overlay_state.effective_field() {
         Some(id) => catalog
             .get(id)
@@ -248,16 +269,20 @@ pub fn sync_terrain_analysis_panel(
             lines.push("Unknown: checker pattern".to_string());
         }
     }
-    **legend_text = lines.join("\n");
+    let legend_line = lines.join("\n");
 
-    if let Ok(mut opacity) = opacity_label.single_mut() {
+    if let Ok(mut legend_text) = texts.p0().single_mut() {
+        **legend_text = legend_line;
+    }
+
+    if let Ok(mut opacity) = texts.p2().single_mut() {
         **opacity = format!(
             "Opacity: {:.0}%",
             overlay_state.opacity_basis_points as f32 / 100.0
         );
     }
 
-    if let Ok(mut cursor) = cursor_text.single_mut() {
+    if let Ok(mut cursor) = texts.p1().single_mut() {
         if !overlay_state.show_cursor_value {
             **cursor = "Cursor: (hidden)".to_string();
         }
@@ -265,22 +290,29 @@ pub fn sync_terrain_analysis_panel(
 }
 
 pub fn handle_terrain_analysis_clicks(
+    dev_state: Res<crate::dev::DevModeState>,
     mut overlay_state: ResMut<TerrainOverlayState>,
     mut auxiliary: ResMut<TerrainFieldAuxiliaryOverlays>,
     catalog: Res<TerrainFieldCatalog>,
-    toggle: Query<&Interaction, (Changed<Interaction>, With<TerrainAnalysisToggleButton>)>,
-    field_buttons: Query<
-        (&Interaction, &TerrainAnalysisFieldButton),
-        (Changed<Interaction>, With<TerrainAnalysisFieldButton>),
-    >,
+    mut buttons: bevy::ecs::system::ParamSet<(
+        Query<&Interaction, (Changed<Interaction>, With<TerrainAnalysisToggleButton>)>,
+        Query<
+            (&Interaction, &TerrainAnalysisFieldButton),
+            (Changed<Interaction>, With<TerrainAnalysisFieldButton>),
+        >,
+    )>,
 ) {
-    for interaction in &toggle {
+    if !dev_state.enabled {
+        return;
+    }
+
+    for interaction in buttons.p0().iter() {
         if *interaction == Interaction::Pressed {
             overlay_state.panel_open = !overlay_state.panel_open;
         }
     }
 
-    for (interaction, button) in &field_buttons {
+    for (interaction, button) in buttons.p1().iter() {
         if *interaction != Interaction::Pressed {
             continue;
         }
@@ -304,9 +336,14 @@ pub fn handle_terrain_analysis_clicks(
 }
 
 pub fn handle_terrain_analysis_keyboard(
+    dev_state: Res<crate::dev::DevModeState>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut overlay_state: ResMut<TerrainOverlayState>,
 ) {
+    if !dev_state.enabled {
+        return;
+    }
+
     if keyboard.just_pressed(KeyCode::KeyO) {
         overlay_state.panel_open = !overlay_state.panel_open;
     }
@@ -324,6 +361,7 @@ pub fn handle_terrain_analysis_keyboard(
 }
 
 pub fn update_terrain_analysis_cursor_readout(
+    dev_state: Res<crate::dev::DevModeState>,
     overlay_state: Res<TerrainOverlayState>,
     catalog: Res<TerrainFieldCatalog>,
     world: Res<WorldData>,
@@ -332,7 +370,7 @@ pub fn update_terrain_analysis_cursor_readout(
     render_assets: Option<Res<crate::terrain::TerrainRenderAssets>>,
     mut cursor_text: Query<&mut Text, With<TerrainAnalysisCursorText>>,
 ) {
-    if !overlay_state.panel_open || !overlay_state.show_cursor_value {
+    if !dev_state.enabled || !overlay_state.panel_open || !overlay_state.show_cursor_value {
         return;
     }
     let Ok(mut text) = cursor_text.single_mut() else {
@@ -374,6 +412,16 @@ fn format_cursor_sample(sample: &TerrainFieldSample, catalog: &TerrainFieldCatal
         .and_then(|d| d.overlay_style.qualitative_label_for_value(sample.value))
         .unwrap_or("—");
     format!("Cursor: {pct} ({label})  raw={}", sample.value)
+}
+
+#[cfg(feature = "dev")]
+pub fn close_terrain_analysis_on_dev_exit(
+    dev_state: Res<crate::dev::DevModeState>,
+    mut overlay_state: ResMut<TerrainOverlayState>,
+) {
+    if dev_state.is_changed() && !dev_state.enabled {
+        overlay_state.panel_open = false;
+    }
 }
 
 #[cfg(feature = "dev")]

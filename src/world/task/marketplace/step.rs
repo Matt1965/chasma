@@ -3,26 +3,24 @@
 use crate::world::combat::AttackTargetingPolicy;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::logistics::{
-    assign_hauling_task_with_priority, HaulingRequestPriority, HaulingRequestStatus,
+    HaulingRequestPriority, HaulingRequestStatus, assign_hauling_task_with_priority,
 };
 use crate::world::task::assignment::{
     cancel_unit_task, claim_building_task, release_unit_task_to_marketplace,
 };
 use crate::world::task::{
-    unit_can_perform_task, unit_may_work_on_building, TaskCancelReason, TaskId, TaskPriority,
-    TaskState, TaskType,
+    TaskCancelReason, TaskId, TaskPriority, TaskState, TaskType, unit_can_perform_task,
+    unit_may_work_on_building,
 };
 use crate::world::{
     BuildingCatalog, BuildingInteractionProfileCatalog, DoodadCatalog, NavigationConfig,
-    UnitCatalog, UnitId, UnitOrder, UnitState, WeaponCatalog, WorldData, issue_unit_order,
-    interaction_point_world_position,
+    UnitCatalog, UnitId, UnitOrder, UnitState, WeaponCatalog, WorldData,
+    interaction_point_world_position, issue_unit_order,
 };
 
-use super::candidates::{
-    MarketplaceCandidate, MarketplaceListing, MarketplaceListingKind,
-};
+use super::candidates::{MarketplaceCandidate, MarketplaceListing, MarketplaceListingKind};
 use super::report::{AssignmentDecision, WorkerAssignmentReport, WorkerEvaluation};
-use super::score::{may_preempt_with_override, score_marketplace_listing, PreemptPolicyOverride};
+use super::score::{PreemptPolicyOverride, may_preempt_with_override, score_marketplace_listing};
 use super::sync::sync_operate_workstation_tasks;
 
 pub const WORKER_ASSIGNMENT_CADENCE_TICKS: u64 = 5;
@@ -136,7 +134,12 @@ pub fn step_worker_assignment(ctx: &mut WorkerAssignmentContext<'_>) -> WorkerAs
         let Some(best) = best.cloned() else {
             continue;
         };
-        if !listing_still_open(ctx.world, &best.listing, &claimed_hauls, &claimed_task_slots) {
+        if !listing_still_open(
+            ctx.world,
+            &best.listing,
+            &claimed_hauls,
+            &claimed_task_slots,
+        ) {
             continue;
         }
 
@@ -348,17 +351,13 @@ fn listing_still_open(
             if claimed_hauls.contains(&id.raw()) {
                 return false;
             }
-            world
-                .hauling_request_store()
-                .get(id)
-                .is_some_and(|r| {
-                    r.assigned_unit_id.is_none()
-                        && matches!(
-                            r.status,
-                            HaulingRequestStatus::Pending
-                                | HaulingRequestStatus::PartiallyFulfilled
-                        )
-                })
+            world.hauling_request_store().get(id).is_some_and(|r| {
+                r.assigned_unit_id.is_none()
+                    && matches!(
+                        r.status,
+                        HaulingRequestStatus::Pending | HaulingRequestStatus::PartiallyFulfilled
+                    )
+            })
         }
         MarketplaceListingKind::Task => {
             let Some(task_id) = listing.task_id else {
@@ -551,8 +550,14 @@ fn release_dead_worker_tasks(world: &mut WorldData) {
     }
 }
 
-fn preempt_policy_for_task(world: &WorldData, building_id: crate::world::BuildingId) -> PreemptPolicyOverride {
-    let Some(settlement_id) = world.settlement_store().settlement_for_building(building_id) else {
+fn preempt_policy_for_task(
+    world: &WorldData,
+    building_id: crate::world::BuildingId,
+) -> PreemptPolicyOverride {
+    let Some(settlement_id) = world
+        .settlement_store()
+        .settlement_for_building(building_id)
+    else {
         return PreemptPolicyOverride::default();
     };
     let Some(state) = world.settlement_state_store().get(settlement_id) else {

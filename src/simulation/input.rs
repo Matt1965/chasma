@@ -9,7 +9,11 @@ use super::control::SimulationControlState;
 pub fn handle_simulation_keyboard(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut control: ResMut<SimulationControlState>,
+    menu_block: Option<Res<crate::menu::MenuInputBlock>>,
 ) {
+    if menu_block.is_some_and(|block| block.blocks()) {
+        return;
+    }
     let shift = keyboard.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
 
     if keyboard.just_pressed(KeyCode::Space) {

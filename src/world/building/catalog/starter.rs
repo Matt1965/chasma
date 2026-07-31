@@ -6,8 +6,8 @@ mod fixtures {
     use super::super::definition::BuildingDefinition;
     use super::super::definition_id::BuildingDefinitionId;
     use super::super::render_key::BuildingRenderKey;
-    use crate::world::operation::OperationDefinitionId;
     use crate::world::InventoryProfileId;
+    use crate::world::ItemDefinitionId;
     use crate::world::building::category::BuildingCategoryId;
     use crate::world::building::container_access::ContainerAccessPolicy;
     use crate::world::building::footprint::FootprintSpec;
@@ -15,12 +15,9 @@ mod fixtures {
         BuildingInventoryBindingDefinition, BuildingInventoryBindingId, BuildingInventoryRole,
     };
     use crate::world::logistics::BuildingLogisticsRouteDefinition;
-    use crate::world::ItemDefinitionId;
+    use crate::world::operation::OperationDefinitionId;
 
-    fn warehouse_route_output(
-        local_binding: &str,
-        item: &str,
-    ) -> BuildingLogisticsRouteDefinition {
+    fn warehouse_route_output(local_binding: &str, item: &str) -> BuildingLogisticsRouteDefinition {
         BuildingLogisticsRouteDefinition::output_surplus(
             BuildingInventoryBindingId::new(local_binding),
             ItemDefinitionId::new(item),
@@ -29,10 +26,7 @@ mod fixtures {
         )
     }
 
-    fn warehouse_route_input(
-        local_binding: &str,
-        item: &str,
-    ) -> BuildingLogisticsRouteDefinition {
+    fn warehouse_route_input(local_binding: &str, item: &str) -> BuildingLogisticsRouteDefinition {
         BuildingLogisticsRouteDefinition::input_deficit(
             BuildingInventoryBindingId::new(local_binding),
             ItemDefinitionId::new(item),

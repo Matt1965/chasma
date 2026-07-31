@@ -3,7 +3,11 @@
 use bevy::input::keyboard::KeyCode;
 use bevy::prelude::*;
 
-use crate::dev::{DevModeInputGate, DevModeState, DevTextFieldFocus};
+use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
+use crate::dev::hotkeys::{
+    DevShortcutSuppressionCtx, dev_doodad_transform_edit_options, dev_shortcuts_suppressed,
+};
+use crate::dev::{DevModeInputGate, DevModeState};
 use crate::world::{DoodadCatalog, FootprintCatalog};
 use crate::world::{
     DoodadTransformCandidate, DoodadTransformEditOptions, OccupancyCatalogs, QuantizedOrientation,
@@ -20,29 +24,35 @@ pub fn handle_doodad_transform_hotkeys(
     dev_state: Res<DevModeState>,
     mut gate: ResMut<DevModeInputGate>,
     keyboard: Res<ButtonInput<KeyCode>>,
+    world_selection: Res<WorldSelectionState>,
+    selected_object_ui: Res<crate::dev::selected_object::SelectedObjectUiState>,
+    blueprint_inspection: Res<super::BlueprintInspectionState>,
     mut inspector: ResMut<WorldInspectorState>,
     mut world: ResMut<WorldData>,
     doodad_catalog: Res<DoodadCatalog>,
     building_catalog: Res<crate::world::BuildingCatalog>,
     footprint_catalog: Res<FootprintCatalog>,
 ) {
-    if !dev_state.enabled || dev_state.text_focus != DevTextFieldFocus::None {
+    if !dev_state.enabled {
         return;
     }
-    let Some(doodad_id) = inspector.selected_doodad else {
+    let suppression =
+        DevShortcutSuppressionCtx::new(&dev_state, &selected_object_ui, &blueprint_inspection);
+    if dev_shortcuts_suppressed(suppression) {
+        return;
+    }
+    let Some(doodad_id) = (world_selection.category == WorldSelectionCategory::Doodad)
+        .then_some(world_selection.doodad_id)
+        .flatten()
+    else {
         return;
     };
     let Some(record) = world.get_doodad(doodad_id).cloned() else {
-        inspector.selected_doodad = None;
+        inspector.last_message = format!("Doodad #{} no longer exists", doodad_id.raw());
         return;
     };
 
-    let options = DoodadTransformEditOptions {
-        follow_ground: keyboard.pressed(KeyCode::KeyG),
-        allow_overlap: keyboard.pressed(KeyCode::KeyO),
-        bypass_placement_validation: false,
-        bypass_definition_scale_range: false,
-    };
+    let options = dev_doodad_transform_edit_options();
     let occ = OccupancyCatalogs {
         doodad: &doodad_catalog,
         building: &building_catalog,

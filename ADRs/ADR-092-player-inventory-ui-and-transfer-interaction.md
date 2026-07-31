@@ -138,6 +138,19 @@ durability, squad pooled inventory, shop UI.
 - All mutations auditable through `InventoryIntent` dispatch
 - Equipment and move-to-loot orders remain future phases
 
+## Dev UI Revamp — drag previews (Slice 10)
+
+Extended `InventoryDragState` with item definition, footprint, and quantity. Client-local
+`InventoryDragPreviewState` drives:
+
+- Source entry dimming (entry remains until authoritative drop)
+- Grid ghost overlay (valid/invalid via `can_place_footprint` + access)
+- Ground-drop sphere at actor feet (matches `DropEntry` placement, not cursor raycast)
+- Mouse **release** to emit intents (`MoveEntry`, `TransferToCell`, `DropEntry`)
+
+See `src/ui/gameplay/inventory/preview.rs` and `drag_preview.rs`. Preview validity is not
+guaranteed acceptance.
+
 ## References
 
 - ADR-088 (grid), ADR-090 (transfer/pile), ADR-091 (containers)

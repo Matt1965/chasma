@@ -4,8 +4,8 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::id::NeedId;
-use crate::world::settlement::state::NeedCategory;
 use crate::world::settlement::planner::ProductionPriorityCategory;
+use crate::world::settlement::state::NeedCategory;
 
 /// How a need measures its current value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect, Serialize, Deserialize)]

@@ -1,17 +1,15 @@
 //! Apply offline asset sizing resolution to catalog definitions (ADR-097 DT1, ADR-127 AT1).
 
-use crate::world::asset_sizing::{
-    normalize_building_sizing_authority, AssetSizingReport,
-};
+use crate::world::asset_sizing::{AssetSizingReport, normalize_building_sizing_authority};
 use crate::world::{BuildingDefinition, DoodadDefinition, UnitDefinition};
 
 #[cfg(feature = "data-import")]
-use crate::data_import::kind_default_visual_height_meters;
-#[cfg(feature = "data-import")]
 use crate::data_import::asset_sizing::{
-    resolve_content_sizing, unit_default_desired_height_meters, ContentSizingKind,
-    SizingResolveInput,
+    ContentSizingKind, SizingResolveInput, resolve_content_sizing,
+    unit_default_desired_height_meters,
 };
+#[cfg(feature = "data-import")]
+use crate::data_import::kind_default_visual_height_meters;
 #[cfg(feature = "data-import")]
 use crate::world::asset_sizing::{
     building_visual_footprint_mismatch_warning, doodad_visual_collision_mismatch_warning,

@@ -11,7 +11,7 @@ use crate::world::settlement::arbiter::{
 use crate::world::settlement::needs::NeedId;
 use crate::world::settlement::response::{ResponseId, ResponseType};
 use crate::world::settlement::{
-    create_settlement_with_treasury, reconcile_settlement_building_membership, SettlementOwnership,
+    SettlementOwnership, create_settlement_with_treasury, reconcile_settlement_building_membership,
 };
 use crate::world::task::{TaskPriority, TaskState, TaskType};
 use crate::world::{
@@ -35,9 +35,10 @@ fn flat_world() -> WorldData {
 fn test_inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
     static CTX: std::sync::OnceLock<InventoryCatalogCtx<'static>> = std::sync::OnceLock::new();
     CTX.get_or_init(|| {
-        let categories =
-            crate::world::ItemCategoryCatalog::from_definitions(starter_item_category_definitions())
-                .unwrap();
+        let categories = crate::world::ItemCategoryCatalog::from_definitions(
+            starter_item_category_definitions(),
+        )
+        .unwrap();
         let items =
             crate::world::ItemCatalog::from_definitions(starter_item_definitions(), &categories)
                 .unwrap();
@@ -240,15 +241,17 @@ fn cancelled_intent_removes_available_strategic_tasks() {
     assert!(fx.world.task_store().get(task_id).is_some());
 
     // Clear intents → regenerate cancels Available strategic tasks.
-    fx.world.settlement_intent_store_mut().insert(SettlementIntentPlan {
-        settlement_id: fx.settlement_id,
-        planned_tick: 20,
-        source_response_tick: 20,
-        source_need_tick: 20,
-        intents: Vec::new(),
-        rejected: Vec::new(),
-        diagnostics: Vec::new(),
-    });
+    fx.world
+        .settlement_intent_store_mut()
+        .insert(SettlementIntentPlan {
+            settlement_id: fx.settlement_id,
+            planned_tick: 20,
+            source_response_tick: 20,
+            source_need_tick: 20,
+            intents: Vec::new(),
+            rejected: Vec::new(),
+            diagnostics: Vec::new(),
+        });
     generate_strategic_tasks_now(&mut fx.world, &catalog, fx.settlement_id, 20);
 
     assert!(fx.world.task_store().get(task_id).is_none());

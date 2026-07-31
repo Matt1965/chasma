@@ -114,7 +114,7 @@ Implemented in `src/world/building/navigation_blueprint/generate.rs` and invoked
 
 ### Generation pipeline
 
-1. For each **Navigable** building with `interior_profile_id` or `navigation_blueprint_id`
+1. For each **Navigable** building definition (regardless of `interior_profile_id` or `navigation_blueprint_id`)
 2. Load collision GLB (`occupancy_collision` node preferred, visible mesh fallback)
 3. Detect walkable horizontal surfaces → floor clusters by elevation
 4. Build convex-hull floor outlines in building-local meters (baseline scale applied)
@@ -220,7 +220,7 @@ Effective blueprint resolution order:
 - Excel is not touched during routine editing; `assets/buildings/navigation_blueprints/catalog.ron` is the asset-default store.
 - Scene persistence (v15+) serializes `navigation_blueprint_override` on `SceneBuildingRecord`.
 - After save, `refresh_building_navigation_runtime()` rebuilds spaces/portals/runtime for affected instances without destroying interior children.
-- **Regenerate from Mesh** (Shift+R) confirms before replacing authored/generated catalog data; instance overrides are preserved.
+- **Regenerate from Mesh** (Shift+R) slices a new draft from the building collision/render mesh into the editor working copy. Persisted catalog entries and instance overrides are unchanged until **Save Instance** or **Apply to Asset**.
 
 #### Source indicators
 

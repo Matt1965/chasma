@@ -1,19 +1,21 @@
 //! Generic inventory container resolution for dev tools (DV0).
 
+use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::dev::dev_mode::{DevInventoryEndpoint, DevInventoryToolState};
-use crate::dev::inspector::WorldInspectorState;
-use crate::units::input::SelectedUnits;
 use crate::ui::gameplay::primary_selected_unit;
+use crate::units::input::SelectedUnits;
 use crate::world::{BuildingId, InventoryId, ItemPileId, UnitId, WorldData};
 
 /// Unit/building/pile the dev inventory tools should target.
 pub fn resolve_target_unit(
-    inspector: &WorldInspectorState,
+    world_selection: &WorldSelectionState,
     selection: &SelectedUnits,
 ) -> Option<UnitId> {
-    inspector
-        .selected_unit
-        .or_else(|| primary_selected_unit(selection))
+    if world_selection.category == WorldSelectionCategory::Units {
+        world_selection.primary_unit(selection)
+    } else {
+        primary_selected_unit(selection)
+    }
 }
 
 /// Resolved container with human-readable context for the dev panel.
@@ -40,136 +42,84 @@ impl DevInventoryEndpoint {
     }
 }
 
-/// Pick the active dev inventory endpoint from the inspector/gameplay selection.
+/// Pick the active dev inventory endpoint from shared selection.
 pub fn resolve_active_endpoint(
     world: &WorldData,
-    inspector: &WorldInspectorState,
+    world_selection: &WorldSelectionState,
     selection: &SelectedUnits,
     dev_state: &DevInventoryToolState,
 ) -> Option<DevInventoryEndpoint> {
-    let endpoints = resolve_inspector_endpoints(world, inspector, selection);
-    if let Some(info) = endpoints.get(
-        dev_state
-            .selected_endpoint_index
-            .min(endpoints.len().saturating_sub(1)),
-    ) {
-        return Some(info.endpoint);
+    let endpoints = resolve_inspector_endpoints(world, world_selection, selection);
+    if endpoints.is_empty() {
+        return None;
     }
-    let unit_id = resolve_target_unit(inspector, selection)?;
-    let inventory_id = world.get_unit(unit_id)?.inventory_id?;
-    Some(DevInventoryEndpoint::Grid(inventory_id))
+    let index = dev_state.selected_endpoint_index % endpoints.len();
+    Some(endpoints[index].endpoint)
 }
 
-/// List inventory containers reachable from inspector or gameplay unit selection.
 pub fn resolve_inspector_endpoints(
     world: &WorldData,
-    inspector: &WorldInspectorState,
+    world_selection: &WorldSelectionState,
     selection: &SelectedUnits,
 ) -> Vec<DevInventoryEndpointInfo> {
-    let mut endpoints = Vec::new();
-    let mut seen_inventories = Vec::new();
+    let mut out = Vec::new();
 
-    if let Some(unit_id) = resolve_target_unit(inspector, selection) {
-        push_unit_inventory(world, unit_id, &mut endpoints, &mut seen_inventories);
-    }
-
-    if let Some(building_id) = inspector.selected_building {
-        push_building_inventories(world, building_id, &mut endpoints, &mut seen_inventories);
-    }
-
-    if let Some(pile_id) = inspector.selected_pile {
-        push_pile(world, pile_id, &mut endpoints);
-    }
-
-    endpoints
-}
-
-fn push_unique_grid(
-    inventory_id: InventoryId,
-    label: String,
-    owner_kind: &'static str,
-    endpoints: &mut Vec<DevInventoryEndpointInfo>,
-    seen: &mut Vec<InventoryId>,
-) {
-    if seen.contains(&inventory_id) {
-        return;
-    }
-    seen.push(inventory_id);
-    endpoints.push(DevInventoryEndpointInfo {
-        endpoint: DevInventoryEndpoint::Grid(inventory_id),
-        label,
-        owner_kind,
-    });
-}
-
-fn push_unit_inventory(
-    world: &WorldData,
-    unit_id: UnitId,
-    endpoints: &mut Vec<DevInventoryEndpointInfo>,
-    seen: &mut Vec<InventoryId>,
-) {
-    let Some(unit) = world.get_unit(unit_id) else {
-        return;
-    };
-    let Some(inventory_id) = unit.inventory_id else {
-        return;
-    };
-    push_unique_grid(
-        inventory_id,
-        format!("Unit #{} inventory", unit_id.raw()),
-        "unit",
-        endpoints,
-        seen,
-    );
-}
-
-fn push_building_inventories(
-    world: &WorldData,
-    building_id: BuildingId,
-    endpoints: &mut Vec<DevInventoryEndpointInfo>,
-    seen: &mut Vec<InventoryId>,
-) {
-    let Some(building) = world.get_building(building_id) else {
-        return;
-    };
-
-    if let Some(inventory_id) = building.inventory_id {
-        push_unique_grid(
-            inventory_id,
-            format!("Building #{} primary", building_id.raw()),
-            "building",
-            endpoints,
-            seen,
-        );
-    }
-
-    if let Some(binding_set) = world.building_inventory_binding_store().get(building_id) {
-        for binding in binding_set.bindings() {
-            push_unique_grid(
-                binding.inventory_id,
-                format!(
-                    "Building #{} `{}` ({:?})",
-                    building_id.raw(),
-                    binding.binding_id.as_str(),
-                    binding.role
-                ),
-                "building",
-                endpoints,
-                seen,
-            );
+    if let Some(unit_id) = resolve_target_unit(world_selection, selection) {
+        if let Some(inventory_id) = world.get_unit(unit_id).and_then(|u| u.inventory_id) {
+            out.push(DevInventoryEndpointInfo {
+                endpoint: DevInventoryEndpoint::Grid(inventory_id),
+                label: format!("Unit #{} inventory", unit_id.raw()),
+                owner_kind: "unit",
+            });
         }
     }
+
+    if let Some(building_id) = (world_selection.category == WorldSelectionCategory::Building)
+        .then_some(world_selection.building_id)
+        .flatten()
+    {
+        if let Some(inventory_id) = world.get_building(building_id).and_then(|b| b.inventory_id) {
+            out.push(DevInventoryEndpointInfo {
+                endpoint: DevInventoryEndpoint::Grid(inventory_id),
+                label: format!("Building #{} inventory", building_id.raw()),
+                owner_kind: "building",
+            });
+        }
+    }
+
+    if let Some(pile_id) = (world_selection.category == WorldSelectionCategory::ItemPile)
+        .then_some(world_selection.pile_id)
+        .flatten()
+    {
+        out.push(DevInventoryEndpointInfo {
+            endpoint: DevInventoryEndpoint::Pile(pile_id),
+            label: format!("Ground pile {pile_id:?}"),
+            owner_kind: "pile",
+        });
+    }
+
+    out
 }
 
-fn push_pile(world: &WorldData, pile_id: ItemPileId, endpoints: &mut Vec<DevInventoryEndpointInfo>) {
-    if world.item_pile_store().get(pile_id).is_none() {
-        return;
-    }
-    endpoints.push(DevInventoryEndpointInfo {
-        endpoint: DevInventoryEndpoint::Pile(pile_id),
-        label: format!("Ground pile #{}", pile_id.raw()),
-        owner_kind: "pile",
-    });
+pub fn building_inventory_endpoint(
+    world: &WorldData,
+    building_id: BuildingId,
+) -> Option<DevInventoryEndpoint> {
+    world
+        .get_building(building_id)
+        .and_then(|b| b.inventory_id)
+        .map(DevInventoryEndpoint::Grid)
+}
+
+pub fn unit_inventory_endpoint(world: &WorldData, unit_id: UnitId) -> Option<DevInventoryEndpoint> {
+    world
+        .get_unit(unit_id)
+        .and_then(|u| u.inventory_id)
+        .map(DevInventoryEndpoint::Grid)
+}
+
+pub fn pile_endpoint(_world: &WorldData, pile_id: ItemPileId) -> DevInventoryEndpoint {
+    DevInventoryEndpoint::Pile(pile_id)
 }
 
 /// Nearest pile at a world position (dev inspector pick).
@@ -179,10 +129,7 @@ pub fn nearest_pile_at_position(
     settings: &crate::world::ItemPileSettings,
 ) -> Option<ItemPileId> {
     let chunk = crate::world::ChunkId::new(position.chunk);
-    let piles: Vec<_> = world
-        .item_pile_store()
-        .piles_in_chunk(chunk)
-        .to_vec();
+    let piles: Vec<_> = world.item_pile_store().piles_in_chunk(chunk).to_vec();
     crate::world::item_piles_near(&piles, position, crate::world::SpaceId::SURFACE, settings)
         .into_iter()
         .next()

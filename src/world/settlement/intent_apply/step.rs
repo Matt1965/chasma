@@ -1,12 +1,12 @@
 //! Dirty/cadence-driven Building Intent Propagation step (SA5).
 
+use crate::world::WorldData;
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::operation::OperationCatalog;
-use crate::world::settlement::response::ResponseCatalog;
 use crate::world::settlement::SettlementId;
-use crate::world::WorldData;
+use crate::world::settlement::response::ResponseCatalog;
 
-use super::propagate::{propagate_settlement_intent_to_buildings, PropagationContext};
+use super::propagate::{PropagationContext, propagate_settlement_intent_to_buildings};
 
 /// Rebuild when not dirty if this many ticks elapsed.
 pub const INTENT_PROPAGATION_CADENCE_TICKS: u64 = 30;

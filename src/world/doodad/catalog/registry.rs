@@ -113,8 +113,8 @@ pub enum DoodadCatalogError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::doodad::catalog::definition::DoodadDefinition;
     use crate::world::DoodadRenderKey;
+    use crate::world::doodad::catalog::definition::DoodadDefinition;
 
     fn starter_catalog() -> DoodadCatalog {
         DoodadCatalog::default()

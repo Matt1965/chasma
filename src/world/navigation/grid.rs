@@ -148,7 +148,8 @@ pub fn is_cell_walkable_in_space(
     if space_id.is_surface() {
         for global in samples {
             let position = WorldPosition::from_global(global, layout);
-            let Some(grounded) = ground_position_in_space(world, space_registry, space_id, position)
+            let Some(grounded) =
+                ground_position_in_space(world, space_registry, space_id, position)
             else {
                 continue;
             };
@@ -167,7 +168,8 @@ pub fn is_cell_walkable_in_space(
 
     for global in samples {
         let position = WorldPosition::from_global(global, layout);
-        let Some(grounded) = ground_position_in_space(world, space_registry, space_id, position) else {
+        let Some(grounded) = ground_position_in_space(world, space_registry, space_id, position)
+        else {
             return false;
         };
         if !matches!(

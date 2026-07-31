@@ -66,6 +66,7 @@ pub fn apply_rts_camera_control(
     mouse_motion: Res<AccumulatedMouseMotion>,
     mouse_scroll: Res<AccumulatedMouseScroll>,
     #[cfg(feature = "dev")] dev_gate: Option<Res<crate::dev::DevModeInputGate>>,
+    menu_block: Option<Res<crate::menu::MenuInputBlock>>,
     mut query: Query<(&mut RtsCameraState, &mut Transform), With<RtsCamera>>,
 ) {
     let vertical_scale = render_assets
@@ -75,13 +76,26 @@ pub fn apply_rts_camera_control(
     let dt = time.delta_secs().min(settings.max_frame_delta);
 
     #[cfg(feature = "dev")]
-    if dev_gate.is_some_and(|gate| gate.block_camera_input) {
+    if dev_gate
+        .as_ref()
+        .is_some_and(|gate| gate.block_camera_input)
+    {
+        return;
+    }
+    if menu_block.is_some_and(|block| block.blocks()) {
         return;
     }
 
     let Ok((mut state, mut transform)) = query.single_mut() else {
         return;
     };
+
+    #[cfg(feature = "dev")]
+    let block_scroll = dev_gate
+        .as_ref()
+        .is_some_and(|gate| gate.block_camera_scroll);
+    #[cfg(not(feature = "dev"))]
+    let block_scroll = false;
 
     // --- Pan (XZ, relative to camera yaw) ---
     let mut pan = Vec2::ZERO;
@@ -121,7 +135,7 @@ pub fn apply_rts_camera_control(
 
     // --- Zoom (mouse wheel) ---
     let scroll_y = mouse_scroll.delta.y + mouse_scroll.delta.x;
-    if scroll_y.abs() > f32::EPSILON {
+    if scroll_y.abs() > f32::EPSILON && !block_scroll {
         let factor = 1.0 - scroll_y * settings.zoom_speed;
         state.target_distance = settings.clamp_distance(state.target_distance * factor);
     }

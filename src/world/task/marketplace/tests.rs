@@ -4,9 +4,7 @@ use bevy::prelude::*;
 
 use super::*;
 use crate::world::inventory::InventoryCatalogCtx;
-use crate::world::task::{
-    sync_construction_tasks, TaskPriority, TaskState, TaskType,
-};
+use crate::world::task::{TaskPriority, TaskState, TaskType, sync_construction_tasks};
 use crate::world::{
     BuildingInteractionProfileCatalog, BuildingOwnership, ChunkCoord, ChunkData, ChunkId,
     ChunkLayout, DoodadCatalog, FootprintCatalog, LocalPosition, NavigationConfig,
@@ -168,7 +166,10 @@ fn idle_worker_autonomously_acquires_construction_task() {
         "expected autonomous assign; diag={:?}",
         report.diagnostics
     );
-    assert_eq!(world.task_store().unit_task_id(worker), report.assignments[0].task_id);
+    assert_eq!(
+        world.task_store().unit_task_id(worker),
+        report.assignments[0].task_id
+    );
     let task_id = report.assignments[0].task_id.unwrap();
     let task = world.task_store().get(task_id).unwrap();
     assert_eq!(task.task_type, TaskType::ConstructBuilding);
@@ -222,7 +223,11 @@ fn reservations_prevent_duplicate_point_claim() {
         .collect();
     assert!(keys.len() >= 1);
     let unique: std::collections::BTreeSet<_> = keys.iter().cloned().collect();
-    assert_eq!(keys.len(), unique.len(), "duplicate reservation points: {keys:?}");
+    assert_eq!(
+        keys.len(),
+        unique.len(),
+        "duplicate reservation points: {keys:?}"
+    );
 }
 
 #[test]
@@ -419,7 +424,9 @@ fn interrupted_low_priority_recovers_as_available() {
 
     // Restore high task and force stick clock so preemption is allowed.
     world.task_store_mut().get_mut(high_task).unwrap().state = TaskState::Available;
-    world.worker_assignment_store_mut().note_assignment(worker, 0, false);
+    world
+        .worker_assignment_store_mut()
+        .note_assignment(worker, 0, false);
 
     let report = run_assign(
         &mut world,

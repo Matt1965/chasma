@@ -2,6 +2,8 @@
 
 use bevy::prelude::*;
 
+use crate::client::selection::WorldSelectionState;
+use crate::units::input::SelectedUnits;
 use crate::units::{
     AnimationPresentationMetrics, UnitAnimationAssets, UnitAnimationPlayerLink,
     UnitAnimationRuntime, UnitAnimationSettings, UnitAnimationStateIndex, UnitRenderEntity,
@@ -9,14 +11,17 @@ use crate::units::{
 };
 use crate::world::{AnimationProfileCatalog, UnitCatalog, WorldData};
 
-use super::dev_mode::{DevModeState, DevTab};
-use super::inspector::WorldInspectorState;
-use super::panel::DevAnimationText;
+use crate::dev::window::{DevWindowId, DevWindowRegistry};
+
+use super::debug_window::DevAnimationText;
+use super::dev_mode::DevModeState;
 
 /// Refresh animation debug text for the inspector-selected unit.
 pub fn sync_dev_animation_panel(
     dev_state: Res<DevModeState>,
-    inspector: Res<WorldInspectorState>,
+    registry: Res<DevWindowRegistry>,
+    world_selection: Res<WorldSelectionState>,
+    selected_units: Res<SelectedUnits>,
     world: Res<WorldData>,
     catalog: Res<UnitCatalog>,
     profiles: Res<AnimationProfileCatalog>,
@@ -35,7 +40,7 @@ pub fn sync_dev_animation_panel(
         return;
     };
 
-    if !dev_state.enabled || dev_state.active_tab != DevTab::Debug {
+    if !registry.window_active(dev_state.enabled, DevWindowId::Debug) {
         node.display = Display::None;
         **label = String::new();
         return;
@@ -56,8 +61,9 @@ pub fn sync_dev_animation_panel(
         assets.validation.missing_clip_count(),
     );
 
-    let Some(unit_id) = inspector.selected_unit else {
-        **label = format!("{aggregate}\nAnimation: select a unit (Inspector tab, Alt+click)");
+    let Some(unit_id) = world_selection.primary_unit(&selected_units) else {
+        **label =
+            format!("{aggregate}\nAnimation: select a unit (Alt+click or gameplay selection)");
         return;
     };
 

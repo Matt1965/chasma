@@ -26,8 +26,12 @@ pub fn collect_build_mode_intents(
     mut build_mode: ResMut<BuildModeState>,
     mut queue: ResMut<ClientIntentQueue>,
     hud_hover: Res<PlayerHudHoverState>,
+    menu_block: Option<Res<crate::menu::MenuInputBlock>>,
     #[cfg(feature = "dev")] dev_state: Option<Res<crate::dev::DevModeState>>,
 ) {
+    if menu_block.is_some_and(|block| block.blocks()) {
+        return;
+    }
     if build_shortcuts_blocked(&build_mode) {
         return;
     }
@@ -48,10 +52,7 @@ pub fn collect_build_mode_intents(
         return;
     }
 
-    if keyboard.just_pressed(KeyCode::Escape) {
-        queue.push(ClientIntent::CancelBuildPlacement);
-        return;
-    }
+    // Escape is owned by the application menu (pause / back). Right-click cancels placement.
 
     if build_mode.is_ghost_placing() && keyboard.just_pressed(KeyCode::KeyR) {
         queue.push(ClientIntent::RotateBuildGhost);

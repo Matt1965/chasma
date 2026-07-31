@@ -7,8 +7,9 @@ mod finalize;
 mod report;
 
 pub use authority::{
-    normalize_building_sizing_authority, sync_building_legacy_mirrors_from_sizing,
-    validate_building_sizing_authority, validate_sizing_migration_state, SizingAuthorityIssue,
+    SizingAuthorityIssue, normalize_building_sizing_authority,
+    sync_building_legacy_mirrors_from_sizing, validate_building_sizing_authority,
+    validate_sizing_migration_state,
 };
 pub use baseline::{
     BaselineScaleResult, SizingPolicy, calculate_baseline_scale, check_suspected_unit_mismatch,

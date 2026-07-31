@@ -16,15 +16,15 @@ mod tests;
 
 pub use catalog::{StrategicTaskCatalogError, StrategicTaskTemplateCatalog};
 pub use emit::{
-    generate_strategic_tasks_for_settlement, intent_to_task_priority, StrategicTaskGenContext,
+    StrategicTaskGenContext, generate_strategic_tasks_for_settlement, intent_to_task_priority,
 };
 pub use report::{StrategicTaskEmission, StrategicTaskGenerationReport};
 pub use step::{
-    generate_strategic_tasks_now, step_settlement_strategic_task_generation,
-    STRATEGIC_TASK_GEN_CADENCE_TICKS,
+    STRATEGIC_TASK_GEN_CADENCE_TICKS, generate_strategic_tasks_now,
+    step_settlement_strategic_task_generation,
 };
 pub use store::StrategicTaskGenerationStore;
 pub use template::{
-    starter_strategic_task_templates, StrategicTaskTemplate, StrategicTaskTemplateId,
+    StrategicTaskTemplate, StrategicTaskTemplateId, starter_strategic_task_templates,
 };
-pub use validation::{validate_strategic_task_report, StrategicTaskValidationError};
+pub use validation::{StrategicTaskValidationError, validate_strategic_task_report};

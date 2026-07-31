@@ -8,9 +8,9 @@
 
 use bevy::prelude::*;
 
+use crate::world::BuildingDefinition;
 use crate::world::authoring_transform::QuantizedOrientation;
 use crate::world::building::builtin_model_local_offset;
-use crate::world::BuildingDefinition;
 
 use super::definition::{AssetSizingDefinition, SizingMigrationState, SourceDimensions};
 
@@ -63,7 +63,9 @@ impl AssetSizingDefinition {
     }
 
     /// Baked / explicit baseline scale used by presentation (AT2+ applies more widely).
-    pub fn authoritative_baseline_scale(&self) -> crate::world::authoring_transform::AuthoringScale {
+    pub fn authoritative_baseline_scale(
+        &self,
+    ) -> crate::world::authoring_transform::AuthoringScale {
         self.resolved_baseline_scale()
     }
 
@@ -83,7 +85,10 @@ impl AssetSizingDefinition {
     }
 
     pub fn is_missing_sizing_data(&self) -> bool {
-        matches!(self.migration_state, SizingMigrationState::MissingSizingData)
+        matches!(
+            self.migration_state,
+            SizingMigrationState::MissingSizingData
+        )
     }
 }
 
@@ -139,10 +144,12 @@ pub fn validate_building_sizing_authority(
     definition: &BuildingDefinition,
 ) -> Vec<SizingAuthorityIssue> {
     let id = definition.id.as_str().to_string();
-    let mut issues = validate_sizing_migration_state(definition.id.as_str(), &definition.asset_sizing);
+    let mut issues =
+        validate_sizing_migration_state(definition.id.as_str(), &definition.asset_sizing);
 
-    let pivot_delta =
-        (definition.model_local_offset - definition.asset_sizing.model_local_offset_meters).length();
+    let pivot_delta = (definition.model_local_offset
+        - definition.asset_sizing.model_local_offset_meters)
+        .length();
     if pivot_delta > 1e-4 {
         issues.push(SizingAuthorityIssue::DualPivotMismatch {
             definition_id: id.clone(),
@@ -153,9 +160,7 @@ pub fn validate_building_sizing_authority(
         - definition.asset_sizing.rotation_correction.yaw_degrees())
     .abs();
     if yaw_delta > 0.01 {
-        issues.push(SizingAuthorityIssue::DualYawMismatch {
-            definition_id: id,
-        });
+        issues.push(SizingAuthorityIssue::DualYawMismatch { definition_id: id });
     }
 
     issues
@@ -213,7 +218,10 @@ mod tests {
         assert_eq!(def.asset_sizing.model_local_offset_meters, Vec3::ZERO);
         normalize_building_sizing_authority(&mut def);
         assert!(def.asset_sizing.model_local_offset_meters.x > 6.0);
-        assert_eq!(def.model_local_offset, def.asset_sizing.model_local_offset_meters);
+        assert_eq!(
+            def.model_local_offset,
+            def.asset_sizing.model_local_offset_meters
+        );
         assert!(validate_building_sizing_authority(&def).iter().all(|i| {
             !matches!(
                 i,
@@ -225,13 +233,15 @@ mod tests {
 
     #[test]
     fn asset_sizing_wins_over_legacy_when_both_set() {
-        let mut def = bare_barn()
-            .with_model_local_offset(Vec3::new(1.0, 0.0, 0.0));
+        let mut def = bare_barn().with_model_local_offset(Vec3::new(1.0, 0.0, 0.0));
         // Simulate divergent legacy after builder (builder now syncs both — force diverge).
         def.model_local_offset = Vec3::new(9.0, 0.0, 0.0);
         def.asset_sizing.model_local_offset_meters = Vec3::new(2.0, 0.0, 0.0);
         normalize_building_sizing_authority(&mut def);
-        assert_eq!(def.asset_sizing.model_local_offset_meters, Vec3::new(2.0, 0.0, 0.0));
+        assert_eq!(
+            def.asset_sizing.model_local_offset_meters,
+            Vec3::new(2.0, 0.0, 0.0)
+        );
         assert_eq!(def.model_local_offset, Vec3::new(2.0, 0.0, 0.0));
     }
 

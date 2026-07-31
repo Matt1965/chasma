@@ -12,16 +12,16 @@ use crate::world::settlement::needs::NeedId;
 use crate::world::settlement::response::{ResponseId, ResponseType};
 use crate::world::settlement::state::{SettlementKind, SettlementState};
 use crate::world::settlement::{
-    create_settlement_with_treasury, ensure_settlement_states_for_world,
-    reconcile_settlement_building_membership, SettlementOwnership,
+    SettlementOwnership, create_settlement_with_treasury, ensure_settlement_states_for_world,
+    reconcile_settlement_building_membership,
 };
 use crate::world::{
+    Affiliation, BuildingCategoryCatalog, BuildingDefinitionId, BuildingLifecycleState,
+    BuildingOwnership, BuildingSource, ChunkCoord, ChunkData, ChunkExtent, ChunkId, Heightfield,
+    LocalPosition, StrategicTaskTemplateCatalog, TaskType, WorldData, WorldPosition,
     create_building_with_inventory, generate_strategic_tasks_now, starter_building_definitions,
     starter_inventory_profile_definitions, starter_item_category_definitions,
-    starter_item_definitions, Affiliation, BuildingCategoryCatalog, BuildingDefinitionId,
-    BuildingLifecycleState, BuildingOwnership, BuildingSource, ChunkCoord, ChunkData, ChunkExtent,
-    ChunkId, Heightfield, LocalPosition, StrategicTaskTemplateCatalog, TaskType, WorldData,
-    WorldPosition,
+    starter_item_definitions,
 };
 
 fn flat_world() -> WorldData {
@@ -42,9 +42,10 @@ fn flat_world() -> WorldData {
 fn inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
     static CTX: std::sync::OnceLock<InventoryCatalogCtx<'static>> = std::sync::OnceLock::new();
     CTX.get_or_init(|| {
-        let categories =
-            crate::world::ItemCategoryCatalog::from_definitions(starter_item_category_definitions())
-                .unwrap();
+        let categories = crate::world::ItemCategoryCatalog::from_definitions(
+            starter_item_category_definitions(),
+        )
+        .unwrap();
         let items =
             crate::world::ItemCatalog::from_definitions(starter_item_definitions(), &categories)
                 .unwrap();
@@ -118,11 +119,7 @@ impl Sa9Fixture {
             .settlement_state_store_mut()
             .get_mut(settlement.settlement_id)
         {
-            *state = SettlementState::new(
-                settlement.settlement_id,
-                SettlementKind::Town,
-                true,
-            );
+            *state = SettlementState::new(settlement.settlement_id, SettlementKind::Town, true);
             state.policies.auto_construction = true;
             state.policies.require_construction_approval = false;
             state.policies.require_construction_placement_approval = false;
@@ -195,10 +192,7 @@ fn construction_response_produces_plan() {
         .construction_plan_store()
         .plans_for_settlement(fx.settlement_id);
     assert_eq!(plans.len(), 1);
-    assert_eq!(
-        plans[0].building_definition_id.as_str(),
-        "prispod_farm"
-    );
+    assert_eq!(plans[0].building_definition_id.as_str(), "prispod_farm");
     assert!(plans[0].status.is_active());
     // Does not spawn completed buildings.
     if let Some(id) = plans[0].reserved_building_id {
@@ -240,10 +234,12 @@ fn sufficient_capacity_prevents_new_plan() {
         "should not create; diag={:?}",
         report.diagnostics
     );
-    assert!(report
-        .diagnostics
-        .iter()
-        .any(|d| d.contains("capacity sufficient")));
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|d| d.contains("capacity sufficient"))
+    );
 }
 
 #[test]
@@ -394,7 +390,11 @@ fn player_approval_policy_uses_same_runtime() {
         .plans_for_settlement(fx.settlement_id)[0]
         .id;
     assert_eq!(
-        fx.world.construction_plan_store().get(plan_id).unwrap().status,
+        fx.world
+            .construction_plan_store()
+            .get(plan_id)
+            .unwrap()
+            .status,
         ConstructionPlanStatus::AwaitingApproval
     );
     let responses = ConstructionResponseCatalog::default();
@@ -469,9 +469,10 @@ fn construction_tasks_derive_from_committed_plans_via_sa6() {
             .filter_map(|id| fx.world.task_store().get(id))
             .any(|task| {
                 task.task_type == TaskType::ConstructBuilding
-                    && task.strategic.as_ref().is_some_and(|o| {
-                        o.settlement_id == fx.settlement_id.raw()
-                    })
+                    && task
+                        .strategic
+                        .as_ref()
+                        .is_some_and(|o| o.settlement_id == fx.settlement_id.raw())
             });
         assert!(has_construct, "expected ConstructBuilding task after SA6");
     }
@@ -514,7 +515,11 @@ fn completed_plan_transitions_when_building_completes() {
     });
     let _ = fx.plan_now(20);
     assert_eq!(
-        fx.world.construction_plan_store().get(plan.id).unwrap().status,
+        fx.world
+            .construction_plan_store()
+            .get(plan.id)
+            .unwrap()
+            .status,
         ConstructionPlanStatus::Completed
     );
 }

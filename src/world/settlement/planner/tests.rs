@@ -6,14 +6,14 @@ use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::{InventoryCatalogCtx, place_stack_first_fit};
 use crate::world::operation::OperationCatalog;
 use crate::world::settlement::{
-    SettlementOwnership, StockGoal, create_settlement_with_treasury,
-    execute_settlement_replan, reconcile_settlement_building_membership,
+    SettlementOwnership, StockGoal, create_settlement_with_treasury, execute_settlement_replan,
+    reconcile_settlement_building_membership,
 };
 use crate::world::{
     Affiliation, BuildingCategoryCatalog, BuildingDefinitionId, BuildingLifecycleState,
-    BuildingOwnership, BuildingSource, ChunkCoord, ChunkExtent, ItemDefinitionId,
-    LocalPosition, OperationDefinitionId, UnitCatalog, WorldData, WorldPosition,
-    bootstrap_constant_field, create_building_with_inventory, starter_building_definitions,
+    BuildingOwnership, BuildingSource, ChunkCoord, ChunkExtent, ItemDefinitionId, LocalPosition,
+    OperationDefinitionId, UnitCatalog, WorldData, WorldPosition, bootstrap_constant_field,
+    create_building_with_inventory, starter_building_definitions,
     starter_inventory_profile_definitions, starter_item_category_definitions,
     starter_item_definitions, starter_operation_definitions, starter_unit_definitions,
 };
@@ -31,9 +31,10 @@ fn flat_world() -> WorldData {
 fn test_inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
     static CTX: std::sync::OnceLock<InventoryCatalogCtx<'static>> = std::sync::OnceLock::new();
     CTX.get_or_init(|| {
-        let categories =
-            crate::world::ItemCategoryCatalog::from_definitions(starter_item_category_definitions())
-                .unwrap();
+        let categories = crate::world::ItemCategoryCatalog::from_definitions(
+            starter_item_category_definitions(),
+        )
+        .unwrap();
         let items =
             crate::world::ItemCatalog::from_definitions(starter_item_definitions(), &categories)
                 .unwrap();
@@ -203,7 +204,10 @@ impl PlannerFixture {
             .unwrap_or(false)
     }
 
-    fn selected_operation(&self, building_id: crate::world::BuildingId) -> Option<OperationDefinitionId> {
+    fn selected_operation(
+        &self,
+        building_id: crate::world::BuildingId,
+    ) -> Option<OperationDefinitionId> {
         self.world
             .building_production_store()
             .get_policy(building_id)
@@ -290,9 +294,11 @@ fn ep9_planner_computes_dependency_chain_demand() {
         .get(fixture.settlement_id)
         .unwrap()
         .last_diagnostics;
-    assert!(diagnostics
-        .propagated_demand
-        .contains_key(&ItemDefinitionId::new("iron_ore")));
+    assert!(
+        diagnostics
+            .propagated_demand
+            .contains_key(&ItemDefinitionId::new("iron_ore"))
+    );
 }
 
 #[test]
@@ -323,20 +329,19 @@ fn ep9_planner_cycle_detection_blocks_invalid_goals() {
         .get(fixture.settlement_id)
         .unwrap()
         .last_diagnostics;
-    assert!(diagnostics
-        .validation_errors
-        .iter()
-        .any(|msg| msg.contains("Duplicate")));
+    assert!(
+        diagnostics
+            .validation_errors
+            .iter()
+            .any(|msg| msg.contains("Duplicate"))
+    );
 }
 
 #[test]
 fn ep9_planner_survives_save_load() {
     let mut fixture = PlannerFixture::new();
     fixture.replan();
-    let exported = fixture
-        .world
-        .production_planner_store()
-        .export_save_state();
+    let exported = fixture.world.production_planner_store().export_save_state();
     let mut restored = flat_world();
     restored
         .production_planner_store_mut()

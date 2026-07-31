@@ -10,11 +10,11 @@ use crate::world::building::operation::{
     RepeatMode, apply_operation_ticks, assess_production_execution, execute_production_cycle,
     set_production_repeat_count, step_workstation_operation,
 };
-use crate::world::inventory::count_stack_item;
 use crate::world::building::operational_efficiency::OperationalLimitingFactor;
 use crate::world::building::terrain_assessment::{
     BuildingTerrainAssessmentStore, TerrainAssessmentCatalogs,
 };
+use crate::world::inventory::count_stack_item;
 use crate::world::inventory::{InventoryCatalogCtx, InventoryEntryContents, place_stack_first_fit};
 use crate::world::operation::OperationCatalog;
 use crate::world::{
@@ -23,8 +23,9 @@ use crate::world::{
     BuildingRenderKey, BuildingSource, ChunkCoord, ChunkExtent, ChunkId, FootprintCatalog,
     FootprintSpec, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, ItemDefinitionId,
     LocalPosition, OperationDefinitionId, UnitCatalog, UnitDefinitionId, UnitId, UnitSource,
-    WorldData, WorldPosition, bootstrap_constant_field, create_unit, starter_inventory_profile_definitions,
-    starter_item_category_definitions, starter_item_definitions, starter_operation_definitions,
+    WorldData, WorldPosition, bootstrap_constant_field, create_unit,
+    starter_inventory_profile_definitions, starter_item_category_definitions,
+    starter_item_definitions, starter_operation_definitions,
 };
 use bevy::prelude::{Quat, Vec3};
 
@@ -50,8 +51,7 @@ fn test_inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
     CTX.get_or_init(|| {
         let categories =
             ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
-        let items =
-            ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+        let items = ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
         let profiles =
             InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
                 .unwrap();
@@ -120,15 +120,19 @@ fn iron_mine_definition() -> BuildingDefinition {
     )
     .with_supported_operations([OperationDefinitionId::new("mine_iron")])
     .with_default_operation_id(OperationDefinitionId::new("mine_iron"))
-    .with_inventory_bindings(vec![BuildingInventoryBindingDefinition::new(
-        "primary_output",
-        BuildingInventoryRole::Output,
-        crate::world::InventoryProfileId::new("chest_large"),
-    )
-    .with_default(true)])
+    .with_inventory_bindings(vec![
+        BuildingInventoryBindingDefinition::new(
+            "primary_output",
+            BuildingInventoryRole::Output,
+            crate::world::InventoryProfileId::new("chest_large"),
+        )
+        .with_default(true),
+    ])
 }
 
-fn terrain_catalogs(building_catalog: &crate::world::BuildingCatalog) -> TerrainAssessmentCatalogs<'static> {
+fn terrain_catalogs(
+    building_catalog: &crate::world::BuildingCatalog,
+) -> TerrainAssessmentCatalogs<'static> {
     let field_catalog = crate::world::TerrainFieldCatalog::default();
     let profile_catalog = crate::world::FieldResponseProfileCatalog::default();
     let requirement_catalog = crate::world::BuildingFieldRequirementCatalog::default();
@@ -162,11 +166,7 @@ fn operation_params<'a>(
     }
 }
 
-fn place_building(
-    world: &mut WorldData,
-    definition: &BuildingDefinition,
-    building_id: BuildingId,
-) {
+fn place_building(world: &mut WorldData, definition: &BuildingDefinition, building_id: BuildingId) {
     let mut record = BuildingRecord::new(
         building_id,
         definition.id.clone(),
@@ -204,10 +204,7 @@ fn binding_inventory(
 ) -> crate::world::InventoryId {
     world
         .building_inventory_binding_store()
-        .resolve_inventory(
-            building_id,
-            &BuildingInventoryBindingId::new(binding),
-        )
+        .resolve_inventory(building_id, &BuildingInventoryBindingId::new(binding))
         .expect("binding")
 }
 
@@ -389,7 +386,10 @@ fn missing_input_blocks_without_consuming() {
     )
     .unwrap();
     assert_eq!(report.lifecycle, OperationLifecycle::Blocked);
-    assert_eq!(report.limiting_factor, OperationalLimitingFactor::MissingInput);
+    assert_eq!(
+        report.limiting_factor,
+        OperationalLimitingFactor::MissingInput
+    );
     assert_eq!(count_item(&world, ore, "iron_ore"), 1);
 }
 
@@ -434,7 +434,10 @@ fn output_full_blocks_without_consuming_inputs() {
     )
     .unwrap();
     assert_eq!(report.lifecycle, OperationLifecycle::Blocked);
-    assert_eq!(report.limiting_factor, OperationalLimitingFactor::OutputBlocked);
+    assert_eq!(
+        report.limiting_factor,
+        OperationalLimitingFactor::OutputBlocked
+    );
     assert_eq!(count_item(&world, ore, "iron_ore"), ore_before);
 }
 
@@ -446,10 +449,17 @@ fn execute_production_cycle_is_atomic_on_output_failure() {
         .get(&BuildingDefinitionId::new("smelter"))
         .unwrap()
         .clone();
-    let op = ops.get(&OperationDefinitionId::new("smelt_iron")).unwrap().clone();
+    let op = ops
+        .get(&OperationDefinitionId::new("smelt_iron"))
+        .unwrap()
+        .clone();
     let metal = binding_inventory(&world, building_id, "metal_output");
     let slag = binding_inventory(&world, building_id, "slag_output");
-    let ore_before = count_item(&world, binding_inventory(&world, building_id, "ore_input"), "iron_ore");
+    let ore_before = count_item(
+        &world,
+        binding_inventory(&world, building_id, "ore_input"),
+        "iron_ore",
+    );
     let (inventory_store, instance_store) = world.inventory_runtime_mut();
     for _ in 0..8 {
         let _ = place_stack_first_fit(
@@ -478,7 +488,11 @@ fn execute_production_cycle_is_atomic_on_output_failure() {
     );
     assert_eq!(result, Err(OperationalLimitingFactor::OutputBlocked));
     assert_eq!(
-        count_item(&world, binding_inventory(&world, building_id, "ore_input"), "iron_ore"),
+        count_item(
+            &world,
+            binding_inventory(&world, building_id, "ore_input"),
+            "iron_ore"
+        ),
         ore_before
     );
 }
@@ -532,7 +546,10 @@ fn repeat_count_limits_executed_production() {
         ticks,
     )
     .unwrap();
-    let state = world.building_production_store().get_state(building_id).unwrap();
+    let state = world
+        .building_production_store()
+        .get_state(building_id)
+        .unwrap();
     assert_eq!(state.lifecycle, OperationLifecycle::Completed);
     assert_eq!(state.completion_count, 2);
     assert_eq!(count_item(&world, metal, "iron_bar"), 2);
@@ -582,15 +599,15 @@ fn assess_production_execution_reports_missing_inputs() {
         &ItemDefinitionId::new("iron_ore"),
         10,
     );
-    let assessment = assess_production_execution(
-        &world,
-        test_inventory_ctx(),
-        building_id,
-        op,
-        &definition,
-    );
+    let assessment =
+        assess_production_execution(&world, test_inventory_ctx(), building_id, op, &definition);
     assert!(assessment.blocking.is_some());
-    assert!(assessment.inputs.iter().any(|input| input.available < input.required));
+    assert!(
+        assessment
+            .inputs
+            .iter()
+            .any(|input| input.available < input.required)
+    );
 }
 
 #[test]
@@ -600,7 +617,10 @@ fn stack_limit_splits_large_output_quantities() {
         .get(&BuildingDefinitionId::new("smelter"))
         .unwrap()
         .clone();
-    let mut op = ops.get(&OperationDefinitionId::new("smelt_iron")).unwrap().clone();
+    let mut op = ops
+        .get(&OperationDefinitionId::new("smelt_iron"))
+        .unwrap()
+        .clone();
     op.outputs = vec![crate::world::OperationOutputDefinition::Item {
         item_id: ItemDefinitionId::new("iron_bar"),
         quantity: 75,
@@ -631,11 +651,8 @@ fn stack_limit_splits_large_output_quantities() {
     assert_eq!(count_item(&world, output, "iron_bar"), 75);
     let record = world.inventory_store().get(output).unwrap();
     assert!(record.placed_entries().len() > 1);
-    assert!(record
-        .placed_entries()
-        .iter()
-        .all(|entry| matches!(
-            entry.contents,
-            InventoryEntryContents::Stack { quantity, .. } if quantity <= 50
-        )));
+    assert!(record.placed_entries().iter().all(|entry| matches!(
+        entry.contents,
+        InventoryEntryContents::Stack { quantity, .. } if quantity <= 50
+    )));
 }

@@ -1,14 +1,14 @@
 //! Cadence-driven need evaluation step (SA2). Read-only over world state; writes snapshots only.
 
+use crate::world::WorldData;
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::item::ItemCatalog;
-use crate::world::settlement::emergency::EmergencyCatalog;
 use crate::world::settlement::SettlementId;
-use crate::world::WorldData;
+use crate::world::settlement::emergency::EmergencyCatalog;
 
 use super::catalog::NeedCatalog;
-use super::evaluate::{evaluate_settlement_needs, NeedEvalContext};
+use super::evaluate::{NeedEvalContext, evaluate_settlement_needs};
 
 /// Default max interval between evaluations when not dirty (ticks).
 pub const NEED_EVAL_CADENCE_TICKS: u64 = 30;
@@ -62,7 +62,9 @@ pub fn step_settlement_need_evaluation(
         let evaluation = evaluate_settlement_needs(&ctx, need_catalog);
         world.need_evaluation_store_mut().insert(evaluation);
         // SA3: need snapshot change invalidates response candidates.
-        world.response_candidate_store_mut().mark_dirty(settlement_id);
+        world
+            .response_candidate_store_mut()
+            .mark_dirty(settlement_id);
         evaluated += 1;
     }
     evaluated
@@ -94,5 +96,7 @@ pub fn evaluate_settlement_needs_now(
     };
     let evaluation = evaluate_settlement_needs(&ctx, need_catalog);
     world.need_evaluation_store_mut().insert(evaluation);
-    world.response_candidate_store_mut().mark_dirty(settlement_id);
+    world
+        .response_candidate_store_mut()
+        .mark_dirty(settlement_id);
 }

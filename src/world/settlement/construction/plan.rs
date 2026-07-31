@@ -5,13 +5,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::world::building::catalog::BuildingDefinitionId;
 use crate::world::item::ItemDefinitionId;
+use crate::world::settlement::SettlementId;
 use crate::world::settlement::arbiter::IntentId;
 use crate::world::settlement::response::ResponseId;
-use crate::world::settlement::SettlementId;
 use crate::world::{BuildingId, ChunkCoord, LocalPosition, WorldPosition};
 
 /// Stable construction plan identifier (persisted).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect, Serialize, Deserialize,
+)]
 pub struct ConstructionPlanId(pub u64);
 
 impl ConstructionPlanId {
@@ -57,10 +59,7 @@ impl ConstructionPlanStatus {
     }
 
     pub fn is_terminal(self) -> bool {
-        matches!(
-            self,
-            Self::Completed | Self::Cancelled | Self::Superseded
-        )
+        matches!(self, Self::Completed | Self::Cancelled | Self::Superseded)
     }
 
     /// Committed plans survive brief intent/pressure fluctuation.

@@ -43,6 +43,8 @@ impl Plugin for ClientPipelinePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ClientIntentQueue>()
             .init_resource::<ClientInputModifiers>()
+            .init_resource::<crate::client::selection::WorldSelectionState>()
+            .init_resource::<crate::client::selection::WorldSelectionRevision>()
             .init_resource::<crate::client::inventory_intent::InventoryIntentQueue>()
             .init_resource::<crate::client::commands::ResolvedCommandFeedback>();
     }
@@ -63,11 +65,13 @@ pub struct CollectUnitInputParams<'w> {
     pub hud_hover: Res<'w, PlayerHudHoverState>,
     pub inventory_ui: Res<'w, InventoryUiState>,
     pub build_mode: Res<'w, BuildModeState>,
+    pub menu_block: Option<Res<'w, crate::menu::MenuInputBlock>>,
 }
 
 impl CollectUnitInputParams<'_> {
     fn blocks_world_intents(&self) -> bool {
-        gameplay_input_blocked_by_hud(&self.hud_hover)
+        self.menu_block.as_ref().is_some_and(|b| b.blocks())
+            || gameplay_input_blocked_by_hud(&self.hud_hover)
             || crate::ui::gameplay::inventory_panel_blocks_world_input(&self.inventory_ui)
             || self.build_mode.blocks_gameplay_world_intents()
     }

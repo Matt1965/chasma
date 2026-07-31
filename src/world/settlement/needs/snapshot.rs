@@ -104,7 +104,9 @@ impl SettlementNeedEvaluation {
     }
 
     pub fn snapshot_str(&self, need_id: &str) -> Option<&NeedSnapshot> {
-        self.snapshots.iter().find(|s| s.need_id.as_str() == need_id)
+        self.snapshots
+            .iter()
+            .find(|s| s.need_id.as_str() == need_id)
     }
 
     pub fn pressure_str(&self, need_id: &str) -> Option<u8> {

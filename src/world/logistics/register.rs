@@ -34,10 +34,7 @@ pub fn unregister_building_logistics_endpoints(
 }
 
 /// Cancel hauling state owned by a removed building (EP7).
-pub fn cancel_logistics_for_building_removal(
-    world: &mut WorldData,
-    building_id: BuildingId,
-) {
+pub fn cancel_logistics_for_building_removal(world: &mut WorldData, building_id: BuildingId) {
     let cancelled = world
         .hauling_request_store_mut()
         .cancel_requests_for_building(building_id);

@@ -9,15 +9,11 @@ use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::operation::OperationCatalog;
 use crate::world::settlement::arbiter::arbitrate_settlement_intent_now;
 use crate::world::settlement::emergency::EmergencyCatalog;
-use crate::world::settlement::needs::{evaluate_settlement_needs_now, NeedCatalog};
-use crate::world::settlement::response::{
-    discover_settlement_responses_now, ResponseCatalog,
-};
-use crate::world::settlement::state::{
-    NeedCategory, NeedTarget, SettlementKind, SettlementState,
-};
+use crate::world::settlement::needs::{NeedCatalog, evaluate_settlement_needs_now};
+use crate::world::settlement::response::{ResponseCatalog, discover_settlement_responses_now};
+use crate::world::settlement::state::{NeedCategory, NeedTarget, SettlementKind, SettlementState};
 use crate::world::settlement::{
-    create_settlement_with_treasury, reconcile_settlement_building_membership, SettlementOwnership,
+    SettlementOwnership, create_settlement_with_treasury, reconcile_settlement_building_membership,
 };
 use crate::world::{
     Affiliation, BuildingCategoryCatalog, BuildingDefinitionId, BuildingLifecycleState,
@@ -40,9 +36,10 @@ fn flat_world() -> WorldData {
 fn test_inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
     static CTX: std::sync::OnceLock<InventoryCatalogCtx<'static>> = std::sync::OnceLock::new();
     CTX.get_or_init(|| {
-        let categories =
-            crate::world::ItemCategoryCatalog::from_definitions(starter_item_category_definitions())
-                .unwrap();
+        let categories = crate::world::ItemCategoryCatalog::from_definitions(
+            starter_item_category_definitions(),
+        )
+        .unwrap();
         let items =
             crate::world::ItemCatalog::from_definitions(starter_item_definitions(), &categories)
                 .unwrap();
@@ -246,7 +243,10 @@ impl Sa5Fixture {
         );
     }
 
-    fn policy(&self, building_id: crate::world::BuildingId) -> crate::world::BuildingOperationPolicy {
+    fn policy(
+        &self,
+        building_id: crate::world::BuildingId,
+    ) -> crate::world::BuildingOperationPolicy {
         self.world
             .building_production_store()
             .get_policy(building_id)
@@ -287,13 +287,15 @@ fn food_pressure_enables_farm_by_capability() {
         .get(fx.settlement_id)
         .unwrap();
     assert!(report.assignment_for(fx.farm_id).is_some());
-    assert!(validate_propagation_report(
-        &fx.world,
-        &fx.building_catalog,
-        &fx.operation_catalog,
-        report
-    )
-    .is_empty());
+    assert!(
+        validate_propagation_report(
+            &fx.world,
+            &fx.building_catalog,
+            &fx.operation_catalog,
+            report
+        )
+        .is_empty()
+    );
 }
 
 #[test]
@@ -325,7 +327,11 @@ fn construction_pressure_enables_quarry_by_capability() {
 fn research_pressure_enables_lab_capability_building() {
     let mut fx = Sa5Fixture::new();
     // Zero food desired so bake_bread does not claim the workbench before research.
-    if let Some(state) = fx.world.settlement_state_store_mut().get_mut(fx.settlement_id) {
+    if let Some(state) = fx
+        .world
+        .settlement_state_store_mut()
+        .get_mut(fx.settlement_id)
+    {
         if let Some(t) = state
             .need_targets
             .iter_mut()
@@ -459,15 +465,14 @@ fn policy_updates_survive_save_load() {
 fn discovery_uses_operations_not_building_names() {
     let fx = Sa5Fixture::new();
     let op = crate::world::OperationDefinitionId::new("grow_prispods");
-    let found = discover_capable_buildings(
-        &fx.world,
-        &fx.building_catalog,
-        fx.settlement_id,
-        &op,
-    );
+    let found = discover_capable_buildings(&fx.world, &fx.building_catalog, fx.settlement_id, &op);
     assert!(found.iter().any(|b| b.building_id == fx.farm_id));
     // Capability scan must not require knowing "prispod_farm" as a string in caller.
-    assert!(found.iter().all(|b| b.operation_id.as_str() == "grow_prispods"));
+    assert!(
+        found
+            .iter()
+            .all(|b| b.operation_id.as_str() == "grow_prispods")
+    );
 }
 
 #[test]
@@ -513,7 +518,10 @@ fn unavailable_capability_records_diagnostics_not_construction() {
     );
     let report = world.building_intent_propagation_store().get(id).unwrap();
     assert!(
-        report.diagnostics.iter().any(|d| d.contains("no capable buildings"))
+        report
+            .diagnostics
+            .iter()
+            .any(|d| d.contains("no capable buildings"))
             || report.assignments.is_empty(),
         "diag={:?}",
         report.diagnostics

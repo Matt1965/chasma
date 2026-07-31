@@ -3,8 +3,8 @@
 use bevy::prelude::*;
 
 use super::candidates::MarketplaceCandidate;
-use crate::world::task::{TaskId, TaskPriority};
 use crate::world::UnitId;
+use crate::world::task::{TaskId, TaskPriority};
 
 #[derive(Debug, Clone, PartialEq, Reflect)]
 pub struct AssignmentDecision {

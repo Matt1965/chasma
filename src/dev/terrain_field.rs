@@ -18,18 +18,16 @@ use crate::world::{
 
 use bevy::ecs::system::SystemParam;
 
+use super::DevModeInputGate;
 use super::DevModeState;
-use super::dev_mode::DevTab;
 use super::input::DevPanelUi;
-use crate::dev::DevModeInputGate;
+use crate::dev::window::{DevWindowId, DevWindowInteractionState, DevWindowRegistry};
 
 const FIELD_PACKAGE_DIR: &str = "assets/worlds/main/terrain_fields";
 
-const BTN_BG_IDLE: Color = Color::srgba(0.12, 0.2, 0.28, 0.95);
-const BTN_BG_HOVER: Color = Color::srgba(0.18, 0.32, 0.42, 0.98);
-const BTN_BG_PRESSED: Color = Color::srgba(0.1, 0.16, 0.22, 1.0);
-const BTN_BG_ON: Color = Color::srgba(0.2, 0.55, 0.35, 0.95);
-const BTN_BG_ON_HOVER: Color = Color::srgba(0.25, 0.62, 0.42, 0.98);
+use crate::dev::widgets::theme::{
+    BTN_BG_ACTIVE, BTN_BG_HOVER, BTN_BG_IDLE, BTN_BG_ON, BTN_BG_ON_HOVER, BTN_BG_PRESSED,
+};
 
 /// Dev terrain field inspection state (not authoritative).
 #[derive(Resource, Debug, Clone, PartialEq)]
@@ -63,7 +61,7 @@ impl Default for DevTerrainFieldState {
 pub(crate) struct DevTerrainFieldSection;
 
 #[derive(Component)]
-pub(crate) struct DevTerrainFieldPanelText;
+pub(crate) struct DevTerrainFieldStatusText;
 
 #[derive(Component, Debug, Clone, Copy)]
 pub(crate) struct DevTerrainFieldButton {
@@ -100,21 +98,10 @@ pub(crate) fn spawn_terrain_field_section(parent: &mut ChildSpawnerCommands<'_>)
             Node {
                 flex_direction: FlexDirection::Column,
                 row_gap: Val::Px(4.0),
-                display: Display::None,
                 ..default()
             },
         ))
         .with_children(|section| {
-            section.spawn((
-                DevTerrainFieldPanelText,
-                DevPanelUi,
-                Text::new("Terrain Fields"),
-                TextFont {
-                    font_size: 10.0,
-                    ..default()
-                },
-                TextColor(Color::srgba(0.72, 0.88, 0.95, 1.0)),
-            ));
             spawn_field_button_row(
                 section,
                 &[
@@ -143,6 +130,21 @@ pub(crate) fn spawn_terrain_field_section(parent: &mut ChildSpawnerCommands<'_>)
                 TextColor(Color::srgba(0.65, 0.78, 0.88, 1.0)),
             ));
             spawn_overlay_toggle_row(section, &catalog);
+            section.spawn((
+                DevTerrainFieldStatusText,
+                DevPanelUi,
+                Text::new("Selected: water"),
+                TextFont {
+                    font_size: 10.0,
+                    ..default()
+                },
+                TextColor(Color::srgba(0.65, 0.78, 0.88, 1.0)),
+                Node {
+                    min_height: Val::Px(28.0),
+                    margin: UiRect::top(Val::Px(4.0)),
+                    ..default()
+                },
+            ));
         });
 }
 
@@ -235,40 +237,30 @@ fn field_button_bg(interaction: &Interaction, active: bool) -> BackgroundColor {
     })
 }
 
-pub(crate) fn sync_terrain_field_section_visibility(
-    dev_state: Res<DevModeState>,
-    mut section: Query<&mut Node, With<DevTerrainFieldSection>>,
-) {
-    if !dev_state.enabled {
-        return;
-    }
-    let show = dev_state.active_tab == DevTab::TerrainFields;
-    if let Ok(mut node) = section.single_mut() {
-        node.display = if show { Display::Flex } else { Display::None };
-    }
-}
-
 pub(crate) fn sync_terrain_field_button_styles(
     dev_state: Res<DevModeState>,
+    registry: Res<DevWindowRegistry>,
     field_state: Res<DevTerrainFieldState>,
     auxiliary: Res<TerrainFieldAuxiliaryOverlays>,
-    mut action_buttons: Query<
-        (&Interaction, &DevTerrainFieldButton, &mut BackgroundColor),
-        (With<Button>, Without<DevTerrainFieldOverlayButton>),
-    >,
-    mut overlay_buttons: Query<
-        (
-            &Interaction,
-            &DevTerrainFieldOverlayButton,
-            &mut BackgroundColor,
-        ),
-        (With<Button>, Without<DevTerrainFieldButton>),
-    >,
+    mut buttons: bevy::ecs::system::ParamSet<(
+        Query<
+            (&Interaction, &DevTerrainFieldButton, &mut BackgroundColor),
+            (With<Button>, Without<DevTerrainFieldOverlayButton>),
+        >,
+        Query<
+            (
+                &Interaction,
+                &DevTerrainFieldOverlayButton,
+                &mut BackgroundColor,
+            ),
+            (With<Button>, Without<DevTerrainFieldButton>),
+        >,
+    )>,
 ) {
-    if !dev_state.enabled || dev_state.active_tab != DevTab::TerrainFields {
+    if !registry.window_active(dev_state.enabled, DevWindowId::Fields) {
         return;
     }
-    for (interaction, button, mut bg) in &mut action_buttons {
+    for (interaction, button, mut bg) in buttons.p0().iter_mut() {
         let active = match button.action {
             DevTerrainFieldAction::ToggleProbe => field_state.probe_enabled,
             DevTerrainFieldAction::ToggleGizmos => field_state.show_sample_gizmos,
@@ -276,7 +268,7 @@ pub(crate) fn sync_terrain_field_button_styles(
         };
         *bg = field_button_bg(interaction, active);
     }
-    for (interaction, button, mut bg) in &mut overlay_buttons {
+    for (interaction, button, mut bg) in buttons.p1().iter_mut() {
         let active = auxiliary.visible.contains(&button.field_id);
         *bg = field_button_bg(interaction, active);
     }
@@ -284,95 +276,28 @@ pub(crate) fn sync_terrain_field_button_styles(
 
 pub fn sync_dev_terrain_field_panel(
     dev_state: Res<DevModeState>,
+    registry: Res<DevWindowRegistry>,
     field_state: Res<DevTerrainFieldState>,
-    catalog: Res<TerrainFieldCatalog>,
-    source_catalog: Res<TerrainFieldSourceProfileCatalog>,
-    world: Res<WorldData>,
-    mut text: Query<&mut Text, With<DevTerrainFieldPanelText>>,
+    mut text: Query<&mut Text, With<DevTerrainFieldStatusText>>,
 ) {
-    if !dev_state.enabled || dev_state.active_tab != DevTab::TerrainFields {
+    if !registry.window_active(dev_state.enabled, DevWindowId::Fields) {
         return;
     }
     let Ok(mut text) = text.single_mut() else {
         return;
     };
-    let mut lines = Vec::new();
-    lines.push("Terrain Fields".to_string());
-    lines.push(format!(
-        "Catalog: {} definitions",
-        catalog.definitions().len()
-    ));
-    lines.push(format!(
-        "Store revision: {}  memory: {} bytes",
-        world.terrain_fields().store_revision(),
-        world.terrain_fields().memory_bytes()
-    ));
-    if let Some(profile) = source_catalog.for_field(&field_state.selected_field) {
-        lines.push(format!(
-            "Source: {} | {:?} | enabled={}",
-            profile.id, profile.source_kind, profile.enabled
-        ));
-        if let Some(generated) = &profile.generated {
-            lines.push(format!(
-                "  generator={:?} seed={} deps={:?}",
-                generated.generator, generated.world_seed, generated.dependencies
-            ));
-        }
-        if let Some(imported) = &profile.imported {
-            lines.push(format!(
-                "  asset={} {:?} {:?}",
-                imported.asset_path, imported.channel, imported.orientation
-            ));
-        }
-    }
-    lines.push("Definitions:".to_string());
-    for definition in catalog.definitions() {
-        let layer = world.terrain_fields().get_layer(&definition.id);
-        let tile_count = layer.map(|l| l.tile_count()).unwrap_or(0);
-        lines.push(format!(
-            "  {} | {} | {:?} | enabled={} | tiles={}",
-            definition.id,
-            definition.display_name,
-            definition.category,
-            definition.enabled,
-            tile_count
-        ));
-    }
-    lines.push(format!(
-        "Probe: {} field={} all={}",
-        if field_state.probe_enabled {
-            "on"
-        } else {
-            "off"
-        },
-        field_state.selected_field,
-        field_state.probe_all_fields
-    ));
-    if let Some(sample) = &field_state.last_sample {
-        lines.push(format!(
-            "  availability={:?} value={} pct={:?}",
-            sample.availability,
-            sample.value,
-            sample.as_percent()
-        ));
-        if let Some(chunk) = sample.chunk {
-            lines.push(format!("  chunk=({}, {})", chunk.x, chunk.z));
-        }
-    }
-    if let Some(interp) = &field_state.last_interpolation {
-        lines.push(format!(
-            "  col={} row={} frac=({}, {}) corners={:?}",
-            interp.col, interp.row, interp.frac_x, interp.frac_z, interp.corner_values
-        ));
-    }
+    let mut line = format!("Selected: {}", field_state.selected_field);
     if let Some(msg) = &field_state.last_action_message {
-        lines.push(format!("Action: {msg}"));
+        line.push_str(" — ");
+        line.push_str(msg);
     }
-    **text = lines.join("\n");
+    **text = line;
 }
 
 pub fn update_dev_terrain_field_probe(
     dev_state: Res<DevModeState>,
+    registry: Res<DevWindowRegistry>,
+    window_interaction: Res<DevWindowInteractionState>,
     mut field_state: ResMut<DevTerrainFieldState>,
     windows: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform), With<crate::camera::RtsCamera>>,
@@ -381,9 +306,9 @@ pub fn update_dev_terrain_field_probe(
     config: Res<WorldConfig>,
     render_assets: Res<TerrainRenderAssets>,
 ) {
-    if !dev_state.enabled
-        || dev_state.active_tab != DevTab::TerrainFields
+    if !registry.window_active(dev_state.enabled, DevWindowId::Fields)
         || !field_state.probe_enabled
+        || window_interaction.blocks_world_mouse()
     {
         return;
     }
@@ -414,14 +339,14 @@ pub fn update_dev_terrain_field_probe(
 
 pub fn draw_dev_terrain_field_gizmos(
     dev_state: Res<DevModeState>,
+    registry: Res<DevWindowRegistry>,
     field_state: Res<DevTerrainFieldState>,
     world: Res<WorldData>,
     catalog: Res<TerrainFieldCatalog>,
     config: Res<WorldConfig>,
     mut gizmos: Gizmos,
 ) {
-    if !dev_state.enabled
-        || dev_state.active_tab != DevTab::TerrainFields
+    if !registry.window_active(dev_state.enabled, DevWindowId::Fields)
         || !field_state.show_sample_gizmos
     {
         return;
@@ -563,6 +488,7 @@ fn cycle_selected_field(field_state: &mut DevTerrainFieldState, catalog: &Terrai
 #[derive(SystemParam)]
 pub(crate) struct DevTerrainFieldButtonParams<'w> {
     pub dev_state: Res<'w, DevModeState>,
+    pub registry: Res<'w, DevWindowRegistry>,
     pub gate: ResMut<'w, DevModeInputGate>,
     pub field_state: ResMut<'w, DevTerrainFieldState>,
     pub world: ResMut<'w, WorldData>,
@@ -582,17 +508,22 @@ pub(crate) struct DevTerrainFieldButtonParams<'w> {
 
 pub(crate) fn handle_terrain_field_buttons(
     mut params: DevTerrainFieldButtonParams,
-    action_buttons: Query<(&Interaction, &DevTerrainFieldButton), Changed<Interaction>>,
-    overlay_buttons: Query<
-        (&Interaction, &DevTerrainFieldOverlayButton),
-        (Changed<Interaction>, Without<DevTerrainFieldButton>),
-    >,
+    mut buttons: bevy::ecs::system::ParamSet<(
+        Query<(&Interaction, &DevTerrainFieldButton), Changed<Interaction>>,
+        Query<
+            (&Interaction, &DevTerrainFieldOverlayButton),
+            (Changed<Interaction>, Without<DevTerrainFieldButton>),
+        >,
+    )>,
 ) {
-    if !params.dev_state.enabled || params.dev_state.active_tab != DevTab::TerrainFields {
+    if !params
+        .registry
+        .window_active(params.dev_state.enabled, DevWindowId::Fields)
+    {
         return;
     }
 
-    for (interaction, button) in &overlay_buttons {
+    for (interaction, button) in buttons.p1().iter() {
         if *interaction != Interaction::Pressed {
             continue;
         }
@@ -609,7 +540,7 @@ pub(crate) fn handle_terrain_field_buttons(
         }
     }
 
-    for (interaction, button) in &action_buttons {
+    for (interaction, button) in buttons.p0().iter() {
         if *interaction != Interaction::Pressed {
             continue;
         }
@@ -653,10 +584,8 @@ pub(crate) fn handle_terrain_field_buttons(
                     &mut params.assessments,
                 )
                 .ok();
-                params.overlay_state.request_revision = params
-                    .overlay_state
-                    .request_revision
-                    .saturating_add(1);
+                params.overlay_state.request_revision =
+                    params.overlay_state.request_revision.saturating_add(1);
             }
             DevTerrainFieldAction::RebuildAssessments => {
                 let assessment_catalogs = assessment_catalogs(
@@ -742,10 +671,8 @@ pub(crate) fn handle_terrain_field_buttons(
                             params.profile_revision.0,
                             &mut params.assessments,
                         );
-                        params.overlay_state.request_revision = params
-                            .overlay_state
-                            .request_revision
-                            .saturating_add(1);
+                        params.overlay_state.request_revision =
+                            params.overlay_state.request_revision.saturating_add(1);
                         if build_all {
                             for definition in params.catalog.definitions() {
                                 if definition.enabled {

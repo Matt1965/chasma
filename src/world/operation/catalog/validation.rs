@@ -22,7 +22,10 @@ impl std::fmt::Display for OperationCatalogError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::DuplicateId(id) => write!(f, "duplicate operation id `{id}`"),
-            Self::InvalidDefinition { operation_id, reason } => {
+            Self::InvalidDefinition {
+                operation_id,
+                reason,
+            } => {
                 write!(f, "operation `{}`: {reason}", operation_id.as_str())
             }
         }
@@ -337,7 +340,9 @@ pub fn validate_operation_selection(
     operation_id: &OperationDefinitionId,
 ) -> Result<(), OperationSelectionError> {
     if operation_catalog.get(operation_id).is_none() {
-        return Err(OperationSelectionError::MissingDefinition(operation_id.clone()));
+        return Err(OperationSelectionError::MissingDefinition(
+            operation_id.clone(),
+        ));
     }
     if !building.supports_operation(operation_id) {
         return Err(OperationSelectionError::UnsupportedByBuilding {

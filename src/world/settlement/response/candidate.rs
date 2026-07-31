@@ -4,9 +4,9 @@ use bevy::prelude::*;
 
 use super::definition::ResponseType;
 use super::id::ResponseId;
-use crate::world::settlement::needs::NeedId;
-use crate::world::settlement::SettlementId;
 use crate::world::BuildingId;
+use crate::world::settlement::SettlementId;
+use crate::world::settlement::needs::NeedId;
 
 /// Whether a candidate can be considered for future selection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect)]

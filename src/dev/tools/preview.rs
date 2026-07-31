@@ -97,6 +97,8 @@ pub fn update_dev_placement_preview(
             .unwrap_or(crate::doodads::DEFAULT_DOODAD_WORLD_SEED),
         layout: config.chunk_layout(),
         spawn_affiliation: dev_state.spawn_affiliation,
+        placement_yaw_deg: dev_state.placement_yaw_deg,
+        placement_uniform_scale: dev_state.placement_uniform_scale,
     };
 
     let ctx = PlacementValidateContext {

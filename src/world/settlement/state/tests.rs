@@ -1,7 +1,9 @@
 //! SettlementState SA1 tests.
 
 use super::*;
-use crate::world::settlement::{SettlementId, SettlementOwnership, SettlementRecord, SettlementStore};
+use crate::world::settlement::{
+    SettlementId, SettlementOwnership, SettlementRecord, SettlementStore,
+};
 use crate::world::{
     Affiliation, BuildingId, ChunkCoord, ChunkLayout, LocalPosition, TreasuryId, WorldData,
     WorldPosition,
@@ -30,10 +32,7 @@ fn player_and_ai_share_identical_runtime_structure() {
     assert!(player.policies.player_controlled);
     assert!(!ai.policies.player_controlled);
     // Structure fields exist on both — only policy flag differs.
-    assert_eq!(
-        std::mem::size_of_val(&player),
-        std::mem::size_of_val(&ai)
-    );
+    assert_eq!(std::mem::size_of_val(&player), std::mem::size_of_val(&ai));
 }
 
 #[test]
@@ -43,7 +42,9 @@ fn serialize_excludes_dirty_flag_and_restores_dirty() {
     state.planner.last_evaluation_tick = 120;
     state.planner.next_scheduled_evaluation_tick = 180;
     state.emergencies.starvation = true;
-    state.need_targets.push(NeedTarget::new(NeedCategory::Research, 5, 0.2));
+    state
+        .need_targets
+        .push(NeedTarget::new(NeedCategory::Research, 5, 0.2));
 
     let serialized = ron::ser::to_string(&state).expect("serialize");
     assert!(
@@ -98,8 +99,10 @@ fn validation_catches_orphan_and_duplicate_need() {
     state_store.insert(sample_state(orphan, false));
 
     let mut bad = sample_state(SettlementId::new(1), false);
-    bad.need_targets.push(NeedTarget::new(NeedCategory::Food, 10, 1.0));
-    bad.need_targets.push(NeedTarget::new(NeedCategory::Food, 20, 1.0));
+    bad.need_targets
+        .push(NeedTarget::new(NeedCategory::Food, 10, 1.0));
+    bad.need_targets
+        .push(NeedTarget::new(NeedCategory::Food, 20, 1.0));
     state_store.insert(bad);
 
     let errors = validate_settlement_states(&settlement_store, &state_store);
@@ -149,7 +152,9 @@ fn settlement_state_independent_of_chunk_residency() {
     // SettlementState lives on WorldData, not chunk stores — survives empty chunks.
     let mut world = WorldData::new(layout());
     let id = SettlementId::new(1);
-    world.settlement_state_store_mut().insert(sample_state(id, false));
+    world
+        .settlement_state_store_mut()
+        .insert(sample_state(id, false));
     assert!(world.iter().next().is_none(), "no chunks loaded");
     assert!(world.settlement_state_store().get(id).is_some());
 }

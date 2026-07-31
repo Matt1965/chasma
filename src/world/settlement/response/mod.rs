@@ -21,20 +21,18 @@ pub use candidate::{
     CandidateResponse, ResponseAvailability, ResponseBlockingReason, SettlementResponseCandidates,
 };
 pub use catalog::ResponseCatalog;
-pub use definition::{
-    CapabilityRequirement, ExpectedEffect, ResponseDefinition, ResponseType,
-};
-pub use discover::{discover_settlement_responses, ResponseDiscoveryContext};
+pub use definition::{CapabilityRequirement, ExpectedEffect, ResponseDefinition, ResponseType};
+pub use discover::{ResponseDiscoveryContext, discover_settlement_responses};
 pub use id::ResponseId;
 pub use score::score_candidate;
 pub use starter::starter_response_definitions;
 pub use step::{
-    discover_settlement_responses_now, step_settlement_response_discovery,
-    RESPONSE_DISCOVERY_CADENCE_TICKS,
+    RESPONSE_DISCOVERY_CADENCE_TICKS, discover_settlement_responses_now,
+    step_settlement_response_discovery,
 };
 pub use store::ResponseCandidateStore;
 pub use validation::{
-    validate_candidate, validate_response_catalog_against_needs,
-    validate_response_catalog_definitions, validate_response_catalog_definitions_with_needs,
-    validate_settlement_response_candidates, ResponseCandidateValidationError, ResponseCatalogError,
+    ResponseCandidateValidationError, ResponseCatalogError, validate_candidate,
+    validate_response_catalog_against_needs, validate_response_catalog_definitions,
+    validate_response_catalog_definitions_with_needs, validate_settlement_response_candidates,
 };

@@ -26,21 +26,10 @@ impl std::fmt::Display for NeedCatalogError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NeedEvaluationValidationError {
-    PressureOutOfRange {
-        need_id: String,
-        pressure: u8,
-    },
-    BrokenNormalization {
-        need_id: String,
-        detail: String,
-    },
-    InvalidTarget {
-        need_id: String,
-        detail: String,
-    },
-    DuplicateSnapshot {
-        need_id: String,
-    },
+    PressureOutOfRange { need_id: String, pressure: u8 },
+    BrokenNormalization { need_id: String, detail: String },
+    InvalidTarget { need_id: String, detail: String },
+    DuplicateSnapshot { need_id: String },
 }
 
 impl std::fmt::Display for NeedEvaluationValidationError {

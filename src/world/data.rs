@@ -196,7 +196,8 @@ impl WorldData {
             settlement_intent_store: super::settlement::SettlementIntentStore::default(),
             building_intent_propagation_store:
                 super::settlement::BuildingIntentPropagationStore::default(),
-            strategic_task_generation_store: super::settlement::StrategicTaskGenerationStore::default(),
+            strategic_task_generation_store:
+                super::settlement::StrategicTaskGenerationStore::default(),
             emergency_evaluation_store: super::settlement::EmergencyEvaluationStore::default(),
             worker_assignment_store: super::task::WorkerAssignmentStore::default(),
             construction_plan_store: super::settlement::ConstructionPlanStore::default(),
@@ -213,9 +214,7 @@ impl WorldData {
         }
     }
 
-    pub fn building_navigation_runtime(
-        &self,
-    ) -> &crate::world::BuildingNavigationRuntimeStore {
+    pub fn building_navigation_runtime(&self) -> &crate::world::BuildingNavigationRuntimeStore {
         &self.building_navigation_runtime
     }
 
@@ -320,9 +319,7 @@ impl WorldData {
         &self.settlement_intent_store
     }
 
-    pub fn settlement_intent_store_mut(
-        &mut self,
-    ) -> &mut super::settlement::SettlementIntentStore {
+    pub fn settlement_intent_store_mut(&mut self) -> &mut super::settlement::SettlementIntentStore {
         &mut self.settlement_intent_store
     }
 
@@ -382,9 +379,7 @@ impl WorldData {
         &self.construction_plan_store
     }
 
-    pub fn construction_plan_store_mut(
-        &mut self,
-    ) -> &mut super::settlement::ConstructionPlanStore {
+    pub fn construction_plan_store_mut(&mut self) -> &mut super::settlement::ConstructionPlanStore {
         &mut self.construction_plan_store
     }
 
@@ -400,7 +395,9 @@ impl WorldData {
         &mut self.construction_planning_report_store
     }
 
-    pub fn building_production_store(&self) -> &super::building::operation::BuildingProductionStore {
+    pub fn building_production_store(
+        &self,
+    ) -> &super::building::operation::BuildingProductionStore {
         &self.building_production
     }
 
@@ -444,7 +441,9 @@ impl WorldData {
         &self.logistics_endpoint_index
     }
 
-    pub fn logistics_endpoint_index_mut(&mut self) -> &mut super::logistics::LogisticsEndpointIndex {
+    pub fn logistics_endpoint_index_mut(
+        &mut self,
+    ) -> &mut super::logistics::LogisticsEndpointIndex {
         &mut self.logistics_endpoint_index
     }
 
@@ -454,10 +453,7 @@ impl WorldData {
         &super::inventory::InventoryStore,
         &mut super::logistics::InventoryReservationStore,
     ) {
-        (
-            &self.inventory_store,
-            &mut self.inventory_reservations,
-        )
+        (&self.inventory_store, &mut self.inventory_reservations)
     }
 
     pub fn space_registry(&self) -> &super::space::SpaceRegistry {

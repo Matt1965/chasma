@@ -4,21 +4,25 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use super::cache::{
-    NavigationBlueprintCacheEntry, NavigationBlueprintCacheManifest,
-    NAVIGATION_BLUEPRINT_CACHE_MANIFEST_PATH,
+    NAVIGATION_BLUEPRINT_CACHE_MANIFEST_PATH, NavigationBlueprintCacheEntry,
+    NavigationBlueprintCacheManifest,
 };
 use super::catalog::{
-    BuildingNavigationBlueprintCatalog, BuildingNavigationBlueprintCatalogRon,
-    BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH,
+    BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH, BuildingNavigationBlueprintCatalog,
+    BuildingNavigationBlueprintCatalogRon,
 };
+use super::definition::BuildingNavigationBlueprint;
 use super::generate::{
-    blueprint_id_for_building, failed_report, generate_navigation_blueprint, hash_asset_path,
-    should_generate_navigation_blueprint, NavigationBlueprintGenerateInput,
+    NavigationBlueprintGenerateInput, NavigationBlueprintGenerateOutput, blueprint_id_for_building,
+    failed_report, generate_navigation_blueprint, hash_asset_path,
+    navigation_blueprint_generation_rejection, navigation_mesh_source_label,
+    should_generate_navigation_blueprint,
 };
 use super::id::BuildingNavigationBlueprintId;
-use super::mesh::load_building_mesh_for_navigation;
+use super::mesh::load_building_mesh_for_navigation_with_fallback;
 use super::report::{
-    NavigationBlueprintGenerationReport, NavigationBlueprintGenerationStatus,
+    EntranceGenerationDiagnostics, NavigationBlueprintGenerationReport,
+    NavigationBlueprintGenerationStatus,
 };
 use crate::world::BuildingCatalog;
 use crate::world::building::catalog::BuildingDefinition;
@@ -30,7 +34,10 @@ pub const NAVIGATION_BLUEPRINT_REPORT_PATH: &str = "logs/navigation_blueprint_re
 pub fn import_navigation_blueprints_for_catalog(
     buildings: &BuildingCatalog,
     existing: BuildingNavigationBlueprintCatalog,
-) -> (BuildingNavigationBlueprintCatalog, Vec<NavigationBlueprintGenerationReport>) {
+) -> (
+    BuildingNavigationBlueprintCatalog,
+    Vec<NavigationBlueprintGenerationReport>,
+) {
     let manifest_path = Path::new(MANIFEST_DIR).join(NAVIGATION_BLUEPRINT_CACHE_MANIFEST_PATH);
     let mut manifest = NavigationBlueprintCacheManifest::load_from_path(&manifest_path);
     let mut reports = Vec::new();
@@ -47,8 +54,10 @@ pub fn import_navigation_blueprints_for_catalog(
                 building_id: definition.id.as_str().to_string(),
                 blueprint_id: blueprint_id_for_building(definition),
                 status: NavigationBlueprintGenerationStatus::Skipped,
-                warnings: vec!["building not configured for interior navigation".into()],
+                mesh_source_label: None,
+                warnings: vec!["skipped: building is not Navigable".into()],
                 errors: Vec::new(),
+                entrance_diagnostics: EntranceGenerationDiagnostics::default(),
             });
             continue;
         }
@@ -57,9 +66,7 @@ pub fn import_navigation_blueprints_for_catalog(
         let collision_path = collision_asset_path(definition);
         let render_path = render_asset_path(definition);
         let collision_hash = hash_asset_path(&collision_path).unwrap_or_default();
-        let render_hash = render_path
-            .as_ref()
-            .and_then(|path| hash_asset_path(path));
+        let render_hash = render_path.as_ref().and_then(|path| hash_asset_path(path));
         let baseline_scale_milli = baseline_scale_milli(definition);
 
         if manifest.is_fresh(
@@ -73,14 +80,19 @@ pub fn import_navigation_blueprints_for_catalog(
                     building_id: definition.id.as_str().to_string(),
                     blueprint_id: blueprint_id.clone(),
                     status: NavigationBlueprintGenerationStatus::Cached,
+                    mesh_source_label: None,
                     warnings: Vec::new(),
                     errors: Vec::new(),
+                    entrance_diagnostics: EntranceGenerationDiagnostics::default(),
                 });
                 continue;
             }
         }
 
-        let mesh = match load_building_mesh_for_navigation(&collision_path) {
+        let mesh = match load_building_mesh_for_navigation_with_fallback(
+            &collision_path,
+            render_path.as_deref(),
+        ) {
             Ok(mesh) => mesh,
             Err(err) => {
                 reports.push(failed_report(
@@ -91,6 +103,8 @@ pub fn import_navigation_blueprints_for_catalog(
                 continue;
             }
         };
+
+        let mesh_source_label = Some(navigation_mesh_source_label(&mesh).to_string());
 
         match generate_navigation_blueprint(NavigationBlueprintGenerateInput {
             blueprint_id: blueprint_id.clone(),
@@ -114,16 +128,14 @@ pub fn import_navigation_blueprints_for_catalog(
                     building_id: definition.id.as_str().to_string(),
                     blueprint_id,
                     status: NavigationBlueprintGenerationStatus::Generated,
+                    mesh_source_label,
                     warnings: output.warnings,
                     errors: Vec::new(),
+                    entrance_diagnostics: output.entrance_diagnostics,
                 });
             }
             Err(err) => {
-                reports.push(failed_report(
-                    definition.id.as_str(),
-                    blueprint_id,
-                    err,
-                ));
+                reports.push(failed_report(definition.id.as_str(), blueprint_id, err));
             }
         }
     }
@@ -137,8 +149,10 @@ pub fn import_navigation_blueprints_for_catalog(
                 building_id: "*".to_string(),
                 blueprint_id: BuildingNavigationBlueprintId::new("catalog_merge"),
                 status: NavigationBlueprintGenerationStatus::Failed,
+                mesh_source_label: None,
                 warnings: Vec::new(),
                 errors: vec![format!("catalog merge failed: {err}")],
+                entrance_diagnostics: EntranceGenerationDiagnostics::default(),
             });
             existing
         }
@@ -149,8 +163,10 @@ pub fn import_navigation_blueprints_for_catalog(
             building_id: "*".to_string(),
             blueprint_id: BuildingNavigationBlueprintId::new("cache_manifest"),
             status: NavigationBlueprintGenerationStatus::Failed,
+            mesh_source_label: None,
             warnings: Vec::new(),
             errors: vec![format!("failed to save cache manifest: {err}")],
+            entrance_diagnostics: EntranceGenerationDiagnostics::default(),
         });
     }
 
@@ -163,15 +179,50 @@ pub fn import_navigation_blueprints_for_catalog(
     (catalog, reports)
 }
 
-/// Force-regenerate the navigation blueprint for one placed building (NV1.2.5).
+/// Mesh-slice a navigation blueprint from a building definition without persisting.
+#[cfg(feature = "data-import")]
+pub fn generate_navigation_blueprint_draft_for_definition(
+    definition: &BuildingDefinition,
+) -> Result<NavigationBlueprintGenerateOutput, String> {
+    if let Some(reason) = navigation_blueprint_generation_rejection(definition) {
+        return Err(reason.into());
+    }
+
+    let blueprint_id = blueprint_id_for_building(definition);
+    let collision_path = collision_asset_path(definition);
+    let render_path = render_asset_path(definition);
+
+    let mesh =
+        load_building_mesh_for_navigation_with_fallback(&collision_path, render_path.as_deref())
+            .map_err(|err| format!("mesh load failed: {err:?}"))?;
+
+    generate_navigation_blueprint(NavigationBlueprintGenerateInput {
+        blueprint_id,
+        display_name: format!("{} Navigation", definition.display_name),
+        collision_asset_path: collision_path,
+        render_asset_path: render_path,
+        baseline_scale: baseline_scale(definition),
+        mesh,
+    })
+    .map_err(|err| err.to_string())
+}
+
+/// Slice a navigation blueprint draft for one placed building (NV1.2.5 editor Regenerate).
+///
+/// Does not write catalog, cache manifest, or instance overrides — callers load the returned
+/// blueprint into the editor working copy until the user saves explicitly.
 #[cfg(feature = "data-import")]
 pub fn regenerate_navigation_blueprint_for_building(
     building_id: crate::world::BuildingId,
     world: &crate::world::WorldData,
     building_catalog: &BuildingCatalog,
-    nav_catalog: &mut BuildingNavigationBlueprintCatalog,
-    revision: &mut super::catalog::BuildingNavigationBlueprintCatalogRevision,
-) -> Result<NavigationBlueprintGenerationReport, String> {
+) -> Result<
+    (
+        NavigationBlueprintGenerationReport,
+        BuildingNavigationBlueprint,
+    ),
+    String,
+> {
     let record = world
         .get_building(building_id)
         .ok_or_else(|| format!("building #{} not found", building_id.raw()))?;
@@ -179,59 +230,36 @@ pub fn regenerate_navigation_blueprint_for_building(
         .get(&record.definition_id)
         .ok_or_else(|| format!("definition {} missing", record.definition_id.as_str()))?;
 
-    if !should_generate_navigation_blueprint(definition) {
-        return Err("building not configured for interior navigation".into());
-    }
-
     let blueprint_id = blueprint_id_for_building(definition);
     let collision_path = collision_asset_path(definition);
     let render_path = render_asset_path(definition);
-    let collision_hash = hash_asset_path(&collision_path).unwrap_or_default();
-    let render_hash = render_path
-        .as_ref()
-        .and_then(|path| hash_asset_path(path));
-    let baseline_scale_milli = baseline_scale_milli(definition);
-
-    let mesh = load_building_mesh_for_navigation(&collision_path)
-        .map_err(|err| format!("mesh load failed for {}: {err:?}", collision_path.display()))?;
+    let mesh =
+        load_building_mesh_for_navigation_with_fallback(&collision_path, render_path.as_deref())
+            .map_err(|err| format!("mesh load failed: {err:?}"))?;
+    let mesh_source_label = navigation_mesh_source_label(&mesh).to_string();
 
     let output = generate_navigation_blueprint(NavigationBlueprintGenerateInput {
         blueprint_id: blueprint_id.clone(),
         display_name: format!("{} Navigation", definition.display_name),
-        collision_asset_path: collision_path.clone(),
-        render_asset_path: render_path.clone(),
+        collision_asset_path: collision_path,
+        render_asset_path: render_path,
         baseline_scale: baseline_scale(definition),
         mesh,
     })
     .map_err(|err| err.to_string())?;
 
-    let manifest_path = Path::new(MANIFEST_DIR).join(NAVIGATION_BLUEPRINT_CACHE_MANIFEST_PATH);
-    let mut manifest = NavigationBlueprintCacheManifest::load_from_path(&manifest_path);
-    manifest.upsert(NavigationBlueprintCacheEntry {
-        blueprint_id: blueprint_id.as_str().to_string(),
-        building_definition_id: definition.id.as_str().to_string(),
-        collision_render_key: collision_render_key(definition),
-        collision_source_hash: collision_hash,
-        render_source_hash: render_hash,
-        baseline_scale_milli,
-    });
-    manifest
-        .save_to_path(&manifest_path)
-        .map_err(|err| format!("failed to save cache manifest: {err}"))?;
-
-    nav_catalog
-        .upsert(output.blueprint)
-        .map_err(|err| err.to_string())?;
-    export_navigation_blueprint_catalog(nav_catalog)?;
-    revision.0 = revision.0.saturating_add(1);
-
-    Ok(NavigationBlueprintGenerationReport {
-        building_id: definition.id.as_str().to_string(),
-        blueprint_id,
-        status: NavigationBlueprintGenerationStatus::Generated,
-        warnings: output.warnings,
-        errors: Vec::new(),
-    })
+    Ok((
+        NavigationBlueprintGenerationReport {
+            building_id: definition.id.as_str().to_string(),
+            blueprint_id,
+            status: NavigationBlueprintGenerationStatus::Generated,
+            mesh_source_label: Some(mesh_source_label),
+            warnings: output.warnings,
+            errors: Vec::new(),
+            entrance_diagnostics: output.entrance_diagnostics,
+        },
+        output.blueprint,
+    ))
 }
 
 pub fn export_navigation_blueprint_catalog(
@@ -300,4 +328,58 @@ fn baseline_scale(definition: &BuildingDefinition) -> f32 {
 fn baseline_scale_milli(definition: &BuildingDefinition) -> Option<i32> {
     let vec = definition.asset_sizing.resolved_baseline_scale().to_vec3();
     Some((vec.x * 1000.0).round() as i32)
+}
+
+#[cfg(all(test, feature = "data-import"))]
+mod tests {
+    use super::*;
+    use crate::world::authoring_transform::BuildingTransformSafetyClass;
+    use crate::world::building::catalog::BuildingDefinitionId;
+    use crate::world::building::footprint::FootprintSpec;
+
+    fn hut_definition() -> BuildingDefinition {
+        BuildingDefinition::new(
+            BuildingDefinitionId::new("hut"),
+            "Hut",
+            crate::world::BuildingCategoryId::new("residential"),
+            crate::world::BuildingRenderKey::reserved("hut"),
+            crate::world::BuildingRenderKey::reserved("hut_collision"),
+            100,
+            10.0,
+            FootprintSpec::Rectangle {
+                width_meters: 4.0,
+                depth_meters: 4.0,
+            },
+            35.0,
+            true,
+        )
+    }
+
+    #[test]
+    fn draft_generation_rejects_non_navigable_building() {
+        let mut definition = hut_definition();
+        definition.transform_safety_class = BuildingTransformSafetyClass::DecorativeNonNavigable;
+        let err = generate_navigation_blueprint_draft_for_definition(&definition).unwrap_err();
+        assert!(err.contains("not Navigable"), "unexpected error: {err}");
+    }
+
+    #[test]
+    fn navigable_building_without_ids_reaches_mesh_pipeline() {
+        let definition = hut_definition();
+        assert!(definition.interior_profile_id.is_none());
+        assert!(definition.navigation_blueprint_id.is_none());
+        assert!(should_generate_navigation_blueprint(&definition));
+
+        let result = generate_navigation_blueprint_draft_for_definition(&definition);
+        match result {
+            Ok(output) => assert!(
+                !output.blueprint.floors.is_empty() || !output.warnings.is_empty(),
+                "expected floors or warnings from mesh slicing"
+            ),
+            Err(err) => assert!(
+                !err.contains("not configured") && !err.contains("not Navigable"),
+                "expected mesh/validation error, got configuration rejection: {err}"
+            ),
+        }
+    }
 }

@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 /// Stable identifier for a building instance (ADR-079 B2).
 ///
 /// Assigned monotonically by [`crate::world::WorldData`]; not derived from position.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect, Serialize, Deserialize,
+)]
 pub struct BuildingId(pub u64);
 
 impl BuildingId {

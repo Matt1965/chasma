@@ -468,7 +468,8 @@ mod tests {
         };
         let mut any_wet = false;
         for offset in 0..12 {
-            let value = generate_field_value(&flat_ctx, 32.0 + offset as f32 * 16.0, 128.0).unwrap();
+            let value =
+                generate_field_value(&flat_ctx, 32.0 + offset as f32 * 16.0, 128.0).unwrap();
             if value > 0 {
                 any_wet = true;
                 break;

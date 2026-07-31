@@ -18,8 +18,8 @@ use super::placement_validation::{
 use super::record::BuildingRecord;
 use crate::world::TransformEditError as DoodadTransformEditError;
 use crate::world::authoring_transform::{
-    BuildingTransformSafetyClass, FixedScale, QuantizedOrientation, TransformCapabilities,
-    AUTHORING_INSTANCE_SCALE_MAX, AUTHORING_INSTANCE_SCALE_MIN,
+    AUTHORING_INSTANCE_SCALE_MAX, AUTHORING_INSTANCE_SCALE_MIN, BuildingTransformSafetyClass,
+    FixedScale, QuantizedOrientation, TransformCapabilities,
 };
 use crate::world::occupancy::{
     OccupancyCatalogs, OccupancySource, apply_registration_plan, plan_register_building,
@@ -506,7 +506,11 @@ fn update_dependent_topology(
                 })?;
             update_interior_topology_in_place(world, &record, profile, new_placement)?;
         }
-        if world.building_navigation_runtime().get(building_id).is_some() {
+        if world
+            .building_navigation_runtime()
+            .get(building_id)
+            .is_some()
+        {
             if let Some(nav_catalog) = catalogs.nav_blueprint {
                 super::navigation_blueprint::reposition_building_navigation_runtime(
                     world,
@@ -514,8 +518,8 @@ fn update_dependent_topology(
                     nav_catalog,
                     building_id,
                 )
-                .map_err(|err| BuildingTransformEditError::UnsupportedTransformCapability {
-                    message: err,
+                .map_err(|err| {
+                    BuildingTransformEditError::UnsupportedTransformCapability { message: err }
                 })?;
             }
         }

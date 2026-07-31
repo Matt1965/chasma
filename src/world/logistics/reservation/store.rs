@@ -66,10 +66,16 @@ impl InventoryReservationStore {
     }
 
     pub fn reserved_destination_capacity(&self, inventory_id: InventoryId) -> u32 {
-        self.destination_totals.get(&inventory_id).copied().unwrap_or(0)
+        self.destination_totals
+            .get(&inventory_id)
+            .copied()
+            .unwrap_or(0)
     }
 
-    pub fn request_record(&self, request_id: HaulingRequestId) -> Option<&RequestReservationRecord> {
+    pub fn request_record(
+        &self,
+        request_id: HaulingRequestId,
+    ) -> Option<&RequestReservationRecord> {
         self.request_records.get(&request_id)
     }
 
@@ -94,7 +100,9 @@ impl InventoryReservationStore {
             source_totals: self
                 .source_totals
                 .iter()
-                .map(|((inventory_id, item_id), quantity)| (*inventory_id, item_id.as_str().to_string(), *quantity))
+                .map(|((inventory_id, item_id), quantity)| {
+                    (*inventory_id, item_id.as_str().to_string(), *quantity)
+                })
                 .collect(),
             destination_totals: self
                 .destination_totals

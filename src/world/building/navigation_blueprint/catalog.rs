@@ -114,7 +114,15 @@ mod tests {
     #[test]
     fn starter_catalog_loads() {
         let catalog = BuildingNavigationBlueprintCatalog::default();
-        assert!(catalog.get(&BuildingNavigationBlueprintId::new("two_story_hut")).is_some());
-        assert!(catalog.get(&BuildingNavigationBlueprintId::new("barn_interior")).is_some());
+        assert!(
+            catalog
+                .get(&BuildingNavigationBlueprintId::new("two_story_hut"))
+                .is_some()
+        );
+        assert!(
+            catalog
+                .get(&BuildingNavigationBlueprintId::new("barn_interior"))
+                .is_some()
+        );
     }
 }

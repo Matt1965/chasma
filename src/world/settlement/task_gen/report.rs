@@ -2,9 +2,9 @@
 
 use bevy::prelude::*;
 
+use crate::world::BuildingId;
 use crate::world::settlement::SettlementId;
 use crate::world::task::{TaskId, TaskPriority, TaskType};
-use crate::world::BuildingId;
 
 #[derive(Debug, Clone, PartialEq, Reflect)]
 pub struct StrategicTaskEmission {

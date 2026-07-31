@@ -5,8 +5,8 @@ use std::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 
 use super::report::BuildingIntentPropagationReport;
-use crate::world::settlement::SettlementId;
 use crate::world::BuildingId;
+use crate::world::settlement::SettlementId;
 
 #[derive(Debug, Clone, Default, Reflect)]
 pub struct BuildingIntentPropagationStore {

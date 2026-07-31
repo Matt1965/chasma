@@ -1,13 +1,13 @@
 //! Cadence/dirty-driven response discovery step (SA3).
 
+use crate::world::WorldData;
 use crate::world::building::catalog::BuildingCatalog;
+use crate::world::settlement::SettlementId;
 use crate::world::settlement::emergency::EmergencyCatalog;
 use crate::world::settlement::needs::NeedCatalog;
-use crate::world::settlement::SettlementId;
-use crate::world::WorldData;
 
 use super::catalog::ResponseCatalog;
-use super::discover::{discover_settlement_responses, ResponseDiscoveryContext};
+use super::discover::{ResponseDiscoveryContext, discover_settlement_responses};
 
 /// Rebuild when not dirty if this many ticks elapsed (fallback cadence).
 pub const RESPONSE_DISCOVERY_CADENCE_TICKS: u64 = 30;
@@ -70,7 +70,9 @@ pub fn step_settlement_response_discovery(
         let result = discover_settlement_responses(&ctx);
         world.response_candidate_store_mut().insert(result);
         // SA4: candidate change invalidates SettlementIntent.
-        world.settlement_intent_store_mut().mark_dirty(settlement_id);
+        world
+            .settlement_intent_store_mut()
+            .mark_dirty(settlement_id);
         discovered += 1;
     }
     discovered
@@ -105,5 +107,7 @@ pub fn discover_settlement_responses_now(
     };
     let result = discover_settlement_responses(&ctx);
     world.response_candidate_store_mut().insert(result);
-    world.settlement_intent_store_mut().mark_dirty(settlement_id);
+    world
+        .settlement_intent_store_mut()
+        .mark_dirty(settlement_id);
 }

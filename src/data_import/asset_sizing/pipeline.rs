@@ -134,10 +134,7 @@ fn try_infer_metric_targets(
     let backup = input.sizing.clone();
     let inferred = match input.kind {
         ContentSizingKind::Unit => {
-            let Some(height) = input
-                .unit_height_hint_meters
-                .filter(|height| *height > 0.0)
-            else {
+            let Some(height) = input.unit_height_hint_meters.filter(|height| *height > 0.0) else {
                 return false;
             };
             input.sizing.desired_height_meters = Some(height);
@@ -240,9 +237,7 @@ fn resolve_from_desired_dimensions(
 
     let policy = match input.kind {
         ContentSizingKind::Doodad if desired_count == 3 => SizingPolicy::DoodadNonUniform,
-        ContentSizingKind::Building { .. } if desired_count == 3 => {
-            SizingPolicy::DoodadNonUniform
-        }
+        ContentSizingKind::Building { .. } if desired_count == 3 => SizingPolicy::DoodadNonUniform,
         ContentSizingKind::Doodad => SizingPolicy::ReferenceAxisUniform,
         _ => SizingPolicy::ReferenceAxisUniform,
     };

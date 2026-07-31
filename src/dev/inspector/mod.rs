@@ -1,8 +1,9 @@
 //! World inspector — read-only simulation introspection (ADR-048 U-DEV2).
 
-mod building_actions;
 mod blueprint_edit;
 mod blueprint_inspection;
+mod building_actions;
+mod building_dev_action;
 mod capture;
 mod doodad_actions;
 mod doodad_snapshot;
@@ -12,14 +13,41 @@ mod params;
 mod snapshot;
 mod state;
 
-pub use building_actions::handle_building_dev_actions;
-pub use blueprint_edit::handle_blueprint_edit_input;
+pub use blueprint_edit::{
+    BlueprintEditInputParams, FloorPlaneHit, blueprint_edit_blocks_building_selection,
+    blueprint_local_to_world, confirm_blueprint_pending_action,
+    cursor_ray_to_floor_blueprint_point, editor_adjust_radius, editor_delete_selection,
+    editor_request_apply_to_asset, editor_request_reset_to_asset, editor_save_instance_blueprint,
+    editor_submit_variant_draft, enter_blueprint_edit, exit_blueprint_edit_to_inspect,
+    handle_blueprint_edit_input, navigation_edit_owns_world_pointer,
+    ray_to_building_floor_local_xz, refresh_blueprint_edit_snapshot,
+    world_point_to_blueprint_local_xz,
+};
 pub use blueprint_inspection::{
     BlueprintEditDrag, BlueprintEditSelection, BlueprintEditTool, BlueprintInspectionState,
-    capture_edit_blueprint_snapshot, frame_building_for_inspection, handle_blueprint_inspection_input,
+    BlueprintPendingConfirmation, BlueprintVariantDraft, BlueprintVariantDraftField,
+    capture_edit_blueprint_snapshot, enter_blueprint_inspection, exit_blueprint_inspection,
+    frame_building_for_inspection, handle_blueprint_inspection_input,
+    sync_navigation_blueprint_session,
 };
-pub use capture::capture_unit_inspector_snapshot;
-pub use doodad_actions::handle_doodad_transform_hotkeys;
-pub use input::{DevInspectorUi, handle_inspector_input, refresh_inspector_snapshot};
-pub(crate) use panel::{setup_inspector_panel, sync_inspector_panel};
+pub use building_actions::handle_building_production_repeat_button;
+pub use building_dev_action::{
+    BuildingDevAction, DevBuildingActionButton, apply_building_dev_action,
+    handle_building_dev_action_buttons,
+};
+pub use capture::capture_building_blueprint_inspection_snapshot;
+pub use capture::{capture_item_pile_inspector_snapshot, capture_unit_inspector_snapshot};
+pub use input::{
+    BuildingProductionRepeatModeButton, BuildingProductionRepeatModeButtonText, DevInspectorUi,
+    handle_inspector_input, refresh_inspector_snapshot, sync_inspector_on_selection_revision,
+};
+pub(crate) use panel::{
+    format_blueprint_section, format_building_snapshot_full, format_doodad_snapshot_full,
+    format_unit_snapshot_full,
+};
+pub use params::DevBuildingActionParams;
+pub use snapshot::{
+    BuildingBlueprintInspectorSnapshot, BuildingInspectorSnapshot, ChunkResidencySnapshot,
+    DoodadInspectorSnapshot, ItemPileInspectorSnapshot, UnitInspectorSnapshot,
+};
 pub use state::WorldInspectorState;

@@ -164,7 +164,10 @@ pub struct BuildingNavigationBlueprint {
 }
 
 impl BuildingNavigationBlueprint {
-    pub fn new(id: impl Into<BuildingNavigationBlueprintId>, display_name: impl Into<String>) -> Self {
+    pub fn new(
+        id: impl Into<BuildingNavigationBlueprintId>,
+        display_name: impl Into<String>,
+    ) -> Self {
         Self {
             id: id.into(),
             display_name: display_name.into(),
@@ -230,9 +233,7 @@ impl BuildingNavigationBlueprint {
                     floor_key: floor.key.clone(),
                 });
             }
-            floor
-                .walkable_outline
-                .validate(&self.id, &floor.key)?;
+            floor.walkable_outline.validate(&self.id, &floor.key)?;
         }
 
         let mut feature_keys = std::collections::BTreeSet::new();

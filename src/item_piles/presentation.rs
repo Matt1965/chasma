@@ -84,7 +84,9 @@ impl ItemPileFallbackAssets {
         if unique {
             return self
                 .unique_material
-                .get_or_insert_with(|| materials.add(fallback_material(settings.fallback_unique_color)))
+                .get_or_insert_with(|| {
+                    materials.add(fallback_material(settings.fallback_unique_color))
+                })
                 .clone();
         }
 
@@ -165,7 +167,10 @@ pub fn pile_display_metadata(
     quantity: Option<u32>,
 ) -> (String, bool) {
     let Some(definition_id) = definition_id else {
-        return (format_pile_dev_label("Unknown Item", quantity, false), false);
+        return (
+            format_pile_dev_label("Unknown Item", quantity, false),
+            false,
+        );
     };
     let Some(definition) = items.get(definition_id) else {
         return (

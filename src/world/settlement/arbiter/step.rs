@@ -1,10 +1,10 @@
 //! Dirty/cadence-driven settlement response arbitration (SA4).
 
-use crate::world::settlement::response::ResponseCatalog;
-use crate::world::settlement::SettlementId;
 use crate::world::WorldData;
+use crate::world::settlement::SettlementId;
+use crate::world::settlement::response::ResponseCatalog;
 
-use super::arbitrate::{arbitrate_settlement_intent, ArbitrationContext};
+use super::arbitrate::{ArbitrationContext, arbitrate_settlement_intent};
 
 /// Rebuild when not dirty if this many ticks elapsed (fallback cadence).
 pub const INTENT_ARBITRATION_CADENCE_TICKS: u64 = 30;
@@ -46,7 +46,8 @@ pub fn step_settlement_response_arbitration(
         let due_by_cadence = match world.settlement_intent_store().get(settlement_id) {
             None => true,
             Some(prev) => {
-                simulation_tick.saturating_sub(prev.planned_tick) >= INTENT_ARBITRATION_CADENCE_TICKS
+                simulation_tick.saturating_sub(prev.planned_tick)
+                    >= INTENT_ARBITRATION_CADENCE_TICKS
             }
         };
         if !due_by_dirty && !due_by_response_change && !due_by_need_change && !due_by_cadence {

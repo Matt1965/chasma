@@ -4,10 +4,10 @@ use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::item::ItemCatalog;
 use crate::world::settlement::SettlementId;
-use crate::world::{mark_settlement_state_dirty, WorldData};
+use crate::world::{WorldData, mark_settlement_state_dirty};
 
 use super::catalog::EmergencyCatalog;
-use super::evaluate::{evaluate_settlement_emergencies, EmergencyEvalContext};
+use super::evaluate::{EmergencyEvalContext, evaluate_settlement_emergencies};
 
 pub const EMERGENCY_EVAL_CADENCE_TICKS: u64 = 30;
 

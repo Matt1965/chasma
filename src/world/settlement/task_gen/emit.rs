@@ -3,8 +3,8 @@
 use crate::world::settlement::arbiter::{SettlementIntent, SettlementIntentPlan};
 use crate::world::settlement::response::ResponseType;
 use crate::world::task::{
-    ensure_building_task, StrategicTaskOrigin, TaskId, TaskPriority, TaskRecord, TaskState,
-    TaskTarget, TaskType,
+    StrategicTaskOrigin, TaskId, TaskPriority, TaskRecord, TaskState, TaskTarget, TaskType,
+    ensure_building_task,
 };
 use crate::world::{BuildingId, WorldData};
 
@@ -89,7 +89,11 @@ fn emit_for_intent(
     let mut priority = intent_to_task_priority(intent.priority);
     // SA8: optional one-tier bump from authored emergency task modifiers (not a second pressure apply).
     let emergency_catalog = crate::world::settlement::emergency::EmergencyCatalog::default();
-    if let Some(state) = ctx.world.settlement_state_store().get(ctx.intent_plan.settlement_id) {
+    if let Some(state) = ctx
+        .world
+        .settlement_state_store()
+        .get(ctx.intent_plan.settlement_id)
+    {
         priority = crate::world::settlement::emergency::emergency_bump_task_priority(
             state,
             &emergency_catalog,
@@ -194,12 +198,16 @@ fn upsert_strategic_task(
         };
         if !matches!(
             task.state,
-            TaskState::Available | TaskState::Assigned | TaskState::InProgress | TaskState::BlockedWaiting
+            TaskState::Available
+                | TaskState::Assigned
+                | TaskState::InProgress
+                | TaskState::BlockedWaiting
         ) {
             continue;
         }
         if let Some(existing) = &task.strategic {
-            let existing_key = merge_key_from_origin(existing, task.target_building_id(), task.task_type);
+            let existing_key =
+                merge_key_from_origin(existing, task.target_building_id(), task.task_type);
             if existing_key == merge_key {
                 if let Some(task) = world.task_store_mut().get_mut(task_id) {
                     // Refresh priority from current intent; keep assignment.
@@ -214,8 +222,9 @@ fn upsert_strategic_task(
     }
 
     if task_type == TaskType::ConstructBuilding {
-        let task_id = ensure_building_task(world, building_id, task_type, priority, simulation_tick)
-            .map_err(|e| format!("{e:?}"))?;
+        let task_id =
+            ensure_building_task(world, building_id, task_type, priority, simulation_tick)
+                .map_err(|e| format!("{e:?}"))?;
         if let Some(task) = world.task_store_mut().get_mut(task_id) {
             if task.priority != TaskPriority::PlayerAssigned {
                 task.priority = priority;
@@ -289,7 +298,11 @@ pub fn intent_to_task_priority(intent_priority: f32) -> TaskPriority {
     }
 }
 
-fn merge_key(origin: &StrategicTaskOrigin, building_id: Option<BuildingId>, task_type: TaskType) -> String {
+fn merge_key(
+    origin: &StrategicTaskOrigin,
+    building_id: Option<BuildingId>,
+    task_type: TaskType,
+) -> String {
     format!(
         "{}:{}:{}:{}:{}",
         origin.settlement_id,

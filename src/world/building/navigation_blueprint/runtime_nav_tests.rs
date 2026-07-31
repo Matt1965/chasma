@@ -2,17 +2,15 @@
 
 use bevy::prelude::*;
 
-use super::runtime::{
-    interior_position_walkable, resolve_navigation_start_space,
-};
+use super::runtime::{interior_position_walkable, resolve_navigation_start_space};
 use crate::world::unit::{UnitOrder, UnitSource, UnitState, create_unit, step_unit_movement};
 use crate::world::{
-    Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingLifecycleState, BuildingOwnership,
-    ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, FootprintCatalog,
-    Heightfield, LocalPosition, NavigationConfig, OccupancyCatalogs, PassabilityCatalogs,
-    SpaceId, UnitDefinitionId, WorldData, WorldPosition, find_path_with_spaces,
-    place_player_building, resolve_pending_unit_orders, set_building_lifecycle_stage,
-    BuildingNavigationBlueprintCatalog,
+    Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingLifecycleState,
+    BuildingNavigationBlueprintCatalog, BuildingOwnership, ChunkCoord, ChunkData, ChunkId,
+    ChunkLayout, DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition, NavigationConfig,
+    OccupancyCatalogs, PassabilityCatalogs, SpaceId, UnitDefinitionId, WorldData, WorldPosition,
+    find_path_with_spaces, place_player_building, resolve_pending_unit_orders,
+    set_building_lifecycle_stage,
 };
 
 fn layout_world() -> WorldData {
@@ -83,7 +81,10 @@ fn activate_hut(world: &mut WorldData) -> crate::world::BuildingId {
     id
 }
 
-fn hut_ground_target(world: &WorldData, building_id: crate::world::BuildingId) -> (SpaceId, WorldPosition) {
+fn hut_ground_target(
+    world: &WorldData,
+    building_id: crate::world::BuildingId,
+) -> (SpaceId, WorldPosition) {
     let runtime = world
         .building_navigation_runtime()
         .get(building_id)
@@ -98,7 +99,10 @@ fn hut_ground_target(world: &WorldData, building_id: crate::world::BuildingId) -
     (ground.space_id, position)
 }
 
-fn hut_entrance_approach(world: &WorldData, building_id: crate::world::BuildingId) -> WorldPosition {
+fn hut_entrance_approach(
+    world: &WorldData,
+    building_id: crate::world::BuildingId,
+) -> WorldPosition {
     let layout = world.layout();
     let portal_id = world
         .space_registry()
@@ -113,7 +117,8 @@ fn hut_entrance_approach(world: &WorldData, building_id: crate::world::BuildingI
     let building = world.get_building(building_id).unwrap();
     let building_center = building.placement.position.to_global(layout);
     let portal_xz = portal.from_center_global_xz;
-    let away = Vec2::new(portal_xz.x, portal_xz.y) - Vec2::new(building_center.x, building_center.z);
+    let away =
+        Vec2::new(portal_xz.x, portal_xz.y) - Vec2::new(building_center.x, building_center.z);
     let away = if away.length_squared() > 1e-4 {
         away.normalize()
     } else {
@@ -200,10 +205,11 @@ fn surface_to_hut_interior_path_uses_entrance_portal() {
     )
     .expect("surface to interior path");
     assert!(path.waypoints.iter().any(|wp| wp.portal_id.is_some()));
-    assert!(path
-        .waypoints
-        .iter()
-        .any(|wp| wp.space_id == ground_space_id));
+    assert!(
+        path.waypoints
+            .iter()
+            .any(|wp| wp.space_id == ground_space_id)
+    );
 }
 
 #[test]

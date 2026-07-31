@@ -5,16 +5,27 @@ use std::collections::{BTreeMap, HashMap};
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::world::BuildingId;
 use crate::world::ItemDefinitionId;
 use crate::world::building::catalog::BuildingDefinitionId;
 use crate::world::building::inventory_binding::BuildingInventoryBindingId;
 use crate::world::building::operation::OperationDefinitionId;
 use crate::world::settlement::SettlementId;
-use crate::world::BuildingId;
 
 /// Settlement-wide production priority band (EP9).
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Reflect, Serialize, Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    Default,
+    Reflect,
+    Serialize,
+    Deserialize,
 )]
 pub enum ProductionPriorityCategory {
     #[default]

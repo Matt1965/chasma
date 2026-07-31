@@ -207,12 +207,10 @@ fn resolve_remote_building(
     requesting_building_id: BuildingId,
     route: &super::route::BuildingLogisticsRouteDefinition,
 ) -> Option<BuildingId> {
-    let candidates = world
-        .logistics_endpoint_index()
-        .resolve(
-            &route.remote_building_definition_id,
-            &route.remote_binding_id,
-        )?;
+    let candidates = world.logistics_endpoint_index().resolve(
+        &route.remote_building_definition_id,
+        &route.remote_binding_id,
+    )?;
     if candidates.is_empty() {
         return None;
     }
@@ -221,11 +219,7 @@ fn resolve_remote_building(
         .settlement_for_building(requesting_building_id);
     if let Some(settlement_id) = settlement {
         for candidate in candidates {
-            if world
-                .settlement_store()
-                .settlement_for_building(*candidate)
-                == Some(settlement_id)
-            {
+            if world.settlement_store().settlement_for_building(*candidate) == Some(settlement_id) {
                 return Some(*candidate);
             }
         }
@@ -288,15 +282,19 @@ fn upsert_hauling_request(
         return None;
     }
     if world.inventory_store().get(source_inventory_id).is_none()
-        || world.inventory_store().get(destination_inventory_id).is_none()
+        || world
+            .inventory_store()
+            .get(destination_inventory_id)
+            .is_none()
     {
         return None;
     }
 
-    if let Some(existing_id) = world
-        .hauling_request_store()
-        .open_request_for_key(source_inventory_id, destination_inventory_id, &item_id)
-    {
+    if let Some(existing_id) = world.hauling_request_store().open_request_for_key(
+        source_inventory_id,
+        destination_inventory_id,
+        &item_id,
+    ) {
         let store = world.hauling_request_store_mut();
         let request = store.get_mut(existing_id)?;
         request.quantity = request.quantity.saturating_add(quantity);

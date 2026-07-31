@@ -15,11 +15,17 @@ mod tool;
 #[cfg(all(test, feature = "dev"))]
 mod tests;
 
-pub use input::{handle_gizmo_keyboard, handle_gizmo_mouse, selected_object, sync_gizmo_target};
+pub use input::{
+    GizmoInputParams, activate_dev_transform_tool, handle_gizmo_keyboard, handle_gizmo_mouse,
+    selected_object, sync_gizmo_target,
+};
 pub use preview::{
     DevTransformPreview, apply_building_transform_preview, apply_doodad_transform_preview,
 };
 pub use state::TransformEditState;
 pub use tool::{DevTool, DevToolState, GizmoCoordinateSpace, SelectedWorldObject};
 
+pub use commit::{
+    dev_gizmo_building_commit_options, dev_gizmo_doodad_commit_options, try_commit_edit,
+};
 pub use draw::draw_transform_gizmo;

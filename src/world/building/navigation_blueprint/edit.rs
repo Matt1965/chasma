@@ -39,7 +39,11 @@ pub fn move_floor_vertex(
     vertex_index: usize,
     local_xz: [f32; 2],
 ) -> BlueprintEditOutcome {
-    let Some(floor) = blueprint.floors.iter_mut().find(|floor| floor.floor_id == floor_id) else {
+    let Some(floor) = blueprint
+        .floors
+        .iter_mut()
+        .find(|floor| floor.floor_id == floor_id)
+    else {
         return BlueprintEditOutcome::rejected("floor not found");
     };
     let Some(vertex) = floor.walkable_outline.vertices_xz.get_mut(vertex_index) else {
@@ -61,7 +65,11 @@ pub fn insert_vertex_on_edge(
     edge_index: usize,
     local_xz: [f32; 2],
 ) -> BlueprintEditOutcome {
-    let Some(floor) = blueprint.floors.iter_mut().find(|floor| floor.floor_id == floor_id) else {
+    let Some(floor) = blueprint
+        .floors
+        .iter_mut()
+        .find(|floor| floor.floor_id == floor_id)
+    else {
         return BlueprintEditOutcome::rejected("floor not found");
     };
     let vertex_count = floor.walkable_outline.vertices_xz.len();
@@ -87,7 +95,11 @@ pub fn delete_floor_vertex(
     floor_id: i32,
     vertex_index: usize,
 ) -> BlueprintEditOutcome {
-    let Some(floor) = blueprint.floors.iter_mut().find(|floor| floor.floor_id == floor_id) else {
+    let Some(floor) = blueprint
+        .floors
+        .iter_mut()
+        .find(|floor| floor.floor_id == floor_id)
+    else {
         return BlueprintEditOutcome::rejected("floor not found");
     };
     if floor.walkable_outline.vertices_xz.len() <= MIN_VERTEX_COUNT {
@@ -191,7 +203,9 @@ pub fn delete_entrance(
     entrance_key: &str,
 ) -> BlueprintEditOutcome {
     let before = blueprint.entrances.len();
-    blueprint.entrances.retain(|entrance| entrance.key != entrance_key);
+    blueprint
+        .entrances
+        .retain(|entrance| entrance.key != entrance_key);
     if blueprint.entrances.len() == before {
         return BlueprintEditOutcome::rejected("entrance not found");
     }
@@ -335,9 +349,7 @@ pub fn prepare_blueprint_for_save(
     Ok(blueprint)
 }
 
-fn polygon_edit_error(
-    floor: &super::definition::NavigationFloorDefinition,
-) -> Option<String> {
+fn polygon_edit_error(floor: &super::definition::NavigationFloorDefinition) -> Option<String> {
     let polygon = &floor.walkable_outline;
     if polygon.vertices_xz.len() < MIN_VERTEX_COUNT {
         return Some("floor polygon needs at least three vertices".into());

@@ -26,16 +26,20 @@ const DEV_DOODAD_LEGACY_RENDER_KEYS: &[(&str, &str)] = &[
     ("interior_chair", "interior/chair"),
 ];
 
-fn dev_doodad_legacy_aliases(catalog: &DoodadCatalog) -> HashMap<DoodadDefinitionId, DoodadDefinitionId> {
+fn dev_doodad_legacy_aliases(
+    catalog: &DoodadCatalog,
+) -> HashMap<DoodadDefinitionId, DoodadDefinitionId> {
     let mut aliases = HashMap::new();
     for (legacy_id, render_key) in DEV_DOODAD_LEGACY_RENDER_KEYS {
         let legacy = DoodadDefinitionId::new(*legacy_id);
         if catalog.get(&legacy).is_some() {
             continue;
         }
-        let Some(canonical) = catalog.definitions().iter().find(|definition| {
-            definition.render_key.as_str() == Some(*render_key)
-        }) else {
+        let Some(canonical) = catalog
+            .definitions()
+            .iter()
+            .find(|definition| definition.render_key.as_str() == Some(*render_key))
+        else {
             continue;
         };
         aliases.insert(legacy, canonical.id.clone());

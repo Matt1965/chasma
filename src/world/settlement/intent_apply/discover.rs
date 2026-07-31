@@ -5,8 +5,8 @@
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::building::operation::ControlSource;
 use crate::world::operation::OperationDefinitionId;
-use crate::world::settlement::response::{CapabilityRequirement, ResponseDefinition};
 use crate::world::settlement::SettlementId;
+use crate::world::settlement::response::{CapabilityRequirement, ResponseDefinition};
 use crate::world::{BuildingId, BuildingLifecycleState, WorldData};
 
 /// A complete settlement building that can run `operation_id`.

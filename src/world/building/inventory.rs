@@ -69,18 +69,19 @@ pub fn attach_inventory_on_building_create(
     let binding_definitions = effective_inventory_binding_definitions(definition);
     if binding_definitions.is_empty() {
         building.inventory_id = None;
-        world.building_inventory_binding_store_mut().remove(building.id);
+        world
+            .building_inventory_binding_store_mut()
+            .remove(building.id);
         return Ok(());
     }
 
     let mut runtime_bindings = Vec::with_capacity(binding_definitions.len());
     for binding_definition in binding_definitions {
-        ctx.require_profile(&binding_definition.profile_id).map_err(|_| {
-            BuildingInventoryError::InventoryProfileMissing {
+        ctx.require_profile(&binding_definition.profile_id)
+            .map_err(|_| BuildingInventoryError::InventoryProfileMissing {
                 building_id: building.id,
                 profile_id: binding_definition.profile_id.clone(),
-            }
-        })?;
+            })?;
         let inventory_id = create_building_inventory(
             world.inventory_store_mut(),
             ctx,
@@ -99,12 +100,10 @@ pub fn attach_inventory_on_building_create(
     }
 
     building.inventory_id = resolve_legacy_inventory_id(definition, &runtime_bindings);
-    world
-        .building_inventory_binding_store_mut()
-        .set(
-            building.id,
-            BuildingInventoryBindingSet::from_bindings(runtime_bindings),
-        );
+    world.building_inventory_binding_store_mut().set(
+        building.id,
+        BuildingInventoryBindingSet::from_bindings(runtime_bindings),
+    );
     crate::world::register_building_logistics_endpoints(world, definition, building.id);
     Ok(())
 }
@@ -114,7 +113,10 @@ fn resolve_legacy_inventory_id(
     bindings: &[BuildingInventoryBinding],
 ) -> Option<InventoryId> {
     if let Some(default_id) = &definition.default_inventory_binding_id {
-        if let Some(binding) = bindings.iter().find(|binding| &binding.binding_id == default_id) {
+        if let Some(binding) = bindings
+            .iter()
+            .find(|binding| &binding.binding_id == default_id)
+        {
             return Some(binding.inventory_id);
         }
         return None;
@@ -380,7 +382,9 @@ pub fn spill_building_inventory(
 }
 
 fn clear_building_inventory_link(world: &mut WorldData, building_id: super::id::BuildingId) {
-    world.building_inventory_binding_store_mut().remove(building_id);
+    world
+        .building_inventory_binding_store_mut()
+        .remove(building_id);
     world.mutate_building(building_id, |record| record.inventory_id = None);
 }
 
@@ -466,11 +470,9 @@ pub fn validate_building_inventory_links(world: &WorldData) -> Vec<BuildingInven
                         inventory_id: binding.inventory_id,
                     });
                 }
-                if let Err(error) = validate_binding_inventory_owner(
-                    world,
-                    building_id,
-                    binding.inventory_id,
-                ) {
+                if let Err(error) =
+                    validate_binding_inventory_owner(world, building_id, binding.inventory_id)
+                {
                     errors.push(error);
                 }
             }

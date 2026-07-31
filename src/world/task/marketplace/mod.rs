@@ -15,16 +15,12 @@ mod validation;
 mod tests;
 
 pub use candidates::{MarketplaceCandidate, MarketplaceListing};
-pub use report::{
-    AssignmentDecision, WorkerAssignmentReport, WorkerEvaluation,
-};
+pub use report::{AssignmentDecision, WorkerAssignmentReport, WorkerEvaluation};
 pub use score::{
-    may_preempt, may_preempt_with_override, score_marketplace_listing, AssignmentScore,
-    PreemptPolicyOverride, MIN_PREEMPT_PRIORITY_RANKS, MIN_STICK_TICKS,
+    AssignmentScore, MIN_PREEMPT_PRIORITY_RANKS, MIN_STICK_TICKS, PreemptPolicyOverride,
+    may_preempt, may_preempt_with_override, score_marketplace_listing,
 };
-pub use step::{
-    step_worker_assignment, WorkerAssignmentContext, WORKER_ASSIGNMENT_CADENCE_TICKS,
-};
+pub use step::{WORKER_ASSIGNMENT_CADENCE_TICKS, WorkerAssignmentContext, step_worker_assignment};
 pub use store::WorkerAssignmentStore;
 pub use sync::sync_operate_workstation_tasks;
-pub use validation::{validate_worker_assignments, AssignmentValidationError};
+pub use validation::{AssignmentValidationError, validate_worker_assignments};

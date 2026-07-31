@@ -18,7 +18,10 @@ pub const SCENE_VERSION: u32 = 15;
 
 /// Whether a scene file version can be loaded by the current runtime.
 pub fn scene_version_supported(version: u32) -> bool {
-    matches!(version, 1 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15)
+    matches!(
+        version,
+        1 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15
+    )
 }
 
 /// Pure-data scene snapshot — no logic (ADR-045).
@@ -396,9 +399,11 @@ impl SceneDefinition {
             next_settlement_id: 1,
             next_treasury_id: 1,
             inventory_persistence: super::inventory_snapshot::SceneInventoryPersistence::default(),
-            production_persistence: super::production_snapshot::SceneProductionPersistence::default(),
+            production_persistence: super::production_snapshot::SceneProductionPersistence::default(
+            ),
             logistics_persistence: super::logistics_snapshot::SceneLogisticsPersistence::default(),
-            planner_persistence: super::planner_snapshot::SceneProductionPlannerPersistence::default(),
+            planner_persistence:
+                super::planner_snapshot::SceneProductionPlannerPersistence::default(),
             settlement_state_persistence:
                 super::settlement_state_snapshot::SceneSettlementStatePersistence::default(),
             construction_plan_persistence:
@@ -514,7 +519,8 @@ pub fn capture_scene(world: &WorldData, ctx: &SceneCaptureContext) -> SceneDefin
         world.settlement_store().next_treasury_id(),
     );
     scene.inventory_persistence = super::inventory_snapshot::capture_inventory_persistence(world);
-    scene.production_persistence = super::production_snapshot::capture_production_persistence(world);
+    scene.production_persistence =
+        super::production_snapshot::capture_production_persistence(world);
     scene.logistics_persistence = super::logistics_snapshot::capture_logistics_persistence(world);
     scene.planner_persistence =
         super::planner_snapshot::capture_production_planner_persistence(world);

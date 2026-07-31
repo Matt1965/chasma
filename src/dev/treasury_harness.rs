@@ -1,191 +1,193 @@
-//! Dev Mode settlement treasury tools (ADR-093 I7).
+//! Dev Mode settlement treasury tools (ADR-093 I7) — UI-driven (Slice 12).
 
-use bevy::input::keyboard::KeyCode;
 use bevy::prelude::*;
 
-use crate::dev::inspector::WorldInspectorState;
-use crate::dev::{DevModeState, DevTab};
-use crate::simulation::SimulationControlState;
+use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
+use crate::units::input::SelectedUnits;
 use crate::world::{
-    BuildingCatalog, BuildingInteractionProfileCatalog, InventoryCatalogCtx,
-    InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, SettlementOwnership,
+    BuildingCatalog, BuildingInteractionProfileCatalog, InventoryCatalogCtx, SettlementOwnership,
     TreasuryAccessPolicy, WorldData, count_physical_gold, create_settlement_with_treasury,
     deposit_gold,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TreasuryHarnessAction {
+    TransactionLog,
+    SumWealth,
+    CreateSettlement,
+    Inspect,
+    DepositGold,
+}
+
+impl TreasuryHarnessAction {
+    pub fn tooltip(self) -> &'static str {
+        match self {
+            Self::TransactionLog => "Show the last five treasury deposit transactions.",
+            Self::SumWealth => "Sum physical gold in inventories plus treasury balances.",
+            Self::CreateSettlement => {
+                "Create a dev settlement and treasury for the selected building."
+            }
+            Self::Inspect => "Print settlement and treasury state for the selected building.",
+            Self::DepositGold => {
+                "Deposit 5 gold from the selected unit into the building's settlement treasury."
+            }
+        }
+    }
+}
+
 pub fn format_treasury_harness_detail(
     world: &WorldData,
-    inspector: &WorldInspectorState,
+    world_selection: &WorldSelectionState,
+    selected_units: &SelectedUnits,
     message: &str,
 ) -> String {
-    let building_line = inspector
-        .selected_building
+    let building_line = (world_selection.category == WorldSelectionCategory::Building)
+        .then_some(world_selection.building_id)
+        .flatten()
         .map(|id| format!("Selected building: {id:?}"))
         .unwrap_or_else(|| "Selected building: none (Alt+click building)".into());
-    let unit_line = inspector
-        .selected_unit
+    let unit_line = world_selection
+        .primary_unit(selected_units)
         .map(|id| format!("Selected unit: {id:?}"))
         .unwrap_or_else(|| "Selected unit: none".into());
     let settlement_count = world.settlement_store().sorted_settlement_ids().len();
-    format!(
-        "{building_line}\n{unit_line}\nSettlements: {settlement_count}\n\
-         C=create treasury · Y=inspect · E=deposit 5 · B=validate wealth · J=transaction log\n\
-         {message}"
-    )
+    format!("{building_line}\n{unit_line}\nSettlements: {settlement_count}\n{message}")
 }
 
-pub fn handle_treasury_harness_keyboard(
-    mut dev_state: ResMut<DevModeState>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mut world: ResMut<WorldData>,
-    inspector: Res<WorldInspectorState>,
-    items: Res<ItemCatalog>,
-    categories: Res<ItemCategoryCatalog>,
-    profiles: Res<InventoryProfileCatalog>,
-    building_catalog: Res<BuildingCatalog>,
-    interaction_catalog: Res<BuildingInteractionProfileCatalog>,
-    simulation: Res<SimulationControlState>,
-) {
-    if !dev_state.enabled || dev_state.active_tab != DevTab::WorldTools {
-        return;
-    }
-    if dev_state.has_text_focus() {
-        return;
-    }
-
-    let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
-    let tick = simulation.current_tick;
-    let mut message = dev_state.treasury_harness_message.clone();
-
-    if keyboard.just_pressed(KeyCode::KeyJ) {
-        let log = world.settlement_store().transaction_log();
-        if log.is_empty() {
-            message = "Transaction log empty".to_string();
-        } else {
-            let tail = log.iter().rev().take(5).collect::<Vec<_>>();
-            message = format!(
-                "Last {} deposits: {:?}",
-                tail.len(),
-                tail.into_iter()
-                    .map(|entry| format!(
-                        "tick {} +{} -> {}",
-                        entry.tick, entry.deposited_gold, entry.balance_after
-                    ))
-                    .collect::<Vec<_>>()
-            );
-        }
-    }
-
-    if keyboard.just_pressed(KeyCode::KeyB) {
-        let physical: u64 = world
-            .inventory_store()
-            .sorted_inventory_ids()
-            .iter()
-            .filter_map(|id| world.inventory_store().get(*id))
-            .map(count_physical_gold)
-            .map(u64::from)
-            .sum();
-        let treasury: u64 = world
-            .settlement_store()
-            .sorted_treasury_ids()
-            .iter()
-            .filter_map(|id| world.settlement_store().get_treasury(*id))
-            .map(|t| t.balance_gold)
-            .sum();
-        message = format!("World wealth — physical gold: {physical}, treasury gold: {treasury}");
-    }
-
-    let Some(building_id) = inspector.selected_building else {
-        dev_state.treasury_harness_message = message;
-        return;
-    };
-
-    if keyboard.just_pressed(KeyCode::KeyC) {
-        let Some(building) = world.get_building(building_id).cloned() else {
-            dev_state.treasury_harness_message = "Building missing".to_string();
-            return;
-        };
-        match create_settlement_with_treasury(
-            &mut world,
-            &building_catalog,
-            &interaction_catalog,
-            building_id,
-            "Dev Settlement",
-            SettlementOwnership::player_default(),
-            building.placement.position,
-            tick,
-        ) {
-            Ok(report) => {
-                message = format!(
-                    "Created settlement {:?} treasury {:?}",
-                    report.settlement_id, report.treasury_id
-                );
+pub fn apply_treasury_harness_action(
+    action: TreasuryHarnessAction,
+    world: &mut WorldData,
+    world_selection: &WorldSelectionState,
+    selected_units: &SelectedUnits,
+    ctx: &InventoryCatalogCtx,
+    building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
+    tick: u64,
+) -> String {
+    match action {
+        TreasuryHarnessAction::TransactionLog => {
+            let log = world.settlement_store().transaction_log();
+            if log.is_empty() {
+                "Transaction log empty".to_string()
+            } else {
+                let tail = log.iter().rev().take(5).collect::<Vec<_>>();
+                format!(
+                    "Last {} deposits: {:?}",
+                    tail.len(),
+                    tail.into_iter()
+                        .map(|entry| format!(
+                            "tick {} +{} -> {}",
+                            entry.tick, entry.deposited_gold, entry.balance_after
+                        ))
+                        .collect::<Vec<_>>()
+                )
             }
-            Err(err) => message = err.to_string(),
         }
-    }
-
-    if keyboard.just_pressed(KeyCode::KeyY) {
-        if let Some(settlement_id) = world
-            .settlement_store()
-            .settlement_for_building(building_id)
-        {
-            let settlement = world.settlement_store().get_settlement(settlement_id);
-            let treasury = world
+        TreasuryHarnessAction::SumWealth => {
+            let physical: u64 = world
+                .inventory_store()
+                .sorted_inventory_ids()
+                .iter()
+                .filter_map(|id| world.inventory_store().get(*id))
+                .map(count_physical_gold)
+                .map(u64::from)
+                .sum();
+            let treasury: u64 = world
                 .settlement_store()
-                .treasury_for_settlement(settlement_id)
-                .and_then(|id| world.settlement_store().get_treasury(id));
-            message = format!("Settlement {:?} treasury {:?}", settlement, treasury);
-        } else {
-            message = "Building has no settlement treasury".to_string();
+                .sorted_treasury_ids()
+                .iter()
+                .filter_map(|id| world.settlement_store().get_treasury(*id))
+                .map(|t| t.balance_gold)
+                .sum();
+            format!("World wealth — physical gold: {physical}, treasury gold: {treasury}")
         }
-    }
-
-    if keyboard.just_pressed(KeyCode::KeyE) {
-        let Some(unit_id) = inspector.selected_unit else {
-            dev_state.treasury_harness_message =
-                "Select a unit (Alt+click) to deposit gold".to_string();
-            return;
-        };
-        let Some(settlement_id) = world
-            .settlement_store()
-            .settlement_for_building(building_id)
-        else {
-            dev_state.treasury_harness_message = "Building has no treasury".to_string();
-            return;
-        };
-        let Some(treasury_id) = world
-            .settlement_store()
-            .treasury_for_settlement(settlement_id)
-        else {
-            dev_state.treasury_harness_message = "Treasury missing for settlement".to_string();
-            return;
-        };
-        let Some(inventory_id) = world.get_unit(unit_id).and_then(|u| u.inventory_id) else {
-            dev_state.treasury_harness_message = "Unit has no inventory".to_string();
-            return;
-        };
-        match deposit_gold(
-            &mut world,
-            &building_catalog,
-            &interaction_catalog,
-            &ctx,
-            unit_id,
-            inventory_id,
-            treasury_id,
-            5,
-            TreasuryAccessPolicy::OwnerOnly,
-            tick,
-        ) {
-            Ok(report) => {
-                message = format!(
-                    "Deposited {} — treasury balance {}",
-                    report.deposited_gold, report.treasury_balance_after
-                );
+        TreasuryHarnessAction::CreateSettlement
+        | TreasuryHarnessAction::Inspect
+        | TreasuryHarnessAction::DepositGold => {
+            let Some(building_id) = (world_selection.category == WorldSelectionCategory::Building)
+                .then_some(world_selection.building_id)
+                .flatten()
+            else {
+                return "Select a building (Alt+click)".to_string();
+            };
+            match action {
+                TreasuryHarnessAction::CreateSettlement => {
+                    let Some(building) = world.get_building(building_id).cloned() else {
+                        return "Building missing".to_string();
+                    };
+                    match create_settlement_with_treasury(
+                        world,
+                        building_catalog,
+                        interaction_catalog,
+                        building_id,
+                        "Dev Settlement",
+                        SettlementOwnership::player_default(),
+                        building.placement.position,
+                        tick,
+                    ) {
+                        Ok(report) => format!(
+                            "Created settlement {:?} treasury {:?}",
+                            report.settlement_id, report.treasury_id
+                        ),
+                        Err(err) => err.to_string(),
+                    }
+                }
+                TreasuryHarnessAction::Inspect => {
+                    if let Some(settlement_id) = world
+                        .settlement_store()
+                        .settlement_for_building(building_id)
+                    {
+                        let settlement = world.settlement_store().get_settlement(settlement_id);
+                        let treasury = world
+                            .settlement_store()
+                            .treasury_for_settlement(settlement_id)
+                            .and_then(|id| world.settlement_store().get_treasury(id));
+                        format!("Settlement {:?} treasury {:?}", settlement, treasury)
+                    } else {
+                        "Building has no settlement treasury".to_string()
+                    }
+                }
+                TreasuryHarnessAction::DepositGold => {
+                    let Some(unit_id) = world_selection.primary_unit(selected_units) else {
+                        return "Select a unit (Alt+click) to deposit gold".to_string();
+                    };
+                    let Some(settlement_id) = world
+                        .settlement_store()
+                        .settlement_for_building(building_id)
+                    else {
+                        return "Building has no treasury".to_string();
+                    };
+                    let Some(treasury_id) = world
+                        .settlement_store()
+                        .treasury_for_settlement(settlement_id)
+                    else {
+                        return "Treasury missing for settlement".to_string();
+                    };
+                    let Some(inventory_id) = world.get_unit(unit_id).and_then(|u| u.inventory_id)
+                    else {
+                        return "Unit has no inventory".to_string();
+                    };
+                    match deposit_gold(
+                        world,
+                        building_catalog,
+                        interaction_catalog,
+                        ctx,
+                        unit_id,
+                        inventory_id,
+                        treasury_id,
+                        5,
+                        TreasuryAccessPolicy::OwnerOnly,
+                        tick,
+                    ) {
+                        Ok(report) => format!(
+                            "Deposited {} — treasury balance {}",
+                            report.deposited_gold, report.treasury_balance_after
+                        ),
+                        Err(err) => err.to_string(),
+                    }
+                }
+                _ => unreachable!(),
             }
-            Err(err) => message = err.to_string(),
         }
     }
-
-    dev_state.treasury_harness_message = message;
 }

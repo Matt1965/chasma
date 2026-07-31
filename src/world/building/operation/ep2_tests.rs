@@ -2,10 +2,10 @@
 
 use crate::world::building::field_response::EFFICIENCY_BASIS_POINTS_ONE_HUNDRED_PERCENT;
 use crate::world::building::operation::{
-    BuildingOperationParams, OperationLifecycle, RepeatMode, apply_operation_ticks,
-    reset_production_progress, set_production_enabled, set_production_paused,
-    set_production_repeat_count, step_workstation_operation, validate_production_runtime,
-    ProductionValidationIssue, PRODUCTION_STEPPING_MODEL,
+    BuildingOperationParams, OperationLifecycle, PRODUCTION_STEPPING_MODEL,
+    ProductionValidationIssue, RepeatMode, apply_operation_ticks, reset_production_progress,
+    set_production_enabled, set_production_paused, set_production_repeat_count,
+    step_workstation_operation, validate_production_runtime,
 };
 use crate::world::building::operational_efficiency::OperationalLimitingFactor;
 use crate::world::building::terrain_assessment::{
@@ -110,7 +110,10 @@ fn setup_workbench_world() -> (
     let mut world = flat_world();
     let building_id = BuildingId::new(1);
     world
-        .insert_building(ChunkId::new(ChunkCoord::new(0, 0)), workbench_record(building_id))
+        .insert_building(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            workbench_record(building_id),
+        )
         .unwrap();
     let unit_catalog = UnitCatalog::default();
     let worker = create_unit(
@@ -139,8 +142,7 @@ fn test_inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
     CTX.get_or_init(|| {
         let categories =
             ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
-        let items =
-            ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+        let items = ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
         let profiles =
             InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
                 .unwrap();
@@ -170,10 +172,8 @@ fn operation_params<'a>(
 }
 
 fn test_operation_catalog() -> crate::world::OperationCatalog {
-    crate::world::OperationCatalog::from_definitions(vec![
-        crate::world::test_workbench_operation(),
-    ])
-    .unwrap()
+    crate::world::OperationCatalog::from_definitions(vec![crate::world::test_workbench_operation()])
+        .unwrap()
 }
 
 fn second_worker(world: &mut WorldData) -> UnitId {
@@ -383,7 +383,10 @@ fn continuous_mode_cycles_without_producing_items() {
         ticks as u32,
     )
     .unwrap();
-    let state = world.building_production_store().get_state(building_id).unwrap();
+    let state = world
+        .building_production_store()
+        .get_state(building_id)
+        .unwrap();
     assert!(state.completion_count >= 1);
     assert_eq!(state.lifecycle, OperationLifecycle::Running);
     assert_eq!(total_inventory_entries(&world), before_items);
@@ -414,7 +417,10 @@ fn repeat_count_stops_after_configured_completions() {
         ticks as u32,
     )
     .unwrap();
-    let state = world.building_production_store().get_state(building_id).unwrap();
+    let state = world
+        .building_production_store()
+        .get_state(building_id)
+        .unwrap();
     assert_eq!(state.lifecycle, OperationLifecycle::Completed);
     assert!(state.completion_count >= 1);
 }
@@ -494,8 +500,18 @@ fn building_removal_cleans_production_state() {
         "test",
         None,
     );
-    assert!(world.building_production_store().get_state(building_id).is_none());
-    assert!(world.building_production_store().get_policy(building_id).is_none());
+    assert!(
+        world
+            .building_production_store()
+            .get_state(building_id)
+            .is_none()
+    );
+    assert!(
+        world
+            .building_production_store()
+            .get_policy(building_id)
+            .is_none()
+    );
 }
 
 #[test]
@@ -517,7 +533,10 @@ fn absent_selected_operation_is_handled_safely() {
     )
     .unwrap();
     assert!(!report.can_operate);
-    assert_eq!(report.limiting_factor, OperationalLimitingFactor::InvalidOperation);
+    assert_eq!(
+        report.limiting_factor,
+        OperationalLimitingFactor::InvalidOperation
+    );
     assert_eq!(
         world
             .building_production_store()
@@ -581,7 +600,10 @@ fn stepping_one_building_does_not_mutate_other_buildings() {
         setup_workbench_world();
     let other_id = BuildingId::new(2);
     world
-        .insert_building(ChunkId::new(ChunkCoord::new(0, 0)), workbench_record(other_id))
+        .insert_building(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            workbench_record(other_id),
+        )
         .unwrap();
     world
         .building_production_store_mut()
@@ -615,7 +637,9 @@ fn stepping_one_building_does_not_mutate_other_buildings() {
 fn validation_detects_orphaned_production_state() {
     let (mut world, building_id, _worker, _catalogs, _building_catalog, _operation_catalog) =
         setup_workbench_world();
-    world.building_production_store_mut().get_state_mut(building_id);
+    world
+        .building_production_store_mut()
+        .get_state_mut(building_id);
     world.remove_building_by_id(building_id);
     let issues = validate_production_runtime(&world);
     assert!(issues.iter().any(|issue| matches!(
@@ -640,7 +664,10 @@ fn reset_progress_command_clears_runtime_state() {
     )
     .unwrap();
     reset_production_progress(&mut world, building_id).unwrap();
-    let state = world.building_production_store().get_state(building_id).unwrap();
+    let state = world
+        .building_production_store()
+        .get_state(building_id)
+        .unwrap();
     assert_eq!(state.progress.value(), 0);
     assert_eq!(state.completion_count, 0);
     assert_eq!(state.lifecycle, OperationLifecycle::Idle);

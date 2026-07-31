@@ -1,12 +1,12 @@
 //! Client-local player control and presentation.
 
 mod box_select_overlay;
-mod indicator;
+pub mod indicator;
 mod move_feedback;
 mod ownership;
 mod plugin;
 mod selection_policy;
-mod selection_ring_mesh;
+pub mod selection_ring_mesh;
 mod simulation;
 mod space_view;
 

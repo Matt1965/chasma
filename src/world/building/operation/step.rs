@@ -1,25 +1,23 @@
 //! Workstation operation stepping (ADR-105 TF5, EP2 production runtime).
 
 use crate::world::UnitId;
+use crate::world::building::inventory_binding::validate_selected_operation_inventory_bindings;
 use crate::world::building::operation::{
     BASE_OPERATION_PROGRESS_PER_TICK, PRODUCTION_PROGRESS_ONE_UNIT, scale_progress,
     workstation_workers_for_building,
 };
-use crate::world::building::inventory_binding::validate_selected_operation_inventory_bindings;
 use crate::world::building::operational_efficiency::{
     OperationalLimitingFactor, building_operational_efficiency,
 };
 use crate::world::{BuildingCatalog, BuildingId, WorldData};
 
 use super::error::{OperationCompletionReport, OperationError, OperationStepReport};
-use super::execute::execute_production_cycle;
 use super::execute::assess_production_execution;
-use crate::world::operation::OperationOutputDefinition;
-use crate::world::{
-    sync_logistics_requests_from_assessment, sync_output_surplus_after_production,
-};
+use super::execute::execute_production_cycle;
 use super::lifecycle::{OperationLifecycle, set_blocked};
 use super::params::BuildingOperationParams;
+use crate::world::operation::OperationOutputDefinition;
+use crate::world::{sync_logistics_requests_from_assessment, sync_output_surplus_after_production};
 
 /// Apply one fixed-tick workstation labor contribution (ADR-105 TF5, EP1).
 pub fn step_workstation_operation(
@@ -43,11 +41,7 @@ pub fn step_workstation_operation(
     if let Some(definition) = definition.as_ref() {
         world
             .building_production_store_mut()
-            .ensure_policy_for_building(
-                building_id,
-                definition,
-                operation.operation_catalog,
-            );
+            .ensure_policy_for_building(building_id, definition, operation.operation_catalog);
     }
 
     let policy_snapshot = world
@@ -59,7 +53,9 @@ pub fn step_workstation_operation(
 
     if !policy_snapshot.enabled {
         {
-            let state = world.building_production_store_mut().get_state_mut(building_id);
+            let state = world
+                .building_production_store_mut()
+                .get_state_mut(building_id);
             state.lifecycle = OperationLifecycle::Disabled;
             state.blocked_reason = None;
             state.active_worker_count = active_workers;
@@ -75,7 +71,9 @@ pub fn step_workstation_operation(
 
     if policy_snapshot.paused {
         {
-            let state = world.building_production_store_mut().get_state_mut(building_id);
+            let state = world
+                .building_production_store_mut()
+                .get_state_mut(building_id);
             state.lifecycle = OperationLifecycle::Paused;
             state.blocked_reason = Some(OperationalLimitingFactor::Paused);
             state.active_worker_count = active_workers;
@@ -91,7 +89,9 @@ pub fn step_workstation_operation(
 
     if policy_snapshot.selected_operation.is_none() {
         {
-            let state = world.building_production_store_mut().get_state_mut(building_id);
+            let state = world
+                .building_production_store_mut()
+                .get_state_mut(building_id);
             state.lifecycle = OperationLifecycle::Idle;
             state.blocked_reason = Some(OperationalLimitingFactor::InvalidOperation);
             state.active_worker_count = active_workers;
@@ -112,7 +112,9 @@ pub fn step_workstation_operation(
                 .is_some_and(|def| !def.supports_operation(selected));
         if invalid {
             {
-                let state = world.building_production_store_mut().get_state_mut(building_id);
+                let state = world
+                    .building_production_store_mut()
+                    .get_state_mut(building_id);
                 state.lifecycle = OperationLifecycle::Blocked;
                 state.blocked_reason = Some(OperationalLimitingFactor::InvalidOperation);
                 state.active_worker_count = active_workers;
@@ -137,8 +139,9 @@ pub fn step_workstation_operation(
                 .is_err()
                 {
                     {
-                        let state =
-                            world.building_production_store_mut().get_state_mut(building_id);
+                        let state = world
+                            .building_production_store_mut()
+                            .get_state_mut(building_id);
                         state.lifecycle = OperationLifecycle::Blocked;
                         state.blocked_reason =
                             Some(OperationalLimitingFactor::InvalidInventoryBinding);
@@ -161,12 +164,11 @@ pub fn step_workstation_operation(
         .get_state(building_id)
         .map(|state| state.completion_count)
         .unwrap_or(0);
-    if policy_snapshot
-        .repeat_mode
-        .is_exhausted(completion_count)
-    {
+    if policy_snapshot.repeat_mode.is_exhausted(completion_count) {
         {
-            let state = world.building_production_store_mut().get_state_mut(building_id);
+            let state = world
+                .building_production_store_mut()
+                .get_state_mut(building_id);
             state.lifecycle = OperationLifecycle::Completed;
             state.blocked_reason = Some(OperationalLimitingFactor::InvalidOperation);
             state.active_worker_count = active_workers;
@@ -187,19 +189,19 @@ pub fn step_workstation_operation(
 
     let efficiency = {
         let mut efficiency_ctx = operation.efficiency_context(world, building_catalog);
-        building_operational_efficiency(
-            &mut efficiency_ctx,
-            building_id,
-            selected_operation,
-        )
-        .map_err(|_| {
-            OperationError::OperationBlocked(OperationalLimitingFactor::MissingTerrainAssessment)
-        })?
+        building_operational_efficiency(&mut efficiency_ctx, building_id, selected_operation)
+            .map_err(|_| {
+                OperationError::OperationBlocked(
+                    OperationalLimitingFactor::MissingTerrainAssessment,
+                )
+            })?
     };
 
     if !efficiency.can_operate {
         {
-            let state = world.building_production_store_mut().get_state_mut(building_id);
+            let state = world
+                .building_production_store_mut()
+                .get_state_mut(building_id);
             set_blocked(
                 &mut state.lifecycle,
                 &mut state.blocked_reason,
@@ -220,7 +222,10 @@ pub fn step_workstation_operation(
     let scaled = scale_progress(BASE_OPERATION_PROGRESS_PER_TICK, final_bp)
         .map_err(|_| OperationError::OperationProgressOverflow)?;
 
-    let selected_operation_id = policy_snapshot.selected_operation.clone().expect("validated");
+    let selected_operation_id = policy_snapshot
+        .selected_operation
+        .clone()
+        .expect("validated");
     let operation_definition = operation
         .operation_catalog
         .get(&selected_operation_id)
@@ -229,7 +234,9 @@ pub fn step_workstation_operation(
     let building_definition = definition.clone().expect("validated");
 
     let (accumulated_progress, completions, lifecycle, blocked_reason) = {
-        let state = world.building_production_store_mut().get_state_mut(building_id);
+        let state = world
+            .building_production_store_mut()
+            .get_state_mut(building_id);
         state.last_efficiency_revision = efficiency.assessment_revision;
         state.lifecycle = OperationLifecycle::Running;
         state.blocked_reason = None;
@@ -260,8 +267,9 @@ pub fn step_workstation_operation(
             ) {
                 Ok(()) => {
                     let completion_count = {
-                        let state =
-                            world.building_production_store_mut().get_state_mut(building_id);
+                        let state = world
+                            .building_production_store_mut()
+                            .get_state_mut(building_id);
                         state
                             .progress
                             .completions_since(PRODUCTION_PROGRESS_ONE_UNIT);
@@ -281,16 +289,15 @@ pub fn step_workstation_operation(
                             );
                         }
                     }
-                    if policy_snapshot
-                        .repeat_mode
-                        .is_exhausted(completion_count)
-                    {
+                    if policy_snapshot.repeat_mode.is_exhausted(completion_count) {
                         final_lifecycle = OperationLifecycle::Completed;
                         break;
                     }
                 }
                 Err(limiting_factor) => {
-                    let state = world.building_production_store_mut().get_state_mut(building_id);
+                    let state = world
+                        .building_production_store_mut()
+                        .get_state_mut(building_id);
                     set_blocked(
                         &mut state.lifecycle,
                         &mut state.blocked_reason,
@@ -318,7 +325,9 @@ pub fn step_workstation_operation(
             }
         }
 
-        let state = world.building_production_store_mut().get_state_mut(building_id);
+        let state = world
+            .building_production_store_mut()
+            .get_state_mut(building_id);
         if final_lifecycle == OperationLifecycle::Running
             && policy_snapshot
                 .repeat_mode

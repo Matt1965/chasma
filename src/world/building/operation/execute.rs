@@ -168,12 +168,7 @@ pub fn assess_production_execution(
 
             let mut sims: HashMap<InventoryId, InventoryRecord> = HashMap::new();
             for output in &plan.outputs {
-                let can_accept = simulate_output_placement(
-                    world,
-                    inventory_ctx,
-                    &mut sims,
-                    output,
-                );
+                let can_accept = simulate_output_placement(world, inventory_ctx, &mut sims, output);
                 assessment.outputs.push(ResolvedProductionOutput {
                     binding_id: output.binding_id.clone(),
                     inventory_id: output.inventory_id,
@@ -276,12 +271,8 @@ fn plan_execution(
             }
             continue;
         };
-        let inventory_id = resolve_binding_inventory(
-            world,
-            binding_store,
-            building_id,
-            binding_id,
-        )?;
+        let inventory_id =
+            resolve_binding_inventory(world, binding_store, building_id, binding_id)?;
         inputs.push(AggregatedInput {
             binding_id: binding_id.clone(),
             inventory_id,
@@ -305,12 +296,8 @@ fn plan_execution(
             }
             continue;
         };
-        let inventory_id = resolve_binding_inventory(
-            world,
-            binding_store,
-            building_id,
-            binding_id,
-        )?;
+        let inventory_id =
+            resolve_binding_inventory(world, binding_store, building_id, binding_id)?;
         outputs.push(ResolvedItemOutput {
             binding_id: binding_id.clone(),
             inventory_id,

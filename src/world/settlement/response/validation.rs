@@ -36,7 +36,10 @@ impl std::fmt::Display for ResponseCatalogError {
             Self::EmptySupportedNeeds(id) => {
                 write!(f, "response `{}` supports no needs", id.as_str())
             }
-            Self::InvalidExpectedEffect { response_id, detail } => {
+            Self::InvalidExpectedEffect {
+                response_id,
+                detail,
+            } => {
                 write!(
                     f,
                     "response `{}` invalid expected effect: {detail}",
@@ -186,9 +189,12 @@ fn validate_capability_shape(
     req: &CapabilityRequirement,
 ) -> Result<(), ResponseCatalogError> {
     match req {
-        CapabilityRequirement::SupportingOperation(op) if op.is_empty() => Err(
-            ResponseCatalogError::InvalidCapability(response_id.clone(), "empty operation id".into()),
-        ),
+        CapabilityRequirement::SupportingOperation(op) if op.is_empty() => {
+            Err(ResponseCatalogError::InvalidCapability(
+                response_id.clone(),
+                "empty operation id".into(),
+            ))
+        }
         CapabilityRequirement::BuildingDefinition(id) if id.is_empty() => {
             Err(ResponseCatalogError::InvalidCapability(
                 response_id.clone(),
@@ -210,13 +216,7 @@ fn find_prerequisite_cycle(definitions: &[ResponseDefinition]) -> Option<Vec<Res
     let mut stack = Vec::new();
 
     for def in definitions {
-        if let Some(cycle) = dfs_cycle(
-            &def.id,
-            &graph,
-            &mut visiting,
-            &mut visited,
-            &mut stack,
-        ) {
+        if let Some(cycle) = dfs_cycle(&def.id, &graph, &mut visiting, &mut visited, &mut stack) {
             return Some(cycle);
         }
     }

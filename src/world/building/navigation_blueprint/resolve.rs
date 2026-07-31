@@ -44,7 +44,9 @@ pub fn resolve_building_navigation_blueprint<'a>(
                     id.clone(),
                 ));
             }
-            return Ok(Some(ResolvedBuildingNavigationBlueprint::Catalog(blueprint)));
+            return Ok(Some(ResolvedBuildingNavigationBlueprint::Catalog(
+                blueprint,
+            )));
         }
     }
 
@@ -84,9 +86,9 @@ pub fn resolve_building_navigation_blueprint<'a>(
 mod tests {
     use super::*;
     use crate::world::building::catalog::BuildingDefinitionId;
-    use crate::world::starter_building_definitions;
     use crate::world::building::footprint::FootprintSpec;
     use crate::world::building::navigation_blueprint::starter::two_story_hut_navigation_blueprint;
+    use crate::world::starter_building_definitions;
 
     #[test]
     fn asset_default_resolves_from_definition() {
@@ -123,7 +125,10 @@ mod tests {
         )
         .expect("resolve")
         .expect("blueprint");
-        assert_eq!(resolved.blueprint().display_name, "Two Story Hut Navigation");
+        assert_eq!(
+            resolved.blueprint().display_name,
+            "Two Story Hut Navigation"
+        );
     }
 
     #[test]

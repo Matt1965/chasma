@@ -144,11 +144,9 @@ impl BuildingProductionStore {
         definition: &BuildingDefinition,
         operation_catalog: &crate::world::operation::OperationCatalog,
     ) -> &BuildingOperationPolicy {
-        self.policies
-            .entry(building_id)
-            .or_insert_with(|| {
-                BuildingOperationPolicy::default_for_building(definition, operation_catalog)
-            })
+        self.policies.entry(building_id).or_insert_with(|| {
+            BuildingOperationPolicy::default_for_building(definition, operation_catalog)
+        })
     }
 
     pub fn building_ids(&self) -> impl Iterator<Item = BuildingId> + '_ {
@@ -164,10 +162,7 @@ impl BuildingProductionStore {
         self.building_ids().count()
     }
 
-    pub fn selected_operation(
-        &self,
-        building_id: BuildingId,
-    ) -> Option<&OperationDefinitionId> {
+    pub fn selected_operation(&self, building_id: BuildingId) -> Option<&OperationDefinitionId> {
         self.policies
             .get(&building_id)
             .and_then(|policy| policy.selected_operation.as_ref())

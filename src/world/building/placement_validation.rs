@@ -13,7 +13,8 @@ use crate::world::{
     QuantizedRotation, SlopeWalkability, UnitCatalog, WorldData, WorldPosition,
     agent_overlaps_footprint, chunk_for_occupancy_cell, classify_slope_walkability,
     conservative_block_radius_for_kind, default_space_id,
-    effective_building_footprint_for_placement, ground_world_position, occupied_cells_for_footprint,
+    effective_building_footprint_for_placement, ground_world_position,
+    occupied_cells_for_footprint,
 };
 
 /// Configurable placement policy knobs.
@@ -159,18 +160,15 @@ pub fn validate_building_placement(
         }
     };
 
-    let shape = match effective_building_footprint_for_placement(
-        definition,
-        ctx.footprint_catalog,
-        1.0,
-    ) {
-        Ok(shape) => shape,
-        Err(_) => {
-            return BuildingPlacementValidation::rejected(
-                BuildingPlacementRejectReason::CorruptFootprint,
-            );
-        }
-    };
+    let shape =
+        match effective_building_footprint_for_placement(definition, ctx.footprint_catalog, 1.0) {
+            Ok(shape) => shape,
+            Err(_) => {
+                return BuildingPlacementValidation::rejected(
+                    BuildingPlacementRejectReason::CorruptFootprint,
+                );
+            }
+        };
 
     let layout = ctx.world.layout();
     let anchor_global = anchor.to_global(layout);

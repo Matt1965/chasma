@@ -268,7 +268,7 @@ fn apply_scale_drag(
             new_scale = start_scale * factor;
         }
         GizmoHandle::ScaleX | GizmoHandle::ScaleY | GizmoHandle::ScaleZ => {
-            let axis = oriented_axis(handle.axis()?, object_rotation, GizmoCoordinateSpace::Local)
+            let axis = oriented_axis(handle.axis()?, object_rotation, GizmoCoordinateSpace::World)
                 .normalize_or_zero();
             if axis.length_squared() < 1e-8 {
                 return None;

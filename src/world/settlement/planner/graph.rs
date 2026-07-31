@@ -27,7 +27,8 @@ pub struct ProductionGraph {
 
 impl ProductionGraph {
     pub fn from_catalog(operation_catalog: &OperationCatalog) -> Self {
-        let mut producers_by_output: HashMap<ItemDefinitionId, Vec<ProducerRecipe>> = HashMap::new();
+        let mut producers_by_output: HashMap<ItemDefinitionId, Vec<ProducerRecipe>> =
+            HashMap::new();
         let mut edges = Vec::new();
 
         for definition in operation_catalog.enabled_definitions() {

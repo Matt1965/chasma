@@ -5,8 +5,10 @@ use bevy::prelude::*;
 use crate::client::inventory_intent::{
     InventoryIntent, InventoryIntentQueue, entry_revision_for_inventory,
 };
+use crate::ui::gameplay::inventory::drag_preview::source_entry_drag_color;
+use crate::ui::gameplay::inventory::preview::{INVENTORY_CELL_PX, drag_state_from_entry};
 use crate::ui::gameplay::inventory::state::{
-    InventoryDragState, InventorySelection, InventoryUiState,
+    InventoryDragPreviewState, InventorySelection, InventoryUiState,
 };
 use crate::ui::gameplay::layout::PlayerHudUi;
 use crate::ui::gameplay::styles::{
@@ -17,7 +19,7 @@ use crate::world::{
     ItemCategoryCatalog, ItemDefinitionId, ItemInstanceStore, WorldData, query_inventory_weight,
 };
 
-const CELL_PX: f32 = 28.0;
+const CELL_PX: f32 = INVENTORY_CELL_PX;
 
 #[derive(Component, Debug)]
 pub struct InventoryPanelRoot;
@@ -185,6 +187,7 @@ pub fn sync_inventory_panel_visibility(
 
 pub fn sync_inventory_panel_contents(
     ui: Res<InventoryUiState>,
+    preview: Res<InventoryDragPreviewState>,
     world: Res<WorldData>,
     items: Res<ItemCatalog>,
     categories: Res<ItemCategoryCatalog>,
@@ -192,8 +195,10 @@ pub fn sync_inventory_panel_contents(
     mut commands: Commands,
     row_query: Query<Entity, With<InventoryDualPaneRow>>,
     pane_query: Query<(Entity, &InventoryPaneContainer)>,
-    mut feedback: Query<&mut Text, (With<InventoryFeedbackText>, Without<InventoryDetailsText>)>,
-    mut details: Query<&mut Text, (With<InventoryDetailsText>, Without<InventoryFeedbackText>)>,
+    mut texts: bevy::ecs::system::ParamSet<(
+        Query<&mut Text, (With<InventoryFeedbackText>, Without<InventoryDetailsText>)>,
+        Query<&mut Text, (With<InventoryDetailsText>, Without<InventoryFeedbackText>)>,
+    )>,
 ) {
     if !ui.is_changed() && !world.is_changed() {
         return;
@@ -204,12 +209,16 @@ pub fn sync_inventory_panel_contents(
     let instance_store = world.item_instance_store();
     let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
 
-    if let Ok(mut text) = feedback.single_mut() {
-        **text = ui.feedback_message.clone();
+    if let Ok(mut text) = texts.p0().single_mut() {
+        **text = if ui.dragging.is_some() && !preview.status_line.is_empty() {
+            preview.status_line.clone()
+        } else {
+            ui.feedback_message.clone()
+        };
     }
 
     if let Some(selection) = ui.selected {
-        if let Ok(mut text) = details.single_mut() {
+        if let Ok(mut text) = texts.p1().single_mut() {
             **text = format_item_details(
                 &world,
                 &ctx,
@@ -252,6 +261,7 @@ pub fn sync_inventory_panel_contents(
                 "Unit Inventory",
                 InventoryPaneSide::Left,
                 ui.treasury_deposit_open(),
+                &ui,
             );
         }
         if let Some(treasury_id) = ui.treasury_id {
@@ -273,6 +283,7 @@ pub fn sync_inventory_panel_contents(
                 label,
                 InventoryPaneSide::Right,
                 false,
+                &ui,
             );
         } else if ui.pile_id.is_some() {
             parent.spawn((
@@ -320,6 +331,7 @@ fn spawn_pane(
     title: &str,
     side: InventoryPaneSide,
     treasury_mode: bool,
+    ui: &InventoryUiState,
 ) {
     let Some(record) = world.inventory_store().get(inventory_id) else {
         return;
@@ -440,7 +452,12 @@ fn spawn_pane(
                             padding: UiRect::all(Val::Px(2.0)),
                             ..default()
                         },
-                        BackgroundColor(Color::srgba(0.25, 0.35, 0.55, 0.95)),
+                        BackgroundColor(source_entry_drag_color(
+                            ui,
+                            inventory_id,
+                            entry_index,
+                            Color::srgba(0.25, 0.35, 0.55, 0.95),
+                        )),
                     ))
                     .with_children(|item| {
                         item.spawn((
@@ -650,24 +667,26 @@ fn format_item_details(
 pub fn handle_inventory_panel_buttons(
     ui: Res<InventoryUiState>,
     mut queue: ResMut<InventoryIntentQueue>,
-    close: Query<&Interaction, (Changed<Interaction>, With<InventoryPanelCloseButton>)>,
-    sort: Query<(&Interaction, &InventoryAutoSortButton), Changed<Interaction>>,
-    loot_all: Query<&Interaction, (Changed<Interaction>, With<InventoryLootAllButton>)>,
-    pickup: Query<&Interaction, (Changed<Interaction>, With<InventoryPickupFullButton>)>,
-    deposit: Query<(&Interaction, &InventoryDepositGoldButton), Changed<Interaction>>,
+    mut buttons: bevy::ecs::system::ParamSet<(
+        Query<&Interaction, (Changed<Interaction>, With<InventoryPanelCloseButton>)>,
+        Query<(&Interaction, &InventoryAutoSortButton), Changed<Interaction>>,
+        Query<&Interaction, (Changed<Interaction>, With<InventoryLootAllButton>)>,
+        Query<&Interaction, (Changed<Interaction>, With<InventoryPickupFullButton>)>,
+        Query<(&Interaction, &InventoryDepositGoldButton), Changed<Interaction>>,
+    )>,
 ) {
-    if close.iter().any(|i| *i == Interaction::Pressed) {
+    if buttons.p0().iter().any(|i| *i == Interaction::Pressed) {
         queue.push(InventoryIntent::Close);
         return;
     }
-    for (interaction, button) in &sort {
+    for (interaction, button) in buttons.p1().iter() {
         if *interaction == Interaction::Pressed {
             queue.push(InventoryIntent::AutoSort {
                 inventory_id: button.inventory_id,
             });
         }
     }
-    if loot_all.iter().any(|i| *i == Interaction::Pressed) {
+    if buttons.p2().iter().any(|i| *i == Interaction::Pressed) {
         if let (Some(actor), Some(corpse_inv), Some(dest)) = (
             ui.actor_unit_id,
             ui.right_inventory_id,
@@ -680,7 +699,7 @@ pub fn handle_inventory_panel_buttons(
             });
         }
     }
-    if pickup.iter().any(|i| *i == Interaction::Pressed) {
+    if buttons.p3().iter().any(|i| *i == Interaction::Pressed) {
         if let (Some(actor), Some(pile_id)) = (ui.actor_unit_id, ui.pile_id) {
             queue.push(InventoryIntent::PickupPile {
                 pile_id,
@@ -689,7 +708,7 @@ pub fn handle_inventory_panel_buttons(
             });
         }
     }
-    for (interaction, button) in &deposit {
+    for (interaction, button) in buttons.p4().iter() {
         if *interaction == Interaction::Pressed {
             if let (Some(actor), Some(treasury_id)) = (ui.actor_unit_id, ui.treasury_id) {
                 queue.push(InventoryIntent::DepositGold {
@@ -707,9 +726,9 @@ pub fn handle_inventory_entry_clicks(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut ui: ResMut<InventoryUiState>,
     world: Res<WorldData>,
+    items: Res<ItemCatalog>,
     mut queue: ResMut<InventoryIntentQueue>,
     entries: Query<(&Interaction, &InventoryEntryWidget), Changed<Interaction>>,
-    cells: Query<(&Interaction, &InventoryGridCell), Changed<Interaction>>,
 ) {
     if !ui.open {
         return;
@@ -762,40 +781,84 @@ pub fn handle_inventory_entry_clicks(
             continue;
         }
         if ui.dragging.is_none() {
-            ui.dragging = Some(InventoryDragState {
-                source_inventory_id: widget.inventory_id,
-                entry_index: widget.entry_index,
-                entry_revision: revision,
-            });
+            if let Some(drag) = drag_state_from_entry(
+                world.as_ref(),
+                items.as_ref(),
+                world.item_instance_store(),
+                widget.inventory_id,
+                widget.entry_index,
+                revision,
+            ) {
+                ui.dragging = Some(drag);
+            }
         }
     }
+}
 
-    for (interaction, cell) in &cells {
-        if *interaction != Interaction::Pressed {
-            continue;
+/// Complete an inventory drag on mouse release (Slice 10).
+pub fn handle_inventory_drag_release(
+    mouse: Res<ButtonInput<MouseButton>>,
+    mut ui: ResMut<InventoryUiState>,
+    preview: Res<InventoryDragPreviewState>,
+    mut queue: ResMut<InventoryIntentQueue>,
+) {
+    if !ui.open || !mouse.just_released(MouseButton::Left) {
+        return;
+    }
+    let Some(drag) = ui.dragging.take() else {
+        return;
+    };
+
+    let placement = preview.placement.clone();
+    if !placement.valid {
+        let msg = placement
+            .reason
+            .map(|e| e.message())
+            .unwrap_or_else(|| "Cannot place item there.".into());
+        ui.cancel_drag(Some(msg));
+        return;
+    }
+
+    match placement.target {
+        super::preview::InventoryDropTarget::GridCell {
+            inventory_id,
+            anchor_x,
+            anchor_y,
+        } => {
+            if drag.source_inventory_id == inventory_id {
+                queue.push(InventoryIntent::MoveEntry {
+                    inventory_id,
+                    entry_index: drag.entry_index,
+                    anchor_x,
+                    anchor_y,
+                    entry_revision: drag.entry_revision,
+                });
+            } else {
+                queue.push(InventoryIntent::TransferToCell {
+                    source_inventory_id: drag.source_inventory_id,
+                    source_entry_index: drag.entry_index,
+                    destination_inventory_id: inventory_id,
+                    anchor_x,
+                    anchor_y,
+                    entry_revision: drag.entry_revision,
+                });
+            }
         }
-        let Some(drag) = ui.dragging.clone() else {
-            continue;
-        };
-        if drag.source_inventory_id == cell.inventory_id {
-            queue.push(InventoryIntent::MoveEntry {
-                inventory_id: cell.inventory_id,
-                entry_index: drag.entry_index,
-                anchor_x: cell.x,
-                anchor_y: cell.y,
-                entry_revision: drag.entry_revision,
-            });
-        } else if let Some(dest) = Some(cell.inventory_id) {
-            queue.push(InventoryIntent::TransferToCell {
-                source_inventory_id: drag.source_inventory_id,
-                source_entry_index: drag.entry_index,
-                destination_inventory_id: dest,
-                anchor_x: cell.x,
-                anchor_y: cell.y,
-                entry_revision: drag.entry_revision,
-            });
+        super::preview::InventoryDropTarget::GroundDrop => {
+            if let Some(actor) = ui.actor_unit_id {
+                queue.push(InventoryIntent::DropEntry {
+                    inventory_id: drag.source_inventory_id,
+                    entry_index: drag.entry_index,
+                    actor_unit_id: actor,
+                    entry_revision: drag.entry_revision,
+                });
+            } else {
+                ui.cancel_drag(Some("No unit to drop from.".into()));
+            }
         }
-        ui.dragging = None;
+        super::preview::InventoryDropTarget::None => {
+            ui.cancel_drag(Some("No valid drop target.".into()));
+        }
     }
 }
 
@@ -805,7 +868,6 @@ pub fn collect_inventory_mouse_transfers(
     ui: Res<InventoryUiState>,
     world: Res<WorldData>,
     mut queue: ResMut<InventoryIntentQueue>,
-    entries: Query<&InventoryEntryWidget>,
     interactions: Query<(&Interaction, &InventoryEntryWidget)>,
 ) {
     if !ui.open || !mouse.just_pressed(MouseButton::Right) {
@@ -838,5 +900,4 @@ pub fn collect_inventory_mouse_transfers(
         destination_inventory_id: dest,
         entry_revision: revision,
     });
-    let _ = entries;
 }

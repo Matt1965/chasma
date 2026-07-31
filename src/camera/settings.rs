@@ -1,5 +1,11 @@
 use bevy::prelude::*;
 
+/// Minimum RTS orbit distance in world meters (ADR-014).
+///
+/// Chosen for close building / navigation-corner inspection while staying above the
+/// terrain eye clearance clamp and avoiding near-plane clipping.
+pub const CAMERA_ORBIT_DISTANCE_MIN_METERS: f32 = 12.0;
+
 /// Tunable RTS orbit camera parameters (ADR-014).
 ///
 /// Lives entirely in the Camera layer. Initial pose defaults are presentation
@@ -60,7 +66,7 @@ impl Default for CameraSettings {
 
             pitch_min: 0.15,
             pitch_max: 1.35,
-            distance_min: 40.0,
+            distance_min: CAMERA_ORBIT_DISTANCE_MIN_METERS,
             distance_max: 5_000.0,
 
             pan_speed: 256.0,
@@ -86,5 +92,22 @@ impl CameraSettings {
 
     pub fn clamp_distance(&self, distance: f32) -> f32 {
         distance.clamp(self.distance_min, self.distance_max)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn minimum_orbit_distance_allows_close_inspection() {
+        let settings = CameraSettings::default();
+        assert_eq!(settings.distance_min, CAMERA_ORBIT_DISTANCE_MIN_METERS);
+        assert!(settings.distance_min < 40.0);
+        assert_eq!(
+            settings.clamp_distance(5.0),
+            CAMERA_ORBIT_DISTANCE_MIN_METERS
+        );
+        assert_eq!(settings.distance_max, 5_000.0);
     }
 }

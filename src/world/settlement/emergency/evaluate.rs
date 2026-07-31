@@ -1,13 +1,11 @@
 //! Emergency detection + hysteresis (SA8). Mutates SettlementEmergencyState only.
 
+use crate::world::WorldData;
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::item::{ItemCatalog, ItemCategoryId};
-use crate::world::settlement::state::{
-    ActiveEmergencyInstance, NeedCategory, SettlementState,
-};
 use crate::world::settlement::SettlementId;
-use crate::world::WorldData;
+use crate::world::settlement::state::{ActiveEmergencyInstance, NeedCategory, SettlementState};
 
 use super::catalog::EmergencyCatalog;
 use super::definition::{EmergencyDefinition, EmergencyEvaluatorKind};
@@ -68,10 +66,9 @@ pub fn evaluate_settlement_emergencies(
             .as_ref()
             .is_some_and(|p| p.manual_suppress && !p.manual_force)
         {
-            report.diagnostics.push(format!(
-                "`{}` suppressed (manual)",
-                def.id.as_str()
-            ));
+            report
+                .diagnostics
+                .push(format!("`{}` suppressed (manual)", def.id.as_str()));
             continue;
         }
 
@@ -107,8 +104,11 @@ pub fn evaluate_settlement_emergencies(
             None => {
                 if signal >= def.activation_threshold {
                     let severity = severity_from_signal(signal, def);
-                    let mut inst =
-                        ActiveEmergencyInstance::new(def.id.as_str(), ctx.simulation_tick, severity);
+                    let mut inst = ActiveEmergencyInstance::new(
+                        def.id.as_str(),
+                        ctx.simulation_tick,
+                        severity,
+                    );
                     inst.last_signal = signal;
                     inst.source = format!("{:?}", def.evaluator);
                     next_instances.push(inst);
@@ -183,9 +183,17 @@ fn should_deactivate(
         } else {
             0
         };
-        if recovered_for < def.min_active_duration_ticks.saturating_add(def.recovery_delay_ticks) {
+        if recovered_for
+            < def
+                .min_active_duration_ticks
+                .saturating_add(def.recovery_delay_ticks)
+        {
             // Require min_active + recovery_delay wall time while signal is recovering.
-            if active_for < def.min_active_duration_ticks.saturating_add(def.recovery_delay_ticks) {
+            if active_for
+                < def
+                    .min_active_duration_ticks
+                    .saturating_add(def.recovery_delay_ticks)
+            {
                 return false;
             }
         }

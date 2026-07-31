@@ -33,9 +33,7 @@ pub fn filter_catalog_entries(
         DevTab::Doodads => doodad_entries(doodad_catalog, enabled_only),
         DevTab::Buildings => building_entries(building_catalog, enabled_only),
         DevTab::Debug
-        | DevTab::Placement
         | DevTab::Scenes
-        | DevTab::Inspector
         | DevTab::WorldTools
         | DevTab::TerrainFields
         | DevTab::Items => Vec::new(),

@@ -3,9 +3,7 @@
 use super::catalog::{
     BuildingNavigationBlueprintCatalog, BuildingNavigationBlueprintCatalogRevision,
 };
-use super::definition::{
-    BuildingNavigationBlueprint, BuildingNavigationBlueprintInstanceOverride,
-};
+use super::definition::{BuildingNavigationBlueprint, BuildingNavigationBlueprintInstanceOverride};
 use super::edit::prepare_blueprint_for_save;
 use super::pipeline::export_navigation_blueprint_catalog;
 use super::resolve::resolve_building_navigation_blueprint;
@@ -27,17 +25,18 @@ pub struct BlueprintPersistenceOutcome {
 }
 
 /// Count loaded building instances that would inherit an asset-default blueprint change.
-pub fn count_inheriting_instances(world: &WorldData, definition_id: &BuildingDefinitionId) -> usize {
+pub fn count_inheriting_instances(
+    world: &WorldData,
+    definition_id: &BuildingDefinitionId,
+) -> usize {
     world
         .sorted_building_ids()
         .into_iter()
         .filter(|building_id| {
-            world
-                .get_building(*building_id)
-                .is_some_and(|record| {
-                    record.definition_id == *definition_id
-                        && record.interior.navigation_blueprint_override.is_none()
-                })
+            world.get_building(*building_id).is_some_and(|record| {
+                record.definition_id == *definition_id
+                    && record.interior.navigation_blueprint_override.is_none()
+            })
         })
         .count()
 }
@@ -61,8 +60,9 @@ pub fn save_instance_blueprint(
     let prepared = prepare_blueprint_for_save(blueprint)?;
     let activated = record.interior.activated;
     world.mutate_building(building_id, |building| {
-        building.interior.navigation_blueprint_override =
-            Some(BuildingNavigationBlueprintInstanceOverride::inline(prepared));
+        building.interior.navigation_blueprint_override = Some(
+            BuildingNavigationBlueprintInstanceOverride::inline(prepared),
+        );
     });
 
     if activated {

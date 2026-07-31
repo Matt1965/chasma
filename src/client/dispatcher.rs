@@ -9,7 +9,8 @@ use crate::debug::{
     unit_ids_for_intent,
 };
 use crate::terrain::TerrainRenderAssets;
-use crate::ui::gameplay::MoveCommandFeedback;
+use crate::ui::gameplay::build_mode::BuildModeState;
+use crate::ui::gameplay::{GameplayBuildingSelection, MoveCommandFeedback, PlayerHudState};
 use crate::units::UnitRenderEntity;
 use crate::units::input::{
     MoveOrdersReport, PlayerInteractionSettings, SelectedUnits, collect_units_in_screen_rect,
@@ -31,12 +32,15 @@ use super::commands::{
     resolve_contextual_command_with_armed, resolve_palette_command,
 };
 use super::intent::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
-use crate::ui::gameplay::PlayerHudState;
-use crate::ui::gameplay::build_mode::BuildModeState;
 use crate::world::{
     BuildingOwnership, BuildingPlacementConfig, BuildingPlacementContext, OccupancyCatalogs,
     SelectionControllabilityPolicy, place_player_building, unit_is_selectable,
     validate_building_placement,
+};
+
+use super::selection::{
+    ApplyWorldSelectionParams, WorldSelectionChange, WorldSelectionWriteParams,
+    apply_world_selection, prune_world_selection,
 };
 
 /// Bundled player/build-mode params for intent dispatch.
@@ -131,7 +135,7 @@ impl IntentDispatchReport {
 /// Route queued intents to selection updates and [`issue_unit_order`] dispatch.
 pub fn dispatch_client_intents(
     mut queue: ResMut<ClientIntentQueue>,
-    mut selection: ResMut<SelectedUnits>,
+    mut selection_params: WorldSelectionWriteParams,
     mut move_feedback: ResMut<MoveCommandFeedback>,
     mut world: ResMut<WorldData>,
     config: Res<WorldConfig>,
@@ -150,7 +154,7 @@ pub fn dispatch_client_intents(
     boundary.begin_intent_dispatch();
     pending_trace.clear();
     pending_trace.tick = frame_index.0;
-    selection.prune_missing(&world);
+    prune_world_selection(&world, &mut selection_params.apply(None));
 
     let intents = queue.drain();
     if intents.is_empty() {
@@ -184,13 +188,15 @@ pub fn dispatch_client_intents(
         mut assessment_store,
     } = catalogs;
 
+    let mut apply_params = selection_params.apply(None);
+
     for intent in intents {
         let move_report_holder;
         let (status, _move_report) = {
             let mut move_report_opt = None;
             let status = dispatch_one(
                 &intent,
-                &mut selection,
+                &mut apply_params,
                 &mut move_feedback,
                 &mut world,
                 &unit_catalog,
@@ -243,14 +249,14 @@ pub fn dispatch_client_intents(
                 ClientIntent::MoveCommand { .. } | ClientIntent::ContextualCommand { .. }
             )
         {
-            affected_units = selection.iter().collect();
+            affected_units = apply_params.selected_units.iter().collect();
         }
         if matches!(
             intent,
             ClientIntent::BoxSelect { .. } | ClientIntent::BoxSelectAdd { .. }
         ) && status == IntentDispatchStatus::Applied
         {
-            affected_units = selection.iter().collect();
+            affected_units = apply_params.selected_units.iter().collect();
         }
         pending_trace.records.push(PendingDispatchTraceRecord {
             intent: intent.clone(),
@@ -261,12 +267,13 @@ pub fn dispatch_client_intents(
         report.records.push(IntentDispatchRecord { intent, status });
     }
 
+    crate::ui::gameplay::sync_primary_selection(&mut hud, &selection_params.selected_units);
     pending_trace.report = Some(report);
 }
 
 fn dispatch_one(
     intent: &ClientIntent,
-    selection: &mut SelectedUnits,
+    apply_params: &mut ApplyWorldSelectionParams<'_>,
     move_feedback: &mut MoveCommandFeedback,
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
@@ -300,7 +307,7 @@ fn dispatch_one(
     match intent {
         ClientIntent::ContextualCommand { target } => dispatch_contextual_command(
             *target,
-            selection,
+            apply_params.selected_units,
             move_feedback,
             world,
             unit_catalog,
@@ -321,7 +328,7 @@ fn dispatch_one(
         ),
         ClientIntent::MoveCommand { target } => dispatch_contextual_command(
             CommandTarget::Terrain { position: *target },
-            selection,
+            apply_params.selected_units,
             move_feedback,
             world,
             unit_catalog,
@@ -345,7 +352,10 @@ fn dispatch_one(
                 .get_unit(*unit_id)
                 .is_some_and(|record| unit_is_selectable(record, selection_policy))
             {
-                selection.set_single(*unit_id);
+                apply_world_selection(
+                    WorldSelectionChange::SelectUnit { unit_id: *unit_id },
+                    apply_params,
+                );
                 IntentDispatchStatus::Applied
             } else {
                 IntentDispatchStatus::Ignored
@@ -356,7 +366,10 @@ fn dispatch_one(
                 .get_unit(*unit_id)
                 .is_some_and(|record| unit_is_selectable(record, selection_policy))
             {
-                selection.toggle(*unit_id);
+                apply_world_selection(
+                    WorldSelectionChange::ToggleUnit { unit_id: *unit_id },
+                    apply_params,
+                );
                 IntentDispatchStatus::Applied
             } else {
                 IntentDispatchStatus::Ignored
@@ -372,7 +385,12 @@ fn dispatch_one(
             else {
                 return IntentDispatchStatus::Ignored;
             };
-            selection.replace_with(picked);
+            apply_world_selection(
+                WorldSelectionChange::ReplaceUnits {
+                    unit_ids: picked.into_iter().collect(),
+                },
+                apply_params,
+            );
             IntentDispatchStatus::Applied
         }
         ClientIntent::BoxSelectAdd { rect_min, rect_max } => {
@@ -385,11 +403,16 @@ fn dispatch_one(
             else {
                 return IntentDispatchStatus::Ignored;
             };
-            selection.add_all(picked);
+            apply_world_selection(
+                WorldSelectionChange::AddUnits {
+                    unit_ids: picked.into_iter().collect(),
+                },
+                apply_params,
+            );
             IntentDispatchStatus::Applied
         }
         ClientIntent::ClearSelection => {
-            selection.clear();
+            apply_world_selection(WorldSelectionChange::ClearAll, apply_params);
             IntentDispatchStatus::Applied
         }
         ClientIntent::ShiftModifier { pressed } => {
@@ -398,7 +421,7 @@ fn dispatch_one(
         }
         ClientIntent::PaletteCommand { command_type } => dispatch_palette_command(
             *command_type,
-            selection,
+            apply_params.selected_units,
             move_feedback,
             world,
             unit_catalog,
@@ -1022,8 +1045,9 @@ fn log_generated_path(
 mod tests {
     use super::*;
     use crate::client::commands::CommandType;
+    use crate::client::selection::{WorldSelectionRevision, WorldSelectionState};
     use crate::player::LocalPlayerOwnership;
-    use crate::ui::gameplay::BuildModeState;
+    use crate::ui::gameplay::{BuildModeState, GameplayBuildingSelection};
     use crate::units::input::SelectedUnits;
     use crate::world::{
         BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog,
@@ -1076,6 +1100,34 @@ mod tests {
         }
     }
 
+    struct DispatchSelectionBundle {
+        world_selection: WorldSelectionState,
+        revision: WorldSelectionRevision,
+        selected_units: SelectedUnits,
+        building_selection: GameplayBuildingSelection,
+    }
+
+    impl DispatchSelectionBundle {
+        fn new() -> Self {
+            Self {
+                world_selection: WorldSelectionState::default(),
+                revision: WorldSelectionRevision::default(),
+                selected_units: SelectedUnits::default(),
+                building_selection: GameplayBuildingSelection::default(),
+            }
+        }
+
+        fn apply_params(&mut self) -> ApplyWorldSelectionParams<'_> {
+            ApplyWorldSelectionParams {
+                world_selection: &mut self.world_selection,
+                selected_units: &mut self.selected_units,
+                building_selection: &mut self.building_selection,
+                hud: None,
+                revision: Some(&mut self.revision),
+            }
+        }
+    }
+
     fn terrain_args(
         bundle: &mut DispatchTerrainBundle,
     ) -> (
@@ -1098,7 +1150,7 @@ mod tests {
 
     #[test]
     fn dispatcher_routes_select_unit_intent() {
-        let mut selection = SelectedUnits::default();
+        let mut sel = DispatchSelectionBundle::new();
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
@@ -1118,7 +1170,7 @@ mod tests {
 
         let status = dispatch_one(
             &ClientIntent::SelectUnit { unit_id },
-            &mut selection,
+            &mut sel.apply_params(),
             &mut move_feedback,
             &mut world,
             &catalog,
@@ -1150,12 +1202,12 @@ mod tests {
             &mut terrain.assessment_store,
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
-        assert!(selection.contains(unit_id));
+        assert!(sel.selected_units.contains(unit_id));
     }
 
     #[test]
     fn dispatcher_routes_move_command_intent() {
-        let mut selection = SelectedUnits::default();
+        let mut sel = DispatchSelectionBundle::new();
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
@@ -1174,12 +1226,12 @@ mod tests {
         )
         .unwrap()
         .id;
-        selection.set_single(unit_id);
+        sel.selected_units.set_single(unit_id);
 
         let target = pos(40.0, 40.0);
         let status = dispatch_one(
             &ClientIntent::MoveCommand { target },
-            &mut selection,
+            &mut sel.apply_params(),
             &mut move_feedback,
             &mut world,
             &catalog,
@@ -1229,7 +1281,7 @@ mod tests {
 
     #[test]
     fn move_command_ignored_when_selection_empty() {
-        let mut selection = SelectedUnits::default();
+        let mut sel = DispatchSelectionBundle::new();
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
@@ -1241,7 +1293,7 @@ mod tests {
             &ClientIntent::MoveCommand {
                 target: pos(10.0, 10.0),
             },
-            &mut selection,
+            &mut sel.apply_params(),
             &mut move_feedback,
             &mut world,
             &catalog,
@@ -1277,7 +1329,7 @@ mod tests {
 
     #[test]
     fn move_command_ignored_on_blocked_tree() {
-        let mut selection = SelectedUnits::default();
+        let mut sel = DispatchSelectionBundle::new();
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
@@ -1296,7 +1348,7 @@ mod tests {
         )
         .unwrap()
         .id;
-        selection.set_single(unit_id);
+        sel.selected_units.set_single(unit_id);
         let tree_pos = pos(50.0, 50.0);
         create_doodad(
             &doodad_catalog,
@@ -1312,7 +1364,7 @@ mod tests {
 
         let status = dispatch_one(
             &ClientIntent::MoveCommand { target: tree_pos },
-            &mut selection,
+            &mut sel.apply_params(),
             &mut move_feedback,
             &mut world,
             &catalog,
@@ -1350,7 +1402,7 @@ mod tests {
 
     #[test]
     fn box_select_ignored_without_render_queries() {
-        let mut selection = SelectedUnits::default();
+        let mut sel = DispatchSelectionBundle::new();
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
@@ -1363,7 +1415,7 @@ mod tests {
                 rect_min: Vec2::ZERO,
                 rect_max: Vec2::ONE,
             },
-            &mut selection,
+            &mut sel.apply_params(),
             &mut move_feedback,
             &mut world,
             &catalog,
@@ -1399,7 +1451,7 @@ mod tests {
 
     #[test]
     fn select_intent_does_not_mutate_world_units() {
-        let mut selection = SelectedUnits::default();
+        let mut sel = DispatchSelectionBundle::new();
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
@@ -1421,7 +1473,7 @@ mod tests {
 
         dispatch_one(
             &ClientIntent::SelectUnit { unit_id },
-            &mut selection,
+            &mut sel.apply_params(),
             &mut move_feedback,
             &mut world,
             &catalog,
@@ -1458,7 +1510,7 @@ mod tests {
 
     #[test]
     fn contextual_command_routes_through_command_builder() {
-        let mut selection = SelectedUnits::default();
+        let mut sel = DispatchSelectionBundle::new();
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
@@ -1478,14 +1530,14 @@ mod tests {
         )
         .unwrap()
         .id;
-        selection.set_single(unit_id);
+        sel.selected_units.set_single(unit_id);
 
         let target = pos(40.0, 40.0);
         let status = dispatch_one(
             &ClientIntent::ContextualCommand {
                 target: CommandTarget::Terrain { position: target },
             },
-            &mut selection,
+            &mut sel.apply_params(),
             &mut move_feedback,
             &mut world,
             &catalog,
@@ -1538,7 +1590,7 @@ mod tests {
     fn palette_hold_position_rejected_without_world_mutation() {
         use crate::client::commands::CommandUnavailableReason;
 
-        let mut selection = SelectedUnits::default();
+        let mut sel = DispatchSelectionBundle::new();
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
@@ -1556,14 +1608,14 @@ mod tests {
         )
         .unwrap()
         .id;
-        selection.set_single(unit_id);
+        sel.selected_units.set_single(unit_id);
         let state_before = world.get_unit(unit_id).unwrap().state.clone();
 
         let status = dispatch_one(
             &ClientIntent::PaletteCommand {
                 command_type: CommandType::HoldPosition,
             },
-            &mut selection,
+            &mut sel.apply_params(),
             &mut move_feedback,
             &mut world,
             &catalog,
@@ -1607,7 +1659,7 @@ mod tests {
 
     #[test]
     fn shift_modifier_intent_updates_modifiers() {
-        let mut selection = SelectedUnits::default();
+        let mut sel = DispatchSelectionBundle::new();
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
         let mut modifiers = ClientInputModifiers::default();
@@ -1617,7 +1669,7 @@ mod tests {
 
         dispatch_one(
             &ClientIntent::ShiftModifier { pressed: true },
-            &mut selection,
+            &mut sel.apply_params(),
             &mut move_feedback,
             &mut world,
             &catalog,

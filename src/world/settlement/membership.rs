@@ -9,7 +9,10 @@ use super::store::SettlementStore;
 pub fn reconcile_settlement_building_membership(world: &mut WorldData) {
     let settlement_ids = world.settlement_store().sorted_settlement_ids();
     for settlement_id in settlement_ids {
-        let Some(settlement) = world.settlement_store().get_settlement(settlement_id).cloned()
+        let Some(settlement) = world
+            .settlement_store()
+            .get_settlement(settlement_id)
+            .cloned()
         else {
             continue;
         };

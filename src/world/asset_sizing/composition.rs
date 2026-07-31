@@ -67,10 +67,7 @@ pub fn compose_visual_scale_vec3(baseline: Vec3, instance: Vec3) -> Vec3 {
 }
 
 /// Building visual scale (uniform baseline × uniform instance).
-pub fn building_visual_scale(
-    definition: &BuildingDefinition,
-    instance_uniform_scale: f32,
-) -> Vec3 {
+pub fn building_visual_scale(definition: &BuildingDefinition, instance_uniform_scale: f32) -> Vec3 {
     let baseline = definition_presentation_baseline_vec3(&definition.asset_sizing);
     let instance = AuthoringScale::from_uniform_f32(instance_uniform_scale)
         .unwrap_or_else(|_| AuthoringScale::uniform_one())
@@ -212,7 +209,9 @@ pub fn building_visual_footprint_mismatch_warning(
     if definition.transform_safety_class != BuildingTransformSafetyClass::Navigable {
         return None;
     }
-    let final_dims = definition.asset_sizing.approximate_final_dimensions_meters()?;
+    let final_dims = definition
+        .asset_sizing
+        .approximate_final_dimensions_meters()?;
     let (fw, fd) = match &definition.footprint {
         crate::world::FootprintSpec::Rectangle {
             width_meters,

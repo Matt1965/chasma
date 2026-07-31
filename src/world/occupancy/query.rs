@@ -4,9 +4,7 @@ use bevy::prelude::*;
 
 use super::catalog::FootprintCatalog;
 use super::cell::{QuantizedRotation, circle_overlap_blocked};
-use super::footprint::{
-    agent_overlaps_footprint, effective_building_footprint_for_placement,
-};
+use super::footprint::{agent_overlaps_footprint, effective_building_footprint_for_placement};
 use super::registration::OccupancyCatalogs;
 use super::{OccupancyError, OccupancySource, conservative_block_radius_for_kind};
 use crate::world::{

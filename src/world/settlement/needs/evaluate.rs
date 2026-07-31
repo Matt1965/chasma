@@ -3,9 +3,9 @@
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::item::{ItemCatalog, ItemCategoryId};
+use crate::world::settlement::SettlementId;
 use crate::world::settlement::emergency::EmergencyCatalog;
 use crate::world::settlement::state::{NeedCategory, SettlementState};
-use crate::world::settlement::SettlementId;
 use crate::world::{BuildingLifecycleState, WorldData};
 
 use super::catalog::NeedCatalog;
@@ -65,13 +65,13 @@ fn evaluate_one_need(ctx: &NeedEvalContext<'_>, definition: &NeedDefinition) -> 
     };
 
     // Construction uses a satisfaction current derived from backlog; desired for display stays authored.
-    let pressure_desired = if definition.evaluation_method == NeedEvaluationMethod::ConstructionSites
-    {
-        // Ensure backlog can produce pressure even when authored target is 0.
-        desired.max(1.0)
-    } else {
-        desired
-    };
+    let pressure_desired =
+        if definition.evaluation_method == NeedEvaluationMethod::ConstructionSites {
+            // Ensure backlog can produce pressure even when authored target is 0.
+            desired.max(1.0)
+        } else {
+            desired
+        };
 
     let base = normalize_pressure(current, pressure_desired);
     let mut pressure = apply_pressure_modifiers(
@@ -210,7 +210,10 @@ fn measure_housing_capacity(ctx: &NeedEvalContext<'_>) -> (f32, String) {
             housing += 1;
         }
     }
-    (housing as f32, format!("housing_buildings complete={housing}"))
+    (
+        housing as f32,
+        format!("housing_buildings complete={housing}"),
+    )
 }
 
 fn measure_defense_posture(ctx: &NeedEvalContext<'_>) -> (f32, String) {
@@ -260,13 +263,11 @@ fn measure_expansion_growth(ctx: &NeedEvalContext<'_>) -> (f32, String) {
 
 #[cfg(test)]
 mod tests {
+    use super::super::definition::{NeedMeasurementType, NeedResponseCategory};
     use super::*;
-    use crate::world::settlement::state::{NeedTarget, SettlementKind, SettlementState};
-    use crate::world::settlement::SettlementId;
     use crate::world::settlement::ProductionPriorityCategory;
-    use super::super::definition::{
-        NeedMeasurementType, NeedResponseCategory,
-    };
+    use crate::world::settlement::SettlementId;
+    use crate::world::settlement::state::{NeedTarget, SettlementKind, SettlementState};
 
     #[test]
     fn food_desired_and_pressure_deterministic() {

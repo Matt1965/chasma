@@ -36,9 +36,9 @@ impl SettlementStateStore {
         kind: SettlementKind,
         player_controlled: bool,
     ) -> &mut SettlementState {
-        self.states.entry(settlement_id).or_insert_with(|| {
-            SettlementState::new(settlement_id, kind, player_controlled)
-        })
+        self.states
+            .entry(settlement_id)
+            .or_insert_with(|| SettlementState::new(settlement_id, kind, player_controlled))
     }
 
     pub fn remove(&mut self, settlement_id: SettlementId) -> Option<SettlementState> {

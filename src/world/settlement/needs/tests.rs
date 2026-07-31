@@ -2,16 +2,14 @@
 
 use super::*;
 use crate::world::inventory::InventoryCatalogCtx;
-use crate::world::settlement::emergency::EmergencyCatalog;
 use crate::world::item::{ItemCatalog, ItemCategoryCatalog};
+use crate::world::settlement::SettlementId;
+use crate::world::settlement::emergency::EmergencyCatalog;
 use crate::world::settlement::state::{
     NeedCategory, NeedTarget, SettlementKind, SettlementModifier, SettlementModifierSource,
     SettlementState,
 };
-use crate::world::settlement::SettlementId;
-use crate::world::{
-    BuildingCatalog, ChunkLayout, InventoryProfileCatalog, WorldData,
-};
+use crate::world::{BuildingCatalog, ChunkLayout, InventoryProfileCatalog, WorldData};
 
 fn layout() -> ChunkLayout {
     ChunkLayout {
@@ -276,7 +274,9 @@ fn research_stub_desired_zero_has_zero_pressure() {
     let mut world = world_with_settlement(id);
     // Ensure research target 0.
     if let Some(state) = world.settlement_state_store_mut().get_mut(id) {
-        state.need_targets.push(NeedTarget::new(NeedCategory::Research, 0, 0.1));
+        state
+            .need_targets
+            .push(NeedTarget::new(NeedCategory::Research, 0, 0.1));
     }
     let (need_catalog, buildings, items, categories, profiles) = catalogs();
     let inventory_ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);

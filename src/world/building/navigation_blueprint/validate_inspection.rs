@@ -142,9 +142,7 @@ pub fn validate_blueprint_for_inspection(
         code: "generator_revision",
         message: format!(
             "blueprint `{}` schema={} generator={:?}",
-            blueprint.id,
-            blueprint.schema_version,
-            blueprint.metadata.generation_revision
+            blueprint.id, blueprint.schema_version, blueprint.metadata.generation_revision
         ),
         focus: None,
     });
@@ -205,7 +203,10 @@ fn validate_floor_polygon(
             push_warning(
                 diagnostics,
                 "duplicate_vertex",
-                format!("floor {} vertex {index} duplicates an earlier vertex", floor.floor_id),
+                format!(
+                    "floor {} vertex {index} duplicates an earlier vertex",
+                    floor.floor_id
+                ),
                 Some(BlueprintDiagnosticFocus {
                     floor_id: Some(floor.floor_id),
                     vertex_index: Some(index),
@@ -221,7 +222,10 @@ fn validate_floor_polygon(
         push_error(
             diagnostics,
             "degenerate_polygon",
-            format!("floor {} has fewer than three unique vertices", floor.floor_id),
+            format!(
+                "floor {} has fewer than three unique vertices",
+                floor.floor_id
+            ),
             focus_floor.clone(),
         );
         return;
@@ -249,7 +253,10 @@ fn validate_floor_polygon(
 
     for i in 0..verts.len() {
         let a = Vec2::new(verts[i][0], verts[i][1]);
-        let b = Vec2::new(verts[(i + 1) % verts.len()][0], verts[(i + 1) % verts.len()][1]);
+        let b = Vec2::new(
+            verts[(i + 1) % verts.len()][0],
+            verts[(i + 1) % verts.len()][1],
+        );
         if a.distance(b) < MIN_EDGE_LENGTH {
             push_warning(
                 diagnostics,
@@ -304,8 +311,11 @@ fn validate_entrance(
         return;
     };
     let pos = Vec2::new(entrance.local_position_xz[0], entrance.local_position_xz[1]);
-    if !point_on_polygon_boundary(&floor.walkable_outline.vertices_xz, pos, entrance.radius_meters)
-    {
+    if !point_on_polygon_boundary(
+        &floor.walkable_outline.vertices_xz,
+        pos,
+        entrance.radius_meters,
+    ) {
         push_warning(
             diagnostics,
             "entrance_off_boundary",
@@ -375,7 +385,10 @@ fn validate_transition(
                 }),
             );
         }
-        let to_pos = Vec2::new(transition.to_local_position[0], transition.to_local_position[2]);
+        let to_pos = Vec2::new(
+            transition.to_local_position[0],
+            transition.to_local_position[2],
+        );
         if !point_inside_polygon(&to.walkable_outline.vertices_xz, to_pos) {
             push_warning(
                 diagnostics,
@@ -548,9 +561,11 @@ mod tests {
             }]);
         let report = validate_blueprint_for_inspection(&blueprint);
         assert!(!report.valid());
-        assert!(report
-            .diagnostics
-            .iter()
-            .any(|d| d.code == "self_intersection"));
+        assert!(
+            report
+                .diagnostics
+                .iter()
+                .any(|d| d.code == "self_intersection")
+        );
     }
 }

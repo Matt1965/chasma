@@ -4,7 +4,10 @@ use bevy::prelude::*;
 
 use crate::world::{ChunkLayout, WorldData, WorldPosition, ground_world_position};
 
-/// Draw a horizontal quad at global XZ with Y sampled from terrain.
+/// Draw a horizontal cell marker at global XZ with Y sampled from terrain.
+///
+/// Uses an outline plus diagonals so the mask remains readable from typical RTS
+/// camera angles (filled meshes are reserved for terrain-field overlays).
 pub fn draw_xz_quad(
     gizmos: &mut Gizmos,
     world: &WorldData,
@@ -25,6 +28,9 @@ pub fn draw_xz_quad(
     for i in 0..4 {
         gizmos.line(corners[i], corners[(i + 1) % 4], color);
     }
+    // Diagonals improve visibility versus terrain wireframe alone.
+    gizmos.line(corners[0], corners[2], color);
+    gizmos.line(corners[1], corners[3], color);
 }
 
 pub fn sample_terrain_y(

@@ -124,11 +124,7 @@ pub fn draw_path_debug_overlay(
                 if let Some(portal) = world.space_registry().get_portal(portal_id) {
                     let center = Vec3::new(
                         portal.from_center_global_xz.x,
-                        portal
-                            .to_position
-                            .to_global(layout)
-                            .y
-                            .max(0.15),
+                        portal.to_position.to_global(layout).y.max(0.15),
                         portal.from_center_global_xz.y,
                     );
                     gizmos.circle(
@@ -152,12 +148,7 @@ pub fn draw_path_debug_overlay(
             let outline: Vec<Vec3> = floor
                 .world_outline_xz
                 .iter()
-                .map(|point| {
-                    xz_to_render_y(
-                        Vec3::new(point.x, y, point.y),
-                        vertical_scale,
-                    )
-                })
+                .map(|point| xz_to_render_y(Vec3::new(point.x, y, point.y), vertical_scale))
                 .collect();
             if outline.len() >= 3 {
                 for window in outline.windows(2) {

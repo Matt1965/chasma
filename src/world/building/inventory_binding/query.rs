@@ -58,5 +58,9 @@ pub fn primary_building_inventory_id(
         .building_inventory_binding_store()
         .get(building_id)
         .and_then(|set| set.default_inventory_id())
-        .or_else(|| world.get_building(building_id).and_then(|record| record.inventory_id))
+        .or_else(|| {
+            world
+                .get_building(building_id)
+                .and_then(|record| record.inventory_id)
+        })
 }

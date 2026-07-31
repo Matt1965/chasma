@@ -30,13 +30,7 @@ pub fn try_portal_transition(
         .collect();
 
     if let Some(preferred) = preferred_portal {
-        candidates.sort_by_key(|portal| {
-            if portal.id == preferred {
-                0
-            } else {
-                1
-            }
-        });
+        candidates.sort_by_key(|portal| if portal.id == preferred { 0 } else { 1 });
     }
 
     for portal in &mut candidates {

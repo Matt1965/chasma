@@ -6,7 +6,9 @@ use crate::world::building::inventory_binding::BuildingInventoryBindingId;
 use super::category::OperationCategory;
 use super::definition::OperationDefinition;
 use super::definition_id::OperationDefinitionId;
-use super::io::{OperationInputDefinition, OperationOutputDefinition, OperationTerrainRequirementRef};
+use super::io::{
+    OperationInputDefinition, OperationOutputDefinition, OperationTerrainRequirementRef,
+};
 
 fn terrain_req(field: &str, minimum_average_percent: u8) -> OperationTerrainRequirementRef {
     OperationTerrainRequirementRef {

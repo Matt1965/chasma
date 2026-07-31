@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
+use crate::dev::hotkeys::DEV_GIZMO_COORDINATE_SPACE;
 use crate::terrain::world_position_to_render_global;
 use crate::world::{
     BuildingCatalog, DoodadCatalog, OCCUPANCY_CELL_SIZE_METERS, WorldConfig, WorldData,
@@ -27,9 +28,18 @@ pub fn draw_transform_gizmo(
     render_assets: Option<Res<crate::terrain::TerrainRenderAssets>>,
     windows: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform), With<crate::camera::RtsCamera>>,
+    registry: Res<crate::dev::window::DevWindowRegistry>,
+    blueprint_inspection: Res<crate::dev::BlueprintInspectionState>,
     mut gizmos: Gizmos,
 ) {
     if !dev_state.enabled || !edit.mode.is_transform() {
+        return;
+    }
+    if crate::dev::navigation_editor::navigation_editor_owns_session(
+        dev_state.enabled,
+        &registry,
+        &blueprint_inspection,
+    ) {
         return;
     }
     let Some(target) = edit.target else {
@@ -60,7 +70,7 @@ pub fn draw_transform_gizmo(
 
     gizmos.sphere(anchor, 0.08 * gizmo_scale, Color::srgba(1.0, 1.0, 1.0, 0.9));
 
-    let handles = active_handles(edit.mode, policy.capabilities, edit.coordinate_space);
+    let handles = active_handles(edit.mode, policy.capabilities, DEV_GIZMO_COORDINATE_SPACE);
     for handle in handles {
         let hovered = edit.hovered_handle == Some(handle);
         let active = edit.active_handle == Some(handle);
@@ -75,7 +85,7 @@ pub fn draw_transform_gizmo(
             anchor,
             rotation,
             gizmo_scale,
-            edit.coordinate_space,
+            DEV_GIZMO_COORDINATE_SPACE,
             color,
         );
     }
@@ -200,12 +210,7 @@ fn draw_handle(
             );
         }
         GizmoHandle::ScaleX | GizmoHandle::ScaleY | GizmoHandle::ScaleZ => {
-            // Instance scale is always edited in local axes (independent of L world/local toggle).
-            let axis = oriented_axis(
-                handle.axis().unwrap(),
-                object_rotation,
-                GizmoCoordinateSpace::Local,
-            );
+            let axis = oriented_axis(handle.axis().unwrap(), object_rotation, space);
             let end = anchor + axis.normalize() * scale * 0.85;
             gizmos.line(anchor, end, color);
             gizmos.sphere(end, scale * 0.06, color);

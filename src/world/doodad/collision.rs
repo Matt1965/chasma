@@ -21,7 +21,10 @@ pub struct DoodadInstanceCollision {
 /// Composed XZ scale for doodad ground gameplay (baseline × instance X/Z).
 pub fn doodad_composed_xz_scale(definition: &DoodadDefinition, instance_scale_xz: Vec2) -> Vec2 {
     let baseline = definition.asset_sizing.resolved_baseline_scale().to_vec3();
-    Vec2::new(baseline.x * instance_scale_xz.x, baseline.z * instance_scale_xz.y)
+    Vec2::new(
+        baseline.x * instance_scale_xz.x,
+        baseline.z * instance_scale_xz.y,
+    )
 }
 
 /// Authored placement/pick radius (meters) before composed XZ scale.
@@ -56,8 +59,7 @@ pub fn resolve_doodad_collision(
 ) -> DoodadInstanceCollision {
     let blocks = definition.blocks_movement;
     let yaw = record.placement.collision_yaw_radians();
-    let combined_xz =
-        doodad_composed_xz_scale(definition, record.placement.collision_scale_xz());
+    let combined_xz = doodad_composed_xz_scale(definition, record.placement.collision_scale_xz());
 
     if !blocks {
         return DoodadInstanceCollision {

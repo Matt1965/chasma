@@ -53,7 +53,11 @@ pub fn validate_emergency_catalog(
 ) -> Vec<EmergencyValidationError> {
     let mut errors = Vec::new();
     for def in catalog.definitions() {
-        errors.extend(validate_emergency_definition(def, need_catalog, response_catalog));
+        errors.extend(validate_emergency_definition(
+            def,
+            need_catalog,
+            response_catalog,
+        ));
     }
     errors
 }

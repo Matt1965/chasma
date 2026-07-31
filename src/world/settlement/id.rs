@@ -4,7 +4,9 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// Authoritative settlement instance id.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect, Serialize, Deserialize,
+)]
 pub struct SettlementId(pub u64);
 
 impl SettlementId {

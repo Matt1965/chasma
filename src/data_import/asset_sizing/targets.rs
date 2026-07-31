@@ -90,9 +90,9 @@ mod integration_tests {
     use super::*;
     use crate::world::BuildingCatalog;
     use crate::world::BuildingDefinitionId;
+    use crate::world::asset_sizing::SizingMigrationState;
     use crate::world::asset_sizing::building_visual_scale;
     use crate::world::asset_sizing::finalize_building_definition;
-    use crate::world::asset_sizing::SizingMigrationState;
 
     #[test]
     fn storage_chest_footprint_sizing_bakes_baseline() {

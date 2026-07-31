@@ -1,4 +1,29 @@
 (
-    generator_version: 0,
-    entries: [],
+    generator_version: 1,
+    entries: [
+        (
+            blueprint_id: "storage_chest_nav",
+            building_definition_id: "storage_chest",
+            collision_render_key: "chest",
+            collision_source_hash: "849a4c43ec0e0cfe",
+            render_source_hash: Some("849a4c43ec0e0cfe"),
+            baseline_scale_milli: Some(833),
+        ),
+        (
+            blueprint_id: "barn_nav",
+            building_definition_id: "barn",
+            collision_render_key: "barn",
+            collision_source_hash: "d06acc9384898640",
+            render_source_hash: Some("d06acc9384898640"),
+            baseline_scale_milli: Some(2207),
+        ),
+        (
+            blueprint_id: "hut_nav",
+            building_definition_id: "hut",
+            collision_render_key: "hut_collision",
+            collision_source_hash: "",
+            render_source_hash: Some("9f95bd9dac051629"),
+            baseline_scale_milli: Some(476),
+        ),
+    ],
 )

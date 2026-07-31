@@ -1,86 +1,13 @@
-//! Inspector panel text formatting (ADR-048).
+//! Inspector snapshot text formatting (ADR-048). UI lives in Selected Object (Slice 5).
 
 use bevy::prelude::*;
-
-use crate::debug::{CommandTraceBuffer, recent_combat_log_lines};
 
 use super::snapshot::{
     BuildingBlueprintInspectorSnapshot, BuildingInspectorSnapshot, DoodadInspectorSnapshot,
     InteractionInspectorSnapshot, UnitInspectorSnapshot,
 };
-use super::state::WorldInspectorState;
 
-#[derive(Component, Debug)]
-pub(crate) struct DevInspectorText;
-
-pub(crate) fn setup_inspector_panel(parent: &mut ChildSpawnerCommands<'_>) {
-    parent.spawn((
-        DevInspectorText,
-        super::DevInspectorUi,
-        crate::dev::DevPanelUi,
-        Text::new("Click a unit (Alt+click or Dev Mode) to inspect"),
-        TextFont {
-            font_size: 11.0,
-            ..default()
-        },
-        TextColor(Color::srgba(0.78, 0.86, 0.94, 1.0)),
-        Node {
-            display: Display::None,
-            max_height: Val::Px(280.0),
-            overflow: Overflow::scroll_y(),
-            ..default()
-        },
-    ));
-}
-
-pub(crate) fn sync_inspector_panel(
-    dev_state: Res<crate::dev::DevModeState>,
-    inspector: Res<WorldInspectorState>,
-    tool_state: Res<crate::dev::gizmo::DevToolState>,
-    edit: Res<crate::dev::gizmo::TransformEditState>,
-    trace: Res<CommandTraceBuffer>,
-    mut text: Query<(&mut Text, &mut Node), With<DevInspectorText>>,
-) {
-    let Ok((mut label, mut node)) = text.single_mut() else {
-        return;
-    };
-
-    let show = dev_state.enabled && dev_state.active_tab == crate::dev::DevTab::Inspector;
-    node.display = if show { Display::Flex } else { Display::None };
-
-    if !show {
-        return;
-    }
-
-    **label = if let Some(snapshot) = inspector.doodad_snapshot.as_ref() {
-        format_doodad_snapshot(snapshot, &tool_state, &edit)
-    } else if let Some(snapshot) = inspector.building_snapshot.as_ref() {
-        format_building_snapshot(
-            snapshot,
-            inspector.production_advanced_expanded,
-            inspector.blueprint_snapshot.as_ref(),
-        )
-    } else if let Some(snapshot) = inspector.unit_snapshot.as_ref() {
-        let mut body = format_unit_snapshot(snapshot);
-        let unit_filter = inspector.selected_unit;
-        let log_lines = recent_combat_log_lines(&trace, unit_filter, 6);
-        if !log_lines.is_empty() {
-            body.push_str("\nCombat log:\n");
-            for line in log_lines {
-                body.push_str(&format!("  {line}\n"));
-            }
-        }
-        body
-    } else if let Some(interaction) = inspector.interaction_snapshot.as_ref() {
-        format_interaction_snapshot(interaction)
-    } else if inspector.last_message.is_empty() {
-        "Inspector: Alt+click unit, click doodad/building (Dev Mode), or terrain probe".into()
-    } else {
-        inspector.last_message.clone()
-    };
-}
-
-fn format_unit_snapshot(s: &UnitInspectorSnapshot) -> String {
+pub(crate) fn format_unit_snapshot_full(s: &UnitInspectorSnapshot) -> String {
     let mut out = format!(
         "Unit #{}  def={}  state={}  hp={}/{}  combat={}  tick={}\n\
          Space: {} (id={})  floor={}\n\
@@ -212,7 +139,7 @@ fn format_interaction_snapshot(s: &InteractionInspectorSnapshot) -> String {
     )
 }
 
-fn format_doodad_snapshot(
+pub(crate) fn format_doodad_snapshot_full(
     s: &DoodadInspectorSnapshot,
     tool_state: &crate::dev::gizmo::DevToolState,
     edit: &crate::dev::gizmo::TransformEditState,
@@ -245,11 +172,10 @@ fn format_doodad_snapshot(
         out.push_str(&format!("Tilt warning: {warning}\n"));
     }
     out.push_str(&format!(
-        "\nGizmo: {}  space={}  drag={}  valid={}\n\
-         W/E/R = Translate/Rotate/Scale  L = World/Local  Esc = cancel\n\
-         Hotkeys: arrows move  [ ] yaw  hold G ground  hold O overlap\n",
+        "\nGizmo: {}  drag={}  valid={}\n\
+         , . / = Move / Rotate / Scale (world-aligned)\n\
+         Hotkeys: arrows move  [ ] yaw\n",
         tool_state.active_tool.label(),
-        edit.coordinate_space.label(),
         edit.dragging,
         edit.preview_valid,
     ));
@@ -259,7 +185,7 @@ fn format_doodad_snapshot(
     out
 }
 
-fn format_building_snapshot(
+pub(crate) fn format_building_snapshot_full(
     s: &BuildingInspectorSnapshot,
     advanced: bool,
     blueprint: Option<&BuildingBlueprintInspectorSnapshot>,
@@ -294,12 +220,7 @@ fn format_building_snapshot(
 {}\n\
          policy enabled: {}  paused: {}  control: {}  priority: {}\n\
          efficiency terrain: {}  final: {}  limiting: {}\n\
-         Dev: [D]amage [H]eal [X]estroy [R]uins [C]omplete [P]+progress\n\
-         Production: [,] enable [.] pause [/] mode []] reset [`] advanced [\\] validate [';/] op [M] force exec [K] clear inv [F] refresh terrain\n\
-         Logistics: [Q] spawn [Shift+Q] cancel [Ctrl+Q] complete\n\
-         Planner: [Shift+P] force replan\n\
-         Container: [I]nspect [G]old [T]ransfer [U]lock [V]alidate\n\
-         Navigation: [N] inspect blueprint [Esc] exit [[ ]]/[]] floor [Shift+R] regenerate",
+         Dev building actions: see Selected Object → Building sections (Construction, Production, Inventory, Logistics, Lifecycle).\n",
         s.building_id.raw(),
         s.display_name,
         s.definition_id.as_str(),
@@ -397,7 +318,7 @@ fn format_building_snapshot(
     out
 }
 
-fn format_blueprint_section(bp: &BuildingBlueprintInspectorSnapshot) -> String {
+pub(crate) fn format_blueprint_section(bp: &BuildingBlueprintInspectorSnapshot) -> String {
     let mut section = format!(
         "\n--- Building Navigation Blueprint ---\n\
          id: {}  source: {}\n\
@@ -429,17 +350,13 @@ fn format_blueprint_section(bp: &BuildingBlueprintInspectorSnapshot) -> String {
     if bp.inspection_active {
         section.push_str("inspection: ACTIVE (bird's-eye)\n");
     } else {
-        section.push_str("inspection: press [N] to enter\n");
+        section.push_str("inspection: use Selected Object → Open Navigation Editor\n");
     }
     if bp.edit_active {
         section.push_str(&format!(
-            "edit: ACTIVE{}",
+            "edit: ACTIVE{} — use Navigation Editor window for tools and persistence\n",
             if bp.edit_dirty { " (unsaved)" } else { "" }
         ));
-        section.push_str("\n[Ctrl+S] save instance  [Ctrl+Shift+S] apply to asset  [Ctrl+Shift+V] save as variant\n");
-        section.push_str("[Ctrl+Alt+R] reset instance  [Esc] exit edit  [Enter/Esc] confirm pending action\n");
-        section.push_str("tools: [1] select [2] add vertex [3] add entrance\n");
-        section.push_str("[Del] delete  [+/-] radius  [/[] floor\n");
         if let Some(selected) = &bp.selected_element {
             section.push_str(&format!("selected: {selected}\n"));
         }
@@ -460,11 +377,13 @@ fn format_blueprint_section(bp: &BuildingBlueprintInspectorSnapshot) -> String {
                 active_marker(bp.variant_draft_active_field.as_deref(), "description"),
                 bp.variant_draft_description.as_deref().unwrap_or("—")
             ));
-            section.push_str("[Tab] next field  [Enter] create  [Esc] cancel\n");
+            section.push_str(
+                "Use Navigation Editor variant draft controls and Selected Object cancel.\n",
+            );
         }
     } else if bp.inspection_active {
-        section.push_str("edit: press [E] to edit blueprint\n");
-        section.push_str("[Shift+R] regenerate from mesh (confirms when authored)\n");
+        section.push_str("edit: use Navigation Editor → Edit mode\n");
+        section.push_str("regenerate: Navigation Editor → Regenerate (confirms when authored)\n");
     }
     for (index, diag) in bp.validation.diagnostics.iter().enumerate().take(12) {
         let level = match diag.level {

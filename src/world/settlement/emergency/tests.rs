@@ -5,17 +5,12 @@ use bevy::prelude::{Quat, Vec3};
 use super::*;
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::InventoryCatalogCtx;
-use crate::world::settlement::needs::{evaluate_settlement_needs_now, NeedCatalog};
-use crate::world::settlement::response::{
-    discover_settlement_responses_now, ResponseCatalog,
-};
+use crate::world::settlement::needs::{NeedCatalog, evaluate_settlement_needs_now};
+use crate::world::settlement::response::{ResponseCatalog, discover_settlement_responses_now};
 use crate::world::settlement::state::SettlementKind;
 use crate::world::settlement::{
-    create_settlement_with_treasury, reconcile_settlement_building_membership,
-    ActiveEmergencyInstance, SettlementOwnership,
-};
-use crate::world::{
-    may_preempt_with_override, sync_construction_tasks, TaskPriority, PreemptPolicyOverride,
+    ActiveEmergencyInstance, SettlementOwnership, create_settlement_with_treasury,
+    reconcile_settlement_building_membership,
 };
 use crate::world::{
     Affiliation, BuildingCategoryCatalog, BuildingDefinitionId, BuildingLifecycleState,
@@ -23,6 +18,9 @@ use crate::world::{
     WorldPosition, create_building_with_inventory, starter_building_definitions,
     starter_inventory_profile_definitions, starter_item_category_definitions,
     starter_item_definitions,
+};
+use crate::world::{
+    PreemptPolicyOverride, TaskPriority, may_preempt_with_override, sync_construction_tasks,
 };
 
 fn flat_world() -> WorldData {
@@ -38,9 +36,10 @@ fn flat_world() -> WorldData {
 fn inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
     static CTX: std::sync::OnceLock<InventoryCatalogCtx<'static>> = std::sync::OnceLock::new();
     CTX.get_or_init(|| {
-        let categories =
-            crate::world::ItemCategoryCatalog::from_definitions(starter_item_category_definitions())
-                .unwrap();
+        let categories = crate::world::ItemCategoryCatalog::from_definitions(
+            starter_item_category_definitions(),
+        )
+        .unwrap();
         let items =
             crate::world::ItemCatalog::from_definitions(starter_item_definitions(), &categories)
                 .unwrap();
@@ -113,15 +112,7 @@ fn starvation_activates_from_empty_food_reserves() {
     let (mut world, id, buildings) = setup_settlement();
     let catalog = EmergencyCatalog::default();
     let ctx = inventory_ctx();
-    evaluate_settlement_emergencies_now(
-        &mut world,
-        &catalog,
-        &buildings,
-        ctx.items,
-        ctx,
-        id,
-        10,
-    );
+    evaluate_settlement_emergencies_now(&mut world, &catalog, &buildings, ctx.items, ctx, id, 10);
     let state = world.settlement_state_store().get(id).unwrap();
     assert!(
         state.emergencies.instance("starvation").is_some(),
@@ -141,15 +132,7 @@ fn below_activation_threshold_does_not_activate_attack() {
     }
     let catalog = EmergencyCatalog::default();
     let ctx = inventory_ctx();
-    evaluate_settlement_emergencies_now(
-        &mut world,
-        &catalog,
-        &buildings,
-        ctx.items,
-        ctx,
-        id,
-        10,
-    );
+    evaluate_settlement_emergencies_now(&mut world, &catalog, &buildings, ctx.items, ctx, id, 10);
     let state = world.settlement_state_store().get(id).unwrap();
     assert!(state.emergencies.instance("active_attack").is_none());
 }
@@ -164,22 +147,16 @@ fn hysteresis_prevents_rapid_toggle() {
             .extension_seams
             .insert("hostile_threat".into(), "0.9".into());
     }
-    evaluate_settlement_emergencies_now(
-        &mut world,
-        &catalog,
-        &buildings,
-        ctx.items,
-        ctx,
-        id,
-        10,
+    evaluate_settlement_emergencies_now(&mut world, &catalog, &buildings, ctx.items, ctx, id, 10);
+    assert!(
+        world
+            .settlement_state_store()
+            .get(id)
+            .unwrap()
+            .emergencies
+            .instance("active_attack")
+            .is_some()
     );
-    assert!(world
-        .settlement_state_store()
-        .get(id)
-        .unwrap()
-        .emergencies
-        .instance("active_attack")
-        .is_some());
 
     // Drop below activation but still above deactivation — stay active (and min duration).
     if let Some(state) = world.settlement_state_store_mut().get_mut(id) {
@@ -187,22 +164,16 @@ fn hysteresis_prevents_rapid_toggle() {
             .extension_seams
             .insert("hostile_threat".into(), "0.4".into());
     }
-    evaluate_settlement_emergencies_now(
-        &mut world,
-        &catalog,
-        &buildings,
-        ctx.items,
-        ctx,
-        id,
-        20,
+    evaluate_settlement_emergencies_now(&mut world, &catalog, &buildings, ctx.items, ctx, id, 20);
+    assert!(
+        world
+            .settlement_state_store()
+            .get(id)
+            .unwrap()
+            .emergencies
+            .instance("active_attack")
+            .is_some()
     );
-    assert!(world
-        .settlement_state_store()
-        .get(id)
-        .unwrap()
-        .emergencies
-        .instance("active_attack")
-        .is_some());
 
     // Below deactivation but before min_active_duration — still active.
     if let Some(state) = world.settlement_state_store_mut().get_mut(id) {
@@ -210,40 +181,28 @@ fn hysteresis_prevents_rapid_toggle() {
             .extension_seams
             .insert("hostile_threat".into(), "0.1".into());
     }
-    evaluate_settlement_emergencies_now(
-        &mut world,
-        &catalog,
-        &buildings,
-        ctx.items,
-        ctx,
-        id,
-        30,
+    evaluate_settlement_emergencies_now(&mut world, &catalog, &buildings, ctx.items, ctx, id, 30);
+    assert!(
+        world
+            .settlement_state_store()
+            .get(id)
+            .unwrap()
+            .emergencies
+            .instance("active_attack")
+            .is_some()
     );
-    assert!(world
-        .settlement_state_store()
-        .get(id)
-        .unwrap()
-        .emergencies
-        .instance("active_attack")
-        .is_some());
 
     // After min duration + below deactivation — clears.
-    evaluate_settlement_emergencies_now(
-        &mut world,
-        &catalog,
-        &buildings,
-        ctx.items,
-        ctx,
-        id,
-        80,
+    evaluate_settlement_emergencies_now(&mut world, &catalog, &buildings, ctx.items, ctx, id, 80);
+    assert!(
+        world
+            .settlement_state_store()
+            .get(id)
+            .unwrap()
+            .emergencies
+            .instance("active_attack")
+            .is_none()
     );
-    assert!(world
-        .settlement_state_store()
-        .get(id)
-        .unwrap()
-        .emergencies
-        .instance("active_attack")
-        .is_none());
 }
 
 #[test]
@@ -256,15 +215,7 @@ fn severity_scales_with_signal() {
             .extension_seams
             .insert("hostile_threat".into(), "0.7".into());
     }
-    evaluate_settlement_emergencies_now(
-        &mut world,
-        &catalog,
-        &buildings,
-        ctx.items,
-        ctx,
-        id,
-        10,
-    );
+    evaluate_settlement_emergencies_now(&mut world, &catalog, &buildings, ctx.items, ctx, id, 10);
     let sev = world
         .settlement_state_store()
         .get(id)
@@ -291,7 +242,10 @@ fn emergency_modifiers_alter_need_and_response_scores() {
     }
     let state = world.settlement_state_store().get(id).unwrap();
     let delta = emergency_need_pressure_delta(state, &emergency_catalog, "food");
-    assert!(delta > 0.0, "authored starvation pressure delta expected; got {delta}");
+    assert!(
+        delta > 0.0,
+        "authored starvation pressure delta expected; got {delta}"
+    );
 
     evaluate_settlement_needs_now(
         &mut world,
@@ -321,7 +275,10 @@ fn emergency_modifiers_alter_need_and_response_scores() {
         .iter()
         .filter(|c| c.response_id.as_str().contains("luxury"))
         .all(|c| !c.is_available());
-    assert!(luxury_blocked, "luxury responses should be blocked under starvation");
+    assert!(
+        luxury_blocked,
+        "luxury responses should be blocked under starvation"
+    );
 }
 
 #[test]
@@ -366,9 +323,13 @@ fn player_and_ai_share_emergency_runtime() {
     let (mut world, player_id, buildings) = setup_settlement();
     // Create AI settlement state sharing same emergency catalog path.
     let ai_id = crate::world::SettlementId::new(99);
-    world.settlement_state_store_mut().insert(
-        crate::world::SettlementState::new(ai_id, SettlementKind::Town, false),
-    );
+    world
+        .settlement_state_store_mut()
+        .insert(crate::world::SettlementState::new(
+            ai_id,
+            SettlementKind::Town,
+            false,
+        ));
     let catalog = EmergencyCatalog::default();
     let ctx = inventory_ctx();
     for id in [player_id, ai_id] {
@@ -378,21 +339,17 @@ fn player_and_ai_share_emergency_runtime() {
                 .insert("fire_severity".into(), "0.95".into());
         }
         evaluate_settlement_emergencies_now(
-            &mut world,
-            &catalog,
-            &buildings,
-            ctx.items,
-            ctx,
-            id,
-            5,
+            &mut world, &catalog, &buildings, ctx.items, ctx, id, 5,
         );
-        assert!(world
-            .settlement_state_store()
-            .get(id)
-            .unwrap()
-            .emergencies
-            .instance("critical_fire")
-            .is_some());
+        assert!(
+            world
+                .settlement_state_store()
+                .get(id)
+                .unwrap()
+                .emergencies
+                .instance("critical_fire")
+                .is_some()
+        );
     }
 }
 
@@ -400,18 +357,19 @@ fn player_and_ai_share_emergency_runtime() {
 fn emergency_continuity_survives_serialize_without_reports() {
     let (mut world, id, _) = setup_settlement();
     if let Some(state) = world.settlement_state_store_mut().get_mut(id) {
-        state.emergencies.instances =
-            vec![ActiveEmergencyInstance::new("starvation", 42, 0.8)];
+        state.emergencies.instances = vec![ActiveEmergencyInstance::new("starvation", 42, 0.8)];
         state.emergencies.sync_legacy_flags();
     }
-    world.emergency_evaluation_store_mut().insert(EmergencyEvaluationReport {
-        settlement_id: id,
-        evaluated_tick: 99,
-        signals: Vec::new(),
-        activated: vec!["starvation".into()],
-        deactivated: Vec::new(),
-        diagnostics: vec!["temp".into()],
-    });
+    world
+        .emergency_evaluation_store_mut()
+        .insert(EmergencyEvaluationReport {
+            settlement_id: id,
+            evaluated_tick: 99,
+            signals: Vec::new(),
+            activated: vec!["starvation".into()],
+            deactivated: Vec::new(),
+            diagnostics: vec!["temp".into()],
+        });
 
     let save = world.settlement_state_store().export_save_state();
     let serialized = ron::ser::to_string(&save).unwrap();
@@ -419,9 +377,7 @@ fn emergency_continuity_survives_serialize_without_reports() {
     assert!(!serialized.contains("evaluated_tick")); // report not in SettlementState save
 
     let mut world2 = flat_world();
-    world2
-        .settlement_state_store_mut()
-        .import_save_state(save);
+    world2.settlement_state_store_mut().import_save_state(save);
     let restored = world2.settlement_state_store().get(id).unwrap();
     assert!(restored.emergencies.instance("starvation").is_some());
     assert!(world2.emergency_evaluation_store().get(id).is_none());
@@ -438,10 +394,11 @@ fn catalog_validation_rejects_bad_thresholds() {
         &NeedCatalog::default(),
         &ResponseCatalog::default(),
     );
-    assert!(errors.iter().any(|e| matches!(
-        e,
-        EmergencyValidationError::InvalidThresholds { .. }
-    )));
+    assert!(
+        errors
+            .iter()
+            .any(|e| matches!(e, EmergencyValidationError::InvalidThresholds { .. }))
+    );
 }
 
 #[test]
@@ -452,14 +409,6 @@ fn no_direct_worker_command_in_emergency_api() {
     let tasks_before = world.task_store().sorted_task_ids().len();
     let catalog = EmergencyCatalog::default();
     let ctx = inventory_ctx();
-    evaluate_settlement_emergencies_now(
-        &mut world,
-        &catalog,
-        &buildings,
-        ctx.items,
-        ctx,
-        id,
-        1,
-    );
+    evaluate_settlement_emergencies_now(&mut world, &catalog, &buildings, ctx.items, ctx, id, 1);
     assert_eq!(world.task_store().sorted_task_ids().len(), tasks_before);
 }

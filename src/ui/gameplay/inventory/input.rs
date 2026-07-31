@@ -7,35 +7,31 @@ use crate::client::inventory_intent::{InventoryIntent, InventoryIntentQueue, Inv
 use crate::ui::gameplay::inventory::state::InventoryUiState;
 use crate::ui::gameplay::player_hud_state::primary_selected_unit;
 use crate::units::input::SelectedUnits;
-use crate::world::WorldData;
 
 pub fn collect_inventory_keyboard_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     selection: Res<SelectedUnits>,
-    world: Res<WorldData>,
     mut ui: ResMut<InventoryUiState>,
     mut queue: ResMut<InventoryIntentQueue>,
+    menu_block: Option<Res<crate::menu::MenuInputBlock>>,
 ) {
-    if keyboard.just_pressed(KeyCode::Escape) {
-        if ui.dragging.take().is_some() {
-            return;
-        }
-        if ui.split_dialog.take().is_some() {
-            return;
-        }
-        if ui.open {
-            queue.push(InventoryIntent::Close);
-        }
+    let _ = &ui;
+    if menu_block.is_some_and(|block| block.blocks()) {
         return;
     }
+    // Escape is owned by the application menu. Close inventory with UI controls / I toggle.
 
     if keyboard.just_pressed(KeyCode::KeyI) {
         let Some(unit_id) = primary_selected_unit(&selection) else {
             return;
         };
-        queue.push(InventoryIntent::Open(InventoryOpenMode::UnitOnly {
-            unit_id,
-        }));
+        if ui.open {
+            queue.push(InventoryIntent::Close);
+        } else {
+            queue.push(InventoryIntent::Open(InventoryOpenMode::UnitOnly {
+                unit_id,
+            }));
+        }
     }
 }
 

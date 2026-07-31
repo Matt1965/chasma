@@ -3,8 +3,10 @@
 use bevy::prelude::*;
 
 use crate::client::inventory_intent::InventoryOpenMode;
+use crate::ui::gameplay::inventory::preview::InventoryPlacementPreview;
 use crate::world::{
-    CorpseId, EntryIndex, InventoryId, ItemPileId, SettlementId, TreasuryId, UnitId,
+    CorpseId, EntryIndex, InventoryId, ItemDefinitionId, ItemPileId, SettlementId, TreasuryId,
+    UnitId,
 };
 
 /// Drag payload — not authoritative.
@@ -13,6 +15,17 @@ pub struct InventoryDragState {
     pub source_inventory_id: InventoryId,
     pub entry_index: EntryIndex,
     pub entry_revision: u64,
+    pub item_definition_id: ItemDefinitionId,
+    pub grid_width: u8,
+    pub grid_height: u8,
+    pub quantity: u32,
+}
+
+/// Live drag preview (client-local, Slice 10).
+#[derive(Resource, Debug, Clone, Default, PartialEq)]
+pub struct InventoryDragPreviewState {
+    pub placement: InventoryPlacementPreview,
+    pub status_line: String,
 }
 
 /// Selected entry for details panel.
@@ -129,6 +142,13 @@ impl InventoryUiState {
 
     pub fn invalidate_drag(&mut self) {
         self.dragging = None;
+    }
+
+    pub fn cancel_drag(&mut self, feedback: Option<String>) {
+        self.dragging = None;
+        if let Some(msg) = feedback {
+            self.feedback_message = msg;
+        }
     }
 
     pub fn dual_transfer_open(&self) -> bool {

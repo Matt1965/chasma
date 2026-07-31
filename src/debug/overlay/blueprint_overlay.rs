@@ -2,23 +2,25 @@
 
 use bevy::prelude::*;
 
-use crate::dev::{
-    BlueprintEditSelection, BlueprintInspectionState, WorldInspectorState,
-};
+use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::terrain::TerrainRenderAssets;
 use crate::world::{
     BlueprintDiagnosticFocus, BuildingCatalog, BuildingNavigationBlueprint,
     BuildingNavigationBlueprintCatalog, NavigationEntranceDefinition, NavigationFloorDefinition,
-    NavigationVerticalTransitionDefinition, WorldConfig, WorldData, building_model_render_transform,
-    resolve_building_navigation_blueprint,
+    NavigationVerticalTransitionDefinition, WorldConfig, WorldData,
+    building_model_render_transform, resolve_building_navigation_blueprint,
 };
 
 use super::helpers::xz_to_render_y;
-use crate::debug::settings::DebugOverlaySettings;
 use crate::debug::InspectorOverlayFocus;
+use crate::debug::settings::DebugOverlaySettings;
+use crate::dev::{
+    BlueprintEditSelection, BlueprintInspectionState, WorldInspectorState, blueprint_local_to_world,
+};
 
 const FLOOR_Y_OFFSET: f32 = 0.08;
 const OTHER_FLOOR_ALPHA: f32 = 0.22;
+const VERTEX_GIZMO_RADIUS: f32 = 0.18;
 
 pub fn draw_blueprint_debug_overlay(
     mut gizmos: Gizmos,
@@ -29,6 +31,7 @@ pub fn draw_blueprint_debug_overlay(
     settings: Res<DebugOverlaySettings>,
     inspection: Res<BlueprintInspectionState>,
     inspector: Res<WorldInspectorState>,
+    world_selection: Res<WorldSelectionState>,
     overlay_focus: Res<InspectorOverlayFocus>,
     render_assets: Option<Res<TerrainRenderAssets>>,
 ) {
@@ -38,7 +41,11 @@ pub fn draw_blueprint_debug_overlay(
 
     let building_id = inspection
         .building_id
-        .or(inspector.selected_building)
+        .or(
+            (world_selection.category == WorldSelectionCategory::Building)
+                .then_some(world_selection.building_id)
+                .flatten(),
+        )
         .or(overlay_focus.blueprint_building_id);
     let Some(building_id) = building_id else {
         return;
@@ -51,7 +58,7 @@ pub fn draw_blueprint_debug_overlay(
         return;
     };
 
-    let blueprint_owned = if inspection.editing {
+    let blueprint_owned = if inspection.editing || inspection.working_copy.is_some() {
         None
     } else {
         match resolve_building_navigation_blueprint(
@@ -63,11 +70,10 @@ pub fn draw_blueprint_debug_overlay(
             _ => None,
         }
     };
-    let blueprint = if inspection.editing {
-        inspection.working_copy.as_ref().or(blueprint_owned.as_ref())
-    } else {
-        blueprint_owned.as_ref()
-    };
+    let blueprint = inspection
+        .working_copy
+        .as_ref()
+        .or(blueprint_owned.as_ref());
     let Some(blueprint) = blueprint else {
         return;
     };
@@ -80,13 +86,10 @@ pub fn draw_blueprint_debug_overlay(
     let transform =
         building_model_render_transform(definition, &record.placement, layout, vertical_scale);
 
-    let selected_floor = inspection
-        .selected_floor_id
-        .or(overlay_focus.blueprint_floor_id);
-    let diagnostic = overlay_focus
-        .blueprint_diagnostic
-        .as_ref()
-        .or(inspection.focused_diagnostic_index.and_then(|index| {
+    let selected_floor = resolve_overlay_floor_id(blueprint, &inspection, &overlay_focus);
+    let diagnostic = overlay_focus.blueprint_diagnostic.as_ref().or(inspection
+        .focused_diagnostic_index
+        .and_then(|index| {
             inspector
                 .blueprint_snapshot
                 .as_ref()
@@ -97,7 +100,9 @@ pub fn draw_blueprint_debug_overlay(
     draw_building_origin(&mut gizmos, &transform);
 
     for floor in &blueprint.floors {
-        let emphasized = selected_floor.map(|id| id == floor.floor_id).unwrap_or(true);
+        let emphasized = selected_floor
+            .map(|id| id == floor.floor_id)
+            .unwrap_or(true);
         let alpha = if emphasized { 1.0 } else { OTHER_FLOOR_ALPHA };
         draw_floor_polygon(
             &mut gizmos,
@@ -143,18 +148,28 @@ pub fn draw_blueprint_debug_overlay(
         if !emphasized {
             continue;
         }
-        draw_vertical_transition(
-            &mut gizmos,
-            &transform,
-            transition,
-            blueprint,
-            diagnostic,
-        );
+        draw_vertical_transition(&mut gizmos, &transform, transition, blueprint, diagnostic);
     }
 
-    if inspection.editing {
+    if inspection.editing || inspection.working_copy.is_some() {
         draw_edit_selection(&mut gizmos, &transform, blueprint, &inspection);
     }
+}
+
+fn resolve_overlay_floor_id(
+    blueprint: &BuildingNavigationBlueprint,
+    inspection: &BlueprintInspectionState,
+    overlay_focus: &InspectorOverlayFocus,
+) -> Option<i32> {
+    let candidate = inspection
+        .selected_floor_id
+        .or(overlay_focus.blueprint_floor_id);
+    if let Some(id) = candidate {
+        if blueprint.floors.iter().any(|floor| floor.floor_id == id) {
+            return Some(id);
+        }
+    }
+    blueprint.floors.first().map(|floor| floor.floor_id)
 }
 
 fn draw_edit_selection(
@@ -169,10 +184,8 @@ fn draw_edit_selection(
             if selected_floor == Some(*floor_id) {
                 if let Some(floor) = blueprint.floors.iter().find(|f| f.floor_id == *floor_id) {
                     if let Some(&[x, z]) = floor.walkable_outline.vertices_xz.get(*index) {
-                        let pos = local_to_render(
-                            transform,
-                            Vec3::new(x, floor.elevation_meters, z),
-                        );
+                        let pos =
+                            local_to_render(transform, Vec3::new(x, floor.elevation_meters, z));
                         gizmos.sphere(
                             xz_to_render_y(pos, FLOOR_Y_OFFSET + 0.1),
                             0.22,
@@ -186,12 +199,13 @@ fn draw_edit_selection(
             if selected_floor == Some(*floor_id) {
                 if let Some(floor) = blueprint.floors.iter().find(|f| f.floor_id == *floor_id) {
                     let verts = &floor.walkable_outline.vertices_xz;
-                    if let (Some(&[ax, az]), Some(&[bx, bz])) = (
-                        verts.get(*index),
-                        verts.get((*index + 1) % verts.len()),
-                    ) {
-                        let a = local_to_render(transform, Vec3::new(ax, floor.elevation_meters, az));
-                        let b = local_to_render(transform, Vec3::new(bx, floor.elevation_meters, bz));
+                    if let (Some(&[ax, az]), Some(&[bx, bz])) =
+                        (verts.get(*index), verts.get((*index + 1) % verts.len()))
+                    {
+                        let a =
+                            local_to_render(transform, Vec3::new(ax, floor.elevation_meters, az));
+                        let b =
+                            local_to_render(transform, Vec3::new(bx, floor.elevation_meters, bz));
                         gizmos.line(
                             xz_to_render_y(a, FLOOR_Y_OFFSET + 0.1),
                             xz_to_render_y(b, FLOOR_Y_OFFSET + 0.1),
@@ -213,8 +227,13 @@ fn draw_edit_selection(
                 );
             }
         }
-        BlueprintEditSelection::Transition { key } | BlueprintEditSelection::TransitionTo { key } => {
-            if let Some(transition) = blueprint.vertical_transitions.iter().find(|t| t.key == *key) {
+        BlueprintEditSelection::Transition { key }
+        | BlueprintEditSelection::TransitionTo { key } => {
+            if let Some(transition) = blueprint
+                .vertical_transitions
+                .iter()
+                .find(|t| t.key == *key)
+            {
                 let from_elev = floor_elevation(blueprint, &transition.from_floor_key);
                 let [fx, fz] = transition.from_local_position_xz;
                 let from = local_to_render(transform, Vec3::new(fx, from_elev, fz));
@@ -240,14 +259,22 @@ fn floor_elevation(blueprint: &BuildingNavigationBlueprint, floor_key: &str) -> 
 }
 
 fn local_to_render(transform: &Transform, local: Vec3) -> Vec3 {
-    transform.transform_point(local)
+    blueprint_local_to_world(transform, Vec2::new(local.x, local.z), local.y)
 }
 
 fn draw_building_origin(gizmos: &mut Gizmos, transform: &Transform) {
     let origin = transform.translation;
     let axis_len = 1.5 * transform.scale.x.max(0.5);
-    gizmos.line(origin, origin + transform.rotation * Vec3::X * axis_len, Color::srgba(0.9, 0.2, 0.2, 0.85));
-    gizmos.line(origin, origin + transform.rotation * Vec3::Z * axis_len, Color::srgba(0.2, 0.4, 0.95, 0.85));
+    gizmos.line(
+        origin,
+        origin + transform.rotation * Vec3::X * axis_len,
+        Color::srgba(0.9, 0.2, 0.2, 0.85),
+    );
+    gizmos.line(
+        origin,
+        origin + transform.rotation * Vec3::Z * axis_len,
+        Color::srgba(0.2, 0.4, 0.95, 0.85),
+    );
 }
 
 fn draw_floor_polygon(
@@ -262,12 +289,7 @@ fn draw_floor_polygon(
         .walkable_outline
         .vertices_xz
         .iter()
-        .map(|&[x, z]| {
-            local_to_render(
-                transform,
-                Vec3::new(x, floor.elevation_meters, z),
-            )
-        })
+        .map(|&[x, z]| local_to_render(transform, Vec3::new(x, floor.elevation_meters, z)))
         .map(|p| xz_to_render_y(p, FLOOR_Y_OFFSET))
         .collect();
 
@@ -302,7 +324,7 @@ fn draw_floor_polygon(
             } else {
                 vertex_color
             };
-            gizmos.sphere(*pos, 0.12, color);
+            gizmos.sphere(*pos, VERTEX_GIZMO_RADIUS, color);
         }
     }
 }
@@ -327,17 +349,10 @@ fn draw_entrance(
         Color::srgba(0.95, 0.75, 0.15, 0.95)
     };
     let radius = entrance.radius_meters * transform.scale.x;
-    gizmos.circle(
-        Isometry3d::new(center, Quat::IDENTITY),
-        radius,
-        color,
-    );
+    gizmos.circle(Isometry3d::new(center, Quat::IDENTITY), radius, color);
     let forward = transform.rotation * Vec3::new(0.0, 0.0, -1.0);
     gizmos.line(center, center + forward * radius * 1.4, color);
-    let spawn = local_to_render(
-        transform,
-        Vec3::from_array(entrance.interior_spawn_local),
-    );
+    let spawn = local_to_render(transform, Vec3::from_array(entrance.interior_spawn_local));
     let spawn = xz_to_render_y(spawn, FLOOR_Y_OFFSET + 0.06);
     gizmos.line(center, spawn, Color::srgba(0.95, 0.75, 0.15, 0.55));
     gizmos.sphere(spawn, 0.1, Color::srgba(0.95, 0.75, 0.15, 0.8));
@@ -366,11 +381,7 @@ fn draw_vertical_transition(
         Color::srgba(0.55, 0.35, 0.95, 0.9)
     };
     let radius = transition.from_radius_meters * transform.scale.x;
-    gizmos.circle(
-        Isometry3d::new(from, Quat::IDENTITY),
-        radius,
-        color,
-    );
+    gizmos.circle(Isometry3d::new(from, Quat::IDENTITY), radius, color);
     gizmos.line(from, to, color);
     gizmos.sphere(to, 0.14, color);
 }

@@ -42,32 +42,39 @@ impl Plugin for DebugOverlayPlugin {
                 draw_formation_debug_overlay, draw_intent_debug_overlay,
                 draw_interaction_debug_overlay, draw_navigation_debug_overlay,
                 draw_path_debug_overlay, draw_selection_debug_overlay, draw_steering_debug_overlay,
+                setup_navigation_mask_overlay_assets, sync_navigation_mask_meshes,
             };
             use super::settings::{
                 run_debug_blueprint_overlay, run_debug_combat_overlay, run_debug_formation_overlay,
-                run_debug_intent_overlay, run_debug_interaction_overlay, run_debug_navigation_overlay,
-                run_debug_path_overlay, run_debug_selection_overlay, run_debug_steering_overlay,
+                run_debug_intent_overlay, run_debug_interaction_overlay,
+                run_debug_navigation_overlay, run_debug_path_overlay, run_debug_selection_overlay,
+                run_debug_steering_overlay,
             };
 
-            app.init_resource::<InteractionDebugSnapshot>().add_systems(
-                Update,
-                (
-                    capture_interaction_debug_snapshot
-                        .run_if(run_capture_interaction_debug_snapshot),
-                    draw_intent_debug_overlay.run_if(run_debug_intent_overlay),
-                    draw_interaction_debug_overlay.run_if(run_debug_interaction_overlay),
-                    draw_path_debug_overlay.run_if(run_debug_path_overlay),
-                    draw_navigation_debug_overlay.run_if(run_debug_navigation_overlay),
-                    draw_blueprint_debug_overlay.run_if(run_debug_blueprint_overlay),
-                    draw_formation_debug_overlay.run_if(run_debug_formation_overlay),
-                    draw_steering_debug_overlay.run_if(run_debug_steering_overlay),
-                    draw_selection_debug_overlay.run_if(run_debug_selection_overlay),
-                    draw_combat_debug_overlay.run_if(run_debug_combat_overlay),
-                )
-                    .chain()
-                    .after(crate::debug::flush_intent_dispatch_trace)
-                    .in_set(DebugOverlaySystems),
-            );
+            app.init_resource::<InteractionDebugSnapshot>()
+                .init_resource::<super::overlay::NavigationMaskCache>()
+                .init_resource::<super::overlay::NavigationMaskDrawStats>()
+                .add_systems(Startup, setup_navigation_mask_overlay_assets)
+                .add_systems(
+                    Update,
+                    (
+                        capture_interaction_debug_snapshot
+                            .run_if(run_capture_interaction_debug_snapshot),
+                        draw_intent_debug_overlay.run_if(run_debug_intent_overlay),
+                        draw_interaction_debug_overlay.run_if(run_debug_interaction_overlay),
+                        draw_path_debug_overlay.run_if(run_debug_path_overlay),
+                        draw_navigation_debug_overlay.run_if(run_debug_navigation_overlay),
+                        sync_navigation_mask_meshes,
+                        draw_blueprint_debug_overlay.run_if(run_debug_blueprint_overlay),
+                        draw_formation_debug_overlay.run_if(run_debug_formation_overlay),
+                        draw_steering_debug_overlay.run_if(run_debug_steering_overlay),
+                        draw_selection_debug_overlay.run_if(run_debug_selection_overlay),
+                        draw_combat_debug_overlay.run_if(run_debug_combat_overlay),
+                    )
+                        .chain()
+                        .after(crate::debug::flush_intent_dispatch_trace)
+                        .in_set(DebugOverlaySystems),
+                );
         }
     }
 }

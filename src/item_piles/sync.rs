@@ -5,9 +5,7 @@ use bevy::prelude::*;
 
 use crate::terrain::residency::ChunkResidencyTracker;
 use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
-use crate::world::{
-    ItemCatalog, ItemDefinition, ItemPileId, WorldData, pile_item_definition_id,
-};
+use crate::world::{ItemCatalog, ItemDefinition, ItemPileId, WorldData, pile_item_definition_id};
 
 use super::assets::ItemSceneAssets;
 use super::components::ItemPileRenderEntity;
@@ -186,11 +184,9 @@ fn resolve_desired_visual(
             reason: ItemPileFallbackReason::MissingDefinition,
         };
     };
-    let Some(scene) = scene_assets.ensure_scene(
-        &definition.id,
-        &definition.render_key,
-        asset_server,
-    ) else {
+    let Some(scene) =
+        scene_assets.ensure_scene(&definition.id, &definition.render_key, asset_server)
+    else {
         return DesiredVisual {
             kind: ItemPileVisualKind::Fallback,
             scene: None,
@@ -223,9 +219,7 @@ fn resolve_pile_definition<'a>(
             .get(instance_id)
             .map(|instance| instance.definition_id.clone())
     });
-    definition_id
-        .as_ref()
-        .and_then(|id| items.get(id))
+    definition_id.as_ref().and_then(|id| items.get(id))
 }
 
 fn visual_kind(
@@ -250,8 +244,8 @@ mod tests {
     use super::*;
     use crate::terrain::ChunkResidencyTracker;
     use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, ItemDefinitionId,
-        ItemPileSource, LocalPosition, SpaceId, WorldItemPileRecord, WorldPosition,
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, ItemDefinitionId, ItemPileSource,
+        LocalPosition, SpaceId, WorldItemPileRecord, WorldPosition,
     };
 
     fn layout() -> ChunkLayout {

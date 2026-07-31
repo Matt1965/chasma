@@ -28,11 +28,12 @@ pub use events::{TaskEvent, TaskTickReport};
 pub use id::TaskId;
 pub use labor::step_all_worker_tasks;
 pub use marketplace::{
-    may_preempt, may_preempt_with_override, score_marketplace_listing, step_worker_assignment,
-    sync_operate_workstation_tasks, validate_worker_assignments, AssignmentDecision,
-    AssignmentScore, AssignmentValidationError, MarketplaceCandidate, MarketplaceListing,
-    PreemptPolicyOverride, WorkerAssignmentContext, WorkerAssignmentReport, WorkerAssignmentStore,
-    WorkerEvaluation, MIN_PREEMPT_PRIORITY_RANKS, MIN_STICK_TICKS, WORKER_ASSIGNMENT_CADENCE_TICKS,
+    AssignmentDecision, AssignmentScore, AssignmentValidationError, MIN_PREEMPT_PRIORITY_RANKS,
+    MIN_STICK_TICKS, MarketplaceCandidate, MarketplaceListing, PreemptPolicyOverride,
+    WORKER_ASSIGNMENT_CADENCE_TICKS, WorkerAssignmentContext, WorkerAssignmentReport,
+    WorkerAssignmentStore, WorkerEvaluation, may_preempt, may_preempt_with_override,
+    score_marketplace_listing, step_worker_assignment, sync_operate_workstation_tasks,
+    validate_worker_assignments,
 };
 pub use record::{StrategicTaskOrigin, TaskRecord};
 pub use store::TaskStore;

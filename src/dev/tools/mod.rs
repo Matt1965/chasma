@@ -8,7 +8,7 @@ mod preview;
 
 pub use batch_spawn::{BatchSpawnRequest, BatchSpawnScratch, execute_batch_spawn};
 pub use brush::{BrushMode, BrushSettings, MAX_BRUSH_SPAWN_COUNT};
-pub use placement_rules::PlacementRules;
+pub use placement_rules::{PlacementRejectReason, PlacementRules, PlacementValidation};
 pub use preview::{
     DevPlacementPreview, DevPlacementPreviewScratch, DevPreviewAnchor, draw_dev_placement_preview,
     update_dev_placement_preview,

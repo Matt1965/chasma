@@ -68,7 +68,10 @@ impl BuildingNavigationRuntimeStore {
 
     pub fn floor_for_space(&self, space_id: SpaceId) -> Option<&RuntimeNavigationFloor> {
         let runtime = self.get_for_space(space_id)?;
-        runtime.floors.iter().find(|floor| floor.space_id == space_id)
+        runtime
+            .floors
+            .iter()
+            .find(|floor| floor.space_id == space_id)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &BuildingNavigationRuntime> {
@@ -348,14 +351,12 @@ pub fn reposition_building_navigation_runtime(
     let definition = building_catalog
         .get(&record.definition_id)
         .ok_or_else(|| format!("definition {} missing", record.definition_id.as_str()))?;
-    let blueprint = nav_catalog
-        .get(&runtime.blueprint_id)
-        .ok_or_else(|| {
-            format!(
-                "navigation blueprint {} missing",
-                runtime.blueprint_id.as_str()
-            )
-        })?;
+    let blueprint = nav_catalog.get(&runtime.blueprint_id).ok_or_else(|| {
+        format!(
+            "navigation blueprint {} missing",
+            runtime.blueprint_id.as_str()
+        )
+    })?;
 
     let layout = world.layout();
     let model = building_model_world_transform(definition, &record.placement, layout);
@@ -491,7 +492,12 @@ mod tests {
             crate::world::ChunkCoord::new(0, 0),
             crate::world::LocalPosition::new(Vec3::new(22.0, 0.0, 22.0)),
         );
-        let space = resolve_navigation_space_at_position(&store, &SpaceRegistry::default(), layout, position);
+        let space = resolve_navigation_space_at_position(
+            &store,
+            &SpaceRegistry::default(),
+            layout,
+            position,
+        );
         assert_ne!(space, SpaceId::SURFACE);
     }
 }

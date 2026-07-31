@@ -7,9 +7,9 @@ use super::error::InteriorError;
 use super::id::InteriorProfileId;
 use crate::world::building::catalog::{BuildingCatalog, BuildingDefinition};
 use crate::world::building::navigation_blueprint::{
-    blueprint_portal_templates, blueprint_space_templates, build_navigation_runtime,
-    register_building_navigation_profile, resolve_building_navigation_blueprint,
-    BuildingNavigationBlueprintCatalog,
+    BuildingNavigationBlueprintCatalog, blueprint_portal_templates, blueprint_space_templates,
+    build_navigation_runtime, register_building_navigation_profile,
+    resolve_building_navigation_blueprint,
 };
 use crate::world::building::record::BuildingRecord;
 use crate::world::building::state::BuildingInteriorState;
@@ -17,7 +17,8 @@ use crate::world::building::state::BuildingLifecycleState;
 use crate::world::{
     BuildingId, BuildingSource, DoodadCatalog, DoodadPlacementOverrides, DoodadSource,
     OccupancyCatalogs, PortalId, PortalRecord, SpaceId, WorldData, WorldPosition,
-    building_model_world_transform, create_building, create_doodad, register_building_space_profile,
+    building_model_world_transform, create_building, create_doodad,
+    register_building_space_profile,
 };
 
 /// Activate authored interior spaces, doors, and child objects when a building completes.
@@ -44,12 +45,12 @@ pub fn activate_building_interior(
         .get(profile_id)
         .ok_or_else(|| InteriorError::MissingInteriorProfile(profile_id.clone()))?;
 
-    let definition = building_catalog
-        .get(&record.definition_id)
-        .ok_or_else(|| InteriorError::InteriorSpawnFailed {
+    let definition = building_catalog.get(&record.definition_id).ok_or_else(|| {
+        InteriorError::InteriorSpawnFailed {
             building_id,
             reason: format!("missing definition `{}`", record.definition_id.as_str()),
-        })?;
+        }
+    })?;
 
     let layout = world.layout();
     let blueprint = nav_catalog.and_then(|catalog| {
@@ -75,12 +76,14 @@ pub fn activate_building_interior(
             &portals,
         );
         let model = building_model_world_transform(definition, &record.placement, layout);
-        world.building_navigation_runtime_mut().insert(build_navigation_runtime(
-            building_id,
-            blueprint,
-            model,
-            &keys.0,
-        ));
+        world
+            .building_navigation_runtime_mut()
+            .insert(build_navigation_runtime(
+                building_id,
+                blueprint,
+                model,
+                &keys.0,
+            ));
         let (space_keys, mut portal_keys) = keys;
         supplement_door_portals_from_profile(
             world.space_registry_mut(),
@@ -273,18 +276,18 @@ fn supplement_door_portals_from_profile(
                 door_key: door.key.to_string(),
                 portal_key: door.portal_key.to_string(),
             })?;
-        let from_space = *space_keys
-            .get(template.from_space_key)
-            .ok_or_else(|| InteriorError::InteriorSpawnFailed {
+        let from_space = *space_keys.get(template.from_space_key).ok_or_else(|| {
+            InteriorError::InteriorSpawnFailed {
                 building_id: building.id,
                 reason: format!("missing space `{}`", template.from_space_key),
-            })?;
-        let to_space = *space_keys
-            .get(template.to_space_key)
-            .ok_or_else(|| InteriorError::InteriorSpawnFailed {
+            }
+        })?;
+        let to_space = *space_keys.get(template.to_space_key).ok_or_else(|| {
+            InteriorError::InteriorSpawnFailed {
                 building_id: building.id,
                 reason: format!("missing space `{}`", template.to_space_key),
-            })?;
+            }
+        })?;
         let from_floor_y = floor_y_for(template.from_space_key);
         let from_local = Vec3::new(
             template.from_local_xz.x,
@@ -417,12 +420,12 @@ pub fn refresh_building_navigation_runtime(
         return Ok(());
     }
 
-    let definition = building_catalog
-        .get(&record.definition_id)
-        .ok_or_else(|| InteriorError::InteriorSpawnFailed {
+    let definition = building_catalog.get(&record.definition_id).ok_or_else(|| {
+        InteriorError::InteriorSpawnFailed {
             building_id,
             reason: format!("missing definition `{}`", record.definition_id.as_str()),
-        })?;
+        }
+    })?;
 
     let profile_key = record
         .interior
@@ -432,7 +435,9 @@ pub fn refresh_building_navigation_runtime(
         .ok_or_else(|| InteriorError::MissingInteriorProfile(InteriorProfileId::new("missing")))?;
     let profile = interior_catalog
         .get(&InteriorProfileId::new(profile_key))
-        .ok_or_else(|| InteriorError::MissingInteriorProfile(InteriorProfileId::new(profile_key)))?;
+        .ok_or_else(|| {
+            InteriorError::MissingInteriorProfile(InteriorProfileId::new(profile_key))
+        })?;
 
     let resolved = resolve_building_navigation_blueprint(
         definition,
@@ -550,7 +555,9 @@ pub fn deactivate_building_interior(
 
     world.door_store_mut().remove_building(building_id);
     world.space_registry_mut().remove_building(building_id);
-    world.building_navigation_runtime_mut().remove_building(building_id);
+    world
+        .building_navigation_runtime_mut()
+        .remove_building(building_id);
 
     world.mutate_building(building_id, |building| {
         building.spaces.space_ids.clear();

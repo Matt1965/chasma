@@ -9,7 +9,10 @@ use bevy::window::PrimaryWindow;
 use crate::camera::RtsCamera;
 use crate::simulation::SimulationControlState;
 use crate::terrain::TerrainRenderAssets;
-use crate::units::input::{BoxSelectDrag, cursor_world_ray, terrain_click_to_world_position};
+use crate::units::input::{
+    BoxSelectDrag, cursor_world_ray, pick_unit_command_target_along_ray,
+    terrain_click_to_world_position,
+};
 use crate::world::{
     BuildingCatalog, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, InventoryCatalogCtx,
     InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, UnitCatalog, WorldConfig, WorldData,
@@ -17,14 +20,25 @@ use crate::world::{
 
 use super::catalog_cache::DevSearchDebounce;
 use super::dev_mode::{DefinitionId, DevModeInputGate, DevModeState, DevTab, DevTextFieldFocus};
-use super::gizmo::TransformEditState;
+use super::gizmo::{DevTool, DevToolState, TransformEditState};
 use super::history::DevSpawnRecord;
+use super::hotkeys::{
+    DevShortcutSuppressionCtx, cancel_blueprint_edit_drag, cancel_blueprint_pending_confirmation,
+    cancel_blueprint_variant_draft, dev_shortcuts_suppressed,
+};
 use super::inspector::WorldInspectorState;
+use super::selected_object::SelectedObjectUiState;
 use super::spawn_tools::dev_spawn_position_from_terrain_click;
 use super::tools::{
     BatchSpawnRequest, BatchSpawnScratch, DevPlacementPreview, DevPreviewAnchor,
     execute_batch_spawn,
 };
+use super::window::DevWindowRegistry;
+use crate::client::selection::{
+    ApplyWorldSelectionParams, WorldSelectionChange, WorldSelectionRevision, WorldSelectionState,
+    apply_world_selection,
+};
+use crate::units::UnitRenderEntity;
 
 const SHIFT_BATCH_COUNT: u32 = 5;
 
@@ -52,8 +66,17 @@ pub struct DevSpawnClickParams<'w> {
 }
 
 /// Reset input gate at the start of each frame.
-pub fn reset_dev_input_gate(mut gate: ResMut<DevModeInputGate>) {
+/// When a modal application menu owns input, block Dev world/camera interaction.
+pub fn reset_dev_input_gate(
+    mut gate: ResMut<DevModeInputGate>,
+    menu_block: Option<Res<crate::menu::MenuInputBlock>>,
+) {
     gate.reset();
+    if menu_block.is_some_and(|block| block.blocks()) {
+        gate.block_gameplay_mouse = true;
+        gate.block_camera_input = true;
+        gate.spawn_handled_this_frame = true;
+    }
 }
 
 /// Cancel armed placement tool and clear preview ghosts.
@@ -67,9 +90,30 @@ pub fn dev_mode_keyboard_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut dev_state: ResMut<DevModeState>,
     mut debounce: ResMut<DevSearchDebounce>,
-    inspector: Res<crate::dev::inspector::WorldInspectorState>,
+    registry: Res<crate::dev::window::DevWindowRegistry>,
+    world_selection: Res<WorldSelectionState>,
+    selected_object_ui: Res<SelectedObjectUiState>,
+    mut blueprint_inspection: ResMut<crate::dev::BlueprintInspectionState>,
+    mut nav_ui: ResMut<crate::dev::NavigationEditorUiState>,
+    mut inspector: ResMut<crate::dev::inspector::WorldInspectorState>,
+    menu_block: Option<Res<crate::menu::MenuInputBlock>>,
 ) {
+    if menu_block.is_some_and(|block| block.blocks()) {
+        return;
+    }
     if keyboard.just_pressed(KeyCode::F12) {
+        if blueprint_inspection.editing && blueprint_inspection.dirty {
+            blueprint_inspection.pending_confirmation = Some(
+                crate::dev::inspector::BlueprintPendingConfirmation::DiscardEdits {
+                    action: "disable dev mode".into(),
+                },
+            );
+            nav_ui.pending_blocked_action =
+                Some(crate::dev::NavigationEditorBlockedAction::DisableDevMode);
+            inspector.last_message =
+                "Unsaved navigation edits — confirm discard in Navigation Editor or cancel.".into();
+            return;
+        }
         dev_state.toggle();
     }
 
@@ -79,32 +123,17 @@ pub fn dev_mode_keyboard_input(
 
     let ctrl = keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight);
 
-    if keyboard.just_pressed(KeyCode::Slash) || (ctrl && keyboard.just_pressed(KeyCode::KeyF)) {
-        let transform_target =
-            inspector.selected_doodad.is_some() || inspector.selected_building.is_some();
-        if !transform_target {
-            if dev_state.active_tab == DevTab::Scenes {
-                dev_state.focus_scene_name();
-            } else {
-                dev_state.focus_catalog_search();
-            }
-            return;
+    if ctrl && keyboard.just_pressed(KeyCode::KeyF) {
+        if registry.is_visible(crate::dev::window::DevWindowId::Save) {
+            dev_state.focus_scene_name();
+        } else {
+            dev_state.focus_catalog_search();
         }
+        return;
     }
 
     if keyboard.just_pressed(KeyCode::Tab) && !dev_state.has_text_focus() {
-        dev_state.active_tab = match dev_state.active_tab {
-            DevTab::Units => DevTab::Doodads,
-            DevTab::Doodads => DevTab::Buildings,
-            DevTab::Buildings => DevTab::Items,
-            DevTab::Items => DevTab::Placement,
-            DevTab::Placement => DevTab::Scenes,
-            DevTab::Scenes => DevTab::Inspector,
-            DevTab::Inspector => DevTab::Debug,
-            DevTab::Debug => DevTab::WorldTools,
-            DevTab::WorldTools => DevTab::TerrainFields,
-            DevTab::TerrainFields => DevTab::Units,
-        };
+        dev_state.active_tab = super::catalog::next_visible_tab(dev_state.active_tab);
         dev_state.list_scroll = 0;
     }
 
@@ -113,9 +142,14 @@ pub fn dev_mode_keyboard_input(
         return;
     }
 
+    let suppression =
+        DevShortcutSuppressionCtx::new(&dev_state, &selected_object_ui, &blueprint_inspection);
+    if dev_shortcuts_suppressed(suppression) {
+        return;
+    }
+
     if keyboard.just_pressed(KeyCode::KeyE) {
-        let gizmo_context =
-            inspector.selected_doodad.is_some() || inspector.selected_building.is_some();
+        let gizmo_context = world_selection.has_transform_target();
         if !gizmo_context {
             dev_state.enabled_only = !dev_state.enabled_only;
         }
@@ -128,37 +162,134 @@ pub fn dev_mode_keyboard_input(
     handle_favorite_hotkeys(&keyboard, &mut dev_state);
 }
 
-/// Esc cancels placement tool and clears search focus (DV2).
-pub fn handle_dev_tool_cancel_input(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mouse_buttons: Res<ButtonInput<MouseButton>>,
-    panel_hovered: Res<DevPanelHoverState>,
-    mut dev_state: ResMut<DevModeState>,
-    mut preview: ResMut<DevPlacementPreview>,
-    mut gate: ResMut<DevModeInputGate>,
+/// Bundled params for centralized dev right-click handling (Bevy system param limit).
+#[derive(SystemParam)]
+pub struct DevRightClickParams<'w, 's> {
+    pub mouse_buttons: Res<'w, ButtonInput<MouseButton>>,
+    pub panel_hovered: Res<'w, DevPanelHoverState>,
+    pub window_registry: Res<'w, DevWindowRegistry>,
+    pub dev_state: ResMut<'w, DevModeState>,
+    pub preview: ResMut<'w, DevPlacementPreview>,
+    pub gate: ResMut<'w, DevModeInputGate>,
+    pub tool_state: ResMut<'w, DevToolState>,
+    pub edit: ResMut<'w, TransformEditState>,
+    pub blueprint_inspection: ResMut<'w, crate::dev::BlueprintInspectionState>,
+    pub inspector: ResMut<'w, WorldInspectorState>,
+    pub world_selection: ResMut<'w, WorldSelectionState>,
+    pub selected_units: ResMut<'w, crate::units::input::SelectedUnits>,
+    pub building_selection: ResMut<'w, crate::ui::gameplay::GameplayBuildingSelection>,
+    pub selection_revision: ResMut<'w, WorldSelectionRevision>,
+    pub world: Res<'w, WorldData>,
+    pub config: Res<'w, WorldConfig>,
+    pub unit_catalog: Res<'w, UnitCatalog>,
+    pub units: Query<'w, 's, (&'static UnitRenderEntity, &'static GlobalTransform)>,
+    pub windows: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
+    pub camera: Query<'w, 's, (&'static Camera, &'static GlobalTransform), With<RtsCamera>>,
+    pub render_assets: Option<Res<'w, TerrainRenderAssets>>,
+}
+
+/// Central dev right-click policy and placement cancellation (Slice 6).
+pub fn handle_dev_right_click_input(
+    mut params: DevRightClickParams,
+    menu_block: Option<Res<crate::menu::MenuInputBlock>>,
 ) {
-    if !dev_state.enabled {
+    if menu_block.is_some_and(|block| block.blocks()) {
+        return;
+    }
+    if !params.dev_state.enabled || !params.mouse_buttons.just_pressed(MouseButton::Right) {
         return;
     }
 
-    if keyboard.just_pressed(KeyCode::Escape) {
-        let had_tool = dev_state.placement_tool_active();
-        dev_state.clear_text_focus();
-        if had_tool {
-            cancel_dev_placement(&mut dev_state, &mut preview);
-            gate.block_gameplay_mouse = true;
+    if params.panel_hovered.hovered {
+        params.gate.block_gameplay_mouse = true;
+        return;
+    }
+
+    if params.window_registry.drag.is_some() {
+        params.gate.block_gameplay_mouse = true;
+        return;
+    }
+
+    if params.dev_state.placement_tool_active() {
+        cancel_dev_placement(&mut params.dev_state, &mut params.preview);
+        params.gate.block_gameplay_mouse = true;
+        return;
+    }
+
+    if params.edit.dragging {
+        params.edit.cancel_drag();
+        params.gate.block_gameplay_mouse = true;
+        params.gate.block_camera_input = true;
+        return;
+    }
+    if params.edit.mode.is_transform() && params.edit.target.is_some() {
+        params.tool_state.active_tool = DevTool::Select;
+        params.edit.mode = DevTool::Select;
+        params.gate.block_gameplay_mouse = true;
+        return;
+    }
+
+    if params.blueprint_inspection.editing {
+        if params.blueprint_inspection.drag.is_some() {
+            cancel_blueprint_edit_drag(&mut params.blueprint_inspection);
+            params.gate.block_gameplay_mouse = true;
+            return;
         }
+        if params.blueprint_inspection.pending_confirmation.is_some() {
+            cancel_blueprint_pending_confirmation(
+                &mut params.blueprint_inspection,
+                &mut params.inspector,
+            );
+            params.gate.block_gameplay_mouse = true;
+            return;
+        }
+        if params.blueprint_inspection.variant_draft.is_some() {
+            cancel_blueprint_variant_draft(&mut params.blueprint_inspection, &mut params.inspector);
+            params.gate.block_gameplay_mouse = true;
+            return;
+        }
+        // Right-click cancels one-shot Add Corner back to Select (does not clear the building).
+        if params.blueprint_inspection.active_tool
+            == crate::dev::inspector::BlueprintEditTool::AddVertex
+        {
+            params.blueprint_inspection.active_tool =
+                crate::dev::inspector::BlueprintEditTool::Select;
+            params.inspector.last_message = "Add Corner cancelled".into();
+            params.gate.block_gameplay_mouse = true;
+            return;
+        }
+    } else if params.blueprint_inspection.pending_confirmation.is_some() {
+        cancel_blueprint_pending_confirmation(
+            &mut params.blueprint_inspection,
+            &mut params.inspector,
+        );
+        params.gate.block_gameplay_mouse = true;
         return;
     }
 
-    if panel_hovered.hovered {
-        return;
+    if let Some(ray) = cursor_world_ray(&params.windows, &params.camera) {
+        let has_command_target = pick_unit_command_target_along_ray(
+            &ray,
+            &params.world,
+            &params.unit_catalog,
+            &params.units,
+        )
+        .is_some();
+        if !has_command_target {
+            let mut apply_params = ApplyWorldSelectionParams {
+                world_selection: &mut params.world_selection,
+                selected_units: &mut params.selected_units,
+                building_selection: &mut params.building_selection,
+                hud: None,
+                revision: Some(&mut params.selection_revision),
+            };
+            apply_world_selection(WorldSelectionChange::ClearWorldObject, &mut apply_params);
+            params.inspector.invalidate_for_selection_change();
+            params.gate.block_gameplay_mouse = true;
+        }
     }
 
-    if mouse_buttons.just_pressed(MouseButton::Right) && dev_state.placement_tool_active() {
-        cancel_dev_placement(&mut dev_state, &mut preview);
-        gate.block_gameplay_mouse = true;
-    }
+    let _ = (&params.config, &params.render_assets);
 }
 
 fn handle_text_field_input(
@@ -215,6 +346,9 @@ fn handle_text_field_input(
                     }
                 }
             }
+        }
+        DevTextFieldFocus::WorldEnvironmentNumeric => {
+            // Handled by world_environment::handle_world_environment_numeric_keyboard
         }
     }
 }
@@ -308,19 +442,10 @@ fn key_to_search_char(key: KeyCode) -> Option<char> {
 }
 
 /// Whether the dev panel is under the cursor (blocks gameplay mouse).
+/// Derived from [`crate::dev::window::DevWindowInteractionState`] each frame.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct DevPanelHoverState {
     pub hovered: bool,
-}
-
-/// Track panel hover from UI interaction states.
-pub fn update_dev_panel_hover_state(
-    dev_state: Res<DevModeState>,
-    interactions: Query<&Interaction, With<DevPanelUi>>,
-    mut hover: ResMut<DevPanelHoverState>,
-) {
-    hover.hovered =
-        dev_state.enabled && interactions.iter().any(|state| *state != Interaction::None);
 }
 
 /// Copy dev input gate into gameplay HUD after all dev click handlers run.
@@ -328,13 +453,20 @@ pub fn sync_dev_gameplay_input_block(
     dev_state: Res<DevModeState>,
     gate: Res<DevModeInputGate>,
     transform_edit: Res<TransformEditState>,
-    inspector: Res<WorldInspectorState>,
+    world_selection: Res<WorldSelectionState>,
+    panel_hovered: Res<DevPanelHoverState>,
+    blueprint_inspection: Res<crate::dev::BlueprintInspectionState>,
     mut gameplay_hud: ResMut<crate::ui::gameplay::PlayerHudHoverState>,
 ) {
     let transform_editing = dev_state.enabled
         && transform_edit.mode.is_transform()
-        && (inspector.selected_doodad.is_some() || inspector.selected_building.is_some());
-    gameplay_hud.dev_panel_blocks = DevModeInputGate::should_block(&gate) || transform_editing;
+        && world_selection.has_transform_target();
+    let nav_edit_owns = crate::dev::inspector::navigation_edit_owns_world_pointer(
+        blueprint_inspection.editing,
+        panel_hovered.hovered,
+    );
+    gameplay_hud.dev_panel_blocks =
+        DevModeInputGate::should_block(&gate) || transform_editing || nav_edit_owns;
 }
 
 /// Update terrain anchor under cursor for brush preview.
@@ -375,12 +507,16 @@ pub fn update_dev_preview_anchor(
 /// Left-click terrain batch spawn when a definition is selected (before gameplay input).
 pub fn handle_dev_spawn_click(
     mut params: DevSpawnClickParams,
-    inspector: Res<WorldInspectorState>,
+    world_selection: Res<WorldSelectionState>,
     transform_edit: Res<TransformEditState>,
     windows: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform), With<RtsCamera>>,
     mut batch_scratch: Local<BatchSpawnScratch>,
+    menu_block: Option<Res<crate::menu::MenuInputBlock>>,
 ) {
+    if menu_block.is_some_and(|block| block.blocks()) {
+        return;
+    }
     if !params.dev_state.enabled {
         return;
     }
@@ -406,7 +542,7 @@ pub fn handle_dev_spawn_click(
         }
     }
 
-    if inspector.selected_doodad.is_some() || inspector.selected_building.is_some() {
+    if world_selection.has_transform_target() {
         return;
     }
 
@@ -488,6 +624,8 @@ pub fn handle_dev_spawn_click(
         world_seed: crate::doodads::DEFAULT_DOODAD_WORLD_SEED,
         layout,
         spawn_affiliation: params.dev_state.spawn_affiliation,
+        placement_yaw_deg: params.dev_state.placement_yaw_deg,
+        placement_uniform_scale: params.dev_state.placement_uniform_scale,
     };
 
     let inventory_ctx = InventoryCatalogCtx::new(

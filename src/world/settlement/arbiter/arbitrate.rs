@@ -2,12 +2,12 @@
 //!
 //! Selects strategic intent only. Never executes.
 
+use crate::world::settlement::SettlementId;
 use crate::world::settlement::needs::SettlementNeedEvaluation;
 use crate::world::settlement::response::{
     CandidateResponse, ResponseCatalog, ResponseType, SettlementResponseCandidates,
 };
 use crate::world::settlement::state::SettlementState;
-use crate::world::settlement::SettlementId;
 use crate::world::{BuildingLifecycleState, WorldData};
 
 use super::intent::{
@@ -137,7 +137,12 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
                     .as_str()
                     .cmp(b.candidate.response_id.as_str())
             })
-            .then_with(|| a.candidate.need_id.as_str().cmp(b.candidate.need_id.as_str()))
+            .then_with(|| {
+                a.candidate
+                    .need_id
+                    .as_str()
+                    .cmp(b.candidate.need_id.as_str())
+            })
     });
 
     let mut selected_response_ids = std::collections::BTreeSet::new();
@@ -185,9 +190,10 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
             continue;
         }
 
-        if let Some(conflict) =
-            find_type_conflict(entry.candidate.response_type, selected_types_by_need.get(&need_key))
-        {
+        if let Some(conflict) = find_type_conflict(
+            entry.candidate.response_type,
+            selected_types_by_need.get(&need_key),
+        ) {
             plan.rejected.push(reject(
                 entry.candidate,
                 entry.arb_score,
@@ -331,8 +337,13 @@ fn find_type_conflict(
     for existing in selected {
         let conflicts = matches!(
             (candidate_type, *existing),
-            (ResponseType::IncreaseProduction, ResponseType::DecreaseProduction)
-                | (ResponseType::DecreaseProduction, ResponseType::IncreaseProduction)
+            (
+                ResponseType::IncreaseProduction,
+                ResponseType::DecreaseProduction
+            ) | (
+                ResponseType::DecreaseProduction,
+                ResponseType::IncreaseProduction
+            )
         );
         if conflicts {
             return Some(format!(
@@ -348,11 +359,11 @@ fn find_type_conflict(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::BuildingId;
+    use crate::world::settlement::SettlementId;
     use crate::world::settlement::needs::NeedId;
     use crate::world::settlement::response::{ResponseAvailability, ResponseId};
     use crate::world::settlement::state::{SettlementKind, SettlementState};
-    use crate::world::settlement::SettlementId;
-    use crate::world::BuildingId;
 
     fn candidate(need: &str, response: &str, score: f32, available: bool) -> CandidateResponse {
         CandidateResponse {

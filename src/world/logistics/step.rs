@@ -42,9 +42,16 @@ pub fn step_haul_worker_tasks(
         if task.task_type != TaskType::Haul {
             continue;
         }
-        let request_id = task.hauling_request_id().unwrap_or(HaulingRequestId::INVALID);
+        let request_id = task
+            .hauling_request_id()
+            .unwrap_or(HaulingRequestId::INVALID);
         if !request_id.is_valid() {
-            cancel_unit_task(world, unit_id, TaskCancelReason::Invalidated, &mut Vec::new());
+            cancel_unit_task(
+                world,
+                unit_id,
+                TaskCancelReason::Invalidated,
+                &mut Vec::new(),
+            );
             report.cancellations += 1;
             continue;
         }
@@ -71,7 +78,12 @@ fn step_one_haul(
     report: &mut HaulTickReport,
 ) {
     let Some(request_snapshot) = world.hauling_request_store().get(request_id).cloned() else {
-        cancel_unit_task(world, unit_id, TaskCancelReason::Invalidated, &mut Vec::new());
+        cancel_unit_task(
+            world,
+            unit_id,
+            TaskCancelReason::Invalidated,
+            &mut Vec::new(),
+        );
         report.cancellations += 1;
         return;
     };
@@ -90,7 +102,12 @@ fn step_one_haul(
         Some(id) => id,
         None => {
             block_request(world, request_id, HaulingBlockingReason::WorkerUnavailable);
-            cancel_unit_task(world, unit_id, TaskCancelReason::Invalidated, &mut Vec::new());
+            cancel_unit_task(
+                world,
+                unit_id,
+                TaskCancelReason::Invalidated,
+                &mut Vec::new(),
+            );
             report.cancellations += 1;
             return;
         }
@@ -98,10 +115,18 @@ fn step_one_haul(
 
     let layout = world.layout();
     let unit_pos = world.get_unit(unit_id).unwrap().placement.position;
-    let source_pos = inventory_building_position(world, building_catalog, request_snapshot.source_inventory_id)
-        .unwrap_or(unit_pos);
-    let dest_pos = inventory_building_position(world, building_catalog, request_snapshot.destination_inventory_id)
-        .unwrap_or(unit_pos);
+    let source_pos = inventory_building_position(
+        world,
+        building_catalog,
+        request_snapshot.source_inventory_id,
+    )
+    .unwrap_or(unit_pos);
+    let dest_pos = inventory_building_position(
+        world,
+        building_catalog,
+        request_snapshot.destination_inventory_id,
+    )
+    .unwrap_or(unit_pos);
 
     let phase = request_snapshot.execution_phase;
     match phase {
@@ -117,14 +142,24 @@ fn step_one_haul(
             let haul_qty = haul_batch_quantity(world, request_id, worker_inventory, inventory_ctx);
             if haul_qty == 0 {
                 block_request(world, request_id, HaulingBlockingReason::NoAvailableItems);
-                cancel_unit_task(world, unit_id, TaskCancelReason::Invalidated, &mut Vec::new());
+                cancel_unit_task(
+                    world,
+                    unit_id,
+                    TaskCancelReason::Invalidated,
+                    &mut Vec::new(),
+                );
                 report.cancellations += 1;
                 return;
             }
             if request_snapshot.reservation_state == HaulingReservationState::None {
                 if reserve_hauling_request(world, request_id, haul_qty, inventory_ctx).is_err() {
                     block_request(world, request_id, HaulingBlockingReason::ReservationFailed);
-                    cancel_unit_task(world, unit_id, TaskCancelReason::Invalidated, &mut Vec::new());
+                    cancel_unit_task(
+                        world,
+                        unit_id,
+                        TaskCancelReason::Invalidated,
+                        &mut Vec::new(),
+                    );
                     report.cancellations += 1;
                     return;
                 }
@@ -138,7 +173,12 @@ fn step_one_haul(
                 }
                 Err(reason) => {
                     block_request(world, request_id, reason);
-                    cancel_unit_task(world, unit_id, TaskCancelReason::Invalidated, &mut Vec::new());
+                    cancel_unit_task(
+                        world,
+                        unit_id,
+                        TaskCancelReason::Invalidated,
+                        &mut Vec::new(),
+                    );
                     report.cancellations += 1;
                     return;
                 }
@@ -168,7 +208,12 @@ fn step_one_haul(
                 }
                 Err(reason) => {
                     block_request(world, request_id, reason);
-                    cancel_unit_task(world, unit_id, TaskCancelReason::Invalidated, &mut Vec::new());
+                    cancel_unit_task(
+                        world,
+                        unit_id,
+                        TaskCancelReason::Invalidated,
+                        &mut Vec::new(),
+                    );
                     report.cancellations += 1;
                     return;
                 }
@@ -177,7 +222,8 @@ fn step_one_haul(
         HaulExecutionPhase::Depositing => {
             let carried = carried_quantity(world, worker_inventory, &request_snapshot.item_id);
             if carried > 0 {
-                let _ = deposit_haul_cargo(world, request_id, worker_inventory, carried, inventory_ctx);
+                let _ =
+                    deposit_haul_cargo(world, request_id, worker_inventory, carried, inventory_ctx);
             }
         }
         HaulExecutionPhase::Completed | HaulExecutionPhase::Failed => {}
@@ -230,7 +276,11 @@ fn carried_quantity(
         .unwrap_or(0)
 }
 
-fn block_request(world: &mut WorldData, request_id: HaulingRequestId, reason: HaulingBlockingReason) {
+fn block_request(
+    world: &mut WorldData,
+    request_id: HaulingRequestId,
+    reason: HaulingBlockingReason,
+) {
     if let Some(request) = world.hauling_request_store_mut().get_mut(request_id) {
         request.status = HaulingRequestStatus::Blocked;
         request.blocking_reason = Some(reason);
@@ -249,13 +299,13 @@ fn within_range(
     (dx * dx + dz * dz).sqrt() <= INTERACTION_WORK_RANGE_METERS
 }
 
-fn move_toward(world: &mut WorldData, unit_id: UnitId, task_id: crate::world::TaskId, target: WorldPosition) {
-    let _ = world.set_unit_state(
-        unit_id,
-        UnitState::Working {
-            task_id,
-        },
-    );
+fn move_toward(
+    world: &mut WorldData,
+    unit_id: UnitId,
+    task_id: crate::world::TaskId,
+    target: WorldPosition,
+) {
+    let _ = world.set_unit_state(unit_id, UnitState::Working { task_id });
     let _ = world.set_unit_state(
         unit_id,
         UnitState::Moving {

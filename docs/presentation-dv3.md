@@ -23,11 +23,12 @@ Overhead health bars (`sync_unit_health_bars` + `billboard_unit_health_bars`):
 
 ## Terrain-conforming selection rings
 
-Selection rings (`sync_unit_selection_indicators`):
+Selection rings (`sync_unit_selection_indicators` + `sync_world_object_selection_presentation`):
 
-- Annulus mesh rebuilt each frame with vertices sampled on terrain height
-- 32 segments; inner/outer radii from `selection_ring_radius` (2× collision, min 0.9 m)
+- Annulus mesh rebuilt each frame with vertices sampled on terrain height (units, item piles)
+- 32 segments; inner/outer radii from `selection_ring_radius` (2× collision, min 0.9 m) for units
 - Local to unit render root; slight lift to reduce z-fighting
+- Buildings and doodads use authoritative footprint outlines at placement Y (see `docs/dev-mode.md` Slice 2)
 
 ## Shadow / close-camera lighting (DV3)
 

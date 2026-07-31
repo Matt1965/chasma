@@ -3,9 +3,9 @@
 use bevy::prelude::*;
 use std::fmt;
 
+use crate::world::settlement::SettlementId;
 use crate::world::settlement::needs::NeedId;
 use crate::world::settlement::response::{ResponseId, ResponseType};
-use crate::world::settlement::SettlementId;
 
 /// Stable-within-plan intent identifier (not persisted).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect)]

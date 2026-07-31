@@ -3,9 +3,9 @@
 use crate::world::inventory::{InventoryCatalogCtx, count_stack_item};
 use crate::world::{InventoryId, ItemDefinitionId};
 
-use super::store::{InventoryReservationStore, RequestReservationRecord};
 use super::super::id::HaulingRequestId;
 use super::super::types::HaulingBlockingReason;
+use super::store::{InventoryReservationStore, RequestReservationRecord};
 
 /// Available stack quantity after reservations (EP7).
 pub fn available_stack_quantity(
@@ -123,7 +123,9 @@ pub fn release_request_reservations(
         {
             *total = total.saturating_sub(destination.quantity);
             if *total == 0 {
-                reservations.destination_totals_mut().remove(&destination.inventory_id);
+                reservations
+                    .destination_totals_mut()
+                    .remove(&destination.inventory_id);
             }
         }
     }

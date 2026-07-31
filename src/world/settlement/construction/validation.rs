@@ -2,8 +2,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::world::building::catalog::BuildingCatalog;
 use crate::world::WorldData;
+use crate::world::building::catalog::BuildingCatalog;
 
 use super::catalog::ConstructionResponseCatalog;
 use super::plan::{ConstructionPlan, ConstructionPlanStatus};
@@ -117,7 +117,8 @@ pub fn validate_construction_plans(
         }
 
         if plan.status.is_active() {
-            if let Some(other) = fulfillment_owners.insert(plan.fulfillment_key.clone(), plan.id.raw())
+            if let Some(other) =
+                fulfillment_owners.insert(plan.fulfillment_key.clone(), plan.id.raw())
             {
                 if other != plan.id.raw() {
                     errors.push(ConstructionValidationError::DuplicateActiveFulfillment(

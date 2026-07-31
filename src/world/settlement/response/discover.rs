@@ -4,10 +4,10 @@
 
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::operation::OperationDefinitionId;
+use crate::world::settlement::SettlementId;
 use crate::world::settlement::emergency::EmergencyCatalog;
 use crate::world::settlement::needs::{NeedCatalog, NeedSnapshot, SettlementNeedEvaluation};
 use crate::world::settlement::state::SettlementState;
-use crate::world::settlement::SettlementId;
 use crate::world::{BuildingId, BuildingLifecycleState, WorldData};
 
 use super::candidate::{
@@ -51,9 +51,7 @@ pub fn discover_settlement_responses(
             continue;
         }
 
-        let definitions = ctx
-            .response_catalog
-            .definitions_for_need(&snapshot.need_id);
+        let definitions = ctx.response_catalog.definitions_for_need(&snapshot.need_id);
         if definitions.is_empty() {
             result.diagnostics.push(format!(
                 "no catalog responses for need `{}`",

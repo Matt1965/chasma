@@ -22,18 +22,16 @@ pub use definition::{
     NeedDefinition, NeedEvaluationMethod, NeedMeasurementType, NeedResponseCategory,
     NeedTargetSource,
 };
-pub use evaluate::{evaluate_settlement_needs, resolve_desired, NeedEvalContext};
+pub use evaluate::{NeedEvalContext, evaluate_settlement_needs, resolve_desired};
 pub use id::NeedId;
 pub use pressure::{apply_pressure_modifiers, normalize_pressure};
-pub use snapshot::{
-    NeedBlockingReason, NeedSnapshot, NeedTrend, SettlementNeedEvaluation,
-};
+pub use snapshot::{NeedBlockingReason, NeedSnapshot, NeedTrend, SettlementNeedEvaluation};
 pub use starter::starter_need_definitions;
 pub use step::{
-    evaluate_settlement_needs_now, step_settlement_need_evaluation, NEED_EVAL_CADENCE_TICKS,
+    NEED_EVAL_CADENCE_TICKS, evaluate_settlement_needs_now, step_settlement_need_evaluation,
 };
 pub use store::NeedEvaluationStore;
 pub use validation::{
-    validate_need_catalog, validate_need_snapshot, validate_settlement_need_evaluation,
-    NeedCatalogError, NeedEvaluationValidationError,
+    NeedCatalogError, NeedEvaluationValidationError, validate_need_catalog, validate_need_snapshot,
+    validate_settlement_need_evaluation,
 };

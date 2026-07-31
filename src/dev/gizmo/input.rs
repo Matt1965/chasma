@@ -7,25 +7,27 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use crate::camera::RtsCamera;
-use crate::dev::inspector::WorldInspectorState;
-use crate::dev::{
-    DevModeInputGate, DevModeState, DevPanelHoverState, DevTextFieldFocus, cancel_dev_placement,
+use crate::client::selection::{
+    ApplyWorldSelectionParams, WorldSelectionChange, WorldSelectionRevision, WorldSelectionState,
+    apply_world_selection,
 };
+use crate::dev::hotkeys::DEV_GIZMO_COORDINATE_SPACE;
+use crate::dev::{DevModeInputGate, DevModeState, DevPanelHoverState, cancel_dev_placement};
 use crate::doodads::DoodadRenderIndex;
 use crate::terrain::world_position_to_render_global;
 use crate::ui::gameplay::GameplayBuildingSelection;
 use crate::units::input::cursor_world_ray;
+use crate::world::authoring_transform::{
+    AUTHORING_INSTANCE_SCALE_MAX, AUTHORING_INSTANCE_SCALE_MIN,
+};
 use crate::world::{
     BuildingTransformSafetyClass, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog,
     UnitCatalog, WorldConfig, WorldData,
 };
-use crate::world::authoring_transform::{
-    AUTHORING_INSTANCE_SCALE_MAX, AUTHORING_INSTANCE_SCALE_MIN,
-};
 
 use super::commit::{
-    dev_gizmo_building_commit_options, dev_gizmo_doodad_commit_options, preview_differs_from_authoritative,
-    try_commit_edit,
+    dev_gizmo_building_commit_options, dev_gizmo_doodad_commit_options,
+    preview_differs_from_authoritative, try_commit_edit,
 };
 use super::drag::apply_drag;
 use super::handles::policy_for_target;
@@ -35,7 +37,10 @@ use super::state::{
     DoodadPreviewPlacement, GizmoAxisConstraint, TransformEditState,
     building_preview_from_placement, building_uniform_scale_from_preview,
 };
-use super::tool::{DevTool, DevToolState, GizmoCoordinateSpace, SelectedWorldObject};
+use super::tool::{DevTool, DevToolState, SelectedWorldObject};
+use crate::dev::hotkeys::{DevShortcutSuppressionCtx, dev_shortcuts_suppressed};
+use crate::dev::navigation_editor::navigation_editor_owns_session;
+use crate::dev::selected_object::SelectedObjectUiState;
 
 const GIZMO_CAMERA_FOV_Y: f32 = std::f32::consts::FRAC_PI_4;
 
@@ -44,7 +49,7 @@ pub struct GizmoInputParams<'w, 's> {
     pub dev_state: ResMut<'w, DevModeState>,
     pub tool_state: ResMut<'w, DevToolState>,
     pub edit: ResMut<'w, TransformEditState>,
-    pub inspector: ResMut<'w, WorldInspectorState>,
+    pub world_selection: ResMut<'w, WorldSelectionState>,
     pub panel_hovered: Res<'w, DevPanelHoverState>,
     pub gate: ResMut<'w, DevModeInputGate>,
     pub keyboard: Res<'w, ButtonInput<KeyCode>>,
@@ -63,29 +68,34 @@ pub struct GizmoInputParams<'w, 's> {
     pub render_assets: Option<Res<'w, crate::terrain::TerrainRenderAssets>>,
     pub preview: ResMut<'w, crate::dev::tools::DevPlacementPreview>,
     pub building_selection: ResMut<'w, GameplayBuildingSelection>,
+    pub selected_units: ResMut<'w, crate::units::input::SelectedUnits>,
+    pub selection_revision: ResMut<'w, WorldSelectionRevision>,
+    pub inspector: ResMut<'w, crate::dev::inspector::WorldInspectorState>,
     pub assessment_store: ResMut<'w, crate::world::BuildingTerrainAssessmentStore>,
-    pub blueprint_inspection: Res<'w, crate::dev::BlueprintInspectionState>,
+    pub blueprint_inspection: ResMut<'w, crate::dev::BlueprintInspectionState>,
+    pub selected_object_ui: ResMut<'w, SelectedObjectUiState>,
+    pub window_registry: Res<'w, crate::dev::window::DevWindowRegistry>,
 }
 
-pub fn selected_object(inspector: &WorldInspectorState) -> Option<SelectedWorldObject> {
-    inspector
-        .selected_doodad
+pub fn selected_object(world_selection: &WorldSelectionState) -> Option<SelectedWorldObject> {
+    world_selection
+        .transform_doodad()
         .map(SelectedWorldObject::Doodad)
-        .or(inspector
-            .selected_building
+        .or(world_selection
+            .transform_building()
             .map(SelectedWorldObject::Building))
 }
 
 pub fn sync_gizmo_target(mut params: GizmoInputParams) {
     let prev_target = params.edit.target;
-    let target = selected_object(&params.inspector);
+    let target = selected_object(&params.world_selection);
 
     if let Some(prev) = prev_target {
         if Some(prev) != target && !params.edit.dragging {
             if let Some(preview) = params.edit.preview_placement {
                 if preview_differs_from_authoritative(&params.world, prev, preview) {
-                    let doodad_options = dev_gizmo_doodad_commit_options(&params.keyboard);
-                    let building_options = dev_gizmo_building_commit_options(&params.keyboard);
+                    let doodad_options = dev_gizmo_doodad_commit_options();
+                    let building_options = dev_gizmo_building_commit_options();
                     let committed = try_commit_edit(
                         &mut params.edit,
                         &mut params.world,
@@ -100,8 +110,7 @@ pub fn sync_gizmo_target(mut params: GizmoInputParams) {
                         Some(&mut params.assessment_store),
                     );
                     if committed {
-                        params.inspector.last_message =
-                            format!("Gizmo commit: {:?}", prev);
+                        params.inspector.last_message = format!("Gizmo commit: {:?}", prev);
                     } else if !params.edit.last_error.is_empty() {
                         params.inspector.last_message = params.edit.last_error.clone();
                     }
@@ -113,29 +122,31 @@ pub fn sync_gizmo_target(mut params: GizmoInputParams) {
     if !params.dev_state.enabled {
         params.edit.full_cancel();
         params.tool_state.active_tool = DevTool::Select;
-        if params.inspector.selected_doodad.is_some()
-            || params.inspector.selected_building.is_some()
-        {
-            params.inspector.selected_doodad = None;
-            params.inspector.selected_building = None;
-            params.inspector.doodad_snapshot = None;
-            params.inspector.building_snapshot = None;
-            params.inspector.cache_key.doodad_id = None;
-            params.inspector.cache_key.building_id = None;
-            params.building_selection.set(None);
+        if params.world_selection.has_transform_target() {
+            let mut apply_params = ApplyWorldSelectionParams {
+                world_selection: &mut params.world_selection,
+                selected_units: &mut params.selected_units,
+                building_selection: &mut params.building_selection,
+                hud: None,
+                revision: Some(&mut params.selection_revision),
+            };
+            apply_world_selection(WorldSelectionChange::ClearWorldObject, &mut apply_params);
+            params.inspector.invalidate_for_selection_change();
         }
         return;
     }
 
     if params.dev_state.clear_world_selection_for_place {
         params.dev_state.clear_world_selection_for_place = false;
-        params.inspector.selected_doodad = None;
-        params.inspector.selected_building = None;
-        params.inspector.doodad_snapshot = None;
-        params.inspector.building_snapshot = None;
-        params.inspector.cache_key.doodad_id = None;
-        params.inspector.cache_key.building_id = None;
-        params.building_selection.set(None);
+        let mut apply_params = ApplyWorldSelectionParams {
+            world_selection: &mut params.world_selection,
+            selected_units: &mut params.selected_units,
+            building_selection: &mut params.building_selection,
+            hud: None,
+            revision: Some(&mut params.selection_revision),
+        };
+        apply_world_selection(WorldSelectionChange::ClearWorldObject, &mut apply_params);
+        params.inspector.invalidate_for_selection_change();
         params.edit.clear();
     }
 
@@ -149,8 +160,21 @@ pub fn sync_gizmo_target(mut params: GizmoInputParams) {
         return;
     }
 
+    if navigation_editor_owns_session(
+        params.dev_state.enabled,
+        &params.window_registry,
+        &params.blueprint_inspection,
+    ) {
+        if params.edit.dragging {
+            params.edit.cancel_drag();
+        }
+        params.edit.full_cancel();
+        params.tool_state.active_tool = DevTool::Select;
+        return;
+    }
+
     let prev_target = params.edit.target;
-    let target = selected_object(&params.inspector);
+    let target = selected_object(&params.world_selection);
     let authoritative = target.and_then(|t| match t {
         SelectedWorldObject::Doodad(id) => params
             .world
@@ -196,12 +220,33 @@ pub fn sync_gizmo_target(mut params: GizmoInputParams) {
     }
 }
 
-pub fn handle_gizmo_keyboard(mut params: GizmoInputParams) {
-    if !params.dev_state.enabled || params.dev_state.text_focus != DevTextFieldFocus::None {
+pub fn handle_gizmo_keyboard(
+    mut params: GizmoInputParams,
+    menu_block: Option<Res<crate::menu::MenuInputBlock>>,
+) {
+    if menu_block.is_some_and(|block| block.blocks()) {
+        return;
+    }
+    if !params.dev_state.enabled {
+        return;
+    }
+    let suppression = DevShortcutSuppressionCtx::new(
+        &params.dev_state,
+        &params.selected_object_ui,
+        &params.blueprint_inspection,
+    );
+    if dev_shortcuts_suppressed(suppression) {
+        return;
+    }
+    if navigation_editor_owns_session(
+        params.dev_state.enabled,
+        &params.window_registry,
+        &params.blueprint_inspection,
+    ) {
         return;
     }
 
-    let transform_context = selected_object(&params.inspector).is_some();
+    let transform_context = selected_object(&params.world_selection).is_some();
 
     if transform_context {
         if params.keyboard.just_pressed(KeyCode::Comma) {
@@ -218,18 +263,6 @@ pub fn handle_gizmo_keyboard(mut params: GizmoInputParams) {
         }
     }
 
-    if params.keyboard.just_pressed(KeyCode::Escape) {
-        if params.edit.dragging {
-            params.edit.cancel_drag();
-            params.gate.block_gameplay_mouse = true;
-            params.gate.block_camera_input = true;
-        } else if params.tool_state.active_tool.is_transform() {
-            params.tool_state.active_tool = DevTool::Select;
-            params.edit.mode = DevTool::Select;
-        }
-        return;
-    }
-
     if !params.edit.dragging {
         return;
     }
@@ -243,13 +276,22 @@ pub fn handle_gizmo_keyboard(mut params: GizmoInputParams) {
     if params.keyboard.just_pressed(KeyCode::KeyZ) {
         params.edit.axis_constraint = Some(GizmoAxisConstraint::Z);
     }
-    if params.keyboard.just_pressed(KeyCode::KeyL) {
-        params.edit.coordinate_space = params.edit.coordinate_space.toggle();
-    }
+}
+
+/// Activate a transform tool for the current world selection (buttons and hotkeys share this path).
+pub fn activate_dev_transform_tool(params: &mut GizmoInputParams, tool: DevTool) {
+    enter_transform_tool(params, tool);
 }
 
 fn enter_transform_tool(params: &mut GizmoInputParams, tool: DevTool) {
-    let Some(target) = selected_object(&params.inspector) else {
+    if navigation_editor_owns_session(
+        params.dev_state.enabled,
+        &params.window_registry,
+        &params.blueprint_inspection,
+    ) {
+        return;
+    }
+    let Some(target) = selected_object(&params.world_selection) else {
         return;
     };
     let policy = policy_for_target(target, &params.building_catalog, &params.world);
@@ -273,21 +315,31 @@ fn enter_transform_tool(params: &mut GizmoInputParams, tool: DevTool) {
     }
 }
 
-pub fn handle_gizmo_mouse(mut params: GizmoInputParams) {
+pub fn handle_gizmo_mouse(
+    mut params: GizmoInputParams,
+    menu_block: Option<Res<crate::menu::MenuInputBlock>>,
+) {
+    if menu_block.is_some_and(|block| block.blocks()) {
+        return;
+    }
     if !params.dev_state.enabled || params.panel_hovered.hovered {
         return;
     }
-    if params.blueprint_inspection.editing {
+    if navigation_editor_owns_session(
+        params.dev_state.enabled,
+        &params.window_registry,
+        &params.blueprint_inspection,
+    ) {
         return;
     }
-    if params.dev_state.text_focus != DevTextFieldFocus::None {
+    if params.dev_state.text_focus != crate::dev::DevTextFieldFocus::None {
         return;
     }
 
     let Some(target) = params
         .edit
         .target
-        .or_else(|| selected_object(&params.inspector))
+        .or_else(|| selected_object(&params.world_selection))
     else {
         return;
     };
@@ -394,7 +446,7 @@ pub fn handle_gizmo_mouse(mut params: GizmoInputParams) {
                 layout,
                 vertical_scale,
                 rotation,
-                params.edit.coordinate_space,
+                DEV_GIZMO_COORDINATE_SPACE,
                 params.edit.snap,
                 finer,
                 params.edit.axis_constraint,
@@ -409,8 +461,8 @@ pub fn handle_gizmo_mouse(mut params: GizmoInputParams) {
         }
 
         if params.mouse_buttons.just_released(MouseButton::Left) {
-            let doodad_options = dev_gizmo_doodad_commit_options(&params.keyboard);
-            let building_options = dev_gizmo_building_commit_options(&params.keyboard);
+            let doodad_options = dev_gizmo_doodad_commit_options();
+            let building_options = dev_gizmo_building_commit_options();
             let committed = try_commit_edit(
                 &mut params.edit,
                 &mut params.world,
@@ -453,10 +505,6 @@ pub fn handle_gizmo_mouse(mut params: GizmoInputParams) {
             }
         }
 
-        if params.mouse_buttons.just_pressed(MouseButton::Right) {
-            params.edit.cancel_drag();
-            params.gate.block_gameplay_mouse = true;
-        }
         return;
     }
 
@@ -473,7 +521,7 @@ pub fn handle_gizmo_mouse(mut params: GizmoInputParams) {
         gizmo_scale,
         params.edit.mode,
         policy.capabilities,
-        params.edit.coordinate_space,
+        DEV_GIZMO_COORDINATE_SPACE,
     );
 
     if params.edit.hovered_handle.is_some() {
@@ -580,12 +628,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn selected_object_prefers_doodad() {
-        let mut inspector = WorldInspectorState::default();
-        inspector.selected_doodad = Some(crate::world::DoodadId::new(1));
-        inspector.selected_building = Some(crate::world::BuildingId::new(2));
+    fn selected_object_returns_doodad_when_category_doodad() {
+        let world_selection = WorldSelectionState {
+            category: crate::client::selection::WorldSelectionCategory::Doodad,
+            doodad_id: Some(crate::world::DoodadId::new(1)),
+            ..Default::default()
+        };
         assert!(matches!(
-            selected_object(&inspector),
+            selected_object(&world_selection),
             Some(SelectedWorldObject::Doodad(_))
         ));
     }

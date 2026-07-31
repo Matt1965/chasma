@@ -18,9 +18,9 @@ pub struct DebugOverlayConfig {
     pub combat: bool,
     /// Show health bars for all living units (ADR-062 C9 dev debug).
     pub health: bool,
-    /// Reserved grid overlay — walkable navigation cells (NV0).
+    /// Navigation/Pathing Mask — whole-world navigable + blocked cells (NV0).
     pub grid: bool,
-    /// Blocked navigation cells colored by passability reason (NV0).
+    /// Blocked-only navigation cells colored by passability reason (NV0).
     pub nav_blockers: bool,
     /// Building footprint outlines from occupancy shapes (NV0).
     pub nav_footprints: bool,
@@ -196,7 +196,10 @@ macro_rules! debug_overlay_run_if {
 
 debug_overlay_run_if!(run_debug_intent_overlay, debug_intent_overlay_enabled);
 debug_overlay_run_if!(run_debug_path_overlay, debug_path_overlay_enabled);
-debug_overlay_run_if!(run_debug_navigation_overlay, debug_navigation_overlay_enabled);
+debug_overlay_run_if!(
+    run_debug_navigation_overlay,
+    debug_navigation_overlay_enabled
+);
 debug_overlay_run_if!(run_debug_formation_overlay, debug_formation_overlay_enabled);
 debug_overlay_run_if!(run_debug_steering_overlay, debug_steering_overlay_enabled);
 debug_overlay_run_if!(run_debug_selection_overlay, debug_selection_overlay_enabled);

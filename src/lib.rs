@@ -18,6 +18,7 @@ pub mod environment;
 pub mod input;
 pub mod item_piles;
 pub mod logging;
+pub mod menu;
 pub mod player;
 pub mod projectiles;
 pub mod simulation;

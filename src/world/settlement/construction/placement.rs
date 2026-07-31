@@ -4,9 +4,9 @@ use bevy::prelude::*;
 
 use crate::world::building::catalog::{BuildingCatalog, BuildingDefinitionId};
 use crate::world::{
-    rotation_from_quadrants, validate_building_placement, xz_distance, BuildingOwnership,
-    BuildingPlacementConfig, BuildingPlacementContext, DoodadCatalog, FootprintCatalog,
-    UnitCatalog, WorldData, WorldPosition,
+    BuildingOwnership, BuildingPlacementConfig, BuildingPlacementContext, DoodadCatalog,
+    FootprintCatalog, UnitCatalog, WorldData, WorldPosition, rotation_from_quadrants,
+    validate_building_placement, xz_distance,
 };
 
 use super::plan::ConstructionPlacementCandidate;
@@ -92,7 +92,8 @@ pub fn search_placement_candidates(
             break;
         }
         evaluated += 1;
-        let candidate_global = Vec3::new(anchor_global.x + dx, anchor_global.y, anchor_global.z + dz);
+        let candidate_global =
+            Vec3::new(anchor_global.x + dx, anchor_global.y, anchor_global.z + dz);
         let candidate = WorldPosition::from_global(candidate_global, layout);
         let yaw_quadrants = 0u8;
         let rotation = rotation_from_quadrants(yaw_quadrants);
@@ -112,9 +113,7 @@ pub fn search_placement_candidates(
             continue;
         }
 
-        let grounded = validation
-            .grounded_anchor
-            .unwrap_or(candidate);
+        let grounded = validation.grounded_anchor.unwrap_or(candidate);
         let soft = soft_preference_score(world, grounded, anchor);
         valid.push(ConstructionPlacementCandidate::from_world_position(
             grounded,
@@ -130,16 +129,13 @@ pub fn search_placement_candidates(
     ));
 
     valid.sort_by(|a, b| {
-        b.soft_score
-            .cmp(&a.soft_score)
-            .then_with(|| {
-                let ag = a.position().to_global(layout);
-                let bg = b.position().to_global(layout);
-                ag.x
-                    .to_bits()
-                    .cmp(&bg.x.to_bits())
-                    .then_with(|| ag.z.to_bits().cmp(&bg.z.to_bits()))
-            })
+        b.soft_score.cmp(&a.soft_score).then_with(|| {
+            let ag = a.position().to_global(layout);
+            let bg = b.position().to_global(layout);
+            ag.x.to_bits()
+                .cmp(&bg.x.to_bits())
+                .then_with(|| ag.z.to_bits().cmp(&bg.z.to_bits()))
+        })
     });
 
     PlacementSearchResult {

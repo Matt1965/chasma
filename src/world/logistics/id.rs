@@ -4,7 +4,9 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// Authoritative hauling request identity (EP7).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Reflect, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Reflect, Serialize, Deserialize,
+)]
 pub struct HaulingRequestId(pub u32);
 
 impl HaulingRequestId {

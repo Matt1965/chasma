@@ -61,9 +61,10 @@ pub fn emergency_response_score_delta(
                 .response_id
                 .as_ref()
                 .is_some_and(|id| id == &definition.id);
-            let matches_tag = m.response_tag.as_ref().is_some_and(|tag| {
-                definition.ai_tags.iter().any(|t| t == tag)
-            });
+            let matches_tag = m
+                .response_tag
+                .as_ref()
+                .is_some_and(|tag| definition.ai_tags.iter().any(|t| t == tag));
             if matches_id || matches_tag {
                 delta += m.score_delta_at_full * severity;
             }
@@ -82,15 +83,8 @@ pub fn emergency_blocks_response(
         let Some(def) = catalog.get_str(&instance.emergency_id) else {
             continue;
         };
-        if def
-            .block_response_ids
-            .iter()
-            .any(|id| id == &definition.id)
-        {
-            return Some(format!(
-                "blocked by emergency `{}`",
-                instance.emergency_id
-            ));
+        if def.block_response_ids.iter().any(|id| id == &definition.id) {
+            return Some(format!("blocked by emergency `{}`", instance.emergency_id));
         }
         for tag in &def.block_response_tags {
             if definition.ai_tags.iter().any(|t| t == tag) {

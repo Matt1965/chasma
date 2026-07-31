@@ -23,7 +23,7 @@ impl Default for PlacementRules {
     fn default() -> Self {
         Self {
             snap_to_terrain: true,
-            avoid_doodads: true,
+            avoid_doodads: false,
             min_distance_between_entities: 1.5,
             enforce_slope: true,
         }

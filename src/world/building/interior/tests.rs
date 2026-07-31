@@ -10,11 +10,12 @@ use super::{
     portal_traversable, try_activate_interior_if_complete, try_open_door_for_unit,
 };
 use crate::world::{
-    Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingLifecycleState, BuildingOwnership,
-    BuildingSource, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog, FootprintCatalog,
-    Heightfield, LocalPosition, NavigationConfig, OccupancyCatalogs, OwnerId, PassabilityCatalogs,
-    UnitOwnership, WorldData, WorldPosition, create_building, find_path_with_spaces,
-    place_player_building, set_building_lifecycle_stage, BuildingNavigationBlueprintCatalog,
+    Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingLifecycleState,
+    BuildingNavigationBlueprintCatalog, BuildingOwnership, BuildingSource, ChunkCoord, ChunkData,
+    ChunkId, ChunkLayout, DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition,
+    NavigationConfig, OccupancyCatalogs, OwnerId, PassabilityCatalogs, UnitOwnership, WorldData,
+    WorldPosition, create_building, find_path_with_spaces, place_player_building,
+    set_building_lifecycle_stage,
 };
 
 fn layout_world() -> WorldData {
@@ -508,6 +509,10 @@ fn blueprint_runtime_registers_floors_and_paths_to_upper_level() {
     )
     .expect("interior path across blueprint stairs");
 
-    assert!(path.waypoints.iter().any(|wp| wp.space_id == upper.space_id));
+    assert!(
+        path.waypoints
+            .iter()
+            .any(|wp| wp.space_id == upper.space_id)
+    );
     assert!(path.waypoints.iter().any(|wp| wp.portal_id.is_some()));
 }

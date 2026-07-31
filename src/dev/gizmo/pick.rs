@@ -13,15 +13,13 @@ use super::tool::{DevTool, GizmoCoordinateSpace};
 use crate::units::input::world_position_to_screen;
 use crate::world::authoring_transform::TransformCapabilities;
 
-/// Scale handles are always drawn in local space (see `draw.rs`); picking must match.
-const SCALE_HANDLE_SPACE: GizmoCoordinateSpace = GizmoCoordinateSpace::Local;
+/// Scale handles use the same world-aligned space as translate/rotate (Slice 6).
+const SCALE_HANDLE_SPACE: GizmoCoordinateSpace = GizmoCoordinateSpace::World;
 
 /// Screen-space pick tolerances (pixels). Slightly generous so handles are easy to grab.
 fn pick_threshold_px(handle: GizmoHandle) -> f32 {
     match handle {
-        GizmoHandle::TranslateX
-        | GizmoHandle::TranslateY
-        | GizmoHandle::TranslateZ => 22.0,
+        GizmoHandle::TranslateX | GizmoHandle::TranslateY | GizmoHandle::TranslateZ => 22.0,
         GizmoHandle::TranslateXY | GizmoHandle::TranslateXZ | GizmoHandle::TranslateYZ => 26.0,
         GizmoHandle::RotateX | GizmoHandle::RotateY | GizmoHandle::RotateZ => 20.0,
         GizmoHandle::ScaleX | GizmoHandle::ScaleY | GizmoHandle::ScaleZ => 24.0,
@@ -170,7 +168,8 @@ mod tests {
 
     #[test]
     fn point_to_segment_midpoint() {
-        let dist = distance_point_to_segment_2d(Vec2::new(0.5, 1.0), Vec2::ZERO, Vec2::new(1.0, 0.0));
+        let dist =
+            distance_point_to_segment_2d(Vec2::new(0.5, 1.0), Vec2::ZERO, Vec2::new(1.0, 0.0));
         assert!((dist - 1.0).abs() < 1e-4);
     }
 }

@@ -10,6 +10,7 @@ mod cycle;
 mod debug;
 mod lighting;
 mod plugin;
+mod project_defaults;
 mod settings;
 mod singleton;
 mod skybox;
@@ -17,10 +18,7 @@ mod time_of_day;
 mod water;
 
 #[cfg(feature = "dev")]
-pub use cycle::{
-    TimeOfDayDevAction, apply_time_of_day_dev_action, format_time_of_day_status,
-    time_of_day_dev_keyboard,
-};
+pub use cycle::{TimeOfDayDevAction, apply_time_of_day_dev_action, format_time_of_day_status};
 pub use cycle::{
     TimeOfDayLighting, advance_time_of_day, apply_time_of_day_to_settings, daylight_factor,
     evaluate_time_of_day_lighting, sync_environment_presentation, twilight_warmth,
@@ -32,6 +30,15 @@ pub use debug::{
     log_environment_singleton_report, validate_environment_singletons,
 };
 pub use plugin::EnvironmentPlugin;
+pub use project_defaults::{
+    AuthoredEnvironment, AuthoredEnvironmentSnapshot, AuthoredTimeOfDay, EnvironmentManualLighting,
+    EnvironmentValidationError, ManualLightingDefaults, PROJECT_DEFAULTS_PATH,
+    PROJECT_DEFAULTS_VERSION, ProjectDefaultsLoadStatus, ProjectDefaultsSaveError,
+    ProjectEnvironmentBaseline, apply_manual_lighting, built_in_authored_snapshot,
+    capture_current_authored_snapshot, environment_is_dirty, initialize_runtime_from_baseline,
+    list_registered_skybox_sets, load_project_environment_baseline,
+    save_project_environment_defaults, skybox_set_exists, validate_authored_snapshot,
+};
 pub use settings::{
     DEFAULT_DIRECTIONAL_LIGHT_LOOK_AT, DEFAULT_DIRECTIONAL_LIGHT_POSITION, DEFAULT_SKYBOX_SET,
     ENVIRONMENT_ASSET_ROOT, EnvironmentSettings, SKYBOX_ASSET_ROOT,

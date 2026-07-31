@@ -20,21 +20,11 @@ pub struct OperationInputDefinition {
 /// Non-item output kinds for future phases (EP3 seam).
 #[derive(Debug, Clone, PartialEq, Eq, Reflect, Serialize, Deserialize)]
 pub enum OperationEffectKind {
-    Research {
-        topic_id: String,
-    },
-    Training {
-        skill_id: String,
-    },
-    Medical {
-        treatment_id: String,
-    },
-    SettlementInfluence {
-        amount: u32,
-    },
-    BuildingMaintenance {
-        amount: u32,
-    },
+    Research { topic_id: String },
+    Training { skill_id: String },
+    Medical { treatment_id: String },
+    SettlementInfluence { amount: u32 },
+    BuildingMaintenance { amount: u32 },
 }
 
 /// Future operation output — item or non-item effect (EP3 seam).
@@ -142,8 +132,12 @@ impl OperationOutputDefinition {
 /// IO validation failures for catalog authoring (EP3).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OperationIoValidationError {
-    ZeroInputQuantity { item_id: ItemDefinitionId },
-    ZeroOutputQuantity { item_id: ItemDefinitionId },
+    ZeroInputQuantity {
+        item_id: ItemDefinitionId,
+    },
+    ZeroOutputQuantity {
+        item_id: ItemDefinitionId,
+    },
     ZeroEffectAmount,
     EmptyEffectIdentifier,
     InvalidTerrainMinimumPercent {

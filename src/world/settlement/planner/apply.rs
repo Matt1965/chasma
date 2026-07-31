@@ -50,7 +50,10 @@ pub fn apply_planner_decisions(
     }
 }
 
-fn apply_decision_to_policy(policy: &mut BuildingOperationPolicy, decision: &PlannerBuildingDecision) {
+fn apply_decision_to_policy(
+    policy: &mut BuildingOperationPolicy,
+    decision: &PlannerBuildingDecision,
+) {
     policy.planner_managed = true;
     policy.control_source = ControlSource::AIControlled;
     policy.enabled = decision.enabled;

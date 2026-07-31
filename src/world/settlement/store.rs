@@ -79,7 +79,9 @@ impl SettlementStore {
         building_id: BuildingId,
     ) -> Result<(), super::error::TreasuryError> {
         if !self.settlements.contains_key(&settlement_id) {
-            return Err(super::error::TreasuryError::SettlementNotFound(settlement_id));
+            return Err(super::error::TreasuryError::SettlementNotFound(
+                settlement_id,
+            ));
         }
         if let Some(existing) = self.settlement_by_building.get(&building_id) {
             if *existing != settlement_id {

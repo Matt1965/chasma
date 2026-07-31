@@ -1,6 +1,11 @@
 //! TF5 integration tests — deterministic efficiency and workstation stepping.
 
+use crate::world::InventoryProfileId;
 use crate::world::building::field_response::EFFICIENCY_BASIS_POINTS_ONE_HUNDRED_PERCENT;
+use crate::world::building::inventory::attach_inventory_on_building_create;
+use crate::world::building::inventory_binding::{
+    BuildingInventoryBindingDefinition, BuildingInventoryBindingId, BuildingInventoryRole,
+};
 use crate::world::building::operation::{
     BuildingOperationParams, apply_operation_ticks, expected_ticks_to_complete,
     step_workstation_operation,
@@ -14,15 +19,10 @@ use crate::world::{
     BuildingLifecycleState, BuildingOwnership, BuildingPlacement, BuildingRecord,
     BuildingRenderKey, BuildingSource, ChunkCoord, ChunkExtent, ChunkId, FootprintCatalog,
     FootprintSpec, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog,
-    LocalPosition, UnitCatalog, UnitDefinitionId, UnitId, UnitSource, WorldData,
-    WorldPosition, create_unit, starter_inventory_profile_definitions,
-    starter_item_category_definitions, starter_item_definitions,
+    LocalPosition, UnitCatalog, UnitDefinitionId, UnitId, UnitSource, WorldData, WorldPosition,
+    create_unit, starter_inventory_profile_definitions, starter_item_category_definitions,
+    starter_item_definitions,
 };
-use crate::world::building::inventory::attach_inventory_on_building_create;
-use crate::world::building::inventory_binding::{
-    BuildingInventoryBindingDefinition, BuildingInventoryBindingId, BuildingInventoryRole,
-};
-use crate::world::InventoryProfileId;
 use bevy::prelude::{Quat, Vec3};
 
 fn flat_world() -> WorldData {
@@ -80,12 +80,14 @@ fn iron_mine_catalogs() -> (
             )
             .with_supported_operations([crate::world::OperationDefinitionId::new("mine_iron")])
             .with_default_operation_id(crate::world::OperationDefinitionId::new("mine_iron"))
-            .with_inventory_bindings(vec![BuildingInventoryBindingDefinition::new(
-                "primary_output",
-                BuildingInventoryRole::Output,
-                InventoryProfileId::new("chest_large"),
-            )
-            .with_default(true)]),
+            .with_inventory_bindings(vec![
+                BuildingInventoryBindingDefinition::new(
+                    "primary_output",
+                    BuildingInventoryRole::Output,
+                    InventoryProfileId::new("chest_large"),
+                )
+                .with_default(true),
+            ]),
         ],
         &categories,
     )
@@ -128,10 +130,7 @@ fn setup_iron_mine_world(
     attach_inventory_on_building_create(&mut world, test_inventory_ctx(), &mut record, definition)
         .unwrap();
     world
-        .insert_building(
-            ChunkId::new(ChunkCoord::new(0, 0)),
-            record,
-        )
+        .insert_building(ChunkId::new(ChunkCoord::new(0, 0)), record)
         .unwrap();
     let unit_catalog = UnitCatalog::default();
     let worker = create_unit(
@@ -151,8 +150,7 @@ fn test_inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
     CTX.get_or_init(|| {
         let categories =
             ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
-        let items =
-            ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+        let items = ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
         let profiles =
             InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
                 .unwrap();

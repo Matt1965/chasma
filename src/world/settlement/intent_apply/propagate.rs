@@ -3,19 +3,15 @@
 //! Policy-only. Never touches BuildingOperationState, tasks, logistics, or construction.
 
 use crate::world::building::catalog::BuildingCatalog;
-use crate::world::building::operation::{
-    BuildingOperationPolicy, ControlSource, RepeatMode,
-};
+use crate::world::building::operation::{BuildingOperationPolicy, ControlSource, RepeatMode};
 use crate::world::operation::{OperationCatalog, validate_operation_selection};
+use crate::world::settlement::SettlementId;
 use crate::world::settlement::arbiter::SettlementIntentPlan;
 use crate::world::settlement::response::{ResponseCatalog, ResponseType};
-use crate::world::settlement::SettlementId;
 use crate::world::{BuildingId, WorldData};
 
 use super::discover::{discover_capable_buildings, primary_operation_requirement};
-use super::report::{
-    BuildingIntentPropagationReport, BuildingPolicyAssignment, IgnoredBuilding,
-};
+use super::report::{BuildingIntentPropagationReport, BuildingPolicyAssignment, IgnoredBuilding};
 
 /// Max buildings enabled for a high-priority intent.
 pub const MAX_BUILDINGS_PER_INTENT_HIGH: usize = 2;
@@ -159,10 +155,9 @@ fn apply_enable_intent(
         }
 
         let Some(record) = ctx.world.get_building(candidate.building_id) else {
-            report.diagnostics.push(format!(
-                "unknown building #{}",
-                candidate.building_id.raw()
-            ));
+            report
+                .diagnostics
+                .push(format!("unknown building #{}", candidate.building_id.raw()));
             continue;
         };
         let Some(building_def) = ctx.building_catalog.get(&record.definition_id) else {
@@ -261,10 +256,7 @@ fn intent_priority_to_policy(intent_priority: f32) -> u8 {
 }
 
 /// Whether EP9 should leave this building's policy alone.
-pub fn building_owned_by_intent_propagation(
-    world: &WorldData,
-    building_id: BuildingId,
-) -> bool {
+pub fn building_owned_by_intent_propagation(world: &WorldData, building_id: BuildingId) -> bool {
     world
         .building_intent_propagation_store()
         .is_building_assigned(building_id)

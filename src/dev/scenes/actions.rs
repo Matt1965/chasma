@@ -4,8 +4,8 @@ use bevy::prelude::*;
 
 use crate::camera::RtsCameraState;
 use crate::world::{
-    BuildingCatalog, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog,
-    BuildingNavigationBlueprintCatalog, UnitCatalog, WorldData,
+    BuildingCatalog, BuildingNavigationBlueprintCatalog, DoodadCatalog, FootprintCatalog,
+    InteriorProfileCatalog, UnitCatalog, WorldData,
 };
 
 use super::{

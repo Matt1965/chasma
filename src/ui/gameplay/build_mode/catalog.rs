@@ -142,18 +142,20 @@ pub fn sync_build_catalog_contents(
     mut commands: Commands,
     category_list: Query<Entity, With<BuildCategoryList>>,
     definition_list: Query<Entity, With<BuildDefinitionList>>,
-    mut status: Query<&mut Text, With<BuildStatusText>>,
-    mut search_text: Query<&mut Text, (With<BuildSearchField>, Without<BuildStatusText>)>,
+    mut texts: bevy::ecs::system::ParamSet<(
+        Query<&mut Text, With<BuildStatusText>>,
+        Query<&mut Text, (With<BuildSearchField>, Without<BuildStatusText>)>,
+    )>,
 ) {
     if !build_mode.is_active() {
         return;
     }
 
-    if let Ok(mut text) = status.single_mut() {
+    if let Ok(mut text) = texts.p0().single_mut() {
         **text = build_status_line(&build_mode, &building_catalog);
     }
 
-    if let Ok(mut text) = search_text.single_mut() {
+    if let Ok(mut text) = texts.p1().single_mut() {
         let label = if build_mode.search_query.is_empty() {
             "Search...".to_string()
         } else {
@@ -332,23 +334,19 @@ fn footprint_summary(definition: &BuildingDefinition) -> String {
 pub fn handle_build_catalog_clicks(
     mut build_mode: ResMut<BuildModeState>,
     mut queue: ResMut<ClientIntentQueue>,
-    category_buttons: Query<
-        (&Interaction, &BuildCategoryButton),
-        (Changed<Interaction>, With<Button>),
-    >,
-    definition_buttons: Query<
-        (&Interaction, &BuildDefinitionButton),
-        (Changed<Interaction>, With<Button>),
-    >,
-    search_buttons: Query<&Interaction, (Changed<Interaction>, With<BuildSearchField>)>,
+    mut buttons: bevy::ecs::system::ParamSet<(
+        Query<(&Interaction, &BuildCategoryButton), (Changed<Interaction>, With<Button>)>,
+        Query<(&Interaction, &BuildDefinitionButton), (Changed<Interaction>, With<Button>)>,
+        Query<&Interaction, (Changed<Interaction>, With<BuildSearchField>)>,
+    )>,
 ) {
-    for (interaction, button) in &category_buttons {
+    for (interaction, button) in buttons.p0().iter() {
         if *interaction == Interaction::Pressed {
             build_mode.selected_category = button.category_id.clone();
         }
     }
 
-    for (interaction, button) in &definition_buttons {
+    for (interaction, button) in buttons.p1().iter() {
         if *interaction == Interaction::Pressed {
             queue.push(ClientIntent::SelectBuildingDefinition {
                 definition_id: button.definition_id.clone(),
@@ -356,7 +354,7 @@ pub fn handle_build_catalog_clicks(
         }
     }
 
-    for interaction in &search_buttons {
+    for interaction in buttons.p2().iter() {
         if *interaction == Interaction::Pressed {
             build_mode.search_focused = true;
         }
@@ -366,14 +364,15 @@ pub fn handle_build_catalog_clicks(
 pub fn handle_build_search_keyboard(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut build_mode: ResMut<BuildModeState>,
+    menu_block: Option<Res<crate::menu::MenuInputBlock>>,
 ) {
+    if menu_block.is_some_and(|block| block.blocks()) {
+        return;
+    }
     if !build_mode.search_focused {
         return;
     }
-    if keyboard.just_pressed(KeyCode::Escape) {
-        build_mode.search_focused = false;
-        return;
-    }
+    // Escape is owned by the application menu — do not steal it to unfocus search.
     if keyboard.just_pressed(KeyCode::Backspace) {
         build_mode.search_query.pop();
         return;

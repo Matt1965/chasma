@@ -3,26 +3,17 @@
 use std::collections::BTreeSet;
 
 use super::report::BuildingIntentPropagationReport;
+use crate::world::WorldData;
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::operation::OperationCatalog;
-use crate::world::WorldData;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PropagationValidationError {
     UnknownBuilding(u64),
-    MissingCapability {
-        building_id: u64,
-        operation: String,
-    },
-    InvalidOperation {
-        building_id: u64,
-        operation: String,
-    },
+    MissingCapability { building_id: u64, operation: String },
+    InvalidOperation { building_id: u64, operation: String },
     DuplicateAssignment(u64),
-    ConflictingOwnership {
-        building_id: u64,
-        detail: String,
-    },
+    ConflictingOwnership { building_id: u64, detail: String },
 }
 
 impl std::fmt::Display for PropagationValidationError {
@@ -39,10 +30,7 @@ impl std::fmt::Display for PropagationValidationError {
             Self::InvalidOperation {
                 building_id,
                 operation,
-            } => write!(
-                f,
-                "building #{building_id} invalid operation `{operation}`"
-            ),
+            } => write!(f, "building #{building_id} invalid operation `{operation}`"),
             Self::DuplicateAssignment(id) => write!(f, "duplicate assignment for building #{id}"),
             Self::ConflictingOwnership {
                 building_id,

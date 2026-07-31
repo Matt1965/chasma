@@ -94,6 +94,8 @@ impl Plugin for PlayerPlugin {
             .init_resource::<BoxSelectDrag>()
             .init_resource::<PlayerInteractionSettings>()
             .init_resource::<UnitSelectionIndicatorState>()
+            .init_resource::<crate::client::selection::presentation::WorldObjectSelectionPresentationState>()
+            .init_resource::<crate::client::selection::presentation::SelectionPresentationMaterials>()
             .init_resource::<UnitHealthBarState>()
             .init_resource::<ActiveViewedSpace>()
             .init_resource::<ViewFollowLock>()
@@ -159,6 +161,7 @@ impl Plugin for PlayerPlugin {
                 (
                     sync_box_select_overlay,
                     sync_unit_selection_indicators,
+                    crate::client::selection::presentation::sync_world_object_selection_presentation,
                     sync_unit_health_bars,
                     billboard_unit_health_bars,
                 )

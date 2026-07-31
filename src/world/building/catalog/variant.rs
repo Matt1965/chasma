@@ -3,7 +3,7 @@
 use super::definition::BuildingDefinition;
 use super::definition_id::BuildingDefinitionId;
 use super::registry::BuildingCatalog;
-use crate::data_import::{export_buildings_to_ron, DEV_BUILDING_CATALOG_RON_PATH};
+use crate::data_import::{DEV_BUILDING_CATALOG_RON_PATH, export_buildings_to_ron};
 use crate::world::building::category::BuildingCategoryCatalog;
 use crate::world::building::interior::refresh_building_navigation_runtime;
 use crate::world::building::navigation_blueprint::{
@@ -48,7 +48,10 @@ pub fn validate_building_definition_id(
     {
         return Err("asset id may only contain lowercase letters, digits, and underscores".into());
     }
-    if building_catalog.get(&BuildingDefinitionId::new(trimmed)).is_some() {
+    if building_catalog
+        .get(&BuildingDefinitionId::new(trimmed))
+        .is_some()
+    {
         return Err(format!("asset id `{trimmed}` already exists"));
     }
     Ok(())
@@ -60,13 +63,7 @@ pub fn suggest_variant_definition_id(source_id: &str, display_name: &str) -> Str
         .trim()
         .to_ascii_lowercase()
         .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() {
-                c
-            } else {
-                '_'
-            }
-        })
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
         .collect();
     let slug = slug
         .split('_')
@@ -106,14 +103,16 @@ pub fn create_building_variant(
         return Err("variant display name must not be empty".into());
     }
 
-    let blueprint_id = BuildingNavigationBlueprintId::new(format!(
-        "{}_nav",
-        input.new_definition_id.as_str()
-    ));
+    let blueprint_id =
+        BuildingNavigationBlueprintId::new(format!("{}_nav", input.new_definition_id.as_str()));
     let mut blueprint = prepare_blueprint_for_save(input.blueprint)?;
     blueprint.id = blueprint_id.clone();
     blueprint.display_name = format!("{} Navigation", input.display_name.trim());
-    if let Some(description) = input.description.as_deref().map(str::trim).filter(|s| !s.is_empty())
+    if let Some(description) = input
+        .description
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
     {
         blueprint
             .metadata
@@ -124,10 +123,10 @@ pub fn create_building_variant(
         "variant_of".to_string(),
         input.source_definition_id.as_str().to_string(),
     );
-    blueprint.metadata.extensions.insert(
-        "created_by".to_string(),
-        "dev_variant".to_string(),
-    );
+    blueprint
+        .metadata
+        .extensions
+        .insert("created_by".to_string(), "dev_variant".to_string());
 
     nav_catalog
         .upsert(blueprint)
@@ -208,8 +207,8 @@ pub fn replace_building_instance_definition(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::building::navigation_blueprint::two_story_hut_navigation_blueprint;
     use crate::world::BuildingCategoryCatalog;
+    use crate::world::building::navigation_blueprint::two_story_hut_navigation_blueprint;
 
     #[test]
     fn suggest_variant_id_from_display_name() {
@@ -262,6 +261,12 @@ mod tests {
         );
         assert!(building_catalog.get(&source_id).is_some());
         assert!(nav_catalog.get(&outcome.blueprint_id).is_some());
-        assert!(nav_catalog.get(&crate::world::BuildingNavigationBlueprintId::new("two_story_hut")).is_some());
+        assert!(
+            nav_catalog
+                .get(&crate::world::BuildingNavigationBlueprintId::new(
+                    "two_story_hut"
+                ))
+                .is_some()
+        );
     }
 }

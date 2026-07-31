@@ -107,9 +107,7 @@ pub fn building_satisfies_mapping(
         return false;
     }
     if !mapping.eligible_building_ids.is_empty()
-        && !mapping
-            .eligible_building_ids
-            .contains(&definition.id)
+        && !mapping.eligible_building_ids.contains(&definition.id)
     {
         // Explicit allow-list restricts; category/operation filters still apply when empty.
         if matches!(
@@ -126,9 +124,9 @@ pub fn building_satisfies_mapping(
         ConstructionCapabilityKind::BuildingCategory(category) => {
             &definition.category_id == category
         }
-        ConstructionCapabilityKind::ExplicitAllowList => mapping
-            .eligible_building_ids
-            .contains(&definition.id),
+        ConstructionCapabilityKind::ExplicitAllowList => {
+            mapping.eligible_building_ids.contains(&definition.id)
+        }
     }
 }
 

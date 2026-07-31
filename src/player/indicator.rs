@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::SelectedUnits;
 use crate::units::{UnitRenderIndex, UnitSelectionIndicator};
@@ -22,6 +23,7 @@ pub(crate) struct TerrainSelectionRing {
 pub fn sync_unit_selection_indicators(
     mut commands: Commands,
     time: Res<Time>,
+    world_selection: Res<WorldSelectionState>,
     selection: Res<SelectedUnits>,
     index: Res<UnitRenderIndex>,
     world: Res<WorldData>,
@@ -34,7 +36,16 @@ pub fn sync_unit_selection_indicators(
     mut fade_query: Query<(&mut SelectionRingFade, &MeshMaterial3d<StandardMaterial>)>,
     mut rings: Query<(&TerrainSelectionRing, &Mesh3d)>,
 ) {
+    if world_selection.category != WorldSelectionCategory::Units && selection.is_empty() {
+        state.indicators.retain(|_, entity| {
+            commands.entity(*entity).despawn();
+            false
+        });
+        return;
+    }
+
     let selected = &selection.0;
+    let primary = world_selection.primary_unit(&selection);
     let layout = config.chunk_layout();
     let vertical_scale = render_assets
         .as_ref()
@@ -85,8 +96,12 @@ pub fn sync_unit_selection_indicators(
         if let Ok((mut fade, material)) = fade_query.get_mut(entity) {
             fade.elapsed_secs += time.delta_secs();
             let fade_in = (fade.elapsed_secs / SELECTION_FADE_IN_SECS).clamp(0.0, 1.0);
+            let is_primary = primary == Some(unit_id);
+            let max_alpha = if is_primary { 0.95 } else { 0.85 };
             if let Some(material) = materials.get_mut(&material.0) {
-                material.base_color.set_alpha(0.15 + 0.7 * fade_in);
+                material
+                    .base_color
+                    .set_alpha(0.15 + (max_alpha - 0.15) * fade_in);
             }
         }
 

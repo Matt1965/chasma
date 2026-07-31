@@ -132,6 +132,7 @@ pub struct UnitInspectorSnapshot {
     pub current_space_id: SpaceId,
     pub display_floor_label: String,
     pub inventory_summary: Option<String>,
+    pub affiliation: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -187,6 +188,18 @@ pub struct ChunkResidencySnapshot {
     pub terrain_loaded: bool,
     pub doodads_in_chunk: u32,
     pub units_in_chunk: u32,
+}
+
+/// Read-only inspection payload for a ground item pile (Slice 5).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ItemPileInspectorSnapshot {
+    pub pile_id: crate::world::ItemPileId,
+    pub item_name: String,
+    pub item_definition_id: crate::world::ItemDefinitionId,
+    pub quantity: u32,
+    pub weight_grams: u64,
+    pub location_summary: String,
+    pub chunk: ChunkCoord,
 }
 
 #[derive(Debug, Clone, PartialEq)]

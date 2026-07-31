@@ -8,6 +8,7 @@ mod intent;
 pub mod inventory_dispatch;
 pub mod inventory_intent;
 pub mod pipeline;
+pub mod selection;
 
 pub use commands::{
     BuiltCommandPlan, CommandAvailability, CommandPaletteEntry, CommandResolutionContext,
@@ -30,4 +31,9 @@ pub use inventory_intent::{
 pub use pipeline::{
     ClientIntentCollectSystems, ClientIntentDispatchSystems, ClientIntentFlushSystems,
     ClientPipelinePlugin, ClientPipelineSystems, collect_unit_input_intents,
+};
+pub use selection::{
+    ApplyWorldSelectionParams, WorldSelectionCategory, WorldSelectionChange,
+    WorldSelectionRevision, WorldSelectionState, WorldSelectionWriteParams, apply_world_selection,
+    prune_world_selection,
 };

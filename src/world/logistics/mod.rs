@@ -1,9 +1,9 @@
 //! Generic hauling and logistics runtime (EP7).
 
-mod register;
 pub mod execute;
 pub mod generation;
 mod id;
+mod register;
 mod request;
 mod reservation;
 mod route;
@@ -25,16 +25,16 @@ pub use generation::{
     sync_output_surplus_after_production,
 };
 pub use id::HaulingRequestId;
+pub use register::{
+    cancel_logistics_for_building_removal, register_building_logistics_endpoints,
+    unregister_building_logistics_endpoints,
+};
 pub use request::HaulingRequest;
 pub use reservation::{
     InventoryReservationSaveState, InventoryReservationStore, available_stack_quantity,
     release_request_reservations, reserve_destination_capacity, reserve_source_items,
 };
 pub use route::{BuildingLogisticsRouteDefinition, LogisticsEndpointIndex, LogisticsEndpointKey};
-pub use register::{
-    cancel_logistics_for_building_removal, register_building_logistics_endpoints,
-    unregister_building_logistics_endpoints,
-};
 pub use save::{
     HaulingRequestSaveState, LogisticsSaveState, export_logistics_save_state,
     import_logistics_save_state,

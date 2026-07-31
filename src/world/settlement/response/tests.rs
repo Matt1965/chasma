@@ -3,12 +3,12 @@
 use super::*;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::item::{ItemCatalog, ItemCategoryCatalog};
+use crate::world::settlement::SettlementId;
 use crate::world::settlement::emergency::EmergencyCatalog;
 use crate::world::settlement::needs::{
-    evaluate_settlement_needs_now, NeedCatalog, NeedId, NEED_EVAL_CADENCE_TICKS,
+    NEED_EVAL_CADENCE_TICKS, NeedCatalog, NeedId, evaluate_settlement_needs_now,
 };
 use crate::world::settlement::state::{SettlementKind, SettlementState};
-use crate::world::settlement::SettlementId;
 use crate::world::{BuildingCatalog, ChunkLayout, InventoryProfileCatalog, WorldData};
 
 fn layout() -> ChunkLayout {
@@ -50,8 +50,7 @@ fn starter_catalog_valid_against_needs() {
     let needs = NeedCatalog::default();
     let responses = ResponseCatalog::default();
     assert!(responses.len() >= 9);
-    let errors =
-        validate_response_catalog_against_needs(responses.definitions(), &needs);
+    let errors = validate_response_catalog_against_needs(responses.definitions(), &needs);
     assert!(errors.is_empty(), "{errors:?}");
 }
 
@@ -105,7 +104,10 @@ fn circular_prerequisites_rejected() {
     )
     .with_prerequisites([ResponseId::new("a")]);
     let err = ResponseCatalog::from_definitions(vec![a, b]).unwrap_err();
-    assert!(matches!(err, ResponseCatalogError::CircularPrerequisites(_)));
+    assert!(matches!(
+        err,
+        ResponseCatalogError::CircularPrerequisites(_)
+    ));
 }
 
 #[test]
@@ -127,7 +129,10 @@ fn food_responses_discovered_from_catalog() {
         10,
     );
 
-    let result = world.response_candidate_store().get(id).expect("candidates");
+    let result = world
+        .response_candidate_store()
+        .get(id)
+        .expect("candidates");
     assert!(validate_settlement_response_candidates(result).is_empty());
     let food: Vec<_> = result.for_need("food").collect();
     assert!(
@@ -168,12 +173,7 @@ fn unavailable_responses_filtered_from_available_iterator() {
     // Without food-producing buildings, production responses are unavailable.
     let production_food: Vec<_> = result
         .for_need("food")
-        .filter(|c| {
-            matches!(
-                c.response_type,
-                ResponseType::IncreaseProduction
-            )
-        })
+        .filter(|c| matches!(c.response_type, ResponseType::IncreaseProduction))
         .collect();
     assert!(!production_food.is_empty());
     assert!(
@@ -192,7 +192,11 @@ fn unavailable_responses_filtered_from_available_iterator() {
     );
     assert_eq!(
         result.available().count(),
-        result.candidates.iter().filter(|c| c.is_available()).count()
+        result
+            .candidates
+            .iter()
+            .filter(|c| c.is_available())
+            .count()
     );
 }
 
@@ -243,8 +247,15 @@ fn catalog_drives_behavior_not_hardcoded_need_match() {
         [CapabilityRequirement::Always],
     )];
     let catalog = ResponseCatalog::from_definitions(defs).unwrap();
-    assert!(catalog.definitions_for_need(&NeedId::new("food")).is_empty());
-    assert_eq!(catalog.definitions_for_need(&NeedId::new("defense")).len(), 1);
+    assert!(
+        catalog
+            .definitions_for_need(&NeedId::new("food"))
+            .is_empty()
+    );
+    assert_eq!(
+        catalog.definitions_for_need(&NeedId::new("defense")).len(),
+        1
+    );
 }
 
 #[test]

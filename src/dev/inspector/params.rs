@@ -40,6 +40,7 @@ pub struct InspectorCaptureParams<'w> {
     pub nav_blueprint_catalog: Res<'w, crate::world::BuildingNavigationBlueprintCatalog>,
     pub simulation: Res<'w, SimulationControlState>,
     pub movement_blocks: Res<'w, MovementBlockObservability>,
+    pub pile_settings: Res<'w, ItemPileSettings>,
 }
 
 /// Bundled catalogs for building dev shortcuts (Bevy 16-param system limit, EP9).

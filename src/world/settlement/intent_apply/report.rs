@@ -2,12 +2,12 @@
 
 use bevy::prelude::*;
 
+use crate::world::BuildingId;
 use crate::world::operation::OperationDefinitionId;
+use crate::world::settlement::SettlementId;
 use crate::world::settlement::arbiter::IntentId;
 use crate::world::settlement::needs::NeedId;
 use crate::world::settlement::response::ResponseId;
-use crate::world::settlement::SettlementId;
-use crate::world::BuildingId;
 
 /// One building selected to carry out a SettlementIntent via policy.
 #[derive(Debug, Clone, PartialEq, Reflect)]

@@ -26,8 +26,7 @@ pub fn format_asset_sizing_panel(
                 Some(format!(
                     "Collision/pick (instance 1): {:.3} m radius (authored {:.3} × baseline XZ)",
                     crate::world::doodad_definition_placement_radius_meters(def),
-                    def.placement_radius_meters
-                        .max(def.block_radius_meters)
+                    def.placement_radius_meters.max(def.block_radius_meters)
                 )),
             )
         }),
@@ -42,7 +41,11 @@ pub fn format_asset_sizing_panel(
                 }
                 crate::world::FootprintSpec::MeshDerived => "Footprint: mesh-derived".into(),
             };
-            (&def.asset_sizing, def.render_key.0.as_deref(), Some(footprint))
+            (
+                &def.asset_sizing,
+                def.render_key.0.as_deref(),
+                Some(footprint),
+            )
         }),
         DefinitionId::Item(_) | DefinitionId::InventoryProfile(_) => None,
     };
@@ -66,7 +69,8 @@ fn format_sizing_definition(
 ) -> String {
     let mut lines = vec![
         format!("Asset sizing (catalog authority): {definition_id}"),
-        "AT3: gameplay (collision/pick/occupancy) uses the same metric composition as visuals".into(),
+        "AT3: gameplay (collision/pick/occupancy) uses the same metric composition as visuals"
+            .into(),
     ];
     if let Some(key) = render_key {
         lines.push(format!("Render key: {key}"));
@@ -204,21 +208,9 @@ pub fn export_calibration_csv(definition_id: &str, sizing: &AssetSizingDefinitio
         push(&mut rows, "desired_depth_m", format!("{d:.6}"));
     }
     let offset = sizing.model_local_offset_meters;
-    push(
-        &mut rows,
-        "model_offset_x_m",
-        format!("{:.6}", offset.x),
-    );
-    push(
-        &mut rows,
-        "model_offset_y_m",
-        format!("{:.6}", offset.y),
-    );
-    push(
-        &mut rows,
-        "model_offset_z_m",
-        format!("{:.6}", offset.z),
-    );
+    push(&mut rows, "model_offset_x_m", format!("{:.6}", offset.x));
+    push(&mut rows, "model_offset_y_m", format!("{:.6}", offset.y));
+    push(&mut rows, "model_offset_z_m", format!("{:.6}", offset.z));
     let rot = sizing.rotation_correction;
     push(
         &mut rows,

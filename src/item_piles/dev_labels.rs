@@ -75,11 +75,8 @@ pub fn sync_item_pile_dev_labels(
                 .get(instance_id)
                 .map(|instance| instance.definition_id.clone())
         });
-        let (label, _) = pile_display_metadata(
-            definition_id.as_ref(),
-            &items,
-            record.stack_quantity(),
-        );
+        let (label, _) =
+            pile_display_metadata(definition_id.as_ref(), &items, record.stack_quantity());
         let translation = world_position_to_render_global(
             record.placement,
             config.chunk_layout(),
@@ -87,10 +84,9 @@ pub fn sync_item_pile_dev_labels(
         ) + Vec3::Y * presentation.dev_label_offset_y;
 
         if let Some(entity) = label_index.0.get(&pile_id).copied() {
-            commands.entity(entity).insert((
-                Transform::from_translation(translation),
-                Text2d::new(label),
-            ));
+            commands
+                .entity(entity)
+                .insert((Transform::from_translation(translation), Text2d::new(label)));
             continue;
         }
 

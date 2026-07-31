@@ -16,6 +16,9 @@ pub fn capture_logistics_persistence(world: &WorldData) -> SceneLogisticsPersist
     }
 }
 
-pub fn restore_logistics_persistence(world: &mut WorldData, persistence: &SceneLogisticsPersistence) {
+pub fn restore_logistics_persistence(
+    world: &mut WorldData,
+    persistence: &SceneLogisticsPersistence,
+) {
     crate::world::import_logistics_save_state(world, persistence.save_state.clone());
 }

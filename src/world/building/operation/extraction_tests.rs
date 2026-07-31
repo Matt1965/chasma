@@ -23,8 +23,9 @@ use crate::world::{
     FootprintSpec, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, ItemDefinitionId,
     LocalPosition, OperationDefinitionId, TerrainFieldCatalog, TerrainFieldId, UnitCatalog,
     UnitDefinitionId, UnitId, UnitSource, WorldData, WorldPosition, bootstrap_constant_field,
-    create_unit, field_value_from_percent, sample_terrain_field_at, starter_inventory_profile_definitions,
-    starter_item_category_definitions, starter_item_definitions, starter_operation_definitions,
+    create_unit, field_value_from_percent, sample_terrain_field_at,
+    starter_inventory_profile_definitions, starter_item_category_definitions,
+    starter_item_definitions, starter_operation_definitions,
 };
 use bevy::prelude::{Quat, Vec3};
 
@@ -50,8 +51,7 @@ fn test_inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
     CTX.get_or_init(|| {
         let categories =
             ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
-        let items =
-            ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+        let items = ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
         let profiles =
             InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
                 .unwrap();
@@ -451,7 +451,10 @@ fn extraction_output_full_blocks_without_consuming_terrain() {
     )
     .unwrap();
     assert_eq!(report.lifecycle, OperationLifecycle::Blocked);
-    assert_eq!(report.limiting_factor, OperationalLimitingFactor::OutputBlocked);
+    assert_eq!(
+        report.limiting_factor,
+        OperationalLimitingFactor::OutputBlocked
+    );
     let after = sample_terrain_field_at(
         &world,
         &field_catalog,
@@ -495,10 +498,22 @@ fn terrain_assessment_rebuilds_after_session_cache_loss() {
 #[test]
 fn extraction_operations_declare_terrain_requirements() {
     let catalog = operation_catalog();
-    let mine_iron = catalog.get(&OperationDefinitionId::new("mine_iron")).unwrap();
-    let mine_stone = catalog.get(&OperationDefinitionId::new("mine_stone")).unwrap();
-    let pump_water = catalog.get(&OperationDefinitionId::new("pump_water")).unwrap();
+    let mine_iron = catalog
+        .get(&OperationDefinitionId::new("mine_iron"))
+        .unwrap();
+    let mine_stone = catalog
+        .get(&OperationDefinitionId::new("mine_stone"))
+        .unwrap();
+    let pump_water = catalog
+        .get(&OperationDefinitionId::new("pump_water"))
+        .unwrap();
     assert_eq!(mine_iron.terrain_requirements[0].field_id.as_str(), "iron");
-    assert_eq!(mine_stone.terrain_requirements[0].field_id.as_str(), "stone");
-    assert_eq!(pump_water.terrain_requirements[0].field_id.as_str(), "water");
+    assert_eq!(
+        mine_stone.terrain_requirements[0].field_id.as_str(),
+        "stone"
+    );
+    assert_eq!(
+        pump_water.terrain_requirements[0].field_id.as_str(),
+        "water"
+    );
 }

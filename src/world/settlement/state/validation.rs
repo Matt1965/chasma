@@ -1,8 +1,8 @@
 //! SettlementState validation (SA1).
 
 use super::types::{NeedCategory, SettlementKind, SettlementState};
-use crate::world::settlement::{SettlementId, SettlementStore};
 use crate::world::WorldData;
+use crate::world::settlement::{SettlementId, SettlementStore};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SettlementStateValidationError {
@@ -44,18 +44,10 @@ impl std::fmt::Display for SettlementStateValidationError {
                 write!(f, "duplicate settlement state id {}", id.raw())
             }
             Self::OrphanState(id) => {
-                write!(
-                    f,
-                    "settlement state {} has no SettlementRecord",
-                    id.raw()
-                )
+                write!(f, "settlement state {} has no SettlementRecord", id.raw())
             }
             Self::MissingState(id) => {
-                write!(
-                    f,
-                    "SettlementRecord {} has no SettlementState",
-                    id.raw()
-                )
+                write!(f, "SettlementRecord {} has no SettlementState", id.raw())
             }
             Self::SettlementIdMismatch { key, state_id } => write!(
                 f,
@@ -127,7 +119,12 @@ pub fn validate_settlement_state(state: &SettlementState) -> Vec<SettlementState
         });
     }
 
-    if state.policies.response_preferences.keys().any(|k| k.is_empty()) {
+    if state
+        .policies
+        .response_preferences
+        .keys()
+        .any(|k| k.is_empty())
+    {
         errors.push(SettlementStateValidationError::InvalidPolicy {
             settlement_id: state.settlement_id,
             detail: "empty response preference key".into(),
@@ -204,10 +201,8 @@ pub fn validate_settlement_states(
 
 /// Full WorldData validation for settlement runtime.
 pub fn validate_world_settlement_states(world: &WorldData) -> Vec<SettlementStateValidationError> {
-    let mut errors = validate_settlement_states(
-        world.settlement_store(),
-        world.settlement_state_store(),
-    );
+    let mut errors =
+        validate_settlement_states(world.settlement_store(), world.settlement_state_store());
 
     for id in world.settlement_store().sorted_settlement_ids() {
         let Some(record) = world.settlement_store().get_settlement(id) else {

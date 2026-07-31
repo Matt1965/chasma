@@ -16,10 +16,7 @@ const MIN_DOODAD_PICK_RADIUS_METERS: f32 = 2.0;
 /// Raise the pick sphere so canopy / upper mesh clicks hit tall props (trees).
 const DOODAD_PICK_CENTER_Y_FACTOR: f32 = 0.5;
 
-fn doodad_pick_radius(
-    record: &crate::world::DoodadRecord,
-    catalog: &DoodadCatalog,
-) -> f32 {
+fn doodad_pick_radius(record: &crate::world::DoodadRecord, catalog: &DoodadCatalog) -> f32 {
     catalog
         .get(&record.definition_id)
         .map(|definition| doodad_interaction_radius_meters(record, definition))
@@ -34,10 +31,7 @@ fn doodad_pick_center(base: Vec3, radius: f32, visual_height: f32) -> Vec3 {
     base + Vec3::Y * lift
 }
 
-fn doodad_visual_height(
-    record: &crate::world::DoodadRecord,
-    catalog: &DoodadCatalog,
-) -> f32 {
+fn doodad_visual_height(record: &crate::world::DoodadRecord, catalog: &DoodadCatalog) -> f32 {
     catalog
         .get(&record.definition_id)
         .map(|definition| {

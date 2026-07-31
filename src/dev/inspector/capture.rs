@@ -9,19 +9,20 @@ use crate::ui::gameplay::combat_display::{
 };
 use crate::world::{
     BuildingCatalog, BuildingId, ChunkCoord, DoodadCatalog, FootprintCatalog,
-    InteractionQueryContext, NavigationPath, NavigationWaypoint, SlopeWalkability, SpaceId,
-    SteeringContext, SteeringSettings, UnitCatalog, UnitId, UnitMovementTrace, UnitState,
-    WeaponCatalog, WorldData, WorldPosition, alignment_force, blocking_doodad_at_position,
-    classify_slope_walkability, cohesion_force, gather_steering_neighbors, ground_world_position,
-    interaction_plan_to_unit_order, is_building_operational, query_world_interaction,
-    resolve_interaction_to_order, separation_force, unit_spacing_meters,
+    InteractionQueryContext, ItemCatalog, ItemPileId, NavigationPath, NavigationWaypoint,
+    SlopeWalkability, SpaceId, SteeringContext, SteeringSettings, UnitCatalog, UnitId,
+    UnitMovementTrace, UnitState, WeaponCatalog, WorldData, WorldPosition, alignment_force,
+    blocking_doodad_at_position, classify_slope_walkability, cohesion_force,
+    gather_steering_neighbors, ground_world_position, interaction_plan_to_unit_order,
+    is_building_operational, query_world_interaction, resolve_interaction_to_order,
+    separation_force, unit_spacing_meters,
 };
 
 use super::snapshot::{
     BuildingAssetPresentationInfo, BuildingBlueprintInspectorSnapshot, BuildingInspectorSnapshot,
     ChunkResidencySnapshot, CombatInspectorSnapshot, FormationInspectorSnapshot,
-    InteractionInspectorSnapshot, PathInspectorSnapshot, ProjectileInspectorSnapshot,
-    SteeringInspectorSnapshot, UnitInspectorSnapshot,
+    InteractionInspectorSnapshot, ItemPileInspectorSnapshot, PathInspectorSnapshot,
+    ProjectileInspectorSnapshot, SteeringInspectorSnapshot, UnitInspectorSnapshot,
 };
 
 const STEERING_SETTINGS: SteeringSettings = SteeringSettings::DEFAULT;
@@ -125,6 +126,51 @@ pub fn capture_unit_inspector_snapshot(
         current_space_id,
         display_floor_label,
         inventory_summary,
+        affiliation: record.affiliation.label().to_string(),
+    })
+}
+
+/// Capture a ground item pile inspection snapshot.
+pub fn capture_item_pile_inspector_snapshot(
+    world: &WorldData,
+    item_catalog: &ItemCatalog,
+    pile_id: ItemPileId,
+) -> Option<ItemPileInspectorSnapshot> {
+    let record = world.item_pile_store().get(pile_id)?.clone();
+    let (item_definition_id, quantity) = match &record.contents {
+        crate::world::WorldPileContents::Stack {
+            item_definition_id,
+            quantity,
+        } => (item_definition_id.clone(), *quantity),
+        crate::world::WorldPileContents::Unique { item_instance_id } => {
+            let instance = world.item_instance_store().get(*item_instance_id)?;
+            let def_id = instance.definition_id.clone();
+            (def_id, 1)
+        }
+    };
+    let item_name = item_catalog
+        .get(&item_definition_id)
+        .map(|item| item.display_name.clone())
+        .unwrap_or_else(|| item_definition_id.as_str().to_string());
+    let weight_grams = item_catalog
+        .get(&item_definition_id)
+        .map(|item| item.mass_grams_per_unit as u64 * quantity as u64)
+        .unwrap_or(0);
+    let chunk = record.placement.chunk;
+    let location_summary = format!(
+        "chunk ({}, {}) space {}",
+        chunk.x,
+        chunk.z,
+        record.current_space_id.raw()
+    );
+    Some(ItemPileInspectorSnapshot {
+        pile_id,
+        item_name,
+        item_definition_id,
+        quantity,
+        weight_grams,
+        location_summary,
+        chunk,
     })
 }
 
@@ -291,9 +337,9 @@ pub fn capture_building_blueprint_inspection_snapshot(
                 false,
                 None,
                 if resolved.is_some() {
-                    "authored (not auto-generated)".to_string()
+                    "authored (non-Navigable)".to_string()
                 } else {
-                    "not configured".to_string()
+                    "non-Navigable (no auto-generation)".to_string()
                 },
             )
         } else {
@@ -387,44 +433,48 @@ pub fn capture_building_blueprint_inspection_snapshot(
         })
         .unwrap_or(6.0);
 
-    let (selected_floor_vertex_count, selected_floor_elevation, selected_floor_entrances, selected_floor_transitions) =
-        if let (Some(bp), Some(fid)) = (blueprint.as_ref(), floor_id) {
-            if let Some(floor) = bp.floors.iter().find(|f| f.floor_id == fid) {
-                let entrances = bp
-                    .entrances
-                    .iter()
-                    .filter(|e| e.floor_key == floor.key)
-                    .map(|e| {
-                        format!(
-                            "{} @ [{:.1},{:.1}] r={:.1}m",
-                            e.key, e.local_position_xz[0], e.local_position_xz[1], e.radius_meters
-                        )
-                    })
-                    .collect();
-                let transitions = bp
-                    .vertical_transitions
-                    .iter()
-                    .filter(|t| {
-                        bp.floors
-                            .iter()
-                            .find(|f| f.key == t.from_floor_key)
-                            .map(|f| f.floor_id == fid)
-                            .unwrap_or(false)
-                    })
-                    .map(|t| format!("{} {:?} → {}", t.key, t.kind, t.to_floor_key))
-                    .collect();
-                (
-                    floor.walkable_outline.vertices_xz.len(),
-                    Some(floor.elevation_meters),
-                    entrances,
-                    transitions,
-                )
-            } else {
-                (0, None, Vec::new(), Vec::new())
-            }
+    let (
+        selected_floor_vertex_count,
+        selected_floor_elevation,
+        selected_floor_entrances,
+        selected_floor_transitions,
+    ) = if let (Some(bp), Some(fid)) = (blueprint.as_ref(), floor_id) {
+        if let Some(floor) = bp.floors.iter().find(|f| f.floor_id == fid) {
+            let entrances = bp
+                .entrances
+                .iter()
+                .filter(|e| e.floor_key == floor.key)
+                .map(|e| {
+                    format!(
+                        "{} @ [{:.1},{:.1}] r={:.1}m",
+                        e.key, e.local_position_xz[0], e.local_position_xz[1], e.radius_meters
+                    )
+                })
+                .collect();
+            let transitions = bp
+                .vertical_transitions
+                .iter()
+                .filter(|t| {
+                    bp.floors
+                        .iter()
+                        .find(|f| f.key == t.from_floor_key)
+                        .map(|f| f.floor_id == fid)
+                        .unwrap_or(false)
+                })
+                .map(|t| format!("{} {:?} → {}", t.key, t.kind, t.to_floor_key))
+                .collect();
+            (
+                floor.walkable_outline.vertices_xz.len(),
+                Some(floor.elevation_meters),
+                entrances,
+                transitions,
+            )
         } else {
             (0, None, Vec::new(), Vec::new())
-        };
+        }
+    } else {
+        (0, None, Vec::new(), Vec::new())
+    };
 
     Some(BuildingBlueprintInspectorSnapshot {
         blueprint_id: blueprint.as_ref().map(|bp| bp.id.as_str().to_string()),
@@ -464,7 +514,9 @@ fn format_settlement_planner_summary(
     world: &WorldData,
     building_id: crate::world::BuildingId,
 ) -> Option<String> {
-    let settlement_id = world.settlement_store().settlement_for_building(building_id)?;
+    let settlement_id = world
+        .settlement_store()
+        .settlement_for_building(building_id)?;
     let mut lines = Vec::new();
     if let Some(state) = world.settlement_state_store().get(settlement_id) {
         lines.push(format!(
@@ -560,10 +612,7 @@ fn format_settlement_planner_summary(
             }
         }
     } else {
-        lines.push(format!(
-            "SettlementState #{}: MISSING",
-            settlement_id.raw()
-        ));
+        lines.push(format!("SettlementState #{}: MISSING", settlement_id.raw()));
     }
 
     if let Some(eval) = world.need_evaluation_store().get(settlement_id) {
@@ -762,7 +811,10 @@ fn format_settlement_planner_summary(
             }
         }
     }
-    if let Some(report) = world.construction_planning_report_store().get(settlement_id) {
+    if let Some(report) = world
+        .construction_planning_report_store()
+        .get(settlement_id)
+    {
         lines.push(format!(
             "Construction planning @ tick {}:",
             report.planned_tick
@@ -882,10 +934,7 @@ fn format_settlement_planner_summary(
         return Some(lines.join("\n"));
     };
     let diagnostics = &planner.last_diagnostics;
-    lines.push(format!(
-        "Production planner: enabled={}",
-        planner.enabled
-    ));
+    lines.push(format!("Production planner: enabled={}", planner.enabled));
     lines.push(format!("Stock goals: {}", planner.stock_goals.len()));
     for entry in &diagnostics.stock_entries {
         lines.push(format!(
@@ -915,7 +964,10 @@ fn format_settlement_planner_summary(
         }
     }
     if !diagnostics.blocked_chains.is_empty() {
-        lines.push(format!("Blocked: {}", diagnostics.blocked_chains.join("; ")));
+        lines.push(format!(
+            "Blocked: {}",
+            diagnostics.blocked_chains.join("; ")
+        ));
     }
     Some(lines.join("\n"))
 }
@@ -1021,11 +1073,9 @@ pub fn probe_building_operation(
         .and_then(|policy| policy.selected_operation.as_ref())
         .and_then(|id| operation.operation_catalog.get(id));
     let mut ctx = operation.efficiency_context(world, building_catalog);
-    if let Ok(report) = crate::world::building_operational_efficiency(
-        &mut ctx,
-        building_id,
-        selected_operation,
-    ) {
+    if let Ok(report) =
+        crate::world::building_operational_efficiency(&mut ctx, building_id, selected_operation)
+    {
         probe.terrain_output_rate = Some(crate::world::format_efficiency_display(
             report.terrain_efficiency_basis_points,
         ));
@@ -1073,21 +1123,20 @@ pub fn probe_building_operation(
             .map(|reason| reason.label().to_string());
     }
     if let Some(policy) = production.get_policy(building_id) {
-        probe.selected_operation = policy
-            .selected_operation
-            .as_ref()
-            .map(|id| id.to_string());
+        probe.selected_operation = policy.selected_operation.as_ref().map(|id| id.to_string());
         probe.policy_enabled = Some(policy.enabled);
         probe.policy_paused = Some(policy.paused);
         probe.repeat_mode = Some(policy.repeat_mode.display_label());
         probe.control_source = Some(policy.control_source.label().to_string());
         probe.priority = Some(policy.priority);
-        probe.remaining_repeat_count =
-            policy.repeat_mode.remaining_repeats(production.get_state(building_id).map(|s| s.completion_count).unwrap_or(0));
+        probe.remaining_repeat_count = policy.repeat_mode.remaining_repeats(
+            production
+                .get_state(building_id)
+                .map(|s| s.completion_count)
+                .unwrap_or(0),
+        );
     }
-    let workers = crate::world::workstation_workers_for_building(
-        world, building_id,
-    );
+    let workers = crate::world::workstation_workers_for_building(world, building_id);
     if !workers.is_empty() {
         probe.assigned_workers = Some(
             workers
@@ -1137,60 +1186,61 @@ pub fn probe_building_operation(
                         op_def,
                         definition,
                     );
-                if !assessment.inputs.is_empty() {
-                    probe.execution_inputs_summary = Some(
-                        assessment
-                            .inputs
-                            .iter()
-                            .map(|input| {
-                                format!(
-                                    "{}: avail={}/{} phys={} res={} {}",
-                                    input.binding_id,
-                                    input.available,
-                                    input.required,
-                                    input.physical,
-                                    input.reserved,
-                                    input.item_id.as_str()
-                                )
-                            })
-                            .collect::<Vec<_>>()
-                            .join("; "),
-                    );
-                }
-                if !assessment.outputs.is_empty() {
-                    probe.execution_outputs_summary = Some(
-                        assessment
-                            .outputs
-                            .iter()
-                            .map(|output| {
-                                format!(
-                                    "{}: {} {} ({})",
-                                    output.binding_id,
-                                    output.quantity,
-                                    output.item_id.as_str(),
-                                    if output.can_accept { "ok" } else { "full" }
-                                )
-                            })
-                            .collect::<Vec<_>>()
-                            .join("; "),
-                    );
-                }
-                probe.execution_inventory_summary = Some(
-                    world
-                        .building_inventory_binding_store()
-                        .get(building_id)
-                        .map(|set| {
-                            set.bindings()
+                    if !assessment.inputs.is_empty() {
+                        probe.execution_inputs_summary = Some(
+                            assessment
+                                .inputs
                                 .iter()
-                                .map(|binding| {
-                                    let entries = world
-                                        .inventory_store()
-                                        .get(binding.inventory_id)
-                                        .map(|record| {
-                                            record
-                                                .placed_entries()
-                                                .iter()
-                                                .filter_map(|entry| match &entry.contents {
+                                .map(|input| {
+                                    format!(
+                                        "{}: avail={}/{} phys={} res={} {}",
+                                        input.binding_id,
+                                        input.available,
+                                        input.required,
+                                        input.physical,
+                                        input.reserved,
+                                        input.item_id.as_str()
+                                    )
+                                })
+                                .collect::<Vec<_>>()
+                                .join("; "),
+                        );
+                    }
+                    if !assessment.outputs.is_empty() {
+                        probe.execution_outputs_summary = Some(
+                            assessment
+                                .outputs
+                                .iter()
+                                .map(|output| {
+                                    format!(
+                                        "{}: {} {} ({})",
+                                        output.binding_id,
+                                        output.quantity,
+                                        output.item_id.as_str(),
+                                        if output.can_accept { "ok" } else { "full" }
+                                    )
+                                })
+                                .collect::<Vec<_>>()
+                                .join("; "),
+                        );
+                    }
+                    probe.execution_inventory_summary = Some(
+                        world
+                            .building_inventory_binding_store()
+                            .get(building_id)
+                            .map(|set| {
+                                set.bindings()
+                                    .iter()
+                                    .map(|binding| {
+                                        let entries = world
+                                            .inventory_store()
+                                            .get(binding.inventory_id)
+                                            .map(|record| {
+                                                record
+                                                    .placed_entries()
+                                                    .iter()
+                                                    .filter_map(|entry| {
+                                                        match &entry.contents {
                                                     crate::world::InventoryEntryContents::Stack {
                                                         item_definition_id,
                                                         quantity,
@@ -1199,19 +1249,20 @@ pub fn probe_building_operation(
                                                         item_definition_id.as_str()
                                                     )),
                                                     _ => None,
-                                                })
-                                                .collect::<Vec<_>>()
-                                                .join(",")
-                                        })
-                                        .unwrap_or_else(|| "missing".to_string());
-                                    format!("{}={entries}", binding.binding_id)
-                                })
-                                .collect::<Vec<_>>()
-                                .join("; ")
-                        })
-                        .unwrap_or_else(|| "no bindings".to_string()),
-                );
-                probe.execution_blocking = assessment.blocking_label().map(str::to_string);
+                                                }
+                                                    })
+                                                    .collect::<Vec<_>>()
+                                                    .join(",")
+                                            })
+                                            .unwrap_or_else(|| "missing".to_string());
+                                        format!("{}={entries}", binding.binding_id)
+                                    })
+                                    .collect::<Vec<_>>()
+                                    .join("; ")
+                            })
+                            .unwrap_or_else(|| "no bindings".to_string()),
+                    );
+                    probe.execution_blocking = assessment.blocking_label().map(str::to_string);
                 }
             } else {
                 probe.validation_state = Some("No operation selected".into());

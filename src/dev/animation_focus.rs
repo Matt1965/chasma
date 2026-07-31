@@ -2,16 +2,18 @@
 
 use bevy::prelude::*;
 
+use crate::client::selection::WorldSelectionState;
 use crate::units::AnimationPresentationFocus;
-
-use super::inspector::WorldInspectorState;
+use crate::units::input::SelectedUnits;
 
 pub fn sync_animation_presentation_focus(
-    inspector: Res<WorldInspectorState>,
+    world_selection: Res<WorldSelectionState>,
+    selected_units: Res<SelectedUnits>,
     mut focus: ResMut<AnimationPresentationFocus>,
 ) {
-    if focus.inspected_unit == inspector.selected_unit {
+    let inspected = world_selection.primary_unit(&selected_units);
+    if focus.inspected_unit == inspected {
         return;
     }
-    focus.inspected_unit = inspector.selected_unit;
+    focus.inspected_unit = inspected;
 }

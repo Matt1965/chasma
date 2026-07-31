@@ -121,10 +121,7 @@ pub fn assign_hauling_task_with_priority(
         doodad_catalog,
         nav_config,
         unit_id,
-        UnitOrder::Work {
-            task_id,
-            target,
-        },
+        UnitOrder::Work { task_id, target },
         AttackTargetingPolicy::default(),
     )
     .map_err(|_| TaskError::UnitNotEligible(unit_id))?;

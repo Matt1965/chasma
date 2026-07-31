@@ -200,10 +200,12 @@ pub fn validate_building_definition_inventory_bindings(
 
     for binding in &bindings {
         if !seen_ids.insert(binding.binding_id.clone()) {
-            issues.push(BuildingInventoryBindingValidationIssue::DuplicateBindingId {
-                building: building.id.clone(),
-                binding_id: binding.binding_id.clone(),
-            });
+            issues.push(
+                BuildingInventoryBindingValidationIssue::DuplicateBindingId {
+                    building: building.id.clone(),
+                    binding_id: binding.binding_id.clone(),
+                },
+            );
         }
         if binding.is_default {
             default_count += 1;
@@ -226,11 +228,16 @@ pub fn validate_building_definition_inventory_bindings(
     }
 
     if let Some(default_id) = &building.default_inventory_binding_id {
-        if !bindings.iter().any(|binding| &binding.binding_id == default_id) {
-            issues.push(BuildingInventoryBindingValidationIssue::InvalidDefaultBinding {
-                building: building.id.clone(),
-                binding_id: default_id.clone(),
-            });
+        if !bindings
+            .iter()
+            .any(|binding| &binding.binding_id == default_id)
+        {
+            issues.push(
+                BuildingInventoryBindingValidationIssue::InvalidDefaultBinding {
+                    building: building.id.clone(),
+                    binding_id: default_id.clone(),
+                },
+            );
         }
     }
 
@@ -259,7 +266,13 @@ pub fn validate_operation_inventory_bindings(
 
     for input in &operation.inputs {
         if let Some(binding_id) = &input.source_binding {
-            validate_operation_input_binding(operation, building, binding_id, &bindings, &mut issues);
+            validate_operation_input_binding(
+                operation,
+                building,
+                binding_id,
+                &bindings,
+                &mut issues,
+            );
         }
     }
     for output in &operation.outputs {
@@ -297,10 +310,12 @@ fn validate_operation_input_binding(
     issues: &mut Vec<BuildingInventoryBindingValidationIssue>,
 ) {
     let Some(role) = bindings.get(binding_id) else {
-        issues.push(BuildingInventoryBindingValidationIssue::OperationUnknownBinding {
-            operation_id: operation.id.clone(),
-            binding_id: binding_id.clone(),
-        });
+        issues.push(
+            BuildingInventoryBindingValidationIssue::OperationUnknownBinding {
+                operation_id: operation.id.clone(),
+                binding_id: binding_id.clone(),
+            },
+        );
         return;
     };
     if !role.accepts_operation_input() {
@@ -323,10 +338,12 @@ fn validate_operation_output_binding(
     issues: &mut Vec<BuildingInventoryBindingValidationIssue>,
 ) {
     let Some(role) = bindings.get(binding_id) else {
-        issues.push(BuildingInventoryBindingValidationIssue::OperationUnknownBinding {
-            operation_id: operation.id.clone(),
-            binding_id: binding_id.clone(),
-        });
+        issues.push(
+            BuildingInventoryBindingValidationIssue::OperationUnknownBinding {
+                operation_id: operation.id.clone(),
+                binding_id: binding_id.clone(),
+            },
+        );
         return;
     };
     if !role.accepts_operation_output() {
@@ -364,10 +381,12 @@ pub fn validate_building_runtime_inventory_bindings(
         Some(set) => set,
         None => {
             for binding in &authored {
-                issues.push(BuildingInventoryBindingValidationIssue::MissingRuntimeBinding {
-                    building_id,
-                    binding_id: binding.binding_id.clone(),
-                });
+                issues.push(
+                    BuildingInventoryBindingValidationIssue::MissingRuntimeBinding {
+                        building_id,
+                        binding_id: binding.binding_id.clone(),
+                    },
+                );
             }
             return issues;
         }
@@ -376,10 +395,12 @@ pub fn validate_building_runtime_inventory_bindings(
     let mut claimed = HashSet::new();
     for authored_binding in &authored {
         let Some(runtime_binding) = runtime_set.get(&authored_binding.binding_id) else {
-            issues.push(BuildingInventoryBindingValidationIssue::MissingRuntimeBinding {
-                building_id,
-                binding_id: authored_binding.binding_id.clone(),
-            });
+            issues.push(
+                BuildingInventoryBindingValidationIssue::MissingRuntimeBinding {
+                    building_id,
+                    binding_id: authored_binding.binding_id.clone(),
+                },
+            );
             continue;
         };
         if runtime_binding.role != authored_binding.role {
@@ -393,21 +414,25 @@ pub fn validate_building_runtime_inventory_bindings(
             );
         }
         if !claimed.insert(runtime_binding.inventory_id) {
-            issues.push(BuildingInventoryBindingValidationIssue::DuplicateInventoryClaim {
-                building_id,
-                inventory_id: runtime_binding.inventory_id,
-            });
+            issues.push(
+                BuildingInventoryBindingValidationIssue::DuplicateInventoryClaim {
+                    building_id,
+                    inventory_id: runtime_binding.inventory_id,
+                },
+            );
         }
         if world
             .inventory_store()
             .get(runtime_binding.inventory_id)
             .is_none()
         {
-            issues.push(BuildingInventoryBindingValidationIssue::MissingInventoryRecord {
-                building_id,
-                binding_id: authored_binding.binding_id.clone(),
-                inventory_id: runtime_binding.inventory_id,
-            });
+            issues.push(
+                BuildingInventoryBindingValidationIssue::MissingInventoryRecord {
+                    building_id,
+                    binding_id: authored_binding.binding_id.clone(),
+                    inventory_id: runtime_binding.inventory_id,
+                },
+            );
         }
     }
 
@@ -432,10 +457,12 @@ pub fn validate_world_building_inventory_bindings(
         if world.get_building(building_id).is_none() {
             if let Some(set) = store.get(building_id) {
                 for binding in set.bindings() {
-                    issues.push(BuildingInventoryBindingValidationIssue::OrphanedBuildingInventory {
-                        building_id,
-                        inventory_id: binding.inventory_id,
-                    });
+                    issues.push(
+                        BuildingInventoryBindingValidationIssue::OrphanedBuildingInventory {
+                            building_id,
+                            inventory_id: binding.inventory_id,
+                        },
+                    );
                 }
             }
         }
@@ -461,10 +488,12 @@ pub fn validate_selected_operation_inventory_bindings(
                 .resolve_inventory(building_id, binding_id)
                 .is_none()
             {
-                return Err(BuildingInventoryBindingValidationIssue::MissingRuntimeBinding {
-                    building_id,
-                    binding_id: binding_id.clone(),
-                });
+                return Err(
+                    BuildingInventoryBindingValidationIssue::MissingRuntimeBinding {
+                        building_id,
+                        binding_id: binding_id.clone(),
+                    },
+                );
             }
         }
     }
@@ -478,10 +507,12 @@ pub fn validate_selected_operation_inventory_bindings(
                 .resolve_inventory(building_id, binding_id)
                 .is_none()
             {
-                return Err(BuildingInventoryBindingValidationIssue::MissingRuntimeBinding {
-                    building_id,
-                    binding_id: binding_id.clone(),
-                });
+                return Err(
+                    BuildingInventoryBindingValidationIssue::MissingRuntimeBinding {
+                        building_id,
+                        binding_id: binding_id.clone(),
+                    },
+                );
             }
         }
     }

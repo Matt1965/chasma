@@ -42,7 +42,10 @@ impl BuildingInventoryBindingSet {
         self.bindings.len()
     }
 
-    pub fn get(&self, binding_id: &BuildingInventoryBindingId) -> Option<&BuildingInventoryBinding> {
+    pub fn get(
+        &self,
+        binding_id: &BuildingInventoryBindingId,
+    ) -> Option<&BuildingInventoryBinding> {
         self.by_id
             .get(binding_id)
             .map(|&index| &self.bindings[index])
@@ -120,10 +123,7 @@ impl BuildingInventoryBindingStore {
     }
 
     pub fn building_ids(&self) -> impl Iterator<Item = BuildingId> + '_ {
-        self.buildings
-            .keys()
-            .copied()
-            .map(BuildingId::new)
+        self.buildings.keys().copied().map(BuildingId::new)
     }
 
     pub fn export_buildings(&self) -> HashMap<u64, BuildingInventoryBindingSet> {

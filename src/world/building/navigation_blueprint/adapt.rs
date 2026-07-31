@@ -4,9 +4,7 @@
 
 use bevy::prelude::*;
 
-use super::definition::{
-    BuildingNavigationBlueprint, NavigationVerticalTransitionKind,
-};
+use super::definition::{BuildingNavigationBlueprint, NavigationVerticalTransitionKind};
 use crate::world::PortalType;
 
 /// Owned space template derived from a navigation blueprint floor.

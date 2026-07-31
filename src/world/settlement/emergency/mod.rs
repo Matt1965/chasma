@@ -21,19 +21,19 @@ pub use definition::{
     EmergencyDefinition, EmergencyEvaluatorKind, EmergencyId, EmergencyInterruptionPolicy,
     NeedPressureModifier, ResponseScoreModifier, TaskPriorityModifier,
 };
-pub use evaluate::{evaluate_settlement_emergencies, EmergencyEvalContext};
+pub use evaluate::{EmergencyEvalContext, evaluate_settlement_emergencies};
 pub use modifiers::{
-    active_definitions, emergency_blocks_response, emergency_bump_task_priority,
-    emergency_need_pressure_delta, emergency_only_gate, emergency_preempt_relaxation,
-    emergency_response_score_delta, emergency_unlocks_response, EmergencyPreemptRelaxation,
+    EmergencyPreemptRelaxation, active_definitions, emergency_blocks_response,
+    emergency_bump_task_priority, emergency_need_pressure_delta, emergency_only_gate,
+    emergency_preempt_relaxation, emergency_response_score_delta, emergency_unlocks_response,
 };
 pub use report::{EmergencyEvaluationReport, EmergencySignalDiagnostic};
 pub use starter::starter_emergency_definitions;
 pub use step::{
-    evaluate_settlement_emergencies_now, step_settlement_emergency_evaluation,
-    EMERGENCY_EVAL_CADENCE_TICKS,
+    EMERGENCY_EVAL_CADENCE_TICKS, evaluate_settlement_emergencies_now,
+    step_settlement_emergency_evaluation,
 };
 pub use store::EmergencyEvaluationStore;
 pub use validation::{
-    validate_emergency_catalog, validate_emergency_definition, EmergencyValidationError,
+    EmergencyValidationError, validate_emergency_catalog, validate_emergency_definition,
 };

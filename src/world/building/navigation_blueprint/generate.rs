@@ -12,7 +12,10 @@ use super::definition::{
 };
 use super::id::BuildingNavigationBlueprintId;
 use super::mesh::{BuildingMeshAnalysisInput, LocalTriangle3d, PortalMarker3d};
-use super::report::{NavigationBlueprintGenerationReport, NavigationBlueprintGenerationStatus};
+use super::report::{
+    EntranceGenerationDiagnostics, NavigationBlueprintGenerationReport,
+    NavigationBlueprintGenerationStatus,
+};
 use crate::world::authoring_transform::BuildingTransformSafetyClass;
 use crate::world::building::catalog::BuildingDefinition;
 use crate::world::occupancy::bake::source_file_hash_hex;
@@ -39,13 +42,22 @@ pub struct NavigationBlueprintGenerateInput {
 pub struct NavigationBlueprintGenerateOutput {
     pub blueprint: BuildingNavigationBlueprint,
     pub warnings: Vec<String>,
+    pub entrance_diagnostics: EntranceGenerationDiagnostics,
 }
 
 pub fn should_generate_navigation_blueprint(definition: &BuildingDefinition) -> bool {
-    if definition.transform_safety_class != BuildingTransformSafetyClass::Navigable {
-        return false;
+    definition.transform_safety_class == BuildingTransformSafetyClass::Navigable
+}
+
+/// Human-readable rejection when [`should_generate_navigation_blueprint`] is false.
+pub fn navigation_blueprint_generation_rejection(
+    definition: &BuildingDefinition,
+) -> Option<&'static str> {
+    if should_generate_navigation_blueprint(definition) {
+        None
+    } else {
+        Some("building is not Navigable")
     }
-    definition.interior_profile_id.is_some() || definition.navigation_blueprint_id.is_some()
 }
 
 pub fn blueprint_id_for_building(definition: &BuildingDefinition) -> BuildingNavigationBlueprintId {
@@ -56,6 +68,21 @@ pub fn blueprint_id_for_building(definition: &BuildingDefinition) -> BuildingNav
     } else {
         BuildingNavigationBlueprintId::new(format!("{}_nav", definition.id.as_str()))
     }
+}
+
+pub fn navigation_mesh_source_label(mesh: &BuildingMeshAnalysisInput) -> &'static str {
+    if mesh.used_collision_node {
+        "occupancy_collision"
+    } else {
+        "visible GLB geometry fallback"
+    }
+}
+
+pub fn navigation_mesh_source_display(mesh: &BuildingMeshAnalysisInput) -> String {
+    format!(
+        "Regeneration source: {}",
+        navigation_mesh_source_label(mesh)
+    )
 }
 
 pub fn generate_navigation_blueprint(
@@ -88,13 +115,24 @@ pub fn generate_navigation_blueprint(
     let mut floors = build_floor_definitions(&walkable_clusters, &mut warnings);
     assign_floor_ids(&mut floors);
 
-    let mut entrances =
-        entrances_from_portal_markers(&portal_markers, &floors, &triangles, &mut warnings);
+    let mut entrance_diag = EntranceGenerationDiagnostics::default();
+    let mut entrances = entrances_from_portal_markers(
+        &portal_markers,
+        &floors,
+        &triangles,
+        &mut warnings,
+        &mut entrance_diag,
+    );
     if entrances.is_empty() {
         if let Some(entrance) = heuristic_ground_entrance(&floors, &mut warnings) {
             entrances.push(entrance);
+            entrance_diag.synthesized_entrances = 1;
+            entrance_diag
+                .candidate_details
+                .push("synthesized fallback exterior_entrance (no portal__ markers)".into());
         }
     }
+    entrance_diag.entrances_generated = entrances.len();
 
     let vertical_transitions =
         vertical_transitions_from_portals(&portal_markers, &floors, &mut warnings);
@@ -147,6 +185,7 @@ pub fn generate_navigation_blueprint(
     Ok(NavigationBlueprintGenerateOutput {
         blueprint,
         warnings,
+        entrance_diagnostics: entrance_diag,
     })
 }
 
@@ -163,8 +202,10 @@ pub fn failed_report(
         building_id: building_id.to_string(),
         blueprint_id,
         status: NavigationBlueprintGenerationStatus::Failed,
+        mesh_source_label: None,
         warnings: Vec::new(),
         errors: vec![error.into()],
+        entrance_diagnostics: EntranceGenerationDiagnostics::default(),
     }
 }
 
@@ -185,6 +226,7 @@ fn scale_portal_markers(markers: &[PortalMarker3d], scale: f32) -> Vec<PortalMar
         .map(|marker| PortalMarker3d {
             name: marker.name.clone(),
             position: marker.position * scale,
+            scene_path: marker.scene_path.clone(),
         })
         .collect()
 }
@@ -258,10 +300,7 @@ fn build_floor_definitions(
             continue;
         }
         let outline = NavigationPolygon2d {
-            vertices_xz: simplified
-                .iter()
-                .map(|p| [p.x, p.y])
-                .collect(),
+            vertices_xz: simplified.iter().map(|p| [p.x, p.y]).collect(),
         };
         floors.push(NavigationFloorDefinition {
             floor_id: index as i32,
@@ -296,11 +335,15 @@ fn assign_floor_ids(floors: &mut [NavigationFloorDefinition]) {
     }
 }
 
+/// Markers closer than this (meters) on the same floor with overlapping discs merge.
+const ENTRANCE_DEDUP_DISTANCE_METERS: f32 = 0.45;
+
 fn entrances_from_portal_markers(
     markers: &[PortalMarker3d],
     floors: &[NavigationFloorDefinition],
     triangles: &[LocalTriangle3d],
     warnings: &mut Vec<String>,
+    diag: &mut EntranceGenerationDiagnostics,
 ) -> Vec<NavigationEntranceDefinition> {
     let ground = floors.iter().min_by(|a, b| {
         a.elevation_meters
@@ -310,36 +353,198 @@ fn entrances_from_portal_markers(
     let Some(ground) = ground else {
         return Vec::new();
     };
-    let centroid = floor_centroid(ground);
 
-    markers
+    let entrance_markers: Vec<&PortalMarker3d> = markers
         .iter()
         .filter(|marker| portal_kind(&marker.name).is_entrance())
-        .enumerate()
-        .filter_map(|(index, marker)| {
-            let floor = nearest_floor(floors, marker.position.y).unwrap_or(ground);
-            let radius = DEFAULT_ENTRANCE_RADIUS;
-            let exterior = Vec2::new(marker.position.x, marker.position.z);
-            let interior = Vec3::new(
-                marker.position.x + (centroid.x - exterior.x) * 0.35,
+        .collect();
+    diag.explicit_markers = entrance_markers.len();
+    if entrance_markers.is_empty() {
+        return Vec::new();
+    }
+
+    for marker in &entrance_markers {
+        diag.candidate_details.push(format!(
+            "{} @ [{:.2},{:.2}] path={} ({})",
+            marker.name,
+            marker.position.x,
+            marker.position.z,
+            if marker.scene_path.is_empty() {
+                "-"
+            } else {
+                marker.scene_path.as_str()
+            },
+            portal_role_label(&marker.name),
+        ));
+    }
+
+    let groups = group_portal_entrance_markers(&entrance_markers);
+    diag.deduplicated_candidates = entrance_markers.len().saturating_sub(groups.len());
+
+    let mut entrances = Vec::new();
+    for (group_index, group) in groups.into_iter().enumerate() {
+        let exterior_marker = group
+            .outside
+            .or(group.root)
+            .or(group.inside)
+            .expect("group has at least one marker");
+        let floor = nearest_floor(floors, exterior_marker.position.y).unwrap_or(ground);
+        let centroid = floor_centroid(floor);
+        let exterior = Vec2::new(exterior_marker.position.x, exterior_marker.position.z);
+        let interior = if let Some(inside) = group.inside {
+            Vec3::new(inside.position.x, floor.elevation_meters, inside.position.z)
+        } else {
+            Vec3::new(
+                exterior.x + (centroid.x - exterior.x) * 0.35,
                 floor.elevation_meters,
-                marker.position.z + (centroid.y - exterior.y) * 0.35,
-            );
-            if !point_inside_floor(floor, exterior) && !near_mesh_boundary(triangles, exterior) {
-                warnings.push(format!(
-                    "portal `{}` is not near a walkable boundary — using marker position",
-                    marker.name
-                ));
+                exterior.y + (centroid.y - exterior.y) * 0.35,
+            )
+        };
+        let radius = DEFAULT_ENTRANCE_RADIUS;
+        if !point_inside_floor(floor, exterior) && !near_mesh_boundary(triangles, exterior) {
+            warnings.push(format!(
+                "portal `{}` is not near a walkable boundary — using marker position",
+                exterior_marker.name
+            ));
+        }
+        let key = portal_key_suffix(&group.logical_key)
+            .unwrap_or_else(|| format!("entrance_{group_index}"));
+        entrances.push(NavigationEntranceDefinition {
+            key,
+            floor_key: floor.key.clone(),
+            local_position_xz: [exterior.x, exterior.y],
+            radius_meters: radius.max(MIN_ENTRANCE_RADIUS),
+            interior_spawn_local: [interior.x, interior.y, interior.z],
+            bidirectional: true,
+        });
+    }
+
+    let before_spatial = entrances.len();
+    entrances = dedupe_nearby_entrances(entrances);
+    diag.deduplicated_candidates += before_spatial.saturating_sub(entrances.len());
+    entrances
+}
+
+#[derive(Debug, Clone)]
+struct PortalEntranceGroup<'a> {
+    logical_key: String,
+    root: Option<&'a PortalMarker3d>,
+    outside: Option<&'a PortalMarker3d>,
+    inside: Option<&'a PortalMarker3d>,
+}
+
+fn group_portal_entrance_markers<'a>(
+    markers: &[&'a PortalMarker3d],
+) -> Vec<PortalEntranceGroup<'a>> {
+    let mut groups: Vec<PortalEntranceGroup<'a>> = Vec::new();
+    for marker in markers {
+        let key = logical_portal_group_key(&marker.name);
+        let slot = groups.iter_mut().find(|g| g.logical_key == key);
+        let group = if let Some(group) = slot {
+            group
+        } else {
+            groups.push(PortalEntranceGroup {
+                logical_key: key,
+                root: None,
+                outside: None,
+                inside: None,
+            });
+            groups.last_mut().unwrap()
+        };
+        match portal_role(&marker.name) {
+            PortalRole::Outside => group.outside = Some(marker),
+            PortalRole::Inside => group.inside = Some(marker),
+            PortalRole::Root => group.root = Some(marker),
+        }
+    }
+    groups
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PortalRole {
+    Root,
+    Outside,
+    Inside,
+}
+
+fn portal_role(name: &str) -> PortalRole {
+    let lower = name.to_ascii_lowercase();
+    if lower.ends_with("__outside") || lower.ends_with("__exterior") || lower.ends_with("__out") {
+        PortalRole::Outside
+    } else if lower.ends_with("__inside")
+        || lower.ends_with("__interior")
+        || lower.ends_with("__in")
+    {
+        PortalRole::Inside
+    } else {
+        PortalRole::Root
+    }
+}
+
+fn portal_role_label(name: &str) -> &'static str {
+    match portal_role(name) {
+        PortalRole::Outside => "explicit portal outside",
+        PortalRole::Inside => "explicit portal inside",
+        PortalRole::Root => "explicit portal marker",
+    }
+}
+
+/// Strip role suffixes so `portal__entrance`, `portal__entrance__outside`, and
+/// `portal__entrance__inside` share one logical doorway identity.
+pub fn logical_portal_group_key(name: &str) -> String {
+    let lower = name.to_ascii_lowercase();
+    let rest = lower.strip_prefix("portal__").unwrap_or(&lower);
+    let rest = rest
+        .strip_suffix("__outside")
+        .or_else(|| rest.strip_suffix("__exterior"))
+        .or_else(|| rest.strip_suffix("__inside"))
+        .or_else(|| rest.strip_suffix("__interior"))
+        .or_else(|| rest.strip_suffix("__out"))
+        .or_else(|| rest.strip_suffix("__in"))
+        .unwrap_or(rest);
+    format!("portal__{rest}")
+}
+
+fn dedupe_nearby_entrances(
+    mut entrances: Vec<NavigationEntranceDefinition>,
+) -> Vec<NavigationEntranceDefinition> {
+    if entrances.len() < 2 {
+        return entrances;
+    }
+    let mut keep = vec![true; entrances.len()];
+    for i in 0..entrances.len() {
+        if !keep[i] {
+            continue;
+        }
+        for j in (i + 1)..entrances.len() {
+            if !keep[j] {
+                continue;
             }
-            Some(NavigationEntranceDefinition {
-                key: portal_key_suffix(&marker.name).unwrap_or_else(|| format!("entrance_{index}")),
-                floor_key: floor.key.clone(),
-                local_position_xz: [exterior.x, exterior.y],
-                radius_meters: radius.max(MIN_ENTRANCE_RADIUS),
-                interior_spawn_local: [interior.x, interior.y, interior.z],
-                bidirectional: true,
-            })
-        })
+            if entrances[i].floor_key != entrances[j].floor_key {
+                continue;
+            }
+            let a = Vec2::new(
+                entrances[i].local_position_xz[0],
+                entrances[i].local_position_xz[1],
+            );
+            let b = Vec2::new(
+                entrances[j].local_position_xz[0],
+                entrances[j].local_position_xz[1],
+            );
+            let dist = a.distance(b);
+            let overlap = dist
+                <= ENTRANCE_DEDUP_DISTANCE_METERS
+                    .max(entrances[i].radius_meters.min(entrances[j].radius_meters) * 0.35);
+            if overlap {
+                // Prefer the earlier (group) entrance; drop the duplicate.
+                keep[j] = false;
+            }
+        }
+    }
+    entrances
+        .into_iter()
+        .zip(keep)
+        .filter_map(|(entrance, kept)| kept.then_some(entrance))
         .collect()
 }
 
@@ -443,7 +648,9 @@ fn floor_centroid(floor: &NavigationFloorDefinition) -> Vec2 {
     if verts.is_empty() {
         return Vec2::ZERO;
     }
-    let sum = verts.iter().fold(Vec2::ZERO, |acc, [x, z]| acc + Vec2::new(*x, *z));
+    let sum = verts
+        .iter()
+        .fold(Vec2::ZERO, |acc, [x, z]| acc + Vec2::new(*x, *z));
     sum / verts.len() as f32
 }
 
@@ -451,14 +658,12 @@ fn nearest_floor<'a>(
     floors: &'a [NavigationFloorDefinition],
     y: f32,
 ) -> Option<&'a NavigationFloorDefinition> {
-    floors
-        .iter()
-        .min_by(|a, b| {
-            (a.elevation_meters - y)
-                .abs()
-                .partial_cmp(&(b.elevation_meters - y).abs())
-                .unwrap_or(std::cmp::Ordering::Equal)
-        })
+    floors.iter().min_by(|a, b| {
+        (a.elevation_meters - y)
+            .abs()
+            .partial_cmp(&(b.elevation_meters - y).abs())
+            .unwrap_or(std::cmp::Ordering::Equal)
+    })
 }
 
 fn point_inside_floor(floor: &NavigationFloorDefinition, point: Vec2) -> bool {
@@ -558,18 +763,14 @@ fn convex_hull(points: &[Vec2]) -> Vec<Vec2> {
 
     let mut lower = Vec::new();
     for p in &pts {
-        while lower.len() >= 2
-            && cross(lower[lower.len() - 2], lower[lower.len() - 1], *p) <= 0.0
-        {
+        while lower.len() >= 2 && cross(lower[lower.len() - 2], lower[lower.len() - 1], *p) <= 0.0 {
             lower.pop();
         }
         lower.push(*p);
     }
     let mut upper = Vec::new();
     for p in pts.iter().rev() {
-        while upper.len() >= 2
-            && cross(upper[upper.len() - 2], upper[upper.len() - 1], *p) <= 0.0
-        {
+        while upper.len() >= 2 && cross(upper[upper.len() - 2], upper[upper.len() - 1], *p) <= 0.0 {
             upper.pop();
         }
         upper.push(*p);
@@ -595,17 +796,86 @@ fn simplify_collinear(points: &[Vec2], epsilon: f32) -> Vec<Vec2> {
             out.push(curr);
         }
     }
-    if out.len() < 3 {
-        points.to_vec()
-    } else {
-        out
-    }
+    if out.len() < 3 { points.to_vec() } else { out }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::world::building::navigation_blueprint::mesh::load_building_mesh_for_navigation;
+
+    #[test]
+    fn navigable_building_without_profile_or_blueprint_id_is_eligible() {
+        use crate::world::authoring_transform::BuildingTransformSafetyClass;
+        use crate::world::building::catalog::BuildingDefinitionId;
+        use crate::world::building::footprint::FootprintSpec;
+
+        let definition = BuildingDefinition::new(
+            BuildingDefinitionId::new("hut"),
+            "Hut",
+            crate::world::BuildingCategoryId::new("residential"),
+            crate::world::BuildingRenderKey::reserved("hut"),
+            crate::world::BuildingRenderKey::reserved("hut_collision"),
+            100,
+            10.0,
+            FootprintSpec::Rectangle {
+                width_meters: 4.0,
+                depth_meters: 4.0,
+            },
+            35.0,
+            true,
+        );
+        assert_eq!(
+            definition.transform_safety_class,
+            BuildingTransformSafetyClass::Navigable
+        );
+        assert!(definition.interior_profile_id.is_none());
+        assert!(definition.navigation_blueprint_id.is_none());
+        assert!(should_generate_navigation_blueprint(&definition));
+        assert!(navigation_blueprint_generation_rejection(&definition).is_none());
+    }
+
+    #[test]
+    fn decorative_building_is_not_eligible_for_generation() {
+        use crate::world::authoring_transform::BuildingTransformSafetyClass;
+        use crate::world::building::catalog::BuildingDefinitionId;
+        use crate::world::building::footprint::FootprintSpec;
+
+        let mut definition = BuildingDefinition::new(
+            BuildingDefinitionId::new("prop"),
+            "Prop",
+            crate::world::BuildingCategoryId::new("residential"),
+            crate::world::BuildingRenderKey::reserved("hut"),
+            crate::world::BuildingRenderKey::reserved("hut_collision"),
+            100,
+            10.0,
+            FootprintSpec::Rectangle {
+                width_meters: 4.0,
+                depth_meters: 4.0,
+            },
+            35.0,
+            true,
+        );
+        definition.transform_safety_class = BuildingTransformSafetyClass::DecorativeNonNavigable;
+        assert!(!should_generate_navigation_blueprint(&definition));
+        assert_eq!(
+            navigation_blueprint_generation_rejection(&definition),
+            Some("building is not Navigable")
+        );
+    }
+
+    #[test]
+    fn navigation_mesh_source_label_prefers_collision_node() {
+        use super::super::mesh::BuildingMeshAnalysisInput;
+        let mut mesh = BuildingMeshAnalysisInput::default();
+        mesh.used_collision_node = true;
+        assert_eq!(navigation_mesh_source_label(&mesh), "occupancy_collision");
+        mesh.used_collision_node = false;
+        assert_eq!(
+            navigation_mesh_source_label(&mesh),
+            "visible GLB geometry fallback"
+        );
+    }
 
     #[test]
     fn convex_hull_rectangle() {
@@ -621,12 +891,72 @@ mod tests {
     }
 
     #[test]
+    fn generate_uses_mesh_geometry_not_saved_blueprint_outline() {
+        // A flat walkable quad at y=0 — generator must slice this mesh, not any
+        // pre-existing blueprint polygon.
+        let triangles = vec![
+            LocalTriangle3d {
+                a: Vec3::new(0.0, 0.0, 0.0),
+                b: Vec3::new(6.0, 0.0, 6.0),
+                c: Vec3::new(6.0, 0.0, 0.0),
+            },
+            LocalTriangle3d {
+                a: Vec3::new(0.0, 0.0, 0.0),
+                b: Vec3::new(0.0, 0.0, 6.0),
+                c: Vec3::new(6.0, 0.0, 6.0),
+            },
+        ];
+        let mesh = BuildingMeshAnalysisInput {
+            triangles,
+            portal_markers: Vec::new(),
+            source_path: "synthetic".into(),
+            used_collision_node: true,
+        };
+        assert_eq!(navigation_mesh_source_label(&mesh), "occupancy_collision");
+
+        let output = generate_navigation_blueprint(NavigationBlueprintGenerateInput {
+            blueprint_id: BuildingNavigationBlueprintId::new("synthetic_nav"),
+            display_name: "Synthetic".into(),
+            collision_asset_path: PathBuf::from("synthetic.glb"),
+            render_asset_path: None,
+            baseline_scale: 1.0,
+            mesh,
+        })
+        .expect("mesh slice");
+
+        assert_eq!(
+            output
+                .blueprint
+                .metadata
+                .extensions
+                .get("nv12_mesh_source")
+                .map(String::as_str),
+            Some("occupancy_collision")
+        );
+        assert!(!output.blueprint.floors.is_empty());
+        // Hull of the 6×6 quad should span near that extent — not a tiny saved outline.
+        let outline = &output.blueprint.floors[0].walkable_outline.vertices_xz;
+        let max_x = outline
+            .iter()
+            .map(|v| v[0])
+            .fold(f32::NEG_INFINITY, f32::max);
+        let max_z = outline
+            .iter()
+            .map(|v| v[1])
+            .fold(f32::NEG_INFINITY, f32::max);
+        assert!(max_x > 4.0, "expected mesh extent, got max_x={max_x}");
+        assert!(max_z > 4.0, "expected mesh extent, got max_z={max_z}");
+    }
+
+    #[test]
     fn generates_blueprint_for_hut_when_asset_present() {
         let path = PathBuf::from("assets/buildings/hut.glb");
         if !path.is_file() {
             return;
         }
         let mesh = load_building_mesh_for_navigation(&path).expect("mesh");
+        // Hut authors one logical door as portal__entrance + __outside + __inside.
+        assert_eq!(mesh.portal_markers.len(), 3);
         let output = generate_navigation_blueprint(NavigationBlueprintGenerateInput {
             blueprint_id: "two_story_hut".into(),
             display_name: "Hut Generated".into(),
@@ -637,5 +967,227 @@ mod tests {
         })
         .expect("generated");
         assert!(!output.blueprint.floors.is_empty());
+        assert_eq!(
+            output.blueprint.entrances.len(),
+            1,
+            "one physical door must yield one entrance; got {:?}",
+            output
+                .blueprint
+                .entrances
+                .iter()
+                .map(|e| &e.key)
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(output.entrance_diagnostics.explicit_markers, 3);
+        assert_eq!(output.entrance_diagnostics.synthesized_entrances, 0);
+        assert!(output.entrance_diagnostics.deduplicated_candidates >= 2);
+        assert_eq!(output.entrance_diagnostics.entrances_generated, 1);
+    }
+
+    fn flat_floor_mesh_with_portals(portals: Vec<PortalMarker3d>) -> BuildingMeshAnalysisInput {
+        BuildingMeshAnalysisInput {
+            triangles: vec![
+                LocalTriangle3d {
+                    a: Vec3::new(0.0, 0.0, 0.0),
+                    b: Vec3::new(8.0, 0.0, 8.0),
+                    c: Vec3::new(8.0, 0.0, 0.0),
+                },
+                LocalTriangle3d {
+                    a: Vec3::new(0.0, 0.0, 0.0),
+                    b: Vec3::new(0.0, 0.0, 8.0),
+                    c: Vec3::new(8.0, 0.0, 8.0),
+                },
+            ],
+            portal_markers: portals,
+            source_path: "synthetic".into(),
+            used_collision_node: true,
+        }
+    }
+
+    fn marker(name: &str, x: f32, z: f32, path: &str) -> PortalMarker3d {
+        PortalMarker3d {
+            name: name.into(),
+            position: Vec3::new(x, 0.0, z),
+            scene_path: path.into(),
+        }
+    }
+
+    #[test]
+    fn one_explicit_portal_marker_yields_one_entrance() {
+        let output = generate_navigation_blueprint(NavigationBlueprintGenerateInput {
+            blueprint_id: BuildingNavigationBlueprintId::new("one_door"),
+            display_name: "One".into(),
+            collision_asset_path: PathBuf::from("one.glb"),
+            render_asset_path: None,
+            baseline_scale: 1.0,
+            mesh: flat_floor_mesh_with_portals(vec![marker(
+                "portal__front",
+                4.0,
+                0.1,
+                "portal__front",
+            )]),
+        })
+        .expect("gen");
+        assert_eq!(output.blueprint.entrances.len(), 1);
+        assert_eq!(output.entrance_diagnostics.synthesized_entrances, 0);
+        assert_eq!(output.entrance_diagnostics.explicit_markers, 1);
+        let entrance = &output.blueprint.entrances[0];
+        assert!((entrance.local_position_xz[0] - 4.0).abs() < 1e-3);
+        assert!((entrance.local_position_xz[1] - 0.1).abs() < 1e-3);
+        assert!(entrance.radius_meters >= MIN_ENTRANCE_RADIUS);
+        assert_eq!(entrance.floor_key, "floor_0");
+    }
+
+    #[test]
+    fn marker_with_outside_and_inside_children_yields_one_entrance() {
+        let output = generate_navigation_blueprint(NavigationBlueprintGenerateInput {
+            blueprint_id: BuildingNavigationBlueprintId::new("grouped_door"),
+            display_name: "Grouped".into(),
+            collision_asset_path: PathBuf::from("grouped.glb"),
+            render_asset_path: None,
+            baseline_scale: 1.0,
+            mesh: flat_floor_mesh_with_portals(vec![
+                marker("portal__entrance", 4.0, 0.0, "portal__entrance"),
+                marker(
+                    "portal__entrance__outside",
+                    4.0,
+                    -0.2,
+                    "portal__entrance/portal__entrance__outside",
+                ),
+                marker(
+                    "portal__entrance__inside",
+                    4.0,
+                    1.0,
+                    "portal__entrance/portal__entrance__inside",
+                ),
+            ]),
+        })
+        .expect("gen");
+        assert_eq!(output.blueprint.entrances.len(), 1);
+        assert_eq!(output.entrance_diagnostics.explicit_markers, 3);
+        assert!(output.entrance_diagnostics.deduplicated_candidates >= 2);
+        let entrance = &output.blueprint.entrances[0];
+        // Outside marker wins for exterior position.
+        assert!((entrance.local_position_xz[1] + 0.2).abs() < 1e-3);
+        // Inside marker wins for interior spawn.
+        assert!((entrance.interior_spawn_local[2] - 1.0).abs() < 1e-3);
+        assert_eq!(output.entrance_diagnostics.synthesized_entrances, 0);
+    }
+
+    #[test]
+    fn duplicate_logical_marker_nodes_still_one_entrance() {
+        let output = generate_navigation_blueprint(NavigationBlueprintGenerateInput {
+            blueprint_id: BuildingNavigationBlueprintId::new("dup"),
+            display_name: "Dup".into(),
+            collision_asset_path: PathBuf::from("dup.glb"),
+            render_asset_path: None,
+            baseline_scale: 1.0,
+            mesh: flat_floor_mesh_with_portals(vec![
+                marker("portal__door", 2.0, 0.0, "a/portal__door"),
+                marker("portal__door", 2.0, 0.0, "b/portal__door"),
+            ]),
+        })
+        .expect("gen");
+        assert_eq!(output.blueprint.entrances.len(), 1);
+    }
+
+    #[test]
+    fn two_distinct_markers_yield_two_entrances() {
+        let output = generate_navigation_blueprint(NavigationBlueprintGenerateInput {
+            blueprint_id: BuildingNavigationBlueprintId::new("two_doors"),
+            display_name: "Two".into(),
+            collision_asset_path: PathBuf::from("two.glb"),
+            render_asset_path: None,
+            baseline_scale: 1.0,
+            mesh: flat_floor_mesh_with_portals(vec![
+                marker("portal__north", 4.0, 0.0, "portal__north"),
+                marker("portal__south", 4.0, 8.0, "portal__south"),
+            ]),
+        })
+        .expect("gen");
+        assert_eq!(output.blueprint.entrances.len(), 2);
+        assert_eq!(output.entrance_diagnostics.entrances_generated, 2);
+        assert_eq!(output.entrance_diagnostics.synthesized_entrances, 0);
+    }
+
+    #[test]
+    fn no_markers_synthesize_exactly_one_fallback_entrance() {
+        let output = generate_navigation_blueprint(NavigationBlueprintGenerateInput {
+            blueprint_id: BuildingNavigationBlueprintId::new("fallback"),
+            display_name: "Fallback".into(),
+            collision_asset_path: PathBuf::from("fallback.glb"),
+            render_asset_path: None,
+            baseline_scale: 1.0,
+            mesh: flat_floor_mesh_with_portals(Vec::new()),
+        })
+        .expect("gen");
+        assert_eq!(output.blueprint.entrances.len(), 1);
+        assert_eq!(output.blueprint.entrances[0].key, "exterior_entrance");
+        assert_eq!(output.entrance_diagnostics.synthesized_entrances, 1);
+        assert_eq!(output.entrance_diagnostics.explicit_markers, 0);
+        assert!(
+            output
+                .warnings
+                .iter()
+                .any(|w| w.contains("synthesized entrance"))
+        );
+    }
+
+    #[test]
+    fn explicit_marker_suppresses_fallback_entrance() {
+        let output = generate_navigation_blueprint(NavigationBlueprintGenerateInput {
+            blueprint_id: BuildingNavigationBlueprintId::new("no_fallback"),
+            display_name: "NoFallback".into(),
+            collision_asset_path: PathBuf::from("nofallback.glb"),
+            render_asset_path: None,
+            baseline_scale: 1.0,
+            mesh: flat_floor_mesh_with_portals(vec![marker(
+                "portal__main",
+                1.0,
+                0.0,
+                "portal__main",
+            )]),
+        })
+        .expect("gen");
+        assert_eq!(output.blueprint.entrances.len(), 1);
+        assert_ne!(output.blueprint.entrances[0].key, "exterior_entrance");
+        assert_eq!(output.entrance_diagnostics.synthesized_entrances, 0);
+    }
+
+    #[test]
+    fn close_but_distinct_doors_are_not_merged() {
+        let output = generate_navigation_blueprint(NavigationBlueprintGenerateInput {
+            blueprint_id: BuildingNavigationBlueprintId::new("close_doors"),
+            display_name: "Close".into(),
+            collision_asset_path: PathBuf::from("close.glb"),
+            render_asset_path: None,
+            baseline_scale: 1.0,
+            mesh: flat_floor_mesh_with_portals(vec![
+                marker("portal__left", 2.0, 0.0, "portal__left"),
+                marker("portal__right", 4.0, 0.0, "portal__right"),
+            ]),
+        })
+        .expect("gen");
+        assert_eq!(
+            output.blueprint.entrances.len(),
+            2,
+            "2m-apart doors must remain distinct"
+        );
+    }
+
+    #[test]
+    fn logical_portal_group_key_strips_role_suffixes() {
+        assert_eq!(
+            logical_portal_group_key("portal__entrance__outside"),
+            "portal__entrance"
+        );
+        assert_eq!(
+            logical_portal_group_key("portal__entrance__inside"),
+            "portal__entrance"
+        );
+        assert_eq!(
+            logical_portal_group_key("portal__entrance"),
+            "portal__entrance"
+        );
     }
 }

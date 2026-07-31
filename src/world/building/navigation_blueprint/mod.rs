@@ -31,12 +31,12 @@ pub use adapt::{
     blueprint_space_templates,
 };
 pub use cache::{
-    NavigationBlueprintCacheEntry, NavigationBlueprintCacheManifest,
     NAVIGATION_BLUEPRINT_CACHE_MANIFEST_PATH, NAVIGATION_BLUEPRINT_GENERATOR_VERSION,
+    NavigationBlueprintCacheEntry, NavigationBlueprintCacheManifest,
 };
 pub use catalog::{
-    BuildingNavigationBlueprintCatalog, BuildingNavigationBlueprintCatalogRevision,
-    BuildingNavigationBlueprintCatalogRon, BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH,
+    BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH, BuildingNavigationBlueprintCatalog,
+    BuildingNavigationBlueprintCatalogRevision, BuildingNavigationBlueprintCatalogRon,
     load_building_navigation_blueprint_catalog,
 };
 pub use definition::{
@@ -53,18 +53,15 @@ pub use edit::{
 };
 pub use error::BuildingNavigationBlueprintError;
 pub use id::{BuildingNavigationBlueprintId, validate_navigation_blueprint_id};
-pub use report::{
-    NavigationBlueprintGenerationReport, NavigationBlueprintGenerationStatus,
-    export_generation_reports_markdown,
-};
 pub use persistence::{
     BlueprintPersistenceOutcome, apply_blueprint_to_asset, count_inheriting_instances,
     reset_instance_to_asset, save_instance_blueprint,
 };
-pub use resolve::{
-    ResolvedBuildingNavigationBlueprint, resolve_building_navigation_blueprint,
+pub use report::{
+    EntranceGenerationDiagnostics, NavigationBlueprintGenerationReport,
+    NavigationBlueprintGenerationStatus, export_generation_reports_markdown,
 };
-pub use source::{BlueprintAuthoritySource, classify_blueprint_authority};
+pub use resolve::{ResolvedBuildingNavigationBlueprint, resolve_building_navigation_blueprint};
 pub use runtime::{
     BuildingNavigationRuntime, BuildingNavigationRuntimeStore, RuntimeNavigationFloor,
     build_navigation_runtime, interior_position_walkable, point_in_polygon_xz,
@@ -72,6 +69,7 @@ pub use runtime::{
     reposition_building_navigation_runtime, resolve_navigation_space_at_position,
     resolve_navigation_start_space,
 };
+pub use source::{BlueprintAuthoritySource, classify_blueprint_authority};
 pub use starter::{
     barn_navigation_blueprint, starter_navigation_blueprints, two_story_hut_navigation_blueprint,
 };
@@ -82,14 +80,19 @@ pub use validate_inspection::{
 
 #[cfg(feature = "data-import")]
 pub use generate::{
-    NavigationBlueprintGenerateInput, NavigationBlueprintGenerateOutput,
-    blueprint_id_for_building, failed_report, generate_navigation_blueprint, hash_asset_path,
-    should_generate_navigation_blueprint,
+    NavigationBlueprintGenerateInput, NavigationBlueprintGenerateOutput, blueprint_id_for_building,
+    failed_report, generate_navigation_blueprint, hash_asset_path, logical_portal_group_key,
+    navigation_blueprint_generation_rejection, navigation_mesh_source_display,
+    navigation_mesh_source_label, should_generate_navigation_blueprint,
 };
 #[cfg(feature = "data-import")]
-pub use mesh::{BuildingMeshAnalysisInput, LocalTriangle3d, PortalMarker3d, load_building_mesh_for_navigation};
+pub use mesh::{
+    BuildingMeshAnalysisInput, LocalTriangle3d, PortalMarker3d, load_building_mesh_for_navigation,
+    load_building_mesh_for_navigation_with_fallback,
+};
 #[cfg(feature = "data-import")]
 pub use pipeline::{
     NAVIGATION_BLUEPRINT_REPORT_PATH, export_navigation_blueprint_catalog,
-    import_navigation_blueprints_for_catalog, regenerate_navigation_blueprint_for_building,
+    generate_navigation_blueprint_draft_for_definition, import_navigation_blueprints_for_catalog,
+    regenerate_navigation_blueprint_for_building,
 };

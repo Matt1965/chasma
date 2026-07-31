@@ -27,7 +27,9 @@ WorldData (read-only borrow)
         ↓
 capture_unit_inspector_snapshot / capture_interaction_inspector_snapshot
         ↓
-WorldInspectorState (cached snapshot + selection)
+WorldInspectorState (cached snapshots + UI state)
+        ↑
+WorldSelectionState + SelectedUnits (authoritative selection via apply_world_selection)
         ↓
 Dev panel Inspector tab + InspectorOverlayFocus → U-UI3 overlays
 ```
@@ -35,7 +37,9 @@ Dev panel Inspector tab + InspectorOverlayFocus → U-UI3 overlays
 | Component | Ownership | Role |
 |-----------|-----------|------|
 | [`capture.rs`](../src/dev/inspector/capture.rs) | Dev inspector | Pure snapshot builders |
-| [`WorldInspectorState`](../src/dev/inspector/state.rs) | Dev plugin | Selection + cached snapshot |
+| [`WorldSelectionState`](../src/client/selection/mod.rs) | Client pipeline | Authoritative world selection category + object ids |
+| [`SelectedUnits`](../src/units/input/selection.rs) | Client pipeline | Unit id set; command dispatch filters non-commandable ids |
+| [`WorldInspectorState`](../src/dev/inspector/state.rs) | Dev plugin | Cached snapshots + inspector UI state (not selection authority) |
 | [`InspectorOverlayFocus`](../src/debug/inspector_focus.rs) | Debug plugin | Overlay highlight link |
 | Dev Inspector tab UI | Dev panel | Text presentation only |
 
@@ -72,9 +76,9 @@ selection, linking panel ↔ world without changing simulation.
 | Alt + left-click unit | Inspect (works outside dev mode) |
 | Dev mode + left-click terrain | Interaction probe |
 
-Inspector input runs before dev spawn and gameplay intent collection. Does not
-modify [`SelectedUnits`](../src/units/input/selection.rs) unless gameplay already
-selected separately.
+Inspector input runs before dev spawn and gameplay intent collection. Dev and gameplay picks both
+call [`apply_world_selection`](../src/client/selection/mod.rs); inspector snapshots refresh from
+shared selection — there is no separate inspector selection authority.
 
 ## Performance
 

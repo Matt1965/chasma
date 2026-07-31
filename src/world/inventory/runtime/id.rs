@@ -2,7 +2,9 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// Authoritative inventory container instance identifier (ADR-088 I2).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Reflect, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Reflect, Serialize, Deserialize,
+)]
 pub struct InventoryId(pub u32);
 
 impl InventoryId {

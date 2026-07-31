@@ -5,6 +5,7 @@ use crate::camera::{CameraControlSystems, CameraPlugin};
 use crate::doodads::{DoodadRuntimeSystems, DoodadsRuntimePlugin};
 use crate::environment::EnvironmentPlugin;
 use crate::item_piles::{ItemPileRuntimePlugin, ItemPileRuntimeSystems};
+use crate::menu::{MenuInputSystems, MenuPlugin};
 use crate::player::{PlayerControlSystems, PlayerPlugin, RuntimeSyncSystems};
 use crate::projectiles::{ProjectileRuntimeSystems, ProjectilesRuntimePlugin};
 use crate::simulation::{SimulationControlSystems, SimulationSystems};
@@ -39,10 +40,19 @@ impl Plugin for AppPlugin {
             .add_plugins(BuildingsRuntimePlugin)
             .add_plugins(UnitsRuntimePlugin)
             .add_plugins(ProjectilesRuntimePlugin)
+            .add_plugins(MenuPlugin)
             .add_plugins(PlayerPlugin)
             .add_plugins(EnvironmentPlugin)
             .add_plugins(CameraPlugin)
-            .configure_sets(Update, ViewFocusSystems.after(CameraControlSystems))
+            .configure_sets(Update, MenuInputSystems.before(PlayerControlSystems))
+            .configure_sets(Update, MenuInputSystems.before(CameraControlSystems))
+            .configure_sets(Update, MenuInputSystems.before(SimulationControlSystems));
+        #[cfg(feature = "dev")]
+        app.configure_sets(
+            Update,
+            MenuInputSystems.before(crate::dev::DevModeInputSystems),
+        );
+        app.configure_sets(Update, ViewFocusSystems.after(CameraControlSystems))
             .configure_sets(Update, TerrainStreamingSystems.after(ViewFocusSystems))
             .configure_sets(
                 Update,

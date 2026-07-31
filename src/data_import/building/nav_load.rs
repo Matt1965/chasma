@@ -4,9 +4,9 @@ use std::path::Path;
 
 use crate::logging::{DEV_STARTUP_LOG_PATH, append_log_line};
 use crate::world::{
-    BuildingCatalog, BuildingNavigationBlueprintCatalog, NavigationBlueprintGenerationStatus,
-    BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH, import_navigation_blueprints_for_catalog,
-    load_building_navigation_blueprint_catalog,
+    BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH, BuildingCatalog,
+    BuildingNavigationBlueprintCatalog, NavigationBlueprintGenerationStatus,
+    import_navigation_blueprints_for_catalog, load_building_navigation_blueprint_catalog,
 };
 
 const SESSION_HEADER: &str = "# chasma dev startup log";
@@ -16,9 +16,9 @@ const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
 pub fn resolve_dev_navigation_blueprint_catalog(
     buildings: &BuildingCatalog,
 ) -> BuildingNavigationBlueprintCatalog {
-    let existing = BuildingNavigationBlueprintCatalog::load_from_ron_path(&Path::new(MANIFEST_DIR).join(
-        BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH,
-    ))
+    let existing = BuildingNavigationBlueprintCatalog::load_from_ron_path(
+        &Path::new(MANIFEST_DIR).join(BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH),
+    )
     .unwrap_or_else(|_| load_building_navigation_blueprint_catalog());
 
     let (catalog, reports) = import_navigation_blueprints_for_catalog(buildings, existing);

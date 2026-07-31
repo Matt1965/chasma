@@ -1,20 +1,20 @@
 //! Dev inventory panel text formatting (DV0).
 
-use crate::dev::dev_mode::{DefinitionId, DevInventoryToolState, ItemsBrowserSubtab};
+use crate::client::selection::WorldSelectionState;
 use crate::dev::DevInventoryEndpoint;
-use crate::dev::inspector::WorldInspectorState;
+use crate::dev::dev_mode::{DefinitionId, DevInventoryToolState, ItemsBrowserSubtab};
 use crate::dev::inventory_tools::endpoint::{
-    resolve_inspector_endpoints, resolve_target_unit, DevInventoryEndpointInfo,
+    DevInventoryEndpointInfo, resolve_inspector_endpoints, resolve_target_unit,
 };
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    InventoryCatalogCtx, ItemInstanceStore, PlacedInventoryEntry, ItemCatalog, ItemCategoryCatalog,
-    WorldData, WorldPileContents, InventoryEntryContents,
+    InventoryCatalogCtx, InventoryEntryContents, ItemCatalog, ItemCategoryCatalog,
+    ItemInstanceStore, PlacedInventoryEntry, WorldData, WorldPileContents,
 };
 
 pub fn format_inventory_tool_panel(
     world: &WorldData,
-    inspector: &WorldInspectorState,
+    world_selection: &WorldSelectionState,
     selection: &SelectedUnits,
     items: &ItemCatalog,
     categories: &ItemCategoryCatalog,
@@ -23,7 +23,7 @@ pub fn format_inventory_tool_panel(
     tool: &DevInventoryToolState,
     selected_item: Option<&DefinitionId>,
 ) -> String {
-    let endpoints = resolve_inspector_endpoints(world, inspector, selection);
+    let endpoints = resolve_inspector_endpoints(world, world_selection, selection);
     let mut lines = vec![
         format!("Subtab: {:?}", tool.subtab),
         tool.message.clone(),
@@ -31,7 +31,7 @@ pub fn format_inventory_tool_panel(
     ];
 
     if endpoints.is_empty() {
-        if let Some(unit_id) = resolve_target_unit(inspector, selection) {
+        if let Some(unit_id) = resolve_target_unit(world_selection, selection) {
             if world.get_unit(unit_id).is_some() {
                 lines.push(format!(
                     "Target: Unit #{} has no inventory — Add attaches `unit_backpack_standard`",
@@ -44,7 +44,9 @@ pub fn format_inventory_tool_panel(
             lines.push("Target: none — select a unit or inspect unit/building/pile".into());
         }
     } else {
-        let idx = tool.selected_endpoint_index.min(endpoints.len().saturating_sub(1));
+        let idx = tool
+            .selected_endpoint_index
+            .min(endpoints.len().saturating_sub(1));
         lines.push(format!(
             "Target [{}/{}]: {}",
             idx + 1,
@@ -120,7 +122,10 @@ fn format_endpoint_contents(
                     " "
                 };
                 let label = format_entry_label(entry, items, ctx, instance_store);
-                lines.push(format!("{marker} [{index}] {label} @({}, {})", entry.anchor_x, entry.anchor_y));
+                lines.push(format!(
+                    "{marker} [{index}] {label} @({}, {})",
+                    entry.anchor_x, entry.anchor_y
+                ));
             }
             lines
         }

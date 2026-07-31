@@ -1,8 +1,8 @@
 //! Marketplace listings discovered from TaskStore + open hauling requests (SA7).
 
+use crate::world::BuildingId;
 use crate::world::logistics::HaulingRequestId;
 use crate::world::task::{TaskId, TaskPriority, TaskType};
-use crate::world::BuildingId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MarketplaceListingKind {

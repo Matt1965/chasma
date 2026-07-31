@@ -43,15 +43,13 @@ pub fn prune_invalid_building_tasks(world: &mut WorldData) {
             } => owning_building_id,
         };
         let should_remove = match task.task_type {
-            TaskType::Haul => world
-                .get_building(building_id)
-                .is_none()
-                || task
-                    .hauling_request_id()
-                    .and_then(|id| world.hauling_request_store().get(id))
-                    .is_none_or(|request| {
-                        !request.status.is_open()
-                    }),
+            TaskType::Haul => {
+                world.get_building(building_id).is_none()
+                    || task
+                        .hauling_request_id()
+                        .and_then(|id| world.hauling_request_store().get(id))
+                        .is_none_or(|request| !request.status.is_open())
+            }
             _ => world
                 .get_building(building_id)
                 .is_none_or(|record| match task.task_type {

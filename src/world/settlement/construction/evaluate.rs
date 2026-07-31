@@ -3,15 +3,15 @@
 use bevy::prelude::Quat;
 
 use crate::world::building::catalog::BuildingCatalog;
-use crate::world::{
-    place_player_building_with_inventory, remove_building, rotation_from_quadrants,
-    validate_building_placement, BuildingLifecycleState, BuildingOwnership,
-    BuildingPlacementContext,
-};
 use crate::world::inventory::InventoryCatalogCtx;
+use crate::world::settlement::SettlementId;
 use crate::world::settlement::arbiter::{SettlementIntent, SettlementIntentPlan};
 use crate::world::settlement::response::ResponseType;
-use crate::world::settlement::SettlementId;
+use crate::world::{
+    BuildingLifecycleState, BuildingOwnership, BuildingPlacementContext,
+    place_player_building_with_inventory, remove_building, rotation_from_quadrants,
+    validate_building_placement,
+};
 use crate::world::{
     DoodadCatalog, FootprintCatalog, OccupancyCatalogs, UnitCatalog, WorldData, WorldPosition,
 };
@@ -20,7 +20,7 @@ use super::capacity::{estimate_capacity_gap, fulfillment_key};
 use super::catalog::{
     BuildingConstructionCostCatalog, ConstructionResponseCatalog, ConstructionResponseMapping,
 };
-use super::placement::{search_placement_candidates, PlacementSearchBudget};
+use super::placement::{PlacementSearchBudget, search_placement_candidates};
 use super::plan::{
     ConstructionMaterialRequirement, ConstructionPlan, ConstructionPlanSource,
     ConstructionPlanStatus,
@@ -49,7 +49,12 @@ pub fn plan_construction_for_settlement(
 ) -> ConstructionPlanningReport {
     let mut report = ConstructionPlanningReport::new(settlement_id, ctx.simulation_tick);
 
-    let Some(state) = ctx.world.settlement_state_store().get(settlement_id).cloned() else {
+    let Some(state) = ctx
+        .world
+        .settlement_state_store()
+        .get(settlement_id)
+        .cloned()
+    else {
         report
             .diagnostics
             .push("no SettlementState — skipping".into());
@@ -179,11 +184,7 @@ pub fn plan_construction_for_settlement(
             .active_for_fulfillment(&key)
             .cloned()
         {
-            if let Some(plan) = ctx
-                .world
-                .construction_plan_store_mut()
-                .get_mut(existing.id)
-            {
+            if let Some(plan) = ctx.world.construction_plan_store_mut().get_mut(existing.id) {
                 plan.refresh_priority(intent.priority, ctx.simulation_tick);
                 report.refreshed_plan_ids.push(plan.id);
             }
@@ -194,8 +195,14 @@ pub fn plan_construction_for_settlement(
             continue;
         }
 
-        match create_plan_for_mapping(ctx, settlement_id, &intent, &mapping, &building_def_id, &state)
-        {
+        match create_plan_for_mapping(
+            ctx,
+            settlement_id,
+            &intent,
+            &mapping,
+            &building_def_id,
+            &state,
+        ) {
             Ok(plan_id) => {
                 report.created_plan_ids.push(plan_id);
                 new_created = new_created.saturating_add(1);
@@ -308,7 +315,8 @@ fn create_plan_for_mapping(
 
     if state.policies.require_construction_approval && state.policies.player_controlled {
         plan.status = ConstructionPlanStatus::AwaitingApproval;
-        plan.diagnostics.push("awaiting player plan approval".into());
+        plan.diagnostics
+            .push("awaiting player plan approval".into());
         ctx.world.construction_plan_store_mut().insert(plan);
         return Ok(plan_id);
     }
@@ -345,10 +353,8 @@ fn create_plan_for_mapping(
                 .saturating_add(state.policies.blocked_plan_retry_ticks.max(1)),
         );
         // Store rejected sites on the transient report via caller — attach summary here.
-        plan.diagnostics.push(format!(
-            "site_search rejected={}",
-            search.rejected.len()
-        ));
+        plan.diagnostics
+            .push(format!("site_search rejected={}", search.rejected.len()));
         ctx.world.construction_plan_store_mut().insert(plan);
         return Ok(plan_id);
     };
@@ -517,7 +523,11 @@ fn sync_plan_lifecycle(
         }
 
         if let Some(building_id) = plan.reserved_building_id {
-            match ctx.world.get_building(building_id).map(|b| b.lifecycle_state) {
+            match ctx
+                .world
+                .get_building(building_id)
+                .map(|b| b.lifecycle_state)
+            {
                 None => {
                     plan.status = ConstructionPlanStatus::Blocked;
                     plan.blocking_reason = Some("reserved building missing".into());
@@ -580,17 +590,14 @@ pub fn cancel_construction_plan(
             footprint: footprint_catalog,
         };
         // Only remove incomplete reservation buildings.
-        if world
-            .get_building(building_id)
-            .is_some_and(|b| {
-                matches!(
-                    b.lifecycle_state,
-                    BuildingLifecycleState::Planned
-                        | BuildingLifecycleState::Foundation
-                        | BuildingLifecycleState::InProgress
-                )
-            })
-        {
+        if world.get_building(building_id).is_some_and(|b| {
+            matches!(
+                b.lifecycle_state,
+                BuildingLifecycleState::Planned
+                    | BuildingLifecycleState::Foundation
+                    | BuildingLifecycleState::InProgress
+            )
+        }) {
             let _ = remove_building(
                 world,
                 building_id,

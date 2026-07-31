@@ -1,10 +1,10 @@
 //! Dirty/cadence strategic task generation step (SA6).
 
-use crate::world::settlement::SettlementId;
 use crate::world::WorldData;
+use crate::world::settlement::SettlementId;
 
 use super::catalog::StrategicTaskTemplateCatalog;
-use super::emit::{generate_strategic_tasks_for_settlement, StrategicTaskGenContext};
+use super::emit::{StrategicTaskGenContext, generate_strategic_tasks_for_settlement};
 
 pub const STRATEGIC_TASK_GEN_CADENCE_TICKS: u64 = 30;
 
@@ -26,11 +26,20 @@ pub fn step_settlement_strategic_task_generation(
     for settlement_id in settlement_ids {
         let Some(intent_plan) = world.settlement_intent_store().get(settlement_id).cloned() else {
             // No plan yet (e.g. post-load): drop Available strategic tasks so they do not linger.
-            if world.strategic_task_generation_store().is_dirty(settlement_id)
-                || world.strategic_task_generation_store().get(settlement_id).is_some()
+            if world
+                .strategic_task_generation_store()
+                .is_dirty(settlement_id)
+                || world
+                    .strategic_task_generation_store()
+                    .get(settlement_id)
+                    .is_some()
             {
                 let cancelled = cancel_available_strategic_tasks(world, settlement_id);
-                if cancelled > 0 || world.strategic_task_generation_store().get(settlement_id).is_some()
+                if cancelled > 0
+                    || world
+                        .strategic_task_generation_store()
+                        .get(settlement_id)
+                        .is_some()
                 {
                     world.strategic_task_generation_store_mut().insert(
                         super::report::StrategicTaskGenerationReport {
@@ -50,7 +59,9 @@ pub fn step_settlement_strategic_task_generation(
             continue;
         };
 
-        let due_by_dirty = world.strategic_task_generation_store().is_dirty(settlement_id);
+        let due_by_dirty = world
+            .strategic_task_generation_store()
+            .is_dirty(settlement_id);
         let due_by_intent = world
             .strategic_task_generation_store()
             .get(settlement_id)

@@ -156,7 +156,11 @@ pub fn validate_worker_assignments(
             errors.push(AssignmentValidationError::BrokenReservation {
                 building_id: 0,
                 point_key: "unit_task".into(),
-                detail: format!("unit #{} maps to missing task #{}", unit_id.raw(), task_id.raw()),
+                detail: format!(
+                    "unit #{} maps to missing task #{}",
+                    unit_id.raw(),
+                    task_id.raw()
+                ),
             });
             continue;
         };

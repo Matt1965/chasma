@@ -4,8 +4,8 @@ use std::collections::BTreeSet;
 
 use super::catalog::StrategicTaskTemplateCatalog;
 use super::report::StrategicTaskGenerationReport;
-use crate::world::task::{TaskPriority, TaskType};
 use crate::world::WorldData;
+use crate::world::task::{TaskPriority, TaskType};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StrategicTaskValidationError {
@@ -33,7 +33,10 @@ impl std::fmt::Display for StrategicTaskValidationError {
             ),
             Self::UnknownTemplate(id) => write!(f, "unknown template `{id}`"),
             Self::InvalidPriority => write!(f, "invalid task priority"),
-            Self::BrokenMapping { response_id, detail } => {
+            Self::BrokenMapping {
+                response_id,
+                detail,
+            } => {
                 write!(f, "broken mapping for `{response_id}`: {detail}")
             }
         }

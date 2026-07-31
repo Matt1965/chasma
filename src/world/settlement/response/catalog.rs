@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use super::definition::ResponseDefinition;
 use super::id::ResponseId;
 use super::starter::starter_response_definitions;
-use super::validation::{validate_response_catalog_definitions, ResponseCatalogError};
+use super::validation::{ResponseCatalogError, validate_response_catalog_definitions};
 use crate::world::settlement::needs::NeedId;
 
 /// Immutable catalog of authored response definitions.

@@ -57,6 +57,50 @@ mod tests {
         assert!(!crate::debug::debug_interaction_overlay_enabled(&config));
     }
 
+    #[test]
+    fn navigation_overlay_run_if_matches_pathing_mask_toggle() {
+        let off = DebugOverlayConfig::production();
+        assert!(!crate::debug::settings::debug_navigation_overlay_enabled(
+            &off
+        ));
+
+        let on = DebugOverlayConfig {
+            enabled: true,
+            grid: true,
+            ..DebugOverlayConfig::production()
+        };
+        assert!(crate::debug::settings::debug_navigation_overlay_enabled(
+            &on
+        ));
+    }
+
+    #[cfg(feature = "dev")]
+    #[test]
+    fn navigation_mask_resources_init_with_debug_overlay_plugin() {
+        use bevy::prelude::*;
+
+        use crate::debug::DebugOverlayPlugin;
+        use crate::debug::overlay::{
+            DebugOverlaySystems, NavigationMaskCache, NavigationMaskDrawStats,
+        };
+        use crate::player::PlayerControlSystems;
+        use crate::simulation::SimulationSystems;
+
+        let mut app = App::new();
+        app.configure_sets(
+            Update,
+            (PlayerControlSystems, SimulationSystems, DebugOverlaySystems),
+        );
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(DebugOverlayPlugin);
+        assert!(app.world().get_resource::<NavigationMaskCache>().is_some());
+        assert!(
+            app.world()
+                .get_resource::<NavigationMaskDrawStats>()
+                .is_some()
+        );
+    }
+
     fn debug_category_visible(config: &DebugOverlayConfig, category: DebugOverlayCategory) -> bool {
         config.category_enabled(category)
     }

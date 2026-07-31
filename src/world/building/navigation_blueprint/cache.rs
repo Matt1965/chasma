@@ -79,7 +79,10 @@ impl NavigationBlueprintCacheManifest {
         if self.generator_version != NAVIGATION_BLUEPRINT_GENERATOR_VERSION {
             return false;
         }
-        let Some(entry) = self.entries.iter().find(|e| e.blueprint_id == blueprint_id.as_str())
+        let Some(entry) = self
+            .entries
+            .iter()
+            .find(|e| e.blueprint_id == blueprint_id.as_str())
         else {
             return false;
         };

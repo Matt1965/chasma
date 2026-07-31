@@ -84,7 +84,10 @@ impl HaulingRequestStore {
         Some(request)
     }
 
-    pub fn cancel_requests_for_building(&mut self, building_id: BuildingId) -> Vec<HaulingRequestId> {
+    pub fn cancel_requests_for_building(
+        &mut self,
+        building_id: BuildingId,
+    ) -> Vec<HaulingRequestId> {
         let ids: Vec<_> = self
             .requests_for_building(building_id)
             .iter()
@@ -99,7 +102,10 @@ impl HaulingRequestStore {
         ids
     }
 
-    pub fn cancel_requests_for_inventory(&mut self, inventory_id: InventoryId) -> Vec<HaulingRequestId> {
+    pub fn cancel_requests_for_inventory(
+        &mut self,
+        inventory_id: InventoryId,
+    ) -> Vec<HaulingRequestId> {
         let mut cancelled = Vec::new();
         for request in self.requests.values_mut() {
             if request.status.is_open()

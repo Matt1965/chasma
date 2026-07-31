@@ -8,8 +8,8 @@ use crate::world::{
     InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, UnitCatalog,
     UnitDefinitionId, UnitOwnership, UnitSource, WorldData, WorldPosition,
     create_dev_complete_building, create_dev_complete_building_with_inventory, create_doodad,
-    create_unit_with_inventory, starter_inventory_profile_definitions, starter_item_category_definitions,
-    starter_item_definitions,
+    create_unit_with_inventory, starter_inventory_profile_definitions,
+    starter_item_category_definitions, starter_item_definitions,
 };
 
 use super::dev_mode::{DefinitionId, SpawnMode};
@@ -195,7 +195,8 @@ mod tests {
             ItemCatalog::from_definitions(starter_item_definitions(), categories).unwrap(),
         ));
         let profiles = Box::leak(Box::new(
-            InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions()).unwrap(),
+            InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
+                .unwrap(),
         ));
         InventoryCatalogCtx::new(items, categories, profiles)
     }

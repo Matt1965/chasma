@@ -4,8 +4,8 @@ use std::path::Path;
 
 use bevy::prelude::*;
 
-use crate::world::occupancy::bake::OCCUPANCY_COLLISION_NODE;
 use crate::world::OccupancyError;
+use crate::world::occupancy::bake::OCCUPANCY_COLLISION_NODE;
 
 /// Triangle in building-local 3D space.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -30,6 +30,8 @@ impl LocalTriangle3d {
 pub struct PortalMarker3d {
     pub name: String,
     pub position: Vec3,
+    /// Slash-separated node path from the scene root when available.
+    pub scene_path: String,
 }
 
 /// Mesh data extracted from a building GLB.
@@ -54,6 +56,36 @@ pub fn load_building_mesh_for_navigation(
     load_from_visible_meshes(asset_path)
 }
 
+/// Prefer the collision GLB, then fall back to the render GLB when missing or unusable.
+pub fn load_building_mesh_for_navigation_with_fallback(
+    collision_path: &Path,
+    render_path: Option<&Path>,
+) -> Result<BuildingMeshAnalysisInput, OccupancyError> {
+    let mut errors = Vec::new();
+
+    if collision_path.is_file() {
+        match load_building_mesh_for_navigation(collision_path) {
+            Ok(input) => return Ok(input),
+            Err(err) => errors.push(format!("{}: {err:?}", collision_path.display())),
+        }
+    } else {
+        errors.push(format!("{}: file not found", collision_path.display()));
+    }
+
+    if let Some(render_path) = render_path.filter(|path| *path != collision_path) {
+        if render_path.is_file() {
+            match load_building_mesh_for_navigation(render_path) {
+                Ok(input) => return Ok(input),
+                Err(err) => errors.push(format!("{}: {err:?}", render_path.display())),
+            }
+        } else {
+            errors.push(format!("{}: file not found", render_path.display()));
+        }
+    }
+
+    Err(OccupancyError::BakeFailed(errors.join("; ")))
+}
+
 fn load_from_named_node(
     path: &Path,
     node_name: &str,
@@ -69,6 +101,7 @@ fn load_from_named_node(
             walk_scene_node(
                 node,
                 Mat4::IDENTITY,
+                "",
                 node_name,
                 &buffers,
                 &mut found_node,
@@ -106,6 +139,7 @@ fn load_from_visible_meshes(path: &Path) -> Result<BuildingMeshAnalysisInput, Oc
             node,
             Mat4::IDENTITY,
             "",
+            "",
             &buffers,
             &mut false,
             &mut triangles,
@@ -128,6 +162,7 @@ fn load_from_visible_meshes(path: &Path) -> Result<BuildingMeshAnalysisInput, Oc
 fn walk_scene_node(
     node: gltf::Node,
     parent: Mat4,
+    path_prefix: &str,
     collision_node_name: &str,
     buffers: &[gltf::buffer::Data],
     found_collision: &mut bool,
@@ -135,6 +170,14 @@ fn walk_scene_node(
     portal_markers: &mut Vec<PortalMarker3d>,
 ) -> Result<(), OccupancyError> {
     let world = parent * node_local_matrix(&node);
+    let node_name = node.name().unwrap_or("");
+    let scene_path = if path_prefix.is_empty() {
+        node_name.to_string()
+    } else if node_name.is_empty() {
+        path_prefix.to_string()
+    } else {
+        format!("{path_prefix}/{node_name}")
+    };
 
     if let Some(name) = node.name() {
         if name.to_ascii_lowercase().starts_with("portal__") {
@@ -147,6 +190,7 @@ fn walk_scene_node(
             portal_markers.push(PortalMarker3d {
                 name: name.to_string(),
                 position,
+                scene_path: scene_path.clone(),
             });
         }
     }
@@ -169,6 +213,7 @@ fn walk_scene_node(
         walk_scene_node(
             child,
             world,
+            &scene_path,
             collision_node_name,
             buffers,
             found_collision,
@@ -269,11 +314,7 @@ fn mesh_bounds(
             found = true;
         }
     }
-    if found {
-        Some((min, max))
-    } else {
-        None
-    }
+    if found { Some((min, max)) } else { None }
 }
 
 #[cfg(test)]
@@ -281,6 +322,18 @@ mod tests {
     use std::path::PathBuf;
 
     use super::*;
+
+    #[test]
+    fn falls_back_to_render_mesh_when_collision_file_missing() {
+        let collision = PathBuf::from("assets/buildings/hut_collision.glb");
+        let render = PathBuf::from("assets/buildings/hut.glb");
+        if !render.is_file() {
+            return;
+        }
+        let input = load_building_mesh_for_navigation_with_fallback(&collision, Some(&render))
+            .expect("render fallback");
+        assert!(!input.triangles.is_empty());
+    }
 
     #[test]
     fn hut_mesh_loads_when_asset_present() {

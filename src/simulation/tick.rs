@@ -6,13 +6,13 @@
 use crate::world::BuildingOperationParams;
 use crate::world::{
     AttackTargetingPolicy, BuildingCatalog, BuildingConstructionSettings,
-    BuildingInteractionProfileCatalog, CombatAiScanState, CombatAiSettings, CombatStrikeReport,
-    BuildingNavigationBlueprintCatalog, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, NavigationConfig, OccupancyCatalogs,
-    PassabilityCatalogs, ProjectileReport, UnitCatalog, WeaponCatalog, WorldData,
-    prune_invalid_building_tasks, resolve_pending_unit_orders, step_all_building_construction,
-    step_all_combat_engagement, step_all_combat_strikes, step_all_projectiles,
-    step_all_unit_movement, step_all_worker_tasks, step_combat_ai_acquisition,
-    step_unit_death_pipeline, sync_construction_tasks,
+    BuildingInteractionProfileCatalog, BuildingNavigationBlueprintCatalog, CombatAiScanState,
+    CombatAiSettings, CombatStrikeReport, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog,
+    NavigationConfig, OccupancyCatalogs, PassabilityCatalogs, ProjectileReport, UnitCatalog,
+    WeaponCatalog, WorldData, prune_invalid_building_tasks, resolve_pending_unit_orders,
+    step_all_building_construction, step_all_combat_engagement, step_all_combat_strikes,
+    step_all_projectiles, step_all_unit_movement, step_all_worker_tasks,
+    step_combat_ai_acquisition, step_unit_death_pipeline, sync_construction_tasks,
 };
 
 use super::report::SimulationTickReport;
@@ -248,11 +248,7 @@ pub fn run_simulation_tick(
     );
     let inventory_ctx =
         crate::world::InventoryCatalogCtx::new(item_catalog, item_categories, inventory_profiles);
-    let hauling = crate::world::step_haul_worker_tasks(
-        world,
-        building_catalog,
-        &inventory_ctx,
-    );
+    let hauling = crate::world::step_haul_worker_tasks(world, building_catalog, &inventory_ctx);
     let movement = step_all_unit_movement(world, unit_catalog, passability, delta_seconds);
     SimulationTickReport {
         movement,

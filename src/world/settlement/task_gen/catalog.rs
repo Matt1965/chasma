@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 
 use super::template::{
-    starter_strategic_task_templates, StrategicTaskTemplate, StrategicTaskTemplateId,
+    StrategicTaskTemplate, StrategicTaskTemplateId, starter_strategic_task_templates,
 };
 use crate::world::settlement::response::{ResponseId, ResponseType};
 

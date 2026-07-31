@@ -1,11 +1,10 @@
 //! Building navigation blueprint read-only inspection (NV1.2.5).
 
-use bevy::input::keyboard::KeyCode;
 use bevy::prelude::*;
 
 use crate::camera::{RtsCamera, RtsCameraState};
 use crate::debug::{DebugOverlayConfig, InspectorOverlayFocus};
-use crate::terrain::TerrainRenderAssets;
+use crate::dev::window::{DevWindowId, DevWindowRegistry};
 use crate::world::{
     BuildingCatalog, BuildingId, BuildingNavigationBlueprintCatalog,
     BuildingNavigationBlueprintCatalogRevision, WorldData,
@@ -14,13 +13,20 @@ use crate::world::{
 use super::capture::capture_building_blueprint_inspection_snapshot;
 use super::snapshot::BuildingBlueprintInspectorSnapshot;
 use super::state::WorldInspectorState;
+use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum BlueprintPendingConfirmation {
-    ApplyToAsset { inheriting_count: usize },
+    ApplyToAsset {
+        inheriting_count: usize,
+    },
     ResetToAsset,
-    RegenerateFromMesh { current_source: String },
-    DiscardEdits { action: String },
+    RegenerateFromMesh {
+        current_source: String,
+    },
+    DiscardEdits {
+        action: String,
+    },
     ReplaceInstanceWithVariant {
         definition_id: crate::world::BuildingDefinitionId,
     },
@@ -73,11 +79,23 @@ pub enum BlueprintEditTool {
 pub enum BlueprintEditSelection {
     #[default]
     None,
-    Vertex { floor_id: i32, index: usize },
-    Edge { floor_id: i32, index: usize },
-    Entrance { key: String },
-    Transition { key: String },
-    TransitionTo { key: String },
+    Vertex {
+        floor_id: i32,
+        index: usize,
+    },
+    Edge {
+        floor_id: i32,
+        index: usize,
+    },
+    Entrance {
+        key: String,
+    },
+    Transition {
+        key: String,
+    },
+    TransitionTo {
+        key: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -89,6 +107,33 @@ pub enum BlueprintEditDrag {
 }
 
 impl BlueprintInspectionState {
+    /// Ensure [`selected_floor_id`] references a floor in the working blueprint.
+    pub fn sync_selected_floor_from_working_copy(&mut self) {
+        let Some(working) = self.working_copy.as_ref() else {
+            return;
+        };
+        if working.floors.is_empty() {
+            self.selected_floor_id = None;
+            return;
+        }
+        let still_valid = self
+            .selected_floor_id
+            .is_some_and(|id| working.floors.iter().any(|floor| floor.floor_id == id));
+        if still_valid {
+            return;
+        }
+        let floor = working
+            .floors
+            .iter()
+            .min_by(|a, b| {
+                a.elevation_meters
+                    .partial_cmp(&b.elevation_meters)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .expect("non-empty floors");
+        self.selected_floor_id = Some(floor.floor_id);
+    }
+
     pub fn exit(&mut self) {
         self.active = false;
         self.editing = false;
@@ -190,26 +235,27 @@ pub fn exit_blueprint_inspection(
     overlay_focus.clear_blueprint();
 }
 
-pub fn handle_blueprint_inspection_input(
+pub fn sync_navigation_blueprint_session(
     dev_state: Res<crate::dev::DevModeState>,
-    keyboard: Res<ButtonInput<KeyCode>>,
+    registry: Res<DevWindowRegistry>,
     mut inspection: ResMut<BlueprintInspectionState>,
     mut inspector: ResMut<WorldInspectorState>,
+    world_selection: Res<WorldSelectionState>,
     mut overlay_focus: ResMut<InspectorOverlayFocus>,
-    mut debug_config: ResMut<DebugOverlayConfig>,
     world: Res<WorldData>,
     building_catalog: Res<BuildingCatalog>,
-    mut nav_catalog: ResMut<BuildingNavigationBlueprintCatalog>,
-    mut nav_revision: ResMut<BuildingNavigationBlueprintCatalogRevision>,
-    camera_settings: Res<crate::camera::CameraSettings>,
+    nav_catalog: Res<BuildingNavigationBlueprintCatalog>,
     mut camera: Query<&mut RtsCameraState, With<RtsCamera>>,
-    _render_assets: Option<Res<TerrainRenderAssets>>,
 ) {
-    if !dev_state.enabled {
+    if !dev_state.enabled || !registry.is_visible(DevWindowId::NavigationEditor) {
         return;
     }
 
-    let Some(building_id) = inspector.selected_building else {
+    let building_id = (world_selection.category == WorldSelectionCategory::Building)
+        .then_some(world_selection.building_id)
+        .flatten();
+
+    let Some(building_id) = building_id else {
         if inspection.active {
             if let Ok(mut cam) = camera.single_mut() {
                 exit_blueprint_inspection(&mut inspection, &mut overlay_focus, &mut cam);
@@ -217,60 +263,22 @@ pub fn handle_blueprint_inspection_input(
                 inspection.exit();
                 overlay_focus.clear_blueprint();
             }
+            inspector.blueprint_snapshot = None;
         }
         return;
     };
 
-    let refresh_snapshot = || {
-        capture_building_blueprint_inspection_snapshot(
-            &world,
-            &building_catalog,
-            &nav_catalog,
-            building_id,
-            inspection.selected_floor_id,
-        )
-    };
-
-    if keyboard.just_pressed(KeyCode::KeyN) && !inspection.active {
-        let Some(mut snapshot) = refresh_snapshot() else {
-            inspector.last_message = "No navigation blueprint available for this building".into();
-            return;
-        };
-        snapshot.inspection_active = true;
-        if let Ok(mut cam) = camera.single_mut() {
-            enter_blueprint_inspection(
-                building_id,
-                &mut inspection,
-                &mut overlay_focus,
-                &mut cam,
-                &snapshot,
-                camera_settings.pitch_max,
-                camera_settings.distance_min,
-                camera_settings.distance_max,
-                &mut debug_config,
-            );
-            inspector.blueprint_snapshot = Some(snapshot);
-            inspector.last_message =
-                format!("Blueprint inspection: building #{}", building_id.raw());
+    if world.get_building(building_id).is_none() {
+        if inspection.active {
+            if let Ok(mut cam) = camera.single_mut() {
+                exit_blueprint_inspection(&mut inspection, &mut overlay_focus, &mut cam);
+            } else {
+                inspection.exit();
+                overlay_focus.clear_blueprint();
+            }
+            inspector.last_message = format!("Building #{} was removed", building_id.raw());
+            inspector.blueprint_snapshot = None;
         }
-        return;
-    }
-
-    if inspection.active && keyboard.just_pressed(KeyCode::Escape) && !inspection.editing {
-        if let Ok(mut cam) = camera.single_mut() {
-            exit_blueprint_inspection(&mut inspection, &mut overlay_focus, &mut cam);
-        } else {
-            inspection.exit();
-            overlay_focus.clear_blueprint();
-        }
-        inspector.last_message = "Exited blueprint inspection".into();
-        if let Some(snap) = inspector.blueprint_snapshot.as_mut() {
-            snap.inspection_active = false;
-        }
-        return;
-    }
-
-    if !inspection.active || inspection.editing {
         return;
     }
 
@@ -278,144 +286,7 @@ pub fn handle_blueprint_inspection_input(
         inspection.building_id = Some(building_id);
     }
 
-    let mut snapshot_dirty = false;
-
-    if keyboard.just_pressed(KeyCode::BracketLeft) || keyboard.just_pressed(KeyCode::BracketRight) {
-        if let Some(mut snap) = inspector.blueprint_snapshot.clone() {
-            if !snap.floor_ids.is_empty() {
-                let current = inspection
-                    .selected_floor_id
-                    .and_then(|id| snap.floor_ids.iter().position(|&f| f == id))
-                    .unwrap_or(0);
-                let next = if keyboard.just_pressed(KeyCode::BracketRight) {
-                    (current + 1) % snap.floor_ids.len()
-                } else {
-                    (current + snap.floor_ids.len() - 1) % snap.floor_ids.len()
-                };
-                let floor_id = snap.floor_ids[next];
-                inspection.selected_floor_id = Some(floor_id);
-                snap.selected_floor_id = Some(floor_id);
-                snap = enrich_floor_details(snap, floor_id);
-                inspector.blueprint_snapshot = Some(snap);
-                overlay_focus.blueprint_floor_id = Some(floor_id);
-                snapshot_dirty = true;
-            }
-        }
-    }
-
-    if keyboard.just_pressed(KeyCode::KeyR)
-        && (keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight))
-    {
-        if let (Some(record), Some(definition)) = (
-            world.get_building(building_id),
-            world
-                .get_building(building_id)
-                .and_then(|record| building_catalog.get(&record.definition_id)),
-        ) {
-            let authority = crate::world::classify_blueprint_authority(
-                definition,
-                &nav_catalog,
-                record.interior.navigation_blueprint_override.as_ref(),
-            );
-            if authority != crate::world::BlueprintAuthoritySource::None {
-                inspection.pending_confirmation =
-                    Some(BlueprintPendingConfirmation::RegenerateFromMesh {
-                        current_source: authority.label().to_string(),
-                    });
-                inspector.last_message = format!(
-                    "Regenerate from mesh will replace the {} catalog blueprint for this asset (instance overrides are preserved) — [Enter] confirm, [Esc] cancel",
-                    authority.label()
-                );
-            } else {
-                #[cfg(feature = "data-import")]
-                {
-                    match crate::world::regenerate_navigation_blueprint_for_building(
-                        building_id,
-                        &world,
-                        &building_catalog,
-                        &mut nav_catalog,
-                        &mut nav_revision,
-                    ) {
-                        Ok(report) => {
-                            inspector.last_message = format!(
-                                "Regenerated blueprint {} ({:?})",
-                                report.blueprint_id, report.status
-                            );
-                            snapshot_dirty = true;
-                        }
-                        Err(err) => {
-                            inspector.last_message = format!("Blueprint regeneration failed: {err}");
-                        }
-                    }
-                }
-                #[cfg(not(feature = "data-import"))]
-                {
-                    inspector.last_message =
-                        "Blueprint regeneration requires data-import feature".into();
-                }
-            }
-        }
-    }
-
-    if let Some(pending) = inspection.pending_confirmation.clone() {
-        if keyboard.just_pressed(KeyCode::Escape) {
-            inspection.pending_confirmation = None;
-            inspector.last_message = "Cancelled pending blueprint action".into();
-            return;
-        }
-        if keyboard.just_pressed(KeyCode::Enter) {
-            inspection.pending_confirmation = None;
-            if let BlueprintPendingConfirmation::RegenerateFromMesh { .. } = pending {
-                #[cfg(feature = "data-import")]
-                {
-                    match crate::world::regenerate_navigation_blueprint_for_building(
-                        building_id,
-                        &world,
-                        &building_catalog,
-                        &mut nav_catalog,
-                        &mut nav_revision,
-                    ) {
-                        Ok(report) => {
-                            inspector.last_message = format!(
-                                "Regenerated blueprint {} ({:?})",
-                                report.blueprint_id, report.status
-                            );
-                            snapshot_dirty = true;
-                        }
-                        Err(err) => {
-                            inspector.last_message = format!("Blueprint regeneration failed: {err}");
-                        }
-                    }
-                }
-            }
-        }
-        return;
-    }
-
-    for (index, key) in [
-        (0, KeyCode::Digit1),
-        (1, KeyCode::Digit2),
-        (2, KeyCode::Digit3),
-        (3, KeyCode::Digit4),
-        (4, KeyCode::Digit5),
-        (5, KeyCode::Digit6),
-        (6, KeyCode::Digit7),
-        (7, KeyCode::Digit8),
-        (8, KeyCode::Digit9),
-    ] {
-        if keyboard.just_pressed(key) {
-            if let Some(snap) = inspector.blueprint_snapshot.as_ref() {
-                if index < snap.validation.diagnostics.len() {
-                    inspection.focused_diagnostic_index = Some(index);
-                    overlay_focus.blueprint_diagnostic = snap.validation.diagnostics[index]
-                        .focus
-                        .clone();
-                }
-            }
-        }
-    }
-
-    if snapshot_dirty || inspector.blueprint_snapshot.is_none() {
+    if inspection.active && inspector.blueprint_snapshot.is_none() {
         if let Some(mut snap) = capture_building_blueprint_inspection_snapshot(
             &world,
             &building_catalog,
@@ -423,33 +294,57 @@ pub fn handle_blueprint_inspection_input(
             building_id,
             inspection.selected_floor_id,
         ) {
-            snap.inspection_active = true;
+            snap.inspection_active = inspection.active;
+            snap.edit_active = inspection.editing;
+            if let Some(floor_id) = inspection.selected_floor_id {
+                snap = enrich_floor_details(snap, floor_id);
+            }
+            inspector.blueprint_snapshot = Some(snap);
+        }
+    } else if inspection.active {
+        if let Some(mut snap) = capture_building_blueprint_inspection_snapshot(
+            &world,
+            &building_catalog,
+            &nav_catalog,
+            building_id,
+            inspection.selected_floor_id,
+        ) {
+            snap.inspection_active = inspection.active;
+            snap.edit_active = inspection.editing;
+            snap.edit_dirty = inspection.dirty;
             if let Some(floor_id) = inspection.selected_floor_id {
                 snap = enrich_floor_details(snap, floor_id);
             }
             inspector.blueprint_snapshot = Some(snap);
         }
     }
+}
 
-    if let Ok(mut cam) = camera.single_mut() {
-        if let Some(snap) = inspector.blueprint_snapshot.as_ref() {
-            let center = snap.building_center;
-            let half = blueprint_bounds_half_extent(snap, center);
-            let target_pitch = camera_settings.pitch_max * 0.98;
-            if (cam.target_focus - center).length() > 0.5
-                || (cam.target_pitch - target_pitch).abs() > 0.05
-            {
-                frame_building_for_inspection(
-                    &mut cam,
-                    center,
-                    half,
-                    camera_settings.pitch_max,
-                    camera_settings.distance_min,
-                    camera_settings.distance_max,
-                );
-            }
-        }
-    }
+/// Legacy name — delegates to [`sync_navigation_blueprint_session`] (Slice 7).
+pub fn handle_blueprint_inspection_input(
+    dev_state: Res<crate::dev::DevModeState>,
+    registry: Res<DevWindowRegistry>,
+    inspection: ResMut<BlueprintInspectionState>,
+    inspector: ResMut<WorldInspectorState>,
+    world_selection: Res<WorldSelectionState>,
+    overlay_focus: ResMut<InspectorOverlayFocus>,
+    world: Res<WorldData>,
+    building_catalog: Res<BuildingCatalog>,
+    nav_catalog: Res<BuildingNavigationBlueprintCatalog>,
+    camera: Query<&mut RtsCameraState, With<RtsCamera>>,
+) {
+    sync_navigation_blueprint_session(
+        dev_state,
+        registry,
+        inspection,
+        inspector,
+        world_selection,
+        overlay_focus,
+        world,
+        building_catalog,
+        nav_catalog,
+        camera,
+    );
 }
 
 /// Capture inspector snapshot using an in-progress editor working copy when provided.
@@ -495,7 +390,12 @@ fn enrich_floor_details(
                 .entrances
                 .iter()
                 .filter(|e| e.floor_key == floor.key)
-                .map(|e| format!("{} @ [{:.1},{:.1}] r={:.1}m", e.key, e.local_position_xz[0], e.local_position_xz[1], e.radius_meters))
+                .map(|e| {
+                    format!(
+                        "{} @ [{:.1},{:.1}] r={:.1}m",
+                        e.key, e.local_position_xz[0], e.local_position_xz[1], e.radius_meters
+                    )
+                })
                 .collect();
             snap.selected_floor_transitions = blueprint
                 .vertical_transitions
@@ -527,7 +427,14 @@ mod tests {
     #[test]
     fn bird_eye_frame_sets_overhead_pitch() {
         let mut cam = RtsCameraState::new(Vec3::ZERO, 1.0, 0.5, 100.0);
-        frame_building_for_inspection(&mut cam, Vec3::new(10.0, 0.0, 20.0), 12.0, 1.35, 40.0, 5000.0);
+        frame_building_for_inspection(
+            &mut cam,
+            Vec3::new(10.0, 0.0, 20.0),
+            12.0,
+            1.35,
+            40.0,
+            5000.0,
+        );
         assert!((cam.target_pitch - 1.35 * 0.98).abs() < 0.01);
         assert!((cam.target_focus.x - 10.0).abs() < 0.01);
         assert!(cam.target_distance >= 40.0);

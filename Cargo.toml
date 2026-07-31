@@ -30,4 +30,7 @@ data-import = ["dep:calamine", "dep:gltf"]
 terrain-import = ["dep:exr"]
 # Developer preview scene (camera/light + synthetic terrain). Composition only;
 # not part of the core runtime layers (ADR-007, ADR-010).
-dev = ["data-import"]
+#
+# `bevy/debug` makes ECS diagnostics (notably B0001 query conflicts) name the
+# offending system and components instead of emitting placeholder text.
+dev = ["data-import", "bevy/debug"]

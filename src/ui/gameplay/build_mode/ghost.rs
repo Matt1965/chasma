@@ -5,8 +5,8 @@ use bevy::prelude::*;
 use crate::terrain::TerrainRenderAssets;
 use crate::world::{
     BuildingCatalog, BuildingPlacementRejectReason, FootprintCatalog, QuantizedRotation,
-    WorldConfig, WorldData, effective_building_footprint_for_placement, occupied_cells_for_footprint,
-    rotation_from_quadrants,
+    WorldConfig, WorldData, effective_building_footprint_for_placement,
+    occupied_cells_for_footprint, rotation_from_quadrants,
 };
 
 use super::state::BuildModeState;

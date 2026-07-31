@@ -90,23 +90,29 @@ fn validate_definition(definition: &OperationDefinition) -> Result<(), Operation
         });
     }
     for input in &definition.inputs {
-        input.validate().map_err(|err| OperationCatalogError::InvalidDefinition {
-            operation_id: definition.id.clone(),
-            reason: format!("invalid input: {err:?}"),
-        })?;
+        input
+            .validate()
+            .map_err(|err| OperationCatalogError::InvalidDefinition {
+                operation_id: definition.id.clone(),
+                reason: format!("invalid input: {err:?}"),
+            })?;
     }
     for output in &definition.outputs {
-        output.validate().map_err(|err| OperationCatalogError::InvalidDefinition {
-            operation_id: definition.id.clone(),
-            reason: format!("invalid output: {err:?}"),
-        })?;
+        output
+            .validate()
+            .map_err(|err| OperationCatalogError::InvalidDefinition {
+                operation_id: definition.id.clone(),
+                reason: format!("invalid output: {err:?}"),
+            })?;
     }
     let mut seen_terrain_fields = std::collections::HashSet::new();
     for terrain in &definition.terrain_requirements {
-        terrain.validate().map_err(|err| OperationCatalogError::InvalidDefinition {
-            operation_id: definition.id.clone(),
-            reason: format!("invalid terrain requirement: {err:?}"),
-        })?;
+        terrain
+            .validate()
+            .map_err(|err| OperationCatalogError::InvalidDefinition {
+                operation_id: definition.id.clone(),
+                reason: format!("invalid terrain requirement: {err:?}"),
+            })?;
         if !seen_terrain_fields.insert(terrain.field_id.clone()) {
             return Err(OperationCatalogError::InvalidDefinition {
                 operation_id: definition.id.clone(),
@@ -128,8 +134,16 @@ mod tests {
     #[test]
     fn starter_operations_resolve() {
         let catalog = OperationCatalog::default();
-        assert!(catalog.get(&OperationDefinitionId::new("mine_iron")).is_some());
-        assert!(catalog.get(&OperationDefinitionId::new("research")).is_some());
+        assert!(
+            catalog
+                .get(&OperationDefinitionId::new("mine_iron"))
+                .is_some()
+        );
+        assert!(
+            catalog
+                .get(&OperationDefinitionId::new("research"))
+                .is_some()
+        );
     }
 
     #[test]
@@ -144,11 +158,12 @@ mod tests {
 
     #[test]
     fn test_workbench_operation_resolves() {
-        let catalog =
-            OperationCatalog::from_definitions(vec![test_workbench_operation()]).unwrap();
-        assert!(catalog
-            .get(&OperationDefinitionId::new("test_workbench_op"))
-            .is_some());
+        let catalog = OperationCatalog::from_definitions(vec![test_workbench_operation()]).unwrap();
+        assert!(
+            catalog
+                .get(&OperationDefinitionId::new("test_workbench_op"))
+                .is_some()
+        );
     }
 
     #[test]

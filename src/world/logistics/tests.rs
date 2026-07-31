@@ -4,13 +4,11 @@ use bevy::prelude::{Quat, Vec3};
 
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::building::inventory_binding::BuildingInventoryBindingId;
-use crate::world::building::operation::{
-    assess_production_execution, execute_production_cycle,
-};
+use crate::world::building::operation::{assess_production_execution, execute_production_cycle};
 use crate::world::inventory::{InventoryCatalogCtx, count_stack_item, place_stack_first_fit};
 use crate::world::logistics::{
-    HaulingGenerationReason, HaulingRequestPriority, HaulingRequestStatus,
-    HaulingReservationState, LogisticsRouteTrigger, assign_hauling_task, cancel_hauling_request,
+    HaulingGenerationReason, HaulingRequestPriority, HaulingRequestStatus, HaulingReservationState,
+    LogisticsRouteTrigger, assign_hauling_task, cancel_hauling_request,
     export_logistics_save_state, import_logistics_save_state, spawn_manual_hauling_request,
     step_haul_worker_tasks, sync_logistics_requests_from_assessment,
     sync_output_surplus_after_production,
@@ -46,9 +44,10 @@ fn pos(x: f32, z: f32) -> WorldPosition {
 fn test_inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
     static CTX: std::sync::OnceLock<InventoryCatalogCtx<'static>> = std::sync::OnceLock::new();
     CTX.get_or_init(|| {
-        let categories =
-            crate::world::ItemCategoryCatalog::from_definitions(starter_item_category_definitions())
-                .unwrap();
+        let categories = crate::world::ItemCategoryCatalog::from_definitions(
+            starter_item_category_definitions(),
+        )
+        .unwrap();
         let items =
             crate::world::ItemCatalog::from_definitions(starter_item_definitions(), &categories)
                 .unwrap();
@@ -143,10 +142,7 @@ impl LogisticsFixture {
     ) -> crate::world::InventoryId {
         self.world
             .building_inventory_binding_store()
-            .resolve_inventory(
-                building_id,
-                &BuildingInventoryBindingId::new(binding),
-            )
+            .resolve_inventory(building_id, &BuildingInventoryBindingId::new(binding))
             .expect("binding")
     }
 
@@ -263,7 +259,10 @@ fn mine_generates_output_haul_request() {
         .hauling_request_store()
         .get(requests[0])
         .unwrap();
-    assert_eq!(request.generation_reason, HaulingGenerationReason::OutputSurplus);
+    assert_eq!(
+        request.generation_reason,
+        HaulingGenerationReason::OutputSurplus
+    );
     assert_eq!(request.item_id.as_str(), "iron_ore");
     assert_eq!(request.source_inventory_id, mine_output);
     assert_eq!(
@@ -302,7 +301,10 @@ fn smelter_requests_ore_from_storage() {
         .hauling_request_store()
         .get(requests[0])
         .unwrap();
-    assert_eq!(request.generation_reason, HaulingGenerationReason::InputDeficit);
+    assert_eq!(
+        request.generation_reason,
+        HaulingGenerationReason::InputDeficit
+    );
     assert_eq!(request.item_id.as_str(), "iron_ore");
     assert_eq!(
         request.source_inventory_id,
@@ -425,13 +427,8 @@ fn workers_transport_items_physically() {
         .get_unit(worker)
         .and_then(|unit| unit.inventory_id)
         .expect("worker inventory");
-    crate::world::reserve_hauling_request(
-        &mut fixture.world,
-        request_id,
-        3,
-        test_inventory_ctx(),
-    )
-    .unwrap();
+    crate::world::reserve_hauling_request(&mut fixture.world, request_id, 3, test_inventory_ctx())
+        .unwrap();
     let picked = crate::world::pickup_haul_cargo(
         &mut fixture.world,
         request_id,
@@ -487,13 +484,8 @@ fn partial_delivery_updates_remaining_quantity() {
         .get_unit(worker)
         .and_then(|unit| unit.inventory_id)
         .expect("worker inventory");
-    crate::world::reserve_hauling_request(
-        &mut fixture.world,
-        request_id,
-        2,
-        test_inventory_ctx(),
-    )
-    .unwrap();
+    crate::world::reserve_hauling_request(&mut fixture.world, request_id, 2, test_inventory_ctx())
+        .unwrap();
     crate::world::pickup_haul_cargo(
         &mut fixture.world,
         request_id,
@@ -583,10 +575,7 @@ fn logistics_survives_save_load_round_trip() {
     for building_id in [fixture.chest_id, fixture.mine_id, fixture.smelter_id] {
         if let Some(record) = fixture.world.get_building(building_id).cloned() {
             restored
-                .insert_building(
-                    crate::world::ChunkId::new(ChunkCoord::new(0, 0)),
-                    record,
-                )
+                .insert_building(crate::world::ChunkId::new(ChunkCoord::new(0, 0)), record)
                 .unwrap();
         }
     }
@@ -652,7 +641,10 @@ fn production_completion_can_trigger_output_haul_route() {
         .hauling_request_store()
         .get(fixture.open_requests()[0])
         .unwrap();
-    assert_eq!(request.generation_reason, HaulingGenerationReason::OutputSurplus);
+    assert_eq!(
+        request.generation_reason,
+        HaulingGenerationReason::OutputSurplus
+    );
     assert!(
         building_catalog
             .get(&BuildingDefinitionId::new("iron_mine"))

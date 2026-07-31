@@ -9,8 +9,8 @@ use super::id::DoodadId;
 use super::placement::DoodadPlacement;
 use super::record::DoodadRecord;
 use crate::world::authoring_transform::{
-    AuthoringScale, QuantizedOrientation, TransformCapabilities,
-    AUTHORING_INSTANCE_SCALE_MAX, AUTHORING_INSTANCE_SCALE_MIN,
+    AUTHORING_INSTANCE_SCALE_MAX, AUTHORING_INSTANCE_SCALE_MIN, AuthoringScale,
+    QuantizedOrientation, TransformCapabilities,
 };
 use crate::world::occupancy::{
     DoodadRegistrationOptions, OccupancyCatalogs, apply_registration_plan,

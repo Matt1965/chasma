@@ -196,36 +196,7 @@ pub fn sync_environment_presentation(
 }
 
 #[cfg(feature = "dev")]
-pub fn time_of_day_dev_keyboard(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    dev_state: Res<crate::dev::DevModeState>,
-    panel_hovered: Res<crate::dev::DevPanelHoverState>,
-    mut time_of_day: ResMut<TimeOfDaySettings>,
-) {
-    if !dev_state.enabled || dev_state.active_tab != crate::dev::DevTab::WorldTools {
-        return;
-    }
-    if panel_hovered.hovered {
-        return;
-    }
-
-    // Bracket / Alt combinations only — panel buttons own primary controls (REVIEW-B5).
-    if keyboard.just_pressed(KeyCode::BracketLeft) {
-        apply_time_of_day_dev_action(TimeOfDayDevAction::HourEarlier, &mut time_of_day);
-    }
-    if keyboard.just_pressed(KeyCode::BracketRight) {
-        apply_time_of_day_dev_action(TimeOfDayDevAction::HourLater, &mut time_of_day);
-    }
-    if keyboard.just_pressed(KeyCode::Comma) {
-        apply_time_of_day_dev_action(TimeOfDayDevAction::SlowerDay, &mut time_of_day);
-    }
-    if keyboard.just_pressed(KeyCode::Period) {
-        apply_time_of_day_dev_action(TimeOfDayDevAction::FasterDay, &mut time_of_day);
-    }
-}
-
-/// Dev panel / hotkey actions for the visual day-night clock.
-#[cfg(feature = "dev")]
+/// Dev panel actions for the visual day-night clock (World window UI).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeOfDayDevAction {
     ToggleEnabled,

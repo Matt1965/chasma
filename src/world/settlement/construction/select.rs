@@ -43,13 +43,11 @@ pub fn select_building_candidates(
     }
 
     scores.sort_by(|a, b| {
-        b.score
-            .cmp(&a.score)
-            .then_with(|| {
-                a.building_definition_id
-                    .as_str()
-                    .cmp(b.building_definition_id.as_str())
-            })
+        b.score.cmp(&a.score).then_with(|| {
+            a.building_definition_id
+                .as_str()
+                .cmp(b.building_definition_id.as_str())
+        })
     });
     scores
 }
@@ -82,7 +80,9 @@ fn score_building(
     let material_qty: u32 = materials.iter().map(|(_, q)| *q).sum();
     let cost_penalty = (material_qty as i32).min(200);
     score -= cost_penalty;
-    reasons.push(format!("material_qty={material_qty} penalty={cost_penalty}"));
+    reasons.push(format!(
+        "material_qty={material_qty} penalty={cost_penalty}"
+    ));
 
     // Prefer faster construction.
     let build_time = definition.build_time_seconds.max(0.0) as i32;

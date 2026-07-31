@@ -15,10 +15,10 @@ mod id;
 mod insert;
 mod interaction_profile;
 mod interior;
-mod navigation_blueprint;
 pub mod inventory;
 pub mod inventory_binding;
 pub mod inventory_error;
+mod navigation_blueprint;
 mod ownership;
 mod placement;
 mod placement_plan;
@@ -87,48 +87,9 @@ pub use interior::{
     DoorAccessPolicy, DoorId, DoorRecord, DoorState, DoorStore, InteriorError,
     InteriorProfileCatalog, InteriorProfileId, activate_building_interior, close_door,
     deactivate_building_interior, destroy_door, lock_door, open_door, portal_traversable,
-    refresh_building_navigation_runtime,
-    space_route_for_unit, starter_interior_profiles, try_activate_interior_if_complete,
-    try_open_door_at_portal_for_unit, try_open_door_for_unit, two_story_hut_interior_profile,
-};
-pub use navigation_blueprint::{
-    BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH,
-    BUILDING_NAVIGATION_BLUEPRINT_SCHEMA_VERSION, BlueprintPortalTemplate, BlueprintSpaceTemplate,
-    BuildingNavigationBlueprint, BuildingNavigationBlueprintCatalog,
-    BuildingNavigationBlueprintCatalogRevision, BuildingNavigationBlueprintCatalogRon,
-    BuildingNavigationBlueprintError, BuildingNavigationBlueprintId,
-    BuildingNavigationBlueprintInstanceOverride, BuildingNavigationBlueprintMetadata,
-    NavigationEntranceDefinition, NavigationFloorDefinition, NavigationPolygon2d,
-    NavigationVerticalTransitionDefinition, NavigationVerticalTransitionKind,
-    ResolvedBuildingNavigationBlueprint, barn_navigation_blueprint,
-    blueprint_portal_templates, blueprint_space_templates,
-    load_building_navigation_blueprint_catalog, resolve_building_navigation_blueprint,
-    starter_navigation_blueprints, two_story_hut_navigation_blueprint,
-    validate_navigation_blueprint_id, NAVIGATION_BLUEPRINT_CACHE_MANIFEST_PATH,
-    NAVIGATION_BLUEPRINT_GENERATOR_VERSION, NavigationBlueprintCacheEntry,
-    NavigationBlueprintCacheManifest, NavigationBlueprintGenerationReport,
-    NavigationBlueprintGenerationStatus, export_generation_reports_markdown,
-    BlueprintDiagnosticFocus, BlueprintDiagnosticLevel, BlueprintInspectionValidation,
-    BlueprintValidationDiagnostic, validate_blueprint_for_inspection,
-    BlueprintEditOutcome, add_entrance_on_floor, add_stair_transition, delete_entrance,
-    delete_floor_vertex, delete_transition, insert_vertex_on_edge, move_entrance,
-    move_floor_vertex, move_transition_from, move_transition_to, prepare_blueprint_for_save,
-    set_entrance_radius, set_transition_radius,
-    BlueprintAuthoritySource, BlueprintPersistenceOutcome, apply_blueprint_to_asset,
-    classify_blueprint_authority, count_inheriting_instances, reset_instance_to_asset,
-    save_instance_blueprint,
-    BuildingNavigationRuntime, BuildingNavigationRuntimeStore, RuntimeNavigationFloor,
-    build_navigation_runtime, interior_position_walkable, position_in_surface_entrance_portal,
-    register_building_navigation_profile, reposition_building_navigation_runtime,
-    resolve_navigation_space_at_position, resolve_navigation_start_space,
-};
-#[cfg(feature = "data-import")]
-pub use navigation_blueprint::{
-    NAVIGATION_BLUEPRINT_REPORT_PATH, NavigationBlueprintGenerateInput,
-    NavigationBlueprintGenerateOutput, blueprint_id_for_building, export_navigation_blueprint_catalog,
-    generate_navigation_blueprint, hash_asset_path, import_navigation_blueprints_for_catalog,
-    load_building_mesh_for_navigation, regenerate_navigation_blueprint_for_building,
-    should_generate_navigation_blueprint,
+    refresh_building_navigation_runtime, space_route_for_unit, starter_interior_profiles,
+    try_activate_interior_if_complete, try_open_door_at_portal_for_unit, try_open_door_for_unit,
+    two_story_hut_interior_profile,
 };
 pub use inventory::{
     BuildingInventoryContext, BuildingInventoryRemovalPolicy, attach_inventory_on_building_create,
@@ -139,32 +100,70 @@ pub use inventory::{
     spill_position_for_building, validate_building_inventory_links,
     validate_building_inventory_owner,
 };
-pub use inventory_error::BuildingInventoryError;
 pub use inventory_binding::{
     BuildingInventoryBinding, BuildingInventoryBindingDefinition, BuildingInventoryBindingId,
-    BuildingInventoryBindingSet, BuildingInventoryBindingStore, BuildingInventoryBindingValidationIssue,
-    BuildingInventoryRole, building_inventories_with_role, building_inventory_bindings,
-    default_building_inventory_binding, effective_inventory_binding_definitions,
-    primary_building_inventory_id, resolve_building_inventory_binding,
-    validate_building_catalog_inventory_bindings, validate_building_definition_inventory_bindings,
-    validate_building_runtime_inventory_bindings, validate_operation_inventory_bindings,
-    validate_selected_operation_inventory_bindings, validate_world_building_inventory_bindings,
+    BuildingInventoryBindingSet, BuildingInventoryBindingStore,
+    BuildingInventoryBindingValidationIssue, BuildingInventoryRole, building_inventories_with_role,
+    building_inventory_bindings, default_building_inventory_binding,
+    effective_inventory_binding_definitions, primary_building_inventory_id,
+    resolve_building_inventory_binding, validate_building_catalog_inventory_bindings,
+    validate_building_definition_inventory_bindings, validate_building_runtime_inventory_bindings,
+    validate_operation_inventory_bindings, validate_selected_operation_inventory_bindings,
+    validate_world_building_inventory_bindings,
+};
+pub use inventory_error::BuildingInventoryError;
+pub use navigation_blueprint::{
+    BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH, BUILDING_NAVIGATION_BLUEPRINT_SCHEMA_VERSION,
+    BlueprintAuthoritySource, BlueprintDiagnosticFocus, BlueprintDiagnosticLevel,
+    BlueprintEditOutcome, BlueprintInspectionValidation, BlueprintPersistenceOutcome,
+    BlueprintPortalTemplate, BlueprintSpaceTemplate, BlueprintValidationDiagnostic,
+    BuildingNavigationBlueprint, BuildingNavigationBlueprintCatalog,
+    BuildingNavigationBlueprintCatalogRevision, BuildingNavigationBlueprintCatalogRon,
+    BuildingNavigationBlueprintError, BuildingNavigationBlueprintId,
+    BuildingNavigationBlueprintInstanceOverride, BuildingNavigationBlueprintMetadata,
+    BuildingNavigationRuntime, BuildingNavigationRuntimeStore,
+    NAVIGATION_BLUEPRINT_CACHE_MANIFEST_PATH, NAVIGATION_BLUEPRINT_GENERATOR_VERSION,
+    NavigationBlueprintCacheEntry, NavigationBlueprintCacheManifest,
+    NavigationBlueprintGenerationReport, NavigationBlueprintGenerationStatus,
+    NavigationEntranceDefinition, NavigationFloorDefinition, NavigationPolygon2d,
+    NavigationVerticalTransitionDefinition, NavigationVerticalTransitionKind,
+    ResolvedBuildingNavigationBlueprint, RuntimeNavigationFloor, add_entrance_on_floor,
+    add_stair_transition, apply_blueprint_to_asset, barn_navigation_blueprint,
+    blueprint_portal_templates, blueprint_space_templates, build_navigation_runtime,
+    classify_blueprint_authority, count_inheriting_instances, delete_entrance, delete_floor_vertex,
+    delete_transition, export_generation_reports_markdown, insert_vertex_on_edge,
+    interior_position_walkable, load_building_navigation_blueprint_catalog, move_entrance,
+    move_floor_vertex, move_transition_from, move_transition_to,
+    position_in_surface_entrance_portal, prepare_blueprint_for_save,
+    register_building_navigation_profile, reposition_building_navigation_runtime,
+    reset_instance_to_asset, resolve_building_navigation_blueprint,
+    resolve_navigation_space_at_position, resolve_navigation_start_space, save_instance_blueprint,
+    set_entrance_radius, set_transition_radius, starter_navigation_blueprints,
+    two_story_hut_navigation_blueprint, validate_blueprint_for_inspection,
+    validate_navigation_blueprint_id,
+};
+#[cfg(feature = "data-import")]
+pub use navigation_blueprint::{
+    NAVIGATION_BLUEPRINT_REPORT_PATH, NavigationBlueprintGenerateInput,
+    NavigationBlueprintGenerateOutput, blueprint_id_for_building,
+    export_navigation_blueprint_catalog, generate_navigation_blueprint, hash_asset_path,
+    import_navigation_blueprints_for_catalog, load_building_mesh_for_navigation,
+    regenerate_navigation_blueprint_for_building, should_generate_navigation_blueprint,
 };
 pub use operation::{
-    BASE_OPERATION_PROGRESS_PER_TICK,
-    BuildingOperationParams, BuildingOperationPolicy, BuildingOperationSaveState,
-    BuildingOperationState, BuildingOperationStore, BuildingProductionSaveState,
-    BuildingProductionStore, ControlSource, OperationCompletionReport, OperationDefinitionId,
-    OperationError, OperationLifecycle, OperationStepReport, PRODUCTION_PROGRESS_ONE_UNIT,
-    ProductionCommandError, ProductionExecutionAssessment, ProductionExecutionFailure,
-    ProductionProgress, ProductionValidationIssue, PRODUCTION_STEPPING_MODEL, RepeatMode,
-    ResolvedProductionInput, ResolvedProductionOutput, apply_operation_ticks,
-    assess_production_execution, expected_ticks_to_complete, execute_production_cycle,
-    production_policy, reset_production_progress, scale_progress, set_production_enabled,
+    BASE_OPERATION_PROGRESS_PER_TICK, BuildingOperationParams, BuildingOperationPolicy,
+    BuildingOperationSaveState, BuildingOperationState, BuildingOperationStore,
+    BuildingProductionSaveState, BuildingProductionStore, ControlSource, OperationCompletionReport,
+    OperationDefinitionId, OperationError, OperationLifecycle, OperationStepReport,
+    PRODUCTION_PROGRESS_ONE_UNIT, PRODUCTION_STEPPING_MODEL, ProductionCommandError,
+    ProductionExecutionAssessment, ProductionExecutionFailure, ProductionProgress,
+    ProductionValidationIssue, RepeatMode, ResolvedProductionInput, ResolvedProductionOutput,
+    apply_operation_ticks, assess_production_execution, cycle_production_selected_operation,
+    execute_production_cycle, expected_ticks_to_complete, production_policy,
+    reset_production_progress, scale_progress, set_production_enabled,
     set_production_execution_mode, set_production_paused, set_production_repeat_count,
-    set_production_selected_operation, step_workstation_operation,
-    validate_production_runtime, validate_production_runtime_with_catalogs,
-    cycle_production_selected_operation, workstation_workers_for_building,
+    set_production_selected_operation, step_workstation_operation, validate_production_runtime,
+    validate_production_runtime_with_catalogs, workstation_workers_for_building,
 };
 pub use operational_efficiency::{
     OperationalEfficiencyContext, OperationalEfficiencyError, OperationalEfficiencyReport,

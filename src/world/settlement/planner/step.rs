@@ -1,10 +1,10 @@
 //! Simulation step hook for settlement production planners (EP9).
 
+use crate::world::WorldData;
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::operation::OperationCatalog;
 use crate::world::settlement::SettlementId;
-use crate::world::WorldData;
 
 use super::plan::execute_settlement_replan;
 
@@ -36,10 +36,7 @@ pub fn step_settlement_production_planners(
         if !should_replan {
             continue;
         }
-        let planner_snapshot = world
-            .production_planner_store()
-            .get(settlement_id)
-            .cloned();
+        let planner_snapshot = world.production_planner_store().get(settlement_id).cloned();
         let Some(mut planner) = planner_snapshot else {
             continue;
         };

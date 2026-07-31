@@ -28,5 +28,7 @@ pub fn restore_construction_plan_persistence(
     // Transient diagnostics never persist.
     world.construction_planning_report_store_mut().clear();
     // Revalidate after load: mark dirty so next planning pass can retry blocked plans.
-    world.construction_planning_report_store_mut().mark_all_dirty();
+    world
+        .construction_planning_report_store_mut()
+        .mark_all_dirty();
 }

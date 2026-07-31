@@ -1,7 +1,7 @@
 //! Ensure OperateWorkstation marketplace listings exist for enabled buildings (SA7).
 
 use crate::world::task::{
-    building_accepts_workstation_use, ensure_building_task, TaskPriority, TaskType,
+    TaskPriority, TaskType, building_accepts_workstation_use, ensure_building_task,
 };
 use crate::world::{BuildingCatalog, WorldData};
 

@@ -2,9 +2,7 @@
 //!
 //! No response performs work. Building/operation ids are authored capability tags only.
 
-use super::definition::{
-    CapabilityRequirement, ExpectedEffect, ResponseDefinition, ResponseType,
-};
+use super::definition::{CapabilityRequirement, ExpectedEffect, ResponseDefinition, ResponseType};
 use crate::world::settlement::needs::NeedId;
 
 pub fn starter_response_definitions() -> Vec<ResponseDefinition> {
@@ -184,7 +182,9 @@ pub fn starter_response_definitions() -> Vec<ResponseDefinition> {
             ResponseType::DecreaseProduction,
             ExpectedEffect::new(0.2, 5.0),
             -20,
-            [CapabilityRequirement::SupportingOperation("smelt_iron".into())],
+            [CapabilityRequirement::SupportingOperation(
+                "smelt_iron".into(),
+            )],
         )
         .with_ai_tags(["production", "luxury"]),
         ResponseDefinition::new(

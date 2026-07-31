@@ -8,18 +8,20 @@ use crate::world::building::inventory_binding::{
     validate_building_definition_inventory_bindings, validate_operation_inventory_bindings,
     validate_selected_operation_inventory_bindings,
 };
-use crate::world::inventory::{InventoryCatalogCtx, InventoryEntryContents, InventoryOwnerRef, place_stack_first_fit};
+use crate::world::inventory::{
+    InventoryCatalogCtx, InventoryEntryContents, InventoryOwnerRef, place_stack_first_fit,
+};
 use crate::world::operation::{
     OperationCatalog, OperationCategory, OperationDefinition, OperationDefinitionId,
     OperationInputDefinition,
 };
 use crate::world::{
-    Affiliation, BuildingCatalog, BuildingDefinition, BuildingDefinitionId, BuildingOwnership,
-    BuildingRenderKey, BuildingSource, ChunkCoord, ChunkData, ChunkId, ChunkLayout, FootprintSpec,
-    Heightfield, InventoryProfileCatalog, InventoryProfileId, ItemCatalog, ItemCategoryCatalog,
-    ItemDefinitionId, LocalPosition, WorldData, WorldPosition, starter_building_definitions,
-    starter_inventory_profile_definitions, starter_item_category_definitions, starter_item_definitions,
-    starter_operation_definitions, BuildingCategoryId,
+    Affiliation, BuildingCatalog, BuildingCategoryId, BuildingDefinition, BuildingDefinitionId,
+    BuildingOwnership, BuildingRenderKey, BuildingSource, ChunkCoord, ChunkData, ChunkId,
+    ChunkLayout, FootprintSpec, Heightfield, InventoryProfileCatalog, InventoryProfileId,
+    ItemCatalog, ItemCategoryCatalog, ItemDefinitionId, LocalPosition, WorldData, WorldPosition,
+    starter_building_definitions, starter_inventory_profile_definitions,
+    starter_item_category_definitions, starter_item_definitions, starter_operation_definitions,
 };
 use bevy::prelude::{Quat, Vec3};
 
@@ -48,8 +50,7 @@ fn test_ctx() -> &'static InventoryCatalogCtx<'static> {
     CTX.get_or_init(|| {
         let categories =
             ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
-        let items =
-            ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+        let items = ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
         let profiles =
             InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
                 .unwrap();
@@ -196,8 +197,8 @@ fn resolution_does_not_depend_on_array_order() {
 
 #[test]
 fn duplicate_binding_ids_fail_validation() {
-    let profiles = InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
-        .unwrap();
+    let profiles =
+        InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions()).unwrap();
     let definition = BuildingDefinition::new(
         BuildingDefinitionId::new("dup"),
         "Dup",
@@ -223,16 +224,18 @@ fn duplicate_binding_ids_fail_validation() {
         ),
     ]);
     let issues = validate_building_definition_inventory_bindings(&definition, &profiles);
-    assert!(issues
-        .iter()
-        .any(|issue| issue.message().contains("more than once")));
+    assert!(
+        issues
+            .iter()
+            .any(|issue| issue.message().contains("more than once"))
+    );
 }
 
 #[test]
 fn legacy_single_inventory_migrates_without_losing_contents() {
     let categories = crate::world::BuildingCategoryCatalog::default();
-    let catalog = BuildingCatalog::from_definitions(starter_building_definitions(), &categories)
-        .unwrap();
+    let catalog =
+        BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
     let mut world = flat_world();
     let ctx = test_ctx();
     let record = create_building_with_inventory(
@@ -293,9 +296,11 @@ fn operation_references_missing_binding_fails_validation() {
         source_binding: Some(BuildingInventoryBindingId::new("missing_input")),
     }]);
     let issues = validate_operation_inventory_bindings(&operation, &smelter_definition());
-    assert!(issues
-        .iter()
-        .any(|issue| issue.message().contains("unknown binding")));
+    assert!(
+        issues
+            .iter()
+            .any(|issue| issue.message().contains("unknown binding"))
+    );
 }
 
 #[test]
@@ -316,16 +321,19 @@ fn role_queries_return_all_matches_without_selection() {
             ),
         ]),
     );
-    let matches =
-        building_inventories_with_role(&store, crate::world::BuildingId::new(1), BuildingInventoryRole::Input);
+    let matches = building_inventories_with_role(
+        &store,
+        crate::world::BuildingId::new(1),
+        BuildingInventoryRole::Input,
+    );
     assert_eq!(matches.len(), 2);
 }
 
 #[test]
 fn selected_operation_validates_runtime_binding_resolution() {
     let categories = crate::world::BuildingCategoryCatalog::default();
-    let catalog = BuildingCatalog::from_definitions(starter_building_definitions(), &categories)
-        .unwrap();
+    let catalog =
+        BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
     let operations = OperationCatalog::from_definitions(starter_operation_definitions()).unwrap();
     let mut world = flat_world();
     let record = create_building_with_inventory(

@@ -3,31 +3,35 @@
 use bevy::ecs::system::SystemParam;
 use bevy::input::keyboard::KeyCode;
 use bevy::input::mouse::MouseButton;
+use bevy::math::Affine3A;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use crate::camera::{CameraSettings, RtsCamera, RtsCameraState};
+use crate::client::selection::WorldSelectionState;
 use crate::debug::{DebugOverlayConfig, InspectorOverlayFocus};
-use bevy::math::Affine3A;
+use crate::dev::dev_mode::DevModeInputGate;
+use crate::dev::window::DevWindowRegistry;
 use crate::dev::{DevModeState, DevPanelHoverState};
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::cursor_world_ray;
 use crate::world::{
-    apply_blueprint_to_asset, count_inheriting_instances, create_building_variant,
-    replace_building_instance_definition, reset_instance_to_asset, save_instance_blueprint,
-    suggest_variant_definition_id, validate_building_definition_id, BuildingCatalog,
-    BuildingCatalogRevision, BuildingCategoryCatalog, BuildingDefinitionId, BuildingId,
-    BuildingNavigationBlueprint, BuildingNavigationBlueprintCatalog,
+    BuildingCatalog, BuildingCatalogRevision, BuildingCategoryCatalog, BuildingDefinitionId,
+    BuildingId, BuildingNavigationBlueprint, BuildingNavigationBlueprintCatalog,
     BuildingNavigationBlueprintCatalogRevision, BuildingVariantCreateInput, InteriorProfileCatalog,
-    WorldConfig, WorldData, building_model_world_transform, delete_entrance, delete_floor_vertex,
-    delete_transition, insert_vertex_on_edge, move_entrance, move_floor_vertex, move_transition_from,
-    move_transition_to, set_entrance_radius, set_transition_radius, validate_blueprint_for_inspection,
+    WorldConfig, WorldData, apply_blueprint_to_asset, building_model_render_transform,
+    count_inheriting_instances, create_building_variant, delete_entrance, delete_floor_vertex,
+    delete_transition, insert_vertex_on_edge, move_entrance, move_floor_vertex,
+    move_transition_from, move_transition_to, replace_building_instance_definition,
+    reset_instance_to_asset, save_instance_blueprint, set_entrance_radius, set_transition_radius,
+    suggest_variant_definition_id, validate_blueprint_for_inspection,
+    validate_building_definition_id,
 };
 
 use super::blueprint_inspection::{
-    capture_edit_blueprint_snapshot, enter_blueprint_inspection, frame_building_for_inspection,
     BlueprintEditDrag, BlueprintEditSelection, BlueprintEditTool, BlueprintInspectionState,
     BlueprintPendingConfirmation, BlueprintVariantDraft, BlueprintVariantDraftField,
+    capture_edit_blueprint_snapshot, enter_blueprint_inspection, frame_building_for_inspection,
 };
 use super::state::WorldInspectorState;
 
@@ -35,17 +39,30 @@ const VERTEX_PICK_RADIUS: f32 = 0.45;
 const EDGE_PICK_RADIUS: f32 = 0.35;
 const ENTRANCE_PICK_RADIUS: f32 = 0.6;
 const TRANSITION_PICK_RADIUS: f32 = 0.75;
+/// Reject near-parallel plane hits that would produce extreme blueprint coordinates.
+const MAX_LOCAL_XZ_ABS: f32 = 50_000.0;
+
+/// Cursor ray intersection with the active floor editing plane (render space).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FloorPlaneHit {
+    /// Intersection point in render/world space (matches camera and overlay).
+    pub world_point: Vec3,
+    /// Building-local blueprint XZ stored in the draft.
+    pub local_xz: Vec2,
+}
 
 #[derive(SystemParam)]
 pub struct BlueprintEditInputParams<'w, 's> {
     pub dev_state: Res<'w, DevModeState>,
     pub panel_hovered: Res<'w, DevPanelHoverState>,
+    pub gate: ResMut<'w, DevModeInputGate>,
     pub keyboard: Res<'w, ButtonInput<KeyCode>>,
     pub mouse_buttons: Res<'w, ButtonInput<MouseButton>>,
     pub windows: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
     pub camera: Query<'w, 's, (&'static Camera, &'static GlobalTransform), With<RtsCamera>>,
     pub rts_camera: Query<'w, 's, &'static mut RtsCameraState, With<RtsCamera>>,
     pub inspection: ResMut<'w, BlueprintInspectionState>,
+    pub world_selection: Res<'w, WorldSelectionState>,
     pub inspector: ResMut<'w, WorldInspectorState>,
     pub overlay_focus: ResMut<'w, InspectorOverlayFocus>,
     pub debug_config: ResMut<'w, DebugOverlayConfig>,
@@ -59,6 +76,8 @@ pub struct BlueprintEditInputParams<'w, 's> {
     pub nav_revision: ResMut<'w, BuildingNavigationBlueprintCatalogRevision>,
     pub camera_settings: Res<'w, CameraSettings>,
     pub render_assets: Option<Res<'w, TerrainRenderAssets>>,
+    pub window_registry: ResMut<'w, DevWindowRegistry>,
+    pub nav_ui: ResMut<'w, crate::dev::NavigationEditorUiState>,
 }
 
 pub fn enter_blueprint_edit(
@@ -101,236 +120,49 @@ pub fn exit_blueprint_edit_to_inspect(inspection: &mut BlueprintInspectionState)
     inspection.drag = None;
 }
 
+/// While blueprint editing owns the world pointer, suppress gameplay selection/commands.
+pub fn navigation_edit_owns_world_pointer(editing: bool, panel_hovered: bool) -> bool {
+    editing && !panel_hovered
+}
+
 pub fn handle_blueprint_edit_input(mut params: BlueprintEditInputParams<'_, '_>) {
     if !params.dev_state.enabled {
         return;
     }
-
-    let Some(building_id) = params.inspector.selected_building else {
-        return;
-    };
-
-    if params.keyboard.just_pressed(KeyCode::KeyE) && !params.inspection.editing {
-        let Some(snapshot) = capture_edit_blueprint_snapshot(
-            &params.world,
-            &params.building_catalog,
-            &params.nav_catalog,
-            building_id,
-            params.inspection.selected_floor_id,
-            params.inspection.working_copy.as_ref(),
-        ) else {
-            params.inspector.last_message = "No navigation blueprint available to edit".into();
-            return;
-        };
-        let Some(working) = snapshot.resolved_blueprint.clone() else {
-            params.inspector.last_message = "No navigation blueprint available to edit".into();
-            return;
-        };
-        if let Ok(mut cam) = params.rts_camera.single_mut() {
-            enter_blueprint_edit(
-                building_id,
-                &mut params.inspection,
-                &mut params.overlay_focus,
-                &mut cam,
-                &snapshot,
-                params.camera_settings.pitch_max,
-                params.camera_settings.distance_min,
-                params.camera_settings.distance_max,
-                &mut params.debug_config,
-                working,
-            );
-            params.inspector.blueprint_snapshot = Some(snapshot);
-            params.inspector.last_message =
-                format!(
-                    "Blueprint edit: building #{} — [Ctrl+S] instance [Ctrl+Shift+S] asset [Ctrl+Shift+V] variant",
-                    building_id.raw()
-                );
-            if let Some(snap) = params.inspector.blueprint_snapshot.as_mut() {
-                snap.edit_active = true;
-            }
-        }
+    if !params
+        .window_registry
+        .is_visible(crate::dev::window::DevWindowId::NavigationEditor)
+    {
         return;
     }
+
+    let Some(building_id) = params.world_selection.building_id else {
+        return;
+    };
 
     if !params.inspection.editing {
         return;
     }
 
-    if params.keyboard.just_pressed(KeyCode::BracketLeft)
-        || params.keyboard.just_pressed(KeyCode::BracketRight)
-    {
-        if let Some(snap) = params.inspector.blueprint_snapshot.clone() {
-            if !snap.floor_ids.is_empty() {
-                let current = params
-                    .inspection
-                    .selected_floor_id
-                    .and_then(|id| snap.floor_ids.iter().position(|&f| f == id))
-                    .unwrap_or(0);
-                let next = if params.keyboard.just_pressed(KeyCode::BracketRight) {
-                    (current + 1) % snap.floor_ids.len()
-                } else {
-                    (current + snap.floor_ids.len() - 1) % snap.floor_ids.len()
-                };
-                let floor_id = snap.floor_ids[next];
-                params.inspection.selected_floor_id = Some(floor_id);
-                params.overlay_focus.blueprint_floor_id = Some(floor_id);
-                params.inspection.selection = BlueprintEditSelection::None;
-                refresh_edit_snapshot(
-                    &params.world,
-                    &params.building_catalog,
-                    &params.nav_catalog,
-                    building_id,
-                    &params.inspection,
-                    &mut params.inspector,
-                );
-            }
-        }
+    if params.inspection.pending_confirmation.is_some() {
         return;
     }
 
-    if handle_variant_draft_input(&mut params) {
+    if params.inspection.variant_draft.is_some() {
         return;
     }
 
-    if handle_pending_confirmation(&mut params) {
-        return;
+    // Own world mouse for the whole edit session so left-release cannot ClearSelection
+    // (which would trip the dirty Save/Discard/Cancel guard).
+    if navigation_edit_owns_world_pointer(true, params.panel_hovered.hovered) {
+        params.gate.block_gameplay_mouse = true;
     }
 
-    if params.keyboard.just_pressed(KeyCode::Escape) {
-        if params.inspection.dirty {
-            params.inspection.pending_confirmation = Some(BlueprintPendingConfirmation::DiscardEdits {
-                action: "exit edit".into(),
-            });
-            params.inspector.last_message =
-                "Unsaved blueprint edits — [Enter] discard, [Esc] cancel".into();
-            return;
-        }
-        exit_blueprint_edit_to_inspect(&mut params.inspection);
-        if let Some(snap) = params.inspector.blueprint_snapshot.as_mut() {
-            snap.edit_active = false;
-            snap.edit_dirty = false;
-        }
-        params.inspector.last_message = "Exited blueprint edit".into();
-        refresh_edit_snapshot(
-            &params.world,
-            &params.building_catalog,
-            &params.nav_catalog,
-            building_id,
-            &params.inspection,
-            &mut params.inspector,
-        );
-        return;
-    }
+    let delete_pressed = (params.keyboard.just_pressed(KeyCode::Delete)
+        || params.keyboard.just_pressed(KeyCode::Backspace))
+        && !params.dev_state.has_text_focus();
 
-    let ctrl = params.keyboard.pressed(KeyCode::ControlLeft)
-        || params.keyboard.pressed(KeyCode::ControlRight);
-    let shift = params.keyboard.pressed(KeyCode::ShiftLeft)
-        || params.keyboard.pressed(KeyCode::ShiftRight);
-    let alt = params.keyboard.pressed(KeyCode::AltLeft)
-        || params.keyboard.pressed(KeyCode::AltRight);
-
-    if ctrl && shift && params.keyboard.just_pressed(KeyCode::KeyV) {
-        let Some(record) = params.world.get_building(building_id) else {
-            return;
-        };
-        let Some(definition) = params.building_catalog.get(&record.definition_id) else {
-            return;
-        };
-        let display_name = format!("{} Variant", definition.display_name);
-        let asset_id = suggest_variant_definition_id(
-            record.definition_id.as_str(),
-            &display_name,
-        );
-        params.inspection.variant_draft = Some(BlueprintVariantDraft {
-            source_definition_id: record.definition_id.clone(),
-            display_name,
-            asset_id,
-            description: String::new(),
-            active_field: BlueprintVariantDraftField::DisplayName,
-        });
-        params.inspector.last_message =
-            "Save As Variant — [Tab] next field, type name/id/description, [Enter] create, [Esc] cancel"
-                .into();
-        return;
-    }
-
-    if ctrl && shift && params.keyboard.just_pressed(KeyCode::KeyS) {
-        let Some(record) = params.world.get_building(building_id) else {
-            return;
-        };
-        let inheriting = count_inheriting_instances(&params.world, &record.definition_id);
-        params.inspection.pending_confirmation =
-            Some(BlueprintPendingConfirmation::ApplyToAsset { inheriting_count: inheriting });
-        params.inspector.last_message = format!(
-            "Apply blueprint to asset default? {inheriting} loaded instance(s) without overrides inherit this change — [Enter] confirm, [Esc] cancel"
-        );
-        return;
-    }
-
-    if ctrl && alt && params.keyboard.just_pressed(KeyCode::KeyR) {
-        params.inspection.pending_confirmation = Some(BlueprintPendingConfirmation::ResetToAsset);
-        params.inspector.last_message =
-            "Reset instance to asset/generated blueprint? [Enter] confirm, [Esc] cancel".into();
-        return;
-    }
-
-    if ctrl && !shift && params.keyboard.just_pressed(KeyCode::KeyS) {
-        let Some(working) = params.inspection.working_copy.clone() else {
-            params.inspector.last_message = "No working blueprint to save".into();
-            return;
-        };
-        match save_instance_blueprint(
-            &mut params.world,
-            &params.building_catalog,
-            &params.interior_catalog,
-            &params.nav_catalog,
-            building_id,
-            working,
-        ) {
-            Ok(outcome) => {
-                params.inspection.dirty = false;
-                if let Some(working) = params.inspection.working_copy.as_mut() {
-                    if let Some(record) = params.world.get_building(building_id) {
-                        if let Some(override_data) = record.interior.navigation_blueprint_override.as_ref() {
-                            if let Some(inline) = &override_data.inline_blueprint {
-                                *working = inline.clone();
-                            }
-                        }
-                    }
-                }
-                params.inspector.last_message = format!(
-                    "{} (authority: {})",
-                    outcome.message,
-                    outcome.authority.label()
-                );
-                refresh_edit_snapshot(
-                    &params.world,
-                    &params.building_catalog,
-                    &params.nav_catalog,
-                    building_id,
-                    &params.inspection,
-                    &mut params.inspector,
-                );
-            }
-            Err(err) => params.inspector.last_message = format!("Save instance failed: {err}"),
-        }
-        return;
-    }
-
-    if params.keyboard.just_pressed(KeyCode::Digit1) {
-        params.inspection.active_tool = BlueprintEditTool::Select;
-        params.inspector.last_message = "Blueprint tool: select".into();
-    }
-    if params.keyboard.just_pressed(KeyCode::Digit2) {
-        params.inspection.active_tool = BlueprintEditTool::AddVertex;
-        params.inspector.last_message = "Blueprint tool: add vertex (click edge)".into();
-    }
-    if params.keyboard.just_pressed(KeyCode::Digit3) {
-        params.inspection.active_tool = BlueprintEditTool::AddEntrance;
-        params.inspector.last_message = "Blueprint tool: add entrance (click floor)".into();
-    }
-
-    if params.keyboard.just_pressed(KeyCode::Delete) || params.keyboard.just_pressed(KeyCode::Backspace) {
+    if delete_pressed {
         if delete_selection(&mut params.inspection) {
             params.inspector.last_message = "Deleted selected blueprint element".into();
             refresh_edit_snapshot(
@@ -342,31 +174,11 @@ pub fn handle_blueprint_edit_input(mut params: BlueprintEditInputParams<'_, '_>)
                 &mut params.inspector,
             );
         }
+        return;
     }
 
-    if params.keyboard.just_pressed(KeyCode::Equal) || params.keyboard.just_pressed(KeyCode::NumpadAdd) {
-        if adjust_selected_radius(&mut params.inspection, 0.1) {
-            refresh_edit_snapshot(
-                &params.world,
-                &params.building_catalog,
-                &params.nav_catalog,
-                building_id,
-                &params.inspection,
-                &mut params.inspector,
-            );
-        }
-    }
-    if params.keyboard.just_pressed(KeyCode::Minus) || params.keyboard.just_pressed(KeyCode::NumpadSubtract) {
-        if adjust_selected_radius(&mut params.inspection, -0.1) {
-            refresh_edit_snapshot(
-                &params.world,
-                &params.building_catalog,
-                &params.nav_catalog,
-                building_id,
-                &params.inspection,
-                &mut params.inspector,
-            );
-        }
+    if params.panel_hovered.hovered {
+        return;
     }
 
     let Some(record) = params.world.get_building(building_id) else {
@@ -376,7 +188,14 @@ pub fn handle_blueprint_edit_input(mut params: BlueprintEditInputParams<'_, '_>)
         return;
     };
     let layout = params.config.chunk_layout();
-    let model = building_model_world_transform(definition, &record.placement, layout);
+    let vertical_scale = params
+        .render_assets
+        .as_ref()
+        .map(|assets| assets.vertical_scale)
+        .unwrap_or(1.0);
+    // Camera rays and overlay gizmos use render space; pick/place must match.
+    let model =
+        building_model_render_transform(definition, &record.placement, layout, vertical_scale);
     let floor_id = params.inspection.selected_floor_id;
     let floor_elevation = params
         .inspection
@@ -393,10 +212,6 @@ pub fn handle_blueprint_edit_input(mut params: BlueprintEditInputParams<'_, '_>)
         })
         .unwrap_or(0.0);
 
-    if params.panel_hovered.hovered {
-        return;
-    }
-
     let Ok(window) = params.windows.single() else {
         return;
     };
@@ -410,10 +225,18 @@ pub fn handle_blueprint_edit_input(mut params: BlueprintEditInputParams<'_, '_>)
         return;
     };
 
-    let local_xz = match ray_to_building_floor_local_xz(&ray, &model, floor_elevation) {
-        Some(point) => point,
-        None => return,
+    let Some(hit) = cursor_ray_to_floor_blueprint_point(&ray, &model, floor_elevation) else {
+        // Invalid / parallel ray: consume the click, place nothing.
+        if params.mouse_buttons.just_pressed(MouseButton::Left) {
+            params.inspection.last_pick_message =
+                Some("Cursor ray does not intersect the active floor plane".into());
+        }
+        if params.mouse_buttons.just_released(MouseButton::Left) {
+            params.inspection.drag = None;
+        }
+        return;
     };
+    let local_xz = hit.local_xz;
 
     if params.mouse_buttons.just_pressed(MouseButton::Left) {
         handle_edit_click(&mut params.inspection, local_xz);
@@ -450,20 +273,13 @@ pub fn handle_blueprint_edit_input(mut params: BlueprintEditInputParams<'_, '_>)
     }
 }
 
-
 fn handle_variant_draft_input(params: &mut BlueprintEditInputParams<'_, '_>) -> bool {
-    let Some(building_id) = params.inspector.selected_building else {
+    let Some(building_id) = params.world_selection.building_id else {
         return false;
     };
     let Some(mut draft) = params.inspection.variant_draft.clone() else {
         return false;
     };
-
-    if params.keyboard.just_pressed(KeyCode::Escape) {
-        params.inspection.variant_draft = None;
-        params.inspector.last_message = "Cancelled Save As Variant".into();
-        return true;
-    }
 
     if params.keyboard.just_pressed(KeyCode::Tab) {
         draft.active_field = match draft.active_field {
@@ -480,7 +296,8 @@ fn handle_variant_draft_input(params: &mut BlueprintEditInputParams<'_, '_>) -> 
             params.inspector.last_message = "No working blueprint to save as variant".into();
             return true;
         };
-        if let Err(err) = validate_building_definition_id(&draft.asset_id, &params.building_catalog) {
+        if let Err(err) = validate_building_definition_id(&draft.asset_id, &params.building_catalog)
+        {
             params.inspector.last_message = format!("Invalid asset id: {err}");
             return true;
         }
@@ -516,7 +333,7 @@ fn handle_variant_draft_input(params: &mut BlueprintEditInputParams<'_, '_>) -> 
                         definition_id: new_definition_id,
                     });
                 params.inspector.last_message = format!(
-                    "{} — replace this instance with `{}`? [Enter] yes, [Esc] keep current asset",
+                    "{} — replace this instance with `{}`? [Enter] yes or Cancel in Selected Object",
                     outcome.message,
                     outcome.definition_id.as_str()
                 );
@@ -596,32 +413,18 @@ fn variant_draft_char(key: KeyCode, allow_underscore: bool) -> Option<char> {
 }
 
 fn handle_pending_confirmation(params: &mut BlueprintEditInputParams<'_, '_>) -> bool {
-    let Some(building_id) = params.inspector.selected_building else {
+    params.inspection.pending_confirmation.is_some()
+}
+
+/// Execute the pending blueprint confirmation (Navigation Editor buttons, Slice 7).
+pub fn confirm_blueprint_pending_action(params: &mut BlueprintEditInputParams<'_, '_>) -> bool {
+    let Some(building_id) = params.world_selection.building_id else {
         return false;
     };
-    let Some(pending) = params.inspection.pending_confirmation.clone() else {
+    let Some(pending) = params.inspection.pending_confirmation.take() else {
         return false;
     };
 
-    if params.keyboard.just_pressed(KeyCode::Escape) {
-        params.inspection.pending_confirmation = None;
-        params.inspector.last_message = match &pending {
-            BlueprintPendingConfirmation::ReplaceInstanceWithVariant { definition_id } => {
-                format!(
-                    "Variant `{}` created — kept current instance asset",
-                    definition_id.as_str()
-                )
-            }
-            _ => "Cancelled pending blueprint action".into(),
-        };
-        return true;
-    }
-
-    if !params.keyboard.just_pressed(KeyCode::Enter) {
-        return true;
-    }
-
-    params.inspection.pending_confirmation = None;
     match pending {
         BlueprintPendingConfirmation::DiscardEdits { .. } => {
             exit_blueprint_edit_to_inspect(&mut params.inspection);
@@ -629,7 +432,8 @@ fn handle_pending_confirmation(params: &mut BlueprintEditInputParams<'_, '_>) ->
                 snap.edit_active = false;
                 snap.edit_dirty = false;
             }
-            params.inspector.last_message = "Exited blueprint edit (unsaved changes discarded)".into();
+            params.inspector.last_message =
+                "Exited blueprint edit (unsaved changes discarded)".into();
             refresh_edit_snapshot(
                 &params.world,
                 &params.building_catalog,
@@ -718,25 +522,38 @@ fn handle_pending_confirmation(params: &mut BlueprintEditInputParams<'_, '_>) ->
                     building_id,
                     &params.world,
                     &params.building_catalog,
-                    &mut params.nav_catalog,
-                    &mut params.nav_revision,
                 ) {
-                    Ok(report) => {
-                        params.inspection.dirty = false;
-                        if let Some(snap) = capture_edit_blueprint_snapshot(
-                            &params.world,
-                            &params.building_catalog,
-                            &params.nav_catalog,
-                            building_id,
-                            params.inspection.selected_floor_id,
-                            None,
-                        ) {
-                            if let Some(working) = snap.resolved_blueprint.clone() {
-                                params.inspection.working_copy = Some(working);
-                            }
-                        }
+                    Ok((report, blueprint)) => {
+                        params.inspection.working_copy = Some(blueprint);
+                        params.inspection.editing = true;
+                        params.inspection.sync_selected_floor_from_working_copy();
+                        params.inspection.dirty = true;
+                        params.overlay_focus.blueprint_floor_id =
+                            params.inspection.selected_floor_id;
+                        params.debug_config.nav_blueprint = true;
+                        params.nav_ui.regeneration_source_label = report.mesh_source_label.clone();
+                        params.nav_ui.generation_diagnostics = Some(
+                            crate::dev::navigation_editor::NavigationGenerationDiagnostics {
+                                entrances_generated: report
+                                    .entrance_diagnostics
+                                    .entrances_generated,
+                                explicit_markers: report.entrance_diagnostics.explicit_markers,
+                                synthesized_entrances: report
+                                    .entrance_diagnostics
+                                    .synthesized_entrances,
+                                deduplicated_candidates: report
+                                    .entrance_diagnostics
+                                    .deduplicated_candidates,
+                                regeneration_source: report
+                                    .mesh_source_label
+                                    .clone()
+                                    .unwrap_or_else(|| "unknown".into()),
+                                candidate_details: report.entrance_diagnostics.candidate_details,
+                            },
+                        );
+                        let source = report.mesh_source_label.as_deref().unwrap_or("unknown");
                         params.inspector.last_message = format!(
-                            "Regenerated blueprint {} ({:?})",
+                            "Regenerated draft {} ({:?}) from {source} - use Save Instance or Apply to Asset to persist",
                             report.blueprint_id, report.status
                         );
                         refresh_edit_snapshot(
@@ -749,7 +566,8 @@ fn handle_pending_confirmation(params: &mut BlueprintEditInputParams<'_, '_>) ->
                         );
                     }
                     Err(err) => {
-                        params.inspector.last_message = format!("Blueprint regeneration failed: {err}")
+                        params.inspector.last_message =
+                            format!("Blueprint regeneration failed: {err}")
                     }
                 }
             }
@@ -798,6 +616,190 @@ pub fn blueprint_edit_blocks_building_selection(inspection: &BlueprintInspection
     inspection.editing && inspection.dirty
 }
 
+/// Refresh inspector blueprint snapshot from the current edit session (Slice 7).
+pub fn refresh_blueprint_edit_snapshot(
+    world: &WorldData,
+    building_catalog: &BuildingCatalog,
+    nav_catalog: &BuildingNavigationBlueprintCatalog,
+    building_id: BuildingId,
+    inspection: &BlueprintInspectionState,
+    inspector: &mut WorldInspectorState,
+) {
+    refresh_edit_snapshot(
+        world,
+        building_catalog,
+        nav_catalog,
+        building_id,
+        inspection,
+        inspector,
+    );
+}
+
+pub fn editor_save_instance_blueprint(params: &mut BlueprintEditInputParams<'_, '_>) {
+    let Some(building_id) = params.world_selection.building_id else {
+        return;
+    };
+    let Some(working) = params.inspection.working_copy.clone() else {
+        params.inspector.last_message = "No working blueprint to save".into();
+        return;
+    };
+    match save_instance_blueprint(
+        &mut params.world,
+        &params.building_catalog,
+        &params.interior_catalog,
+        &params.nav_catalog,
+        building_id,
+        working,
+    ) {
+        Ok(outcome) => {
+            params.inspection.dirty = false;
+            if let Some(working) = params.inspection.working_copy.as_mut() {
+                if let Some(record) = params.world.get_building(building_id) {
+                    if let Some(override_data) =
+                        record.interior.navigation_blueprint_override.as_ref()
+                    {
+                        if let Some(inline) = &override_data.inline_blueprint {
+                            *working = inline.clone();
+                        }
+                    }
+                }
+            }
+            params.inspector.last_message = format!(
+                "{} (authority: {})",
+                outcome.message,
+                outcome.authority.label()
+            );
+            refresh_edit_snapshot(
+                &params.world,
+                &params.building_catalog,
+                &params.nav_catalog,
+                building_id,
+                &params.inspection,
+                &mut params.inspector,
+            );
+        }
+        Err(err) => params.inspector.last_message = format!("Save instance failed: {err}"),
+    }
+}
+
+pub fn editor_request_apply_to_asset(params: &mut BlueprintEditInputParams<'_, '_>) {
+    let Some(building_id) = params.world_selection.building_id else {
+        return;
+    };
+    let Some(record) = params.world.get_building(building_id) else {
+        return;
+    };
+    let inheriting = count_inheriting_instances(&params.world, &record.definition_id);
+    params.inspection.pending_confirmation = Some(BlueprintPendingConfirmation::ApplyToAsset {
+        inheriting_count: inheriting,
+    });
+    params.inspector.last_message = format!(
+        "Apply blueprint to asset default? {inheriting} instance(s) without overrides may inherit this change."
+    );
+}
+
+pub fn editor_request_reset_to_asset(params: &mut BlueprintEditInputParams<'_, '_>) {
+    params.inspection.pending_confirmation = Some(BlueprintPendingConfirmation::ResetToAsset);
+    params.inspector.last_message =
+        "Reset instance to asset/generated blueprint? Confirm or cancel.".into();
+}
+
+pub fn editor_delete_selection(params: &mut BlueprintEditInputParams<'_, '_>) {
+    let Some(building_id) = params.world_selection.building_id else {
+        return;
+    };
+    if delete_selection(&mut params.inspection) {
+        params.inspector.last_message = "Deleted selected blueprint element".into();
+        refresh_edit_snapshot(
+            &params.world,
+            &params.building_catalog,
+            &params.nav_catalog,
+            building_id,
+            &params.inspection,
+            &mut params.inspector,
+        );
+    }
+}
+
+pub fn editor_adjust_radius(params: &mut BlueprintEditInputParams<'_, '_>, delta: f32) {
+    let Some(building_id) = params.world_selection.building_id else {
+        return;
+    };
+    if adjust_selected_radius(&mut params.inspection, delta) {
+        refresh_edit_snapshot(
+            &params.world,
+            &params.building_catalog,
+            &params.nav_catalog,
+            building_id,
+            &params.inspection,
+            &mut params.inspector,
+        );
+    }
+}
+
+pub fn editor_submit_variant_draft(
+    params: &mut BlueprintEditInputParams<'_, '_>,
+    display_name: &str,
+    asset_id: &str,
+    description: &str,
+) {
+    let Some(building_id) = params.world_selection.building_id else {
+        return;
+    };
+    let Some(working) = params.inspection.working_copy.clone() else {
+        params.inspector.last_message = "No working blueprint to save as variant".into();
+        return;
+    };
+    if let Err(err) = validate_building_definition_id(asset_id, &params.building_catalog) {
+        params.inspector.last_message = format!("Invalid asset id: {err}");
+        return;
+    }
+    if display_name.trim().is_empty() {
+        params.inspector.last_message = "Variant display name must not be empty".into();
+        return;
+    }
+    let new_definition_id = BuildingDefinitionId::new(asset_id.trim());
+    let description = if description.trim().is_empty() {
+        None
+    } else {
+        Some(description.trim().to_string())
+    };
+    let source_definition_id = params
+        .world
+        .get_building(building_id)
+        .map(|r| r.definition_id.clone())
+        .unwrap_or_else(|| BuildingDefinitionId::new("unknown"));
+    match create_building_variant(
+        &mut params.building_catalog,
+        &params.category_catalog,
+        &mut params.nav_catalog,
+        &mut params.nav_revision,
+        BuildingVariantCreateInput {
+            source_definition_id,
+            new_definition_id: new_definition_id.clone(),
+            display_name: display_name.to_string(),
+            description,
+            blueprint: working,
+        },
+    ) {
+        Ok(outcome) => {
+            params.building_revision.0 = params.building_revision.0.saturating_add(1);
+            params.inspection.variant_draft = None;
+            params.inspection.dirty = false;
+            params.inspection.pending_confirmation =
+                Some(BlueprintPendingConfirmation::ReplaceInstanceWithVariant {
+                    definition_id: new_definition_id,
+                });
+            params.inspector.last_message = format!(
+                "{} — replace this instance with `{}`?",
+                outcome.message,
+                outcome.definition_id.as_str()
+            );
+        }
+        Err(err) => params.inspector.last_message = format!("Save As Variant failed: {err}"),
+    }
+}
+
 fn refresh_edit_snapshot(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
@@ -823,11 +825,14 @@ fn refresh_edit_snapshot(
             snap.variant_draft_display_name = Some(draft.display_name.clone());
             snap.variant_draft_asset_id = Some(draft.asset_id.clone());
             snap.variant_draft_description = Some(draft.description.clone());
-            snap.variant_draft_active_field = Some(match draft.active_field {
-                BlueprintVariantDraftField::DisplayName => "display name",
-                BlueprintVariantDraftField::AssetId => "asset id",
-                BlueprintVariantDraftField::Description => "description",
-            }.into());
+            snap.variant_draft_active_field = Some(
+                match draft.active_field {
+                    BlueprintVariantDraftField::DisplayName => "display name",
+                    BlueprintVariantDraftField::AssetId => "asset id",
+                    BlueprintVariantDraftField::Description => "description",
+                }
+                .into(),
+            );
         } else {
             snap.variant_draft_active = false;
             snap.variant_draft_display_name = None;
@@ -868,6 +873,8 @@ fn handle_edit_click(inspection: &mut BlueprintInspectionState, local_xz: Vec2) 
         return;
     };
     let Some(floor_id) = inspection.selected_floor_id else {
+        inspection.last_pick_message =
+            Some("Select a floor before editing blueprint geometry".into());
         return;
     };
     let floor_key = blueprint
@@ -886,7 +893,9 @@ fn handle_edit_click(inspection: &mut BlueprintInspectionState, local_xz: Vec2) 
             inspection.selection = BlueprintEditSelection::None;
         }
         BlueprintEditTool::AddVertex => {
-            if let Some(edge_index) = pick_edge(blueprint, floor_id, local_xz, EDGE_PICK_RADIUS) {
+            let edge_index = pick_edge(blueprint, floor_id, local_xz, EDGE_PICK_RADIUS)
+                .or_else(|| pick_nearest_edge(blueprint, floor_id, local_xz));
+            if let Some(edge_index) = edge_index {
                 let outcome = insert_vertex_on_edge(
                     blueprint,
                     floor_id,
@@ -895,11 +904,19 @@ fn handle_edit_click(inspection: &mut BlueprintInspectionState, local_xz: Vec2) 
                 );
                 if outcome.applied {
                     inspection.dirty = true;
-                    inspection.selection =
-                        BlueprintEditSelection::Vertex { floor_id, index: edge_index + 1 };
+                    inspection.selection = BlueprintEditSelection::Vertex {
+                        floor_id,
+                        index: edge_index + 1,
+                    };
+                    // Add Corner is one-shot: return to Select after a successful place.
+                    inspection.active_tool = BlueprintEditTool::Select;
                 } else {
                     inspection.last_pick_message = outcome.message;
                 }
+            } else {
+                inspection.last_pick_message = Some(
+                    "No floor edge found — frame the building and click near the outline".into(),
+                );
             }
         }
         BlueprintEditTool::AddEntrance => {
@@ -913,8 +930,9 @@ fn handle_edit_click(inspection: &mut BlueprintInspectionState, local_xz: Vec2) 
                 if outcome.applied {
                     inspection.dirty = true;
                     if let Some(entrance) = blueprint.entrances.last() {
-                        inspection.selection =
-                            BlueprintEditSelection::Entrance { key: entrance.key.clone() };
+                        inspection.selection = BlueprintEditSelection::Entrance {
+                            key: entrance.key.clone(),
+                        };
                     }
                 } else {
                     inspection.last_pick_message = outcome.message;
@@ -965,7 +983,9 @@ fn drag_from_selection(selection: BlueprintEditSelection) -> Option<BlueprintEdi
         BlueprintEditSelection::Transition { key } => {
             Some(BlueprintEditDrag::TransitionFrom { key })
         }
-        BlueprintEditSelection::TransitionTo { key } => Some(BlueprintEditDrag::TransitionTo { key }),
+        BlueprintEditSelection::TransitionTo { key } => {
+            Some(BlueprintEditDrag::TransitionTo { key })
+        }
         BlueprintEditSelection::None | BlueprintEditSelection::Edge { .. } => None,
     }
 }
@@ -979,9 +999,8 @@ fn delete_selection(inspection: &mut BlueprintInspectionState) -> bool {
             delete_floor_vertex(blueprint, *floor_id, *index)
         }
         BlueprintEditSelection::Entrance { key } => delete_entrance(blueprint, key),
-        BlueprintEditSelection::Transition { key } | BlueprintEditSelection::TransitionTo { key } => {
-            delete_transition(blueprint, key)
-        }
+        BlueprintEditSelection::Transition { key }
+        | BlueprintEditSelection::TransitionTo { key } => delete_transition(blueprint, key),
         BlueprintEditSelection::None | BlueprintEditSelection::Edge { .. } => {
             return false;
         }
@@ -1036,10 +1055,7 @@ fn pick_blueprint_element(
     local_xz: Vec2,
 ) -> Option<(&'static str, BlueprintEditSelection)> {
     if let Some(index) = pick_vertex(blueprint, floor_id, local_xz, VERTEX_PICK_RADIUS) {
-        return Some((
-            "vertex",
-            BlueprintEditSelection::Vertex { floor_id, index },
-        ));
+        return Some(("vertex", BlueprintEditSelection::Vertex { floor_id, index }));
     }
     if let Some(key) = pick_transition_to(blueprint, floor_id, local_xz, TRANSITION_PICK_RADIUS) {
         return Some((
@@ -1048,10 +1064,7 @@ fn pick_blueprint_element(
         ));
     }
     if let Some(key) = pick_transition_from(blueprint, floor_id, local_xz, TRANSITION_PICK_RADIUS) {
-        return Some((
-            "transition",
-            BlueprintEditSelection::Transition { key },
-        ));
+        return Some(("transition", BlueprintEditSelection::Transition { key }));
     }
     if let Some(key) = pick_entrance(blueprint, floor_id, local_xz, ENTRANCE_PICK_RADIUS) {
         return Some(("entrance", BlueprintEditSelection::Entrance { key }));
@@ -1068,7 +1081,10 @@ fn pick_vertex(
     local_xz: Vec2,
     radius: f32,
 ) -> Option<usize> {
-    let floor = blueprint.floors.iter().find(|floor| floor.floor_id == floor_id)?;
+    let floor = blueprint
+        .floors
+        .iter()
+        .find(|floor| floor.floor_id == floor_id)?;
     let mut best: Option<(f32, usize)> = None;
     for (index, &[x, z]) in floor.walkable_outline.vertices_xz.iter().enumerate() {
         let dist = Vec2::new(x, z).distance(local_xz);
@@ -1085,7 +1101,27 @@ fn pick_edge(
     local_xz: Vec2,
     radius: f32,
 ) -> Option<usize> {
-    let floor = blueprint.floors.iter().find(|floor| floor.floor_id == floor_id)?;
+    pick_nearest_edge_within_radius(blueprint, floor_id, local_xz, Some(radius))
+}
+
+fn pick_nearest_edge(
+    blueprint: &BuildingNavigationBlueprint,
+    floor_id: i32,
+    local_xz: Vec2,
+) -> Option<usize> {
+    pick_nearest_edge_within_radius(blueprint, floor_id, local_xz, None)
+}
+
+fn pick_nearest_edge_within_radius(
+    blueprint: &BuildingNavigationBlueprint,
+    floor_id: i32,
+    local_xz: Vec2,
+    max_radius: Option<f32>,
+) -> Option<usize> {
+    let floor = blueprint
+        .floors
+        .iter()
+        .find(|floor| floor.floor_id == floor_id)?;
     let verts = &floor.walkable_outline.vertices_xz;
     if verts.len() < 2 {
         return None;
@@ -1095,7 +1131,8 @@ fn pick_edge(
         let [ax, az] = verts[index];
         let [bx, bz] = verts[(index + 1) % verts.len()];
         let dist = point_segment_distance(local_xz, Vec2::new(ax, az), Vec2::new(bx, bz));
-        if dist <= radius && best.map(|(best_dist, _)| dist < best_dist).unwrap_or(true) {
+        let within_radius = max_radius.is_none_or(|radius| dist <= radius);
+        if within_radius && best.map(|(best_dist, _)| dist < best_dist).unwrap_or(true) {
             best = Some((dist, index));
         }
     }
@@ -1108,7 +1145,10 @@ fn pick_entrance(
     local_xz: Vec2,
     radius: f32,
 ) -> Option<String> {
-    let floor = blueprint.floors.iter().find(|floor| floor.floor_id == floor_id)?;
+    let floor = blueprint
+        .floors
+        .iter()
+        .find(|floor| floor.floor_id == floor_id)?;
     let mut best: Option<(f32, String)> = None;
     for entrance in &blueprint.entrances {
         if entrance.floor_key != floor.key {
@@ -1117,7 +1157,12 @@ fn pick_entrance(
         let center = Vec2::new(entrance.local_position_xz[0], entrance.local_position_xz[1]);
         let dist = center.distance(local_xz);
         let threshold = entrance.radius_meters.max(radius);
-        if dist <= threshold && best.as_ref().map(|(best_dist, _)| dist < *best_dist).unwrap_or(true) {
+        if dist <= threshold
+            && best
+                .as_ref()
+                .map(|(best_dist, _)| dist < *best_dist)
+                .unwrap_or(true)
+        {
             best = Some((dist, entrance.key.clone()));
         }
     }
@@ -1144,7 +1189,12 @@ fn pick_transition_from(
         );
         let dist = center.distance(local_xz);
         let threshold = transition.from_radius_meters.max(radius);
-        if dist <= threshold && best.as_ref().map(|(best_dist, _)| dist < *best_dist).unwrap_or(true) {
+        if dist <= threshold
+            && best
+                .as_ref()
+                .map(|(best_dist, _)| dist < *best_dist)
+                .unwrap_or(true)
+        {
             best = Some((dist, transition.key.clone()));
         }
     }
@@ -1165,9 +1215,17 @@ fn pick_transition_to(
         if to_floor.floor_id != floor_id {
             continue;
         }
-        let center = Vec2::new(transition.to_local_position[0], transition.to_local_position[2]);
+        let center = Vec2::new(
+            transition.to_local_position[0],
+            transition.to_local_position[2],
+        );
         let dist = center.distance(local_xz);
-        if dist <= radius && best.as_ref().map(|(best_dist, _)| dist < *best_dist).unwrap_or(true) {
+        if dist <= radius
+            && best
+                .as_ref()
+                .map(|(best_dist, _)| dist < *best_dist)
+                .unwrap_or(true)
+        {
             best = Some((dist, transition.key.clone()));
         }
     }
@@ -1184,21 +1242,71 @@ fn point_segment_distance(point: Vec2, a: Vec2, b: Vec2) -> f32 {
     point.distance(a + ab * t)
 }
 
-pub fn ray_to_building_floor_local_xz(
+/// Project a cursor ray onto the active floor plane and convert to blueprint local XZ.
+///
+/// `model_transform` must be the same render-space building transform used by the
+/// blueprint overlay (`building_model_render_transform`), not the authoritative
+/// world transform alone (terrain vertical scale would otherwise laterally skew hits).
+pub fn cursor_ray_to_floor_blueprint_point(
     ray: &Ray3d,
     model_transform: &Transform,
     floor_elevation: f32,
-) -> Option<Vec2> {
-    let plane_point = model_transform.transform_point(Vec3::new(0.0, floor_elevation, 0.0));
+) -> Option<FloorPlaneHit> {
+    let plane_point = blueprint_local_to_world(model_transform, Vec2::ZERO, floor_elevation);
     let plane_normal = model_transform.rotation * Vec3::Y;
-    let hit = ray_plane_intersection(ray, plane_point, plane_normal)?;
+    let world_point = ray_plane_intersection(ray, plane_point, plane_normal)?;
+    if !world_point.is_finite() {
+        return None;
+    }
+    let local_xz = world_point_to_blueprint_local_xz(model_transform, world_point)?;
+    Some(FloorPlaneHit {
+        world_point,
+        local_xz,
+    })
+}
+
+/// Inverse of [`blueprint_local_to_world`] for XZ (floor elevation is recovered from the plane).
+pub fn world_point_to_blueprint_local_xz(
+    model_transform: &Transform,
+    world_point: Vec3,
+) -> Option<Vec2> {
     let world_from_local = Affine3A::from_scale_rotation_translation(
         model_transform.scale,
         model_transform.rotation,
         model_transform.translation,
     );
-    let local = world_from_local.inverse().transform_point3(hit);
-    Some(Vec2::new(local.x, local.z))
+    let local = world_from_local.inverse().transform_point3(world_point);
+    if !local.is_finite() {
+        return None;
+    }
+    let local_xz = Vec2::new(local.x, local.z);
+    if !local_xz.is_finite()
+        || local_xz.x.abs() > MAX_LOCAL_XZ_ABS
+        || local_xz.y.abs() > MAX_LOCAL_XZ_ABS
+    {
+        return None;
+    }
+    Some(local_xz)
+}
+
+/// Transform a blueprint local XZ + floor elevation into the model transform's space
+/// (render space when given `building_model_render_transform`).
+pub fn blueprint_local_to_world(
+    model_transform: &Transform,
+    local_xz: Vec2,
+    floor_elevation: f32,
+) -> Vec3 {
+    model_transform.transform_point(Vec3::new(local_xz.x, floor_elevation, local_xz.y))
+}
+
+/// Convenience wrapper used by callers that only need local XZ.
+pub fn ray_to_building_floor_local_xz(
+    ray: &Ray3d,
+    model_transform: &Transform,
+    floor_elevation: f32,
+) -> Option<Vec2> {
+    cursor_ray_to_floor_blueprint_point(ray, model_transform, floor_elevation)
+        .map(|hit| hit.local_xz)
 }
 
 fn ray_plane_intersection(ray: &Ray3d, plane_point: Vec3, plane_normal: Vec3) -> Option<Vec3> {
@@ -1211,8 +1319,334 @@ fn ray_plane_intersection(ray: &Ray3d, plane_point: Vec3, plane_normal: Vec3) ->
         return None;
     }
     let t = (plane_point - ray.origin).dot(normal) / denom;
-    if t < 0.0 {
+    if t < 0.0 || !t.is_finite() {
         return None;
     }
-    Some(ray.origin + ray.direction * t)
+    let hit = ray.origin + ray.direction * t;
+    if !hit.is_finite() {
+        return None;
+    }
+    Some(hit)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::world::{
+        BuildingNavigationBlueprint, NavigationFloorDefinition, NavigationPolygon2d,
+    };
+    use bevy::math::Dir3;
+
+    fn identity_model() -> Transform {
+        Transform::IDENTITY
+    }
+
+    fn model_trs(translation: Vec3, rotation: Quat, uniform_scale: f32) -> Transform {
+        Transform {
+            translation,
+            rotation,
+            scale: Vec3::splat(uniform_scale),
+        }
+    }
+
+    fn downward_ray_through(xz: Vec2, y: f32) -> Ray3d {
+        Ray3d {
+            origin: Vec3::new(xz.x, y, xz.y),
+            direction: Dir3::new(Vec3::NEG_Y).unwrap(),
+        }
+    }
+
+    fn sample_blueprint() -> BuildingNavigationBlueprint {
+        BuildingNavigationBlueprint::new("test_nav", "Test").with_floors(vec![
+            NavigationFloorDefinition {
+                floor_id: 0,
+                key: "floor_0".into(),
+                display_label: "Floor 0".into(),
+                elevation_meters: 0.0,
+                visibility_group_id: 0,
+                room_tag: None,
+                walkable_outline: NavigationPolygon2d {
+                    vertices_xz: vec![[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0]],
+                },
+            },
+        ])
+    }
+
+    #[test]
+    fn navigation_edit_owns_world_pointer_while_editing_over_world() {
+        assert!(navigation_edit_owns_world_pointer(true, false));
+        assert!(!navigation_edit_owns_world_pointer(true, true));
+        assert!(!navigation_edit_owns_world_pointer(false, false));
+    }
+
+    #[test]
+    fn origin_identity_placement_matches_cursor_xz() {
+        let model = identity_model();
+        let expected = Vec2::new(3.5, -2.0);
+        let ray = downward_ray_through(expected, 25.0);
+        let hit = cursor_ray_to_floor_blueprint_point(&ray, &model, 0.0).unwrap();
+        assert!(hit.local_xz.distance(expected) < 1e-4);
+        assert!(
+            hit.world_point
+                .distance(Vec3::new(expected.x, 0.0, expected.y))
+                < 1e-4
+        );
+    }
+
+    #[test]
+    fn translated_building_converts_world_cursor_to_local() {
+        let model = model_trs(Vec3::new(100.0, 4.0, -50.0), Quat::IDENTITY, 1.0);
+        let local = Vec2::new(2.0, 3.0);
+        let world = blueprint_local_to_world(&model, local, 0.0);
+        let ray = downward_ray_through(Vec2::new(world.x, world.z), world.y + 40.0);
+        let hit = cursor_ray_to_floor_blueprint_point(&ray, &model, 0.0).unwrap();
+        assert!(hit.local_xz.distance(local) < 1e-4);
+    }
+
+    #[test]
+    fn rotated_building_preserves_local_round_trip() {
+        let yaw = Quat::from_rotation_y(std::f32::consts::FRAC_PI_3);
+        let model = model_trs(Vec3::new(10.0, 0.0, 20.0), yaw, 1.0);
+        let local = Vec2::new(4.0, -1.5);
+        let elev = 2.5;
+        let world = blueprint_local_to_world(&model, local, elev);
+        let back = world_point_to_blueprint_local_xz(&model, world).unwrap();
+        assert!(back.distance(local) < 1e-4);
+
+        // Angled ray toward the floor plane point.
+        let offset = Vec3::new(5.0, 12.0, 5.0);
+        let ray = Ray3d {
+            origin: world + offset,
+            direction: Dir3::new(-offset.normalize()).unwrap(),
+        };
+        let hit = cursor_ray_to_floor_blueprint_point(&ray, &model, elev).unwrap();
+        assert!(hit.local_xz.distance(local) < 1e-3);
+        assert!(hit.world_point.distance(world) < 1e-3);
+    }
+
+    #[test]
+    fn uniformly_scaled_building_preserves_local_round_trip() {
+        let model = model_trs(Vec3::new(-8.0, 1.0, 4.0), Quat::IDENTITY, 2.5);
+        let local = Vec2::new(1.0, 2.0);
+        let world = blueprint_local_to_world(&model, local, 0.0);
+        let back = world_point_to_blueprint_local_xz(&model, world).unwrap();
+        assert!(back.distance(local) < 1e-4);
+        let ray = downward_ray_through(Vec2::new(world.x, world.z), world.y + 30.0);
+        let hit = cursor_ray_to_floor_blueprint_point(&ray, &model, 0.0).unwrap();
+        assert!(hit.local_xz.distance(local) < 1e-4);
+    }
+
+    #[test]
+    fn translated_rotated_scaled_with_floor_elevation_round_trips() {
+        let model = model_trs(
+            Vec3::new(30.0, 6.0, -12.0),
+            Quat::from_rotation_y(-0.7),
+            1.75,
+        );
+        for elev in [-3.0_f32, 0.0, 4.5] {
+            let local = Vec2::new(-2.25, 5.5);
+            let world = blueprint_local_to_world(&model, local, elev);
+            let back = world_point_to_blueprint_local_xz(&model, world).unwrap();
+            assert!(
+                back.distance(local) < 1e-4,
+                "elev={elev}: {back:?} vs {local:?}"
+            );
+            let ray = Ray3d {
+                origin: world + Vec3::new(0.0, 20.0, 0.0),
+                direction: Dir3::new(Vec3::NEG_Y).unwrap(),
+            };
+            let hit = cursor_ray_to_floor_blueprint_point(&ray, &model, elev).unwrap();
+            assert!(hit.local_xz.distance(local) < 1e-4);
+            assert!(hit.world_point.distance(world) < 1e-4);
+        }
+    }
+
+    #[test]
+    fn preview_world_matches_committed_local_transformed_back() {
+        let model = model_trs(Vec3::new(5.0, 2.0, 9.0), Quat::from_rotation_y(0.4), 1.2);
+        let elev = 3.0;
+        let ray = Ray3d {
+            origin: Vec3::new(8.0, 40.0, 11.0),
+            direction: Dir3::new(Vec3::NEG_Y).unwrap(),
+        };
+        let preview = cursor_ray_to_floor_blueprint_point(&ray, &model, elev).unwrap();
+        // Commit stores local_xz only; overlay reconstructs world from the same helper path.
+        let committed_world = blueprint_local_to_world(&model, preview.local_xz, elev);
+        assert!(preview.world_point.distance(committed_world) < 1e-4);
+    }
+
+    #[test]
+    fn parallel_ray_rejects_placement() {
+        let model = identity_model();
+        let ray = Ray3d {
+            origin: Vec3::new(0.0, 5.0, 0.0),
+            direction: Dir3::new(Vec3::X).unwrap(),
+        };
+        assert!(cursor_ray_to_floor_blueprint_point(&ray, &model, 0.0).is_none());
+        assert!(ray_to_building_floor_local_xz(&ray, &model, 0.0).is_none());
+    }
+
+    #[test]
+    fn select_vertex_does_not_mark_dirty() {
+        let mut inspection = BlueprintInspectionState {
+            editing: true,
+            dirty: false,
+            selected_floor_id: Some(0),
+            active_tool: BlueprintEditTool::Select,
+            working_copy: Some(sample_blueprint()),
+            ..Default::default()
+        };
+        handle_edit_click(&mut inspection, Vec2::new(0.1, 0.05));
+        assert!(!inspection.dirty);
+        assert_eq!(
+            inspection.selection,
+            BlueprintEditSelection::Vertex {
+                floor_id: 0,
+                index: 0
+            }
+        );
+        assert!(inspection.pending_confirmation.is_none());
+    }
+
+    #[test]
+    fn select_empty_clears_vertex_not_building_session() {
+        let mut inspection = BlueprintInspectionState {
+            editing: true,
+            dirty: true,
+            building_id: Some(BuildingId(7)),
+            selected_floor_id: Some(0),
+            active_tool: BlueprintEditTool::Select,
+            selection: BlueprintEditSelection::Vertex {
+                floor_id: 0,
+                index: 1,
+            },
+            working_copy: Some(sample_blueprint()),
+            ..Default::default()
+        };
+        handle_edit_click(&mut inspection, Vec2::new(50.0, 50.0));
+        assert_eq!(inspection.selection, BlueprintEditSelection::None);
+        assert!(inspection.dirty);
+        assert_eq!(inspection.building_id, Some(BuildingId(7)));
+        assert!(inspection.editing);
+        assert!(inspection.pending_confirmation.is_none());
+    }
+
+    #[test]
+    fn add_vertex_places_at_local_cursor_and_marks_dirty() {
+        let mut inspection = BlueprintInspectionState {
+            editing: true,
+            dirty: false,
+            selected_floor_id: Some(0),
+            active_tool: BlueprintEditTool::AddVertex,
+            working_copy: Some(sample_blueprint()),
+            ..Default::default()
+        };
+        let cursor = Vec2::new(2.0, 0.05);
+        handle_edit_click(&mut inspection, cursor);
+        assert!(inspection.dirty);
+        assert_eq!(inspection.active_tool, BlueprintEditTool::Select);
+        assert_eq!(
+            inspection.selection,
+            BlueprintEditSelection::Vertex {
+                floor_id: 0,
+                index: 1
+            }
+        );
+        let blueprint = inspection.working_copy.as_ref().unwrap();
+        assert_eq!(blueprint.floors[0].walkable_outline.vertices_xz.len(), 5);
+        assert_eq!(
+            blueprint.floors[0].walkable_outline.vertices_xz[1],
+            [cursor.x, cursor.y]
+        );
+    }
+
+    #[test]
+    fn add_vertex_invalid_click_keeps_add_corner_tool() {
+        let mut inspection = BlueprintInspectionState {
+            editing: true,
+            dirty: false,
+            selected_floor_id: Some(0),
+            active_tool: BlueprintEditTool::AddVertex,
+            working_copy: Some(sample_blueprint()),
+            ..Default::default()
+        };
+        // Degenerate outline so insert_vertex_on_edge rejects (needs >= 3 verts).
+        inspection.working_copy.as_mut().unwrap().floors[0]
+            .walkable_outline
+            .vertices_xz = vec![[0.0, 0.0], [1.0, 0.0]];
+        handle_edit_click(&mut inspection, Vec2::new(0.5, 0.0));
+        assert!(!inspection.dirty);
+        assert_eq!(inspection.active_tool, BlueprintEditTool::AddVertex);
+        assert_eq!(
+            inspection.working_copy.as_ref().unwrap().floors[0]
+                .walkable_outline
+                .vertices_xz
+                .len(),
+            2
+        );
+    }
+
+    #[test]
+    fn add_vertex_one_shot_adds_exactly_one_corner_per_activation() {
+        let mut inspection = BlueprintInspectionState {
+            editing: true,
+            dirty: false,
+            selected_floor_id: Some(0),
+            active_tool: BlueprintEditTool::AddVertex,
+            working_copy: Some(sample_blueprint()),
+            ..Default::default()
+        };
+        handle_edit_click(&mut inspection, Vec2::new(2.0, 0.0));
+        assert_eq!(inspection.active_tool, BlueprintEditTool::Select);
+        let count_after_first = inspection.working_copy.as_ref().unwrap().floors[0]
+            .walkable_outline
+            .vertices_xz
+            .len();
+        // Second click while Select must not insert another corner.
+        handle_edit_click(&mut inspection, Vec2::new(3.0, 0.0));
+        assert_eq!(
+            inspection.working_copy.as_ref().unwrap().floors[0]
+                .walkable_outline
+                .vertices_xz
+                .len(),
+            count_after_first
+        );
+    }
+
+    #[test]
+    fn angled_ray_requires_render_space_plane_when_vertical_scale_differs() {
+        let world_model = model_trs(Vec3::new(10.0, 8.0, 0.0), Quat::IDENTITY, 1.0);
+        let mut render_model = world_model;
+        render_model.translation.y = world_model.translation.y * 3.0;
+        let elev = 2.0;
+        let local = Vec2::new(1.5, -0.5);
+        let overlay_point = blueprint_local_to_world(&render_model, local, elev);
+        let offset = Vec3::new(10.0, 25.0, 6.0);
+        let ray = Ray3d {
+            origin: overlay_point + offset,
+            direction: Dir3::new(-offset.normalize()).unwrap(),
+        };
+
+        let correct = cursor_ray_to_floor_blueprint_point(&ray, &render_model, elev).unwrap();
+        assert!(correct.local_xz.distance(local) < 1e-3);
+
+        let wrong = cursor_ray_to_floor_blueprint_point(&ray, &world_model, elev).unwrap();
+        assert!(
+            wrong.local_xz.distance(local) > 0.5,
+            "authoritative-only plane should laterally skew angled hits; got {:?}",
+            wrong.local_xz
+        );
+    }
+
+    #[test]
+    fn dirty_guard_still_required_for_building_change() {
+        let mut inspection = BlueprintInspectionState {
+            editing: true,
+            dirty: true,
+            ..Default::default()
+        };
+        assert!(blueprint_edit_blocks_building_selection(&inspection));
+        inspection.dirty = false;
+        assert!(!blueprint_edit_blocks_building_selection(&inspection));
+    }
 }

@@ -109,10 +109,9 @@ pub fn replan_settlement_production(
             0,
             MAX_DEMAND_DEPTH,
         ) {
-            diagnostics.shortages.push((
-                item_id,
-                PlannerShortageKind::CircularRecipe,
-            ));
+            diagnostics
+                .shortages
+                .push((item_id, PlannerShortageKind::CircularRecipe));
         }
     }
     diagnostics.propagated_demand = propagated_demand.clone();
@@ -138,20 +137,19 @@ pub fn replan_settlement_production(
         if *demand_qty == 0 {
             continue;
         }
-        if !demanded_outputs.contains(item_id) && !planner.stock_goals.iter().any(|g| {
-            g.item_id == *item_id
-                && current_stock.get(&g.item_id).copied().unwrap_or(0) < g.maintain_quantity
-        }) {
+        if !demanded_outputs.contains(item_id)
+            && !planner.stock_goals.iter().any(|g| {
+                g.item_id == *item_id
+                    && current_stock.get(&g.item_id).copied().unwrap_or(0) < g.maintain_quantity
+            })
+        {
             continue;
         }
 
-        let Some(recipe) =
-            select_producer_for_settlement(&graph, &producers, item_id)
-        else {
-            diagnostics.shortages.push((
-                item_id.clone(),
-                PlannerShortageKind::NoProducers,
-            ));
+        let Some(recipe) = select_producer_for_settlement(&graph, &producers, item_id) else {
+            diagnostics
+                .shortages
+                .push((item_id.clone(), PlannerShortageKind::NoProducers));
             continue;
         };
 
@@ -161,15 +159,16 @@ pub fn replan_settlement_production(
             .cloned()
             .collect();
         if candidates.is_empty() {
-            diagnostics.shortages.push((
-                item_id.clone(),
-                PlannerShortageKind::NoOperationalProducers,
-            ));
+            diagnostics
+                .shortages
+                .push((item_id.clone(), PlannerShortageKind::NoOperationalProducers));
             continue;
         }
-        candidates.sort_by(|a, b| b.policy_priority.cmp(&a.policy_priority).then_with(|| {
-            a.building_id.raw().cmp(&b.building_id.raw())
-        }));
+        candidates.sort_by(|a, b| {
+            b.policy_priority
+                .cmp(&a.policy_priority)
+                .then_with(|| a.building_id.raw().cmp(&b.building_id.raw()))
+        });
 
         for candidate in candidates {
             let priority = planner.priority_for_category(recipe.category);
@@ -310,7 +309,10 @@ fn format_validation_error(error: &PlannerValidationError) -> String {
             format!("Negative stock target for `{}`", item_id.as_str())
         }
         PlannerValidationError::InvalidExportThreshold { item_id } => {
-            format!("Export threshold below maintain quantity for `{}`", item_id.as_str())
+            format!(
+                "Export threshold below maintain quantity for `{}`",
+                item_id.as_str()
+            )
         }
         PlannerValidationError::CircularRecipe { cycle } => {
             format!("Circular recipe: {}", cycle_display(cycle))

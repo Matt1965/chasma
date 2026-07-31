@@ -11,10 +11,20 @@ use crate::world::operation::OperationCatalog;
 /// Actionable production validation issue (EP2/EP3).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProductionValidationIssue {
-    OrphanedState { building_id: BuildingId },
-    OrphanedPolicy { building_id: BuildingId },
-    InvalidRepeatCount { building_id: BuildingId, count: u32 },
-    ProgressOverflow { building_id: BuildingId, progress: u64 },
+    OrphanedState {
+        building_id: BuildingId,
+    },
+    OrphanedPolicy {
+        building_id: BuildingId,
+    },
+    InvalidRepeatCount {
+        building_id: BuildingId,
+        count: u32,
+    },
+    ProgressOverflow {
+        building_id: BuildingId,
+        progress: u64,
+    },
     ImpossibleLifecycle {
         building_id: BuildingId,
         lifecycle: OperationLifecycle,
@@ -46,7 +56,10 @@ impl ProductionValidationIssue {
                 "building #{} has invalid repeat count {count}",
                 building_id.raw()
             ),
-            Self::ProgressOverflow { building_id, progress } => format!(
+            Self::ProgressOverflow {
+                building_id,
+                progress,
+            } => format!(
                 "building #{} progress {progress} exceeds fixed-point threshold",
                 building_id.raw()
             ),
@@ -121,10 +134,9 @@ pub fn validate_production_runtime_with_catalogs(
                         });
                     }
                 }
-                if let (Some(building_catalog), Some(record)) = (
-                    building_catalog,
-                    world.get_building(building_id),
-                ) {
+                if let (Some(building_catalog), Some(record)) =
+                    (building_catalog, world.get_building(building_id))
+                {
                     if let Some(definition) = building_catalog.get(&record.definition_id) {
                         if !definition.supports_operation(operation_id) {
                             issues.push(ProductionValidationIssue::UnsupportedOperation {

@@ -166,7 +166,9 @@ impl SettlementPolicies {
 }
 
 /// Need categories. Targets are authored; pressure/shortage computation is SA2+.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect, Serialize, Deserialize,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum NeedCategory {
     Food,
@@ -354,7 +356,10 @@ impl SettlementEmergencyState {
 
     /// Sync legacy bools from instances. Call after mutate / load migrate.
     pub fn sync_legacy_flags(&mut self) {
-        self.starvation = self.instances.iter().any(|i| i.emergency_id == "starvation");
+        self.starvation = self
+            .instances
+            .iter()
+            .any(|i| i.emergency_id == "starvation");
         self.under_attack = self
             .instances
             .iter()
@@ -374,7 +379,11 @@ impl SettlementEmergencyState {
         }
         let mut promoted = Vec::new();
         if self.starvation {
-            promoted.push(ActiveEmergencyInstance::new("starvation", simulation_tick, 1.0));
+            promoted.push(ActiveEmergencyInstance::new(
+                "starvation",
+                simulation_tick,
+                1.0,
+            ));
         }
         if self.under_attack {
             promoted.push(ActiveEmergencyInstance::new(
@@ -384,10 +393,18 @@ impl SettlementEmergencyState {
             ));
         }
         if self.disease {
-            promoted.push(ActiveEmergencyInstance::new("disease", simulation_tick, 1.0));
+            promoted.push(ActiveEmergencyInstance::new(
+                "disease",
+                simulation_tick,
+                1.0,
+            ));
         }
         if self.evacuation {
-            promoted.push(ActiveEmergencyInstance::new("evacuation", simulation_tick, 1.0));
+            promoted.push(ActiveEmergencyInstance::new(
+                "evacuation",
+                simulation_tick,
+                1.0,
+            ));
         }
         self.instances = promoted;
         self.sync_legacy_flags();

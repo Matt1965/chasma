@@ -4,11 +4,12 @@ use crate::dev::dev_mode::DevInventoryEndpoint;
 use crate::world::{
     Affiliation, ChunkId, EntryIndex, InventoryCatalogCtx, InventoryEntryContents, InventoryError,
     InventoryId, InventoryOwnerRef, InventoryProfileId, ItemDefinitionId, ItemInstanceMetadata,
-    ItemInstanceStore, ItemPileId, ItemPileSettings, ItemPileSource, PileOwnership, PlacedInventoryEntry,
-    SpaceId, TransferPlacementPolicy, UnitCatalog, UnitId, WorldData, WorldPileContents, WorldPosition,
-    create_inventory, create_item_instance, create_unit_inventory, drop_stack_from_inventory,
-    pickup_pile_into_inventory, place_stack, place_stack_first_fit, place_unique_first_fit, remove_entry,
-    transfer_entry_full, transfer_stack_quantity,
+    ItemInstanceStore, ItemPileId, ItemPileSettings, ItemPileSource, PileOwnership,
+    PlacedInventoryEntry, SpaceId, TransferPlacementPolicy, UnitCatalog, UnitId, WorldData,
+    WorldPileContents, WorldPosition, create_inventory, create_item_instance,
+    create_unit_inventory, drop_stack_from_inventory, pickup_pile_into_inventory, place_stack,
+    place_stack_first_fit, place_unique_first_fit, remove_entry, transfer_entry_full,
+    transfer_stack_quantity,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,7 +24,9 @@ pub enum DevInventoryOpError {
 impl std::fmt::Display for DevInventoryOpError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::NoEndpoint => write!(f, "no inventory target — inspect a unit, building, or pile"),
+            Self::NoEndpoint => {
+                write!(f, "no inventory target — inspect a unit, building, or pile")
+            }
             Self::NoItemSelected => write!(f, "select an item in the catalog list first"),
             Self::NoEntrySelected => write!(f, "select an inventory entry first"),
             Self::NoTransferEndpoints => {
@@ -55,20 +58,19 @@ pub fn ensure_dev_unit_inventory(
         .remove_unit_by_id(unit_id)
         .ok_or_else(|| DevInventoryOpError::Message(format!("unit #{unit_id:?} not found")))?;
 
-    let definition = unit_catalog
-        .get(&record.definition_id)
-        .ok_or_else(|| {
-            DevInventoryOpError::Message(format!(
-                "unit definition `{}` not found",
-                record.definition_id.as_str()
-            ))
-        })?;
+    let definition = unit_catalog.get(&record.definition_id).ok_or_else(|| {
+        DevInventoryOpError::Message(format!(
+            "unit definition `{}` not found",
+            record.definition_id.as_str()
+        ))
+    })?;
 
     let profile_id = definition
         .inventory_profile_id
         .clone()
         .unwrap_or_else(|| InventoryProfileId::new("unit_backpack_standard"));
-    let inventory_id = create_unit_inventory(world.inventory_store_mut(), ctx, profile_id, unit_id)?;
+    let inventory_id =
+        create_unit_inventory(world.inventory_store_mut(), ctx, profile_id, unit_id)?;
     record.inventory_id = Some(inventory_id);
 
     let chunk = ChunkId::new(record.placement.position.chunk);
@@ -138,7 +140,11 @@ pub fn dev_add_item(
             if matches!(&pile.contents, WorldPileContents::Stack { item_definition_id, .. } if *item_definition_id == item_id)
             {
                 if let Some(record) = world.item_pile_store_mut().get_mut(pile_id) {
-                    if let WorldPileContents::Stack { quantity: ref mut q, .. } = record.contents {
+                    if let WorldPileContents::Stack {
+                        quantity: ref mut q,
+                        ..
+                    } = record.contents
+                    {
                         *q = q.saturating_add(quantity);
                     }
                 }
@@ -208,7 +214,13 @@ pub fn dev_remove_entry(
     match endpoint {
         DevInventoryEndpoint::Grid(inventory_id) => {
             let (inventory_store, instance_store) = world.inventory_runtime_mut();
-            remove_entry(inventory_store, instance_store, ctx, inventory_id, entry_index)?;
+            remove_entry(
+                inventory_store,
+                instance_store,
+                ctx,
+                inventory_id,
+                entry_index,
+            )?;
             Ok(format!("Removed entry {entry_index} from {inventory_id:?}"))
         }
         DevInventoryEndpoint::Pile(pile_id) => {
@@ -238,21 +250,16 @@ pub fn dev_set_stack_quantity(
                     .inventory_store()
                     .get(inventory_id)
                     .ok_or(InventoryError::InventoryNotFound(inventory_id))?;
-                let entry = record
-                    .placed_entries()
-                    .get(entry_index)
-                    .ok_or(InventoryError::EntryNotFound {
+                let entry = record.placed_entries().get(entry_index).ok_or(
+                    InventoryError::EntryNotFound {
                         inventory_id,
                         entry_index,
-                    })?;
+                    },
+                )?;
                 match &entry.contents {
                     InventoryEntryContents::Stack {
                         item_definition_id, ..
-                    } => (
-                        item_definition_id.clone(),
-                        entry.anchor_x,
-                        entry.anchor_y,
-                    ),
+                    } => (item_definition_id.clone(), entry.anchor_x, entry.anchor_y),
                     _ => {
                         return Err(DevInventoryOpError::Message(
                             "cannot set quantity on unique entry".into(),
@@ -274,7 +281,13 @@ pub fn dev_set_stack_quantity(
                 )));
             }
             let (inventory_store, instance_store) = world.inventory_runtime_mut();
-            remove_entry(inventory_store, instance_store, ctx, inventory_id, entry_index)?;
+            remove_entry(
+                inventory_store,
+                instance_store,
+                ctx,
+                inventory_id,
+                entry_index,
+            )?;
             place_stack(
                 inventory_store,
                 instance_store,
@@ -285,7 +298,9 @@ pub fn dev_set_stack_quantity(
                 anchor_x,
                 anchor_y,
             )?;
-            Ok(format!("Set entry {entry_index} quantity to {new_quantity}"))
+            Ok(format!(
+                "Set entry {entry_index} quantity to {new_quantity}"
+            ))
         }
         DevInventoryEndpoint::Pile(pile_id) => {
             let pile = world
@@ -321,7 +336,9 @@ pub fn dev_clear_inventory(
                 let (inventory_store, instance_store) = world.inventory_runtime_mut();
                 let _ = remove_entry(inventory_store, instance_store, ctx, inventory_id, index);
             }
-            Ok(format!("Cleared {entry_count} entries from {inventory_id:?}"))
+            Ok(format!(
+                "Cleared {entry_count} entries from {inventory_id:?}"
+            ))
         }
         DevInventoryEndpoint::Pile(pile_id) => dev_remove_entry(world, ctx, endpoint, 0),
     }
@@ -361,9 +378,14 @@ pub fn dev_fill_inventory(
         }
     }
     if placed == 0 {
-        return Err(DevInventoryOpError::Message("inventory full or item invalid".into()));
+        return Err(DevInventoryOpError::Message(
+            "inventory full or item invalid".into(),
+        ));
     }
-    Ok(format!("Filled {placed} stacks of `{}` x{quantity_per_stack}", item_id.as_str()))
+    Ok(format!(
+        "Filled {placed} stacks of `{}` x{quantity_per_stack}",
+        item_id.as_str()
+    ))
 }
 
 pub fn dev_transfer(
@@ -421,11 +443,10 @@ pub fn dev_transfer(
                     })
                     .unwrap_or(1)
             });
-            let pile = world
-                .item_pile_store()
-                .get(dst)
-                .cloned()
-                .ok_or_else(|| DevInventoryOpError::Message("destination pile missing".into()))?;
+            let pile =
+                world.item_pile_store().get(dst).cloned().ok_or_else(|| {
+                    DevInventoryOpError::Message("destination pile missing".into())
+                })?;
             let report = drop_stack_from_inventory(
                 world,
                 ctx,
@@ -507,12 +528,14 @@ mod tests {
         .unwrap();
         drop((inventory_store, instance_store));
         dev_clear_inventory(&mut world, &ctx, DevInventoryEndpoint::Grid(inventory_id)).unwrap();
-        assert!(world
-            .inventory_store()
-            .get(inventory_id)
-            .unwrap()
-            .placed_entries()
-            .is_empty());
+        assert!(
+            world
+                .inventory_store()
+                .get(inventory_id)
+                .unwrap()
+                .placed_entries()
+                .is_empty()
+        );
     }
 
     #[test]

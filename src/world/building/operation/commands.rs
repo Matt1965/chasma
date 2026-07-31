@@ -6,7 +6,9 @@ use crate::world::building::catalog::BuildingCatalog;
 use crate::world::building::operation::{
     BuildingOperationPolicy, OperationDefinitionId, OperationLifecycle, RepeatMode,
 };
-use crate::world::operation::{OperationCatalog, OperationSelectionError, validate_operation_selection};
+use crate::world::operation::{
+    OperationCatalog, OperationSelectionError, validate_operation_selection,
+};
 
 /// Production command failures (EP2/EP3).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,7 +28,10 @@ impl std::fmt::Display for ProductionCommandError {
     }
 }
 
-fn require_building(world: &WorldData, building_id: BuildingId) -> Result<(), ProductionCommandError> {
+fn require_building(
+    world: &WorldData,
+    building_id: BuildingId,
+) -> Result<(), ProductionCommandError> {
     if world.get_building(building_id).is_none() {
         return Err(ProductionCommandError::BuildingNotFound(building_id));
     }
@@ -168,10 +173,7 @@ pub fn cycle_production_selected_operation(
         .get_policy(building_id)
         .and_then(|policy| policy.selected_operation.clone());
     let next = if let Some(current) = current {
-        let index = supported
-            .iter()
-            .position(|id| *id == current)
-            .unwrap_or(0);
+        let index = supported.iter().position(|id| *id == current).unwrap_or(0);
         let next_index = if forward {
             (index + 1) % supported.len()
         } else {

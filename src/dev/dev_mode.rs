@@ -10,6 +10,7 @@ use crate::world::{
     ItemPileId, UnitDefinitionId, WorldPosition,
 };
 
+use super::catalog::CatalogSessionState;
 use super::history::DevSpawnHistory;
 use super::tools::{BrushSettings, PlacementRules};
 
@@ -28,6 +29,7 @@ pub enum DevTextFieldFocus {
     CatalogSearch,
     SceneName,
     ItemQuantity,
+    WorldEnvironmentNumeric,
 }
 
 /// Items tab sub-views (DV0).
@@ -78,9 +80,7 @@ pub enum DevTab {
     Doodads,
     Buildings,
     Items,
-    Placement,
     Scenes,
-    Inspector,
     Debug,
     WorldTools,
     TerrainFields,
@@ -137,6 +137,10 @@ pub struct DevModeState {
     pub terrain_conforming: bool,
     pub show_preview: bool,
     pub placement_rules: PlacementRules,
+    /// Yaw degrees for initial doodad/building placement (Slice 4).
+    pub placement_yaw_deg: f32,
+    /// Uniform scale for initial doodad/building placement when supported.
+    pub placement_uniform_scale: f32,
     pub last_line_direction: Vec2,
     pub list_scroll: usize,
     pub last_spawn_message: String,
@@ -159,6 +163,8 @@ pub struct DevModeState {
     pub spawn_affiliation: crate::world::Affiliation,
     /// Active text-field focus — global dev shortcuts are suppressed while set (DV2).
     pub text_focus: DevTextFieldFocus,
+    /// Catalog window session (Advanced Mode, tab memory, status) — Slice 4.
+    pub catalog: CatalogSessionState,
 }
 
 impl Default for DevModeState {
@@ -176,6 +182,8 @@ impl Default for DevModeState {
             terrain_conforming: true,
             show_preview: true,
             placement_rules: PlacementRules::default(),
+            placement_yaw_deg: 0.0,
+            placement_uniform_scale: 1.0,
             last_line_direction: Vec2::X,
             list_scroll: 0,
             last_spawn_message: String::new(),
@@ -193,6 +201,7 @@ impl Default for DevModeState {
             spawn_affiliation: crate::world::Affiliation::Player,
             text_focus: DevTextFieldFocus::None,
             inventory: DevInventoryToolState::default(),
+            catalog: CatalogSessionState::default(),
         }
     }
 }
@@ -268,11 +277,7 @@ impl DevModeState {
     pub fn placement_tool_active(&self) -> bool {
         matches!(
             self.selected_definition,
-            Some(
-                DefinitionId::Unit(_)
-                    | DefinitionId::Doodad(_)
-                    | DefinitionId::Building(_)
-            )
+            Some(DefinitionId::Unit(_) | DefinitionId::Doodad(_) | DefinitionId::Building(_))
         )
     }
 
@@ -379,6 +384,8 @@ pub struct DevModeInputGate {
     pub spawn_handled_this_frame: bool,
     /// Suppress RTS camera pan/orbit/zoom during gizmo drag (ADR-099).
     pub block_camera_input: bool,
+    /// Suppress scroll-wheel zoom while pointer is over dev UI (Slice 3).
+    pub block_camera_scroll: bool,
 }
 
 impl DevModeInputGate {
@@ -386,6 +393,7 @@ impl DevModeInputGate {
         self.block_gameplay_mouse = false;
         self.spawn_handled_this_frame = false;
         self.block_camera_input = false;
+        self.block_camera_scroll = false;
     }
 
     pub fn should_block(gate: &DevModeInputGate) -> bool {

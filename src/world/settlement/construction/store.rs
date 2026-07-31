@@ -63,8 +63,7 @@ impl ConstructionPlanStore {
             }
         }
         if plan.status.is_active() {
-            self.by_fulfillment
-                .insert(plan.fulfillment_key.clone(), id);
+            self.by_fulfillment.insert(plan.fulfillment_key.clone(), id);
         } else {
             self.by_fulfillment.remove(&plan.fulfillment_key);
         }

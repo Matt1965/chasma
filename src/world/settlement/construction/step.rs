@@ -2,12 +2,12 @@
 
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::InventoryCatalogCtx;
-use crate::world::settlement::response::ResponseType;
 use crate::world::settlement::SettlementId;
+use crate::world::settlement::response::ResponseType;
 use crate::world::{DoodadCatalog, FootprintCatalog, UnitCatalog, WorldData};
 
 use super::catalog::{BuildingConstructionCostCatalog, ConstructionResponseCatalog};
-use super::evaluate::{plan_construction_for_settlement, ConstructionPlanningContext};
+use super::evaluate::{ConstructionPlanningContext, plan_construction_for_settlement};
 
 pub const CONSTRUCTION_PLANNING_CADENCE_TICKS: u64 = 45;
 
@@ -59,7 +59,10 @@ pub fn step_settlement_construction_planning(
                 .settlement_state_store()
                 .get(settlement_id)
                 .is_some_and(|s| s.planner.dirty);
-        let due_by_cadence = match world.construction_planning_report_store().get(settlement_id) {
+        let due_by_cadence = match world
+            .construction_planning_report_store()
+            .get(settlement_id)
+        {
             None => true,
             Some(prev) => {
                 simulation_tick.saturating_sub(prev.planned_tick)
