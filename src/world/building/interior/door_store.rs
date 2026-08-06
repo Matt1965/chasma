@@ -114,6 +114,17 @@ impl DoorStore {
         }
         Ok(())
     }
+
+    /// Reconcile portal enabled flags from authoritative door state (IN-04).
+    pub fn sync_building_door_portals(
+        world: &mut WorldData,
+        building_id: BuildingId,
+    ) -> Result<(), InteriorError> {
+        for door_id in world.door_store().building_door_ids(building_id).to_vec() {
+            Self::sync_portal_enabled(world, door_id)?;
+        }
+        Ok(())
+    }
 }
 
 pub fn open_door(world: &mut WorldData, door_id: DoorId) -> Result<(), InteriorError> {
@@ -266,7 +277,7 @@ pub fn space_route_for_unit(
             if next == to {
                 return Some(next_path);
             }
-            if next_path.len() >= 8 {
+            if next_path.len() >= 16 {
                 continue;
             }
             queue.push_back((next, next_path));

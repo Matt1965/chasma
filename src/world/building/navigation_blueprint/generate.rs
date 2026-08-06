@@ -6,25 +6,34 @@ use bevy::prelude::*;
 
 use super::cache::NAVIGATION_BLUEPRINT_GENERATOR_VERSION;
 use super::definition::{
-    BuildingNavigationBlueprint, BuildingNavigationBlueprintMetadata, NavigationEntranceDefinition,
-    NavigationFloorDefinition, NavigationPolygon2d, NavigationVerticalTransitionDefinition,
-    NavigationVerticalTransitionKind,
+    BuildingNavigationBlueprint, BuildingNavigationBlueprintMetadata, MIN_CONNECTION_RADIUS,
+    NavigationEntranceDefinition, NavigationFloorDefinition, NavigationPolygon2d,
+    NavigationRegionConnectionDefinition, NavigationRegionConnectionKind,
+    NavigationVerticalTransitionDefinition, NavigationVerticalTransitionKind,
 };
-use super::id::BuildingNavigationBlueprintId;
+use super::id::{BuildingNavigationBlueprintId, blueprint_id_for_building};
 use super::mesh::{BuildingMeshAnalysisInput, LocalTriangle3d, PortalMarker3d};
-use super::report::{
-    EntranceGenerationDiagnostics, NavigationBlueprintGenerationReport,
-    NavigationBlueprintGenerationStatus,
+use super::region_extract::point_in_polygon as region_point_in_polygon;
+use super::region_extract::{
+    ExtractedRegion, RegionGeneratorConfig, cluster_walkable_triangles_by_elevation,
+    extract_regions_for_elevation, find_containing_regions, region_definitions_from_extracted,
 };
+use super::report::{
+    EntranceGenerationDiagnostics, GeometryGenerationDiagnostics,
+    NavigationBlueprintGenerationReport, NavigationBlueprintGenerationStatus,
+};
+use crate::world::BlueprintInspectionValidation;
 use crate::world::authoring_transform::BuildingTransformSafetyClass;
 use crate::world::building::catalog::BuildingDefinition;
 use crate::world::occupancy::bake::source_file_hash_hex;
+use crate::world::validate_blueprint_for_inspection;
 
 const WALKABLE_NORMAL_MIN_Y: f32 = 0.72;
 const FLOOR_CLUSTER_GAP_METERS: f32 = 2.5;
 const MIN_ENTRANCE_RADIUS: f32 = 0.75;
 const DEFAULT_ENTRANCE_RADIUS: f32 = 1.5;
-const HULL_SIMPLIFY_EPSILON: f32 = 0.15;
+const REGION_ENDPOINT_INSET_MIN: f32 = 0.15;
+const DEFAULT_CONNECTION_RADIUS: f32 = 0.8;
 
 /// Input for a single building generation pass.
 #[derive(Debug, Clone)]
@@ -43,6 +52,15 @@ pub struct NavigationBlueprintGenerateOutput {
     pub blueprint: BuildingNavigationBlueprint,
     pub warnings: Vec<String>,
     pub entrance_diagnostics: EntranceGenerationDiagnostics,
+    pub geometry_diagnostics: GeometryGenerationDiagnostics,
+    pub validation: BlueprintInspectionValidation,
+}
+
+/// Generation result with blueprint draft and diagnostics report (IN-09).
+#[derive(Debug, Clone)]
+pub struct NavigationBlueprintGenerationResult {
+    pub blueprint: BuildingNavigationBlueprint,
+    pub report: NavigationBlueprintGenerationReport,
 }
 
 pub fn should_generate_navigation_blueprint(definition: &BuildingDefinition) -> bool {
@@ -57,16 +75,6 @@ pub fn navigation_blueprint_generation_rejection(
         None
     } else {
         Some("building is not Navigable")
-    }
-}
-
-pub fn blueprint_id_for_building(definition: &BuildingDefinition) -> BuildingNavigationBlueprintId {
-    if let Some(id) = &definition.navigation_blueprint_id {
-        BuildingNavigationBlueprintId::new(id.clone())
-    } else if let Some(id) = &definition.interior_profile_id {
-        BuildingNavigationBlueprintId::new(id.clone())
-    } else {
-        BuildingNavigationBlueprintId::new(format!("{}_nav", definition.id.as_str()))
     }
 }
 
@@ -103,16 +111,21 @@ pub fn generate_navigation_blueprint(
 
     if !input.mesh.used_collision_node {
         warnings.push(
-            "occupancy_collision node missing — used visible mesh geometry for analysis".into(),
+            "generator_render_mesh_fallback: occupancy_collision node missing — used visible mesh geometry for analysis".into(),
         );
     }
 
-    let walkable_clusters = cluster_walkable_floors(&triangles);
-    if walkable_clusters.is_empty() {
+    let config = RegionGeneratorConfig {
+        walkable_normal_min_y: WALKABLE_NORMAL_MIN_Y,
+        floor_cluster_gap_meters: FLOOR_CLUSTER_GAP_METERS,
+        ..RegionGeneratorConfig::default()
+    };
+
+    let (mut floors, mut geometry_diag) =
+        build_floor_definitions_from_mesh(&triangles, &config, &mut warnings);
+    if floors.is_empty() {
         return Err("no walkable horizontal surfaces detected".into());
     }
-
-    let mut floors = build_floor_definitions(&walkable_clusters, &mut warnings);
     assign_floor_ids(&mut floors);
 
     let mut entrance_diag = EntranceGenerationDiagnostics::default();
@@ -133,9 +146,33 @@ pub fn generate_navigation_blueprint(
         }
     }
     entrance_diag.entrances_generated = entrances.len();
+    resolve_entrance_region_targets(&mut entrances, &floors, &mut warnings);
 
-    let vertical_transitions =
+    let mut vertical_transitions =
         vertical_transitions_from_portals(&portal_markers, &floors, &mut warnings);
+    resolve_transition_region_targets(&mut vertical_transitions, &floors, &mut warnings);
+
+    let region_connections = connections_from_portal_markers(
+        &portal_markers,
+        &floors,
+        &mut warnings,
+        &mut geometry_diag,
+    );
+
+    geometry_diag.candidate_connection_count = region_connections.len();
+    geometry_diag.used_collision_mesh = input.mesh.used_collision_node;
+    geometry_diag.used_render_fallback = !input.mesh.used_collision_node;
+
+    for floor in &floors {
+        if floor.regions.len() == 1
+            && count_doorway_marker_groups_on_floor(&portal_markers, floor, &floors) >= 2
+        {
+            warnings.push(format!(
+                "generator_region_split_ambiguous: floor `{}` has one generated region but multiple doorway markers — manual region splitting recommended",
+                floor.key
+            ));
+        }
+    }
 
     let render_key = input
         .render_asset_path
@@ -171,12 +208,16 @@ pub fn generate_navigation_blueprint(
         floors,
         entrances,
         vertical_transitions,
+        region_connections,
         enabled: true,
     };
 
-    blueprint
-        .validate()
-        .map_err(|err| format!("generated blueprint failed validation: {err}"))?;
+    let validation = validate_blueprint_for_inspection(&blueprint);
+    for diagnostic in &validation.diagnostics {
+        if diagnostic.level == crate::world::BlueprintDiagnosticLevel::Error {
+            warnings.push(format!("validation: {}", diagnostic.message));
+        }
+    }
 
     if blueprint.entrances.is_empty() {
         warnings.push("no entrances generated — manual authoring required".into());
@@ -186,6 +227,8 @@ pub fn generate_navigation_blueprint(
         blueprint,
         warnings,
         entrance_diagnostics: entrance_diag,
+        geometry_diagnostics: geometry_diag,
+        validation,
     })
 }
 
@@ -206,6 +249,7 @@ pub fn failed_report(
         warnings: Vec::new(),
         errors: vec![error.into()],
         entrance_diagnostics: EntranceGenerationDiagnostics::default(),
+        geometry_diagnostics: GeometryGenerationDiagnostics::default(),
     }
 }
 
@@ -231,88 +275,361 @@ fn scale_portal_markers(markers: &[PortalMarker3d], scale: f32) -> Vec<PortalMar
         .collect()
 }
 
-#[derive(Debug, Clone)]
-struct WalkableCluster {
-    elevation: f32,
-    points_xz: Vec<Vec2>,
-}
-
-fn cluster_walkable_floors(triangles: &[LocalTriangle3d]) -> Vec<WalkableCluster> {
-    let mut samples: Vec<(f32, Vec2)> = Vec::new();
-    for tri in triangles {
-        let normal = tri.normal();
-        if normal.y < WALKABLE_NORMAL_MIN_Y {
-            continue;
-        }
-        let centroid = tri.centroid();
-        samples.push((centroid.y, Vec2::new(centroid.x, centroid.z)));
-        for v in [tri.a, tri.b, tri.c] {
-            samples.push((v.y, Vec2::new(v.x, v.z)));
-        }
-    }
-    if samples.is_empty() {
-        return Vec::new();
-    }
-    samples.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-
-    let mut clusters: Vec<WalkableCluster> = Vec::new();
-    for (y, point) in samples {
-        if let Some(cluster) = clusters
-            .iter_mut()
-            .find(|c| (c.elevation - y).abs() <= FLOOR_CLUSTER_GAP_METERS * 0.45)
-        {
-            cluster.points_xz.push(point);
-            cluster.elevation = (cluster.elevation * 0.9) + (y * 0.1);
-        } else if let Some(cluster) = clusters.last_mut() {
-            if y - cluster.elevation >= FLOOR_CLUSTER_GAP_METERS {
-                clusters.push(WalkableCluster {
-                    elevation: y,
-                    points_xz: vec![point],
-                });
-            } else {
-                cluster.points_xz.push(point);
-                cluster.elevation = (cluster.elevation + y) * 0.5;
-            }
-        } else {
-            clusters.push(WalkableCluster {
-                elevation: y,
-                points_xz: vec![point],
-            });
-        }
-    }
-    clusters
-}
-
-fn build_floor_definitions(
-    clusters: &[WalkableCluster],
+fn build_floor_definitions_from_mesh(
+    triangles: &[LocalTriangle3d],
+    config: &RegionGeneratorConfig,
     warnings: &mut Vec<String>,
-) -> Vec<NavigationFloorDefinition> {
+) -> (
+    Vec<NavigationFloorDefinition>,
+    GeometryGenerationDiagnostics,
+) {
+    let (elevations, cluster_stats) = cluster_walkable_triangles_by_elevation(triangles, config);
+    let mut geometry = GeometryGenerationDiagnostics {
+        source_triangle_count: cluster_stats.source_triangle_count,
+        walkable_triangle_count: cluster_stats.walkable_triangle_count,
+        steep_triangle_discarded: cluster_stats.steep_triangle_discarded,
+        floor_cluster_count: cluster_stats.floor_cluster_count,
+        ..Default::default()
+    };
     let mut floors = Vec::new();
-    for (index, cluster) in clusters.iter().enumerate() {
-        let key = format!("floor_{index}");
-        let hull = convex_hull(&cluster.points_xz);
-        let simplified = simplify_collinear(&hull, HULL_SIMPLIFY_EPSILON);
-        if simplified.len() < 3 {
+    let mut region_offset = 0usize;
+    for (index, elevation) in elevations.iter().enumerate() {
+        let (extracted, floor_stats) =
+            extract_regions_for_elevation(triangles, *elevation, config, region_offset);
+        geometry.connected_component_count += floor_stats.connected_component_count;
+        geometry.regions_discarded += floor_stats.regions_discarded;
+        geometry.convex_hull_fallback_count += floor_stats.convex_hull_fallback_count;
+        geometry.multiple_boundary_loops += floor_stats.multiple_loop_count;
+        warnings.extend(floor_stats.warnings);
+        region_offset += extracted.regions.len();
+        if extracted.regions.is_empty() {
             warnings.push(format!(
-                "floor `{key}` at y={:.2} produced degenerate outline — skipped",
-                cluster.elevation
+                "floor at y={elevation:.2} produced no valid regions — skipped"
             ));
             continue;
         }
-        let outline = NavigationPolygon2d {
-            vertices_xz: simplified.iter().map(|p| [p.x, p.y]).collect(),
-        };
+        geometry.candidate_region_count += extracted.regions.len();
+        let regions = region_definitions_from_extracted(&extracted.regions);
         floors.push(NavigationFloorDefinition {
             floor_id: index as i32,
-            key,
-            display_label: format!("Floor {:.1}m", cluster.elevation),
-            elevation_meters: cluster.elevation,
+            key: format!("floor_{index}"),
+            display_label: format!("Floor {:.1}m", elevation),
+            elevation_meters: *elevation,
             visibility_group_id: (index + 1) as u32,
             room_tag: None,
-            walkable_outline: outline,
+            walkable_outline_legacy: None,
+            regions,
         });
     }
-    floors
+    (floors, geometry)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GeneratedRegionTargetKind {
+    Entrance,
+    TransitionFrom,
+    TransitionTo,
+    Connection,
+}
+
+fn floor_regions_for_targeting(floor: &NavigationFloorDefinition) -> Vec<ExtractedRegion> {
+    floor
+        .regions
+        .iter()
+        .map(|region| ExtractedRegion {
+            key: region.key.clone(),
+            display_label: region.display_label.clone(),
+            outline: region.walkable_outline.clone(),
+            used_convex_hull_fallback: false,
+            centroid_xz: region_extract_centroid(&region.walkable_outline),
+        })
+        .collect()
+}
+
+fn resolve_region_target(
+    floor: &NavigationFloorDefinition,
+    point: Vec2,
+    feature_key: &str,
+    kind: GeneratedRegionTargetKind,
+    warnings: &mut Vec<String>,
+) -> Option<String> {
+    let extracted = floor_regions_for_targeting(floor);
+    let containing = find_containing_regions(point, &extracted);
+    match containing.len() {
+        0 => {
+            let code = match kind {
+                GeneratedRegionTargetKind::Entrance => "generator_entrance_region_unresolved",
+                GeneratedRegionTargetKind::TransitionFrom
+                | GeneratedRegionTargetKind::TransitionTo => {
+                    "generator_transition_region_unresolved"
+                }
+                GeneratedRegionTargetKind::Connection => "generator_connection_ambiguous",
+            };
+            warnings.push(format!(
+                "{code}: feature `{feature_key}` on floor `{}` at [{:.2},{:.2}] matches 0 regions",
+                floor.key, point.x, point.y
+            ));
+            None
+        }
+        1 => Some(containing[0].key.clone()),
+        _ => {
+            let keys = containing
+                .iter()
+                .map(|region| region.key.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            let code = match kind {
+                GeneratedRegionTargetKind::Entrance => "generator_entrance_region_ambiguous",
+                GeneratedRegionTargetKind::TransitionFrom
+                | GeneratedRegionTargetKind::TransitionTo => {
+                    "generator_transition_region_ambiguous"
+                }
+                GeneratedRegionTargetKind::Connection => "generator_connection_ambiguous",
+            };
+            warnings.push(format!(
+                "{code}: feature `{feature_key}` on floor `{}` at [{:.2},{:.2}] matches [{keys}]",
+                floor.key, point.x, point.y
+            ));
+            None
+        }
+    }
+}
+
+fn resolve_entrance_region_targets(
+    entrances: &mut [NavigationEntranceDefinition],
+    floors: &[NavigationFloorDefinition],
+    warnings: &mut Vec<String>,
+) {
+    for entrance in entrances.iter_mut() {
+        let Some(floor) = floors.iter().find(|floor| floor.key == entrance.floor_key) else {
+            entrance.region_key = None;
+            continue;
+        };
+        let spawn = Vec2::new(
+            entrance.interior_spawn_local[0],
+            entrance.interior_spawn_local[2],
+        );
+        entrance.region_key = resolve_region_target(
+            floor,
+            spawn,
+            &entrance.key,
+            GeneratedRegionTargetKind::Entrance,
+            warnings,
+        );
+    }
+}
+
+fn resolve_transition_region_targets(
+    transitions: &mut [NavigationVerticalTransitionDefinition],
+    floors: &[NavigationFloorDefinition],
+    warnings: &mut Vec<String>,
+) {
+    for transition in transitions.iter_mut() {
+        if let Some(from_floor) = floors
+            .iter()
+            .find(|floor| floor.key == transition.from_floor_key)
+        {
+            let point = Vec2::new(
+                transition.from_local_position_xz[0],
+                transition.from_local_position_xz[1],
+            );
+            transition.from_region_key = resolve_region_target(
+                from_floor,
+                point,
+                &transition.key,
+                GeneratedRegionTargetKind::TransitionFrom,
+                warnings,
+            );
+        } else {
+            transition.from_region_key = None;
+        }
+        if let Some(to_floor) = floors
+            .iter()
+            .find(|floor| floor.key == transition.to_floor_key)
+        {
+            let point = Vec2::new(
+                transition.to_local_position[0],
+                transition.to_local_position[2],
+            );
+            transition.to_region_key = resolve_region_target(
+                to_floor,
+                point,
+                &transition.key,
+                GeneratedRegionTargetKind::TransitionTo,
+                warnings,
+            );
+        } else {
+            transition.to_region_key = None;
+        }
+    }
+}
+
+fn region_extract_centroid(outline: &NavigationPolygon2d) -> Vec2 {
+    let verts: Vec<Vec2> = outline
+        .vertices_xz
+        .iter()
+        .map(|&[x, z]| Vec2::new(x, z))
+        .collect();
+    if verts.is_empty() {
+        Vec2::ZERO
+    } else {
+        verts.iter().fold(Vec2::ZERO, |acc, v| acc + *v) / verts.len() as f32
+    }
+}
+
+fn connections_from_portal_markers(
+    markers: &[PortalMarker3d],
+    floors: &[NavigationFloorDefinition],
+    warnings: &mut Vec<String>,
+    geometry: &mut GeometryGenerationDiagnostics,
+) -> Vec<NavigationRegionConnectionDefinition> {
+    let connection_markers: Vec<&PortalMarker3d> = markers
+        .iter()
+        .filter(|marker| portal_kind(&marker.name).is_interior_connection())
+        .collect();
+    if connection_markers.is_empty() {
+        return Vec::new();
+    }
+
+    let groups = group_portal_connection_markers(&connection_markers);
+    let mut connections = Vec::new();
+    for (group_index, group) in groups.into_iter().enumerate() {
+        let Some(floor) = group
+            .markers
+            .first()
+            .and_then(|marker| nearest_floor(floors, marker.position.y))
+        else {
+            continue;
+        };
+        let mut region_positions: Vec<(String, Vec2)> = Vec::new();
+        for marker in &group.markers {
+            let point = Vec2::new(marker.position.x, marker.position.z);
+            if let Some(region_key) = resolve_region_target(
+                floor,
+                point,
+                &group.logical_key,
+                GeneratedRegionTargetKind::Connection,
+                warnings,
+            ) {
+                if let Some(inset) = inset_point_in_region(floor, &region_key, point) {
+                    region_positions.push((region_key, inset));
+                } else {
+                    warnings.push(format!(
+                        "generator_connection_ambiguous: could not inset endpoint for portal `{}`",
+                        marker.name
+                    ));
+                    geometry.ambiguous_opening_count += 1;
+                }
+            } else {
+                geometry.ambiguous_opening_count += 1;
+            }
+        }
+        region_positions.sort_by(|a, b| a.0.cmp(&b.0));
+        region_positions.dedup_by(|a, b| a.0 == b.0);
+        if region_positions.len() < 2 {
+            warnings.push(format!(
+                "generator_connection_ambiguous: portal group `{}` lacks two distinct region endpoints",
+                group.logical_key
+            ));
+            geometry.ambiguous_opening_count += 1;
+            continue;
+        }
+        let (from_region, from_point) = region_positions[0].clone();
+        let (to_region, to_point) = region_positions[1].clone();
+        let span = from_point.distance(to_point);
+        let radius = (span * 0.35)
+            .clamp(MIN_CONNECTION_RADIUS, DEFAULT_CONNECTION_RADIUS)
+            .max(MIN_CONNECTION_RADIUS);
+        let kind = if group
+            .markers
+            .iter()
+            .any(|marker| marker.name.to_ascii_lowercase().contains("door"))
+        {
+            NavigationRegionConnectionKind::Doorway
+        } else {
+            NavigationRegionConnectionKind::OpenArch
+        };
+        connections.push(NavigationRegionConnectionDefinition {
+            key: portal_key_suffix(&group.logical_key)
+                .unwrap_or_else(|| format!("connection_{group_index}")),
+            kind,
+            floor_key: floor.key.clone(),
+            from_region_key: from_region,
+            to_region_key: to_region,
+            from_local_position_xz: [from_point.x, from_point.y],
+            to_local_position_xz: [to_point.x, to_point.y],
+            radius_meters: radius,
+            bidirectional: true,
+            enabled: true,
+            door_key: None,
+        });
+    }
+    connections.sort_by(|a, b| a.key.cmp(&b.key));
+    connections
+}
+
+#[derive(Debug, Clone)]
+struct PortalConnectionGroup<'a> {
+    logical_key: String,
+    markers: Vec<&'a PortalMarker3d>,
+}
+
+fn group_portal_connection_markers<'a>(
+    markers: &[&'a PortalMarker3d],
+) -> Vec<PortalConnectionGroup<'a>> {
+    let mut groups: Vec<PortalConnectionGroup<'a>> = Vec::new();
+    for marker in markers {
+        let key = logical_portal_group_key(&marker.name);
+        if let Some(group) = groups.iter_mut().find(|group| group.logical_key == key) {
+            group.markers.push(marker);
+        } else {
+            groups.push(PortalConnectionGroup {
+                logical_key: key,
+                markers: vec![marker],
+            });
+        }
+    }
+    groups
+}
+
+fn inset_point_in_region(
+    floor: &NavigationFloorDefinition,
+    region_key: &str,
+    point: Vec2,
+) -> Option<Vec2> {
+    let region = floor.region_by_key(region_key)?;
+    if !region_point_in_polygon(point, &region.walkable_outline) {
+        return None;
+    }
+    let centroid = region_extract_centroid(&region.walkable_outline);
+    let direction = (centroid - point).normalize_or_zero();
+    let inset = point + direction * REGION_ENDPOINT_INSET_MIN;
+    if region_point_in_polygon(inset, &region.walkable_outline) {
+        Some(inset)
+    } else {
+        Some(point)
+    }
+}
+
+fn count_doorway_marker_groups_on_floor(
+    markers: &[PortalMarker3d],
+    floor: &NavigationFloorDefinition,
+    floors: &[NavigationFloorDefinition],
+) -> usize {
+    let mut keys = std::collections::BTreeSet::new();
+    for marker in markers {
+        if !portal_kind(&marker.name).is_interior_connection() {
+            continue;
+        }
+        let Some(marker_floor) = nearest_floor(floors, marker.position.y) else {
+            continue;
+        };
+        if marker_floor.key != floor.key {
+            continue;
+        }
+        keys.insert(logical_portal_group_key(&marker.name));
+    }
+    keys.len()
 }
 
 fn assign_floor_ids(floors: &mut [NavigationFloorDefinition]) {
@@ -412,10 +729,12 @@ fn entrances_from_portal_markers(
         entrances.push(NavigationEntranceDefinition {
             key,
             floor_key: floor.key.clone(),
+            region_key: None,
             local_position_xz: [exterior.x, exterior.y],
             radius_meters: radius.max(MIN_ENTRANCE_RADIUS),
             interior_spawn_local: [interior.x, interior.y, interior.z],
             bidirectional: true,
+            door_key: None,
         });
     }
 
@@ -582,6 +901,8 @@ fn vertical_transitions_from_portals(
             kind: transition_kind,
             from_floor_key: from_floor.key.clone(),
             to_floor_key: to_floor.key.clone(),
+            from_region_key: None,
+            to_region_key: None,
             from_local_position_xz: [marker.position.x, marker.position.z],
             from_radius_meters: DEFAULT_ENTRANCE_RADIUS,
             to_local_position: [
@@ -605,7 +926,7 @@ fn heuristic_ground_entrance(
             .unwrap_or(std::cmp::Ordering::Equal)
     })?;
     let vertices: Vec<Vec2> = ground
-        .walkable_outline
+        .sole_region_outline()?
         .vertices_xz
         .iter()
         .map(|[x, z]| Vec2::new(*x, *z))
@@ -632,6 +953,7 @@ fn heuristic_ground_entrance(
     Some(NavigationEntranceDefinition {
         key: "exterior_entrance".to_string(),
         floor_key: ground.key.clone(),
+        region_key: None,
         local_position_xz: [mid.x, mid.y],
         radius_meters: radius,
         interior_spawn_local: [
@@ -640,11 +962,15 @@ fn heuristic_ground_entrance(
             mid.y + (centroid.y - mid.y) * 0.4,
         ],
         bidirectional: true,
+        door_key: None,
     })
 }
 
 fn floor_centroid(floor: &NavigationFloorDefinition) -> Vec2 {
-    let verts = &floor.walkable_outline.vertices_xz;
+    let Some(outline) = floor.sole_region_outline() else {
+        return Vec2::ZERO;
+    };
+    let verts = &outline.vertices_xz;
     if verts.is_empty() {
         return Vec2::ZERO;
     }
@@ -667,8 +993,10 @@ fn nearest_floor<'a>(
 }
 
 fn point_inside_floor(floor: &NavigationFloorDefinition, point: Vec2) -> bool {
-    let verts: Vec<Vec2> = floor
-        .walkable_outline
+    let Some(outline) = floor.sole_region_outline() else {
+        return false;
+    };
+    let verts: Vec<Vec2> = outline
         .vertices_xz
         .iter()
         .map(|[x, z]| Vec2::new(*x, *z))
@@ -712,6 +1040,7 @@ fn point_in_polygon(point: Vec2, polygon: &[Vec2]) -> bool {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PortalKind {
     Entrance,
+    InteriorConnection,
     Stair,
     Ramp,
     Ladder,
@@ -721,6 +1050,10 @@ enum PortalKind {
 impl PortalKind {
     fn is_entrance(self) -> bool {
         matches!(self, Self::Entrance | Self::Other)
+    }
+
+    fn is_interior_connection(self) -> bool {
+        matches!(self, Self::InteriorConnection)
     }
 }
 
@@ -732,6 +1065,8 @@ fn portal_kind(name: &str) -> PortalKind {
         PortalKind::Ramp
     } else if lower.contains("ladder") {
         PortalKind::Ladder
+    } else if lower.contains("doorway") || lower.contains("interior_door") {
+        PortalKind::InteriorConnection
     } else if lower.contains("entrance") || lower.contains("door") {
         PortalKind::Entrance
     } else {
@@ -935,7 +1270,10 @@ mod tests {
         );
         assert!(!output.blueprint.floors.is_empty());
         // Hull of the 6×6 quad should span near that extent — not a tiny saved outline.
-        let outline = &output.blueprint.floors[0].walkable_outline.vertices_xz;
+        let outline = &output.blueprint.floors[0]
+            .sole_region_outline()
+            .expect("region")
+            .vertices_xz;
         let max_x = outline
             .iter()
             .map(|v| v[0])
@@ -982,6 +1320,20 @@ mod tests {
         assert_eq!(output.entrance_diagnostics.synthesized_entrances, 0);
         assert!(output.entrance_diagnostics.deduplicated_candidates >= 2);
         assert_eq!(output.entrance_diagnostics.entrances_generated, 1);
+        let entrance = &output.blueprint.entrances[0];
+        assert!(
+            entrance.region_key.is_some(),
+            "hut entrance must target exactly one generated region via interior spawn; got {:?}",
+            entrance.region_key
+        );
+        assert!(
+            !output
+                .warnings
+                .iter()
+                .any(|w| w.contains("generator_entrance_region_unresolved")
+                    || w.contains("generator_entrance_region_ambiguous")),
+            "entrance targeting should resolve when interior spawn lies in one region"
+        );
     }
 
     fn flat_floor_mesh_with_portals(portals: Vec<PortalMarker3d>) -> BuildingMeshAnalysisInput {
@@ -1188,6 +1540,225 @@ mod tests {
         assert_eq!(
             logical_portal_group_key("portal__entrance"),
             "portal__entrance"
+        );
+    }
+
+    fn rect_triangles(x0: f32, z0: f32, x1: f32, z1: f32, y: f32) -> Vec<LocalTriangle3d> {
+        let p = |x: f32, z: f32| Vec3::new(x, y, z);
+        vec![
+            LocalTriangle3d {
+                a: p(x0, z0),
+                b: p(x0, z1),
+                c: p(x1, z1),
+            },
+            LocalTriangle3d {
+                a: p(x0, z0),
+                b: p(x1, z1),
+                c: p(x1, z0),
+            },
+        ]
+    }
+
+    fn l_shape_triangles() -> Vec<LocalTriangle3d> {
+        let y = 0.0;
+        let p = |x: f32, z: f32| Vec3::new(x, y, z);
+        vec![
+            LocalTriangle3d {
+                a: p(0.0, 0.0),
+                b: p(8.0, 3.0),
+                c: p(8.0, 0.0),
+            },
+            LocalTriangle3d {
+                a: p(0.0, 0.0),
+                b: p(3.0, 3.0),
+                c: p(8.0, 3.0),
+            },
+            LocalTriangle3d {
+                a: p(0.0, 0.0),
+                b: p(0.0, 8.0),
+                c: p(3.0, 3.0),
+            },
+            LocalTriangle3d {
+                a: p(0.0, 8.0),
+                b: p(3.0, 3.0),
+                c: p(3.0, 8.0),
+            },
+        ]
+    }
+
+    fn synthetic_mesh(
+        triangles: Vec<LocalTriangle3d>,
+        portals: Vec<PortalMarker3d>,
+        collision: bool,
+    ) -> BuildingMeshAnalysisInput {
+        BuildingMeshAnalysisInput {
+            triangles,
+            portal_markers: portals,
+            source_path: "synthetic".into(),
+            used_collision_node: collision,
+        }
+    }
+
+    fn synthetic_generate(
+        triangles: Vec<LocalTriangle3d>,
+        portals: Vec<PortalMarker3d>,
+    ) -> NavigationBlueprintGenerateOutput {
+        generate_navigation_blueprint(NavigationBlueprintGenerateInput {
+            blueprint_id: BuildingNavigationBlueprintId::new("synthetic"),
+            display_name: "Synthetic".into(),
+            collision_asset_path: PathBuf::from("synthetic.glb"),
+            render_asset_path: None,
+            baseline_scale: 1.0,
+            mesh: synthetic_mesh(triangles, portals, true),
+        })
+        .expect("generate")
+    }
+
+    #[test]
+    fn l_shape_floor_stays_concave_without_hull_fallback() {
+        let output = synthetic_generate(l_shape_triangles(), Vec::new());
+        assert_eq!(output.blueprint.floors.len(), 1);
+        assert_eq!(output.blueprint.floors[0].regions.len(), 1);
+        assert_eq!(output.geometry_diagnostics.convex_hull_fallback_count, 0);
+        let outline = &output.blueprint.floors[0].regions[0].walkable_outline;
+        assert!(!super::super::region_extract::point_in_polygon(
+            Vec2::new(7.0, 7.0),
+            outline
+        ));
+    }
+
+    #[test]
+    fn disconnected_islands_become_two_regions_without_connection() {
+        let mut tris = rect_triangles(0.0, 0.0, 4.0, 4.0, 0.0);
+        tris.extend(rect_triangles(10.0, 0.0, 14.0, 4.0, 0.0));
+        let output = synthetic_generate(tris, Vec::new());
+        assert_eq!(output.blueprint.floors.len(), 1);
+        assert_eq!(output.blueprint.floors[0].regions.len(), 2);
+        assert!(output.blueprint.region_connections.is_empty());
+        assert_eq!(output.geometry_diagnostics.connected_component_count, 2);
+    }
+
+    #[test]
+    fn two_rooms_with_doorway_markers_yield_connection() {
+        let mut tris = rect_triangles(0.0, 0.0, 6.0, 4.0, 0.0);
+        tris.extend(rect_triangles(6.4, 0.0, 12.4, 4.0, 0.0));
+        let portals = vec![
+            marker("portal__room_doorway__inside", 5.8, 2.0, "a"),
+            marker("portal__room_doorway__outside", 6.6, 2.0, "b"),
+        ];
+        let output = synthetic_generate(tris, portals);
+        assert_eq!(output.blueprint.floors[0].regions.len(), 2);
+        assert_eq!(output.blueprint.region_connections.len(), 1);
+        let connection = &output.blueprint.region_connections[0];
+        assert_ne!(connection.from_region_key, connection.to_region_key);
+    }
+
+    #[test]
+    fn multi_floor_surfaces_stay_separate() {
+        let mut tris = rect_triangles(0.0, 0.0, 8.0, 8.0, 0.0);
+        tris.extend(rect_triangles(0.0, 0.0, 8.0, 8.0, 3.0));
+        let output = synthetic_generate(tris, Vec::new());
+        assert_eq!(output.blueprint.floors.len(), 2);
+        assert_eq!(output.geometry_diagnostics.floor_cluster_count, 2);
+    }
+
+    #[test]
+    fn render_mesh_fallback_emits_warning() {
+        let output = generate_navigation_blueprint(NavigationBlueprintGenerateInput {
+            blueprint_id: BuildingNavigationBlueprintId::new("fallback_mesh"),
+            display_name: "Fallback".into(),
+            collision_asset_path: PathBuf::from("synthetic.glb"),
+            render_asset_path: None,
+            baseline_scale: 1.0,
+            mesh: synthetic_mesh(l_shape_triangles(), Vec::new(), false),
+        })
+        .expect("generate");
+        assert!(output.geometry_diagnostics.used_render_fallback);
+        assert!(
+            output
+                .warnings
+                .iter()
+                .any(|w| w.contains("generator_render_mesh_fallback"))
+        );
+    }
+
+    #[test]
+    fn entrance_targets_region_containing_interior_spawn_not_exterior() {
+        let mut tris = rect_triangles(0.0, 0.0, 6.0, 4.0, 0.0);
+        tris.extend(rect_triangles(6.4, 0.0, 12.4, 4.0, 0.0));
+        let portals = vec![
+            marker("portal__entrance__outside", 3.0, -0.2, "outside"),
+            marker("portal__entrance__inside", 3.0, 1.0, "inside"),
+        ];
+        let output = synthetic_generate(tris, portals);
+        let entrance = &output.blueprint.entrances[0];
+        assert_eq!(entrance.region_key.as_deref(), Some("region_1"));
+        assert!(
+            !output
+                .warnings
+                .iter()
+                .any(|w| w.contains("generator_entrance_region_ambiguous"))
+        );
+    }
+
+    #[test]
+    fn entrance_spawn_in_second_region_selects_region_b() {
+        let mut tris = rect_triangles(0.0, 0.0, 6.0, 4.0, 0.0);
+        tris.extend(rect_triangles(6.4, 0.0, 12.4, 4.0, 0.0));
+        let portals = vec![
+            marker("portal__entrance__outside", 3.0, -0.2, "outside"),
+            marker("portal__entrance__inside", 9.0, 2.0, "inside"),
+        ];
+        let output = synthetic_generate(tris, portals);
+        assert_eq!(
+            output.blueprint.entrances[0].region_key.as_deref(),
+            Some("region_2")
+        );
+    }
+
+    #[test]
+    fn entrance_spawn_outside_all_regions_keeps_unresolved_invalid_draft() {
+        let mut tris = rect_triangles(0.0, 0.0, 6.0, 4.0, 0.0);
+        tris.extend(rect_triangles(6.4, 0.0, 12.4, 4.0, 0.0));
+        let portals = vec![
+            marker("portal__entrance__outside", 3.0, -0.2, "outside"),
+            marker("portal__entrance__inside", 6.2, 2.0, "inside"),
+        ];
+        let output = synthetic_generate(tris, portals);
+        assert!(output.blueprint.entrances[0].region_key.is_none());
+        assert!(!output.validation.valid());
+        assert!(
+            output
+                .warnings
+                .iter()
+                .any(|w| w.contains("generator_entrance_region_unresolved"))
+        );
+    }
+
+    #[test]
+    fn generation_returns_blueprint_when_validation_fails() {
+        let mut tris = rect_triangles(0.0, 0.0, 6.0, 4.0, 0.0);
+        tris.extend(rect_triangles(6.4, 0.0, 12.4, 4.0, 0.0));
+        let portals = vec![
+            marker("portal__entrance__outside", 3.0, -0.2, "outside"),
+            marker("portal__entrance__inside", 6.2, 2.0, "inside"),
+        ];
+        let output = synthetic_generate(tris, portals);
+        assert!(!output.blueprint.floors.is_empty());
+        assert!(!output.validation.valid());
+    }
+
+    #[test]
+    fn generation_is_deterministic_for_l_shape() {
+        let a = synthetic_generate(l_shape_triangles(), Vec::new());
+        let b = synthetic_generate(l_shape_triangles(), Vec::new());
+        assert_eq!(
+            a.blueprint.floors[0].regions[0]
+                .walkable_outline
+                .vertices_xz,
+            b.blueprint.floors[0].regions[0]
+                .walkable_outline
+                .vertices_xz
         );
     }
 }

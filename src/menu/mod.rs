@@ -18,6 +18,7 @@ mod navigation;
 mod pause_menu;
 mod plugin;
 mod screen;
+mod settings;
 mod systems;
 mod transition;
 
@@ -36,4 +37,5 @@ pub use main_menu::{
 pub use navigation::{MenuContext, MenuNavigation, MenuPage, PauseMenuContext, pause_menu_is_open};
 pub use plugin::{MenuInputSystems, MenuPlugin, MenuUiSystems};
 pub use screen::{AppScreen, GameSessionKind, GameSessionState};
+pub use settings::{SettingsCategory, SettingsHostKind, SettingsMenuState};
 pub use transition::{SessionTransitionKind, SessionTransitionRequest};

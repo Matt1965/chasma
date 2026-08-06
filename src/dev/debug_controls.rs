@@ -58,4 +58,14 @@ mod tests {
         assert!(!settings.intent);
         assert!(settings.grid);
     }
+
+    #[test]
+    fn dev_state_toggle_is_overlay_sync_authority() {
+        let mut dev_state = crate::dev::DevModeState::default();
+        dev_state.debug_config.nav_blueprint = true;
+        let mut overlay = DebugOverlayConfig::development();
+        overlay.nav_blueprint = false;
+        overlay = dev_state.debug_config;
+        assert!(overlay.nav_blueprint);
+    }
 }

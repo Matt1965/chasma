@@ -16,6 +16,8 @@ exr = { version = "1.74.0", optional = true }
 png = "0.17.16"
 ron = "0.12.1"
 serde = { version = "1.0.228", features = ["derive"] }
+# Same major series as Bevy 0.18's winit; needed for `Icon::from_rgba` (not re-exported by bevy_winit).
+winit = "0.30"
 
 [dev-dependencies]
 rust_xlsxwriter = "0.79.4"
@@ -33,4 +35,12 @@ terrain-import = ["dep:exr"]
 #
 # `bevy/debug` makes ECS diagnostics (notably B0001 query conflicts) name the
 # offending system and components instead of emitting placeholder text.
-dev = ["data-import", "bevy/debug"]
+dev = ["data-import", "bevy/debug", "bevy/dynamic_linking"]
+
+[profile.dev]
+opt-level = 1
+debug = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+debug = false

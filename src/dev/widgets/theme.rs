@@ -41,6 +41,19 @@ pub const BTN_BG_ON: Color = Color::srgba(0.2, 0.55, 0.35, 0.95);
 pub const BTN_BG_ON_HOVER: Color = Color::srgba(0.25, 0.62, 0.42, 0.98);
 pub const BTN_BG_DISABLED: Color = Color::srgba(0.10, 0.14, 0.18, 0.75);
 pub const BTN_BG_ACCENT: Color = Color::srgba(0.15, 0.40, 0.55, 0.95);
+pub const BTN_BG_PRIMARY: Color = Color::srgba(0.12, 0.38, 0.52, 0.96);
+pub const BTN_BG_PRIMARY_HOVER: Color = Color::srgba(0.16, 0.46, 0.60, 0.98);
+pub const BTN_BG_PRIMARY_PRESSED: Color = Color::srgba(0.08, 0.28, 0.40, 1.0);
+pub const BTN_BG_DESTRUCTIVE: Color = Color::srgba(0.42, 0.14, 0.14, 0.95);
+pub const BTN_BG_DESTRUCTIVE_HOVER: Color = Color::srgba(0.52, 0.18, 0.16, 0.98);
+pub const BTN_BG_DESTRUCTIVE_PRESSED: Color = Color::srgba(0.30, 0.08, 0.08, 1.0);
+pub const BTN_BG_ACTIVATED: Color = Color::srgba(0.22, 0.55, 0.42, 0.98);
+pub const BTN_BORDER_IDLE: Color = Color::srgba(0.22, 0.30, 0.36, 0.85);
+pub const BTN_BORDER_PRESSED: Color = Color::srgba(0.10, 0.14, 0.18, 1.0);
+pub const BTN_BORDER_ACTIVE: Color = Color::srgba(0.30, 0.72, 0.48, 0.95);
+
+pub const CARD_BG: Color = Color::srgba(0.07, 0.10, 0.13, 0.92);
+pub const CARD_BORDER: Color = Color::srgba(0.18, 0.24, 0.30, 0.9);
 
 // --- Text ---
 

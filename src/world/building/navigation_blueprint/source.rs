@@ -38,13 +38,9 @@ pub fn classify_blueprint_authority(
     if definition.navigation_blueprint_id.is_some() {
         return BlueprintAuthoritySource::AssetDefault;
     }
-    #[cfg(feature = "data-import")]
-    {
-        use super::generate::blueprint_id_for_building;
-        let generated_id = blueprint_id_for_building(definition);
-        if catalog.get(&generated_id).is_some() {
-            return BlueprintAuthoritySource::Generated;
-        }
+    let generated_id = super::id::blueprint_id_for_building(definition);
+    if catalog.get(&generated_id).is_some() {
+        return BlueprintAuthoritySource::Generated;
     }
     BlueprintAuthoritySource::None
 }

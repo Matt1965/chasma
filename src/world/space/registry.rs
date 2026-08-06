@@ -179,7 +179,7 @@ impl SpaceRegistry {
                 if next == to {
                     return Some(next_path);
                 }
-                if next_path.len() >= 8 {
+                if next_path.len() >= 16 {
                     continue;
                 }
                 queue.push_back((next, next_path));

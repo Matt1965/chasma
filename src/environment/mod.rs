@@ -55,7 +55,8 @@ pub use skybox::{
 };
 pub use time_of_day::TimeOfDaySettings;
 pub use water::{
-    DEFAULT_WATER_PLANE_SIZE_METERS, EnvironmentWaterPlane, WaterPlaneLayout, WaterPlugin,
-    WaterSettings, WaterSpawnState, build_water_material, ensure_environment_water,
+    AuthoredTerrainMeters, DEFAULT_WATER_EXTENT_PADDING_METERS, DEFAULT_WATER_PLANE_SIZE_METERS,
+    EnvironmentWaterPlane, WaterPlaneLayout, WaterPlugin, WaterSettings, WaterSpawnState,
+    WaterWorldBounds, build_water_material, ensure_environment_water, rectangle_mesh_xy_size,
     sync_environment_water_presentation, water_plane_layout,
 };

@@ -173,6 +173,7 @@ pub fn change_floor(
     nav_catalog: &BuildingNavigationBlueprintCatalog,
     building_id: BuildingId,
     direction: FloorStep,
+    wrap: bool,
 ) {
     let Some(snap) = inspector.blueprint_snapshot.clone() else {
         return;
@@ -184,14 +185,38 @@ pub fn change_floor(
         .selected_floor_id
         .and_then(|id| snap.floor_ids.iter().position(|&f| f == id))
         .unwrap_or(0);
-    let next = match direction {
-        FloorStep::Previous => (current + snap.floor_ids.len() - 1) % snap.floor_ids.len(),
-        FloorStep::Next => (current + 1) % snap.floor_ids.len(),
+    let next = if wrap {
+        match direction {
+            FloorStep::Previous => (current + snap.floor_ids.len() - 1) % snap.floor_ids.len(),
+            FloorStep::Next => (current + 1) % snap.floor_ids.len(),
+        }
+    } else {
+        match direction {
+            FloorStep::Previous => {
+                if current == 0 {
+                    return;
+                }
+                current - 1
+            }
+            FloorStep::Next => {
+                if current + 1 >= snap.floor_ids.len() {
+                    return;
+                }
+                current + 1
+            }
+        }
     };
     let floor_id = snap.floor_ids[next];
     inspection.selected_floor_id = Some(floor_id);
     overlay_focus.blueprint_floor_id = Some(floor_id);
     inspection.selection = crate::dev::inspector::BlueprintEditSelection::None;
+    if inspection.has_pending_generated_draft() {
+        inspection.sync_selected_region_from_draft();
+    } else {
+        inspection.sync_selected_region_from_working_copy();
+    }
+    inspection.clear_selection_if_stale();
+    inspection.pending_connection_regions = None;
     refresh_editor_snapshot(
         world,
         building_catalog,

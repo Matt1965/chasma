@@ -5,6 +5,7 @@ mod button;
 mod confirmation;
 mod enum_selector;
 mod glyph_safety;
+mod interaction;
 mod numeric;
 mod search;
 mod section;
@@ -30,6 +31,10 @@ pub use enum_selector::{
     sync_segmented_styles,
 };
 pub use glyph_safety::{FORBIDDEN_DEV_UI_GLYPHS, contains_forbidden_dev_ui_glyph};
+pub use interaction::{
+    DevButtonActivationFlash, DevButtonChrome, DevButtonKind, DevButtonVisual, dev_button_visual,
+    queue_button_activation_flash, sync_dev_button_chrome, tick_dev_button_activation_flashes,
+};
 pub use numeric::{
     NumericDraft, NumericParseResult, apply_numeric_bounds, format_numeric_display,
     parse_numeric_draft,
@@ -47,11 +52,14 @@ pub use slider::{
     DevSliderDragState, DevWidgetSliderTrack, DevWidgetSliderValue, normalized_to_value,
     slider_normalized_x, spawn_bounded_slider_row, sync_slider_fill, value_to_normalized,
 };
-pub use status::{DevStatusSeverity, DevWidgetStatusLine, spawn_status_line, status_text_color};
+pub use status::{
+    DevStatusSeverity, DevWidgetStatusLine, spawn_status_line, status_text_color,
+    sync_status_line_color,
+};
 pub use theme::{
-    BTN_BG_ACTIVE, BTN_BG_IDLE, FONT_SIZE_LABEL, SPACE_CONTROL, SPACE_SECTION, SPACE_TIGHT,
-    SPACE_WINDOW, TEXT_MUTED, TEXT_PRIMARY, WINDOW_BG, WINDOW_TITLE_TEXT, action_button_bg,
-    label_text_font, small_text_font, toggle_button_bg,
+    BTN_BG_IDLE, CARD_BG, CARD_BORDER, FONT_SIZE_LABEL, SPACE_CONTROL, SPACE_SECTION, SPACE_TIGHT,
+    SPACE_WINDOW, TEXT_LABEL, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECTION, WINDOW_BG, WINDOW_TITLE_TEXT,
+    action_button_bg, label_text_font, small_text_font, standard_button_node, toggle_button_bg,
 };
 pub use toggle::{
     DevWidgetToggle, DevWidgetToggleMark, spawn_toggle_row, sync_toggle_styles_with_marker,

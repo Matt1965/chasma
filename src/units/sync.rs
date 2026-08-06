@@ -9,13 +9,16 @@ use std::collections::HashSet;
 use bevy::asset::LoadState;
 use bevy::prelude::*;
 
+use crate::terrain::TerrainRenderAssets;
 use crate::terrain::residency::ChunkResidencyTracker;
-use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
 use crate::world::{UnitCatalog, UnitId, WorldConfig, WorldData};
 
 use super::assets::UnitSceneAssets;
 use super::components::UnitRenderEntity;
-use super::spawn::{UnitRenderIndex, despawn_unit_render_entities, spawn_unit_render_entity};
+use super::spawn::{
+    UnitRenderIndex, despawn_unit_render_entities, spawn_unit_render_entity,
+    unit_render_translation,
+};
 
 /// Systems that sync unit render entities with world data.
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -94,8 +97,7 @@ pub fn sync_unit_render_entities(
             .map(crate::world::unit_visual_scale)
             .unwrap_or(Vec3::ONE);
         let layout = config.chunk_layout();
-        let translation =
-            world_position_to_render_global(record.placement.position, layout, vertical_scale);
+        let translation = unit_render_translation(&world, record, layout, vertical_scale);
         commands.entity(entity).insert(Transform {
             translation,
             rotation: record.placement.rotation,
@@ -131,6 +133,7 @@ pub fn sync_unit_render_entities(
 
         let entity = spawn_unit_render_entity(
             &mut commands,
+            &world,
             record,
             scene,
             &config,
@@ -440,6 +443,219 @@ mod tests {
             .0
             .y;
         assert_eq!(y, 8.0);
+    }
+
+    /// IN-11c: interior units must render on the building's visible floor.
+    ///
+    /// Terrain relief is exaggerated by a large factor in the dev world. Multiplying an
+    /// interior floor offset by that factor threw units thousands of units into the sky,
+    /// which read in game as the unit vanishing on entry.
+    mod interior_presentation {
+        use super::*;
+        use crate::world::{
+            Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingId, BuildingOwnership,
+            DoodadCatalog, FootprintCatalog, OccupancyCatalogs, SpaceId, SpaceRecord,
+            place_player_building,
+        };
+
+        const EXAGGERATION: f32 = 18_336.0;
+        const FLOOR_OFFSET_METERS: f32 = 1.104;
+
+        fn place_hut(app: &mut App) -> (BuildingId, f32) {
+            let building_catalog = BuildingCatalog::default();
+            let doodad_catalog = DoodadCatalog::default();
+            let footprint = FootprintCatalog::default();
+            let mut world = app.world_mut().resource_mut::<WorldData>();
+            let building_id = place_player_building(
+                &building_catalog,
+                &mut world,
+                &BuildingDefinitionId::new("hut"),
+                WorldPosition::new(
+                    ChunkCoord::new(1, 2),
+                    LocalPosition::new(Vec3::new(60.0, 8.0, 60.0)),
+                ),
+                Quat::IDENTITY,
+                BuildingOwnership::with_affiliation(Affiliation::Player),
+                OccupancyCatalogs {
+                    building: &building_catalog,
+                    doodad: &doodad_catalog,
+                    footprint: &footprint,
+                },
+            )
+            .expect("place hut")
+            .id;
+            let anchor_y = world
+                .get_building(building_id)
+                .expect("building")
+                .placement
+                .position
+                .to_global(world.layout())
+                .y;
+            (building_id, anchor_y)
+        }
+
+        fn add_region(app: &mut App, building_id: BuildingId, floor_y: f32) -> SpaceId {
+            let mut world = app.world_mut().resource_mut::<WorldData>();
+            let registry = world.space_registry_mut();
+            let space_id = registry.allocate_space_id();
+            registry.insert_space(SpaceRecord {
+                id: space_id,
+                owning_building_id: Some(building_id),
+                display_floor_label: "Ground".into(),
+                // One visibility group shared by every region of this building.
+                visibility_group_id: 1,
+                reference_elevation: FLOOR_OFFSET_METERS,
+                floor_y_global: floor_y,
+                room_tag: None,
+                enabled: true,
+                walkable: true,
+            });
+            space_id
+        }
+
+        fn scaled_app() -> App {
+            let mut app = setup_sync_app();
+            let material = {
+                let mut materials = app.world_mut().resource_mut::<Assets<StandardMaterial>>();
+                materials.add(StandardMaterial::default())
+            };
+            app.world_mut().insert_resource(TerrainRenderAssets {
+                material,
+                vertical_scale: EXAGGERATION,
+            });
+            app
+        }
+
+        fn render_y(app: &App, unit_id: UnitId) -> f32 {
+            let entity = app.world().resource::<UnitRenderIndex>().0[&unit_id];
+            app.world()
+                .entity(entity)
+                .get::<Transform>()
+                .expect("transform")
+                .translation
+                .y
+        }
+
+        #[test]
+        fn interior_unit_renders_on_the_visible_floor_not_the_exaggerated_one() {
+            let mut app = scaled_app();
+            let unit_id = prepare_resident_unit(&mut app, 1, 2);
+            let (building_id, anchor_y) = place_hut(&mut app);
+            let floor_y = anchor_y + FLOOR_OFFSET_METERS;
+            let space_id = add_region(&mut app, building_id, floor_y);
+            {
+                let mut world = app.world_mut().resource_mut::<WorldData>();
+                world.set_unit_current_space(unit_id, space_id).unwrap();
+                let position = world.get_unit(unit_id).unwrap().placement.position;
+                let mut interior = position;
+                interior.local.0.y = floor_y;
+                world.relocate_unit(unit_id, interior).unwrap();
+            }
+            app.update();
+
+            let expected = anchor_y * EXAGGERATION + FLOOR_OFFSET_METERS;
+            assert!(
+                (render_y(&app, unit_id) - expected).abs() < 0.01,
+                "interior unit rendered at {} but the visible floor is at {expected}",
+                render_y(&app, unit_id)
+            );
+            assert!(
+                (render_y(&app, unit_id) - floor_y * EXAGGERATION).abs() > 1000.0,
+                "guard: the terrain-exaggerated mapping is what threw the unit off-world"
+            );
+        }
+
+        #[test]
+        fn two_regions_of_one_building_share_the_same_render_base() {
+            let mut app = scaled_app();
+            let unit_id = prepare_resident_unit(&mut app, 1, 2);
+            let (building_id, anchor_y) = place_hut(&mut app);
+            let ground = add_region(&mut app, building_id, anchor_y + FLOOR_OFFSET_METERS);
+            let upper = add_region(&mut app, building_id, anchor_y + FLOOR_OFFSET_METERS + 3.0);
+
+            let mut sample = |space_id, floor_y: f32| {
+                {
+                    let mut world = app.world_mut().resource_mut::<WorldData>();
+                    world.set_unit_current_space(unit_id, space_id).unwrap();
+                    let mut position = world.get_unit(unit_id).unwrap().placement.position;
+                    position.local.0.y = floor_y;
+                    world.relocate_unit(unit_id, position).unwrap();
+                }
+                app.update();
+                render_y(&app, unit_id)
+            };
+
+            let ground_y = sample(ground, anchor_y + FLOOR_OFFSET_METERS);
+            let upper_y = sample(upper, anchor_y + FLOOR_OFFSET_METERS + 3.0);
+            assert!(
+                ((upper_y - ground_y) - 3.0).abs() < 0.01,
+                "regions in one building must differ by their authored metric height, \
+                 got {ground_y} and {upper_y}"
+            );
+        }
+
+        #[test]
+        fn entering_and_leaving_an_interior_keeps_the_render_entity_and_children() {
+            let mut app = scaled_app();
+            let unit_id = prepare_resident_unit(&mut app, 1, 2);
+            let (building_id, anchor_y) = place_hut(&mut app);
+            let space_id = add_region(&mut app, building_id, anchor_y + FLOOR_OFFSET_METERS);
+            app.update();
+
+            let entity = app.world().resource::<UnitRenderIndex>().0[&unit_id];
+            let child = app.world_mut().spawn(Visibility::default()).id();
+            app.world_mut().entity_mut(entity).add_child(child);
+            let surface_y = render_y(&app, unit_id);
+
+            {
+                let mut world = app.world_mut().resource_mut::<WorldData>();
+                world.set_unit_current_space(unit_id, space_id).unwrap();
+                let mut position = world.get_unit(unit_id).unwrap().placement.position;
+                position.local.0.y = anchor_y + FLOOR_OFFSET_METERS;
+                world.relocate_unit(unit_id, position).unwrap();
+            }
+            app.update();
+
+            assert_eq!(
+                app.world().resource::<UnitRenderIndex>().0[&unit_id],
+                entity,
+                "entering an interior must not respawn the render entity"
+            );
+            assert!(app.world().get_entity(child).is_ok(), "child must survive");
+            assert!(
+                app.world()
+                    .entity(entity)
+                    .get::<Children>()
+                    .is_some_and(|children| children.contains(&child)),
+                "visual hierarchy must stay attached"
+            );
+            assert!(
+                !matches!(
+                    app.world().entity(entity).get::<Visibility>(),
+                    Some(Visibility::Hidden)
+                ),
+                "no system may hide a unit for being indoors"
+            );
+
+            {
+                let mut world = app.world_mut().resource_mut::<WorldData>();
+                world
+                    .set_unit_current_space(unit_id, SpaceId::SURFACE)
+                    .unwrap();
+                let mut position = world.get_unit(unit_id).unwrap().placement.position;
+                position.local.0.y = 8.0;
+                world.relocate_unit(unit_id, position).unwrap();
+            }
+            app.update();
+            assert!(
+                (render_y(&app, unit_id) - surface_y).abs() < 1e-3,
+                "leaving must restore the plain terrain mapping"
+            );
+            assert_eq!(
+                app.world().resource::<UnitRenderIndex>().0[&unit_id],
+                entity
+            );
+        }
     }
 
     #[test]

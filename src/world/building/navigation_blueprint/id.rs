@@ -33,6 +33,22 @@ impl std::fmt::Display for BuildingNavigationBlueprintId {
     }
 }
 
+/// Default catalog blueprint id for a building definition.
+///
+/// Feature-independent: the runtime read path must resolve editor-exported catalog
+/// entries in builds without `data-import`, which owns generation but not lookup.
+pub fn blueprint_id_for_building(
+    definition: &crate::world::building::catalog::BuildingDefinition,
+) -> BuildingNavigationBlueprintId {
+    if let Some(id) = &definition.navigation_blueprint_id {
+        BuildingNavigationBlueprintId::new(id.clone())
+    } else if let Some(id) = &definition.interior_profile_id {
+        BuildingNavigationBlueprintId::new(id.clone())
+    } else {
+        BuildingNavigationBlueprintId::new(format!("{}_nav", definition.id.as_str()))
+    }
+}
+
 pub fn validate_navigation_blueprint_id(id: &str) -> Result<(), String> {
     let trimmed = id.trim();
     if trimmed.is_empty() || trimmed != trimmed.to_lowercase() {

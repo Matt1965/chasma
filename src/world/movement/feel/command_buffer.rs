@@ -6,7 +6,8 @@ use crate::world::unit::{UnitOrder, UnitOrderError};
 use crate::world::{
     BuildingCatalog, DoodadCatalog, FootprintCatalog, NavigationConfig, NavigationError,
     PassabilityCatalogs, SpaceId, UnitCatalog, UnitId, UnitState, WorldData, WorldPosition,
-    find_path_with_spaces, resolve_navigation_space_at_position, resolve_navigation_start_space,
+    find_path_with_spaces, resolve_move_goal_space, resolve_navigation_start_space,
+    waypoint_space_ids,
 };
 
 /// One deferred order awaiting path resolution.
@@ -100,26 +101,22 @@ pub fn start_unit_move_to(
         .ok_or(UnitOrderError::UnitNotFound)?;
     let definition_id = record.definition_id.clone();
     let start = record.placement.position;
+    let unit_space_before = record.current_space_id;
     let start_space = resolve_navigation_start_space(
         world.building_navigation_runtime(),
         world.space_registry(),
         world.layout(),
         start,
-        record.current_space_id,
+        unit_space_before,
     );
-    if start_space != record.current_space_id {
+    if start_space != unit_space_before {
         let _ = world.set_unit_current_space(unit_id, start_space);
     }
     let definition = unit_catalog
         .get(&definition_id)
         .ok_or(UnitOrderError::DefinitionNotFound)?;
     let unit_ownership = world.get_unit(unit_id).map(|record| record.ownership());
-    let goal_space = resolve_navigation_space_at_position(
-        world.building_navigation_runtime(),
-        world.space_registry(),
-        world.layout(),
-        target,
-    );
+    let (goal_space, grounded_goal) = resolve_move_goal_space(world, start_space, target);
     let path = find_path_with_spaces(
         world,
         catalogs,
@@ -127,7 +124,7 @@ pub fn start_unit_move_to(
         definition.collision_radius_meters,
         definition.max_slope_degrees,
         start,
-        target,
+        grounded_goal,
         start_space,
         goal_space,
         unit_ownership,
@@ -136,6 +133,19 @@ pub fn start_unit_move_to(
     if path.is_empty() {
         return Err(UnitOrderError::NoPath);
     }
+    world.movement_authority_trace_mut().record_command(
+        crate::world::MovementCommandAuthorityRecord {
+            sequence: 0,
+            unit_id,
+            unit_space_before,
+            click_target: target,
+            start_space,
+            goal_space,
+            grounded_goal,
+            waypoint_spaces: waypoint_space_ids(&path.waypoints),
+        },
+    );
+    world.portal_transition_state_mut(unit_id).lockout_portal = None;
     world
         .set_unit_state(
             unit_id,

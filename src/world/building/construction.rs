@@ -328,19 +328,22 @@ fn complete_building(
         definition_id: record.definition_id.clone(),
         owner: record.ownership,
     });
-    if let Some(profile_id) = definition.interior_profile_id.as_deref() {
-        activate_building_interior(
-            world,
-            building_catalog,
-            interior_catalog,
-            doodad_catalog,
-            occupancy,
-            nav_catalog,
-            id,
-            &InteriorProfileId::new(profile_id),
-        )
-        .map_err(BuildingLifecycleError::Interior)?;
-    }
+    // Blueprint-owned navigation may activate without an interior profile (IN-11b).
+    let profile_id = definition
+        .interior_profile_id
+        .as_deref()
+        .map(InteriorProfileId::new);
+    activate_building_interior(
+        world,
+        building_catalog,
+        interior_catalog,
+        doodad_catalog,
+        occupancy,
+        nav_catalog,
+        id,
+        profile_id.as_ref(),
+    )
+    .map_err(BuildingLifecycleError::Interior)?;
     Ok(events)
 }
 
@@ -559,19 +562,21 @@ pub fn set_building_lifecycle_stage(
         world.mutate_building(id, |record| {
             record.vitals = BuildingVitals::full(definition.max_hp);
         });
-        if let Some(profile_id) = definition.interior_profile_id.as_deref() {
-            activate_building_interior(
-                world,
-                building_catalog,
-                interior_catalog,
-                doodad_catalog,
-                occupancy,
-                nav_catalog,
-                id,
-                &InteriorProfileId::new(profile_id),
-            )
-            .map_err(BuildingLifecycleError::Interior)?;
-        }
+        let profile_id = definition
+            .interior_profile_id
+            .as_deref()
+            .map(InteriorProfileId::new);
+        activate_building_interior(
+            world,
+            building_catalog,
+            interior_catalog,
+            doodad_catalog,
+            occupancy,
+            nav_catalog,
+            id,
+            profile_id.as_ref(),
+        )
+        .map_err(BuildingLifecycleError::Interior)?;
     } else if new_state == BuildingLifecycleState::Ruins {
         deactivate_building_interior(world, doodad_catalog, building_catalog, Some(occupancy), id)
             .map_err(BuildingLifecycleError::Interior)?;

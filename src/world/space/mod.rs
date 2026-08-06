@@ -21,7 +21,7 @@ pub use profile::{
     space_visible_in_view, two_story_hut_profile,
 };
 pub use registry::SpaceRegistry;
-pub use support::{ground_position_in_space, sample_support_height};
+pub use support::{ground_position_in_space, sample_support_height, space_vertical_reference_y};
 pub use transition::{UnitPortalTransitionState, try_portal_transition};
 
 #[cfg(any(test, feature = "dev"))]

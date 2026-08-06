@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use super::id::BuildingNavigationBlueprintId;
 
 /// Bump when generation algorithm or output semantics change.
-pub const NAVIGATION_BLUEPRINT_GENERATOR_VERSION: u32 = 1;
+pub const NAVIGATION_BLUEPRINT_GENERATOR_VERSION: u32 = 2;
 
 pub const NAVIGATION_BLUEPRINT_CACHE_MANIFEST_PATH: &str =
     "assets/buildings/navigation_blueprints/cache_manifest.ron";

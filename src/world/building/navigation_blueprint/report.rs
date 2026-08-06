@@ -2,6 +2,24 @@
 
 use super::id::BuildingNavigationBlueprintId;
 
+/// Mesh-slicing geometry diagnostics (client/tooling; not blueprint schema).
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct GeometryGenerationDiagnostics {
+    pub source_triangle_count: usize,
+    pub walkable_triangle_count: usize,
+    pub steep_triangle_discarded: usize,
+    pub floor_cluster_count: usize,
+    pub connected_component_count: usize,
+    pub candidate_region_count: usize,
+    pub candidate_connection_count: usize,
+    pub regions_discarded: usize,
+    pub used_collision_mesh: bool,
+    pub used_render_fallback: bool,
+    pub convex_hull_fallback_count: usize,
+    pub multiple_boundary_loops: usize,
+    pub ambiguous_opening_count: usize,
+}
+
 /// Compact entrance-generation diagnostics (client/tooling; not blueprint schema).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct EntranceGenerationDiagnostics {
@@ -24,6 +42,8 @@ pub struct NavigationBlueprintGenerationReport {
     pub errors: Vec<String>,
     /// Entrance candidate counts from the last generate pass (tooling only).
     pub entrance_diagnostics: EntranceGenerationDiagnostics,
+    /// Region/connection extraction stats from the last generate pass (tooling only).
+    pub geometry_diagnostics: GeometryGenerationDiagnostics,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

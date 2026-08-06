@@ -41,15 +41,21 @@ entity at most; despawned when [`WaterSettings::enabled`] is false.
 
 ## WaterSettings
 
-Tunable fields: `enabled`, `water_level`, `plane_size_meters`, `color`, `alpha`,
-`roughness`, `metallic`, `wave_speed`, `wave_scale` (wave fields reserved for future
-shaders; E11 does not animate).
+Tunable fields: `enabled`, `water_level`, `plane_size_meters`,
+`extent_padding_meters`, `color`, `alpha`, `roughness`, `metallic`, `wave_speed`,
+`wave_scale` (wave fields reserved for future shaders; E11 does not animate).
 
 ## Placement
 
-When [`WorldData::extent`] is set, plane width/depth and center derive from authored
-chunk bounds and [`WorldConfig`] layout. Otherwise fallback to `plane_size_meters`
-centered at `(size/2, water_level, size/2)` with a dev warning.
+When [`WorldData::extent`] is set, plane center derives from authored chunk bounds
+and [`WorldConfig`] layout. Plane width/depth equal the authored terrain size plus
+`extent_padding_meters` on **each** horizontal edge (symmetric; default
+16 384 m), so the water rectangle continues far beyond playable land and the
+terrain-edge cut is not visible under ordinary RTS camera use. Padding is clamped
+to ≥ 0 and does not change mesh subdivision (still one [`Rectangle`]).
+
+Otherwise fallback to `plane_size_meters` (default 65 536 m) centered at
+`(size/2, water_level, size/2)` with a dev warning.
 
 ## Lighting
 
@@ -65,7 +71,8 @@ lighting and time-of-day changes affect the surface naturally. No explicit
 | Shift+PageUp/Down | Adjust water level |
 | Shift+=/- | Adjust alpha |
 
-Startup logs (once): enabled, level, plane size, entity count.
+Startup logs (once): terrain size (when known), padding per side, final plane size,
+water level, entity count.
 
 # Future hooks
 

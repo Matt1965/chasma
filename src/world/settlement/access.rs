@@ -78,6 +78,22 @@ pub fn settlement_interaction_space(building: &crate::world::BuildingRecord) -> 
         .unwrap_or(SpaceId::SURFACE)
 }
 
+/// Whether a unit is in any space owned by the building (region-per-space aware).
+pub fn unit_is_in_building_space(
+    world: &WorldData,
+    unit: &UnitRecord,
+    building_id: BuildingId,
+) -> bool {
+    if unit.current_space_id.is_surface() {
+        return false;
+    }
+    world
+        .space_registry()
+        .building_space_ids(building_id)
+        .iter()
+        .any(|space_id| *space_id == unit.current_space_id)
+}
+
 pub fn can_unit_deposit_to_treasury(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
@@ -116,8 +132,7 @@ pub fn can_unit_deposit_to_treasury(
     if !policy.allows(settlement.ownership, unit) {
         return TreasuryAccessResult::Denied(TreasuryError::AccessDenied);
     }
-    let building_space = settlement_interaction_space(building);
-    if unit.current_space_id != building_space {
+    if !unit_is_in_building_space(world, unit, settlement.anchor_building_id) {
         return TreasuryAccessResult::Denied(TreasuryError::WrongSpace);
     }
     let layout = world.layout();

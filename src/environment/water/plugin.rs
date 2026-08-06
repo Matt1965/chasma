@@ -4,7 +4,8 @@ use bevy::prelude::*;
 
 use super::settings::WaterSettings;
 use super::spawn::{
-    WaterSpawnState, ensure_environment_water, sync_environment_water_presentation,
+    WaterSpawnState, ensure_environment_water, log_runtime_water_diagnostic_once,
+    sync_environment_water_presentation,
 };
 
 /// Visual water surface presentation (Environment layer).
@@ -20,6 +21,7 @@ impl Plugin for WaterPlugin {
                 (
                     ensure_environment_water,
                     sync_environment_water_presentation,
+                    log_runtime_water_diagnostic_once,
                 )
                     .chain(),
             );

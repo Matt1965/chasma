@@ -18,7 +18,7 @@ use crate::world::{
     is_cell_walkable, occupied_cells_for_footprint_yaw, query_passability_at,
 };
 
-use super::helpers::{render_position, xz_to_render_y};
+use super::helpers::{closed_polygon_boundary_segments, render_position, xz_to_render_y};
 use super::nav_cells::draw_xz_quad;
 
 /// Specialized overlays (footprints / portals / occupancy) keep a local focus radius.
@@ -144,18 +144,7 @@ pub fn draw_navigation_debug_overlay(
         );
     }
 
-    if settings.nav_entrances {
-        draw_portal_markers(
-            &mut gizmos,
-            &world,
-            layout,
-            vertical_scale,
-            focus,
-            world_selection.building_id,
-        );
-    }
-
-    if settings.nav_blueprint || settings.nav_entrances || settings.nav_footprints {
+    if settings.nav_footprints {
         let active_space = world_selection
             .primary_unit(&selection)
             .or_else(|| primary_selected_unit(&selection))
@@ -325,6 +314,7 @@ pub(crate) fn block_reason_color(reason: PassabilityBlockReason) -> Color {
         PassabilityBlockReason::CorruptFootprint => Color::srgba(0.5, 0.1, 0.1, 0.8),
         PassabilityBlockReason::MissingDefinition => Color::srgba(0.4, 0.4, 0.4, 0.8),
         PassabilityBlockReason::InvalidCell => Color::srgba(0.25, 0.25, 0.28, 0.7),
+        PassabilityBlockReason::AgentClearanceInsufficient => Color::srgba(1.0, 0.35, 0.2, 0.88),
     }
 }
 
@@ -533,24 +523,23 @@ fn draw_runtime_blueprint_floors(
             continue;
         }
 
-        for floor in &runtime.floors {
-            if floor.world_outline_xz.len() < 2 {
+        for region in &runtime.regions {
+            if region.world_outline_xz.len() < 2 {
                 continue;
             }
-            let active = active_space == Some(floor.space_id);
+            let active = active_space == Some(region.space_id);
             let floor_y = world
                 .space_registry()
-                .get_space(floor.space_id)
+                .get_space(region.space_id)
                 .map(|space| space.floor_y_global)
-                .unwrap_or(floor.elevation_meters);
+                .unwrap_or(region.elevation_meters);
             let edge_color = if active {
                 Color::srgba(1.0, 0.85, 0.15, 0.95)
             } else {
                 Color::srgba(0.55, 0.35, 0.95, 0.75)
             };
-            let fill_color = Color::srgba(0.55, 0.35, 0.95, if active { 0.2 } else { 0.08 });
 
-            let verts: Vec<Vec3> = floor
+            let verts: Vec<Vec3> = region
                 .world_outline_xz
                 .iter()
                 .map(|xz| {
@@ -565,13 +554,8 @@ fn draw_runtime_blueprint_floors(
                 })
                 .collect();
 
-            for i in 0..verts.len() {
-                let a = verts[i];
-                let b = verts[(i + 1) % verts.len()];
-                gizmos.line(a, b, edge_color);
-                if active {
-                    gizmos.line(a, verts[(i + 2) % verts.len()], fill_color);
-                }
+            for (i, j) in closed_polygon_boundary_segments(verts.len()) {
+                gizmos.line(verts[i], verts[j], edge_color);
             }
             if active {
                 let centroid =

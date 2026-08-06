@@ -2,14 +2,18 @@
 
 use bevy::prelude::*;
 
+use bevy::window::PrimaryWindow;
+
 use super::font::{
     MENU_BANNER_FONT_SIZE, MENU_BODY_FONT_SIZE, MENU_BUTTON_FONT_SIZE, MENU_HEADING_FONT_SIZE,
     MENU_TITLE_FONT_SIZE, PAUSE_CONTROL_FONT_SIZE, PauseMenuText, menu_text_font,
 };
 use super::navigation::{MenuNavigation, MenuPage, authoring_banner_label};
 use super::screen::{GameSessionKind, GameSessionState};
+use super::settings::{SettingsHostKind, SettingsMenuState, spawn_settings_panel};
 use super::systems::close_pause_menu;
 use super::transition::{SessionTransitionKind, SessionTransitionRequest};
+use crate::camera::CameraSettings;
 use crate::simulation::SimulationControlState;
 use crate::ui::gameplay::InventoryUiState;
 
@@ -90,6 +94,8 @@ pub fn spawn_pause_menu(commands: &mut Commands) {
                 PauseMenuPageHost,
                 Node {
                     margin: UiRect::top(Val::Px(20.0)),
+                    width: Val::Percent(92.0),
+                    max_width: Val::Px(920.0),
                     flex_direction: FlexDirection::Column,
                     align_items: AlignItems::Center,
                     row_gap: Val::Px(10.0),
@@ -137,6 +143,7 @@ pub fn handle_pause_menu_buttons(
         (Changed<Interaction>, With<Button>),
     >,
     mut nav: ResMut<MenuNavigation>,
+    mut settings: ResMut<SettingsMenuState>,
     mut pause_ctx: ResMut<super::navigation::PauseMenuContext>,
     mut control: ResMut<SimulationControlState>,
     mut inventory: ResMut<InventoryUiState>,
@@ -151,7 +158,10 @@ pub fn handle_pause_menu_buttons(
                     PauseMenuAction::Resume => {
                         close_pause_menu(&mut nav, &mut pause_ctx, &mut control);
                     }
-                    PauseMenuAction::Settings => nav.go_settings(),
+                    PauseMenuAction::Settings => {
+                        settings.reset_for_open();
+                        nav.go_settings();
+                    }
                     PauseMenuAction::ReturnToMainMenu => nav.go_confirm_return(),
                     PauseMenuAction::QuitToDesktop => nav.go_confirm_quit(),
                     PauseMenuAction::Back | PauseMenuAction::CancelConfirm => nav.back_to_root(),
@@ -176,13 +186,17 @@ pub fn handle_pause_menu_buttons(
 
 pub fn sync_pause_menu_page(
     nav: Res<MenuNavigation>,
+    settings: Res<SettingsMenuState>,
+    camera: Res<CameraSettings>,
     session: Res<GameSessionState>,
+    windows: Query<&Window, With<PrimaryWindow>>,
     host: Query<Entity, With<PauseMenuPageHost>>,
     mut banner: Query<&mut Text, With<PauseAuthoringBanner>>,
     mut resume_label: Query<
         &mut Text,
         (With<PauseResumeButtonLabel>, Without<PauseAuthoringBanner>),
     >,
+    mut root_buttons: Query<(&PauseMenuAction, &mut Visibility), With<Button>>,
     mut commands: Commands,
 ) {
     if let Ok(mut text) = banner.single_mut() {
@@ -202,9 +216,27 @@ pub fn sync_pause_menu_page(
         }
     }
 
-    if !nav.is_changed() && !nav.is_added() {
+    if !nav.is_changed() && !nav.is_added() && !settings.is_changed() && !settings.is_added() {
         return;
     }
+
+    let hide_roots_for_settings = matches!(nav.page, MenuPage::Settings);
+    for (action, mut vis) in &mut root_buttons {
+        *vis = match *action {
+            PauseMenuAction::Back
+            | PauseMenuAction::CancelConfirm
+            | PauseMenuAction::ConfirmReturn
+            | PauseMenuAction::ConfirmQuit => Visibility::Inherited,
+            _ => {
+                if hide_roots_for_settings {
+                    Visibility::Hidden
+                } else {
+                    Visibility::Visible
+                }
+            }
+        };
+    }
+
     let Ok(host_entity) = host.single() else {
         return;
     };
@@ -212,12 +244,11 @@ pub fn sync_pause_menu_page(
     match nav.page {
         MenuPage::Root => {}
         MenuPage::Settings => {
+            let Ok(window) = windows.single() else {
+                return;
+            };
             commands.entity(host_entity).with_children(|p| {
-                spawn_pause_placeholder(
-                    p,
-                    "Settings",
-                    "Settings controls will be connected in a later pass.",
-                );
+                spawn_settings_panel(p, SettingsHostKind::Pause, &settings, &camera, window);
             });
         }
         MenuPage::ConfirmReturnToMainMenu => {
@@ -244,22 +275,6 @@ pub fn sync_pause_menu_page(
         }
         MenuPage::Credits => {}
     }
-}
-
-fn spawn_pause_placeholder(parent: &mut ChildSpawnerCommands, title: &str, body: &str) {
-    parent.spawn((
-        PauseMenuText,
-        Text::new(title.to_string()),
-        menu_text_font(MENU_HEADING_FONT_SIZE),
-        TextColor(Color::srgb(0.92, 0.94, 0.96)),
-    ));
-    parent.spawn((
-        PauseMenuText,
-        Text::new(body.to_string()),
-        menu_text_font(MENU_BODY_FONT_SIZE),
-        TextColor(Color::srgb(0.72, 0.76, 0.8)),
-    ));
-    spawn_pause_button(parent, "Back", PauseMenuAction::Back);
 }
 
 fn spawn_confirm(

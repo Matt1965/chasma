@@ -137,6 +137,7 @@ pub fn passability_blocks_movement(result: &PassabilityResult) -> bool {
                 reason,
                 PassabilityBlockReason::DoodadOccupied
                     | PassabilityBlockReason::BuildingOccupied
+                    | PassabilityBlockReason::AgentClearanceInsufficient
                     | PassabilityBlockReason::MissingDefinition
                     | PassabilityBlockReason::CorruptFootprint
                     | PassabilityBlockReason::InvalidCell

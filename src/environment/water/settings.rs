@@ -3,7 +3,10 @@
 use bevy::prelude::*;
 
 /// Default square plane size when authored world extent is not yet available.
-pub const DEFAULT_WATER_PLANE_SIZE_METERS: f32 = 2048.0;
+pub const DEFAULT_WATER_PLANE_SIZE_METERS: f32 = 65_536.0;
+
+/// Horizontal meters of water beyond each authored terrain edge (symmetric).
+pub const DEFAULT_WATER_EXTENT_PADDING_METERS: f32 = 16_384.0;
 
 /// Visual-only water configuration (Environment layer; not simulation truth).
 #[derive(Debug, Clone, Resource, Reflect, PartialEq)]
@@ -14,6 +17,8 @@ pub struct WaterSettings {
     pub water_level: f32,
     /// Fallback plane edge length when [`crate::world::WorldData::extent`] is unset.
     pub plane_size_meters: f32,
+    /// Meters of water added beyond each authored terrain edge (clamped ≥ 0).
+    pub extent_padding_meters: f32,
     pub color: Color,
     pub alpha: f32,
     pub roughness: f32,
@@ -30,6 +35,7 @@ impl Default for WaterSettings {
             enabled: true,
             water_level: 56.0,
             plane_size_meters: DEFAULT_WATER_PLANE_SIZE_METERS,
+            extent_padding_meters: DEFAULT_WATER_EXTENT_PADDING_METERS,
             color: Color::srgb(0.08, 0.32, 0.52),
             alpha: 0.62,
             roughness: 0.08,
@@ -49,7 +55,12 @@ mod tests {
         let settings = WaterSettings::default();
         assert!(settings.enabled);
         assert!(settings.water_level.is_finite());
-        assert!(settings.plane_size_meters > 0.0);
+        assert_eq!(settings.plane_size_meters, DEFAULT_WATER_PLANE_SIZE_METERS);
+        assert_eq!(settings.plane_size_meters, 65_536.0);
+        assert_eq!(
+            settings.extent_padding_meters,
+            DEFAULT_WATER_EXTENT_PADDING_METERS
+        );
         assert!(settings.alpha > 0.0 && settings.alpha <= 1.0);
         assert!(settings.roughness >= 0.0);
         assert!(settings.metallic >= 0.0);

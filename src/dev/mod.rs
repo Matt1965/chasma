@@ -79,12 +79,17 @@ pub use inspector::{
 };
 pub use navigation_editor::{
     BlueprintInspectionScenePresentation, NavigationEditorBlockedAction, NavigationEditorUiState,
-    NavigationGenerationDiagnostics, guard_dirty_navigation_selection,
-    handle_navigation_editor_actions, handle_navigation_editor_opacity_slider,
-    handle_open_navigation_editor_buttons, navigation_editor_owns_session, open_navigation_editor,
-    setup_navigation_editor_panel, spawn_open_navigation_editor_button,
-    sync_blueprint_inspection_scene_visibility, sync_navigation_editor_opacity_slider,
-    sync_navigation_editor_panel, sync_open_navigation_editor_buttons,
+    NavigationGenerationDiagnostics, apply_navigation_editor_disclosure_hints,
+    guard_dirty_navigation_selection, handle_navigation_editor_actions,
+    handle_navigation_editor_opacity_slider, handle_open_navigation_editor_buttons,
+    navigation_editor_owns_session, open_navigation_editor, setup_navigation_editor_panel,
+    spawn_open_navigation_editor_button, sync_blueprint_inspection_scene_visibility,
+    sync_navigation_editor_action_buttons, sync_navigation_editor_disclosure_state,
+    sync_navigation_editor_opacity_slider, sync_navigation_editor_overlay_status,
+    sync_navigation_editor_panel, sync_navigation_editor_panel_content,
+    sync_navigation_editor_responsive_layout, sync_navigation_editor_section_visibility,
+    sync_navigation_editor_toast, sync_navigation_editor_window_layout,
+    sync_open_navigation_editor_buttons,
 };
 pub use save_window::{
     handle_save_window_interaction, setup_save_window_panel, sync_dev_save_panel_visibility,
@@ -231,6 +236,8 @@ impl Plugin for DevModePlugin {
                         sync_save_window_content,
                         sync_save_window_name_field_style,
                         sync_dev_panel_button_styles,
+                        widgets::sync_dev_button_chrome,
+                        widgets::sync_status_line_color,
                         sync_dev_catalog_panel_visibility,
                         sync_debug_panel_content,
                         sync_debug_panel_button_styles,
@@ -256,7 +263,7 @@ impl Plugin for DevModePlugin {
             )
             .add_systems(
                 Update,
-                (sync_terrain_field_button_styles,).in_set(DevModeInputSystems),
+                widgets::tick_dev_button_activation_flashes.in_set(DevModeInputSystems),
             )
             .add_systems(
                 Update,
@@ -275,7 +282,16 @@ impl Plugin for DevModePlugin {
             .add_systems(
                 Update,
                 (
+                    apply_navigation_editor_disclosure_hints,
+                    sync_navigation_editor_window_layout,
+                    sync_navigation_editor_responsive_layout,
+                    sync_navigation_editor_overlay_status,
+                    sync_navigation_editor_panel_content,
                     sync_navigation_editor_panel,
+                    sync_navigation_editor_action_buttons,
+                    sync_navigation_editor_section_visibility,
+                    sync_navigation_editor_disclosure_state,
+                    sync_navigation_editor_toast,
                     sync_navigation_editor_opacity_slider,
                     handle_navigation_editor_opacity_slider,
                 )

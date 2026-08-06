@@ -8,7 +8,19 @@ pub const LAUNCHER_HEIGHT_PX: f32 = 28.0;
 pub const LAUNCHER_TOP_PX: f32 = 12.0;
 pub const LAUNCHER_LEFT_PX: f32 = 12.0;
 pub const DEFAULT_PANEL_WIDTH_PX: f32 = 368.0;
+/// Default Navigation Editor width (roughly 2x legacy dev panels).
+pub const NAVIGATION_EDITOR_WIDTH_PX: f32 = 760.0;
+/// Minimum usable Navigation Editor width before single-column fallback.
+pub const NAVIGATION_EDITOR_MIN_WIDTH_PX: f32 = 620.0;
+/// Viewport margin when clamping Navigation Editor width.
+pub const NAVIGATION_EDITOR_VIEWPORT_MARGIN_PX: f32 = 12.0;
 pub const DEFAULT_PANEL_BODY_PADDING_PX: f32 = 10.0;
+/// Margin between the Navigation Editor bottom edge and the viewport bottom.
+pub const NAV_EDITOR_VIEWPORT_MARGIN_PX: f32 = 12.0;
+/// Minimum scrollable body height for the Navigation Editor.
+pub const NAV_EDITOR_MIN_BODY_HEIGHT_PX: f32 = 180.0;
+/// Upper cap for Navigation Editor body height on very tall displays.
+pub const NAV_EDITOR_MAX_BODY_HEIGHT_PX: f32 = 720.0;
 
 /// Top-left screen position for a window given grab offset preservation.
 pub fn window_position_from_pointer(pointer: Vec2, grab_offset: Vec2) -> Vec2 {
@@ -51,6 +63,25 @@ pub fn default_catalog_position(viewport: Vec2, window_width: f32) -> Vec2 {
     let top = LAUNCHER_TOP_PX + LAUNCHER_HEIGHT_PX + 6.0;
     let x = (viewport.x - window_width - 12.0).max(LAUNCHER_LEFT_PX);
     Vec2::new(x, top)
+}
+
+/// Resolve Navigation Editor panel width for the current viewport.
+pub fn navigation_editor_panel_width(viewport: Vec2) -> f32 {
+    let max_width = (viewport.x - NAVIGATION_EDITOR_VIEWPORT_MARGIN_PX * 2.0).max(320.0);
+    NAVIGATION_EDITOR_WIDTH_PX
+        .min(max_width)
+        .max(NAVIGATION_EDITOR_MIN_WIDTH_PX.min(max_width))
+}
+
+/// Whether the Navigation Editor should use its two-column body layout.
+pub fn navigation_editor_uses_two_columns(panel_width: f32) -> bool {
+    panel_width >= NAVIGATION_EDITOR_MIN_WIDTH_PX
+}
+
+/// Maximum scrollable body height for the Navigation Editor at the given viewport and window top.
+pub fn navigation_editor_body_max_height(viewport: Vec2, window_top: f32) -> f32 {
+    let available = viewport.y - window_top - TITLE_BAR_HEIGHT_PX - NAV_EDITOR_VIEWPORT_MARGIN_PX;
+    available.clamp(NAV_EDITOR_MIN_BODY_HEIGHT_PX, NAV_EDITOR_MAX_BODY_HEIGHT_PX)
 }
 
 /// Default top-left for the Navigation Editor (center-right, below launcher).
@@ -146,5 +177,53 @@ mod tests {
     fn z_index_grows_with_focus_but_is_bounded_per_stack() {
         assert_eq!(z_index_for_focus_order(0), 900);
         assert_eq!(z_index_for_focus_order(3), 903);
+    }
+
+    #[test]
+    fn navigation_editor_width_defaults_near_target() {
+        let width = navigation_editor_panel_width(Vec2::new(1920.0, 1080.0));
+        assert!((width - NAVIGATION_EDITOR_WIDTH_PX).abs() < 1.0);
+    }
+
+    #[test]
+    fn navigation_editor_width_clamps_to_viewport() {
+        let width = navigation_editor_panel_width(Vec2::new(640.0, 480.0));
+        assert!(width <= 640.0 - NAVIGATION_EDITOR_VIEWPORT_MARGIN_PX * 2.0);
+    }
+
+    #[test]
+    fn navigation_editor_two_column_threshold() {
+        assert!(navigation_editor_uses_two_columns(
+            NAVIGATION_EDITOR_MIN_WIDTH_PX
+        ));
+        assert!(!navigation_editor_uses_two_columns(500.0));
+    }
+
+    #[test]
+    fn navigation_editor_body_height_clamps_to_viewport_720p() {
+        let viewport = Vec2::new(1280.0, 720.0);
+        let width = navigation_editor_panel_width(viewport);
+        let top = default_navigation_editor_position(viewport, width).y;
+        let height = navigation_editor_body_max_height(viewport, top);
+        assert!(height >= NAV_EDITOR_MIN_BODY_HEIGHT_PX);
+        assert!(top + TITLE_BAR_HEIGHT_PX + height + NAV_EDITOR_VIEWPORT_MARGIN_PX <= viewport.y);
+    }
+
+    #[test]
+    fn navigation_editor_body_height_grows_on_1080p() {
+        let viewport = Vec2::new(1920.0, 1080.0);
+        let width = navigation_editor_panel_width(viewport);
+        let top = default_navigation_editor_position(viewport, width).y;
+        let height_1080 = navigation_editor_body_max_height(viewport, top);
+        let height_720 = navigation_editor_body_max_height(Vec2::new(1280.0, 720.0), top);
+        assert!(height_1080 > height_720);
+    }
+
+    #[test]
+    fn navigation_editor_body_height_respects_minimum_on_short_viewport() {
+        let viewport = Vec2::new(800.0, 480.0);
+        let top = 300.0;
+        let height = navigation_editor_body_max_height(viewport, top);
+        assert_eq!(height, NAV_EDITOR_MIN_BODY_HEIGHT_PX);
     }
 }

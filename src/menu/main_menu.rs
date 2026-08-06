@@ -10,7 +10,9 @@ use super::font::{
     menu_text_font,
 };
 use super::navigation::{MenuNavigation, MenuPage};
+use super::settings::{SettingsHostKind, SettingsMenuState, spawn_settings_panel};
 use super::transition::{SessionTransitionKind, SessionTransitionRequest};
+use crate::camera::CameraSettings;
 
 /// Asset-relative path for the Main Menu background (under `assets/`).
 pub const MAIN_MENU_BACKGROUND_PATH: &str = "images/chasma_background.png";
@@ -134,6 +136,8 @@ pub fn spawn_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
                 MainMenuPageHost,
                 Node {
                     margin: UiRect::top(Val::Px(24.0)),
+                    width: Val::Percent(92.0),
+                    max_width: Val::Px(920.0),
                     flex_direction: FlexDirection::Column,
                     align_items: AlignItems::Center,
                     row_gap: Val::Px(10.0),
@@ -227,6 +231,7 @@ pub fn handle_main_menu_buttons(
         (Changed<Interaction>, With<Button>),
     >,
     mut nav: ResMut<MenuNavigation>,
+    mut settings: ResMut<SettingsMenuState>,
     mut transitions: ResMut<SessionTransitionRequest>,
     mut exit: MessageWriter<AppExit>,
 ) {
@@ -242,7 +247,10 @@ pub fn handle_main_menu_buttons(
                     MainMenuAction::EditDefaultWorld => {
                         transitions.request(SessionTransitionKind::StartDefaultWorldAuthoring);
                     }
-                    MainMenuAction::Settings => nav.go_settings(),
+                    MainMenuAction::Settings => {
+                        settings.reset_for_open();
+                        nav.go_settings();
+                    }
                     MainMenuAction::Credits => nav.go_credits(),
                     MainMenuAction::Quit => {
                         exit.write(AppExit::Success);
@@ -258,11 +266,14 @@ pub fn handle_main_menu_buttons(
 
 pub fn sync_main_menu_page(
     nav: Res<MenuNavigation>,
+    settings: Res<SettingsMenuState>,
+    camera: Res<CameraSettings>,
+    windows: Query<&Window, With<PrimaryWindow>>,
     host: Query<Entity, With<MainMenuPageHost>>,
     mut root_buttons: Query<(&MainMenuAction, &mut Visibility), With<Button>>,
     mut commands: Commands,
 ) {
-    if !nav.is_changed() && !nav.is_added() {
+    if !nav.is_changed() && !nav.is_added() && !settings.is_changed() && !settings.is_added() {
         return;
     }
     let show_root = matches!(nav.page, MenuPage::Root);
@@ -291,12 +302,11 @@ pub fn sync_main_menu_page(
     match nav.page {
         MenuPage::Root => {}
         MenuPage::Settings => {
+            let Ok(window) = windows.single() else {
+                return;
+            };
             commands.entity(host_entity).with_children(|p| {
-                spawn_placeholder_page(
-                    p,
-                    "Settings",
-                    "Settings controls will be connected in a later pass.",
-                );
+                spawn_settings_panel(p, SettingsHostKind::Main, &settings, &camera, window);
             });
         }
         MenuPage::Credits => {

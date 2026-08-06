@@ -1,14 +1,17 @@
 use bevy::prelude::*;
+use std::collections::HashSet;
 
 use super::catalog::{InteriorChildKind, InteriorProfile};
 use super::door::DoorRecord;
 use super::door_store::DoorStore;
 use super::error::InteriorError;
 use super::id::InteriorProfileId;
+use super::outcome::{InteriorActivationOutcome, InteriorActivationStatus};
 use crate::world::building::catalog::{BuildingCatalog, BuildingDefinition};
 use crate::world::building::navigation_blueprint::{
-    BuildingNavigationBlueprintCatalog, blueprint_portal_templates, blueprint_space_templates,
-    build_navigation_runtime, register_building_navigation_profile,
+    BuildingNavigationBlueprint, BuildingNavigationBlueprintCatalog,
+    ResolvedBuildingNavigationBlueprint, blueprint_portal_templates, blueprint_space_templates,
+    build_navigation_runtime, classify_blueprint_authority, register_building_navigation_profile,
     resolve_building_navigation_blueprint,
 };
 use crate::world::building::record::BuildingRecord;
@@ -21,7 +24,12 @@ use crate::world::{
     register_building_space_profile,
 };
 
-/// Activate authored interior spaces, doors, and child objects when a building completes.
+/// Activate interior navigation and, when present, interior presentation.
+///
+/// Navigation is owned by the resolved navigation blueprint; the interior profile is
+/// optional presentation (children, authored doors). Either may activate without the
+/// other, so a building with a valid blueprint and no profile still gets runtime
+/// spaces and portals (IN-11b).
 pub fn activate_building_interior(
     world: &mut WorldData,
     building_catalog: &BuildingCatalog,
@@ -30,21 +38,12 @@ pub fn activate_building_interior(
     occupancy: OccupancyCatalogs<'_>,
     nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
     building_id: BuildingId,
-    profile_id: &InteriorProfileId,
-) -> Result<(), InteriorError> {
+    profile_id: Option<&InteriorProfileId>,
+) -> Result<InteriorActivationOutcome, InteriorError> {
     let record = world
         .get_building(building_id)
         .cloned()
         .ok_or(InteriorError::ParentBuildingMissing(building_id))?;
-    if record.interior.activated && !world.door_store().building_door_ids(building_id).is_empty() {
-        return Err(InteriorError::BuildingInteriorAlreadyActive(building_id));
-    }
-    let skip_children = !record.interior.child_doodad_ids.is_empty()
-        || !record.interior.child_building_ids.is_empty();
-    let profile = interior_catalog
-        .get(profile_id)
-        .ok_or_else(|| InteriorError::MissingInteriorProfile(profile_id.clone()))?;
-
     let definition = building_catalog.get(&record.definition_id).ok_or_else(|| {
         InteriorError::InteriorSpawnFailed {
             building_id,
@@ -52,17 +51,62 @@ pub fn activate_building_interior(
         }
     })?;
 
-    let layout = world.layout();
-    let blueprint = nav_catalog.and_then(|catalog| {
-        resolve_building_navigation_blueprint(
-            definition,
-            catalog,
-            record.interior.navigation_blueprint_override.as_ref(),
-        )
-        .ok()
-        .flatten()
-    });
+    if record.interior.activated && !world.door_store().building_door_ids(building_id).is_empty() {
+        record_outcome(
+            world,
+            InteriorActivationOutcome::new(
+                building_id,
+                record.definition_id.clone(),
+                InteriorActivationStatus::AlreadyActivated,
+            ),
+        );
+        return Err(InteriorError::BuildingInteriorAlreadyActive(building_id));
+    }
 
+    // Navigation authority, resolved independently of the interior profile.
+    let blueprint =
+        resolve_navigation_for_activation(&record, definition, nav_catalog, building_id).map_err(
+            |(err, reason)| {
+                record_outcome(
+                    world,
+                    InteriorActivationOutcome::new(
+                        building_id,
+                        record.definition_id.clone(),
+                        InteriorActivationStatus::BlueprintResolutionFailed { reason },
+                    ),
+                );
+                err
+            },
+        )?;
+
+    // Presentation authority, resolved independently of the blueprint.
+    let profile = profile_id.and_then(|id| interior_catalog.get(id));
+    if profile.is_none() && blueprint.is_none() {
+        // The profile was the only declared authority and it does not resolve, so
+        // nothing at all can be activated.
+        if let Some(id) = profile_id {
+            record_outcome(
+                world,
+                InteriorActivationOutcome::new(
+                    building_id,
+                    record.definition_id.clone(),
+                    InteriorActivationStatus::NavigationProfileMissing {
+                        profile_key: id.as_str().to_string(),
+                    },
+                ),
+            );
+            return Err(InteriorError::MissingInteriorProfile(id.clone()));
+        }
+        let outcome = InteriorActivationOutcome::new(
+            building_id,
+            record.definition_id.clone(),
+            InteriorActivationStatus::NoBlueprintNoProfile,
+        );
+        record_outcome(world, outcome.clone());
+        return Ok(outcome);
+    }
+
+    let layout = world.layout();
     let (space_keys, portal_keys) = if let Some(resolved) = blueprint.as_ref() {
         let blueprint = resolved.blueprint();
         let spaces = blueprint_space_templates(blueprint);
@@ -83,19 +127,23 @@ pub fn activate_building_interior(
                 blueprint,
                 model,
                 &keys.0,
+                &keys.1,
             ));
         let (space_keys, mut portal_keys) = keys;
-        supplement_door_portals_from_profile(
-            world.space_registry_mut(),
-            &record,
-            definition,
-            layout,
-            profile,
-            &space_keys,
-            &mut portal_keys,
-        )?;
+        if let Some(profile) = profile {
+            supplement_door_portals_from_profile(
+                world.space_registry_mut(),
+                &record,
+                definition,
+                layout,
+                profile,
+                &space_keys,
+                &mut portal_keys,
+            )?;
+        }
         (space_keys, portal_keys)
     } else {
+        let profile = profile.expect("profile present when no blueprint resolved");
         register_building_space_profile(
             world.space_registry_mut(),
             &record,
@@ -106,27 +154,6 @@ pub fn activate_building_interior(
     };
 
     let mut door_ids = Vec::new();
-    for template in &profile.doors {
-        let portal_id = portal_keys
-            .get(template.portal_key)
-            .copied()
-            .ok_or_else(|| InteriorError::InvalidDoorPortal {
-                door_key: template.key.to_string(),
-                portal_key: template.portal_key.to_string(),
-            })?;
-        let door_id = world.door_store_mut().allocate_door_id();
-        world.door_store_mut().insert_door(DoorRecord {
-            id: door_id,
-            owning_building_id: building_id,
-            portal_id,
-            definition_key: template.key.to_string(),
-            state: template.initial_state,
-            access: template.access,
-        })?;
-        DoorStore::sync_portal_enabled(world, door_id)?;
-        door_ids.push(door_id);
-    }
-
     let mut child_doodad_ids = record
         .interior
         .child_doodad_ids
@@ -139,20 +166,57 @@ pub fn activate_building_interior(
         .iter()
         .map(|id| BuildingId::new(*id))
         .collect::<Vec<_>>();
-    if !skip_children {
-        child_doodad_ids.clear();
-        child_building_ids.clear();
-        spawn_interior_children(
-            world,
-            building_catalog,
-            doodad_catalog,
-            occupancy,
-            &record,
-            profile,
-            &space_keys,
-            &mut child_doodad_ids,
-            &mut child_building_ids,
-        )?;
+
+    if let Some(profile) = profile {
+        let mut seen_door_portal_keys = HashSet::new();
+        for template in &profile.doors {
+            if !seen_door_portal_keys.insert(template.portal_key) {
+                return Err(InteriorError::InvalidDoorPortal {
+                    door_key: template.key.to_string(),
+                    portal_key: template.portal_key.to_string(),
+                });
+            }
+            if !profile_door_controls_portal(
+                blueprint.as_ref().map(|resolved| resolved.blueprint()),
+                profile,
+                template.key,
+                template.portal_key,
+            ) {
+                continue;
+            }
+            let Some(portal_id) = portal_keys.get(template.portal_key).copied() else {
+                continue;
+            };
+            let door_id = world.door_store_mut().allocate_door_id();
+            world.door_store_mut().insert_door(DoorRecord {
+                id: door_id,
+                owning_building_id: building_id,
+                portal_id,
+                definition_key: template.key.to_string(),
+                state: template.initial_state,
+                access: template.access,
+            })?;
+            DoorStore::sync_portal_enabled(world, door_id)?;
+            door_ids.push(door_id);
+        }
+
+        let skip_children = !record.interior.child_doodad_ids.is_empty()
+            || !record.interior.child_building_ids.is_empty();
+        if !skip_children {
+            child_doodad_ids.clear();
+            child_building_ids.clear();
+            spawn_interior_children(
+                world,
+                building_catalog,
+                doodad_catalog,
+                occupancy,
+                &record,
+                profile,
+                &space_keys,
+                &mut child_doodad_ids,
+                &mut child_building_ids,
+            )?;
+        }
     }
 
     let space_ids: Vec<String> = world
@@ -163,11 +227,14 @@ pub fn activate_building_interior(
         .collect();
 
     let preserved_override = record.interior.navigation_blueprint_override.clone();
+    let recorded_profile_id = profile_id
+        .map(|id| id.as_str().to_string())
+        .or(record.interior.profile_id.clone());
 
     world.mutate_building(building_id, |building| {
         building.spaces.space_ids = space_ids;
         building.interior = BuildingInteriorState {
-            profile_id: Some(profile_id.as_str().to_string()),
+            profile_id: recorded_profile_id,
             navigation_blueprint_override: preserved_override,
             door_ids: door_ids.iter().map(|id| id.raw()).collect(),
             child_doodad_ids: child_doodad_ids.iter().map(|id| id.raw()).collect(),
@@ -177,7 +244,140 @@ pub fn activate_building_interior(
         };
     });
 
-    Ok(())
+    let status = match (blueprint.is_some(), profile.is_some(), profile_id) {
+        (true, true, _) => InteriorActivationStatus::NavigationAndProfile,
+        (true, false, Some(id)) => InteriorActivationStatus::NavigationProfileMissing {
+            profile_key: id.as_str().to_string(),
+        },
+        (true, false, None) => InteriorActivationStatus::NavigationWithoutProfile,
+        (false, _, _) => InteriorActivationStatus::ProfileWithoutNavigation,
+    };
+    let mut outcome =
+        InteriorActivationOutcome::new(building_id, record.definition_id.clone(), status);
+    outcome.profile_id = profile.map(|profile| profile.id.clone());
+    outcome.blueprint_id = blueprint
+        .as_ref()
+        .map(|resolved| resolved.blueprint().id.clone());
+    if let Some(catalog) = nav_catalog {
+        outcome.blueprint_authority = classify_blueprint_authority(
+            definition,
+            catalog,
+            record.interior.navigation_blueprint_override.as_ref(),
+        );
+    }
+    populate_runtime_counts(world, building_id, &mut outcome);
+    record_outcome(world, outcome.clone());
+    Ok(outcome)
+}
+
+/// Resolve navigation blueprint authority. Errors carry a diagnostic reason.
+fn resolve_navigation_for_activation<'a>(
+    record: &BuildingRecord,
+    definition: &BuildingDefinition,
+    nav_catalog: Option<&'a BuildingNavigationBlueprintCatalog>,
+    building_id: BuildingId,
+) -> Result<Option<ResolvedBuildingNavigationBlueprint<'a>>, (InteriorError, String)> {
+    match nav_catalog {
+        Some(catalog) => {
+            let resolved = resolve_building_navigation_blueprint(
+                definition,
+                catalog,
+                record.interior.navigation_blueprint_override.as_ref(),
+            );
+            if record.interior.navigation_blueprint_override.is_some() {
+                resolved.map_err(|err| {
+                    let reason = err.to_string();
+                    (
+                        InteriorError::InteriorSpawnFailed {
+                            building_id,
+                            reason: reason.clone(),
+                        },
+                        reason,
+                    )
+                })
+            } else {
+                Ok(resolved.ok().flatten())
+            }
+        }
+        None if record.interior.navigation_blueprint_override.is_some() => {
+            let reason = "navigation catalog required for blueprint override".to_string();
+            Err((
+                InteriorError::InteriorSpawnFailed {
+                    building_id,
+                    reason: reason.clone(),
+                },
+                reason,
+            ))
+        }
+        None => Ok(None),
+    }
+}
+
+/// Whether a profile door owns the passage registered under `portal_key`.
+///
+/// A blueprint entrance is doorless unless it names a door explicitly or the profile
+/// itself authors a portal template of the same key. Without this, any profile whose
+/// door key merely collided with an entrance key would silently close that entrance.
+/// The criterion is the authored key relationship, never the blueprint authority layer.
+fn profile_door_controls_portal(
+    blueprint: Option<&BuildingNavigationBlueprint>,
+    profile: &InteriorProfile,
+    door_key: &str,
+    portal_key: &str,
+) -> bool {
+    let Some(blueprint) = blueprint else {
+        // Profile-only interior: profile doors own the profile's own portals.
+        return true;
+    };
+    if let Some(entrance) = blueprint
+        .entrances
+        .iter()
+        .find(|entrance| entrance.key == portal_key)
+    {
+        return match entrance.door_key.as_deref() {
+            Some(key) => key == door_key,
+            None => profile
+                .portals
+                .iter()
+                .any(|portal| portal.key == portal_key),
+        };
+    }
+    if let Some(connection) = blueprint
+        .region_connections
+        .iter()
+        .find(|connection| connection.key == portal_key)
+    {
+        return match connection.door_key.as_deref() {
+            Some(key) => key == door_key,
+            None => profile
+                .portals
+                .iter()
+                .any(|portal| portal.key == portal_key),
+        };
+    }
+    true
+}
+
+fn populate_runtime_counts(
+    world: &WorldData,
+    building_id: BuildingId,
+    outcome: &mut InteriorActivationOutcome,
+) {
+    if let Some(runtime) = world.building_navigation_runtime().get(building_id) {
+        outcome.runtime_floor_count = runtime.floors.len();
+        outcome.runtime_region_count = runtime.regions.len();
+    }
+    // Activation is a rare event, so an owner scan here mirrors
+    // `SpaceRegistry::remove_building` rather than adding a new index.
+    outcome.runtime_portal_count = world
+        .space_registry()
+        .portals()
+        .filter(|(_, portal)| portal.owning_building_id == Some(building_id))
+        .count();
+}
+
+fn record_outcome(world: &mut WorldData, outcome: InteriorActivationOutcome) {
+    world.interior_activation_outcomes_mut().record(outcome);
 }
 
 /// Activate interior data when a building is already [`BuildingLifecycleState::Complete`].
@@ -217,6 +417,7 @@ pub fn try_activate_interior_if_complete(
         building_id,
         definition,
     )
+    .map(|_| ())
 }
 
 fn activate_interior_for_definition(
@@ -228,10 +429,13 @@ fn activate_interior_for_definition(
     nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
     building_id: BuildingId,
     definition: &BuildingDefinition,
-) -> Result<(), InteriorError> {
-    let Some(profile_key) = definition.interior_profile_id.as_deref() else {
-        return Ok(());
-    };
+) -> Result<InteriorActivationOutcome, InteriorError> {
+    // No profile gate: the navigation blueprint is an independent authority and may
+    // activate on its own. `activate_building_interior` records why it skipped.
+    let profile_id = definition
+        .interior_profile_id
+        .as_deref()
+        .map(InteriorProfileId::new);
     activate_building_interior(
         world,
         building_catalog,
@@ -240,10 +444,21 @@ fn activate_interior_for_definition(
         occupancy,
         nav_catalog,
         building_id,
-        &InteriorProfileId::new(profile_key),
+        profile_id.as_ref(),
     )
 }
 
+/// Resolve an interior-profile space key against blueprint-registered space keys.
+fn resolve_profile_space_key(
+    space_keys: &std::collections::BTreeMap<String, SpaceId>,
+    key: &str,
+) -> Option<SpaceId> {
+    if let Some(id) = space_keys.get(key) {
+        return Some(*id);
+    }
+    let qualified = format!("{key}/main");
+    space_keys.get(&qualified).copied()
+}
 /// Register door-linked portals from the interior profile when the blueprint omits them.
 fn supplement_door_portals_from_profile(
     registry: &mut crate::world::SpaceRegistry,
@@ -276,18 +491,13 @@ fn supplement_door_portals_from_profile(
                 door_key: door.key.to_string(),
                 portal_key: door.portal_key.to_string(),
             })?;
-        let from_space = *space_keys.get(template.from_space_key).ok_or_else(|| {
-            InteriorError::InteriorSpawnFailed {
-                building_id: building.id,
-                reason: format!("missing space `{}`", template.from_space_key),
-            }
-        })?;
-        let to_space = *space_keys.get(template.to_space_key).ok_or_else(|| {
-            InteriorError::InteriorSpawnFailed {
-                building_id: building.id,
-                reason: format!("missing space `{}`", template.to_space_key),
-            }
-        })?;
+        let Some(from_space) = resolve_profile_space_key(space_keys, template.from_space_key)
+        else {
+            continue;
+        };
+        let Some(to_space) = resolve_profile_space_key(space_keys, template.to_space_key) else {
+            continue;
+        };
         let from_floor_y = floor_y_for(template.from_space_key);
         let from_local = Vec3::new(
             template.from_local_xz.x,
@@ -331,13 +541,9 @@ fn spawn_interior_children(
     let rotation = parent.placement.rotation;
 
     for placement in profile.children.iter().filter(|child| child.enabled) {
-        let space_id = space_keys
-            .get(placement.space_key)
-            .copied()
-            .ok_or_else(|| InteriorError::MissingSpace {
-                profile: profile.id.clone(),
-                key: placement.space_key.to_string(),
-            })?;
+        let Some(space_id) = resolve_profile_space_key(space_keys, placement.space_key) else {
+            continue;
+        };
         let global = anchor_global + rotation * placement.local_position;
         let position = WorldPosition::from_global(global, layout);
         match &placement.kind {
@@ -427,17 +633,15 @@ pub fn refresh_building_navigation_runtime(
         }
     })?;
 
+    // Optional: a blueprint-only building has no profile and still refreshes.
     let profile_key = record
         .interior
         .profile_id
+        .clone()
+        .or_else(|| definition.interior_profile_id.clone());
+    let profile = profile_key
         .as_deref()
-        .or(definition.interior_profile_id.as_deref())
-        .ok_or_else(|| InteriorError::MissingInteriorProfile(InteriorProfileId::new("missing")))?;
-    let profile = interior_catalog
-        .get(&InteriorProfileId::new(profile_key))
-        .ok_or_else(|| {
-            InteriorError::MissingInteriorProfile(InteriorProfileId::new(profile_key))
-        })?;
+        .and_then(|key| interior_catalog.get(&InteriorProfileId::new(key)));
 
     let resolved = resolve_building_navigation_blueprint(
         definition,
@@ -481,28 +685,31 @@ pub fn refresh_building_navigation_runtime(
             blueprint,
             model,
             &space_keys,
+            &portal_keys,
         ));
-    supplement_door_portals_from_profile(
-        world.space_registry_mut(),
-        &record,
-        definition,
-        layout,
-        profile,
-        &space_keys,
-        &mut portal_keys,
-    )?;
+    if let Some(profile) = profile {
+        supplement_door_portals_from_profile(
+            world.space_registry_mut(),
+            &record,
+            definition,
+            layout,
+            profile,
+            &space_keys,
+            &mut portal_keys,
+        )?;
 
-    for template in &profile.doors {
-        let Some(portal_id) = portal_keys.get(template.portal_key).copied() else {
-            continue;
-        };
-        for door_id in world.door_store().building_door_ids(building_id).to_vec() {
-            let Some(door) = world.door_store_mut().get_mut(door_id) else {
+        for template in &profile.doors {
+            let Some(portal_id) = portal_keys.get(template.portal_key).copied() else {
                 continue;
             };
-            if door.definition_key == template.key {
-                door.portal_id = portal_id;
-                DoorStore::sync_portal_enabled(world, door_id)?;
+            for door_id in world.door_store().building_door_ids(building_id).to_vec() {
+                let Some(door) = world.door_store_mut().get_mut(door_id) else {
+                    continue;
+                };
+                if door.definition_key == template.key {
+                    door.portal_id = portal_id;
+                    DoorStore::sync_portal_enabled(world, door_id)?;
+                }
             }
         }
     }
@@ -516,6 +723,21 @@ pub fn refresh_building_navigation_runtime(
     world.mutate_building(building_id, |building| {
         building.spaces.space_ids = space_ids;
     });
+
+    let mut outcome = InteriorActivationOutcome::new(
+        building_id,
+        record.definition_id.clone(),
+        InteriorActivationStatus::Refreshed,
+    );
+    outcome.blueprint_id = Some(blueprint.id.clone());
+    outcome.profile_id = profile.map(|profile| profile.id.clone());
+    outcome.blueprint_authority = classify_blueprint_authority(
+        definition,
+        nav_catalog,
+        record.interior.navigation_blueprint_override.as_ref(),
+    );
+    populate_runtime_counts(world, building_id, &mut outcome);
+    record_outcome(world, outcome);
 
     Ok(())
 }
@@ -563,6 +785,7 @@ pub fn deactivate_building_interior(
         building.spaces.space_ids.clear();
         building.interior = BuildingInteriorState::default();
     });
+    world.interior_activation_outcomes_mut().remove(building_id);
     let _ = building_catalog;
     Ok(())
 }

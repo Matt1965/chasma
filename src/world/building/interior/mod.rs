@@ -6,6 +6,7 @@ mod door;
 mod door_store;
 mod error;
 mod id;
+mod outcome;
 mod profile;
 
 #[cfg(test)]
@@ -29,4 +30,7 @@ pub use door_store::{
 };
 pub use error::InteriorError;
 pub use id::{DoorId, InteriorProfileId};
+pub use outcome::{
+    InteriorActivationOutcome, InteriorActivationOutcomeStore, InteriorActivationStatus,
+};
 pub use profile::{barn_interior_profile, two_story_hut_interior_profile};

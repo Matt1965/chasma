@@ -2,19 +2,18 @@
 
 use bevy::prelude::*;
 
-use super::astar::astar_path_in_space as run_astar_in_space;
+use super::astar::astar_path_in_space;
 use super::grid::{
-    GridCoord, NavigationAgent, NavigationConfig, grid_cell_world_position, grid_coord_at_position,
-    is_position_walkable,
+    NavigationAgent, NavigationConfig, grid_cell_center_global, is_position_walkable_in_space,
+    resolve_path_endpoint_cell,
 };
 use super::path::{NavigationPath, xz_distance};
 use super::query::NavigationError;
-use super::simplify::simplify_navigation_path;
+use super::simplify::{is_segment_walkable_in_space, simplify_navigation_path_in_space};
 use super::waypoint::NavigationWaypoint;
 use crate::world::{
-    PassabilityAgent, PassabilityCatalogs, PassabilityResult, PortalRecord, SpaceId, SpaceRegistry,
-    UnitOwnership, WorldData, WorldPosition, ground_position_in_space, query_passability_in_space,
-    space_route_for_unit,
+    PassabilityCatalogs, PortalRecord, PortalType, SpaceId, SpaceRegistry, UnitOwnership,
+    WorldData, WorldPosition, ground_position_in_space, space_route_for_unit,
 };
 
 /// Request a navigation path that may cross space boundaries via portals.
@@ -65,15 +64,11 @@ pub fn find_path_in_spaces(
             .get_portal(portal_id)
             .ok_or(NavigationError::NoPath)?;
 
-        let portal_entry_pos = if portal.from_space == current_space {
-            portal_to_entry_position(portal, layout)
-        } else if portal.bidirectional {
-            portal.to_position
-        } else {
-            return Err(NavigationError::NoPath);
-        };
+        let portal_entry_pos = portal
+            .trigger_world_position_in_space(current_space, layout, world, space_registry)
+            .ok_or(NavigationError::NoPath)?;
 
-        let segment = path_segment_in_space(
+        let mut segment = path_segment_in_space(
             world,
             space_registry,
             catalogs,
@@ -83,21 +78,29 @@ pub fn find_path_in_spaces(
             portal_entry_pos,
             current_space,
         )?;
+        if portal.portal_type == PortalType::ExteriorEntrance
+            && (current_space.is_surface()
+                || (portal.bidirectional && portal.to_space == current_space))
+        {
+            segment = entrance_approach_segment(
+                world,
+                space_registry,
+                current_space,
+                current_pos,
+                portal_entry_pos,
+            )?;
+        }
         append_segment(&mut waypoints, segment);
 
-        let dest_space = if portal.from_space == current_space {
-            portal.to_space
-        } else {
-            portal.from_space
-        };
-        let dest_pos =
-            ground_position_in_space(world, space_registry, dest_space, portal.to_position)
-                .ok_or(NavigationError::TerrainUnavailable)?;
-
         waypoints.push(NavigationWaypoint::portal_transition(
-            dest_pos, dest_space, portal_id,
+            portal_entry_pos,
+            current_space,
+            portal_id,
         ));
 
+        let (dest_space, dest_pos) = portal
+            .destination_for_planning(current_space, layout, world, space_registry)
+            .ok_or(NavigationError::NoPath)?;
         current_space = dest_space;
         current_pos = dest_pos;
     }
@@ -127,22 +130,30 @@ pub fn find_path_in_spaces(
     Ok(NavigationPath::new(waypoints))
 }
 
-fn portal_to_entry_position(
-    portal: &PortalRecord,
-    layout: crate::world::ChunkLayout,
-) -> WorldPosition {
-    let global = Vec3::new(
-        portal.from_center_global_xz.x,
-        0.0,
-        portal.from_center_global_xz.y,
-    );
-    WorldPosition::from_global(global, layout)
+fn entrance_approach_segment(
+    world: &WorldData,
+    space_registry: &SpaceRegistry,
+    space_id: SpaceId,
+    start: WorldPosition,
+    portal_entry: WorldPosition,
+) -> Result<Vec<NavigationWaypoint>, NavigationError> {
+    let grounded_start = ground_position_in_space(world, space_registry, space_id, start)
+        .ok_or(NavigationError::TerrainUnavailable)?;
+    let grounded_entry = ground_position_in_space(world, space_registry, space_id, portal_entry)
+        .ok_or(NavigationError::TerrainUnavailable)?;
+    Ok(vec![
+        NavigationWaypoint::in_space(grounded_start, space_id),
+        NavigationWaypoint::in_space(grounded_entry, space_id),
+    ])
 }
 
 fn append_segment(path: &mut Vec<NavigationWaypoint>, segment: Vec<NavigationWaypoint>) {
     for waypoint in segment {
         if path.last().is_some_and(|last| {
-            last.position == waypoint.position && last.space_id == waypoint.space_id
+            last.portal_id.is_none()
+                && waypoint.portal_id.is_none()
+                && last.position == waypoint.position
+                && last.space_id == waypoint.space_id
         }) {
             continue;
         }
@@ -190,14 +201,35 @@ fn find_path_single_space(
         max_slope_degrees,
     };
     let layout = world.layout();
+    let space_config = config.config_for_space(space_id);
 
     let grounded_start = ground_position_in_space(world, space_registry, space_id, start)
         .ok_or(NavigationError::TerrainUnavailable)?;
     let grounded_goal = ground_position_in_space(world, space_registry, space_id, goal)
         .ok_or(NavigationError::TerrainUnavailable)?;
 
-    let start_cell = grid_coord_at_position(grounded_start, layout, *config);
-    let goal_cell = grid_coord_at_position(grounded_goal, layout, *config);
+    let start_cell = resolve_path_endpoint_cell(
+        world,
+        space_registry,
+        catalogs,
+        space_config,
+        agent,
+        space_id,
+        grounded_start,
+        layout,
+    )
+    .ok_or(NavigationError::StartBlocked)?;
+    let goal_cell = resolve_path_endpoint_cell(
+        world,
+        space_registry,
+        catalogs,
+        space_config,
+        agent,
+        space_id,
+        grounded_goal,
+        layout,
+    )
+    .ok_or(NavigationError::GoalBlocked)?;
 
     if !is_position_walkable_in_space(
         world,
@@ -220,6 +252,23 @@ fn find_path_single_space(
         return Err(NavigationError::GoalBlocked);
     }
 
+    if is_segment_walkable_in_space(
+        world,
+        space_registry,
+        catalogs,
+        *config,
+        space_id,
+        agent,
+        grounded_start,
+        grounded_goal,
+        layout,
+    ) {
+        return Ok(NavigationPath::new(vec![
+            NavigationWaypoint::in_space(grounded_start, space_id),
+            NavigationWaypoint::in_space(grounded_goal, space_id),
+        ]));
+    }
+
     if start_cell == goal_cell {
         return Ok(NavigationPath::new(vec![NavigationWaypoint::in_space(
             grounded_goal,
@@ -240,8 +289,9 @@ fn find_path_single_space(
     .ok_or(NavigationError::NoPath)?;
 
     if positions.is_empty() {
-        if let Some(goal_pos) =
-            grid_cell_world_position_in_space(world, space_registry, goal_cell, *config, space_id)
+        let global = grid_cell_center_global(goal_cell, space_config);
+        let candidate = WorldPosition::from_global(global, layout);
+        if let Some(goal_pos) = ground_position_in_space(world, space_registry, space_id, candidate)
         {
             positions.push(goal_pos);
         } else {
@@ -261,7 +311,16 @@ fn find_path_single_space(
         *last = grounded_goal;
     }
 
-    simplify_navigation_path(&mut positions, world, catalogs, *config, agent, layout);
+    simplify_navigation_path_in_space(
+        &mut positions,
+        world,
+        space_registry,
+        catalogs,
+        *config,
+        space_id,
+        agent,
+        layout,
+    );
     dedupe_consecutive_positions(&mut positions, layout);
 
     Ok(NavigationPath::new(
@@ -270,81 +329,6 @@ fn find_path_single_space(
             .map(|position| NavigationWaypoint::in_space(position, space_id))
             .collect(),
     ))
-}
-
-fn astar_path_in_space(
-    world: &WorldData,
-    space_registry: &SpaceRegistry,
-    catalogs: PassabilityCatalogs<'_>,
-    config: NavigationConfig,
-    agent: NavigationAgent,
-    start: GridCoord,
-    goal: GridCoord,
-    space_id: SpaceId,
-) -> Option<Vec<WorldPosition>> {
-    let positions = run_astar_in_space(
-        world,
-        space_registry,
-        catalogs,
-        config,
-        agent,
-        start,
-        goal,
-        space_id,
-    )?;
-    let mut grounded = Vec::new();
-    for position in positions {
-        grounded.push(ground_position_in_space(
-            world,
-            space_registry,
-            space_id,
-            position,
-        )?);
-    }
-    Some(grounded)
-}
-
-fn grid_cell_world_position_in_space(
-    world: &WorldData,
-    space_registry: &SpaceRegistry,
-    coord: GridCoord,
-    config: NavigationConfig,
-    space_id: SpaceId,
-) -> Option<WorldPosition> {
-    let position = grid_cell_world_position(world, coord, config)?;
-    ground_position_in_space(world, space_registry, space_id, position)
-}
-
-pub fn is_position_walkable_in_space(
-    world: &WorldData,
-    space_registry: &SpaceRegistry,
-    catalogs: PassabilityCatalogs<'_>,
-    position: WorldPosition,
-    agent: NavigationAgent,
-    space_id: SpaceId,
-) -> bool {
-    let Some(grounded) = ground_position_in_space(world, space_registry, space_id, position) else {
-        return false;
-    };
-    let layout = world.layout();
-    if space_id.is_surface() {
-        return is_position_walkable(world, catalogs, grounded, agent)
-            || crate::world::position_in_surface_entrance_portal(
-                world.space_registry(),
-                layout,
-                grounded,
-            );
-    }
-    matches!(
-        query_passability_in_space(
-            world,
-            catalogs,
-            grounded,
-            PassabilityAgent::from(agent),
-            space_id,
-        ),
-        PassabilityResult::Passable { .. }
-    )
 }
 
 fn trim_waypoints_at_start(

@@ -58,6 +58,37 @@ pub fn world_position_to_render_global(
     global
 }
 
+/// Map an authoritative Y that is measured above a non-terrain base to render Y.
+///
+/// `vertical_scale` exaggerates the heightfield only (ADR-010). Heights above a
+/// building anchor — interior floors, and anything standing on them — are authored
+/// metric offsets and keep their real length, exactly like the building model's own
+/// geometry, which is scaled by the model transform rather than by terrain relief.
+pub fn render_height_above_base(
+    base_authoritative_y: f32,
+    authoritative_y: f32,
+    vertical_scale: f32,
+) -> f32 {
+    render_height(base_authoritative_y, vertical_scale) + (authoritative_y - base_authoritative_y)
+}
+
+/// Compose a render-space position, keeping heights above `base_authoritative_y` metric.
+///
+/// `None` means the position is terrain-derived and is exaggerated as usual.
+pub fn world_position_to_render_global_above_base(
+    position: WorldPosition,
+    layout: crate::world::ChunkLayout,
+    vertical_scale: f32,
+    base_authoritative_y: Option<f32>,
+) -> Vec3 {
+    let mut global = position.to_global(layout);
+    global.y = match base_authoritative_y {
+        Some(base) => render_height_above_base(base, global.y, vertical_scale),
+        None => render_height(global.y, vertical_scale),
+    };
+    global
+}
+
 pub(crate) fn seam_weld_heights(world: &WorldData, chunk_id: ChunkId) -> ChunkMeshSeamWeld {
     let coord = chunk_id.coord();
     let edge = |data: &crate::world::ChunkData| data.heightfield.samples_per_edge() - 1;
@@ -182,6 +213,47 @@ mod tests {
         assert_eq!(render.x, 266.0);
         assert_eq!(render.y, 12.0);
         assert_eq!(render.z, 532.0);
+    }
+
+    #[test]
+    fn heights_above_a_base_keep_their_metric_length() {
+        // Terrain relief is exaggerated; the 1.1 m interior floor offset is not.
+        let render = render_height_above_base(0.05, 1.15, 18_336.0);
+        assert!((render - (0.05 * 18_336.0 + 1.1)).abs() < 1e-2);
+    }
+
+    #[test]
+    fn no_base_reproduces_plain_terrain_exaggeration() {
+        use crate::world::{ChunkLayout, LocalPosition};
+
+        let layout = ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        };
+        let pos = WorldPosition::new(
+            ChunkCoord::new(1, 2),
+            LocalPosition::new(Vec3::new(10.0, 4.0, 20.0)),
+        );
+        assert_eq!(
+            world_position_to_render_global_above_base(pos, layout, 3.0, None),
+            world_position_to_render_global(pos, layout, 3.0)
+        );
+    }
+
+    #[test]
+    fn base_equal_to_position_matches_plain_mapping() {
+        use crate::world::{ChunkLayout, LocalPosition};
+
+        let layout = ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        };
+        let pos = WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::new(1.0, 4.0, 2.0)),
+        );
+        let render = world_position_to_render_global_above_base(pos, layout, 7.0, Some(4.0));
+        assert_eq!(render.y, 28.0);
     }
 
     #[test]

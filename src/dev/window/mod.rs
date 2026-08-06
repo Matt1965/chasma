@@ -14,8 +14,9 @@ pub use components::{
 };
 pub use id::DevWindowId;
 pub use math::{
-    DEFAULT_PANEL_WIDTH_PX, MIN_TITLE_GRAB_PX, TITLE_BAR_HEIGHT_PX, clamp_window_position,
-    window_position_from_pointer,
+    DEFAULT_PANEL_WIDTH_PX, MIN_TITLE_GRAB_PX, NAVIGATION_EDITOR_WIDTH_PX, TITLE_BAR_HEIGHT_PX,
+    clamp_window_position, navigation_editor_body_max_height, navigation_editor_panel_width,
+    navigation_editor_uses_two_columns, window_position_from_pointer,
 };
 pub use setup::setup_dev_workspace;
 pub use state::{

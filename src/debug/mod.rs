@@ -13,6 +13,10 @@ mod interaction_snapshot;
 mod movement_observability;
 #[cfg(any(test, feature = "dev"))]
 mod overlay;
+#[cfg(any(test, feature = "dev"))]
+mod overlay_diagnostics;
+#[cfg(any(test, feature = "dev"))]
+mod path_trace;
 mod pending;
 mod plugin;
 mod settings;
@@ -33,6 +37,10 @@ pub use overlay::{
     draw_navigation_debug_overlay, draw_path_debug_overlay, draw_selection_debug_overlay,
     draw_steering_debug_overlay,
 };
+#[cfg(feature = "dev")]
+pub use overlay_diagnostics::NavigationOverlayDiagnostics;
+#[cfg(feature = "dev")]
+pub use path_trace::{PathTraceStatus, RetainedUnitPath, UnitPathDiagnosticStore};
 pub use pending::PendingSimulationTrace;
 pub use plugin::DebugOverlayPlugin;
 pub use settings::{

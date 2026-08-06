@@ -6,6 +6,7 @@ use crate::dev::input::DevPanelUi;
 use crate::dev::tooltip::DevTooltipTarget;
 use crate::dev::window::DevWindowUi;
 
+use super::interaction::DevButtonChrome;
 use super::theme::{
     TEXT_PRIMARY, action_button_bg, label_text_font, standard_button_node, stepper_button_bg,
 };
@@ -25,11 +26,13 @@ pub fn spawn_action_button<M: Component>(
 ) {
     let mut entity = parent.spawn((
         DevWidgetActionButton { disabled: false },
+        DevButtonChrome::default(),
         marker,
         DevPanelUi,
         DevWindowUi,
         Button,
         standard_button_node(8.0, 4.0),
+        BorderColor::all(super::theme::BTN_BORDER_IDLE),
         BackgroundColor(super::theme::BTN_BG_IDLE),
         Text::new(label),
         label_text_font(),
@@ -49,6 +52,7 @@ pub fn spawn_stepper_button<M: Component>(
 ) {
     let mut entity = parent.spawn((
         marker,
+        DevButtonChrome::default(),
         DevPanelUi,
         DevWindowUi,
         Button,
@@ -60,6 +64,7 @@ pub fn spawn_stepper_button<M: Component>(
             ..default()
         },
         BackgroundColor(super::theme::BTN_BG_IDLE),
+        BorderColor::all(super::theme::BTN_BORDER_IDLE),
         Text::new(label),
         super::theme::small_text_font(),
         TextColor(TEXT_PRIMARY),
@@ -111,14 +116,10 @@ pub fn spawn_labeled_stepper_row<MDec: Component, MInc: Component>(
 
 /// Sync action button backgrounds (respects disabled flag).
 pub fn sync_action_button_styles(
-    mut buttons: Query<(&Interaction, &DevWidgetActionButton, &mut BackgroundColor), With<Button>>,
+    mut buttons: Query<(&DevWidgetActionButton, &mut DevButtonChrome), With<Button>>,
 ) {
-    for (interaction, widget, mut bg) in &mut buttons {
-        if widget.disabled {
-            *bg = BackgroundColor(super::theme::BTN_BG_DISABLED);
-        } else {
-            *bg = action_button_bg(interaction, false);
-        }
+    for (widget, mut chrome) in &mut buttons {
+        chrome.disabled = widget.disabled;
     }
 }
 

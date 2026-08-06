@@ -3,7 +3,7 @@
         (
             id: ("barn_interior"),
             display_name: "Barn Navigation",
-            schema_version: 1,
+            schema_version: 2,
             metadata: (
                 source_render_key: None,
                 generation_revision: None,
@@ -18,84 +18,49 @@
                     elevation_meters: 0.0,
                     visibility_group_id: 1,
                     room_tag: Some("storage_hall"),
-                    walkable_outline: (
-                        vertices_xz: [
-                            (0.0, 0.0),
-                            (8.0, 0.0),
-                            (8.0, 6.0),
-                            (0.0, 6.0),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "main",
+                            display_label: "Barn Floor",
+                            room_tag: Some("storage_hall"),
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (0.0, 0.0),
+                                    (8.0, 0.0),
+                                    (8.0, 6.0),
+                                    (0.0, 6.0),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
             ],
             entrances: [
                 (
                     key: "exterior_entrance",
                     floor_key: "barn_interior",
+                    region_key: Some("main"),
                     local_position_xz: (4.0, 0.0),
                     radius_meters: 2.5,
                     interior_spawn_local: (4.0, 0.0, 2.0),
                     bidirectional: true,
+                    door_key: None,
                 ),
             ],
             vertical_transitions: [],
-            enabled: true,
-        ),
-        (
-            id: ("barn_nav"),
-            display_name: "Barn Navigation",
-            schema_version: 1,
-            metadata: (
-                source_render_key: Some("barn"),
-                generation_revision: Some(1),
-                tags: [],
-                extensions: {
-                    "nv12_collision_path": "C:\\BevyFiles\\chasma\\assets/buildings\\barn.glb",
-                    "nv12_mesh_source": "visible_meshes",
-                },
-            ),
-            floors: [
-                (
-                    floor_id: 0,
-                    key: "floor_0",
-                    display_label: "Floor 8.0m",
-                    elevation_meters: 7.9764776,
-                    visibility_group_id: 1,
-                    room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-18.856897, 33.12389),
-                            (-10.856876, 33.12389),
-                            (-10.856869, 51.96518),
-                            (-11.159896, 52.149784),
-                            (-18.553873, 52.149784),
-                            (-18.856892, 51.96518),
-                        ],
-                    ),
-                ),
-            ],
-            entrances: [
-                (
-                    key: "exterior_entrance",
-                    floor_key: "floor_0",
-                    local_position_xz: (-14.856887, 33.12389),
-                    radius_meters: 2.5,
-                    interior_spawn_local: (-14.856885, 7.9764776, 38.172848),
-                    bidirectional: true,
-                ),
-            ],
-            vertical_transitions: [],
+            region_connections: [],
             enabled: true,
         ),
         (
             id: ("hut_nav"),
             display_name: "Survival Hut Navigation",
-            schema_version: 1,
+            schema_version: 2,
             metadata: (
                 source_render_key: Some("hut"),
-                generation_revision: Some(1),
+                generation_revision: Some(12),
                 tags: [],
                 extensions: {
+                    "edited_by": "dev_editor",
                     "nv12_collision_path": "C:\\BevyFiles\\chasma\\assets/buildings\\hut_collision.glb",
                     "nv12_mesh_source": "visible_meshes",
                 },
@@ -104,113 +69,74 @@
                 (
                     floor_id: 0,
                     key: "floor_0",
-                    display_label: "Floor 1.5m",
-                    elevation_meters: 1.4936012,
+                    display_label: "Floor 1.3m",
+                    elevation_meters: 1.2691206,
                     visibility_group_id: 1,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-1.9992, -1.9992),
-                            (1.9992, -1.9992),
-                            (1.9992, 1.9992),
-                            (-1.9992, 1.9992),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_3",
+                            display_label: "Region 3",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (14.687866, -8.496094),
+                                    (15.887817, 8.536133),
+                                    (33.399536, -3.0795898),
+                                    (23.425049, 22.674805),
+                                    (-5.36792, 30.423096),
+                                    (8.3046875, 14.838135),
+                                    (-25.231201, 13.392822),
+                                    (-17.527832, -9.70752),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
             ],
             entrances: [
                 (
                     key: "entrance",
                     floor_key: "floor_0",
-                    local_position_xz: (0.0, -2.2134001),
+                    region_key: Some("region_3"),
+                    local_position_xz: (15.344397, 0.8227606),
                     radius_meters: 1.5,
-                    interior_spawn_local: (0.0, 1.4936012, -1.4994001),
+                    interior_spawn_local: (14.346869, 1.2691206, 0.8930382),
                     bidirectional: true,
+                    door_key: None,
+                ),
+                (
+                    key: "entrance_1",
+                    floor_key: "floor_0",
+                    region_key: Some("region_3"),
+                    local_position_xz: (-21.184013, 1.2563868),
+                    radius_meters: 1.5,
+                    interior_spawn_local: (-20.23537, 1.2691206, 1.5727348),
+                    bidirectional: true,
+                    door_key: None,
+                ),
+                (
+                    key: "entrance_2",
+                    floor_key: "floor_0",
+                    region_key: Some("region_3"),
+                    local_position_xz: (-0.7122803, -9.075194),
+                    radius_meters: 1.5,
+                    interior_spawn_local: (-0.7498573, 1.2691206, -8.075901),
+                    bidirectional: true,
+                    door_key: None,
                 ),
             ],
             vertical_transitions: [],
-            enabled: true,
-        ),
-        (
-            id: ("hut_open_front_nav"),
-            display_name: "Hut Open Front Navigation",
-            schema_version: 1,
-            metadata: (
-                source_render_key: None,
-                generation_revision: Some(1),
-                tags: [],
-                extensions: {
-                    "created_by": "dev_variant",
-                    "description": "Test variant",
-                    "edited_by": "dev_editor",
-                    "variant_of": "hut",
-                },
-            ),
-            floors: [
-                (
-                    floor_id: 0,
-                    key: "ground_interior",
-                    display_label: "Ground Floor",
-                    elevation_meters: 0.0,
-                    visibility_group_id: 1,
-                    room_tag: Some("hall"),
-                    walkable_outline: (
-                        vertices_xz: [
-                            (0.0, 0.0),
-                            (4.0, 0.0),
-                            (4.0, 4.0),
-                            (0.0, 4.0),
-                        ],
-                    ),
-                ),
-                (
-                    floor_id: 1,
-                    key: "upper_interior",
-                    display_label: "Upper Floor",
-                    elevation_meters: 4.0,
-                    visibility_group_id: 2,
-                    room_tag: Some("bedroom"),
-                    walkable_outline: (
-                        vertices_xz: [
-                            (0.0, 0.0),
-                            (4.0, 0.0),
-                            (4.0, 4.0),
-                            (0.0, 4.0),
-                        ],
-                    ),
-                ),
-            ],
-            entrances: [
-                (
-                    key: "exterior_entrance",
-                    floor_key: "ground_interior",
-                    local_position_xz: (2.0, 0.0),
-                    radius_meters: 1.5,
-                    interior_spawn_local: (2.0, 0.0, 1.0),
-                    bidirectional: true,
-                ),
-            ],
-            vertical_transitions: [
-                (
-                    key: "stairs",
-                    kind: Stair,
-                    from_floor_key: "ground_interior",
-                    to_floor_key: "upper_interior",
-                    from_local_position_xz: (3.0, 3.0),
-                    from_radius_meters: 1.25,
-                    to_local_position: (3.0, 4.0, 3.0),
-                    bidirectional: true,
-                ),
-            ],
+            region_connections: [],
             enabled: true,
         ),
         (
             id: ("storage_chest_nav"),
             display_name: "Storage Chest Navigation",
-            schema_version: 1,
+            schema_version: 2,
             metadata: (
                 source_render_key: Some("chest"),
-                generation_revision: Some(1),
+                generation_revision: Some(2),
                 tags: [],
                 extensions: {
                     "nv12_collision_path": "C:\\BevyFiles\\chasma\\assets/buildings\\chest.glb",
@@ -222,71 +148,136 @@
                     floor_id: 0,
                     key: "floor_0",
                     display_label: "Floor 67.8m",
-                    elevation_meters: 67.78584,
+                    elevation_meters: 67.78585,
                     visibility_group_id: 1,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-499.79996, -176.2139),
-                            (-416.00848, -243.99873),
-                            (416.00842, -243.99884),
-                            (499.79984, -176.21405),
-                            (499.79996, 176.95349),
-                            (416.00848, 244.73941),
-                            (-416.00842, 244.7395),
-                            (-499.79984, 176.95364),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_1",
+                            display_label: "Region 1",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-469.81195, -176.2139),
+                                    (-469.81186, 176.95364),
+                                    (-499.79984, 176.95364),
+                                    (-499.79996, -176.2139),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_2",
+                            display_label: "Region 2",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (416.00842, -243.99884),
+                                    (416.00842, -214.01083),
+                                    (-416.00848, -214.01074),
+                                    (-416.00848, -243.99873),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_3",
+                            display_label: "Region 3",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (416.00848, 214.7514),
+                                    (416.00848, 244.73941),
+                                    (-416.00842, 244.7395),
+                                    (-416.00842, 214.75151),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_4",
+                            display_label: "Region 4",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (499.79984, -176.21405),
+                                    (499.79996, 176.95349),
+                                    (469.81195, 176.95349),
+                                    (469.81186, -176.21405),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 1,
                     key: "floor_1",
-                    display_label: "Floor 452.1m",
-                    elevation_meters: 452.0923,
+                    display_label: "Floor 451.0m",
+                    elevation_meters: 450.9771,
                     visibility_group_id: 2,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-15.556499, -254.40692),
-                            (-10.507262, -254.40692),
-                            (-10.507261, -246.1545),
-                            (-13.031879, -245.9641),
-                            (-15.556497, -246.1545),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_5",
+                            display_label: "Region 5",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-13.03188, -253.91396),
+                                    (-10.507262, -254.40692),
+                                    (-10.507261, -246.1545),
+                                    (-13.031879, -245.9641),
+                                    (-15.556497, -246.1545),
+                                    (-15.556499, -254.40692),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 2,
                     key: "floor_2",
-                    display_label: "Floor 475.9m",
-                    elevation_meters: 475.92316,
+                    display_label: "Floor 474.9m",
+                    elevation_meters: 474.8908,
                     visibility_group_id: 3,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-15.556496, -255.97353),
-                            (-13.031881, -256.41656),
-                            (-10.507263, -255.97353),
-                            (-10.507259, -246.97408),
-                            (-15.556494, -246.97408),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_6",
+                            display_label: "Region 6",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-13.031881, -256.41656),
+                                    (-10.507263, -255.97353),
+                                    (-10.507259, -246.97408),
+                                    (-13.0318775, -247.12346),
+                                    (-15.556494, -246.97408),
+                                    (-15.556496, -255.97353),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 3,
                     key: "floor_3",
                     display_label: "Floor 491.1m",
-                    elevation_meters: 491.09595,
+                    elevation_meters: 491.096,
                     visibility_group_id: 4,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-101.57554, -248.09065),
-                            (76.98905, -248.09068),
-                            (76.98905, -243.92567),
-                            (-101.57554, -243.92564),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_7",
+                            display_label: "Region 7",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (76.98905, -248.09068),
+                                    (76.98905, -243.92567),
+                                    (-101.57554, -243.92564),
+                                    (-101.57554, -248.09065),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 4,
@@ -295,46 +286,145 @@
                     elevation_meters: 519.7918,
                     visibility_group_id: 5,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-499.79996, -224.00682),
-                            (499.79984, -224.00697),
-                            (499.79996, 224.74728),
-                            (-499.79984, 224.74744),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_8",
+                            display_label: "Region 8",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-479.80795, -224.00682),
+                                    (-479.80786, 224.74744),
+                                    (-499.79984, 224.74744),
+                                    (-499.79996, -224.00682),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_9",
+                            display_label: "Region 9",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (499.79984, -224.00697),
+                                    (499.79996, 224.74728),
+                                    (479.80795, 224.74728),
+                                    (479.80786, -224.00697),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 5,
                     key: "floor_5",
-                    display_label: "Floor 549.9m",
-                    elevation_meters: 549.9166,
+                    display_label: "Floor 547.3m",
+                    elevation_meters: 547.30963,
                     visibility_group_id: 6,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-61.19458, -253.83504),
-                            (35.13361, -253.83504),
-                            (34.677418, -251.54343),
-                            (-60.738388, -251.54343),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_10",
+                            display_label: "Region 10",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-12.887199, -253.87984),
+                                    (-36.884438, -251.54343),
+                                    (-60.738388, -251.54343),
+                                    (-61.19458, -253.83504),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_11",
+                            display_label: "Region 11",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (35.13361, -253.83504),
+                                    (10.823466, -251.54343),
+                                    (-13.030485, -251.54343),
+                                    (-12.887199, -253.87984),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 6,
                     key: "floor_6",
-                    display_label: "Floor 558.5m",
-                    elevation_meters: 558.48535,
+                    display_label: "Floor 557.5m",
+                    elevation_meters: 557.5149,
                     visibility_group_id: 7,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-72.55341, -254.33781),
-                            (46.48965, -254.33781),
-                            (46.48965, -247.98843),
-                            (-72.55341, -247.98843),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_12",
+                            display_label: "Region 12",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-48.7448, -254.33781),
+                                    (-48.7448, -247.98843),
+                                    (-72.55341, -250.8142),
+                                    (-72.55341, -254.33781),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_13",
+                            display_label: "Region 13",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-24.936186, -255.37659),
+                                    (-24.936186, -246.48741),
+                                    (-48.7448, -246.48741),
+                                    (-48.7448, -255.37659),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_14",
+                            display_label: "Region 14",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-1.1275693, -254.33781),
+                                    (-1.1275682, -247.98843),
+                                    (-24.936186, -250.8142),
+                                    (-24.936186, -254.33781),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_15",
+                            display_label: "Region 15",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (22.68104, -255.37659),
+                                    (22.68104, -246.48741),
+                                    (-1.1275681, -246.48741),
+                                    (-1.1275694, -255.37659),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_16",
+                            display_label: "Region 16",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (46.48965, -254.33781),
+                                    (46.48965, -247.98843),
+                                    (22.68104, -250.8142),
+                                    (22.68104, -254.33781),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 7,
@@ -343,161 +433,355 @@
                     elevation_meters: 585.1809,
                     visibility_group_id: 8,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-101.57554, -248.09065),
-                            (76.98905, -248.09068),
-                            (76.98905, -243.92567),
-                            (-101.57554, -243.92564),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_17",
+                            display_label: "Region 17",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (76.98905, -248.09068),
+                                    (76.98905, -243.92567),
+                                    (-101.57554, -243.92564),
+                                    (-101.57554, -248.09065),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 8,
                     key: "floor_8",
-                    display_label: "Floor 599.8m",
-                    elevation_meters: 599.75977,
+                    display_label: "Floor 615.1m",
+                    elevation_meters: 615.0837,
                     visibility_group_id: 9,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-416.00848, -244.36913),
-                            (416.00842, -244.36923),
-                            (416.00848, 244.36902),
-                            (-416.00842, 244.36913),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_18",
+                            display_label: "Region 18",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (416.00842, -119.419304),
+                                    (-416.00848, -244.36913),
+                                    (416.00842, -244.36923),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_19",
+                            display_label: "Region 19",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (416.00848, 244.36902),
+                                    (-416.00842, 244.36913),
+                                    (416.00848, 119.419075),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 9,
                     key: "floor_9",
-                    display_label: "Floor 611.2m",
-                    elevation_meters: 611.1982,
+                    display_label: "Floor 629.8m",
+                    elevation_meters: 629.84564,
                     visibility_group_id: 10,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-499.79996, -260.39523),
-                            (499.79984, -260.3954),
-                            (499.79996, 261.1357),
-                            (-499.79984, 261.13586),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_20",
+                            display_label: "Region 20",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-416.00848, -124.07687),
+                                    (-499.79996, -260.39523),
+                                    (-416.0085, -260.39526),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_21",
+                            display_label: "Region 21",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-416.00842, 261.13583),
+                                    (-499.79984, 261.13586),
+                                    (-416.00842, 124.81747),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_22",
+                            display_label: "Region 22",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (416.00842, -119.419304),
+                                    (-416.00848, -119.419174),
+                                    (-416.00848, -244.36913),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_23",
+                            display_label: "Region 23",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (416.00848, 119.419075),
+                                    (-416.00842, 244.36913),
+                                    (-416.00842, 119.4192),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_24",
+                            display_label: "Region 24",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (499.79984, -260.3954),
+                                    (416.00842, -124.077),
+                                    (416.00842, -260.3954),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_25",
+                            display_label: "Region 25",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (499.79996, 261.1357),
+                                    (416.0085, 261.13574),
+                                    (416.00848, 124.81734),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 10,
                     key: "floor_10",
-                    display_label: "Floor 629.8m",
-                    elevation_meters: 629.84564,
-                    visibility_group_id: 12,
+                    display_label: "Floor 647.1m",
+                    elevation_meters: 647.1198,
+                    visibility_group_id: 11,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-443.93896, -214.9558),
-                            (443.93887, -214.95593),
-                            (443.93896, 215.69624),
-                            (-443.93887, 215.6964),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_26",
+                            display_label: "Region 26",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-416.00848, -124.07687),
+                                    (-499.7999, -124.07686),
+                                    (-499.79996, -260.39523),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_27",
+                            display_label: "Region 27",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-416.00842, 124.81747),
+                                    (-499.79984, 261.13586),
+                                    (-499.7999, 124.81748),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_28",
+                            display_label: "Region 28",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (499.7999, -124.07701),
+                                    (416.00842, -124.077),
+                                    (499.79984, -260.3954),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_29",
+                            display_label: "Region 29",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (499.79996, 261.1357),
+                                    (416.00848, 124.81734),
+                                    (499.7999, 124.81733),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 11,
                     key: "floor_11",
-                    display_label: "Floor 646.6m",
-                    elevation_meters: 646.6136,
-                    visibility_group_id: 13,
+                    display_label: "Floor 652.0m",
+                    elevation_meters: 651.9874,
+                    visibility_group_id: 12,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-471.86948, -169.51631),
-                            (471.8694, -169.51646),
-                            (471.86948, 170.25679),
-                            (-471.8694, 170.25694),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_30",
+                            display_label: "Region 30",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (416.00848, 119.419075),
+                                    (-416.00842, 119.4192),
+                                    (-416.00845, -0.000005837966),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_31",
+                            display_label: "Region 31",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (416.00845, -0.00013146902),
+                                    (-416.00848, -119.419174),
+                                    (416.00842, -119.419304),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 12,
                     key: "floor_12",
-                    display_label: "Floor 665.0m",
-                    elevation_meters: 665.0342,
-                    visibility_group_id: 16,
+                    display_label: "Floor 658.2m",
+                    elevation_meters: 658.2436,
+                    visibility_group_id: 13,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-499.7999, -124.07686),
-                            (499.7999, -124.07701),
-                            (499.7999, 124.81733),
-                            (-499.7999, 124.81748),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_32",
+                            display_label: "Region 32",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (416.00845, -0.00013146902),
+                                    (416.00848, 119.419075),
+                                    (-416.00845, -0.000005837966),
+                                    (-416.00848, -119.419174),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 13,
                     key: "floor_13",
                     display_label: "Floor 671.6m",
                     elevation_meters: 671.55286,
-                    visibility_group_id: 17,
+                    visibility_group_id: 14,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-471.86942, -82.59448),
-                            (471.86942, -82.59463),
-                            (471.86942, 83.33493),
-                            (-471.86942, 83.335075),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_33",
+                            display_label: "Region 33",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-416.00848, -124.07687),
+                                    (-499.7999, 0.37027633),
+                                    (-499.7999, -124.07686),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_34",
+                            display_label: "Region 34",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-416.00842, 124.81747),
+                                    (-499.7999, 124.81748),
+                                    (-499.7999, 0.37027633),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_35",
+                            display_label: "Region 35",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (499.7999, 0.37012538),
+                                    (416.00842, -124.077),
+                                    (499.7999, -124.07701),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_36",
+                            display_label: "Region 36",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (499.7999, 124.81733),
+                                    (416.00848, 124.81734),
+                                    (499.7999, 0.37012538),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 14,
                     key: "floor_14",
                     display_label: "Floor 678.0m",
                     elevation_meters: 678.0254,
-                    visibility_group_id: 18,
+                    visibility_group_id: 15,
                     room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-443.93896, -41.11211),
-                            (443.93893, -41.112247),
-                            (443.93896, 41.852535),
-                            (-443.93893, 41.85267),
-                        ],
-                    ),
-                ),
-                (
-                    floor_id: 15,
-                    key: "floor_15",
-                    display_label: "Floor 684.5m",
-                    elevation_meters: 684.4978,
-                    visibility_group_id: 19,
-                    room_tag: None,
-                    walkable_outline: (
-                        vertices_xz: [
-                            (-499.7999, 0.37027633),
-                            (-416.00845, 0.37026367),
-                            (499.7999, 0.37012538),
-                            (416.00845, 0.37013805),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "region_37",
+                            display_label: "Region 37",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (-416.00842, 124.81747),
+                                    (-499.7999, 0.37027633),
+                                    (-416.00848, -124.07687),
+                                ],
+                            ),
+                        ),
+                        (
+                            key: "region_38",
+                            display_label: "Region 38",
+                            room_tag: None,
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (499.7999, 0.37012538),
+                                    (416.00848, 124.81734),
+                                    (416.00842, -124.077),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
             ],
-            entrances: [
-                (
-                    key: "exterior_entrance",
-                    floor_key: "floor_0",
-                    local_position_xz: (-0.000030517578, -243.99878),
-                    radius_meters: 2.5,
-                    interior_spawn_local: (-0.000019836425, 67.78584, -146.25125),
-                    bidirectional: true,
-                ),
-            ],
+            entrances: [],
             vertical_transitions: [],
+            region_connections: [],
             enabled: true,
         ),
         (
             id: ("two_story_hut"),
             display_name: "Two Story Hut Navigation",
-            schema_version: 1,
+            schema_version: 2,
             metadata: (
                 source_render_key: None,
                 generation_revision: None,
@@ -512,14 +796,21 @@
                     elevation_meters: 0.0,
                     visibility_group_id: 1,
                     room_tag: Some("hall"),
-                    walkable_outline: (
-                        vertices_xz: [
-                            (0.0, 0.0),
-                            (4.0, 0.0),
-                            (4.0, 4.0),
-                            (0.0, 4.0),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "main",
+                            display_label: "Ground Floor",
+                            room_tag: Some("hall"),
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (0.0, 0.0),
+                                    (4.0, 0.0),
+                                    (4.0, 4.0),
+                                    (0.0, 4.0),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
                 (
                     floor_id: 1,
@@ -528,24 +819,33 @@
                     elevation_meters: 4.0,
                     visibility_group_id: 2,
                     room_tag: Some("bedroom"),
-                    walkable_outline: (
-                        vertices_xz: [
-                            (0.0, 0.0),
-                            (4.0, 0.0),
-                            (4.0, 4.0),
-                            (0.0, 4.0),
-                        ],
-                    ),
+                    regions: [
+                        (
+                            key: "main",
+                            display_label: "Upper Floor",
+                            room_tag: Some("bedroom"),
+                            walkable_outline: (
+                                vertices_xz: [
+                                    (0.0, 0.0),
+                                    (4.0, 0.0),
+                                    (4.0, 4.0),
+                                    (0.0, 4.0),
+                                ],
+                            ),
+                        ),
+                    ],
                 ),
             ],
             entrances: [
                 (
                     key: "exterior_entrance",
                     floor_key: "ground_interior",
+                    region_key: Some("main"),
                     local_position_xz: (2.0, 0.0),
                     radius_meters: 1.5,
                     interior_spawn_local: (2.0, 0.0, 1.0),
                     bidirectional: true,
+                    door_key: None,
                 ),
             ],
             vertical_transitions: [
@@ -554,12 +854,15 @@
                     kind: Stair,
                     from_floor_key: "ground_interior",
                     to_floor_key: "upper_interior",
+                    from_region_key: Some("main"),
+                    to_region_key: Some("main"),
                     from_local_position_xz: (3.0, 3.0),
                     from_radius_meters: 1.25,
                     to_local_position: (3.0, 4.0, 3.0),
                     bidirectional: true,
                 ),
             ],
+            region_connections: [],
             enabled: true,
         ),
     ],

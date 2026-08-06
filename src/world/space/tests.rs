@@ -88,6 +88,7 @@ fn surface_is_default_unit_space() {
 
 #[test]
 fn portal_transition_is_deterministic_with_hysteresis() {
+    let world = flat_world();
     let mut registry = SpaceRegistry::new();
     let upper = registry.allocate_space_id();
     registry.insert_space(SpaceRecord {
@@ -106,6 +107,7 @@ fn portal_transition_is_deterministic_with_hysteresis() {
     let agent = pos(10.0, 10.0);
     let mut state = UnitPortalTransitionState::default();
     let first = try_portal_transition(
+        &world,
         &registry,
         layout(),
         SpaceId::SURFACE,
@@ -115,6 +117,7 @@ fn portal_transition_is_deterministic_with_hysteresis() {
     );
     assert!(first.is_some());
     let second = try_portal_transition(
+        &world,
         &registry,
         layout(),
         SpaceId::SURFACE,

@@ -6,8 +6,8 @@ use crate::camera::{RtsCamera, RtsCameraState};
 use crate::debug::{DebugOverlayConfig, InspectorOverlayFocus};
 use crate::dev::window::{DevWindowId, DevWindowRegistry};
 use crate::world::{
-    BuildingCatalog, BuildingId, BuildingNavigationBlueprintCatalog,
-    BuildingNavigationBlueprintCatalogRevision, WorldData,
+    BlueprintInspectionValidation, BuildingCatalog, BuildingId, BuildingNavigationBlueprintCatalog,
+    BuildingNavigationBlueprintCatalogRevision, GeometryGenerationDiagnostics, WorldData,
 };
 
 use super::capture::capture_building_blueprint_inspection_snapshot;
@@ -23,7 +23,15 @@ pub enum BlueprintPendingConfirmation {
     ResetToAsset,
     RegenerateFromMesh {
         current_source: String,
+        destructive: bool,
     },
+    ReplaceWorkingCopyWithDraft {
+        current_regions: usize,
+        current_connections: usize,
+        draft_regions: usize,
+        draft_connections: usize,
+    },
+    AdoptGeneratedDraft,
     DiscardEdits {
         action: String,
     },
@@ -48,6 +56,17 @@ pub struct BlueprintVariantDraft {
     pub active_field: BlueprintVariantDraftField,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct GeneratedBlueprintDraft {
+    pub blueprint: crate::world::BuildingNavigationBlueprint,
+    pub warnings: Vec<String>,
+    pub geometry_diagnostics: GeometryGenerationDiagnostics,
+    pub mesh_source_label: String,
+    pub validation: BlueprintInspectionValidation,
+    /// True after the user adopts this draft into the working copy for manual editing.
+    pub adopted: bool,
+}
+
 /// Session state for blueprint inspection mode (camera save/restore, floor selection).
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
 pub struct BlueprintInspectionState {
@@ -56,15 +75,23 @@ pub struct BlueprintInspectionState {
     pub dirty: bool,
     pub building_id: Option<BuildingId>,
     pub selected_floor_id: Option<i32>,
+    pub selected_region_key: Option<String>,
     pub focused_diagnostic_index: Option<usize>,
     pub saved_camera: Option<RtsCameraState>,
     pub working_copy: Option<crate::world::BuildingNavigationBlueprint>,
+    /// Mesh-generated draft awaiting explicit acceptance (IN-09).
+    pub generated_draft: Option<GeneratedBlueprintDraft>,
+    pub draft_preview_active: bool,
+    /// Working copy before adopting a generated draft (restored by reset / discard adoption).
+    pub pre_adoption_working_copy: Option<crate::world::BuildingNavigationBlueprint>,
     pub selection: BlueprintEditSelection,
     pub active_tool: BlueprintEditTool,
     pub drag: Option<BlueprintEditDrag>,
     pub last_pick_message: Option<String>,
     pub pending_confirmation: Option<BlueprintPendingConfirmation>,
     pub variant_draft: Option<BlueprintVariantDraft>,
+    /// Two-stage connection authoring: (from_region, to_region pending).
+    pub pending_connection_regions: Option<(String, String)>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -73,18 +100,25 @@ pub enum BlueprintEditTool {
     Select,
     AddVertex,
     AddEntrance,
+    AddConnection,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum BlueprintEditSelection {
     #[default]
     None,
+    Region {
+        floor_id: i32,
+        region_key: String,
+    },
     Vertex {
         floor_id: i32,
+        region_key: String,
         index: usize,
     },
     Edge {
         floor_id: i32,
+        region_key: String,
         index: usize,
     },
     Entrance {
@@ -96,14 +130,39 @@ pub enum BlueprintEditSelection {
     TransitionTo {
         key: String,
     },
+    Connection {
+        key: String,
+    },
+    ConnectionFrom {
+        key: String,
+    },
+    ConnectionTo {
+        key: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlueprintEditDrag {
-    Vertex { floor_id: i32, index: usize },
-    Entrance { key: String },
-    TransitionFrom { key: String },
-    TransitionTo { key: String },
+    Vertex {
+        floor_id: i32,
+        region_key: String,
+        index: usize,
+    },
+    Entrance {
+        key: String,
+    },
+    TransitionFrom {
+        key: String,
+    },
+    TransitionTo {
+        key: String,
+    },
+    ConnectionFrom {
+        key: String,
+    },
+    ConnectionTo {
+        key: String,
+    },
 }
 
 impl BlueprintInspectionState {
@@ -120,6 +179,7 @@ impl BlueprintInspectionState {
             .selected_floor_id
             .is_some_and(|id| working.floors.iter().any(|floor| floor.floor_id == id));
         if still_valid {
+            self.sync_selected_region_from_working_copy();
             return;
         }
         let floor = working
@@ -132,6 +192,140 @@ impl BlueprintInspectionState {
             })
             .expect("non-empty floors");
         self.selected_floor_id = Some(floor.floor_id);
+        self.sync_selected_region_from_working_copy();
+    }
+
+    pub fn sync_selected_region_from_working_copy(&mut self) {
+        let Some(working) = self.working_copy.as_ref() else {
+            self.selected_region_key = None;
+            return;
+        };
+        let Some(floor_id) = self.selected_floor_id else {
+            self.selected_region_key = None;
+            return;
+        };
+        let Some(floor) = working
+            .floors
+            .iter()
+            .find(|floor| floor.floor_id == floor_id)
+        else {
+            self.selected_region_key = None;
+            return;
+        };
+        if floor.regions.is_empty() {
+            self.selected_region_key = None;
+            return;
+        }
+        let still_valid = self
+            .selected_region_key
+            .as_deref()
+            .is_some_and(|key| floor.regions.iter().any(|region| region.key == key));
+        if still_valid {
+            return;
+        }
+        if floor.regions.len() == 1 {
+            self.selected_region_key = Some(floor.regions[0].key.clone());
+        } else {
+            self.selected_region_key = None;
+        }
+    }
+
+    /// Pick an initial region after adopting a generated draft.
+    pub fn select_initial_region_after_adoption(
+        &mut self,
+        validation: &BlueprintInspectionValidation,
+    ) {
+        let Some(working) = self.working_copy.as_ref() else {
+            self.selected_region_key = None;
+            return;
+        };
+        let Some(floor_id) = self.selected_floor_id else {
+            self.selected_region_key = None;
+            return;
+        };
+        let Some(floor) = working
+            .floors
+            .iter()
+            .find(|floor| floor.floor_id == floor_id)
+        else {
+            self.selected_region_key = None;
+            return;
+        };
+        if floor.regions.is_empty() {
+            self.selected_region_key = None;
+            return;
+        }
+        if let Some(region_key) =
+            region_key_from_validation_diagnostics(validation, floor_id, &floor.regions)
+        {
+            self.selected_region_key = Some(region_key);
+            return;
+        }
+        if floor.regions.len() == 1 {
+            self.selected_region_key = Some(floor.regions[0].key.clone());
+        } else {
+            self.selected_region_key = None;
+        }
+    }
+
+    pub fn clear_selection_if_stale(&mut self) {
+        let Some(working) = self.working_copy.as_ref() else {
+            self.selection = BlueprintEditSelection::None;
+            return;
+        };
+        let valid = match &self.selection {
+            BlueprintEditSelection::None => true,
+            BlueprintEditSelection::Region {
+                floor_id,
+                region_key,
+            } => working
+                .floors
+                .iter()
+                .find(|floor| floor.floor_id == *floor_id)
+                .and_then(|floor| floor.region_by_key(region_key))
+                .is_some(),
+            BlueprintEditSelection::Vertex {
+                floor_id,
+                region_key,
+                index,
+            } => working
+                .floors
+                .iter()
+                .find(|floor| floor.floor_id == *floor_id)
+                .and_then(|floor| floor.region_by_key(region_key))
+                .is_some_and(|region| *index < region.walkable_outline.vertices_xz.len()),
+            BlueprintEditSelection::Edge {
+                floor_id,
+                region_key,
+                index,
+            } => working
+                .floors
+                .iter()
+                .find(|floor| floor.floor_id == *floor_id)
+                .and_then(|floor| floor.region_by_key(region_key))
+                .is_some_and(|region| {
+                    let count = region.walkable_outline.vertices_xz.len();
+                    count >= 2 && *index < count
+                }),
+            BlueprintEditSelection::Entrance { key } => working
+                .entrances
+                .iter()
+                .any(|entrance| entrance.key == *key),
+            BlueprintEditSelection::Transition { key }
+            | BlueprintEditSelection::TransitionTo { key } => working
+                .vertical_transitions
+                .iter()
+                .any(|transition| transition.key == *key),
+            BlueprintEditSelection::Connection { key }
+            | BlueprintEditSelection::ConnectionFrom { key }
+            | BlueprintEditSelection::ConnectionTo { key } => working
+                .region_connections
+                .iter()
+                .any(|connection| connection.key == *key),
+        };
+        if !valid {
+            self.selection = BlueprintEditSelection::None;
+        }
     }
 
     pub fn exit(&mut self) {
@@ -140,16 +334,281 @@ impl BlueprintInspectionState {
         self.dirty = false;
         self.building_id = None;
         self.selected_floor_id = None;
+        self.selected_region_key = None;
         self.focused_diagnostic_index = None;
         self.saved_camera = None;
         self.working_copy = None;
+        self.generated_draft = None;
+        self.draft_preview_active = false;
+        self.pre_adoption_working_copy = None;
         self.selection = BlueprintEditSelection::None;
         self.active_tool = BlueprintEditTool::Select;
         self.drag = None;
         self.last_pick_message = None;
         self.pending_confirmation = None;
         self.variant_draft = None;
+        self.pending_connection_regions = None;
     }
+
+    pub fn has_pending_generated_draft(&self) -> bool {
+        self.generated_draft
+            .as_ref()
+            .is_some_and(|draft| !draft.adopted)
+    }
+
+    pub fn is_editing_adopted_draft(&self) -> bool {
+        self.generated_draft
+            .as_ref()
+            .is_some_and(|draft| draft.adopted)
+    }
+
+    /// Ensure [`selected_floor_id`] references a floor in the pending generated draft.
+    pub fn sync_selected_floor_from_draft(&mut self) {
+        let Some(draft) = self.generated_draft.as_ref() else {
+            return;
+        };
+        let floors = &draft.blueprint.floors;
+        if floors.is_empty() {
+            self.selected_floor_id = None;
+            return;
+        }
+        let still_valid = self
+            .selected_floor_id
+            .is_some_and(|id| floors.iter().any(|floor| floor.floor_id == id));
+        if still_valid {
+            return;
+        }
+        let floor = floors
+            .iter()
+            .min_by(|a, b| {
+                a.elevation_meters
+                    .partial_cmp(&b.elevation_meters)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .expect("non-empty floors");
+        self.selected_floor_id = Some(floor.floor_id);
+    }
+
+    pub fn sync_selected_region_from_draft(&mut self) {
+        let Some(draft) = self.generated_draft.as_ref() else {
+            return;
+        };
+        let Some(floor_id) = self.selected_floor_id else {
+            self.selected_region_key = None;
+            return;
+        };
+        let Some(floor) = draft
+            .blueprint
+            .floors
+            .iter()
+            .find(|floor| floor.floor_id == floor_id)
+        else {
+            self.selected_region_key = None;
+            return;
+        };
+        if floor.regions.len() == 1 {
+            self.selected_region_key = Some(floor.regions[0].key.clone());
+        }
+    }
+
+    pub fn draft_topology_summary(&self) -> Option<(usize, usize)> {
+        self.generated_draft.as_ref().map(|draft| {
+            let regions = draft
+                .blueprint
+                .floors
+                .iter()
+                .map(|floor| floor.regions.len())
+                .sum();
+            let connections = draft.blueprint.region_connections.len();
+            (regions, connections)
+        })
+    }
+
+    pub fn working_topology_summary(&self) -> Option<(usize, usize)> {
+        self.working_copy.as_ref().map(|blueprint| {
+            let regions = blueprint
+                .floors
+                .iter()
+                .map(|floor| floor.regions.len())
+                .sum();
+            let connections = blueprint.region_connections.len();
+            (regions, connections)
+        })
+    }
+}
+
+pub fn adopt_generated_blueprint_draft_for_editing(
+    inspection: &mut BlueprintInspectionState,
+) -> Result<(), String> {
+    let (blueprint, validation) = {
+        let draft = inspection
+            .generated_draft
+            .as_ref()
+            .ok_or_else(|| "no generated draft to edit".to_string())?;
+        if draft.adopted {
+            return Err("generated draft is already being edited".to_string());
+        }
+        (draft.blueprint.clone(), draft.validation.clone())
+    };
+
+    if inspection.pre_adoption_working_copy.is_none() {
+        inspection.pre_adoption_working_copy = inspection.working_copy.clone();
+    }
+
+    inspection.working_copy = Some(blueprint);
+    inspection.dirty = true;
+    inspection.editing = true;
+    inspection.draft_preview_active = false;
+    inspection.selection = BlueprintEditSelection::None;
+    inspection.active_tool = BlueprintEditTool::Select;
+    inspection.drag = None;
+    inspection.pending_connection_regions = None;
+
+    if let Some(draft) = inspection.generated_draft.as_mut() {
+        draft.adopted = true;
+    }
+
+    inspection.sync_selected_floor_from_working_copy();
+    inspection.select_initial_region_after_adoption(&validation);
+    Ok(())
+}
+
+/// Restore the working copy from before draft adoption (reset / discard adoption edits).
+pub fn restore_pre_adoption_working_copy(inspection: &mut BlueprintInspectionState) {
+    inspection.working_copy = inspection.pre_adoption_working_copy.take();
+    inspection.generated_draft = None;
+    inspection.draft_preview_active = false;
+    inspection.dirty = false;
+    inspection.editing = inspection.working_copy.is_some();
+    inspection.selection = BlueprintEditSelection::None;
+    inspection.active_tool = BlueprintEditTool::Select;
+    inspection.drag = None;
+    inspection.pending_connection_regions = None;
+    inspection.sync_selected_floor_from_working_copy();
+}
+
+pub fn accept_generated_blueprint_draft(
+    inspection: &mut BlueprintInspectionState,
+) -> Result<(), String> {
+    let draft = inspection
+        .generated_draft
+        .as_ref()
+        .ok_or_else(|| "no generated draft to accept".to_string())?;
+    if !draft.validation.valid() {
+        return Err(format!(
+            "generated draft has {} validation errors — fix or discard before accepting",
+            draft.validation.error_count
+        ));
+    }
+    let draft = inspection
+        .generated_draft
+        .take()
+        .expect("generated draft present");
+    let working = inspection
+        .working_copy
+        .get_or_insert_with(|| draft.blueprint.clone());
+    working.floors = draft.blueprint.floors;
+    working.entrances = draft.blueprint.entrances;
+    working.vertical_transitions = draft.blueprint.vertical_transitions;
+    working.region_connections = draft.blueprint.region_connections;
+    inspection.dirty = true;
+    inspection.editing = true;
+    inspection.draft_preview_active = false;
+    inspection.sync_selected_floor_from_working_copy();
+    Ok(())
+}
+
+pub fn discard_generated_blueprint_draft(inspection: &mut BlueprintInspectionState) {
+    if inspection
+        .generated_draft
+        .as_ref()
+        .is_some_and(|draft| draft.adopted)
+    {
+        return;
+    }
+    inspection.generated_draft = None;
+    inspection.draft_preview_active = false;
+}
+
+pub fn format_adopted_draft_status_message(
+    validation: &crate::world::BlueprintInspectionValidation,
+    region_count: usize,
+    connection_count: usize,
+) -> String {
+    format!(
+        "Editing generated draft — unsaved. Regions: {region_count}  Connections: {connection_count}  \
+         Validation errors: {}  Warnings: {}",
+        validation.error_count, validation.warning_count
+    )
+}
+
+pub fn format_generated_draft_status_message(draft: &GeneratedBlueprintDraft) -> String {
+    if draft.adopted {
+        return String::new();
+    }
+    if draft.validation.valid() {
+        return "Generated draft ready for review.".into();
+    }
+    let headline = draft
+        .validation
+        .diagnostics
+        .iter()
+        .find(|diag| diag.level == crate::world::BlueprintDiagnosticLevel::Error)
+        .map(|diag| diag.message.clone())
+        .unwrap_or_else(|| {
+            format!(
+                "Generated draft has {} validation errors",
+                draft.validation.error_count
+            )
+        });
+    format!("Generated draft contains validation errors. {headline}")
+}
+
+pub fn format_fatal_generation_failure_message(error: &str) -> String {
+    if error.contains("mesh load failed")
+        || error.contains("no triangles")
+        || error.contains("no walkable")
+        || error.contains("invalid baseline scale")
+    {
+        format!("Blueprint generation failed before a usable draft could be created. {error}")
+    } else {
+        format!("Blueprint generation failed: {error}")
+    }
+}
+
+fn region_key_from_validation_diagnostics(
+    validation: &crate::world::BlueprintInspectionValidation,
+    floor_id: i32,
+    regions: &[crate::world::NavigationRegionDefinition],
+) -> Option<String> {
+    use crate::world::BlueprintDiagnosticLevel;
+    for diag in validation
+        .diagnostics
+        .iter()
+        .filter(|d| d.level == BlueprintDiagnosticLevel::Error)
+    {
+        if diag
+            .focus
+            .as_ref()
+            .is_some_and(|focus| focus.floor_id == Some(floor_id))
+            || diag.focus.is_none()
+        {
+            if let Some(key) = region_key_from_diagnostic_message(&diag.message) {
+                if regions.iter().any(|region| region.key == key) {
+                    return Some(key);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn region_key_from_diagnostic_message(message: &str) -> Option<String> {
+    message
+        .split('`')
+        .nth(1)
+        .map(|s| s.to_string())
+        .filter(|s| !s.is_empty())
 }
 
 /// Reusable bird's-eye framing for a building anchor and blueprint bounds (NV1.2.5).
@@ -384,7 +843,10 @@ fn enrich_floor_details(
     snap.selected_floor_id = Some(floor_id);
     if let Some(blueprint) = snap.resolved_blueprint.as_ref() {
         if let Some(floor) = blueprint.floors.iter().find(|f| f.floor_id == floor_id) {
-            snap.selected_floor_vertex_count = floor.walkable_outline.vertices_xz.len();
+            snap.selected_floor_vertex_count = floor
+                .sole_region_outline()
+                .map(|outline| outline.vertices_xz.len())
+                .unwrap_or(0);
             snap.selected_floor_elevation = Some(floor.elevation_meters);
             snap.selected_floor_entrances = blueprint
                 .entrances

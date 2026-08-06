@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use super::definition::BuildingNavigationBlueprint;
 use super::error::BuildingNavigationBlueprintError;
 use super::id::BuildingNavigationBlueprintId;
+use super::migrate::migrate_blueprint_to_current;
 use super::starter;
 
 /// Monotonic revision bumped when catalog content changes (hot reload seam).
@@ -38,11 +39,14 @@ pub struct BuildingNavigationBlueprintCatalogRon {
 
 impl BuildingNavigationBlueprintCatalog {
     pub fn from_definitions(
-        definitions: Vec<BuildingNavigationBlueprint>,
+        mut definitions: Vec<BuildingNavigationBlueprint>,
     ) -> Result<Self, BuildingNavigationBlueprintError> {
         let mut by_id = BTreeMap::new();
-        for (index, definition) in definitions.iter().enumerate() {
+        for definition in &mut definitions {
+            migrate_blueprint_to_current(definition)?;
             definition.validate()?;
+        }
+        for (index, definition) in definitions.iter().enumerate() {
             if by_id.insert(definition.id.clone(), index).is_some() {
                 return Err(BuildingNavigationBlueprintError::DuplicateId(
                     definition.id.clone(),
@@ -110,6 +114,24 @@ pub fn load_building_navigation_blueprint_catalog() -> BuildingNavigationBluepri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The shipped catalog RON must load through the real loader.
+    ///
+    /// `from_definitions` rejects the whole file when any one entry fails migration or
+    /// validation, and dev startup then silently falls back to starter blueprints and
+    /// exports them over this file — destroying every authored blueprint. This test is the
+    /// guard that makes such a file fail here instead of in the game.
+    #[test]
+    fn shipped_catalog_ron_loads_through_real_loader() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH);
+        if !path.exists() {
+            return;
+        }
+        BuildingNavigationBlueprintCatalog::load_from_ron_path(&path).unwrap_or_else(|err| {
+            panic!("shipped navigation blueprint catalog must load: {err}");
+        });
+    }
 
     #[test]
     fn starter_catalog_loads() {

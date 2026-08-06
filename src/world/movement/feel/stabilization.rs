@@ -29,7 +29,19 @@ pub fn stabilized_movement_heading(
 
     let mut index = waypoint_index.min(path.len().saturating_sub(1));
     while index < path.len() {
-        let waypoint = path.waypoints[index].position;
+        let waypoint_meta = &path.waypoints[index];
+        if waypoint_meta.portal_id.is_some() {
+            let waypoint = waypoint_meta.position;
+            let direction = direction_toward(current, waypoint, layout);
+            if direction.length_squared() > 1e-8 {
+                return Some(StabilizedMovementHeading {
+                    waypoint_index: index,
+                    direction_xz: direction,
+                });
+            }
+            break;
+        }
+        let waypoint = waypoint_meta.position;
         let distance = xz_distance(current, waypoint, layout);
         if distance <= WAYPOINT_DIRECTION_EPSILON_METERS && index + 1 < path.len() {
             index += 1;

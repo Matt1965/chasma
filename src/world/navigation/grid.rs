@@ -4,22 +4,57 @@ use bevy::prelude::*;
 
 use crate::world::{
     ChunkLayout, PassabilityAgent, PassabilityCatalogs, PassabilityResult, SlopeWalkability,
-    WorldData, WorldPosition, classify_slope_walkability, ground_position_in_space,
-    ground_world_position, query_passability_at, query_passability_in_space,
+    SpaceId, SpaceRegistry, WorldData, WorldPosition, classify_slope_walkability,
+    ground_position_in_space, ground_world_position, query_passability_at,
+    query_passability_in_space,
 };
 
 /// Grid configuration for pathfinding (ADR-032).
 #[derive(Debug, Clone, Copy, PartialEq, Reflect, Resource)]
 pub struct NavigationConfig {
-    /// Distance between adjacent navigation cell centers (meters).
+    /// Distance between adjacent navigation cell centers on the surface (meters).
     pub cell_spacing_meters: f32,
+    /// Distance between adjacent navigation cell centers in interior spaces (meters).
+    pub interior_cell_spacing_meters: f32,
 }
 
 impl Default for NavigationConfig {
     fn default() -> Self {
         Self {
             cell_spacing_meters: 4.0,
+            interior_cell_spacing_meters: 0.5,
         }
+    }
+}
+
+impl NavigationConfig {
+    /// Effective cell spacing for pathfinding in `space_id`.
+    pub fn cell_spacing_for_space(&self, space_id: crate::world::SpaceId) -> f32 {
+        if space_id.is_surface() {
+            self.cell_spacing_meters
+        } else {
+            self.interior_cell_spacing_meters
+        }
+    }
+
+    /// Config with [`cell_spacing_meters`] set to the effective spacing for `space_id`.
+    pub fn config_for_space(&self, space_id: crate::world::SpaceId) -> Self {
+        Self {
+            cell_spacing_meters: self.cell_spacing_for_space(space_id),
+            interior_cell_spacing_meters: self.interior_cell_spacing_meters,
+        }
+    }
+
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if !(self.cell_spacing_meters > 0.0) || !self.cell_spacing_meters.is_finite() {
+            return Err("surface cell spacing must be finite and positive");
+        }
+        if !(self.interior_cell_spacing_meters > 0.0)
+            || !self.interior_cell_spacing_meters.is_finite()
+        {
+            return Err("interior cell spacing must be finite and positive");
+        }
+        Ok(())
     }
 }
 
@@ -97,7 +132,7 @@ pub fn is_position_walkable(
     )
 }
 
-fn cell_walkability_sample_globals(
+pub fn cell_walkability_sample_globals(
     coord: GridCoord,
     config: NavigationConfig,
     agent_radius_meters: f32,
@@ -170,9 +205,9 @@ pub fn is_cell_walkable_in_space(
         let position = WorldPosition::from_global(global, layout);
         let Some(grounded) = ground_position_in_space(world, space_registry, space_id, position)
         else {
-            return false;
+            continue;
         };
-        if !matches!(
+        if matches!(
             query_passability_in_space(
                 world,
                 catalogs,
@@ -182,10 +217,71 @@ pub fn is_cell_walkable_in_space(
             ),
             PassabilityResult::Passable { .. }
         ) {
-            return false;
+            return true;
         }
     }
-    true
+    false
+}
+
+/// Resolve a walkable navigation cell for a grounded endpoint.
+///
+/// When the position is passable but cell-center sampling rejects the nominal cell
+/// (common near portal triggers and polygon edges), search outward deterministically.
+pub fn resolve_path_endpoint_cell(
+    world: &WorldData,
+    space_registry: &SpaceRegistry,
+    catalogs: PassabilityCatalogs<'_>,
+    space_config: NavigationConfig,
+    agent: NavigationAgent,
+    space_id: SpaceId,
+    position: WorldPosition,
+    layout: ChunkLayout,
+) -> Option<GridCoord> {
+    let preferred = grid_coord_at_position(position, layout, space_config);
+    if is_cell_walkable_in_space(
+        world,
+        space_registry,
+        catalogs,
+        space_config,
+        agent,
+        preferred,
+        space_id,
+    ) {
+        return Some(preferred);
+    }
+
+    let mut queue = std::collections::VecDeque::from([preferred]);
+    let mut seen = std::collections::BTreeSet::from([preferred]);
+    let mut expanded = 0usize;
+    while let Some(cell) = queue.pop_front() {
+        expanded += 1;
+        if expanded > 64 {
+            break;
+        }
+        let mut neighbors: Vec<_> = NEIGHBOR_OFFSETS
+            .iter()
+            .map(|&(dx, dz)| GridCoord::new(cell.x + dx, cell.z + dz))
+            .collect();
+        neighbors.sort_by_key(|coord| (coord.z, coord.x));
+        for next in neighbors {
+            if !seen.insert(next) {
+                continue;
+            }
+            if is_cell_walkable_in_space(
+                world,
+                space_registry,
+                catalogs,
+                space_config,
+                agent,
+                next,
+                space_id,
+            ) {
+                return Some(next);
+            }
+            queue.push_back(next);
+        }
+    }
+    Some(preferred)
 }
 
 /// Whether terrain heightfield is resident for this cell.
@@ -239,6 +335,103 @@ pub fn diagonal_corner_clear(
         && is_cell_walkable(world, catalogs, config, agent, cardinal_b)
 }
 
+/// Diagonal corner clearance within a navigation space (IN-11e).
+pub fn diagonal_corner_clear_in_space(
+    world: &WorldData,
+    space_registry: &crate::world::SpaceRegistry,
+    catalogs: PassabilityCatalogs<'_>,
+    config: NavigationConfig,
+    agent: NavigationAgent,
+    from: GridCoord,
+    dx: i32,
+    dz: i32,
+    space_id: crate::world::SpaceId,
+    layout: crate::world::ChunkLayout,
+) -> bool {
+    if dx == 0 || dz == 0 {
+        return true;
+    }
+    let cardinal_a = GridCoord::new(from.x + dx, from.z);
+    let cardinal_b = GridCoord::new(from.x, from.z + dz);
+    if !is_cell_walkable_in_space(
+        world,
+        space_registry,
+        catalogs,
+        config,
+        agent,
+        cardinal_a,
+        space_id,
+    ) || !is_cell_walkable_in_space(
+        world,
+        space_registry,
+        catalogs,
+        config,
+        agent,
+        cardinal_b,
+        space_id,
+    ) {
+        return false;
+    }
+    let space_config = config.config_for_space(space_id);
+    let from_global = grid_cell_center_global(from, space_config);
+    let to_global = grid_cell_center_global(GridCoord::new(from.x + dx, from.z + dz), space_config);
+    let from_pos = WorldPosition::from_global(from_global, layout);
+    let to_pos = WorldPosition::from_global(to_global, layout);
+    let Some(from_grounded) = ground_position_in_space(world, space_registry, space_id, from_pos)
+    else {
+        return false;
+    };
+    let Some(to_grounded) = ground_position_in_space(world, space_registry, space_id, to_pos)
+    else {
+        return false;
+    };
+    if space_id.is_surface() {
+        return true;
+    }
+    crate::world::interior_segment_respects_region_boundary(
+        world.building_navigation_runtime(),
+        space_registry,
+        layout,
+        from_grounded,
+        to_grounded,
+        space_id,
+        agent.radius_meters,
+    )
+}
+
+/// Whether a grounded position is walkable in a specific space (NV1.3 / IN-03).
+pub fn is_position_walkable_in_space(
+    world: &WorldData,
+    space_registry: &SpaceRegistry,
+    catalogs: PassabilityCatalogs<'_>,
+    position: WorldPosition,
+    agent: NavigationAgent,
+    space_id: SpaceId,
+) -> bool {
+    let Some(grounded) = ground_position_in_space(world, space_registry, space_id, position) else {
+        return false;
+    };
+    let layout = world.layout();
+    if space_id.is_surface() {
+        return is_position_walkable(world, catalogs, grounded, agent)
+            || crate::world::position_in_surface_entrance_portal(
+                world.space_registry(),
+                layout,
+                grounded,
+            );
+    }
+    matches!(
+        query_passability_in_space(
+            world,
+            catalogs,
+            grounded,
+            PassabilityAgent::from(agent),
+            space_id,
+        ),
+        PassabilityResult::Passable { .. }
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -259,6 +452,39 @@ mod tests {
             radius_meters: 0.6,
             max_slope_degrees: 40.0,
         }
+    }
+
+    #[test]
+    fn default_surface_spacing_is_four_meters() {
+        let config = NavigationConfig::default();
+        assert_eq!(config.cell_spacing_meters, 4.0);
+    }
+
+    #[test]
+    fn default_interior_spacing_is_half_meter() {
+        let config = NavigationConfig::default();
+        assert_eq!(config.interior_cell_spacing_meters, 0.5);
+    }
+
+    #[test]
+    fn effective_spacing_selects_by_space() {
+        let config = NavigationConfig::default();
+        assert_eq!(
+            config.cell_spacing_for_space(crate::world::SpaceId::SURFACE),
+            4.0
+        );
+        assert_eq!(
+            config.cell_spacing_for_space(crate::world::SpaceId::new(1)),
+            0.5
+        );
+        let interior_config = config.config_for_space(crate::world::SpaceId::new(1));
+        assert_eq!(interior_config.cell_spacing_meters, 0.5);
+        assert_eq!(
+            config
+                .config_for_space(crate::world::SpaceId::SURFACE)
+                .cell_spacing_meters,
+            4.0
+        );
     }
 
     #[test]

@@ -661,7 +661,10 @@ impl SceneBuildingRecord {
                 door_ids: Vec::new(),
                 child_doodad_ids: self.child_doodad_ids.clone(),
                 child_building_ids: self.child_building_ids.clone(),
-                activated: self.interior_activated,
+                // Derived runtime state, never restored as authoritative: no runtime
+                // spaces or portals exist yet. Scene load reconciliation re-evaluates
+                // activation and sets this from the real result (IN-11b).
+                activated: false,
                 interior_space_id: None,
             },
             parent_building_id: self.parent_building_id.map(crate::world::BuildingId::new),

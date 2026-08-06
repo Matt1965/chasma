@@ -36,7 +36,7 @@ pub fn two_story_hut_interior_profile() -> InteriorProfile {
             to_space_key: "ground_interior",
             from_local_xz: Vec2::new(2.0, 0.0),
             from_radius_meters: 1.5,
-            to_local_position: Vec3::new(2.0, 0.0, 1.0),
+            to_local_position: Vec3::new(2.0, 0.0, 2.5),
             bidirectional: true,
         },
         PortalTemplate {
@@ -44,9 +44,9 @@ pub fn two_story_hut_interior_profile() -> InteriorProfile {
             portal_type: PortalType::Stair,
             from_space_key: "ground_interior",
             to_space_key: "upper_interior",
-            from_local_xz: Vec2::new(3.0, 3.0),
+            from_local_xz: Vec2::new(1.5, 1.5),
             from_radius_meters: 1.25,
-            to_local_position: Vec3::new(3.0, 4.0, 3.0),
+            to_local_position: Vec3::new(1.5, 4.0, 1.5),
             bidirectional: true,
         },
         PortalTemplate {
@@ -60,12 +60,20 @@ pub fn two_story_hut_interior_profile() -> InteriorProfile {
             bidirectional: true,
         },
     ];
-    let doors = vec![DoorTemplate {
-        key: "upper_hall_door",
-        portal_key: "upper_hall_door",
-        initial_state: DoorState::Closed,
-        access: DoorAccessPolicy::Everyone,
-    }];
+    let doors = vec![
+        DoorTemplate {
+            key: "exterior_entrance",
+            portal_key: "exterior_entrance",
+            initial_state: DoorState::Closed,
+            access: DoorAccessPolicy::Everyone,
+        },
+        DoorTemplate {
+            key: "upper_hall_door",
+            portal_key: "upper_hall_door",
+            initial_state: DoorState::Closed,
+            access: DoorAccessPolicy::Everyone,
+        },
+    ];
     let children = vec![
         InteriorChildPlacement {
             key: "ground_chair",

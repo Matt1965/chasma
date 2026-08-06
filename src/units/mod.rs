@@ -11,7 +11,11 @@ mod components;
 mod dev_spawn;
 mod health_bars;
 pub mod input;
+#[cfg(any(test, feature = "dev"))]
+mod movement_authority_report;
 mod plugin;
+#[cfg(any(test, feature = "dev"))]
+mod portal_report;
 mod settings;
 mod spawn;
 mod sync;
@@ -34,7 +38,19 @@ pub use health_bars::{
     UnitHealthBar, UnitHealthBarState, billboard_unit_health_bars, health_bar_color,
     health_percent, should_show_health_bar, sync_unit_health_bars,
 };
+#[cfg(any(test, feature = "dev"))]
+pub use movement_authority_report::{
+    LatestMovementAuthorityReport, report_movement_authority_for_selection,
+};
 pub use plugin::UnitsRuntimePlugin;
+#[cfg(any(test, feature = "dev"))]
+pub use portal_report::{
+    LatestPortalTransitionReport, PortalTransitionPresentation,
+    report_portal_transition_presentation,
+};
 pub use settings::UnitsRuntimeSettings;
-pub use spawn::{UnitRenderIndex, despawn_unit_render_entities, spawn_unit_render_entity};
+pub use spawn::{
+    UnitRenderIndex, despawn_unit_render_entities, spawn_unit_render_entity,
+    unit_render_translation,
+};
 pub use sync::{UnitRuntimeSystems, UnitSyncOverrides, sync_unit_render_entities};

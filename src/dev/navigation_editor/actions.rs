@@ -4,13 +4,15 @@ use bevy::prelude::*;
 
 use crate::camera::{RtsCamera, RtsCameraState};
 use crate::client::selection::WorldSelectionState;
-use crate::debug::DebugOverlayConfig;
+use crate::debug::UnitPathDiagnosticStore;
 use crate::dev::dev_mode::DevModeState;
 use crate::dev::inspector::{
     BlueprintEditInputParams, BlueprintEditTool, BlueprintInspectionState,
-    BlueprintPendingConfirmation, WorldInspectorState, confirm_blueprint_pending_action,
-    editor_adjust_radius, editor_delete_selection, editor_request_apply_to_asset,
-    editor_request_reset_to_asset, editor_save_instance_blueprint, editor_submit_variant_draft,
+    BlueprintPendingConfirmation, WorldInspectorState, accept_generated_blueprint_draft,
+    adopt_generated_blueprint_draft_for_editing, confirm_blueprint_pending_action,
+    discard_generated_blueprint_draft, editor_adjust_radius, editor_delete_selection,
+    editor_request_apply_to_asset, editor_request_reset_to_asset, editor_save_instance_blueprint,
+    editor_submit_variant_draft,
 };
 use crate::dev::window::DevWindowRegistry;
 use crate::world::{
@@ -27,16 +29,19 @@ use super::panel::{
 };
 use super::state::NavigationEditorUiState;
 use crate::dev::NavigationEditorBlockedAction;
+use crate::dev::inspector::{
+    editor_add_region, editor_select_next_region, editor_select_prev_region,
+};
+use crate::dev::widgets::queue_button_activation_flash;
 
 /// Open/focus Navigation Editor from launcher buttons.
 pub fn handle_open_navigation_editor_buttons(
-    dev_state: Res<DevModeState>,
+    mut dev_state: ResMut<DevModeState>,
     mut registry: ResMut<DevWindowRegistry>,
     mut inspection: ResMut<BlueprintInspectionState>,
     mut inspector: ResMut<WorldInspectorState>,
     world_selection: Res<WorldSelectionState>,
     mut overlay_focus: ResMut<crate::debug::InspectorOverlayFocus>,
-    mut debug_config: ResMut<DebugOverlayConfig>,
     world: Res<WorldData>,
     building_catalog: Res<BuildingCatalog>,
     nav_catalog: Res<BuildingNavigationBlueprintCatalog>,
@@ -63,7 +68,7 @@ pub fn handle_open_navigation_editor_buttons(
                     &mut inspector,
                     &mut overlay_focus,
                     &mut cam,
-                    &mut debug_config,
+                    &mut dev_state.debug_config,
                     &world,
                     &building_catalog,
                     &nav_catalog,
@@ -77,8 +82,11 @@ pub fn handle_open_navigation_editor_buttons(
 
 /// Navigation Editor action buttons.
 pub fn handle_navigation_editor_actions(
+    time: Res<Time>,
+    mut commands: Commands,
     mut edit_params: BlueprintEditInputParams<'_, '_>,
-    buttons: Query<(&Interaction, &DevNavigationEditorActionButton), Changed<Interaction>>,
+    mut path_store: ResMut<UnitPathDiagnosticStore>,
+    buttons: Query<(Entity, &Interaction, &DevNavigationEditorActionButton), Changed<Interaction>>,
 ) {
     if !edit_params.dev_state.enabled {
         return;
@@ -90,8 +98,11 @@ pub fn handle_navigation_editor_actions(
         return;
     }
 
-    for (interaction, button) in &buttons {
+    for (entity, interaction, button) in &buttons {
         if *interaction != Interaction::Pressed {
+            continue;
+        }
+        if button.disabled {
             continue;
         }
         edit_params.gate.block_gameplay_mouse = true;
@@ -107,7 +118,7 @@ pub fn handle_navigation_editor_actions(
                         &mut edit_params.inspector,
                         &mut edit_params.overlay_focus,
                         &mut cam,
-                        &mut edit_params.debug_config,
+                        &mut edit_params.dev_state.debug_config,
                         &edit_params.world,
                         &edit_params.building_catalog,
                         &edit_params.nav_catalog,
@@ -127,7 +138,7 @@ pub fn handle_navigation_editor_actions(
                         &mut edit_params.inspector,
                         &mut edit_params.overlay_focus,
                         &mut cam,
-                        &mut edit_params.debug_config,
+                        &mut edit_params.dev_state.debug_config,
                         &edit_params.world,
                         &edit_params.building_catalog,
                         &edit_params.nav_catalog,
@@ -155,7 +166,7 @@ pub fn handle_navigation_editor_actions(
                             &mut edit_params.inspector,
                             &mut edit_params.overlay_focus,
                             &mut cam,
-                            &mut edit_params.debug_config,
+                            &mut edit_params.dev_state.debug_config,
                             &edit_params.world,
                             &edit_params.building_catalog,
                             &edit_params.nav_catalog,
@@ -173,6 +184,22 @@ pub fn handle_navigation_editor_actions(
             }
             NavigationEditorAction::ToolAddEntrance => {
                 set_edit_tool(&mut edit_params.inspection, BlueprintEditTool::AddEntrance);
+            }
+            NavigationEditorAction::ToolAddRegion => editor_add_region(&mut edit_params),
+            NavigationEditorAction::ToolAddConnection => {
+                set_edit_tool(
+                    &mut edit_params.inspection,
+                    BlueprintEditTool::AddConnection,
+                );
+                edit_params.inspection.pending_connection_regions = None;
+                edit_params.inspector.last_message =
+                    "Click source region, then destination region".into();
+            }
+            NavigationEditorAction::SelectRegionPrev => {
+                editor_select_prev_region(&mut edit_params);
+            }
+            NavigationEditorAction::SelectRegionNext => {
+                editor_select_next_region(&mut edit_params);
             }
             NavigationEditorAction::DeleteSelection => editor_delete_selection(&mut edit_params),
             NavigationEditorAction::RadiusUp => editor_adjust_radius(&mut edit_params, 0.1),
@@ -196,6 +223,101 @@ pub fn handle_navigation_editor_actions(
                 }
             }
             NavigationEditorAction::Regenerate => request_regenerate(&mut edit_params),
+            NavigationEditorAction::EditDraft => {
+                if edit_params.inspection.dirty && edit_params.inspection.working_copy.is_some() {
+                    edit_params.inspection.pending_confirmation =
+                        Some(BlueprintPendingConfirmation::AdoptGeneratedDraft);
+                    edit_params.inspector.last_message =
+                        "Unsaved working-copy edits — confirm adopt generated draft or cancel."
+                            .into();
+                    continue;
+                }
+                match adopt_generated_blueprint_draft_for_editing(&mut edit_params.inspection) {
+                    Ok(()) => {
+                        edit_params
+                            .inspection
+                            .sync_selected_floor_from_working_copy();
+                        edit_params.overlay_focus.blueprint_floor_id =
+                            edit_params.inspection.selected_floor_id;
+                        edit_params.dev_state.debug_config.nav_blueprint = true;
+                        edit_params.inspector.last_message =
+                            "Editing generated draft in working copy (unsaved).".into();
+                        if let Some(building_id) = edit_params.world_selection.building_id {
+                            refresh_editor_snapshot(
+                                &edit_params.world,
+                                &edit_params.building_catalog,
+                                &edit_params.nav_catalog,
+                                building_id,
+                                &edit_params.inspection,
+                                &mut edit_params.inspector,
+                            );
+                        }
+                    }
+                    Err(err) => edit_params.inspector.last_message = err,
+                }
+            }
+            NavigationEditorAction::ReplaceWorkingCopy => {
+                let (current_regions, current_connections) = edit_params
+                    .inspection
+                    .working_topology_summary()
+                    .unwrap_or((0, 0));
+                let (draft_regions, draft_connections) = edit_params
+                    .inspection
+                    .draft_topology_summary()
+                    .unwrap_or((0, 0));
+                edit_params.inspection.pending_confirmation =
+                    Some(BlueprintPendingConfirmation::ReplaceWorkingCopyWithDraft {
+                        current_regions,
+                        current_connections,
+                        draft_regions,
+                        draft_connections,
+                    });
+                edit_params.inspector.last_message = format!(
+                    "Replace working copy?\nCurrent: {current_regions} regions · {current_connections} connections\nGenerated: {draft_regions} regions · {draft_connections} connections"
+                );
+            }
+            NavigationEditorAction::AcceptDraft => {
+                match accept_generated_blueprint_draft(&mut edit_params.inspection) {
+                    Ok(()) => {
+                        edit_params
+                            .inspection
+                            .sync_selected_floor_from_working_copy();
+                        edit_params.overlay_focus.blueprint_floor_id =
+                            edit_params.inspection.selected_floor_id;
+                        edit_params.dev_state.debug_config.nav_blueprint = true;
+                        edit_params.inspector.last_message =
+                            "Accepted generated draft into working copy (unsaved).".into();
+                        if let Some(building_id) = edit_params.world_selection.building_id {
+                            refresh_editor_snapshot(
+                                &edit_params.world,
+                                &edit_params.building_catalog,
+                                &edit_params.nav_catalog,
+                                building_id,
+                                &edit_params.inspection,
+                                &mut edit_params.inspector,
+                            );
+                        }
+                    }
+                    Err(err) => edit_params.inspector.last_message = err,
+                }
+            }
+            NavigationEditorAction::DiscardDraft => {
+                discard_generated_blueprint_draft(&mut edit_params.inspection);
+                edit_params.inspector.last_message =
+                    "Discarded generated draft; working copy unchanged.".into();
+            }
+            NavigationEditorAction::ToggleDraftPreview => {
+                if edit_params.inspection.has_pending_generated_draft() {
+                    edit_params.inspection.draft_preview_active =
+                        !edit_params.inspection.draft_preview_active;
+                    edit_params.inspector.last_message =
+                        if edit_params.inspection.draft_preview_active {
+                            "Draft preview overlay enabled.".into()
+                        } else {
+                            "Draft preview overlay disabled.".into()
+                        };
+                }
+            }
             NavigationEditorAction::Validate => {
                 edit_params.nav_ui.validation_expanded = true;
                 if let Some(building_id) = edit_params.world_selection.building_id {
@@ -261,15 +383,22 @@ pub fn handle_navigation_editor_actions(
                 edit_params.inspector.last_message = "Cancelled Save As Variant".into();
             }
             NavigationEditorAction::OverlayBlueprint => {
-                edit_params.debug_config.nav_blueprint = !edit_params.debug_config.nav_blueprint;
+                edit_params.dev_state.debug_config.nav_blueprint =
+                    !edit_params.dev_state.debug_config.nav_blueprint;
             }
             NavigationEditorAction::OverlayEntrances => {
-                edit_params.debug_config.nav_entrances = !edit_params.debug_config.nav_entrances;
+                edit_params.dev_state.debug_config.nav_entrances =
+                    !edit_params.dev_state.debug_config.nav_entrances;
             }
             NavigationEditorAction::OverlayRuntimePath => {
-                edit_params.debug_config.path = !edit_params.debug_config.path;
+                edit_params.dev_state.debug_config.path = !edit_params.dev_state.debug_config.path;
+            }
+            NavigationEditorAction::ClearRecordedPath => {
+                path_store.clear_all();
+                edit_params.inspector.last_message = "Cleared recorded unit path traces.".into();
             }
         }
+        queue_button_activation_flash(&mut commands, entity, time.elapsed_secs());
     }
 }
 
@@ -286,6 +415,7 @@ fn step_floor(params: &mut BlueprintEditInputParams<'_, '_>, direction: FloorSte
         &params.nav_catalog,
         building_id,
         direction,
+        false,
     );
 }
 
@@ -308,10 +438,16 @@ fn request_regenerate(params: &mut BlueprintEditInputParams<'_, '_>) {
         params.inspection.pending_confirmation =
             Some(BlueprintPendingConfirmation::RegenerateFromMesh {
                 current_source: authority.label().to_string(),
+                destructive: false,
             });
         params.inspector.last_message = format!(
-            "Regenerate slices a draft from the building mesh (current source: {}). \
-             Persisted blueprints are unchanged until Save Instance or Apply to Asset.",
+            "{} a separate generated draft from the building mesh (current source: {}). \
+             The working copy is unchanged until you replace it.",
+            if params.inspection.has_pending_generated_draft() {
+                "Regenerate"
+            } else {
+                "Generate"
+            },
             authority.label()
         );
     } else {
@@ -320,9 +456,10 @@ fn request_regenerate(params: &mut BlueprintEditInputParams<'_, '_>) {
             params.inspection.pending_confirmation =
                 Some(BlueprintPendingConfirmation::RegenerateFromMesh {
                     current_source: "generated".into(),
+                    destructive: false,
                 });
             params.inspector.last_message =
-                "Regenerate from building mesh? A draft will load into the editor without saving."
+                "Generate a separate draft from the building mesh? The working copy stays unchanged."
                     .into();
         }
         #[cfg(not(feature = "data-import"))]

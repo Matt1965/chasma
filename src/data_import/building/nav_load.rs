@@ -16,10 +16,30 @@ const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
 pub fn resolve_dev_navigation_blueprint_catalog(
     buildings: &BuildingCatalog,
 ) -> BuildingNavigationBlueprintCatalog {
-    let existing = BuildingNavigationBlueprintCatalog::load_from_ron_path(
+    let existing = match BuildingNavigationBlueprintCatalog::load_from_ron_path(
         &Path::new(MANIFEST_DIR).join(BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH),
-    )
-    .unwrap_or_else(|_| load_building_navigation_blueprint_catalog());
+    ) {
+        Ok(catalog) => catalog,
+        Err(err) => {
+            // Import ends here on purpose: it exports the resulting catalog over the
+            // authored RON, so continuing with starter blueprints would overwrite every
+            // authored blueprint with fallback data.
+            append_log_line(
+                DEV_STARTUP_LOG_PATH,
+                SESSION_HEADER,
+                &format!(
+                    "Navigation blueprint catalog at {BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH} \
+                     failed to load ({err}); using starter blueprints and skipping generation so \
+                     the authored file is preserved"
+                ),
+            );
+            bevy::log::error!(
+                "navigation blueprint catalog failed to load ({err}); skipping generation to \
+                 preserve authored blueprints"
+            );
+            return load_building_navigation_blueprint_catalog();
+        }
+    };
 
     let (catalog, reports) = import_navigation_blueprints_for_catalog(buildings, existing);
 

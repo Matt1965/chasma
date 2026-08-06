@@ -2,10 +2,29 @@
 
 use bevy::prelude::*;
 
-use crate::terrain::world_position_to_render_global;
-use crate::world::{UnitId, UnitRecord, WorldConfig};
+use crate::terrain::world_position_to_render_global_above_base;
+use crate::world::{UnitId, UnitRecord, WorldConfig, WorldData, space_vertical_reference_y};
 
 use super::components::{UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot};
+
+/// Render translation for a unit, honoring the space its authoritative Y belongs to.
+///
+/// A unit standing on an interior floor is positioned above the building anchor by an
+/// authored metric offset. Exaggerating that offset with the terrain vertical scale
+/// throws the unit far above or below the visible floor (IN-11c).
+pub fn unit_render_translation(
+    world: &WorldData,
+    record: &UnitRecord,
+    layout: crate::world::ChunkLayout,
+    vertical_scale: f32,
+) -> Vec3 {
+    world_position_to_render_global_above_base(
+        record.placement.position,
+        layout,
+        vertical_scale,
+        space_vertical_reference_y(world, world.space_registry(), record.current_space_id),
+    )
+}
 
 /// Spawn a glTF scene entity for an authoritative unit record.
 ///
@@ -13,6 +32,7 @@ use super::components::{UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot};
 /// units have no instance scale today — pass [`crate::world::unit_visual_scale`]).
 pub fn spawn_unit_render_entity(
     commands: &mut Commands,
+    world: &WorldData,
     record: &UnitRecord,
     scene: Handle<Scene>,
     config: &WorldConfig,
@@ -20,8 +40,7 @@ pub fn spawn_unit_render_entity(
     visual_scale: Vec3,
 ) -> Entity {
     let layout = config.chunk_layout();
-    let translation =
-        world_position_to_render_global(record.placement.position, layout, vertical_scale);
+    let translation = unit_render_translation(world, record, layout, vertical_scale);
     commands
         .spawn((
             UnitRenderEntity { unit_id: record.id },

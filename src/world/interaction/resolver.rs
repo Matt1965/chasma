@@ -3,7 +3,10 @@
 //! Produces orders only — movement/pathfinding remain authoritative downstream.
 
 use crate::world::combat::{AttackTargetingPolicy, classify_unit_target};
-use crate::world::{UnitId, UnitOrder, WorldData, WorldPosition};
+use crate::world::{
+    UnitId, UnitOrder, WorldData, WorldPosition, ground_position_in_space,
+    interior_position_walkable, resolve_navigation_space_at_position,
+};
 
 use super::query::{InteractionQueryContext, query_world_interaction};
 use super::types::{InteractionResult, InteractionTargetRef, InteractionType};
@@ -148,8 +151,43 @@ pub fn resolve_world_click_to_order(
         return None;
     }
 
+    if let Some(plan) = resolve_interior_commanded_move_click(ctx, position) {
+        return Some(plan);
+    }
+
     let interaction = query_world_interaction(&ctx.query, position)?;
     Some(resolve_interaction_to_order(&interaction))
+}
+
+/// Interior units command moves on their floor plane, bypassing building interactable NoOp (IN-11eR).
+fn resolve_interior_commanded_move_click(
+    ctx: &InteractionResolveContext<'_>,
+    position: WorldPosition,
+) -> Option<InteractionOrderPlan> {
+    let unit_id = *ctx.selected_units.first()?;
+    let record = ctx.query.world.get_unit(unit_id)?;
+    let current_space = record.current_space_id;
+    if current_space.is_surface() {
+        return None;
+    }
+
+    let world = ctx.query.world;
+    let registry = world.space_registry();
+    let layout = world.layout();
+    let runtime = world.building_navigation_runtime();
+    let grounded =
+        ground_position_in_space(world, registry, current_space, position).unwrap_or(position);
+
+    if interior_position_walkable(runtime, registry, layout, grounded, current_space) {
+        return Some(InteractionOrderPlan::MoveTo { target: grounded });
+    }
+
+    let resolved_space = resolve_navigation_space_at_position(runtime, registry, layout, grounded);
+    let goal_grounded =
+        ground_position_in_space(world, registry, resolved_space, position).unwrap_or(grounded);
+    Some(InteractionOrderPlan::MoveTo {
+        target: goal_grounded,
+    })
 }
 
 /// Query and resolve a unit-target click (uses unit placement as query origin).

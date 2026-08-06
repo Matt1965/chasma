@@ -12,6 +12,7 @@ use super::main_menu::{
 use super::navigation::{MenuNavigation, PauseMenuContext};
 use super::pause_menu::{handle_pause_menu_buttons, sync_pause_menu_page};
 use super::screen::{AppScreen, GameSessionState};
+use super::settings::{SettingsMenuState, handle_settings_actions};
 use super::systems::{
     enforce_simulation_pause_for_screen, ensure_unique_main_menu_root, handle_menu_escape,
     pause_simulation_on_enter_main_menu, prepare_main_menu_navigation,
@@ -36,6 +37,7 @@ impl Plugin for MenuPlugin {
             .init_resource::<MenuNavigation>()
             .init_resource::<MenuInputBlock>()
             .init_resource::<PauseMenuContext>()
+            .init_resource::<SettingsMenuState>()
             .init_resource::<SessionTransitionRequest>()
             .init_resource::<LoadingSession>()
             .configure_sets(
@@ -75,11 +77,12 @@ impl Plugin for MenuPlugin {
                     sync_pause_menu_presence,
                     sync_gameplay_hud_for_screen,
                     handle_main_menu_buttons.run_if(in_state(AppScreen::MainMenu)),
+                    handle_pause_menu_buttons.run_if(in_state(AppScreen::InGame)),
+                    handle_settings_actions,
                     sync_main_menu_page.run_if(in_state(AppScreen::MainMenu)),
                     sync_main_menu_background_cover.run_if(in_state(AppScreen::MainMenu)),
                     warn_main_menu_background_load_failure.run_if(in_state(AppScreen::MainMenu)),
                     ensure_unique_main_menu_root.run_if(in_state(AppScreen::MainMenu)),
-                    handle_pause_menu_buttons.run_if(in_state(AppScreen::InGame)),
                     sync_pause_menu_page.run_if(in_state(AppScreen::InGame)),
                     sync_loading_status_text.run_if(in_state(AppScreen::Loading)),
                 )

@@ -15,8 +15,10 @@ use crate::view::ViewPlugin;
 use crate::world::WorldFoundationPlugin;
 
 mod view_focus;
+mod window_identity;
 
 pub use view_focus::publish_primary_view_focus;
+pub use window_identity::{WINDOW_ICON_ASSET_PATH, WindowIconInstallState, set_window_icon_once};
 
 /// Composition root for the application.
 ///
@@ -32,7 +34,9 @@ pub struct ViewFocusSystems;
 
 impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(ViewPlugin)
+        app.init_resource::<WindowIconInstallState>()
+            .add_systems(Update, window_identity::set_window_icon_once)
+            .add_plugins(ViewPlugin)
             .add_plugins(WorldFoundationPlugin)
             .add_plugins(TerrainRuntimePlugin)
             .add_plugins(DoodadsRuntimePlugin)

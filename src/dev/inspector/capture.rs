@@ -422,11 +422,13 @@ pub fn capture_building_blueprint_inspection_snapshot(
             bp.floors
                 .iter()
                 .flat_map(|floor| {
-                    floor.walkable_outline.vertices_xz.iter().map(|&[x, z]| {
-                        transform
-                            .transform_point(Vec3::new(x, floor.elevation_meters, z))
-                            .xz()
-                            .distance(building_center.xz())
+                    floor.sole_region_outline().into_iter().flat_map(|outline| {
+                        outline.vertices_xz.iter().map(|&[x, z]| {
+                            transform
+                                .transform_point(Vec3::new(x, floor.elevation_meters, z))
+                                .xz()
+                                .distance(building_center.xz())
+                        })
                     })
                 })
                 .fold(4.0_f32, f32::max)
@@ -464,7 +466,10 @@ pub fn capture_building_blueprint_inspection_snapshot(
                 .map(|t| format!("{} {:?} → {}", t.key, t.kind, t.to_floor_key))
                 .collect();
             (
-                floor.walkable_outline.vertices_xz.len(),
+                floor
+                    .sole_region_outline()
+                    .map(|outline| outline.vertices_xz.len())
+                    .unwrap_or(0),
                 Some(floor.elevation_meters),
                 entrances,
                 transitions,

@@ -10,11 +10,12 @@ use super::{
     portal_traversable, try_activate_interior_if_complete, try_open_door_for_unit,
 };
 use crate::world::{
-    Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingLifecycleState,
+    Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingId, BuildingLifecycleState,
     BuildingNavigationBlueprintCatalog, BuildingOwnership, BuildingSource, ChunkCoord, ChunkData,
     ChunkId, ChunkLayout, DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition,
-    NavigationConfig, OccupancyCatalogs, OwnerId, PassabilityCatalogs, UnitOwnership, WorldData,
-    WorldPosition, create_building, find_path_with_spaces, place_player_building,
+    NavigationConfig, OccupancyCatalogs, OwnerId, PassabilityAgent, PassabilityCatalogs,
+    PortalType, UnitOwnership, WorldData, WorldPosition, create_building, find_path_with_spaces,
+    place_player_building, position_in_surface_entrance_portal, query_passability_at,
     set_building_lifecycle_stage,
 };
 
@@ -46,6 +47,87 @@ fn position(x: f32, z: f32) -> WorldPosition {
 
 fn interior_catalog() -> InteriorProfileCatalog {
     InteriorProfileCatalog::default()
+}
+
+fn door_for_key(world: &WorldData, building_id: BuildingId, key: &str) -> DoorId {
+    world
+        .door_store()
+        .building_door_ids(building_id)
+        .iter()
+        .find_map(|door_id| {
+            world
+                .door_store()
+                .get(*door_id)
+                .filter(|door| door.definition_key == key)
+                .map(|_| *door_id)
+        })
+        .unwrap_or_else(|| panic!("door `{key}` not found for building #{building_id:?}"))
+}
+
+fn portal_for_entrance_key(
+    world: &WorldData,
+    building_id: BuildingId,
+    entrance_key: &str,
+) -> crate::world::PortalId {
+    world
+        .space_registry()
+        .portals()
+        .find(|(_, portal)| {
+            portal.owning_building_id == Some(building_id)
+                && portal.portal_type == PortalType::ExteriorEntrance
+        })
+        .map(|(id, _)| *id)
+        .unwrap_or_else(|| panic!("exterior entrance portal for `{entrance_key}` missing"))
+}
+
+#[test]
+fn exterior_entrance_door_associates_with_portal() {
+    let building_catalog = BuildingCatalog::default();
+    let doodad_catalog = DoodadCatalog::default();
+    let footprint = FootprintCatalog::default();
+    let occupancy = occ(&building_catalog, &doodad_catalog, &footprint);
+    let interior = interior_catalog();
+    let nav_catalog = BuildingNavigationBlueprintCatalog::default();
+    let mut world = flat_world_with_terrain();
+
+    let id = place_player_building(
+        &building_catalog,
+        &mut world,
+        &BuildingDefinitionId::new("hut"),
+        position(72.0, 72.0),
+        Quat::IDENTITY,
+        BuildingOwnership::with_affiliation(Affiliation::Player),
+        occupancy,
+    )
+    .unwrap()
+    .id;
+
+    set_building_lifecycle_stage(
+        &mut world,
+        &building_catalog,
+        &interior,
+        &doodad_catalog,
+        occupancy,
+        Some(&nav_catalog),
+        id,
+        BuildingLifecycleState::Complete,
+        1.0,
+    )
+    .unwrap();
+
+    let door_id = door_for_key(&world, id, "exterior_entrance");
+    let door = world.door_store().get(door_id).expect("door");
+    let portal_id = portal_for_entrance_key(&world, id, "exterior_entrance");
+    assert_eq!(door.portal_id, portal_id);
+    assert_eq!(door.owning_building_id, id);
+    assert_eq!(door.state, DoorState::Closed);
+    assert!(
+        !world
+            .space_registry()
+            .get_portal(portal_id)
+            .expect("portal")
+            .enabled
+    );
 }
 
 #[test]
@@ -173,7 +255,7 @@ fn completion_spawns_interior_children_and_doors_once() {
         occupancy,
         None,
         id,
-        &InteriorProfileId::new("two_story_hut"),
+        Some(&InteriorProfileId::new("two_story_hut")),
     );
     assert_eq!(world.sorted_doodad_ids().len(), child_count_before);
 }
@@ -208,7 +290,7 @@ fn door_open_close_updates_portal_passability() {
         occupancy,
         None,
         id,
-        &InteriorProfileId::new("two_story_hut"),
+        Some(&InteriorProfileId::new("two_story_hut")),
     )
     .unwrap();
 
@@ -271,7 +353,7 @@ fn authorized_unit_can_open_closed_door() {
         occupancy,
         None,
         id,
-        &InteriorProfileId::new("two_story_hut"),
+        Some(&InteriorProfileId::new("two_story_hut")),
     )
     .unwrap();
 
@@ -322,7 +404,7 @@ fn locked_door_blocks_unauthorized_open() {
         occupancy,
         None,
         id,
-        &InteriorProfileId::new("two_story_hut"),
+        Some(&InteriorProfileId::new("two_story_hut")),
     )
     .unwrap();
 
@@ -371,7 +453,7 @@ fn ruins_transition_cleans_interior_state() {
         occupancy,
         None,
         id,
-        &InteriorProfileId::new("two_story_hut"),
+        Some(&InteriorProfileId::new("two_story_hut")),
     )
     .unwrap();
 
@@ -474,20 +556,30 @@ fn blueprint_runtime_registers_floors_and_paths_to_upper_level() {
         .expect("runtime navigation cache");
     assert_eq!(runtime.floors.len(), 2);
 
-    let ground = runtime
-        .floors
+    let ground_region = runtime
+        .regions
         .iter()
-        .find(|floor| floor.floor_key == "ground_interior")
+        .find(|region| region.floor_key == "ground_interior")
         .expect("ground floor");
-    let upper = runtime
-        .floors
+    let upper_region = runtime
+        .regions
         .iter()
-        .find(|floor| floor.floor_key == "upper_interior")
+        .find(|region| region.floor_key == "upper_interior")
         .expect("upper floor");
 
     let layout = world.layout();
-    let ground_pos = interior_centroid(&ground.world_outline_xz, layout, ground.space_id, &world);
-    let upper_pos = interior_centroid(&upper.world_outline_xz, layout, upper.space_id, &world);
+    let ground_pos = interior_centroid(
+        &ground_region.world_outline_xz,
+        layout,
+        ground_region.space_id,
+        &world,
+    );
+    let upper_pos = interior_centroid(
+        &upper_region.world_outline_xz,
+        layout,
+        upper_region.space_id,
+        &world,
+    );
 
     let catalogs = PassabilityCatalogs {
         doodad: &doodad_catalog,
@@ -503,8 +595,8 @@ fn blueprint_runtime_registers_floors_and_paths_to_upper_level() {
         45.0,
         ground_pos,
         upper_pos,
-        ground.space_id,
-        upper.space_id,
+        ground_region.space_id,
+        upper_region.space_id,
         None,
     )
     .expect("interior path across blueprint stairs");
@@ -512,7 +604,140 @@ fn blueprint_runtime_registers_floors_and_paths_to_upper_level() {
     assert!(
         path.waypoints
             .iter()
-            .any(|wp| wp.space_id == upper.space_id)
+            .any(|wp| wp.space_id == upper_region.space_id)
     );
     assert!(path.waypoints.iter().any(|wp| wp.portal_id.is_some()));
+}
+
+#[test]
+fn closed_exterior_door_preserves_surface_approach_exemption() {
+    let building_catalog = BuildingCatalog::default();
+    let doodad_catalog = DoodadCatalog::default();
+    let footprint = FootprintCatalog::default();
+    let occupancy = occ(&building_catalog, &doodad_catalog, &footprint);
+    let interior = interior_catalog();
+    let nav_catalog = BuildingNavigationBlueprintCatalog::default();
+    let mut world = flat_world_with_terrain();
+
+    let id = place_player_building(
+        &building_catalog,
+        &mut world,
+        &BuildingDefinitionId::new("hut"),
+        position(80.0, 80.0),
+        Quat::IDENTITY,
+        BuildingOwnership::with_affiliation(Affiliation::Player),
+        occupancy,
+    )
+    .unwrap()
+    .id;
+
+    set_building_lifecycle_stage(
+        &mut world,
+        &building_catalog,
+        &interior,
+        &doodad_catalog,
+        occupancy,
+        Some(&nav_catalog),
+        id,
+        BuildingLifecycleState::Complete,
+        1.0,
+    )
+    .unwrap();
+
+    let portal_id = portal_for_entrance_key(&world, id, "exterior_entrance");
+    let portal = world.space_registry().get_portal(portal_id).unwrap();
+    let layout = world.layout();
+    let approach = WorldPosition::from_global(
+        Vec3::new(
+            portal.from_center_global_xz.x,
+            0.0,
+            portal.from_center_global_xz.y,
+        ),
+        layout,
+    );
+    assert!(
+        !world
+            .space_registry()
+            .get_portal(portal_id)
+            .unwrap()
+            .enabled,
+        "door should start closed"
+    );
+    assert!(position_in_surface_entrance_portal(
+        world.space_registry(),
+        layout,
+        approach
+    ));
+    let catalogs = PassabilityCatalogs {
+        doodad: &doodad_catalog,
+        building: &building_catalog,
+        footprint: &footprint,
+    };
+    assert!(matches!(
+        query_passability_at(
+            &world,
+            catalogs,
+            approach,
+            PassabilityAgent {
+                radius_meters: 0.5,
+                max_slope_degrees: 45.0,
+            },
+        ),
+        crate::world::PassabilityResult::Passable { .. }
+    ));
+}
+
+#[test]
+fn unauthorized_unit_cannot_open_exterior_entrance_door() {
+    let building_catalog = BuildingCatalog::default();
+    let doodad_catalog = DoodadCatalog::default();
+    let footprint = FootprintCatalog::default();
+    let occupancy = occ(&building_catalog, &doodad_catalog, &footprint);
+    let interior = interior_catalog();
+    let mut world = layout_world();
+
+    let owner = BuildingOwnership {
+        owner_id: Some(OwnerId::new(1)),
+        team_id: None,
+        affiliation: Affiliation::Player,
+    };
+    let id = create_building(
+        &building_catalog,
+        &mut world,
+        &BuildingDefinitionId::new("hut"),
+        position(60.0, 60.0),
+        Quat::IDENTITY,
+        BuildingSource::Authored,
+        owner,
+        Some(occupancy),
+    )
+    .unwrap()
+    .id;
+
+    activate_building_interior(
+        &mut world,
+        &building_catalog,
+        &interior,
+        &doodad_catalog,
+        occupancy,
+        None,
+        id,
+        Some(&InteriorProfileId::new("two_story_hut")),
+    )
+    .unwrap();
+
+    let door_id = door_for_key(&world, id, "exterior_entrance");
+    world
+        .door_store_mut()
+        .get_mut(door_id)
+        .expect("door")
+        .access = DoorAccessPolicy::OwnerOnly;
+
+    let stranger = UnitOwnership::hostile();
+    assert!(!try_open_door_for_unit(&mut world, door_id, owner, stranger).unwrap());
+    let portal_id = world.door_store().get(door_id).unwrap().portal_id;
+    assert!(
+        !portal_traversable(&world, portal_id, owner, Some(stranger)),
+        "unauthorized unit should not route through closed owner-only door"
+    );
 }

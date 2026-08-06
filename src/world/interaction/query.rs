@@ -11,7 +11,7 @@ use crate::world::{
     FootprintSpec, PassabilityAgent, PassabilityCatalogs, PassabilityResult, SlopeWalkability,
     UnitCatalog, WorldData, WorldPosition, building_accepts_workstation_use,
     building_is_constructible, classify_slope_walkability, ground_world_position,
-    query_passability_at, unit_may_work_on_building,
+    interior_navigation_move_target_at_position, query_passability_at, unit_may_work_on_building,
 };
 
 use super::types::{InteractionMetadata, InteractionResult, InteractionTargetRef, InteractionType};
@@ -75,6 +75,27 @@ pub fn query_world_interaction(
     let Some(grounded) = ground_world_position(ctx.world, position) else {
         return None;
     };
+
+    if interior_navigation_move_target_at_position(
+        ctx.world.building_navigation_runtime(),
+        ctx.world.space_registry(),
+        ctx.world.layout(),
+        grounded,
+    )
+    .is_some()
+    {
+        return Some(InteractionResult {
+            interaction_type: InteractionType::MoveTarget,
+            position: grounded,
+            metadata: InteractionMetadata {
+                label: "Move interior".to_string(),
+                doodad_kind: None,
+                blocks_movement: false,
+            },
+            valid: true,
+            target: InteractionTargetRef::Terrain(grounded),
+        });
+    }
 
     if let Some((record, definition)) =
         nearest_doodad_in_radius(ctx, grounded, ctx.query_radius_meters)

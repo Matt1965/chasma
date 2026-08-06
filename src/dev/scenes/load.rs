@@ -733,20 +733,23 @@ fn reconcile_building_interiors_after_scene_load(
     use crate::world::{BuildingId, InteriorProfileId, activate_building_interior};
 
     for scene in scene_buildings {
-        if !scene.interior_activated {
-            continue;
-        }
         let building_id = BuildingId::new(scene.id);
+        // `interior_activated` is derived runtime state, not authored data. A saved
+        // `false` must not permanently suppress activation, so every building is
+        // re-evaluated by the current activation system (IN-11b).
         let profile_key = scene.interior_profile_id.clone().or_else(|| {
             world
                 .get_building(building_id)
                 .and_then(|record| building_catalog.get(&record.definition_id))
                 .and_then(|definition| definition.interior_profile_id.clone())
         });
-        let Some(profile_key) = profile_key else {
-            continue;
-        };
-        if world.door_store().building_door_ids(building_id).is_empty() {
+        let profile_id = profile_key.as_deref().map(InteriorProfileId::new);
+        let needs_activation = world
+            .space_registry()
+            .building_space_ids(building_id)
+            .is_empty()
+            && world.door_store().building_door_ids(building_id).is_empty();
+        if needs_activation {
             let _ = activate_building_interior(
                 world,
                 building_catalog,
@@ -755,7 +758,7 @@ fn reconcile_building_interiors_after_scene_load(
                 occupancy,
                 nav_catalog,
                 building_id,
-                &InteriorProfileId::new(profile_key),
+                profile_id.as_ref(),
             );
         }
         for snapshot in scene.door_states() {
@@ -1258,6 +1261,111 @@ mod tests {
         assert_eq!(record.lifecycle_state, BuildingLifecycleState::Planned);
         assert_eq!(world.occupancy_cell_count(), before_cells);
         assert!(!world.task_store().building_task_ids(building_id).is_empty());
+    }
+
+    /// IN-11b: a scene saved while a building was unactivated must still activate on
+    /// reload once a blueprint is resolvable. `interior_activated` is derived runtime
+    /// state, so a persisted `false` must not permanently suppress activation.
+    #[test]
+    fn scene_reload_activates_previously_unactivated_navigation() {
+        use crate::world::{
+            BuildingLifecycleState, BuildingOwnership, InteriorActivationStatus, OccupancyCatalogs,
+            place_player_building,
+        };
+        use bevy::prelude::Quat;
+
+        let categories = crate::world::BuildingCategoryCatalog::default();
+        let definitions = crate::world::starter_building_definitions()
+            .into_iter()
+            .map(|mut definition| {
+                if definition.id == crate::world::BuildingDefinitionId::new("hut") {
+                    // Real imported hut shape: no interior profile.
+                    definition.interior_profile_id = None;
+                    definition.navigation_blueprint_id = None;
+                }
+                definition
+            })
+            .collect();
+        let building_catalog =
+            BuildingCatalog::from_definitions(definitions, &categories).expect("catalog");
+        let mut nav_catalog =
+            crate::world::BuildingNavigationBlueprintCatalog::from_definitions(Vec::new())
+                .expect("empty nav catalog");
+
+        let mut world = flat_world();
+        let unit_catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let footprint_catalog = FootprintCatalog::default();
+        let occ = OccupancyCatalogs {
+            building: &building_catalog,
+            doodad: &doodad_catalog,
+            footprint: &footprint_catalog,
+        };
+        let building_id = place_player_building(
+            &building_catalog,
+            &mut world,
+            &crate::world::BuildingDefinitionId::new("hut"),
+            pos(40.0, 40.0),
+            Quat::IDENTITY,
+            BuildingOwnership::with_affiliation(crate::world::Affiliation::Player),
+            occ,
+        )
+        .unwrap()
+        .id;
+        world
+            .mutate_building(building_id, |record| {
+                record.lifecycle_state = BuildingLifecycleState::Complete;
+            })
+            .unwrap();
+
+        // Saved with nothing activated: no blueprint existed yet.
+        let scene = sample_scene(&world);
+        assert!(
+            !scene
+                .building_records
+                .iter()
+                .any(|record| record.interior_activated),
+            "precondition: scene captured an unactivated interior"
+        );
+
+        // A blueprint becomes resolvable after the save (editor Apply to Asset).
+        let definition = building_catalog
+            .get(&crate::world::BuildingDefinitionId::new("hut"))
+            .expect("hut definition");
+        let mut blueprint = crate::world::two_room_hut_navigation_blueprint();
+        blueprint.id = crate::world::blueprint_id_for_building(definition);
+        nav_catalog.upsert(blueprint).expect("upsert");
+
+        apply_scene(
+            &mut world,
+            &unit_catalog,
+            &doodad_catalog,
+            &building_catalog,
+            &footprint_catalog,
+            &InteriorProfileCatalog::default(),
+            Some(&nav_catalog),
+            &scene,
+        )
+        .unwrap();
+
+        let outcome = world
+            .interior_activation_outcomes()
+            .get(building_id)
+            .expect("scene load must evaluate activation");
+        assert_eq!(
+            outcome.status,
+            InteriorActivationStatus::NavigationWithoutProfile,
+            "expected reload activation, got {}",
+            outcome.summary()
+        );
+        assert!(
+            world
+                .building_navigation_runtime()
+                .get(building_id)
+                .is_some(),
+            "runtime navigation must be reconstructed on reload"
+        );
+        assert!(world.get_building(building_id).unwrap().interior.activated);
     }
 
     #[test]

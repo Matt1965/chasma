@@ -13,16 +13,15 @@ use super::catalog::{
 };
 use super::definition::BuildingNavigationBlueprint;
 use super::generate::{
-    NavigationBlueprintGenerateInput, NavigationBlueprintGenerateOutput, blueprint_id_for_building,
-    failed_report, generate_navigation_blueprint, hash_asset_path,
-    navigation_blueprint_generation_rejection, navigation_mesh_source_label,
-    should_generate_navigation_blueprint,
+    NavigationBlueprintGenerateInput, NavigationBlueprintGenerateOutput, failed_report,
+    generate_navigation_blueprint, hash_asset_path, navigation_blueprint_generation_rejection,
+    navigation_mesh_source_label, should_generate_navigation_blueprint,
 };
-use super::id::BuildingNavigationBlueprintId;
+use super::id::{BuildingNavigationBlueprintId, blueprint_id_for_building};
 use super::mesh::load_building_mesh_for_navigation_with_fallback;
 use super::report::{
-    EntranceGenerationDiagnostics, NavigationBlueprintGenerationReport,
-    NavigationBlueprintGenerationStatus,
+    EntranceGenerationDiagnostics, GeometryGenerationDiagnostics,
+    NavigationBlueprintGenerationReport, NavigationBlueprintGenerationStatus,
 };
 use crate::world::BuildingCatalog;
 use crate::world::building::catalog::BuildingDefinition;
@@ -58,6 +57,7 @@ pub fn import_navigation_blueprints_for_catalog(
                 warnings: vec!["skipped: building is not Navigable".into()],
                 errors: Vec::new(),
                 entrance_diagnostics: EntranceGenerationDiagnostics::default(),
+                geometry_diagnostics: GeometryGenerationDiagnostics::default(),
             });
             continue;
         }
@@ -84,6 +84,7 @@ pub fn import_navigation_blueprints_for_catalog(
                     warnings: Vec::new(),
                     errors: Vec::new(),
                     entrance_diagnostics: EntranceGenerationDiagnostics::default(),
+                    geometry_diagnostics: GeometryGenerationDiagnostics::default(),
                 });
                 continue;
             }
@@ -114,7 +115,7 @@ pub fn import_navigation_blueprints_for_catalog(
             baseline_scale: baseline_scale(definition),
             mesh,
         }) {
-            Ok(output) => {
+            Ok(output) if output.validation.valid() => {
                 manifest.upsert(NavigationBlueprintCacheEntry {
                     blueprint_id: blueprint_id.as_str().to_string(),
                     building_definition_id: definition.id.as_str().to_string(),
@@ -132,6 +133,22 @@ pub fn import_navigation_blueprints_for_catalog(
                     warnings: output.warnings,
                     errors: Vec::new(),
                     entrance_diagnostics: output.entrance_diagnostics,
+                    geometry_diagnostics: output.geometry_diagnostics,
+                });
+            }
+            Ok(output) => {
+                reports.push(NavigationBlueprintGenerationReport {
+                    building_id: definition.id.as_str().to_string(),
+                    blueprint_id: blueprint_id.clone(),
+                    status: NavigationBlueprintGenerationStatus::Failed,
+                    mesh_source_label,
+                    warnings: output.warnings,
+                    errors: vec![format!(
+                        "generated blueprint has {} validation errors",
+                        output.validation.error_count
+                    )],
+                    entrance_diagnostics: output.entrance_diagnostics,
+                    geometry_diagnostics: output.geometry_diagnostics,
                 });
             }
             Err(err) => {
@@ -153,6 +170,7 @@ pub fn import_navigation_blueprints_for_catalog(
                 warnings: Vec::new(),
                 errors: vec![format!("catalog merge failed: {err}")],
                 entrance_diagnostics: EntranceGenerationDiagnostics::default(),
+                geometry_diagnostics: GeometryGenerationDiagnostics::default(),
             });
             existing
         }
@@ -167,6 +185,7 @@ pub fn import_navigation_blueprints_for_catalog(
             warnings: Vec::new(),
             errors: vec![format!("failed to save cache manifest: {err}")],
             entrance_diagnostics: EntranceGenerationDiagnostics::default(),
+            geometry_diagnostics: GeometryGenerationDiagnostics::default(),
         });
     }
 
@@ -252,19 +271,38 @@ pub fn regenerate_navigation_blueprint_for_building(
         NavigationBlueprintGenerationReport {
             building_id: definition.id.as_str().to_string(),
             blueprint_id,
-            status: NavigationBlueprintGenerationStatus::Generated,
+            status: if output.validation.valid() {
+                NavigationBlueprintGenerationStatus::Generated
+            } else {
+                NavigationBlueprintGenerationStatus::Failed
+            },
             mesh_source_label: Some(mesh_source_label),
             warnings: output.warnings,
-            errors: Vec::new(),
+            errors: if output.validation.valid() {
+                Vec::new()
+            } else {
+                vec![format!(
+                    "generated draft has {} validation errors",
+                    output.validation.error_count
+                )]
+            },
             entrance_diagnostics: output.entrance_diagnostics,
+            geometry_diagnostics: output.geometry_diagnostics,
         },
         output.blueprint,
     ))
 }
 
+/// Write the navigation blueprint catalog to the shipped asset RON.
+///
+/// Never writes under `cfg(test)`: the path is a fixed repository asset, so a unit test
+/// reaching this would overwrite authored blueprints.
 pub fn export_navigation_blueprint_catalog(
     catalog: &BuildingNavigationBlueprintCatalog,
 ) -> Result<(), String> {
+    if cfg!(test) {
+        return Ok(());
+    }
     let path = Path::new(MANIFEST_DIR).join(BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|err| err.to_string())?;

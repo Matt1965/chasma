@@ -144,6 +144,15 @@ pub struct WorldData {
     /// Runtime navigation derived from building blueprints (NV1.3).
     #[reflect(ignore)]
     building_navigation_runtime: crate::world::BuildingNavigationRuntimeStore,
+    /// Latest interior activation result per building, for dev diagnostics (IN-11b).
+    #[reflect(ignore)]
+    interior_activation_outcomes: crate::world::InteriorActivationOutcomeStore,
+    /// Bounded record of recent portal traversals, for dev diagnostics (IN-11c).
+    #[reflect(ignore)]
+    portal_transition_trace: crate::world::PortalTransitionTrace,
+    /// Bounded movement authority trace for IN-11eR dev diagnostics.
+    #[reflect(ignore)]
+    movement_authority_trace: crate::world::MovementAuthorityTrace,
 }
 
 impl FromWorld for WorldData {
@@ -211,7 +220,26 @@ impl WorldData {
             inventory_reservations: super::logistics::InventoryReservationStore::default(),
             logistics_endpoint_index: super::logistics::LogisticsEndpointIndex::default(),
             building_navigation_runtime: crate::world::BuildingNavigationRuntimeStore::default(),
+            interior_activation_outcomes: crate::world::InteriorActivationOutcomeStore::default(),
+            portal_transition_trace: crate::world::PortalTransitionTrace::default(),
+            movement_authority_trace: crate::world::MovementAuthorityTrace::default(),
         }
+    }
+
+    pub fn movement_authority_trace(&self) -> &crate::world::MovementAuthorityTrace {
+        &self.movement_authority_trace
+    }
+
+    pub fn movement_authority_trace_mut(&mut self) -> &mut crate::world::MovementAuthorityTrace {
+        &mut self.movement_authority_trace
+    }
+
+    pub fn portal_transition_trace(&self) -> &crate::world::PortalTransitionTrace {
+        &self.portal_transition_trace
+    }
+
+    pub fn portal_transition_trace_mut(&mut self) -> &mut crate::world::PortalTransitionTrace {
+        &mut self.portal_transition_trace
     }
 
     pub fn building_navigation_runtime(&self) -> &crate::world::BuildingNavigationRuntimeStore {
@@ -222,6 +250,16 @@ impl WorldData {
         &mut self,
     ) -> &mut crate::world::BuildingNavigationRuntimeStore {
         &mut self.building_navigation_runtime
+    }
+
+    pub fn interior_activation_outcomes(&self) -> &crate::world::InteriorActivationOutcomeStore {
+        &self.interior_activation_outcomes
+    }
+
+    pub fn interior_activation_outcomes_mut(
+        &mut self,
+    ) -> &mut crate::world::InteriorActivationOutcomeStore {
+        &mut self.interior_activation_outcomes
     }
 
     pub fn task_store(&self) -> &super::task::TaskStore {

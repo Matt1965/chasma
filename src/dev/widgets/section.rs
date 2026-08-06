@@ -40,6 +40,7 @@ pub enum DevCollapsibleSectionId {
     FieldsProbe,
     FieldsOverlays,
     NavEditorValidation,
+    NavEditorGeneration,
     SelectedObjectDiagnostics,
     SelectedBuildingConstruction,
     SelectedBuildingLifecycle,
@@ -65,7 +66,8 @@ impl DevCollapsibleSectionId {
             | Self::WorldManualLighting
             | Self::WorldSkybox
             | Self::WorldProjectDefaults
-            | Self::WorldHarness => false,
+            | Self::WorldHarness
+            | Self::NavEditorGeneration => false,
             _ => true,
         }
     }

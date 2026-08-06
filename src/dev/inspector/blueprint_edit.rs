@@ -18,13 +18,16 @@ use crate::units::input::cursor_world_ray;
 use crate::world::{
     BuildingCatalog, BuildingCatalogRevision, BuildingCategoryCatalog, BuildingDefinitionId,
     BuildingId, BuildingNavigationBlueprint, BuildingNavigationBlueprintCatalog,
-    BuildingNavigationBlueprintCatalogRevision, BuildingVariantCreateInput, InteriorProfileCatalog,
-    WorldConfig, WorldData, apply_blueprint_to_asset, building_model_render_transform,
-    count_inheriting_instances, create_building_variant, delete_entrance, delete_floor_vertex,
-    delete_transition, insert_vertex_on_edge, move_entrance, move_floor_vertex,
-    move_transition_from, move_transition_to, replace_building_instance_definition,
-    reset_instance_to_asset, save_instance_blueprint, set_entrance_radius, set_transition_radius,
-    suggest_variant_definition_id, validate_blueprint_for_inspection,
+    BuildingNavigationBlueprintCatalogRevision, BuildingVariantCreateInput, DoodadCatalog,
+    FootprintCatalog, InteriorActivationCatalogs, InteriorProfileCatalog, WorldConfig, WorldData,
+    add_region_connection, add_region_on_floor, apply_blueprint_to_asset,
+    building_model_render_transform, count_inheriting_instances, create_building_variant,
+    delete_entrance, delete_floor_vertex, delete_region, delete_region_connection,
+    delete_transition, insert_vertex_on_edge, move_connection_from, move_connection_to,
+    move_entrance, move_floor_vertex, move_transition_from, move_transition_to,
+    region_interior_point, replace_building_instance_definition, reset_instance_to_asset,
+    save_instance_blueprint, set_connection_radius, set_entrance_radius, set_entrance_region_key,
+    set_transition_radius, suggest_variant_definition_id, validate_blueprint_for_inspection,
     validate_building_definition_id,
 };
 
@@ -39,6 +42,7 @@ const VERTEX_PICK_RADIUS: f32 = 0.45;
 const EDGE_PICK_RADIUS: f32 = 0.35;
 const ENTRANCE_PICK_RADIUS: f32 = 0.6;
 const TRANSITION_PICK_RADIUS: f32 = 0.75;
+const CONNECTION_PICK_RADIUS: f32 = 0.55;
 /// Reject near-parallel plane hits that would produce extreme blueprint coordinates.
 const MAX_LOCAL_XZ_ABS: f32 = 50_000.0;
 
@@ -53,8 +57,7 @@ pub struct FloorPlaneHit {
 
 #[derive(SystemParam)]
 pub struct BlueprintEditInputParams<'w, 's> {
-    pub dev_state: Res<'w, DevModeState>,
-    pub panel_hovered: Res<'w, DevPanelHoverState>,
+    pub dev_state: ResMut<'w, DevModeState>,
     pub gate: ResMut<'w, DevModeInputGate>,
     pub keyboard: Res<'w, ButtonInput<KeyCode>>,
     pub mouse_buttons: Res<'w, ButtonInput<MouseButton>>,
@@ -65,13 +68,16 @@ pub struct BlueprintEditInputParams<'w, 's> {
     pub world_selection: Res<'w, WorldSelectionState>,
     pub inspector: ResMut<'w, WorldInspectorState>,
     pub overlay_focus: ResMut<'w, InspectorOverlayFocus>,
-    pub debug_config: ResMut<'w, DebugOverlayConfig>,
+    pub panel_hovered: Res<'w, DevPanelHoverState>,
     pub world: ResMut<'w, WorldData>,
     pub config: Res<'w, WorldConfig>,
     pub building_catalog: ResMut<'w, BuildingCatalog>,
     pub category_catalog: Res<'w, BuildingCategoryCatalog>,
     pub building_revision: ResMut<'w, BuildingCatalogRevision>,
     pub interior_catalog: Res<'w, InteriorProfileCatalog>,
+    /// Needed so saving a blueprint can activate an interior that was never active.
+    pub doodad_catalog: Res<'w, DoodadCatalog>,
+    pub footprint_catalog: Res<'w, FootprintCatalog>,
     pub nav_catalog: ResMut<'w, BuildingNavigationBlueprintCatalog>,
     pub nav_revision: ResMut<'w, BuildingNavigationBlueprintCatalogRevision>,
     pub camera_settings: Res<'w, CameraSettings>,
@@ -105,10 +111,16 @@ pub fn enter_blueprint_edit(
     );
     inspection.editing = true;
     inspection.dirty = false;
+    let mut working = working;
+    let warnings = crate::world::migrate_entrances_toward_boundaries(&mut working);
     inspection.working_copy = Some(working);
     inspection.selection = BlueprintEditSelection::None;
     inspection.active_tool = BlueprintEditTool::Select;
     inspection.drag = None;
+    inspection.sync_selected_region_from_working_copy();
+    if let Some(warning) = warnings.first() {
+        inspection.last_pick_message = Some(warning.clone());
+    }
 }
 
 pub fn exit_blueprint_edit_to_inspect(inspection: &mut BlueprintInspectionState) {
@@ -443,6 +455,52 @@ pub fn confirm_blueprint_pending_action(params: &mut BlueprintEditInputParams<'_
                 &mut params.inspector,
             );
         }
+        BlueprintPendingConfirmation::AdoptGeneratedDraft => {
+            match super::blueprint_inspection::adopt_generated_blueprint_draft_for_editing(
+                &mut params.inspection,
+            ) {
+                Ok(()) => {
+                    params.overlay_focus.blueprint_floor_id = params.inspection.selected_floor_id;
+                    params.inspector.last_message =
+                        "Editing generated draft in working copy (unsaved).".into();
+                    refresh_edit_snapshot(
+                        &params.world,
+                        &params.building_catalog,
+                        &params.nav_catalog,
+                        building_id,
+                        &params.inspection,
+                        &mut params.inspector,
+                    );
+                }
+                Err(err) => params.inspector.last_message = err,
+            }
+        }
+        BlueprintPendingConfirmation::ReplaceWorkingCopyWithDraft {
+            current_regions: _,
+            current_connections: _,
+            draft_regions: _,
+            draft_connections: _,
+        } => {
+            match super::blueprint_inspection::adopt_generated_blueprint_draft_for_editing(
+                &mut params.inspection,
+            ) {
+                Ok(()) => {
+                    params.overlay_focus.blueprint_floor_id = params.inspection.selected_floor_id;
+                    params.dev_state.debug_config.nav_blueprint = true;
+                    params.inspector.last_message =
+                        "Working copy replaced with generated draft (unsaved).".into();
+                    refresh_edit_snapshot(
+                        &params.world,
+                        &params.building_catalog,
+                        &params.nav_catalog,
+                        building_id,
+                        &params.inspection,
+                        &mut params.inspector,
+                    );
+                }
+                Err(err) => params.inspector.last_message = err,
+            }
+        }
         BlueprintPendingConfirmation::ApplyToAsset { .. } => {
             let Some(record) = params.world.get_building(building_id) else {
                 return true;
@@ -455,7 +513,11 @@ pub fn confirm_blueprint_pending_action(params: &mut BlueprintEditInputParams<'_
             match apply_blueprint_to_asset(
                 &mut params.world,
                 &params.building_catalog,
-                &params.interior_catalog,
+                InteriorActivationCatalogs {
+                    interior: &params.interior_catalog,
+                    doodad: &params.doodad_catalog,
+                    footprint: &params.footprint_catalog,
+                },
                 &mut params.nav_catalog,
                 &mut params.nav_revision,
                 &definition_id,
@@ -480,12 +542,19 @@ pub fn confirm_blueprint_pending_action(params: &mut BlueprintEditInputParams<'_
             match reset_instance_to_asset(
                 &mut params.world,
                 &params.building_catalog,
-                &params.interior_catalog,
+                InteriorActivationCatalogs {
+                    interior: &params.interior_catalog,
+                    doodad: &params.doodad_catalog,
+                    footprint: &params.footprint_catalog,
+                },
                 &params.nav_catalog,
                 building_id,
             ) {
                 Ok(outcome) => {
                     params.inspection.dirty = false;
+                    params.inspection.pre_adoption_working_copy = None;
+                    params.inspection.generated_draft = None;
+                    params.inspection.draft_preview_active = false;
                     if let Some(snap) = capture_edit_blueprint_snapshot(
                         &params.world,
                         &params.building_catalog,
@@ -524,13 +593,52 @@ pub fn confirm_blueprint_pending_action(params: &mut BlueprintEditInputParams<'_
                     &params.building_catalog,
                 ) {
                     Ok((report, blueprint)) => {
-                        params.inspection.working_copy = Some(blueprint);
-                        params.inspection.editing = true;
-                        params.inspection.sync_selected_floor_from_working_copy();
-                        params.inspection.dirty = true;
-                        params.overlay_focus.blueprint_floor_id =
-                            params.inspection.selected_floor_id;
-                        params.debug_config.nav_blueprint = true;
+                        let validation =
+                            crate::world::validate_blueprint_for_inspection(&blueprint);
+                        let source = report.mesh_source_label.as_deref().unwrap_or("unknown");
+                        let draft = super::blueprint_inspection::GeneratedBlueprintDraft {
+                            blueprint,
+                            warnings: report.warnings.clone(),
+                            geometry_diagnostics: report.geometry_diagnostics.clone(),
+                            mesh_source_label: source.to_string(),
+                            validation,
+                            adopted: false,
+                        };
+                        let status_message =
+                            super::blueprint_inspection::format_generated_draft_status_message(
+                                &draft,
+                            );
+                        params.inspection.generated_draft = Some(draft);
+                        params.inspection.draft_preview_active = true;
+                        params.inspection.sync_selected_floor_from_draft();
+                        if let Some(snap) = params.inspector.blueprint_snapshot.as_mut() {
+                            snap.floor_ids = params
+                                .inspection
+                                .generated_draft
+                                .as_ref()
+                                .map(|draft| {
+                                    draft
+                                        .blueprint
+                                        .floors
+                                        .iter()
+                                        .map(|floor| floor.floor_id)
+                                        .collect()
+                                })
+                                .unwrap_or_default();
+                            if let Some(draft) = params.inspection.generated_draft.as_ref() {
+                                snap.validation = draft.validation.clone();
+                            }
+                        }
+                        if !params
+                            .inspection
+                            .generated_draft
+                            .as_ref()
+                            .unwrap()
+                            .validation
+                            .valid()
+                        {
+                            params.nav_ui.validation_expanded = true;
+                        }
                         params.nav_ui.regeneration_source_label = report.mesh_source_label.clone();
                         params.nav_ui.generation_diagnostics = Some(
                             crate::dev::navigation_editor::NavigationGenerationDiagnostics {
@@ -544,17 +652,19 @@ pub fn confirm_blueprint_pending_action(params: &mut BlueprintEditInputParams<'_
                                 deduplicated_candidates: report
                                     .entrance_diagnostics
                                     .deduplicated_candidates,
-                                regeneration_source: report
-                                    .mesh_source_label
-                                    .clone()
-                                    .unwrap_or_else(|| "unknown".into()),
+                                regeneration_source: source.to_string(),
                                 candidate_details: report.entrance_diagnostics.candidate_details,
                             },
                         );
-                        let source = report.mesh_source_label.as_deref().unwrap_or("unknown");
+                        let (work_regions, work_connections) = params
+                            .inspection
+                            .working_topology_summary()
+                            .unwrap_or((0, 0));
+                        let (draft_regions, draft_connections) =
+                            params.inspection.draft_topology_summary().unwrap_or((0, 0));
                         params.inspector.last_message = format!(
-                            "Regenerated draft {} ({:?}) from {source} - use Save Instance or Apply to Asset to persist",
-                            report.blueprint_id, report.status
+                            "{status_message} Draft: {draft_regions} regions, {draft_connections} connections from {source}. \
+                             Working copy: {work_regions} regions, {work_connections} connections (unchanged)."
                         );
                         refresh_edit_snapshot(
                             &params.world,
@@ -567,7 +677,9 @@ pub fn confirm_blueprint_pending_action(params: &mut BlueprintEditInputParams<'_
                     }
                     Err(err) => {
                         params.inspector.last_message =
-                            format!("Blueprint regeneration failed: {err}")
+                            super::blueprint_inspection::format_fatal_generation_failure_message(
+                                &err,
+                            );
                     }
                 }
             }
@@ -643,10 +755,25 @@ pub fn editor_save_instance_blueprint(params: &mut BlueprintEditInputParams<'_, 
         params.inspector.last_message = "No working blueprint to save".into();
         return;
     };
+    let validation = crate::world::validate_blueprint_for_inspection(&working);
+    if !validation.valid() {
+        let headline = validation
+            .diagnostics
+            .iter()
+            .find(|diag| diag.level == crate::world::BlueprintDiagnosticLevel::Error)
+            .map(|diag| diag.message.clone())
+            .unwrap_or_else(|| format!("{} validation errors", validation.error_count));
+        params.inspector.last_message = format!("Save blocked: {headline}");
+        return;
+    }
     match save_instance_blueprint(
         &mut params.world,
         &params.building_catalog,
-        &params.interior_catalog,
+        InteriorActivationCatalogs {
+            interior: &params.interior_catalog,
+            doodad: &params.doodad_catalog,
+            footprint: &params.footprint_catalog,
+        },
         &params.nav_catalog,
         building_id,
         working,
@@ -689,6 +816,19 @@ pub fn editor_request_apply_to_asset(params: &mut BlueprintEditInputParams<'_, '
     let Some(record) = params.world.get_building(building_id) else {
         return;
     };
+    if let Some(working) = params.inspection.working_copy.as_ref() {
+        let validation = crate::world::validate_blueprint_for_inspection(working);
+        if !validation.valid() {
+            let headline = validation
+                .diagnostics
+                .iter()
+                .find(|diag| diag.level == crate::world::BlueprintDiagnosticLevel::Error)
+                .map(|diag| diag.message.clone())
+                .unwrap_or_else(|| format!("{} validation errors", validation.error_count));
+            params.inspector.last_message = format!("Apply blocked: {headline}");
+            return;
+        }
+    }
     let inheriting = count_inheriting_instances(&params.world, &record.definition_id);
     params.inspection.pending_confirmation = Some(BlueprintPendingConfirmation::ApplyToAsset {
         inheriting_count: inheriting,
@@ -709,7 +849,7 @@ pub fn editor_delete_selection(params: &mut BlueprintEditInputParams<'_, '_>) {
         return;
     };
     if delete_selection(&mut params.inspection) {
-        params.inspector.last_message = "Deleted selected blueprint element".into();
+        params.inspector.last_message = "Deleted selected blueprint element.".into();
         refresh_edit_snapshot(
             &params.world,
             &params.building_catalog,
@@ -718,6 +858,8 @@ pub fn editor_delete_selection(params: &mut BlueprintEditInputParams<'_, '_>) {
             &params.inspection,
             &mut params.inspector,
         );
+    } else if let Some(message) = params.inspection.last_pick_message.clone() {
+        params.inspector.last_message = message;
     }
 }
 
@@ -735,6 +877,71 @@ pub fn editor_adjust_radius(params: &mut BlueprintEditInputParams<'_, '_>, delta
             &mut params.inspector,
         );
     }
+}
+
+pub fn editor_add_region(params: &mut BlueprintEditInputParams<'_, '_>) {
+    let Some(floor_id) = params.inspection.selected_floor_id else {
+        params.inspector.last_message = "Select a floor before adding a region".into();
+        return;
+    };
+    let Some(blueprint) = params.inspection.working_copy.as_mut() else {
+        return;
+    };
+    match add_region_on_floor(blueprint, floor_id, None) {
+        Ok(region_key) => {
+            params.inspection.dirty = true;
+            params.inspection.selected_region_key = Some(region_key.clone());
+            params.inspection.selection = BlueprintEditSelection::Region {
+                floor_id,
+                region_key,
+            };
+            params.inspector.last_message = "Added region".into();
+        }
+        Err(err) => params.inspector.last_message = err,
+    }
+}
+
+pub fn editor_select_next_region(params: &mut BlueprintEditInputParams<'_, '_>) {
+    editor_select_region_by_delta(params, 1);
+}
+
+pub fn editor_select_prev_region(params: &mut BlueprintEditInputParams<'_, '_>) {
+    editor_select_region_by_delta(params, -1);
+}
+
+fn editor_select_region_by_delta(params: &mut BlueprintEditInputParams<'_, '_>, delta: isize) {
+    let Some(floor_id) = params.inspection.selected_floor_id else {
+        return;
+    };
+    let Some(blueprint) = params.inspection.working_copy.as_ref() else {
+        return;
+    };
+    let Some(floor) = blueprint
+        .floors
+        .iter()
+        .find(|floor| floor.floor_id == floor_id)
+    else {
+        return;
+    };
+    if floor.regions.is_empty() {
+        return;
+    }
+    let current_index = params
+        .inspection
+        .selected_region_key
+        .as_deref()
+        .and_then(|key| floor.regions.iter().position(|region| region.key == key))
+        .unwrap_or(0);
+    let next_index = current_index as isize + delta;
+    if next_index < 0 || next_index as usize >= floor.regions.len() {
+        return;
+    }
+    let next = floor.regions[next_index as usize].key.clone();
+    params.inspection.selected_region_key = Some(next.clone());
+    params.inspection.selection = BlueprintEditSelection::Region {
+        floor_id,
+        region_key: next,
+    };
 }
 
 pub fn editor_submit_variant_draft(
@@ -856,15 +1063,22 @@ fn refresh_edit_snapshot(
 fn selection_label(selection: &BlueprintEditSelection) -> Option<String> {
     match selection {
         BlueprintEditSelection::None => None,
-        BlueprintEditSelection::Vertex { floor_id, index } => {
-            Some(format!("vertex floor {floor_id} #{index}"))
-        }
-        BlueprintEditSelection::Edge { floor_id, index } => {
-            Some(format!("edge floor {floor_id} #{index}"))
-        }
+        BlueprintEditSelection::Region {
+            floor_id,
+            region_key,
+        } => Some(format!("region floor {floor_id} {region_key}")),
+        BlueprintEditSelection::Vertex {
+            region_key, index, ..
+        } => Some(format!("vertex {region_key} #{index}")),
+        BlueprintEditSelection::Edge {
+            region_key, index, ..
+        } => Some(format!("edge {region_key} #{index}")),
         BlueprintEditSelection::Entrance { key } => Some(format!("entrance {key}")),
         BlueprintEditSelection::Transition { key } => Some(format!("transition {key}")),
         BlueprintEditSelection::TransitionTo { key } => Some(format!("transition target {key}")),
+        BlueprintEditSelection::Connection { key } => Some(format!("connection {key}")),
+        BlueprintEditSelection::ConnectionFrom { key } => Some(format!("connection from {key}")),
+        BlueprintEditSelection::ConnectionTo { key } => Some(format!("connection to {key}")),
     }
 }
 
@@ -882,10 +1096,21 @@ fn handle_edit_click(inspection: &mut BlueprintInspectionState, local_xz: Vec2) 
         .iter()
         .find(|floor| floor.floor_id == floor_id)
         .map(|floor| floor.key.clone());
+    let region_key = inspection.selected_region_key.clone();
 
     match inspection.active_tool {
         BlueprintEditTool::Select => {
-            if let Some((kind, selection)) = pick_blueprint_element(blueprint, floor_id, local_xz) {
+            if let Some((kind, selection)) =
+                pick_blueprint_element(blueprint, floor_id, region_key.as_deref(), local_xz)
+            {
+                if let BlueprintEditSelection::Region { region_key, .. } = &selection {
+                    inspection.selected_region_key = Some(region_key.clone());
+                }
+                if let BlueprintEditSelection::Vertex { region_key, .. }
+                | BlueprintEditSelection::Edge { region_key, .. } = &selection
+                {
+                    inspection.selected_region_key = Some(region_key.clone());
+                }
                 inspection.selection = selection;
                 inspection.last_pick_message = Some(kind.to_string());
                 return;
@@ -893,12 +1118,26 @@ fn handle_edit_click(inspection: &mut BlueprintInspectionState, local_xz: Vec2) 
             inspection.selection = BlueprintEditSelection::None;
         }
         BlueprintEditTool::AddVertex => {
-            let edge_index = pick_edge(blueprint, floor_id, local_xz, EDGE_PICK_RADIUS)
-                .or_else(|| pick_nearest_edge(blueprint, floor_id, local_xz));
-            if let Some(edge_index) = edge_index {
+            let Some(region_key) = region_key else {
+                inspection.last_pick_message =
+                    Some("Select a region before adding a corner".into());
+                return;
+            };
+            let edge_index = pick_edge(
+                blueprint,
+                floor_id,
+                Some(region_key.as_str()),
+                local_xz,
+                EDGE_PICK_RADIUS,
+            )
+            .or_else(|| {
+                pick_nearest_edge(blueprint, floor_id, Some(region_key.as_str()), local_xz)
+            });
+            if let Some((_, edge_index)) = edge_index {
                 let outcome = insert_vertex_on_edge(
                     blueprint,
                     floor_id,
+                    Some(region_key.as_str()),
                     edge_index,
                     [local_xz.x, local_xz.y],
                 );
@@ -906,24 +1145,30 @@ fn handle_edit_click(inspection: &mut BlueprintInspectionState, local_xz: Vec2) 
                     inspection.dirty = true;
                     inspection.selection = BlueprintEditSelection::Vertex {
                         floor_id,
+                        region_key,
                         index: edge_index + 1,
                     };
-                    // Add Corner is one-shot: return to Select after a successful place.
                     inspection.active_tool = BlueprintEditTool::Select;
                 } else {
                     inspection.last_pick_message = outcome.message;
                 }
             } else {
                 inspection.last_pick_message = Some(
-                    "No floor edge found — frame the building and click near the outline".into(),
+                    "No region edge found — frame the building and click near the outline".into(),
                 );
             }
         }
         BlueprintEditTool::AddEntrance => {
+            if region_key.is_none() {
+                inspection.last_pick_message =
+                    Some("Select a region before adding an entrance.".into());
+                return;
+            }
             if let Some(floor_key) = floor_key {
                 let outcome = crate::world::add_entrance_on_floor(
                     blueprint,
                     &floor_key,
+                    region_key.as_deref(),
                     [local_xz.x, local_xz.y],
                     1.5,
                 );
@@ -939,6 +1184,57 @@ fn handle_edit_click(inspection: &mut BlueprintInspectionState, local_xz: Vec2) 
                 }
             }
         }
+        BlueprintEditTool::AddConnection => {
+            let Some(floor_key) = floor_key else {
+                return;
+            };
+            let Some(clicked_region) = region_at_point(blueprint, floor_id, local_xz) else {
+                inspection.last_pick_message =
+                    Some("Click inside a region to author a connection".into());
+                return;
+            };
+            match inspection.pending_connection_regions.take() {
+                None => {
+                    inspection.pending_connection_regions =
+                        Some((clicked_region.clone(), String::new()));
+                    inspection.selected_region_key = Some(clicked_region);
+                    inspection.last_pick_message =
+                        Some("Select destination region for connection".into());
+                }
+                Some((from_key, _)) if from_key == clicked_region => {
+                    inspection.pending_connection_regions = Some((from_key, String::new()));
+                    inspection.last_pick_message =
+                        Some("Destination region must differ from source".into());
+                }
+                Some((from_key, _)) => {
+                    let from_point = region_interior_point(blueprint, &floor_key, &from_key)
+                        .unwrap_or([local_xz.x, local_xz.y]);
+                    let to_point = region_interior_point(blueprint, &floor_key, &clicked_region)
+                        .unwrap_or([local_xz.x, local_xz.y]);
+                    match add_region_connection(
+                        blueprint,
+                        &floor_key,
+                        &from_key,
+                        &clicked_region,
+                        from_point,
+                        to_point,
+                        0.8,
+                    ) {
+                        Ok(key) => {
+                            inspection.dirty = true;
+                            inspection.selected_region_key = Some(clicked_region);
+                            inspection.selection = BlueprintEditSelection::Connection { key };
+                            inspection.active_tool = BlueprintEditTool::Select;
+                            inspection.last_pick_message = Some("Created region connection".into());
+                        }
+                        Err(err) => {
+                            inspection.pending_connection_regions = Some((from_key, String::new()));
+                            inspection.last_pick_message = Some(err);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -948,9 +1244,11 @@ fn apply_drag(inspection: &mut BlueprintInspectionState, drag: BlueprintEditDrag
     };
     let point = [local_xz.x, local_xz.y];
     let outcome = match drag {
-        BlueprintEditDrag::Vertex { floor_id, index } => {
-            move_floor_vertex(blueprint, floor_id, index, point)
-        }
+        BlueprintEditDrag::Vertex {
+            floor_id,
+            region_key,
+            index,
+        } => move_floor_vertex(blueprint, floor_id, Some(region_key.as_str()), index, point),
         BlueprintEditDrag::Entrance { key } => move_entrance(blueprint, &key, point),
         BlueprintEditDrag::TransitionFrom { key } => move_transition_from(blueprint, &key, point),
         BlueprintEditDrag::TransitionTo { key } => {
@@ -966,6 +1264,8 @@ fn apply_drag(inspection: &mut BlueprintInspectionState, drag: BlueprintEditDrag
             target[2] = point[1];
             move_transition_to(blueprint, &key, target)
         }
+        BlueprintEditDrag::ConnectionFrom { key } => move_connection_from(blueprint, &key, point),
+        BlueprintEditDrag::ConnectionTo { key } => move_connection_to(blueprint, &key, point),
     };
     if outcome.applied {
         inspection.dirty = true;
@@ -976,9 +1276,15 @@ fn apply_drag(inspection: &mut BlueprintInspectionState, drag: BlueprintEditDrag
 
 fn drag_from_selection(selection: BlueprintEditSelection) -> Option<BlueprintEditDrag> {
     match selection {
-        BlueprintEditSelection::Vertex { floor_id, index } => {
-            Some(BlueprintEditDrag::Vertex { floor_id, index })
-        }
+        BlueprintEditSelection::Vertex {
+            floor_id,
+            region_key,
+            index,
+        } => Some(BlueprintEditDrag::Vertex {
+            floor_id,
+            region_key,
+            index,
+        }),
         BlueprintEditSelection::Entrance { key } => Some(BlueprintEditDrag::Entrance { key }),
         BlueprintEditSelection::Transition { key } => {
             Some(BlueprintEditDrag::TransitionFrom { key })
@@ -986,7 +1292,16 @@ fn drag_from_selection(selection: BlueprintEditSelection) -> Option<BlueprintEdi
         BlueprintEditSelection::TransitionTo { key } => {
             Some(BlueprintEditDrag::TransitionTo { key })
         }
-        BlueprintEditSelection::None | BlueprintEditSelection::Edge { .. } => None,
+        BlueprintEditSelection::ConnectionFrom { key } => {
+            Some(BlueprintEditDrag::ConnectionFrom { key })
+        }
+        BlueprintEditSelection::ConnectionTo { key } => {
+            Some(BlueprintEditDrag::ConnectionTo { key })
+        }
+        BlueprintEditSelection::None
+        | BlueprintEditSelection::Edge { .. }
+        | BlueprintEditSelection::Region { .. }
+        | BlueprintEditSelection::Connection { .. } => None,
     }
 }
 
@@ -995,12 +1310,21 @@ fn delete_selection(inspection: &mut BlueprintInspectionState) -> bool {
         return false;
     };
     let outcome = match &inspection.selection {
-        BlueprintEditSelection::Vertex { floor_id, index } => {
-            delete_floor_vertex(blueprint, *floor_id, *index)
-        }
+        BlueprintEditSelection::Vertex {
+            floor_id,
+            region_key,
+            index,
+        } => delete_floor_vertex(blueprint, *floor_id, Some(region_key.as_str()), *index),
+        BlueprintEditSelection::Region {
+            floor_id,
+            region_key,
+        } => delete_region(blueprint, *floor_id, region_key),
         BlueprintEditSelection::Entrance { key } => delete_entrance(blueprint, key),
         BlueprintEditSelection::Transition { key }
         | BlueprintEditSelection::TransitionTo { key } => delete_transition(blueprint, key),
+        BlueprintEditSelection::Connection { key }
+        | BlueprintEditSelection::ConnectionFrom { key }
+        | BlueprintEditSelection::ConnectionTo { key } => delete_region_connection(blueprint, key),
         BlueprintEditSelection::None | BlueprintEditSelection::Edge { .. } => {
             return false;
         }
@@ -1008,6 +1332,7 @@ fn delete_selection(inspection: &mut BlueprintInspectionState) -> bool {
     if outcome.applied {
         inspection.dirty = true;
         inspection.selection = BlueprintEditSelection::None;
+        inspection.sync_selected_region_from_working_copy();
         true
     } else {
         inspection.last_pick_message = outcome.message;
@@ -1038,6 +1363,17 @@ fn adjust_selected_radius(inspection: &mut BlueprintInspectionState, delta: f32)
                 .unwrap_or(1.25);
             set_transition_radius(blueprint, key, radius)
         }
+        BlueprintEditSelection::Connection { key }
+        | BlueprintEditSelection::ConnectionFrom { key }
+        | BlueprintEditSelection::ConnectionTo { key } => {
+            let radius = blueprint
+                .region_connections
+                .iter()
+                .find(|connection| connection.key == *key)
+                .map(|connection| (connection.radius_meters + delta).max(0.25))
+                .unwrap_or(0.8);
+            set_connection_radius(blueprint, key, radius)
+        }
         _ => return false,
     };
     if outcome.applied {
@@ -1052,10 +1388,36 @@ fn adjust_selected_radius(inspection: &mut BlueprintInspectionState, delta: f32)
 fn pick_blueprint_element(
     blueprint: &BuildingNavigationBlueprint,
     floor_id: i32,
+    preferred_region_key: Option<&str>,
     local_xz: Vec2,
 ) -> Option<(&'static str, BlueprintEditSelection)> {
-    if let Some(index) = pick_vertex(blueprint, floor_id, local_xz, VERTEX_PICK_RADIUS) {
-        return Some(("vertex", BlueprintEditSelection::Vertex { floor_id, index }));
+    if let Some((region_key, index)) = pick_vertex(
+        blueprint,
+        floor_id,
+        preferred_region_key,
+        local_xz,
+        VERTEX_PICK_RADIUS,
+    ) {
+        return Some((
+            "vertex",
+            BlueprintEditSelection::Vertex {
+                floor_id,
+                region_key,
+                index,
+            },
+        ));
+    }
+    if let Some(key) = pick_connection_to(blueprint, floor_id, local_xz, CONNECTION_PICK_RADIUS) {
+        return Some((
+            "connection to",
+            BlueprintEditSelection::ConnectionTo { key },
+        ));
+    }
+    if let Some(key) = pick_connection_from(blueprint, floor_id, local_xz, CONNECTION_PICK_RADIUS) {
+        return Some((
+            "connection from",
+            BlueprintEditSelection::ConnectionFrom { key },
+        ));
     }
     if let Some(key) = pick_transition_to(blueprint, floor_id, local_xz, TRANSITION_PICK_RADIUS) {
         return Some((
@@ -1069,8 +1431,30 @@ fn pick_blueprint_element(
     if let Some(key) = pick_entrance(blueprint, floor_id, local_xz, ENTRANCE_PICK_RADIUS) {
         return Some(("entrance", BlueprintEditSelection::Entrance { key }));
     }
-    if let Some(index) = pick_edge(blueprint, floor_id, local_xz, EDGE_PICK_RADIUS) {
-        return Some(("edge", BlueprintEditSelection::Edge { floor_id, index }));
+    if let Some((region_key, index)) = pick_edge(
+        blueprint,
+        floor_id,
+        preferred_region_key,
+        local_xz,
+        EDGE_PICK_RADIUS,
+    ) {
+        return Some((
+            "edge",
+            BlueprintEditSelection::Edge {
+                floor_id,
+                region_key,
+                index,
+            },
+        ));
+    }
+    if let Some(region_key) = region_at_point(blueprint, floor_id, local_xz) {
+        return Some((
+            "region",
+            BlueprintEditSelection::Region {
+                floor_id,
+                region_key,
+            },
+        ));
     }
     None
 }
@@ -1078,65 +1462,208 @@ fn pick_blueprint_element(
 fn pick_vertex(
     blueprint: &BuildingNavigationBlueprint,
     floor_id: i32,
+    preferred_region_key: Option<&str>,
     local_xz: Vec2,
     radius: f32,
-) -> Option<usize> {
+) -> Option<(String, usize)> {
     let floor = blueprint
         .floors
         .iter()
         .find(|floor| floor.floor_id == floor_id)?;
-    let mut best: Option<(f32, usize)> = None;
-    for (index, &[x, z]) in floor.walkable_outline.vertices_xz.iter().enumerate() {
-        let dist = Vec2::new(x, z).distance(local_xz);
-        if dist <= radius && best.map(|(best_dist, _)| dist < best_dist).unwrap_or(true) {
-            best = Some((dist, index));
+    let mut best: Option<(f32, String, usize)> = None;
+    let region_keys: Vec<String> = if let Some(key) = preferred_region_key {
+        vec![key.to_string()]
+    } else {
+        floor
+            .regions
+            .iter()
+            .map(|region| region.key.clone())
+            .collect()
+    };
+    for region_key in region_keys {
+        let Some(region) = floor.region_by_key(&region_key) else {
+            continue;
+        };
+        for (index, &[x, z]) in region.walkable_outline.vertices_xz.iter().enumerate() {
+            let dist = Vec2::new(x, z).distance(local_xz);
+            if dist <= radius
+                && best
+                    .as_ref()
+                    .map(|(best_dist, _, _)| dist < *best_dist)
+                    .unwrap_or(true)
+            {
+                best = Some((dist, region_key.clone(), index));
+            }
         }
     }
-    best.map(|(_, index)| index)
+    best.map(|(_, region_key, index)| (region_key, index))
 }
 
 fn pick_edge(
     blueprint: &BuildingNavigationBlueprint,
     floor_id: i32,
+    preferred_region_key: Option<&str>,
     local_xz: Vec2,
     radius: f32,
-) -> Option<usize> {
-    pick_nearest_edge_within_radius(blueprint, floor_id, local_xz, Some(radius))
+) -> Option<(String, usize)> {
+    pick_nearest_edge_within_radius(
+        blueprint,
+        floor_id,
+        preferred_region_key,
+        local_xz,
+        Some(radius),
+    )
 }
 
 fn pick_nearest_edge(
     blueprint: &BuildingNavigationBlueprint,
     floor_id: i32,
+    preferred_region_key: Option<&str>,
     local_xz: Vec2,
-) -> Option<usize> {
-    pick_nearest_edge_within_radius(blueprint, floor_id, local_xz, None)
+) -> Option<(String, usize)> {
+    pick_nearest_edge_within_radius(blueprint, floor_id, preferred_region_key, local_xz, None)
 }
 
 fn pick_nearest_edge_within_radius(
     blueprint: &BuildingNavigationBlueprint,
     floor_id: i32,
+    preferred_region_key: Option<&str>,
     local_xz: Vec2,
     max_radius: Option<f32>,
-) -> Option<usize> {
+) -> Option<(String, usize)> {
     let floor = blueprint
         .floors
         .iter()
         .find(|floor| floor.floor_id == floor_id)?;
-    let verts = &floor.walkable_outline.vertices_xz;
-    if verts.len() < 2 {
-        return None;
-    }
-    let mut best: Option<(f32, usize)> = None;
-    for index in 0..verts.len() {
-        let [ax, az] = verts[index];
-        let [bx, bz] = verts[(index + 1) % verts.len()];
-        let dist = point_segment_distance(local_xz, Vec2::new(ax, az), Vec2::new(bx, bz));
-        let within_radius = max_radius.is_none_or(|radius| dist <= radius);
-        if within_radius && best.map(|(best_dist, _)| dist < best_dist).unwrap_or(true) {
-            best = Some((dist, index));
+    let mut best: Option<(f32, String, usize)> = None;
+    let region_keys: Vec<String> = if let Some(key) = preferred_region_key {
+        vec![key.to_string()]
+    } else {
+        floor
+            .regions
+            .iter()
+            .map(|region| region.key.clone())
+            .collect()
+    };
+    for region_key in region_keys {
+        let Some(region) = floor.region_by_key(&region_key) else {
+            continue;
+        };
+        let verts = &region.walkable_outline.vertices_xz;
+        if verts.len() < 2 {
+            continue;
+        }
+        for index in 0..verts.len() {
+            let [ax, az] = verts[index];
+            let [bx, bz] = verts[(index + 1) % verts.len()];
+            let dist = point_segment_distance(local_xz, Vec2::new(ax, az), Vec2::new(bx, bz));
+            let within_radius = max_radius.is_none_or(|radius| dist <= radius);
+            if within_radius
+                && best
+                    .as_ref()
+                    .map(|(best_dist, _, _)| dist < *best_dist)
+                    .unwrap_or(true)
+            {
+                best = Some((dist, region_key.clone(), index));
+            }
         }
     }
-    best.map(|(_, index)| index)
+    best.map(|(_, region_key, index)| (region_key, index))
+}
+
+fn region_at_point(
+    blueprint: &BuildingNavigationBlueprint,
+    floor_id: i32,
+    local_xz: Vec2,
+) -> Option<String> {
+    let floor = blueprint
+        .floors
+        .iter()
+        .find(|floor| floor.floor_id == floor_id)?;
+    for region in &floor.regions {
+        if point_in_polygon_local(region, local_xz) {
+            return Some(region.key.clone());
+        }
+    }
+    None
+}
+
+fn point_in_polygon_local(region: &crate::world::NavigationRegionDefinition, point: Vec2) -> bool {
+    let verts = &region.walkable_outline.vertices_xz;
+    if verts.len() < 3 {
+        return false;
+    }
+    let mut inside = false;
+    let mut j = verts.len() - 1;
+    for (index, vertex) in verts.iter().enumerate() {
+        let vi = Vec2::new(vertex[0], vertex[1]);
+        let vj = Vec2::new(verts[j][0], verts[j][1]);
+        if ((vi.y > point.y) != (vj.y > point.y))
+            && (point.x < (vj.x - vi.x) * (point.y - vi.y) / (vj.y - vi.y + f32::EPSILON) + vi.x)
+        {
+            inside = !inside;
+        }
+        j = index;
+    }
+    inside
+}
+
+fn pick_connection_from(
+    blueprint: &BuildingNavigationBlueprint,
+    floor_id: i32,
+    local_xz: Vec2,
+    radius: f32,
+) -> Option<String> {
+    let floor_key = blueprint
+        .floors
+        .iter()
+        .find(|floor| floor.floor_id == floor_id)
+        .map(|floor| floor.key.as_str())?;
+    pick_connection_endpoint(blueprint, floor_key, local_xz, radius, true)
+}
+
+fn pick_connection_to(
+    blueprint: &BuildingNavigationBlueprint,
+    floor_id: i32,
+    local_xz: Vec2,
+    radius: f32,
+) -> Option<String> {
+    let floor_key = blueprint
+        .floors
+        .iter()
+        .find(|floor| floor.floor_id == floor_id)
+        .map(|floor| floor.key.as_str())?;
+    pick_connection_endpoint(blueprint, floor_key, local_xz, radius, false)
+}
+
+fn pick_connection_endpoint(
+    blueprint: &BuildingNavigationBlueprint,
+    floor_key: &str,
+    local_xz: Vec2,
+    radius: f32,
+    from_side: bool,
+) -> Option<String> {
+    let mut best: Option<(f32, String)> = None;
+    for connection in &blueprint.region_connections {
+        if connection.floor_key != floor_key {
+            continue;
+        }
+        let point = if from_side {
+            connection.from_local_position_xz
+        } else {
+            connection.to_local_position_xz
+        };
+        let dist = Vec2::new(point[0], point[1]).distance(local_xz);
+        if dist <= radius
+            && best
+                .as_ref()
+                .map(|(best_dist, _)| dist < *best_dist)
+                .unwrap_or(true)
+        {
+            best = Some((dist, connection.key.clone()));
+        }
+    }
+    best.map(|(_, key)| key)
 }
 
 fn pick_entrance(
@@ -1334,6 +1861,7 @@ mod tests {
     use super::*;
     use crate::world::{
         BuildingNavigationBlueprint, NavigationFloorDefinition, NavigationPolygon2d,
+        NavigationRegionDefinition,
     };
     use bevy::math::Dir3;
 
@@ -1360,14 +1888,20 @@ mod tests {
         BuildingNavigationBlueprint::new("test_nav", "Test").with_floors(vec![
             NavigationFloorDefinition {
                 floor_id: 0,
-                key: "floor_0".into(),
-                display_label: "Floor 0".into(),
+                key: "floor_0".to_string(),
+                display_label: "Floor 0".to_string(),
                 elevation_meters: 0.0,
                 visibility_group_id: 0,
                 room_tag: None,
-                walkable_outline: NavigationPolygon2d {
-                    vertices_xz: vec![[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0]],
-                },
+                walkable_outline_legacy: None,
+                regions: vec![NavigationRegionDefinition {
+                    key: "main".to_string(),
+                    display_label: "Floor 0".to_string(),
+                    room_tag: None,
+                    walkable_outline: NavigationPolygon2d {
+                        vertices_xz: vec![[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0]],
+                    },
+                }],
             },
         ])
     }
@@ -1492,6 +2026,7 @@ mod tests {
             editing: true,
             dirty: false,
             selected_floor_id: Some(0),
+            selected_region_key: Some("main".to_string()),
             active_tool: BlueprintEditTool::Select,
             working_copy: Some(sample_blueprint()),
             ..Default::default()
@@ -1502,6 +2037,7 @@ mod tests {
             inspection.selection,
             BlueprintEditSelection::Vertex {
                 floor_id: 0,
+                region_key: "main".to_string(),
                 index: 0
             }
         );
@@ -1518,6 +2054,7 @@ mod tests {
             active_tool: BlueprintEditTool::Select,
             selection: BlueprintEditSelection::Vertex {
                 floor_id: 0,
+                region_key: "main".to_string(),
                 index: 1,
             },
             working_copy: Some(sample_blueprint()),
@@ -1537,6 +2074,7 @@ mod tests {
             editing: true,
             dirty: false,
             selected_floor_id: Some(0),
+            selected_region_key: Some("main".to_string()),
             active_tool: BlueprintEditTool::AddVertex,
             working_copy: Some(sample_blueprint()),
             ..Default::default()
@@ -1549,15 +2087,14 @@ mod tests {
             inspection.selection,
             BlueprintEditSelection::Vertex {
                 floor_id: 0,
+                region_key: "main".to_string(),
                 index: 1
             }
         );
         let blueprint = inspection.working_copy.as_ref().unwrap();
-        assert_eq!(blueprint.floors[0].walkable_outline.vertices_xz.len(), 5);
-        assert_eq!(
-            blueprint.floors[0].walkable_outline.vertices_xz[1],
-            [cursor.x, cursor.y]
-        );
+        let outline = blueprint.floors[0].sole_region_outline().expect("outline");
+        assert_eq!(outline.vertices_xz.len(), 5);
+        assert_eq!(outline.vertices_xz[1], [cursor.x, cursor.y]);
     }
 
     #[test]
@@ -1566,20 +2103,22 @@ mod tests {
             editing: true,
             dirty: false,
             selected_floor_id: Some(0),
+            selected_region_key: Some("main".to_string()),
             active_tool: BlueprintEditTool::AddVertex,
             working_copy: Some(sample_blueprint()),
             ..Default::default()
         };
-        // Degenerate outline so insert_vertex_on_edge rejects (needs >= 3 verts).
         inspection.working_copy.as_mut().unwrap().floors[0]
-            .walkable_outline
+            .sole_region_outline_mut()
+            .expect("outline")
             .vertices_xz = vec![[0.0, 0.0], [1.0, 0.0]];
         handle_edit_click(&mut inspection, Vec2::new(0.5, 0.0));
         assert!(!inspection.dirty);
         assert_eq!(inspection.active_tool, BlueprintEditTool::AddVertex);
         assert_eq!(
             inspection.working_copy.as_ref().unwrap().floors[0]
-                .walkable_outline
+                .sole_region_outline()
+                .expect("outline")
                 .vertices_xz
                 .len(),
             2
@@ -1592,6 +2131,7 @@ mod tests {
             editing: true,
             dirty: false,
             selected_floor_id: Some(0),
+            selected_region_key: Some("main".to_string()),
             active_tool: BlueprintEditTool::AddVertex,
             working_copy: Some(sample_blueprint()),
             ..Default::default()
@@ -1599,14 +2139,16 @@ mod tests {
         handle_edit_click(&mut inspection, Vec2::new(2.0, 0.0));
         assert_eq!(inspection.active_tool, BlueprintEditTool::Select);
         let count_after_first = inspection.working_copy.as_ref().unwrap().floors[0]
-            .walkable_outline
+            .sole_region_outline()
+            .expect("outline")
             .vertices_xz
             .len();
         // Second click while Select must not insert another corner.
         handle_edit_click(&mut inspection, Vec2::new(3.0, 0.0));
         assert_eq!(
             inspection.working_copy.as_ref().unwrap().floors[0]
-                .walkable_outline
+                .sole_region_outline()
+                .expect("outline")
                 .vertices_xz
                 .len(),
             count_after_first

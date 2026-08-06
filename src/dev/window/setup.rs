@@ -17,12 +17,13 @@ use super::math::{
     DEFAULT_PANEL_BODY_PADDING_PX, DEFAULT_PANEL_WIDTH_PX, LAUNCHER_LEFT_PX, LAUNCHER_TOP_PX,
     TITLE_BAR_HEIGHT_PX, default_catalog_position, default_debug_position, default_fields_position,
     default_navigation_editor_position, default_save_position, default_selected_object_position,
-    default_world_position,
+    default_world_position, navigation_editor_body_max_height, navigation_editor_panel_width,
 };
 
 use super::state::DevWindowRegistry;
 use crate::dev::input::DevPanelUi;
 use crate::dev::tooltip::DevTooltipTarget;
+use crate::dev::widgets::DevButtonChrome;
 use crate::dev::widgets::theme::{
     LAUNCHER_BG, LAUNCHER_LABEL_TEXT, WINDOW_BG, WINDOW_TITLE_TEXT, window_title_font,
 };
@@ -394,8 +395,14 @@ pub fn spawn_navigation_editor_window(
     session: Option<&super::state::DevWindowSessionState>,
 ) {
     let position = session.map(|s| s.position).unwrap_or_else(|| {
-        default_navigation_editor_position(Vec2::new(1280.0, 720.0), DEFAULT_PANEL_WIDTH_PX)
+        default_navigation_editor_position(
+            Vec2::new(1280.0, 720.0),
+            navigation_editor_panel_width(Vec2::new(1280.0, 720.0)),
+        )
     });
+    let viewport = Vec2::new(1280.0, 720.0);
+    let panel_width = navigation_editor_panel_width(viewport);
+    let body_max_height = navigation_editor_body_max_height(viewport, position.y);
 
     commands
         .spawn((
@@ -410,7 +417,7 @@ pub fn spawn_navigation_editor_window(
 
                 top: Val::Px(position.y),
 
-                width: Val::Px(DEFAULT_PANEL_WIDTH_PX),
+                width: Val::Px(panel_width),
 
                 flex_direction: FlexDirection::Column,
 
@@ -440,7 +447,9 @@ pub fn spawn_navigation_editor_window(
 
                     width: Val::Percent(100.0),
 
-                    max_height: Val::Px(520.0),
+                    min_height: Val::Px(0.0),
+
+                    max_height: Val::Px(body_max_height),
 
                     overflow: Overflow::scroll_y(),
 
@@ -646,6 +655,7 @@ fn spawn_title_chrome_button(
 ) {
     let mut button = parent.spawn((
         DevWindowUi,
+        DevButtonChrome::default(),
         Button,
         Node {
             width: Val::Px(24.0),
@@ -659,6 +669,7 @@ fn spawn_title_chrome_button(
             ..default()
         },
         BackgroundColor(TITLE_BTN),
+        BorderColor::all(crate::dev::widgets::theme::BTN_BORDER_IDLE),
     ));
 
     if collapse {

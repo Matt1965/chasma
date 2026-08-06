@@ -19,8 +19,10 @@ mod id;
 mod inventory;
 mod metadata;
 mod movement;
+mod movement_authority_trace;
 mod orders;
 mod placement;
+mod portal_trace;
 mod query;
 mod record;
 mod removal;
@@ -69,11 +71,16 @@ pub use movement::{
     UnitMovementStepOutcome, UnitMovementStepReport, UnitMovementTrace, UnitSimulationStepReport,
     step_all_unit_movement, step_unit_movement,
 };
+pub use movement_authority_trace::{
+    MovementAuthorityTrace, MovementAuthorityViolation, MovementBlockedAuthorityRecord,
+    MovementCommandAuthorityRecord, format_waypoint_spaces, waypoint_space_ids,
+};
 pub use orders::{
     UnitOrder, UnitOrderError, issue_unit_order, resolve_all_pending_unit_orders,
     resolve_pending_unit_orders,
 };
 pub use placement::UnitPlacement;
+pub use portal_trace::{PortalTransitionEvent, PortalTransitionTrace};
 pub use record::UnitRecord;
 pub use removal::{UnitRemovalOutcome, finalize_unit_removal};
 #[cfg(any(test, feature = "dev"))]

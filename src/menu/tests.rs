@@ -15,6 +15,7 @@ use super::main_menu::{MAIN_MENU_BACKGROUND_PATH, cover_size_for_window};
 use super::navigation::{MenuContext, MenuNavigation, MenuPage, PauseMenuContext};
 use super::pause_menu::pause_menu_font_sizes;
 use super::screen::{AppScreen, GameSessionKind, GameSessionState};
+use super::settings::{SettingsCategory, SettingsMenuState};
 use super::systems::{close_pause_menu, open_pause_menu};
 use super::transition::{SessionTransitionKind, SessionTransitionRequest};
 use crate::simulation::SimulationControlState;
@@ -69,6 +70,28 @@ fn settings_back_returns_to_root() {
     assert_eq!(nav.page, MenuPage::Settings);
     nav.back_to_root();
     assert_eq!(nav.page, MenuPage::Root);
+}
+
+#[test]
+fn settings_open_resets_category_to_display() {
+    let mut settings = SettingsMenuState {
+        category: SettingsCategory::Controls,
+        revision: 2,
+    };
+    settings.reset_for_open();
+    assert_eq!(settings.category, SettingsCategory::Display);
+}
+
+#[test]
+fn settings_categories_cover_display_camera_controls() {
+    assert_eq!(
+        SettingsCategory::ALL,
+        [
+            SettingsCategory::Display,
+            SettingsCategory::Camera,
+            SettingsCategory::Controls,
+        ]
+    );
 }
 
 #[test]
@@ -205,10 +228,10 @@ fn pause_text_sizes_are_deterministic_and_hud_band() {
 }
 
 #[test]
-fn main_menu_background_path_is_asset_relative() {
-    assert_eq!(MAIN_MENU_BACKGROUND_PATH, "images/chasma_background.png");
-    assert!(!MAIN_MENU_BACKGROUND_PATH.contains('\\'));
-    assert!(!MAIN_MENU_BACKGROUND_PATH.contains(':'));
+fn window_icon_asset_path_is_asset_relative() {
+    assert_eq!(crate::app::WINDOW_ICON_ASSET_PATH, "images/chasma_icon.png");
+    assert!(!crate::app::WINDOW_ICON_ASSET_PATH.contains('\\'));
+    assert!(!crate::app::WINDOW_ICON_ASSET_PATH.contains(':'));
 }
 
 #[test]

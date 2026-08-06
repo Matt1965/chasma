@@ -196,6 +196,9 @@ macro_rules! debug_overlay_run_if {
 
 debug_overlay_run_if!(run_debug_intent_overlay, debug_intent_overlay_enabled);
 debug_overlay_run_if!(run_debug_path_overlay, debug_path_overlay_enabled);
+pub fn run_debug_runtime_entrance_overlay(settings: Res<DebugOverlaySettings>) -> bool {
+    settings.category_enabled(DebugOverlayCategory::NavEntrances)
+}
 debug_overlay_run_if!(
     run_debug_navigation_overlay,
     debug_navigation_overlay_enabled
@@ -222,11 +225,8 @@ pub fn debug_blueprint_overlay_or_inspection(
 }
 
 #[cfg(feature = "dev")]
-pub fn run_debug_blueprint_overlay(
-    settings: Res<DebugOverlaySettings>,
-    inspection: Res<crate::dev::BlueprintInspectionState>,
-) -> bool {
-    debug_blueprint_overlay_or_inspection(&settings, inspection.active)
+pub fn run_debug_blueprint_overlay(settings: Res<DebugOverlaySettings>) -> bool {
+    debug_blueprint_overlay_enabled(&settings)
 }
 
 #[cfg(not(feature = "dev"))]

@@ -8,7 +8,8 @@ use super::id::DevWindowId;
 use super::math::{
     DEFAULT_PANEL_WIDTH_PX, default_catalog_position, default_debug_position,
     default_fields_position, default_navigation_editor_position, default_save_position,
-    default_selected_object_position, default_world_position, z_index_for_focus_order,
+    default_selected_object_position, default_world_position, navigation_editor_panel_width,
+    z_index_for_focus_order,
 };
 
 /// Per-window session state (not persisted to disk or scene saves).
@@ -24,7 +25,10 @@ pub struct DevWindowSessionState {
 
 impl DevWindowSessionState {
     pub fn new_default(id: DevWindowId, viewport: Vec2) -> Self {
-        let width = DEFAULT_PANEL_WIDTH_PX;
+        let width = match id {
+            DevWindowId::NavigationEditor => navigation_editor_panel_width(viewport),
+            _ => DEFAULT_PANEL_WIDTH_PX,
+        };
         let position = match id {
             DevWindowId::Save => default_save_position(viewport, width),
             DevWindowId::Catalog => default_catalog_position(viewport, width),

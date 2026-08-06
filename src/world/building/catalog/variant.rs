@@ -81,7 +81,32 @@ pub fn suggest_variant_definition_id(source_id: &str, display_name: &str) -> Str
 }
 
 /// Duplicate a building definition and fork its navigation blueprint into a new asset.
+///
+/// Persists both catalogs to their dev RON snapshots; use [`fork_building_variant`] when
+/// only the in-memory fork is wanted.
 pub fn create_building_variant(
+    building_catalog: &mut BuildingCatalog,
+    category_catalog: &BuildingCategoryCatalog,
+    nav_catalog: &mut BuildingNavigationBlueprintCatalog,
+    nav_revision: &mut BuildingNavigationBlueprintCatalogRevision,
+    input: BuildingVariantCreateInput,
+) -> Result<BuildingVariantCreateOutcome, String> {
+    let outcome = fork_building_variant(
+        building_catalog,
+        category_catalog,
+        nav_catalog,
+        nav_revision,
+        input,
+    )?;
+    export_navigation_blueprint_catalog(nav_catalog)?;
+    export_building_catalog_snapshot(building_catalog, category_catalog)?;
+    Ok(outcome)
+}
+
+/// In-memory half of variant creation: fork definition and blueprint, no filesystem writes.
+///
+/// Split out so callers (and tests) can fork catalogs without rewriting shipped asset RON.
+pub fn fork_building_variant(
     building_catalog: &mut BuildingCatalog,
     category_catalog: &BuildingCategoryCatalog,
     nav_catalog: &mut BuildingNavigationBlueprintCatalog,
@@ -131,7 +156,6 @@ pub fn create_building_variant(
     nav_catalog
         .upsert(blueprint)
         .map_err(|err| err.to_string())?;
-    export_navigation_blueprint_catalog(nav_catalog)?;
     nav_revision.0 = nav_revision.0.saturating_add(1);
 
     let mut variant = source;
@@ -142,7 +166,6 @@ pub fn create_building_variant(
     building_catalog
         .upsert(variant, category_catalog)
         .map_err(|err| err.to_string())?;
-    export_building_catalog_snapshot(building_catalog, category_catalog)?;
 
     Ok(BuildingVariantCreateOutcome {
         definition_id: input.new_definition_id.clone(),
@@ -156,10 +179,16 @@ pub fn create_building_variant(
 }
 
 /// Export the current in-memory building catalog to the dev RON snapshot.
+///
+/// Never writes under `cfg(test)`: the path is a fixed repository asset, so a unit test
+/// reaching this would overwrite the imported catalog snapshot.
 pub fn export_building_catalog_snapshot(
     building_catalog: &BuildingCatalog,
     category_catalog: &BuildingCategoryCatalog,
 ) -> Result<(), String> {
+    if cfg!(test) {
+        return Ok(());
+    }
     export_buildings_to_ron(
         std::path::Path::new(DEV_BUILDING_CATALOG_RON_PATH),
         category_catalog.definitions(),
@@ -234,7 +263,8 @@ mod tests {
 
         let source_id = BuildingDefinitionId::new("hut");
         let blueprint = two_story_hut_navigation_blueprint();
-        let outcome = create_building_variant(
+        // Must not be `create_building_variant`: that writes the shipped asset RON.
+        let outcome = fork_building_variant(
             &mut building_catalog,
             &categories,
             &mut nav_catalog,

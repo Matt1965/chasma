@@ -45,6 +45,8 @@ pub enum PassabilityBlockReason {
     CorruptFootprint,
     MissingDefinition,
     InvalidCell,
+    /// Interior region polygon is too tight for the agent radius at this position.
+    AgentClearanceInsufficient,
 }
 
 /// Structured passability result.
@@ -184,12 +186,29 @@ fn query_interior_passability(
         };
     }
     let layout = world.layout();
-    if !crate::world::interior_position_walkable(
+    if !crate::world::interior_agent_fits_region(
         world.building_navigation_runtime(),
         world.space_registry(),
         layout,
         position,
         space_id,
+        agent.radius_meters,
+    ) {
+        return PassabilityResult::Blocked {
+            reason: PassabilityBlockReason::AgentClearanceInsufficient,
+            source: None,
+        };
+    }
+    let owning_building = world
+        .space_registry()
+        .get_space(space_id)
+        .and_then(|space| space.owning_building_id);
+    if interior_static_occupancy_blocked(
+        world,
+        catalogs.occupancy(),
+        position,
+        agent.radius_meters,
+        owning_building,
     ) {
         return PassabilityResult::Blocked {
             reason: PassabilityBlockReason::BuildingOccupied,
@@ -204,10 +223,16 @@ fn query_interior_passability(
     if let Some(grid) = world.occupancy_in_chunk(chunk_id) {
         if let Some(entry) = grid.get(cell, space_id.raw()) {
             if matches!(entry.state, super::grid::OccupancyState::Blocked) {
-                return PassabilityResult::Blocked {
-                    reason: PassabilityBlockReason::BuildingOccupied,
-                    source: Some(entry.source),
+                let blocked_by_owning = match entry.source {
+                    crate::world::OccupancySource::Building(id) => owning_building == Some(id),
+                    _ => false,
                 };
+                if !blocked_by_owning {
+                    return PassabilityResult::Blocked {
+                        reason: PassabilityBlockReason::BuildingOccupied,
+                        source: Some(entry.source),
+                    };
+                }
             }
         }
     }
@@ -236,6 +261,24 @@ fn map_occupancy_error(error: OccupancyError) -> PassabilityResult {
             OccupancyError::InvalidBlockingRadius { .. } => PassabilityBlockReason::InvalidCell,
         },
         source: None,
+    }
+}
+
+/// Interior static overlap — owning building analytic footprint is exempt (IN-11e).
+fn interior_static_occupancy_blocked(
+    world: &WorldData,
+    catalogs: OccupancyCatalogs<'_>,
+    position: WorldPosition,
+    agent_radius_meters: f32,
+    exempt_building_id: Option<crate::world::BuildingId>,
+) -> bool {
+    let result = query_static_occupancy_at(world, catalogs, position, agent_radius_meters);
+    if !result.blocked {
+        return false;
+    }
+    match result.source {
+        Some(OccupancySource::Building(id)) if exempt_building_id == Some(id) => false,
+        _ => true,
     }
 }
 
