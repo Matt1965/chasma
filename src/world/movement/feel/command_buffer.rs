@@ -117,7 +117,44 @@ pub fn start_unit_move_to(
         .ok_or(UnitOrderError::DefinitionNotFound)?;
     let unit_ownership = world.get_unit(unit_id).map(|record| record.ownership());
     let (goal_space, grounded_goal) = resolve_move_goal_space(world, start_space, target);
-    let path = find_path_with_spaces(
+    #[cfg(feature = "dev")]
+    let post_exit_trace_snapshot = if world.post_exit_jitter_trace().is_active_for(unit_id) {
+        world
+            .get_unit(unit_id)
+            .and_then(|record| match &record.state {
+                UnitState::Moving {
+                    target: old_goal,
+                    path: old_path,
+                    waypoint_index,
+                } => Some((
+                    *waypoint_index,
+                    *old_goal,
+                    old_path.clone(),
+                    record.current_space_id,
+                    record.placement.position,
+                )),
+                _ => None,
+            })
+    } else {
+        None
+    };
+    #[cfg(feature = "dev")]
+    let exit_click_trace_active = world
+        .interior_exit_click_trace()
+        .is_active_for_target(unit_id, target);
+    #[cfg(feature = "dev")]
+    if exit_click_trace_active {
+        crate::world::interior_exit_click_trace::record_start_unit_move_to(
+            world,
+            unit_id,
+            target,
+            unit_space_before,
+            start_space,
+            goal_space,
+            grounded_goal,
+        );
+    }
+    let path_result = find_path_with_spaces(
         world,
         catalogs,
         nav_config,
@@ -128,9 +165,146 @@ pub fn start_unit_move_to(
         start_space,
         goal_space,
         unit_ownership,
-    )
-    .map_err(map_navigation_error)?;
+    );
+    #[cfg(feature = "dev")]
+    if world.entrance_traversal_trace().is_active_for(unit_id) {
+        crate::world::record_entrance_pathfinding_probe(
+            world,
+            unit_id,
+            catalogs,
+            nav_config,
+            definition.collision_radius_meters,
+            definition.max_slope_degrees,
+            start,
+            grounded_goal,
+            start_space,
+            goal_space,
+            unit_ownership,
+            path_result.as_ref().map_err(|error| *error),
+        );
+    }
+    #[cfg(feature = "dev")]
+    if world.inside_move_trace().is_active_for(unit_id) {
+        let result_label = match &path_result {
+            Ok(path) => "success",
+            Err(error) => navigation_error_label(error),
+        };
+        let waypoint_count = path_result.as_ref().ok().map(|path| path.len() as u32);
+        crate::world::inside_move_trace::record_path_resolution(
+            world,
+            unit_id,
+            unit_space_before,
+            start_space,
+            goal_space,
+            result_label,
+            waypoint_count,
+        );
+    }
+    #[cfg(feature = "dev")]
+    if exit_click_trace_active {
+        if matches!(
+            path_result.as_ref(),
+            Err(crate::world::NavigationError::GoalBlocked)
+        ) && !start_space.is_surface()
+            && goal_space.is_surface()
+        {
+            crate::world::interior_exit_click_trace::record_surface_goal_passability_probe(
+                world,
+                unit_id,
+                target,
+                catalogs,
+                definition.collision_radius_meters,
+                definition.max_slope_degrees,
+                grounded_goal,
+                start_space,
+                goal_space,
+                unit_ownership,
+            );
+        }
+        let result_label = match &path_result {
+            Ok(path) => "success",
+            Err(error) => navigation_error_label(error),
+        };
+        let waypoint_count = path_result.as_ref().ok().map(|path| path.len() as u32);
+        let portal_waypoint = path_result
+            .as_ref()
+            .ok()
+            .and_then(|path| path.waypoints.iter().find(|wp| wp.portal_id.is_some()));
+        let portal_id = portal_waypoint.and_then(|wp| wp.portal_id.map(|id| id.raw()));
+        let first_wp = path_result
+            .as_ref()
+            .ok()
+            .and_then(|path| path.waypoints.first().map(|wp| wp.position));
+        let final_wp = path_result
+            .as_ref()
+            .ok()
+            .and_then(|path| path.waypoints.last().map(|wp| wp.position));
+        crate::world::interior_exit_click_trace::record_path_result(
+            world,
+            unit_id,
+            target,
+            result_label,
+            waypoint_count,
+            portal_waypoint.is_some(),
+            portal_id,
+            first_wp,
+            final_wp,
+        );
+        if path_result.is_err() {
+            crate::world::interior_exit_click_trace::record_post_resolution_state(
+                world,
+                unit_id,
+                target,
+                "Idle",
+                false,
+                None,
+                unit_space_before,
+            );
+        }
+    }
+    #[cfg(feature = "dev")]
+    if let Some((old_waypoint_index, old_goal, old_path, old_space, old_position)) =
+        post_exit_trace_snapshot
+    {
+        crate::world::unit::post_exit_jitter_trace::record_new_order_during_session(
+            world,
+            unit_id,
+            old_waypoint_index,
+            old_waypoint_index,
+            old_position,
+            old_goal,
+            old_space,
+            &old_path,
+            grounded_goal,
+            start_space,
+            path_result.as_ref().ok(),
+        );
+    }
+    let path = path_result.map_err(map_navigation_error)?;
     if path.is_empty() {
+        #[cfg(feature = "dev")]
+        if exit_click_trace_active {
+            crate::world::interior_exit_click_trace::record_path_result(
+                world,
+                unit_id,
+                target,
+                "NoPath",
+                Some(0),
+                false,
+                None,
+                None,
+                None,
+            );
+            crate::world::interior_exit_click_trace::record_post_resolution_state(
+                world,
+                unit_id,
+                target,
+                "Idle",
+                false,
+                Some(0),
+                unit_space_before,
+            );
+        }
         return Err(UnitOrderError::NoPath);
     }
     world.movement_authority_trace_mut().record_command(
@@ -145,7 +319,9 @@ pub fn start_unit_move_to(
             waypoint_spaces: waypoint_space_ids(&path.waypoints),
         },
     );
-    world.portal_transition_state_mut(unit_id).lockout_portal = None;
+    world
+        .portal_transition_state_mut(unit_id)
+        .suppress_return_space = None;
     world
         .set_unit_state(
             unit_id,
@@ -155,7 +331,32 @@ pub fn start_unit_move_to(
                 waypoint_index: 0,
             },
         )
-        .map_err(|_| UnitOrderError::UnitNotFound)
+        .map_err(|_| UnitOrderError::UnitNotFound)?;
+    #[cfg(feature = "dev")]
+    if exit_click_trace_active {
+        let record = world
+            .get_unit(unit_id)
+            .ok_or(UnitOrderError::UnitNotFound)?;
+        let (state_label, path_stored, waypoint_count) = match &record.state {
+            UnitState::Moving { path, .. } => ("Moving", true, path.len() as u32),
+            UnitState::Idle => ("Idle", false, 0),
+            _ => ("other", false, 0),
+        };
+        crate::world::interior_exit_click_trace::record_post_resolution_state(
+            world,
+            unit_id,
+            target,
+            state_label,
+            path_stored,
+            if path_stored {
+                Some(waypoint_count)
+            } else {
+                None
+            },
+            record.current_space_id,
+        );
+    }
+    Ok(())
 }
 
 pub(crate) fn resolve_one(
@@ -195,6 +396,16 @@ fn map_navigation_error(error: NavigationError) -> UnitOrderError {
         NavigationError::GoalBlocked => UnitOrderError::PathGoalBlocked,
         NavigationError::NoPath => UnitOrderError::NoPath,
         NavigationError::TerrainUnavailable => UnitOrderError::PathTerrainUnavailable,
+    }
+}
+
+#[cfg(feature = "dev")]
+fn navigation_error_label(error: &NavigationError) -> &'static str {
+    match error {
+        NavigationError::StartBlocked => "StartBlocked",
+        NavigationError::GoalBlocked => "GoalBlocked",
+        NavigationError::NoPath => "NoPath",
+        NavigationError::TerrainUnavailable => "TerrainUnavailable",
     }
 }
 

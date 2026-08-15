@@ -63,6 +63,8 @@ fn portal_stair(id: u32, from: SpaceId, to: SpaceId, x: f32, z: f32, floor_y: f3
         bidirectional: true,
         enabled: true,
         owning_building_id: None,
+        entrance_threshold_global_xz: None,
+        entrance_owning_edge_index: None,
     }
 }
 

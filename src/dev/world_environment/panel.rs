@@ -16,8 +16,12 @@ use super::state::{
     DevWorldCycleToggle, DevWorldEnvironmentAction, DevWorldEnvironmentConfirmationBar,
     DevWorldEnvironmentDirtyBadge, DevWorldEnvironmentLoadStatusText, DevWorldEnvironmentSection,
     DevWorldEnvironmentStatusText, DevWorldEnvironmentValidationText, DevWorldPauseToggle,
-    DevWorldSkyboxOption, DevWorldTimePresetButton,
+    DevWorldSkyboxOption, DevWorldTimePresetButton, DevWorldWaterEnabledToggle,
+    DevWorldWaterSection,
 };
+
+/// Spawn order: Water follows the time/cycle block and precedes lighting sections.
+pub const WORLD_WATER_SECTION_ORDER: usize = 1;
 
 pub fn spawn_environment_controls(parent: &mut ChildSpawnerCommands<'_>) {
     parent
@@ -53,6 +57,7 @@ pub fn spawn_environment_controls(parent: &mut ChildSpawnerCommands<'_>) {
                 DevWorldCycleToggle,
             );
             spawn_time_controls(root);
+            spawn_water_section(root);
             spawn_day_section(root);
             spawn_night_section(root);
             spawn_twilight_section(root);
@@ -260,6 +265,47 @@ fn spawn_skybox_section(parent: &mut ChildSpawnerCommands<'_>) {
             spawn_field_sliders(body, EnvSection::Skybox);
         },
     );
+}
+
+fn spawn_water_section(parent: &mut ChildSpawnerCommands<'_>) {
+    parent
+        .spawn((
+            DevWorldWaterSection,
+            DevPanelUi,
+            Node {
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(4.0),
+                ..default()
+            },
+        ))
+        .with_children(|water_root| {
+            spawn_collapsible_section(
+                water_root,
+                DevCollapsibleSectionId::WorldWater,
+                "Water",
+                Some(DevTooltipContent::new(
+                    "Environment ocean plane controls. Adjust level to align the water surface with \
+                     terrain. Does not affect terrain hydrology or the gameplay water field.",
+                )),
+                |body| {
+                    spawn_toggle_row(
+                        body,
+                        "Water enabled",
+                        DevTooltipContent::new(
+                            "Show or hide the environment ocean plane (EnvironmentWaterPlane).",
+                        ),
+                        DevWorldWaterEnabledToggle,
+                    );
+                    spawn_bounded_slider_row(
+                        body,
+                        "Water Level",
+                        super::water::WORLD_WATER_LEVEL_FIELD_ID,
+                        88.0,
+                        "World-space height of the environment water plane.",
+                    );
+                },
+            );
+        });
 }
 
 fn spawn_project_defaults_section(parent: &mut ChildSpawnerCommands<'_>) {

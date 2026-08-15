@@ -577,7 +577,7 @@ fn dispatch_place_building(
 }
 
 fn resolve_move_target_from_interaction(
-    world: &WorldData,
+    world: &mut WorldData,
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
@@ -587,19 +587,50 @@ fn resolve_move_target_from_interaction(
     selected: &[UnitId],
     target: CommandTarget,
 ) -> Option<WorldPosition> {
-    let ctx = InteractionResolveContext::new(
-        world,
-        doodad_catalog,
-        building_catalog,
-        footprint_catalog,
-        interaction_catalog,
-        unit_catalog,
-        weapon_catalog,
-        selected,
-    );
     let plan = match target {
-        CommandTarget::Terrain { position } => resolve_world_click_to_order(&ctx, position)?,
-        CommandTarget::Unit { unit_id } => resolve_unit_click_to_order(&ctx, unit_id)?,
+        CommandTarget::Terrain { position } => {
+            #[cfg(feature = "dev")]
+            {
+                crate::world::trace_and_resolve_world_click_to_order(
+                    world,
+                    doodad_catalog,
+                    building_catalog,
+                    footprint_catalog,
+                    interaction_catalog,
+                    unit_catalog,
+                    weapon_catalog,
+                    selected,
+                    position,
+                )?
+            }
+            #[cfg(not(feature = "dev"))]
+            {
+                let ctx = InteractionResolveContext::new(
+                    world,
+                    doodad_catalog,
+                    building_catalog,
+                    footprint_catalog,
+                    interaction_catalog,
+                    unit_catalog,
+                    weapon_catalog,
+                    selected,
+                );
+                resolve_world_click_to_order(&ctx, position)?
+            }
+        }
+        CommandTarget::Unit { unit_id } => {
+            let ctx = InteractionResolveContext::new(
+                world,
+                doodad_catalog,
+                building_catalog,
+                footprint_catalog,
+                interaction_catalog,
+                unit_catalog,
+                weapon_catalog,
+                selected,
+            );
+            resolve_unit_click_to_order(&ctx, unit_id)?
+        }
     };
     match plan {
         InteractionOrderPlan::MoveTo { target } => Some(target),
@@ -796,6 +827,17 @@ fn dispatch_contextual_command(
                 }
             }
             let selected_ids: Vec<_> = selection.iter().collect();
+            #[cfg(feature = "dev")]
+            if selected_ids.len() == 1 {
+                if let CommandTarget::Terrain { position } = contextual.target {
+                    crate::world::maybe_begin_session(
+                        world,
+                        selected_ids[0],
+                        position,
+                        unit_catalog,
+                    );
+                }
+            }
             let Some(resolved_target) = resolve_move_target_from_interaction(
                 world,
                 doodad_catalog,
@@ -807,8 +849,39 @@ fn dispatch_contextual_command(
                 &selected_ids,
                 contextual.target,
             ) else {
+                #[cfg(feature = "dev")]
+                if selected_ids.len() == 1 {
+                    let unit_id = selected_ids[0];
+                    if world.inside_move_trace().is_active_for(unit_id) {
+                        crate::world::finish_command_resolution_failure(
+                            world,
+                            unit_id,
+                            "resolve_move_target_none",
+                        );
+                    }
+                    if world.interior_exit_click_trace().is_active_for(unit_id) {
+                        crate::world::interior_exit_click_trace::record_resolve_move_target(
+                            world, unit_id, None, "none",
+                        );
+                        crate::world::interior_exit_click_trace::record_dispatch(
+                            world, unit_id, "Ignored", false, false, None,
+                        );
+                    }
+                }
                 return IntentDispatchStatus::Ignored;
             };
+            #[cfg(feature = "dev")]
+            if selected_ids.len() == 1 {
+                if let CommandTarget::Terrain { position } = contextual.target {
+                    crate::world::maybe_begin_entrance_traversal_session(
+                        world,
+                        selected_ids[0],
+                        position,
+                        resolved_target,
+                        unit_catalog,
+                    );
+                }
+            }
             if settings.debug_unit_interaction {
                 log_move_target(&resolved_target, layout);
             }
@@ -822,6 +895,26 @@ fn dispatch_contextual_command(
                 resolved_target,
                 targeting_policy,
             );
+            #[cfg(feature = "dev")]
+            if selected_ids.len() == 1 {
+                let unit_id = selected_ids[0];
+                if world.interior_exit_click_trace().is_active_for(unit_id) {
+                    crate::world::interior_exit_click_trace::record_resolve_move_target(
+                        world,
+                        unit_id,
+                        Some(resolved_target),
+                        "MoveTo",
+                    );
+                    crate::world::interior_exit_click_trace::record_dispatch(
+                        world,
+                        unit_id,
+                        "Applied",
+                        true,
+                        move_report_result.issued > 0,
+                        Some(resolved_target),
+                    );
+                }
+            }
             *move_report = Some(move_report_result);
             move_feedback.set_target(resolved_target, layout, vertical_scale);
             if settings.debug_unit_interaction {

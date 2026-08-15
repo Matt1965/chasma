@@ -140,9 +140,14 @@ pub fn restore_unit_record(
     normalize_restored_unit(&mut record, catalog)?;
 
     let chunk = crate::world::ChunkId::new(record.placement.position.chunk);
+    let restored_id = record.id;
     world
         .insert_unit(chunk, record)
         .map_err(|error| UnitRestoreError::IndexInsert { unit_id, error })?;
+    super::navigation_membership::initialize_unit_navigation_membership_if_surface(
+        world,
+        restored_id,
+    );
     Ok(())
 }
 

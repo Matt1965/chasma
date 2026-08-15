@@ -170,6 +170,24 @@ passability; parallel circle-overlap paths are removed.
 - Full footprint Excel → RON bake pipeline export in dev import
 - Player placement consuming footprint validation
 
+# Partial supersession — building unit movement (August 2026)
+
+**Superseded in part** for **building unit movement and pathfinding** by [docs/building-navigation-authority.md](../docs/building-navigation-authority.md).
+
+This ADR remains authoritative for:
+
+- Occupancy index structure and rebuild
+- Footprint catalog shapes and offline bake
+- Doodad static blocking via occupancy passability
+- Building footprint use for **placement** and derived occupancy registration
+
+**Not normative for building unit movement when:**
+
+- A navigation blueprint is active (blueprint is sole building movement authority), or
+- No navigation blueprint is active (building is a movement ghost; no footprint fallback).
+
+Implementation may still route building blocking through `query_passability_at` footprint overlap; convergence toward the authority contract is expected in dedicated slices — not via stacked exemptions.
+
 # References
 
 - ADR-078, ADR-079 (building catalog + runtime)

@@ -708,9 +708,9 @@ fn spawn_overlay_actions(parent: &mut ChildSpawnerCommands<'_>) {
                     "Show activated runtime portal triggers for the selected building.",
                 ),
                 (
-                    "Selected Unit Path",
-                    NavigationEditorAction::OverlayRuntimePath,
-                    "Show live and retained path for the selected unit.",
+                    "Blocked Area",
+                    NavigationEditorAction::OverlayBlockedArea,
+                    "Show cells blocked by the actual navigation authority (blueprint boundaries or legacy footprints).",
                 ),
                 (
                     "Clear Recorded Path",

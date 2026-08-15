@@ -45,7 +45,7 @@ pub fn two_story_hut_navigation_blueprint() -> BuildingNavigationBlueprint {
             radius_meters: 1.5,
             interior_spawn_local: [2.0, 0.0, 2.5],
             bidirectional: true,
-            door_key: None,
+            door_key: Some("exterior_entrance".to_string()),
         }])
         .with_vertical_transitions(vec![NavigationVerticalTransitionDefinition {
             key: "stairs".to_string(),

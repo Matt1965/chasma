@@ -32,6 +32,8 @@ pub struct DebugOverlayConfig {
     pub nav_occupancy: bool,
     /// Generated navigation blueprint overlay (NV1.2.5).
     pub nav_blueprint: bool,
+    /// Interior clearance cell diagnostics (IN-11d) — not authored blueprint geometry.
+    pub nav_clearance: bool,
     /// Cap per-frame debug draws for moving/selected units.
     pub max_draw_units: u32,
 }
@@ -65,6 +67,7 @@ impl DebugOverlayConfig {
             nav_reservations: false,
             nav_occupancy: false,
             nav_blueprint: false,
+            nav_clearance: false,
             max_draw_units: 64,
         }
     }
@@ -89,6 +92,7 @@ impl DebugOverlayConfig {
             nav_reservations: false,
             nav_occupancy: false,
             nav_blueprint: false,
+            nav_clearance: false,
             max_draw_units: 64,
         }
     }
@@ -225,8 +229,42 @@ pub fn debug_blueprint_overlay_or_inspection(
 }
 
 #[cfg(feature = "dev")]
-pub fn run_debug_blueprint_overlay(settings: Res<DebugOverlaySettings>) -> bool {
-    debug_blueprint_overlay_enabled(&settings)
+pub fn navigation_editor_authored_session(
+    inspection: &crate::dev::BlueprintInspectionState,
+    registry: &crate::dev::DevWindowRegistry,
+) -> bool {
+    use crate::dev::DevWindowId;
+    registry.is_visible(DevWindowId::NavigationEditor)
+        && inspection.building_id.is_some()
+        && (inspection.active || inspection.editing)
+}
+
+#[cfg(feature = "dev")]
+pub fn authored_blueprint_overlay_active(
+    settings: &DebugOverlaySettings,
+    inspection: &crate::dev::BlueprintInspectionState,
+    registry: &crate::dev::DevWindowRegistry,
+) -> bool {
+    navigation_editor_authored_session(inspection, registry) || settings.blueprint_overlay_active()
+}
+
+#[cfg(feature = "dev")]
+pub fn run_debug_blueprint_overlay(
+    settings: Res<DebugOverlaySettings>,
+    inspection: Res<crate::dev::BlueprintInspectionState>,
+    registry: Res<crate::dev::DevWindowRegistry>,
+) -> bool {
+    authored_blueprint_overlay_active(&settings, &inspection, &registry)
+}
+
+#[cfg(feature = "dev")]
+pub fn run_debug_interior_clearance_overlay(settings: Res<DebugOverlaySettings>) -> bool {
+    settings.enabled && settings.nav_clearance
+}
+
+#[cfg(not(feature = "dev"))]
+pub fn run_debug_interior_clearance_overlay(_settings: Res<DebugOverlaySettings>) -> bool {
+    false
 }
 
 #[cfg(not(feature = "dev"))]
@@ -306,5 +344,50 @@ mod tests {
         };
         assert!(debug_path_overlay_enabled(&config));
         assert!(!debug_interaction_overlay_enabled(&config));
+    }
+
+    #[cfg(feature = "dev")]
+    #[test]
+    fn editor_session_draws_without_master_debug_enabled() {
+        use crate::dev::{DevWindowId, DevWindowRegistry};
+        let settings = DebugOverlayConfig {
+            enabled: false,
+            nav_blueprint: false,
+            ..DebugOverlayConfig::production()
+        };
+        let inspection = crate::dev::BlueprintInspectionState {
+            active: true,
+            building_id: Some(crate::world::BuildingId::new(1)),
+            ..Default::default()
+        };
+        let mut registry = DevWindowRegistry::default();
+        registry.show(DevWindowId::NavigationEditor);
+        assert!(authored_blueprint_overlay_active(
+            &settings,
+            &inspection,
+            &registry
+        ));
+    }
+
+    #[test]
+    fn clearance_overlay_not_tied_to_nav_blueprint() {
+        let settings = DebugOverlayConfig {
+            enabled: true,
+            nav_blueprint: true,
+            nav_clearance: false,
+            ..DebugOverlayConfig::production()
+        };
+        assert!(!settings.nav_clearance);
+        assert!(settings.nav_blueprint);
+    }
+
+    #[test]
+    fn blueprint_overlay_requires_master_when_not_in_editor() {
+        let settings = DebugOverlayConfig {
+            enabled: false,
+            nav_blueprint: true,
+            ..DebugOverlayConfig::production()
+        };
+        assert!(!settings.blueprint_overlay_active());
     }
 }

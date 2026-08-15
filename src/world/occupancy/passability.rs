@@ -1,16 +1,12 @@
 //! Composed passability aggregation (ADR-080 B3).
 
-use bevy::prelude::*;
+use crate::world::query_navigation_point_legality;
+use crate::world::{SpaceId, WorldData, WorldPosition};
 
-use super::OccupancyError;
 use super::OccupancySource;
 use super::catalog::FootprintCatalog;
-use super::query::{is_position_blocked_by_static_occupancy, query_static_occupancy_at};
 use super::registration::OccupancyCatalogs;
-use crate::world::{
-    BuildingCatalog, DoodadCatalog, SlopeWalkability, WorldData, WorldPosition,
-    classify_slope_walkability, ground_world_position,
-};
+use crate::world::{BuildingCatalog, DoodadCatalog};
 
 /// Catalog bundle for composed passability queries.
 #[derive(Debug, Clone, Copy)]
@@ -47,6 +43,8 @@ pub enum PassabilityBlockReason {
     InvalidCell,
     /// Interior region polygon is too tight for the agent radius at this position.
     AgentClearanceInsufficient,
+    /// Surface position lies inside blueprint building support projection.
+    BlueprintSupport,
 }
 
 /// Structured passability result.
@@ -82,204 +80,27 @@ impl From<crate::world::NavigationAgent> for PassabilityAgent {
 
 /// Deterministic composed passability query.
 ///
-/// Contributor order: terrain availability → slope → static occupancy → (future modifiers).
+/// Thin adapter over [`query_navigation_point_legality`] (IN-11gF).
 pub fn query_passability_at(
     world: &WorldData,
     catalogs: PassabilityCatalogs<'_>,
     position: WorldPosition,
     agent: PassabilityAgent,
 ) -> PassabilityResult {
-    query_passability_in_space(
-        world,
-        catalogs,
-        position,
-        agent,
-        crate::world::SpaceId::SURFACE,
-    )
+    query_navigation_point_legality(world, catalogs, position, agent, SpaceId::SURFACE)
 }
 
 /// Space-scoped passability (ADR-083 B6).
+///
+/// Thin adapter over [`query_navigation_point_legality`] (IN-11gF).
 pub fn query_passability_in_space(
     world: &WorldData,
     catalogs: PassabilityCatalogs<'_>,
     position: WorldPosition,
     agent: PassabilityAgent,
-    space_id: crate::world::SpaceId,
+    space_id: SpaceId,
 ) -> PassabilityResult {
-    if space_id.is_surface() {
-        return query_surface_passability(world, catalogs, position, agent);
-    }
-    query_interior_passability(world, catalogs, position, agent, space_id)
-}
-
-fn query_surface_passability(
-    world: &WorldData,
-    catalogs: PassabilityCatalogs<'_>,
-    position: WorldPosition,
-    agent: PassabilityAgent,
-) -> PassabilityResult {
-    let Some(grounded) = ground_world_position(world, position) else {
-        return PassabilityResult::Unavailable {
-            reason: PassabilityUnavailableReason::TerrainUnavailable,
-        };
-    };
-
-    match classify_slope_walkability(world, grounded, agent.max_slope_degrees) {
-        SlopeWalkability::Walkable => {}
-        SlopeWalkability::Unavailable => {
-            return PassabilityResult::Unavailable {
-                reason: PassabilityUnavailableReason::TerrainUnavailable,
-            };
-        }
-        SlopeWalkability::TooSteep => {
-            return PassabilityResult::Blocked {
-                reason: PassabilityBlockReason::SlopeTooSteep,
-                source: None,
-            };
-        }
-    }
-
-    if crate::world::position_in_surface_entrance_portal(
-        world.space_registry(),
-        world.layout(),
-        grounded,
-    ) {
-        return PassabilityResult::Passable {
-            movement_cost_multiplier: 1.0,
-        };
-    }
-
-    let occupancy =
-        query_static_occupancy_at(world, catalogs.occupancy(), grounded, agent.radius_meters);
-    if occupancy.blocked {
-        let reason = match occupancy.source {
-            Some(OccupancySource::Building(_)) => PassabilityBlockReason::BuildingOccupied,
-            Some(OccupancySource::Doodad(_)) => PassabilityBlockReason::DoodadOccupied,
-            None => PassabilityBlockReason::InvalidCell,
-        };
-        return PassabilityResult::Blocked {
-            reason,
-            source: occupancy.source,
-        };
-    }
-    if let Some(error) = occupancy.error {
-        return map_occupancy_error(error);
-    }
-
-    PassabilityResult::Passable {
-        movement_cost_multiplier: 1.0,
-    }
-}
-
-fn query_interior_passability(
-    world: &WorldData,
-    catalogs: PassabilityCatalogs<'_>,
-    position: WorldPosition,
-    agent: PassabilityAgent,
-    space_id: crate::world::SpaceId,
-) -> PassabilityResult {
-    let _ = catalogs;
-    if !(agent.radius_meters >= 0.0) || !agent.radius_meters.is_finite() {
-        return PassabilityResult::Blocked {
-            reason: PassabilityBlockReason::InvalidCell,
-            source: None,
-        };
-    }
-    let layout = world.layout();
-    if !crate::world::interior_agent_fits_region(
-        world.building_navigation_runtime(),
-        world.space_registry(),
-        layout,
-        position,
-        space_id,
-        agent.radius_meters,
-    ) {
-        return PassabilityResult::Blocked {
-            reason: PassabilityBlockReason::AgentClearanceInsufficient,
-            source: None,
-        };
-    }
-    let owning_building = world
-        .space_registry()
-        .get_space(space_id)
-        .and_then(|space| space.owning_building_id);
-    if interior_static_occupancy_blocked(
-        world,
-        catalogs.occupancy(),
-        position,
-        agent.radius_meters,
-        owning_building,
-    ) {
-        return PassabilityResult::Blocked {
-            reason: PassabilityBlockReason::BuildingOccupied,
-            source: None,
-        };
-    }
-    let center = position.to_global(layout);
-    let center_xz = Vec2::new(center.x, center.z);
-    let cell = super::cell::occupancy_cell_at_global_xz(center_xz);
-    let chunk = super::cell::chunk_for_occupancy_cell(cell, layout);
-    let chunk_id = crate::world::ChunkId::new(chunk);
-    if let Some(grid) = world.occupancy_in_chunk(chunk_id) {
-        if let Some(entry) = grid.get(cell, space_id.raw()) {
-            if matches!(entry.state, super::grid::OccupancyState::Blocked) {
-                let blocked_by_owning = match entry.source {
-                    crate::world::OccupancySource::Building(id) => owning_building == Some(id),
-                    _ => false,
-                };
-                if !blocked_by_owning {
-                    return PassabilityResult::Blocked {
-                        reason: PassabilityBlockReason::BuildingOccupied,
-                        source: Some(entry.source),
-                    };
-                }
-            }
-        }
-    }
-    PassabilityResult::Passable {
-        movement_cost_multiplier: 1.0,
-    }
-}
-
-fn map_occupancy_error(error: OccupancyError) -> PassabilityResult {
-    PassabilityResult::Blocked {
-        reason: match error {
-            OccupancyError::MissingBuildingDefinition(_)
-            | OccupancyError::MissingDoodadDefinition { .. }
-            | OccupancyError::MissingFootprint(_) => PassabilityBlockReason::MissingDefinition,
-            OccupancyError::InvalidRotation { .. }
-            | OccupancyError::InvalidMaskDimensions { .. }
-            | OccupancyError::MeshDerivedRequiresFootprintId
-            | OccupancyError::DisabledFootprint(_)
-            | OccupancyError::CollisionNodeMissing { .. }
-            | OccupancyError::BakeFailed(_)
-            | OccupancyError::NonFiniteGeometry
-            | OccupancyError::OverrideOutOfBounds { .. }
-            | OccupancyError::OverrideConflict { .. } => PassabilityBlockReason::CorruptFootprint,
-            OccupancyError::OccupancyConflict { .. }
-            | OccupancyError::RegistrationIndexMismatch => PassabilityBlockReason::InvalidCell,
-            OccupancyError::InvalidBlockingRadius { .. } => PassabilityBlockReason::InvalidCell,
-        },
-        source: None,
-    }
-}
-
-/// Interior static overlap — owning building analytic footprint is exempt (IN-11e).
-fn interior_static_occupancy_blocked(
-    world: &WorldData,
-    catalogs: OccupancyCatalogs<'_>,
-    position: WorldPosition,
-    agent_radius_meters: f32,
-    exempt_building_id: Option<crate::world::BuildingId>,
-) -> bool {
-    let result = query_static_occupancy_at(world, catalogs, position, agent_radius_meters);
-    if !result.blocked {
-        return false;
-    }
-    match result.source {
-        Some(OccupancySource::Building(id)) if exempt_building_id == Some(id) => false,
-        _ => true,
-    }
+    query_navigation_point_legality(world, catalogs, position, agent, space_id)
 }
 
 /// Thin bool helper — fail-closed on any non-passable result.
@@ -322,6 +143,7 @@ mod tests {
         ChunkLayout, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, Heightfield,
         LocalPosition, WorldPosition, create_building, create_doodad,
     };
+    use bevy::prelude::{Quat, Vec3};
 
     fn layout() -> ChunkLayout {
         ChunkLayout {

@@ -228,6 +228,8 @@ mod tests {
             bidirectional: true,
             enabled: true,
             owning_building_id: None,
+            entrance_threshold_global_xz: None,
+            entrance_owning_edge_index: None,
         }
     }
 

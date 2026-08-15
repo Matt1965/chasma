@@ -68,6 +68,16 @@ dev bake). Re-import when collision assets change.
 
 Rebuild occupancy with [`rebuild_occupancy_index`] after bulk world loads.
 
+## Building movement authority (supersedes B3 movement scope partially)
+
+**Superseded in part (August 2026):** [docs/building-navigation-authority.md](../docs/building-navigation-authority.md)
+
+For **unit movement and pathfinding**, building footprint overlap via `query_passability_at` / static occupancy is **not** the authoritative blocker when a navigation blueprint is active at runtime. Footprints remain authoritative for placement, catalog sizing validation, occupancy index registration, and non-movement diagnostics.
+
+**Required architecture:** Buildings without an active navigation blueprint are navigation **ghosts** for unit movement (no automatic footprint fallback). ADR-080’s composed passability path historically blocked via geometric footprint overlap for all complete buildings; that behavior is **not** normative for building unit movement under the new contract.
+
+Historical B3 text below remains accurate for occupancy index ownership, doodads, and non-blueprint building **placement** concerns.
+
 [`FootprintDefinition`]: ../src/world/occupancy/footprint.rs
 [`BuildingDefinition::footprint_id`]: ../src/world/building/catalog/definition.rs
 [`rebuild_occupancy_index`]: ../src/world/occupancy/registration.rs

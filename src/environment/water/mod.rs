@@ -3,11 +3,15 @@
 //! Client-local water planes at configured levels. Not terrain or simulation truth.
 
 mod material;
+mod ocean_material;
 mod plugin;
 mod settings;
 mod spawn;
 
-pub use material::build_water_material;
+pub use material::{
+    EnvironmentOceanMaterial, WaterDepthPresentation, build_ocean_material, build_water_material,
+    evaluate_depth_response_factor,
+};
 pub use plugin::WaterPlugin;
 pub use settings::{
     DEFAULT_WATER_EXTENT_PADDING_METERS, DEFAULT_WATER_PLANE_SIZE_METERS, WaterSettings,

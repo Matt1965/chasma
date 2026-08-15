@@ -12,7 +12,7 @@ use crate::world::building::catalog::BuildingDefinition;
 use crate::world::building::record::BuildingRecord;
 use crate::world::space::{PortalRecord, PortalType, SpaceRecord, SpaceRegistry};
 use crate::world::{
-    BuildingId, ChunkLayout, SpaceId, WorldPosition, building_model_world_transform,
+    BuildingId, ChunkLayout, SpaceId, WorldData, WorldPosition, building_model_world_transform,
 };
 
 /// One navigable region registered from a blueprint.
@@ -88,6 +88,11 @@ impl BuildingNavigationRuntimeStore {
         }
     }
 
+    pub fn clear(&mut self) {
+        self.by_building.clear();
+        self.space_to_building.clear();
+    }
+
     pub fn get(&self, building_id: BuildingId) -> Option<&BuildingNavigationRuntime> {
         self.by_building.get(&building_id)
     }
@@ -133,6 +138,88 @@ impl BuildingNavigationRuntimeStore {
     pub fn iter(&self) -> impl Iterator<Item = &BuildingNavigationRuntime> {
         self.by_building.values()
     }
+}
+
+/// Stable topology summary for parity checks (ids may differ between runs).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RuntimeTopologyFingerprint {
+    pub blueprint_id: BuildingNavigationBlueprintId,
+    pub region_count: usize,
+    pub portal_count: usize,
+    pub region_vertex_total: usize,
+}
+
+pub fn blueprint_region_count(blueprint: &BuildingNavigationBlueprint) -> usize {
+    blueprint
+        .floors
+        .iter()
+        .map(|floor| floor.regions.len())
+        .sum()
+}
+
+pub fn runtime_topology_fingerprint(
+    runtime: &BuildingNavigationRuntime,
+) -> RuntimeTopologyFingerprint {
+    RuntimeTopologyFingerprint {
+        blueprint_id: runtime.blueprint_id.clone(),
+        region_count: runtime.regions.len(),
+        portal_count: runtime.portal_keys.len(),
+        region_vertex_total: runtime
+            .regions
+            .iter()
+            .map(|region| region.world_outline_xz.len())
+            .sum(),
+    }
+}
+
+pub fn blueprint_topology_fingerprint(
+    blueprint: &BuildingNavigationBlueprint,
+) -> RuntimeTopologyFingerprint {
+    RuntimeTopologyFingerprint {
+        blueprint_id: blueprint.id.clone(),
+        region_count: blueprint_region_count(blueprint),
+        portal_count: blueprint_portal_templates(blueprint).len(),
+        region_vertex_total: blueprint
+            .floors
+            .iter()
+            .flat_map(|floor| floor.regions.iter())
+            .map(|region| region.walkable_outline.vertices_xz.len())
+            .sum(),
+    }
+}
+
+/// Semantic topology snapshot for cold-load vs Save/Apply parity tests (IN-11gE).
+#[derive(Debug, Clone, PartialEq)]
+pub struct BuildingNavigationTopologySnapshot {
+    pub fingerprint: RuntimeTopologyFingerprint,
+    pub region_polygons: Vec<Vec<Vec2>>,
+    pub portal_space_pairs: Vec<(u32, u32)>,
+}
+
+/// Capture building navigation topology independent of allocator ids.
+pub fn capture_building_navigation_topology_snapshot(
+    world: &WorldData,
+    building_id: BuildingId,
+) -> Option<BuildingNavigationTopologySnapshot> {
+    let runtime = world.building_navigation_runtime().get(building_id)?;
+    let fingerprint = runtime_topology_fingerprint(runtime);
+    let region_polygons = runtime
+        .regions
+        .iter()
+        .map(|region| region.world_outline_xz.clone())
+        .collect();
+    let mut portal_space_pairs: Vec<(u32, u32)> = world
+        .space_registry()
+        .portals()
+        .filter(|(_, portal)| portal.owning_building_id == Some(building_id))
+        .map(|(_, portal)| (portal.from_space.raw(), portal.to_space.raw()))
+        .collect();
+    portal_space_pairs.sort_unstable();
+    Some(BuildingNavigationTopologySnapshot {
+        fingerprint,
+        region_polygons,
+        portal_space_pairs,
+    })
 }
 
 fn compute_aabb(points: &[Vec2]) -> (Vec2, Vec2) {
@@ -203,6 +290,38 @@ pub fn build_navigation_runtime(
         portal_keys: portal_keys.clone(),
         floors,
         regions,
+    }
+}
+
+fn apply_entrance_boundary_metadata(
+    portal: &mut PortalRecord,
+    template: &BlueprintPortalTemplate,
+    model: &Transform,
+    threshold_floor_y: f32,
+) {
+    if template.portal_type != PortalType::ExteriorEntrance {
+        portal.entrance_threshold_global_xz = None;
+        portal.entrance_owning_edge_index = None;
+        return;
+    }
+    match (
+        template.entrance_owning_edge_index,
+        template.entrance_threshold_local_xz,
+    ) {
+        (Some(edge_index), Some(threshold_local)) => {
+            // Threshold lies on the interior region boundary at floor elevation, not on Surface Y.
+            let global = model.transform_point(Vec3::new(
+                threshold_local.x,
+                threshold_floor_y,
+                threshold_local.y,
+            ));
+            portal.entrance_threshold_global_xz = Some(Vec2::new(global.x, global.z));
+            portal.entrance_owning_edge_index = Some(edge_index);
+        }
+        _ => {
+            portal.entrance_threshold_global_xz = None;
+            portal.entrance_owning_edge_index = None;
+        }
     }
 }
 
@@ -307,7 +426,15 @@ pub fn register_building_navigation_profile(
             bidirectional: template.bidirectional,
             enabled: template.enabled,
             owning_building_id: Some(building.id),
+            entrance_threshold_global_xz: None,
+            entrance_owning_edge_index: None,
         });
+        let portal = portal_records.last_mut().expect("portal");
+        let threshold_floor_y = floor_y_by_key
+            .get(floor_key_from_region_space_key(&template.to_space_key))
+            .copied()
+            .unwrap_or(from_floor_y);
+        apply_entrance_boundary_metadata(portal, template, &model, threshold_floor_y);
     }
 
     registry.register_building_spaces(building.id, space_records, portal_records);
@@ -373,7 +500,21 @@ pub fn interior_agent_fits_region(
         return false;
     };
     let xz = position.to_global(layout).xz();
-    min_edge_clearance_meters(xz, &region.world_outline_xz) >= agent_radius_meters
+    let clearance = space_registry
+        .get_space(space_id)
+        .and_then(|space| space.owning_building_id)
+        .map(|building_id| {
+            super::opening_geometry::min_interior_closed_boundary_clearance_meters(
+                xz,
+                &region.world_outline_xz,
+                space_registry,
+                building_id,
+                space_id,
+                agent_radius_meters,
+            )
+        })
+        .unwrap_or_else(|| min_edge_clearance_meters(xz, &region.world_outline_xz));
+    clearance >= agent_radius_meters
 }
 
 fn point_in_region_aabb(region: &RuntimeNavigationRegion, point: Vec2) -> bool {
@@ -490,6 +631,174 @@ fn segments_cross_in_open_interval(a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2) -> bo
         return true;
     }
     false
+}
+
+/// Whether a surface movement segment respects blueprint region boundaries (IN-11g).
+///
+/// Legacy footprints do not block blueprint-controlled buildings; polygon edges are the wall.
+/// Enabled exterior entrances relax only their owning boundary edge segment.
+pub fn surface_segment_respects_blueprint_boundaries(
+    world: &WorldData,
+    from: WorldPosition,
+    to: WorldPosition,
+    layout: ChunkLayout,
+    agent_radius_meters: f32,
+) -> bool {
+    let store = world.building_navigation_runtime();
+    let space_registry = world.space_registry();
+    let from_xz = from.to_global(layout).xz();
+    let to_xz = to.to_global(layout).xz();
+    for runtime in store.iter() {
+        for region in &runtime.regions {
+            let polygon = &region.world_outline_xz;
+            if polygon.len() < 2 {
+                continue;
+            }
+            for edge_index in 0..polygon.len() {
+                let a = polygon[edge_index];
+                let b = polygon[(edge_index + 1) % polygon.len()];
+                if !segments_cross_in_open_interval(from_xz, to_xz, a, b) {
+                    continue;
+                }
+                if !segment_crosses_entrance_on_edge(
+                    space_registry,
+                    runtime.building_id,
+                    region,
+                    from_xz,
+                    to_xz,
+                    edge_index,
+                    agent_radius_meters,
+                ) {
+                    return false;
+                }
+            }
+        }
+    }
+    true
+}
+
+/// Whether a segment crosses a specific region edge through a legal exterior entrance opening.
+fn segment_crosses_entrance_on_edge(
+    space_registry: &SpaceRegistry,
+    building_id: BuildingId,
+    region: &RuntimeNavigationRegion,
+    from_xz: Vec2,
+    to_xz: Vec2,
+    edge_index: usize,
+    agent_radius_meters: f32,
+) -> bool {
+    let polygon = &region.world_outline_xz;
+    if edge_index >= polygon.len() {
+        return false;
+    }
+    let a = polygon[edge_index];
+    let b = polygon[(edge_index + 1) % polygon.len()];
+    if !segments_cross_in_open_interval(from_xz, to_xz, a, b) {
+        return false;
+    }
+    let Some(intersection) = segment_edge_intersection(from_xz, to_xz, a, b) else {
+        return false;
+    };
+    let open_intervals = super::opening_geometry::collect_usable_entrance_openings_on_edge(
+        space_registry,
+        building_id,
+        region.space_id,
+        edge_index,
+        a,
+        b,
+        agent_radius_meters,
+    );
+    super::opening_geometry::point_within_merged_usable_intervals_on_edge(
+        intersection,
+        a,
+        b,
+        &open_intervals,
+    )
+}
+
+fn segment_crosses_entrance_opening(
+    space_registry: &SpaceRegistry,
+    layout: ChunkLayout,
+    building_id: BuildingId,
+    region: &RuntimeNavigationRegion,
+    from_xz: Vec2,
+    to_xz: Vec2,
+    agent_radius_meters: f32,
+) -> bool {
+    let _ = layout;
+    let polygon = &region.world_outline_xz;
+    if polygon.len() < 2 {
+        return false;
+    }
+    for edge_index in 0..polygon.len() {
+        if segment_crosses_entrance_on_edge(
+            space_registry,
+            building_id,
+            region,
+            from_xz,
+            to_xz,
+            edge_index,
+            agent_radius_meters,
+        ) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Dev-only read-only probe for entrance traversal diagnostics (IN-11gI-T).
+#[cfg(feature = "dev")]
+pub fn probe_segment_crosses_entrance_opening(
+    world: &WorldData,
+    from: WorldPosition,
+    to: WorldPosition,
+    agent_radius_meters: f32,
+) -> bool {
+    let layout = world.layout();
+    let from_xz = from.to_global(layout).xz();
+    let to_xz = to.to_global(layout).xz();
+    let store = world.building_navigation_runtime();
+    let registry = world.space_registry();
+    for runtime in store.iter() {
+        for region in &runtime.regions {
+            if !segment_crosses_polygon_boundary(from_xz, to_xz, &region.world_outline_xz) {
+                continue;
+            }
+            if segment_crosses_entrance_opening(
+                registry,
+                layout,
+                runtime.building_id,
+                region,
+                from_xz,
+                to_xz,
+                agent_radius_meters,
+            ) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn segment_edge_intersection(a0: Vec2, a1: Vec2, b0: Vec2, b1: Vec2) -> Option<Vec2> {
+    fn cross(v: Vec2, w: Vec2) -> f32 {
+        v.x * w.y - v.y * w.x
+    }
+    const EPS: f32 = 1e-8;
+    const END_EPS: f32 = 1e-5;
+    let d1 = a1 - a0;
+    let d2 = b1 - b0;
+    let cross_d = cross(d1, d2);
+    if cross_d.abs() < EPS {
+        return None;
+    }
+    let t = cross(b0 - a0, d2) / cross_d;
+    let u = cross(b0 - a0, d1) / cross_d;
+    if t > END_EPS && t < 1.0 - END_EPS && u > END_EPS && u < 1.0 - END_EPS {
+        Some(a0 + d1 * t)
+    } else {
+        None
+    }
 }
 
 /// Continuous interior segment validation: endpoints inside, no boundary crossing, agent clearance.
@@ -740,6 +1049,11 @@ pub fn reposition_building_navigation_runtime(
         portal.from_radius_meters = template.from_radius_meters;
         portal.to_position = WorldPosition::from_global(to_global, layout);
         portal.enabled = template.enabled;
+        let threshold_floor_y = floor_y_by_key
+            .get(floor_key_from_region_space_key(&template.to_space_key))
+            .copied()
+            .unwrap_or(from_floor_y);
+        apply_entrance_boundary_metadata(portal, template, &model, threshold_floor_y);
     }
 
     for floor in &blueprint.floors {

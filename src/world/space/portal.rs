@@ -43,6 +43,10 @@ pub struct PortalRecord {
     pub bidirectional: bool,
     pub enabled: bool,
     pub owning_building_id: Option<crate::world::BuildingId>,
+    /// Authoritative boundary threshold in global XZ for exterior entrances (IN-11gI-A).
+    pub entrance_threshold_global_xz: Option<Vec2>,
+    /// Owning region polygon edge index for exterior entrances (IN-11gI-A).
+    pub entrance_owning_edge_index: Option<u32>,
 }
 
 impl PortalRecord {
@@ -217,6 +221,8 @@ mod tests {
             bidirectional: true,
             enabled: true,
             owning_building_id: None,
+            entrance_threshold_global_xz: None,
+            entrance_owning_edge_index: None,
         }
     }
 
@@ -349,6 +355,8 @@ mod tests {
             bidirectional: true,
             enabled: true,
             owning_building_id: None,
+            entrance_threshold_global_xz: None,
+            entrance_owning_edge_index: None,
         }
     }
 

@@ -51,6 +51,7 @@ pub struct DevBuildingActionParams<'w> {
     pub footprint_catalog: Res<'w, FootprintCatalog>,
     pub interior_catalog: Res<'w, InteriorProfileCatalog>,
     pub interaction_catalog: Res<'w, BuildingInteractionProfileCatalog>,
+    pub nav_blueprint_catalog: Res<'w, crate::world::BuildingNavigationBlueprintCatalog>,
     pub items: Res<'w, ItemCatalog>,
     pub item_categories: Res<'w, ItemCategoryCatalog>,
     pub inventory_profiles: Res<'w, InventoryProfileCatalog>,

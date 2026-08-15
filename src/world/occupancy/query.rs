@@ -3,8 +3,7 @@
 use bevy::prelude::*;
 
 use super::catalog::FootprintCatalog;
-use super::cell::{QuantizedRotation, circle_overlap_blocked};
-use super::footprint::{agent_overlaps_footprint, effective_building_footprint_for_placement};
+use super::cell::circle_overlap_blocked;
 use super::registration::OccupancyCatalogs;
 use super::{OccupancyError, OccupancySource, conservative_block_radius_for_kind};
 use crate::world::{
@@ -62,6 +61,7 @@ pub fn query_static_occupancy_at(
         if let Some(store) = world.buildings_in_chunk(chunk_id) {
             for record in store.records() {
                 match building_overlap(
+                    world,
                     catalogs.building,
                     catalogs.footprint,
                     record,
@@ -147,34 +147,20 @@ pub fn is_position_blocked_by_static_occupancy(
 }
 
 fn building_overlap(
-    building_catalog: &BuildingCatalog,
-    footprint_catalog: &FootprintCatalog,
+    _world: &WorldData,
+    _building_catalog: &BuildingCatalog,
+    _footprint_catalog: &FootprintCatalog,
     record: &BuildingRecord,
-    layout: crate::world::ChunkLayout,
-    agent_center: Vec2,
-    agent_radius: f32,
+    _layout: crate::world::ChunkLayout,
+    _agent_center: Vec2,
+    _agent_radius: f32,
 ) -> Result<bool, OccupancyError> {
     if !record.lifecycle_state.blocks_movement() {
         return Ok(false);
     }
-    let definition = building_catalog
-        .get(&record.definition_id)
-        .ok_or_else(|| OccupancyError::MissingBuildingDefinition(record.definition_id.clone()))?;
-    let shape = effective_building_footprint_for_placement(
-        definition,
-        footprint_catalog,
-        record.placement.uniform_scale_f32(),
-    )?;
-    let rotation = QuantizedRotation::from_quat(record.placement.rotation)?;
-    let anchor_global = record.placement.position.to_global(layout);
-    let anchor_xz = Vec2::new(anchor_global.x, anchor_global.z);
-    Ok(agent_overlaps_footprint(
-        agent_center,
-        agent_radius,
-        shape.as_ref(),
-        anchor_xz,
-        rotation,
-    ))
+    // IN-11gD: analytic/baked building footprints are not unit-movement authority.
+    // Hydrated blueprint runtime geometry or ghost — never legacy footprint blocking.
+    Ok(false)
 }
 
 fn doodad_overlap(
@@ -278,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn building_blocks_navigation_position() {
+    fn ghost_building_does_not_block_navigation_position() {
         let (doodad, building, footprint) = catalogs();
         let mut world = WorldData::new(layout());
         create_building(
@@ -292,11 +278,14 @@ mod tests {
             None,
         )
         .unwrap();
-        assert!(is_position_blocked_by_static_occupancy(
-            &world,
-            occ(&doodad, &building, &footprint),
-            pos(50.0, 50.0),
-            0.5,
-        ));
+        assert!(
+            !is_position_blocked_by_static_occupancy(
+                &world,
+                occ(&doodad, &building, &footprint),
+                pos(50.0, 50.0),
+                0.5,
+            ),
+            "ghost building must not block via footprint overlap"
+        );
     }
 }

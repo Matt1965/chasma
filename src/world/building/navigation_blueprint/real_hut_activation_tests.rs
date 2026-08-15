@@ -377,58 +377,32 @@ fn real_hut_cross_space_route_traverses_entrance_portal() {
         &world,
         catalogs,
         &crate::world::NavigationConfig::default(),
-        0.5,
+        0.68,
         45.0,
         start,
         goal,
         SpaceId::SURFACE,
         goal_space,
         Some(crate::world::UnitOwnership::player_default()),
+    )
+    .expect("cross-space route must succeed after clearance-safe landing resolution");
+    assert!(
+        path.waypoints
+            .iter()
+            .any(|waypoint| waypoint.portal_id.is_some()),
+        "a surface-to-interior route must traverse the entrance portal"
     );
-
-    match path {
-        Ok(path) => {
-            assert!(
-                path.waypoints
-                    .iter()
-                    .any(|waypoint| waypoint.portal_id.is_some()),
-                "a surface-to-interior route must traverse the entrance portal"
-            );
-            assert_eq!(
-                path.waypoints.last().expect("waypoints").space_id,
-                goal_space,
-                "route must end in the authored interior region"
-            );
-        }
-        Err(err) => {
-            // Documented IN-11c evidence: runtime navigation now exists, so any route
-            // failure must come from the authored surface-approach geometry rather than
-            // from missing spaces or portals.
-            let entrance_side = WorldPosition::from_global(
-                runtime
-                    .model_transform
-                    .transform_point(Vec3::new(0.058_471_68, 0.0, -2.773_437_5)),
-                world.layout(),
-            );
-            let passability = crate::world::query_passability_at(
-                &world,
-                catalogs,
-                entrance_side,
-                crate::world::PassabilityAgent {
-                    radius_meters: 0.5,
-                    max_slope_degrees: 45.0,
-                },
-            );
-            assert!(
-                !matches!(
-                    passability,
-                    crate::world::PassabilityResult::Passable { .. }
-                ),
-                "route failed with {err:?} while the entrance approach is passable: \
-                 runtime navigation objects exist, so the failure must be geometric"
-            );
-        }
-    }
+    assert!(
+        path.waypoints
+            .iter()
+            .any(|wp| wp.portal_interior_destination.is_some()),
+        "portal waypoint must include clearance-safe interior destination"
+    );
+    assert_eq!(
+        path.waypoints.last().expect("waypoints").space_id,
+        goal_space,
+        "route must end in the authored interior region"
+    );
 }
 
 /// Robot as the Excel importer produces it: 0.6 m collision radius, 9 m/s, `robot` mesh.
@@ -682,6 +656,252 @@ fn real_hut_entry_keeps_the_robot_present_on_the_interior_floor() {
     );
 }
 
+/// IN-11gI-E: bidirectional Entrance traversal through real movement, not manual SpaceIds.
+#[test]
+fn real_hut_bidirectional_entrance_traversal_via_movement() {
+    let mut world = layout_world();
+    let building_catalog = imported_building_catalog();
+    let nav_catalog = persisted_nav_catalog();
+    let unit_catalog = imported_robot_catalog();
+    let building_id = activate_imported_hut(&mut world, &building_catalog, &nav_catalog);
+    let runtime = world
+        .building_navigation_runtime()
+        .get(building_id)
+        .expect("runtime")
+        .clone();
+    let interior_space = runtime.regions[0].space_id;
+    let floor_y = world
+        .space_registry()
+        .get_space(interior_space)
+        .expect("space")
+        .floor_y_global;
+    let interior_goal = WorldPosition::from_global(
+        {
+            let p = runtime
+                .model_transform
+                .transform_point(Vec3::new(0.0, 0.0, 1.0));
+            Vec3::new(p.x, floor_y, p.z)
+        },
+        world.layout(),
+    );
+    let surface_start = WorldPosition::from_global(
+        {
+            let p = runtime
+                .model_transform
+                .transform_point(Vec3::new(0.058_471_68, 0.0, -6.0));
+            Vec3::new(p.x, 0.0, p.z)
+        },
+        world.layout(),
+    );
+
+    let unit_id = crate::world::create_unit_with_ownership(
+        &unit_catalog,
+        &mut world,
+        &crate::world::UnitDefinitionId::new("robot"),
+        surface_start,
+        crate::world::UnitSource::Authored,
+        crate::world::UnitOwnership::player_default(),
+    )
+    .expect("spawn robot")
+    .id;
+
+    let doodad_catalog = DoodadCatalog::default();
+    let footprint = FootprintCatalog::default();
+    let catalogs = crate::world::PassabilityCatalogs {
+        doodad: &doodad_catalog,
+        building: &building_catalog,
+        footprint: &footprint,
+    };
+    let nav_config = crate::world::NavigationConfig::default();
+    let layout = world.layout();
+
+    world.command_buffer_mut().enqueue(
+        unit_id,
+        crate::world::UnitOrder::MoveTo {
+            target: interior_goal,
+        },
+    );
+    assert_eq!(
+        crate::world::resolve_pending_unit_orders(&mut world, &unit_catalog, catalogs, &nav_config)
+            .resolved,
+        1
+    );
+    for _ in 0..400 {
+        let _ =
+            crate::world::step_unit_movement(&mut world, &unit_catalog, catalogs, unit_id, 0.25);
+        if world.get_unit(unit_id).expect("robot").current_space_id == interior_space {
+            break;
+        }
+    }
+    assert_eq!(
+        world.get_unit(unit_id).expect("robot").current_space_id,
+        interior_space
+    );
+    // One movement step after entry must not bounce back to Surface.
+    let _ = crate::world::step_unit_movement(&mut world, &unit_catalog, catalogs, unit_id, 0.25);
+    assert_eq!(
+        world.get_unit(unit_id).expect("robot").current_space_id,
+        interior_space,
+        "no immediate portal bounce after entry"
+    );
+
+    world.command_buffer_mut().enqueue(
+        unit_id,
+        crate::world::UnitOrder::MoveTo {
+            target: surface_start,
+        },
+    );
+    let _ =
+        crate::world::resolve_pending_unit_orders(&mut world, &unit_catalog, catalogs, &nav_config);
+    let mut exited = false;
+    for _ in 0..400 {
+        let _ =
+            crate::world::step_unit_movement(&mut world, &unit_catalog, catalogs, unit_id, 0.25);
+        if world
+            .get_unit(unit_id)
+            .expect("robot")
+            .current_space_id
+            .is_surface()
+        {
+            exited = true;
+            break;
+        }
+    }
+    assert!(exited, "Interior → Surface exit must succeed");
+    let record = world.get_unit(unit_id).expect("robot");
+    assert!(record.current_space_id.is_surface());
+    assert!(
+        (record.placement.position.to_global(layout).y - 0.0).abs() < 0.05,
+        "exit must ground to Surface terrain Y"
+    );
+
+    world.command_buffer_mut().enqueue(
+        unit_id,
+        crate::world::UnitOrder::MoveTo {
+            target: interior_goal,
+        },
+    );
+    let _ =
+        crate::world::resolve_pending_unit_orders(&mut world, &unit_catalog, catalogs, &nav_config);
+    for _ in 0..400 {
+        let _ =
+            crate::world::step_unit_movement(&mut world, &unit_catalog, catalogs, unit_id, 0.25);
+        if world.get_unit(unit_id).expect("robot").current_space_id == interior_space {
+            break;
+        }
+    }
+    assert_eq!(
+        world.get_unit(unit_id).expect("robot").current_space_id,
+        interior_space,
+        "same Entrance must allow re-entry"
+    );
+    assert_eq!(
+        world.portal_transition_trace().count_for_unit(unit_id),
+        3,
+        "entry, exit, and re-entry portal transitions expected"
+    );
+}
+
+/// IN-11gI-E: Surface ↔ Interior ↔ Surface through the same Entrance without permanent lockout.
+#[test]
+fn real_hut_same_entrance_repeated_surface_interior_cycles() {
+    let mut world = layout_world();
+    let building_catalog = imported_building_catalog();
+    let nav_catalog = persisted_nav_catalog();
+    let unit_catalog = imported_robot_catalog();
+    let building_id = activate_imported_hut(&mut world, &building_catalog, &nav_catalog);
+    let runtime = world
+        .building_navigation_runtime()
+        .get(building_id)
+        .expect("runtime")
+        .clone();
+    let interior_space = runtime.regions[0].space_id;
+    let floor_y = world
+        .space_registry()
+        .get_space(interior_space)
+        .expect("space")
+        .floor_y_global;
+    let interior_goal = WorldPosition::from_global(
+        {
+            let p = runtime
+                .model_transform
+                .transform_point(Vec3::new(0.0, 0.0, 1.0));
+            Vec3::new(p.x, floor_y, p.z)
+        },
+        world.layout(),
+    );
+    let surface_start = WorldPosition::from_global(
+        {
+            let p = runtime
+                .model_transform
+                .transform_point(Vec3::new(0.058_471_68, 0.0, -6.0));
+            Vec3::new(p.x, 0.0, p.z)
+        },
+        world.layout(),
+    );
+
+    let unit_id = crate::world::create_unit_with_ownership(
+        &unit_catalog,
+        &mut world,
+        &crate::world::UnitDefinitionId::new("robot"),
+        surface_start,
+        crate::world::UnitSource::Authored,
+        crate::world::UnitOwnership::player_default(),
+    )
+    .expect("spawn robot")
+    .id;
+
+    let doodad_catalog = DoodadCatalog::default();
+    let footprint = FootprintCatalog::default();
+    let catalogs = crate::world::PassabilityCatalogs {
+        doodad: &doodad_catalog,
+        building: &building_catalog,
+        footprint: &footprint,
+    };
+    let nav_config = crate::world::NavigationConfig::default();
+
+    let targets = [interior_goal, surface_start, interior_goal, surface_start];
+    let expected_spaces = [
+        interior_space,
+        SpaceId::SURFACE,
+        interior_space,
+        SpaceId::SURFACE,
+    ];
+
+    for (target, expected_space) in targets.iter().zip(expected_spaces.iter()) {
+        world
+            .command_buffer_mut()
+            .enqueue(unit_id, crate::world::UnitOrder::MoveTo { target: *target });
+        let _ = crate::world::resolve_pending_unit_orders(
+            &mut world,
+            &unit_catalog,
+            catalogs,
+            &nav_config,
+        );
+        for _ in 0..400 {
+            let _ = crate::world::step_unit_movement(
+                &mut world,
+                &unit_catalog,
+                catalogs,
+                unit_id,
+                0.25,
+            );
+            if world.get_unit(unit_id).expect("robot").current_space_id == *expected_space {
+                break;
+            }
+        }
+        assert_eq!(
+            world.get_unit(unit_id).expect("robot").current_space_id,
+            *expected_space
+        );
+    }
+    assert_eq!(
+        world.portal_transition_trace().count_for_unit(unit_id),
+        4,
+        "four portal transitions across two full exit/entry cycles"
+    );
+}
+
 /// Instance override on a profile-less definition must resolve and activate too.
 #[test]
 fn instance_override_activates_without_profile() {
@@ -743,4 +963,469 @@ fn instance_override_activates_without_profile() {
         BlueprintAuthoritySource::InstanceOverride
     );
     assert_eq!(outcome.runtime_region_count, 1);
+}
+
+/// IN-11f: dev complete spawn without activation must rehydrate from the catalog alone.
+#[test]
+fn cold_load_reconcile_activates_persisted_hut_without_editor() {
+    let mut world = layout_world();
+    let building_catalog = imported_building_catalog();
+    let nav_catalog = persisted_nav_catalog();
+    let doodad_catalog = DoodadCatalog::default();
+    let footprint = FootprintCatalog::default();
+    let occupancy = OccupancyCatalogs {
+        building: &building_catalog,
+        doodad: &doodad_catalog,
+        footprint: &footprint,
+    };
+    let interior = InteriorProfileCatalog::default();
+
+    let building_id = place_player_building(
+        &building_catalog,
+        &mut world,
+        &BuildingDefinitionId::new("hut"),
+        pos(80.0, 80.0),
+        Quat::IDENTITY,
+        BuildingOwnership::with_affiliation(Affiliation::Player),
+        occupancy,
+    )
+    .expect("place hut")
+    .id;
+    world
+        .mutate_building(building_id, |record| {
+            record.lifecycle_state = BuildingLifecycleState::Complete;
+        })
+        .expect("building");
+
+    assert!(
+        world
+            .building_navigation_runtime()
+            .get(building_id)
+            .is_none(),
+        "precondition: no runtime before reconcile"
+    );
+
+    crate::world::reconcile_building_navigation_runtime(
+        &mut world,
+        &building_catalog,
+        &interior,
+        &doodad_catalog,
+        occupancy,
+        &nav_catalog,
+        building_id,
+        false,
+    )
+    .expect("reconcile");
+
+    let runtime = world
+        .building_navigation_runtime()
+        .get(building_id)
+        .expect("runtime after cold reconcile");
+    assert_eq!(runtime.regions.len(), 1);
+    assert_eq!(runtime.portal_keys.len(), 1);
+    assert!(world.get_building(building_id).unwrap().interior.activated);
+}
+
+/// IN-11f: worker construction completion must pass the navigation catalog through.
+#[test]
+fn construction_labor_completion_activates_with_nav_catalog() {
+    use crate::world::{
+        add_building_construction_progress, blueprint_topology_fingerprint,
+        runtime_topology_fingerprint,
+    };
+
+    let mut world = layout_world();
+    let building_catalog = imported_building_catalog();
+    let nav_catalog = persisted_nav_catalog();
+    let doodad_catalog = DoodadCatalog::default();
+    let footprint = FootprintCatalog::default();
+    let occupancy = OccupancyCatalogs {
+        building: &building_catalog,
+        doodad: &doodad_catalog,
+        footprint: &footprint,
+    };
+    let interior = InteriorProfileCatalog::default();
+
+    let building_id = place_player_building(
+        &building_catalog,
+        &mut world,
+        &BuildingDefinitionId::new("hut"),
+        pos(80.0, 80.0),
+        Quat::IDENTITY,
+        BuildingOwnership::with_affiliation(Affiliation::Player),
+        occupancy,
+    )
+    .expect("place hut")
+    .id;
+
+    add_building_construction_progress(
+        &mut world,
+        &building_catalog,
+        &interior,
+        &doodad_catalog,
+        occupancy,
+        Some(&nav_catalog),
+        building_id,
+        1.0,
+    )
+    .expect("complete via labor");
+
+    let runtime = world
+        .building_navigation_runtime()
+        .get(building_id)
+        .expect("runtime after labor completion");
+    let blueprint = nav_catalog.get(&runtime.blueprint_id).expect("blueprint");
+    assert_eq!(
+        runtime_topology_fingerprint(runtime),
+        blueprint_topology_fingerprint(blueprint)
+    );
+    assert_eq!(runtime.portal_keys.len(), 1);
+}
+
+/// IN-11f: unchanged Save/Apply must preserve runtime topology fingerprint.
+#[test]
+fn noop_save_apply_preserves_runtime_topology() {
+    use super::persistence::{InteriorActivationCatalogs, apply_blueprint_to_asset};
+    use crate::world::{
+        BuildingNavigationBlueprintCatalogRevision, blueprint_topology_fingerprint,
+        runtime_topology_fingerprint,
+    };
+
+    let mut world = layout_world();
+    let building_catalog = imported_building_catalog();
+    let mut nav_catalog = persisted_nav_catalog();
+    let mut nav_revision = BuildingNavigationBlueprintCatalogRevision(0);
+    let doodad_catalog = DoodadCatalog::default();
+    let footprint = FootprintCatalog::default();
+    let occupancy = OccupancyCatalogs {
+        building: &building_catalog,
+        doodad: &doodad_catalog,
+        footprint: &footprint,
+    };
+    let interior = InteriorProfileCatalog::default();
+    let building_id = activate_imported_hut(&mut world, &building_catalog, &nav_catalog);
+
+    let before = runtime_topology_fingerprint(
+        world
+            .building_navigation_runtime()
+            .get(building_id)
+            .expect("runtime"),
+    );
+    let blueprint_id = before.blueprint_id.clone();
+    let blueprint = nav_catalog
+        .get(&blueprint_id)
+        .expect("catalog blueprint")
+        .clone();
+
+    let expected = blueprint_topology_fingerprint(&blueprint);
+
+    apply_blueprint_to_asset(
+        &mut world,
+        &building_catalog,
+        InteriorActivationCatalogs {
+            interior: &interior,
+            doodad: &doodad_catalog,
+            footprint: &footprint,
+        },
+        &mut nav_catalog,
+        &mut nav_revision,
+        &BuildingDefinitionId::new("hut"),
+        blueprint,
+    )
+    .expect("noop apply");
+
+    let after = runtime_topology_fingerprint(
+        world
+            .building_navigation_runtime()
+            .get(building_id)
+            .expect("runtime after apply"),
+    );
+    assert_eq!(before, after);
+    assert_eq!(after, expected);
+}
+
+/// IN-11gE: persisted activated flag must not suppress hydration when runtime is empty.
+#[test]
+fn activated_flag_with_empty_runtime_rehydrates_on_cold_load() {
+    let mut world = layout_world();
+    let building_catalog = imported_building_catalog();
+    let nav_catalog = persisted_nav_catalog();
+    let doodad_catalog = DoodadCatalog::default();
+    let footprint = FootprintCatalog::default();
+    let occupancy = OccupancyCatalogs {
+        building: &building_catalog,
+        doodad: &doodad_catalog,
+        footprint: &footprint,
+    };
+    let interior = InteriorProfileCatalog::default();
+
+    let building_id = place_player_building(
+        &building_catalog,
+        &mut world,
+        &BuildingDefinitionId::new("hut"),
+        pos(80.0, 80.0),
+        Quat::IDENTITY,
+        BuildingOwnership::with_affiliation(Affiliation::Player),
+        occupancy,
+    )
+    .expect("place hut")
+    .id;
+    world
+        .mutate_building(building_id, |record| {
+            record.lifecycle_state = BuildingLifecycleState::Complete;
+            record.interior.activated = true;
+        })
+        .expect("building");
+
+    assert!(
+        world
+            .building_navigation_runtime()
+            .get(building_id)
+            .is_none(),
+        "precondition: stale activated flag without runtime store entry"
+    );
+    assert!(
+        world
+            .space_registry()
+            .building_space_ids(building_id)
+            .is_empty(),
+        "precondition: no hydrated spaces in registry"
+    );
+
+    let outcome = crate::world::reconcile_building_navigation_runtime(
+        &mut world,
+        &building_catalog,
+        &interior,
+        &doodad_catalog,
+        occupancy,
+        &nav_catalog,
+        building_id,
+        false,
+    )
+    .expect("reconcile");
+    assert_ne!(
+        outcome,
+        crate::world::NavigationReconcileOutcome::NotNeeded,
+        "empty runtime must not early-return as NotNeeded"
+    );
+    assert!(
+        world
+            .building_navigation_runtime()
+            .get(building_id)
+            .is_some(),
+        "cold-load reconcile must hydrate runtime store"
+    );
+    assert!(
+        !world
+            .space_registry()
+            .building_space_ids(building_id)
+            .is_empty(),
+        "cold-load reconcile must register spaces"
+    );
+}
+
+/// IN-11gE: cold-load reconciliation and no-op Save/Apply must produce equivalent topology.
+#[test]
+fn cold_load_matches_noop_save_apply_topology() {
+    use super::persistence::{InteriorActivationCatalogs, apply_blueprint_to_asset};
+    use crate::world::{
+        BuildingNavigationBlueprintCatalogRevision, capture_building_navigation_topology_snapshot,
+    };
+
+    let building_catalog = imported_building_catalog();
+    let nav_catalog = persisted_nav_catalog();
+    let doodad_catalog = DoodadCatalog::default();
+    let footprint = FootprintCatalog::default();
+    let occupancy = OccupancyCatalogs {
+        building: &building_catalog,
+        doodad: &doodad_catalog,
+        footprint: &footprint,
+    };
+    let interior = InteriorProfileCatalog::default();
+
+    let mut world_cold = layout_world();
+    let building_id_cold = place_player_building(
+        &building_catalog,
+        &mut world_cold,
+        &BuildingDefinitionId::new("hut"),
+        pos(80.0, 80.0),
+        Quat::IDENTITY,
+        BuildingOwnership::with_affiliation(Affiliation::Player),
+        occupancy,
+    )
+    .expect("place hut")
+    .id;
+    world_cold
+        .mutate_building(building_id_cold, |record| {
+            record.lifecycle_state = BuildingLifecycleState::Complete;
+            record.interior.activated = true;
+        })
+        .expect("building");
+    crate::world::reconcile_building_navigation_runtime(
+        &mut world_cold,
+        &building_catalog,
+        &interior,
+        &doodad_catalog,
+        occupancy,
+        &nav_catalog,
+        building_id_cold,
+        false,
+    )
+    .expect("cold reconcile");
+    let cold_snapshot =
+        capture_building_navigation_topology_snapshot(&world_cold, building_id_cold)
+            .expect("cold topology");
+
+    let mut world_apply = layout_world();
+    let building_id_apply = place_player_building(
+        &building_catalog,
+        &mut world_apply,
+        &BuildingDefinitionId::new("hut"),
+        pos(80.0, 80.0),
+        Quat::IDENTITY,
+        BuildingOwnership::with_affiliation(Affiliation::Player),
+        occupancy,
+    )
+    .expect("place hut")
+    .id;
+    world_apply
+        .mutate_building(building_id_apply, |record| {
+            record.lifecycle_state = BuildingLifecycleState::Complete;
+            record.interior.activated = true;
+        })
+        .expect("building");
+
+    let blueprint = nav_catalog
+        .get(&cold_snapshot.fingerprint.blueprint_id)
+        .expect("blueprint")
+        .clone();
+    let mut nav_revision = BuildingNavigationBlueprintCatalogRevision(0);
+    apply_blueprint_to_asset(
+        &mut world_apply,
+        &building_catalog,
+        InteriorActivationCatalogs {
+            interior: &interior,
+            doodad: &doodad_catalog,
+            footprint: &footprint,
+        },
+        &mut nav_catalog.clone(),
+        &mut nav_revision,
+        &BuildingDefinitionId::new("hut"),
+        blueprint,
+    )
+    .expect("noop apply");
+    let apply_snapshot =
+        capture_building_navigation_topology_snapshot(&world_apply, building_id_apply)
+            .expect("apply topology");
+
+    assert_eq!(cold_snapshot, apply_snapshot);
+}
+
+/// IN-11gE: repeated reconcile with unchanged blueprint must not duplicate topology.
+#[test]
+fn reconcile_is_idempotent_when_topology_hydrated() {
+    let mut world = layout_world();
+    let building_catalog = imported_building_catalog();
+    let nav_catalog = persisted_nav_catalog();
+    let doodad_catalog = DoodadCatalog::default();
+    let footprint = FootprintCatalog::default();
+    let occupancy = OccupancyCatalogs {
+        building: &building_catalog,
+        doodad: &doodad_catalog,
+        footprint: &footprint,
+    };
+    let interior = InteriorProfileCatalog::default();
+    let building_id = activate_imported_hut(&mut world, &building_catalog, &nav_catalog);
+
+    let before = crate::world::capture_building_navigation_topology_snapshot(&world, building_id)
+        .expect("topology before");
+    let space_count_before = world.space_registry().building_space_ids(building_id).len();
+    let portal_count_before = world
+        .space_registry()
+        .portals()
+        .filter(|(_, portal)| portal.owning_building_id == Some(building_id))
+        .count();
+
+    let outcome = crate::world::reconcile_building_navigation_runtime(
+        &mut world,
+        &building_catalog,
+        &interior,
+        &doodad_catalog,
+        occupancy,
+        &nav_catalog,
+        building_id,
+        false,
+    )
+    .expect("reconcile");
+    assert_eq!(outcome, crate::world::NavigationReconcileOutcome::NotNeeded);
+
+    let after = crate::world::capture_building_navigation_topology_snapshot(&world, building_id)
+        .expect("topology after");
+    assert_eq!(before, after);
+    assert_eq!(
+        world.space_registry().building_space_ids(building_id).len(),
+        space_count_before
+    );
+    assert_eq!(
+        world
+            .space_registry()
+            .portals()
+            .filter(|(_, portal)| portal.owning_building_id == Some(building_id))
+            .count(),
+        portal_count_before
+    );
+}
+
+/// IN-11gE: when authoritative blueprint no longer resolves, derived runtime is cleared (ghost).
+#[test]
+fn missing_resolved_blueprint_clears_stale_runtime() {
+    let mut world = layout_world();
+    let building_catalog = imported_building_catalog();
+    let nav_catalog = persisted_nav_catalog();
+    let building_id = activate_imported_hut(&mut world, &building_catalog, &nav_catalog);
+    assert!(
+        world
+            .building_navigation_runtime()
+            .get(building_id)
+            .is_some(),
+        "precondition"
+    );
+
+    let empty_nav = BuildingNavigationBlueprintCatalog::from_definitions(Vec::new())
+        .expect("empty nav catalog");
+    let doodad_catalog = DoodadCatalog::default();
+    let footprint = FootprintCatalog::default();
+    let occupancy = OccupancyCatalogs {
+        building: &building_catalog,
+        doodad: &doodad_catalog,
+        footprint: &footprint,
+    };
+    let interior = InteriorProfileCatalog::default();
+
+    crate::world::reconcile_building_navigation_runtime(
+        &mut world,
+        &building_catalog,
+        &interior,
+        &doodad_catalog,
+        occupancy,
+        &empty_nav,
+        building_id,
+        false,
+    )
+    .expect("reconcile without blueprint");
+
+    assert!(
+        world
+            .building_navigation_runtime()
+            .get(building_id)
+            .is_none(),
+        "stale runtime must be removed when blueprint does not resolve"
+    );
+    assert!(
+        world
+            .space_registry()
+            .building_space_ids(building_id)
+            .is_empty(),
+        "stale spaces must be removed"
+    );
 }

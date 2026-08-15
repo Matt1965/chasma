@@ -395,6 +395,7 @@ pub fn apply_scene(
         nav_catalog,
         &scene.building_records,
     );
+    crate::world::initialize_surface_units_navigation_membership(world);
 
     if !plan.tasks.is_empty() {
         world
@@ -730,27 +731,12 @@ fn reconcile_building_interiors_after_scene_load(
     nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
     scene_buildings: &[SceneBuildingRecord],
 ) {
-    use crate::world::{BuildingId, InteriorProfileId, activate_building_interior};
+    use crate::world::{BuildingId, reconcile_building_navigation_runtime};
 
     for scene in scene_buildings {
         let building_id = BuildingId::new(scene.id);
-        // `interior_activated` is derived runtime state, not authored data. A saved
-        // `false` must not permanently suppress activation, so every building is
-        // re-evaluated by the current activation system (IN-11b).
-        let profile_key = scene.interior_profile_id.clone().or_else(|| {
-            world
-                .get_building(building_id)
-                .and_then(|record| building_catalog.get(&record.definition_id))
-                .and_then(|definition| definition.interior_profile_id.clone())
-        });
-        let profile_id = profile_key.as_deref().map(InteriorProfileId::new);
-        let needs_activation = world
-            .space_registry()
-            .building_space_ids(building_id)
-            .is_empty()
-            && world.door_store().building_door_ids(building_id).is_empty();
-        if needs_activation {
-            let _ = activate_building_interior(
+        if let Some(nav_catalog) = nav_catalog {
+            let _ = reconcile_building_navigation_runtime(
                 world,
                 building_catalog,
                 interior_catalog,
@@ -758,7 +744,7 @@ fn reconcile_building_interiors_after_scene_load(
                 occupancy,
                 nav_catalog,
                 building_id,
-                profile_id.as_ref(),
+                false,
             );
         }
         for snapshot in scene.door_states() {

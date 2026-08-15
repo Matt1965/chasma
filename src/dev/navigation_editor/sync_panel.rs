@@ -476,8 +476,8 @@ pub fn sync_navigation_editor_overlay_status(
         if !overlay_diagnostics.runtime_entrances.is_empty() {
             lines.push(overlay_diagnostics.runtime_entrances.clone());
         }
-        if !overlay_diagnostics.selected_unit_path.is_empty() {
-            lines.push(overlay_diagnostics.selected_unit_path.clone());
+        if !overlay_diagnostics.navigation_authority.is_empty() {
+            lines.push(overlay_diagnostics.navigation_authority.clone());
         }
         if !overlay_diagnostics.authored_runtime_summary.is_empty()
             && (dev_state.debug_config.nav_blueprint && dev_state.debug_config.nav_entrances)
@@ -887,7 +887,7 @@ fn nav_action_active(
         NavigationEditorAction::ToggleDraftPreview => inspection.draft_preview_active,
         NavigationEditorAction::OverlayBlueprint => debug.nav_blueprint,
         NavigationEditorAction::OverlayEntrances => debug.nav_entrances,
-        NavigationEditorAction::OverlayRuntimePath => debug.path,
+        NavigationEditorAction::OverlayBlockedArea => debug.nav_blockers,
         NavigationEditorAction::ClearRecordedPath => false,
         NavigationEditorAction::ReplaceWorkingCopy => false,
         _ => false,
@@ -947,7 +947,7 @@ fn nav_action_visible(
         NavigationEditorAction::ConfirmPending | NavigationEditorAction::CancelPending => pending,
         NavigationEditorAction::OverlayBlueprint
         | NavigationEditorAction::OverlayEntrances
-        | NavigationEditorAction::OverlayRuntimePath
+        | NavigationEditorAction::OverlayBlockedArea
         | NavigationEditorAction::ClearRecordedPath => visible && building_selected,
     }
 }

@@ -601,6 +601,7 @@ pub fn add_building_construction_progress(
     interior_catalog: &InteriorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
+    nav_catalog: Option<&super::navigation_blueprint::BuildingNavigationBlueprintCatalog>,
     id: BuildingId,
     delta_progress: f32,
 ) -> Result<Vec<BuildingLifecycleEvent>, BuildingLifecycleError> {
@@ -624,7 +625,7 @@ pub fn add_building_construction_progress(
             interior_catalog,
             doodad_catalog,
             occupancy,
-            None,
+            nav_catalog,
             id,
             BuildingLifecycleState::InProgress,
             0.0,
@@ -649,7 +650,7 @@ pub fn add_building_construction_progress(
             building_catalog,
             interior_catalog,
             doodad_catalog,
-            None,
+            nav_catalog,
             id,
         )?);
     }

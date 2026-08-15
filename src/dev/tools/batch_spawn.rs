@@ -3,9 +3,10 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    BuildingCatalog, BuildingOwnership, BuildingSource, DoodadCatalog, DoodadPlacementOverrides,
-    DoodadSource, FootprintCatalog, InteriorProfileCatalog, InventoryCatalogCtx, OccupancyCatalogs,
-    UnitCatalog, UnitOwnership, UnitSource, WorldData, WorldPosition, create_dev_complete_building,
+    BuildingCatalog, BuildingNavigationBlueprintCatalog, BuildingOwnership, BuildingSource,
+    DoodadCatalog, DoodadPlacementOverrides, DoodadSource, FootprintCatalog,
+    InteriorProfileCatalog, InventoryCatalogCtx, OccupancyCatalogs, UnitCatalog, UnitOwnership,
+    UnitSource, WorldData, WorldPosition, create_dev_complete_building,
     create_dev_complete_building_with_inventory, create_doodad, create_unit_with_inventory,
     try_activate_interior_if_complete,
 };
@@ -135,6 +136,7 @@ pub fn execute_batch_spawn(
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
     interior_catalog: &InteriorProfileCatalog,
+    nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
     inventory_ctx: &InventoryCatalogCtx<'_>,
     scratch: &mut BatchSpawnScratch,
 ) -> BatchSpawnReport {
@@ -157,6 +159,7 @@ pub fn execute_batch_spawn(
             building_catalog,
             footprint_catalog,
             interior_catalog,
+            nav_catalog,
             inventory_ctx,
             &request.definition,
             position,
@@ -181,6 +184,7 @@ fn spawn_at(
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
     interior_catalog: &InteriorProfileCatalog,
+    nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
     inventory_ctx: &InventoryCatalogCtx<'_>,
     definition: &DefinitionId,
     position: WorldPosition,
@@ -257,7 +261,7 @@ fn spawn_at(
                         interior_catalog,
                         doodad_catalog,
                         occupancy,
-                        None,
+                        nav_catalog,
                         record.id,
                     );
                     true
@@ -356,6 +360,7 @@ mod tests {
             &building_catalog,
             &footprint_catalog,
             &interior_catalog,
+            None,
             &ctx,
             &mut scratch,
         );

@@ -490,6 +490,8 @@ fn spawn_advanced_window_shell(
 
         width: Val::Percent(100.0),
 
+        min_height: Val::Px(0.0),
+
         overflow: Overflow::scroll_y(),
 
         ..default()

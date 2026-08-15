@@ -40,7 +40,7 @@ pub fn ground_unit_to_terrain(
     let grounded =
         ground_unit_position(world, position).ok_or(UnitGroundingError::TerrainUnavailable)?;
     world
-        .relocate_unit(unit_id, grounded)
+        .update_unit_position(unit_id, grounded)
         .map_err(|error| match error {
             UnitInsertError::UnitNotFound => UnitGroundingError::UnitNotFound,
             UnitInsertError::ChunkPlacementMismatch => UnitGroundingError::TerrainUnavailable,

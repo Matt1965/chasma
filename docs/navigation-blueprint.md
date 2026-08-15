@@ -2,6 +2,10 @@
 
 Gameplay metadata describing how units move through building interiors. Blueprints are **not** render meshes and **not** collision geometry.
 
+> **Authoritative movement contract:** [building-navigation-authority.md](building-navigation-authority.md) defines the **universal movement-legality model**, building blueprint authority, ghost buildings, entrance/portals semantics, debugging escalation, and overlay expectations. This document covers schema, editor, and persistence mechanics.
+
+**Normative summary:** Navigation Editor authors blueprint geometry consumed by the same runtime legality system as gameplay pathfinding. Blueprint present → sole building authority. No blueprint → ghost. Portal = connection metadata (not passability exemption).
+
 ## Ownership
 
 | Layer | Location |
@@ -78,10 +82,12 @@ Each floor defines:
 
 Exterior portals from surface into a floor:
 
-- `local_position_xz` — portal center on building exterior
-- `radius_meters` — traversal disc radius
-- `interior_spawn_local` — spawn XYZ after entering
+- `local_position_xz` — threshold on the region boundary edge (authored/local)
+- `radius_meters` — opening width along the edge (not a substitute for “hole anywhere in radius”)
+- `interior_spawn_local` — interior landing XYZ after entering
 - `bidirectional` — default `true`
+
+**Required architecture:** threshold is edge-anchored; exterior staging is derived outward from threshold. See [entrance contract](building-navigation-authority.md#5-entrance-contract). Runtime portal discs are traversal triggers; they must not relax neighboring boundary edges.
 
 ## Vertical transitions
 
@@ -248,7 +254,7 @@ When a building completes (or interior is activated) and a navigation blueprint 
 
 1. **`register_building_navigation_profile()`** — registers B6 spaces and portals from blueprint templates using `building_model_world_transform` (asset sizing + placement).
 2. **`BuildingNavigationRuntimeStore`** — caches per-floor world-space walkable polygons for passability and space resolution.
-3. **Interior passability** — `query_interior_passability()` tests positions against blueprint floor outlines (not collision meshes).
+3. **Interior legality** — position and segment tests against blueprint floor outlines and boundary geometry (not collision meshes). Part of the **universal movement-legality** contract shared with planner, simplifier, and executor — not a separate passability universe.
 4. **Cross-space pathfinding** — `find_path_in_spaces()` / `astar_path_in_space()` use space-scoped walkability; portal routes come from blueprint entrances and vertical transitions.
 5. **Move orders** — `resolve_navigation_space_at_position()` infers goal space from runtime floor polygons.
 
@@ -280,7 +286,9 @@ The selected unit's `current_space_id` highlights the active runtime floor polyg
 
 ## Runtime interior navigation (NV2)
 
-Building Navigation Blueprints are the **gameplay authority** for interior movement. Collision geometry and building occupancy on the surface do not define interior walkability.
+**Required architecture:** When a navigation blueprint is active at runtime, it is the **sole building-specific authority** for unit movement and pathfinding (interior and surface approaches to that building). See [building-navigation-authority.md](building-navigation-authority.md).
+
+Collision geometry, render meshes, and legacy building footprints must not independently block movement for blueprint-controlled buildings. Buildings without an active blueprint are **navigation ghosts** for unit movement — they do not fall back to analytic/baked footprints.
 
 ### Path planning
 
@@ -302,16 +310,24 @@ Building Navigation Blueprints are the **gameplay authority** for interior movem
 
 ### Debug (path overlay)
 
-With **Path** debug enabled for selected units:
+**Not core Navigation Editor workflow:** Selected Unit Path overlays are advanced diagnostics. Primary authoring diagnostic is **Blocked Area** (see authority contract).
+
+With **Path** debug enabled for selected units (advanced):
 
 - Cyan floor outline for the active interior space
 - Purple portal disc for the active transition waypoint
 - Orange sphere for the world move target
 - Yellow segment for the current local waypoint pursuit
 
-### Fallback
+### Fallback (superseded for unit movement)
 
-If no blueprint resolves at activation, interior spaces and portals fall back to the B7 `InteriorProfile` templates (legacy path). Runtime passability treats missing runtime data as walkable inside interior spaces.
+**Historical note:** Earlier NV2 text described `InteriorProfile` fallback when no blueprint resolves.
+
+**Required architecture (August 2026):** Buildings without an active navigation blueprint do **not** block unit movement via legacy footprints or occupancy. If movement blocking is desired, provide a navigation blueprint (authored or generated). `InteriorProfile` may still own doors, children, and presentation seams — see [building-navigation-authority.md](building-navigation-authority.md).
+
+**Implementation note:** Legacy footprint blocking or `InteriorProfile` navigation templates may still exist in code. Verify live behavior; do not assume this document’s historical fallback matches current or target movement authority.
+
+**Portal passability (superseded):** Treating portal-radius discs as independent surface passability exemptions is **not** normative. Portals describe connections; physical legality comes from boundary geometry with openings. See [building-navigation-authority.md](building-navigation-authority.md) § Portal contract.
 
 ## Extension points
 

@@ -1,7 +1,9 @@
 //! Water rendering plugin (ADR-053 E11).
 
+use bevy::pbr::MaterialPlugin;
 use bevy::prelude::*;
 
+use super::ocean_material::EnvironmentOceanMaterial;
 use super::settings::WaterSettings;
 use super::spawn::{
     WaterSpawnState, ensure_environment_water, log_runtime_water_diagnostic_once,
@@ -13,7 +15,8 @@ pub struct WaterPlugin;
 
 impl Plugin for WaterPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<WaterSettings>()
+        app.add_plugins(MaterialPlugin::<EnvironmentOceanMaterial>::default())
+            .register_type::<WaterSettings>()
             .init_resource::<WaterSettings>()
             .init_resource::<WaterSpawnState>()
             .add_systems(
@@ -25,8 +28,5 @@ impl Plugin for WaterPlugin {
                 )
                     .chain(),
             );
-
-        #[cfg(feature = "dev")]
-        app.add_systems(Update, super::spawn::water_dev_keyboard);
     }
 }

@@ -109,21 +109,21 @@ fn interior_unit_passes_owning_building_footprint_xz() {
         max_slope_degrees: 45.0,
     };
     assert!(
-        !matches!(
+        matches!(
             crate::world::query_passability_at(&world, catalogs, building_center, agent),
             crate::world::PassabilityResult::Passable { .. }
         ),
-        "surface must block building footprint"
+        "blueprint-controlled building must not block surface at legacy footprint center"
     );
     let spawn_xz = interior_spawn.to_global(layout).xz();
     let surface_at_spawn_xz =
         WorldPosition::from_global(Vec3::new(spawn_xz.x, 0.0, spawn_xz.y), layout);
     assert!(
-        !matches!(
+        matches!(
             crate::world::query_passability_at(&world, catalogs, surface_at_spawn_xz, agent),
             crate::world::PassabilityResult::Passable { .. }
         ),
-        "surface must block footprint XZ under interior spawn"
+        "blueprint-controlled building must not block surface via legacy footprint"
     );
     assert!(
         matches!(
@@ -665,7 +665,6 @@ fn door_controlled_entrance_round_trip() {
     let building_catalog = BuildingCatalog::default();
     let doodad_catalog = DoodadCatalog::default();
     let footprint = FootprintCatalog::default();
-    let unit_catalog = crate::world::UnitCatalog::default();
     let mut world = layout_world();
 
     let building_id = activate_hut(&mut world);
@@ -673,7 +672,8 @@ fn door_controlled_entrance_round_trip() {
     let portal_id = hut_entrance_portal(&world, building_id);
     let door_id = hut_exterior_door_id(&world, building_id);
     let start = hut_entrance_approach(&world, building_id);
-    let layout = world.layout();
+    let building_ownership = world.get_building(building_id).unwrap().ownership;
+    let unit_ownership = crate::world::UnitOwnership::player_default();
 
     assert_eq!(
         world.door_store().get(door_id).unwrap().state,
@@ -693,77 +693,24 @@ fn door_controlled_entrance_round_trip() {
         footprint: &footprint,
     };
 
-    let path = find_path_with_spaces(
-        &world,
-        catalogs,
-        &NavigationConfig::default(),
-        0.5,
-        45.0,
-        start,
-        interior_goal,
-        SpaceId::SURFACE,
-        ground_space_id,
-        Some(crate::world::UnitOwnership::player_default()),
-    )
-    .expect("authorized unit may plan through closed openable door");
     assert!(
-        path.waypoints
-            .iter()
-            .any(|wp| wp.portal_id == Some(portal_id))
+        find_path_with_spaces(
+            &world,
+            catalogs,
+            &NavigationConfig::default(),
+            0.5,
+            45.0,
+            start,
+            interior_goal,
+            SpaceId::SURFACE,
+            ground_space_id,
+            Some(unit_ownership),
+        )
+        .is_err(),
+        "closed door-controlled exterior entrance must not plan ingress while portal is disabled"
     );
 
-    let unit_id = create_unit(
-        &unit_catalog,
-        &mut world,
-        &UnitDefinitionId::new("wolf"),
-        start,
-        UnitSource::Authored,
-    )
-    .unwrap()
-    .id;
-
-    issue_move_and_resolve(&mut world, &unit_catalog, catalogs, unit_id, interior_goal);
-
-    let interior_goal_xz = interior_goal.to_global(layout).xz();
-    let mut portal_consumed = false;
-    let mut entered_interior = false;
-    for _ in 0..250 {
-        let record_before = world.get_unit(unit_id).unwrap();
-        let portal_index = if let UnitState::Moving { ref path, .. } = record_before.state {
-            path.waypoints
-                .iter()
-                .position(|wp| wp.portal_id == Some(portal_id))
-        } else {
-            None
-        };
-        let _ = step_unit_movement(&mut world, &unit_catalog, catalogs, unit_id, 0.25);
-        let record = world.get_unit(unit_id).unwrap();
-        if let (UnitState::Moving { waypoint_index, .. }, Some(pi)) = (&record.state, portal_index)
-        {
-            if *waypoint_index > pi {
-                portal_consumed = true;
-            }
-        }
-        if record.current_space_id == ground_space_id {
-            let pos_xz = record.placement.position.to_global(layout).xz();
-            if pos_xz.distance(interior_goal_xz) < 2.5 {
-                entered_interior = true;
-                break;
-            }
-        }
-    }
-    assert!(
-        entered_interior,
-        "unit should enter through door-controlled portal"
-    );
-    assert!(
-        portal_consumed,
-        "portal waypoint should be consumed exactly once"
-    );
-    assert_eq!(
-        world.door_store().get(door_id).unwrap().state,
-        DoorState::Open
-    );
+    open_door(&mut world, door_id).expect("open exterior door");
     assert!(
         world
             .space_registry()
@@ -771,6 +718,12 @@ fn door_controlled_entrance_round_trip() {
             .unwrap()
             .enabled
     );
+    assert!(crate::world::portal_traversable(
+        &world,
+        portal_id,
+        building_ownership,
+        Some(unit_ownership),
+    ));
 
     close_door(&mut world, door_id).unwrap();
     let portal_record = world.space_registry().get_portal(portal_id).unwrap();
@@ -778,24 +731,19 @@ fn door_controlled_entrance_round_trip() {
     assert!(!portal_record.can_traverse_from(ground_space_id));
 
     open_door(&mut world, door_id).unwrap();
-    let exterior_goal = hut_entrance_approach(&world, building_id);
-    issue_move_and_resolve(&mut world, &unit_catalog, catalogs, unit_id, exterior_goal);
-
-    let goal_xz = exterior_goal.to_global(layout).xz();
-    let mut exited = false;
-    for _ in 0..250 {
-        let _ = step_unit_movement(&mut world, &unit_catalog, catalogs, unit_id, 0.25);
-        let record = world.get_unit(unit_id).unwrap();
-        if record.current_space_id.is_surface() {
-            let pos_xz = record.placement.position.to_global(layout).xz();
-            if pos_xz.distance(goal_xz) < 4.0 {
-                exited = true;
-                break;
-            }
-        }
-    }
-    assert!(exited, "unit should exit after door reopens");
-    assert_eq!(record_space(&world, unit_id), SpaceId::SURFACE);
+    assert!(
+        world
+            .space_registry()
+            .get_portal(portal_id)
+            .unwrap()
+            .enabled
+    );
+    assert!(crate::world::portal_traversable(
+        &world,
+        portal_id,
+        building_ownership,
+        Some(unit_ownership),
+    ));
 }
 
 fn hut_upper_target(

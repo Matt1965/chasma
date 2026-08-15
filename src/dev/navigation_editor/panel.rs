@@ -175,7 +175,7 @@ pub enum NavigationEditorAction {
     CreateVariant,
     OverlayBlueprint,
     OverlayEntrances,
-    OverlayRuntimePath,
+    OverlayBlockedArea,
     ClearRecordedPath,
 }
 

@@ -315,6 +315,7 @@ pub(crate) fn block_reason_color(reason: PassabilityBlockReason) -> Color {
         PassabilityBlockReason::MissingDefinition => Color::srgba(0.4, 0.4, 0.4, 0.8),
         PassabilityBlockReason::InvalidCell => Color::srgba(0.25, 0.25, 0.28, 0.7),
         PassabilityBlockReason::AgentClearanceInsufficient => Color::srgba(1.0, 0.35, 0.2, 0.88),
+        PassabilityBlockReason::BlueprintSupport => Color::srgba(0.85, 0.25, 0.55, 0.88),
     }
 }
 
@@ -392,6 +393,9 @@ fn draw_building_footprints(
         let Some(building) = world.get_building(building_id) else {
             continue;
         };
+        if crate::world::building_uses_blueprint_movement_authority(world, building_id) {
+            continue;
+        }
         let global = building.placement.position.to_global(layout);
         let dx = global.x - focus.x;
         let dz = global.z - focus.z;

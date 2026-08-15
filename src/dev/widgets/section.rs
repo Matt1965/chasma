@@ -34,6 +34,7 @@ pub enum DevCollapsibleSectionId {
     WorldTwilight,
     WorldManualLighting,
     WorldSkybox,
+    WorldWater,
     WorldProjectDefaults,
     WorldHarness,
     FieldsBuild,

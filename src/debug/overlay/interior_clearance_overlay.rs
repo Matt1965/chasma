@@ -47,7 +47,7 @@ pub fn draw_interior_clearance_overlay(
     world_selection: Res<WorldSelectionState>,
     render_assets: Option<Res<TerrainRenderAssets>>,
 ) {
-    if !settings.nav_blueprint {
+    if !settings.nav_clearance {
         return;
     }
 

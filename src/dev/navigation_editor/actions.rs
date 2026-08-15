@@ -389,9 +389,12 @@ pub fn handle_navigation_editor_actions(
             NavigationEditorAction::OverlayEntrances => {
                 edit_params.dev_state.debug_config.nav_entrances =
                     !edit_params.dev_state.debug_config.nav_entrances;
+                edit_params.dev_state.debug_config.enabled = true;
             }
-            NavigationEditorAction::OverlayRuntimePath => {
-                edit_params.dev_state.debug_config.path = !edit_params.dev_state.debug_config.path;
+            NavigationEditorAction::OverlayBlockedArea => {
+                edit_params.dev_state.debug_config.nav_blockers =
+                    !edit_params.dev_state.debug_config.nav_blockers;
+                edit_params.dev_state.debug_config.enabled = true;
             }
             NavigationEditorAction::ClearRecordedPath => {
                 path_store.clear_all();

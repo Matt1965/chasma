@@ -10,6 +10,8 @@ pub use query::{
     DEFAULT_INTERACTION_AGENT_RADIUS_METERS, DEFAULT_INTERACTION_MAX_SLOPE_DEGREES,
     DEFAULT_INTERACTION_QUERY_RADIUS_METERS, InteractionQueryContext, query_world_interaction,
 };
+#[cfg(feature = "dev")]
+pub use resolver::trace_and_resolve_world_click_to_order;
 pub use resolver::{
     InteractionOrderPlan, InteractionResolveContext, interaction_plan_to_unit_order,
     resolve_interaction_to_order, resolve_unit_click_to_order, resolve_world_click_to_order,

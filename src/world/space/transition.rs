@@ -8,7 +8,8 @@ use crate::world::{ChunkLayout, WorldData, WorldPosition};
 /// Per-unit portal hysteresis to prevent oscillation (ADR-083 B6).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct UnitPortalTransitionState {
-    pub lockout_portal: Option<PortalId>,
+    /// While set, blocks transition TO the blocked space via this portal (anti-bounce).
+    pub suppress_return_space: Option<(PortalId, SpaceId)>,
 }
 
 /// Authoritative portal transition when agent enters a portal region.
@@ -24,6 +25,14 @@ pub fn try_portal_transition(
     let agent_global = agent_position.to_global(layout);
     let agent_xz = Vec2::new(agent_global.x, agent_global.z);
 
+    if let Some((locked_portal, _)) = transition_state.suppress_return_space {
+        if let Some(locked) = space_registry.get_portal(locked_portal) {
+            if !locked.contains_agent_in_space(agent_xz, current_space, layout) {
+                transition_state.suppress_return_space = None;
+            }
+        }
+    }
+
     let mut candidates: Vec<&PortalRecord> = space_registry
         .sorted_portals_from_space(current_space)
         .into_iter()
@@ -35,14 +44,6 @@ pub fn try_portal_transition(
     }
 
     for portal in candidates {
-        if transition_state.lockout_portal == Some(portal.id) {
-            if !portal.contains_agent_in_space(agent_xz, current_space, layout) {
-                transition_state.lockout_portal = None;
-            } else {
-                continue;
-            }
-        }
-
         if !portal.contains_agent_in_space(agent_xz, current_space, layout) {
             continue;
         }
@@ -50,7 +51,14 @@ pub fn try_portal_transition(
         let (dest_space, dest_position) =
             portal.destination_for_traversal(current_space, layout, world, space_registry)?;
 
-        transition_state.lockout_portal = Some(portal.id);
+        if let Some((locked_portal, blocked_dest)) = transition_state.suppress_return_space {
+            if portal.id == locked_portal && dest_space == blocked_dest {
+                continue;
+            }
+            transition_state.suppress_return_space = None;
+        }
+
+        transition_state.suppress_return_space = Some((portal.id, current_space));
         return Some((dest_space, dest_position, portal.id));
     }
     None
@@ -115,6 +123,8 @@ mod tests {
             bidirectional: true,
             enabled: true,
             owning_building_id: None,
+            entrance_threshold_global_xz: None,
+            entrance_owning_edge_index: None,
         };
         registry.insert_portal(portal.clone());
         (world, registry, interior, portal)
@@ -257,6 +267,51 @@ mod tests {
         );
     }
 
+    #[test]
+    fn suppress_return_allows_reverse_after_portal_completion_clears() {
+        let (world, registry, interior, _) = setup_entrance();
+        let agent = pos(10.0, 0.0, 10.0);
+        let mut state = UnitPortalTransitionState::default();
+        let first = try_portal_transition(
+            &world,
+            &registry,
+            layout(),
+            SpaceId::SURFACE,
+            agent,
+            &mut state,
+            None,
+        );
+        assert!(first.is_some());
+        let interior_agent = pos(10.0, 0.0, 11.0);
+        assert!(
+            try_portal_transition(
+                &world,
+                &registry,
+                layout(),
+                interior,
+                interior_agent,
+                &mut state,
+                None,
+            )
+            .is_none(),
+            "immediate bounce must be blocked"
+        );
+        state.suppress_return_space = None;
+        assert!(
+            try_portal_transition(
+                &world,
+                &registry,
+                layout(),
+                interior,
+                interior_agent,
+                &mut state,
+                None,
+            )
+            .is_some(),
+            "intentional reverse must work after portal completion clears suppress"
+        );
+    }
+
     fn setup_stair() -> (WorldData, SpaceRegistry, SpaceId, SpaceId, PortalRecord) {
         let world = flat_world();
         let mut registry = SpaceRegistry::new();
@@ -296,6 +351,8 @@ mod tests {
             bidirectional: true,
             enabled: true,
             owning_building_id: None,
+            entrance_threshold_global_xz: None,
+            entrance_owning_edge_index: None,
         };
         registry.insert_portal(portal.clone());
         (world, registry, ground, upper, portal)

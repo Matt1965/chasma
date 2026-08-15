@@ -10,9 +10,10 @@ use super::outcome::{InteriorActivationOutcome, InteriorActivationStatus};
 use crate::world::building::catalog::{BuildingCatalog, BuildingDefinition};
 use crate::world::building::navigation_blueprint::{
     BuildingNavigationBlueprint, BuildingNavigationBlueprintCatalog,
-    ResolvedBuildingNavigationBlueprint, blueprint_portal_templates, blueprint_space_templates,
-    build_navigation_runtime, classify_blueprint_authority, register_building_navigation_profile,
-    resolve_building_navigation_blueprint,
+    ResolvedBuildingNavigationBlueprint, blueprint_portal_templates, blueprint_region_count,
+    blueprint_space_templates, blueprint_topology_fingerprint, build_navigation_runtime,
+    classify_blueprint_authority, register_building_navigation_profile,
+    resolve_building_navigation_blueprint, runtime_topology_fingerprint,
 };
 use crate::world::building::record::BuildingRecord;
 use crate::world::building::state::BuildingInteriorState;
@@ -315,10 +316,9 @@ fn resolve_navigation_for_activation<'a>(
 
 /// Whether a profile door owns the passage registered under `portal_key`.
 ///
-/// A blueprint entrance is doorless unless it names a door explicitly or the profile
-/// itself authors a portal template of the same key. Without this, any profile whose
-/// door key merely collided with an entrance key would silently close that entrance.
-/// The criterion is the authored key relationship, never the blueprint authority layer.
+/// Blueprint [`NavigationEntranceDefinition::door_key`] / [`NavigationRegionConnectionDefinition::door_key`]
+/// is authoritative: `None` means doorless and profile doors must not bind by key collision alone.
+/// `Some(key)` binds only when it matches the profile door key.
 fn profile_door_controls_portal(
     blueprint: Option<&BuildingNavigationBlueprint>,
     profile: &InteriorProfile,
@@ -334,26 +334,20 @@ fn profile_door_controls_portal(
         .iter()
         .find(|entrance| entrance.key == portal_key)
     {
-        return match entrance.door_key.as_deref() {
-            Some(key) => key == door_key,
-            None => profile
-                .portals
-                .iter()
-                .any(|portal| portal.key == portal_key),
-        };
+        return entrance
+            .door_key
+            .as_deref()
+            .is_some_and(|key| key == door_key);
     }
     if let Some(connection) = blueprint
         .region_connections
         .iter()
         .find(|connection| connection.key == portal_key)
     {
-        return match connection.door_key.as_deref() {
-            Some(key) => key == door_key,
-            None => profile
-                .portals
-                .iter()
-                .any(|portal| portal.key == portal_key),
-        };
+        return connection
+            .door_key
+            .as_deref()
+            .is_some_and(|key| key == door_key);
     }
     true
 }
@@ -398,6 +392,19 @@ pub fn try_activate_interior_if_complete(
     if record.lifecycle_state != BuildingLifecycleState::Complete {
         return Ok(());
     }
+    if let Some(nav_catalog) = nav_catalog {
+        reconcile_building_navigation_runtime(
+            world,
+            building_catalog,
+            interior_catalog,
+            doodad_catalog,
+            occupancy,
+            nav_catalog,
+            building_id,
+            false,
+        )?;
+        return Ok(());
+    }
     if record.interior.activated {
         return Ok(());
     }
@@ -413,11 +420,176 @@ pub fn try_activate_interior_if_complete(
         interior_catalog,
         doodad_catalog,
         occupancy,
-        nav_catalog,
+        None,
         building_id,
         definition,
     )
     .map(|_| ())
+}
+
+/// Result of ensuring runtime navigation matches the resolved blueprint.
+#[derive(Debug, Clone, PartialEq)]
+pub enum NavigationReconcileOutcome {
+    /// Runtime already matches the resolved blueprint authority.
+    NotNeeded,
+    /// Interior activation created runtime navigation from the blueprint.
+    Activated(InteriorActivationOutcome),
+    /// An already-active building was rebuilt from the blueprint.
+    Refreshed,
+}
+
+/// Whether derived runtime navigation matches the resolved authoritative blueprint.
+///
+/// Persisted `interior.activated` is not proof of hydration — registry and runtime store
+/// must both reflect the blueprint topology (IN-11gE).
+fn runtime_navigation_is_hydrated(
+    world: &WorldData,
+    building_id: BuildingId,
+    blueprint: &BuildingNavigationBlueprint,
+) -> bool {
+    let Some(runtime) = world.building_navigation_runtime().get(building_id) else {
+        return false;
+    };
+    if runtime_topology_fingerprint(runtime) != blueprint_topology_fingerprint(blueprint) {
+        return false;
+    }
+    if world
+        .space_registry()
+        .building_space_ids(building_id)
+        .is_empty()
+    {
+        return false;
+    }
+    let expected_regions = blueprint_region_count(blueprint);
+    if expected_regions > 0 && runtime.regions.is_empty() {
+        return false;
+    }
+    true
+}
+
+fn clear_derived_building_navigation_state(world: &mut WorldData, building_id: BuildingId) {
+    world.space_registry_mut().remove_building(building_id);
+    world
+        .building_navigation_runtime_mut()
+        .remove_building(building_id);
+    world.mutate_building(building_id, |building| {
+        building.spaces.space_ids.clear();
+    });
+}
+
+/// Ensure one complete building's runtime navigation matches its resolved blueprint.
+///
+/// Shared entry for cold load, scene reload, dev spawn, and editor Save/Apply propagation.
+pub fn reconcile_building_navigation_runtime(
+    world: &mut WorldData,
+    building_catalog: &BuildingCatalog,
+    interior_catalog: &super::catalog::InteriorProfileCatalog,
+    doodad_catalog: &DoodadCatalog,
+    occupancy: OccupancyCatalogs<'_>,
+    nav_catalog: &BuildingNavigationBlueprintCatalog,
+    building_id: BuildingId,
+    force_rebuild: bool,
+) -> Result<NavigationReconcileOutcome, InteriorError> {
+    let record = world
+        .get_building(building_id)
+        .cloned()
+        .ok_or(InteriorError::ParentBuildingMissing(building_id))?;
+    if record.lifecycle_state != BuildingLifecycleState::Complete {
+        return Ok(NavigationReconcileOutcome::NotNeeded);
+    }
+
+    let definition = building_catalog.get(&record.definition_id).ok_or_else(|| {
+        InteriorError::InteriorSpawnFailed {
+            building_id,
+            reason: format!("missing definition `{}`", record.definition_id.as_str()),
+        }
+    })?;
+
+    let resolved = resolve_building_navigation_blueprint(
+        definition,
+        nav_catalog,
+        record.interior.navigation_blueprint_override.as_ref(),
+    )
+    .map_err(|err| InteriorError::InteriorSpawnFailed {
+        building_id,
+        reason: err.to_string(),
+    })?;
+    let Some(resolved) = resolved else {
+        clear_derived_building_navigation_state(world, building_id);
+        return Ok(NavigationReconcileOutcome::NotNeeded);
+    };
+
+    let blueprint = resolved.blueprint();
+    if !force_rebuild && runtime_navigation_is_hydrated(world, building_id, blueprint) {
+        return Ok(NavigationReconcileOutcome::NotNeeded);
+    }
+
+    let has_spaces = !world
+        .space_registry()
+        .building_space_ids(building_id)
+        .is_empty();
+    if has_spaces {
+        if !record.interior.activated {
+            world.mutate_building(building_id, |building| {
+                building.interior.activated = true;
+            });
+        }
+        refresh_building_navigation_runtime(
+            world,
+            building_catalog,
+            interior_catalog,
+            nav_catalog,
+            building_id,
+        )?;
+        crate::world::initialize_surface_units_navigation_membership(world);
+        return Ok(NavigationReconcileOutcome::Refreshed);
+    }
+
+    let profile_id = record
+        .interior
+        .profile_id
+        .clone()
+        .or_else(|| definition.interior_profile_id.clone())
+        .map(InteriorProfileId::new);
+    let outcome = activate_building_interior(
+        world,
+        building_catalog,
+        interior_catalog,
+        doodad_catalog,
+        occupancy,
+        Some(nav_catalog),
+        building_id,
+        profile_id.as_ref(),
+    )?;
+    if outcome.status.navigation_active() {
+        crate::world::initialize_surface_units_navigation_membership(world);
+        Ok(NavigationReconcileOutcome::Activated(outcome))
+    } else {
+        Ok(NavigationReconcileOutcome::NotNeeded)
+    }
+}
+
+/// Reconcile runtime navigation for every complete building instance.
+pub fn reconcile_all_building_navigation_runtimes(
+    world: &mut WorldData,
+    building_catalog: &BuildingCatalog,
+    interior_catalog: &super::catalog::InteriorProfileCatalog,
+    doodad_catalog: &DoodadCatalog,
+    occupancy: OccupancyCatalogs<'_>,
+    nav_catalog: &BuildingNavigationBlueprintCatalog,
+) {
+    for building_id in world.sorted_building_ids() {
+        let _ = reconcile_building_navigation_runtime(
+            world,
+            building_catalog,
+            interior_catalog,
+            doodad_catalog,
+            occupancy,
+            nav_catalog,
+            building_id,
+            false,
+        );
+    }
 }
 
 fn activate_interior_for_definition(
@@ -519,8 +691,9 @@ fn supplement_door_portals_from_profile(
             bidirectional: template.bidirectional,
             enabled: true,
             owning_building_id: Some(building.id),
+            entrance_threshold_global_xz: None,
+            entrance_owning_edge_index: None,
         });
-        portal_keys.insert(template.key.to_string(), portal_id);
     }
     Ok(())
 }
@@ -788,4 +961,60 @@ pub fn deactivate_building_interior(
     world.interior_activation_outcomes_mut().remove(building_id);
     let _ = building_catalog;
     Ok(())
+}
+
+#[cfg(test)]
+mod profile_door_binding_tests {
+    use super::profile_door_controls_portal;
+    use crate::world::building::interior::profile::two_story_hut_interior_profile;
+    use crate::world::building::navigation_blueprint::one_region_doorless_navigation_blueprint;
+
+    #[test]
+    fn doorless_entrance_rejects_profile_door_with_same_key() {
+        let blueprint = one_region_doorless_navigation_blueprint();
+        let profile = two_story_hut_interior_profile();
+        assert!(!profile_door_controls_portal(
+            Some(&blueprint),
+            &profile,
+            "exterior_entrance",
+            "exterior_entrance",
+        ));
+    }
+
+    #[test]
+    fn explicit_door_controlled_entrance_accepts_matching_profile_door() {
+        let mut blueprint = one_region_doorless_navigation_blueprint();
+        blueprint.entrances[0].door_key = Some("exterior_entrance".to_string());
+        let profile = two_story_hut_interior_profile();
+        assert!(profile_door_controls_portal(
+            Some(&blueprint),
+            &profile,
+            "exterior_entrance",
+            "exterior_entrance",
+        ));
+    }
+
+    #[test]
+    fn explicit_door_controlled_entrance_rejects_mismatched_profile_door() {
+        let mut blueprint = one_region_doorless_navigation_blueprint();
+        blueprint.entrances[0].door_key = Some("front_door".to_string());
+        let profile = two_story_hut_interior_profile();
+        assert!(!profile_door_controls_portal(
+            Some(&blueprint),
+            &profile,
+            "exterior_entrance",
+            "exterior_entrance",
+        ));
+    }
+
+    #[test]
+    fn profile_only_interior_allows_profile_door_binding() {
+        let profile = two_story_hut_interior_profile();
+        assert!(profile_door_controls_portal(
+            None,
+            &profile,
+            "exterior_entrance",
+            "exterior_entrance",
+        ));
+    }
 }

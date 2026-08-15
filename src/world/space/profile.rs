@@ -138,6 +138,8 @@ pub fn register_building_space_profile(
             bidirectional: template.bidirectional,
             enabled: true,
             owning_building_id: Some(building.id),
+            entrance_threshold_global_xz: None,
+            entrance_owning_edge_index: None,
         });
     }
 

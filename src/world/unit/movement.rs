@@ -15,17 +15,16 @@ use super::movement_authority_trace::MovementBlockedAuthorityRecord;
 use super::state::UnitState;
 use crate::world::NavigationConfig;
 use crate::world::movement::feel::{
-    MovementFeelSettings, StabilizedMovementHeading, should_skip_direction_smoothing,
-    stabilized_movement_heading, steering_is_allowed,
+    MovementFeelSettings, StabilizedMovementHeading, heading_lookahead_commit_index,
+    should_skip_direction_smoothing, stabilized_movement_heading, steering_is_allowed,
 };
 use crate::world::movement::steering::SteeringSettings;
 use crate::world::{
     BuildingCatalog, ChunkLayout, DoodadCatalog, FootprintCatalog, NavigationWaypoint,
     OccupancySource, PassabilityAgent, PassabilityBlockReason, PassabilityCatalogs,
     PassabilityResult, SlopeWalkability, SpaceId, WorldData, WorldPosition, apply_steering,
-    classify_slope_walkability, ground_position_in_space,
-    interior_segment_respects_region_boundary, is_segment_walkable_in_space,
-    query_passability_in_space, try_open_door_at_portal_for_unit, try_portal_transition,
+    classify_slope_walkability, ground_position_in_space, is_segment_walkable_in_space,
+    query_navigation_point_legality, try_open_door_at_portal_for_unit, try_portal_transition,
     xz_distance,
 };
 /// Distance below which a unit snaps to its move target (meters).
@@ -74,6 +73,67 @@ fn describe_passability_block(space_id: SpaceId, result: &PassabilityResult) -> 
         PassabilityResult::Unavailable { .. } => format!("Unavailable terrain through {}", fn_name),
         PassabilityResult::Passable { .. } => "Passable".to_string(),
     }
+}
+
+#[cfg(feature = "dev")]
+fn maybe_trace_inside_move_first_step(
+    world: &mut WorldData,
+    unit_id: UnitId,
+    catalogs: PassabilityCatalogs<'_>,
+    definition: &super::catalog::UnitDefinition,
+    current_space: SpaceId,
+    current_position: WorldPosition,
+    grounded: WorldPosition,
+    waypoint: NavigationWaypoint,
+    active_space: SpaceId,
+    layout: ChunkLayout,
+    grounding_ok: bool,
+    relocated_ok: bool,
+    block_reason: Option<String>,
+) {
+    if !world.inside_move_trace().is_active_for(unit_id) {
+        return;
+    }
+    let agent = PassabilityAgent {
+        radius_meters: definition.collision_radius_meters,
+        max_slope_degrees: definition.max_slope_degrees,
+    };
+    let point_result =
+        query_navigation_point_legality(world, catalogs, grounded, agent, active_space);
+    let point_str = describe_passability_block(active_space, &point_result);
+    let segment_ok = is_segment_walkable_in_space(
+        world,
+        world.space_registry(),
+        catalogs,
+        NavigationConfig::default(),
+        active_space,
+        crate::world::NavigationAgent {
+            radius_meters: definition.collision_radius_meters,
+            max_slope_degrees: definition.max_slope_degrees,
+        },
+        current_position,
+        grounded,
+        layout,
+    );
+    let segment_str = if segment_ok {
+        "legal"
+    } else {
+        "blocked_by_segment_legality"
+    };
+    let position_changed = relocated_ok && xz_distance(current_position, grounded, layout) > 1e-3;
+    super::inside_move_trace::record_first_movement_step(
+        world,
+        unit_id,
+        current_space,
+        current_position,
+        waypoint.position,
+        waypoint.space_id,
+        &point_str,
+        segment_str,
+        grounding_ok,
+        position_changed,
+        block_reason,
+    );
 }
 
 fn record_movement_authority_violations(
@@ -335,6 +395,7 @@ fn complete_portal_waypoint_if_ready(
     target: WorldPosition,
     path: crate::world::NavigationPath,
     layout: ChunkLayout,
+    agent_radius_m: f32,
 ) -> Option<UnitMovementStepOutcome> {
     let portal_id = waypoint.portal_id?;
     let agent_xz = position.to_global(layout).xz();
@@ -349,18 +410,54 @@ fn complete_portal_waypoint_if_ready(
         position,
         &mut transition_state,
         Some(portal_id),
-    )?;
+    );
+    #[cfg(feature = "dev")]
+    crate::world::record_entrance_transition_probe(
+        world,
+        unit_id,
+        current_space,
+        position,
+        portal_id,
+        portal_transition.is_some(),
+    );
+    let (dest_space, dest_position, transitioned_portal) = portal_transition?;
+    transition_state.suppress_return_space = None;
     *world.portal_transition_state_mut(unit_id) = transition_state;
-    let (dest_space, dest_position, transitioned_portal) = portal_transition;
     if transitioned_portal != portal_id {
         return None;
     }
+    let dest_position = waypoint
+        .portal_interior_destination
+        .unwrap_or(dest_position);
+    #[cfg(feature = "dev")]
+    let membership_before = current_space;
     let _ = world.set_unit_current_space(unit_id, dest_space);
+    #[cfg(feature = "dev")]
+    crate::world::record_entrance_membership_update(
+        world,
+        unit_id,
+        membership_before,
+        dest_space,
+        dest_space,
+    );
     let grounded =
         ground_position_in_space(world, world.space_registry(), dest_space, dest_position)?;
-    world.relocate_unit(unit_id, grounded).ok()?;
+    world.update_unit_position(unit_id, grounded).ok()?;
     world.movement_smoothing_mut().clear_unit(unit_id);
     let next_index = effective_index + 1;
+    #[cfg(feature = "dev")]
+    super::post_exit_jitter_trace::arm_session_after_interior_surface_exit(
+        world,
+        unit_id,
+        current_space,
+        dest_space,
+        portal_id,
+        grounded,
+        path.clone(),
+        next_index,
+        target,
+        agent_radius_m,
+    );
     world
         .portal_transition_trace_mut()
         .record(crate::world::PortalTransitionEvent {
@@ -466,6 +563,7 @@ pub fn step_unit_movement(
                     target,
                     path.clone(),
                     layout,
+                    definition.collision_radius_meters,
                 ) {
                     return outcome;
                 }
@@ -486,7 +584,25 @@ pub fn step_unit_movement(
     }
 
     let mut heading = stabilized_movement_heading(current_position, &path, waypoint_index, layout);
-    let effective_index = heading.map(|h| h.waypoint_index).unwrap_or(waypoint_index);
+    let mut effective_index = heading.map(|h| h.waypoint_index).unwrap_or(waypoint_index);
+    if let Some(committed) = heading_lookahead_commit_index(&path, waypoint_index, effective_index)
+    {
+        waypoint_index = committed;
+        effective_index = committed;
+        if world
+            .set_unit_state(
+                unit_id,
+                UnitState::Moving {
+                    target,
+                    path: path.clone(),
+                    waypoint_index: committed,
+                },
+            )
+            .is_err()
+        {
+            return UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound);
+        }
+    }
     let Some(waypoint) = path.waypoints.get(effective_index).copied() else {
         if world.set_unit_state(unit_id, UnitState::Idle).is_err() {
             return UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound);
@@ -520,6 +636,7 @@ pub fn step_unit_movement(
                 target,
                 path.clone(),
                 layout,
+                definition.collision_radius_meters,
             ) {
                 return outcome;
             }
@@ -604,6 +721,70 @@ pub fn step_unit_movement(
     } else {
         waypoint.space_id
     };
+    let passability_agent = PassabilityAgent {
+        radius_meters: definition.collision_radius_meters,
+        max_slope_degrees: definition.max_slope_degrees,
+    };
+    #[cfg(feature = "dev")]
+    let mut post_exit_capture = super::post_exit_jitter_trace::PostExitStepCapture::maybe_begin(
+        world,
+        unit_id,
+        current_space,
+        current_position,
+        &path,
+        waypoint_index,
+        effective_index,
+        waypoint,
+        target,
+    );
+    #[cfg(feature = "dev")]
+    if let Some(cap) = post_exit_capture.as_mut() {
+        cap.set_movement_vectors(
+            path_direction_xz,
+            steered_direction_xz,
+            movement_direction_xz,
+            step_distance,
+            candidate,
+        );
+    }
+    macro_rules! return_blocked_movement {
+        ($reason:expr, $grounded:expr) => {{
+            #[cfg(feature = "dev")]
+            {
+                return blocked_with_post_exit_trace(
+                    $reason,
+                    world,
+                    catalogs,
+                    &mut post_exit_capture,
+                    passability_agent,
+                    active_space,
+                    current_space,
+                    current_position,
+                    layout,
+                    $grounded,
+                    unit_id,
+                    target,
+                    path,
+                    waypoint_index,
+                    effective_index,
+                );
+            }
+            #[cfg(not(feature = "dev"))]
+            {
+                return apply_blocked_movement(
+                    $reason,
+                    world,
+                    unit_id,
+                    target,
+                    path,
+                    waypoint_index,
+                    effective_index,
+                    current_position,
+                    layout,
+                );
+            }
+        }};
+    }
     record_movement_authority_violations(
         world,
         unit_id,
@@ -615,17 +796,7 @@ pub fn step_unit_movement(
         match ground_position_in_space(world, world.space_registry(), active_space, candidate) {
             Some(position) => position,
             None => {
-                return apply_blocked_movement(
-                    BlockedMovementReason::TerrainUnavailable,
-                    world,
-                    unit_id,
-                    target,
-                    path,
-                    waypoint_index,
-                    effective_index,
-                    current_position,
-                    layout,
-                );
+                return_blocked_movement!(BlockedMovementReason::TerrainUnavailable, candidate);
             }
         };
 
@@ -633,35 +804,15 @@ pub fn step_unit_movement(
         match classify_slope_walkability(world, grounded, definition.max_slope_degrees) {
             SlopeWalkability::Walkable => {}
             SlopeWalkability::Unavailable => {
-                return apply_blocked_movement(
-                    BlockedMovementReason::SlopeUnavailable,
-                    world,
-                    unit_id,
-                    target,
-                    path,
-                    waypoint_index,
-                    effective_index,
-                    current_position,
-                    layout,
-                );
+                return_blocked_movement!(BlockedMovementReason::SlopeUnavailable, grounded);
             }
             SlopeWalkability::TooSteep => {
-                return apply_blocked_movement(
-                    BlockedMovementReason::SlopeTooSteep,
-                    world,
-                    unit_id,
-                    target,
-                    path,
-                    waypoint_index,
-                    effective_index,
-                    current_position,
-                    layout,
-                );
+                return_blocked_movement!(BlockedMovementReason::SlopeTooSteep, grounded);
             }
         }
     }
 
-    match query_passability_in_space(
+    match query_navigation_point_legality(
         world,
         catalogs,
         grounded,
@@ -691,17 +842,23 @@ pub fn step_unit_movement(
                 false,
                 true,
             );
-            return apply_blocked_movement(
-                BlockedMovementReason::TerrainUnavailable,
+            #[cfg(feature = "dev")]
+            maybe_trace_inside_move_first_step(
                 world,
                 unit_id,
-                target,
-                path,
-                waypoint_index,
-                effective_index,
+                catalogs,
+                definition,
+                current_space,
                 current_position,
+                grounded,
+                waypoint,
+                active_space,
                 layout,
+                true,
+                false,
+                Some("point_unavailable".to_string()),
             );
+            return_blocked_movement!(BlockedMovementReason::TerrainUnavailable, grounded);
         }
         PassabilityResult::Blocked { reason, source } => {
             let pass_result = PassabilityResult::Blocked { reason, source };
@@ -722,6 +879,9 @@ pub fn step_unit_movement(
                 PassabilityBlockReason::BuildingOccupied => {
                     BlockedMovementReason::BlockedByBuilding
                 }
+                PassabilityBlockReason::BlueprintSupport => {
+                    BlockedMovementReason::BlockedByBuilding
+                }
                 PassabilityBlockReason::AgentClearanceInsufficient => {
                     BlockedMovementReason::BlockedByBuilding
                 }
@@ -731,117 +891,158 @@ pub fn step_unit_movement(
                 | PassabilityBlockReason::CorruptFootprint
                 | PassabilityBlockReason::InvalidCell => BlockedMovementReason::BlockedByDoodad,
             };
-            return apply_blocked_movement(
-                blocked_reason,
-                world,
-                unit_id,
-                target,
-                path,
-                waypoint_index,
-                effective_index,
-                current_position,
-                layout,
-            );
-        }
-    }
-
-    if active_space.is_surface() {
-        if !is_segment_walkable_in_space(
-            world,
-            world.space_registry(),
-            catalogs,
-            NavigationConfig::default(),
-            active_space,
-            crate::world::NavigationAgent {
-                radius_meters: definition.collision_radius_meters,
-                max_slope_degrees: definition.max_slope_degrees,
-            },
-            current_position,
-            grounded,
-            layout,
-        ) {
-            record_movement_blocked_authority(
-                world,
-                unit_id,
-                current_space,
-                waypoint.space_id,
-                active_space,
-                effective_index,
-                grounded,
-                "is_segment_walkable_in_space",
-                "Blocked by surface segment occupancy sampling".to_string(),
-                false,
-                true,
-            );
-            return apply_blocked_movement(
-                BlockedMovementReason::BlockedByBuilding,
-                world,
-                unit_id,
-                target,
-                path,
-                waypoint_index,
-                effective_index,
-                current_position,
-                layout,
-            );
-        }
-    } else {
-        let segment_ok = crate::world::interior_segment_respects_region_boundary(
-            world.building_navigation_runtime(),
-            world.space_registry(),
-            layout,
-            current_position,
-            grounded,
-            active_space,
-            definition.collision_radius_meters,
-        );
-        if !segment_ok {
-            record_movement_blocked_authority(
-                world,
-                unit_id,
-                current_space,
-                waypoint.space_id,
-                active_space,
-                effective_index,
-                grounded,
-                "interior_segment_respects_region_boundary",
-                "Blocked by interior region polygon boundary".to_string(),
-                true,
-                false,
-            );
             #[cfg(feature = "dev")]
-            {
-                world.movement_authority_trace_mut().record_violation(
-                    unit_id,
-                    "Interior movement segment rejected by region boundary validation",
-                );
-            }
-            return apply_blocked_movement(
-                BlockedMovementReason::BlockedByBuilding,
+            maybe_trace_inside_move_first_step(
                 world,
                 unit_id,
-                target,
-                path,
-                waypoint_index,
-                effective_index,
+                catalogs,
+                definition,
+                current_space,
                 current_position,
+                grounded,
+                waypoint,
+                active_space,
                 layout,
+                true,
+                false,
+                Some(format!("point_blocked:{blocked_reason:?}")),
             );
+            return_blocked_movement!(blocked_reason, grounded);
         }
     }
 
-    if world.relocate_unit(unit_id, grounded).is_err() {
-        return apply_blocked_movement(
-            BlockedMovementReason::TerrainUnavailable,
+    if !is_segment_walkable_in_space(
+        world,
+        world.space_registry(),
+        catalogs,
+        NavigationConfig::default(),
+        active_space,
+        crate::world::NavigationAgent {
+            radius_meters: definition.collision_radius_meters,
+            max_slope_degrees: definition.max_slope_degrees,
+        },
+        current_position,
+        grounded,
+        layout,
+    ) {
+        record_movement_blocked_authority(
             world,
             unit_id,
-            target,
-            path,
-            waypoint_index,
+            current_space,
+            waypoint.space_id,
+            active_space,
             effective_index,
-            current_position,
-            layout,
+            grounded,
+            "query_navigation_segment_legality",
+            format!(
+                "Blocked by universal segment legality in space {}",
+                active_space.raw()
+            ),
+            !active_space.is_surface(),
+            active_space.is_surface(),
         );
+        #[cfg(feature = "dev")]
+        {
+            if current_space.is_surface() {
+                crate::world::record_entrance_opening_legality_probe(
+                    world,
+                    unit_id,
+                    current_position,
+                    grounded,
+                    active_space,
+                    definition.collision_radius_meters,
+                    false,
+                );
+            }
+            maybe_trace_inside_move_first_step(
+                world,
+                unit_id,
+                catalogs,
+                definition,
+                current_space,
+                current_position,
+                grounded,
+                waypoint,
+                active_space,
+                layout,
+                true,
+                false,
+                Some("segment_blocked".to_string()),
+            );
+        }
+        return_blocked_movement!(BlockedMovementReason::BlockedByBuilding, grounded);
+    }
+
+    if world.update_unit_position(unit_id, grounded).is_err() {
+        #[cfg(feature = "dev")]
+        maybe_trace_inside_move_first_step(
+            world,
+            unit_id,
+            catalogs,
+            definition,
+            current_space,
+            current_position,
+            grounded,
+            waypoint,
+            active_space,
+            layout,
+            true,
+            false,
+            Some("relocate_failed".to_string()),
+        );
+        return_blocked_movement!(BlockedMovementReason::TerrainUnavailable, grounded);
+    }
+
+    #[cfg(feature = "dev")]
+    {
+        maybe_trace_inside_move_first_step(
+            world,
+            unit_id,
+            catalogs,
+            definition,
+            current_space,
+            current_position,
+            grounded,
+            waypoint,
+            active_space,
+            layout,
+            true,
+            true,
+            None,
+        );
+        if world.entrance_traversal_trace().is_active_for(unit_id) && !active_space.is_surface() {
+            let agent = PassabilityAgent {
+                radius_meters: definition.collision_radius_meters,
+                max_slope_degrees: definition.max_slope_degrees,
+            };
+            let point_legal = matches!(
+                query_navigation_point_legality(world, catalogs, grounded, agent, active_space),
+                PassabilityResult::Passable { .. }
+            );
+            let segment_legal = is_segment_walkable_in_space(
+                world,
+                world.space_registry(),
+                catalogs,
+                NavigationConfig::default(),
+                active_space,
+                crate::world::NavigationAgent {
+                    radius_meters: definition.collision_radius_meters,
+                    max_slope_degrees: definition.max_slope_degrees,
+                },
+                current_position,
+                grounded,
+                layout,
+            );
+            crate::world::record_entrance_interior_first_step(
+                world,
+                unit_id,
+                grounded,
+                waypoint.position,
+                point_legal,
+                segment_legal,
+                true,
+            );
+        }
     }
 
     let progressed = xz_distance(current_position, grounded, layout);
@@ -856,21 +1057,11 @@ pub fn step_unit_movement(
             current_position,
             waypoint,
             layout,
-        ) && world.relocate_unit(unit_id, nudged).is_ok()
+        ) && world.update_unit_position(unit_id, nudged).is_ok()
         {
             grounded = nudged;
         } else {
-            return apply_blocked_movement(
-                BlockedMovementReason::BlockedByBuilding,
-                world,
-                unit_id,
-                target,
-                path,
-                waypoint_index,
-                effective_index,
-                current_position,
-                layout,
-            );
+            return_blocked_movement!(BlockedMovementReason::BlockedByBuilding, grounded);
         }
     }
 
@@ -890,6 +1081,7 @@ pub fn step_unit_movement(
             target,
             path.clone(),
             layout,
+            definition.collision_radius_meters,
         ) {
             return outcome;
         }
@@ -904,7 +1096,7 @@ pub fn step_unit_movement(
     let distance_after = to_waypoint_after.length();
     let reached_waypoint = distance_after <= ARRIVAL_DISTANCE_METERS
         || distance <= step_distance.max(ARRIVAL_DISTANCE_METERS);
-    if reached_waypoint {
+    let outcome = if reached_waypoint {
         if waypoint.portal_id.is_some() {
             if world
                 .set_unit_state(
@@ -917,19 +1109,20 @@ pub fn step_unit_movement(
                 )
                 .is_err()
             {
-                return UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound);
+                UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound)
+            } else {
+                UnitMovementStepOutcome::Moved
             }
-            return UnitMovementStepOutcome::Moved;
-        }
-        let next_index = effective_index + 1;
-        if next_index >= path.len() {
-            if world.set_unit_state(unit_id, UnitState::Idle).is_err() {
-                return UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound);
-            }
-            world.movement_smoothing_mut().clear_unit(unit_id);
-            UnitMovementStepOutcome::Arrived
         } else {
-            if world
+            let next_index = effective_index + 1;
+            if next_index >= path.len() {
+                if world.set_unit_state(unit_id, UnitState::Idle).is_err() {
+                    UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound)
+                } else {
+                    world.movement_smoothing_mut().clear_unit(unit_id);
+                    UnitMovementStepOutcome::Arrived
+                }
+            } else if world
                 .set_unit_state(
                     unit_id,
                     UnitState::Moving {
@@ -940,26 +1133,54 @@ pub fn step_unit_movement(
                 )
                 .is_err()
             {
-                return UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound);
+                UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound)
+            } else {
+                UnitMovementStepOutcome::Moved
             }
-            UnitMovementStepOutcome::Moved
         }
+    } else if world
+        .set_unit_state(
+            unit_id,
+            UnitState::Moving {
+                target,
+                path,
+                waypoint_index,
+            },
+        )
+        .is_err()
+    {
+        UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound)
     } else {
-        if world
-            .set_unit_state(
-                unit_id,
-                UnitState::Moving {
-                    target,
-                    path,
-                    waypoint_index,
-                },
-            )
-            .is_err()
-        {
-            return UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound);
-        }
         UnitMovementStepOutcome::Moved
-    }
+    };
+    #[cfg(feature = "dev")]
+    super::post_exit_jitter_trace::finish_tick_from_step(
+        world,
+        catalogs,
+        &mut post_exit_capture,
+        passability_agent,
+        active_space,
+        current_space,
+        current_position,
+        layout,
+        grounded,
+        false,
+        None,
+        matches!(
+            outcome,
+            UnitMovementStepOutcome::Moved | UnitMovementStepOutcome::Arrived
+        ),
+        progressed,
+        reached_waypoint && waypoint.portal_id.is_none(),
+        progressed > 1e-3,
+        false,
+        match outcome {
+            UnitMovementStepOutcome::Arrived => "arrived",
+            UnitMovementStepOutcome::Moved => "moved",
+            _ => "idle",
+        },
+    );
+    outcome
 }
 
 fn nudge_toward_portal_waypoint(
@@ -1002,7 +1223,7 @@ fn nudge_toward_portal_waypoint(
             return Some(grounded);
         }
         if matches!(
-            query_passability_in_space(world, catalogs, grounded, agent, space_id,),
+            query_navigation_point_legality(world, catalogs, grounded, agent, space_id,),
             PassabilityResult::Passable { .. }
         ) {
             return Some(grounded);
@@ -1016,6 +1237,89 @@ fn path_has_pending_portal(path: &crate::world::NavigationPath, from_index: usiz
         .iter()
         .enumerate()
         .any(|(index, waypoint)| index >= from_index && waypoint.portal_id.is_some())
+}
+
+#[cfg(feature = "dev")]
+fn blocked_with_post_exit_trace(
+    reason: BlockedMovementReason,
+    world: &mut WorldData,
+    catalogs: PassabilityCatalogs<'_>,
+    post_exit_capture: &mut Option<super::post_exit_jitter_trace::PostExitStepCapture>,
+    agent: PassabilityAgent,
+    active_space: SpaceId,
+    current_space: SpaceId,
+    current_position: WorldPosition,
+    layout: ChunkLayout,
+    grounded: WorldPosition,
+    unit_id: UnitId,
+    target: WorldPosition,
+    path: crate::world::NavigationPath,
+    waypoint_index: usize,
+    effective_index: usize,
+) -> UnitMovementStepOutcome {
+    super::post_exit_jitter_trace::finish_tick_from_step(
+        world,
+        catalogs,
+        post_exit_capture,
+        agent,
+        active_space,
+        current_space,
+        current_position,
+        layout,
+        grounded,
+        true,
+        Some(reason),
+        false,
+        0.0,
+        false,
+        false,
+        false,
+        "blocked",
+    );
+    apply_blocked_movement(
+        reason,
+        world,
+        unit_id,
+        target,
+        path,
+        waypoint_index,
+        effective_index,
+        current_position,
+        layout,
+    )
+}
+
+#[cfg(not(feature = "dev"))]
+fn blocked_with_post_exit_trace(
+    reason: BlockedMovementReason,
+    world: &mut WorldData,
+    _catalogs: PassabilityCatalogs<'_>,
+    _post_exit_capture: &mut Option<super::post_exit_jitter_trace::PostExitStepCapture>,
+    _agent: PassabilityAgent,
+    _active_space: SpaceId,
+    _current_space: SpaceId,
+    _current_position: WorldPosition,
+    _layout: ChunkLayout,
+    _grounded: WorldPosition,
+    unit_id: UnitId,
+    target: WorldPosition,
+    path: crate::world::NavigationPath,
+    waypoint_index: usize,
+    effective_index: usize,
+    current_position: WorldPosition,
+    layout: ChunkLayout,
+) -> UnitMovementStepOutcome {
+    apply_blocked_movement(
+        reason,
+        world,
+        unit_id,
+        target,
+        path,
+        waypoint_index,
+        effective_index,
+        current_position,
+        layout,
+    )
 }
 
 fn apply_blocked_movement(

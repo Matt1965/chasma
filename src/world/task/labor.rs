@@ -5,8 +5,9 @@ use super::eligibility::unit_work_capabilities;
 use super::events::{TaskEvent, TaskTickReport};
 use super::types::{TaskCancelReason, TaskState, TaskType};
 use crate::world::{
-    BuildingCatalog, BuildingDefinition, DoodadCatalog, InteriorProfileCatalog, OccupancyCatalogs,
-    UnitCatalog, UnitId, UnitState, WorldData, add_building_construction_progress,
+    BuildingCatalog, BuildingDefinition, BuildingNavigationBlueprintCatalog, DoodadCatalog,
+    InteriorProfileCatalog, OccupancyCatalogs, UnitCatalog, UnitId, UnitState, WorldData,
+    add_building_construction_progress,
 };
 use crate::world::{
     BuildingInteractionProfileCatalog, INTERACTION_WORK_RANGE_METERS,
@@ -25,6 +26,7 @@ pub fn step_all_worker_tasks(
     interior_catalog: &InteriorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
+    nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
     delta_seconds: f32,
     mut operation: Option<&mut BuildingOperationParams<'_>>,
 ) -> TaskTickReport {
@@ -180,6 +182,7 @@ pub fn step_all_worker_tasks(
                     interior_catalog,
                     doodad_catalog,
                     occupancy,
+                    nav_catalog,
                     building_id,
                     progress_delta,
                 )

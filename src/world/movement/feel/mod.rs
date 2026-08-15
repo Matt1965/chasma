@@ -11,7 +11,8 @@ pub use command_buffer::{
 };
 pub use smoothing::{MovementSmoothingState, should_skip_direction_smoothing};
 pub use stabilization::{
-    StabilizedMovementHeading, stabilized_movement_heading, steering_is_allowed,
+    StabilizedMovementHeading, heading_lookahead_commit_index, stabilized_movement_heading,
+    steering_is_allowed,
 };
 
 /// Conservative feel tuning (does not alter pathfinding or formation).

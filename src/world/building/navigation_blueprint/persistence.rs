@@ -10,8 +10,8 @@ use super::resolve::resolve_building_navigation_blueprint;
 use super::source::{BlueprintAuthoritySource, classify_blueprint_authority};
 use crate::world::building::catalog::{BuildingCatalog, BuildingDefinitionId};
 use crate::world::building::interior::{
-    InteriorProfileCatalog, InteriorProfileId, activate_building_interior,
-    refresh_building_navigation_runtime,
+    InteriorProfileCatalog, InteriorProfileId, NavigationReconcileOutcome,
+    reconcile_building_navigation_runtime,
 };
 use crate::world::{BuildingId, DoodadCatalog, FootprintCatalog, OccupancyCatalogs, WorldData};
 
@@ -198,53 +198,30 @@ fn propagate_to_instance(
     building_id: BuildingId,
     counts: &mut BlueprintPropagationCounts,
 ) {
-    let already_active = world
-        .get_building(building_id)
-        .is_some_and(|record| record.interior.activated);
-
-    if already_active {
-        match refresh_building_navigation_runtime(
-            world,
-            building_catalog,
-            activation.interior,
-            nav_catalog,
-            building_id,
-        ) {
-            Ok(()) => counts.refreshed = counts.refreshed.saturating_add(1),
-            Err(_) => counts.failed = counts.failed.saturating_add(1),
-        }
-        return;
-    }
-
-    let profile_id = world
-        .get_building(building_id)
-        .and_then(|record| {
-            record.interior.profile_id.clone().or_else(|| {
-                building_catalog
-                    .get(&record.definition_id)
-                    .and_then(|definition| definition.interior_profile_id.clone())
-            })
-        })
-        .map(InteriorProfileId::new);
     let occupancy = OccupancyCatalogs {
         doodad: activation.doodad,
         building: building_catalog,
         footprint: activation.footprint,
     };
-    match activate_building_interior(
+    match reconcile_building_navigation_runtime(
         world,
         building_catalog,
         activation.interior,
         activation.doodad,
         occupancy,
-        Some(nav_catalog),
+        nav_catalog,
         building_id,
-        profile_id.as_ref(),
+        true,
     ) {
-        Ok(outcome) if outcome.status.navigation_active() => {
-            counts.activated = counts.activated.saturating_add(1)
+        Ok(NavigationReconcileOutcome::Activated(_)) => {
+            counts.activated = counts.activated.saturating_add(1);
         }
-        Ok(_) => counts.skipped = counts.skipped.saturating_add(1),
+        Ok(NavigationReconcileOutcome::Refreshed) => {
+            counts.refreshed = counts.refreshed.saturating_add(1);
+        }
+        Ok(NavigationReconcileOutcome::NotNeeded) => {
+            counts.skipped = counts.skipped.saturating_add(1);
+        }
         Err(_) => counts.failed = counts.failed.saturating_add(1),
     }
 }

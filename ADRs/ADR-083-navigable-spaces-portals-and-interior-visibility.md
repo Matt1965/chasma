@@ -82,6 +82,25 @@ without assuming `SpaceId` ordering equals vertical order.
 - Future B7 doors extend portal enabled/state without replacing the graph model.
 - Multiplayer will replicate `current_space_id` and portal enabled flags; view state remains local.
 
+## Partial supersession — portal passability (August 2026)
+
+**Superseded in part** for **movement legality** by [docs/building-navigation-authority.md](../docs/building-navigation-authority.md).
+
+This ADR remains authoritative for:
+
+- `SpaceId` registry and semantic membership
+- Portal graph for cross-space route planning
+- `NavigationWaypoint` with `space_id` / `portal_id`
+- Interior visibility driven by space membership
+- Portal enabled/state for doors and future gameplay
+
+**Not normative for movement legality:**
+
+- Portal-radius discs as independent surface passability exemptions
+- Separate Surface vs Interior blocker universes with contradictory segment rules
+
+Physical crossing legality is owned by universal navigation geometry (regions, closed edges, intentional openings). Portals describe **which spaces connect** through those openings.
+
 ## Non-goals (B6)
 
 Room simulation, furniture, door lock gameplay, elevators, ladders, underground content, manual

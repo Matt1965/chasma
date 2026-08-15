@@ -243,6 +243,7 @@ pub fn run_simulation_tick(
         interior_catalog,
         doodad_catalog,
         occupancy,
+        nav_blueprint_catalog,
         delta_seconds,
         operation.as_deref_mut(),
     );

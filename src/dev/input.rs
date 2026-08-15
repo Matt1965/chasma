@@ -57,6 +57,7 @@ pub struct DevSpawnClickParams<'w> {
     pub building_catalog: Res<'w, BuildingCatalog>,
     pub footprint_catalog: Res<'w, FootprintCatalog>,
     pub interior_catalog: Res<'w, InteriorProfileCatalog>,
+    pub nav_blueprint_catalog: Res<'w, crate::world::BuildingNavigationBlueprintCatalog>,
     pub item_catalog: Res<'w, ItemCatalog>,
     pub item_category_catalog: Res<'w, ItemCategoryCatalog>,
     pub inventory_profile_catalog: Res<'w, InventoryProfileCatalog>,
@@ -642,6 +643,7 @@ pub fn handle_dev_spawn_click(
         &params.building_catalog,
         &params.footprint_catalog,
         &params.interior_catalog,
+        Some(&params.nav_blueprint_catalog),
         &inventory_ctx,
         &mut batch_scratch,
     );

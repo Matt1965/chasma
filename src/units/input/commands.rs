@@ -70,6 +70,27 @@ pub fn issue_move_orders_to_selection(
             targeting_policy,
         ) {
             Ok(()) => {
+                #[cfg(feature = "dev")]
+                if world.inside_move_trace().is_active_for(assignment.unit_id) {
+                    crate::world::record_order_issuance(
+                        world,
+                        assignment.unit_id,
+                        true,
+                        Some(assignment.target),
+                        None,
+                    );
+                }
+                #[cfg(feature = "dev")]
+                if world
+                    .interior_exit_click_trace()
+                    .is_active_for(assignment.unit_id)
+                {
+                    crate::world::interior_exit_click_trace::record_order_enqueue(
+                        world,
+                        assignment.unit_id,
+                        assignment.target,
+                    );
+                }
                 report.issued += 1;
                 report.unit_traces.push(MoveOrderUnitTrace {
                     unit_id: assignment.unit_id,
@@ -78,6 +99,16 @@ pub fn issue_move_orders_to_selection(
                 });
             }
             Err(error) => {
+                #[cfg(feature = "dev")]
+                if world.inside_move_trace().is_active_for(assignment.unit_id) {
+                    crate::world::record_order_issuance(
+                        world,
+                        assignment.unit_id,
+                        false,
+                        Some(assignment.target),
+                        Some(format!("{error:?}")),
+                    );
+                }
                 report.failed += 1;
                 report.unit_traces.push(MoveOrderUnitTrace {
                     unit_id: assignment.unit_id,

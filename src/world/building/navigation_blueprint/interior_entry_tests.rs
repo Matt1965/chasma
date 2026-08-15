@@ -1170,10 +1170,10 @@ fn player_command_interior_footprint_cross_and_boundary_enforcement() {
         max_slope_degrees: 45.0,
     };
     assert!(
-        !matches!(
+        matches!(
             crate::world::query_passability_at(&world, catalogs, building_center, agent),
             crate::world::PassabilityResult::Passable { .. }
         ),
-        "surface footprint must block after exiting interior"
+        "blueprint-controlled building must not block surface via legacy footprint after exit"
     );
 }

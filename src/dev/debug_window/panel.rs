@@ -139,11 +139,10 @@ const TOGGLE_GROUPS: &[ToggleGroup] = &[
                           master overlay. Does not change pathfinding.",
             },
             ToggleDef {
-                label: "Nav blockers",
+                label: "Blocked Area",
                 flag: DevDebugToggleFlag::NavBlockers,
-                tooltip: "Blocked-only navigation cells colored by PassabilityBlockReason \
-                          (specialized; Pathing Mask already includes blockers). Requires master \
-                          overlay.",
+                tooltip: "Filled cells showing actual movement authority blocking \
+                          (blueprint boundaries or legacy footprints). Requires master overlay.",
             },
             ToggleDef {
                 label: "Nav footprints",

@@ -64,6 +64,36 @@ pub fn steering_is_allowed(heading: Option<StabilizedMovementHeading>) -> bool {
     heading.is_some_and(|h| h.direction_xz.length_squared() > 1e-8)
 }
 
+/// When heading lookahead selects a later ordinary same-space waypoint, return the persistent
+/// index that must be committed so movement cannot regress to an earlier waypoint.
+pub fn heading_lookahead_commit_index(
+    path: &NavigationPath,
+    waypoint_index: usize,
+    lookahead_index: usize,
+) -> Option<usize> {
+    if lookahead_index <= waypoint_index {
+        return None;
+    }
+    for index in waypoint_index..lookahead_index {
+        let wp = path.waypoints.get(index)?;
+        if wp.portal_id.is_some() {
+            return None;
+        }
+        let next = path.waypoints.get(index + 1)?;
+        if next.portal_id.is_some() {
+            return None;
+        }
+        if wp.space_id != next.space_id {
+            return None;
+        }
+    }
+    let target = path.waypoints.get(lookahead_index)?;
+    if target.portal_id.is_some() {
+        return None;
+    }
+    Some(lookahead_index)
+}
+
 fn direction_toward(from: WorldPosition, to: WorldPosition, layout: ChunkLayout) -> Vec2 {
     let from_global = from.to_global(layout);
     let to_global = to.to_global(layout);
@@ -105,5 +135,33 @@ mod tests {
     fn no_fallback_when_path_empty() {
         let path = NavigationPath::default();
         assert!(stabilized_movement_heading(pos(0.0, 0.0), &path, 0, layout()).is_none());
+    }
+
+    #[test]
+    fn commit_index_accepts_ordinary_same_space_lookahead() {
+        let path = NavigationPath::from_surface_positions(vec![pos(0.0, 0.0), pos(0.0, 20.0)]);
+        assert_eq!(heading_lookahead_commit_index(&path, 0, 1), Some(1));
+    }
+
+    #[test]
+    fn commit_index_rejects_portal_waypoint() {
+        use crate::world::{NavigationWaypoint, PortalId, SpaceId};
+        let portal = PortalId::new(1);
+        let path = NavigationPath::new(vec![
+            NavigationWaypoint::in_space(pos(0.0, 0.0), SpaceId::SURFACE),
+            NavigationWaypoint::portal_transition(pos(1.0, 1.0), SpaceId::SURFACE, portal),
+            NavigationWaypoint::in_space(pos(2.0, 2.0), SpaceId::new(1)),
+        ]);
+        assert_eq!(heading_lookahead_commit_index(&path, 0, 2), None);
+    }
+
+    #[test]
+    fn commit_index_rejects_cross_space_without_portal() {
+        use crate::world::{NavigationWaypoint, SpaceId};
+        let path = NavigationPath::new(vec![
+            NavigationWaypoint::in_space(pos(0.0, 0.0), SpaceId::SURFACE),
+            NavigationWaypoint::in_space(pos(1.0, 1.0), SpaceId::new(1)),
+        ]);
+        assert_eq!(heading_lookahead_commit_index(&path, 0, 1), None);
     }
 }

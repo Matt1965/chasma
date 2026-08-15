@@ -261,6 +261,7 @@ fn worker_labor_advances_construction_deterministically() {
             &interior,
             &doodad,
             occ,
+            None,
             delta,
             None,
         );

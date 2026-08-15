@@ -11,9 +11,11 @@ use crate::world::{
     building_model_render_transform, resolve_building_navigation_blueprint,
 };
 
+use super::authored_overlay_trace::{AuthoredBlueprintOverlayTrace, blueprint_topology_counts};
 use super::helpers::{closed_polygon_boundary_segments, xz_to_render_y};
 use crate::debug::InspectorOverlayFocus;
-use crate::debug::settings::DebugOverlaySettings;
+use crate::debug::settings::{DebugOverlaySettings, authored_blueprint_overlay_active};
+use crate::dev::DevWindowRegistry;
 use crate::dev::{
     BlueprintEditSelection, BlueprintInspectionState, WorldInspectorState, blueprint_local_to_world,
 };
@@ -33,9 +35,30 @@ pub fn draw_blueprint_debug_overlay(
     inspector: Res<WorldInspectorState>,
     world_selection: Res<WorldSelectionState>,
     overlay_focus: Res<InspectorOverlayFocus>,
+    window_registry: Res<DevWindowRegistry>,
+    mut overlay_trace: ResMut<AuthoredBlueprintOverlayTrace>,
     render_assets: Option<Res<TerrainRenderAssets>>,
 ) {
-    if !settings.blueprint_overlay_active() {
+    overlay_trace.reset_frame();
+    overlay_trace.editor_open =
+        crate::debug::settings::navigation_editor_authored_session(&inspection, &window_registry);
+    overlay_trace.overlay_enabled =
+        settings.blueprint_overlay_active() || overlay_trace.editor_open;
+    overlay_trace.selected_building = inspection
+        .building_id
+        .map(|id| id.raw())
+        .or(world_selection.building_id.map(|id| id.raw()));
+
+    if !authored_blueprint_overlay_active(&settings, &inspection, &window_registry) {
+        overlay_trace.geometry_source = if overlay_trace.editor_open {
+            "Authored Blueprint: editor session inactive".into()
+        } else if !settings.enabled {
+            "Authored Blueprint: master debug disabled".into()
+        } else if !settings.nav_blueprint {
+            "Authored Blueprint: disabled".into()
+        } else {
+            "Authored Blueprint: disabled".into()
+        };
         return;
     }
 
@@ -80,7 +103,24 @@ pub fn draw_blueprint_debug_overlay(
     });
     let blueprint = working_for_overlay.or(blueprint_owned.as_ref());
     let Some(blueprint) = blueprint else {
+        overlay_trace.geometry_source = if inspection.editing || inspection.working_copy.is_some() {
+            "Authored Blueprint: no working copy".into()
+        } else {
+            "Authored Blueprint: no blueprint resolved".into()
+        };
         return;
+    };
+
+    overlay_trace.draw_executed = true;
+    overlay_trace.floor_count = blueprint.floors.len() as u32;
+    let (regions, vertices, entrances) = blueprint_topology_counts(blueprint);
+    overlay_trace.region_count = regions;
+    overlay_trace.vertex_count = vertices;
+    overlay_trace.entrance_count = entrances;
+    overlay_trace.geometry_source = if inspection.editing || inspection.working_copy.is_some() {
+        "Geometry Source: Working Copy".into()
+    } else {
+        format!("Geometry Source: Persisted {}", blueprint.id.as_str())
     };
 
     let layout = config.chunk_layout();
@@ -116,6 +156,7 @@ pub fn draw_blueprint_debug_overlay(
             alpha,
             diagnostic,
             emphasized,
+            &mut overlay_trace,
         );
     }
 
@@ -140,6 +181,7 @@ pub fn draw_blueprint_debug_overlay(
             diagnostic,
             blueprint,
         );
+        overlay_trace.entrances_submitted += 1;
     }
 
     for transition in &blueprint.vertical_transitions {
@@ -531,6 +573,7 @@ fn draw_floor_polygon(
     alpha: f32,
     diagnostic: Option<&BlueprintDiagnosticFocus>,
     emphasized: bool,
+    trace: &mut AuthoredBlueprintOverlayTrace,
 ) {
     for region in &floor.regions {
         let verts: Vec<Vec3> = region
@@ -556,6 +599,7 @@ fn draw_floor_polygon(
                 edge_color
             };
             gizmos.line(verts[i], verts[j], color);
+            trace.edges_submitted += 1;
         }
 
         if emphasized {
@@ -567,6 +611,7 @@ fn draw_floor_polygon(
                     vertex_color
                 };
                 gizmos.sphere(*pos, VERTEX_GIZMO_RADIUS, color);
+                trace.vertices_submitted += 1;
             }
         }
     }

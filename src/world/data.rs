@@ -153,6 +153,18 @@ pub struct WorldData {
     /// Bounded movement authority trace for IN-11eR dev diagnostics.
     #[reflect(ignore)]
     movement_authority_trace: crate::world::MovementAuthorityTrace,
+    /// Bounded inside-region move command trace (IN-11gG-T dev diagnostics).
+    #[reflect(ignore)]
+    inside_move_trace: crate::world::InsideMoveTrace,
+    /// Bounded entrance traversal trace (IN-11gI-T dev diagnostics).
+    #[reflect(ignore)]
+    entrance_traversal_trace: crate::world::EntranceTraversalTrace,
+    /// Bounded Interior exit click trace (IN-11gI-E-T dev diagnostics).
+    #[reflect(ignore)]
+    interior_exit_click_trace: crate::world::InteriorExitClickTrace,
+    /// Bounded post-exit Surface jitter trace (NAV-EXIT-T dev diagnostics).
+    #[reflect(ignore)]
+    post_exit_jitter_trace: crate::world::PostExitJitterTrace,
 }
 
 impl FromWorld for WorldData {
@@ -223,6 +235,10 @@ impl WorldData {
             interior_activation_outcomes: crate::world::InteriorActivationOutcomeStore::default(),
             portal_transition_trace: crate::world::PortalTransitionTrace::default(),
             movement_authority_trace: crate::world::MovementAuthorityTrace::default(),
+            inside_move_trace: crate::world::InsideMoveTrace::default(),
+            entrance_traversal_trace: crate::world::EntranceTraversalTrace::default(),
+            interior_exit_click_trace: crate::world::InteriorExitClickTrace::default(),
+            post_exit_jitter_trace: crate::world::PostExitJitterTrace::default(),
         }
     }
 
@@ -232,6 +248,38 @@ impl WorldData {
 
     pub fn movement_authority_trace_mut(&mut self) -> &mut crate::world::MovementAuthorityTrace {
         &mut self.movement_authority_trace
+    }
+
+    pub fn inside_move_trace(&self) -> &crate::world::InsideMoveTrace {
+        &self.inside_move_trace
+    }
+
+    pub fn inside_move_trace_mut(&mut self) -> &mut crate::world::InsideMoveTrace {
+        &mut self.inside_move_trace
+    }
+
+    pub fn entrance_traversal_trace(&self) -> &crate::world::EntranceTraversalTrace {
+        &self.entrance_traversal_trace
+    }
+
+    pub fn entrance_traversal_trace_mut(&mut self) -> &mut crate::world::EntranceTraversalTrace {
+        &mut self.entrance_traversal_trace
+    }
+
+    pub fn interior_exit_click_trace(&self) -> &crate::world::InteriorExitClickTrace {
+        &self.interior_exit_click_trace
+    }
+
+    pub fn interior_exit_click_trace_mut(&mut self) -> &mut crate::world::InteriorExitClickTrace {
+        &mut self.interior_exit_click_trace
+    }
+
+    pub fn post_exit_jitter_trace(&self) -> &crate::world::PostExitJitterTrace {
+        &self.post_exit_jitter_trace
+    }
+
+    pub fn post_exit_jitter_trace_mut(&mut self) -> &mut crate::world::PostExitJitterTrace {
+        &mut self.post_exit_jitter_trace
     }
 
     pub fn portal_transition_trace(&self) -> &crate::world::PortalTransitionTrace {
@@ -1005,6 +1053,8 @@ impl WorldData {
         self.inventory_reservation_store_mut().clear();
         self.logistics_endpoint_index_mut().clear();
         self.space_registry_mut().reset();
+        self.building_navigation_runtime_mut().clear();
+        self.interior_activation_outcomes_mut().clear();
         let _ = self.command_buffer_mut().take_pending_sorted();
         self.movement_smoothing_mut().clear_all();
         self.dev_clear_transient_simulation_state();
@@ -1351,11 +1401,11 @@ impl WorldData {
         self.kill_attributions.remove(&target_id);
     }
 
-    /// Move a unit to a new [`WorldPosition`], including cross-chunk moves (ADR-027 U2).
+    /// Update a unit's placement only, including cross-chunk moves (ADR-027 U2).
     ///
-    /// Preserves id, definition, source, metadata, rotation, and state. Updates
-    /// the id index when the owning chunk changes.
-    pub fn relocate_unit(
+    /// Preserves id, definition, source, metadata, rotation, state, and tracked
+    /// [`SpaceId`]. Does not infer navigation membership from position (IN-11gI-B).
+    pub fn update_unit_position(
         &mut self,
         id: UnitId,
         new_position: WorldPosition,
@@ -1384,6 +1434,20 @@ impl WorldData {
         record.placement.position = new_position;
         let moved = record.clone();
         self.insert_unit(new_chunk, record)?;
+        Ok(moved)
+    }
+
+    /// Explicit relocation: position update plus positional membership initialization (IN-11gG-M).
+    ///
+    /// Use at spawn/load, dev placement/teleport, and other explicit lifecycle boundaries —
+    /// not during ordinary movement ticks.
+    pub fn relocate_unit(
+        &mut self,
+        id: UnitId,
+        new_position: WorldPosition,
+    ) -> Result<UnitRecord, UnitInsertError> {
+        let moved = self.update_unit_position(id, new_position)?;
+        super::unit::navigation_membership::initialize_unit_navigation_membership(self, id);
         Ok(moved)
     }
 

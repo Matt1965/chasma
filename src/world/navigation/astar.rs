@@ -5,8 +5,9 @@ use std::collections::{BinaryHeap, HashMap};
 
 use super::grid::{
     GridCoord, NEIGHBOR_OFFSETS, NavigationAgent, NavigationConfig, diagonal_corner_clear,
-    diagonal_corner_clear_in_space, grid_cell_center_global, grid_cell_world_position,
-    is_cell_walkable, is_cell_walkable_in_space, neighbor_step_cost,
+    diagonal_corner_clear_in_space, grid_cell_world_position,
+    grid_neighbor_transition_legal_in_space, is_cell_walkable, is_cell_walkable_in_space,
+    neighbor_step_cost,
 };
 use crate::world::{
     ChunkLayout, PassabilityCatalogs, SpaceId, SpaceRegistry, WorldData, WorldPosition,
@@ -64,6 +65,7 @@ pub fn astar_path(
     goal: GridCoord,
 ) -> Option<Vec<WorldPosition>> {
     let space_config = config.config_for_space(SpaceId::SURFACE);
+    let layout = world.layout();
     run_astar(
         space_config,
         agent,
@@ -71,6 +73,19 @@ pub fn astar_path(
         goal,
         |coord| is_cell_walkable(world, catalogs, space_config, agent, coord),
         |from, dx, dz| diagonal_corner_clear(world, catalogs, space_config, agent, from, dx, dz),
+        |from, to| {
+            grid_neighbor_transition_legal_in_space(
+                world,
+                world.space_registry(),
+                catalogs,
+                config,
+                agent,
+                from,
+                to,
+                SpaceId::SURFACE,
+                layout,
+            )
+        },
         |coord| grid_cell_world_position(world, coord, space_config),
     )
     .map(|outcome| outcome.path)
@@ -129,18 +144,27 @@ pub(crate) fn astar_path_in_space_with_stats(
             )
         },
         |from, dx, dz| {
-            if dx == 0 || dz == 0 {
-                return true;
-            }
             diagonal_corner_clear_in_space(
                 world,
                 space_registry,
                 catalogs,
-                space_config,
+                config,
                 agent,
                 from,
                 dx,
                 dz,
+                space_id,
+            )
+        },
+        |from, to| {
+            grid_neighbor_transition_legal_in_space(
+                world,
+                space_registry,
+                catalogs,
+                config,
+                agent,
+                from,
+                to,
                 space_id,
                 layout,
             )
@@ -167,7 +191,7 @@ fn grid_cell_world_position_in_space(
     config: NavigationConfig,
     space_id: SpaceId,
 ) -> Option<WorldPosition> {
-    let global = grid_cell_center_global(coord, config);
+    let global = super::grid::grid_cell_center_global(coord, config);
     let position = WorldPosition::from_global(global, layout);
     ground_position_in_space(world, space_registry, space_id, position)
 }
@@ -179,6 +203,7 @@ fn run_astar(
     goal: GridCoord,
     mut is_walkable: impl FnMut(GridCoord) -> bool,
     mut corner_clear: impl FnMut(GridCoord, i32, i32) -> bool,
+    mut transition_legal: impl FnMut(GridCoord, GridCoord) -> bool,
     ground_cell: impl Fn(GridCoord) -> Option<WorldPosition>,
 ) -> Option<AstarOutcome> {
     if start == goal {
@@ -225,6 +250,9 @@ fn run_astar(
                 continue;
             }
             if !corner_clear(current.coord, dx, dz) {
+                continue;
+            }
+            if !transition_legal(current.coord, next) {
                 continue;
             }
 

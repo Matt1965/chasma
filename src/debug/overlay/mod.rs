@@ -1,5 +1,6 @@
 //! Unified debug overlay systems (ADR-039 U-UI3).
 
+mod authored_overlay_trace;
 mod blueprint_overlay;
 mod combat_overlay;
 mod formation_overlay;
@@ -15,6 +16,7 @@ mod runtime_entrance_overlay;
 mod selection_overlay;
 mod steering_overlay;
 
+pub use authored_overlay_trace::{AuthoredBlueprintOverlayTrace, blueprint_topology_counts};
 pub use blueprint_overlay::draw_blueprint_debug_overlay;
 pub use combat_overlay::draw_combat_debug_overlay;
 pub use formation_overlay::draw_formation_debug_overlay;

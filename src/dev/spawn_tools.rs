@@ -3,13 +3,14 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    BuildingCatalog, BuildingDefinitionId, BuildingOwnership, BuildingSource, DoodadCatalog,
-    DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog,
-    InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, UnitCatalog,
-    UnitDefinitionId, UnitOwnership, UnitSource, WorldData, WorldPosition,
-    create_dev_complete_building, create_dev_complete_building_with_inventory, create_doodad,
-    create_unit_with_inventory, starter_inventory_profile_definitions,
-    starter_item_category_definitions, starter_item_definitions,
+    BuildingCatalog, BuildingDefinitionId, BuildingNavigationBlueprintCatalog, BuildingOwnership,
+    BuildingSource, DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource,
+    FootprintCatalog, InteriorProfileCatalog, InventoryCatalogCtx, InventoryProfileCatalog,
+    ItemCatalog, ItemCategoryCatalog, UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource,
+    WorldData, WorldPosition, create_dev_complete_building,
+    create_dev_complete_building_with_inventory, create_doodad, create_unit_with_inventory,
+    starter_inventory_profile_definitions, starter_item_category_definitions,
+    starter_item_definitions, try_activate_interior_if_complete,
 };
 
 use super::dev_mode::{DefinitionId, SpawnMode};
@@ -40,6 +41,8 @@ pub fn spawn_selected_at_position(
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
+    interior_catalog: &InteriorProfileCatalog,
+    nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
     inventory_ctx: &InventoryCatalogCtx<'_>,
     selected: Option<&DefinitionId>,
     position: WorldPosition,
@@ -116,9 +119,25 @@ pub fn spawn_selected_at_position(
                 )
             };
             match result {
-                Ok(_record) => DevSpawnOutcome::SpawnedBuilding {
-                    definition_id: definition_id.clone(),
-                },
+                Ok(record) => {
+                    let occupancy = crate::world::OccupancyCatalogs {
+                        doodad: doodad_catalog,
+                        building: building_catalog,
+                        footprint: footprint_catalog,
+                    };
+                    let _ = try_activate_interior_if_complete(
+                        world,
+                        building_catalog,
+                        interior_catalog,
+                        doodad_catalog,
+                        occupancy,
+                        nav_catalog,
+                        record.id,
+                    );
+                    DevSpawnOutcome::SpawnedBuilding {
+                        definition_id: definition_id.clone(),
+                    }
+                }
                 Err(error) => DevSpawnOutcome::AuthoringFailed(format!("{error:?}")),
             }
         }
@@ -135,6 +154,8 @@ pub fn spawn_by_mode_at_position(
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
+    interior_catalog: &InteriorProfileCatalog,
+    nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
     inventory_ctx: &InventoryCatalogCtx<'_>,
     mode: SpawnMode,
     definition_key: &str,
@@ -151,6 +172,8 @@ pub fn spawn_by_mode_at_position(
         doodad_catalog,
         building_catalog,
         footprint_catalog,
+        interior_catalog,
+        nav_catalog,
         inventory_ctx,
         Some(&selected),
         position,
@@ -216,6 +239,8 @@ mod tests {
             &doodad_catalog,
             &building_catalog,
             &footprint_catalog,
+            &InteriorProfileCatalog::default(),
+            None,
             &ctx,
             SpawnMode::Unit,
             "wolf",
@@ -245,6 +270,8 @@ mod tests {
             &doodad_catalog,
             &building_catalog,
             &footprint_catalog,
+            &InteriorProfileCatalog::default(),
+            None,
             &ctx,
             SpawnMode::Doodad,
             "tree_oak",

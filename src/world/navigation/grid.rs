@@ -1,20 +1,38 @@
-//! Logical navigation grid derived from terrain and obstacles (ADR-032).
+//! Navigation grid coordinates and cell walkability adapters (ADR-032).
 
 use bevy::prelude::*;
 
+use super::legality::query_navigation_point_legality;
+use crate::world::occupancy::{PassabilityAgent, PassabilityCatalogs, PassabilityResult};
 use crate::world::{
-    ChunkLayout, PassabilityAgent, PassabilityCatalogs, PassabilityResult, SlopeWalkability,
-    SpaceId, SpaceRegistry, WorldData, WorldPosition, classify_slope_walkability,
-    ground_position_in_space, ground_world_position, query_passability_at,
-    query_passability_in_space,
+    ChunkLayout, SpaceId, SpaceRegistry, WorldData, WorldPosition, ground_position_in_space,
+    ground_world_position,
 };
 
-/// Grid configuration for pathfinding (ADR-032).
-#[derive(Debug, Clone, Copy, PartialEq, Reflect, Resource)]
+/// Grid coordinate in navigation cell space.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct GridCoord {
+    pub x: i32,
+    pub z: i32,
+}
+
+impl GridCoord {
+    pub fn new(x: i32, z: i32) -> Self {
+        Self { x, z }
+    }
+}
+
+/// Agent parameters for navigation queries.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct NavigationAgent {
+    pub radius_meters: f32,
+    pub max_slope_degrees: f32,
+}
+
+/// Navigation grid configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Resource, Reflect)]
 pub struct NavigationConfig {
-    /// Distance between adjacent navigation cell centers on the surface (meters).
     pub cell_spacing_meters: f32,
-    /// Distance between adjacent navigation cell centers in interior spaces (meters).
     pub interior_cell_spacing_meters: f32,
 }
 
@@ -28,8 +46,7 @@ impl Default for NavigationConfig {
 }
 
 impl NavigationConfig {
-    /// Effective cell spacing for pathfinding in `space_id`.
-    pub fn cell_spacing_for_space(&self, space_id: crate::world::SpaceId) -> f32 {
+    pub fn cell_spacing_for_space(&self, space_id: SpaceId) -> f32 {
         if space_id.is_surface() {
             self.cell_spacing_meters
         } else {
@@ -37,48 +54,14 @@ impl NavigationConfig {
         }
     }
 
-    /// Config with [`cell_spacing_meters`] set to the effective spacing for `space_id`.
-    pub fn config_for_space(&self, space_id: crate::world::SpaceId) -> Self {
-        Self {
+    pub fn config_for_space(&self, space_id: SpaceId) -> NavigationConfig {
+        NavigationConfig {
             cell_spacing_meters: self.cell_spacing_for_space(space_id),
             interior_cell_spacing_meters: self.interior_cell_spacing_meters,
         }
     }
-
-    pub fn validate(&self) -> Result<(), &'static str> {
-        if !(self.cell_spacing_meters > 0.0) || !self.cell_spacing_meters.is_finite() {
-            return Err("surface cell spacing must be finite and positive");
-        }
-        if !(self.interior_cell_spacing_meters > 0.0)
-            || !self.interior_cell_spacing_meters.is_finite()
-        {
-            return Err("interior cell spacing must be finite and positive");
-        }
-        Ok(())
-    }
 }
 
-/// Agent footprint and terrain limits used by pathfinding and LOS checks.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct NavigationAgent {
-    pub radius_meters: f32,
-    pub max_slope_degrees: f32,
-}
-
-/// Integer grid coordinate in navigation space (global XZ / spacing).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct GridCoord {
-    pub x: i32,
-    pub z: i32,
-}
-
-impl GridCoord {
-    pub const fn new(x: i32, z: i32) -> Self {
-        Self { x, z }
-    }
-}
-
-/// Convert global XZ to the containing navigation cell.
 pub fn grid_coord_at_global_xz(global: Vec3, config: NavigationConfig) -> GridCoord {
     let spacing = config.cell_spacing_meters;
     GridCoord::new(
@@ -92,10 +75,10 @@ pub fn grid_coord_at_position(
     layout: ChunkLayout,
     config: NavigationConfig,
 ) -> GridCoord {
-    grid_coord_at_global_xz(position.to_global(layout), config)
+    let global = position.to_global(layout);
+    grid_coord_at_global_xz(global, config)
 }
 
-/// Cell center in global XZ (Y filled by terrain grounding).
 pub fn grid_cell_center_global(coord: GridCoord, config: NavigationConfig) -> Vec3 {
     let spacing = config.cell_spacing_meters;
     Vec3::new(
@@ -127,7 +110,13 @@ pub fn is_position_walkable(
         return false;
     };
     matches!(
-        query_passability_at(world, catalogs, grounded, PassabilityAgent::from(agent),),
+        query_navigation_point_legality(
+            world,
+            catalogs,
+            grounded,
+            PassabilityAgent::from(agent),
+            SpaceId::SURFACE,
+        ),
         PassabilityResult::Passable { .. }
     )
 }
@@ -150,7 +139,32 @@ pub fn cell_walkability_sample_globals(
     ]
 }
 
+fn point_legal_in_space(
+    world: &WorldData,
+    space_registry: &SpaceRegistry,
+    catalogs: PassabilityCatalogs<'_>,
+    position: WorldPosition,
+    agent: NavigationAgent,
+    space_id: SpaceId,
+) -> bool {
+    let Some(grounded) = ground_position_in_space(world, space_registry, space_id, position) else {
+        return false;
+    };
+    matches!(
+        query_navigation_point_legality(
+            world,
+            catalogs,
+            grounded,
+            PassabilityAgent::from(agent),
+            space_id,
+        ),
+        PassabilityResult::Passable { .. }
+    )
+}
+
 /// Whether a navigation cell is walkable for an agent (center + inset cardinal samples).
+///
+/// Grid search adapter: ALL inset samples must pass universal point legality.
 pub fn is_cell_walkable(
     world: &WorldData,
     catalogs: PassabilityCatalogs<'_>,
@@ -161,7 +175,14 @@ pub fn is_cell_walkable(
     let layout = world.layout();
     for global in cell_walkability_sample_globals(coord, config, agent.radius_meters) {
         let position = WorldPosition::from_global(global, layout);
-        if !is_position_walkable(world, catalogs, position, agent) {
+        if !point_legal_in_space(
+            world,
+            world.space_registry(),
+            catalogs,
+            position,
+            agent,
+            SpaceId::SURFACE,
+        ) {
             return false;
         }
     }
@@ -169,54 +190,21 @@ pub fn is_cell_walkable(
 }
 
 /// Whether a navigation cell is walkable in a specific space (NV1.3).
+///
+/// Grid search adapter: ANY inset sample passing universal point legality marks the cell usable.
 pub fn is_cell_walkable_in_space(
     world: &WorldData,
-    space_registry: &crate::world::SpaceRegistry,
+    space_registry: &SpaceRegistry,
     catalogs: PassabilityCatalogs<'_>,
     config: NavigationConfig,
     agent: NavigationAgent,
     coord: GridCoord,
-    space_id: crate::world::SpaceId,
+    space_id: SpaceId,
 ) -> bool {
     let layout = world.layout();
-    let samples = cell_walkability_sample_globals(coord, config, agent.radius_meters);
-    if space_id.is_surface() {
-        for global in samples {
-            let position = WorldPosition::from_global(global, layout);
-            let Some(grounded) =
-                ground_position_in_space(world, space_registry, space_id, position)
-            else {
-                continue;
-            };
-            if is_position_walkable(world, catalogs, grounded, agent)
-                || crate::world::position_in_surface_entrance_portal(
-                    world.space_registry(),
-                    layout,
-                    grounded,
-                )
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    for global in samples {
+    for global in cell_walkability_sample_globals(coord, config, agent.radius_meters) {
         let position = WorldPosition::from_global(global, layout);
-        let Some(grounded) = ground_position_in_space(world, space_registry, space_id, position)
-        else {
-            continue;
-        };
-        if matches!(
-            query_passability_in_space(
-                world,
-                catalogs,
-                grounded,
-                PassabilityAgent::from(agent),
-                space_id,
-            ),
-            PassabilityResult::Passable { .. }
-        ) {
+        if point_legal_in_space(world, space_registry, catalogs, position, agent, space_id) {
             return true;
         }
     }
@@ -224,9 +212,6 @@ pub fn is_cell_walkable_in_space(
 }
 
 /// Resolve a walkable navigation cell for a grounded endpoint.
-///
-/// When the position is passable but cell-center sampling rejects the nominal cell
-/// (common near portal triggers and polygon edges), search outward deterministically.
 pub fn resolve_path_endpoint_cell(
     world: &WorldData,
     space_registry: &SpaceRegistry,
@@ -317,6 +302,7 @@ pub fn neighbor_step_cost(dx: i32, dz: i32, cell_spacing_meters: f32) -> f32 {
     unit * cell_spacing_meters
 }
 
+/// Grid-search diagonal corner clearance: both cardinal neighbor cells must be usable.
 pub fn diagonal_corner_clear(
     world: &WorldData,
     catalogs: PassabilityCatalogs<'_>,
@@ -335,25 +321,24 @@ pub fn diagonal_corner_clear(
         && is_cell_walkable(world, catalogs, config, agent, cardinal_b)
 }
 
-/// Diagonal corner clearance within a navigation space (IN-11e).
+/// Diagonal corner clearance within a navigation space (IN-11gG).
 pub fn diagonal_corner_clear_in_space(
     world: &WorldData,
-    space_registry: &crate::world::SpaceRegistry,
+    space_registry: &SpaceRegistry,
     catalogs: PassabilityCatalogs<'_>,
     config: NavigationConfig,
     agent: NavigationAgent,
     from: GridCoord,
     dx: i32,
     dz: i32,
-    space_id: crate::world::SpaceId,
-    layout: crate::world::ChunkLayout,
+    space_id: SpaceId,
 ) -> bool {
     if dx == 0 || dz == 0 {
         return true;
     }
     let cardinal_a = GridCoord::new(from.x + dx, from.z);
     let cardinal_b = GridCoord::new(from.x, from.z + dz);
-    if !is_cell_walkable_in_space(
+    is_cell_walkable_in_space(
         world,
         space_registry,
         catalogs,
@@ -361,7 +346,7 @@ pub fn diagonal_corner_clear_in_space(
         agent,
         cardinal_a,
         space_id,
-    ) || !is_cell_walkable_in_space(
+    ) && is_cell_walkable_in_space(
         world,
         space_registry,
         catalogs,
@@ -369,14 +354,25 @@ pub fn diagonal_corner_clear_in_space(
         agent,
         cardinal_b,
         space_id,
-    ) {
-        return false;
-    }
+    )
+}
+
+/// Whether universal segment legality permits a grid neighbor transition.
+pub fn grid_neighbor_transition_legal_in_space(
+    world: &WorldData,
+    space_registry: &SpaceRegistry,
+    catalogs: PassabilityCatalogs<'_>,
+    config: NavigationConfig,
+    agent: NavigationAgent,
+    from: GridCoord,
+    to: GridCoord,
+    space_id: SpaceId,
+    layout: ChunkLayout,
+) -> bool {
+    use super::legality::query_navigation_segment_legality;
     let space_config = config.config_for_space(space_id);
-    let from_global = grid_cell_center_global(from, space_config);
-    let to_global = grid_cell_center_global(GridCoord::new(from.x + dx, from.z + dz), space_config);
-    let from_pos = WorldPosition::from_global(from_global, layout);
-    let to_pos = WorldPosition::from_global(to_global, layout);
+    let from_pos = WorldPosition::from_global(grid_cell_center_global(from, space_config), layout);
+    let to_pos = WorldPosition::from_global(grid_cell_center_global(to, space_config), layout);
     let Some(from_grounded) = ground_position_in_space(world, space_registry, space_id, from_pos)
     else {
         return false;
@@ -385,21 +381,21 @@ pub fn diagonal_corner_clear_in_space(
     else {
         return false;
     };
-    if space_id.is_surface() {
-        return true;
-    }
-    crate::world::interior_segment_respects_region_boundary(
-        world.building_navigation_runtime(),
+    query_navigation_segment_legality(
+        world,
         space_registry,
-        layout,
+        catalogs,
+        config,
+        space_id,
+        agent,
         from_grounded,
         to_grounded,
-        space_id,
-        agent.radius_meters,
+        layout,
     )
+    .is_legal()
 }
 
-/// Whether a grounded position is walkable in a specific space (NV1.3 / IN-03).
+/// Whether a grounded position is walkable in a specific navigation space.
 pub fn is_position_walkable_in_space(
     world: &WorldData,
     space_registry: &SpaceRegistry,
@@ -408,28 +404,7 @@ pub fn is_position_walkable_in_space(
     agent: NavigationAgent,
     space_id: SpaceId,
 ) -> bool {
-    let Some(grounded) = ground_position_in_space(world, space_registry, space_id, position) else {
-        return false;
-    };
-    let layout = world.layout();
-    if space_id.is_surface() {
-        return is_position_walkable(world, catalogs, grounded, agent)
-            || crate::world::position_in_surface_entrance_portal(
-                world.space_registry(),
-                layout,
-                grounded,
-            );
-    }
-    matches!(
-        query_passability_in_space(
-            world,
-            catalogs,
-            grounded,
-            PassabilityAgent::from(agent),
-            space_id,
-        ),
-        PassabilityResult::Passable { .. }
-    )
+    point_legal_in_space(world, space_registry, catalogs, position, agent, space_id)
 }
 
 #[cfg(test)]

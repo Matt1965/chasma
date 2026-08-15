@@ -283,3 +283,30 @@ Avoid:
 - unnecessary complexity
 
 When uncertainty exists, choose the solution that preserves architectural flexibility.
+
+---
+
+# Building navigation invariants
+
+**Full contract:** [docs/building-navigation-authority.md](docs/building-navigation-authority.md)
+
+- **One universal movement-legality contract** — all consumers (planner, simplifier, executor, Blocked Area) answer “can agent move A→B?” with the same semantics.
+- Navigation Editor **authors geometry**; it does **not** own pathfinding or a separate navigation system.
+- Blueprint exists → blueprint is building’s **sole** navigation authority. **No blueprint → ghost** (no building-specific blockers).
+- Generated/default blueprint counts the same as authored once active.
+- Region boundary **blocks** by default; **Entrance = intentional opening + metadata** (not a passability exemption).
+- **Portal = derived connection metadata** through an opening (not a magic passable circle).
+- Planner, simplifier, and executor must **not** invent separate legality rules.
+- **Blocked Area** is the primary current navigation diagnostic (no unit/path required).
+- Selected Unit Path and Runtime Entrances are **not** core Navigation Editor workflow.
+- Cold load runtime topology must match no-op Save/Apply for the same blueprint data.
+- Doodad/unit collision is not the building fallback. Render geometry never blocks navigation.
+
+# Debugging escalation (navigation)
+
+- First clear bug: narrow fix acceptable when cause and ownership are proven.
+- If the first fix fails: **stop patching** — trace the live call chain and identify the first wrong authority.
+- If a supposedly fixed issue returns: **mandatory forensic phase** before more code changes.
+- Real-game failure overrides a green helper test — find where the vertical path diverges.
+- Do not solve ownership conflicts by stacking exemptions.
+- “Already attempted” means increase rigor (forensics, vertical tests), not prompt size.

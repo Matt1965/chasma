@@ -256,7 +256,7 @@ pub fn apply_building_dev_action(
                 &params.interior_catalog,
                 &params.doodad_catalog,
                 occ,
-                None,
+                Some(&params.nav_blueprint_catalog),
                 building_id,
                 BuildingLifecycleState::Complete,
                 1.0,
@@ -271,6 +271,7 @@ pub fn apply_building_dev_action(
                 &params.interior_catalog,
                 &params.doodad_catalog,
                 occ,
+                Some(&params.nav_blueprint_catalog),
                 building_id,
                 0.1,
             );

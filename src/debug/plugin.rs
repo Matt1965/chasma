@@ -51,14 +51,15 @@ impl Plugin for DebugOverlayPlugin {
             use super::settings::{
                 run_debug_blueprint_overlay, run_debug_combat_overlay, run_debug_formation_overlay,
                 run_debug_intent_overlay, run_debug_interaction_overlay,
-                run_debug_navigation_overlay, run_debug_path_overlay,
-                run_debug_runtime_entrance_overlay, run_debug_selection_overlay,
-                run_debug_steering_overlay,
+                run_debug_interior_clearance_overlay, run_debug_navigation_overlay,
+                run_debug_path_overlay, run_debug_runtime_entrance_overlay,
+                run_debug_selection_overlay, run_debug_steering_overlay,
             };
 
             app.init_resource::<InteractionDebugSnapshot>()
                 .init_resource::<super::overlay::NavigationMaskCache>()
                 .init_resource::<super::overlay::NavigationMaskDrawStats>()
+                .init_resource::<super::overlay::AuthoredBlueprintOverlayTrace>()
                 .init_resource::<UnitPathDiagnosticStore>()
                 .init_resource::<super::overlay_diagnostics::NavigationOverlayDiagnostics>()
                 .add_systems(Startup, setup_navigation_mask_overlay_assets)
@@ -78,7 +79,8 @@ impl Plugin for DebugOverlayPlugin {
                         draw_navigation_debug_overlay.run_if(run_debug_navigation_overlay),
                         sync_navigation_mask_meshes,
                         draw_blueprint_debug_overlay.run_if(run_debug_blueprint_overlay),
-                        draw_interior_clearance_overlay.run_if(run_debug_blueprint_overlay),
+                        draw_interior_clearance_overlay
+                            .run_if(run_debug_interior_clearance_overlay),
                         draw_runtime_entrance_overlay.run_if(run_debug_runtime_entrance_overlay),
                         draw_formation_debug_overlay.run_if(run_debug_formation_overlay),
                         draw_steering_debug_overlay.run_if(run_debug_steering_overlay),

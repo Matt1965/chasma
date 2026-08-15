@@ -4,7 +4,7 @@
 
 use crate::world::combat::{AttackTargetingPolicy, classify_unit_target};
 use crate::world::{
-    UnitId, UnitOrder, WorldData, WorldPosition, ground_position_in_space,
+    UnitId, UnitOrder, WorldData, WorldPosition, ground_position_in_space, ground_world_position,
     interior_position_walkable, resolve_navigation_space_at_position,
 };
 
@@ -157,6 +157,146 @@ pub fn resolve_world_click_to_order(
 
     let interaction = query_world_interaction(&ctx.query, position)?;
     Some(resolve_interaction_to_order(&interaction))
+}
+
+#[cfg(feature = "dev")]
+fn interaction_order_plan_label(plan: &InteractionOrderPlan) -> &'static str {
+    match plan {
+        InteractionOrderPlan::MoveTo { .. } => "MoveTo",
+        InteractionOrderPlan::Attack { .. } => "Attack",
+        InteractionOrderPlan::AttackMove { .. } => "AttackMove",
+        InteractionOrderPlan::ConstructBuilding { .. } => "ConstructBuilding",
+        InteractionOrderPlan::OperateWorkstation { .. } => "OperateWorkstation",
+        InteractionOrderPlan::AccessContainer { .. } => "AccessContainer",
+        InteractionOrderPlan::AccessTreasury { .. } => "AccessTreasury",
+        InteractionOrderPlan::NoOp => "NoOp",
+    }
+}
+
+/// Dev-only: [`resolve_world_click_to_order`] with bounded inside-move trace hooks (IN-11gG-T).
+#[cfg(feature = "dev")]
+pub fn trace_and_resolve_world_click_to_order(
+    world: &mut WorldData,
+    doodad_catalog: &crate::world::DoodadCatalog,
+    building_catalog: &crate::world::BuildingCatalog,
+    footprint_catalog: &crate::world::FootprintCatalog,
+    interaction_catalog: &crate::world::BuildingInteractionProfileCatalog,
+    unit_catalog: &crate::world::UnitCatalog,
+    weapon_catalog: &crate::world::WeaponCatalog,
+    selected_units: &[UnitId],
+    position: WorldPosition,
+) -> Option<InteractionOrderPlan> {
+    if selected_units.is_empty() {
+        return None;
+    }
+
+    let unit_id = selected_units[0];
+    let trace_active = world.inside_move_trace().is_active_for(unit_id);
+
+    if trace_active {
+        if let Some(grounded) = ground_world_position(world, position) {
+            crate::world::inside_move_trace::record_click_terrain_grounded(
+                world, unit_id, grounded,
+            );
+        }
+    }
+
+    let current_space = world
+        .get_unit(unit_id)
+        .map(|record| record.current_space_id);
+    if let Some(current_space) = current_space {
+        if current_space.is_surface() {
+            if trace_active {
+                crate::world::inside_move_trace::record_interior_click_skipped(
+                    world,
+                    unit_id,
+                    "tracked_space_surface",
+                );
+            }
+        } else {
+            if trace_active {
+                crate::world::inside_move_trace::record_interior_click_attempt(world, unit_id);
+            }
+            let interior_plan = {
+                let ctx = InteractionResolveContext::new(
+                    world,
+                    doodad_catalog,
+                    building_catalog,
+                    footprint_catalog,
+                    interaction_catalog,
+                    unit_catalog,
+                    weapon_catalog,
+                    selected_units,
+                );
+                resolve_interior_commanded_move_click(&ctx, position)
+            };
+            if let Some(plan) = interior_plan {
+                if trace_active {
+                    crate::world::inside_move_trace::record_resolved_order_plan(
+                        world,
+                        unit_id,
+                        interaction_order_plan_label(&plan),
+                    );
+                }
+                #[cfg(feature = "dev")]
+                if world.interior_exit_click_trace().is_active_for(unit_id) {
+                    if let InteractionOrderPlan::MoveTo { target } = plan {
+                        crate::world::interior_exit_click_trace::record_interior_resolver_after_plan(
+                            world,
+                            unit_id,
+                            position,
+                            current_space,
+                            target,
+                        );
+                    }
+                }
+                return Some(plan);
+            }
+        }
+    }
+
+    if trace_active {
+        let probe_position = ground_world_position(world, position).unwrap_or(position);
+        crate::world::inside_move_trace::record_interior_nav_probe(world, unit_id, probe_position);
+    }
+
+    let interaction = {
+        let ctx = InteractionResolveContext::new(
+            world,
+            doodad_catalog,
+            building_catalog,
+            footprint_catalog,
+            interaction_catalog,
+            unit_catalog,
+            weapon_catalog,
+            selected_units,
+        );
+        query_world_interaction(&ctx.query, position)?
+    };
+    if trace_active {
+        crate::world::inside_move_trace::record_interaction_query(
+            world,
+            unit_id,
+            interaction.interaction_type,
+            interaction.valid,
+        );
+    }
+    let plan = resolve_interaction_to_order(&interaction);
+    if trace_active {
+        crate::world::inside_move_trace::record_resolved_order_plan(
+            world,
+            unit_id,
+            interaction_order_plan_label(&plan),
+        );
+        if matches!(plan, InteractionOrderPlan::NoOp) {
+            crate::world::inside_move_trace::finish_command_resolution_failure(
+                world,
+                unit_id,
+                "resolved_no_op",
+            );
+        }
+    }
+    Some(plan)
 }
 
 /// Interior units command moves on their floor plane, bypassing building interactable NoOp (IN-11eR).

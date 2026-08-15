@@ -5,7 +5,8 @@ use bevy::prelude::*;
 
 use crate::world::{ChunkCoord, ChunkExtent, ChunkLayout, WorldConfig, WorldData};
 
-use super::material::build_water_material;
+use super::material::build_ocean_material;
+use super::ocean_material::EnvironmentOceanMaterial;
 use super::settings::WaterSettings;
 
 /// Marker for the environment-owned water surface (at most one in E11).
@@ -86,7 +87,7 @@ impl AuthoredTerrainMeters {
 #[derive(Resource, Debug, Default)]
 pub struct WaterSpawnState {
     pub entity: Option<Entity>,
-    pub material: Option<Handle<StandardMaterial>>,
+    pub material: Option<Handle<EnvironmentOceanMaterial>>,
     pub mesh: Option<Handle<Mesh>>,
     pub cached_width: f32,
     pub cached_depth: f32,
@@ -188,7 +189,7 @@ pub fn ensure_environment_water(
     config: Res<WorldConfig>,
     mut state: ResMut<WaterSpawnState>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<EnvironmentOceanMaterial>>,
     mut planes: Query<(Entity, &mut Visibility), With<EnvironmentWaterPlane>>,
 ) {
     if !settings.enabled {
@@ -239,7 +240,7 @@ pub fn ensure_environment_water(
         }
 
         let mesh = meshes.add(Rectangle::new(layout.width, layout.depth));
-        let material = materials.add(build_water_material(&settings));
+        let material = materials.add(build_ocean_material(&settings));
         let entity = commands
             .spawn((
                 EnvironmentWaterPlane,
@@ -284,19 +285,19 @@ pub fn log_runtime_water_diagnostic_once(
     config: Res<WorldConfig>,
     mut state: ResMut<WaterSpawnState>,
     meshes: Res<Assets<Mesh>>,
-    materials: Res<Assets<StandardMaterial>>,
+    materials: Res<Assets<EnvironmentOceanMaterial>>,
     planes: Query<
         (
             Entity,
             &Transform,
             &Mesh3d,
-            &MeshMaterial3d<StandardMaterial>,
+            &MeshMaterial3d<EnvironmentOceanMaterial>,
         ),
         With<EnvironmentWaterPlane>,
     >,
     all_meshes: Query<(
         Entity,
-        &MeshMaterial3d<StandardMaterial>,
+        &MeshMaterial3d<EnvironmentOceanMaterial>,
         Option<&EnvironmentWaterPlane>,
     )>,
 ) {
@@ -372,9 +373,8 @@ pub fn log_runtime_water_diagnostic_once(
             } else if let (Some(expected), Some(other)) =
                 (materials.get(&water_mat), materials.get(&mesh_mat.0))
             {
-                if expected.base_color == other.base_color
-                    && expected.alpha_mode == other.alpha_mode
-                    && approx_dim(expected.perceptual_roughness, other.perceptual_roughness)
+                if expected.params.shallow_color == other.params.shallow_color
+                    && expected.params.deep_color == other.params.deep_color
                 {
                     unmarked_same_material += 1;
                 }
@@ -444,11 +444,11 @@ pub fn sync_environment_water_presentation(
     world: Option<Res<WorldData>>,
     config: Res<WorldConfig>,
     state: Res<WaterSpawnState>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<EnvironmentOceanMaterial>>,
     mut planes: Query<
         (
             &mut Transform,
-            &mut MeshMaterial3d<StandardMaterial>,
+            &mut MeshMaterial3d<EnvironmentOceanMaterial>,
             &mut Visibility,
         ),
         With<EnvironmentWaterPlane>,
@@ -473,7 +473,7 @@ pub fn sync_environment_water_presentation(
     *visibility = Visibility::Visible;
 
     if let Some(material) = materials.get_mut(&mesh_material.0) {
-        *material = build_water_material(&settings);
+        *material = build_ocean_material(&settings);
     }
 }
 
@@ -511,40 +511,6 @@ fn log_water_configuration(
     }
 }
 
-#[cfg(feature = "dev")]
-pub fn water_dev_keyboard(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    dev_state: Res<crate::dev::DevModeState>,
-    mut settings: ResMut<WaterSettings>,
-) {
-    if !dev_state.enabled {
-        return;
-    }
-
-    let shift = keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight);
-
-    if shift && keyboard.just_pressed(KeyCode::KeyW) {
-        settings.enabled = !settings.enabled;
-        bevy::log::info!(
-            target: "chasma::environment::water",
-            "Water {}",
-            if settings.enabled { "enabled" } else { "disabled" }
-        );
-    }
-    if shift && keyboard.just_pressed(KeyCode::PageUp) {
-        settings.water_level += 1.0;
-    }
-    if shift && keyboard.just_pressed(KeyCode::PageDown) {
-        settings.water_level -= 1.0;
-    }
-    if shift && keyboard.just_pressed(KeyCode::Equal) {
-        settings.alpha = (settings.alpha + 0.05).min(1.0);
-    }
-    if shift && keyboard.just_pressed(KeyCode::Minus) {
-        settings.alpha = (settings.alpha - 0.05).max(0.05);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -567,7 +533,7 @@ mod tests {
         app.init_resource::<WaterSpawnState>();
         app.init_resource::<WorldConfig>();
         app.init_resource::<Assets<Mesh>>();
-        app.init_resource::<Assets<StandardMaterial>>();
+        app.init_resource::<Assets<EnvironmentOceanMaterial>>();
         app
     }
 

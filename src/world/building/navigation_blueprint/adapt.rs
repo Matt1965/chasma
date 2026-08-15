@@ -43,6 +43,10 @@ pub struct BlueprintPortalTemplate {
     pub to_local_position: Vec3,
     pub bidirectional: bool,
     pub enabled: bool,
+    /// Owning region polygon edge index (exterior entrances only).
+    pub entrance_owning_edge_index: Option<u32>,
+    /// Boundary threshold on the owning edge in blueprint-local XZ (exterior entrances only).
+    pub entrance_threshold_local_xz: Option<Vec2>,
 }
 
 fn resolve_region_space_key(
@@ -111,12 +115,24 @@ pub fn blueprint_portal_templates(
             continue;
         };
         let threshold = Vec2::new(entrance.local_position_xz[0], entrance.local_position_xz[1]);
-        let exterior = super::entrance_geometry::exterior_staging_for_entrance(
-            entrance,
-            region,
-            super::entrance_geometry::DEFAULT_EXTERIOR_STAGING_OFFSET,
+        let projection = super::entrance_geometry::project_point_to_boundary(
+            &region.walkable_outline.vertices_xz,
+            threshold,
+            super::entrance_geometry::ENTRANCE_CORNER_MARGIN,
         )
-        .unwrap_or(threshold);
+        .unwrap_or_else(|| {
+            panic!(
+                "entrance `{}` on blueprint `{}` is not anchored to region `{}` boundary",
+                entrance.key,
+                blueprint.id.as_str(),
+                region.key
+            )
+        });
+        let exterior = super::entrance_geometry::derive_exterior_staging_xz(
+            projection.point,
+            projection.outward_normal,
+            super::entrance_geometry::DEFAULT_EXTERIOR_STAGING_OFFSET,
+        );
         portals.push(BlueprintPortalTemplate {
             key: entrance.key.clone(),
             portal_type: PortalType::ExteriorEntrance,
@@ -136,6 +152,8 @@ pub fn blueprint_portal_templates(
             ),
             bidirectional: entrance.bidirectional,
             enabled: true,
+            entrance_owning_edge_index: Some(projection.edge_index as u32),
+            entrance_threshold_local_xz: Some(projection.point),
         });
     }
     for connection in &blueprint.region_connections {
@@ -157,8 +175,9 @@ pub fn blueprint_portal_templates(
             ),
             bidirectional: connection.bidirectional,
             enabled: connection.enabled,
+            entrance_owning_edge_index: None,
+            entrance_threshold_local_xz: None,
         });
-        let _ = connection.kind; // Doorway vs OpenArch affects validation only; runtime is Doorway.
         if connection.kind == NavigationRegionConnectionKind::OpenArch {
             // OpenArch uses the same portal type; door state is governed by `enabled` only.
         }
@@ -195,6 +214,8 @@ pub fn blueprint_portal_templates(
             ),
             bidirectional: transition.bidirectional,
             enabled: true,
+            entrance_owning_edge_index: None,
+            entrance_threshold_local_xz: None,
         });
     }
     portals

@@ -15,6 +15,7 @@ pub struct NavigationOverlayDiagnostics {
     pub authored_blueprint: String,
     pub runtime_entrances: String,
     pub selected_unit_path: String,
+    pub navigation_authority: String,
     pub authored_runtime_summary: String,
 }
 
@@ -26,6 +27,7 @@ pub fn sync_navigation_overlay_diagnostics(
     selection: Res<SelectedUnits>,
     inspection: Res<BlueprintInspectionState>,
     inspector: Res<WorldInspectorState>,
+    registry: Res<crate::dev::DevWindowRegistry>,
     path_store: Res<UnitPathDiagnosticStore>,
     mut diagnostics: ResMut<NavigationOverlayDiagnostics>,
 ) {
@@ -33,6 +35,11 @@ pub fn sync_navigation_overlay_diagnostics(
         .blueprint_snapshot
         .as_ref()
         .and_then(|snap| snap.blueprint_id.clone());
+    let persisted_regions = inspector
+        .blueprint_snapshot
+        .as_ref()
+        .and_then(|snap| snap.resolved_blueprint.as_ref())
+        .map(|bp| bp.floors.iter().map(|floor| floor.regions.len()).sum());
     let persisted_entrances = inspector
         .blueprint_snapshot
         .as_ref()
@@ -44,6 +51,7 @@ pub fn sync_navigation_overlay_diagnostics(
         &world_selection,
         &inspection,
         persisted_blueprint_id.as_deref(),
+        crate::debug::settings::navigation_editor_authored_session(&inspection, &registry),
     );
     diagnostics.runtime_entrances =
         runtime_entrances_status(settings.nav_entrances, &world, &world_selection);
@@ -54,8 +62,19 @@ pub fn sync_navigation_overlay_diagnostics(
         &world_selection,
         &path_store,
     );
-    diagnostics.authored_runtime_summary =
-        authored_runtime_comparison(&world, &world_selection, &inspection, persisted_entrances);
+    diagnostics.authored_runtime_summary = authored_runtime_comparison(
+        &world,
+        &world_selection,
+        &inspection,
+        persisted_regions,
+        persisted_entrances,
+    );
+    diagnostics.navigation_authority = navigation_authority_status(
+        settings.nav_blockers || settings.nav_blueprint,
+        &world,
+        &world_selection,
+        &inspector,
+    );
 }
 
 fn authored_blueprint_status(
@@ -63,7 +82,11 @@ fn authored_blueprint_status(
     world_selection: &WorldSelectionState,
     inspection: &BlueprintInspectionState,
     persisted_blueprint_id: Option<&str>,
+    editor_session: bool,
 ) -> String {
+    if editor_session {
+        return "Authored Blueprint: Navigation Editor session (geometry visible)".into();
+    }
     if !enabled {
         return String::new();
     }
@@ -161,10 +184,63 @@ fn selected_unit_path_status(
     "Selected Unit Path: Selected unit has no active or recorded path.".into()
 }
 
+fn navigation_authority_status(
+    enabled: bool,
+    world: &WorldData,
+    world_selection: &WorldSelectionState,
+    inspector: &WorldInspectorState,
+) -> String {
+    if !enabled {
+        return String::new();
+    }
+    let building_id = (world_selection.category == WorldSelectionCategory::Building)
+        .then_some(world_selection.building_id)
+        .flatten();
+    if building_id.is_none() {
+        return "Navigation Authority: Select a building.".into();
+    }
+    let building_id = building_id.expect("checked");
+    match crate::world::building_navigation_movement_authority(world, building_id) {
+        crate::world::BuildingNavigationMovementAuthority::BlueprintControlled(_) => {
+            let runtime = world.building_navigation_runtime().get(building_id);
+            let blueprint_id = runtime
+                .map(|r| r.blueprint_id.as_str())
+                .unwrap_or("unknown");
+            let region_count = runtime.map(|r| r.regions.len()).unwrap_or(0);
+            let entrance_count = inspector
+                .blueprint_snapshot
+                .as_ref()
+                .and_then(|snap| snap.resolved_blueprint.as_ref())
+                .map(|bp| bp.entrances.len())
+                .unwrap_or(0);
+            let runtime_portals = world
+                .space_registry()
+                .portals()
+                .filter(|(_, portal)| portal.owning_building_id == Some(building_id))
+                .filter(|(_, portal)| portal.portal_type == PortalType::ExteriorEntrance)
+                .count();
+            format!(
+                "Navigation Authority: Blueprint · id={blueprint_id} · regions={region_count} \
+                 entrances={entrance_count} · runtime regions={region_count} portals={runtime_portals}"
+            )
+        }
+        crate::world::BuildingNavigationMovementAuthority::Ghost => {
+            let definition = world
+                .get_building(building_id)
+                .map(|record| record.definition_id.as_str())
+                .unwrap_or("unknown");
+            format!(
+                "Navigation Authority: Ghost (no hydrated runtime blueprint) · definition={definition}"
+            )
+        }
+    }
+}
+
 fn authored_runtime_comparison(
     world: &WorldData,
     world_selection: &WorldSelectionState,
     inspection: &BlueprintInspectionState,
+    persisted_regions: Option<usize>,
     persisted_entrances: Option<usize>,
 ) -> String {
     let building_id = (world_selection.category == WorldSelectionCategory::Building)
@@ -174,11 +250,22 @@ fn authored_runtime_comparison(
         return String::new();
     }
     let building_id = building_id.expect("checked");
+    let authored_regions = inspection
+        .working_copy
+        .as_ref()
+        .map(|bp| bp.floors.iter().map(|floor| floor.regions.len()).sum())
+        .or(persisted_regions)
+        .unwrap_or(0);
     let authored_entrances = inspection
         .working_copy
         .as_ref()
         .map(|bp| bp.entrances.len())
         .or(persisted_entrances)
+        .unwrap_or(0);
+    let runtime_regions = world
+        .building_navigation_runtime()
+        .get(building_id)
+        .map(|runtime| runtime.regions.len())
         .unwrap_or(0);
     let runtime_portals = world
         .space_registry()
@@ -189,16 +276,19 @@ fn authored_runtime_comparison(
                 || portal.portal_type == PortalType::Doorway
         })
         .count();
-    let summary = if authored_entrances == runtime_portals {
+    let summary = if authored_regions == runtime_regions && authored_entrances == runtime_portals {
         "Match"
+    } else if runtime_regions == 0 && authored_regions > 0 {
+        "Activation missing"
     } else if runtime_portals == 0 && authored_entrances > 0 {
         "Activation missing"
-    } else if authored_entrances == 0 && runtime_portals > 0 {
+    } else if authored_regions == 0 && runtime_regions > 0 {
         "Runtime without authored"
     } else {
         "Mismatch"
     };
     format!(
-        "Authored: {authored_entrances} entrance(s) | Runtime: {runtime_portals} portal(s) | {summary}"
+        "Authored: {authored_regions} region(s) / {authored_entrances} entrance(s) | Runtime: \
+         {runtime_regions} region(s) / {runtime_portals} portal(s) | {summary}"
     )
 }

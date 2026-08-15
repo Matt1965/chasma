@@ -92,6 +92,14 @@ pub struct DevWorldCycleToggle;
 #[derive(Component, Debug, Clone, Copy)]
 pub struct DevWorldPauseToggle;
 
+/// Marker for the World window Water environment section (WATER-UI-1F).
+#[derive(Component, Debug, Clone, Copy)]
+pub struct DevWorldWaterSection;
+
+/// Toggle for [`crate::environment::WaterSettings::enabled`].
+#[derive(Component, Debug, Clone, Copy)]
+pub struct DevWorldWaterEnabledToggle;
+
 #[derive(Component, Debug, Clone, Copy)]
 pub struct DevWorldTimePresetButton {
     pub preset: WorldTimePreset,

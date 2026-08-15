@@ -7,11 +7,13 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use crate::camera::RtsCamera;
+use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::terrain::TerrainRenderAssets;
 use crate::ui::gameplay::{
     BuildModeState, InventoryUiState, PlayerHudHoverState, gameplay_input_blocked_by_hud,
 };
 use crate::units::UnitRenderEntity;
+use crate::units::input::SelectedUnits;
 use crate::units::input::{
     BoxSelectDrag, cursor_screen_position, cursor_world_ray, normalized_screen_rect,
     pick_unit_along_ray, pick_unit_command_target_along_ray, terrain_click_to_world_position,
@@ -55,7 +57,7 @@ impl Plugin for ClientPipelinePlugin {
 pub struct CollectUnitInputParams<'w> {
     pub mouse: Res<'w, ButtonInput<MouseButton>>,
     pub keyboard: Res<'w, ButtonInput<KeyCode>>,
-    pub world: Res<'w, WorldData>,
+    pub world: ResMut<'w, WorldData>,
     pub config: Res<'w, WorldConfig>,
     pub unit_catalog: Res<'w, UnitCatalog>,
     pub render_assets: Option<Res<'w, TerrainRenderAssets>>,
@@ -66,6 +68,8 @@ pub struct CollectUnitInputParams<'w> {
     pub inventory_ui: Res<'w, InventoryUiState>,
     pub build_mode: Res<'w, BuildModeState>,
     pub menu_block: Option<Res<'w, crate::menu::MenuInputBlock>>,
+    pub selected_units: Res<'w, SelectedUnits>,
+    pub world_selection: Res<'w, WorldSelectionState>,
 }
 
 impl CollectUnitInputParams<'_> {
@@ -171,20 +175,62 @@ pub fn collect_unit_input_intents(
 
         use crate::client::CommandTarget;
 
+        let interior_trace_unit = (params.world_selection.category
+            == WorldSelectionCategory::Units)
+            .then(|| params.world_selection.primary_unit(&params.selected_units))
+            .flatten()
+            .filter(|unit_id| {
+                params
+                    .world
+                    .get_unit(*unit_id)
+                    .is_some_and(|record| !record.current_space_id.is_surface())
+            });
+
+        if let Some(unit_id) = interior_trace_unit {
+            crate::world::interior_exit_click_trace::maybe_begin_session(
+                &mut params.world,
+                unit_id,
+                &ray,
+            );
+        }
+
         if let Some(unit_id) =
             pick_unit_command_target_along_ray(&ray, &params.world, &params.unit_catalog, &units)
         {
+            if interior_trace_unit == Some(unit_id) {
+                crate::world::interior_exit_click_trace::record_unit_target_click(
+                    &mut params.world,
+                    unit_id,
+                );
+            }
             params.queue.push(ClientIntent::ContextualCommand {
                 target: CommandTarget::Unit { unit_id },
             });
-        } else if let Some(click) =
-            terrain_click_to_world_position(&ray, &params.world, layout, vertical_scale)
-        {
-            params.queue.push(ClientIntent::ContextualCommand {
-                target: CommandTarget::Terrain {
-                    position: click.world_position,
-                },
-            });
+        } else {
+            let click =
+                terrain_click_to_world_position(&ray, &params.world, layout, vertical_scale);
+            if let Some(unit_id) = interior_trace_unit {
+                if click.is_none() {
+                    crate::world::interior_exit_click_trace::record_terrain_pick_failure(
+                        &mut params.world,
+                        unit_id,
+                    );
+                } else if let Some(click) = &click {
+                    crate::world::interior_exit_click_trace::record_terrain_pick_success(
+                        &mut params.world,
+                        unit_id,
+                        click.world_position,
+                        true,
+                    );
+                }
+            }
+            if let Some(click) = click {
+                params.queue.push(ClientIntent::ContextualCommand {
+                    target: CommandTarget::Terrain {
+                        position: click.world_position,
+                    },
+                });
+            }
         }
     }
 }

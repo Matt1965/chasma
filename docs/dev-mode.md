@@ -395,8 +395,8 @@ Dev Mode **Debug** toggles (master overlay must be on). Each category is indepen
 |--------|--------|
 | **Paths** | Active path polyline, start (blue) / end (red) markers, waypoint spheres (cyan; portal = magenta; active = yellow) |
 | **Navigation/Pathing Mask** | Whole-world navigable (green) and blocked (reason-colored) 4 m navigation cells from authoritative passability; no selection required |
-| **Nav blockers** | Blocked-only nav cells colored by passability reason (slope, building, doodad, …) |
-| **Nav footprints** | Building occupancy footprint outlines (highlighted when building selected in inspector) |
+| **Blocked Area** | Blocked-only nav cells from **current movement authority** (blueprint boundaries vs doodad/terrain; not legacy footprint for blueprint buildings or ghosts). See [building-navigation-authority.md](building-navigation-authority.md). |
+| **Nav footprints** | Building footprint outlines for **placement/diagnostic** context (not authoritative movement blocking when blueprint active). Highlighted when building selected. |
 | **Nav entrances** | Portal rings + lines to destination (highlighted for selected building) |
 | **Nav reservations** | Yellow occupancy cells reserved for construction |
 | **Nav occupancy** | Red static blocked occupancy cells |
