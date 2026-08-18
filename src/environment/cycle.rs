@@ -1,4 +1,4 @@
-//! Time-of-day lighting evaluation and Environment sync (ADR-052 E10).
+//! Time-of-day lighting evaluation and Environment sync (ADR-052 E10, SKY-1).
 
 use bevy::{core_pipeline::Skybox, light::GlobalAmbientLight, prelude::*};
 
@@ -9,6 +9,13 @@ use super::singleton::{
 };
 use super::skybox::SkyboxCamera;
 use super::time_of_day::TimeOfDaySettings;
+use super::visual_state::{
+    DEFAULT_SKY_PRESENTATION, EnvironmentVisualState, SkyColorPalette, SkyPresentation,
+    apply_visual_state_to_environment, evaluate_environment_visual_state,
+    update_environment_visual_state,
+};
+
+pub use super::visual_state::{daylight_factor, twilight_warmth};
 
 /// Computed lighting snapshot for one clock hour (testable, no ECS).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -21,110 +28,22 @@ pub struct TimeOfDayLighting {
     pub skybox_brightness: f32,
 }
 
-const DAY_DIRECTIONAL_COLOR: Color = Color::srgb(1.0, 0.97, 0.92);
-const TWILIGHT_DIRECTIONAL_COLOR: Color = Color::srgb(1.0, 0.72, 0.38);
-const NIGHT_DIRECTIONAL_COLOR: Color = Color::srgb(0.55, 0.58, 0.72);
-
-const DAY_AMBIENT_COLOR: Color = Color::srgb(0.85, 0.88, 0.95);
-const NIGHT_AMBIENT_COLOR: Color = Color::srgb(0.35, 0.38, 0.52);
-
-/// Smooth daylight factor in `[0, 1]` — peaks at solar noon between sunrise and sunset.
-pub fn daylight_factor(time_hours: f32, sunrise_hour: f32, sunset_hour: f32) -> f32 {
-    let t = TimeOfDaySettings::normalize_hours(time_hours);
-    if t < sunrise_hour || t >= sunset_hour {
-        return 0.0;
+impl From<EnvironmentVisualState> for TimeOfDayLighting {
+    fn from(visual: EnvironmentVisualState) -> Self {
+        Self {
+            directional_light_rotation: visual.directional_light_rotation,
+            directional_light_illuminance: visual.sun_illuminance,
+            directional_light_color: visual.sun_color,
+            ambient_brightness: visual.ambient_brightness,
+            ambient_color: visual.ambient_color,
+            skybox_brightness: visual.skybox_brightness,
+        }
     }
-    let noon = (sunrise_hour + sunset_hour) * 0.5;
-    let half_day = (sunset_hour - sunrise_hour) * 0.5;
-    if half_day <= f32::EPSILON {
-        return 0.0;
-    }
-    let x = (t - noon) / half_day;
-    (1.0 - x * x).max(0.0).sqrt()
-}
-
-/// Twilight warmth in `[0, 1]` — peaks near sunrise and sunset.
-pub fn twilight_warmth(time_hours: f32, sunrise_hour: f32, sunset_hour: f32) -> f32 {
-    let t = TimeOfDaySettings::normalize_hours(time_hours);
-    let dawn = 1.0 - (t - sunrise_hour).abs() / 1.5;
-    let dusk = 1.0 - (t - sunset_hour).abs() / 1.5;
-    dawn.max(dusk).clamp(0.0, 1.0)
-}
-
-fn lerp_f32(a: f32, b: f32, t: f32) -> f32 {
-    a + (b - a) * t.clamp(0.0, 1.0)
-}
-
-fn lerp_color(a: Color, b: Color, t: f32) -> Color {
-    let t = t.clamp(0.0, 1.0);
-    let [ar, ag, ab, aa] = a.to_srgba().to_f32_array();
-    let [br, bg, bb, ba] = b.to_srgba().to_f32_array();
-    Color::srgba(
-        lerp_f32(ar, br, t),
-        lerp_f32(ag, bg, t),
-        lerp_f32(ab, bb, t),
-        lerp_f32(aa, ba, t),
-    )
 }
 
 /// Evaluate lighting for the given settings without touching ECS.
 pub fn evaluate_time_of_day_lighting(settings: &TimeOfDaySettings) -> TimeOfDayLighting {
-    let daylight = daylight_factor(
-        settings.time_hours,
-        settings.sunrise_hour,
-        settings.sunset_hour,
-    );
-    let warmth = twilight_warmth(
-        settings.time_hours,
-        settings.sunrise_hour,
-        settings.sunset_hour,
-    );
-
-    // Twilight adds brightness even when daylight_factor is still low at dawn/dusk.
-    let effective_daylight = (daylight + warmth * settings.twilight_daylight_blend).clamp(0.0, 1.0);
-
-    let directional_light_illuminance = lerp_f32(
-        settings.night_directional_illuminance,
-        settings.noon_directional_illuminance,
-        effective_daylight,
-    );
-
-    let base_directional = lerp_color(
-        NIGHT_DIRECTIONAL_COLOR,
-        DAY_DIRECTIONAL_COLOR,
-        effective_daylight,
-    );
-    let directional_light_color = lerp_color(base_directional, TWILIGHT_DIRECTIONAL_COLOR, warmth);
-
-    let night_ambient = settings.noon_ambient_brightness * settings.night_ambient_multiplier;
-    let ambient_brightness = lerp_f32(
-        night_ambient,
-        settings.noon_ambient_brightness,
-        effective_daylight,
-    );
-    let ambient_color = lerp_color(NIGHT_AMBIENT_COLOR, DAY_AMBIENT_COLOR, effective_daylight);
-
-    let skybox_brightness = lerp_f32(
-        settings.night_skybox_brightness,
-        settings.noon_skybox_brightness,
-        effective_daylight,
-    );
-
-    let t = TimeOfDaySettings::normalize_hours(settings.time_hours);
-    let yaw = (t / 24.0) * std::f32::consts::TAU - std::f32::consts::FRAC_PI_2;
-    let pitch_min = settings.sun_pitch_min_deg.to_radians();
-    let pitch_max = settings.sun_pitch_max_deg.to_radians();
-    let pitch = lerp_f32(pitch_min, pitch_max, daylight);
-    let directional_light_rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, 0.0);
-
-    TimeOfDayLighting {
-        directional_light_rotation,
-        directional_light_illuminance,
-        directional_light_color,
-        ambient_brightness,
-        ambient_color,
-        skybox_brightness,
-    }
+    evaluate_environment_visual_state(settings, &SkyColorPalette::default()).into()
 }
 
 /// Write evaluated lighting into [`EnvironmentSettings`]. Returns false when cycle is disabled.
@@ -135,13 +54,8 @@ pub fn apply_time_of_day_to_settings(
     if !time_of_day.enabled {
         return false;
     }
-    let lighting = evaluate_time_of_day_lighting(time_of_day);
-    environment.directional_light_rotation = lighting.directional_light_rotation;
-    environment.directional_light_illuminance = lighting.directional_light_illuminance;
-    environment.directional_light_color = lighting.directional_light_color;
-    environment.ambient_brightness = lighting.ambient_brightness;
-    environment.ambient_color = lighting.ambient_color;
-    environment.skybox_brightness = lighting.skybox_brightness;
+    let visual = evaluate_environment_visual_state(time_of_day, &SkyColorPalette::default());
+    apply_visual_state_to_environment(environment, &visual);
     true
 }
 
@@ -190,8 +104,10 @@ pub fn sync_environment_presentation(
         });
     }
 
-    for mut skybox in &mut skyboxes {
-        skybox.brightness = settings.skybox_brightness;
+    if DEFAULT_SKY_PRESENTATION == SkyPresentation::StaticCubemap {
+        for mut skybox in &mut skyboxes {
+            skybox.brightness = settings.skybox_brightness;
+        }
     }
 }
 
@@ -413,5 +329,23 @@ mod tests {
             .map(|light| light.illuminance)
             .collect();
         assert_eq!(before, after);
+    }
+
+    #[test]
+    fn lighting_and_visual_state_share_sun_direction() {
+        let settings = TimeOfDaySettings {
+            time_hours: 9.0,
+            ..Default::default()
+        };
+        let lighting = evaluate_time_of_day_lighting(&settings);
+        let visual = evaluate_environment_visual_state(&settings, &SkyColorPalette::default());
+        assert_eq!(
+            lighting.directional_light_rotation,
+            visual.directional_light_rotation
+        );
+        assert_eq!(
+            lighting.directional_light_illuminance,
+            visual.sun_illuminance
+        );
     }
 }

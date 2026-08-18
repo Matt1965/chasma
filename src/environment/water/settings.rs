@@ -8,6 +8,10 @@ pub const DEFAULT_WATER_PLANE_SIZE_METERS: f32 = 65_536.0;
 /// Horizontal meters of water beyond each authored terrain edge (symmetric).
 pub const DEFAULT_WATER_EXTENT_PADDING_METERS: f32 = 16_384.0;
 
+/// Default shallow ocean absorption color (`#226B78`, WATER-COLOR-1).
+pub const DEFAULT_SHALLOW_OCEAN_COLOR: Color =
+    Color::srgb(34.0 / 255.0, 107.0 / 255.0, 120.0 / 255.0);
+
 /// Visual-only water configuration (Environment layer; not simulation truth).
 #[derive(Debug, Clone, Resource, Reflect, PartialEq)]
 #[reflect(Resource)]
@@ -36,7 +40,7 @@ impl Default for WaterSettings {
             water_level: 56.0,
             plane_size_meters: DEFAULT_WATER_PLANE_SIZE_METERS,
             extent_padding_meters: DEFAULT_WATER_EXTENT_PADDING_METERS,
-            color: Color::srgb(0.08, 0.32, 0.52),
+            color: DEFAULT_SHALLOW_OCEAN_COLOR,
             alpha: 0.62,
             roughness: 0.08,
             metallic: 0.15,

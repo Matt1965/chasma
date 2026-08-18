@@ -14,6 +14,7 @@ use bevy::{
 use crate::camera::RtsCamera;
 
 use super::settings::{EnvironmentSettings, SKYBOX_ASSET_ROOT};
+use super::visual_state::{DEFAULT_SKY_PRESENTATION, SkyPresentation};
 
 /// Cubemap filenames inside a skybox set folder.
 pub const CUBEMAP_KTX2_FILE: &str = "cubemap.ktx2";
@@ -305,6 +306,10 @@ pub fn attach_skybox_to_primary_camera(
     load: Option<ResMut<ActiveSkyboxLoad>>,
     cameras: Query<Entity, (With<Camera3d>, With<RtsCamera>, Without<SkyboxCamera>)>,
 ) {
+    if DEFAULT_SKY_PRESENTATION != SkyPresentation::StaticCubemap {
+        return;
+    }
+
     let Some(mut load) = load else {
         return;
     };

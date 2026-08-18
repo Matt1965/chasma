@@ -60,19 +60,17 @@ impl Material for EnvironmentOceanMaterial {
     }
 }
 
+/// Open / max-depth ocean absorption color (`#061A29`, WATER-COLOR-1).
+pub const DEEP_OCEAN_ABSORPTION_COLOR: Color = Color::srgb(6.0 / 255.0, 26.0 / 255.0, 41.0 / 255.0);
+
 /// Smooth monotonic depth response shared with the WGSL shader.
 pub fn evaluate_depth_response_factor(column_depth: f32, absorption_depth: f32) -> f32 {
     let scale = absorption_depth.max(0.001);
     (1.0 - (-column_depth.max(0.0) / scale).exp()).clamp(0.0, 1.0)
 }
 
-pub fn deep_ocean_color_from_shallow(shallow: Color) -> Color {
-    let [r, g, b, _] = shallow.to_srgba().to_f32_array();
-    Color::srgb(
-        (r * 0.42).clamp(0.0, 1.0),
-        (g * 0.72).clamp(0.0, 1.0),
-        (b * 0.88).clamp(0.0, 1.0),
-    )
+pub fn deep_ocean_color_from_shallow(_shallow: Color) -> Color {
+    DEEP_OCEAN_ABSORPTION_COLOR
 }
 
 pub fn build_ocean_depth_uniform(
@@ -102,6 +100,7 @@ pub fn build_ocean_material(settings: &WaterSettings) -> EnvironmentOceanMateria
 
 #[cfg(test)]
 mod tests {
+    use super::super::settings::DEFAULT_SHALLOW_OCEAN_COLOR;
     use super::*;
 
     #[test]
@@ -130,6 +129,20 @@ mod tests {
         let material = build_ocean_material(&WaterSettings::default());
         assert_eq!(material.alpha_mode(), AlphaMode::Blend);
         assert!(!EnvironmentOceanMaterial::enable_prepass());
+    }
+
+    #[test]
+    fn default_ocean_palette_uses_water_color_endpoints() {
+        let uniform =
+            build_ocean_depth_uniform(&WaterSettings::default(), WaterDepthPresentation::default());
+        let [sr, sg, sb, _] = DEFAULT_SHALLOW_OCEAN_COLOR.to_srgba().to_f32_array();
+        let [dr, dg, db, _] = DEEP_OCEAN_ABSORPTION_COLOR.to_srgba().to_f32_array();
+        assert!((uniform.shallow_color.x - sr).abs() < 1e-4);
+        assert!((uniform.shallow_color.y - sg).abs() < 1e-4);
+        assert!((uniform.shallow_color.z - sb).abs() < 1e-4);
+        assert!((uniform.deep_color.x - dr).abs() < 1e-4);
+        assert!((uniform.deep_color.y - dg).abs() < 1e-4);
+        assert!((uniform.deep_color.z - db).abs() < 1e-4);
     }
 
     #[test]

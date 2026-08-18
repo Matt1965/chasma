@@ -1,5 +1,8 @@
+use bevy::pbr::MaterialPlugin;
 use bevy::prelude::*;
 
+use super::cloud_material::EnvironmentCloudMaterial;
+use super::cloud_settings::CloudSettings;
 use super::cycle::{
     advance_time_of_day, sync_environment_presentation, update_environment_from_time_of_day,
 };
@@ -8,13 +11,24 @@ use super::debug::{
     count_environment_singletons, log_environment_configuration, log_environment_singleton_report,
 };
 use super::lighting::setup_environment_lighting;
+use super::procedural_clouds::{
+    ProceduralCloudSpawnState, setup_procedural_clouds, sync_procedural_cloud_presentation,
+};
+use super::procedural_sky::{
+    ProceduralSkySpawnState, setup_procedural_sky, sync_procedural_sky_presentation,
+};
 use super::project_defaults::{
     EnvironmentManualLighting, PROJECT_DEFAULTS_PATH, ProjectEnvironmentBaseline,
     initialize_runtime_from_baseline, load_project_environment_baseline,
 };
 use super::settings::EnvironmentSettings;
+use super::sky_material::EnvironmentSkyMaterial;
 use super::skybox::{ActiveSkyboxLoad, attach_skybox_to_primary_camera, init_skybox_load};
 use super::time_of_day::TimeOfDaySettings;
+use super::visual_state::{
+    EnvironmentVisualState, SkyColorPalette, apply_visual_state_to_environment,
+    evaluate_environment_visual_state, update_environment_visual_state,
+};
 use super::water::WaterPlugin;
 
 /// Environment rendering layer: skybox, ambient light, and directional light (R8 / R9 / E10).
@@ -34,17 +48,31 @@ impl Plugin for EnvironmentPlugin {
             &mut manual,
         );
 
+        let palette = SkyColorPalette::default();
+        let initial_visual = evaluate_environment_visual_state(&time_of_day, &palette);
+        if time_of_day.enabled {
+            apply_visual_state_to_environment(&mut environment, &initial_visual);
+        }
+
         app.register_type::<EnvironmentSettings>()
             .register_type::<TimeOfDaySettings>()
             .insert_resource(baseline)
             .insert_resource(time_of_day)
             .insert_resource(environment)
             .insert_resource(manual)
+            .insert_resource(initial_visual)
+            .init_resource::<ProceduralSkySpawnState>()
+            .init_resource::<ProceduralCloudSpawnState>()
+            .init_resource::<CloudSettings>()
             .add_plugins(WaterPlugin)
+            .add_plugins(MaterialPlugin::<EnvironmentSkyMaterial>::default())
+            .add_plugins(MaterialPlugin::<EnvironmentCloudMaterial>::default())
             .add_systems(
                 Startup,
                 (
                     setup_environment_lighting,
+                    setup_procedural_sky,
+                    setup_procedural_clouds,
                     init_skybox_load,
                     log_environment_startup,
                 )
@@ -54,8 +82,10 @@ impl Plugin for EnvironmentPlugin {
                 Update,
                 (
                     advance_time_of_day,
-                    update_environment_from_time_of_day,
+                    update_environment_visual_state,
                     sync_environment_presentation,
+                    sync_procedural_sky_presentation,
+                    sync_procedural_cloud_presentation,
                     attach_skybox_to_primary_camera,
                 )
                     .chain(),
@@ -100,6 +130,7 @@ fn validate_environment_startup(
 mod tests {
     use super::*;
     use bevy::app::App;
+    use bevy::asset::AssetPlugin;
 
     use crate::environment::{
         EnvironmentManualLighting, TimeOfDaySettings, initialize_runtime_from_baseline,
@@ -109,9 +140,15 @@ mod tests {
     #[test]
     fn plugin_initializes_environment_settings_resource() {
         let mut app = App::new();
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()));
         app.add_plugins(EnvironmentPlugin);
         assert!(app.world().get_resource::<EnvironmentSettings>().is_some());
         assert!(app.world().get_resource::<TimeOfDaySettings>().is_some());
+        assert!(
+            app.world()
+                .get_resource::<EnvironmentVisualState>()
+                .is_some()
+        );
         assert!(
             app.world()
                 .get_resource::<ProjectEnvironmentBaseline>()

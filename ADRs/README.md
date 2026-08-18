@@ -47,6 +47,16 @@ ADRs document **accepted technical decisions**. Game design direction lives in
 
 038–041 (intent, commands), 064–065 (fixed tick), 066 (movement outcomes), 068 (environment)
 
+## Environment / rendering
+
+| ADR | Topic |
+|-----|-------|
+| [026](ADR-026-skybox-foundation.md) | Environment rendering layer (skybox foundation) |
+| [052](ADR-052-time-of-day-visual-environment-system.md) | Time-of-day visual environment |
+| [053](ADR-053-water-rendering-foundation.md) | Water rendering foundation |
+| [068](ADR-068-environment-singleton-and-input-ownership.md) | Environment singleton and input ownership |
+| [131](ADR-131-volumetric-cloud-rendering-architecture.md) | Volumetric cloud rendering architecture |
+
 ## Terrain / world
 
 001–013 (coordinates, terrain), 031–032 (obstacles, navigation), 067 (validation)

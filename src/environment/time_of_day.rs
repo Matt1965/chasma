@@ -16,8 +16,9 @@ pub struct TimeOfDaySettings {
     pub day_length_seconds: f32,
     /// When true, [`Self::time_hours`] does not advance.
     pub paused: bool,
-    /// Sun elevation at night horizon / solar noon (degrees).
+    /// Minimum sun elevation below the horizon at night (degrees; typically negative, e.g. `-34`).
     pub sun_pitch_min_deg: f32,
+    /// Maximum sun elevation at the daylight midpoint (degrees).
     pub sun_pitch_max_deg: f32,
     /// Hours when direct sunlight begins / ends (visual twilight model).
     pub sunrise_hour: f32,
