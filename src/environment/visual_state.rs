@@ -8,17 +8,6 @@ use bevy::prelude::*;
 use super::settings::EnvironmentSettings;
 use super::time_of_day::TimeOfDaySettings;
 
-/// Active sky background presentation (internal; no dev UI in SKY-1).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum SkyPresentation {
-    #[default]
-    Procedural,
-    StaticCubemap,
-}
-
-/// Normal runtime sky mode after SKY-1.
-pub const DEFAULT_SKY_PRESENTATION: SkyPresentation = SkyPresentation::Procedural;
-
 /// Art-directed sky color endpoints (Rust-side; shader receives evaluated colors).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SkyColorPalette {
@@ -62,8 +51,6 @@ pub struct EnvironmentVisualState {
     pub sky_zenith_color: Color,
     pub sun_disc_color: Color,
     pub sun_disc_intensity: f32,
-    /// Static cubemap brightness endpoint (fallback presentation only).
-    pub skybox_brightness: f32,
 }
 
 /// Coherent 24-hour solar path for one clock sample (SUN-TRAJ-1).
@@ -299,12 +286,6 @@ pub fn evaluate_environment_visual_state(
     );
     let ambient_color = lerp_color(NIGHT_AMBIENT_COLOR, DAY_AMBIENT_COLOR, effective_daylight);
 
-    let skybox_brightness = lerp_f32(
-        settings.night_skybox_brightness,
-        settings.noon_skybox_brightness,
-        effective_daylight,
-    );
-
     let sun_direction_world = solar.sun_direction_world;
     let directional_light_rotation = solar.directional_light_rotation;
     let solar_elevation_rad = solar.elevation_rad;
@@ -341,7 +322,6 @@ pub fn evaluate_environment_visual_state(
         sky_zenith_color: sky_zenith,
         sun_disc_color,
         sun_disc_intensity,
-        skybox_brightness,
     }
 }
 
@@ -355,7 +335,6 @@ pub fn apply_visual_state_to_environment(
     environment.directional_light_color = visual.sun_color;
     environment.ambient_brightness = visual.ambient_brightness;
     environment.ambient_color = visual.ambient_color;
-    environment.skybox_brightness = visual.skybox_brightness;
 }
 
 /// Advance derived state from the authoritative clock and optionally sync [`EnvironmentSettings`].
@@ -636,7 +615,6 @@ mod tests {
         let noon = visual_at(12.0);
         let night = visual_at(2.0);
         assert!(noon.sun_illuminance > night.sun_illuminance * 10.0);
-        assert!(noon.skybox_brightness > night.skybox_brightness);
         let noon_zenith = noon.sky_zenith_color.to_srgba();
         let night_zenith = night.sky_zenith_color.to_srgba();
         assert!(noon_zenith.blue > night_zenith.blue);

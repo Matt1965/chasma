@@ -3,9 +3,12 @@
 use bevy::prelude::*;
 
 use crate::terrain::world_position_to_render_global_above_base;
-use crate::world::{UnitId, UnitRecord, WorldConfig, WorldData, space_vertical_reference_y};
+use crate::world::unit_visual_rotation;
+use crate::world::{
+    UnitDefinition, UnitId, UnitRecord, WorldConfig, WorldData, space_vertical_reference_y,
+};
 
-use super::components::{UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot};
+use super::components::{UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot, UnitVisualFacing};
 
 /// Render translation for a unit, honoring the space its authoritative Y belongs to.
 ///
@@ -34,6 +37,7 @@ pub fn spawn_unit_render_entity(
     commands: &mut Commands,
     world: &WorldData,
     record: &UnitRecord,
+    definition: &UnitDefinition,
     scene: Handle<Scene>,
     config: &WorldConfig,
     vertical_scale: f32,
@@ -47,11 +51,14 @@ pub fn spawn_unit_render_entity(
             UnitRenderMetadata {
                 definition_id: record.definition_id.clone(),
             },
+            UnitVisualFacing {
+                rotation: record.placement.rotation,
+            },
             UnitSceneRoot,
             SceneRoot(scene),
             Transform {
                 translation,
-                rotation: record.placement.rotation,
+                rotation: unit_visual_rotation(definition, record.placement.rotation),
                 scale: visual_scale,
             },
             Visibility::default(),

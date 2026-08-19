@@ -2,22 +2,19 @@
 
 use bevy::prelude::*;
 
+use super::fields::{EnvFieldId, EnvSection, fields_for_section};
+use super::state::{
+    DevWorldCycleToggle, DevWorldEnvironmentAction, DevWorldEnvironmentConfirmationBar,
+    DevWorldEnvironmentDirtyBadge, DevWorldEnvironmentLoadStatusText, DevWorldEnvironmentSection,
+    DevWorldEnvironmentStatusText, DevWorldEnvironmentValidationText, DevWorldPauseToggle,
+    DevWorldTimePresetButton, DevWorldWaterEnabledToggle, DevWorldWaterSection,
+};
 use crate::dev::input::DevPanelUi;
 use crate::dev::tooltip::DevTooltipContent;
 use crate::dev::widgets::{
     DevBadgeKind, DevCollapsibleSectionId, DevStatusSeverity, DevWidgetConfirmationBar,
     DevWidgetConfirmationPrompt, spawn_action_button, spawn_badge, spawn_bounded_slider_row,
     spawn_collapsible_section, spawn_confirmation_bar, spawn_status_line, spawn_toggle_row,
-};
-use crate::environment::list_registered_skybox_sets;
-
-use super::fields::{EnvFieldId, EnvSection, fields_for_section};
-use super::state::{
-    DevWorldCycleToggle, DevWorldEnvironmentAction, DevWorldEnvironmentConfirmationBar,
-    DevWorldEnvironmentDirtyBadge, DevWorldEnvironmentLoadStatusText, DevWorldEnvironmentSection,
-    DevWorldEnvironmentStatusText, DevWorldEnvironmentValidationText, DevWorldPauseToggle,
-    DevWorldSkyboxOption, DevWorldTimePresetButton, DevWorldWaterEnabledToggle,
-    DevWorldWaterSection,
 };
 
 /// Spawn order: Water follows the time/cycle block and precedes lighting sections.
@@ -51,7 +48,7 @@ pub fn spawn_environment_controls(parent: &mut ChildSpawnerCommands<'_>) {
                 "Cycle enabled",
                 DevTooltipContent::new(
                     "When enabled, simulated time advances and drives environment lighting. When \
-                     disabled, manual lighting values own directional, ambient, and skybox output. \
+                     disabled, manual lighting values own directional and ambient output. \
                      Saved in Project Defaults.",
                 ),
                 DevWorldCycleToggle,
@@ -62,7 +59,6 @@ pub fn spawn_environment_controls(parent: &mut ChildSpawnerCommands<'_>) {
             spawn_night_section(root);
             spawn_twilight_section(root);
             spawn_manual_section(root);
-            spawn_skybox_section(root);
             spawn_project_defaults_section(root);
         });
 }
@@ -182,8 +178,8 @@ fn spawn_day_section(parent: &mut ChildSpawnerCommands<'_>) {
         DevCollapsibleSectionId::WorldDayLighting,
         "Day lighting",
         Some(DevTooltipContent::new(
-            "Noon peak directional, ambient, skybox, and sun elevation. Values blend with night \
-             settings through twilight.",
+            "Noon peak directional, ambient, and sun elevation. Values blend with night settings \
+             through twilight.",
         )),
         |body| spawn_field_sliders(body, EnvSection::DayLighting),
     );
@@ -195,8 +191,8 @@ fn spawn_night_section(parent: &mut ChildSpawnerCommands<'_>) {
         DevCollapsibleSectionId::WorldNightLighting,
         "Night lighting",
         Some(DevTooltipContent::new(
-            "Deep-night directional and skybox values plus the ambient multiplier applied to noon \
-             ambient at night.",
+            "Deep-night directional values plus the ambient multiplier applied to noon ambient at \
+             night.",
         )),
         |body| spawn_field_sliders(body, EnvSection::NightLighting),
     );
@@ -225,45 +221,6 @@ fn spawn_manual_section(parent: &mut ChildSpawnerCommands<'_>) {
              values are stored but overridden by time-of-day evaluation.",
         )),
         |body| spawn_field_sliders(body, EnvSection::ManualLighting),
-    );
-}
-
-fn spawn_skybox_section(parent: &mut ChildSpawnerCommands<'_>) {
-    spawn_collapsible_section(
-        parent,
-        DevCollapsibleSectionId::WorldSkybox,
-        "Skybox",
-        Some(DevTooltipContent::new(
-            "Cubemap set selection and yaw rotation. Brightness follows day/night cycle unless \
-             manual mode is active.",
-        )),
-        |body| {
-            let sets = list_registered_skybox_sets();
-            body.spawn((
-                DevPanelUi,
-                Node {
-                    flex_direction: FlexDirection::Row,
-                    column_gap: Val::Px(2.0),
-                    flex_wrap: FlexWrap::Wrap,
-                    ..default()
-                },
-            ))
-            .with_children(|row| {
-                for (index, set_name) in sets.iter().enumerate() {
-                    let tip = format!(
-                        "Select skybox set '{set_name}'. Stored as a stable folder name in Project \
-                         Defaults. Requires cubemap assets under assets/environment/skyboxes/{set_name}/."
-                    );
-                    spawn_action_button(
-                        row,
-                        set_name,
-                        Some(&tip),
-                        DevWorldSkyboxOption { index },
-                    );
-                }
-            });
-            spawn_field_sliders(body, EnvSection::Skybox);
-        },
     );
 }
 

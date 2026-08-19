@@ -45,3 +45,9 @@
 - warning: unit height hint sizing inference failed: baseline scale out of allowed range
 - warning: using legacy explicit render scale — add Desired dimensions to migrate
 
+## Unit / U-0003
+- asset: `assets\units\cavecrawler.glb`
+- source: 5.066 × 3.486 × 4.950 m (Some(CombinedVisibleMeshes))
+- baseline scale: 0.552, 0.552, 0.552
+- warning: inferred desired meters from unit height hint — add Desired*M to Excel for explicit authoring
+

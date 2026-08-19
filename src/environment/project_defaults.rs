@@ -11,13 +11,13 @@ use std::path::{Path, PathBuf};
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::settings::{DEFAULT_SKYBOX_SET, EnvironmentSettings};
+use super::settings::EnvironmentSettings;
 use super::time_of_day::TimeOfDaySettings;
 
 /// On-disk path relative to the project / working directory.
 pub const PROJECT_DEFAULTS_PATH: &str = "assets/environment/project_defaults.ron";
 
-pub const PROJECT_DEFAULTS_VERSION: u32 = 1;
+pub const PROJECT_DEFAULTS_VERSION: u32 = 2;
 
 const FLOAT_EPS: f32 = 0.05;
 const FLOAT_EPS_NORM: f32 = 0.001;
@@ -50,7 +50,6 @@ impl ProjectDefaultsLoadStatus {
 pub struct ManualLightingDefaults {
     pub directional_illuminance: f32,
     pub ambient_brightness: f32,
-    pub skybox_brightness: f32,
 }
 
 impl Default for ManualLightingDefaults {
@@ -59,7 +58,6 @@ impl Default for ManualLightingDefaults {
         Self {
             directional_illuminance: env.directional_light_illuminance,
             ambient_brightness: env.ambient_brightness,
-            skybox_brightness: env.skybox_brightness,
         }
     }
 }
@@ -70,7 +68,6 @@ pub struct AuthoredEnvironmentSnapshot {
     #[serde(default = "default_version")]
     pub version: u32,
     pub time_of_day: AuthoredTimeOfDay,
-    pub environment: AuthoredEnvironment,
     #[serde(default)]
     pub manual_lighting: ManualLightingDefaults,
 }
@@ -92,28 +89,7 @@ pub struct AuthoredTimeOfDay {
     pub noon_directional_illuminance: f32,
     pub night_directional_illuminance: f32,
     pub noon_ambient_brightness: f32,
-    pub noon_skybox_brightness: f32,
-    pub night_skybox_brightness: f32,
     pub twilight_daylight_blend: f32,
-}
-
-/// Persisted environment presentation fields.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct AuthoredEnvironment {
-    pub skybox_set: String,
-    /// Yaw rotation applied to the cubemap (degrees).
-    pub skybox_rotation_yaw_deg: f32,
-}
-
-impl Default for AuthoredEnvironment {
-    fn default() -> Self {
-        let env = EnvironmentSettings::default();
-        let (_, yaw, _) = env.skybox_rotation.to_euler(EulerRot::YXZ);
-        Self {
-            skybox_set: DEFAULT_SKYBOX_SET.to_string(),
-            skybox_rotation_yaw_deg: yaw.to_degrees(),
-        }
-    }
 }
 
 impl Default for AuthoredTimeOfDay {
@@ -135,8 +111,6 @@ impl AuthoredTimeOfDay {
             noon_directional_illuminance: settings.noon_directional_illuminance,
             night_directional_illuminance: settings.night_directional_illuminance,
             noon_ambient_brightness: settings.noon_ambient_brightness,
-            noon_skybox_brightness: settings.noon_skybox_brightness,
-            night_skybox_brightness: settings.night_skybox_brightness,
             twilight_daylight_blend: settings.twilight_daylight_blend,
         }
     }
@@ -152,24 +126,7 @@ impl AuthoredTimeOfDay {
         settings.noon_directional_illuminance = self.noon_directional_illuminance;
         settings.night_directional_illuminance = self.night_directional_illuminance;
         settings.noon_ambient_brightness = self.noon_ambient_brightness;
-        settings.noon_skybox_brightness = self.noon_skybox_brightness;
-        settings.night_skybox_brightness = self.night_skybox_brightness;
         settings.twilight_daylight_blend = self.twilight_daylight_blend;
-    }
-}
-
-impl AuthoredEnvironment {
-    pub fn from_settings(settings: &EnvironmentSettings) -> Self {
-        let (_, yaw, _) = settings.skybox_rotation.to_euler(EulerRot::YXZ);
-        Self {
-            skybox_set: settings.skybox_set.clone(),
-            skybox_rotation_yaw_deg: yaw.to_degrees(),
-        }
-    }
-
-    pub fn apply_to(&self, settings: &mut EnvironmentSettings) {
-        settings.skybox_set = self.skybox_set.clone();
-        settings.skybox_rotation = Quat::from_rotation_y(self.skybox_rotation_yaw_deg.to_radians());
     }
 }
 
@@ -180,15 +137,10 @@ impl Default for AuthoredEnvironmentSnapshot {
 }
 
 impl AuthoredEnvironmentSnapshot {
-    pub fn from_runtime(
-        time_of_day: &TimeOfDaySettings,
-        environment: &EnvironmentSettings,
-        manual: &ManualLightingDefaults,
-    ) -> Self {
+    pub fn from_runtime(time_of_day: &TimeOfDaySettings, manual: &ManualLightingDefaults) -> Self {
         Self {
             version: PROJECT_DEFAULTS_VERSION,
             time_of_day: AuthoredTimeOfDay::from_settings(time_of_day),
-            environment: AuthoredEnvironment::from_settings(environment),
             manual_lighting: manual.clone(),
         }
     }
@@ -200,7 +152,6 @@ impl AuthoredEnvironmentSnapshot {
         manual: &mut ManualLightingDefaults,
     ) {
         self.time_of_day.apply_to(time_of_day);
-        self.environment.apply_to(environment);
         *manual = self.manual_lighting.clone();
         if !time_of_day.enabled {
             apply_manual_lighting(environment, manual);
@@ -209,7 +160,6 @@ impl AuthoredEnvironmentSnapshot {
 
     pub fn semantic_equals(&self, other: &Self) -> bool {
         self.time_of_day.semantic_equals(&other.time_of_day)
-            && self.environment.semantic_equals(&other.environment)
             && self.manual_lighting.semantic_equals(&other.manual_lighting)
     }
 }
@@ -243,30 +193,9 @@ impl AuthoredTimeOfDay {
                 FLOAT_EPS,
             )
             && approx_eq(
-                self.noon_skybox_brightness,
-                other.noon_skybox_brightness,
-                FLOAT_EPS,
-            )
-            && approx_eq(
-                self.night_skybox_brightness,
-                other.night_skybox_brightness,
-                FLOAT_EPS,
-            )
-            && approx_eq(
                 self.twilight_daylight_blend,
                 other.twilight_daylight_blend,
                 FLOAT_EPS_NORM,
-            )
-    }
-}
-
-impl AuthoredEnvironment {
-    pub fn semantic_equals(&self, other: &Self) -> bool {
-        self.skybox_set == other.skybox_set
-            && approx_eq(
-                self.skybox_rotation_yaw_deg,
-                other.skybox_rotation_yaw_deg,
-                FLOAT_EPS,
             )
     }
 }
@@ -276,7 +205,6 @@ impl ManualLightingDefaults {
         Self {
             directional_illuminance: environment.directional_light_illuminance,
             ambient_brightness: environment.ambient_brightness,
-            skybox_brightness: environment.skybox_brightness,
         }
     }
 
@@ -286,7 +214,6 @@ impl ManualLightingDefaults {
             other.directional_illuminance,
             FLOAT_EPS,
         ) && approx_eq(self.ambient_brightness, other.ambient_brightness, FLOAT_EPS)
-            && approx_eq(self.skybox_brightness, other.skybox_brightness, FLOAT_EPS)
     }
 }
 
@@ -294,7 +221,6 @@ impl ManualLightingDefaults {
 pub fn built_in_authored_snapshot() -> AuthoredEnvironmentSnapshot {
     AuthoredEnvironmentSnapshot::from_runtime(
         &TimeOfDaySettings::default(),
-        &EnvironmentSettings::default(),
         &ManualLightingDefaults::default(),
     )
 }
@@ -335,7 +261,6 @@ pub fn apply_manual_lighting(
 ) {
     environment.directional_light_illuminance = manual.directional_illuminance;
     environment.ambient_brightness = manual.ambient_brightness;
-    environment.skybox_brightness = manual.skybox_brightness;
 }
 
 /// Validation errors block project save.
@@ -344,7 +269,6 @@ pub enum EnvironmentValidationError {
     NonFinite(&'static str),
     OutOfRange { field: &'static str, reason: String },
     TwilightOrdering,
-    InvalidSkyboxSet,
 }
 
 impl EnvironmentValidationError {
@@ -353,7 +277,6 @@ impl EnvironmentValidationError {
             Self::NonFinite(field) => format!("{field} must be a finite number"),
             Self::OutOfRange { field, reason } => format!("{field}: {reason}"),
             Self::TwilightOrdering => "Sunrise hour must be less than sunset hour".to_string(),
-            Self::InvalidSkyboxSet => "Unknown or missing skybox set folder".to_string(),
         }
     }
 }
@@ -377,8 +300,6 @@ pub fn validate_authored_snapshot(
         t.night_directional_illuminance,
     )?;
     check_finite("noon_ambient_brightness", t.noon_ambient_brightness)?;
-    check_finite("noon_skybox_brightness", t.noon_skybox_brightness)?;
-    check_finite("night_skybox_brightness", t.night_skybox_brightness)?;
     check_finite("twilight_daylight_blend", t.twilight_daylight_blend)?;
 
     if t.day_length_seconds < 30.0 || t.day_length_seconds > 3600.0 {
@@ -442,14 +363,6 @@ pub fn validate_authored_snapshot(
     let m = &snapshot.manual_lighting;
     check_finite("manual_directional_illuminance", m.directional_illuminance)?;
     check_finite("manual_ambient_brightness", m.ambient_brightness)?;
-    check_finite("manual_skybox_brightness", m.skybox_brightness)?;
-
-    if snapshot.environment.skybox_set.trim().is_empty() {
-        return Err(EnvironmentValidationError::InvalidSkyboxSet);
-    }
-    if !skybox_set_exists(&snapshot.environment.skybox_set) {
-        return Err(EnvironmentValidationError::InvalidSkyboxSet);
-    }
 
     Ok(())
 }
@@ -463,34 +376,6 @@ fn check_finite(field: &'static str, value: f32) -> Result<(), EnvironmentValida
 
 fn approx_eq(a: f32, b: f32, eps: f32) -> bool {
     (a - b).abs() <= eps
-}
-
-/// List skybox set folder names under `assets/environment/skyboxes/`.
-pub fn list_registered_skybox_sets() -> Vec<String> {
-    let root = Path::new("assets").join("environment/skyboxes");
-    let mut sets = Vec::new();
-    if let Ok(read) = fs::read_dir(&root) {
-        for entry in read.flatten() {
-            if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                if let Some(name) = entry.file_name().to_str() {
-                    sets.push(name.to_string());
-                }
-            }
-        }
-    }
-    if sets.is_empty() {
-        sets.push(DEFAULT_SKYBOX_SET.to_string());
-    } else {
-        sets.sort();
-    }
-    sets
-}
-
-pub fn skybox_set_exists(set_name: &str) -> bool {
-    let path = Path::new("assets")
-        .join("environment/skyboxes")
-        .join(set_name);
-    path.is_dir()
 }
 
 /// Load project defaults from disk; fall back to built-in on missing/invalid.
@@ -626,19 +511,17 @@ pub fn save_project_environment_defaults(
 
 pub fn capture_current_authored_snapshot(
     time_of_day: &TimeOfDaySettings,
-    environment: &EnvironmentSettings,
     manual: &EnvironmentManualLighting,
 ) -> AuthoredEnvironmentSnapshot {
-    AuthoredEnvironmentSnapshot::from_runtime(time_of_day, environment, &manual.values)
+    AuthoredEnvironmentSnapshot::from_runtime(time_of_day, &manual.values)
 }
 
 pub fn environment_is_dirty(
     baseline: &ProjectEnvironmentBaseline,
     time_of_day: &TimeOfDaySettings,
-    environment: &EnvironmentSettings,
     manual: &EnvironmentManualLighting,
 ) -> bool {
-    let current = capture_current_authored_snapshot(time_of_day, environment, manual);
+    let current = capture_current_authored_snapshot(time_of_day, manual);
     !baseline.snapshot.semantic_equals(&current)
 }
 
@@ -651,7 +534,7 @@ mod tests {
     fn built_in_snapshot_matches_defaults() {
         let snap = built_in_authored_snapshot();
         assert!(snap.time_of_day.enabled);
-        assert_eq!(snap.environment.skybox_set, DEFAULT_SKYBOX_SET);
+        assert_eq!(snap.version, PROJECT_DEFAULTS_VERSION);
     }
 
     #[test]
@@ -681,6 +564,42 @@ mod tests {
         let text = ron::ser::to_string_pretty(&snap, ron::ser::PrettyConfig::default()).unwrap();
         let parsed: AuthoredEnvironmentSnapshot = ron::from_str(&text).unwrap();
         assert!(snap.semantic_equals(&parsed));
+    }
+
+    #[test]
+    fn legacy_v1_defaults_deserialize_without_skybox_fields() {
+        let legacy = r#"
+(
+    version: 1,
+    time_of_day: (
+        enabled: true,
+        day_length_seconds: 600.0,
+        sun_pitch_min_deg: -34.0,
+        sun_pitch_max_deg: 26.0,
+        sunrise_hour: 6.0,
+        sunset_hour: 18.0,
+        night_ambient_multiplier: 1.77,
+        noon_directional_illuminance: 24000.0,
+        night_directional_illuminance: 40.0,
+        noon_ambient_brightness: 320.0,
+        noon_skybox_brightness: 1200.0,
+        night_skybox_brightness: 160.0,
+        twilight_daylight_blend: 0.5,
+    ),
+    environment: (
+        skybox_set: "default",
+        skybox_rotation_yaw_deg: 0.0,
+    ),
+    manual_lighting: (
+        directional_illuminance: 21189.0,
+        ambient_brightness: 349.0,
+        skybox_brightness: 1078.0,
+    ),
+)
+"#;
+        let parsed: AuthoredEnvironmentSnapshot = ron::from_str(legacy).unwrap();
+        assert!(validate_authored_snapshot(&parsed).is_ok());
+        assert_eq!(parsed.version, 1);
     }
 
     #[test]
@@ -745,9 +664,9 @@ mod tests {
         let mut env = EnvironmentSettings::default();
         let mut manual = EnvironmentManualLighting::default();
         initialize_runtime_from_baseline(&baseline, &mut time, &mut env, &mut manual);
-        assert!(!environment_is_dirty(&baseline, &time, &env, &manual));
+        assert!(!environment_is_dirty(&baseline, &time, &manual));
         time.day_length_seconds = 120.0;
-        assert!(environment_is_dirty(&baseline, &time, &env, &manual));
+        assert!(environment_is_dirty(&baseline, &time, &manual));
     }
 
     #[test]

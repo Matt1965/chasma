@@ -96,6 +96,19 @@ fn parse_row(
             .parse::<f32>()
             .map_err(|_| format!("{column} must be a number (got `{raw}`)"))
     };
+    let optional_duration_seconds = |column: &str| -> Result<Option<f32>, String> {
+        if !columns.contains_key(column) {
+            return Ok(None);
+        }
+        let raw = text(column);
+        if raw.trim().is_empty() {
+            return Ok(None);
+        }
+        raw.trim()
+            .parse::<f32>()
+            .map(Some)
+            .map_err(|_| format!("{column} must be a number (got `{raw}`)"))
+    };
 
     let (enabled, enabled_was_blank) = if columns.contains_key("Enabled") {
         parse_enabled_cell(&text("Enabled"))?
@@ -118,7 +131,180 @@ fn parse_row(
         has_walk_column: columns.contains_key("Walk Animation"),
         has_run_column: columns.contains_key("Run Animation"),
         has_reference_speed_column: columns.contains_key("Locomotion Reference Speed"),
+        death_animation: text("Death Animation"),
+        hit_reaction_animation: text("Hit Reaction Animation"),
+        upper_body_split_bone: text("Upper Body Split Bone"),
+        turn_left_animation: text("Turn Left Animation"),
+        turn_right_animation: text("Turn Right Animation"),
+        turn_left_duration_seconds: optional_duration_seconds("Turn Left Duration")?,
+        turn_right_duration_seconds: optional_duration_seconds("Turn Right Duration")?,
+        has_death_column: columns.contains_key("Death Animation"),
+        has_hit_reaction_column: columns.contains_key("Hit Reaction Animation"),
+        has_upper_body_split_bone_column: columns.contains_key("Upper Body Split Bone"),
+        has_turn_left_column: columns.contains_key("Turn Left Animation"),
+        has_turn_right_column: columns.contains_key("Turn Right Animation"),
+        has_turn_left_duration_column: columns.contains_key("Turn Left Duration"),
+        has_turn_right_duration_column: columns.contains_key("Turn Right Duration"),
     })
+}
+
+#[cfg(all(feature = "data-import", test))]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    use rust_xlsxwriter::Workbook;
+
+    fn write_workbook(path: &Path, headers: &[&str], rows: &[Vec<&str>]) {
+        let mut workbook = Workbook::new();
+        let sheet = workbook.add_worksheet();
+        sheet.set_name(ANIMATION_PROFILES_SHEET_NAME).unwrap();
+        for (col, header) in headers.iter().enumerate() {
+            sheet.write_string(0, col as u16, *header).unwrap();
+        }
+        for (row_idx, row) in rows.iter().enumerate() {
+            for (col, value) in row.iter().enumerate() {
+                sheet
+                    .write_string((row_idx + 1) as u32, col as u16, *value)
+                    .unwrap();
+            }
+        }
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        workbook.save(path).unwrap();
+    }
+
+    fn legacy_headers() -> Vec<&'static str> {
+        vec![
+            "Profile ID",
+            "Idle Animation",
+            "Walk Animation",
+            "Run Animation",
+            "Locomotion Reference Speed",
+            "Enabled",
+        ]
+    }
+
+    fn extended_headers() -> Vec<&'static str> {
+        vec![
+            "Profile ID",
+            "Idle Animation",
+            "Walk Animation",
+            "Run Animation",
+            "Locomotion Reference Speed",
+            "Enabled",
+            "Death Animation",
+            "Hit Reaction Animation",
+            "Upper Body Split Bone",
+            "Turn Left Animation",
+            "Turn Right Animation",
+            "Turn Left Duration",
+            "Turn Right Duration",
+        ]
+    }
+
+    #[test]
+    fn legacy_workbook_without_new_columns_imports() {
+        let path = std::env::temp_dir().join(format!(
+            "chasma_anim_import_{}_{}.xlsx",
+            std::process::id(),
+            "legacy"
+        ));
+        let headers = legacy_headers();
+        let row = vec!["humanoid", "Idle", "Walk", "Run", "4", "Y"];
+        write_workbook(&path, &headers, &[row]);
+        let rows = read_animation_profile_rows(&path).unwrap();
+        let profile = rows[0].as_ref().unwrap().to_definition();
+        assert_eq!(profile.death_clip, None);
+        assert_eq!(profile.turn_left_clip, None);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn blank_extended_columns_become_none() {
+        let path = std::env::temp_dir().join(format!(
+            "chasma_anim_import_{}_{}.xlsx",
+            std::process::id(),
+            "blank_extended"
+        ));
+        let headers = extended_headers();
+        let row = vec![
+            "humanoid", "Idle", "Walk", "Run", "4", "Y", "", "", "", "", "", "", "",
+        ];
+        write_workbook(&path, &headers, &[row]);
+        let rows = read_animation_profile_rows(&path).unwrap();
+        let profile = rows[0].as_ref().unwrap().to_definition();
+        assert_eq!(profile.death_clip, None);
+        assert_eq!(profile.hit_reaction_clip, None);
+        assert_eq!(profile.upper_body_split_bone, None);
+        assert_eq!(profile.turn_left_duration_seconds, None);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn populated_extended_columns_map_to_profile() {
+        let path = std::env::temp_dir().join(format!(
+            "chasma_anim_import_{}_{}.xlsx",
+            std::process::id(),
+            "extended"
+        ));
+        let headers = extended_headers();
+        let row = vec![
+            "cavecrawler",
+            "Idle",
+            "CrawlForward",
+            "",
+            "3.5",
+            "Y",
+            "Death",
+            "GetHit1",
+            "",
+            "CrawlLeft",
+            "CrawlRight",
+            "1",
+            "1",
+        ];
+        write_workbook(&path, &headers, &[row]);
+        let rows = read_animation_profile_rows(&path).unwrap();
+        let profile = rows[0].as_ref().unwrap().to_definition();
+        assert_eq!(profile.death_clip.as_deref(), Some("Death"));
+        assert_eq!(profile.hit_reaction_clip.as_deref(), Some("GetHit1"));
+        assert_eq!(profile.turn_left_clip.as_deref(), Some("CrawlLeft"));
+        assert_eq!(profile.turn_right_clip.as_deref(), Some("CrawlRight"));
+        assert_eq!(profile.turn_left_duration_seconds, Some(1.0));
+        assert_eq!(profile.turn_right_duration_seconds, Some(1.0));
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn invalid_turn_duration_fails_row_parse() {
+        let path = std::env::temp_dir().join(format!(
+            "chasma_anim_import_{}_{}.xlsx",
+            std::process::id(),
+            "bad_duration"
+        ));
+        let headers = extended_headers();
+        let row = vec![
+            "cavecrawler",
+            "Idle",
+            "CrawlForward",
+            "",
+            "3.5",
+            "Y",
+            "",
+            "",
+            "",
+            "CrawlLeft",
+            "CrawlRight",
+            "not-a-number",
+            "1",
+        ];
+        write_workbook(&path, &headers, &[row]);
+        let rows = read_animation_profile_rows(&path).unwrap();
+        assert!(rows[0].is_err());
+        let _ = std::fs::remove_file(path);
+    }
 }
 
 fn cell_to_string(cell: &calamine::Data) -> String {

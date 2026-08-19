@@ -7,7 +7,7 @@ Accepted (E10 — visual day-night cycle foundation)
 # Context
 
 ADR-026 established the Environment rendering layer with [`EnvironmentSettings`] as the
-single tuning authority for skybox, ambient fill, and directional light. The dev preview
+single tuning authority for ambient fill and directional light. The dev preview
 needs a prototype day-night cycle for visual polish without introducing gameplay simulation
 time, weather, or calendar systems.
 
@@ -27,9 +27,10 @@ New modules under `src/environment/`:
 | `time_of_day.rs` | [`TimeOfDaySettings`] resource — clock, pause, cycle length, twilight tuning |
 | `cycle.rs` | Lighting evaluation, settings sync, ECS presentation sync, dev keyboard |
 
-The cycle writes into [`EnvironmentSettings`]; [`sync_environment_presentation`] applies
-settings to the existing singleton directional light, [`GlobalAmbientLight`], and
-[`Skybox`] brightness. No duplicate lights are spawned.
+The cycle writes into [`EnvironmentSettings`] and [`EnvironmentVisualState`];
+[`sync_environment_presentation`] applies settings to the existing singleton directional
+light and [`GlobalAmbientLight`]. Procedural sky uniforms sync separately. No duplicate
+lights are spawned.
 
 ## TimeOfDaySettings
 
@@ -41,7 +42,7 @@ When `enabled == false`, the cycle does not mutate [`EnvironmentSettings`].
 
 ## Lighting model (prototype)
 
-- Solar noon → peak directional illuminance, ambient, skybox brightness
+- Solar noon → peak directional illuminance and ambient
 - Night → low illuminance and ambient scaled by `night_ambient_multiplier`
 - Sunrise/sunset → warmer directional color via twilight warmth
 - Sun rotation derived from clock hour and daylight elevation arc
@@ -61,11 +62,13 @@ Legacy global keys (T/P/6/1/0) were removed from the keyboard path in favor of W
 
 Authored environment baselines live in `assets/environment/project_defaults.ron` (versioned RON). Loaded at startup in dev and release builds. Dev-only **Save as Project Defaults** writes atomically (`.ron.tmp` → rename). Scene saves remain independent.
 
-Persisted fields: cycle config, day/night/twilight tuning, skybox set/yaw, manual lighting baseline. Transient runtime: `time_hours`, `paused`.
+Persisted fields: cycle config, day/night/twilight tuning, manual lighting baseline.
+Transient runtime: `time_hours`, `paused`. (Legacy v1 files may contain removed skybox
+fields; serde ignores them.)
 
 # Future hooks
 
-- **Weather** — modulate ambient/skybox/directional on top of time-of-day baseline
+- **Weather** — modulate ambient/directional and sky evaluation on top of time-of-day baseline
 - **Water** — reflect sky tint from evaluated lighting
 - **Gameplay time** — separate simulation clock may *read* visual time for UI only, or
   drive Environment settings from authoritative sim time later; not coupled in E10

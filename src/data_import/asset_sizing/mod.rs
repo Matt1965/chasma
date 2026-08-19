@@ -26,7 +26,7 @@ pub use columns::{
     MODEL_OFFSET_Z_M, ROTATION_CORRECTION_X_DEG, ROTATION_CORRECTION_Y_DEG,
     ROTATION_CORRECTION_Z_DEG, SHARED_OPTIONAL_COLUMNS, SIZE_REFERENCE_AXIS, SOURCE_BOUNDS_NODE,
     SOURCE_DEPTH_M, SOURCE_HEIGHT_M, SOURCE_WIDTH_M, asset_sizing_from_columns,
-    parse_asset_sizing_columns, parse_optional_f32,
+    parse_asset_sizing_columns, parse_optional_f32, rotation_correction_from_workbook_xyz_degrees,
 };
 #[cfg(feature = "data-import")]
 pub use pipeline::{

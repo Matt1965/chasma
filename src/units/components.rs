@@ -2,6 +2,13 @@ use bevy::prelude::*;
 
 use crate::world::UnitId;
 
+/// Presentation-only smoothed world yaw (uncorrected by asset sizing).
+#[derive(Component, Debug, Clone, Copy, PartialEq, Reflect)]
+#[reflect(Component)]
+pub struct UnitVisualFacing {
+    pub rotation: Quat,
+}
+
 /// Links a derived render entity to authoritative unit data (ADR-028).
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Reflect)]
 #[reflect(Component)]

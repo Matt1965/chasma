@@ -51,7 +51,7 @@ ADRs document **accepted technical decisions**. Game design direction lives in
 
 | ADR | Topic |
 |-----|-------|
-| [026](ADR-026-skybox-foundation.md) | Environment rendering layer (skybox foundation) |
+| [026](ADR-026-skybox-foundation.md) | Environment rendering layer (procedural sky foundation) |
 | [052](ADR-052-time-of-day-visual-environment-system.md) | Time-of-day visual environment |
 | [053](ADR-053-water-rendering-foundation.md) | Water rendering foundation |
 | [068](ADR-068-environment-singleton-and-input-ownership.md) | Environment singleton and input ownership |

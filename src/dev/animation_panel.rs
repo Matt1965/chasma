@@ -161,6 +161,10 @@ pub fn sync_dev_animation_panel(
         })
         .unwrap_or_else(|| "profile: none (static model)".into());
 
+    let turn_speed_line = definition
+        .map(|def| format!("turn_speed={:.0} deg/s", def.turn_speed_degrees_per_second))
+        .unwrap_or_else(|| "turn_speed: n/a".into());
+
     let clip_line = locomotion_debug
         .locomotion_clip
         .map(|clip| clip.label().to_string())
@@ -180,7 +184,7 @@ pub fn sync_dev_animation_panel(
         .unwrap_or_else(|| "graph: not built".into());
 
     **label = format!(
-        "{aggregate}\nAnimation unit={}\n{profile_line}\n{lod_line}\nclip={clip_line} speed={:.2} turn={} heading={:?} align={:.2}\n{graph_line}\n{validation_line}\n{}",
+        "{aggregate}\nAnimation unit={}\n{profile_line}\n{turn_speed_line}\n{lod_line}\nclip={clip_line} speed={:.2} turn={} heading={:?} align={:.2}\n{graph_line}\n{validation_line}\n{}",
         unit_id.raw(),
         locomotion_debug.playback_speed,
         locomotion_debug.turn_active,

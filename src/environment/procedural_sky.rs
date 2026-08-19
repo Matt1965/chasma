@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use crate::camera::RtsCamera;
 
 use super::sky_material::{EnvironmentSkyMaterial, build_sky_material};
-use super::visual_state::{DEFAULT_SKY_PRESENTATION, EnvironmentVisualState, SkyPresentation};
+use super::visual_state::EnvironmentVisualState;
 
 /// Marker for the environment-owned procedural sky dome (single instance).
 #[derive(Component, Debug)]
@@ -22,7 +22,7 @@ pub struct ProceduralSkySpawnState {
 
 const SKY_DOME_RADIUS: f32 = 5_000.0;
 
-/// Spawn a camera-centered sky dome when procedural presentation is active.
+/// Spawn a camera-centered sky dome.
 pub fn setup_procedural_sky(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -30,7 +30,7 @@ pub fn setup_procedural_sky(
     visual: Res<EnvironmentVisualState>,
     mut spawn_state: ResMut<ProceduralSkySpawnState>,
 ) {
-    if spawn_state.spawned || DEFAULT_SKY_PRESENTATION != SkyPresentation::Procedural {
+    if spawn_state.spawned {
         return;
     }
 
@@ -58,10 +58,6 @@ pub fn sync_procedural_sky_presentation(
     >,
     mut materials: ResMut<Assets<EnvironmentSkyMaterial>>,
 ) {
-    if DEFAULT_SKY_PRESENTATION != SkyPresentation::Procedural {
-        return;
-    }
-
     let Ok(camera_transform) = camera.single() else {
         return;
     };

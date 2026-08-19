@@ -45,8 +45,8 @@ fn dirty_after_reset_from_custom_baseline() {
         &mut env,
         &mut manual,
     );
-    assert!(!environment_is_dirty(&baseline, &time, &env, &manual));
+    assert!(!environment_is_dirty(&baseline, &time, &manual));
     let built_in = built_in_authored_snapshot();
     built_in.apply_to_runtime(&mut time, &mut env, &mut manual.values);
-    assert!(environment_is_dirty(&baseline, &time, &env, &manual));
+    assert!(environment_is_dirty(&baseline, &time, &manual));
 }

@@ -1,10 +1,10 @@
-//! Environment rendering layer (R8 / ADR-026).
+//! Environment rendering layer (R8 / ADR-026, SKY-1, CLOUD-VOL-1).
 //!
-//! Owns client-local skybox and global lighting presentation. Not part of
-//! [`crate::world::WorldData`], terrain, biomes, or simulation.
+//! Owns client-local procedural sky, volumetric clouds, and global lighting
+//! presentation. Not part of [`crate::world::WorldData`], terrain, biomes, or simulation.
 //!
 //! Future weather, atmosphere, water, and day/night systems extend this layer by
-//! modifying [`EnvironmentSettings`] only.
+//! modifying [`EnvironmentSettings`] and companion resources only.
 
 mod cloud_material;
 mod cloud_settings;
@@ -18,7 +18,6 @@ mod project_defaults;
 mod settings;
 mod singleton;
 mod sky_material;
-mod skybox;
 mod time_of_day;
 mod visual_state;
 mod water;
@@ -63,17 +62,17 @@ pub use procedural_sky::{
     sync_procedural_sky_presentation,
 };
 pub use project_defaults::{
-    AuthoredEnvironment, AuthoredEnvironmentSnapshot, AuthoredTimeOfDay, EnvironmentManualLighting,
+    AuthoredEnvironmentSnapshot, AuthoredTimeOfDay, EnvironmentManualLighting,
     EnvironmentValidationError, ManualLightingDefaults, PROJECT_DEFAULTS_PATH,
     PROJECT_DEFAULTS_VERSION, ProjectDefaultsLoadStatus, ProjectDefaultsSaveError,
     ProjectEnvironmentBaseline, apply_manual_lighting, built_in_authored_snapshot,
     capture_current_authored_snapshot, environment_is_dirty, initialize_runtime_from_baseline,
-    list_registered_skybox_sets, load_project_environment_baseline,
-    save_project_environment_defaults, skybox_set_exists, validate_authored_snapshot,
+    load_project_environment_baseline, save_project_environment_defaults,
+    validate_authored_snapshot,
 };
 pub use settings::{
-    DEFAULT_DIRECTIONAL_LIGHT_LOOK_AT, DEFAULT_DIRECTIONAL_LIGHT_POSITION, DEFAULT_SKYBOX_SET,
-    ENVIRONMENT_ASSET_ROOT, EnvironmentSettings, SKYBOX_ASSET_ROOT,
+    DEFAULT_DIRECTIONAL_LIGHT_LOOK_AT, DEFAULT_DIRECTIONAL_LIGHT_POSITION, ENVIRONMENT_ASSET_ROOT,
+    EnvironmentSettings,
 };
 pub use singleton::{
     EnvironmentDirectionalLightResolution, resolve_environment_directional_light,
@@ -83,20 +82,13 @@ pub use sky_material::{
     EnvironmentSkyMaterial, SkyPresentationUniform, build_sky_material,
     build_sky_presentation_uniform,
 };
-pub use skybox::{
-    ActiveSkyboxLoad, CUBEMAP_KTX2_FILE, CUBEMAP_PNG_FILE, FACE_FILES_STACK_ORDER, SkyboxCamera,
-    SkyboxCubemapPaths, SkyboxLoadStatus, cubemap_paths_for_set, disk_asset_path,
-    loose_faces_exist, merge_loose_faces, merged_cubemap_path, resolve_existing_cubemap,
-    skybox_set_dir,
-};
 pub use time_of_day::TimeOfDaySettings;
 pub use visual_state::{
-    DEFAULT_SKY_PRESENTATION, EnvironmentVisualState, SKY_GRADIENT_HORIZON_EXPONENT,
-    SUN_DISC_HALF_ANGLE_RAD, SUN_DISC_SOFTNESS_RAD, SkyColorPalette, SkyPresentation,
-    TWILIGHT_SUN_ALIGNMENT_EXPONENT, apply_visual_state_to_environment,
-    evaluate_environment_visual_state, light_travel_direction_from_sun, sky_horizon_weight,
-    sun_direction_world_from_light_rotation, twilight_localized_weight,
-    update_environment_visual_state,
+    EnvironmentVisualState, SKY_GRADIENT_HORIZON_EXPONENT, SUN_DISC_HALF_ANGLE_RAD,
+    SUN_DISC_SOFTNESS_RAD, SkyColorPalette, TWILIGHT_SUN_ALIGNMENT_EXPONENT,
+    apply_visual_state_to_environment, evaluate_environment_visual_state,
+    light_travel_direction_from_sun, sky_horizon_weight, sun_direction_world_from_light_rotation,
+    twilight_localized_weight, update_environment_visual_state,
 };
 pub use water::{
     AuthoredTerrainMeters, DEFAULT_WATER_EXTENT_PADDING_METERS, DEFAULT_WATER_PLANE_SIZE_METERS,

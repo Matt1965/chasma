@@ -2,7 +2,7 @@
 //!
 //! Gated behind the `dev` feature. Wires catalog init and synchronous streaming
 //! for terrain render assets. The permanent RTS camera comes from
-//! [`crate::camera::CameraPlugin`] (ADR-014). Lighting and skybox come from
+//! [`crate::camera::CameraPlugin`] (ADR-014). Lighting and procedural sky come from
 //! [`crate::environment::EnvironmentPlugin`] (ADR-026).
 //!
 //! **Streaming vs LOD (Phase 2C):** [`TerrainStreamingSettings`] controls how far

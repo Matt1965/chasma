@@ -1403,8 +1403,8 @@ impl WorldData {
 
     /// Update a unit's placement only, including cross-chunk moves (ADR-027 U2).
     ///
-    /// Preserves id, definition, source, metadata, rotation, state, and tracked
-    /// [`SpaceId`]. Does not infer navigation membership from position (IN-11gI-B).
+    /// Preserves id, definition, source, metadata, state, and tracked [`SpaceId`].
+    /// Does not infer navigation membership from position (IN-11gI-B).
     pub fn update_unit_position(
         &mut self,
         id: UnitId,
@@ -1435,6 +1435,54 @@ impl WorldData {
         let moved = record.clone();
         self.insert_unit(new_chunk, record)?;
         Ok(moved)
+    }
+
+    /// Update authoritative unit yaw from accepted horizontal travel (UNIT-FACING-1).
+    ///
+    /// No-op when XZ displacement is below [`super::unit::MOVEMENT_FACING_EPSILON_METERS`].
+    pub fn apply_unit_facing_from_travel(
+        &mut self,
+        id: super::unit::UnitId,
+        from: super::WorldPosition,
+        to: super::WorldPosition,
+    ) -> Result<(), UnitInsertError> {
+        let layout = self.layout();
+        let Some(rotation) = super::unit::facing_rotation_from_travel(from, to, layout) else {
+            return Ok(());
+        };
+        let chunk = self
+            .unit_locations
+            .get(&id)
+            .copied()
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        let record = self
+            .units
+            .get_mut(&chunk)
+            .and_then(|store| store.get_mut(id))
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        record.placement.rotation = rotation;
+        Ok(())
+    }
+
+    /// Test/dev helper for presentation tests that need a specific authoritative facing.
+    #[cfg(any(test, feature = "dev"))]
+    pub fn set_unit_facing_for_test(
+        &mut self,
+        id: UnitId,
+        rotation: Quat,
+    ) -> Result<(), UnitInsertError> {
+        let chunk = self
+            .unit_locations
+            .get(&id)
+            .copied()
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        let record = self
+            .units
+            .get_mut(&chunk)
+            .and_then(|store| store.get_mut(id))
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        record.placement.rotation = rotation;
+        Ok(())
     }
 
     /// Explicit relocation: position update plus positional membership initialization (IN-11gG-M).

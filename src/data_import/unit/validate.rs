@@ -51,8 +51,15 @@ pub fn validate_row(row: &UnitImportRow) -> Result<(), crate::data_import::RowIm
         || !row.collision_radius_meters.is_finite()
         || !row.max_slope_degrees.is_finite()
         || !row.render_scale.is_finite()
+        || !row.turn_speed_degrees_per_second.is_finite()
     {
         return Err(fail("numeric fields must be finite".to_string()));
+    }
+    if row.has_turn_speed_column && row.turn_speed_degrees_per_second <= 0.0 {
+        return Err(fail(format!(
+            "Turn Speed Deg/s must be > 0 (got {})",
+            row.turn_speed_degrees_per_second
+        )));
     }
     if row.has_file_path_column && !row.file_path.trim().is_empty() {
         if super::schema::normalize_file_path_to_render_key(&row.file_path).is_err() {
@@ -67,6 +74,7 @@ pub fn validate_row(row: &UnitImportRow) -> Result<(), crate::data_import::RowIm
 mod tests {
     use super::*;
     use crate::data_import::unit::schema::UnitImportRow;
+    use crate::world::DEFAULT_TURN_SPEED_DEGREES_PER_SECOND;
 
     fn row_with(move_speed: f32, collision: f32) -> UnitImportRow {
         UnitImportRow {
@@ -100,6 +108,8 @@ mod tests {
             has_animation_profile_column: false,
             inventory_profile_id: String::new(),
             has_inventory_profile_column: false,
+            turn_speed_degrees_per_second: DEFAULT_TURN_SPEED_DEGREES_PER_SECOND,
+            has_turn_speed_column: false,
             asset_sizing: Default::default(),
         }
     }
@@ -127,5 +137,21 @@ mod tests {
     #[test]
     fn accepts_valid_row() {
         assert!(validate_row(&row_with(4.5, 0.6)).is_ok());
+    }
+
+    #[test]
+    fn rejects_non_positive_turn_speed_when_column_present() {
+        let mut row = row_with(4.5, 0.6);
+        row.has_turn_speed_column = true;
+        row.turn_speed_degrees_per_second = 0.0;
+        assert!(validate_row(&row).is_err());
+    }
+
+    #[test]
+    fn rejects_negative_turn_speed_when_column_present() {
+        let mut row = row_with(4.5, 0.6);
+        row.has_turn_speed_column = true;
+        row.turn_speed_degrees_per_second = -90.0;
+        assert!(validate_row(&row).is_err());
     }
 }

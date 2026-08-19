@@ -135,6 +135,16 @@ pub fn sizing_rotation_correction(rotation: QuantizedOrientation) -> Quat {
     rotation.to_quat()
 }
 
+/// Unit presentation rotation: smoothed visual world yaw × definition model correction.
+///
+/// Gameplay/animation facing remains `UnitPlacement.rotation` alone (UNIT-FACING-1).
+/// `visual_world_facing` is uncorrected upright world yaw (UNIT-TURN-1).
+/// Visual GLB authoring axes are adapted via [`AssetSizingDefinition::rotation_correction`]
+/// (UNIT-FACING-2 / ADR-128).
+pub fn unit_visual_rotation(definition: &UnitDefinition, visual_world_facing: Quat) -> Quat {
+    visual_world_facing * sizing_rotation_correction(definition.asset_sizing.rotation_correction)
+}
+
 /// Authoritative pivot offset (meters) from AT1 sizing authority.
 pub fn building_effective_model_offset(definition: &BuildingDefinition) -> Vec3 {
     if definition.asset_sizing.model_local_offset_meters != Vec3::ZERO {
@@ -304,5 +314,103 @@ mod tests {
         assert!((scale.x - 3.0).abs() < 0.01);
         assert_eq!(scale.x, scale.y);
         assert_eq!(scale.y, scale.z);
+    }
+
+    fn sample_unit_definition() -> UnitDefinition {
+        use crate::world::{UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
+        UnitDefinition::new(
+            UnitDefinitionId::new("wolf"),
+            "Wolf",
+            "Wild",
+            2,
+            5,
+            5,
+            4,
+            6,
+            3,
+            7,
+            2,
+            3,
+            26.5,
+            "Elite",
+            4.0,
+            0.6,
+            40.0,
+            WeaponDefinitionId::new("weapon_wolf_bite"),
+            true,
+            UnitRenderKey::reserved("wolf"),
+        )
+    }
+
+    fn visual_forward_axis(definition: &UnitDefinition, placement: Quat, local_axis: Vec3) -> Vec2 {
+        let world = unit_visual_rotation(definition, placement) * local_axis;
+        Vec2::new(world.x, world.z).normalize()
+    }
+
+    #[test]
+    fn unit_visual_rotation_identity_matches_placement() {
+        let definition = sample_unit_definition();
+        let placement = Quat::from_rotation_y(std::f32::consts::FRAC_PI_2);
+        assert_eq!(unit_visual_rotation(&definition, placement), placement);
+    }
+
+    #[test]
+    fn unit_visual_rotation_180_y_aligns_authored_plus_z_with_travel() {
+        let mut definition = sample_unit_definition();
+        definition.asset_sizing.rotation_correction =
+            QuantizedOrientation::from_degrees(180.0, 0.0, 0.0).unwrap();
+        let travel = Vec2::new(1.0, 0.0);
+        let placement = Quat::from_rotation_y((-travel.x).atan2(-travel.y));
+        let gameplay_forward = Vec2::new((placement * Vec3::NEG_Z).x, (placement * Vec3::NEG_Z).z);
+        assert!((gameplay_forward - travel).length() < 1e-3);
+        let authored_head = Vec3::Z;
+        let visual_head = visual_forward_axis(&definition, placement, authored_head);
+        assert!(
+            (visual_head - gameplay_forward).length() < 1e-3,
+            "visual head {visual_head:?} should match travel {gameplay_forward:?}"
+        );
+    }
+
+    #[test]
+    fn unit_visual_rotation_90_y_corrections() {
+        let travel = Vec2::new(1.0, 0.0);
+        let placement = Quat::from_rotation_y((-travel.x).atan2(-travel.y));
+        let gameplay_forward = Vec2::new((placement * Vec3::NEG_Z).x, (placement * Vec3::NEG_Z).z);
+
+        let mut plus = sample_unit_definition();
+        plus.asset_sizing.rotation_correction =
+            QuantizedOrientation::from_degrees(90.0, 0.0, 0.0).unwrap();
+        let plus_head = visual_forward_axis(&plus, placement, Vec3::X);
+        assert!((plus_head - gameplay_forward).length() < 1e-3);
+
+        let mut minus = sample_unit_definition();
+        minus.asset_sizing.rotation_correction =
+            QuantizedOrientation::from_degrees(-90.0, 0.0, 0.0).unwrap();
+        let minus_head = visual_forward_axis(&minus, placement, Vec3::NEG_X);
+        assert!((minus_head - gameplay_forward).length() < 1e-3);
+    }
+
+    #[test]
+    fn unit_visual_rotation_y90_keeps_model_upright() {
+        let mut definition = sample_unit_definition();
+        definition.asset_sizing.rotation_correction =
+            QuantizedOrientation::from_degrees(90.0, 0.0, 0.0).unwrap();
+        let placement = Quat::IDENTITY;
+        let visual = unit_visual_rotation(&definition, placement);
+        let up = visual * Vec3::Y;
+        assert!(
+            up.dot(Vec3::Y) > 0.99,
+            "yaw-only visual correction must stay upright, got up={up:?}"
+        );
+    }
+
+    #[test]
+    fn unit_visual_rotation_does_not_change_placement() {
+        let mut definition = sample_unit_definition();
+        definition.asset_sizing.rotation_correction =
+            QuantizedOrientation::from_degrees(180.0, 0.0, 0.0).unwrap();
+        let placement = Quat::from_rotation_y(1.25);
+        let _ = unit_visual_rotation(&definition, placement);
+        assert_eq!(placement, Quat::from_rotation_y(1.25));
     }
 }

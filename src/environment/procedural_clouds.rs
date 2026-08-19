@@ -9,7 +9,7 @@ use crate::camera::RtsCamera;
 
 use super::cloud_material::{EnvironmentCloudMaterial, build_cloud_layer_uniform};
 use super::cloud_settings::{CloudSettings, cloud_wind_displacement_world};
-use super::visual_state::{DEFAULT_SKY_PRESENTATION, EnvironmentVisualState, SkyPresentation};
+use super::visual_state::EnvironmentVisualState;
 
 /// Marker for the single LOW volumetric cloud render proxy (no physical cloud meaning).
 #[derive(Component, Debug)]
@@ -42,10 +42,7 @@ pub fn setup_procedural_clouds(
     time: Res<Time>,
     mut spawn_state: ResMut<ProceduralCloudSpawnState>,
 ) {
-    if spawn_state.spawned
-        || !settings.enabled
-        || DEFAULT_SKY_PRESENTATION != SkyPresentation::Procedural
-    {
+    if spawn_state.spawned || !settings.enabled {
         return;
     }
 
@@ -80,7 +77,7 @@ pub fn sync_procedural_cloud_presentation(
     >,
     mut materials: ResMut<Assets<EnvironmentCloudMaterial>>,
 ) {
-    if !settings.enabled || DEFAULT_SKY_PRESENTATION != SkyPresentation::Procedural {
+    if !settings.enabled {
         return;
     }
 
@@ -176,11 +173,6 @@ mod tests {
         assert_eq!(proxies, 1);
         assert_eq!(legacy_low, 0);
         assert_eq!(legacy_high, 0);
-    }
-
-    #[test]
-    fn procedural_sky_mode_remains_default() {
-        assert_eq!(DEFAULT_SKY_PRESENTATION, SkyPresentation::Procedural);
     }
 
     #[test]

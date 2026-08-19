@@ -69,6 +69,7 @@ pub use lod::{
 pub use playback::sync_unit_animation_playback;
 #[allow(unused_imports)]
 pub use plugin::{UnitAnimationPlugin, UnitAnimationSystems};
+pub use presentation_time::presentation_advance_seconds;
 #[allow(unused_imports)]
 pub use settings::{DOCUMENTED_RUN_SPEED_RATIO, UnitAnimationSettings};
 #[allow(unused_imports)]

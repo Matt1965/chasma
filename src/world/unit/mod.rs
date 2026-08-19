@@ -15,6 +15,7 @@ mod combat_state;
 mod death;
 mod eligibility;
 pub(crate) mod entrance_traversal_trace;
+mod facing;
 mod grounding;
 mod id;
 pub(crate) mod inside_move_trace;
@@ -56,8 +57,8 @@ pub use authoring::{
 #[cfg(any(test, feature = "dev"))]
 pub use catalog::starter_definitions;
 pub use catalog::{
-    UnitCatalog, UnitCatalogError, UnitDefinition, UnitDefinitionId, UnitRenderKey,
-    UnitWorkCapabilities,
+    DEFAULT_TURN_SPEED_DEGREES_PER_SECOND, UnitCatalog, UnitCatalogError, UnitDefinition,
+    UnitDefinitionId, UnitRenderKey, UnitWorkCapabilities,
 };
 pub use combat_state::CombatState;
 #[cfg(test)]
@@ -76,6 +77,11 @@ pub use entrance_traversal_trace::{
     record_opening_legality_probe as record_entrance_opening_legality_probe,
     record_pathfinding_probe as record_entrance_pathfinding_probe,
     record_transition_probe as record_entrance_transition_probe,
+};
+pub use facing::{
+    MOVEMENT_FACING_EPSILON_METERS, facing_rotation_from_direction_xz, facing_rotation_from_travel,
+    model_forward_xz, rotation_from_yaw_radians, shortest_yaw_delta_radians,
+    step_rotation_yaw_toward, step_yaw_toward, xz_displacement_meters, yaw_radians_from_rotation,
 };
 pub use grounding::{UnitGroundingError, ground_unit_position, ground_unit_to_terrain};
 pub use id::UnitId;

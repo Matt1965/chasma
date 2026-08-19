@@ -1,8 +1,9 @@
 //! Authoritative unit movement along navigation paths (ADR-030 U5, ADR-032 U7, ADR-036 U11, ADR-037 U12).
 //!
 //! Steps [`UnitRecord`] placement on the XZ plane toward path waypoints,
-//! grounding Y from resident heightfields. Local steering (U11) adjusts direction
-//! without modifying paths.
+//! grounding Y from resident heightfields. Accepted horizontal travel updates
+//! authoritative yaw via [`super::facing`] (UNIT-FACING-1). Local steering (U11)
+//! adjusts direction without modifying paths.
 //!
 //! Full tick orchestration lives in [`crate::simulation::run_simulation_tick`] (ADR-065).
 
@@ -10,6 +11,7 @@ use bevy::prelude::*;
 
 use super::catalog::UnitCatalog;
 use super::eligibility::unit_can_execute_actions;
+use super::facing::model_forward_xz;
 use super::id::UnitId;
 use super::movement_authority_trace::MovementBlockedAuthorityRecord;
 use super::state::UnitState;
@@ -38,6 +40,15 @@ const PARTIAL_ARRIVAL_DISTANCE_METERS: f32 = 2.5;
 
 static STEERING_SETTINGS: SteeringSettings = SteeringSettings::DEFAULT;
 static FEEL_SETTINGS: MovementFeelSettings = MovementFeelSettings::DEFAULT;
+
+fn apply_accepted_movement_facing(
+    world: &mut WorldData,
+    unit_id: UnitId,
+    from: WorldPosition,
+    to: WorldPosition,
+) {
+    let _ = world.apply_unit_facing_from_travel(unit_id, from, to);
+}
 
 fn passability_fn_for_space(space_id: SpaceId) -> &'static str {
     if space_id.is_surface() {
@@ -992,6 +1003,7 @@ pub fn step_unit_movement(
         );
         return_blocked_movement!(BlockedMovementReason::TerrainUnavailable, grounded);
     }
+    apply_accepted_movement_facing(world, unit_id, current_position, grounded);
 
     #[cfg(feature = "dev")]
     {
@@ -1059,6 +1071,7 @@ pub fn step_unit_movement(
             layout,
         ) && world.update_unit_position(unit_id, nudged).is_ok()
         {
+            apply_accepted_movement_facing(world, unit_id, current_position, nudged);
             grounded = nudged;
         } else {
             return_blocked_movement!(BlockedMovementReason::BlockedByBuilding, grounded);
@@ -1404,7 +1417,8 @@ mod tests {
         LocalPosition, NavigationConfig, NavigationPath, PassabilityCatalogs, UnitCatalog,
         UnitDefinition, UnitDefinitionId, UnitMetadata, UnitOrder, UnitPlacement, UnitRecord,
         UnitRenderKey, UnitSource, WeaponCatalog, WorldConfig, create_doodad, create_unit,
-        issue_unit_order, resolve_all_pending_unit_orders, resolve_pending_unit_orders,
+        facing_rotation_from_travel, issue_unit_order, model_forward_xz,
+        resolve_all_pending_unit_orders, resolve_pending_unit_orders,
     };
     use bevy::asset::AssetPlugin;
     use bevy::prelude::{
@@ -1684,17 +1698,161 @@ mod tests {
     }
 
     #[test]
-    fn xz_update_rotation_source_metadata_preserved() {
+    fn successful_movement_updates_facing_from_actual_displacement() {
+        let catalog = UnitCatalog::default();
+        let mut world = WorldData::new(layout());
+        insert_flat(&mut world, 0, 0, 5.0);
+        let unit_id = spawn_wolf(&mut world, &catalog, pos(0, 0, 0.0, 0.0, 0.0));
+        let initial_rotation = world.get_unit(unit_id).unwrap().placement.rotation;
+        issue_move(
+            &mut world,
+            &catalog,
+            &DoodadCatalog::default(),
+            unit_id,
+            pos(0, 0, 100.0, 0.0, 0.0),
+        );
+
+        step_report(
+            &mut world,
+            &catalog,
+            &DoodadCatalog::default(),
+            unit_id,
+            1.0,
+        );
+        let updated = world.get_unit(unit_id).unwrap();
+        assert_ne!(updated.placement.rotation, initial_rotation);
+        assert_forward_matches_displacement(
+            updated.placement.rotation,
+            pos(0, 0, 0.0, 0.0, 0.0),
+            updated.placement.position,
+        );
+    }
+
+    #[test]
+    fn blocked_movement_preserves_facing() {
         let catalog = UnitCatalog::default();
         let mut world = WorldData::new(layout());
         insert_flat(&mut world, 0, 0, 1.0);
         let unit_id = world.allocate_unit_id();
-        let rotation = Quat::from_rotation_y(1.1);
+        let rotation = Quat::from_rotation_y(0.75);
+        world
+            .insert_unit(
+                ChunkId::new(ChunkCoord::new(0, 0)),
+                UnitRecord::new(
+                    unit_id,
+                    UnitDefinitionId::new("wolf"),
+                    UnitPlacement::new(pos(0, 0, 1.0, 0.0, 1.0), rotation),
+                    UnitSource::Authored,
+                    crate::world::UnitOwnership::neutral(),
+                    5,
+                ),
+            )
+            .unwrap();
+        let target = pos(0, 0, 50.0, 0.0, 50.0);
+        world.remove(ChunkId::new(ChunkCoord::new(0, 0)));
+        world.set_unit_state(unit_id, moving_state(target)).unwrap();
+
+        let _ = step(
+            &mut world,
+            &catalog,
+            &DoodadCatalog::default(),
+            unit_id,
+            1.0,
+        );
+        assert_eq!(
+            world.get_unit(unit_id).unwrap().placement.rotation,
+            rotation
+        );
+    }
+
+    #[test]
+    fn arrival_preserves_last_travel_facing() {
+        let catalog = UnitCatalog::default();
+        let mut world = WorldData::new(layout());
+        insert_flat(&mut world, 0, 0, 2.0);
+        let unit_id = spawn_wolf(&mut world, &catalog, pos(0, 0, 0.0, 0.0, 0.0));
+        issue_move(
+            &mut world,
+            &catalog,
+            &DoodadCatalog::default(),
+            unit_id,
+            pos(0, 0, 2.0, 0.0, 0.0),
+        );
+        step_report(
+            &mut world,
+            &catalog,
+            &DoodadCatalog::default(),
+            unit_id,
+            1.0,
+        );
+        let after_arrival = world.get_unit(unit_id).unwrap().placement.rotation;
+        assert_eq!(world.get_unit(unit_id).unwrap().state, UnitState::Idle);
+        step_report(
+            &mut world,
+            &catalog,
+            &DoodadCatalog::default(),
+            unit_id,
+            1.0,
+        );
+        assert_eq!(
+            world.get_unit(unit_id).unwrap().placement.rotation,
+            after_arrival
+        );
+        assert_forward_matches_displacement(
+            after_arrival,
+            pos(0, 0, 0.0, 0.0, 0.0),
+            pos(0, 0, 2.0, 0.0, 0.0),
+        );
+    }
+
+    #[test]
+    fn cross_chunk_movement_faces_global_travel_direction() {
+        let catalog = UnitCatalog::default();
+        let mut world = WorldData::new(layout());
+        insert_flat_dense(&mut world, 0, 0, 1.0);
+        insert_flat_dense(&mut world, 1, 0, 1.0);
+        let unit_id = spawn_wolf(&mut world, &catalog, pos(0, 0, 200.0, 0.0, 128.0));
+        let before = pos(0, 0, 200.0, 0.0, 128.0);
+        world
+            .set_unit_state(unit_id, moving_state(pos(1, 0, 50.0, 0.0, 128.0)))
+            .unwrap();
+
+        step_report(
+            &mut world,
+            &catalog,
+            &DoodadCatalog::default(),
+            unit_id,
+            20.0,
+        );
+        let after = world.get_unit(unit_id).unwrap().placement.position;
+        assert_forward_matches_displacement(
+            world.get_unit(unit_id).unwrap().placement.rotation,
+            before,
+            after,
+        );
+    }
+
+    fn assert_forward_matches_displacement(rotation: Quat, from: WorldPosition, to: WorldPosition) {
+        let expected = facing_rotation_from_travel(from, to, layout()).expect("travel direction");
+        let forward = model_forward_xz(rotation);
+        let expected_forward = model_forward_xz(expected);
+        assert!(
+            (forward - expected_forward).length() < 1e-3,
+            "forward {forward:?} != expected {expected_forward:?}"
+        );
+    }
+
+    #[test]
+    fn xz_update_source_metadata_preserved() {
+        let catalog = UnitCatalog::default();
+        let mut world = WorldData::new(layout());
+        insert_flat(&mut world, 0, 0, 1.0);
+        let unit_id = world.allocate_unit_id();
         let source = UnitSource::Procedural { seed: 5 };
         let mut record = UnitRecord::new(
             unit_id,
             UnitDefinitionId::new("wolf"),
-            UnitPlacement::new(pos(0, 0, 0.0, 0.0, 0.0), rotation),
+            UnitPlacement::new(pos(0, 0, 0.0, 0.0, 0.0), Quat::IDENTITY),
             source,
             crate::world::default_ownership_for_source(source),
             5,
@@ -1720,7 +1878,6 @@ mod tests {
         let updated = world.get_unit(unit_id).unwrap();
         assert!(updated.placement.position.local.0.x > 0.0);
         assert!(updated.placement.position.local.0.z > 0.0);
-        assert_eq!(updated.placement.rotation, rotation);
         assert_eq!(updated.source, source);
         assert_eq!(updated.metadata, UnitMetadata);
     }

@@ -310,8 +310,9 @@ fn validate_forward_axis_convention(report: &mut DefinitionValidationReport) {
         ValidationSeverity::Info,
         "model_forward_axis",
         format!(
-            "model forward axis convention: {:?} (see docs/animation-authoring.md)",
-            MODEL_FORWARD_AXIS
+            "Chasma gameplay/model-forward convention is local {MODEL_FORWARD_AXIS:?}; \
+             source GLB forward is not inferred from the asset — set Units rotation correction \
+             columns when visual facing differs (see docs/animation-authoring.md)"
         ),
     );
 }

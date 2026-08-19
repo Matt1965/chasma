@@ -28,10 +28,8 @@ pub struct TimeOfDaySettings {
     /// Directional illuminance (lux) at solar noon and deep night.
     pub noon_directional_illuminance: f32,
     pub night_directional_illuminance: f32,
-    /// Ambient and skybox brightness at noon and night (before night ambient multiplier).
+    /// Ambient brightness at solar noon (night uses multiplier below).
     pub noon_ambient_brightness: f32,
-    pub noon_skybox_brightness: f32,
-    pub night_skybox_brightness: f32,
     /// Extra daylight factor from twilight warmth at dawn/dusk.
     pub twilight_daylight_blend: f32,
 }
@@ -51,8 +49,6 @@ impl Default for TimeOfDaySettings {
             noon_directional_illuminance: 24_000.0,
             night_directional_illuminance: 40.0,
             noon_ambient_brightness: 320.0,
-            noon_skybox_brightness: 1_200.0,
-            night_skybox_brightness: 160.0,
             twilight_daylight_blend: 0.5,
         }
     }

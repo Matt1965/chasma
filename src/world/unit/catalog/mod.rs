@@ -8,7 +8,7 @@ mod render_key;
 mod starter;
 mod work;
 
-pub use definition::UnitDefinition;
+pub use definition::{DEFAULT_TURN_SPEED_DEGREES_PER_SECOND, UnitDefinition};
 pub use definition_id::UnitDefinitionId;
 pub use inventory_profile::{
     UnitInventoryProfileValidationError, validate_unit_inventory_profile_reference,

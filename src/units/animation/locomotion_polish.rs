@@ -266,6 +266,10 @@ fn locomotion_blend_duration(
 
 /// Signed radians from model forward to movement direction (+ = turn right).
 pub fn movement_heading_delta(record: &UnitRecord, layout: ChunkLayout) -> Option<f32> {
+    if matches!(record.state, UnitState::Moving { .. }) {
+        // Authoritative travel facing owns rotation while moving (UNIT-FACING-1).
+        return None;
+    }
     let direction = movement_direction_xz(record, layout)?;
     let forward = model_forward_xz(record.placement.rotation);
     signed_angle_xz(forward, direction)
@@ -504,37 +508,20 @@ mod tests {
     }
 
     #[test]
-    fn turn_starts_when_idle_and_heading_mismatch() {
-        let mut state = LocomotionPresentationState::default();
-        let mut record = sample_record(UnitState::Idle);
-        record.placement.rotation = Quat::IDENTITY;
-        let path = NavigationPath::from_surface_positions(vec![WorldPosition::new(
-            crate::world::ChunkCoord::new(0, 0),
-            LocalPosition::new(Vec3::new(0.0, 0.0, 10.0)),
-        )]);
-        record.state = UnitState::Moving {
-            target: path.waypoints[0].position,
-            path,
+    fn moving_units_skip_heading_delta_turns() {
+        let mut record = sample_record(UnitState::Moving {
+            target: WorldPosition::new(
+                crate::world::ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(0.0, 0.0, 10.0)),
+            ),
+            path: NavigationPath::from_surface_positions(vec![WorldPosition::new(
+                crate::world::ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(0.0, 0.0, 10.0)),
+            )]),
             waypoint_index: 0,
-        };
+        });
         record.placement.rotation = Quat::from_rotation_y(std::f32::consts::FRAC_PI_2);
-        let intent = resolve_polished_lower_body(
-            &record,
-            &sample_definition(4.0),
-            &sample_profile(),
-            &UnitAnimationSettings::default(),
-            layout(),
-            &mut state,
-            0.0,
-        )
-        .unwrap();
-        assert!(matches!(
-            intent,
-            LowerBodyIntent::Turn {
-                clip: AnimationClipKey::TurnLeft,
-                ..
-            }
-        ));
+        assert!(movement_heading_delta(&record, layout()).is_none());
     }
 
     #[test]

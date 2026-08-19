@@ -53,6 +53,8 @@ is already baked into `calculated_baseline_scale` / `explicit_baseline_scale`.
 - Existing scenes keep working: instance milli scales unchanged; definition baselines already on catalogs
 - Buildings with both legacy yaw mirror and `asset_sizing.rotation_correction` no longer double-apply yaw
 - Units prefer metric baseline; legacy `render_scale` only when sizing is missing
+- **Units (2026-08-18, UNIT-FACING-2):** presentation `Transform.rotation` now composes
+  `placement.rotation × asset_sizing.rotation_correction`; gameplay facing remains placement-only
 - Call sites should use `*_visual_scale` / `compose_visual_scale`; older `*_final_render_scale` /
   `*_baseline_render_scale` aliases remain as wrappers
 

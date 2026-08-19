@@ -1,5 +1,6 @@
 //! Excel column schema and conversion into [`UnitDefinition`].
 
+use crate::world::DEFAULT_TURN_SPEED_DEGREES_PER_SECOND;
 use crate::world::asset_sizing::AssetSizingDefinition;
 use crate::world::{AnimationProfile, AnimationProfileId};
 use crate::world::{UnitDefinition, UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
@@ -49,6 +50,7 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Rotation Correction X Deg",
     "Rotation Correction Y Deg",
     "Rotation Correction Z Deg",
+    "Turn Speed Deg/s",
     "Explicit Baseline Scale Uniform",
 ];
 
@@ -59,6 +61,7 @@ pub const DEFAULT_MOVE_SPEED_MPS: f32 = 4.0;
 pub const DEFAULT_COLLISION_RADIUS_METERS: f32 = 0.5;
 pub const DEFAULT_MAX_SLOPE_DEGREES: f32 = 40.0;
 pub const DEFAULT_RENDER_SCALE: f32 = 1.0;
+pub const TURN_SPEED_DEG_PER_SEC: &str = "Turn Speed Deg/s";
 /// `robot.glb` mesh bounds are ~0.81 m tall; scale to ~1.75 m humanoid when the sheet omits Render Scale.
 pub const ROBOT_DEFAULT_RENDER_SCALE: f32 = 2.15;
 /// Used when the workbook has no `Default Weapon ID` column or the cell is blank.
@@ -97,6 +100,8 @@ pub struct UnitImportRow {
     pub has_animation_profile_column: bool,
     pub inventory_profile_id: String,
     pub has_inventory_profile_column: bool,
+    pub turn_speed_degrees_per_second: f32,
+    pub has_turn_speed_column: bool,
     pub asset_sizing: AssetSizingDefinition,
 }
 
@@ -164,6 +169,7 @@ impl UnitImportRow {
             );
         }
         definition.asset_sizing = self.asset_sizing.clone();
+        definition.turn_speed_degrees_per_second = self.turn_speed_degrees_per_second;
         Ok(definition)
     }
 
@@ -248,6 +254,8 @@ mod tests {
             has_animation_profile_column: false,
             inventory_profile_id: String::new(),
             has_inventory_profile_column: false,
+            turn_speed_degrees_per_second: DEFAULT_TURN_SPEED_DEGREES_PER_SECOND,
+            has_turn_speed_column: false,
             asset_sizing: AssetSizingDefinition::default(),
         }
     }
@@ -327,5 +335,23 @@ mod tests {
         row.render_scale = 1.75;
         let def = row.to_definition().unwrap();
         assert!((def.render_scale - 1.75).abs() < 1e-4);
+    }
+
+    #[test]
+    fn turn_speed_defaults_when_column_absent() {
+        let def = sample_row().to_definition().unwrap();
+        assert!(
+            (def.turn_speed_degrees_per_second - DEFAULT_TURN_SPEED_DEGREES_PER_SECOND).abs()
+                < 1e-4
+        );
+    }
+
+    #[test]
+    fn turn_speed_imports_populated_value() {
+        let mut row = sample_row();
+        row.has_turn_speed_column = true;
+        row.turn_speed_degrees_per_second = 720.0;
+        let def = row.to_definition().unwrap();
+        assert!((def.turn_speed_degrees_per_second - 720.0).abs() < 1e-4);
     }
 }

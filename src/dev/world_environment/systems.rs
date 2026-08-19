@@ -18,8 +18,8 @@ use crate::environment::{
     EnvironmentManualLighting, EnvironmentSettings, ProjectDefaultsLoadStatus,
     ProjectEnvironmentBaseline, TimeOfDayDevAction, TimeOfDaySettings,
     apply_time_of_day_dev_action, built_in_authored_snapshot, capture_current_authored_snapshot,
-    environment_is_dirty, format_time_of_day_status, list_registered_skybox_sets,
-    save_project_environment_defaults, validate_authored_snapshot,
+    environment_is_dirty, format_time_of_day_status, save_project_environment_defaults,
+    validate_authored_snapshot,
 };
 
 use super::fields::EnvFieldId;
@@ -27,8 +27,7 @@ use super::state::{
     DevWorldCycleToggle, DevWorldEnvironmentAction, DevWorldEnvironmentConfirmationBar,
     DevWorldEnvironmentDirtyBadge, DevWorldEnvironmentLoadStatusText, DevWorldEnvironmentSection,
     DevWorldEnvironmentStatusText, DevWorldEnvironmentValidationText, DevWorldPauseToggle,
-    DevWorldSkyboxOption, DevWorldTimePresetButton, WorldEnvironmentConfirm,
-    WorldEnvironmentUiState,
+    DevWorldTimePresetButton, WorldEnvironmentConfirm, WorldEnvironmentUiState,
 };
 
 pub fn sync_world_environment_panel(
@@ -59,7 +58,7 @@ pub fn sync_world_environment_panel(
         **text = format_time_of_day_status(&time_of_day);
     }
 
-    let dirty = environment_is_dirty(&baseline, &time_of_day, &environment, &manual);
+    let dirty = environment_is_dirty(&baseline, &time_of_day, &manual);
     if let Ok(mut text) = texts.p1().single_mut() {
         **text = if dirty { "Unsaved changes" } else { "" }.into();
     }
@@ -189,25 +188,6 @@ fn sync_toggle_mark(
     }
 }
 
-pub fn sync_world_skybox_buttons(
-    dev_state: Res<DevModeState>,
-    registry: Res<DevWindowRegistry>,
-    environment: Res<EnvironmentSettings>,
-    mut buttons: Query<(&DevWorldSkyboxOption, &Interaction, &mut BackgroundColor), With<Button>>,
-) {
-    if !registry.window_active(dev_state.enabled, DevWindowId::World) {
-        return;
-    }
-    let sets = list_registered_skybox_sets();
-    for (option, interaction, mut bg) in &mut buttons {
-        let is_active = sets
-            .get(option.index)
-            .map(|s| s == &environment.skybox_set)
-            .unwrap_or(false);
-        *bg = crate::dev::widgets::action_button_bg(interaction, is_active);
-    }
-}
-
 pub fn sync_world_environment_confirm_bar(
     ui_state: Res<WorldEnvironmentUiState>,
     mut bars: Query<
@@ -270,7 +250,7 @@ pub fn handle_world_environment_actions(
                 ui_state.pending_confirmation = Some(WorldEnvironmentConfirm::SaveProjectDefaults);
             }
             DevWorldEnvironmentAction::Revert => {
-                if environment_is_dirty(&baseline, &time_of_day, &environment, &manual) {
+                if environment_is_dirty(&baseline, &time_of_day, &manual) {
                     ui_state.pending_confirmation = Some(WorldEnvironmentConfirm::Revert);
                 } else {
                     apply_revert(
@@ -327,7 +307,7 @@ fn perform_save(
     manual: &EnvironmentManualLighting,
     ui_state: &mut WorldEnvironmentUiState,
 ) {
-    let snapshot = capture_current_authored_snapshot(time_of_day, environment, manual);
+    let snapshot = capture_current_authored_snapshot(time_of_day, manual);
     if let Err(err) = validate_authored_snapshot(&snapshot) {
         ui_state.validation_error = Some(err);
         ui_state.set_error("Save blocked — fix validation errors first");
@@ -414,7 +394,7 @@ pub fn handle_world_cycle_toggles(
                 crate::environment::apply_manual_lighting(&mut environment, &manual.values);
             }
             ui_state.validation_error = validate_authored_snapshot(
-                &capture_current_authored_snapshot(&time_of_day, &environment, &manual),
+                &capture_current_authored_snapshot(&time_of_day, &manual),
             )
             .err();
         }
@@ -449,30 +429,6 @@ pub fn handle_world_time_presets(
             super::state::WorldTimePreset::Midnight => {
                 apply_time_of_day_dev_action(TimeOfDayDevAction::SetMidnight, &mut time_of_day);
             }
-        }
-    }
-}
-
-pub fn handle_world_skybox_selection(
-    dev_state: Res<DevModeState>,
-    registry: Res<DevWindowRegistry>,
-    mut gate: ResMut<crate::dev::DevModeInputGate>,
-    mut environment: ResMut<EnvironmentSettings>,
-    mut ui_state: ResMut<WorldEnvironmentUiState>,
-    buttons: Query<(&Interaction, &DevWorldSkyboxOption), Changed<Interaction>>,
-) {
-    if !registry.window_active(dev_state.enabled, DevWindowId::World) {
-        return;
-    }
-    let sets = list_registered_skybox_sets();
-    for (interaction, option) in &buttons {
-        if *interaction != Interaction::Pressed {
-            continue;
-        }
-        gate.block_gameplay_mouse = true;
-        if let Some(set_name) = sets.get(option.index) {
-            environment.skybox_set = set_name.clone();
-            ui_state.selected_skybox_index = option.index;
         }
     }
 }
@@ -587,7 +543,7 @@ fn commit_field_value(
     let clamped = apply_numeric_bounds(value, Some(spec.min), Some(spec.max), true)
         .unwrap_or_else(|_| value.clamp(spec.min, spec.max));
     field.write(clamped, time_of_day, environment, manual);
-    let snapshot = capture_current_authored_snapshot(time_of_day, environment, manual);
+    let snapshot = capture_current_authored_snapshot(time_of_day, manual);
     ui_state.validation_error = validate_authored_snapshot(&snapshot).err();
 }
 

@@ -6,7 +6,7 @@ Accepted (E11 — visual water planes)
 
 # Context
 
-ADR-026 established the Environment rendering layer for skybox, ambient fill, and
+ADR-026 established the Environment rendering layer for procedural sky, ambient fill, and
 directional light. ADR-052 added visual time-of-day. Large-world preview needs visible
 water surfaces without introducing gameplay water simulation, terrain carving, or
 WorldData authority changes.

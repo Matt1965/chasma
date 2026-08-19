@@ -89,9 +89,44 @@ graph missing clips, heading delta, turn state. No editing in A5.
 ## Non-goals (A5)
 
 - Root motion
-- Simulation-facing or rotation mutation
+- ~~Simulation-facing or rotation mutation~~ *(superseded 2026-08-18 — see below)*
 - Combat timing changes
 - Overlay layer behavior (ADR-075 future work)
+
+## Supersession — movement-facing authority (2026-08-18, UNIT-FACING-1)
+
+Normal successful unit movement now updates authoritative `UnitPlacement.rotation`
+in `WorldData` from **accepted actual XZ displacement** each simulation step
+(`src/world/unit/facing.rs`, applied in `step_unit_movement`).
+
+| Topic | Decision |
+|-------|----------|
+| Facing source | Final accepted travel vector (previous → new world position), not click target or raw path heading |
+| Model forward | Local **-Z** unchanged |
+| Blocked / no displacement | Preserve existing rotation |
+| Portal / teleport relocation | Preserve rotation; no facing from discontinuous jump |
+| Render | `Transform.rotation` composes smoothed visual yaw × asset rotation correction (UNIT-TURN-1 / UNIT-FACING-2) |
+| Turn clips | Presentation-only; do **not** mutate simulation rotation |
+| Visual turn rate | Per-unit `Turn Speed Deg/s` — presentation yaw only; movement unconstrained (UNIT-TURN-1) |
+| Turn-rate / combat-facing | Combat-facing refinements remain future work |
+
+Locomotion polish heading misalignment during **Moving** is intentionally skipped
+(`movement_heading_delta` returns `None`) because travel-facing owns rotation while
+moving. TurnLeft/TurnRight clips remain available for future stationary or
+explicit turn-in-place behavior.
+
+### Visual turn speed (UNIT-TURN-1, 2026-08-18)
+
+| Topic | Decision |
+|-------|----------|
+| Authoritative facing | `UnitPlacement.rotation` updates immediately from accepted XZ travel (unchanged) |
+| Visual facing | `UnitVisualFacing` on render root; yaw-only interpolation toward placement |
+| Turn Speed Deg/s | Per-unit authored catalog data; default **540** when column absent/blank |
+| Movement | **Not** constrained by visual turn rate — no turning radius, no move slowdown |
+| Composition | `visual_world_yaw × asset_sizing.rotation_correction` (correction after smooth yaw) |
+| Idle | Visual yaw continues catching up after movement stops |
+| Dead | Presentation yaw frozen at death |
+| Pause | Uses `presentation_advance_seconds` — zero delta while paused |
 
 ## References
 

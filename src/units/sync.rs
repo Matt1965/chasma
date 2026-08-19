@@ -60,7 +60,7 @@ pub fn sync_unit_render_entities(
     asset_server: Res<AssetServer>,
     mut scene_assets: ResMut<UnitSceneAssets>,
     mut index: ResMut<UnitRenderIndex>,
-    existing: Query<(Entity, &UnitRenderEntity)>,
+    existing: Query<(Entity, &UnitRenderEntity, &Transform)>,
     render_assets: Option<Res<TerrainRenderAssets>>,
     overrides: Option<Res<UnitSyncOverrides>>,
 ) {
@@ -85,22 +85,22 @@ pub fn sync_unit_render_entities(
         }
     }
 
-    for (entity, marker) in &existing {
+    for (entity, marker, transform) in &existing {
         if !should_render.contains(&marker.unit_id) {
             continue;
         }
         let Some(record) = world.get_unit(marker.unit_id) else {
             continue;
         };
-        let render_scale = catalog
-            .get(&record.definition_id)
-            .map(crate::world::unit_visual_scale)
-            .unwrap_or(Vec3::ONE);
+        let Some(definition) = catalog.get(&record.definition_id) else {
+            continue;
+        };
+        let render_scale = crate::world::unit_visual_scale(definition);
         let layout = config.chunk_layout();
         let translation = unit_render_translation(&world, record, layout, vertical_scale);
         commands.entity(entity).insert(Transform {
             translation,
-            rotation: record.placement.rotation,
+            rotation: transform.rotation,
             scale: render_scale,
         });
     }
@@ -135,6 +135,7 @@ pub fn sync_unit_render_entities(
             &mut commands,
             &world,
             record,
+            definition,
             scene,
             &config,
             vertical_scale,
@@ -381,7 +382,62 @@ mod tests {
         assert_eq!(transform.translation, expected);
         assert_eq!(record.placement.position.local.0.y, 8.0);
         assert_eq!(transform.translation.y, 8.0 * vertical_scale);
-        assert_eq!(transform.rotation, record.placement.rotation);
+        assert_eq!(
+            transform.rotation,
+            crate::world::unit_visual_rotation(
+                app.world()
+                    .resource::<UnitCatalog>()
+                    .get(&record.definition_id)
+                    .expect("definition"),
+                record.placement.rotation,
+            )
+        );
+    }
+
+    #[test]
+    fn sync_applies_definition_rotation_correction() {
+        let mut app = setup_sync_app();
+        let mut definition = UnitDefinition::new(
+            UnitDefinitionId::new("wolf"),
+            "Wolf",
+            "Wild",
+            2,
+            5,
+            5,
+            4,
+            6,
+            3,
+            7,
+            2,
+            3,
+            26.5,
+            "Elite",
+            4.0,
+            0.6,
+            40.0,
+            crate::world::WeaponDefinitionId::new("weapon_wolf_bite"),
+            true,
+            UnitRenderKey::reserved("wolf"),
+        );
+        definition.asset_sizing.rotation_correction =
+            crate::world::QuantizedOrientation::from_degrees(90.0, 0.0, 0.0).unwrap();
+        let catalog = UnitCatalog::from_definitions(vec![definition.clone()]).unwrap();
+        app.insert_resource(catalog);
+        let unit_id = prepare_resident_unit(&mut app, 3, 4);
+        let record = app
+            .world()
+            .resource::<WorldData>()
+            .get_unit(unit_id)
+            .unwrap()
+            .clone();
+        app.update();
+        let entity = app.world().resource::<UnitRenderIndex>().0[&unit_id];
+        let transform = app.world().entity(entity).get::<Transform>().unwrap();
+        assert_eq!(
+            transform.rotation,
+            crate::world::unit_visual_rotation(&definition, record.placement.rotation)
+        );
+        assert_ne!(transform.rotation, record.placement.rotation);
     }
 
     #[test]

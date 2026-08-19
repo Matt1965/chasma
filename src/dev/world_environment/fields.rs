@@ -15,8 +15,6 @@ pub enum EnvFieldId {
     NightDirectional,
     NoonAmbient,
     NightAmbientMult,
-    NoonSkybox,
-    NightSkybox,
     TwilightBlend,
     SunPitchMin,
     SunPitchMax,
@@ -24,8 +22,6 @@ pub enum EnvFieldId {
     SunsetHour,
     ManualDirectional,
     ManualAmbient,
-    ManualSkybox,
-    SkyboxRotationYaw,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -40,15 +36,13 @@ pub struct EnvFieldSpec {
 }
 
 impl EnvFieldId {
-    pub const ALL: [EnvFieldId; 17] = [
+    pub const ALL: [EnvFieldId; 13] = [
         Self::TimeHours,
         Self::DayLengthSeconds,
         Self::NoonDirectional,
         Self::NightDirectional,
         Self::NoonAmbient,
         Self::NightAmbientMult,
-        Self::NoonSkybox,
-        Self::NightSkybox,
         Self::TwilightBlend,
         Self::SunPitchMin,
         Self::SunPitchMax,
@@ -56,8 +50,6 @@ impl EnvFieldId {
         Self::SunsetHour,
         Self::ManualDirectional,
         Self::ManualAmbient,
-        Self::ManualSkybox,
-        Self::SkyboxRotationYaw,
     ];
 
     pub fn spec(self) -> EnvFieldSpec {
@@ -120,25 +112,6 @@ impl EnvFieldId {
                 signed: false,
                 tooltip: "Multiplier applied to noon ambient at full night. 0 yields very dark \
                           ambient; values above 1 brighten night fill. Saved in Project Defaults.",
-            },
-            Self::NoonSkybox => EnvFieldSpec {
-                id: self,
-                label: "Noon skybox",
-                min: 0.0,
-                max: 5_000.0,
-                precision: 0,
-                signed: false,
-                tooltip: "Skybox cubemap brightness at solar noon (cd/m² scale). Saved in Project \
-                          Defaults.",
-            },
-            Self::NightSkybox => EnvFieldSpec {
-                id: self,
-                label: "Night skybox",
-                min: 0.0,
-                max: 1_000.0,
-                precision: 0,
-                signed: false,
-                tooltip: "Skybox brightness at deep night. Saved in Project Defaults.",
             },
             Self::TwilightBlend => EnvFieldSpec {
                 id: self,
@@ -211,26 +184,6 @@ impl EnvFieldId {
                 tooltip: "Ambient brightness when the visual cycle is disabled. Saved in Project \
                           Defaults.",
             },
-            Self::ManualSkybox => EnvFieldSpec {
-                id: self,
-                label: "Manual skybox",
-                min: 0.0,
-                max: 5_000.0,
-                precision: 0,
-                signed: false,
-                tooltip: "Skybox brightness when the visual cycle is disabled. Saved in Project \
-                          Defaults.",
-            },
-            Self::SkyboxRotationYaw => EnvFieldSpec {
-                id: self,
-                label: "Skybox yaw",
-                min: -180.0,
-                max: 180.0,
-                precision: 1,
-                signed: true,
-                tooltip: "Yaw rotation of the cubemap in degrees. Visual only — does not relight \
-                          the scene. Saved in Project Defaults.",
-            },
         }
     }
 
@@ -246,17 +199,13 @@ impl EnvFieldId {
             3 => Some(Self::NightDirectional),
             4 => Some(Self::NoonAmbient),
             5 => Some(Self::NightAmbientMult),
-            6 => Some(Self::NoonSkybox),
-            7 => Some(Self::NightSkybox),
-            8 => Some(Self::TwilightBlend),
-            9 => Some(Self::SunPitchMin),
-            10 => Some(Self::SunPitchMax),
-            11 => Some(Self::SunriseHour),
-            12 => Some(Self::SunsetHour),
-            13 => Some(Self::ManualDirectional),
-            14 => Some(Self::ManualAmbient),
-            15 => Some(Self::ManualSkybox),
-            16 => Some(Self::SkyboxRotationYaw),
+            6 => Some(Self::TwilightBlend),
+            7 => Some(Self::SunPitchMin),
+            8 => Some(Self::SunPitchMax),
+            9 => Some(Self::SunriseHour),
+            10 => Some(Self::SunsetHour),
+            11 => Some(Self::ManualDirectional),
+            12 => Some(Self::ManualAmbient),
             _ => None,
         }
     }
@@ -264,7 +213,7 @@ impl EnvFieldId {
     pub fn read(
         self,
         time_of_day: &TimeOfDaySettings,
-        environment: &EnvironmentSettings,
+        _environment: &EnvironmentSettings,
         manual: &EnvironmentManualLighting,
     ) -> f32 {
         match self {
@@ -274,8 +223,6 @@ impl EnvFieldId {
             Self::NightDirectional => time_of_day.night_directional_illuminance,
             Self::NoonAmbient => time_of_day.noon_ambient_brightness,
             Self::NightAmbientMult => time_of_day.night_ambient_multiplier,
-            Self::NoonSkybox => time_of_day.noon_skybox_brightness,
-            Self::NightSkybox => time_of_day.night_skybox_brightness,
             Self::TwilightBlend => time_of_day.twilight_daylight_blend,
             Self::SunPitchMin => time_of_day.sun_pitch_min_deg,
             Self::SunPitchMax => time_of_day.sun_pitch_max_deg,
@@ -283,11 +230,6 @@ impl EnvFieldId {
             Self::SunsetHour => time_of_day.sunset_hour,
             Self::ManualDirectional => manual.values.directional_illuminance,
             Self::ManualAmbient => manual.values.ambient_brightness,
-            Self::ManualSkybox => manual.values.skybox_brightness,
-            Self::SkyboxRotationYaw => {
-                let (_, yaw, _) = environment.skybox_rotation.to_euler(EulerRot::YXZ);
-                yaw.to_degrees()
-            }
         }
     }
 
@@ -305,8 +247,6 @@ impl EnvFieldId {
             Self::NightDirectional => time_of_day.night_directional_illuminance = value,
             Self::NoonAmbient => time_of_day.noon_ambient_brightness = value,
             Self::NightAmbientMult => time_of_day.night_ambient_multiplier = value,
-            Self::NoonSkybox => time_of_day.noon_skybox_brightness = value,
-            Self::NightSkybox => time_of_day.night_skybox_brightness = value,
             Self::TwilightBlend => time_of_day.twilight_daylight_blend = value,
             Self::SunPitchMin => time_of_day.sun_pitch_min_deg = value,
             Self::SunPitchMax => time_of_day.sun_pitch_max_deg = value,
@@ -314,25 +254,14 @@ impl EnvFieldId {
             Self::SunsetHour => time_of_day.sunset_hour = value,
             Self::ManualDirectional => manual.values.directional_illuminance = value,
             Self::ManualAmbient => manual.values.ambient_brightness = value,
-            Self::ManualSkybox => manual.values.skybox_brightness = value,
-            Self::SkyboxRotationYaw => {
-                environment.skybox_rotation = Quat::from_rotation_y(value.to_radians());
-            }
         }
-        if matches!(
-            self,
-            Self::ManualDirectional | Self::ManualAmbient | Self::ManualSkybox
-        ) && !time_of_day.enabled
-        {
+        if matches!(self, Self::ManualDirectional | Self::ManualAmbient) && !time_of_day.enabled {
             apply_manual_lighting(environment, &manual.values);
         }
     }
 
     pub fn is_manual_only(self) -> bool {
-        matches!(
-            self,
-            Self::ManualDirectional | Self::ManualAmbient | Self::ManualSkybox
-        )
+        matches!(self, Self::ManualDirectional | Self::ManualAmbient)
     }
 
     pub fn is_runtime_only(self) -> bool {
@@ -346,13 +275,11 @@ pub fn fields_for_section(section: EnvSection) -> &'static [EnvFieldId] {
         EnvSection::DayLighting => &[
             EnvFieldId::NoonDirectional,
             EnvFieldId::NoonAmbient,
-            EnvFieldId::NoonSkybox,
             EnvFieldId::SunPitchMax,
         ],
         EnvSection::NightLighting => &[
             EnvFieldId::NightDirectional,
             EnvFieldId::NightAmbientMult,
-            EnvFieldId::NightSkybox,
             EnvFieldId::SunPitchMin,
         ],
         EnvSection::Twilight => &[
@@ -360,12 +287,7 @@ pub fn fields_for_section(section: EnvSection) -> &'static [EnvFieldId] {
             EnvFieldId::SunsetHour,
             EnvFieldId::TwilightBlend,
         ],
-        EnvSection::ManualLighting => &[
-            EnvFieldId::ManualDirectional,
-            EnvFieldId::ManualAmbient,
-            EnvFieldId::ManualSkybox,
-        ],
-        EnvSection::Skybox => &[EnvFieldId::SkyboxRotationYaw],
+        EnvSection::ManualLighting => &[EnvFieldId::ManualDirectional, EnvFieldId::ManualAmbient],
     }
 }
 
@@ -376,5 +298,4 @@ pub enum EnvSection {
     NightLighting,
     Twilight,
     ManualLighting,
-    Skybox,
 }

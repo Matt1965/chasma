@@ -2,11 +2,12 @@ use std::collections::HashMap;
 
 use super::schema::{
     DEFAULT_COLLISION_RADIUS_METERS, DEFAULT_MAX_SLOPE_DEGREES, DEFAULT_MOVE_SPEED_MPS,
-    DEFAULT_RENDER_SCALE, REQUIRED_COLUMNS, UnitImportRow,
+    DEFAULT_RENDER_SCALE, REQUIRED_COLUMNS, TURN_SPEED_DEG_PER_SEC, UnitImportRow,
 };
 use crate::data_import::asset_sizing::{asset_sizing_from_columns, parse_asset_sizing_columns};
 use crate::data_import::error::{DataImportError, RowImportError};
 use crate::data_import::schema::parse_enabled_cell;
+use crate::world::DEFAULT_TURN_SPEED_DEGREES_PER_SECOND;
 
 pub const UNITS_SHEET_NAME: &str = "Units";
 
@@ -193,6 +194,11 @@ fn parse_row(
             String::new()
         },
         has_inventory_profile_column: columns.contains_key("Inventory Profile ID"),
+        turn_speed_degrees_per_second: optional_f32(
+            TURN_SPEED_DEG_PER_SEC,
+            DEFAULT_TURN_SPEED_DEGREES_PER_SECOND,
+        )?,
+        has_turn_speed_column: columns.contains_key(TURN_SPEED_DEG_PER_SEC),
         asset_sizing: asset_sizing_from_columns(&parse_asset_sizing_columns(
             columns,
             cells,
@@ -412,5 +418,66 @@ mod tests {
         assert_eq!(def.strength, 4);
         assert_eq!(def.intelligence, 3);
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn turn_speed_column_imports_and_defaults() {
+        let path = std::env::temp_dir().join(format!(
+            "chasma_unit_import_{}_{}.xlsx",
+            std::process::id(),
+            "turn_speed"
+        ));
+        let mut headers = workbook_headers_with_locomotion();
+        headers.push("Turn Speed Deg/s");
+        let row = vec![
+            "U-0001",
+            "Wolf",
+            "Wild",
+            "2",
+            "5",
+            "5",
+            "4",
+            "6",
+            "3",
+            "7",
+            "2",
+            "3",
+            "999",
+            "26.5",
+            "Elite",
+            "weapon_wolf_bite",
+            r"\units\wolf.glb",
+            "4.5",
+            "0.6",
+            "40",
+            "Y",
+            "720",
+        ];
+        let legacy_row: Vec<&str> = row[..row.len() - 1].to_vec();
+        write_workbook(&path, &headers, &[row]);
+        let rows = read_unit_rows(&path).unwrap();
+        let def = rows[0].as_ref().unwrap().to_definition().unwrap();
+        assert!((def.turn_speed_degrees_per_second - 720.0).abs() < 1e-4);
+
+        let legacy_path = std::env::temp_dir().join(format!(
+            "chasma_unit_import_{}_{}.xlsx",
+            std::process::id(),
+            "turn_speed_legacy"
+        ));
+        write_workbook(
+            &legacy_path,
+            &workbook_headers_with_locomotion(),
+            &[legacy_row],
+        );
+        let legacy_rows = read_unit_rows(&legacy_path).unwrap();
+        let legacy_def = legacy_rows[0].as_ref().unwrap().to_definition().unwrap();
+        assert!(
+            (legacy_def.turn_speed_degrees_per_second
+                - crate::world::DEFAULT_TURN_SPEED_DEGREES_PER_SECOND)
+                .abs()
+                < 1e-4
+        );
+        let _ = std::fs::remove_file(path);
+        let _ = std::fs::remove_file(legacy_path);
     }
 }

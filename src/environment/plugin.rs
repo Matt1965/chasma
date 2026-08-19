@@ -23,7 +23,6 @@ use super::project_defaults::{
 };
 use super::settings::EnvironmentSettings;
 use super::sky_material::EnvironmentSkyMaterial;
-use super::skybox::{ActiveSkyboxLoad, attach_skybox_to_primary_camera, init_skybox_load};
 use super::time_of_day::TimeOfDaySettings;
 use super::visual_state::{
     EnvironmentVisualState, SkyColorPalette, apply_visual_state_to_environment,
@@ -31,7 +30,8 @@ use super::visual_state::{
 };
 use super::water::WaterPlugin;
 
-/// Environment rendering layer: skybox, ambient light, and directional light (R8 / R9 / E10).
+/// Environment rendering layer: procedural sky, volumetric clouds, ambient/directional lighting,
+/// time of day, and water (R8 / SKY-1 / CLOUD-VOL-1).
 pub struct EnvironmentPlugin;
 
 impl Plugin for EnvironmentPlugin {
@@ -73,7 +73,6 @@ impl Plugin for EnvironmentPlugin {
                     setup_environment_lighting,
                     setup_procedural_sky,
                     setup_procedural_clouds,
-                    init_skybox_load,
                     log_environment_startup,
                 )
                     .chain(),
@@ -86,7 +85,6 @@ impl Plugin for EnvironmentPlugin {
                     sync_environment_presentation,
                     sync_procedural_sky_presentation,
                     sync_procedural_cloud_presentation,
-                    attach_skybox_to_primary_camera,
                 )
                     .chain(),
             );
@@ -96,22 +94,14 @@ impl Plugin for EnvironmentPlugin {
     }
 }
 
-fn log_environment_startup(
-    settings: Res<EnvironmentSettings>,
-    load: Option<Res<ActiveSkyboxLoad>>,
-) {
+fn log_environment_startup(settings: Res<EnvironmentSettings>) {
     #[cfg(feature = "dev")]
     {
         bevy::log::info!(target: "chasma::environment", "Environment initialized");
         log_environment_configuration(&settings);
-        if load.is_some() {
-            bevy::log::info!(target: "chasma::environment", "Skybox load started");
-        } else {
-            bevy::log::info!(target: "chasma::environment", "Skybox missing");
-        }
     }
 
-    let _ = (settings, load);
+    let _ = settings;
 }
 
 #[cfg(feature = "dev")]
@@ -119,10 +109,9 @@ fn validate_environment_startup(
     settings: Res<EnvironmentSettings>,
     directional: Query<(), With<DirectionalLight>>,
     environment_directional: Query<(), With<super::lighting::EnvironmentDirectionalLight>>,
-    skybox_cameras: Query<(), With<super::skybox::SkyboxCamera>>,
 ) {
     let _ = &settings;
-    let report = count_environment_singletons(directional, environment_directional, skybox_cameras);
+    let report = count_environment_singletons(directional, environment_directional);
     log_environment_singleton_report(&report);
 }
 

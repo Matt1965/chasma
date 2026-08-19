@@ -33,7 +33,6 @@ pub enum DevCollapsibleSectionId {
     WorldNightLighting,
     WorldTwilight,
     WorldManualLighting,
-    WorldSkybox,
     WorldWater,
     WorldProjectDefaults,
     WorldHarness,
@@ -65,7 +64,6 @@ impl DevCollapsibleSectionId {
             | Self::WorldNightLighting
             | Self::WorldTwilight
             | Self::WorldManualLighting
-            | Self::WorldSkybox
             | Self::WorldProjectDefaults
             | Self::WorldHarness
             | Self::NavEditorGeneration => false,

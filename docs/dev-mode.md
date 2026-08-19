@@ -47,7 +47,7 @@ The **Catalog** window is the primary dev surface for asset discovery and placem
 
 **Debug** (Slice 8): dedicated draggable window (`DevWindowId::Debug`) for overlay toggles, NV0 navigation diagnostics, and animation readouts. Open from **Catalog → Advanced → Debug** or **Windows → Debug**. Closing the window does not reset overlay flags.
 
-**World** (Slice 8 / 11): dedicated window (`DevWindowId::World`) for time-of-day, day/night/twilight/manual lighting, skybox, and **project-default persistence**. Bounded sliders with numeric entry replace legacy +/- steppers. Open from **Catalog → Advanced → World** or **Windows → World**. Closing does not stop the cycle or reset lighting; dirty state persists for the session.
+**World** (Slice 8 / 11): dedicated window (`DevWindowId::World`) for time-of-day, day/night/twilight/manual lighting, and **project-default persistence**. Bounded sliders with numeric entry replace legacy +/- steppers. Open from **Catalog → Advanced → World** or **Windows → World**. Closing does not stop the cycle or reset lighting; dirty state persists for the session.
 
 **Fields** (Slice 8): dedicated window (`DevWindowId::Fields`) for terrain field build, validation, probe, and overlay toggles. Open from **Catalog → Advanced → Fields** or **Windows → Fields**. Probe runs only when probe mode is on, the Fields window is open, and the pointer is not over dev UI.
 

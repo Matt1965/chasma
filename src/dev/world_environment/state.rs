@@ -26,7 +26,6 @@ pub struct WorldEnvironmentUiState {
     pub status_ttl_frames: u32,
     pub error_message: String,
     pub validation_error: Option<EnvironmentValidationError>,
-    pub selected_skybox_index: usize,
 }
 
 impl WorldEnvironmentUiState {
@@ -110,11 +109,6 @@ pub enum WorldTimePreset {
     Dawn,
     Noon,
     Midnight,
-}
-
-#[derive(Component, Debug, Clone, Copy)]
-pub struct DevWorldSkyboxOption {
-    pub index: usize,
 }
 
 #[derive(Component, Debug)]

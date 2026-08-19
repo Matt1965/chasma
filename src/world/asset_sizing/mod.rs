@@ -21,7 +21,7 @@ pub use composition::{
     building_visual_footprint_mismatch_warning, building_visual_scale, compose_visual_scale,
     definition_visual_baseline, doodad_baseline_render_scale, doodad_final_render_scale,
     doodad_visual_collision_mismatch_warning, doodad_visual_scale, sizing_rotation_correction,
-    unit_baseline_render_scale, unit_visual_scale,
+    unit_baseline_render_scale, unit_visual_rotation, unit_visual_scale,
 };
 pub use definition::{
     AssetSizingDefinition, DoodadCollisionShape, DoodadGroundingMode, SizeReferenceAxis,

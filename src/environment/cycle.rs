@@ -1,18 +1,16 @@
 //! Time-of-day lighting evaluation and Environment sync (ADR-052 E10, SKY-1).
 
-use bevy::{core_pipeline::Skybox, light::GlobalAmbientLight, prelude::*};
+use bevy::{light::GlobalAmbientLight, prelude::*};
 
 use super::lighting::EnvironmentDirectionalLight;
 use super::settings::EnvironmentSettings;
 use super::singleton::{
     EnvironmentDirectionalLightResolution, update_environment_directional_light,
 };
-use super::skybox::SkyboxCamera;
 use super::time_of_day::TimeOfDaySettings;
 use super::visual_state::{
-    DEFAULT_SKY_PRESENTATION, EnvironmentVisualState, SkyColorPalette, SkyPresentation,
-    apply_visual_state_to_environment, evaluate_environment_visual_state,
-    update_environment_visual_state,
+    EnvironmentVisualState, SkyColorPalette, apply_visual_state_to_environment,
+    evaluate_environment_visual_state, update_environment_visual_state,
 };
 
 pub use super::visual_state::{daylight_factor, twilight_warmth};
@@ -25,7 +23,6 @@ pub struct TimeOfDayLighting {
     pub directional_light_color: Color,
     pub ambient_brightness: f32,
     pub ambient_color: Color,
-    pub skybox_brightness: f32,
 }
 
 impl From<EnvironmentVisualState> for TimeOfDayLighting {
@@ -36,7 +33,6 @@ impl From<EnvironmentVisualState> for TimeOfDayLighting {
             directional_light_color: visual.sun_color,
             ambient_brightness: visual.ambient_brightness,
             ambient_color: visual.ambient_color,
-            skybox_brightness: visual.skybox_brightness,
         }
     }
 }
@@ -72,12 +68,11 @@ pub fn update_environment_from_time_of_day(
     let _ = apply_time_of_day_to_settings(&mut environment, &time_of_day);
 }
 
-/// Apply [`EnvironmentSettings`] to the singleton ambient light, directional light, and skybox.
+/// Apply [`EnvironmentSettings`] to the singleton ambient and directional lights.
 pub fn sync_environment_presentation(
     settings: Res<EnvironmentSettings>,
     mut ambient: ResMut<GlobalAmbientLight>,
     lights: Query<(&mut DirectionalLight, &mut Transform), With<EnvironmentDirectionalLight>>,
-    mut skyboxes: Query<&mut Skybox, With<SkyboxCamera>>,
 ) {
     ambient.color = settings.ambient_color;
     ambient.brightness = settings.ambient_brightness;
@@ -103,16 +98,10 @@ pub fn sync_environment_presentation(
             transform.rotation = settings.directional_light_rotation;
         });
     }
-
-    if DEFAULT_SKY_PRESENTATION == SkyPresentation::StaticCubemap {
-        for mut skybox in &mut skyboxes {
-            skybox.brightness = settings.skybox_brightness;
-        }
-    }
 }
 
 #[cfg(feature = "dev")]
-/// Dev panel actions for the visual day-night clock (World window UI).
+/// Dev panel actions for the visual day-night clock (World window UI)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeOfDayDevAction {
     ToggleEnabled,
@@ -205,7 +194,6 @@ mod tests {
         let noon = lighting_at(12.0);
         let night = lighting_at(2.0);
         assert!(noon.directional_light_illuminance > night.directional_light_illuminance * 10.0);
-        assert!(noon.skybox_brightness > night.skybox_brightness);
     }
 
     #[test]
@@ -219,7 +207,6 @@ mod tests {
         let night = lighting_at(2.0);
         let sunrise = lighting_at(7.0);
         assert!(sunrise.directional_light_illuminance > night.directional_light_illuminance);
-        assert!(sunrise.skybox_brightness >= night.skybox_brightness);
     }
 
     #[test]

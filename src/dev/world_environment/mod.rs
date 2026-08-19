@@ -16,10 +16,9 @@ pub use state::{
 };
 pub use systems::{
     focus_world_environment_numeric, handle_world_cycle_toggles, handle_world_environment_actions,
-    handle_world_environment_numeric_keyboard, handle_world_skybox_selection,
-    handle_world_slider_interaction, handle_world_time_presets, sync_world_environment_confirm_bar,
-    sync_world_environment_panel, sync_world_environment_sliders, sync_world_environment_toggles,
-    sync_world_skybox_buttons, tick_world_environment_status,
+    handle_world_environment_numeric_keyboard, handle_world_slider_interaction,
+    handle_world_time_presets, sync_world_environment_confirm_bar, sync_world_environment_panel,
+    sync_world_environment_sliders, sync_world_environment_toggles, tick_world_environment_status,
 };
 pub use water::{
     handle_world_water_enabled_toggle, handle_world_water_level_slider,

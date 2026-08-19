@@ -4,7 +4,7 @@ use bevy::prelude::*;
 ///
 /// Chosen for close building / navigation-corner inspection while staying above the
 /// terrain eye clearance clamp and avoiding near-plane clipping.
-pub const CAMERA_ORBIT_DISTANCE_MIN_METERS: f32 = 12.0;
+pub const CAMERA_ORBIT_DISTANCE_MIN_METERS: f32 = 2.0;
 
 /// Tunable RTS orbit camera parameters (ADR-014).
 ///
@@ -79,7 +79,7 @@ impl Default for CameraSettings {
             smoothing: 12.0,
             max_frame_delta: 0.1,
 
-            terrain_clearance: 12.0,
+            terrain_clearance: 2.0,
             focus_terrain_offset: 0.0,
         }
     }

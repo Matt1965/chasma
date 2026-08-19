@@ -3,12 +3,6 @@ use bevy::prelude::*;
 /// Root folder for environment presentation assets (under `assets/`).
 pub const ENVIRONMENT_ASSET_ROOT: &str = "environment";
 
-/// Skybox cubemap sets live under `assets/environment/skyboxes/{set_name}/`.
-pub const SKYBOX_ASSET_ROOT: &str = "environment/skyboxes";
-
-/// Default skybox set name (folder under [`SKYBOX_ASSET_ROOT`]).
-pub const DEFAULT_SKYBOX_SET: &str = "default";
-
 /// Default directional-light position used to derive [`Self::directional_light_rotation`].
 pub const DEFAULT_DIRECTIONAL_LIGHT_POSITION: Vec3 = Vec3::new(256.0, 200.0, 128.0);
 
@@ -23,12 +17,6 @@ pub const DEFAULT_DIRECTIONAL_LIGHT_LOOK_AT: Vec3 = Vec3::new(256.0, 0.0, 128.0)
 #[derive(Debug, Clone, Resource, Reflect, PartialEq)]
 #[reflect(Resource)]
 pub struct EnvironmentSettings {
-    /// Skybox set folder name (e.g. `"default"` → `environment/skyboxes/default/`).
-    pub skybox_set: String,
-    /// Cubemap sample brightness (cd/m² after scaling).
-    pub skybox_brightness: f32,
-    /// View-space rotation applied to the cubemap.
-    pub skybox_rotation: Quat,
     /// Directional sun/moon illuminance (lux).
     pub directional_light_illuminance: f32,
     pub directional_light_color: Color,
@@ -55,9 +43,6 @@ impl Default for EnvironmentSettings {
                 .rotation;
 
         Self {
-            skybox_set: DEFAULT_SKYBOX_SET.to_string(),
-            skybox_brightness: 1_078.0,
-            skybox_rotation: Quat::IDENTITY,
             directional_light_illuminance: 21_189.0,
             directional_light_color: Color::srgb(1.0, 0.97, 0.92),
             directional_light_rotation,
@@ -76,11 +61,6 @@ impl Default for EnvironmentSettings {
 }
 
 impl EnvironmentSettings {
-    /// Asset-server path prefix for the active skybox set (`environment/skyboxes/{set}`).
-    pub fn skybox_set_path(&self) -> String {
-        format!("{}/{}", SKYBOX_ASSET_ROOT, self.skybox_set)
-    }
-
     /// Human-readable startup report for dev logging (R9).
     pub fn format_debug_report(&self) -> String {
         let (yaw, pitch, roll) = self.directional_light_rotation.to_euler(EulerRot::YXZ);
@@ -99,10 +79,6 @@ impl EnvironmentSettings {
              - cascade first bound: {:.0}\n\
              \n\
              Ambient Light:\n\
-             - brightness: {:.0}\n\
-             \n\
-             Skybox:\n\
-             - active set: {}\n\
              - brightness: {:.0}",
             self.directional_light_illuminance,
             yaw_deg,
@@ -112,8 +88,6 @@ impl EnvironmentSettings {
             self.shadow_cascade_maximum_distance,
             self.shadow_cascade_first_far_bound,
             self.ambient_brightness,
-            self.skybox_set,
-            self.skybox_brightness,
         )
     }
 }
@@ -123,24 +97,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_skybox_set_is_default() {
-        let settings = EnvironmentSettings::default();
-        assert_eq!(settings.skybox_set, DEFAULT_SKYBOX_SET);
-    }
-
-    #[test]
-    fn skybox_set_path_uses_environment_root() {
-        let settings = EnvironmentSettings::default();
-        assert_eq!(settings.skybox_set_path(), "environment/skyboxes/default");
-    }
-
-    #[test]
     fn defaults_enable_shadows_with_positive_illuminance() {
         let settings = EnvironmentSettings::default();
         assert!(settings.directional_shadows_enabled);
         assert!(settings.directional_light_illuminance > 0.0);
         assert!(settings.ambient_brightness > 0.0);
-        assert!(settings.skybox_brightness > 0.0);
     }
 
     #[test]
@@ -156,7 +117,6 @@ mod tests {
         assert!(report.contains("Environment Settings"));
         assert!(report.contains("Directional Light:"));
         assert!(report.contains("Ambient Light:"));
-        assert!(report.contains("Skybox:"));
         assert!(report.contains("shadows enabled"));
     }
 

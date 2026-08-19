@@ -254,7 +254,6 @@ impl Plugin for DevModePlugin {
                         world_environment::sync_world_water_level_slider,
                         world_environment::sync_world_water_enabled_toggle,
                         world_environment::sync_world_environment_toggles,
-                        world_environment::sync_world_skybox_buttons,
                         world_environment::sync_world_environment_confirm_bar,
                         world_environment::tick_world_environment_status,
                     )
@@ -356,7 +355,6 @@ impl Plugin for DevModePlugin {
                     world_environment::handle_world_environment_actions,
                     world_environment::handle_world_cycle_toggles,
                     world_environment::handle_world_time_presets,
-                    world_environment::handle_world_skybox_selection,
                     world_environment::handle_world_slider_interaction,
                     world_environment::handle_world_water_level_slider,
                     world_environment::handle_world_water_enabled_toggle,

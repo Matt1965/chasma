@@ -4,14 +4,12 @@ use bevy::prelude::*;
 
 use super::lighting::EnvironmentDirectionalLight;
 use super::settings::EnvironmentSettings;
-use super::skybox::SkyboxCamera;
 
 /// Counts of environment-owned entities that must remain singletons.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct EnvironmentSingletonReport {
     pub directional_lights: usize,
     pub environment_directional_lights: usize,
-    pub skybox_cameras: usize,
 }
 
 impl EnvironmentSingletonReport {
@@ -19,7 +17,6 @@ impl EnvironmentSingletonReport {
     pub fn is_valid(&self) -> bool {
         self.environment_directional_lights <= 1
             && self.directional_lights <= 1
-            && self.skybox_cameras <= 1
             && self.environment_directional_lights == self.directional_lights
     }
 
@@ -37,12 +34,6 @@ impl EnvironmentSingletonReport {
                 self.environment_directional_lights
             ));
         }
-        if self.skybox_cameras > 1 {
-            errors.push(format!(
-                "expected at most one SkyboxCamera, found {}",
-                self.skybox_cameras
-            ));
-        }
         if self.directional_lights != self.environment_directional_lights {
             errors.push(format!(
                 "DirectionalLight count ({}) does not match EnvironmentDirectionalLight count ({})",
@@ -57,12 +48,10 @@ impl EnvironmentSingletonReport {
 pub fn count_environment_singletons(
     directional: Query<(), With<DirectionalLight>>,
     environment_directional: Query<(), With<EnvironmentDirectionalLight>>,
-    skybox_cameras: Query<(), With<SkyboxCamera>>,
 ) -> EnvironmentSingletonReport {
     EnvironmentSingletonReport {
         directional_lights: directional.iter().count(),
         environment_directional_lights: environment_directional.iter().count(),
-        skybox_cameras: skybox_cameras.iter().count(),
     }
 }
 
@@ -90,9 +79,8 @@ pub fn log_environment_singleton_report(report: &EnvironmentSingletonReport) {
     if report.is_valid() {
         bevy::log::info!(
             target: "chasma::environment",
-            "Environment singletons OK (directional={}, skybox_camera={})",
-            report.directional_lights,
-            report.skybox_cameras
+            "Environment singletons OK (directional={})",
+            report.directional_lights
         );
     } else {
         for error in report.validation_errors() {
@@ -106,11 +94,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn valid_singleton_report_accepts_one_of_each() {
+    fn valid_singleton_report_accepts_one_directional() {
         let report = EnvironmentSingletonReport {
             directional_lights: 1,
             environment_directional_lights: 1,
-            skybox_cameras: 1,
         };
         assert!(report.is_valid());
         assert!(validate_environment_singletons(&report).is_ok());
@@ -121,7 +108,6 @@ mod tests {
         let report = EnvironmentSingletonReport {
             directional_lights: 2,
             environment_directional_lights: 2,
-            skybox_cameras: 0,
         };
         assert!(!report.is_valid());
         assert!(validate_environment_singletons(&report).is_err());
@@ -132,17 +118,6 @@ mod tests {
         let report = EnvironmentSingletonReport {
             directional_lights: 1,
             environment_directional_lights: 0,
-            skybox_cameras: 0,
-        };
-        assert!(!report.is_valid());
-    }
-
-    #[test]
-    fn duplicate_skybox_camera_fails_validation() {
-        let report = EnvironmentSingletonReport {
-            directional_lights: 1,
-            environment_directional_lights: 1,
-            skybox_cameras: 2,
         };
         assert!(!report.is_valid());
     }

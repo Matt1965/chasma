@@ -7,6 +7,9 @@ use crate::world::asset_sizing::AssetSizingDefinition;
 use crate::world::unit::animation_profile::AnimationProfileId;
 use crate::world::weapon::WeaponDefinitionId;
 
+/// Default presentation yaw rate when the Units sheet omits `Turn Speed Deg/s` (UNIT-TURN-1).
+pub const DEFAULT_TURN_SPEED_DEGREES_PER_SECOND: f32 = 540.0;
+
 /// Authoritative description of a unit type (ADR-027 U1).
 ///
 /// Catalog definitions are independent of world instances, ECS, and rendering.
@@ -38,6 +41,8 @@ pub struct UnitDefinition {
     pub move_speed_mps: f32,
     pub collision_radius_meters: f32,
     pub max_slope_degrees: f32,
+    /// Maximum visual body yaw rate toward authoritative facing (deg/s). Does not limit movement.
+    pub turn_speed_degrees_per_second: f32,
     /// Uniform glTF scene scale at spawn (resolved baseline; legacy fallback when sizing unset).
     pub render_scale: f32,
     /// Metric asset sizing metadata and calculated baseline scale (ADR-097 DT1).
@@ -99,6 +104,7 @@ impl UnitDefinition {
             move_speed_mps,
             collision_radius_meters,
             max_slope_degrees,
+            turn_speed_degrees_per_second: DEFAULT_TURN_SPEED_DEGREES_PER_SECOND,
             render_scale: 1.0,
             asset_sizing: AssetSizingDefinition::default(),
             default_weapon_id,

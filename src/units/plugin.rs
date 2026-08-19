@@ -5,7 +5,7 @@ use crate::world::UnitCatalog;
 use super::animation::UnitAnimationPlugin;
 use super::assets::preload_unit_scenes;
 use super::components::{
-    UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot, UnitSelectionIndicator,
+    UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot, UnitSelectionIndicator, UnitVisualFacing,
 };
 use super::settings::UnitsRuntimeSettings;
 use super::spawn::UnitRenderIndex;
@@ -21,6 +21,7 @@ impl Plugin for UnitsRuntimePlugin {
             .register_type::<UnitRenderMetadata>()
             .register_type::<UnitSceneRoot>()
             .register_type::<UnitSelectionIndicator>()
+            .register_type::<UnitVisualFacing>()
             .init_resource::<UnitsRuntimeSettings>()
             .init_resource::<UnitRenderIndex>();
 
@@ -37,6 +38,7 @@ impl Plugin for UnitsRuntimePlugin {
                     #[cfg(feature = "dev")]
                     crate::units::dev_spawn::spawn_dev_preview_units,
                     sync_unit_render_entities,
+                    super::visual_facing::update_unit_visual_facing,
                     #[cfg(feature = "dev")]
                     super::portal_report::report_portal_transition_presentation,
                     #[cfg(feature = "dev")]

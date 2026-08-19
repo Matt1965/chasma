@@ -19,6 +19,7 @@ mod portal_report;
 mod settings;
 mod spawn;
 mod sync;
+mod visual_facing;
 
 pub use input::{
     BoxSelectDrag, PlayerInteractionSettings, SelectedUnits, TerrainClickResult,
@@ -33,7 +34,9 @@ pub use animation::{
     derive_unit_animation_intent, locomotion_debug_snapshot,
 };
 pub use assets::{UNIT_ASSET_ROOT, UnitSceneAssets, gltf_asset_path, preload_unit_scenes};
-pub use components::{UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot, UnitSelectionIndicator};
+pub use components::{
+    UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot, UnitSelectionIndicator, UnitVisualFacing,
+};
 pub use health_bars::{
     UnitHealthBar, UnitHealthBarState, billboard_unit_health_bars, health_bar_color,
     health_percent, should_show_health_bar, sync_unit_health_bars,
@@ -54,3 +57,4 @@ pub use spawn::{
     unit_render_translation,
 };
 pub use sync::{UnitRuntimeSystems, UnitSyncOverrides, sync_unit_render_entities};
+pub use visual_facing::update_unit_visual_facing;
