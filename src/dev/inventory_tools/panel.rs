@@ -8,6 +8,7 @@ use crate::client::selection::WorldSelectionState;
 use crate::dev::dev_mode::{DevModeState, DevTab, DevTextFieldFocus, selected_item_max_stack};
 use crate::dev::input::DevPanelUi;
 use crate::simulation::SimulationControlState;
+use crate::ui::gameplay::GameplayBuildingSelection;
 use crate::units::input::SelectedUnits;
 use crate::world::{
     InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, ItemPileSettings, UnitCatalog,
@@ -44,24 +45,15 @@ pub struct DevItemsButton {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DevItemsAction {
-    SubtabItems,
-    SubtabProfiles,
-    SubtabManage,
     QuantityUp,
     QuantityDown,
     QuantityMaxStack,
     CycleEndpoint,
     CycleEntry,
-    AddItem,
+    AddToUnit,
+    AddToContainer,
     RemoveEntry,
-    SetQuantity,
-    ClearInventory,
-    FillInventory,
-    SetTransferSource,
-    SetTransferDest,
-    ExecuteTransfer,
     ArmPilePlacement,
-    ValidateWorld,
 }
 
 pub fn spawn_items_section(parent: &mut ChildSpawnerCommands) {
@@ -95,6 +87,8 @@ pub fn spawn_items_section(parent: &mut ChildSpawnerCommands) {
                                 flex_direction: FlexDirection::Row,
                                 column_gap: Val::Px(4.0),
                                 align_items: AlignItems::Center,
+                                flex_wrap: FlexWrap::Wrap,
+                                row_gap: Val::Px(4.0),
                                 ..default()
                             },
                         ))
@@ -131,6 +125,7 @@ pub fn spawn_items_section(parent: &mut ChildSpawnerCommands) {
                                 });
                             spawn_qty_button(controls, "+", DevItemsAction::QuantityUp);
                             spawn_qty_button(controls, "Max", DevItemsAction::QuantityMaxStack);
+                            spawn_action_button(controls, "Remove", DevItemsAction::RemoveEntry);
                         });
                     qty_row.spawn((
                         DevItemMaxStackText,
@@ -156,21 +151,11 @@ pub fn spawn_items_section(parent: &mut ChildSpawnerCommands) {
             ));
 
             for (label, action) in [
-                ("Catalog", DevItemsAction::SubtabItems),
-                ("Profiles", DevItemsAction::SubtabProfiles),
-                ("Manage", DevItemsAction::SubtabManage),
                 ("Target +", DevItemsAction::CycleEndpoint),
                 ("Entry +", DevItemsAction::CycleEntry),
-                ("Add", DevItemsAction::AddItem),
-                ("Remove", DevItemsAction::RemoveEntry),
-                ("Set qty", DevItemsAction::SetQuantity),
-                ("Clear", DevItemsAction::ClearInventory),
-                ("Fill", DevItemsAction::FillInventory),
-                ("Xfer src", DevItemsAction::SetTransferSource),
-                ("Xfer dst", DevItemsAction::SetTransferDest),
-                ("Xfer run", DevItemsAction::ExecuteTransfer),
+                ("Add to Unit", DevItemsAction::AddToUnit),
+                ("Add to Container", DevItemsAction::AddToContainer),
                 ("Spawn pile", DevItemsAction::ArmPilePlacement),
-                ("Validate", DevItemsAction::ValidateWorld),
             ] {
                 spawn_action_button(section, label, action);
             }
@@ -205,6 +190,7 @@ fn spawn_action_button(parent: &mut ChildSpawnerCommands, label: &str, action: D
         DevItemsButton { action },
         DevPanelUi,
         Button,
+        Interaction::None,
         Node {
             padding: UiRect::axes(Val::Px(6.0), Val::Px(3.0)),
             ..default()
@@ -221,18 +207,16 @@ fn spawn_action_button(parent: &mut ChildSpawnerCommands, label: &str, action: D
 
 pub fn sync_items_section_visibility(
     dev_state: Res<DevModeState>,
-    mut section: Query<&mut Visibility, With<DevItemsSection>>,
+    mut section: Query<(&mut Visibility, &mut Node), With<DevItemsSection>>,
 ) {
-    if !dev_state.is_changed() {
-        return;
-    }
     let show = dev_state.enabled && dev_state.active_tab == DevTab::Items;
-    for mut visibility in &mut section {
+    for (mut visibility, mut node) in &mut section {
         *visibility = if show {
             Visibility::Visible
         } else {
             Visibility::Hidden
         };
+        node.display = if show { Display::Flex } else { Display::None };
     }
 }
 
@@ -309,6 +293,7 @@ pub fn sync_items_panel_text(
     dev_state: Res<DevModeState>,
     world: Res<WorldData>,
     world_selection: Res<WorldSelectionState>,
+    building_selection: Res<GameplayBuildingSelection>,
     selection: Res<SelectedUnits>,
     items: Res<ItemCatalog>,
     categories: Res<ItemCategoryCatalog>,
@@ -325,6 +310,7 @@ pub fn sync_items_panel_text(
     **text = super::format::format_inventory_tool_panel(
         &world,
         &world_selection,
+        &building_selection,
         &selection,
         &items,
         &categories,
@@ -339,6 +325,7 @@ pub fn handle_dev_items_buttons(
     mut dev_state: ResMut<DevModeState>,
     mut world: ResMut<WorldData>,
     world_selection: Res<WorldSelectionState>,
+    building_selection: Res<GameplayBuildingSelection>,
     selection: Res<SelectedUnits>,
     unit_catalog: Res<UnitCatalog>,
     items: Res<ItemCatalog>,
@@ -375,6 +362,12 @@ pub fn handle_dev_items_buttons(
             continue;
         }
         gate.block_gameplay_mouse = true;
+        if dev_state.active_tab != DevTab::Items {
+            dev_state.inventory.message =
+                "Switch to the Items tab before using inventory tools".into();
+            continue;
+        }
+        dev_state.apply_item_quantity_input();
         match button.action {
             DevItemsAction::QuantityUp => dev_state.bump_item_quantity(1),
             DevItemsAction::QuantityDown => dev_state.bump_item_quantity(-1),
@@ -383,6 +376,7 @@ pub fn handle_dev_items_buttons(
                 &mut dev_state,
                 &mut world,
                 &world_selection,
+                &building_selection,
                 &selection,
                 &unit_catalog,
                 &items,

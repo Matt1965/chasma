@@ -430,6 +430,7 @@ pub fn handle_inspector_input(
             &capture.building_catalog,
             &capture.footprint_catalog,
             &capture.weapon_catalog,
+            &capture.pile_settings,
             click.world_position,
         );
         inspector.last_message = "Interaction probe at terrain click".into();

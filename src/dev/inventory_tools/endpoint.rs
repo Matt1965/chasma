@@ -2,9 +2,13 @@
 
 use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::dev::dev_mode::{DevInventoryEndpoint, DevInventoryToolState};
+use crate::ui::gameplay::GameplayBuildingSelection;
 use crate::ui::gameplay::primary_selected_unit;
 use crate::units::input::SelectedUnits;
-use crate::world::{BuildingId, InventoryId, ItemPileId, UnitId, WorldData};
+use crate::world::{
+    BuildingId, InventoryId, ItemPileId, ItemPileSettings, UnitId, WorldData,
+    nearest_item_pile_at_position, resolve_navigation_space_at_position,
+};
 
 /// Unit/building/pile the dev inventory tools should target.
 pub fn resolve_target_unit(
@@ -15,6 +19,18 @@ pub fn resolve_target_unit(
         world_selection.primary_unit(selection)
     } else {
         primary_selected_unit(selection)
+    }
+}
+
+/// Selected building from world selection or HUD building mirror.
+pub fn resolve_target_building(
+    world_selection: &WorldSelectionState,
+    building_selection: &GameplayBuildingSelection,
+) -> Option<BuildingId> {
+    if world_selection.category == WorldSelectionCategory::Building {
+        world_selection.building_id
+    } else {
+        building_selection.building_id
     }
 }
 
@@ -47,9 +63,11 @@ pub fn resolve_active_endpoint(
     world: &WorldData,
     world_selection: &WorldSelectionState,
     selection: &SelectedUnits,
+    building_selection: &GameplayBuildingSelection,
     dev_state: &DevInventoryToolState,
 ) -> Option<DevInventoryEndpoint> {
-    let endpoints = resolve_inspector_endpoints(world, world_selection, selection);
+    let endpoints =
+        resolve_inspector_endpoints(world, world_selection, selection, building_selection);
     if endpoints.is_empty() {
         return None;
     }
@@ -61,6 +79,7 @@ pub fn resolve_inspector_endpoints(
     world: &WorldData,
     world_selection: &WorldSelectionState,
     selection: &SelectedUnits,
+    building_selection: &GameplayBuildingSelection,
 ) -> Vec<DevInventoryEndpointInfo> {
     let mut out = Vec::new();
 
@@ -74,10 +93,7 @@ pub fn resolve_inspector_endpoints(
         }
     }
 
-    if let Some(building_id) = (world_selection.category == WorldSelectionCategory::Building)
-        .then_some(world_selection.building_id)
-        .flatten()
-    {
+    if let Some(building_id) = resolve_target_building(world_selection, building_selection) {
         if let Some(inventory_id) = world.get_building(building_id).and_then(|b| b.inventory_id) {
             out.push(DevInventoryEndpointInfo {
                 endpoint: DevInventoryEndpoint::Grid(inventory_id),
@@ -126,12 +142,13 @@ pub fn pile_endpoint(_world: &WorldData, pile_id: ItemPileId) -> DevInventoryEnd
 pub fn nearest_pile_at_position(
     world: &WorldData,
     position: crate::world::WorldPosition,
-    settings: &crate::world::ItemPileSettings,
+    settings: &ItemPileSettings,
 ) -> Option<ItemPileId> {
-    let chunk = crate::world::ChunkId::new(position.chunk);
-    let piles: Vec<_> = world.item_pile_store().piles_in_chunk(chunk).to_vec();
-    crate::world::item_piles_near(&piles, position, crate::world::SpaceId::SURFACE, settings)
-        .into_iter()
-        .next()
-        .map(|pile| pile.id)
+    let space_id = resolve_navigation_space_at_position(
+        world.building_navigation_runtime(),
+        world.space_registry(),
+        world.layout(),
+        position,
+    );
+    nearest_item_pile_at_position(world, position, space_id, settings).map(|pile| pile.id)
 }

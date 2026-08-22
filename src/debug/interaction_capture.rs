@@ -25,6 +25,7 @@ pub fn capture_interaction_debug_snapshot(
     footprint_catalog: Res<FootprintCatalog>,
     unit_catalog: Res<UnitCatalog>,
     weapon_catalog: Res<WeaponCatalog>,
+    pile_settings: Res<crate::world::ItemPileSettings>,
     mut snapshot: ResMut<InteractionDebugSnapshot>,
 ) {
     if !settings.category_enabled(DebugOverlayCategory::Interaction) {
@@ -46,6 +47,7 @@ pub fn capture_interaction_debug_snapshot(
         &interaction_catalog,
         &unit_catalog,
         &weapon_catalog,
+        &pile_settings,
     );
     capture_interaction_at_position(&mut snapshot, &ctx, position);
 }
@@ -123,6 +125,7 @@ mod tests {
         let units = UnitCatalog::default();
         let weapons = WeaponCatalog::default();
         let interaction = crate::world::BuildingInteractionProfileCatalog::default();
+        let pile_settings = crate::world::ItemPileSettings::default();
         let ctx = InteractionQueryContext::new(
             &world,
             &doodads,
@@ -131,6 +134,7 @@ mod tests {
             &interaction,
             &units,
             &weapons,
+            &pile_settings,
         );
         let mut snapshot = InteractionDebugSnapshot::default();
         capture_interaction_at_position(&mut snapshot, &ctx, pos(1.0, 2.0));

@@ -32,26 +32,14 @@ pub enum DevTextFieldFocus {
     WorldEnvironmentNumeric,
 }
 
-/// Items tab sub-views (DV0).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash, Reflect)]
-pub enum ItemsBrowserSubtab {
-    #[default]
-    Items,
-    InventoryProfiles,
-    InventoryManage,
-}
-
 /// Client-local dev inventory tool state (DV0).
 #[derive(Debug, Clone, PartialEq)]
 pub struct DevInventoryToolState {
-    pub subtab: ItemsBrowserSubtab,
     pub quantity: u32,
     /// Editable quantity text while [`DevTextFieldFocus::ItemQuantity`] is active.
     pub quantity_input: String,
     pub selected_endpoint_index: usize,
     pub selected_entry_index: Option<usize>,
-    pub transfer_source: Option<DevInventoryEndpoint>,
-    pub transfer_dest: Option<DevInventoryEndpoint>,
     pub pile_placement_armed: bool,
     pub message: String,
 }
@@ -59,13 +47,10 @@ pub struct DevInventoryToolState {
 impl Default for DevInventoryToolState {
     fn default() -> Self {
         Self {
-            subtab: ItemsBrowserSubtab::Items,
             quantity: 10,
             quantity_input: "10".to_string(),
             selected_endpoint_index: 0,
             selected_entry_index: Some(0),
-            transfer_source: None,
-            transfer_dest: None,
             pile_placement_armed: false,
             message: String::new(),
         }
@@ -323,6 +308,24 @@ impl DevModeState {
             self.clear_world_selection_for_place = true;
         }
         self.selected_definition = Some(id);
+    }
+
+    /// Dev held-item cursor: Items catalog item selection with quantity (not authoritative).
+    pub fn dev_held_item_id(&self) -> Option<crate::world::ItemDefinitionId> {
+        if !self.enabled || self.active_tab != DevTab::Items {
+            return None;
+        }
+        match &self.selected_definition {
+            Some(DefinitionId::Item(item_id)) => Some(item_id.clone()),
+            _ => None,
+        }
+    }
+
+    /// Clear the Dev held-item cursor (catalog item selection only).
+    pub fn clear_dev_held_item(&mut self) {
+        if matches!(self.selected_definition, Some(DefinitionId::Item(_))) {
+            self.selected_definition = None;
+        }
     }
 
     pub fn cycle_spawn_affiliation(&mut self) {

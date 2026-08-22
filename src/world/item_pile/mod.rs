@@ -25,7 +25,10 @@ pub use authoring::{
 pub use error::ItemPileError;
 pub use id::ItemPileId;
 pub use merge::OVERFLOW_PILE_OFFSETS;
-pub use query::{item_piles_near, pile_item_definition_id};
+pub use query::{
+    item_piles_near, item_piles_within_radius, nearest_item_pile_at_position,
+    pile_item_definition_id,
+};
 pub use record::{ItemPileSource, WorldItemPileRecord, WorldPileContents};
 pub use settings::ItemPileSettings;
 pub use store::{ChunkItemPileStore, ItemPileStore};

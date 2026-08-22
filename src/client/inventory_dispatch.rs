@@ -650,6 +650,7 @@ pub fn try_queue_inventory_open_from_interact(
     interaction_catalog: &BuildingInteractionProfileCatalog,
     unit_catalog: &crate::world::UnitCatalog,
     weapon_catalog: &crate::world::WeaponCatalog,
+    pile_settings: &crate::world::ItemPileSettings,
     actor_unit_id: UnitId,
     target: crate::client::commands::CommandTarget,
     queue: &mut InventoryIntentQueue,
@@ -678,6 +679,7 @@ pub fn try_queue_inventory_open_from_interact(
         interaction_catalog,
         unit_catalog,
         weapon_catalog,
+        pile_settings,
     );
     let Some(interaction) = query_world_interaction(&ctx, position) else {
         return false;
@@ -841,11 +843,14 @@ pub fn try_open_pile_inventory(actor_unit_id: UnitId, pile_id: ItemPileId) -> In
 mod tests {
     use super::*;
     use crate::world::{
-        Affiliation, BuildingSource, ChunkCoord, ChunkData, ChunkLayout, Heightfield,
-        LocalPosition, UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource,
-        create_building_with_inventory, create_unit_with_inventory, starter_building_definitions,
-        starter_inventory_profile_definitions, starter_item_category_definitions,
-        starter_item_definitions, starter_unit_definitions,
+        Affiliation, BuildingSource, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield,
+        LocalPosition, SpaceId, UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource,
+        WeaponCatalog, create_building_with_inventory, create_unit_with_inventory,
+        starter_building_definitions, starter_inventory_profile_definitions,
+        starter_item_category_definitions, starter_item_definitions, starter_unit_definitions,
+    };
+    use crate::world::{
+        BuildingCatalog, BuildingInteractionProfileCatalog, DoodadCatalog, FootprintCatalog,
     };
     use bevy::prelude::Quat;
 
@@ -1109,5 +1114,85 @@ mod tests {
         assert_eq!(ui.treasury_id, Some(report.treasury_id));
         assert_ne!(ui.left_inventory_id, ui.right_inventory_id);
         assert!(ui.right_inventory_id.is_none());
+    }
+
+    #[test]
+    fn interact_on_pile_queues_world_pile_open() {
+        use crate::world::{
+            Affiliation, ItemDefinitionId, ItemPileId, ItemPileSource, WorldItemPileRecord,
+        };
+
+        let categories =
+            ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
+        let items = ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+        let profiles =
+            InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
+                .unwrap();
+        let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+        let ctx = test_ctx(&items, &categories, &profiles);
+        let mut world = test_world();
+        let unit = create_unit_with_inventory(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            crate::world::WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(1.0, 0.0, 1.0)),
+            ),
+            UnitSource::Authored,
+            UnitOwnership::with_affiliation(Affiliation::Player),
+            &ctx,
+        )
+        .unwrap();
+        let click = crate::world::WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::new(8.0, 0.0, 8.0)),
+        );
+        let pile_id = ItemPileId::new(7);
+        world
+            .item_pile_store_mut()
+            .insert(
+                ChunkId::new(ChunkCoord::new(0, 0)),
+                WorldItemPileRecord::new_stack(
+                    pile_id,
+                    click,
+                    SpaceId::SURFACE,
+                    ItemDefinitionId::new("gold"),
+                    25,
+                    None,
+                    None,
+                    Affiliation::Player,
+                    ItemPileSource::DevSpawned,
+                    0,
+                ),
+            )
+            .unwrap();
+
+        let pile_settings = ItemPileSettings::default();
+        let mut queue = InventoryIntentQueue::default();
+        assert!(try_queue_inventory_open_from_interact(
+            &world,
+            &BuildingCatalog::default(),
+            &DoodadCatalog::default(),
+            &FootprintCatalog::default(),
+            &BuildingInteractionProfileCatalog::default(),
+            &unit_catalog,
+            &WeaponCatalog::default(),
+            &pile_settings,
+            unit.id,
+            crate::client::commands::CommandTarget::Terrain { position: click },
+            &mut queue,
+        ));
+        let intent = queue.drain().into_iter().next().expect("intent");
+        match intent {
+            InventoryIntent::Open(InventoryOpenMode::WorldPile {
+                actor_unit_id,
+                pile_id: opened,
+            }) => {
+                assert_eq!(actor_unit_id, unit.id);
+                assert_eq!(opened, pile_id);
+            }
+            other => panic!("expected WorldPile open, got {other:?}"),
+        }
     }
 }

@@ -16,8 +16,8 @@ use crate::world::{
     BuildingCatalog, BuildingCategoryCatalog, BuildingDefinition, BuildingDefinitionId, BuildingId,
     BuildingInteractionProfileCatalog, BuildingLifecycleState, BuildingNavigationBlueprint,
     BuildingNavigationBlueprintCatalog, BuildingOwnership, BuildingRenderKey, ChunkCoord,
-    ChunkLayout, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, NavigationConfig,
-    NavigationEntranceDefinition, NavigationFloorDefinition, NavigationPolygon2d,
+    ChunkLayout, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, ItemPileSettings,
+    NavigationConfig, NavigationEntranceDefinition, NavigationFloorDefinition, NavigationPolygon2d,
     NavigationRegionDefinition, OccupancyCatalogs, PassabilityCatalogs, SpaceId, UnitCatalog,
     UnitDefinitionId, UnitOwnership, UnitSource, UnitState, WeaponCatalog, WorldData,
     WorldPosition, create_unit, create_unit_with_ownership, issue_unit_order,
@@ -474,6 +474,7 @@ fn real_hut_spawn_inside_moves_via_player_command_resolution_path() {
     );
 
     let selected = [unit_id];
+    let pile_settings = ItemPileSettings::default();
     let ctx = InteractionResolveContext::new(
         &world,
         &doodad_catalog,
@@ -482,6 +483,7 @@ fn real_hut_spawn_inside_moves_via_player_command_resolution_path() {
         &interaction_catalog,
         &unit_catalog,
         &weapon_catalog,
+        &pile_settings,
         &selected,
     );
     let plan = resolve_world_click_to_order(&ctx, click_goal).expect("click resolves");

@@ -26,8 +26,8 @@ use crate::world::{
     BuildingDefinitionId, BuildingId, BuildingInteractionProfileCatalog, BuildingLifecycleState,
     BuildingNavigationBlueprintInstanceOverride, BuildingOwnership, ChunkCoord, ChunkLayout,
     DoodadCatalog, FootprintCatalog, InteriorActivationStatus, InteriorProfileCatalog,
-    OccupancyCatalogs, PortalType, SpaceId, WeaponCatalog, WorldData, WorldPosition,
-    place_player_building, set_building_lifecycle_stage,
+    ItemPileSettings, OccupancyCatalogs, PortalType, SpaceId, WeaponCatalog, WorldData,
+    WorldPosition, place_player_building, set_building_lifecycle_stage,
 };
 
 const REAL_BUILDING_CATALOG_RON: &str = "assets/buildings/catalog.ron";
@@ -307,6 +307,7 @@ fn real_hut_interior_click_resolves_to_runtime_region() {
     let interaction_catalog = BuildingInteractionProfileCatalog::default();
     let unit_catalog = crate::world::UnitCatalog::default();
     let weapon_catalog = WeaponCatalog::default();
+    let pile_settings = ItemPileSettings::default();
     let ctx = InteractionQueryContext::new(
         &world,
         &doodad_catalog,
@@ -315,6 +316,7 @@ fn real_hut_interior_click_resolves_to_runtime_region() {
         &interaction_catalog,
         &unit_catalog,
         &weapon_catalog,
+        &pile_settings,
     );
     let interaction = query_world_interaction(&ctx, interior_click).expect("interaction");
     assert_eq!(

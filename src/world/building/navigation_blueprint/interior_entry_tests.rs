@@ -21,10 +21,10 @@ use crate::world::{
     BuildingInteractionProfileCatalog, BuildingLifecycleState, BuildingNavigationBlueprint,
     BuildingNavigationBlueprintCatalog, BuildingNavigationBlueprintInstanceOverride,
     BuildingOwnership, ChunkCoord, ChunkLayout, DoodadCatalog, FootprintCatalog,
-    InteriorActivationStatus, NavigationConfig, OccupancyCatalogs, PassabilityCatalogs, PortalType,
-    SpaceId, UnitDefinitionId, WeaponCatalog, WorldData, WorldPosition, find_path_with_spaces,
-    place_player_building, resolve_pending_unit_orders, set_building_lifecycle_stage,
-    validate_blueprint_for_inspection,
+    InteriorActivationStatus, ItemPileSettings, NavigationConfig, OccupancyCatalogs,
+    PassabilityCatalogs, PortalType, SpaceId, UnitDefinitionId, WeaponCatalog, WorldData,
+    WorldPosition, find_path_with_spaces, place_player_building, resolve_pending_unit_orders,
+    set_building_lifecycle_stage, validate_blueprint_for_inspection,
 };
 
 fn layout_world() -> WorldData {
@@ -515,6 +515,7 @@ fn level3_interior_click_resolves_to_move_target_not_blocked_area() {
     let interaction_catalog = BuildingInteractionProfileCatalog::default();
     let unit_catalog = crate::world::UnitCatalog::default();
     let weapon_catalog = WeaponCatalog::default();
+    let pile_settings = ItemPileSettings::default();
     let ctx = InteractionQueryContext::new(
         &world,
         &doodad_catalog,
@@ -523,6 +524,7 @@ fn level3_interior_click_resolves_to_move_target_not_blocked_area() {
         &interaction_catalog,
         &unit_catalog,
         &weapon_catalog,
+        &pile_settings,
     );
     let interaction = query_world_interaction(&ctx, interior_click).expect("interaction");
     assert_eq!(interaction.interaction_type, InteractionType::MoveTarget);
@@ -682,6 +684,7 @@ fn level6_player_command_path_issues_interior_move_order() {
     selected.set_single(unit_id);
 
     let selected_units = [unit_id];
+    let pile_settings = ItemPileSettings::default();
     let resolve_ctx = InteractionResolveContext::new(
         &world,
         &doodad_catalog,
@@ -690,6 +693,7 @@ fn level6_player_command_path_issues_interior_move_order() {
         &interaction_catalog,
         &unit_catalog,
         &weapon_catalog,
+        &pile_settings,
         &selected_units,
     );
     let plan = resolve_world_click_to_order(&resolve_ctx, interior_click).expect("plan");
@@ -853,6 +857,7 @@ fn interior_click_before_fix_would_have_been_blocked_or_interactable() {
     let interaction_catalog = BuildingInteractionProfileCatalog::default();
     let unit_catalog = crate::world::UnitCatalog::default();
     let weapon_catalog = WeaponCatalog::default();
+    let pile_settings = ItemPileSettings::default();
     let ctx = InteractionQueryContext::new(
         &world,
         &doodad_catalog,
@@ -861,6 +866,7 @@ fn interior_click_before_fix_would_have_been_blocked_or_interactable() {
         &interaction_catalog,
         &unit_catalog,
         &weapon_catalog,
+        &pile_settings,
     );
     let interaction = query_world_interaction(&ctx, interior_click).unwrap();
     let plan = resolve_interaction_to_order(&interaction);
@@ -1037,6 +1043,7 @@ fn player_command_interior_footprint_cross_and_boundary_enforcement() {
     let move_goal_click = local_xz_to_world(&world, building_id, Vec2::new(10.0, 10.0), 0.0);
     let interaction_catalog = BuildingInteractionProfileCatalog::default();
     let selected_units = [unit_id];
+    let pile_settings = ItemPileSettings::default();
     let resolve_ctx = InteractionResolveContext::new(
         &world,
         &doodad_catalog,
@@ -1045,6 +1052,7 @@ fn player_command_interior_footprint_cross_and_boundary_enforcement() {
         &interaction_catalog,
         &unit_catalog,
         &weapon_catalog,
+        &pile_settings,
         &selected_units,
     );
     let plan =

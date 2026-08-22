@@ -26,8 +26,9 @@ use super::inventory::{
     InventoryDragPreviewState, InventoryUiState, cleanup_inventory_drag_previews,
     collect_inventory_keyboard_input, collect_inventory_mouse_transfers,
     handle_inventory_drag_release, handle_inventory_entry_clicks, handle_inventory_panel_buttons,
-    spawn_inventory_panel, sync_inventory_drag_ghost, sync_inventory_ground_preview,
-    sync_inventory_panel_contents, sync_inventory_panel_visibility, update_inventory_drag_preview,
+    reconcile_inventory_ui_from_world, spawn_inventory_panel, sync_inventory_drag_ghost,
+    sync_inventory_ground_preview, sync_inventory_panel_contents, sync_inventory_panel_visibility,
+    update_inventory_drag_preview,
 };
 use super::layout::setup_player_hud_layout;
 use super::player_hud_state::{PlayerHudState, sync_primary_selection};
@@ -71,15 +72,15 @@ impl Plugin for GameplayUiPlugin {
             .init_resource::<PlayerHudHoverState>()
             .init_resource::<GameplayCursorPresentation>()
             .init_resource::<GameplayHoveredUnit>()
-            .init_resource::<MoveCommandFeedback>()
-            .add_systems(
-                Startup,
-                (
-                    setup_player_hud_layout,
-                    spawn_build_catalog_panel,
-                    spawn_inventory_panel,
-                ),
-            );
+            .init_resource::<MoveCommandFeedback>();
+        app.add_systems(
+            Startup,
+            (
+                setup_player_hud_layout,
+                spawn_build_catalog_panel,
+                spawn_inventory_panel,
+            ),
+        );
         #[cfg(feature = "dev")]
         app.add_systems(
             Startup,
@@ -164,6 +165,7 @@ impl Plugin for GameplayUiPlugin {
                 handle_inventory_panel_buttons,
                 collect_inventory_keyboard_input,
                 sync_inventory_panel_visibility,
+                reconcile_inventory_ui_from_world,
                 sync_inventory_panel_contents,
                 sync_inventory_drag_ghost,
                 sync_inventory_ground_preview,

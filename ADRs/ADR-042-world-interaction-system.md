@@ -43,6 +43,23 @@ steering — it only supplies destination targets for [`UnitOrder::MoveTo`].
 | `BlockedArea` | Blocking doodad or unwalkable slope |
 | `TerrainPoint` | Reserved for terrain-only samples |
 | `None` | Invalid / missing terrain |
+| `ItemPile` | World pile within interaction radius; gameplay via inventory dispatch (Interact → `WorldPile` UI → pickup), not move orders |
+| `Building` | Nearest building within pick radius (construct / workstation / settlement / container variants) |
+
+## Candidate cascade priority (amended ITEM-VERTICAL-1B)
+
+[`query_world_interaction`](../src/world/interaction/query.rs) evaluates candidates in this order:
+
+| Priority | Candidate | Notes |
+|----------|-----------|-------|
+| 1 | Interior navigation special target | Early return when interior move target applies |
+| 2 | Building | Nearest within building pick radius |
+| 3 | Item pile | Nearest within `ItemPileSettings.interaction_radius_meters` (default 2.0 m; separate from merge radius) |
+| 4 | Doodad | Resource node / interactable / blocking |
+| 5 | Passability / slope / `MoveTarget` | Terrain fallback |
+
+Pile proximity authority: [`ItemPileSettings`](../src/world/item_pile/settings.rs)
+`interaction_radius_meters` + `nearest_item_pile_at_position` (3×3 chunk scan, `SpaceId` filter).
 
 ## Unified query (without merging systems)
 
@@ -62,6 +79,7 @@ Terrain, obstacle, and doodad modules remain separate; interaction only **calls*
 | `ResourceNode` | `MoveTo` (placeholder until U13+) |
 | `InteractableObject` | `MoveTo` (placeholder) |
 | `BlockedArea` | `NoOp` |
+| `ItemPile` | No move order from resolver; client opens pile inventory via inventory dispatch |
 
 ## Boundaries
 

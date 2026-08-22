@@ -8,10 +8,12 @@ use bevy::prelude::*;
 use crate::world::{
     BuildingCatalog, BuildingId, BuildingInteractionProfileCatalog, ChunkCoord, ChunkId,
     DoodadCatalog, DoodadDefinition, DoodadId, DoodadKind, DoodadRecord, FootprintCatalog,
-    FootprintSpec, PassabilityAgent, PassabilityCatalogs, PassabilityResult, SlopeWalkability,
-    UnitCatalog, WorldData, WorldPosition, building_accepts_workstation_use,
-    building_is_constructible, classify_slope_walkability, ground_world_position,
-    interior_navigation_move_target_at_position, query_passability_at, unit_may_work_on_building,
+    FootprintSpec, ItemPileSettings, PassabilityAgent, PassabilityCatalogs, PassabilityResult,
+    SlopeWalkability, UnitCatalog, WorldData, WorldItemPileRecord, WorldPosition,
+    building_accepts_workstation_use, building_is_constructible, classify_slope_walkability,
+    ground_world_position, interior_navigation_move_target_at_position,
+    nearest_item_pile_at_position, query_passability_at, resolve_navigation_space_at_position,
+    unit_may_work_on_building,
 };
 
 use super::types::{InteractionMetadata, InteractionResult, InteractionTargetRef, InteractionType};
@@ -35,6 +37,7 @@ pub struct InteractionQueryContext<'a> {
     pub interaction_catalog: &'a BuildingInteractionProfileCatalog,
     pub unit_catalog: &'a UnitCatalog,
     pub weapon_catalog: &'a crate::world::WeaponCatalog,
+    pub pile_settings: &'a ItemPileSettings,
     pub query_radius_meters: f32,
     pub agent_radius_meters: f32,
     pub max_slope_degrees: f32,
@@ -49,6 +52,7 @@ impl<'a> InteractionQueryContext<'a> {
         interaction_catalog: &'a BuildingInteractionProfileCatalog,
         unit_catalog: &'a UnitCatalog,
         weapon_catalog: &'a crate::world::WeaponCatalog,
+        pile_settings: &'a ItemPileSettings,
     ) -> Self {
         Self {
             world,
@@ -58,6 +62,7 @@ impl<'a> InteractionQueryContext<'a> {
             interaction_catalog,
             unit_catalog,
             weapon_catalog,
+            pile_settings,
             query_radius_meters: DEFAULT_INTERACTION_QUERY_RADIUS_METERS,
             agent_radius_meters: DEFAULT_INTERACTION_AGENT_RADIUS_METERS,
             max_slope_degrees: DEFAULT_INTERACTION_MAX_SLOPE_DEGREES,
@@ -97,11 +102,7 @@ pub fn query_world_interaction(
         });
     }
 
-    if let Some((record, definition)) =
-        nearest_doodad_in_radius(ctx, grounded, ctx.query_radius_meters)
-    {
-        return Some(classify_doodad_hit(grounded, record, definition));
-    }
+    // Candidate cascade (ADR-042 / ADR-090): interior → building → item pile → doodad → terrain.
 
     if let Some((building_id, record, definition)) =
         nearest_building_in_radius(ctx, grounded, ctx.query_radius_meters)
@@ -113,6 +114,24 @@ pub fn query_world_interaction(
             record,
             definition,
         ));
+    }
+
+    let space_id = resolve_navigation_space_at_position(
+        ctx.world.building_navigation_runtime(),
+        ctx.world.space_registry(),
+        ctx.world.layout(),
+        grounded,
+    );
+    if let Some(pile) =
+        nearest_item_pile_at_position(ctx.world, grounded, space_id, ctx.pile_settings)
+    {
+        return Some(classify_pile_hit(grounded, pile));
+    }
+
+    if let Some((record, definition)) =
+        nearest_doodad_in_radius(ctx, grounded, ctx.query_radius_meters)
+    {
+        return Some(classify_doodad_hit(grounded, record, definition));
     }
 
     if !matches!(
@@ -185,6 +204,32 @@ pub fn query_world_interaction(
         valid: true,
         target: InteractionTargetRef::Terrain(grounded),
     })
+}
+
+fn classify_pile_hit(grounded: WorldPosition, pile: &WorldItemPileRecord) -> InteractionResult {
+    let label = pile_item_label(pile);
+    InteractionResult {
+        interaction_type: InteractionType::ItemPile,
+        position: grounded,
+        metadata: InteractionMetadata {
+            label,
+            doodad_kind: None,
+            blocks_movement: false,
+        },
+        valid: true,
+        target: InteractionTargetRef::ItemPile(pile.id),
+    }
+}
+
+fn pile_item_label(pile: &WorldItemPileRecord) -> String {
+    use crate::world::WorldPileContents;
+    match &pile.contents {
+        WorldPileContents::Stack {
+            item_definition_id,
+            quantity,
+        } => format!("{} x{quantity}", item_definition_id.as_str()),
+        WorldPileContents::Unique { .. } => "Item pile".to_string(),
+    }
 }
 
 fn classify_doodad_hit(
@@ -406,9 +451,10 @@ fn classify_building_hit(
 mod tests {
     use super::*;
     use crate::world::{
-        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId,
-        DoodadPlacementOverrides, DoodadSource, FootprintCatalog, Heightfield, LocalPosition,
-        create_doodad, default_building_catalog, default_footprint_catalog,
+        Affiliation, BuildingCatalog, BuildingSource, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+        DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog, Heightfield,
+        ItemPileId, ItemPileSettings, LocalPosition, SpaceId, create_building, create_doodad,
+        default_building_catalog, default_footprint_catalog,
     };
 
     fn layout() -> ChunkLayout {
@@ -441,6 +487,7 @@ mod tests {
         unit_catalog: &'a UnitCatalog,
         weapon_catalog: &'a crate::world::WeaponCatalog,
         interaction_catalog: &'a BuildingInteractionProfileCatalog,
+        pile_settings: &'a ItemPileSettings,
     ) -> InteractionQueryContext<'a> {
         InteractionQueryContext::new(
             world,
@@ -450,7 +497,14 @@ mod tests {
             interaction_catalog,
             unit_catalog,
             weapon_catalog,
+            pile_settings,
         )
+    }
+
+    fn test_pile_settings() -> &'static ItemPileSettings {
+        use std::sync::OnceLock;
+        static SETTINGS: OnceLock<ItemPileSettings> = OnceLock::new();
+        SETTINGS.get_or_init(ItemPileSettings::default)
     }
 
     fn weapons() -> crate::world::WeaponCatalog {
@@ -477,6 +531,7 @@ mod tests {
                 &unit_catalog,
                 &weapons,
                 &interaction_catalog,
+                test_pile_settings(),
             ),
             pos(64.0, 64.0),
         )
@@ -510,6 +565,7 @@ mod tests {
                 &unit_catalog,
                 &weapons,
                 &interaction_catalog,
+                test_pile_settings(),
             ),
             pos(50.0, 50.0),
         )
@@ -543,6 +599,7 @@ mod tests {
                 &unit_catalog,
                 &weapons,
                 &interaction_catalog,
+                test_pile_settings(),
             ),
             pos(30.0, 30.0),
         )
@@ -575,6 +632,7 @@ mod tests {
                 &unit_catalog,
                 &weapons,
                 &interaction_catalog,
+                test_pile_settings(),
             ),
             pos(70.0, 70.0),
         )
@@ -595,7 +653,8 @@ mod tests {
                     &catalog,
                     &unit_catalog,
                     &weapons,
-                    interaction_catalog()
+                    interaction_catalog(),
+                    test_pile_settings(),
                 ),
                 pos(1.0, 1.0)
             )
@@ -618,6 +677,7 @@ mod tests {
                 &BuildingInteractionProfileCatalog::default(),
                 &unit_catalog,
                 &crate::world::WeaponCatalog::default(),
+                test_pile_settings(),
             ),
             pos(10.0, 10.0),
         );
@@ -637,6 +697,7 @@ mod tests {
                 &unit_catalog,
                 &weapons,
                 interaction_catalog(),
+                test_pile_settings(),
             ),
             pos(12.0, 14.0),
         );
@@ -647,6 +708,7 @@ mod tests {
                 &unit_catalog,
                 &weapons,
                 interaction_catalog(),
+                test_pile_settings(),
             ),
             pos(12.0, 14.0),
         );
@@ -673,6 +735,7 @@ mod tests {
                 &unit_catalog,
                 &weapons,
                 interaction_catalog(),
+                test_pile_settings(),
             ),
             position,
         );
@@ -685,5 +748,240 @@ mod tests {
             assert!(!result.valid);
             assert_eq!(result.metadata.label, "Terrain unavailable");
         }
+    }
+
+    fn insert_stack_pile(
+        world: &mut WorldData,
+        pile_id: ItemPileId,
+        position: WorldPosition,
+        space_id: SpaceId,
+        quantity: u32,
+    ) {
+        use crate::world::{Affiliation, ItemDefinitionId, ItemPileSource, WorldItemPileRecord};
+        let record = WorldItemPileRecord::new_stack(
+            pile_id,
+            position,
+            space_id,
+            ItemDefinitionId::new("gold"),
+            quantity,
+            None,
+            None,
+            Affiliation::Player,
+            ItemPileSource::DevSpawned,
+            0,
+        );
+        let chunk = ChunkId::new(position.chunk);
+        world.item_pile_store_mut().insert(chunk, record).unwrap();
+    }
+
+    #[test]
+    fn pile_near_click_classifies_as_item_pile() {
+        let mut world = flat_world();
+        let catalog = DoodadCatalog::default();
+        let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
+        let interaction_catalog = BuildingInteractionProfileCatalog::default();
+        let pile_id = world.item_pile_store_mut().allocate_item_pile_id();
+        insert_stack_pile(&mut world, pile_id, pos(20.0, 20.0), SpaceId::SURFACE, 5);
+
+        let result = query_world_interaction(
+            &ctx(
+                &world,
+                &catalog,
+                &unit_catalog,
+                &weapons,
+                &interaction_catalog,
+                test_pile_settings(),
+            ),
+            pos(20.0, 20.0),
+        )
+        .unwrap();
+        assert_eq!(result.interaction_type, InteractionType::ItemPile);
+        assert!(result.valid);
+    }
+
+    #[test]
+    fn pile_hit_returns_correct_target_id() {
+        let mut world = flat_world();
+        let catalog = DoodadCatalog::default();
+        let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
+        let interaction_catalog = BuildingInteractionProfileCatalog::default();
+        let pile_id = ItemPileId::new(42);
+        insert_stack_pile(&mut world, pile_id, pos(22.0, 22.0), SpaceId::SURFACE, 3);
+
+        let result = query_world_interaction(
+            &ctx(
+                &world,
+                &catalog,
+                &unit_catalog,
+                &weapons,
+                &interaction_catalog,
+                test_pile_settings(),
+            ),
+            pos(22.0, 22.0),
+        )
+        .unwrap();
+        assert_eq!(result.target, InteractionTargetRef::ItemPile(pile_id));
+    }
+
+    #[test]
+    fn building_overlapping_pile_wins_priority() {
+        let mut world = flat_world();
+        let catalog = DoodadCatalog::default();
+        let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
+        let interaction_catalog = BuildingInteractionProfileCatalog::default();
+        let building_catalog = default_building_catalog();
+        let click = pos(55.0, 55.0);
+        let pile_id = world.item_pile_store_mut().allocate_item_pile_id();
+        insert_stack_pile(&mut world, pile_id, click, SpaceId::SURFACE, 5);
+        create_building(
+            building_catalog,
+            &mut world,
+            &crate::world::BuildingDefinitionId::new("hut"),
+            click,
+            Quat::IDENTITY,
+            crate::world::BuildingSource::Authored,
+            crate::world::BuildingOwnership::with_affiliation(Affiliation::Player),
+            None,
+        )
+        .unwrap();
+
+        let result = query_world_interaction(
+            &ctx(
+                &world,
+                &catalog,
+                &unit_catalog,
+                &weapons,
+                &interaction_catalog,
+                test_pile_settings(),
+            ),
+            click,
+        )
+        .unwrap();
+        assert!(matches!(result.target, InteractionTargetRef::Building(_)));
+        assert_ne!(result.interaction_type, InteractionType::ItemPile);
+    }
+
+    #[test]
+    fn pile_overlapping_doodad_wins_priority() {
+        let catalog = DoodadCatalog::default();
+        let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
+        let mut world = flat_world();
+        let click = pos(35.0, 35.0);
+        create_doodad(
+            &catalog,
+            &mut world,
+            &DoodadDefinitionId::new("bush_scrub"),
+            click,
+            DoodadSource::Authored,
+            DoodadPlacementOverrides::default(),
+            None,
+        )
+        .unwrap();
+        let pile_id = world.item_pile_store_mut().allocate_item_pile_id();
+        insert_stack_pile(&mut world, pile_id, click, SpaceId::SURFACE, 2);
+
+        let result = query_world_interaction(
+            &ctx(
+                &world,
+                &catalog,
+                &unit_catalog,
+                &weapons,
+                &BuildingInteractionProfileCatalog::default(),
+                test_pile_settings(),
+            ),
+            click,
+        )
+        .unwrap();
+        assert_eq!(result.interaction_type, InteractionType::ItemPile);
+        assert_eq!(result.target, InteractionTargetRef::ItemPile(pile_id));
+    }
+
+    #[test]
+    fn pile_outside_interaction_radius_is_ignored() {
+        let mut world = flat_world();
+        let catalog = DoodadCatalog::default();
+        let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
+        let interaction_catalog = BuildingInteractionProfileCatalog::default();
+        let pile_id = world.item_pile_store_mut().allocate_item_pile_id();
+        insert_stack_pile(&mut world, pile_id, pos(10.0, 10.0), SpaceId::SURFACE, 1);
+        let mut settings = ItemPileSettings::default();
+        settings.interaction_radius_meters = 2.0;
+
+        let result = query_world_interaction(
+            &InteractionQueryContext {
+                world: &world,
+                doodad_catalog: &catalog,
+                building_catalog: default_building_catalog(),
+                footprint_catalog: default_footprint_catalog(),
+                interaction_catalog: &interaction_catalog,
+                unit_catalog: &unit_catalog,
+                weapon_catalog: &weapons,
+                pile_settings: &settings,
+                query_radius_meters: DEFAULT_INTERACTION_QUERY_RADIUS_METERS,
+                agent_radius_meters: DEFAULT_INTERACTION_AGENT_RADIUS_METERS,
+                max_slope_degrees: DEFAULT_INTERACTION_MAX_SLOPE_DEGREES,
+            },
+            pos(10.0, 20.0),
+        )
+        .unwrap();
+        assert_eq!(result.interaction_type, InteractionType::MoveTarget);
+    }
+
+    #[test]
+    fn pile_in_different_space_is_ignored_on_surface_click() {
+        let mut world = flat_world();
+        let catalog = DoodadCatalog::default();
+        let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
+        let interaction_catalog = BuildingInteractionProfileCatalog::default();
+        let click = pos(18.0, 18.0);
+        let pile_id = world.item_pile_store_mut().allocate_item_pile_id();
+        insert_stack_pile(&mut world, pile_id, click, SpaceId::new(99), 4);
+
+        let result = query_world_interaction(
+            &ctx(
+                &world,
+                &catalog,
+                &unit_catalog,
+                &weapons,
+                &interaction_catalog,
+                test_pile_settings(),
+            ),
+            click,
+        )
+        .unwrap();
+        assert_ne!(result.interaction_type, InteractionType::ItemPile);
+    }
+
+    #[test]
+    fn nearest_pile_wins_deterministic_tie_break() {
+        let mut world = flat_world();
+        let catalog = DoodadCatalog::default();
+        let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
+        let interaction_catalog = BuildingInteractionProfileCatalog::default();
+        let near_id = ItemPileId::new(2);
+        let far_id = ItemPileId::new(1);
+        insert_stack_pile(&mut world, far_id, pos(40.0, 40.0), SpaceId::SURFACE, 1);
+        insert_stack_pile(&mut world, near_id, pos(40.5, 40.5), SpaceId::SURFACE, 1);
+
+        let result = query_world_interaction(
+            &ctx(
+                &world,
+                &catalog,
+                &unit_catalog,
+                &weapons,
+                &interaction_catalog,
+                test_pile_settings(),
+            ),
+            pos(40.0, 40.0),
+        )
+        .unwrap();
+        assert_eq!(result.target, InteractionTargetRef::ItemPile(far_id));
     }
 }

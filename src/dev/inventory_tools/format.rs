@@ -2,10 +2,12 @@
 
 use crate::client::selection::WorldSelectionState;
 use crate::dev::DevInventoryEndpoint;
-use crate::dev::dev_mode::{DefinitionId, DevInventoryToolState, ItemsBrowserSubtab};
+use crate::dev::dev_mode::{DefinitionId, DevInventoryToolState};
 use crate::dev::inventory_tools::endpoint::{
-    DevInventoryEndpointInfo, resolve_inspector_endpoints, resolve_target_unit,
+    DevInventoryEndpointInfo, resolve_inspector_endpoints, resolve_target_building,
+    resolve_target_unit,
 };
+use crate::ui::gameplay::GameplayBuildingSelection;
 use crate::units::input::SelectedUnits;
 use crate::world::{
     InventoryCatalogCtx, InventoryEntryContents, ItemCatalog, ItemCategoryCatalog,
@@ -15,6 +17,7 @@ use crate::world::{
 pub fn format_inventory_tool_panel(
     world: &WorldData,
     world_selection: &WorldSelectionState,
+    building_selection: &GameplayBuildingSelection,
     selection: &SelectedUnits,
     items: &ItemCatalog,
     categories: &ItemCategoryCatalog,
@@ -23,12 +26,9 @@ pub fn format_inventory_tool_panel(
     tool: &DevInventoryToolState,
     selected_item: Option<&DefinitionId>,
 ) -> String {
-    let endpoints = resolve_inspector_endpoints(world, world_selection, selection);
-    let mut lines = vec![
-        format!("Subtab: {:?}", tool.subtab),
-        tool.message.clone(),
-        String::new(),
-    ];
+    let endpoints =
+        resolve_inspector_endpoints(world, world_selection, selection, building_selection);
+    let mut lines = vec![tool.message.clone(), String::new()];
 
     if endpoints.is_empty() {
         if let Some(unit_id) = resolve_target_unit(world_selection, selection) {
@@ -41,7 +41,7 @@ pub fn format_inventory_tool_panel(
                 lines.push("Target: none — select a unit or inspect unit/building/pile".into());
             }
         } else {
-            lines.push("Target: none — select a unit or inspect unit/building/pile".into());
+            lines.push("Target: none — select a unit or building with storage".into());
         }
     } else {
         let idx = tool
@@ -74,18 +74,45 @@ pub fn format_inventory_tool_panel(
                 item.max_stack
             ));
         }
-    }
-
-    if let (Some(src), Some(dst)) = (&tool.transfer_source, &tool.transfer_dest) {
         lines.push(String::new());
-        lines.push(format!("Transfer: {src:?} → {dst:?}"));
-    } else if tool.transfer_source.is_some() {
-        lines.push("Transfer: source set — pick destination (Dst)".into());
+        lines.push(format!(
+            "Held: `{}` x{} — left-click grid or terrain, right-click cancel",
+            item_id.as_str(),
+            tool.quantity,
+        ));
     }
 
     if tool.pile_placement_armed {
         lines.push(String::new());
         lines.push("Ground pile placement armed — left-click terrain".into());
+    }
+
+    lines.push(String::new());
+    if resolve_target_unit(world_selection, selection).is_none() {
+        lines.push("Add to Unit: disabled (no unit selected)".into());
+    } else if !matches!(selected_item, Some(DefinitionId::Item(_))) {
+        lines.push("Add to Unit: disabled (select an item in the catalog list first)".into());
+    } else {
+        lines.push(format!(
+            "Add to Unit: ready (qty {}, item `{}`)",
+            tool.quantity,
+            selected_item.map(DefinitionId::id_str).unwrap_or("?")
+        ));
+    }
+    match resolve_target_building(world_selection, building_selection) {
+        None => lines.push("Add to Container: disabled (no building selected)".into()),
+        Some(id)
+            if world
+                .get_building(id)
+                .and_then(|b| b.inventory_id)
+                .is_none() =>
+        {
+            lines.push(format!(
+                "Add to Container: disabled (building #{} has no inventory)",
+                id.raw()
+            ));
+        }
+        Some(id) => lines.push(format!("Add to Container: ready (building #{})", id.raw())),
     }
 
     lines.join("\n")

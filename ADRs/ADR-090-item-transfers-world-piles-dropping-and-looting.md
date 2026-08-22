@@ -57,6 +57,12 @@ authoritative location.
 
 `InteractionType::ItemPile` and `Corpse` added; order resolution via I6 player inventory UI (ADR-092).
 
+**Closed (ITEM-VERTICAL-1B):** `query_world_interaction` now classifies item piles within
+`ItemPileSettings.interaction_radius_meters` (default 2.0 m, independent of merge radius).
+Gameplay path: Interact on pile → `InventoryOpenMode::WorldPile` → Pick Up Full →
+`pickup_pile_into_inventory`. Shared hit-test: `nearest_item_pile_at_position` (3×3 chunk
+window, space filter). Dev pile tools use the same helper.
+
 ### Runtime presentation (`src/item_piles/`)
 
 Spawn/despawn render entities from chunk residency + `WorldItemPileRecord`; no quantity truth on ECS.

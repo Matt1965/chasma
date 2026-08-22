@@ -2,19 +2,26 @@
 
 mod endpoint;
 mod format;
+mod held_item;
 mod input;
 mod ops;
 pub mod panel;
+#[cfg(test)]
+mod panel_tests;
 
 pub use crate::dev::dev_mode::DevInventoryEndpoint;
 pub use endpoint::{
     DevInventoryEndpointInfo, nearest_pile_at_position, resolve_active_endpoint,
-    resolve_inspector_endpoints, resolve_target_unit,
+    resolve_inspector_endpoints, resolve_target_building, resolve_target_unit,
+};
+pub use held_item::{
+    handle_dev_held_item_input, sync_dev_held_item_screen_ghost, sync_dev_held_item_world_ghost,
 };
 pub use input::handle_dev_items_ground_click;
 pub use ops::{
-    DevInventoryOpError, dev_add_item, dev_clear_inventory, dev_fill_inventory, dev_remove_entry,
-    dev_set_stack_quantity, dev_spawn_ground_pile, dev_transfer,
+    DevInventoryOpError, dev_add_item, dev_clear_inventory, dev_fill_inventory,
+    dev_place_item_at_anchor, dev_remove_entry, dev_set_stack_quantity, dev_spawn_ground_pile,
+    dev_transfer,
 };
 pub use panel::{
     DevItemsAction, handle_dev_items_buttons, spawn_items_section, sync_item_quantity_controls,

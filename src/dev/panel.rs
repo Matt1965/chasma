@@ -14,7 +14,7 @@ use super::catalog_browser::CatalogBrowserEntry;
 use super::catalog_cache::{
     CatalogBrowseIndex, CatalogFilterCache, DevSearchDebounce, browse_catalog_entries,
 };
-use super::dev_mode::{DevModeState, DevTab, ItemsBrowserSubtab};
+use super::dev_mode::{DevModeState, DevTab};
 use super::input::{DevPanelRoot, DevPanelUi};
 use super::tools::MAX_BRUSH_SPAWN_COUNT;
 use super::window::{DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowUi};
@@ -636,8 +636,6 @@ pub(crate) fn sync_dev_panel_content(
         super::items_browser::items_catalog_browser_entries(
             &item_catalog,
             &item_categories,
-            &inventory_profiles,
-            dev_state.inventory.subtab,
             &debounce.filtered_query,
             dev_state.enabled_only,
         )
@@ -667,18 +665,11 @@ pub(crate) fn sync_dev_panel_content(
                     dev_state.enabled_only,
                 )
             }
-            DevTab::Items => match dev_state.inventory.subtab {
-                ItemsBrowserSubtab::InventoryManage => {
-                    "Inventory manage — inspect unit/building/pile, use H subtab tools".to_string()
-                }
-                ItemsBrowserSubtab::Items | ItemsBrowserSubtab::InventoryProfiles => {
-                    format!(
-                        "Item catalog ({}) — enabled-only: {}",
-                        catalog_entries.len(),
-                        dev_state.enabled_only,
-                    )
-                }
-            },
+            DevTab::Items => format!(
+                "Item catalog ({}) — enabled-only: {}",
+                catalog_entries.len(),
+                dev_state.enabled_only,
+            ),
             _ => String::new(),
         };
     }
@@ -1010,8 +1001,6 @@ pub(crate) fn handle_dev_panel_ui_interaction(
         super::items_browser::items_catalog_browser_entries(
             &catalogs.item_catalog,
             &catalogs.item_categories,
-            &catalogs.inventory_profiles,
-            dev_state.inventory.subtab,
             &search_query,
             enabled_only,
         )
@@ -1040,6 +1029,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
         panel_click_without_search = true;
         let index = list_scroll + row.index;
         if let Some(entry) = entries.get(index) {
+            let _previous = dev_state.selected_definition.clone();
             dev_state.select_definition(entry.definition.clone());
         }
     }

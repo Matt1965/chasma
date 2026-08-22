@@ -67,6 +67,7 @@ pub struct DispatchSimulationParams<'w> {
     pub profile_revision: Res<'w, crate::world::FieldResponseProfileCatalogRevision>,
     pub requirement_revision: Res<'w, crate::world::BuildingFieldRequirementCatalogRevision>,
     pub assessment_store: ResMut<'w, crate::world::BuildingTerrainAssessmentStore>,
+    pub pile_settings: Res<'w, crate::world::ItemPileSettings>,
 }
 
 /// Outcome of dispatching one intent.
@@ -186,6 +187,7 @@ pub fn dispatch_client_intents(
         profile_revision,
         requirement_revision,
         mut assessment_store,
+        pile_settings,
     } = catalogs;
 
     let mut apply_params = selection_params.apply(None);
@@ -226,6 +228,7 @@ pub fn dispatch_client_intents(
                 profile_revision.0,
                 requirement_revision.0,
                 &mut assessment_store,
+                &pile_settings,
             );
             if status == IntentDispatchStatus::Applied
                 && matches!(
@@ -303,6 +306,7 @@ fn dispatch_one(
     profile_revision: u64,
     requirement_revision: u64,
     assessment_store: &mut crate::world::BuildingTerrainAssessmentStore,
+    pile_settings: &crate::world::ItemPileSettings,
 ) -> IntentDispatchStatus {
     match intent {
         ClientIntent::ContextualCommand { target } => dispatch_contextual_command(
@@ -325,6 +329,7 @@ fn dispatch_one(
             armed_command,
             simulation_tick,
             inventory_queue,
+            pile_settings,
         ),
         ClientIntent::MoveCommand { target } => dispatch_contextual_command(
             CommandTarget::Terrain { position: *target },
@@ -346,6 +351,7 @@ fn dispatch_one(
             armed_command,
             simulation_tick,
             inventory_queue,
+            pile_settings,
         ),
         ClientIntent::SelectUnit { unit_id } => {
             if world
@@ -584,6 +590,7 @@ fn resolve_move_target_from_interaction(
     interaction_catalog: &crate::world::BuildingInteractionProfileCatalog,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    pile_settings: &crate::world::ItemPileSettings,
     selected: &[UnitId],
     target: CommandTarget,
 ) -> Option<WorldPosition> {
@@ -599,6 +606,7 @@ fn resolve_move_target_from_interaction(
                     interaction_catalog,
                     unit_catalog,
                     weapon_catalog,
+                    pile_settings,
                     selected,
                     position,
                 )?
@@ -613,6 +621,7 @@ fn resolve_move_target_from_interaction(
                     interaction_catalog,
                     unit_catalog,
                     weapon_catalog,
+                    pile_settings,
                     selected,
                 );
                 resolve_world_click_to_order(&ctx, position)?
@@ -627,6 +636,7 @@ fn resolve_move_target_from_interaction(
                 interaction_catalog,
                 unit_catalog,
                 weapon_catalog,
+                pile_settings,
                 selected,
             );
             resolve_unit_click_to_order(&ctx, unit_id)?
@@ -655,6 +665,7 @@ fn try_issue_building_work_orders(
     nav_config: &NavigationConfig,
     position: WorldPosition,
     simulation_tick: u64,
+    pile_settings: &crate::world::ItemPileSettings,
 ) -> Option<MoveOrdersReport> {
     let selected: Vec<_> = selection.iter().collect();
     let ctx = InteractionResolveContext::new(
@@ -665,6 +676,7 @@ fn try_issue_building_work_orders(
         interaction_catalog,
         unit_catalog,
         weapon_catalog,
+        pile_settings,
         &selected,
     );
     let plan = resolve_world_click_to_order(&ctx, position)?;
@@ -737,6 +749,7 @@ fn dispatch_contextual_command(
     armed_command: Option<CommandType>,
     simulation_tick: u64,
     inventory_queue: &mut crate::client::inventory_intent::InventoryIntentQueue,
+    pile_settings: &crate::world::ItemPileSettings,
 ) -> IntentDispatchStatus {
     if selection.is_empty() {
         return IntentDispatchStatus::Ignored;
@@ -757,6 +770,7 @@ fn dispatch_contextual_command(
                 interaction_catalog,
                 unit_catalog,
                 weapon_catalog,
+                pile_settings,
                 actor,
                 target,
                 inventory_queue,
@@ -821,6 +835,7 @@ fn dispatch_contextual_command(
                     nav_config,
                     position,
                     simulation_tick,
+                    pile_settings,
                 ) {
                     *move_report = Some(work_report);
                     return IntentDispatchStatus::Applied;
@@ -846,6 +861,7 @@ fn dispatch_contextual_command(
                 interaction_catalog,
                 unit_catalog,
                 weapon_catalog,
+                pile_settings,
                 &selected_ids,
                 contextual.target,
             ) else {
@@ -1293,6 +1309,7 @@ mod tests {
             0,
             0,
             &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert!(sel.selected_units.contains(unit_id));
@@ -1354,6 +1371,7 @@ mod tests {
             0,
             0,
             &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         resolve_all_pending_unit_orders(
@@ -1416,6 +1434,7 @@ mod tests {
             0,
             0,
             &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
     }
@@ -1487,6 +1506,7 @@ mod tests {
             0,
             0,
             &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
         assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
@@ -1538,6 +1558,7 @@ mod tests {
             0,
             0,
             &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
     }
@@ -1596,6 +1617,7 @@ mod tests {
             0,
             0,
             &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
         );
 
         assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
@@ -1660,6 +1682,7 @@ mod tests {
             0,
             0,
             &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert_eq!(pending.resolved_command, Some(CommandType::Move));
@@ -1738,6 +1761,7 @@ mod tests {
             0,
             0,
             &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
         );
         assert_eq!(
             status,
@@ -1792,6 +1816,7 @@ mod tests {
             0,
             0,
             &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
         );
         assert!(modifiers.shift);
     }

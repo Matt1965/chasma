@@ -14,9 +14,11 @@ pub use drag_preview::{
 pub use errors::InventoryUiError;
 pub use input::{collect_inventory_keyboard_input, inventory_panel_blocks_world_input};
 pub use panel::{
-    collect_inventory_mouse_transfers, handle_inventory_drag_release,
-    handle_inventory_entry_clicks, handle_inventory_panel_buttons, spawn_inventory_panel,
-    sync_inventory_panel_contents, sync_inventory_panel_visibility,
+    InventoryEntryWidget, InventoryGridCell, InventoryGridPane, InventoryPaneSide,
+    InventoryPanelRoot, collect_inventory_mouse_transfers, handle_inventory_drag_release,
+    handle_inventory_entry_clicks, handle_inventory_panel_buttons,
+    reconcile_inventory_ui_from_world, spawn_inventory_panel, sync_inventory_panel_contents,
+    sync_inventory_panel_visibility,
 };
 pub use preview::{
     INVENTORY_CELL_PX, InventoryDropTarget, InventoryPlacementPreview, drag_state_from_entry,

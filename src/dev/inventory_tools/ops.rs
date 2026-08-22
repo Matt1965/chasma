@@ -8,7 +8,7 @@ use crate::world::{
     PlacedInventoryEntry, SpaceId, TransferPlacementPolicy, UnitCatalog, UnitId, WorldData,
     WorldPileContents, WorldPosition, create_inventory, create_item_instance,
     create_unit_inventory, drop_stack_from_inventory, pickup_pile_into_inventory, place_stack,
-    place_stack_first_fit, place_unique_first_fit, remove_entry, transfer_entry_full,
+    place_stack_first_fit, place_unique, place_unique_first_fit, remove_entry, transfer_entry_full,
     transfer_stack_quantity,
 };
 
@@ -18,6 +18,9 @@ pub enum DevInventoryOpError {
     NoItemSelected,
     NoEntrySelected,
     NoTransferEndpoints,
+    NoUnitSelected,
+    NoContainerSelected,
+    ContainerHasNoInventory,
     Message(String),
 }
 
@@ -31,6 +34,16 @@ impl std::fmt::Display for DevInventoryOpError {
             Self::NoEntrySelected => write!(f, "select an inventory entry first"),
             Self::NoTransferEndpoints => {
                 write!(f, "set both transfer source and destination endpoints")
+            }
+            Self::NoUnitSelected => write!(f, "no unit selected — select a unit first"),
+            Self::NoContainerSelected => {
+                write!(f, "no container selected — select a building with storage")
+            }
+            Self::ContainerHasNoInventory => {
+                write!(
+                    f,
+                    "selected building has no inventory — spawn a storage building"
+                )
             }
             Self::Message(message) => write!(f, "{message}"),
         }
@@ -171,6 +184,52 @@ pub fn dev_add_item(
                 .map_err(|err| DevInventoryOpError::Message(err.to_string()))?;
             Ok(format!("Spawned new pile #{new_id:?} x{quantity}"))
         }
+    }
+}
+
+pub fn dev_place_item_at_anchor(
+    world: &mut WorldData,
+    ctx: &InventoryCatalogCtx<'_>,
+    inventory_id: InventoryId,
+    item_id: ItemDefinitionId,
+    quantity: u32,
+    anchor_x: u8,
+    anchor_y: u8,
+) -> Result<EntryIndex, DevInventoryOpError> {
+    if quantity == 0 {
+        return Err(DevInventoryOpError::Message("quantity must be > 0".into()));
+    }
+    let item = ctx.require_item(&item_id)?;
+    let (inventory_store, instance_store) = world.inventory_runtime_mut();
+    if item.unique_instance_required {
+        let instance_id = create_item_instance(
+            instance_store,
+            ctx,
+            item_id,
+            ItemInstanceMetadata::default(),
+        )?;
+        place_unique(
+            inventory_store,
+            instance_store,
+            ctx,
+            inventory_id,
+            instance_id,
+            anchor_x,
+            anchor_y,
+        )
+        .map_err(DevInventoryOpError::from)
+    } else {
+        place_stack(
+            inventory_store,
+            instance_store,
+            ctx,
+            inventory_id,
+            item_id,
+            quantity,
+            anchor_x,
+            anchor_y,
+        )
+        .map_err(DevInventoryOpError::from)
     }
 }
 
@@ -580,5 +639,119 @@ mod tests {
         let restored = world.get_unit(unit.id).unwrap();
         assert_eq!(restored.inventory_id, Some(inventory_id));
         assert!(world.inventory_store().get(inventory_id).is_some());
+    }
+
+    #[test]
+    fn dev_add_item_to_unit_inventory() {
+        use crate::world::{
+            ChunkCoord, ChunkData, ChunkId, Heightfield, LocalPosition, UnitCatalog,
+            UnitDefinitionId, UnitOwnership, UnitSource, WorldPosition, create_unit_with_ownership,
+        };
+        use bevy::prelude::Vec3;
+
+        let mut world = crate::world::WorldData::new(crate::world::ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let heightfield = Heightfield::from_samples(3, 128.0, vec![0.0; 9]).unwrap();
+        world.insert(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            ChunkData::new(heightfield, Vec::new()),
+        );
+        let unit_catalog = UnitCatalog::default();
+        let items = crate::world::ItemCatalog::default();
+        let categories = crate::world::ItemCategoryCatalog::default();
+        let profiles = crate::world::InventoryProfileCatalog::default();
+        let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+        let position = WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::new(10.0, 0.0, 10.0)),
+        );
+        let unit = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            position,
+            UnitSource::Dev,
+            UnitOwnership::player_default(),
+        )
+        .unwrap();
+        let inventory_id =
+            ensure_dev_unit_inventory(&mut world, &unit_catalog, &ctx, unit.id).unwrap();
+        let message = dev_add_item(
+            &mut world,
+            &ctx,
+            DevInventoryEndpoint::Grid(inventory_id),
+            ItemDefinitionId::new("gold"),
+            25,
+            &ItemPileSettings::default(),
+            position,
+            0,
+        )
+        .unwrap();
+        assert!(message.contains("25"));
+        assert_eq!(
+            world
+                .inventory_store()
+                .get(inventory_id)
+                .unwrap()
+                .placed_entries()
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn dev_spawn_ground_pile_creates_record() {
+        use crate::world::{ChunkCoord, LocalPosition, WorldPosition};
+        use bevy::prelude::Vec3;
+
+        let mut world = crate::world::WorldData::new(crate::world::ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let position = WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::new(12.0, 0.0, 12.0)),
+        );
+        let pile_id =
+            dev_spawn_ground_pile(&mut world, ItemDefinitionId::new("gold"), 25, position, 1)
+                .unwrap();
+        let pile = world.item_pile_store().get(pile_id).unwrap();
+        assert_eq!(pile.stack_quantity(), Some(25));
+    }
+
+    #[test]
+    fn zero_quantity_rejected() {
+        use crate::world::{ChunkCoord, LocalPosition, WorldPosition};
+        use bevy::prelude::Vec3;
+
+        let mut world = crate::world::WorldData::new(crate::world::ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let items = crate::world::ItemCatalog::default();
+        let categories = crate::world::ItemCategoryCatalog::default();
+        let profiles = crate::world::InventoryProfileCatalog::default();
+        let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+        let inventory_id = create_inventory(
+            world.inventory_store_mut(),
+            &ctx,
+            InventoryProfileId::new("unit_backpack_standard"),
+            InventoryOwnerRef::Detached,
+        )
+        .unwrap();
+        let err = dev_add_item(
+            &mut world,
+            &ctx,
+            DevInventoryEndpoint::Grid(inventory_id),
+            ItemDefinitionId::new("gold"),
+            0,
+            &ItemPileSettings::default(),
+            WorldPosition::new(ChunkCoord::new(0, 0), LocalPosition::new(Vec3::ZERO)),
+            0,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("quantity"));
     }
 }

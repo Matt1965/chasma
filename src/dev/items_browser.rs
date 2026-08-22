@@ -5,7 +5,7 @@ use crate::world::{
     ItemCategoryCatalog, ItemDefinition, ItemDefinitionId,
 };
 
-use super::dev_mode::{DefinitionId, ItemsBrowserSubtab};
+use super::dev_mode::DefinitionId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ItemsBrowserEntry {
@@ -19,18 +19,11 @@ pub struct ItemsBrowserEntry {
 pub fn filter_items_browser_entries(
     item_catalog: &ItemCatalog,
     item_categories: &ItemCategoryCatalog,
-    profile_catalog: &InventoryProfileCatalog,
-    subtab: ItemsBrowserSubtab,
     search_query: &str,
     enabled_only: bool,
 ) -> Vec<ItemsBrowserEntry> {
     let query = search_query.trim().to_ascii_lowercase();
-    let mut entries = match subtab {
-        ItemsBrowserSubtab::Items | ItemsBrowserSubtab::InventoryManage => {
-            item_entries(item_catalog, item_categories, enabled_only)
-        }
-        ItemsBrowserSubtab::InventoryProfiles => profile_entries(profile_catalog, enabled_only),
-    };
+    let mut entries = item_entries(item_catalog, item_categories, enabled_only);
 
     if !query.is_empty() {
         entries.retain(|entry| {
@@ -62,6 +55,8 @@ fn item_entries(
         .collect()
 }
 
+/// Read-only profile rows for dev inspection (not shown in Items UI after PLACEMENT-2).
+#[allow(dead_code)]
 fn profile_entries(
     catalog: &InventoryProfileCatalog,
     enabled_only: bool,
@@ -266,42 +261,31 @@ fn buildings_with_profile_for_item(
 pub fn items_catalog_browser_entries(
     item_catalog: &ItemCatalog,
     item_categories: &ItemCategoryCatalog,
-    profile_catalog: &InventoryProfileCatalog,
-    subtab: ItemsBrowserSubtab,
     search_query: &str,
     enabled_only: bool,
 ) -> Vec<super::catalog_browser::CatalogBrowserEntry> {
-    filter_items_browser_entries(
-        item_catalog,
-        item_categories,
-        profile_catalog,
-        subtab,
-        search_query,
-        enabled_only,
-    )
-    .into_iter()
-    .map(|entry| super::catalog_browser::CatalogBrowserEntry {
-        definition: entry.definition,
-        label: entry.label,
-        category: entry.category,
-        render_key: entry.detail_key,
-        enabled: entry.enabled,
-    })
-    .collect()
+    filter_items_browser_entries(item_catalog, item_categories, search_query, enabled_only)
+        .into_iter()
+        .map(|entry| super::catalog_browser::CatalogBrowserEntry {
+            definition: entry.definition,
+            label: entry.label,
+            category: entry.category,
+            render_key: entry.detail_key,
+            enabled: entry.enabled,
+        })
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog};
+    use crate::world::{ItemCatalog, ItemCategoryCatalog};
 
     #[test]
     fn items_browser_lists_physical_gold() {
         let entries = filter_items_browser_entries(
             &ItemCatalog::default(),
             &ItemCategoryCatalog::default(),
-            &InventoryProfileCatalog::default(),
-            ItemsBrowserSubtab::Items,
             "gold",
             true,
         );

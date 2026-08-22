@@ -55,6 +55,7 @@ impl<'a> InteractionResolveContext<'a> {
         interaction_catalog: &'a crate::world::BuildingInteractionProfileCatalog,
         unit_catalog: &'a crate::world::UnitCatalog,
         weapon_catalog: &'a crate::world::WeaponCatalog,
+        pile_settings: &'a crate::world::ItemPileSettings,
         selected_units: &'a [UnitId],
     ) -> Self {
         Self {
@@ -66,6 +67,7 @@ impl<'a> InteractionResolveContext<'a> {
                 interaction_catalog,
                 unit_catalog,
                 weapon_catalog,
+                pile_settings,
             ),
             selected_units,
             targeting_policy: AttackTargetingPolicy::default(),
@@ -183,6 +185,7 @@ pub fn trace_and_resolve_world_click_to_order(
     interaction_catalog: &crate::world::BuildingInteractionProfileCatalog,
     unit_catalog: &crate::world::UnitCatalog,
     weapon_catalog: &crate::world::WeaponCatalog,
+    pile_settings: &crate::world::ItemPileSettings,
     selected_units: &[UnitId],
     position: WorldPosition,
 ) -> Option<InteractionOrderPlan> {
@@ -226,6 +229,7 @@ pub fn trace_and_resolve_world_click_to_order(
                     interaction_catalog,
                     unit_catalog,
                     weapon_catalog,
+                    pile_settings,
                     selected_units,
                 );
                 resolve_interior_commanded_move_click(&ctx, position)
@@ -269,6 +273,7 @@ pub fn trace_and_resolve_world_click_to_order(
             interaction_catalog,
             unit_catalog,
             weapon_catalog,
+            pile_settings,
             selected_units,
         );
         query_world_interaction(&ctx.query, position)?
@@ -439,6 +444,12 @@ mod tests {
         CATALOG.get_or_init(crate::world::BuildingInteractionProfileCatalog::default)
     }
 
+    fn pile_settings() -> &'static crate::world::ItemPileSettings {
+        use std::sync::OnceLock;
+        static SETTINGS: OnceLock<crate::world::ItemPileSettings> = OnceLock::new();
+        SETTINGS.get_or_init(crate::world::ItemPileSettings::default)
+    }
+
     fn resolve_ctx<'a>(
         world: &'a WorldData,
         catalog: &'a crate::world::DoodadCatalog,
@@ -454,6 +465,7 @@ mod tests {
             interaction_catalog(),
             unit_catalog,
             weapon_catalog,
+            pile_settings(),
             selected,
         )
     }

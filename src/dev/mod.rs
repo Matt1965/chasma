@@ -15,7 +15,7 @@ mod history;
 mod hotkeys;
 mod input;
 mod inspector;
-mod inventory_tools;
+pub(crate) mod inventory_tools;
 mod items_browser;
 mod navigation_editor;
 mod panel;
@@ -53,7 +53,7 @@ pub use debug_window::{
 };
 pub use dev_mode::{
     DefinitionId, DevDebugFlags, DevInventoryEndpoint, DevInventoryToolState, DevModeInputGate,
-    DevModeState, DevTab, DevTextFieldFocus, ItemsBrowserSubtab, SpawnMode,
+    DevModeState, DevTab, DevTextFieldFocus, SpawnMode,
 };
 pub use fields_window::setup_fields_window_panel;
 pub use gizmo::{
@@ -419,6 +419,13 @@ impl Plugin for DevModePlugin {
                 Update,
                 inventory_tools::handle_dev_items_ground_click
                     .after(sync_save_window_content)
+                    .before(inventory_tools::handle_dev_held_item_input)
+                    .in_set(DevModeInputSystems),
+            )
+            .add_systems(
+                Update,
+                inventory_tools::handle_dev_held_item_input
+                    .after(inventory_tools::handle_dev_items_ground_click)
                     .before(handle_dev_spawn_click)
                     .in_set(DevModeInputSystems),
             )
@@ -445,12 +452,12 @@ impl Plugin for DevModePlugin {
             .add_systems(
                 Update,
                 (
-                    world_window::handle_pile_harness_buttons,
-                    world_window::handle_treasury_harness_buttons,
-                    inventory_tools::handle_dev_items_buttons,
                     inventory_tools::sync_items_section_visibility,
+                    inventory_tools::handle_dev_items_buttons,
                     inventory_tools::sync_item_quantity_controls,
                     inventory_tools::sync_items_panel_text,
+                    world_window::handle_pile_harness_buttons,
+                    world_window::handle_treasury_harness_buttons,
                 )
                     .in_set(DevModeInputSystems),
             )
@@ -463,6 +470,8 @@ impl Plugin for DevModePlugin {
                     sync_dev_terrain_field_panel,
                     update_dev_terrain_field_probe,
                     draw_dev_terrain_field_gizmos,
+                    inventory_tools::sync_dev_held_item_screen_ghost,
+                    inventory_tools::sync_dev_held_item_world_ghost,
                 )
                     .chain()
                     .in_set(DevModePresentationSystems),

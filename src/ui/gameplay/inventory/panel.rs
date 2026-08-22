@@ -89,6 +89,8 @@ pub fn spawn_inventory_panel(mut commands: Commands) {
         .spawn((
             InventoryPanelRoot,
             PlayerHudUi,
+            Button,
+            Interaction::None,
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Percent(10.0),
@@ -185,8 +187,24 @@ pub fn sync_inventory_panel_visibility(
     }
 }
 
+pub fn reconcile_inventory_ui_from_world(mut ui: ResMut<InventoryUiState>, world: Res<WorldData>) {
+    if !ui.open {
+        return;
+    }
+    if let Some(actor) = ui.actor_unit_id {
+        if let Some(inventory_id) = world.get_unit(actor).and_then(|unit| unit.inventory_id) {
+            ui.left_inventory_id = Some(inventory_id);
+        }
+    }
+    if let Some(right_id) = ui.right_inventory_id {
+        if world.inventory_store().get(right_id).is_none() {
+            ui.right_inventory_id = None;
+        }
+    }
+}
+
 pub fn sync_inventory_panel_contents(
-    ui: Res<InventoryUiState>,
+    mut ui: ResMut<InventoryUiState>,
     preview: Res<InventoryDragPreviewState>,
     world: Res<WorldData>,
     items: Res<ItemCatalog>,
@@ -200,9 +218,6 @@ pub fn sync_inventory_panel_contents(
         Query<&mut Text, (With<InventoryDetailsText>, Without<InventoryFeedbackText>)>,
     )>,
 ) {
-    if !ui.is_changed() && !world.is_changed() {
-        return;
-    }
     if !ui.open {
         return;
     }
@@ -238,9 +253,16 @@ pub fn sync_inventory_panel_contents(
         .right_inventory_id
         .map(|id| inventory_revision(&world, id))
         .unwrap_or(0);
-    if left_rev == ui.last_revision_left && right_rev == ui.last_revision_right && ui.is_changed() {
-        // still refresh on pure ui selection changes below via is_changed only when needed
+    if left_rev == ui.last_revision_left
+        && right_rev == ui.last_revision_right
+        && !ui.is_changed()
+        && !world.is_changed()
+    {
+        return;
     }
+
+    ui.last_revision_left = left_rev;
+    ui.last_revision_right = right_rev;
 
     let Ok(row) = row_query.single() else {
         return;
@@ -401,6 +423,9 @@ fn spawn_pane(
             }
             pane.spawn((
                 InventoryGridPane { inventory_id, side },
+                PlayerHudUi,
+                Button,
+                Interaction::None,
                 Node {
                     width: Val::Px(CELL_PX * f32::from(record.grid_width())),
                     height: Val::Px(CELL_PX * f32::from(record.grid_height())),
@@ -436,6 +461,8 @@ fn spawn_pane(
                 for (entry_index, entry) in record.placed_entries().iter().enumerate() {
                     let (label, qty) = entry_label(entry, items, instance_store);
                     let (w, h) = entry_footprint(entry, items, instance_store);
+                    let _ = (w, h);
+                    let _ = label;
                     grid.spawn((
                         InventoryEntryWidget {
                             inventory_id,
@@ -729,8 +756,13 @@ pub fn handle_inventory_entry_clicks(
     items: Res<ItemCatalog>,
     mut queue: ResMut<InventoryIntentQueue>,
     entries: Query<(&Interaction, &InventoryEntryWidget), Changed<Interaction>>,
+    #[cfg(feature = "dev")] dev_state: Res<crate::dev::DevModeState>,
 ) {
     if !ui.open {
+        return;
+    }
+    #[cfg(feature = "dev")]
+    if dev_state.dev_held_item_id().is_some() {
         return;
     }
     let ctrl = keyboard.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]);

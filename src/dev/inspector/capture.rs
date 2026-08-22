@@ -1340,6 +1340,7 @@ pub fn capture_interaction_inspector_snapshot(
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
     weapon_catalog: &crate::world::WeaponCatalog,
+    pile_settings: &crate::world::ItemPileSettings,
     click_position: WorldPosition,
 ) -> Option<InteractionInspectorSnapshot> {
     let interaction_catalog = crate::world::BuildingInteractionProfileCatalog::default();
@@ -1351,6 +1352,7 @@ pub fn capture_interaction_inspector_snapshot(
         &interaction_catalog,
         unit_catalog,
         weapon_catalog,
+        pile_settings,
     );
     let terrain_hit = ground_world_position(world, click_position).is_some();
     let interaction = query_world_interaction(&ctx, click_position)?;
@@ -1888,6 +1890,7 @@ mod tests {
             &BuildingCatalog::default(),
             &FootprintCatalog::default(),
             &crate::world::WeaponCatalog::default(),
+            &crate::world::ItemPileSettings::default(),
             click,
         )
         .unwrap();
