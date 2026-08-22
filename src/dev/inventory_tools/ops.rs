@@ -3,14 +3,28 @@
 use crate::dev::dev_mode::DevInventoryEndpoint;
 use crate::world::{
     Affiliation, ChunkId, EntryIndex, InventoryCatalogCtx, InventoryEntryContents, InventoryError,
-    InventoryId, InventoryOwnerRef, InventoryProfileId, ItemDefinitionId, ItemInstanceMetadata,
-    ItemInstanceStore, ItemPileId, ItemPileSettings, ItemPileSource, PileOwnership,
-    PlacedInventoryEntry, SpaceId, TransferPlacementPolicy, UnitCatalog, UnitId, WorldData,
-    WorldPileContents, WorldPosition, create_inventory, create_item_instance,
+    InventoryId, InventoryOwnerRef, InventoryProfileId, ItemDefinition, ItemDefinitionId,
+    ItemInstanceMetadata, ItemInstanceStore, ItemPileId, ItemPileSettings, ItemPileSource,
+    PileOwnership, PlacedInventoryEntry, SpaceId, TransferPlacementPolicy, UnitCatalog, UnitId,
+    WorldData, WorldPileContents, WorldPosition, create_inventory, create_item_instance,
     create_unit_inventory, drop_stack_from_inventory, pickup_pile_into_inventory, place_stack,
     place_stack_first_fit, place_unique, place_unique_first_fit, remove_entry, transfer_entry_full,
     transfer_stack_quantity,
 };
+
+/// Non-stackable items and `unique_instance_required` items occupy inventory as unique entries.
+fn item_uses_unique_inventory_entry(item: &ItemDefinition) -> bool {
+    !item.stackable || item.unique_instance_required
+}
+
+/// One placement action creates a single physical item for unique-entry types.
+pub fn dev_effective_placement_quantity(item: &ItemDefinition, requested: u32) -> u32 {
+    if item_uses_unique_inventory_entry(item) {
+        1
+    } else {
+        requested.max(1)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DevInventoryOpError {
@@ -111,7 +125,7 @@ pub fn dev_add_item(
         DevInventoryEndpoint::Grid(inventory_id) => {
             let item = ctx.require_item(&item_id)?;
             let (inventory_store, instance_store) = world.inventory_runtime_mut();
-            if item.unique_instance_required {
+            if item_uses_unique_inventory_entry(item) {
                 let instance_id = create_item_instance(
                     instance_store,
                     ctx,
@@ -127,15 +141,16 @@ pub fn dev_add_item(
                 )?;
                 Ok(format!("Placed unique item at entry {index}"))
             } else {
+                let placement_qty = dev_effective_placement_quantity(item, quantity);
                 let index = place_stack_first_fit(
                     inventory_store,
                     instance_store,
                     ctx,
                     inventory_id,
                     item_id,
-                    quantity,
+                    placement_qty,
                 )?;
-                Ok(format!("Placed stack x{quantity} at entry {index}"))
+                Ok(format!("Placed stack x{placement_qty} at entry {index}"))
             }
         }
         DevInventoryEndpoint::Pile(pile_id) => {
@@ -200,8 +215,9 @@ pub fn dev_place_item_at_anchor(
         return Err(DevInventoryOpError::Message("quantity must be > 0".into()));
     }
     let item = ctx.require_item(&item_id)?;
+    let placement_qty = dev_effective_placement_quantity(item, quantity);
     let (inventory_store, instance_store) = world.inventory_runtime_mut();
-    if item.unique_instance_required {
+    if item_uses_unique_inventory_entry(item) {
         let instance_id = create_item_instance(
             instance_store,
             ctx,
@@ -225,7 +241,7 @@ pub fn dev_place_item_at_anchor(
             ctx,
             inventory_id,
             item_id,
-            quantity,
+            placement_qty,
             anchor_x,
             anchor_y,
         )
@@ -411,7 +427,7 @@ pub fn dev_fill_inventory(
     quantity_per_stack: u32,
 ) -> Result<String, DevInventoryOpError> {
     let item = ctx.require_item(&item_id)?;
-    if item.unique_instance_required {
+    if item_uses_unique_inventory_entry(item) {
         return Err(DevInventoryOpError::Message(
             "fill is for stackable items only".into(),
         ));
@@ -556,7 +572,9 @@ pub fn dev_transfer(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{InventoryOwnerRef, InventoryProfileId, create_inventory};
+    use crate::world::{
+        InventoryOwnerRef, InventoryProfileCatalog, InventoryProfileId, create_inventory,
+    };
 
     #[test]
     fn clear_grid_inventory() {
@@ -753,5 +771,304 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("quantity"));
+    }
+
+    fn placement_test_catalog() -> (
+        crate::world::ItemCatalog,
+        crate::world::ItemCategoryCatalog,
+        InventoryProfileCatalog,
+    ) {
+        use crate::world::{
+            ItemCatalog, ItemCategoryCatalog, ItemCategoryDefinition, ItemCategoryId,
+            ItemDefinition,
+        };
+
+        let categories = ItemCategoryCatalog::from_definitions(vec![
+            ItemCategoryDefinition::new(ItemCategoryId::new("currency"), "Currency", "", true),
+            ItemCategoryDefinition::new(ItemCategoryId::new("weapon"), "Weapon", "", true),
+            ItemCategoryDefinition::new(ItemCategoryId::new("medicine"), "Medicine", "", true),
+        ])
+        .unwrap();
+        let items = ItemCatalog::from_definitions(
+            vec![
+                ItemDefinition::new(
+                    ItemDefinitionId::new("gold"),
+                    "Gold",
+                    "",
+                    ItemCategoryId::new("currency"),
+                    1,
+                    1,
+                    true,
+                    999,
+                    1,
+                    1,
+                    true,
+                ),
+                ItemDefinition::new(
+                    ItemDefinitionId::new("crossbow"),
+                    "Crossbow",
+                    "",
+                    ItemCategoryId::new("weapon"),
+                    2,
+                    3,
+                    false,
+                    1,
+                    5000,
+                    200,
+                    true,
+                ),
+                ItemDefinition::new(
+                    ItemDefinitionId::new("healing_kit"),
+                    "Healing Kit",
+                    "",
+                    ItemCategoryId::new("medicine"),
+                    2,
+                    2,
+                    false,
+                    1,
+                    300,
+                    25,
+                    true,
+                )
+                .with_unique_instance_required(true),
+            ],
+            &categories,
+        )
+        .unwrap();
+        (items, categories, InventoryProfileCatalog::default())
+    }
+
+    fn empty_backpack(
+        world: &mut crate::world::WorldData,
+        ctx: &InventoryCatalogCtx<'_>,
+    ) -> InventoryId {
+        create_inventory(
+            world.inventory_store_mut(),
+            ctx,
+            InventoryProfileId::new("unit_backpack_standard"),
+            InventoryOwnerRef::Detached,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn dev_place_stackable_item_at_anchor() {
+        let mut world = crate::world::WorldData::new(crate::world::ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let (items, categories, profiles) = placement_test_catalog();
+        let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+        let inventory_id = empty_backpack(&mut world, &ctx);
+        dev_place_item_at_anchor(
+            &mut world,
+            &ctx,
+            inventory_id,
+            ItemDefinitionId::new("gold"),
+            25,
+            0,
+            0,
+        )
+        .unwrap();
+        let entry = world
+            .inventory_store()
+            .get(inventory_id)
+            .unwrap()
+            .placed_entries()
+            .first()
+            .unwrap();
+        assert!(matches!(
+            &entry.contents,
+            InventoryEntryContents::Stack { quantity: 25, .. }
+        ));
+    }
+
+    #[test]
+    fn dev_place_non_stackable_item_at_anchor() {
+        let mut world = crate::world::WorldData::new(crate::world::ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let (items, categories, profiles) = placement_test_catalog();
+        let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+        let inventory_id = empty_backpack(&mut world, &ctx);
+        dev_place_item_at_anchor(
+            &mut world,
+            &ctx,
+            inventory_id,
+            ItemDefinitionId::new("crossbow"),
+            10,
+            0,
+            0,
+        )
+        .unwrap();
+        let record = world.inventory_store().get(inventory_id).unwrap();
+        assert_eq!(record.placed_entries().len(), 1);
+        assert!(matches!(
+            record.placed_entries()[0].contents,
+            InventoryEntryContents::Unique { .. }
+        ));
+    }
+
+    #[test]
+    fn dev_place_unique_instance_required_item_at_anchor() {
+        let mut world = crate::world::WorldData::new(crate::world::ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let (items, categories, profiles) = placement_test_catalog();
+        let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+        let inventory_id = empty_backpack(&mut world, &ctx);
+        dev_place_item_at_anchor(
+            &mut world,
+            &ctx,
+            inventory_id,
+            ItemDefinitionId::new("healing_kit"),
+            1,
+            2,
+            2,
+        )
+        .unwrap();
+        let entry = world
+            .inventory_store()
+            .get(inventory_id)
+            .unwrap()
+            .placed_entries()
+            .first()
+            .unwrap();
+        assert_eq!(entry.anchor_x, 2);
+        assert_eq!(entry.anchor_y, 2);
+        assert!(matches!(
+            entry.contents,
+            InventoryEntryContents::Unique { .. }
+        ));
+    }
+
+    #[test]
+    fn crossbow_fits_in_standard_backpack() {
+        let mut world = crate::world::WorldData::new(crate::world::ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let (items, categories, profiles) = placement_test_catalog();
+        let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+        let inventory_id = empty_backpack(&mut world, &ctx);
+        dev_place_item_at_anchor(
+            &mut world,
+            &ctx,
+            inventory_id,
+            ItemDefinitionId::new("crossbow"),
+            1,
+            0,
+            0,
+        )
+        .unwrap();
+        let entry = world
+            .inventory_store()
+            .get(inventory_id)
+            .unwrap()
+            .placed_entries()
+            .first()
+            .unwrap();
+        assert_eq!(entry.anchor_x, 0);
+        assert_eq!(entry.anchor_y, 0);
+    }
+
+    #[test]
+    fn crossbow_fails_when_out_of_bounds() {
+        let mut world = crate::world::WorldData::new(crate::world::ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let (items, categories, profiles) = placement_test_catalog();
+        let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+        let inventory_id = empty_backpack(&mut world, &ctx);
+        let err = dev_place_item_at_anchor(
+            &mut world,
+            &ctx,
+            inventory_id,
+            ItemDefinitionId::new("crossbow"),
+            1,
+            5,
+            0,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("bounds") || err.to_string().contains("Grid"));
+    }
+
+    #[test]
+    fn crossbow_fails_when_overlapping() {
+        let mut world = crate::world::WorldData::new(crate::world::ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let (items, categories, profiles) = placement_test_catalog();
+        let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+        let inventory_id = empty_backpack(&mut world, &ctx);
+        dev_place_item_at_anchor(
+            &mut world,
+            &ctx,
+            inventory_id,
+            ItemDefinitionId::new("crossbow"),
+            1,
+            0,
+            0,
+        )
+        .unwrap();
+        let err = dev_place_item_at_anchor(
+            &mut world,
+            &ctx,
+            inventory_id,
+            ItemDefinitionId::new("crossbow"),
+            1,
+            1,
+            0,
+        )
+        .unwrap_err();
+        assert!(
+            err.to_string().contains("occupied") || err.to_string().contains("Cells"),
+            "{}",
+            err
+        );
+    }
+
+    #[test]
+    fn dev_add_item_places_non_stackable_via_unique_entry() {
+        let mut world = crate::world::WorldData::new(crate::world::ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let (items, categories, profiles) = placement_test_catalog();
+        let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+        let inventory_id = empty_backpack(&mut world, &ctx);
+        dev_add_item(
+            &mut world,
+            &ctx,
+            DevInventoryEndpoint::Grid(inventory_id),
+            ItemDefinitionId::new("crossbow"),
+            10,
+            &ItemPileSettings::default(),
+            WorldPosition::new(
+                crate::world::ChunkCoord::new(0, 0),
+                crate::world::LocalPosition::new(bevy::prelude::Vec3::ZERO),
+            ),
+            0,
+        )
+        .unwrap();
+        let record = world.inventory_store().get(inventory_id).unwrap();
+        assert_eq!(record.placed_entries().len(), 1);
+        assert!(matches!(
+            record.placed_entries()[0].contents,
+            InventoryEntryContents::Unique { .. }
+        ));
+    }
+
+    #[test]
+    fn dev_effective_placement_quantity_clamps_non_stackable() {
+        let (items, _, _) = placement_test_catalog();
+        let crossbow = items.get(&ItemDefinitionId::new("crossbow")).unwrap();
+        assert_eq!(dev_effective_placement_quantity(crossbow, 10), 1);
+        let gold = items.get(&ItemDefinitionId::new("gold")).unwrap();
+        assert_eq!(dev_effective_placement_quantity(gold, 10), 10);
     }
 }

@@ -39,15 +39,13 @@ pub fn resolve_dev_item_catalog() -> (ItemCategoryCatalog, ItemCatalog) {
             (categories, items)
         }
         Err(err) => {
-            append_log_line(
-                DEV_STARTUP_LOG_PATH,
-                SESSION_HEADER,
-                &format!(
-                    "Item Excel import failed for {} ({err}); using starter item catalogs",
-                    path.display()
-                ),
+            let message = format!(
+                "Item Excel import failed for {}: {err}\n\
+                 Fix `Chasma Design.xlsx` (Item Categories + Items sheets) and restart.",
+                path.display()
             );
-            (ItemCategoryCatalog::default(), ItemCatalog::default())
+            append_log_line(DEV_STARTUP_LOG_PATH, SESSION_HEADER, &message);
+            panic!("{message}");
         }
     }
 }

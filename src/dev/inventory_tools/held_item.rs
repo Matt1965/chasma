@@ -6,7 +6,9 @@ use bevy::window::PrimaryWindow;
 
 use crate::camera::RtsCamera;
 use crate::dev::dev_mode::{DevModeState, DevTextFieldFocus};
-use crate::dev::inventory_tools::ops::{dev_place_item_at_anchor, dev_spawn_ground_pile};
+use crate::dev::inventory_tools::ops::{
+    dev_effective_placement_quantity, dev_place_item_at_anchor, dev_spawn_ground_pile,
+};
 use crate::dev::{DevPanelHoverState, input::DevSpawnClickParams};
 use crate::item_piles::ItemPilePresentationSettings;
 use crate::terrain::TerrainRenderAssets;
@@ -37,6 +39,13 @@ pub fn effective_held_quantity(dev_state: &DevModeState) -> u32 {
     } else {
         dev_state.inventory.quantity
     }
+}
+
+pub fn effective_held_placement_quantity(
+    dev_state: &DevModeState,
+    item: &crate::world::ItemDefinition,
+) -> u32 {
+    dev_effective_placement_quantity(item, effective_held_quantity(dev_state))
 }
 
 fn inventory_ui_pointer_active(interaction: Interaction) -> bool {
@@ -141,7 +150,10 @@ pub fn handle_dev_held_item_input(
     }
 
     params.dev_state.apply_item_quantity_input();
-    let quantity = effective_held_quantity(&params.dev_state);
+    let quantity = items
+        .get(&item_id)
+        .map(|item| effective_held_placement_quantity(&params.dev_state, item))
+        .unwrap_or_else(|| effective_held_quantity(&params.dev_state));
     let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
 
     if let Some((inventory_id, anchor_x, anchor_y)) = resolve_inventory_placement_anchor(
@@ -232,7 +244,11 @@ pub fn sync_dev_held_item_screen_ghost(
         return;
     };
     let cursor = window.cursor_position().unwrap_or(Vec2::ZERO);
-    let qty = effective_held_quantity(&dev_state);
+    let qty = dev_state
+        .dev_held_item_id()
+        .and_then(|id| items.get(&id))
+        .map(|item| effective_held_placement_quantity(&dev_state, item))
+        .unwrap_or_else(|| effective_held_quantity(&dev_state));
     let label = items
         .get(&item_id)
         .map(|item| format!("{} x{qty}", item.display_name))
@@ -355,6 +371,41 @@ mod tests {
             state.dev_held_item_id(),
             Some(ItemDefinitionId::new("iron_ore"))
         );
+    }
+
+    #[test]
+    fn non_stackable_held_quantity_is_one_for_placement() {
+        use crate::world::{ItemCategoryId, ItemDefinition};
+        let crossbow = ItemDefinition::new(
+            ItemDefinitionId::new("crossbow"),
+            "Crossbow",
+            "",
+            ItemCategoryId::new("weapon"),
+            2,
+            3,
+            false,
+            1,
+            5000,
+            200,
+            true,
+        );
+        let gold = ItemDefinition::new(
+            ItemDefinitionId::new("gold"),
+            "Gold",
+            "",
+            ItemCategoryId::new("currency"),
+            1,
+            1,
+            true,
+            999,
+            1,
+            1,
+            true,
+        );
+        let mut state = DevModeState::default();
+        state.inventory.quantity = 10;
+        assert_eq!(effective_held_placement_quantity(&state, &crossbow), 1);
+        assert_eq!(effective_held_placement_quantity(&state, &gold), 10);
     }
 
     #[test]

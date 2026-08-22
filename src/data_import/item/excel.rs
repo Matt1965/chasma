@@ -8,6 +8,9 @@ use crate::world::normalize_tags;
 
 pub const ITEMS_SHEET_NAME: &str = "Items";
 
+/// Legacy workbook column names mapped to the canonical importer header.
+const COLUMN_ALIASES: &[(&str, &str)] = &[("Stack Size", "Max Stack"), ("Weight", "Mass Grams")];
+
 pub fn column_map_from_headers(
     headers: &[String],
 ) -> Result<HashMap<String, usize>, DataImportError> {
@@ -18,6 +21,14 @@ pub fn column_map_from_headers(
             continue;
         }
         map.entry(key.to_string()).or_insert(index);
+    }
+
+    for &(alias, canonical) in COLUMN_ALIASES {
+        if !map.contains_key(canonical) {
+            if let Some(&index) = map.get(alias) {
+                map.insert(canonical.to_string(), index);
+            }
+        }
     }
 
     for &required in REQUIRED_COLUMNS {
@@ -57,7 +68,7 @@ pub fn read_item_rows(
         }
         let row_number = offset + 2;
         parsed.push(
-            parse_row(row_number, cells, &columns).map_err(|message| RowImportError {
+            parse_row(row_number, cells, &headers, &columns).map_err(|message| RowImportError {
                 row_number,
                 message,
             }),
@@ -76,6 +87,7 @@ fn row_is_empty(cells: &[calamine::Data]) -> bool {
 fn parse_row(
     row_number: usize,
     cells: &[calamine::Data],
+    headers: &[String],
     columns: &HashMap<String, usize>,
 ) -> Result<ItemImportRow, String> {
     let text = |column: &str| -> String {
@@ -103,6 +115,32 @@ fn parse_row(
         raw.parse::<u32>()
             .map_err(|_| format!("invalid {column} `{raw}`"))
     };
+    let parse_mass_grams = || -> Result<u32, String> {
+        let use_weight_kg = !headers.iter().any(|header| header.trim() == "Mass Grams")
+            && headers.iter().any(|header| header.trim() == "Weight");
+        let column = if use_weight_kg {
+            "Weight"
+        } else {
+            "Mass Grams"
+        };
+        let raw = text(column).trim().to_string();
+        if raw.is_empty() {
+            return Err(format!("{column} must be non-empty"));
+        }
+        if use_weight_kg {
+            let kg: f64 = raw.parse().map_err(|_| format!("invalid Weight `{raw}`"))?;
+            let grams = (kg * 1000.0).round();
+            if !(1.0..=u32::MAX as f64).contains(&grams) {
+                return Err(format!(
+                    "Weight `{raw}` is out of range after kg→grams conversion"
+                ));
+            }
+            Ok(grams as u32)
+        } else {
+            raw.parse::<u32>()
+                .map_err(|_| format!("invalid Mass Grams `{raw}`"))
+        }
+    };
 
     let (enabled, enabled_was_blank) = parse_enabled_cell(&text("Enabled"))?;
     let stackable = parse_bool_yn(&text("Stackable")).map_err(|err| err.to_string())?;
@@ -128,7 +166,7 @@ fn parse_row(
         height: parse_u8("Height")?,
         stackable,
         max_stack: parse_u32("Max Stack")?,
-        mass_grams: parse_u32("Mass Grams")?,
+        mass_grams: parse_mass_grams()?,
         base_value,
         render_key: optional_text("Render Key"),
         icon_key: optional_text("Icon Key"),

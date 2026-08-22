@@ -1,6 +1,8 @@
 use crate::world::{ItemCategoryId, ItemDefinition, ItemDefinitionId, ItemIconKey};
 
-/// Starter item definitions for tests and dev fallback (ADR-087 I1).
+/// Starter item definitions for unit tests and isolated fixtures — not dev authoring authority.
+///
+/// Dev startup loads `Chasma Design.xlsx` via [`crate::data_import::resolve_dev_item_catalog`].
 pub fn starter_definitions() -> Vec<ItemDefinition> {
     vec![
         ItemDefinition::new(

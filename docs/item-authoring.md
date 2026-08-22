@@ -1,8 +1,21 @@
 # Item and Inventory Profile Authoring (I1)
 
-## Workbook sheets
+## Authoritative workbook
 
-Add these sheets to the dev design workbook (`data/design/chasma_design.xlsx`):
+Dev item authoring uses the repository-root workbook:
+
+`Chasma Design.xlsx`
+
+Flow:
+
+1. Author **Item Categories** and **Items** sheets in the workbook.
+2. Dev startup imports and validates both sheets.
+3. On success, derived RON is exported to `assets/items/catalog.ron`.
+4. Production/runtime builds do **not** read Excel; they load committed/generated RON when wired.
+
+**Starter/default Rust catalogs are for unit tests and isolated fixtures only.** They are not used when Dev workbook import fails — import failure is fatal in Dev.
+
+## Workbook sheets
 
 ### Item Categories
 
@@ -18,9 +31,9 @@ Add these sheets to the dev design workbook (`data/design/chasma_design.xlsx`):
 
 | Column | Required | Notes |
 |--------|----------|-------|
-| Item ID | yes | Stable machine id |
+| Item ID | yes | Stable semantic machine id — lowercase `snake_case` (e.g. `gold`, `iron_ore`, `iron_sword`) |
 | Name | yes | |
-| Category | yes | Must match an enabled category id |
+| Category | yes | Must match an enabled **Category ID** |
 | Width | yes | Grid footprint width (> 0, ≤ 64) |
 | Height | yes | Grid footprint height (> 0, ≤ 64) |
 | Stackable | yes | `Y` / `N` |
@@ -33,6 +46,10 @@ Add these sheets to the dev design workbook (`data/design/chasma_design.xlsx`):
 | Base Value | no | Gold value baseline (defaults to 1) |
 | Tags | no | Comma-separated; normalized to lowercase sorted tags |
 | Unique Instance Required | no | `Y` forces non-stackable unique item rules |
+
+Extra design columns (e.g. **Rarity**, **Craft Recipe**, **Value/Weight**) may remain on the sheet; the importer ignores columns it does not consume.
+
+**Legacy column aliases** (for older sheets only): `Stack Size` → `Max Stack`, `Weight` (kg) → `Mass Grams` (×1000).
 
 ### Inventory Profiles
 
@@ -55,14 +72,25 @@ Add these sheets to the dev design workbook (`data/design/chasma_design.xlsx`):
 
 ## Physical gold
 
-Author a stackable currency item (starter fallback id: `gold`):
+Author a stackable currency item with id `gold`:
 
 - Category: `currency`
 - Small footprint (e.g. 1×1)
 - Integer mass and `max_stack` from data
 - `base_value_gold` typically 1 per coin
+- Render Key may be blank — generic world pile fallback is valid (IA0)
 
 Treasury balances remain a separate future system.
+
+## Dev import failure behavior
+
+If `Chasma Design.xlsx` is missing, malformed, or fails validation:
+
+- Dev startup logs the error to `logs/dev_startup.log`
+- Dev startup **panics** with an actionable message
+- Starter catalogs are **not** substituted
+
+Fix the workbook and restart.
 
 ## Validation rules
 
@@ -97,9 +125,9 @@ In **dev mode** (F12), floating labels show pile contents (e.g. `Iron Ore x37`, 
 
 ## Generated assets
 
-Dev import exports:
+On successful Dev import:
 
-- `assets/items/catalog.ron`
-- `assets/inventory/profiles.ron`
+- `assets/items/catalog.ron` — derived from workbook; do not hand-edit as authority
+- `assets/inventory/profiles.ron` — inventory profiles when that sheet is imported
 
 Production builds do not depend on Excel at runtime.
