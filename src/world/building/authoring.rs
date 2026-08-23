@@ -13,7 +13,7 @@ use super::inventory::{
     BuildingInventoryCleanup, BuildingInventoryRemovalPolicy, attach_inventory_on_building_create,
     finalize_building_inventory_removal,
 };
-use super::inventory_binding::effective_inventory_binding_definitions;
+use super::inventory_binding::definition_requires_inventory_allocation;
 use super::inventory_error::BuildingInventoryError;
 use super::ownership::BuildingOwnership;
 use super::placement::BuildingPlacement;
@@ -123,23 +123,20 @@ fn create_building_impl(
         source,
     );
 
-    if definition.inventory_profile_id.is_some() && inventory_ctx.is_none() {
-        return Err(BuildingAuthoringError::InventoryAllocationFailed(id));
-    }
-
-    if let Some(ctx) = inventory_ctx {
-        if !effective_inventory_binding_definitions(definition).is_empty() {
-            attach_inventory_on_building_create(world, ctx, &mut record, definition).map_err(
-                |error| match error {
-                    BuildingInventoryError::Inventory(inventory_error) => {
-                        BuildingAuthoringError::Inventory(BuildingInventoryError::Inventory(
-                            inventory_error,
-                        ))
-                    }
-                    other => BuildingAuthoringError::Inventory(other),
-                },
-            )?;
-        }
+    if definition_requires_inventory_allocation(definition) {
+        let Some(ctx) = inventory_ctx else {
+            return Err(BuildingAuthoringError::InventoryAllocationFailed(id));
+        };
+        attach_inventory_on_building_create(world, ctx, &mut record, definition).map_err(
+            |error| match error {
+                BuildingInventoryError::Inventory(inventory_error) => {
+                    BuildingAuthoringError::Inventory(BuildingInventoryError::Inventory(
+                        inventory_error,
+                    ))
+                }
+                other => BuildingAuthoringError::Inventory(other),
+            },
+        )?;
     }
 
     let chunk = crate::world::ChunkId::new(position.chunk);
@@ -330,7 +327,7 @@ fn place_player_building_impl(
     record.construction = ConstructionState::default();
     record.vitals = BuildingVitals::construction_vulnerable(definition.max_hp);
 
-    if !effective_inventory_binding_definitions(definition).is_empty() {
+    if definition_requires_inventory_allocation(definition) {
         let Some(ctx) = inventory_ctx else {
             return Err(BuildingAuthoringError::InventoryAllocationFailed(id));
         };
@@ -669,5 +666,143 @@ mod tests {
         assert_eq!(record.construction.progress_0_1, 1.0);
         assert_eq!(record.vitals.current_hp, record.vitals.max_hp);
         assert!(is_building_operational(&record));
+    }
+
+    #[test]
+    fn explicit_bindings_without_legacy_profile_require_inventory_ctx() {
+        use crate::world::building::inventory_binding::{
+            BuildingInventoryBindingDefinition, BuildingInventoryRole,
+        };
+        use crate::world::{
+            BuildingCategoryCatalog, BuildingCategoryId, BuildingDefinition, BuildingRenderKey,
+            FootprintSpec, InventoryProfileId,
+        };
+
+        let categories = BuildingCategoryCatalog::default();
+        let definition = BuildingDefinition::new(
+            BuildingDefinitionId::new("bindings_only_chest"),
+            "Bindings Only Chest",
+            BuildingCategoryId::new("storage"),
+            BuildingRenderKey::reserved("chest"),
+            BuildingRenderKey::reserved("chest"),
+            120,
+            15.0,
+            FootprintSpec::Rectangle {
+                width_meters: 1.0,
+                depth_meters: 0.8,
+            },
+            35.0,
+            true,
+        )
+        .with_inventory_bindings(vec![
+            BuildingInventoryBindingDefinition::new(
+                "primary",
+                BuildingInventoryRole::General,
+                InventoryProfileId::new("chest_small"),
+            )
+            .with_default(true),
+        ]);
+        let cat = BuildingCatalog::from_definitions(vec![definition], &categories).unwrap();
+        let mut world = layout_world();
+
+        let err = create_building(
+            &cat,
+            &mut world,
+            &BuildingDefinitionId::new("bindings_only_chest"),
+            position(0, 0, Vec3::new(64.0, 0.0, 64.0)),
+            Quat::IDENTITY,
+            BuildingSource::Dev,
+            BuildingOwnership::neutral(),
+            None,
+        )
+        .unwrap_err();
+        assert!(matches!(
+            err,
+            BuildingAuthoringError::InventoryAllocationFailed(_)
+        ));
+        assert!(world.sorted_building_ids().is_empty());
+    }
+
+    #[test]
+    fn explicit_bindings_allocate_inventory_and_binding_store() {
+        use crate::world::building::inventory_binding::{
+            BuildingInventoryBindingDefinition, BuildingInventoryRole,
+        };
+        use crate::world::{
+            BuildingCategoryCatalog, BuildingCategoryId, BuildingDefinition, BuildingRenderKey,
+            FootprintSpec, InventoryOwnerRef, InventoryProfileId,
+        };
+
+        let categories = BuildingCategoryCatalog::default();
+        let definition = BuildingDefinition::new(
+            BuildingDefinitionId::new("bindings_only_chest"),
+            "Bindings Only Chest",
+            BuildingCategoryId::new("storage"),
+            BuildingRenderKey::reserved("chest"),
+            BuildingRenderKey::reserved("chest"),
+            120,
+            15.0,
+            FootprintSpec::Rectangle {
+                width_meters: 1.0,
+                depth_meters: 0.8,
+            },
+            35.0,
+            true,
+        )
+        .with_inventory_bindings(vec![
+            BuildingInventoryBindingDefinition::new(
+                "primary",
+                BuildingInventoryRole::General,
+                InventoryProfileId::new("chest_small"),
+            )
+            .with_default(true),
+        ]);
+        let cat = BuildingCatalog::from_definitions(vec![definition], &categories).unwrap();
+        let mut world = layout_world();
+        let ctx = inventory_ctx();
+
+        let record = create_building_with_inventory(
+            &cat,
+            &mut world,
+            &BuildingDefinitionId::new("bindings_only_chest"),
+            position(0, 0, Vec3::new(64.0, 0.0, 64.0)),
+            Quat::IDENTITY,
+            BuildingSource::Dev,
+            BuildingOwnership::neutral(),
+            None,
+            &ctx,
+        )
+        .unwrap();
+
+        let inventory_id = record.inventory_id.expect("compatibility inventory_id");
+        let inventory = world.inventory_store().get(inventory_id).unwrap();
+        assert_eq!(*inventory.owner(), InventoryOwnerRef::Building(record.id));
+        let bindings = world
+            .building_inventory_binding_store()
+            .get(record.id)
+            .expect("binding set");
+        assert_eq!(bindings.bindings().len(), 1);
+        assert_eq!(bindings.bindings()[0].inventory_id, inventory_id);
+    }
+
+    #[test]
+    fn smelter_bindings_without_legacy_profile_require_inventory_ctx() {
+        let cat = catalog();
+        let mut world = layout_world();
+        let err = create_building(
+            &cat,
+            &mut world,
+            &BuildingDefinitionId::new("smelter"),
+            position(0, 0, Vec3::new(64.0, 0.0, 64.0)),
+            Quat::IDENTITY,
+            BuildingSource::Dev,
+            BuildingOwnership::neutral(),
+            None,
+        )
+        .unwrap_err();
+        assert!(matches!(
+            err,
+            BuildingAuthoringError::InventoryAllocationFailed(_)
+        ));
     }
 }

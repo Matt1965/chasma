@@ -107,11 +107,11 @@ pub use inventory_binding::{
     BuildingInventoryBindingSet, BuildingInventoryBindingStore,
     BuildingInventoryBindingValidationIssue, BuildingInventoryRole, building_inventories_with_role,
     building_inventory_bindings, default_building_inventory_binding,
-    effective_inventory_binding_definitions, primary_building_inventory_id,
-    resolve_building_inventory_binding, validate_building_catalog_inventory_bindings,
-    validate_building_definition_inventory_bindings, validate_building_runtime_inventory_bindings,
-    validate_operation_inventory_bindings, validate_selected_operation_inventory_bindings,
-    validate_world_building_inventory_bindings,
+    definition_requires_inventory_allocation, effective_inventory_binding_definitions,
+    primary_building_inventory_id, resolve_building_inventory_binding,
+    validate_building_catalog_inventory_bindings, validate_building_definition_inventory_bindings,
+    validate_building_runtime_inventory_bindings, validate_operation_inventory_bindings,
+    validate_selected_operation_inventory_bindings, validate_world_building_inventory_bindings,
 };
 pub use inventory_error::BuildingInventoryError;
 #[cfg(feature = "dev")]

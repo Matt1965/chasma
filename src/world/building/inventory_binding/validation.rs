@@ -189,6 +189,11 @@ pub fn effective_inventory_binding_definitions(
         .collect()
 }
 
+/// True when building creation must allocate inventories (ADR-109 / ADR-091).
+pub fn definition_requires_inventory_allocation(building: &BuildingDefinition) -> bool {
+    !effective_inventory_binding_definitions(building).is_empty()
+}
+
 pub fn validate_building_definition_inventory_bindings(
     building: &BuildingDefinition,
     profile_catalog: &InventoryProfileCatalog,

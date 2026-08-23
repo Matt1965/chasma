@@ -230,7 +230,7 @@ fn spawn_at(
             let ownership = BuildingOwnership::with_affiliation(spawn_affiliation);
             let spawned = if building_catalog
                 .get(definition_id)
-                .is_some_and(|def| def.inventory_profile_id.is_some())
+                .is_some_and(crate::world::definition_requires_inventory_allocation)
             {
                 create_dev_complete_building_with_inventory(
                     building_catalog,
@@ -452,6 +452,69 @@ mod tests {
         assert_eq!(
             world.doodads_in_chunk(ChunkId::new(ChunkCoord::new(0, 0))),
             None
+        );
+    }
+
+    #[test]
+    fn batch_spawn_storage_chest_each_building_has_inventory() {
+        let mut world = flat_world();
+        let unit_catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let building_catalog = BuildingCatalog::default();
+        let request = BatchSpawnRequest {
+            definition: DefinitionId::Building(crate::world::BuildingDefinitionId::new(
+                "storage_chest",
+            )),
+            brush: BrushSettings {
+                mode: BrushMode::Line,
+                count: 3,
+                spacing: 2.0,
+                ..Default::default()
+            },
+            anchor: anchor(),
+            line_direction: Vec2::X,
+            terrain_conforming: true,
+            rules: PlacementRules::default(),
+            world_seed: 11,
+            layout: layout(),
+            spawn_affiliation: crate::world::Affiliation::Player,
+            placement_yaw_deg: 0.0,
+            placement_uniform_scale: 1.0,
+        };
+        let mut scratch = BatchSpawnScratch::default();
+        let footprint_catalog = FootprintCatalog::default();
+        let (categories, items, profiles) = item_catalogs();
+        let interior_catalog = InteriorProfileCatalog::default();
+        let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+        let report = execute_batch_spawn(
+            &request,
+            "storage_chest",
+            &mut world,
+            &unit_catalog,
+            &doodad_catalog,
+            &building_catalog,
+            &footprint_catalog,
+            &interior_catalog,
+            None,
+            &ctx,
+            &mut scratch,
+        );
+        assert_eq!(report.spawned, 3);
+        let mut inventory_ids = Vec::new();
+        for building_id in world.sorted_building_ids() {
+            let record = world.get_building(building_id).unwrap();
+            let inventory_id = record.inventory_id.expect("chest inventory");
+            assert!(world.inventory_store().get(inventory_id).is_some());
+            inventory_ids.push(inventory_id);
+        }
+        assert_eq!(inventory_ids.len(), 3);
+        assert_eq!(
+            inventory_ids
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>()
+                .len(),
+            3,
+            "each chest must own a distinct inventory"
         );
     }
 }

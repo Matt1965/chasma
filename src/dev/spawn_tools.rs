@@ -95,7 +95,7 @@ pub fn spawn_selected_at_position(
             };
             let result = if building_catalog
                 .get(definition_id)
-                .is_some_and(|def| def.inventory_profile_id.is_some())
+                .is_some_and(crate::world::definition_requires_inventory_allocation)
             {
                 create_dev_complete_building_with_inventory(
                     building_catalog,
@@ -291,5 +291,135 @@ mod tests {
         let candidate = pos(12.0, 18.0);
         let grounded = dev_spawn_position_from_terrain_click(&world, candidate).unwrap();
         assert_eq!(grounded.chunk, candidate.chunk);
+    }
+
+    #[test]
+    fn dev_spawn_storage_chest_attaches_inventory_and_opens_via_interact() {
+        use crate::client::commands::CommandTarget;
+        use crate::client::inventory_dispatch::try_queue_inventory_open_from_interact;
+        use crate::client::inventory_intent::InventoryIntentQueue;
+        use crate::world::{
+            Affiliation, BuildingInteractionProfileCatalog, BuildingOwnership, FootprintCatalog,
+            InteractionQueryContext, InteractionTargetRef, InteractionType, UnitCatalog,
+            UnitDefinitionId, UnitOwnership, UnitSource, WeaponCatalog, create_unit_with_inventory,
+            query_world_interaction,
+        };
+
+        let mut world = flat_world();
+        let unit_catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let building_catalog = BuildingCatalog::default();
+        let footprint_catalog = FootprintCatalog::default();
+        let interaction_catalog = BuildingInteractionProfileCatalog::default();
+        let ctx = inventory_ctx();
+        let click = pos(20.0, 20.0);
+        let unit = create_unit_with_inventory(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(18.0, 18.0),
+            UnitSource::Dev,
+            UnitOwnership::with_affiliation(Affiliation::Player),
+            &ctx,
+        )
+        .unwrap();
+        let outcome = spawn_selected_at_position(
+            &mut world,
+            &unit_catalog,
+            &doodad_catalog,
+            &building_catalog,
+            &footprint_catalog,
+            &InteriorProfileCatalog::default(),
+            None,
+            &ctx,
+            Some(&DefinitionId::Building(BuildingDefinitionId::new(
+                "storage_chest",
+            ))),
+            click,
+            Affiliation::Player,
+        );
+        assert!(matches!(outcome, DevSpawnOutcome::SpawnedBuilding { .. }));
+        let building_id = world.sorted_building_ids()[0];
+        let record = world.get_building(building_id).unwrap();
+        let inventory_id = record.inventory_id.expect("dev chest inventory");
+        assert!(world.inventory_store().get(inventory_id).is_some());
+        assert!(
+            world
+                .building_inventory_binding_store()
+                .get(building_id)
+                .is_some()
+        );
+
+        let pile_settings = crate::world::ItemPileSettings::default();
+        let weapon_catalog = WeaponCatalog::default();
+        let query_ctx = InteractionQueryContext::new(
+            &world,
+            &doodad_catalog,
+            &building_catalog,
+            &footprint_catalog,
+            &interaction_catalog,
+            &unit_catalog,
+            &weapon_catalog,
+            &pile_settings,
+        );
+        let interaction = query_world_interaction(&query_ctx, click).expect("building hit");
+        assert_eq!(interaction.interaction_type, InteractionType::Container);
+        assert_eq!(
+            interaction.target,
+            InteractionTargetRef::Building(building_id)
+        );
+
+        let mut queue = InventoryIntentQueue::default();
+        assert!(try_queue_inventory_open_from_interact(
+            &world,
+            &building_catalog,
+            &doodad_catalog,
+            &footprint_catalog,
+            &interaction_catalog,
+            &unit_catalog,
+            &weapon_catalog,
+            &pile_settings,
+            unit.id,
+            CommandTarget::Terrain { position: click },
+            &mut queue,
+        ));
+    }
+
+    #[test]
+    fn dev_spawn_smelter_with_bindings_only_allocates_inventories() {
+        let mut world = flat_world();
+        let unit_catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let building_catalog = BuildingCatalog::default();
+        let footprint_catalog = FootprintCatalog::default();
+        let ctx = inventory_ctx();
+        let outcome = spawn_selected_at_position(
+            &mut world,
+            &unit_catalog,
+            &doodad_catalog,
+            &building_catalog,
+            &footprint_catalog,
+            &InteriorProfileCatalog::default(),
+            None,
+            &ctx,
+            Some(&DefinitionId::Building(BuildingDefinitionId::new(
+                "smelter",
+            ))),
+            pos(25.0, 25.0),
+            crate::world::Affiliation::Player,
+        );
+        assert!(matches!(outcome, DevSpawnOutcome::SpawnedBuilding { .. }));
+        let building_id = world.sorted_building_ids()[0];
+        let bindings = world
+            .building_inventory_binding_store()
+            .get(building_id)
+            .expect("smelter bindings");
+        assert_eq!(bindings.bindings().len(), 4);
+        assert!(
+            bindings
+                .bindings()
+                .iter()
+                .all(|binding| world.inventory_store().get(binding.inventory_id).is_some())
+        );
     }
 }
