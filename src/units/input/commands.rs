@@ -190,6 +190,8 @@ pub fn issue_attack_orders_to_selection(
     let mut report = MoveOrdersReport::default();
     for unit_id in unit_ids {
         let order = UnitOrder::Attack { target };
+        #[cfg(feature = "dev")]
+        crate::world::runtime_trace::attack_order_requested(unit_id, target);
         match issue_unit_order(
             world,
             unit_catalog,

@@ -321,6 +321,7 @@ mod tests {
                 target: crate::world::UnitId::new(2),
             },
             attack_cycle,
+            reactive_combat_target: None,
             current_space_id: Default::default(),
             inventory_id: None,
         }

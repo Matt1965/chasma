@@ -9,6 +9,19 @@ use crate::world::{WeaponCatalog, WeaponDefinition, WorldData, WorldPosition};
 /// Extra meters before a unit resumes chasing after leaving attack range.
 pub const RANGE_HYSTERESIS_METERS: f32 = 0.5;
 
+/// Inward standoff margin so chase movement tolerances finish inside weapon range.
+///
+/// Covers normal arrival snap and blocked partial-arrival near the standoff waypoint.
+pub fn chase_standoff_margin_meters() -> f32 {
+    crate::world::MOVEMENT_ARRIVAL_TOLERANCE_METERS
+        + crate::world::MOVEMENT_PARTIAL_ARRIVAL_TOLERANCE_METERS
+}
+
+/// Edge distance the chase standoff point is intended to achieve before movement tolerances.
+pub fn intended_standoff_edge_distance_meters(weapon_range_meters: f32) -> f32 {
+    weapon_range_meters - chase_standoff_margin_meters()
+}
+
 /// Measured distances for one attacker/target pair.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RangeCheck {
@@ -308,6 +321,12 @@ mod tests {
         };
         assert!(check.center_distance_meters > check.weapon_range_meters);
         assert_eq!(range_status_from_check(&check), RangeStatus::InRange);
+    }
+
+    #[test]
+    fn chase_standoff_margin_matches_movement_tolerances() {
+        assert!((chase_standoff_margin_meters() - 2.55).abs() < 1e-4);
+        assert!((intended_standoff_edge_distance_meters(1.2) - (-1.35)).abs() < 1e-4);
     }
 
     #[test]

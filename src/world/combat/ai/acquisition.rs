@@ -7,7 +7,7 @@ use crate::world::ownership::is_player_controllable;
 use crate::world::unit::{CombatState, UnitId, UnitOrder, UnitState, unit_can_execute_actions};
 use crate::world::{
     AttackTargetingPolicy, DoodadCatalog, NavigationConfig, UnitCatalog, WeaponCatalog, WorldData,
-    is_unit_alive, is_valid_attack_target, issue_unit_order, validate_attack_target,
+    is_unit_alive, is_valid_active_combat_target, issue_unit_order, validate_attack_target,
     weapon_for_unit_record,
 };
 
@@ -182,6 +182,7 @@ pub fn unit_eligible_for_auto_acquire(
     }
 }
 
+/// Whether the unit lacks a valid hostile combat target (shared by AI scan and retaliation).
 pub fn unit_needs_auto_acquire_target(
     world: &WorldData,
     unit_id: UnitId,
@@ -193,7 +194,7 @@ pub fn unit_needs_auto_acquire_target(
     match &record.combat_state {
         CombatState::Peaceful | CombatState::Alert | CombatState::Engaged => true,
         CombatState::AttackMoving { target, .. } => target.is_none_or(|target_id| {
-            !is_valid_attack_target(
+            !is_valid_active_combat_target(
                 world,
                 unit_id,
                 target_id,
@@ -203,7 +204,7 @@ pub fn unit_needs_auto_acquire_target(
             )
         }),
         CombatState::Attacking { target } | CombatState::Chasing { target } => {
-            !is_valid_attack_target(
+            !is_valid_active_combat_target(
                 world,
                 unit_id,
                 *target,

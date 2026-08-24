@@ -2,11 +2,8 @@
 
 use bevy::prelude::Vec2;
 
-#[cfg(test)]
-use crate::world::navigation::xz_distance;
+use super::range::{RangeCheck, chase_standoff_margin_meters, edge_distance_meters};
 use crate::world::{WorldData, WorldPosition, ground_world_position};
-
-use super::range::RangeCheck;
 
 /// Why standoff placement failed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,8 +31,11 @@ pub fn compute_standoff_destination(
         direction = direction.normalize();
     }
 
+    let margin = chase_standoff_margin_meters();
     let desired_center_distance =
-        check.weapon_range_meters + check.attacker_radius_meters + check.target_radius_meters;
+        (check.weapon_range_meters + check.attacker_radius_meters + check.target_radius_meters
+            - margin)
+            .max(check.attacker_radius_meters + check.target_radius_meters);
     let destination_global = bevy::prelude::Vec3::new(
         target_global.x + direction.x * desired_center_distance,
         attacker_global.y,
@@ -45,22 +45,29 @@ pub fn compute_standoff_destination(
     ground_world_position(world, candidate).ok_or(StandoffError::TerrainUnavailable)
 }
 
-/// Verify standoff places attacker on the correct side of the target at weapon reach.
-#[cfg(test)]
-pub(crate) fn standoff_center_distance_matches_weapon_range(
+/// Edge distance from standoff position to target using collision radii.
+pub fn standoff_edge_distance_at_position(
     world: &WorldData,
-    _attacker_pos: WorldPosition,
+    standoff: WorldPosition,
+    target_pos: WorldPosition,
+    check: &RangeCheck,
+) -> f32 {
+    let center = super::range::center_distance_meters(world, standoff, target_pos);
+    edge_distance_meters(
+        center,
+        check.attacker_radius_meters,
+        check.target_radius_meters,
+    )
+}
+#[cfg(test)]
+pub(crate) fn standoff_places_attacker_inside_weapon_range(
+    world: &WorldData,
     target_pos: WorldPosition,
     check: &RangeCheck,
     standoff: WorldPosition,
 ) -> bool {
-    let center = xz_distance(standoff, target_pos, world.layout());
-    let edge = super::range::edge_distance_meters(
-        center,
-        check.attacker_radius_meters,
-        check.target_radius_meters,
-    );
-    (edge - check.weapon_range_meters).abs() < 0.05
+    let edge = standoff_edge_distance_at_position(world, standoff, target_pos, check);
+    edge <= check.weapon_range_meters + 1e-3
 }
 
 #[cfg(test)]
@@ -103,11 +110,39 @@ mod tests {
             target_radius_meters: 0.45,
         };
         let standoff = compute_standoff_destination(&world, attacker, target, &check).unwrap();
-        assert!(standoff_center_distance_matches_weapon_range(
-            &world, attacker, target, &check, standoff
+        assert!(standoff_places_attacker_inside_weapon_range(
+            &world, target, &check, standoff
         ));
         let standoff_x = standoff.to_global(world.layout()).x;
         assert!(standoff_x > target.to_global(world.layout()).x);
+    }
+
+    #[test]
+    fn partial_arrival_shortfall_still_leaves_edge_in_range() {
+        let world = flat_world();
+        let check = RangeCheck {
+            center_distance_meters: 10.0,
+            edge_distance_meters: 8.0,
+            weapon_range_meters: 1.5,
+            attacker_radius_meters: 0.6,
+            target_radius_meters: 0.45,
+        };
+        let target = pos(10.0, 10.0);
+        let attacker = pos(20.0, 10.0);
+        let standoff = compute_standoff_destination(&world, attacker, target, &check).unwrap();
+        let layout = world.layout();
+        let direction = (standoff.to_global(layout).x - target.to_global(layout).x).signum();
+        let short_of_standoff = WorldPosition::from_global(
+            bevy::prelude::Vec3::new(
+                standoff.to_global(layout).x
+                    - direction * crate::world::MOVEMENT_PARTIAL_ARRIVAL_TOLERANCE_METERS,
+                0.0,
+                standoff.to_global(layout).z,
+            ),
+            layout,
+        );
+        let edge = standoff_edge_distance_at_position(&world, short_of_standoff, target, &check);
+        assert!(edge <= check.weapon_range_meters);
     }
 
     #[test]

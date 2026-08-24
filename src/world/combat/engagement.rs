@@ -7,7 +7,7 @@ use crate::world::navigation::xz_distance;
 use crate::world::unit::{CombatState, UnitId, UnitOrderError, UnitState};
 use crate::world::{
     AttackTargetingPolicy, NavigationConfig, PassabilityCatalogs, UnitCatalog, WeaponCatalog,
-    WorldData, WorldPosition, validate_attack_target,
+    WorldData, WorldPosition, validate_active_combat_target, validate_attack_target,
 };
 
 use super::cycle_lifecycle::{clear_attack_cycle, clear_attack_cycle_for_invalid_target};
@@ -104,6 +104,8 @@ pub fn step_all_combat_engagement(
             strike_trace,
         );
         if let Some(trace) = trace {
+            #[cfg(feature = "dev")]
+            super::runtime_trace::engagement(&trace);
             report.push(trace);
         }
     }
@@ -187,7 +189,7 @@ fn handle_attacking_target(
         chase_destination: None,
     };
 
-    if validate_attack_target(
+    if validate_active_combat_target(
         world,
         unit_id,
         target,
@@ -300,7 +302,7 @@ fn handle_chasing_target(
         chase_destination: None,
     };
 
-    if validate_attack_target(
+    if validate_active_combat_target(
         world,
         unit_id,
         target,
@@ -547,6 +549,16 @@ pub fn scan_attack_move_target(
     best.map(|(_, id)| id)
 }
 
+fn unit_already_heading_to(world: &WorldData, unit_id: UnitId, destination: WorldPosition) -> bool {
+    matches!(
+        world.get_unit(unit_id).map(|record| &record.state),
+        Some(UnitState::Moving {
+            target,
+            ..
+        }) if *target == destination
+    )
+}
+
 fn begin_chase_to_target(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
@@ -563,9 +575,12 @@ fn begin_chase_to_target(
         trace.target = None;
         return;
     };
-    let attacker_pos = attacker.placement.position;
-    let target_pos = target_record.placement.position;
-    let standoff = match compute_standoff_destination(world, attacker_pos, target_pos, check) {
+    let standoff = match compute_standoff_destination(
+        world,
+        attacker.placement.position,
+        target_record.placement.position,
+        check,
+    ) {
         Ok(position) => position,
         Err(StandoffError::TerrainUnavailable) => {
             trace.status = CombatEngagementStatus::TerrainUnavailable;
@@ -573,6 +588,19 @@ fn begin_chase_to_target(
         }
     };
     trace.chase_destination = Some(standoff);
+    #[cfg(feature = "dev")]
+    super::runtime_trace::chase_standoff_audit(
+        world,
+        unit_id,
+        target,
+        check,
+        standoff,
+        target_record.placement.position,
+    );
+    if unit_already_heading_to(world, unit_id, standoff) {
+        trace.status = CombatEngagementStatus::OutOfRangeChasing;
+        return;
+    }
     match start_unit_move_to(world, unit_catalog, catalogs, nav_config, unit_id, standoff) {
         Ok(()) => trace.status = CombatEngagementStatus::OutOfRangeChasing,
         Err(UnitOrderError::NoPath | UnitOrderError::PathGoalBlocked) => {
@@ -586,7 +614,7 @@ fn begin_chase_to_target(
     let _ = weapon_catalog;
 }
 
-fn hold_in_attack_range(world: &mut WorldData, unit_id: UnitId) {
+pub fn hold_in_attack_range(world: &mut WorldData, unit_id: UnitId) {
     world.command_buffer_mut().clear_pending(unit_id);
     world.movement_smoothing_mut().clear_unit(unit_id);
     if matches!(
@@ -616,6 +644,7 @@ fn apply_invalid_target_state(
         weapon_catalog,
     );
     let next = invalid_target_state.unwrap_or(CombatState::Peaceful);
+    let _ = world.set_reactive_combat_target(unit_id, None);
     let _ = world.set_unit_combat_state(unit_id, next);
 }
 
@@ -653,6 +682,9 @@ mod tests {
     use super::*;
     use crate::world::TestPassabilityBundle;
     use crate::world::combat::range::RANGE_HYSTERESIS_METERS;
+    use crate::world::combat::range::{
+        measure_weapon_range, range_status_from_check, weapon_for_unit_record,
+    };
     use crate::world::{
         BuildingCatalog, BuildingConstructionSettings, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
         CombatStrikeReport, DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition,
@@ -731,6 +763,426 @@ mod tests {
             policy(),
             &mut CombatStrikeReport::default(),
         )
+    }
+
+    fn run_sim_ticks(world: &mut WorldData, catalog: &UnitCatalog, ticks: u32) {
+        let mut scan = crate::world::CombatAiScanState::default();
+        let settings = crate::world::CombatAiSettings::default();
+        for tick in 0..ticks {
+            crate::simulation::run_simulation_tick(
+                world,
+                catalog,
+                &weapons(),
+                &DoodadCatalog::default(),
+                &BuildingCatalog::default(),
+                &FootprintCatalog::default(),
+                &crate::world::BuildingInteractionProfileCatalog::default(),
+                &NavigationConfig::default(),
+                policy(),
+                &settings,
+                &mut scan,
+                BuildingConstructionSettings::default(),
+                &crate::world::InteriorProfileCatalog::default(),
+                None,
+                &crate::world::ItemCatalog::default(),
+                &crate::world::ItemCategoryCatalog::default(),
+                &crate::world::InventoryProfileCatalog::default(),
+                &crate::world::CorpseSettings::default(),
+                crate::simulation::SIMULATION_TICK_SECONDS,
+                tick as u64,
+                None,
+            );
+        }
+    }
+
+    fn edge_distance(
+        world: &WorldData,
+        attacker: UnitId,
+        target: UnitId,
+        catalog: &UnitCatalog,
+        weapons: &WeaponCatalog,
+    ) -> f32 {
+        let attacker = world.get_unit(attacker).unwrap();
+        let target = world.get_unit(target).unwrap();
+        let weapon = weapon_for_unit_record(attacker, catalog, weapons).unwrap();
+        measure_weapon_range(world, attacker, target, weapon, catalog).edge_distance_meters
+    }
+
+    fn weapon_range_for(
+        catalog: &UnitCatalog,
+        weapons: &WeaponCatalog,
+        world: &WorldData,
+        attacker: UnitId,
+    ) -> f32 {
+        let attacker = world.get_unit(attacker).unwrap();
+        let weapon = weapon_for_unit_record(attacker, catalog, weapons).unwrap();
+        weapon.range_meters
+    }
+
+    fn run_one_sim_tick(
+        world: &mut WorldData,
+        catalog: &UnitCatalog,
+        weapon_catalog: &WeaponCatalog,
+        tick: u64,
+    ) {
+        let mut scan = crate::world::CombatAiScanState::default();
+        let settings = crate::world::CombatAiSettings::default();
+        crate::simulation::run_simulation_tick(
+            world,
+            catalog,
+            weapon_catalog,
+            &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
+            &NavigationConfig::default(),
+            policy(),
+            &settings,
+            &mut scan,
+            BuildingConstructionSettings::default(),
+            &crate::world::InteriorProfileCatalog::default(),
+            None,
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ItemCategoryCatalog::default(),
+            &crate::world::InventoryProfileCatalog::default(),
+            &crate::world::CorpseSettings::default(),
+            crate::simulation::SIMULATION_TICK_SECONDS,
+            tick,
+            None,
+        );
+    }
+
+    #[test]
+    fn chase_idle_stop_is_inside_weapon_range() {
+        let catalog = catalog();
+        let weapons = weapons();
+        let mut world = flat_world();
+        let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
+        let hostile = spawn_hostile(&mut world, &catalog, 16.2, 10.0);
+        let weapon_range = weapon_range_for(&catalog, &weapons, &world, player);
+        issue_unit_order(
+            &mut world,
+            &catalog,
+            &weapons,
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            player,
+            UnitOrder::Attack { target: hostile },
+            policy(),
+        )
+        .unwrap();
+        for tick in 0..120 {
+            run_one_sim_tick(&mut world, &catalog, &weapons, tick);
+            let record = world.get_unit(player).unwrap();
+            if matches!(record.state, UnitState::Idle)
+                && matches!(
+                    record.combat_state,
+                    CombatState::Chasing { .. } | CombatState::Attacking { .. }
+                )
+            {
+                let edge = edge_distance(&world, player, hostile, &catalog, &weapons);
+                assert!(
+                    edge <= weapon_range + 1e-3,
+                    "chase stop at edge {edge}m exceeds weapon range {weapon_range}m on tick {tick}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn chase_enters_range_with_large_collision_radii() {
+        use crate::world::combat::range::RangeStatus;
+        use crate::world::{
+            DamageType, HitMode, TargetFilter, UnitDefinition, UnitDefinitionId, UnitRenderKey,
+            WeaponDefinition, WeaponDefinitionId,
+        };
+
+        let large_catalog = UnitCatalog::from_definitions(vec![
+            UnitDefinition::new(
+                UnitDefinitionId::new("big_a"),
+                "Big A",
+                "Test",
+                1,
+                10,
+                10,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1.0,
+                "T1",
+                4.5,
+                4.0,
+                40.0,
+                WeaponDefinitionId::new("weapon_short"),
+                true,
+                UnitRenderKey::reserved("big_a"),
+            ),
+            UnitDefinition::new(
+                UnitDefinitionId::new("big_b"),
+                "Big B",
+                "Test",
+                1,
+                10,
+                10,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1.0,
+                "T1",
+                4.5,
+                4.0,
+                40.0,
+                WeaponDefinitionId::new("weapon_short"),
+                true,
+                UnitRenderKey::reserved("big_b"),
+            ),
+        ])
+        .unwrap();
+        let short_weapons = WeaponCatalog::from_definitions(vec![WeaponDefinition::new(
+            WeaponDefinitionId::new("weapon_short"),
+            "Short",
+            "Test",
+            1.0,
+            DamageType::Blunt,
+            1.0,
+            1.0,
+            0.1,
+            0.1,
+            HitMode::Melee,
+            None,
+            0.0,
+            "attack",
+            vec![TargetFilter::Enemies],
+            None,
+            true,
+        )])
+        .unwrap();
+        let mut world = flat_world();
+        let player = create_unit_with_ownership(
+            &large_catalog,
+            &mut world,
+            &UnitDefinitionId::new("big_a"),
+            pos(10.0, 10.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let hostile = create_unit_with_ownership(
+            &large_catalog,
+            &mut world,
+            &UnitDefinitionId::new("big_b"),
+            pos(20.0, 10.0),
+            UnitSource::Authored,
+            UnitOwnership::hostile(),
+        )
+        .unwrap()
+        .id;
+        issue_unit_order(
+            &mut world,
+            &large_catalog,
+            &short_weapons,
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            player,
+            UnitOrder::Attack { target: hostile },
+            policy(),
+        )
+        .unwrap();
+        let mut entered_range = false;
+        for tick in 0..120 {
+            run_one_sim_tick(&mut world, &large_catalog, &short_weapons, tick);
+            let attacker = world.get_unit(player).unwrap();
+            let target = world.get_unit(hostile).unwrap();
+            let weapon = weapon_for_unit_record(attacker, &large_catalog, &short_weapons).unwrap();
+            let check = measure_weapon_range(&world, attacker, target, weapon, &large_catalog);
+            if range_status_from_check(&check) == RangeStatus::InRange {
+                entered_range = true;
+                break;
+            }
+        }
+        assert!(
+            entered_range,
+            "large-radius chase should enter weapon range"
+        );
+    }
+
+    #[test]
+    fn moving_target_chase_eventually_enters_range() {
+        let catalog = catalog();
+        let weapons = weapons();
+        let mut world = flat_world();
+        let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
+        let hostile = spawn_hostile(&mut world, &catalog, 24.0, 10.0);
+        issue_unit_order(
+            &mut world,
+            &catalog,
+            &weapons,
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            player,
+            UnitOrder::Attack { target: hostile },
+            policy(),
+        )
+        .unwrap();
+        let mut entered_range = false;
+        for tick in 0..180 {
+            if tick % 8 == 0 {
+                let z = 10.0 + ((tick as f32) * 0.15).sin();
+                world.relocate_unit(hostile, pos(24.0, z)).unwrap();
+            }
+            run_one_sim_tick(&mut world, &catalog, &weapons, tick);
+            let edge = edge_distance(&world, player, hostile, &catalog, &weapons);
+            if edge <= weapon_range_for(&catalog, &weapons, &world, player) {
+                entered_range = true;
+                break;
+            }
+        }
+        assert!(
+            entered_range,
+            "moving target chase should enter weapon range"
+        );
+    }
+
+    #[test]
+    fn move_to_cancels_attack_before_pass_through_strike() {
+        use crate::world::CombatState;
+
+        let catalog = catalog();
+        let weapons = weapons();
+        let mut world = flat_world();
+        let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
+        let hostile = spawn_hostile(&mut world, &catalog, 16.0, 10.0);
+        let hp_before = world.get_unit(hostile).unwrap().vitals.current_hp;
+        issue_unit_order(
+            &mut world,
+            &catalog,
+            &weapons,
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            player,
+            UnitOrder::Attack { target: hostile },
+            policy(),
+        )
+        .unwrap();
+        run_one_sim_tick(&mut world, &catalog, &weapons, 0);
+        issue_unit_order(
+            &mut world,
+            &catalog,
+            &weapons,
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            player,
+            UnitOrder::MoveTo {
+                target: pos(30.0, 10.0),
+            },
+            policy(),
+        )
+        .unwrap();
+        resolve_all_pending_unit_orders(
+            &mut world,
+            &catalog,
+            default_passability(),
+            &NavigationConfig::default(),
+        );
+        assert_eq!(
+            world.get_unit(player).unwrap().combat_state,
+            CombatState::Peaceful
+        );
+        assert!(world.get_unit(player).unwrap().attack_cycle.is_none());
+        for tick in 1..80 {
+            run_one_sim_tick(&mut world, &catalog, &weapons, tick);
+        }
+        assert_eq!(
+            world.get_unit(hostile).unwrap().vitals.current_hp,
+            hp_before
+        );
+    }
+
+    #[test]
+    fn attack_chase_closes_distance_and_deals_damage() {
+        let catalog = catalog();
+        let mut world = flat_world();
+        let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
+        let hostile = spawn_hostile(&mut world, &catalog, 16.2, 10.0);
+        let start = world.get_unit(player).unwrap().placement.position;
+        let hostile_hp_before = world.get_unit(hostile).unwrap().vitals.current_hp;
+        issue_unit_order(
+            &mut world,
+            &catalog,
+            &weapons(),
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            player,
+            UnitOrder::Attack { target: hostile },
+            policy(),
+        )
+        .unwrap();
+        run_sim_ticks(&mut world, &catalog, 60);
+        let end = world.get_unit(player).unwrap().placement.position;
+        let moved =
+            (end.to_global(world.layout()).x - start.to_global(world.layout()).x).abs() > 0.5;
+        assert!(moved, "attacker should close distance during chase");
+        let hostile_hp_after = world
+            .get_unit(hostile)
+            .map(|record| record.vitals.current_hp)
+            .unwrap_or(0);
+        assert!(
+            hostile_hp_after < hostile_hp_before,
+            "attacker should deal damage after reaching range"
+        );
+    }
+
+    #[test]
+    fn chase_preserves_in_progress_path_across_engagement_ticks() {
+        let catalog = catalog();
+        let mut world = flat_world();
+        let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
+        let hostile = spawn_hostile(&mut world, &catalog, 16.2, 10.0);
+        issue_unit_order(
+            &mut world,
+            &catalog,
+            &weapons(),
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            player,
+            UnitOrder::Attack { target: hostile },
+            policy(),
+        )
+        .unwrap();
+        run_sim_ticks(&mut world, &catalog, 1);
+        let path_after_first = match world.get_unit(player).unwrap().state.clone() {
+            UnitState::Moving {
+                path,
+                waypoint_index,
+                ..
+            } => (path, waypoint_index),
+            other => panic!("expected Moving after first chase tick, got {other:?}"),
+        };
+        run_sim_ticks(&mut world, &catalog, 1);
+        match world.get_unit(player).unwrap().state.clone() {
+            UnitState::Moving {
+                path,
+                waypoint_index,
+                ..
+            } => {
+                assert_eq!(
+                    path, path_after_first.0,
+                    "chase should not repath every tick"
+                );
+                assert!(
+                    waypoint_index >= path_after_first.1,
+                    "chase should preserve waypoint progress"
+                );
+            }
+            other => panic!("expected Moving on second chase tick, got {other:?}"),
+        };
     }
 
     #[test]

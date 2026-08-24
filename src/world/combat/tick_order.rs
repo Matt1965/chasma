@@ -595,7 +595,16 @@ mod tests {
         .unwrap();
         let _ = step_tick(&mut world, &catalog, &weapons);
         let before = world.projectiles().next().unwrap().1.position.local.0.x;
-        let _ = step_all_projectiles(&mut world, SIMULATION_TICK_SECONDS, &[]);
+        let _ = step_all_projectiles(
+            &mut world,
+            &catalog,
+            &weapons,
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            policy(),
+            SIMULATION_TICK_SECONDS,
+            &[],
+        );
         let after = world.projectiles().next().unwrap().1.position.local.0.x;
         assert!(after > before);
     }

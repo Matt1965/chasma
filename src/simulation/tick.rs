@@ -85,7 +85,16 @@ pub fn run_simulation_tick(
         &mut projectile_spawn,
     );
     let spawned_this_tick = projectile_spawn.spawned_projectile_ids();
-    let mut projectile_step = step_all_projectiles(world, delta_seconds, &spawned_this_tick);
+    let mut projectile_step = step_all_projectiles(
+        world,
+        unit_catalog,
+        weapon_catalog,
+        doodad_catalog,
+        nav_config,
+        targeting_policy,
+        delta_seconds,
+        &spawned_this_tick,
+    );
     let mut projectile = projectile_spawn;
     projectile.traces.append(&mut projectile_step.traces);
     let inventory_ctx =

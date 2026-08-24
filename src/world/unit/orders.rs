@@ -12,7 +12,7 @@ use crate::world::unit::unit_can_execute_actions;
 use crate::world::{
     AttackTargetingPolicy, CommandBufferResolveReport, CommandResolveSuccess, DoodadCatalog,
     NavigationConfig, PassabilityCatalogs, WeaponCatalog, WorldData, WorldPosition,
-    clear_attack_cycle_for_order_cancel, initial_attack_combat_state,
+    clear_attack_cycle_for_order_cancel, hold_in_attack_range, initial_attack_combat_state,
     reset_attack_cycle_for_retarget, validate_attack_target,
 };
 
@@ -109,6 +109,7 @@ pub fn issue_unit_order(
                 .set_unit_state(unit_id, UnitState::Idle)
                 .map_err(|_| UnitOrderError::UnitNotFound)?;
             clear_attack_cycle_for_order_cancel(world, unit_id, None, unit_catalog, weapon_catalog);
+            let _ = world.set_reactive_combat_target(unit_id, None);
             world
                 .set_unit_combat_state(unit_id, CombatState::Peaceful)
                 .map_err(|_| UnitOrderError::UnitNotFound)?;
@@ -124,6 +125,7 @@ pub fn issue_unit_order(
             }
             world.command_buffer_mut().clear_pending(unit_id);
             world.movement_smoothing_mut().clear_unit(unit_id);
+            let _ = world.set_reactive_combat_target(unit_id, None);
             world
                 .set_unit_combat_state(unit_id, CombatState::Peaceful)
                 .map_err(|_| UnitOrderError::UnitNotFound)?;
@@ -136,36 +138,34 @@ pub fn issue_unit_order(
             cancel_unit_task(world, unit_id, TaskCancelReason::PlayerOrder, &mut events);
             let _ = events;
             let _ = (doodad_catalog, nav_config);
-            validate_attack_target(
+            match validate_attack_target(
                 world,
                 unit_id,
                 target,
                 weapon_catalog,
                 unit_catalog,
                 targeting_policy,
-            )?;
-            let old_cycle_target = world
-                .get_unit(unit_id)
-                .and_then(|record| record.attack_cycle.as_ref().map(|cycle| cycle.target));
-            if old_cycle_target.is_some_and(|old| old != target) {
-                reset_attack_cycle_for_retarget(
-                    world,
-                    unit_id,
-                    old_cycle_target.unwrap(),
-                    target,
-                    None,
-                    unit_catalog,
-                    weapon_catalog,
-                );
+            ) {
+                Ok(()) => {
+                    #[cfg(feature = "dev")]
+                    {
+                        use crate::world::runtime_trace;
+                        runtime_trace::attack_order_accepted(unit_id, target);
+                        runtime_trace::attacker_weapon_definition(
+                            world,
+                            unit_id,
+                            unit_catalog,
+                            weapon_catalog,
+                        );
+                    }
+                }
+                Err(reason) => {
+                    #[cfg(feature = "dev")]
+                    crate::world::runtime_trace::attack_order_rejected(unit_id, target, reason);
+                    return Err(reason);
+                }
             }
-            world.command_buffer_mut().clear_pending(unit_id);
-            world.movement_smoothing_mut().clear_unit(unit_id);
-            let combat_state =
-                initial_attack_combat_state(world, unit_id, target, unit_catalog, weapon_catalog);
-            world
-                .set_unit_combat_state(unit_id, combat_state)
-                .map_err(|_| UnitOrderError::AttackerNotFound)?;
-            Ok(())
+            apply_validated_attack_order(world, unit_catalog, weapon_catalog, unit_id, target, None)
         }
         UnitOrder::AttackMove { destination } => {
             let mut events = Vec::new();
@@ -201,6 +201,7 @@ pub fn issue_unit_order(
             }
             world.command_buffer_mut().clear_pending(unit_id);
             world.movement_smoothing_mut().clear_unit(unit_id);
+            let _ = world.set_reactive_combat_target(unit_id, None);
             world
                 .set_unit_combat_state(unit_id, CombatState::Peaceful)
                 .map_err(|_| UnitOrderError::UnitNotFound)?;
@@ -209,6 +210,53 @@ pub fn issue_unit_order(
             Ok(())
         }
     }
+}
+
+/// Install combat state for an attack order after target validation succeeds.
+///
+/// Shared by normal [`UnitOrder::Attack`] issuance and reactive retaliation.
+pub fn apply_validated_attack_order(
+    world: &mut WorldData,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
+    unit_id: UnitId,
+    target: UnitId,
+    reactive_authorization: Option<UnitId>,
+) -> Result<(), UnitOrderError> {
+    let _ = world.set_reactive_combat_target(unit_id, reactive_authorization);
+    let old_cycle_target = world
+        .get_unit(unit_id)
+        .and_then(|record| record.attack_cycle.as_ref().map(|cycle| cycle.target));
+    if old_cycle_target.is_some_and(|old| old != target) {
+        reset_attack_cycle_for_retarget(
+            world,
+            unit_id,
+            old_cycle_target.unwrap(),
+            target,
+            None,
+            unit_catalog,
+            weapon_catalog,
+        );
+    }
+    world.command_buffer_mut().clear_pending(unit_id);
+    world.movement_smoothing_mut().clear_unit(unit_id);
+    let combat_state =
+        initial_attack_combat_state(world, unit_id, target, unit_catalog, weapon_catalog);
+    world
+        .set_unit_combat_state(unit_id, combat_state.clone())
+        .map_err(|_| UnitOrderError::AttackerNotFound)?;
+    match combat_state {
+        CombatState::Attacking { .. } => hold_in_attack_range(world, unit_id),
+        CombatState::Chasing { .. } => {
+            // Leave locomotion to combat engagement; it installs chase movement via
+            // `start_unit_move_to` on the next simulation tick (and preserves an
+            // in-progress chase path when already heading to standoff).
+        }
+        _ => {}
+    }
+    #[cfg(feature = "dev")]
+    crate::world::runtime_trace::combat_state_after_attack_order(world, unit_id, target);
+    Ok(())
 }
 
 /// Resolve deferred orders before movement (ADR-037 U12).
@@ -479,6 +527,158 @@ mod tests {
                 target: None
             } if d == destination
         ));
+    }
+
+    #[test]
+    fn attack_interrupts_move_to_with_chase_path() {
+        use crate::simulation::run_simulation_tick;
+        use crate::world::CombatAiScanState;
+        use crate::world::CombatAiSettings;
+        use crate::world::starter_weapon_definitions;
+
+        let catalog = UnitCatalog::default();
+        let weapon_catalog = WeaponCatalog::from_definitions(starter_weapon_definitions()).unwrap();
+        let mut world = layout_world();
+        insert_flat(&mut world);
+        let player = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(10.0, 10.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let hostile = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(16.2, 10.0),
+            UnitSource::Authored,
+            UnitOwnership::hostile(),
+        )
+        .unwrap()
+        .id;
+        let move_target = pos(100.0, 10.0);
+        issue(
+            &mut world,
+            &catalog,
+            player,
+            UnitOrder::MoveTo {
+                target: move_target,
+            },
+        )
+        .unwrap();
+        resolve_pending_unit_orders(
+            &mut world,
+            &catalog,
+            default_passability(),
+            &NavigationConfig::default(),
+        );
+        let UnitState::Moving {
+            target: old_target, ..
+        } = world.get_unit(player).unwrap().state.clone()
+        else {
+            panic!("expected Moving after MoveTo resolve");
+        };
+        assert_eq!(old_target, move_target);
+
+        issue(
+            &mut world,
+            &catalog,
+            player,
+            UnitOrder::Attack { target: hostile },
+        )
+        .unwrap();
+        let mut scan = CombatAiScanState::default();
+        run_simulation_tick(
+            &mut world,
+            &catalog,
+            &weapon_catalog,
+            &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
+            &NavigationConfig::default(),
+            policy(),
+            &CombatAiSettings::default(),
+            &mut scan,
+            crate::world::BuildingConstructionSettings::default(),
+            &crate::world::InteriorProfileCatalog::default(),
+            None,
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ItemCategoryCatalog::default(),
+            &crate::world::InventoryProfileCatalog::default(),
+            &crate::world::CorpseSettings::default(),
+            crate::simulation::SIMULATION_TICK_SECONDS,
+            0,
+            None,
+        );
+        match world.get_unit(player).unwrap().state.clone() {
+            UnitState::Moving { target, .. } => assert_ne!(target, move_target),
+            other => panic!("expected chase Moving after attack, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn attack_interrupts_working() {
+        use crate::world::BuildingId;
+        use crate::world::task::{TaskPriority, TaskRecord, TaskState, TaskTarget, TaskType};
+
+        let catalog = UnitCatalog::default();
+        let mut world = layout_world();
+        let player = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(10.0, 10.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let hostile = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(16.2, 10.0),
+            UnitSource::Authored,
+            UnitOwnership::hostile(),
+        )
+        .unwrap()
+        .id;
+        let task_id = world.task_store_mut().allocate_task_id();
+        let mut task = TaskRecord::new(
+            task_id,
+            TaskType::ConstructBuilding,
+            TaskTarget::Building(BuildingId::new(1)),
+            TaskPriority::Normal,
+            1,
+        );
+        task.state = TaskState::InProgress;
+        task.assigned_unit_id = Some(player);
+        world.task_store_mut().insert_task(task).unwrap();
+        world.task_store_mut().assign_unit(task_id, player).unwrap();
+        world
+            .set_unit_state(player, UnitState::Working { task_id })
+            .unwrap();
+
+        issue(
+            &mut world,
+            &catalog,
+            player,
+            UnitOrder::Attack { target: hostile },
+        )
+        .unwrap();
+        assert!(!matches!(
+            world.get_unit(player).unwrap().state,
+            UnitState::Working { .. }
+        ));
+        assert_eq!(
+            world.task_store().get(task_id).unwrap().state,
+            TaskState::Canceled
+        );
     }
 
     #[test]

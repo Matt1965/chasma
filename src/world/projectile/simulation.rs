@@ -1,9 +1,13 @@
 //! Authoritative projectile movement and impact resolution (ADR-060 C7).
 
 use crate::world::WorldData;
-use crate::world::combat::{ProjectileImpactRejection, validate_projectile_impact_target};
+use crate::world::combat::{
+    AttackTargetingPolicy, ProjectileImpactRejection, apply_attributed_combat_damage,
+    validate_projectile_impact_target,
+};
 use crate::world::coordinates::{ChunkLayout, WorldPosition};
 use crate::world::is_unit_alive;
+use crate::world::{DoodadCatalog, NavigationConfig, UnitCatalog, WeaponCatalog};
 
 use super::id::ProjectileId;
 use super::record::{ProjectileRecord, ProjectileStatus};
@@ -18,6 +22,11 @@ const PROJECTILE_IMPACT_DISTANCE_METERS: f32 = 0.1;
 /// to prevent same-tick movement for projectiles spawned during strike resolution.
 pub fn step_all_projectiles(
     world: &mut WorldData,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
+    targeting_policy: AttackTargetingPolicy,
     delta_seconds: f32,
     skip_projectile_ids: &[ProjectileId],
 ) -> ProjectileReport {
@@ -28,7 +37,18 @@ pub fn step_all_projectiles(
         if skip_projectile_ids.contains(&id) {
             continue;
         }
-        step_projectile(world, id, delta_seconds, layout, &mut report);
+        step_projectile(
+            world,
+            id,
+            delta_seconds,
+            layout,
+            unit_catalog,
+            weapon_catalog,
+            doodad_catalog,
+            nav_config,
+            targeting_policy,
+            &mut report,
+        );
     }
     report
 }
@@ -38,6 +58,11 @@ fn step_projectile(
     id: ProjectileId,
     delta_seconds: f32,
     layout: ChunkLayout,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
+    targeting_policy: AttackTargetingPolicy,
     report: &mut ProjectileReport,
 ) {
     let Some(record) = world.get_projectile(id).cloned() else {
@@ -82,7 +107,18 @@ fn step_projectile(
     let travel = record.speed_mps * delta_seconds;
 
     if distance <= PROJECTILE_IMPACT_DISTANCE_METERS || travel >= distance {
-        resolve_projectile_impact(world, id, record, target_position, report);
+        resolve_projectile_impact(
+            world,
+            id,
+            record,
+            target_position,
+            unit_catalog,
+            weapon_catalog,
+            doodad_catalog,
+            nav_config,
+            targeting_policy,
+            report,
+        );
         return;
     }
 
@@ -99,6 +135,11 @@ fn resolve_projectile_impact(
     id: ProjectileId,
     record: ProjectileRecord,
     target_position: WorldPosition,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
+    targeting_policy: AttackTargetingPolicy,
     report: &mut ProjectileReport,
 ) {
     let trace = |event: ProjectileEvent| ProjectileTrace {
@@ -127,7 +168,17 @@ fn resolve_projectile_impact(
         .map(|unit| unit.vitals.current_hp)
         .unwrap_or(0);
     let damage = record.damage.max(0.0) as u32;
-    let vitals = match world.damage_unit(record.target_unit_id, damage) {
+    let vitals = match apply_attributed_combat_damage(
+        world,
+        record.target_unit_id,
+        record.source_unit_id,
+        damage,
+        unit_catalog,
+        weapon_catalog,
+        doodad_catalog,
+        nav_config,
+        targeting_policy,
+    ) {
         Ok(vitals) => vitals,
         Err(_) => {
             reject_projectile(
@@ -339,8 +390,22 @@ mod tests {
         (strikes, projectile_spawn)
     }
 
-    fn step_projectile_movement(world: &mut WorldData, delta: f32) -> ProjectileReport {
-        step_all_projectiles(world, delta, &[])
+    fn step_projectile_movement(
+        world: &mut WorldData,
+        catalog: &crate::world::UnitCatalog,
+        weapons: &WeaponCatalog,
+        delta: f32,
+    ) -> ProjectileReport {
+        step_all_projectiles(
+            world,
+            catalog,
+            weapons,
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            policy(),
+            delta,
+            &[],
+        )
     }
 
     fn reassign_unit_ownership(world: &mut WorldData, unit_id: UnitId, ownership: UnitOwnership) {
@@ -448,7 +513,7 @@ mod tests {
         delta: f32,
     ) -> (crate::world::CombatStrikeReport, ProjectileReport) {
         let (mut strikes, mut projectile_spawn) = step_strikes(world, catalog, weapons, delta);
-        let mut projectiles = step_projectile_movement(world, delta);
+        let mut projectiles = step_projectile_movement(world, catalog, weapons, delta);
         projectiles.traces.append(&mut projectile_spawn.traces);
         step_all_combat_engagement(
             world,
@@ -567,8 +632,8 @@ mod tests {
             );
             step_strikes(world, &catalog, &weapons, 0.2);
         }
-        step_projectile_movement(&mut world_a, 0.1);
-        step_projectile_movement(&mut world_b, 0.1);
+        step_projectile_movement(&mut world_a, &catalog, &weapons, 0.1);
+        step_projectile_movement(&mut world_b, &catalog, &weapons, 0.1);
         let pos_a = world_a.projectiles().next().unwrap().1.position;
         let pos_b = world_b.projectiles().next().unwrap().1.position;
         assert_eq!(pos_a, pos_b);
@@ -605,7 +670,7 @@ mod tests {
         );
         let (_, spawn_report) = step_strikes(&mut world, &catalog, &weapons, 0.2);
         assert!(spawn_report.has_event(&ProjectileEvent::Spawned));
-        let report = step_projectile_movement(&mut world, 0.2);
+        let report = step_projectile_movement(&mut world, &catalog, &weapons, 0.2);
         assert!(report.has_event(&ProjectileEvent::Hit));
         assert!(report.traces.iter().any(|trace| {
             matches!(
@@ -672,7 +737,7 @@ mod tests {
             true,
         ));
         let weapons = WeaponCatalog::from_definitions(changed_defs).unwrap();
-        let report = step_projectile_movement(&mut world, 0.2);
+        let report = step_projectile_movement(&mut world, &catalog, &weapons, 0.2);
         assert!(report.traces.iter().any(|trace| {
             matches!(
                 trace.event,
@@ -714,7 +779,7 @@ mod tests {
         );
         step_strikes(&mut world, &catalog, &weapons, 0.2);
         world.damage_unit(hostile, 999).unwrap();
-        let report = step_projectile_movement(&mut world, 0.2);
+        let report = step_projectile_movement(&mut world, &catalog, &weapons, 0.2);
         assert!(report.has_event(&ProjectileEvent::Expired));
         assert_eq!(world.projectiles().count(), 0);
         assert_eq!(world.get_unit(hostile).unwrap().vitals.current_hp, 0);
@@ -750,7 +815,7 @@ mod tests {
         );
         step_strikes(&mut world, &catalog, &weapons, 0.2);
         world.damage_unit(player, 999).unwrap();
-        let report = step_projectile_movement(&mut world, 0.2);
+        let report = step_projectile_movement(&mut world, &catalog, &weapons, 0.2);
         assert!(report.has_event(&ProjectileEvent::Hit));
         assert_eq!(
             world.get_unit(hostile).unwrap().vitals.current_hp,
@@ -786,7 +851,7 @@ mod tests {
             &mut CombatStrikeReport::default(),
         );
         step_strikes(&mut world, &catalog, &weapons, 0.2);
-        step_projectile_movement(&mut world, 0.2);
+        step_projectile_movement(&mut world, &catalog, &weapons, 0.2);
         assert_eq!(world.projectiles().count(), 0);
     }
 
@@ -810,7 +875,7 @@ mod tests {
         let hp_before = world.get_unit(hostile).unwrap().vitals.current_hp;
         spawn_and_strike_projectile(&mut world, &catalog, &weapons, player, hostile);
         reassign_unit_ownership(&mut world, hostile, UnitOwnership::player_default());
-        let report = step_projectile_movement(&mut world, 0.2);
+        let report = step_projectile_movement(&mut world, &catalog, &weapons, 0.2);
         assert!(report.has_event(&ProjectileEvent::ImpactRejected {
             reason: ProjectileImpactRejection::TargetNowFriendly,
         }));
@@ -831,7 +896,7 @@ mod tests {
         let hp_before = world.get_unit(neutral).unwrap().vitals.current_hp;
         spawn_and_strike_projectile(&mut world, &catalog, &weapons, player, neutral);
         reassign_unit_ownership(&mut world, neutral, UnitOwnership::hostile());
-        let report = step_projectile_movement(&mut world, 0.2);
+        let report = step_projectile_movement(&mut world, &catalog, &weapons, 0.2);
         assert!(report.has_event(&ProjectileEvent::ImpactRejected {
             reason: ProjectileImpactRejection::TargetFilterRejected,
         }));
@@ -851,7 +916,7 @@ mod tests {
         let hostile = spawn_hostile(&mut world, &catalog, 20.0, 10.0);
         spawn_and_strike_projectile(&mut world, &catalog, &weapons, player, hostile);
         world.remove_unit_by_id(hostile);
-        let report = step_projectile_movement(&mut world, 0.2);
+        let report = step_projectile_movement(&mut world, &catalog, &weapons, 0.2);
         assert!(report.has_event(&ProjectileEvent::Expired));
         assert_eq!(world.projectiles().count(), 0);
     }
@@ -866,7 +931,7 @@ mod tests {
         let hp_before = world.get_unit(hostile).unwrap().vitals.current_hp;
         spawn_and_strike_projectile(&mut world, &catalog, &weapons, player, hostile);
         world.remove_unit_by_id(player);
-        let report = step_projectile_movement(&mut world, 0.2);
+        let report = step_projectile_movement(&mut world, &catalog, &weapons, 0.2);
         assert!(report.has_event(&ProjectileEvent::Hit));
         assert_eq!(
             world.get_unit(hostile).unwrap().vitals.current_hp,
@@ -884,7 +949,7 @@ mod tests {
         let hp_before = world.get_unit(hostile).unwrap().vitals.current_hp;
         spawn_and_strike_projectile(&mut world, &catalog, &weapons, player, hostile);
         move_unit_to(&mut world, hostile, 100.0, 10.0);
-        let report = step_projectile_movement(&mut world, 2.0);
+        let report = step_projectile_movement(&mut world, &catalog, &weapons, 2.0);
         assert!(report.has_event(&ProjectileEvent::Hit));
         assert_eq!(
             world.get_unit(hostile).unwrap().vitals.current_hp,
@@ -901,7 +966,7 @@ mod tests {
         let hostile = spawn_hostile(&mut world, &catalog, 11.0, 10.0);
         spawn_and_strike_projectile(&mut world, &catalog, &weapons, player, hostile);
         reassign_unit_ownership(&mut world, hostile, UnitOwnership::player_default());
-        let report = step_projectile_movement(&mut world, 0.2);
+        let report = step_projectile_movement(&mut world, &catalog, &weapons, 0.2);
         let rejections: Vec<_> = report
             .traces
             .iter()

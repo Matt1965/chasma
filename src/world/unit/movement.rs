@@ -30,13 +30,15 @@ use crate::world::{
     xz_distance,
 };
 /// Distance below which a unit snaps to its move target (meters).
-const ARRIVAL_DISTANCE_METERS: f32 = 0.05;
+pub const MOVEMENT_ARRIVAL_TOLERANCE_METERS: f32 = 0.05;
+const ARRIVAL_DISTANCE_METERS: f32 = MOVEMENT_ARRIVAL_TOLERANCE_METERS;
 /// When blocked, treat as having reached a waypoint if within this distance (meters).
 const WAYPOINT_SKIP_DISTANCE_METERS: f32 = 2.0;
 /// When blocked near a non-portal waypoint, allow skipping slightly further than normal.
 const BLOCKED_WAYPOINT_SKIP_DISTANCE_METERS: f32 = 3.5;
 /// When blocked near the final target, stop moving instead of freezing (meters).
-const PARTIAL_ARRIVAL_DISTANCE_METERS: f32 = 2.5;
+pub const MOVEMENT_PARTIAL_ARRIVAL_TOLERANCE_METERS: f32 = 2.5;
+const PARTIAL_ARRIVAL_DISTANCE_METERS: f32 = MOVEMENT_PARTIAL_ARRIVAL_TOLERANCE_METERS;
 
 static STEERING_SETTINGS: SteeringSettings = SteeringSettings::DEFAULT;
 static FEEL_SETTINGS: MovementFeelSettings = MovementFeelSettings::DEFAULT;

@@ -8,6 +8,9 @@ mod attack_cycle;
 mod cycle_lifecycle;
 mod engagement;
 mod range;
+mod retaliation;
+#[cfg(feature = "dev")]
+pub(crate) mod runtime_trace;
 mod standoff;
 mod strike;
 mod targeting;
@@ -20,15 +23,17 @@ pub use ai::{
 pub use attack_cycle::WeaponTiming;
 pub use cycle_lifecycle::{clear_attack_cycle_for_order_cancel, reset_attack_cycle_for_retarget};
 pub use engagement::{
-    CombatEngagementReport, CombatEngagementStatus, CombatEngagementTrace,
+    CombatEngagementReport, CombatEngagementStatus, CombatEngagementTrace, hold_in_attack_range,
     initial_attack_combat_state, step_all_combat_engagement,
 };
 pub use range::{RANGE_HYSTERESIS_METERS, RangeCheck, is_in_weapon_range, weapon_for_unit_record};
+pub use retaliation::{apply_attributed_combat_damage, try_reactive_combat_retaliation};
 pub use strike::{
     CombatStrikeEvent, CombatStrikeReport, CombatStrikeTrace, step_all_combat_strikes,
 };
 pub use targeting::{
     AttackTargetingPolicy, ProjectileImpactRejection, ProjectileLaunchSnapshot,
-    classify_unit_target, is_unit_alive, is_valid_attack_target, validate_attack_target,
-    validate_projectile_impact_target,
+    classify_unit_target, is_unit_alive, is_valid_active_combat_target, is_valid_attack_target,
+    validate_active_combat_target, validate_attack_target, validate_projectile_impact_target,
+    validate_reactive_retaliation_target,
 };

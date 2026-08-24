@@ -98,7 +98,8 @@ pub use inventory::{
 };
 pub use metadata::UnitMetadata;
 pub use movement::{
-    BatchUnitMovementReport, BlockedMovementReason, UnitMovementError, UnitMovementReport,
+    BatchUnitMovementReport, BlockedMovementReason, MOVEMENT_ARRIVAL_TOLERANCE_METERS,
+    MOVEMENT_PARTIAL_ARRIVAL_TOLERANCE_METERS, UnitMovementError, UnitMovementReport,
     UnitMovementStepOutcome, UnitMovementStepReport, UnitMovementTrace, UnitSimulationStepReport,
     step_all_unit_movement, step_unit_movement,
 };
@@ -111,8 +112,8 @@ pub use navigation_membership::{
     initialize_unit_navigation_membership, initialize_unit_navigation_membership_if_surface,
 };
 pub use orders::{
-    UnitOrder, UnitOrderError, issue_unit_order, resolve_all_pending_unit_orders,
-    resolve_pending_unit_orders,
+    UnitOrder, UnitOrderError, apply_validated_attack_order, issue_unit_order,
+    resolve_all_pending_unit_orders, resolve_pending_unit_orders,
 };
 pub use placement::UnitPlacement;
 pub use portal_trace::{PortalTransitionEvent, PortalTransitionTrace};

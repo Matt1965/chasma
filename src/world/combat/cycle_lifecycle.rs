@@ -2,7 +2,7 @@
 
 use crate::world::unit::{CombatState, UnitId};
 use crate::world::{
-    AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldData, validate_attack_target,
+    AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldData, validate_active_combat_target,
 };
 
 use super::range::weapon_for_unit_record;
@@ -180,7 +180,7 @@ pub fn validate_attack_cycle_for_strike(
         return None;
     }
     let target = combat_engagement_target(&record.combat_state)?;
-    validate_attack_target(
+    validate_active_combat_target(
         world,
         unit_id,
         target,

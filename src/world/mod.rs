@@ -200,16 +200,20 @@ pub use building::{
     regenerate_navigation_blueprint_for_building, should_generate_navigation_blueprint,
 };
 pub use chunk::{ChunkData, ChunkId};
+#[cfg(feature = "dev")]
+pub(crate) use combat::runtime_trace;
 pub use combat::{
     AttackTargetingPolicy, CombatAiReport, CombatAiScanState, CombatAiSettings, CombatAiTrace,
     CombatAiTraceOutcome, CombatEngagementReport, CombatEngagementStatus, CombatEngagementTrace,
     CombatStrikeEvent, CombatStrikeReport, CombatStrikeTrace, ProjectileImpactRejection,
     ProjectileLaunchSnapshot, RANGE_HYSTERESIS_METERS, RangeCheck, WeaponTiming,
-    classify_unit_target, clear_attack_cycle_for_order_cancel, find_auto_acquire_target,
-    initial_attack_combat_state, is_in_weapon_range, is_unit_alive, is_valid_attack_target,
+    apply_attributed_combat_damage, classify_unit_target, clear_attack_cycle_for_order_cancel,
+    find_auto_acquire_target, hold_in_attack_range, initial_attack_combat_state,
+    is_in_weapon_range, is_unit_alive, is_valid_active_combat_target, is_valid_attack_target,
     reset_attack_cycle_for_retarget, step_all_combat_engagement, step_all_combat_strikes,
-    step_combat_ai_acquisition, validate_attack_target, validate_projectile_impact_target,
-    weapon_for_unit_record,
+    step_combat_ai_acquisition, try_reactive_combat_retaliation, validate_active_combat_target,
+    validate_attack_target, validate_projectile_impact_target,
+    validate_reactive_retaliation_target, weapon_for_unit_record,
 };
 pub use config::WorldConfig;
 pub use coordinates::{ChunkCoord, ChunkLayout, LocalPosition, WorldPosition};
@@ -538,22 +542,24 @@ pub use unit::{
     AnimationClipKey, AnimationProfile, AnimationProfileCatalog, AnimationProfileCatalogError,
     AnimationProfileId, AttackCycle, AttackPhase, BatchUnitMovementReport, BlockedMovementReason,
     ChunkUnitStore, CombatState, DEFAULT_TURN_SPEED_DEGREES_PER_SECOND, EntranceTraversalTrace,
-    InsideMoveTrace, InteriorExitClickTrace, MovementAuthorityTrace, MovementAuthorityViolation,
+    InsideMoveTrace, InteriorExitClickTrace, MOVEMENT_ARRIVAL_TOLERANCE_METERS,
+    MOVEMENT_PARTIAL_ARRIVAL_TOLERANCE_METERS, MovementAuthorityTrace, MovementAuthorityViolation,
     MovementBlockedAuthorityRecord, MovementCommandAuthorityRecord, PortalTransitionEvent,
     PortalTransitionTrace, PostExitJitterTrace, RemovalReason, UnitAuthoringError, UnitCatalog,
     UnitCatalogError, UnitDeathEvent, UnitDeathReport, UnitDeathTrace, UnitDefinition,
     UnitDefinitionId, UnitGroundingError, UnitId, UnitInsertError, UnitMetadata, UnitMovementError,
     UnitMovementReport, UnitMovementStepOutcome, UnitMovementStepReport, UnitMovementTrace,
     UnitOrder, UnitOrderError, UnitPlacement, UnitRecord, UnitRenderKey, UnitSimulationStepReport,
-    UnitSource, UnitState, UnitVitals, UnitWorkCapabilities, create_unit,
-    create_unit_with_inventory, create_unit_with_ownership, facing_rotation_from_direction_xz,
-    facing_rotation_from_travel, ground_unit_position, ground_unit_to_terrain,
-    infer_navigation_membership_at_position, initialize_surface_units_navigation_membership,
-    initialize_unit_navigation_membership, initialize_unit_navigation_membership_if_surface,
-    issue_unit_order, lookup_unit, model_forward_xz, move_unit, remove_unit,
-    resolve_all_pending_unit_orders, resolve_pending_unit_orders, rotation_from_yaw_radians,
-    step_all_unit_movement, step_rotation_yaw_toward, step_unit_death_pipeline, step_unit_movement,
-    step_yaw_toward, unit_can_execute_actions, unit_record_can_execute_actions, waypoint_space_ids,
+    UnitSource, UnitState, UnitVitals, UnitWorkCapabilities, apply_validated_attack_order,
+    create_unit, create_unit_with_inventory, create_unit_with_ownership,
+    facing_rotation_from_direction_xz, facing_rotation_from_travel, ground_unit_position,
+    ground_unit_to_terrain, infer_navigation_membership_at_position,
+    initialize_surface_units_navigation_membership, initialize_unit_navigation_membership,
+    initialize_unit_navigation_membership_if_surface, issue_unit_order, lookup_unit,
+    model_forward_xz, move_unit, remove_unit, resolve_all_pending_unit_orders,
+    resolve_pending_unit_orders, rotation_from_yaw_radians, step_all_unit_movement,
+    step_rotation_yaw_toward, step_unit_death_pipeline, step_unit_movement, step_yaw_toward,
+    unit_can_execute_actions, unit_record_can_execute_actions, waypoint_space_ids,
     yaw_radians_from_rotation,
 };
 #[cfg(any(test, feature = "dev"))]

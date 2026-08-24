@@ -4,7 +4,7 @@ use crate::world::unit::{AttackCycle, AttackPhase, CombatState, UnitId, unit_can
 use crate::world::{
     AttackTargetingPolicy, DoodadCatalog, HitMode, NavigationConfig, ProjectileRecord,
     ProjectileReport, UnitCatalog, WeaponCatalog, WorldData, spawn_projectile_from_strike,
-    validate_attack_target,
+    validate_active_combat_target,
 };
 
 use super::attack_cycle::WeaponTiming;
@@ -13,6 +13,7 @@ use super::cycle_lifecycle::{
     record_strike_state_mismatch, validate_attack_cycle_for_strike,
 };
 use super::range::{is_in_weapon_range, weapon_for_unit_record};
+use super::retaliation::apply_attributed_combat_damage;
 use super::targeting::is_unit_alive;
 use crate::world::weapon::WeaponDefinitionId;
 
@@ -87,6 +88,8 @@ pub fn step_all_combat_strikes(
             world,
             unit_catalog,
             weapon_catalog,
+            doodad_catalog,
+            nav_config,
             targeting_policy,
             unit_id,
             delta_seconds,
@@ -101,6 +104,8 @@ fn step_unit_combat_strike(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
     unit_id: UnitId,
     delta_seconds: f32,
@@ -236,6 +241,8 @@ fn step_unit_combat_strike(
             weapon_id: weapon.id.clone(),
             event: CombatStrikeEvent::AttackWindupStarted,
         });
+        #[cfg(feature = "dev")]
+        super::runtime_trace::attack_windup_started(unit_id, target_id, weapon.id.as_str());
     }
 
     let mut cycle = world
@@ -252,6 +259,8 @@ fn step_unit_combat_strike(
         world,
         unit_catalog,
         weapon_catalog,
+        doodad_catalog,
+        nav_config,
         targeting_policy,
         unit_id,
         target_id,
@@ -276,6 +285,8 @@ fn advance_attack_cycle(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
     unit_id: UnitId,
     target_id: UnitId,
@@ -301,6 +312,8 @@ fn advance_attack_cycle(
                     world,
                     unit_catalog,
                     weapon_catalog,
+                    doodad_catalog,
+                    nav_config,
                     targeting_policy,
                     unit_id,
                     target_id,
@@ -375,6 +388,8 @@ fn resolve_strike(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
     attacker_id: UnitId,
     target_id: UnitId,
@@ -385,6 +400,14 @@ fn resolve_strike(
 ) {
     cycle.phase = AttackPhase::Strike;
     cycle.struck_this_cycle = true;
+
+    #[cfg(feature = "dev")]
+    super::runtime_trace::strike_reached(
+        attacker_id,
+        target_id,
+        weapon.id.as_str(),
+        &format!("{:?}", weapon.hit_mode),
+    );
 
     if !validate_strike_target(
         world,
@@ -423,7 +446,18 @@ fn resolve_strike(
         .map(|record| record.vitals.current_hp)
         .unwrap_or(0);
     let damage = weapon.damage.max(0.0) as u32;
-    let vitals = world.damage_unit(target_id, damage).expect("target exists");
+    let vitals = apply_attributed_combat_damage(
+        world,
+        target_id,
+        attacker_id,
+        damage,
+        unit_catalog,
+        weapon_catalog,
+        doodad_catalog,
+        nav_config,
+        targeting_policy,
+    )
+    .expect("target exists");
     world.record_kill_attribution(target_id, attacker_id, hp_before);
     report.push(CombatStrikeTrace {
         attacker_id,
@@ -500,7 +534,7 @@ fn validate_strike_target(
     if !unit_can_execute_actions(world, attacker_id) {
         return false;
     }
-    if validate_attack_target(
+    if validate_active_combat_target(
         world,
         attacker_id,
         target_id,
@@ -652,7 +686,16 @@ mod tests {
             delta,
             &mut projectile,
         );
-        let _ = step_all_projectiles(world, delta, &[]);
+        let _ = step_all_projectiles(
+            world,
+            catalog,
+            &weapons(),
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            policy(),
+            delta,
+            &[],
+        );
         let _ = step_all_combat_engagement(
             world,
             catalog,

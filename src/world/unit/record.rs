@@ -36,6 +36,8 @@ pub struct UnitRecord {
     pub combat_state: CombatState,
     /// Weapon attack cycle timing when in-range (ADR-058 C5).
     pub attack_cycle: Option<AttackCycle>,
+    /// Attacker-specific reactive self-defense authorization (ADR-062, COMBAT-VERTICAL-1D).
+    pub reactive_combat_target: Option<UnitId>,
     /// Centralized inventory reference when unit definition has a profile (ADR-089 I3).
     pub inventory_id: Option<crate::world::InventoryId>,
 }
@@ -63,6 +65,7 @@ impl UnitRecord {
             current_space_id: crate::world::SpaceId::SURFACE,
             combat_state: CombatState::default(),
             attack_cycle: None,
+            reactive_combat_target: None,
             inventory_id: None,
         }
     }

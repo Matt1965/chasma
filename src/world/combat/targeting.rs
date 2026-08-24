@@ -166,6 +166,109 @@ pub fn validate_attack_target(
     Ok(())
 }
 
+/// Validate a reactive self-defense target after confirmed attributed combat damage.
+///
+/// Distinct from [`validate_attack_target`]: the attributed aggressor may be attacked even when
+/// proactive ownership rules would reject the match (e.g. Wildlife retaliating against Player).
+pub fn validate_reactive_retaliation_target(
+    world: &WorldData,
+    victim_id: UnitId,
+    attacker_id: UnitId,
+    weapon_catalog: &WeaponCatalog,
+    unit_catalog: &UnitCatalog,
+    policy: AttackTargetingPolicy,
+) -> Result<(), UnitOrderError> {
+    if victim_id == attacker_id {
+        return Err(UnitOrderError::SelfTarget);
+    }
+
+    let victim = world
+        .get_unit(victim_id)
+        .ok_or(UnitOrderError::AttackerNotFound)?;
+    let aggressor = world
+        .get_unit(attacker_id)
+        .ok_or(UnitOrderError::TargetNotFound)?;
+
+    if !is_unit_alive(victim) {
+        return Err(UnitOrderError::AttackerDead);
+    }
+    if !is_unit_alive(aggressor) {
+        return Err(UnitOrderError::TargetDead);
+    }
+
+    let weapon = weapon_for_unit(victim, unit_catalog, weapon_catalog)?;
+    let ownership_ok = ownership_allows_attack(victim, aggressor, policy.dev_allow_all_targets);
+    if !reactive_retaliation_ownership_allows(victim, aggressor, policy) {
+        return Err(UnitOrderError::InvalidOwnershipTarget);
+    }
+    if !weapon_allows_reactive_target(weapon, aggressor, ownership_ok) {
+        return Err(UnitOrderError::WeaponCannotTarget);
+    }
+
+    Ok(())
+}
+
+/// Validate an already-established combat target for continuation.
+///
+/// Accepts either normal proactive legality or a persisted reactive authorization for exactly
+/// this target.
+pub fn validate_active_combat_target(
+    world: &WorldData,
+    attacker_id: UnitId,
+    target_id: UnitId,
+    weapon_catalog: &WeaponCatalog,
+    unit_catalog: &UnitCatalog,
+    policy: AttackTargetingPolicy,
+) -> Result<(), UnitOrderError> {
+    if validate_attack_target(
+        world,
+        attacker_id,
+        target_id,
+        weapon_catalog,
+        unit_catalog,
+        policy,
+    )
+    .is_ok()
+    {
+        return Ok(());
+    }
+
+    let attacker = world
+        .get_unit(attacker_id)
+        .ok_or(UnitOrderError::AttackerNotFound)?;
+    if attacker.reactive_combat_target != Some(target_id) {
+        return Err(UnitOrderError::InvalidOwnershipTarget);
+    }
+
+    validate_reactive_retaliation_target(
+        world,
+        attacker_id,
+        target_id,
+        weapon_catalog,
+        unit_catalog,
+        policy,
+    )
+}
+
+pub fn is_valid_active_combat_target(
+    world: &WorldData,
+    attacker_id: UnitId,
+    target_id: UnitId,
+    weapon_catalog: &WeaponCatalog,
+    unit_catalog: &UnitCatalog,
+    policy: AttackTargetingPolicy,
+) -> bool {
+    validate_active_combat_target(
+        world,
+        attacker_id,
+        target_id,
+        weapon_catalog,
+        unit_catalog,
+        policy,
+    )
+    .is_ok()
+}
+
 pub fn is_valid_attack_target(
     world: &WorldData,
     attacker_id: UnitId,
@@ -287,6 +390,23 @@ fn weapon_allows_target_filters(
     target: &UnitRecord,
     ownership_ok: bool,
 ) -> bool {
+    weapon_allows_target_filters_with_reactive(filters, target, ownership_ok, false)
+}
+
+fn weapon_allows_reactive_target(
+    weapon: &WeaponDefinition,
+    target: &UnitRecord,
+    ownership_ok: bool,
+) -> bool {
+    weapon_allows_target_filters_with_reactive(&weapon.target_filters, target, ownership_ok, true)
+}
+
+fn weapon_allows_target_filters_with_reactive(
+    filters: &[TargetFilter],
+    target: &UnitRecord,
+    ownership_ok: bool,
+    reactive_aggressor: bool,
+) -> bool {
     if filters.contains(&TargetFilter::All) {
         return true;
     }
@@ -294,7 +414,7 @@ fn weapon_allows_target_filters(
     for filter in filters {
         match filter {
             TargetFilter::All => return true,
-            TargetFilter::Enemies if ownership_ok => return true,
+            TargetFilter::Enemies if ownership_ok || reactive_aggressor => return true,
             TargetFilter::Wildlife if target.affiliation == Affiliation::Wildlife => return true,
             TargetFilter::Neutral if target.affiliation == Affiliation::Neutral => return true,
             TargetFilter::Structures => {}
@@ -304,12 +424,34 @@ fn weapon_allows_target_filters(
     false
 }
 
+fn units_share_team(a: &UnitRecord, b: &UnitRecord) -> bool {
+    a.team_id.is_some() && a.team_id == b.team_id
+}
+
+/// Whether a confirmed aggressor may be attacked reactively without changing affiliation rules.
+fn reactive_retaliation_ownership_allows(
+    victim: &UnitRecord,
+    aggressor: &UnitRecord,
+    policy: AttackTargetingPolicy,
+) -> bool {
+    if policy.dev_allow_all_targets || victim.affiliation == Affiliation::Dev {
+        return victim.id != aggressor.id;
+    }
+    if victim.id == aggressor.id {
+        return false;
+    }
+    if units_share_team(victim, aggressor) {
+        return false;
+    }
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::world::{
-        ChunkCoord, ChunkLayout, LocalPosition, UnitDefinitionId, UnitOwnership, UnitSource,
-        WorldPosition, create_unit, create_unit_with_ownership,
+        ChunkCoord, ChunkLayout, CombatState, LocalPosition, UnitDefinitionId, UnitOwnership,
+        UnitSource, WorldPosition, create_unit, create_unit_with_ownership,
     };
     use bevy::prelude::Vec3;
 
@@ -370,6 +512,19 @@ mod tests {
             pos(6.0, 6.0),
             UnitSource::Authored,
             UnitOwnership::neutral(),
+        )
+        .unwrap()
+        .id
+    }
+
+    fn spawn_wildlife(world: &mut WorldData, catalog: &UnitCatalog) -> UnitId {
+        create_unit_with_ownership(
+            catalog,
+            world,
+            &UnitDefinitionId::new("bandit"),
+            pos(6.0, 6.0),
+            UnitSource::Authored,
+            UnitOwnership::wildlife(),
         )
         .unwrap()
         .id
@@ -509,6 +664,82 @@ mod tests {
                 policy(),
             ),
             Err(UnitOrderError::WeaponCannotTarget)
+        );
+    }
+
+    #[test]
+    fn wildlife_cannot_proactively_attack_player() {
+        let catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = layout_world();
+        let player = spawn_player(&mut world, &catalog, "bandit", pos(1.0, 1.0));
+        let wildlife = spawn_wildlife(&mut world, &catalog);
+        assert_eq!(
+            validate_attack_target(&world, wildlife, player, &weapons, &catalog, policy()),
+            Err(UnitOrderError::InvalidOwnershipTarget)
+        );
+    }
+
+    #[test]
+    fn wildlife_can_reactively_retaliate_against_player() {
+        let catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = layout_world();
+        let player = spawn_player(&mut world, &catalog, "bandit", pos(1.0, 1.0));
+        let wildlife = spawn_wildlife(&mut world, &catalog);
+        assert!(
+            validate_reactive_retaliation_target(
+                &world,
+                wildlife,
+                player,
+                &weapons,
+                &catalog,
+                policy(),
+            )
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn active_combat_target_accepts_persisted_reactive_authorization() {
+        let catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = layout_world();
+        let player = spawn_player(&mut world, &catalog, "bandit", pos(1.0, 1.0));
+        let wildlife = spawn_wildlife(&mut world, &catalog);
+        world
+            .set_reactive_combat_target(wildlife, Some(player))
+            .unwrap();
+        world
+            .set_unit_combat_state(wildlife, CombatState::Attacking { target: player })
+            .unwrap();
+        assert_eq!(
+            validate_attack_target(&world, wildlife, player, &weapons, &catalog, policy()),
+            Err(UnitOrderError::InvalidOwnershipTarget)
+        );
+        assert!(
+            validate_active_combat_target(&world, wildlife, player, &weapons, &catalog, policy(),)
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn reactive_retaliation_rejects_same_team_friendly_fire() {
+        let catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = layout_world();
+        let player_a = spawn_player(&mut world, &catalog, "bandit", pos(1.0, 1.0));
+        let player_b = spawn_player(&mut world, &catalog, "wolf", pos(2.0, 2.0));
+        assert_eq!(
+            validate_reactive_retaliation_target(
+                &world,
+                player_a,
+                player_b,
+                &weapons,
+                &catalog,
+                policy(),
+            ),
+            Err(UnitOrderError::InvalidOwnershipTarget)
         );
     }
 }

@@ -97,6 +97,7 @@ pub fn normalize_restored_unit(
 
     record.combat_state = CombatState::Peaceful;
     record.attack_cycle = None;
+    record.reactive_combat_target = None;
     Ok(())
 }
 

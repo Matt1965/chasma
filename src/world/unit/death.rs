@@ -217,6 +217,7 @@ fn finalize_dead_unit_side_effects(world: &mut WorldData, unit_id: UnitId) {
     world.command_buffer_mut().clear_pending(unit_id);
     world.movement_smoothing_mut().clear_unit(unit_id);
     let _ = world.set_unit_attack_cycle(unit_id, None);
+    let _ = world.set_reactive_combat_target(unit_id, None);
     let _ = world.set_unit_combat_state(unit_id, CombatState::Peaceful);
 }
 
@@ -275,6 +276,7 @@ fn clear_targets_for_dead_units(
         };
         let _ = world.set_unit_combat_state(unit_id, next);
         let _ = world.set_unit_attack_cycle(unit_id, None);
+        let _ = world.set_reactive_combat_target(unit_id, None);
         world.command_buffer_mut().clear_pending(unit_id);
         world.movement_smoothing_mut().clear_unit(unit_id);
         if matches!(

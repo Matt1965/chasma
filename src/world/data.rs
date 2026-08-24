@@ -1355,6 +1355,26 @@ impl WorldData {
         Ok(())
     }
 
+    /// Persist or clear attacker-specific reactive combat authorization.
+    pub fn set_reactive_combat_target(
+        &mut self,
+        id: UnitId,
+        target: Option<UnitId>,
+    ) -> Result<(), UnitInsertError> {
+        let chunk = self
+            .unit_locations
+            .get(&id)
+            .copied()
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        let store = self
+            .units
+            .get_mut(&chunk)
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        let record = store.get_mut(id).ok_or(UnitInsertError::UnitNotFound)?;
+        record.reactive_combat_target = target;
+        Ok(())
+    }
+
     /// Borrow the deferred unit removal queue (ADR-059 C6).
     pub fn removal_queue(&self) -> &UnitRemovalQueue {
         &self.removal_queue
