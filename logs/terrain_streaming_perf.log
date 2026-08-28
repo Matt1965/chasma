@@ -558178,3 +558178,5644 @@ Per-mesh:
   (13,19) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=229.84ms
   (13,19) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
 
+# terrain streaming perf session started_at=1787888594
+# multi-line hitch summaries: poll/apply, mesh accounting, geometry, queues, per-mesh
+terrain streaming
+poll=0.24ms apply=0.17ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=32 decode=0 mesh_build=0 materialized_q=0 applied=0 unloaded=0
+
+terrain streaming
+poll=0.24ms apply=0.12ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=18 decode=1 mesh_build=13 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.26ms apply=0.25ms mat_async=287.10ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=287.1ms async_max=287.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=18 decode=0 mesh_build=13 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (3,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=287.10ms
+  (3,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.23ms apply=0.21ms mat_async=280.17ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=280.2ms async_max=280.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=19 decode=0 mesh_build=12 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,0) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=280.17ms
+  (5,0) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.27ms apply=0.23ms mat_async=279.66ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=279.7ms async_max=279.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=18 decode=2 mesh_build=11 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (4,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=279.66ms
+  (4,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.25ms apply=0.25ms mat_async=289.04ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=289.0ms async_max=289.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=19 decode=2 mesh_build=10 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (6,0) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=289.04ms
+  (6,0) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.29ms apply=0.21ms mat_async=302.03ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=302.0ms async_max=302.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=20 decode=2 mesh_build=9 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=302.03ms
+  (5,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.28ms apply=0.21ms mat_async=314.01ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=314.0ms async_max=314.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=21 decode=2 mesh_build=8 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,1) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=314.01ms
+  (5,1) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.35ms apply=0.34ms mat_async=356.61ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=356.6ms async_max=356.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=22 decode=2 mesh_build=7 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (0,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=356.61ms
+  (0,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.24ms mat_async=366.25ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=366.2ms async_max=366.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=23 decode=2 mesh_build=6 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (6,1) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=366.25ms
+  (6,1) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.26ms apply=0.21ms mat_async=432.29ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=432.3ms async_max=432.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=18 decode=8 mesh_build=5 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (1,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=432.29ms
+  (1,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.21ms mat_async=372.74ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=372.7ms async_max=372.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=0 misses=1 builds_from_prefetch=1
+
+Queues:
+io=16 decode=11 mesh_build=4 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,2) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=372.74ms
+  (5,2) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.34ms apply=0.18ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=28 mesh_build=4 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.50ms apply=0.31ms mat_async=729.20ms lod_async=2.07ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=5 logged=9 async_avg=104.5ms async_max=390.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=5 Eighth=4 total=9
+
+Geometry:
+vertices=25481 indices=147456 triangles=49152 avg_vertices=2831 avg_triangles=5461
+
+LOD warmup:
+prefetch_req=0 hits=0 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=28 mesh_build=2 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (3,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=390.74ms
+  (4,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=338.46ms
+  (6,0) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (5,3) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.46ms
+  (5,1) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.40ms
+  (0,4) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.40ms
+  (6,1) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.40ms
+  (3,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (4,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.28ms apply=0.33ms mat_async=337.72ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=337.7ms async_max=337.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=5 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=27 mesh_build=4 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=337.72ms
+  (5,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.39ms apply=0.34ms mat_async=397.49ms lod_async=1.42ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=3 logged=5 async_avg=99.7ms async_max=397.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=3 Eighth=2 total=5
+
+Geometry:
+vertices=14853 indices=86016 triangles=28672 avg_vertices=2970 avg_triangles=5734
+
+LOD warmup:
+prefetch_req=0 hits=5 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=21 mesh_build=10 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (2,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=397.49ms
+  (3,3) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.40ms
+  (5,0) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.59ms
+  (1,4) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.44ms
+  (2,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.32ms apply=0.22ms mat_async=379.53ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=379.5ms async_max=379.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=12 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=20 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (0,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=379.53ms
+  (0,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.35ms mat_async=546.78ms lod_async=0.45ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=273.6ms async_max=546.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=1 hits=12 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=7 mesh_build=23 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (1,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=546.78ms
+  (5,4) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.45ms
+  (1,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.29ms apply=0.27ms mat_async=548.15ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=548.1ms async_max=548.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=13 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=5 mesh_build=26 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (2,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=548.15ms
+  (2,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=1.45ms apply=1.29ms mat_async=514.19ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=514.2ms async_max=514.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=2 Quarter=0 Eighth=0 total=2
+
+Geometry:
+vertices=33282 indices=196608 triangles=65536 avg_vertices=16641 avg_triangles=32768
+
+LOD warmup:
+prefetch_req=0 hits=13 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=4 mesh_build=27 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (0,0) LOD=Half reason=InitialMaterialize verts=16641 tris=32768 build=514.19ms
+  (0,0) LOD=Half reason=AppliedPrebuilt verts=16641 tris=32768 build=0.00ms
+
+HITCH
+poll=0.23ms apply=0.21ms mat_async=406.61ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=406.6ms async_max=406.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=13 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=5 mesh_build=26 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (6,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=406.61ms
+  (6,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=1.85ms apply=2.26ms mat_async=510.27ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=510.3ms async_max=510.3ms
+
+LOD builds (logged this frame):
+Full=2 Half=0 Quarter=0 Eighth=0 total=2
+
+Geometry:
+vertices=132098 indices=786432 triangles=262144 avg_vertices=66049 avg_triangles=131072
+
+LOD warmup:
+prefetch_req=1 hits=13 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=5 mesh_build=25 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (1,0) LOD=Full reason=InitialMaterialize verts=66049 tris=131072 build=510.27ms
+  (1,0) LOD=Full reason=AppliedPrebuilt verts=66049 tris=131072 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.21ms mat_async=367.71ms lod_async=0.39ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=184.0ms async_max=367.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=13 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=7 mesh_build=24 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (6,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=367.71ms
+  (2,4) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.39ms
+  (6,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.60ms apply=0.58ms mat_async=482.63ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=482.6ms async_max=482.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=2 Quarter=0 Eighth=0 total=2
+
+Geometry:
+vertices=33282 indices=196608 triangles=65536 avg_vertices=16641 avg_triangles=32768
+
+LOD warmup:
+prefetch_req=0 hits=14 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=8 mesh_build=23 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (2,0) LOD=Half reason=InitialMaterialize verts=16641 tris=32768 build=482.63ms
+  (2,0) LOD=Half reason=AppliedPrebuilt verts=16641 tris=32768 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.30ms mat_async=350.90ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=350.9ms async_max=350.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=14 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=9 mesh_build=22 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (7,0) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=350.90ms
+  (7,0) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.42ms apply=0.33ms mat_async=785.07ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=0 logged=4 async_avg=392.5ms async_max=442.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=0 hits=14 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=10 mesh_build=20 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (3,1) LOD=Quarter reason=InitialMaterialize verts=4225 tris=8192 build=342.98ms
+  (6,2) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=442.10ms
+  (3,1) LOD=Quarter reason=AppliedPrebuilt verts=4225 tris=8192 build=0.00ms
+  (6,2) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.28ms apply=0.25ms mat_async=804.27ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=0 logged=4 async_avg=402.1ms async_max=416.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=4 total=4
+
+Geometry:
+vertices=4356 indices=24576 triangles=8192 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=14 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=12 mesh_build=18 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (7,1) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=388.05ms
+  (3,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=416.23ms
+  (7,1) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (3,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.31ms apply=0.50ms mat_async=372.91ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=372.9ms async_max=372.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=0 total=2
+
+Geometry:
+vertices=8450 indices=49152 triangles=16384 avg_vertices=4225 avg_triangles=8192
+
+LOD warmup:
+prefetch_req=0 hits=14 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=17 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (0,2) LOD=Quarter reason=InitialMaterialize verts=4225 tris=8192 build=372.91ms
+  (0,2) LOD=Quarter reason=AppliedPrebuilt verts=4225 tris=8192 build=0.00ms
+
+HITCH
+poll=0.33ms apply=0.25ms mat_async=479.99ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=480.0ms async_max=480.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=14 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=13 mesh_build=17 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (4,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=479.99ms
+  (4,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.34ms apply=0.32ms mat_async=845.63ms lod_async=0.40ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=1 logged=5 async_avg=282.0ms async_max=475.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=3 Eighth=2 total=5
+
+Geometry:
+vertices=14853 indices=86016 triangles=28672 avg_vertices=2970 avg_triangles=5734
+
+LOD warmup:
+prefetch_req=0 hits=14 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=15 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (3,0) LOD=Quarter reason=InitialMaterialize verts=4225 tris=8192 build=474.99ms
+  (5,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=370.64ms
+  (1,5) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.40ms
+  (3,0) LOD=Quarter reason=AppliedPrebuilt verts=4225 tris=8192 build=0.00ms
+  (5,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.25ms apply=0.19ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=2 hits=15 misses=2 builds_from_prefetch=2
+
+Queues:
+io=2 decode=15 mesh_build=15 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.24ms apply=0.20ms mat_async=406.60ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=406.6ms async_max=406.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=15 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (4,1) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=406.60ms
+  (4,1) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=1.45ms apply=1.45ms mat_async=509.38ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=509.4ms async_max=509.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=2 Quarter=0 Eighth=0 total=2
+
+Geometry:
+vertices=33282 indices=196608 triangles=65536 avg_vertices=16641 avg_triangles=32768
+
+LOD warmup:
+prefetch_req=0 hits=15 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=18 mesh_build=13 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (0,1) LOD=Half reason=InitialMaterialize verts=16641 tris=32768 build=509.38ms
+  (0,1) LOD=Half reason=AppliedPrebuilt verts=16641 tris=32768 build=0.00ms
+
+HITCH
+poll=0.34ms apply=0.49ms mat_async=372.96ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=373.0ms async_max=373.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=15 misses=0 builds_from_prefetch=0
+
+Queues:
+io=1 decode=18 mesh_build=12 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (4,2) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=372.96ms
+  (4,2) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=1.01ms apply=0.65ms mat_async=820.08ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=0 logged=4 async_avg=410.0ms async_max=473.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=2 Quarter=0 Eighth=2 total=4
+
+Geometry:
+vertices=35460 indices=208896 triangles=69632 avg_vertices=8865 avg_triangles=17408
+
+LOD warmup:
+prefetch_req=0 hits=15 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=19 mesh_build=11 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (1,1) LOD=Half reason=InitialMaterialize verts=16641 tris=32768 build=473.57ms
+  (0,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=346.52ms
+  (1,1) LOD=Half reason=AppliedPrebuilt verts=16641 tris=32768 build=0.00ms
+  (0,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.80ms apply=1.29ms mat_async=468.78ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=468.8ms async_max=468.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=2 Quarter=0 Eighth=0 total=2
+
+Geometry:
+vertices=33282 indices=196608 triangles=65536 avg_vertices=16641 avg_triangles=32768
+
+LOD warmup:
+prefetch_req=0 hits=15 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=21 mesh_build=10 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (2,1) LOD=Half reason=InitialMaterialize verts=16641 tris=32768 build=468.78ms
+  (2,1) LOD=Half reason=AppliedPrebuilt verts=16641 tris=32768 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.23ms mat_async=410.94ms lod_async=0.47ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=205.7ms async_max=410.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=15 misses=0 builds_from_prefetch=0
+
+Queues:
+io=1 decode=21 mesh_build=9 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (1,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=410.94ms
+  (2,5) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.47ms
+  (1,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.35ms apply=0.33ms mat_async=940.49ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=0 logged=4 async_avg=470.2ms async_max=513.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=4 total=4
+
+Geometry:
+vertices=4356 indices=24576 triangles=8192 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=16 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=23 mesh_build=7 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (2,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=427.51ms
+  (6,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=512.99ms
+  (2,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (6,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.40ms apply=0.18ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=2 hits=16 misses=2 builds_from_prefetch=2
+
+Queues:
+io=2 decode=22 mesh_build=8 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.25ms apply=0.24ms mat_async=438.80ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=438.8ms async_max=438.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=16 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=24 mesh_build=7 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (4,0) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=438.80ms
+  (4,0) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.31ms apply=0.28ms mat_async=526.89ms lod_async=0.44ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=263.7ms async_max=526.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=3 Eighth=0 total=3
+
+Geometry:
+vertices=12675 indices=73728 triangles=24576 avg_vertices=4225 avg_triangles=8192
+
+LOD warmup:
+prefetch_req=0 hits=17 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=22 mesh_build=9 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (1,2) LOD=Quarter reason=InitialMaterialize verts=4225 tris=8192 build=526.89ms
+  (6,3) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.44ms
+  (1,2) LOD=Quarter reason=AppliedPrebuilt verts=4225 tris=8192 build=0.00ms
+
+terrain streaming
+poll=0.20ms apply=0.16ms mat_async=0.00ms lod_async=0.38ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=1 logged=1 async_avg=0.4ms async_max=0.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=0 total=1
+
+Geometry:
+vertices=4225 indices=24576 triangles=8192 avg_vertices=4225 avg_triangles=8192
+
+LOD warmup:
+prefetch_req=0 hits=18 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=21 mesh_build=11 materialized_q=0 applied=0 unloaded=0
+
+Per-mesh:
+  (7,0) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.38ms
+
+HITCH
+poll=0.28ms apply=0.20ms mat_async=0.00ms lod_async=3.83ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=2 logged=2 async_avg=1.9ms async_max=2.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=1 Quarter=1 Eighth=0 total=2
+
+Geometry:
+vertices=20866 indices=122880 triangles=40960 avg_vertices=10433 avg_triangles=20480
+
+LOD warmup:
+prefetch_req=0 hits=19 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=20 mesh_build=12 materialized_q=0 applied=0 unloaded=0
+
+Per-mesh:
+  (3,1) LOD=Half reason=LodPrefetch verts=16641 tris=32768 build=2.83ms
+  (6,2) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=1.00ms
+
+HITCH
+poll=0.33ms apply=0.28ms mat_async=517.70ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=517.7ms async_max=517.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=0 total=2
+
+Geometry:
+vertices=8450 indices=49152 triangles=16384 avg_vertices=4225 avg_triangles=8192
+
+LOD warmup:
+prefetch_req=0 hits=21 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=19 mesh_build=12 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (2,2) LOD=Quarter reason=InitialMaterialize verts=4225 tris=8192 build=517.70ms
+  (2,2) LOD=Quarter reason=AppliedPrebuilt verts=4225 tris=8192 build=0.00ms
+
+HITCH
+poll=0.26ms apply=0.26ms mat_async=579.59ms lod_async=0.46ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=290.0ms async_max=579.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=23 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (7,2) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=579.59ms
+  (0,5) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.46ms
+  (7,2) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.65ms apply=0.57ms mat_async=1052.50ms lod_async=2.31ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=3 logged=7 async_avg=211.0ms async_max=545.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=1 Quarter=4 Eighth=2 total=7
+
+Geometry:
+vertices=35719 indices=208896 triangles=69632 avg_vertices=5102 avg_triangles=9947
+
+LOD warmup:
+prefetch_req=1 hits=24 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=15 mesh_build=14 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (3,2) LOD=Quarter reason=InitialMaterialize verts=4225 tris=8192 build=545.44ms
+  (7,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=507.06ms
+  (0,2) LOD=Half reason=LodPrefetch verts=16641 tris=32768 build=1.43ms
+  (4,5) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.47ms
+  (4,1) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (3,2) LOD=Quarter reason=AppliedPrebuilt verts=4225 tris=8192 build=0.00ms
+  (7,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.21ms apply=0.20ms mat_async=0.00ms lod_async=0.37ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=1 logged=1 async_avg=0.4ms async_max=0.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=0 total=1
+
+Geometry:
+vertices=4225 indices=24576 triangles=8192 avg_vertices=4225 avg_triangles=8192
+
+LOD warmup:
+prefetch_req=0 hits=29 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=19 materialized_q=0 applied=0 unloaded=0
+
+Per-mesh:
+  (4,2) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.37ms
+
+HITCH
+poll=0.26ms apply=0.25ms mat_async=510.29ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=510.3ms async_max=510.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=30 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (7,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=510.29ms
+  (7,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.23ms apply=0.20ms mat_async=550.48ms lod_async=0.83ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=183.8ms async_max=550.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=0 hits=30 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=20 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (1,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=550.48ms
+  (0,3) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.43ms
+  (4,0) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (1,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.32ms apply=0.54ms mat_async=445.76ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=445.8ms async_max=445.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=33 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=9 mesh_build=22 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (2,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=445.76ms
+  (2,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.20ms apply=0.18ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=33 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=10 mesh_build=22 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.23ms apply=0.36ms mat_async=344.31ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=344.3ms async_max=344.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=33 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=10 mesh_build=21 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (3,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=344.31ms
+  (3,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.39ms apply=0.20ms mat_async=480.33ms lod_async=0.80ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=160.4ms async_max=480.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=1 hits=33 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=10 mesh_build=20 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (0,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=480.33ms
+  (2,3) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.39ms
+  (6,5) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.40ms
+  (0,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.23ms apply=0.22ms mat_async=386.32ms lod_async=1.54ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=193.9ms async_max=386.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=1 Quarter=0 Eighth=2 total=3
+
+Geometry:
+vertices=18819 indices=110592 triangles=36864 avg_vertices=6273 avg_triangles=12288
+
+LOD warmup:
+prefetch_req=1 hits=35 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=10 mesh_build=20 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (4,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=386.32ms
+  (1,2) LOD=Half reason=LodPrefetch verts=16641 tris=32768 build=1.54ms
+  (4,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.29ms apply=0.27ms mat_async=349.15ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=349.1ms async_max=349.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=36 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=10 mesh_build=21 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=349.15ms
+  (5,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.28ms apply=0.23ms mat_async=485.66ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=485.7ms async_max=485.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=36 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=10 mesh_build=20 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,1) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=485.66ms
+  (8,1) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.20ms mat_async=377.61ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=377.6ms async_max=377.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=36 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=12 mesh_build=19 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (6,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=377.61ms
+  (6,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.22ms mat_async=448.28ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=448.3ms async_max=448.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=36 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=12 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,2) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=448.28ms
+  (8,2) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.25ms apply=0.30ms mat_async=343.80ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=343.8ms async_max=343.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=36 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,0) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=343.80ms
+  (8,0) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.38ms apply=0.30ms mat_async=837.20ms lod_async=1.43ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=1 logged=5 async_avg=279.5ms async_max=478.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=1 Quarter=0 Eighth=4 total=5
+
+Geometry:
+vertices=20997 indices=122880 triangles=40960 avg_vertices=4199 avg_triangles=8192
+
+LOD warmup:
+prefetch_req=1 hits=36 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=13 mesh_build=16 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (8,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=478.75ms
+  (7,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=358.45ms
+  (2,2) LOD=Half reason=LodPrefetch verts=16641 tris=32768 build=1.43ms
+  (8,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (7,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.20ms mat_async=347.12ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=347.1ms async_max=347.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=37 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,0) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=347.12ms
+  (9,0) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.23ms apply=0.23ms mat_async=452.96ms lod_async=0.42ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=226.7ms async_max=453.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=37 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (7,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=452.96ms
+  (7,2) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.42ms
+  (7,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.23ms apply=0.20ms mat_async=338.59ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=338.6ms async_max=338.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=38 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (2,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=338.59ms
+  (2,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.35ms apply=0.26ms mat_async=809.38ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=0 logged=4 async_avg=404.7ms async_max=420.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=4 total=4
+
+Geometry:
+vertices=4356 indices=24576 triangles=8192 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=38 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=13 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (8,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=420.36ms
+  (3,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=389.02ms
+  (8,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (3,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.35ms apply=0.33ms mat_async=818.42ms lod_async=0.39ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=1 logged=5 async_avg=272.9ms async_max=459.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=4 total=5
+
+Geometry:
+vertices=8581 indices=49152 triangles=16384 avg_vertices=1716 avg_triangles=3276
+
+LOD warmup:
+prefetch_req=0 hits=38 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=19 mesh_build=11 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (8,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=459.35ms
+  (4,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=359.08ms
+  (1,6) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.39ms
+  (8,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (4,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.28ms apply=0.27ms mat_async=364.09ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=364.1ms async_max=364.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=39 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=21 mesh_build=10 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=364.09ms
+  (5,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.23ms apply=0.27ms mat_async=461.98ms lod_async=2.12ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=154.7ms async_max=462.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=1 Quarter=1 Eighth=2 total=4
+
+Geometry:
+vertices=23044 indices=135168 triangles=45056 avg_vertices=5761 avg_triangles=11264
+
+LOD warmup:
+prefetch_req=1 hits=39 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=20 mesh_build=10 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (0,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=461.98ms
+  (3,2) LOD=Half reason=LodPrefetch verts=16641 tris=32768 build=1.67ms
+  (7,3) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.44ms
+  (0,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.23ms apply=0.19ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=41 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=20 mesh_build=12 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.26ms apply=0.20ms mat_async=382.53ms lod_async=0.43ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=191.5ms async_max=382.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=41 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=20 mesh_build=11 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (6,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=382.53ms
+  (2,6) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.43ms
+  (6,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.27ms apply=0.26ms mat_async=468.57ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=468.6ms async_max=468.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=43 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=20 mesh_build=11 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=468.57ms
+  (8,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.21ms apply=0.19ms mat_async=346.33ms lod_async=0.42ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=173.4ms async_max=346.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=1 hits=43 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=19 mesh_build=11 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (7,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=346.33ms
+  (0,6) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.42ms
+  (7,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.37ms apply=0.20ms mat_async=449.33ms lod_async=0.89ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=150.1ms async_max=449.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=1 hits=44 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=20 mesh_build=10 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (1,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=449.33ms
+  (7,5) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.45ms
+  (8,1) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.44ms
+  (1,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.37ms apply=0.21ms mat_async=349.28ms lod_async=0.41ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=174.8ms async_max=349.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=1 hits=46 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=20 mesh_build=10 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,1) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=349.28ms
+  (6,6) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (9,1) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.28ms apply=0.21ms mat_async=357.03ms lod_async=0.46ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=178.7ms async_max=357.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=47 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=21 mesh_build=10 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=357.03ms
+  (4,6) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.46ms
+  (8,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.20ms mat_async=508.17ms lod_async=0.43ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=254.3ms async_max=508.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=1 hits=48 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=20 mesh_build=10 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,2) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=508.17ms
+  (5,6) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.43ms
+  (9,2) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.23ms apply=0.16ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=57 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=12 mesh_build=20 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.30ms apply=0.26ms mat_async=330.26ms lod_async=1.06ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=110.4ms async_max=330.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=0 hits=57 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=20 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=330.26ms
+  (5,7) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.61ms
+  (0,7) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.45ms
+  (9,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.43ms apply=0.21ms mat_async=459.74ms lod_async=0.36ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=230.0ms async_max=459.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=59 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=12 mesh_build=19 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=459.74ms
+  (9,0) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.36ms
+  (9,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.25ms apply=0.21ms mat_async=390.56ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=390.6ms async_max=390.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=60 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=12 mesh_build=19 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=390.56ms
+  (9,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.37ms apply=0.24ms mat_async=873.54ms lod_async=0.38ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=1 logged=5 async_avg=291.3ms async_max=506.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=4 total=5
+
+Geometry:
+vertices=8581 indices=49152 triangles=16384 avg_vertices=1716 avg_triangles=3276
+
+LOD warmup:
+prefetch_req=0 hits=60 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=17 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (9,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=506.63ms
+  (9,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=366.92ms
+  (7,4) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.38ms
+  (9,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (9,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.30ms apply=0.21ms mat_async=538.08ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=538.1ms async_max=538.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=63 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=20 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (0,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=538.08ms
+  (0,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.25ms apply=0.26ms mat_async=1125.18ms lod_async=1.36ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=3 logged=7 async_avg=225.3ms async_max=565.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=3 Eighth=4 total=7
+
+Geometry:
+vertices=17031 indices=98304 triangles=32768 avg_vertices=2433 avg_triangles=4681
+
+LOD warmup:
+prefetch_req=0 hits=63 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=19 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (1,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=565.02ms
+  (3,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=560.17ms
+  (8,6) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.47ms
+  (7,7) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.46ms
+  (8,7) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.43ms
+  (1,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (3,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.51ms apply=0.28ms mat_async=517.76ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=517.8ms async_max=517.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=2 hits=66 misses=2 builds_from_prefetch=2
+
+Queues:
+io=2 decode=11 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=517.76ms
+  (10,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.27ms apply=0.20ms mat_async=564.21ms lod_async=0.63ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=282.4ms async_max=564.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=1 hits=66 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=12 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=564.21ms
+  (1,7) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.63ms
+  (5,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.32ms apply=0.23ms mat_async=415.61ms lod_async=0.42ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=208.0ms async_max=415.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=1 hits=67 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=12 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (4,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=415.61ms
+  (9,1) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.42ms
+  (4,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.28ms apply=0.18ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=68 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=18 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.26ms apply=0.26ms mat_async=867.23ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=0 logged=4 async_avg=433.6ms async_max=455.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=4 total=4
+
+Geometry:
+vertices=4356 indices=24576 triangles=8192 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=68 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=16 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (2,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=455.25ms
+  (6,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=411.98ms
+  (2,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (6,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.22ms mat_async=385.13ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=385.1ms async_max=385.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=68 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (7,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=385.13ms
+  (7,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.25ms apply=0.20ms mat_async=463.70ms lod_async=0.40ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=232.1ms async_max=463.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=69 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=463.70ms
+  (9,7) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.40ms
+  (10,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.29ms apply=0.22ms mat_async=332.71ms lod_async=0.42ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=166.6ms async_max=332.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=1 hits=70 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=14 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=332.71ms
+  (9,6) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.42ms
+  (10,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.22ms mat_async=367.62ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=367.6ms async_max=367.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=71 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=367.62ms
+  (10,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.29ms apply=0.27ms mat_async=557.46ms lod_async=0.59ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=279.0ms async_max=557.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=1 hits=71 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=14 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,1) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=557.46ms
+  (9,4) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.59ms
+  (10,1) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.23ms mat_async=446.46ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=446.5ms async_max=446.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=72 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=14 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=446.46ms
+  (8,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.25ms apply=0.17ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=1 hits=72 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=15 mesh_build=16 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.26ms apply=0.25ms mat_async=904.08ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=0 logged=4 async_avg=452.0ms async_max=506.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=4 total=4
+
+Geometry:
+vertices=4356 indices=24576 triangles=8192 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=72 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=14 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (10,0) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=397.26ms
+  (10,2) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=506.82ms
+  (10,0) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (10,2) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.38ms mat_async=380.14ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=380.1ms async_max=380.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=2 hits=72 misses=2 builds_from_prefetch=2
+
+Queues:
+io=2 decode=16 mesh_build=13 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=380.14ms
+  (10,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.32ms apply=0.20ms mat_async=569.77ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=569.8ms async_max=569.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=72 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=18 mesh_build=12 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=569.77ms
+  (10,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.41ms apply=0.35ms mat_async=891.46ms lod_async=1.73ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=3 logged=7 async_avg=178.6ms async_max=468.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=3 Eighth=4 total=7
+
+Geometry:
+vertices=17031 indices=98304 triangles=32768 avg_vertices=2433 avg_triangles=4681
+
+LOD warmup:
+prefetch_req=1 hits=72 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=18 mesh_build=11 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (9,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=422.84ms
+  (0,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=468.62ms
+  (9,3) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.52ms
+  (9,5) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.53ms
+  (0,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.67ms
+  (9,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (0,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.37ms apply=0.35ms mat_async=457.44ms lod_async=0.91ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=152.8ms async_max=457.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=2 hits=75 misses=2 builds_from_prefetch=2
+
+Queues:
+io=2 decode=16 mesh_build=13 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (2,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=457.44ms
+  (1,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.49ms
+  (3,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (2,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.30ms apply=0.30ms mat_async=528.92ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=528.9ms async_max=528.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=77 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=17 mesh_build=13 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (1,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=528.92ms
+  (1,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.19ms mat_async=525.47ms lod_async=0.42ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=262.9ms async_max=525.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=1 hits=77 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=16 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (3,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=525.47ms
+  (10,4) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.42ms
+  (3,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.30ms apply=0.45ms mat_async=1435.85ms lod_async=1.16ms mesh_assets=0.01ms spawn=0.01ms
+
+Meshes:
+applied=3 prebuilt=3 mat_async_completed=3 lod_async_completed=3 logged=9 async_avg=239.5ms async_max=509.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=3 Eighth=6 total=9
+
+Geometry:
+vertices=19209 indices=110592 triangles=36864 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=78 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=13 materialized_q=0 applied=3 unloaded=0
+
+Per-mesh:
+  (4,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=438.09ms
+  (7,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=488.72ms
+  (8,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=509.04ms
+  (5,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.38ms
+  (4,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.37ms
+  (10,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (4,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (7,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (8,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.21ms apply=0.16ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=82 misses=0 builds_from_prefetch=0
+
+Queues:
+io=2 decode=15 mesh_build=15 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.28ms apply=0.24ms mat_async=381.57ms lod_async=2.21ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=127.9ms async_max=381.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=0 hits=82 misses=0 builds_from_prefetch=0
+
+Queues:
+io=2 decode=15 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=381.57ms
+  (2,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.50ms
+  (6,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=1.71ms
+  (5,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.21ms apply=0.19ms mat_async=347.73ms lod_async=0.46ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=174.1ms async_max=347.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=84 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=347.73ms
+  (10,6) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.46ms
+  (9,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.33ms apply=0.26ms mat_async=901.03ms lod_async=1.18ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=3 logged=7 async_avg=180.4ms async_max=459.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=3 Eighth=4 total=7
+
+Geometry:
+vertices=17031 indices=98304 triangles=32768 avg_vertices=2433 avg_triangles=4681
+
+LOD warmup:
+prefetch_req=1 hits=85 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=15 mesh_build=14 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (6,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=441.28ms
+  (10,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=459.75ms
+  (7,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.40ms
+  (10,0) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.43ms
+  (10,2) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.35ms
+  (6,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (10,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.21ms apply=0.16ms mat_async=0.00ms lod_async=2.29ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=5 logged=5 async_avg=0.5ms async_max=0.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=5 Eighth=0 total=5
+
+Geometry:
+vertices=21125 indices=122880 triangles=40960 avg_vertices=4225 avg_triangles=8192
+
+LOD warmup:
+prefetch_req=0 hits=88 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=18 materialized_q=0 applied=0 unloaded=0
+
+Per-mesh:
+  (10,1) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.38ms
+  (8,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.52ms
+  (10,7) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (9,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.56ms
+  (0,9) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.42ms
+
+HITCH
+poll=0.30ms apply=0.27ms mat_async=486.78ms lod_async=0.40ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=243.6ms async_max=486.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=93 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,2) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=486.78ms
+  (10,3) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.40ms
+  (11,2) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.39ms apply=0.23ms mat_async=572.10ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=572.1ms async_max=572.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=94 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=13 mesh_build=17 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=572.10ms
+  (11,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.32ms apply=0.29ms mat_async=536.27ms lod_async=0.59ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=268.4ms async_max=536.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=1 hits=94 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=11 mesh_build=19 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,0) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=536.27ms
+  (2,9) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.59ms
+  (11,0) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.53ms apply=0.23ms mat_async=561.05ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=561.1ms async_max=561.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=95 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=12 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,1) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=561.05ms
+  (11,1) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.25ms mat_async=559.26ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=559.3ms async_max=559.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=95 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=13 mesh_build=17 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=559.26ms
+  (11,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.32ms apply=0.28ms mat_async=485.68ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=485.7ms async_max=485.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=95 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=14 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=485.68ms
+  (11,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.49ms apply=0.43ms mat_async=489.89ms lod_async=1.20ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=3 logged=5 async_avg=122.8ms async_max=489.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=3 Eighth=2 total=5
+
+Geometry:
+vertices=14853 indices=86016 triangles=28672 avg_vertices=2970 avg_triangles=5734
+
+LOD warmup:
+prefetch_req=1 hits=95 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=13 mesh_build=17 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (0,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=489.89ms
+  (1,9) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.44ms
+  (7,9) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.38ms
+  (8,9) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.38ms
+  (0,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.27ms apply=0.30ms mat_async=335.21ms lod_async=0.45ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=167.8ms async_max=335.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=99 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=12 mesh_build=19 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (2,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=335.21ms
+  (5,9) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.45ms
+  (2,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.38ms apply=0.34ms mat_async=907.16ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=0 logged=4 async_avg=453.6ms async_max=467.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=4 total=4
+
+Geometry:
+vertices=4356 indices=24576 triangles=8192 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=100 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=17 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (11,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=439.29ms
+  (11,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=467.87ms
+  (11,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (11,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.27ms apply=0.22ms mat_async=544.31ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=544.3ms async_max=544.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=2 hits=100 misses=2 builds_from_prefetch=2
+
+Queues:
+io=2 decode=12 mesh_build=17 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=544.31ms
+  (11,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.25ms apply=0.22ms mat_async=509.23ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=509.2ms async_max=509.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=100 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=14 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=509.23ms
+  (11,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.31ms apply=0.18ms mat_async=536.37ms lod_async=0.41ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=268.4ms async_max=536.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=1 hits=100 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=14 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (1,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=536.37ms
+  (4,9) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (1,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.44ms apply=0.25ms mat_async=1036.46ms lod_async=3.41ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=3 logged=7 async_avg=208.0ms async_max=543.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=3 Eighth=4 total=7
+
+Geometry:
+vertices=17031 indices=98304 triangles=32768 avg_vertices=2433 avg_triangles=4681
+
+LOD warmup:
+prefetch_req=0 hits=101 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=15 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (4,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=543.75ms
+  (6,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=492.72ms
+  (9,9) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=2.57ms
+  (6,9) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.42ms
+  (10,9) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.43ms
+  (4,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (6,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.18ms apply=0.26ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=2 hits=104 misses=2 builds_from_prefetch=2
+
+Queues:
+io=2 decode=14 mesh_build=16 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.25ms apply=0.23ms mat_async=449.26ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=449.3ms async_max=449.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=104 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=449.26ms
+  (5,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.21ms mat_async=377.74ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=377.7ms async_max=377.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=104 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (3,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=377.74ms
+  (3,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.19ms mat_async=371.15ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=371.1ms async_max=371.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=105 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (7,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=371.15ms
+  (7,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.45ms mat_async=314.31ms lod_async=0.75ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=157.5ms async_max=314.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=107 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=314.31ms
+  (11,2) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.75ms
+  (8,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.17ms apply=0.15ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=108 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=16 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.22ms apply=0.19ms mat_async=322.87ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=322.9ms async_max=322.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=108 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=322.87ms
+  (12,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.26ms mat_async=321.12ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=321.1ms async_max=321.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=108 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,0) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=321.12ms
+  (12,0) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.23ms apply=0.19ms mat_async=328.14ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=328.1ms async_max=328.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=108 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=18 mesh_build=13 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=328.14ms
+  (9,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.26ms apply=0.23ms mat_async=329.48ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=329.5ms async_max=329.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=109 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=18 mesh_build=13 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=329.48ms
+  (10,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.21ms apply=0.19ms mat_async=428.78ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=428.8ms async_max=428.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=109 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=19 mesh_build=12 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,1) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=428.78ms
+  (12,1) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.16ms apply=0.14ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=109 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=20 mesh_build=12 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.21ms apply=0.18ms mat_async=408.04ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=408.0ms async_max=408.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=109 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=20 mesh_build=11 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=408.04ms
+  (11,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.19ms apply=0.16ms mat_async=0.00ms lod_async=2.88ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=2 logged=2 async_avg=1.4ms async_max=2.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=0 total=2
+
+Geometry:
+vertices=8450 indices=49152 triangles=16384 avg_vertices=4225 avg_triangles=8192
+
+LOD warmup:
+prefetch_req=0 hits=110 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=19 mesh_build=13 materialized_q=0 applied=0 unloaded=0
+
+Per-mesh:
+  (11,4) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.37ms
+  (11,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=2.51ms
+
+HITCH
+poll=0.23ms apply=0.17ms mat_async=294.20ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=294.2ms async_max=294.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=113 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,2) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=294.20ms
+  (12,2) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.20ms apply=0.19ms mat_async=275.48ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=275.5ms async_max=275.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=113 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=275.48ms
+  (12,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.21ms apply=0.16ms mat_async=292.85ms lod_async=0.42ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=146.6ms async_max=292.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=114 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=292.85ms
+  (2,10) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.42ms
+  (12,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.17ms apply=0.14ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=116 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=17 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.22ms apply=0.58ms mat_async=291.79ms lod_async=0.74ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=97.5ms async_max=291.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=0 hits=116 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=291.79ms
+  (11,6) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.38ms
+  (7,10) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.36ms
+  (12,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.27ms apply=0.23ms mat_async=295.96ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=296.0ms async_max=296.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=118 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=15 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=295.96ms
+  (12,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.19ms apply=0.18ms mat_async=297.89ms lod_async=0.99ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=99.6ms async_max=297.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=0 hits=118 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=297.89ms
+  (4,10) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.55ms
+  (6,10) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.44ms
+  (12,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.21ms mat_async=290.66ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=290.7ms async_max=290.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=120 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (1,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=290.66ms
+  (1,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.22ms mat_async=352.94ms lod_async=0.54ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=176.7ms async_max=352.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=120 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (2,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=352.94ms
+  (8,10) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.54ms
+  (2,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.31ms apply=0.33ms mat_async=363.28ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=363.3ms async_max=363.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=121 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=18 mesh_build=13 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=363.28ms
+  (12,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.25ms apply=0.18ms mat_async=0.00ms lod_async=0.71ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=1 logged=1 async_avg=0.7ms async_max=0.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=0 total=1
+
+Geometry:
+vertices=4225 indices=24576 triangles=8192 avg_vertices=4225 avg_triangles=8192
+
+LOD warmup:
+prefetch_req=0 hits=122 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=15 materialized_q=0 applied=0 unloaded=0
+
+Per-mesh:
+  (5,10) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.71ms
+
+HITCH
+poll=0.25ms apply=0.24ms mat_async=351.11ms lod_async=0.43ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=175.8ms async_max=351.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=126 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=12 mesh_build=19 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (0,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=351.11ms
+  (12,3) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.43ms
+  (0,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.23ms apply=0.17ms mat_async=335.22ms lod_async=0.41ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=167.8ms async_max=335.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=127 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (3,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=335.22ms
+  (10,10) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (3,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.27ms apply=0.26ms mat_async=282.22ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=282.2ms async_max=282.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=130 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=10 mesh_build=21 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (6,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=282.22ms
+  (6,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.19ms apply=0.17ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=130 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=21 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.28ms apply=0.36ms mat_async=760.53ms lod_async=0.41ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=1 logged=5 async_avg=253.6ms async_max=388.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=4 total=5
+
+Geometry:
+vertices=8581 indices=49152 triangles=16384 avg_vertices=1716 avg_triangles=3276
+
+LOD warmup:
+prefetch_req=0 hits=130 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=19 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (4,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=372.21ms
+  (11,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=388.32ms
+  (12,4) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (4,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (11,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.27ms apply=0.28ms mat_async=464.90ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=464.9ms async_max=464.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=132 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=20 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=464.90ms
+  (12,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.21ms apply=0.17ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=132 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=12 mesh_build=20 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.28ms apply=0.25ms mat_async=555.60ms lod_async=0.42ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=278.0ms async_max=555.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=132 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=12 mesh_build=19 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=555.60ms
+  (12,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.42ms
+  (13,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.50ms apply=0.39ms mat_async=518.54ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=518.5ms async_max=518.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=133 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=12 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=518.54ms
+  (5,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.26ms apply=0.22ms mat_async=476.30ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=476.3ms async_max=476.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=133 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (7,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=476.30ms
+  (7,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.44ms apply=0.25ms mat_async=468.30ms lod_async=0.41ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=234.4ms async_max=468.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=133 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=17 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,0) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=468.30ms
+  (1,11) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (13,0) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.32ms apply=0.25ms mat_async=401.91ms lod_async=1.07ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=134.3ms async_max=401.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=0 hits=135 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=401.91ms
+  (12,2) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.59ms
+  (12,9) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.47ms
+  (8,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.28ms apply=0.27ms mat_async=471.59ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=471.6ms async_max=471.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=138 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=20 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=471.59ms
+  (13,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.29ms apply=0.27ms mat_async=571.42ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=571.4ms async_max=571.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=138 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=12 mesh_build=19 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=571.42ms
+  (9,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.25ms apply=0.20ms mat_async=488.71ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=488.7ms async_max=488.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=138 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=488.71ms
+  (12,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.21ms apply=0.19ms mat_async=482.12ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=482.1ms async_max=482.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=138 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=17 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=482.12ms
+  (10,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.29ms apply=0.27ms mat_async=408.41ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=408.4ms async_max=408.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=138 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=14 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=408.41ms
+  (13,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.18ms mat_async=378.77ms lod_async=0.47ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=189.6ms async_max=378.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=138 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=378.77ms
+  (6,11) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.47ms
+  (13,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.27ms apply=0.19ms mat_async=353.43ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=353.4ms async_max=353.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=139 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,1) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=353.43ms
+  (13,1) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.18ms apply=0.16ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=139 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=15 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.32ms apply=0.24ms mat_async=305.36ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=305.4ms async_max=305.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=139 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=305.36ms
+  (13,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.20ms apply=0.24ms mat_async=312.77ms lod_async=1.36ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=104.7ms async_max=312.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=1 hits=139 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=17 mesh_build=13 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (2,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=312.77ms
+  (4,11) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.80ms
+  (11,11) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.56ms
+  (2,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.26ms apply=0.27ms mat_async=313.36ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=313.4ms async_max=313.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=141 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=19 mesh_build=12 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,2) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=313.36ms
+  (13,2) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.29ms apply=0.27ms mat_async=316.69ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=316.7ms async_max=316.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=141 misses=1 builds_from_prefetch=1
+
+Queues:
+io=1 decode=19 mesh_build=11 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (3,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=316.69ms
+  (3,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.25ms apply=0.28ms mat_async=383.92ms lod_async=0.97ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=128.3ms async_max=383.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=0 hits=142 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=18 mesh_build=13 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=383.92ms
+  (0,11) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.54ms
+  (13,3) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.43ms
+  (13,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.20ms apply=0.18ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=145 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=16 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.23ms apply=0.20ms mat_async=417.77ms lod_async=0.45ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=209.1ms async_max=417.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=145 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (4,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=417.77ms
+  (5,11) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.45ms
+  (4,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.26ms mat_async=509.08ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=509.1ms async_max=509.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=148 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (1,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=509.08ms
+  (1,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.27ms apply=0.24ms mat_async=472.80ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=472.8ms async_max=472.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=149 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=472.80ms
+  (13,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.19ms apply=0.15ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=149 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=16 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.20ms apply=0.54ms mat_async=466.43ms lod_async=0.60ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=233.5ms async_max=466.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=149 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=466.43ms
+  (13,1) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.60ms
+  (10,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.26ms apply=0.20ms mat_async=390.36ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=390.4ms async_max=390.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=151 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=390.36ms
+  (13,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.19ms mat_async=313.44ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=313.4ms async_max=313.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=155 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=20 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=313.44ms
+  (5,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.20ms apply=0.19ms mat_async=296.04ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=296.0ms async_max=296.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=155 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=12 mesh_build=19 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=296.04ms
+  (11,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.18ms apply=0.16ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=155 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=19 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.31ms apply=0.21ms mat_async=276.81ms lod_async=0.36ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=138.6ms async_max=276.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=155 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (6,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=276.81ms
+  (8,11) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.36ms
+  (6,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.19ms apply=0.17ms mat_async=280.22ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=280.2ms async_max=280.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=156 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=280.22ms
+  (12,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.29ms apply=0.20ms mat_async=270.67ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=270.7ms async_max=270.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=156 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=17 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=270.67ms
+  (13,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.23ms apply=0.23ms mat_async=274.80ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=274.8ms async_max=274.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=156 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=274.80ms
+  (13,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.21ms apply=0.15ms mat_async=292.79ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=292.8ms async_max=292.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=156 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (7,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=292.79ms
+  (7,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.19ms apply=0.21ms mat_async=290.72ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=290.7ms async_max=290.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=156 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,0) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=290.72ms
+  (14,0) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.21ms apply=0.15ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=156 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=18 mesh_build=14 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.21ms apply=0.22ms mat_async=304.90ms lod_async=0.42ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=152.7ms async_max=304.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=156 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=18 mesh_build=13 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (0,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=304.90ms
+  (13,4) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.42ms
+  (0,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.21ms apply=0.18ms mat_async=294.96ms lod_async=0.56ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=147.8ms async_max=295.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=157 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=19 mesh_build=12 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=294.96ms
+  (13,7) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.56ms
+  (8,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.27ms apply=0.19ms mat_async=254.30ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=254.3ms async_max=254.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=162 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=17 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=254.30ms
+  (9,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.21ms apply=0.25ms mat_async=255.38ms lod_async=0.25ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=127.8ms async_max=255.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=163 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,1) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=255.38ms
+  (4,12) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.25ms
+  (14,1) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.19ms apply=0.20ms mat_async=259.17ms lod_async=0.48ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=129.8ms async_max=259.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=165 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=259.17ms
+  (12,12) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.48ms
+  (14,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.18ms apply=0.15ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=167 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=19 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.23ms apply=0.24ms mat_async=264.01ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=264.0ms async_max=264.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=168 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=12 mesh_build=19 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=264.01ms
+  (14,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.25ms apply=0.15ms mat_async=288.64ms lod_async=0.41ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=144.5ms async_max=288.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=171 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=8 mesh_build=23 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=288.64ms
+  (13,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (14,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.26ms apply=0.18ms mat_async=317.14ms lod_async=0.66ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=158.9ms async_max=317.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=173 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=7 mesh_build=24 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=317.14ms
+  (8,12) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.66ms
+  (14,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.25ms apply=0.17ms mat_async=328.96ms lod_async=0.38ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=164.7ms async_max=329.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=174 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=7 mesh_build=24 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=328.96ms
+  (13,9) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.38ms
+  (14,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.17ms apply=0.15ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=175 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=8 mesh_build=24 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.26ms apply=0.16ms mat_async=313.31ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=313.3ms async_max=313.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=175 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=7 mesh_build=24 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (3,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=313.31ms
+  (3,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.25ms apply=0.20ms mat_async=296.34ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=296.3ms async_max=296.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=175 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=8 mesh_build=23 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=296.34ms
+  (14,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.17ms mat_async=295.75ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=295.8ms async_max=295.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=175 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=9 mesh_build=22 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=295.75ms
+  (14,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.21ms mat_async=301.03ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=301.0ms async_max=301.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=175 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=10 mesh_build=21 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,2) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=301.03ms
+  (14,2) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.20ms apply=0.22ms mat_async=310.43ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=310.4ms async_max=310.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=175 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=20 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=310.43ms
+  (14,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.38ms apply=0.18ms mat_async=284.67ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=284.7ms async_max=284.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=175 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=12 mesh_build=19 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (0,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=284.67ms
+  (0,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.25ms apply=0.19ms mat_async=287.07ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=287.1ms async_max=287.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=175 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=13 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=287.07ms
+  (14,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.20ms apply=0.18ms mat_async=310.15ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=310.1ms async_max=310.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=175 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=17 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=310.15ms
+  (14,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.18ms apply=0.21ms mat_async=321.58ms lod_async=0.41ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=161.0ms async_max=321.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=175 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=321.58ms
+  (9,12) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (9,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.17ms mat_async=330.19ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=330.2ms async_max=330.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=176 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (1,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=330.19ms
+  (1,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.26ms apply=0.20ms mat_async=311.84ms lod_async=0.00ms mesh_assets=0.01ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=311.8ms async_max=311.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=176 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=16 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=311.84ms
+  (10,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.25ms mat_async=290.54ms lod_async=1.21ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=145.9ms async_max=290.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=176 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (2,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=290.54ms
+  (5,12) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=1.21ms
+  (2,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.18ms apply=0.16ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=177 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=15 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.23ms apply=0.22ms mat_async=283.95ms lod_async=0.40ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=142.2ms async_max=283.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=177 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=283.95ms
+  (14,1) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.40ms
+  (11,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.31ms mat_async=291.79ms lod_async=0.43ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=146.1ms async_max=291.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=178 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,3) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=291.79ms
+  (14,11) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.43ms
+  (15,3) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.30ms apply=0.19ms mat_async=288.41ms lod_async=0.47ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=144.4ms async_max=288.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=179 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (4,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=288.41ms
+  (14,4) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.47ms
+  (4,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.16ms mat_async=292.18ms lod_async=0.41ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=146.3ms async_max=292.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=180 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=292.18ms
+  (3,13) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (8,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.25ms apply=0.23ms mat_async=271.23ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=271.2ms async_max=271.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=182 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=17 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=271.23ms
+  (12,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.17ms apply=0.15ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=185 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=15 mesh_build=17 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.34ms apply=0.16ms mat_async=319.28ms lod_async=1.14ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=106.8ms async_max=319.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=0 hits=185 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=14 mesh_build=17 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=319.28ms
+  (14,9) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.54ms
+  (0,13) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.60ms
+  (13,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.26ms apply=0.15ms mat_async=264.96ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=265.0ms async_max=265.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=190 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=10 mesh_build=21 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=264.96ms
+  (14,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.21ms apply=0.22ms mat_async=276.73ms lod_async=0.37ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=138.5ms async_max=276.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=190 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=11 mesh_build=20 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,4) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=276.73ms
+  (1,13) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.37ms
+  (15,4) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.21ms apply=0.17ms mat_async=273.41ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=273.4ms async_max=273.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=1 hits=191 misses=1 builds_from_prefetch=1
+
+Queues:
+io=0 decode=11 mesh_build=19 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (5,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=273.41ms
+  (5,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.23ms apply=0.17ms mat_async=268.39ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=268.4ms async_max=268.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=193 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=8 mesh_build=21 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,0) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=268.39ms
+  (15,0) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.18ms apply=0.15ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=193 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=8 mesh_build=21 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.26ms apply=0.20ms mat_async=261.10ms lod_async=0.27ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=130.7ms async_max=261.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=193 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=8 mesh_build=20 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,9) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=261.10ms
+  (11,13) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.27ms
+  (15,9) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.20ms apply=0.22ms mat_async=267.16ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=267.2ms async_max=267.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=194 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=8 mesh_build=19 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,1) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=267.16ms
+  (15,1) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.20ms apply=0.17ms mat_async=262.63ms lod_async=0.49ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=131.6ms async_max=262.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=194 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=7 mesh_build=19 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,2) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=262.63ms
+  (14,10) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.49ms
+  (15,2) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.23ms apply=0.18ms mat_async=253.68ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=253.7ms async_max=253.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=195 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=7 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=253.68ms
+  (15,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.26ms apply=0.19ms mat_async=271.16ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=271.2ms async_max=271.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=195 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=6 mesh_build=18 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (0,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=271.16ms
+  (0,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.16ms mat_async=278.79ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=278.8ms async_max=278.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=195 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=6 mesh_build=17 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (6,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=278.79ms
+  (6,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.18ms apply=0.16ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=195 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=6 mesh_build=17 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.20ms apply=0.22ms mat_async=325.91ms lod_async=0.56ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=163.2ms async_max=325.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=195 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=6 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (1,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=325.91ms
+  (13,13) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.56ms
+  (1,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.20ms apply=0.20ms mat_async=305.59ms lod_async=0.35ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=153.0ms async_max=305.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=1 hits=196 misses=1 builds_from_prefetch=1
+
+Queues:
+io=0 decode=6 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (7,13) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=305.59ms
+  (14,5) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.35ms
+  (7,13) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.18ms apply=0.22ms mat_async=268.49ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=268.5ms async_max=268.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=197 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=4 mesh_build=16 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (2,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=268.49ms
+  (2,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.23ms apply=0.25ms mat_async=265.08ms lod_async=0.87ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=133.0ms async_max=265.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=1 hits=197 misses=1 builds_from_prefetch=1
+
+Queues:
+io=0 decode=4 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,5) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=265.08ms
+  (15,3) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.87ms
+  (15,5) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.28ms apply=0.19ms mat_async=270.63ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=270.6ms async_max=270.6ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=198 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=3 mesh_build=15 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,7) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=270.63ms
+  (15,7) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.20ms mat_async=266.53ms lod_async=0.43ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=133.5ms async_max=266.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=198 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=3 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,10) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=266.53ms
+  (4,13) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.43ms
+  (15,10) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+terrain streaming
+poll=0.19ms apply=0.12ms mat_async=0.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=0 prebuilt=0 mat_async_completed=0 lod_async_completed=0 logged=0 async_avg=0.0ms async_max=0.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=0 total=0
+
+Geometry:
+vertices=0 indices=0 triangles=0 avg_vertices=0 avg_triangles=0
+
+LOD warmup:
+prefetch_req=0 hits=199 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=2 mesh_build=15 materialized_q=0 applied=0 unloaded=0
+
+HITCH
+poll=0.26ms apply=0.23ms mat_async=260.71ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=260.7ms async_max=260.7ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=199 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=2 mesh_build=14 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (3,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=260.71ms
+  (3,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.20ms apply=0.18ms mat_async=260.98ms lod_async=0.28ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=130.6ms async_max=261.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=199 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=2 mesh_build=13 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,6) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=260.98ms
+  (8,13) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.28ms
+  (15,6) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.22ms apply=0.25ms mat_async=271.00ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=271.0ms async_max=271.0ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=200 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=1 mesh_build=13 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (4,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=271.00ms
+  (4,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.31ms apply=0.27ms mat_async=537.47ms lod_async=0.98ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=2 prebuilt=2 mat_async_completed=2 lod_async_completed=2 logged=6 async_avg=134.6ms async_max=270.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=4 total=6
+
+Geometry:
+vertices=12806 indices=73728 triangles=24576 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=200 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=1 mesh_build=11 materialized_q=0 applied=2 unloaded=0
+
+Per-mesh:
+  (15,11) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=270.93ms
+  (5,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=266.53ms
+  (12,13) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.37ms
+  (14,13) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.61ms
+  (15,11) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+  (5,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.31ms apply=0.27ms mat_async=465.36ms lod_async=0.94ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=155.4ms async_max=465.4ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=0 hits=204 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=0 mesh_build=11 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,12) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=465.36ms
+  (15,2) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.46ms
+  (15,13) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.48ms
+  (15,12) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.28ms apply=0.27ms mat_async=498.05ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=498.1ms async_max=498.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=206 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=0 mesh_build=10 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (6,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=498.05ms
+  (6,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.28ms apply=0.28ms mat_async=546.08ms lod_async=1.75ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=4 logged=6 async_avg=109.6ms async_max=546.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=4 Eighth=2 total=6
+
+Geometry:
+vertices=19078 indices=110592 triangles=36864 avg_vertices=3179 avg_triangles=6144
+
+LOD warmup:
+prefetch_req=0 hits=206 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=0 mesh_build=9 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,8) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=546.08ms
+  (0,14) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.44ms
+  (6,13) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.46ms
+  (1,14) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (7,13) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.45ms
+  (15,8) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.28ms apply=0.30ms mat_async=488.94ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=488.9ms async_max=488.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=210 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=0 mesh_build=8 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (7,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=488.94ms
+  (7,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.20ms apply=0.63ms mat_async=422.48ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=422.5ms async_max=422.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=210 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=0 mesh_build=7 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (14,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=422.48ms
+  (14,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.18ms apply=0.26ms mat_async=397.52ms lod_async=1.24ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=3 logged=5 async_avg=99.7ms async_max=397.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=3 Eighth=2 total=5
+
+Geometry:
+vertices=14853 indices=86016 triangles=28672 avg_vertices=2970 avg_triangles=5734
+
+LOD warmup:
+prefetch_req=1 hits=210 misses=1 builds_from_prefetch=1
+
+Queues:
+io=0 decode=0 mesh_build=6 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (8,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=397.52ms
+  (15,0) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.51ms
+  (15,9) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.28ms
+  (15,1) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.45ms
+  (8,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.18ms apply=0.15ms mat_async=281.88ms lod_async=0.74ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=94.2ms async_max=281.9ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=0 hits=213 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=0 mesh_build=5 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (9,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=281.88ms
+  (2,14) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (15,5) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.33ms
+  (9,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.26ms apply=0.19ms mat_async=255.15ms lod_async=0.68ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=2 logged=4 async_avg=85.3ms async_max=255.1ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=2 Eighth=2 total=4
+
+Geometry:
+vertices=10628 indices=61440 triangles=20480 avg_vertices=2657 avg_triangles=5120
+
+LOD warmup:
+prefetch_req=0 hits=215 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=0 mesh_build=4 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (13,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=255.15ms
+  (15,7) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.32ms
+  (15,10) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.36ms
+  (13,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.24ms apply=0.19ms mat_async=261.27ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=261.3ms async_max=261.3ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=217 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=0 mesh_build=3 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (10,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=261.27ms
+  (10,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.20ms apply=0.16ms mat_async=264.53ms lod_async=0.67ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=1 logged=3 async_avg=132.6ms async_max=264.5ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=1 Eighth=2 total=3
+
+Geometry:
+vertices=6403 indices=36864 triangles=12288 avg_vertices=2134 avg_triangles=4096
+
+LOD warmup:
+prefetch_req=0 hits=217 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=0 mesh_build=2 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (11,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=264.53ms
+  (3,14) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.67ms
+  (11,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.15ms apply=0.24ms mat_async=267.83ms lod_async=4.84ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=13 logged=15 async_avg=19.5ms async_max=267.8ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=13 Eighth=2 total=15
+
+Geometry:
+vertices=57103 indices=331776 triangles=110592 avg_vertices=3806 avg_triangles=7372
+
+LOD warmup:
+prefetch_req=0 hits=219 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=0 mesh_build=1 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (15,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=267.83ms
+  (4,14) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.36ms
+  (15,11) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.33ms
+  (5,14) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.34ms
+  (15,12) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.32ms
+  (6,14) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.30ms
+  (15,8) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.41ms
+  (7,14) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.39ms
+  (14,14) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.42ms
+  (8,14) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.30ms
+  (9,14) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.33ms
+  (13,14) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.33ms
+  (10,14) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.35ms
+  (11,14) LOD=Quarter reason=LodPrefetch verts=4225 tris=8192 build=0.66ms
+  (15,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+
+HITCH
+poll=0.15ms apply=0.15ms mat_async=255.16ms lod_async=0.00ms mesh_assets=0.00ms spawn=0.00ms
+
+Meshes:
+applied=1 prebuilt=1 mat_async_completed=1 lod_async_completed=0 logged=2 async_avg=255.2ms async_max=255.2ms
+
+LOD builds (logged this frame):
+Full=0 Half=0 Quarter=0 Eighth=2 total=2
+
+Geometry:
+vertices=2178 indices=12288 triangles=4096 avg_vertices=1089 avg_triangles=2048
+
+LOD warmup:
+prefetch_req=0 hits=233 misses=0 builds_from_prefetch=0
+
+Queues:
+io=0 decode=0 mesh_build=0 materialized_q=0 applied=1 unloaded=0
+
+Per-mesh:
+  (12,14) LOD=Eighth reason=InitialMaterialize verts=1089 tris=2048 build=255.16ms
+  (12,14) LOD=Eighth reason=AppliedPrebuilt verts=1089 tris=2048 build=0.00ms
+

@@ -54,8 +54,7 @@ Pre-feature-development checkpoint after audit passes A1–B6.
 
 - Overlay animation layer behavior (hit VFX on overlay slot — future per ADR-075)
 - Corpse fade-out / lootable corpse presentation
-- Economy, buildings, harvesting loops (see [ADR-072](ADRs/ADR-072-settlement-automation-and-production.md), DESIGN.md)
-- Full creature AI template stack ([ADR-071](ADRs/ADR-071-creature-ai-architecture.md); ADR-062 scan AI only)
+- Full creature AI template stack ([ADR-071](ADRs/ADR-071-creature-ai-architecture.md); ADR-062 scan AI only; hunger self-maintenance begins in [ADR-134](ADRs/ADR-134-individual-self-maintenance-and-hunger.md))
 - Use-based skills and attribute-driven combat ([ADR-070](ADRs/ADR-070-progression-and-attributes.md))
 - Grid inventory and equipment ([ADR-073](ADRs/ADR-073-inventory-and-equipment.md); I1 catalog foundation in [ADR-087](ADRs/ADR-087-item-definitions-and-inventory-profiles.md))
 - Downed state, stagger, facing, weapon hit volumes ([ADR-069](ADRs/ADR-069-combat-design-philosophy.md))
@@ -519,28 +518,40 @@ At this point the project has achieved its immediate architectural goal.
 
 # Future Systems
 
-The following systems are intentionally deferred until the runtime foundation exists.
+The following systems were originally deferred until the runtime foundation existed. The runtime
+foundation is in place. Status is now **per subsection**: some areas are implemented, some have an
+active milestone, and some remain future goals.
 
-These are future project goals.
-
-They are not current implementation targets.
+Do not read this heading as "settlements are not being implemented."
 
 ## Settlements
 
-Design direction: [ADR-072](ADRs/ADR-072-settlement-automation-and-production.md), [DESIGN.md](DESIGN.md#settlement-automation).
+Architecture: [ADR-115](ADRs/ADR-115-settlement-ai-architecture.md). Identity and membership:
+[ADR-133](ADRs/ADR-133-settlement-identity-membership-and-anchor.md). Individual hunger:
+[ADR-134](ADRs/ADR-134-individual-self-maintenance-and-hunger.md). Automation philosophy:
+[ADR-072](ADRs/ADR-072-settlement-automation-and-production.md), [DESIGN.md](DESIGN.md#settlement-automation).
 
-- Professions with priority fall-through (not per-task micromanagement)
-- Buildings generate **tasks**; workers claim by profession
-- Production via building **requests** (Factorio-style logistics, individual workers)
-- Direct player orders override automation temporarily
+**Implemented today:** EP1–EP9 production stack and the SA1–SA9 Settlement AI pipeline (needs,
+responses, arbiter, intent propagation, strategic tasks, worker marketplace, emergencies,
+construction planning, scheduler). Treasuries (I7 / ADR-093) persist on `WorldData`.
 
-Potential systems:
+**Current milestone (design accepted, implementation pending):** close the physical loop so the
+pipeline produces observable behavior — dedicated `SettlementAnchor`, explicit unit/building
+`settlement_id`, Dev placement of a complete test scene, individual hunger with eat-at-source,
+CategoryStock food + stone competing pressures, rationalized SA3/SA4 scoring, SA5 as sole AI policy
+writer. Player Build Mode settlement placement is staged after this milestone.
 
-- population
-- needs
-- assignments / professions
-- production and storage
-- ownership
+**Not current implementation targets:**
+
+- Population as an *active* settlement Need (member counting is infrastructure for food demand)
+- Starvation consequences, theft/crime, settlement removal, radius growth mechanics
+- Player Build Mode settlement placement (shared `create_settlement` must exist now)
+- `Hive` / `Pack` / `Herd` as placed-anchor settlements
+- Professions / player job-permission UI (ordinary-work boolean gates are being *removed*, not
+  replaced with profession checkboxes in this milestone)
+
+Potential later systems: housing/defense declared-capability sensors, faction coordination (SA12),
+expansion/growth (SA11).
 
 ---
 

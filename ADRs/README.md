@@ -60,3 +60,29 @@ ADRs document **accepted technical decisions**. Game design direction lives in
 ## Terrain / world
 
 001–013 (coordinates, terrain), 031–032 (obstacles, navigation), 067 (validation)
+
+## Settlement AI
+
+| ADR | Topic |
+|-----|-------|
+| [072](ADR-072-settlement-automation-and-production.md) | Automation philosophy (professions, tasks) |
+| [093](ADR-093-settlement-treasuries-and-physical-gold.md) | Treasuries (I7) |
+| [114](ADR-114-settlement-production-planner.md) | EP9 production planner (now a service; 2026-08-28 amendment) |
+| [115](ADR-115-settlement-ai-architecture.md) | SA foundation; 2026-08-28 status + deferred issues |
+| [116](ADR-116-settlement-runtime-state.md) | SA1 SettlementState |
+| [117](ADR-117-need-evaluation-runtime.md) | SA2 needs (CategoryStock + member food demand amendment) |
+| [118](ADR-118-response-engine.md) | SA3 responses (quality-only scoring amendment) |
+| [119](ADR-119-settlement-response-arbiter.md) | SA4 arbiter (pairing + weight amendment) |
+| [120](ADR-120-building-intent-propagation.md) | SA5 policy (sole AI writer amendment) |
+| [121](ADR-121-strategic-task-generation.md) | SA6 strategic tasks |
+| [122](ADR-122-worker-assignment-marketplace.md) | SA7 marketplace (ordinary-work eligibility amendment) |
+| [123](ADR-123-emergency-pressure-reweighting.md) | SA8 emergencies |
+| [124](ADR-124-strategic-construction-planning.md) | SA9 construction planning |
+| [125](ADR-125-planning-scheduler.md) | SA10 scheduler |
+| [133](ADR-133-settlement-identity-membership-and-anchor.md) | Identity, membership, anchor, boundary |
+| [134](ADR-134-individual-self-maintenance-and-hunger.md) | Individual hunger and self-maintenance |
+
+## Relationships
+
+[132](ADR-132-relationship-and-reputation-architecture.md) — directional relationships and reputation
+(architecture; Map phases 1–7 implemented).

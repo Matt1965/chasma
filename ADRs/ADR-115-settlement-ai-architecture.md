@@ -135,10 +135,15 @@ World does **not** make settlement-level economic decisions.
 - Owns population, stock targets, defense posture, and expansion state — all expressed as needs, not
   as bespoke plans.
 
-A settlement is defined today by `SettlementRecord` (a treasury anchor building + affiliation) plus
-its membership index in `SettlementStore`. SA extends this with need definitions/weights, directive
-nudges, and the arbiter — it does not replace the settlement identity model. The existing production
-planner (ADR-114) becomes one response path invoked by the arbiter, not a standalone brain.
+A settlement is defined today by `SettlementRecord` plus its membership index in `SettlementStore`.
+SA extends this with need definitions/weights, directive nudges, and the arbiter — it does not
+replace the settlement identity model. The existing production planner (ADR-114) becomes one response
+path invoked by the arbiter, not a standalone brain.
+
+> **SUPERSEDED 2026-08-28** by [ADR-133](ADR-133-settlement-identity-membership-and-anchor.md) and the
+> [amendment below](#amendment-2026-08-28--identity-scoring-policy-work-and-stale-status). Identity is
+> a dedicated `SettlementAnchor` with explicit `settlement_id` on units and buildings; affiliation is
+> not membership. EP9 is a service invoked through SA5, not a second policy writer.
 
 ### 3.3 Building
 
@@ -168,8 +173,14 @@ A worker knows only:
 - its location and space (`placement`, `current_space_id`).
 
 A worker must **never** know settlement strategy, economic goals, production graphs, or expansion
-plans. Worker capability is data (`UnitWorkCapabilities`: `can_construct`, `construction_speed`,
-`can_operate_workstation`), resolved from the catalog, not settlement context.
+plans. Worker **performance** is data (`construction_speed` and similar), resolved from the catalog,
+not settlement context.
+
+> **AMENDED 2026-08-28.** Binary ordinary-work eligibility (`UnitWorkCapabilities.can_construct` /
+> `can_operate_workstation`) conflicts with the intended design and is removed. See the amendment
+> below. Skill affects performance, not whether an ordinary unit may Construct / Operate / Haul.
+> Future player job checkboxes are permission, not physical ability. Strategic task execution remains
+> deferred (ADR-121).
 
 ---
 
@@ -215,10 +226,17 @@ Two invariants make this scale without conditional sprawl:
    a response reuses generic machinery (set `BuildingOperationPolicy`, emit a construction directive).
    Adding Medicine or Research is a data entry, not a new planner.
 
-Current reality: only the **production** slice exists (EP9 planner reads `StockGoal`s and writes
-policy). It is retroactively *one response path*. Needs, the arbiter, emergencies, general task
-generation, and autonomous worker assignment do not exist yet. **Worker Assignment is the central
-missing layer**, filled by SA5/SA6.
+Current reality: the **SA1–SA9 pipeline is implemented** (ADRs 116–125). What was missing is not the
+decision layer — it is settlement identity (ADR-133), individual consumption (ADR-134), ordinary-work
+eligibility, a rationalized scoring scale, and a single policy writer. See the amendment below.
+
+> **SUPERSEDED 2026-08-28.** The following sentence is no longer true and must not be used as
+> implementation status:
+>
+> ~~Current reality: only the **production** slice exists (EP9 planner reads `StockGoal`s and writes
+> policy). It is retroactively *one response path*. Needs, the arbiter, emergencies, general task
+> generation, and autonomous worker assignment do not exist yet. **Worker Assignment is the central
+> missing layer**, filled by SA5/SA6.~~
 
 ---
 
@@ -269,9 +287,13 @@ authoritative data.
 
 Rationale (consistent with ARCHITECTURE.md "Data First" and the Scalability Rule):
 
-- A pressure is **derived**: `pressure = f(current world state, target) * weight`. Deriving it (food
-  stock vs population, housing capacity vs population, threat vs defense) is cheap and must not be
+- A pressure is **derived**: `pressure = f(current world state, target)`. Deriving it (food stock vs
+  member demand, housing capacity vs population, threat vs defense) is cheap and must not be
   duplicated as authoritative state that can drift.
+
+> **AMENDED 2026-08-28.** SA2 pressure is the unweighted `0..=100` shortage signal. Authored need
+> **weight** is not part of SA2 pressure; it shapes SA4 urgency (ADR-118 / ADR-119 amendments).
+> Population as an *active Need* remains deferred; member count may still feed food desired.
 - What **is** authoritative and persisted is the need **definition** (compute rule, base weight,
   Response mapping), its **directive-adjusted target/weight**, and **slow-moving derived state** that
   must survive reload for continuity (active emergency, smoothed threat estimate). Instantaneous
@@ -412,9 +434,13 @@ polling independently.
 **Scheduler ownership:** the scheduler determines *when* planner stages execute. Planner stages remain
 responsible for their own evaluation logic. The scheduler never performs planning itself (ADR-125).
 
-**Runtime stage order** (after SA9): Emergency → Needs → Responses → Intent → Building Intent →
-(EP9) → **Construction Planning → Strategic Tasks** → Worker Assignment. ConstructionPlans must
+**Runtime stage order** (after SA9, **amended 2026-08-28**): Emergency → Needs → Responses → Intent →
+Building Intent (**EP9 invoked here as a service, not a subsequent policy-writing stage**) →
+**Construction Planning → Strategic Tasks** → Worker Assignment. ConstructionPlans must
 exist before SA6 so construct tasks attach to reserved sites (ADR-124).
+
+> EP9 as a peer tick stage that writes `BuildingOperationPolicy` after SA5 is **retired** (ADR-114 /
+> ADR-120 amendments).
 
 ---
 
@@ -491,10 +517,12 @@ settlement simulations.
   sets need targets/weights (stock targets, "prioritize defense") and may pin specific building
   policies. The player, a faction, and any future top-level AI all write directives through the same
   seam (§5) — there is no separate player planner.
-- The existing `ControlSource` (`PlayerControlled` vs `AIControlled`) and `planner_managed` flag on
-  `BuildingOperationPolicy` are exactly the building-level seam: planner-managed buildings are
-  auto-driven; a player-reclaimed building (`PlayerControlled`) is skipped by producer discovery. SA
-  preserves this flag and layers the directive seam above it.
+- The existing `ControlSource` (`PlayerControlled` vs `AIControlled`) is the building-level seam: a
+  player-reclaimed building is skipped by SA5. SA preserves this flag and layers the directive seam
+  above it.
+
+> **AMENDED 2026-08-28.** `planner_managed` as a dual-writer workaround between EP9 and SA5 is retired
+> (ADR-114 / ADR-120). `PlayerControlled` remains the skip.
 
 A player "taking direct control" of a worker is just a `TaskPriority::PlayerAssigned` task or a direct
 order that preempts automation — already supported.
@@ -540,7 +568,11 @@ Authoritative (persisted) SA data:
 - Need *pressure values* (`NeedState` snapshot) and arbiter results.
 - `ProductionGraph` and all `PlannerDiagnostics`.
 - Task↔worker assignments beyond what's needed to resume in-flight work, and settlement building
-  **membership** (re-derived by `reconcile_settlement_building_membership`).
+  **membership indexes** (rebuilt from `BuildingRecord.settlement_id` / `UnitRecord.settlement_id`;
+  ADR-133). Membership fields themselves **are** persisted.
+
+> **SUPERSEDED 2026-08-28.** Membership is **not** re-derived by `reconcile_settlement_building_membership`.
+> That function is retired. Affiliation is not membership authority.
 - Occupancy, terrain assessments, logistics endpoint index.
 
 **Rule: never persist temporary analysis.** Persist intent and slow state; recompute everything
@@ -656,9 +688,14 @@ Ordering notes:
 
 ## 20. Deliverable Summary (answers to the design questions)
 
-- **What is a Settlement?** A first-class, persistent `WorldData` object (treasury anchor +
-  affiliation-scoped building membership) that owns weighted needs, one generic arbiter,
-  data-defined Responses, directive nudges, and emergency state. It is the *strategic* layer.
+- **What is a Settlement?** A first-class, persistent `WorldData` object: a dedicated
+  `SettlementAnchor` with explicit center and mutable radius, plus explicit `settlement_id` on member
+  units and buildings (ADR-133). It owns weighted needs, one generic arbiter, data-defined Responses,
+  directive nudges, and emergency state. It is the *strategic* layer. Affiliation, faction, team,
+  ownership, and proximity are **not** membership.
+
+> **SUPERSEDED 2026-08-28.** ~~A first-class, persistent `WorldData` object (treasury anchor +
+> affiliation-scoped building membership)~~ is no longer the identity definition.
 - **What decisions does it make?** Which unmet need is most pressing right now — then apply that
   need's data-defined Response (produce / build / defend / expand / …) as building policy and
   directives. Never execution. Never a pile of situation-specific conditionals.
@@ -674,10 +711,99 @@ Ordering notes:
   directive seam. New knowledge models plug in behind the knowledge seam. New behaviors are new need
   definitions (data), not new decision engines. The pipeline and the policy/state boundary stay fixed.
 
+---
+
+## Amendment (2026-08-28) — identity, scoring, policy, work, and stale status
+
+This amendment records the 2026-08-28 design pass. Implementation ADRs 133–134 and the amendments to
+114, 117, 118, 119, and 120 are the detailed authority. Where this foundation document still describes
+pre-pass structure, those ADRs win.
+
+### Pipeline status (corrects §4)
+
+SA1–SA9 are **implemented**. The next milestone is **not** "build the decision layer." It is closing
+the physical loop so the existing pipeline produces observable behavior:
+
+- settlement identity and explicit membership (ADR-133)
+- individual hunger and eat-at-source / eat-from-inventory (ADR-134)
+- ordinary-work eligibility (this amendment)
+- rationalized SA3/SA4 scoring (ADR-118 / ADR-119)
+- SA5 as sole AI policy writer; EP9 as a service (ADR-114 / ADR-120)
+- CategoryStock + member-driven food demand + stone stock as the second competing need (ADR-117)
+
+Player Build Mode settlement placement is **staged after** that milestone. Dev mode must be able to
+construct and save the complete test scene now.
+
+### Scoring (corrects the original SA3/SA4 formulas)
+
+- **SA3 scores response quality only.** Pressure does not belong in SA3.
+- **SA4 scores the need + response pairing.** Urgency = pressure shaped by authored `NeedTarget.weight`.
+- **Policy applies once, in SA4.**
+- Component scales must be meaningfully comparable; the original `pressure * relief * 100` term made
+  cost, policy, workload, and weight numerically inert, and SA4 then counted pressure again.
+- The scorer emits its own explanation; diagnostics render that breakdown.
+- Preserved: unavailable → `0`; zero-pressure rejection; `MIN_ARBITRATION_SCORE`; existing
+  `UntilPressureLow` hysteresis.
+
+### Ordinary-work eligibility (corrects §3.3)
+
+Current `UnitWorkCapabilities` boolean gates (`can_construct`, `can_operate_workstation`) conflict
+with the intended design and **must be changed**, not preserved:
+
+- Any **ordinary unit** may Construct, Operate, and Haul.
+- Skill / performance (e.g. `construction_speed`) is separate from eligibility.
+- Future player job checkboxes are **permission**, not physical ability — a third layer, not a reuse
+  of the boolean gates.
+- Strategic task **execution** (Repair / Recruit / Expand stubs in ADR-121) remains deferred; those
+  kinds stay unlisted in the marketplace until they have labor.
+
+Do not invent a new boolean to re-encode "ordinary unit." Wildlife / non-worker creatures that never
+enter the worker marketplace are outside this change.
+
+### Population is not an active Need
+
+§6 may keep Population in the long-term need list. The Population / `UnitCount` evaluator stays
+**deferred**. Authoritative member counting (ADR-133) exists so food demand can scale; it does not
+silently restore Population pressure.
+
+### Individual self-maintenance
+
+Hunger is per-unit (ADR-134), not settlement upkeep, and not a generic `RecurringConsumer`. Combat
+outranks hunger. Normal hunger seeks between tasks; critical hunger interrupts non-combat work.
+
+---
+
+## Deferred issues (recorded, not scheduled)
+
+These were identified in the same design pass. They are **not** part of the Settlement AI observable-loop
+milestone. Do not implement them opportunistically.
+
+| ID | Issue | Why deferred |
+|---|---|---|
+| D1 | Housing / defense need sensors match building definition ids by substring | Food/stone use CategoryStock; declared building-capability data is required before housing/defense drive real decisions |
+| D2 | Defense measurement includes policy (`aggression`) in SA2 `current` | SA2 must measure world state only; policy already belongs in SA4 |
+| D3 | `SettlementKind::Hive` / `Pack` / `Herd` | A placed non-overlapping anchor defines a *place*. Nomadic groups need a separate abstraction (ADR-116's "one runtime for all autonomous groups" is now questionable) |
+| D4 | Unused need categories / evaluators (`Water`, `Medicine`, `Economy`, `Growth`, `UnitCount`, research stub) and unused strategic `TaskType` labor | Dead surface; do not activate because a field exists |
+| D5 | Haul labor movement uses an empty `NavigationPath` (straight line) rather than the shared pathfinding entry | Unrelated to this milestone; do not silently "fix" as hunger movement |
+| D6 | ADR-093 treasury interaction hosted on `settlement_core` building | Identity moves to `SettlementAnchor`; do not force the anchor through `BuildingRecord` to keep gold deposits. Separate UX later |
+| D7 | Starvation consequences (stat reduction, reduced max HP, slow death) | Milestone needs hunger state, seeking, eating, and demand only |
+| D8 | Player Build Mode settlement placement | Staged; shared `create_settlement` must exist now so this is only a caller later |
+| D9 | Conditional anchor / boundary visibility in ordinary gameplay | Temporary always-visible is acceptable for the milestone and is **not** final UX (ADR-133) |
+| D10 | Settlement removal | Out of scope |
+| D11 | Theft / crime for unauthorized food taking | Physical access ≠ demand; no theft mechanics now |
+| D12 | Population as an active Need | Member count is infrastructure; see above |
+| D13 | Generic `RecurringConsumer` / upkeep framework | Hunger is hunger (ADR-134) |
+| D14 | Food reservations / claims | First come, first served; failed arrival re-seeks |
+| D15 | Settlement radius growth mechanics | Radius is already mutable data; growth content is later |
+| D16 | Luxury item-id substring matching | Migrate onto CategoryStock when luxury has a real category; not the milestone's second need |
+
+---
+
 ## References
 
 - ADR-072 (settlement automation philosophy), ADR-107–ADR-114 (EP1–EP9 production stack)
+- ADR-116–ADR-125 (SA1–SA9 implementation), ADR-133 (identity/membership/anchor), ADR-134 (hunger)
 - ADR-065 (fixed tick), ADR-085/086 (tasks, building persistence), ADR-087–094 (items/inventory)
 - ADR-101–106 (Terrain Fields), ADR-093 (settlement treasuries)
 - ARCHITECTURE.md (Principles 1–6, Scalability Rule, Settlements, EP9 section)
-- DESIGN.md (Settlement Automation), ROADMAP.md (Future Systems: Settlements, Factions)
+- DESIGN.md (Settlement Automation), ROADMAP.md (Settlements status)

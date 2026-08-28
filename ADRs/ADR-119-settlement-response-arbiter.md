@@ -81,7 +81,62 @@ and broken references.
   neither invents parallel selection.
 - Directives (player/faction weight nudges) remain a later seam that adjusts inputs, not this layer.
 
+## Amendment (2026-08-28) — SA4 scores the need + response pairing
+
+### Why
+
+ADR-118's original SA3 formula already contained need pressure, and `arbitration_score` added
+`pressure * 2.0` on top of it. Pressure was counted twice, and because the SA3 term spanned
+`0..=10_000` while policy bonuses spanned ±20 and the workload penalty capped at 40, **policy,
+workload, and cost could not affect any ordering**. See ADR-118's amendment for the full analysis.
+
+### Decision
+
+SA3 now scores **response quality** only. SA4 scores the **pairing**:
+
+> Which need is most urgent, and what is the best available response for it?
+
+SA4 combines:
+
+- **Urgency** — need pressure, shaped by the authored need weight (`NeedTarget.weight`, stored since
+  ADR-116 and previously unused)
+- **Candidate quality** — the SA3 response score
+- **Settlement policy** — applied here and **only** here
+- **Workload proxy** — soft penalty, unchanged in intent
+
+Pressure enters the pipeline exactly **once**, in SA4.
+
+### Authored weight becomes effective
+
+`NeedTarget.weight` shapes urgency, which makes it possible to author that a settlement cares more
+about one need than another at equal pressure. Weight is a settlement-level authoring lever, not a
+per-response tuning knob, and it is the mechanism directives (§5 of ADR-115) will eventually nudge.
+
+### Component scale
+
+All components — urgency, candidate quality, policy, workload — must be scaled so each can
+realistically change an ordering. No single term may dominate the others by orders of magnitude.
+
+### Explicitly preserved
+
+These behaviors are load-bearing and must survive the rescale:
+
+| Behavior | Why it matters |
+|---|---|
+| `pressure == 0` → `ZeroPressure` rejection | This is what makes a settlement **stop** pursuing a satisfied need |
+| Unavailable candidates score `0` | Availability is a gate, not a penalty |
+| `MIN_ARBITRATION_SCORE` threshold | Filters noise into rejected-with-reason diagnostics |
+| `IntentPersistence::UntilPressureLow` above pressure 80 | Existing intent hysteresis; prevents per-cadence flapping |
+| Global cap, per-need slots, increase/decrease conflict rule | Multi-intent budgeting is unchanged |
+
+### Explanation comes from the scorer
+
+`arbitration_score` emits its own component breakdown. The reasoning string and the Dev inspector
+render what the scorer produced; nothing recomputes a parallel explanation.
+
 ## References
 
 - ADR-115, ADR-116, ADR-117, ADR-118, ADR-114
+- ADR-132 (single-calculation-path discipline)
+- ADR-133, ADR-134
 - ARCHITECTURE.md Settlement AI section

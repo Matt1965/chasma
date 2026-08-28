@@ -31,12 +31,17 @@ decide **who does the work**.
 
 - Task priority
 - Distance
-- Capability (`UnitWorkCapabilities`)
+- Performance (e.g. construction speed) — **not** binary ordinary-work eligibility
 - Ownership / affiliation
 - Free interaction-point capacity
 - Current reservations / stick hysteresis
 
-Future seams (not in SA7): skill, morale, preferences, professions (ADR-072).
+> **AMENDED 2026-08-28.** `UnitWorkCapabilities` boolean gates (`can_construct`,
+> `can_operate_workstation`) are removed. Ordinary units may Construct / Operate / Haul. Skill affects
+> ranking/performance, not whether the listing is eligible. Future player job permissions are a
+> separate layer. Strategic stub kinds remain unlisted until they have labor (unchanged).
+
+Future seams (not in SA7): skill-as-performance tuning, morale, preferences, professions (ADR-072).
 
 ### Assignment ownership
 
@@ -76,8 +81,9 @@ re-issuing `UnitOrder::Work`.
 
 ### Validation
 
-Detect double assignment, broken reservations, invalid capabilities, and dead workers holding tasks.
-Dead workers are released each assignment step.
+Detect double assignment, broken reservations, invalid assignments, and dead workers holding tasks.
+Dead workers are released each assignment step. Unit death also clears `settlement_id` (ADR-133);
+assignment must not treat corpses as members or workers.
 
 ## Rejected designs
 
@@ -94,5 +100,5 @@ Dead workers are released each assignment step.
 
 ## References
 
-- ADR-115, ADR-121, ADR-085, ADR-072, ADR-112
+- ADR-115 (incl. 2026-08-28 ordinary-work amendment), ADR-121, ADR-085, ADR-072, ADR-112, ADR-133
 - ARCHITECTURE.md Settlement AI section

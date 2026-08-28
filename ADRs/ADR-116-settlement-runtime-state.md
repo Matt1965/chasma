@@ -29,15 +29,22 @@ worker control runs in SA1.
 
 ### Parallel to SettlementRecord
 
-`SettlementRecord` remains the treasury/anchor identity (ADR-093). `SettlementState` is a parallel
-store for SA policy/memory. Creating a settlement ensures both (plus an EP9 production planner
-entry).
+`SettlementRecord` remains the identity record (ADR-093 treasury + ADR-133 anchor/center/radius).
+`SettlementState` is a parallel store for SA policy/memory. Creating a settlement ensures both (plus
+an EP9 production planner entry).
+
+> **SUPERSEDED 2026-08-28.** Identity is no longer "a treasury anchored to a building." See
+> [ADR-133](ADR-133-settlement-identity-membership-and-anchor.md): dedicated `SettlementAnchor`,
+> explicit center + mutable radius, explicit `settlement_id` on units and buildings.
 
 ### One runtime for all autonomous groups
 
-Player settlements, AI factions, wildlife packs, and bandit camps use the **same** `SettlementState`
-type. Differences are authored data (`SettlementKind`, policies, need targets), never separate
-codepaths.
+Player settlements, AI factions, and camps use the **same** `SettlementState` type. Differences are
+authored data (`SettlementKind`, policies, need targets), never separate codepaths.
+
+> **Recorded, not scheduled (2026-08-28).** `Hive` / `Pack` / `Herd` as settlement kinds are
+> questionable once a settlement is a placed non-overlapping place (ADR-115 D3, ADR-133). Do not
+> stretch SettlementAnchor to nomadic groups in this milestone.
 
 ### Persistent vs derived (rebuild principle)
 
@@ -69,7 +76,9 @@ default states ensured for every `SettlementRecord`.
 ## Rejected designs
 
 - **Separate player settlement runtime** — one simulation model; player sets policies only.
-- **Separate wildlife runtime** — packs/herds are `SettlementKind` data, not parallel systems.
+- **Separate wildlife runtime** — recorded as deferred (ADR-115 D3). `Hive` / `Pack` / `Herd` must not
+  be stretched onto `SettlementAnchor` in this milestone; a separate group abstraction may be needed
+  later. Do not implement a parallel pack AI now either.
 - **Planner-owned persistent data as settlement truth** — EP9 planner remains a production Response
   path; SettlementState owns general SA memory.
 - **Worker-owned settlement state** — workers stay simple (tasks/inventory/location only).
@@ -86,5 +95,5 @@ default states ensured for every `SettlementRecord`.
 
 ## References
 
-- ADR-115, ADR-114, ADR-093, ADR-072
+- ADR-115, ADR-114, ADR-093, ADR-072, ADR-133
 - ARCHITECTURE.md Settlement AI section

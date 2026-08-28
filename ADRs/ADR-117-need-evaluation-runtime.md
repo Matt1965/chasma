@@ -65,6 +65,10 @@ Need dirty lives on `NeedEvaluationStore` so evaluation never clears EP9 `planne
 
 ### First needs (architecture exercise only)
 
+> **AMENDED 2026-08-28** — see [Amendment: CategoryStock, member demand, stone](#amendment-2026-08-28--categorystock-member-demand-and-stone).
+> Food is no longer a stub. Construction remains **building-backlog** pressure and is not material
+> stock. Population / `UnitCount` remains deferred as a Need.
+
 Food, Construction, Housing, Defense, Research, Expansion, Luxury — measurement stubs sufficient to
 exercise the catalog/snapshot/pressure path. No Response behaviors.
 
@@ -88,7 +92,99 @@ pressure outside `0..=100`, non-finite values, negative desired, and broken defi
   `CandidateResponse` options — it does not invent parallel sensors.
 - Scene restore clears `NeedEvaluationStore`.
 
+## Amendment (2026-08-28) — CategoryStock, member demand, and stone
+
+### Why
+
+Food stock was measured correctly via `ItemCategoryId`, but **nothing consumed food**, and food
+desired was an authored constant. Housing, defense, and luxury measured world state by **building or
+item id substring**. The existing `Construction` need counted incomplete buildings (backlog), which
+is a valid need and must not be overloaded as "we are short on stone."
+
+A 2026-08-28 design pass also locked individual hunger (ADR-134) and explicit membership (ADR-133).
+SA2 must observe those, not invent a second population system.
+
+### CategoryStock is the generic category-stock evaluator
+
+Replace per-need inventory special cases (`FoodStock`, `LuxuryStock`, and any item-id matching) with
+one evaluation method:
+
+```text
+NeedEvaluationMethod::CategoryStock { category: ItemCategoryId }
+```
+
+Food and the milestone's second competing need (construction-material / stone stock) are the **same
+evaluator with different authored data**. Luxury can migrate onto the same method when it has a real
+category; it must not keep `id.contains("luxury") || id == "iron_bar"`.
+
+SA2 still does not generate actions. CategoryStock only reports current stock vs desired.
+
+### Food desired uses member demand — not a Population need
+
+Food **current** remains settlement-scoped food-category stock (ADR-133 membership for which
+inventories count as settlement stock).
+
+Food **desired** uses **live member** consumption:
+
+- count units whose `settlement_id` matches (dead units have `None` and must not count)
+- apply authored per-unit consumption characteristics (ADR-134)
+- optionally compose with an authored buffer / `NeedTarget` stockpile — exact composition is
+  implementation, but member demand **must** be an input
+
+**Member count exists ≠ Population is an active Need.**
+
+This ADR may document an authoritative member-count query because food demand (and future systems)
+need it. The Population / `UnitCount` need evaluator remains **deferred**. Do not restore it because
+the count is now available. Food pressure is the food need; there is no Population pressure in this
+milestone.
+
+Non-members may physically take food later; they are **never** legitimate food demand.
+
+### Stone / construction-material stock is the second competing need
+
+The milestone's second need is **material stock**, not construction backlog.
+
+- Author a `NeedDefinition` whose evaluation method is `CategoryStock` for a construction-material
+  category.
+- **Do not** reuse `NeedCategory::Construction` or `NeedEvaluationMethod::ConstructionSites` for this.
+  Construction remains incomplete-building backlog pressure and stays available but is not the
+  competing need.
+- Stone desired is **authored** (`NeedTarget` / definition default), not member-driven. Combined with
+  dynamic food desired, food-vs-stone worker reallocation can emerge from scoring when one pressure
+  overtakes the other — not from scenario scripting.
+
+### Item category for stone (content prerequisite)
+
+Starter `stone` is currently `raw_material` alongside iron ore and coal. Measuring `raw_material`
+would mix unrelated stocks and is **not** acceptable.
+
+Confirm or author a dedicated item category (e.g. `construction_material`) and assign `stone` to it
+so CategoryStock stays generic. Do **not** special-case item id `stone` in the evaluator.
+
+If `NeedCategory` has no suitable variant for this need, add one for materials / construction-stock.
+Do not overload Construction, Population, or Economy.
+
+### Housing, defense, and remaining substring sensors
+
+Housing (`hut`/`house`/…) and defense (`wall`/`tower`/…) still match definition ids by substring, and
+defense mixes **policy** (`aggression`) into measured current. Those evaluators are **not** the
+milestone's competing pair. They are recorded as deferred defects in ADR-115: buildings should
+declare what they provide, and SA2 must measure world state only. Do not drive milestone acceptance
+from them.
+
+### Pressure vs weight
+
+SA2 pressure remains the unweighted `0..=100` shortage signal defined above. Authored `NeedTarget.weight`
+does **not** belong in SA2. Weight shapes SA4 urgency (ADR-119 amendment).
+
+### Preserved
+
+- Independent per-need evaluation; no actions; nothing persisted.
+- ConstructionSites backlog measurement is unchanged in meaning.
+- Emergency modifiers may still adjust pressure within `0..=100` (ADR-123).
+
 ## References
 
-- ADR-115, ADR-116, ADR-114
+- ADR-115, ADR-116, ADR-114, ADR-133, ADR-134, ADR-087
+- ADR-118, ADR-119
 - ARCHITECTURE.md Settlement AI section
