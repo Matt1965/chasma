@@ -475,6 +475,7 @@ fn real_hut_spawn_inside_moves_via_player_command_resolution_path() {
 
     let selected = [unit_id];
     let pile_settings = ItemPileSettings::default();
+    let authored_relationships = crate::world::AuthoredRelationshipCatalog::default();
     let ctx = InteractionResolveContext::new(
         &world,
         &doodad_catalog,
@@ -484,6 +485,7 @@ fn real_hut_spawn_inside_moves_via_player_command_resolution_path() {
         &unit_catalog,
         &weapon_catalog,
         &pile_settings,
+        &authored_relationships,
         &selected,
     );
     let plan = resolve_world_click_to_order(&ctx, click_goal).expect("click resolves");
@@ -843,7 +845,7 @@ fn post_hydration_initializes_surface_units_inside_region() {
         WorldPosition::from_global(Vec3::new(interior_xz.x, 0.0, interior_xz.z), world.layout());
 
     let unit_catalog = UnitCatalog::default();
-    let mut record = crate::world::UnitRecord::new(
+    let mut record = crate::world::UnitRecord::new_test(
         crate::world::UnitId::new(99),
         UnitDefinitionId::new("wolf"),
         crate::world::UnitPlacement::new(spawn_pos, Quat::IDENTITY),

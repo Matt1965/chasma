@@ -12,6 +12,7 @@ mod nav_cells;
 mod navigation_mask_mesh;
 mod navigation_overlay;
 mod path_overlay;
+mod relationship_links_overlay;
 mod runtime_entrance_overlay;
 mod selection_overlay;
 mod steering_overlay;
@@ -28,6 +29,10 @@ pub use navigation_overlay::{
     NavigationMaskCache, NavigationMaskDrawStats, draw_navigation_debug_overlay,
 };
 pub use path_overlay::draw_path_debug_overlay;
+pub use relationship_links_overlay::{
+    RelationshipLinkLabelIndex, draw_relationship_links_overlay,
+    project_relationship_link_label_positions, setup_relationship_link_labels_overlay,
+};
 pub use runtime_entrance_overlay::draw_runtime_entrance_overlay;
 pub use selection_overlay::draw_selection_debug_overlay;
 pub use steering_overlay::draw_steering_debug_overlay;

@@ -3,7 +3,8 @@
 use bevy::prelude::Vec3;
 
 use crate::world::{
-    AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldData, is_valid_attack_target,
+    AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldData,
+    is_valid_autonomous_attack_target, is_valid_explicit_attack_target,
 };
 
 use crate::world::{UnitId, WorldPosition};
@@ -18,6 +19,7 @@ pub struct CommandResolutionContext<'a> {
     pub world: &'a WorldData,
     pub unit_catalog: &'a UnitCatalog,
     pub weapon_catalog: &'a WeaponCatalog,
+    pub authored_relationships: &'a crate::world::AuthoredRelationshipCatalog,
     pub targeting_policy: AttackTargetingPolicy,
 }
 
@@ -42,7 +44,9 @@ pub fn resolve_contextual_command_with_armed(
     if let Some(armed_type) = armed {
         return match armed_type {
             CommandType::Attack => match ctx.target {
-                CommandTarget::Unit { unit_id } if any_selected_can_attack(ctx, unit_id) => {
+                CommandTarget::Unit { unit_id }
+                    if any_selected_can_explicit_attack(ctx, unit_id) =>
+                {
                     Some(ContextualCommandIntent {
                         command_type: CommandType::Attack,
                         target: CommandTarget::Unit { unit_id },
@@ -78,15 +82,15 @@ pub fn resolve_contextual_command_with_armed(
         }),
         CommandTarget::Unit { unit_id } => {
             let attacker = *ctx.selected_units.first()?;
-            if is_valid_attack_target(
+            if is_valid_autonomous_attack_target(
                 ctx.world,
+                ctx.authored_relationships,
                 attacker,
                 *unit_id,
                 ctx.weapon_catalog,
                 ctx.unit_catalog,
                 ctx.targeting_policy,
-            ) || any_selected_can_attack(ctx, *unit_id)
-            {
+            ) {
                 Some(ContextualCommandIntent {
                     command_type: CommandType::Attack,
                     target: CommandTarget::Unit { unit_id: *unit_id },
@@ -101,9 +105,9 @@ pub fn resolve_contextual_command_with_armed(
     }
 }
 
-fn any_selected_can_attack(ctx: &CommandResolutionContext<'_>, target: UnitId) -> bool {
+fn any_selected_can_explicit_attack(ctx: &CommandResolutionContext<'_>, target: UnitId) -> bool {
     ctx.selected_units.iter().any(|attacker| {
-        is_valid_attack_target(
+        is_valid_explicit_attack_target(
             ctx.world,
             *attacker,
             target,
@@ -140,6 +144,9 @@ pub fn resolve_palette_command(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::relationship::{
+        AuthoredFacetKey, AuthoredRelationshipCatalog, DirectedRelationshipEdgeKey, FactionId,
+    };
     use crate::world::{
         ChunkCoord, ChunkLayout, LocalPosition, UnitDefinitionId, UnitOwnership, UnitSource,
         WorldData, WorldPosition, create_unit_with_ownership,
@@ -153,12 +160,35 @@ mod tests {
         )
     }
 
+    fn authored() -> AuthoredRelationshipCatalog {
+        AuthoredRelationshipCatalog::default()
+    }
+
+    fn player_attack_authored() -> AuthoredRelationshipCatalog {
+        AuthoredRelationshipCatalog::from_edges([(
+            DirectedRelationshipEdgeKey::new(
+                AuthoredFacetKey::Faction(FactionId::new("player")),
+                AuthoredFacetKey::Faction(FactionId::new("wild")),
+            ),
+            -150,
+        )])
+        .expect("valid player attack edge")
+    }
+
+    fn patch_player_faction(world: &mut WorldData, unit_id: UnitId) {
+        let mut record = world.remove_unit_by_id(unit_id).expect("unit exists");
+        record.faction_id = FactionId::new("player");
+        let chunk = crate::world::ChunkId::new(record.placement.position.chunk);
+        world.insert_unit(chunk, record).unwrap();
+    }
+
     fn ctx<'a>(
         units: &'a [UnitId],
         target: CommandTarget,
         world: &'a WorldData,
         unit_catalog: &'a UnitCatalog,
         weapon_catalog: &'a WeaponCatalog,
+        authored: &'a crate::world::AuthoredRelationshipCatalog,
     ) -> CommandResolutionContext<'a> {
         CommandResolutionContext {
             selected_units: units,
@@ -166,8 +196,92 @@ mod tests {
             world,
             unit_catalog,
             weapon_catalog,
+            authored_relationships: authored,
             targeting_policy: AttackTargetingPolicy::default(),
         }
+    }
+
+    #[test]
+    fn neutral_unit_default_click_resolves_to_move() {
+        let unit_catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = WorldData::new(ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let player = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let neutral = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("deer"),
+            pos(5.0, 5.0),
+            UnitSource::Authored,
+            UnitOwnership::neutral(),
+        )
+        .unwrap()
+        .id;
+        let resolved = resolve_contextual_command(&ctx(
+            &[player],
+            CommandTarget::Unit { unit_id: neutral },
+            &world,
+            &unit_catalog,
+            &weapons,
+            &authored(),
+        ))
+        .unwrap();
+        assert_eq!(resolved.command_type, CommandType::Move);
+    }
+
+    #[test]
+    fn armed_attack_on_neutral_resolves_to_attack() {
+        let unit_catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = WorldData::new(ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let player = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let neutral = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("deer"),
+            pos(5.0, 5.0),
+            UnitSource::Authored,
+            UnitOwnership::neutral(),
+        )
+        .unwrap()
+        .id;
+        let resolved = resolve_contextual_command_with_armed(
+            &ctx(
+                &[player],
+                CommandTarget::Unit { unit_id: neutral },
+                &world,
+                &unit_catalog,
+                &weapons,
+                &authored(),
+            ),
+            Some(CommandType::Attack),
+        )
+        .unwrap();
+        assert_eq!(resolved.command_type, CommandType::Attack);
     }
 
     #[test]
@@ -187,6 +301,7 @@ mod tests {
             &world,
             &unit_catalog,
             &weapons,
+            &authored(),
         ))
         .unwrap();
         assert_eq!(resolved.command_type, CommandType::Move);
@@ -210,13 +325,14 @@ mod tests {
         )
         .unwrap()
         .id;
+        patch_player_faction(&mut world, player);
         let hostile = create_unit_with_ownership(
             &unit_catalog,
             &mut world,
-            &UnitDefinitionId::new("bandit"),
+            &UnitDefinitionId::new("wolf"),
             pos(5.0, 5.0),
             UnitSource::Authored,
-            UnitOwnership::hostile(),
+            UnitOwnership::wildlife(),
         )
         .unwrap()
         .id;
@@ -226,6 +342,7 @@ mod tests {
             &world,
             &unit_catalog,
             &weapons,
+            &player_attack_authored(),
         ))
         .unwrap();
         assert_eq!(resolved.command_type, CommandType::Attack);
@@ -265,6 +382,7 @@ mod tests {
             &world,
             &unit_catalog,
             &weapons,
+            &authored(),
         ))
         .unwrap();
         assert_eq!(resolved.command_type, CommandType::Move);
@@ -287,6 +405,7 @@ mod tests {
                 &world,
                 &unit_catalog,
                 &weapons,
+                &authored(),
             ))
             .is_none()
         );
@@ -310,6 +429,7 @@ mod tests {
                 &world,
                 &unit_catalog,
                 &weapons,
+                &authored(),
             ),
             Some(CommandType::Attack),
         )

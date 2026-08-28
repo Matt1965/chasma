@@ -98,6 +98,8 @@ pub fn normalize_restored_unit(
     record.combat_state = CombatState::Peaceful;
     record.attack_cycle = None;
     record.reactive_combat_target = None;
+    record.faction_id = definition.faction_id.clone();
+    record.species_id = definition.species_id.clone();
     Ok(())
 }
 
@@ -179,7 +181,7 @@ mod tests {
     }
 
     fn sample_record(id: u64) -> UnitRecord {
-        UnitRecord::new(
+        UnitRecord::new_test(
             UnitId::new(id),
             UnitDefinitionId::new("wolf"),
             crate::world::UnitPlacement::new(pos(1.0, 2.0), Quat::IDENTITY),

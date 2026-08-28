@@ -108,7 +108,7 @@ in `WorldData` from **accepted actual XZ displacement** each simulation step
 | Render | `Transform.rotation` composes smoothed visual yaw × asset rotation correction (UNIT-TURN-1 / UNIT-FACING-2) |
 | Turn clips | Presentation-only; do **not** mutate simulation rotation |
 | Visual turn rate | Per-unit `Turn Speed Deg/s` — presentation yaw only; movement unconstrained (UNIT-TURN-1) |
-| Turn-rate / combat-facing | Combat-facing refinements remain future work |
+| Combat-facing (COMBAT-FACING-1) | While **Attacking** and not **Moving**, authoritative yaw updates toward the current combat target each engagement tick; while **Chasing**/**Moving**, accepted travel displacement remains facing authority; presentation still catches up via Turn Speed Deg/s |
 
 Locomotion polish heading misalignment during **Moving** is intentionally skipped
 (`movement_heading_delta` returns `None`) because travel-facing owns rotation while

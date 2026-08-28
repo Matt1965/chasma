@@ -636,23 +636,42 @@ Design direction: [ADR-070](ADRs/ADR-070-progression-and-attributes.md), [ADR-07
 
 ---
 
-## Reputation
+## Relationships and Reputation
 
-Potential future systems:
+Architecture: [ADR-132](ADRs/ADR-132-relationship-and-reputation-architecture.md).
+Authoring: [docs/relationship-authoring.md](docs/relationship-authoring.md).
 
-- personal reputation
-- faction reputation
-- species reputation
-- regional reputation
-- event-based consequences
-- delayed reporting
-- local knowledge
+**Implemented today:** Phase 1–7 relationship/perception/targeting foundation (identity, authored matrices,
+resolver + Standing, per-unit Sight Range perception seam, mechanical targetability / explicit intent /
+default interaction / autonomous desire separation, relationship-driven autonomous desire, vertical
+validation and documentation closure). Reactive self-defense authorization remains attacker-specific
+(ADR-062).
+
+**Approved implementation Map:**
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| 1 | Faction / Species / Individual identity foundation and catalogs | Implemented |
+| 2 | Directional relationship matrix importer + authored store | Implemented |
+| 3 | Additive N×N resolver + provenance + sparse Standing + dev-scene persistence | Implemented |
+| 4 | Minimum perception seam — per-unit Sight Range + bounded spatial query | Implemented |
+| 5 | Mechanical targetability / explicit intent / default interaction / autonomous desire separation, incl. `TargetFilter` cleanup | Implemented |
+| 6 | Relationship-driven primitive autonomous desire | Implemented |
+| 7 | Vertical validation and documentation completion | **Implemented** |
+
+**Deferred beyond the Map:** incidents, crimes, witnesses, information propagation, culpability,
+reputation event curves and diminishing returns, personality, full creature behavior templates,
+regional standing, LOS and occlusion, `PER` influence, perception memory and alertness, trade and
+recruiting consumers, friendly-fire design, relationship UI or dev inspector, caching.
 
 ---
 
 ## Factions
 
-Potential future systems:
+Faction relationship identity, authored matrices, resolver, and Standing are owned by
+[ADR-132](ADRs/ADR-132-relationship-and-reputation-architecture.md) (Map phases 1–3 implemented).
+
+Potential future systems beyond that:
 
 - diplomacy
 - ownership

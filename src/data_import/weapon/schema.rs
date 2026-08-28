@@ -121,6 +121,7 @@ mod tests {
     fn target_filter_parsing() {
         let filters = TargetFilter::parse_list("Enemies, Wildlife").unwrap();
         assert_eq!(filters, vec![TargetFilter::Enemies, TargetFilter::Wildlife]);
+        assert_eq!(TargetFilter::parse("Units").unwrap(), TargetFilter::Units);
         assert_eq!(
             TargetFilter::parse_list("").unwrap(),
             vec![TargetFilter::Enemies]

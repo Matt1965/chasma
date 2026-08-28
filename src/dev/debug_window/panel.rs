@@ -7,8 +7,9 @@ use crate::dev::catalog_cache::DevSearchDebounce;
 use crate::dev::dev_mode::{DevDebugFlags, DevModeState};
 use crate::dev::input::DevPanelUi;
 use crate::dev::widgets::{
-    DevCollapsibleSectionId, DevWidgetToggle, DevWidgetToggleMark, spawn_collapsible_section,
-    spawn_toggle_row, sync_toggle_styles_with_marker,
+    DevCollapsibleSectionId, DevWidgetToggle, DevWidgetToggleMark, spawn_toggle_row,
+    sync_toggle_styles_with_marker,
+    theme::{TEXT_SECTION, small_text_font},
 };
 use crate::dev::window::{DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowUi};
 
@@ -37,6 +38,7 @@ pub enum DevDebugToggleFlag {
     Selection,
     Interaction,
     Combat,
+    RelationshipLinks,
     Health,
     CommandTrace,
     NavWalkable,
@@ -112,6 +114,13 @@ const TOGGLE_GROUPS: &[ToggleGroup] = &[
                 label: "Combat overlay",
                 flag: DevDebugToggleFlag::Combat,
                 tooltip: "Draws combat ranges and engagement diagnostics. Requires master overlay.",
+            },
+            ToggleDef {
+                label: "Relationship Links",
+                flag: DevDebugToggleFlag::RelationshipLinks,
+                tooltip: "Draws mutual-perception relationship links between nearby units. \
+                          Reads perception + relationship authorities only; does not change \
+                          simulation. Requires master overlay.",
             },
             ToggleDef {
                 label: "Health bars (all)",
@@ -214,43 +223,37 @@ pub fn setup_debug_window_panel(mut commands: Commands, bodies: Query<(Entity, &
                         TextColor(Color::srgba(0.72, 0.82, 0.9, 1.0)),
                     ));
                     for group in TOGGLE_GROUPS {
-                        spawn_collapsible_section(
-                            root,
-                            group.section,
-                            group.title,
-                            None,
-                            |body| {
-                                for toggle in group.toggles {
-                                    spawn_toggle_row(
-                                        body,
-                                        toggle.label,
-                                        DevTooltipContent::new(toggle.tooltip),
-                                        DevDebugToggleButton { flag: toggle.flag },
-                                    );
-                                }
-                            },
-                        );
+                        root.spawn((
+                            DevPanelUi,
+                            Text::new(group.title),
+                            small_text_font(),
+                            TextColor(TEXT_SECTION),
+                        ));
+                        for toggle in group.toggles {
+                            spawn_toggle_row(
+                                root,
+                                toggle.label,
+                                DevTooltipContent::new(toggle.tooltip),
+                                DevDebugToggleButton { flag: toggle.flag },
+                            );
+                        }
                     }
-                    spawn_collapsible_section(
-                        root,
-                        DevCollapsibleSectionId::DebugAnimation,
-                        "Animation diagnostics",
-                        Some(DevTooltipContent::new(
-                            "Aggregate animation metrics and per-unit readout for the shared selection primary unit.",
-                        )),
-                        |body| {
-                            body.spawn((
-                                DevAnimationText,
-                                DevPanelUi,
-                                Text::new(""),
-                                TextFont {
-                                    font_size: 10.0,
-                                    ..default()
-                                },
-                                TextColor(Color::srgba(0.72, 0.82, 0.9, 1.0)),
-                            ));
+                    root.spawn((
+                        DevPanelUi,
+                        Text::new("Animation diagnostics"),
+                        small_text_font(),
+                        TextColor(TEXT_SECTION),
+                    ));
+                    root.spawn((
+                        DevAnimationText,
+                        DevPanelUi,
+                        Text::new(""),
+                        TextFont {
+                            font_size: 10.0,
+                            ..default()
                         },
-                    );
+                        TextColor(Color::srgba(0.72, 0.82, 0.9, 1.0)),
+                    ));
                 });
         });
         return;
@@ -303,6 +306,7 @@ pub fn sync_debug_panel_button_styles(
             DevDebugToggleFlag::Selection => config.selection,
             DevDebugToggleFlag::Interaction => config.interaction,
             DevDebugToggleFlag::Combat => config.combat,
+            DevDebugToggleFlag::RelationshipLinks => config.relationship_links,
             DevDebugToggleFlag::Health => config.health,
             DevDebugToggleFlag::CommandTrace => config.intent,
             DevDebugToggleFlag::NavWalkable => config.grid,
@@ -357,6 +361,9 @@ fn toggle_debug_flag(
             state.debug_config.interaction = !state.debug_config.interaction
         }
         DevDebugToggleFlag::Combat => state.debug_config.combat = !state.debug_config.combat,
+        DevDebugToggleFlag::RelationshipLinks => {
+            state.debug_config.relationship_links = !state.debug_config.relationship_links
+        }
         DevDebugToggleFlag::Health => state.debug_config.health = !state.debug_config.health,
         DevDebugToggleFlag::CommandTrace => state.debug_config.intent = !state.debug_config.intent,
         DevDebugToggleFlag::NavWalkable => state.debug_config.grid = !state.debug_config.grid,
@@ -394,7 +401,7 @@ pub(crate) fn format_debug_summary(
     mask_stats: crate::debug::NavigationMaskDrawStats,
 ) -> String {
     let mut summary = format!(
-        "Overlay master: {}\nPaths: {}  Steering: {}  Formations: {}\nSelection: {}  Interaction: {}  Combat: {}  Health: {}  Trace: {}\nPathing mask: {}  Block: {}  Foot: {}  Entr: {}  Rsv: {}  Occ: {}  Blueprint: {}",
+        "Overlay master: {}\nPaths: {}  Steering: {}  Formations: {}\nSelection: {}  Interaction: {}  Combat: {}  RelLinks: {}  Health: {}  Trace: {}\nPathing mask: {}  Block: {}  Foot: {}  Entr: {}  Rsv: {}  Occ: {}  Blueprint: {}",
         flags.enabled,
         flags.path,
         flags.steering,
@@ -402,6 +409,7 @@ pub(crate) fn format_debug_summary(
         flags.selection,
         flags.interaction,
         flags.combat,
+        flags.relationship_links,
         flags.health,
         flags.intent,
         flags.grid,
@@ -422,4 +430,217 @@ pub(crate) fn format_debug_summary(
         ));
     }
     summary
+}
+
+/// Count of live Debug toggle rows declared in [`TOGGLE_GROUPS`].
+#[cfg(test)]
+pub fn expected_debug_toggle_button_count() -> usize {
+    TOGGLE_GROUPS.iter().map(|group| group.toggles.len()).sum()
+}
+
+/// Every `(label, flag)` pair that must produce a [`DevDebugToggleButton`].
+#[cfg(test)]
+pub fn debug_toggle_defs_for_tests() -> Vec<(&'static str, DevDebugToggleFlag)> {
+    TOGGLE_GROUPS
+        .iter()
+        .flat_map(|group| {
+            group
+                .toggles
+                .iter()
+                .map(|toggle| (toggle.label, toggle.flag))
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod panel_construction_tests {
+    use super::*;
+    use crate::debug::DebugOverlayConfig;
+    use crate::dev::DevModeInputGate;
+    use crate::dev::catalog_cache::DevSearchDebounce;
+    use crate::dev::dev_mode::DevModeState;
+    use crate::dev::window::{DevWindowId, DevWindowRegistry, setup_dev_workspace};
+    use bevy::ecs::system::RunSystemOnce;
+
+    fn headless_debug_ui_app() -> App {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, AssetPlugin::default(), bevy::ui::UiPlugin));
+        app.init_resource::<DevWindowRegistry>()
+            .init_resource::<DevModeState>()
+            .init_resource::<DevSearchDebounce>()
+            .init_resource::<DevModeInputGate>()
+            .init_resource::<crate::dev::widgets::DevCollapsibleState>();
+        app
+    }
+
+    fn relationship_links_toggle_entity(world: &mut World) -> Entity {
+        world
+            .query::<(Entity, &DevDebugToggleButton)>()
+            .iter(world)
+            .find(|(_, toggle)| toggle.flag == DevDebugToggleFlag::RelationshipLinks)
+            .map(|(entity, _)| entity)
+            .expect("Relationship Links DevDebugToggleButton")
+    }
+
+    #[test]
+    fn format_debug_summary_includes_relationship_links() {
+        let mut config = DebugOverlayConfig::production();
+        config.relationship_links = true;
+        let summary =
+            format_debug_summary(&config, crate::debug::NavigationMaskDrawStats::default());
+        assert!(summary.contains("RelLinks: true"));
+    }
+
+    #[test]
+    fn debug_panel_spawns_one_button_per_toggle_def() {
+        let mut app = headless_debug_ui_app();
+        app.world_mut()
+            .run_system_once(setup_dev_workspace)
+            .expect("setup_dev_workspace");
+        app.world_mut()
+            .run_system_once(setup_debug_window_panel)
+            .expect("setup_debug_window_panel");
+
+        let mut world = app.world_mut();
+        let buttons: Vec<_> = world
+            .query::<&DevDebugToggleButton>()
+            .iter(&mut world)
+            .collect();
+        assert_eq!(buttons.len(), expected_debug_toggle_button_count());
+        assert_eq!(
+            buttons
+                .iter()
+                .filter(|toggle| toggle.flag == DevDebugToggleFlag::RelationshipLinks)
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn relationship_links_toggle_is_a_button_with_label() {
+        let mut app = headless_debug_ui_app();
+        app.world_mut()
+            .run_system_once(setup_dev_workspace)
+            .expect("setup_dev_workspace");
+        app.world_mut()
+            .run_system_once(setup_debug_window_panel)
+            .expect("setup_debug_window_panel");
+
+        let entity = relationship_links_toggle_entity(app.world_mut());
+        let world = app.world();
+        assert!(world.get::<Button>(entity).is_some());
+        assert!(world.get::<DevWidgetToggle>(entity).is_some());
+
+        let mut world = app.world_mut();
+        let labels: Vec<String> = world
+            .query::<&Text>()
+            .iter(&mut world)
+            .map(|text| text.to_string())
+            .collect();
+        assert!(
+            labels.iter().any(|label| label == "Relationship Links"),
+            "expected label text among spawned Debug panel strings"
+        );
+        assert!(
+            labels
+                .iter()
+                .any(|label| label == "Selection and inspector focus"),
+            "expected flat section header among spawned Debug panel strings"
+        );
+    }
+
+    #[test]
+    fn toggle_def_inventory_matches_spawned_buttons() {
+        let defs = debug_toggle_defs_for_tests();
+        let mut app = headless_debug_ui_app();
+        app.world_mut()
+            .run_system_once(setup_dev_workspace)
+            .expect("setup_dev_workspace");
+        app.world_mut()
+            .run_system_once(setup_debug_window_panel)
+            .expect("setup_debug_window_panel");
+
+        let mut world = app.world_mut();
+        let mut spawned: Vec<DevDebugToggleFlag> = world
+            .query::<&DevDebugToggleButton>()
+            .iter(&mut world)
+            .map(|toggle| toggle.flag)
+            .collect();
+        spawned.sort_by_key(|flag| format!("{flag:?}"));
+
+        let mut expected: Vec<DevDebugToggleFlag> = defs.iter().map(|(_, flag)| *flag).collect();
+        expected.sort_by_key(|flag| format!("{flag:?}"));
+
+        assert_eq!(spawned, expected);
+    }
+
+    #[test]
+    fn pressing_relationship_links_toggle_flips_backing_state() {
+        let mut app = headless_debug_ui_app();
+        app.world_mut()
+            .run_system_once(setup_dev_workspace)
+            .expect("setup_dev_workspace");
+        app.world_mut()
+            .run_system_once(setup_debug_window_panel)
+            .expect("setup_debug_window_panel");
+
+        let button = relationship_links_toggle_entity(app.world_mut());
+        {
+            let mut registry = app.world_mut().resource_mut::<DevWindowRegistry>();
+            registry.show(DevWindowId::Debug);
+            let mut dev_state = app.world_mut().resource_mut::<DevModeState>();
+            dev_state.enabled = true;
+            assert!(!dev_state.debug_config.relationship_links);
+        }
+
+        app.world_mut()
+            .entity_mut(button)
+            .insert(Interaction::Pressed);
+        app.world_mut()
+            .run_system_once(handle_debug_toggle_buttons)
+            .expect("handle_debug_toggle_buttons");
+
+        assert!(
+            app.world()
+                .resource::<DevModeState>()
+                .debug_config
+                .relationship_links
+        );
+    }
+
+    #[test]
+    fn relationship_links_checked_state_syncs_toggle_mark() {
+        let mut app = headless_debug_ui_app();
+        app.world_mut()
+            .run_system_once(setup_dev_workspace)
+            .expect("setup_dev_workspace");
+        app.world_mut()
+            .run_system_once(setup_debug_window_panel)
+            .expect("setup_debug_window_panel");
+
+        let button = relationship_links_toggle_entity(app.world_mut());
+        {
+            let mut registry = app.world_mut().resource_mut::<DevWindowRegistry>();
+            registry.show(DevWindowId::Debug);
+            let mut dev_state = app.world_mut().resource_mut::<DevModeState>();
+            dev_state.enabled = true;
+            dev_state.debug_config.relationship_links = true;
+        }
+
+        app.world_mut()
+            .run_system_once(sync_debug_panel_button_styles)
+            .expect("sync_debug_panel_button_styles");
+
+        let children = app
+            .world()
+            .get::<Children>(button)
+            .expect("toggle children");
+        let mark_entity = children.iter().next().expect("toggle mark child");
+        assert_eq!(
+            *app.world()
+                .get::<Visibility>(mark_entity)
+                .expect("mark visibility"),
+            Visibility::Visible
+        );
+    }
 }

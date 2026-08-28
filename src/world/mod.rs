@@ -23,7 +23,9 @@ mod obstacle;
 mod occupancy;
 mod operation;
 mod ownership;
+mod perception;
 mod projectile;
+pub mod relationship;
 mod settlement;
 mod space;
 mod task;
@@ -207,13 +209,16 @@ pub use combat::{
     CombatAiTraceOutcome, CombatEngagementReport, CombatEngagementStatus, CombatEngagementTrace,
     CombatStrikeEvent, CombatStrikeReport, CombatStrikeTrace, ProjectileImpactRejection,
     ProjectileLaunchSnapshot, RANGE_HYSTERESIS_METERS, RangeCheck, WeaponTiming,
-    apply_attributed_combat_damage, classify_unit_target, clear_attack_cycle_for_order_cancel,
-    find_auto_acquire_target, hold_in_attack_range, initial_attack_combat_state,
-    is_in_weapon_range, is_unit_alive, is_valid_active_combat_target, is_valid_attack_target,
-    reset_attack_cycle_for_retarget, step_all_combat_engagement, step_all_combat_strikes,
-    step_combat_ai_acquisition, try_reactive_combat_retaliation, validate_active_combat_target,
-    validate_attack_target, validate_projectile_impact_target,
-    validate_reactive_retaliation_target, weapon_for_unit_record,
+    apply_attributed_combat_damage, autonomous_wants_to_attack, classify_unit_target,
+    clear_attack_cycle_for_order_cancel, find_auto_acquire_target, hold_in_attack_range,
+    initial_attack_combat_state, is_in_weapon_range, is_unit_alive, is_valid_active_combat_target,
+    is_valid_autonomous_attack_target, is_valid_explicit_attack_target,
+    is_valid_mechanical_attack_target, reset_attack_cycle_for_retarget, step_all_combat_engagement,
+    step_all_combat_strikes, step_combat_ai_acquisition, try_reactive_combat_retaliation,
+    validate_active_combat_target, validate_autonomous_attack_target,
+    validate_explicit_attack_target, validate_mechanical_attack_target,
+    validate_projectile_impact_target, validate_reactive_retaliation_target, weapon_allows_target,
+    weapon_allows_target_filters, weapon_for_unit_record,
 };
 pub use config::WorldConfig;
 pub use coordinates::{ChunkCoord, ChunkLayout, LocalPosition, WorldPosition};
@@ -380,9 +385,21 @@ pub use ownership::{
     filter_commandable_unit_ids, filter_selectable_unit_ids, is_owned_by, is_player_controllable,
     player_units, unit_is_commandable, unit_is_selectable,
 };
+pub use perception::{DEFAULT_SIGHT_RANGE_METERS, perceived_units, sight_range_meters_for_record};
 pub use projectile::{
     ProjectileEvent, ProjectileId, ProjectileRecord, ProjectileReport, ProjectileStatus,
     ProjectileTrace, spawn_projectile_from_strike, step_all_projectiles,
+};
+pub use relationship::{
+    AuthoredFacetKey, AuthoredRelationshipCatalog, AuthoredRelationshipCatalogError,
+    DirectedRelationshipEdgeKey, DirectedRelationshipFacetKey, FactionCatalog, FactionCatalogError,
+    FactionDefinition, FactionId, MatrixDirection, RelationshipContribution,
+    RelationshipContributionLayer, RelationshipExplanation, RelationshipFacet,
+    RelationshipMatrixDomain, RelationshipStandingSaveState, RelationshipStandingStore,
+    SpeciesCatalog, SpeciesCatalogError, SpeciesDefinition, SpeciesId,
+    assemble_relationship_facets, effective_relationship, effective_relationship_for_records,
+    explain_relationship, explain_relationship_for_records, faction_display_name,
+    species_display_name,
 };
 pub use settlement::{
     ActiveEmergencyInstance, ArbitrationContext, BuildingCandidateScore,
@@ -550,10 +567,10 @@ pub use unit::{
     UnitDefinitionId, UnitGroundingError, UnitId, UnitInsertError, UnitMetadata, UnitMovementError,
     UnitMovementReport, UnitMovementStepOutcome, UnitMovementStepReport, UnitMovementTrace,
     UnitOrder, UnitOrderError, UnitPlacement, UnitRecord, UnitRenderKey, UnitSimulationStepReport,
-    UnitSource, UnitState, UnitVitals, UnitWorkCapabilities, apply_validated_attack_order,
-    create_unit, create_unit_with_inventory, create_unit_with_ownership,
-    facing_rotation_from_direction_xz, facing_rotation_from_travel, ground_unit_position,
-    ground_unit_to_terrain, infer_navigation_membership_at_position,
+    UnitSource, UnitState, UnitVitals, UnitWorkCapabilities, apply_attacking_combat_facing,
+    apply_validated_attack_order, create_unit, create_unit_with_inventory,
+    create_unit_with_ownership, facing_rotation_from_direction_xz, facing_rotation_from_travel,
+    ground_unit_position, ground_unit_to_terrain, infer_navigation_membership_at_position,
     initialize_surface_units_navigation_membership, initialize_unit_navigation_membership,
     initialize_unit_navigation_membership_if_surface, issue_unit_order, lookup_unit,
     model_forward_xz, move_unit, remove_unit, resolve_all_pending_unit_orders,
@@ -640,6 +657,15 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<OwnerId>()
             .register_type::<TeamId>()
             .register_type::<UnitRecord>()
+            .register_type::<FactionId>()
+            .register_type::<FactionDefinition>()
+            .register_type::<FactionCatalog>()
+            .register_type::<SpeciesId>()
+            .register_type::<SpeciesDefinition>()
+            .register_type::<SpeciesCatalog>()
+            .register_type::<AuthoredFacetKey>()
+            .register_type::<DirectedRelationshipEdgeKey>()
+            .register_type::<AuthoredRelationshipCatalog>()
             .register_type::<ChunkUnitStore>()
             .register_type::<BiomeId>()
             .register_type::<BiomeSample>()
@@ -725,6 +751,7 @@ impl Plugin for WorldFoundationPlugin {
             app.init_resource::<ConstructionResponseCatalog>();
             app.init_resource::<BuildingConstructionCostCatalog>();
             app.init_resource::<InventoryProfileCatalog>();
+            app.init_resource::<AuthoredRelationshipCatalog>();
             app.insert_resource(crate::world::load_terrain_field_catalog());
             app.insert_resource(crate::world::load_terrain_field_source_profile_catalog());
             app.insert_resource(crate::world::load_field_response_profile_catalog());
@@ -749,9 +776,19 @@ impl Plugin for WorldFoundationPlugin {
                     Some(&mut sizing_reports),
                 );
             let footprint_catalog = crate::data_import::resolve_dev_footprint_catalog();
+            let faction_catalog = crate::data_import::resolve_dev_faction_catalog();
+            let species_catalog = crate::data_import::resolve_dev_species_catalog();
+            let authored_relationships =
+                crate::data_import::resolve_dev_authored_relationship_catalog(
+                    &faction_catalog,
+                    &species_catalog,
+                );
             app.insert_resource(weapons.clone());
             app.insert_resource(animation_profiles.clone());
             app.insert_resource(inventory_profiles.clone());
+            app.insert_resource(faction_catalog.clone());
+            app.insert_resource(species_catalog.clone());
+            app.insert_resource(authored_relationships);
             app.insert_resource(item_categories);
             app.insert_resource(item_catalog);
             app.init_resource::<OperationCatalog>();
@@ -770,6 +807,8 @@ impl Plugin for WorldFoundationPlugin {
                 &mut sizing_reports,
             )));
             app.insert_resource(crate::data_import::resolve_dev_unit_catalog(
+                &faction_catalog,
+                &species_catalog,
                 &weapons,
                 &animation_profiles,
                 &inventory_profiles,

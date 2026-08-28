@@ -756,23 +756,43 @@ Local movement may use detailed pathfinding later.
 
 Reputation Considerations
 
-Not part of the immediate goal.
+Architecture is defined by [ADR-132](ADRs/ADR-132-relationship-and-reputation-architecture.md).
+Nothing below is implemented yet; current combat hostility is a hard-coded Affiliation matrix, not a
+relationship system.
 
-Architecture should remain compatible with:
+Relationships are conceptually directional and N×N:
 
-personal relationships
-faction reputation
-regional reputation
-species reputation
-event-based consequences
-delayed reporting
-local knowledge
+relationship(A -> B) is independent of relationship(B -> A)
 
-Future reputation systems should support evaluating relationships between units without requiring every possible relationship pair to be eagerly stored.
+Each relationship-capable subject carries identity facets (initially Faction, Species, Individual).
+Relationship is the additive sum over the facet pairs of the two subjects, with a missing edge
+contributing 0. This satisfies the requirement above — evaluating a relationship never requires
+every possible pair to be eagerly stored, because the N×N model is a function rather than a table,
+and resolution cost depends on facet count rather than unit count.
 
-Personal relationship history should be stored sparsely when events justify it.
+Values are signed integers, unclamped. Interpretation and thresholds belong to consumers, not to
+relationship truth.
 
-Consequences should not assume instantaneous global knowledge.
+Two layers compose: an authored Disposition baseline rebuilt from the workbook, plus a sparse
+mutable Standing layer that persists only the edges that actually changed. Personal relationship
+history is the Standing layer keyed by individual identity — not a parallel subsystem — and is
+written only when events justify it.
+
+Relationship identity is separate from ownership. Control, mechanical team rules, runtime
+affiliation, relationship identity, and relationship value remain five distinct concepts.
+
+Consequences must not assume instantaneous global knowledge. Factual incidents, observer knowledge,
+propagation, and culpability are separate deferred systems that reach relationship only through a
+single mutation seam. Immediate self-defense stays an attacker-specific combat authorization and
+must never become faction reputation.
+
+Architecture should remain compatible with later additions:
+
+additional identity domains
+regional and contextual contributions through the resolver
+event-based consequences with curves and caps
+delayed reporting and local knowledge
+non-combat consumers such as trade and recruiting
 
 Building Considerations
 

@@ -25,7 +25,7 @@ const TICK_SECONDS: f32 = 0.25;
 const BLOCKED_AT_SUPPORT_LIMIT: u32 = 30;
 
 fn robot_catalog() -> UnitCatalog {
-    UnitCatalog::from_definitions(vec![UnitDefinition::new(
+    UnitCatalog::from_definitions(vec![UnitDefinition::new_test(
         UnitDefinitionId::new("robot"),
         "Robot",
         "Player",

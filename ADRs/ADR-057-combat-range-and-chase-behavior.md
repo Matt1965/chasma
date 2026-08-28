@@ -99,7 +99,7 @@ order above supersedes the C4-only list.
 
 While `AttackMoving` without a valid target:
 
-- Scan sorted units within `ATTACK_MOVE_SCAN_RADIUS_METERS` (16 m)
+- Scan perceived units within the mover's authored Sight Range via `perceived_units` (Phase 4)
 - Filter with C3 ownership + weapon validation
 - Pick closest valid hostile; tie-break lowest [`UnitId`]
 - Transition to `AttackMoving { destination, target: Some(id) }` and chase

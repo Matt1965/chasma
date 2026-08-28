@@ -53,19 +53,36 @@ impl HitMode {
     }
 }
 
-/// Target categories a weapon may strike (ADR-054 C1).
+/// Mechanical target class a weapon may strike (ADR-054 C1, relationship Phase 5).
+///
+/// Social categories (`Enemies`, `Wildlife`, `Neutral`) remain as deprecated parse aliases for
+/// [`Self::Units`]. Weapon legality must not consult affiliation or relationship values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
 pub enum TargetFilter {
+    /// Any unit entity (preferred mechanical class).
+    Units,
+    /// Deprecated alias for [`Self::Units`].
     Enemies,
+    /// Deprecated alias for [`Self::Units`].
     Wildlife,
+    /// Deprecated alias for [`Self::Units`].
     Neutral,
     Structures,
     All,
 }
 
 impl TargetFilter {
+    /// Whether this filter authorizes strikes against unit entities.
+    pub fn matches_units(self) -> bool {
+        matches!(
+            self,
+            Self::Units | Self::Enemies | Self::Wildlife | Self::Neutral | Self::All
+        )
+    }
+
     pub fn parse(value: &str) -> Result<Self, String> {
         match value.trim().to_ascii_lowercase().as_str() {
+            "units" | "unit" => Ok(Self::Units),
             "enemies" | "enemy" => Ok(Self::Enemies),
             "wildlife" => Ok(Self::Wildlife),
             "neutral" => Ok(Self::Neutral),

@@ -16,6 +16,8 @@ pub struct DebugOverlayConfig {
     pub interaction: bool,
     /// Combat range circles, target lines, projectile debug (ADR-061 C8).
     pub combat: bool,
+    /// Mutual-perception relationship links between nearby units (ADR-132 dev diagnostic).
+    pub relationship_links: bool,
     /// Show health bars for all living units (ADR-062 C9 dev debug).
     pub health: bool,
     /// Navigation/Pathing Mask — whole-world navigable + blocked cells (NV0).
@@ -59,6 +61,7 @@ impl DebugOverlayConfig {
             selection: false,
             interaction: false,
             combat: false,
+            relationship_links: false,
             health: false,
             grid: false,
             nav_blockers: false,
@@ -84,6 +87,7 @@ impl DebugOverlayConfig {
             selection: false,
             interaction: false,
             combat: false,
+            relationship_links: false,
             health: false,
             grid: false,
             nav_blockers: false,
@@ -109,6 +113,7 @@ impl DebugOverlayConfig {
             DebugOverlayCategory::Selection => self.selection,
             DebugOverlayCategory::Interaction => self.interaction,
             DebugOverlayCategory::Combat => self.combat,
+            DebugOverlayCategory::RelationshipLinks => self.relationship_links,
             DebugOverlayCategory::Health => self.health,
             DebugOverlayCategory::Grid => self.grid,
             DebugOverlayCategory::NavBlockers => self.nav_blockers,
@@ -146,6 +151,7 @@ pub enum DebugOverlayCategory {
     Selection,
     Interaction,
     Combat,
+    RelationshipLinks,
     Health,
     Grid,
     NavBlockers,
@@ -190,6 +196,10 @@ pub fn debug_combat_overlay_enabled(settings: &DebugOverlaySettings) -> bool {
     settings.category_enabled(DebugOverlayCategory::Combat)
 }
 
+pub fn debug_relationship_links_overlay_enabled(settings: &DebugOverlaySettings) -> bool {
+    settings.category_enabled(DebugOverlayCategory::RelationshipLinks)
+}
+
 macro_rules! debug_overlay_run_if {
     ($fn_name:ident, $helper:ident) => {
         pub fn $fn_name(settings: Res<DebugOverlaySettings>) -> bool {
@@ -215,6 +225,10 @@ debug_overlay_run_if!(
     debug_interaction_overlay_enabled
 );
 debug_overlay_run_if!(run_debug_combat_overlay, debug_combat_overlay_enabled);
+debug_overlay_run_if!(
+    run_debug_relationship_links_overlay,
+    debug_relationship_links_overlay_enabled
+);
 
 pub fn debug_blueprint_overlay_enabled(settings: &DebugOverlaySettings) -> bool {
     settings.blueprint_overlay_active()
@@ -288,6 +302,7 @@ mod tests {
             DebugOverlayCategory::Selection,
             DebugOverlayCategory::Interaction,
             DebugOverlayCategory::Combat,
+            DebugOverlayCategory::RelationshipLinks,
             DebugOverlayCategory::Health,
             DebugOverlayCategory::Grid,
             DebugOverlayCategory::NavBlockers,

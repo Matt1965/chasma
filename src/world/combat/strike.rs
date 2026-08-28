@@ -594,11 +594,11 @@ mod tests {
     use crate::world::combat::step_all_combat_engagement;
     use crate::world::projectile::{ProjectileEvent, ProjectileReport, step_all_projectiles};
     use crate::world::{
-        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DamageType, DoodadCatalog,
-        FootprintCatalog, Heightfield, HitMode, LocalPosition, PassabilityCatalogs, TargetFilter,
-        UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource, WeaponDefinition,
-        WeaponDefinitionId, create_unit_with_ownership, default_passability, issue_unit_order,
-        starter_unit_definitions, starter_weapon_definitions,
+        AuthoredRelationshipCatalog, BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+        DamageType, DoodadCatalog, FootprintCatalog, Heightfield, HitMode, LocalPosition,
+        PassabilityCatalogs, TargetFilter, UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource,
+        WeaponDefinition, WeaponDefinitionId, create_unit_with_ownership, default_passability,
+        issue_unit_order, starter_unit_definitions, starter_weapon_definitions,
     };
     use bevy::prelude::Vec3;
 
@@ -703,6 +703,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut strikes,
         );
         strikes
@@ -968,6 +969,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut CombatStrikeReport::default(),
         );
         let mut projectile = ProjectileReport::default();
@@ -1048,6 +1050,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut CombatStrikeReport::default(),
         );
         let mut projectile = ProjectileReport::default();

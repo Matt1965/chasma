@@ -9,8 +9,8 @@ use crate::units::input::{
     SelectedUnits, cursor_world_ray, pick_unit_along_ray, terrain_click_to_world_position,
 };
 use crate::world::{
-    AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldConfig, WorldData,
-    is_valid_attack_target,
+    AttackTargetingPolicy, AuthoredRelationshipCatalog, UnitCatalog, WeaponCatalog, WorldConfig,
+    WorldData, is_valid_autonomous_attack_target,
 };
 
 use super::player_hud_state::PlayerHudState;
@@ -38,6 +38,7 @@ pub fn sample_gameplay_cursor_context(
     config: Res<WorldConfig>,
     unit_catalog: Res<UnitCatalog>,
     weapon_catalog: Res<WeaponCatalog>,
+    authored_relationships: Res<AuthoredRelationshipCatalog>,
     units: Query<(&crate::units::UnitRenderEntity, &GlobalTransform)>,
     render_assets: Option<Res<TerrainRenderAssets>>,
     mut ui_state: ResMut<GameplayUiState>,
@@ -62,8 +63,9 @@ pub fn sample_gameplay_cursor_context(
                 crate::world::SelectionControllabilityPolicy::gameplay_default(),
             ) {
                 let attackable = selection.iter().any(|attacker| {
-                    is_valid_attack_target(
+                    is_valid_autonomous_attack_target(
                         &world,
+                        &authored_relationships,
                         attacker,
                         unit_id,
                         &weapon_catalog,

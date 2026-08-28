@@ -261,6 +261,8 @@ mod tests {
             owner_id: None,
             team_id: None,
             affiliation: Affiliation::Neutral,
+            faction_id: crate::world::FactionId::new("wild"),
+            species_id: crate::world::SpeciesId::new("wolf"),
             vitals: UnitVitals::full(10),
             combat_state: combat,
             attack_cycle: None,

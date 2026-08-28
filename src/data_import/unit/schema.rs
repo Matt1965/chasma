@@ -2,6 +2,7 @@
 
 use crate::world::DEFAULT_TURN_SPEED_DEGREES_PER_SECOND;
 use crate::world::asset_sizing::AssetSizingDefinition;
+use crate::world::relationship::{FactionCatalog, FactionId, SpeciesCatalog, SpeciesId};
 use crate::world::{AnimationProfile, AnimationProfileId};
 use crate::world::{UnitDefinition, UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
 
@@ -11,7 +12,8 @@ use super::super::schema::normalize_file_path;
 pub const REQUIRED_COLUMNS: &[&str] = &[
     "Unit ID",
     "Name",
-    "Faction",
+    "Faction Key",
+    "Species Key",
     "Level",
     "Base HP",
     "Strength",
@@ -52,6 +54,7 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Rotation Correction Z Deg",
     "Turn Speed Deg/s",
     "Explicit Baseline Scale Uniform",
+    "Sight Range",
 ];
 
 /// Computed workbook column — never imported as authoritative data.
@@ -61,7 +64,9 @@ pub const DEFAULT_MOVE_SPEED_MPS: f32 = 4.0;
 pub const DEFAULT_COLLISION_RADIUS_METERS: f32 = 0.5;
 pub const DEFAULT_MAX_SLOPE_DEGREES: f32 = 40.0;
 pub const DEFAULT_RENDER_SCALE: f32 = 1.0;
+pub const DEFAULT_SIGHT_RANGE_METERS: f32 = 24.0;
 pub const TURN_SPEED_DEG_PER_SEC: &str = "Turn Speed Deg/s";
+pub const SIGHT_RANGE_METERS: &str = "Sight Range";
 /// `robot.glb` mesh bounds are ~0.81 m tall; scale to ~1.75 m humanoid when the sheet omits Render Scale.
 pub const ROBOT_DEFAULT_RENDER_SCALE: f32 = 2.15;
 /// Used when the workbook has no `Default Weapon ID` column or the cell is blank.
@@ -73,7 +78,8 @@ pub struct UnitImportRow {
     pub row_number: usize,
     pub unit_id: String,
     pub name: String,
-    pub faction: String,
+    pub faction_key: String,
+    pub species_key: String,
     pub level: u32,
     pub base_hp: u32,
     pub max_hp: u32,
@@ -102,6 +108,8 @@ pub struct UnitImportRow {
     pub has_inventory_profile_column: bool,
     pub turn_speed_degrees_per_second: f32,
     pub has_turn_speed_column: bool,
+    pub sight_range_meters: f32,
+    pub has_sight_range_column: bool,
     pub asset_sizing: AssetSizingDefinition,
 }
 
@@ -128,7 +136,28 @@ pub fn normalize_file_path_to_render_key(path: &str) -> Result<String, String> {
 }
 
 impl UnitImportRow {
-    pub fn to_definition(&self) -> Result<UnitDefinition, String> {
+    pub fn to_definition(
+        &self,
+        factions: &FactionCatalog,
+        species: &SpeciesCatalog,
+    ) -> Result<UnitDefinition, String> {
+        use crate::data_import::relationship::normalize_relationship_key;
+
+        let faction_id = FactionId::new(normalize_relationship_key(&self.faction_key)?);
+        let species_id = SpeciesId::new(normalize_relationship_key(&self.species_key)?);
+        let Some(faction) = factions.get(&faction_id) else {
+            return Err(format!("unknown Faction Key `{}`", faction_id.as_str()));
+        };
+        if !faction.enabled {
+            return Err(format!("Faction Key `{}` is disabled", faction_id.as_str()));
+        }
+        let Some(species_def) = species.get(&species_id) else {
+            return Err(format!("unknown Species Key `{}`", species_id.as_str()));
+        };
+        if !species_def.enabled {
+            return Err(format!("Species Key `{}` is disabled", species_id.as_str()));
+        }
+
         let render_key = if self.file_path.trim().is_empty() {
             UnitRenderKey::unset()
         } else {
@@ -138,7 +167,9 @@ impl UnitImportRow {
         let mut definition = UnitDefinition::new(
             UnitDefinitionId::new(self.unit_id.trim()),
             self.name.trim(),
-            self.faction.trim(),
+            faction_id,
+            species_id,
+            faction.display_name.clone(),
             self.level,
             self.base_hp,
             self.max_hp,
@@ -170,6 +201,7 @@ impl UnitImportRow {
         }
         definition.asset_sizing = self.asset_sizing.clone();
         definition.turn_speed_degrees_per_second = self.turn_speed_degrees_per_second;
+        definition.sight_range_meters = self.sight_range_meters;
         Ok(definition)
     }
 
@@ -227,7 +259,8 @@ mod tests {
             row_number: 2,
             unit_id: "U-0001".to_string(),
             name: "Wolf".to_string(),
-            faction: "Wild".to_string(),
+            faction_key: "wild".to_string(),
+            species_key: "wolf".to_string(),
             level: 2,
             base_hp: 5,
             max_hp: 5,
@@ -256,6 +289,8 @@ mod tests {
             has_inventory_profile_column: false,
             turn_speed_degrees_per_second: DEFAULT_TURN_SPEED_DEGREES_PER_SECOND,
             has_turn_speed_column: false,
+            sight_range_meters: DEFAULT_SIGHT_RANGE_METERS,
+            has_sight_range_column: false,
             asset_sizing: AssetSizingDefinition::default(),
         }
     }
@@ -275,10 +310,14 @@ mod tests {
 
     #[test]
     fn converts_row_to_definition_preserving_stats() {
-        let def = sample_row().to_definition().unwrap();
+        let factions = FactionCatalog::default();
+        let species = SpeciesCatalog::default();
+        let def = sample_row().to_definition(&factions, &species).unwrap();
         assert_eq!(def.id.as_str(), "U-0001");
         assert_eq!(def.display_name, "Wolf");
         assert_eq!(def.faction_tag, "Wild");
+        assert_eq!(def.faction_id.as_str(), "wild");
+        assert_eq!(def.species_id.as_str(), "wolf");
         assert_eq!(def.level, 2);
         assert_eq!(def.base_hp, 5);
         assert_eq!(def.strength, 4);
@@ -299,19 +338,25 @@ mod tests {
 
     #[test]
     fn blank_file_path_yields_unset_render_key() {
+        let factions = FactionCatalog::default();
+        let species = SpeciesCatalog::default();
         let mut row = sample_row();
         row.file_path = String::new();
-        let def = row.to_definition().unwrap();
+        let def = row.to_definition(&factions, &species).unwrap();
         assert_eq!(def.render_key, UnitRenderKey::unset());
     }
 
     #[test]
     fn robot_without_inventory_column_gets_default_backpack() {
+        let factions = FactionCatalog::default();
+        let species = SpeciesCatalog::default();
         let mut row = sample_row();
         row.file_path = r"\units\robot.glb".to_string();
         row.name = "Robot".to_string();
+        row.faction_key = "player".to_string();
+        row.species_key = "robot".to_string();
         row.has_inventory_profile_column = false;
-        let def = row.to_definition().unwrap();
+        let def = row.to_definition(&factions, &species).unwrap();
         assert_eq!(
             def.inventory_profile_id.as_ref().map(|id| id.as_str()),
             Some("unit_backpack_standard")
@@ -320,26 +365,34 @@ mod tests {
 
     #[test]
     fn robot_without_render_scale_column_uses_humanoid_default() {
+        let factions = FactionCatalog::default();
+        let species = SpeciesCatalog::default();
         let mut row = sample_row();
         row.file_path = r"\units\robot.glb".to_string();
         row.name = "Robot".to_string();
+        row.faction_key = "player".to_string();
+        row.species_key = "robot".to_string();
         row.has_render_scale_column = false;
-        let def = row.to_definition().unwrap();
+        let def = row.to_definition(&factions, &species).unwrap();
         assert!((def.render_scale - ROBOT_DEFAULT_RENDER_SCALE).abs() < 1e-4);
     }
 
     #[test]
     fn explicit_render_scale_column_is_preserved() {
+        let factions = FactionCatalog::default();
+        let species = SpeciesCatalog::default();
         let mut row = sample_row();
         row.has_render_scale_column = true;
         row.render_scale = 1.75;
-        let def = row.to_definition().unwrap();
+        let def = row.to_definition(&factions, &species).unwrap();
         assert!((def.render_scale - 1.75).abs() < 1e-4);
     }
 
     #[test]
     fn turn_speed_defaults_when_column_absent() {
-        let def = sample_row().to_definition().unwrap();
+        let factions = FactionCatalog::default();
+        let species = SpeciesCatalog::default();
+        let def = sample_row().to_definition(&factions, &species).unwrap();
         assert!(
             (def.turn_speed_degrees_per_second - DEFAULT_TURN_SPEED_DEGREES_PER_SECOND).abs()
                 < 1e-4
@@ -348,10 +401,31 @@ mod tests {
 
     #[test]
     fn turn_speed_imports_populated_value() {
+        let factions = FactionCatalog::default();
+        let species = SpeciesCatalog::default();
         let mut row = sample_row();
         row.has_turn_speed_column = true;
         row.turn_speed_degrees_per_second = 720.0;
-        let def = row.to_definition().unwrap();
+        let def = row.to_definition(&factions, &species).unwrap();
         assert!((def.turn_speed_degrees_per_second - 720.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn sight_range_defaults_when_column_absent() {
+        let factions = FactionCatalog::default();
+        let species = SpeciesCatalog::default();
+        let def = sample_row().to_definition(&factions, &species).unwrap();
+        assert!((def.sight_range_meters - DEFAULT_SIGHT_RANGE_METERS).abs() < 1e-4);
+    }
+
+    #[test]
+    fn sight_range_imports_populated_value() {
+        let factions = FactionCatalog::default();
+        let species = SpeciesCatalog::default();
+        let mut row = sample_row();
+        row.has_sight_range_column = true;
+        row.sight_range_meters = 18.0;
+        let def = row.to_definition(&factions, &species).unwrap();
+        assert!((def.sight_range_meters - 18.0).abs() < 1e-4);
     }
 }

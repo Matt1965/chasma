@@ -685,6 +685,7 @@ fn level6_player_command_path_issues_interior_move_order() {
 
     let selected_units = [unit_id];
     let pile_settings = ItemPileSettings::default();
+    let authored_relationships = crate::world::AuthoredRelationshipCatalog::default();
     let resolve_ctx = InteractionResolveContext::new(
         &world,
         &doodad_catalog,
@@ -694,6 +695,7 @@ fn level6_player_command_path_issues_interior_move_order() {
         &unit_catalog,
         &weapon_catalog,
         &pile_settings,
+        &authored_relationships,
         &selected_units,
     );
     let plan = resolve_world_click_to_order(&resolve_ctx, interior_click).expect("plan");
@@ -1044,6 +1046,7 @@ fn player_command_interior_footprint_cross_and_boundary_enforcement() {
     let interaction_catalog = BuildingInteractionProfileCatalog::default();
     let selected_units = [unit_id];
     let pile_settings = ItemPileSettings::default();
+    let authored_relationships = crate::world::AuthoredRelationshipCatalog::default();
     let resolve_ctx = InteractionResolveContext::new(
         &world,
         &doodad_catalog,
@@ -1053,6 +1056,7 @@ fn player_command_interior_footprint_cross_and_boundary_enforcement() {
         &unit_catalog,
         &weapon_catalog,
         &pile_settings,
+        &authored_relationships,
         &selected_units,
     );
     let plan =

@@ -350,7 +350,7 @@ mod tests {
     use crate::world::{AnimationProfileId, UnitRenderKey, WeaponDefinitionId};
 
     fn sample_definition(profile_id: Option<&str>) -> UnitDefinition {
-        let mut definition = UnitDefinition::new(
+        let mut definition = UnitDefinition::new_test(
             UnitDefinitionId::new("wolf"),
             "Wolf",
             "Wild",

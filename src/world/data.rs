@@ -111,6 +111,8 @@ pub struct WorldData {
     settlement_store: super::settlement::SettlementStore,
     /// Persistent SettlementState runtime (SA1).
     settlement_state_store: super::settlement::SettlementStateStore,
+    /// Sparse mutable relationship Standing deltas (ADR-132 Phase 3).
+    relationship_standing_store: super::relationship::RelationshipStandingStore,
     /// Transient need evaluation snapshots (SA2). Never persisted.
     need_evaluation_store: super::settlement::NeedEvaluationStore,
     /// Transient response candidates (SA3). Never persisted.
@@ -212,6 +214,7 @@ impl WorldData {
             item_pile_store: super::item_pile::ItemPileStore::default(),
             settlement_store: super::settlement::SettlementStore::default(),
             settlement_state_store: super::settlement::SettlementStateStore::default(),
+            relationship_standing_store: super::relationship::RelationshipStandingStore::default(),
             need_evaluation_store: super::settlement::NeedEvaluationStore::default(),
             response_candidate_store: super::settlement::ResponseCandidateStore::default(),
             settlement_intent_store: super::settlement::SettlementIntentStore::default(),
@@ -381,6 +384,16 @@ impl WorldData {
 
     pub fn settlement_state_store_mut(&mut self) -> &mut super::settlement::SettlementStateStore {
         &mut self.settlement_state_store
+    }
+
+    pub fn relationship_standing_store(&self) -> &super::relationship::RelationshipStandingStore {
+        &self.relationship_standing_store
+    }
+
+    pub fn relationship_standing_store_mut(
+        &mut self,
+    ) -> &mut super::relationship::RelationshipStandingStore {
+        &mut self.relationship_standing_store
     }
 
     pub fn need_evaluation_store(&self) -> &super::settlement::NeedEvaluationStore {
@@ -1484,6 +1497,40 @@ impl WorldData {
         Ok(())
     }
 
+    /// Update authoritative yaw to face another unit's current horizontal position.
+    pub fn apply_unit_facing_toward_unit(
+        &mut self,
+        id: super::unit::UnitId,
+        target_id: super::unit::UnitId,
+    ) -> Result<(), UnitInsertError> {
+        let layout = self.layout();
+        let from = self
+            .get_unit(id)
+            .ok_or(UnitInsertError::UnitNotFound)?
+            .placement
+            .position;
+        let to = self
+            .get_unit(target_id)
+            .ok_or(UnitInsertError::UnitNotFound)?
+            .placement
+            .position;
+        let Some(rotation) = super::unit::facing_rotation_toward_position(from, to, layout) else {
+            return Ok(());
+        };
+        let chunk = self
+            .unit_locations
+            .get(&id)
+            .copied()
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        let record = self
+            .units
+            .get_mut(&chunk)
+            .and_then(|store| store.get_mut(id))
+            .ok_or(UnitInsertError::UnitNotFound)?;
+        record.placement.rotation = rotation;
+        Ok(())
+    }
+
     /// Test/dev helper for presentation tests that need a specific authoritative facing.
     #[cfg(any(test, feature = "dev"))]
     pub fn set_unit_facing_for_test(
@@ -2500,7 +2547,7 @@ mod tests {
         }
 
         fn sample_record(id: UnitId, chunk: ChunkCoord, source: UnitSource) -> UnitRecord {
-            let mut record = UnitRecord::new(
+            let mut record = UnitRecord::new_test(
                 id,
                 UnitDefinitionId::new("wolf"),
                 placement_at(chunk, Vec3::new(64.0, 0.0, 128.0)),
@@ -2819,7 +2866,7 @@ mod tests {
             world
                 .insert_unit(
                     chunk,
-                    UnitRecord::new(
+                    UnitRecord::new_test(
                         id_near_b,
                         UnitDefinitionId::new("wolf"),
                         UnitPlacement::new(
@@ -2838,7 +2885,7 @@ mod tests {
             world
                 .insert_unit(
                     chunk,
-                    UnitRecord::new(
+                    UnitRecord::new_test(
                         id_near_a,
                         UnitDefinitionId::new("wolf"),
                         UnitPlacement::new(
@@ -2858,7 +2905,7 @@ mod tests {
             world
                 .insert_unit(
                     chunk,
-                    UnitRecord::new(
+                    UnitRecord::new_test(
                         id_far,
                         UnitDefinitionId::new("wolf"),
                         UnitPlacement::new(

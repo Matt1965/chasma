@@ -38,6 +38,28 @@ Species Template → Behavior Template → Personality → Current State → Dec
 - **Grazer** — herd, flee when threatened
 - **Pack hunter** — ally coordination, flanking opportunities
 
+### Relationship as decision input (2026-08-24, accepted direction — not implemented)
+
+[ADR-132](ADR-132-relationship-and-reputation-architecture.md) supplies the social input this layered
+model previously left unspecified:
+
+```text
+perceive candidate
+  -> resolve A -> B relationship
+  -> behavior / personality / state interprets it
+  -> choose intent
+  -> existing UnitOrder API
+```
+
+Relationship is an **input** to the interpretation step, not a behavior system. It answers *what
+does A think of B*, never *should A attack B*. Relationship code must never write `CombatState`,
+set `attack_cycle`, or touch `reactive_combat_target`; `UnitOrder` remains the action boundary.
+
+Different behavior templates may interpret the same relationship value differently — a territorial
+predator attacks, a grazer flees, a merchant refuses service. The first primitive implementation
+lets the placeholder AI interpret a sufficiently negative relationship as Attack. That threshold is
+**tuning**, and `negative relationship == attack` must not become a permanent equation.
+
 ### Confidence (optional future layer)
 
 Derived from allies nearby, enemy strength, health, species, experience. Informs attack vs
@@ -77,3 +99,4 @@ Future work replaces or wraps acquisition with template-driven decisions while k
 
 - [DESIGN.md](../DESIGN.md)
 - ADR-062, ADR-069, ADR-056
+- ADR-132 (relationship architecture — supplies the social decision input)

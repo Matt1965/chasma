@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn enabled_unit_missing_weapon_fails_validation() {
         let catalog = WeaponCatalog::default();
-        let unit = UnitDefinition::new(
+        let unit = UnitDefinition::new_test(
             UnitDefinitionId::new("wolf"),
             "Wolf",
             "Wild",
@@ -234,7 +234,7 @@ mod tests {
         let mut defs = starter_definitions();
         defs[0].enabled = false;
         let catalog = WeaponCatalog::from_definitions(defs).unwrap();
-        let unit = UnitDefinition::new(
+        let unit = UnitDefinition::new_test(
             UnitDefinitionId::new("wolf"),
             "Wolf",
             "Wild",

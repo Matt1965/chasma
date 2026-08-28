@@ -1740,7 +1740,7 @@ mod tests {
         world
             .insert_unit(
                 ChunkId::new(ChunkCoord::new(0, 0)),
-                UnitRecord::new(
+                UnitRecord::new_test(
                     unit_id,
                     UnitDefinitionId::new("wolf"),
                     UnitPlacement::new(pos(0, 0, 1.0, 0.0, 1.0), rotation),
@@ -1851,7 +1851,7 @@ mod tests {
         insert_flat(&mut world, 0, 0, 1.0);
         let unit_id = world.allocate_unit_id();
         let source = UnitSource::Procedural { seed: 5 };
-        let mut record = UnitRecord::new(
+        let mut record = UnitRecord::new_test(
             unit_id,
             UnitDefinitionId::new("wolf"),
             UnitPlacement::new(pos(0, 0, 0.0, 0.0, 0.0), Quat::IDENTITY),
@@ -1949,7 +1949,7 @@ mod tests {
         world
             .insert_unit(
                 ChunkId::new(ChunkCoord::new(0, 0)),
-                UnitRecord::new(
+                UnitRecord::new_test(
                     unit_id,
                     UnitDefinitionId::new("missing"),
                     UnitPlacement::new(pos(0, 0, 0.0, 0.0, 0.0), Quat::IDENTITY),
@@ -1985,7 +1985,7 @@ mod tests {
             }
         }
         let heightfield = Heightfield::from_samples(3, 128.0, samples).unwrap();
-        let catalog = UnitCatalog::from_definitions(vec![UnitDefinition::new(
+        let catalog = UnitCatalog::from_definitions(vec![UnitDefinition::new_test(
             UnitDefinitionId::new("goat"),
             "Goat",
             "Wild",
@@ -2629,7 +2629,7 @@ mod tests {
             }
         }
         let heightfield = Heightfield::from_samples(3, 128.0, samples).unwrap();
-        let catalog = UnitCatalog::from_definitions(vec![UnitDefinition::new(
+        let catalog = UnitCatalog::from_definitions(vec![UnitDefinition::new_test(
             UnitDefinitionId::new("goat"),
             "Goat",
             "Wild",

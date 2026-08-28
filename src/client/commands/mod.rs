@@ -124,6 +124,7 @@ mod tests {
             world: &world,
             unit_catalog: &unit_catalog,
             weapon_catalog: &weapon_catalog,
+            authored_relationships: &crate::world::AuthoredRelationshipCatalog::default(),
             targeting_policy: crate::world::AttackTargetingPolicy::default(),
         };
         let intent = resolve_contextual_command(&ctx).unwrap();

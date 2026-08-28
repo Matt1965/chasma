@@ -259,16 +259,16 @@ mod tests {
     use super::*;
     use crate::simulation::SIMULATION_TICK_SECONDS;
     use crate::world::{
-        AttackTargetingPolicy, BuildingCatalog, BuildingConstructionSettings, ChunkCoord,
-        ChunkData, ChunkId, ChunkLayout, CombatStrikeEvent, CombatStrikeReport, DamageType,
-        DoodadCatalog, FootprintCatalog, Heightfield, HitMode, InteriorProfileCatalog,
-        LocalPosition, NavigationConfig, PassabilityCatalogs, ProjectileEvent,
-        ProjectileImpactRejection, ProjectileLaunchSnapshot, ProjectileReport, TargetFilter,
-        UnitDefinitionId, UnitId, UnitOrder, UnitOwnership, UnitSource, WeaponCatalog,
-        WeaponDefinition, WeaponDefinitionId, WorldPosition, create_unit_with_ownership,
-        default_passability, issue_unit_order, starter_unit_definitions,
-        starter_weapon_definitions, step_all_combat_engagement, step_all_combat_strikes,
-        step_all_projectiles,
+        AttackTargetingPolicy, AuthoredRelationshipCatalog, BuildingCatalog,
+        BuildingConstructionSettings, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+        CombatStrikeEvent, CombatStrikeReport, DamageType, DoodadCatalog, FootprintCatalog,
+        Heightfield, HitMode, InteriorProfileCatalog, LocalPosition, NavigationConfig,
+        PassabilityCatalogs, ProjectileEvent, ProjectileImpactRejection, ProjectileLaunchSnapshot,
+        ProjectileReport, TargetFilter, UnitDefinitionId, UnitId, UnitOrder, UnitOwnership,
+        UnitSource, WeaponCatalog, WeaponDefinition, WeaponDefinitionId, WorldPosition,
+        create_unit_with_ownership, default_passability, issue_unit_order,
+        starter_unit_definitions, starter_weapon_definitions, step_all_combat_engagement,
+        step_all_combat_strikes, step_all_projectiles,
     };
     use bevy::prelude::Vec3;
 
@@ -449,6 +449,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut CombatStrikeReport::default(),
         );
         step_strikes(world, catalog, weapons, 0.2);
@@ -522,6 +523,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut strikes,
         );
         (strikes, projectiles)
@@ -552,6 +554,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut CombatStrikeReport::default(),
         );
         let (_, spawn_report) = step_strikes(&mut world, &catalog, &weapons, 0.2);
@@ -585,6 +588,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut CombatStrikeReport::default(),
         );
         let (strike_report, _) = step_strikes(&mut world, &catalog, &weapons, 0.2);
@@ -628,6 +632,7 @@ mod tests {
                 default_passability(),
                 &NavigationConfig::default(),
                 policy(),
+                &AuthoredRelationshipCatalog::default(),
                 &mut CombatStrikeReport::default(),
             );
             step_strikes(world, &catalog, &weapons, 0.2);
@@ -666,6 +671,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut CombatStrikeReport::default(),
         );
         let (_, spawn_report) = step_strikes(&mut world, &catalog, &weapons, 0.2);
@@ -714,6 +720,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut CombatStrikeReport::default(),
         );
         step_strikes(&mut world, &catalog, &weapons, 0.2);
@@ -775,6 +782,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut CombatStrikeReport::default(),
         );
         step_strikes(&mut world, &catalog, &weapons, 0.2);
@@ -811,6 +819,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut CombatStrikeReport::default(),
         );
         step_strikes(&mut world, &catalog, &weapons, 0.2);
@@ -848,6 +857,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut CombatStrikeReport::default(),
         );
         step_strikes(&mut world, &catalog, &weapons, 0.2);
@@ -887,23 +897,50 @@ mod tests {
     }
 
     #[test]
-    fn impact_rejects_when_weapon_filter_no_longer_matches() {
-        let weapons = neutral_only_projectile_weapon(100.0);
-        let catalog = catalog_with_neutral_weapon(&weapons);
+    fn impact_hits_when_target_becomes_socially_non_hostile() {
+        let weapons = projectile_weapon(100.0);
+        let catalog = catalog_with_projectile_weapon(&weapons);
         let mut world = flat_world();
         let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
-        let neutral = spawn_neutral(&mut world, &catalog, 11.0, 10.0);
-        let hp_before = world.get_unit(neutral).unwrap().vitals.current_hp;
-        spawn_and_strike_projectile(&mut world, &catalog, &weapons, player, neutral);
-        reassign_unit_ownership(&mut world, neutral, UnitOwnership::hostile());
+        let hostile = spawn_hostile(&mut world, &catalog, 11.0, 10.0);
+        let hp_before = world.get_unit(hostile).unwrap().vitals.current_hp;
+        spawn_and_strike_projectile(&mut world, &catalog, &weapons, player, hostile);
+        reassign_unit_ownership(&mut world, hostile, UnitOwnership::neutral());
         let report = step_projectile_movement(&mut world, &catalog, &weapons, 0.2);
-        assert!(report.has_event(&ProjectileEvent::ImpactRejected {
-            reason: ProjectileImpactRejection::TargetFilterRejected,
-        }));
-        assert_eq!(world.projectiles().count(), 0);
+        assert!(report.has_event(&ProjectileEvent::Hit));
         assert_eq!(
-            world.get_unit(neutral).unwrap().vitals.current_hp,
-            hp_before
+            world.get_unit(hostile).unwrap().vitals.current_hp,
+            hp_before.saturating_sub(5)
+        );
+    }
+
+    #[test]
+    fn impact_rejects_structures_only_weapon_against_unit() {
+        let mut weapons = projectile_weapon(100.0);
+        let bow = weapons
+            .get(&WeaponDefinitionId::new("weapon_test_bow"))
+            .unwrap()
+            .clone();
+        let mut structures_only = bow.clone();
+        structures_only.target_filters = vec![TargetFilter::Structures];
+        weapons = WeaponCatalog::from_definitions({
+            let mut defs = starter_weapon_definitions();
+            defs.push(structures_only);
+            defs
+        })
+        .unwrap();
+        let catalog = catalog_with_projectile_weapon(&weapons);
+        let mut world = flat_world();
+        let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
+        let hostile = spawn_hostile(&mut world, &catalog, 11.0, 10.0);
+        let attacker = world.get_unit(player).unwrap().clone();
+        let weapon = weapons
+            .get(&WeaponDefinitionId::new("weapon_test_bow"))
+            .unwrap();
+        let snapshot = ProjectileLaunchSnapshot::capture(&attacker, weapon, policy());
+        assert_eq!(
+            validate_projectile_impact_target(&world, hostile, &snapshot),
+            Err(ProjectileImpactRejection::TargetFilterRejected)
         );
     }
 
@@ -1045,6 +1082,7 @@ mod tests {
                 &crate::world::BuildingInteractionProfileCatalog::default(),
                 &NavigationConfig::default(),
                 policy(),
+                &crate::world::AuthoredRelationshipCatalog::default(),
                 &settings,
                 &mut scan,
                 BuildingConstructionSettings::default(),

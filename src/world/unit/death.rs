@@ -498,6 +498,7 @@ mod tests {
             default_passability(),
             &crate::world::NavigationConfig::default(),
             AttackTargetingPolicy::default(),
+            &crate::world::AuthoredRelationshipCatalog::default(),
             &mut crate::world::CombatStrikeReport::default(),
         );
         step_all_combat_strikes(

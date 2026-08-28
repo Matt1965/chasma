@@ -138,7 +138,7 @@ mod tests {
         insert_terrain(&mut world, 0, 0, 5.0);
         let unit_id = world.allocate_unit_id();
         let rotation = Quat::from_rotation_y(0.75);
-        let record = UnitRecord::new(
+        let record = UnitRecord::new_test(
             unit_id,
             UnitDefinitionId::new("wolf"),
             UnitPlacement::new(
@@ -169,7 +169,7 @@ mod tests {
         insert_terrain(&mut world, 0, 0, 5.0);
         let unit_id = world.allocate_unit_id();
         let source = UnitSource::Procedural { seed: 99 };
-        let mut record = UnitRecord::new(
+        let mut record = UnitRecord::new_test(
             unit_id,
             UnitDefinitionId::new("wolf"),
             UnitPlacement::new(

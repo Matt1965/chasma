@@ -80,7 +80,7 @@ mod tests {
     };
 
     fn sample_record(id: u64) -> UnitRecord {
-        UnitRecord::new(
+        UnitRecord::new_test(
             UnitId::new(id),
             UnitDefinitionId::new("wolf"),
             UnitPlacement::new(

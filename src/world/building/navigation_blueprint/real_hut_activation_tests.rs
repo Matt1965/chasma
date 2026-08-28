@@ -409,7 +409,7 @@ fn real_hut_cross_space_route_traverses_entrance_portal() {
 
 /// Robot as the Excel importer produces it: 0.6 m collision radius, 9 m/s, `robot` mesh.
 fn imported_robot_catalog() -> crate::world::UnitCatalog {
-    crate::world::UnitCatalog::from_definitions(vec![crate::world::UnitDefinition::new(
+    crate::world::UnitCatalog::from_definitions(vec![crate::world::UnitDefinition::new_test(
         crate::world::UnitDefinitionId::new("robot"),
         "Robot",
         "Player",

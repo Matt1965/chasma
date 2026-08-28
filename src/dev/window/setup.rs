@@ -473,6 +473,8 @@ fn spawn_advanced_window_shell(
 
     max_body_height: Option<f32>,
 
+    min_body_height: Option<f32>,
+
     z_index: i32,
 ) {
     let viewport = Vec2::new(1280.0, 720.0);
@@ -499,6 +501,10 @@ fn spawn_advanced_window_shell(
 
     if let Some(height) = max_body_height {
         body_node.max_height = Val::Px(height);
+    }
+
+    if let Some(height) = min_body_height {
+        body_node.min_height = Val::Px(height);
     }
 
     commands
@@ -551,6 +557,7 @@ pub fn spawn_debug_window(
         default_debug_position,
         DEFAULT_PANEL_WIDTH_PX,
         Some(520.0),
+        Some(420.0),
         903,
     );
 }
@@ -569,6 +576,7 @@ pub fn spawn_world_window(
         default_world_position,
         DEFAULT_PANEL_WIDTH_PX,
         Some(620.0),
+        None,
         904,
     );
 }
@@ -587,6 +595,7 @@ pub fn spawn_fields_window(
         default_fields_position,
         DEFAULT_PANEL_WIDTH_PX + 40.0,
         Some(540.0),
+        None,
         905,
     );
 }

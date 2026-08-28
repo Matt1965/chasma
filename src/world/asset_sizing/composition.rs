@@ -318,7 +318,7 @@ mod tests {
 
     fn sample_unit_definition() -> UnitDefinition {
         use crate::world::{UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
-        UnitDefinition::new(
+        UnitDefinition::new_test(
             UnitDefinitionId::new("wolf"),
             "Wolf",
             "Wild",

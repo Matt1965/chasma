@@ -5,14 +5,15 @@
 
 use crate::world::BuildingOperationParams;
 use crate::world::{
-    AttackTargetingPolicy, BuildingCatalog, BuildingConstructionSettings,
-    BuildingInteractionProfileCatalog, BuildingNavigationBlueprintCatalog, CombatAiScanState,
-    CombatAiSettings, CombatStrikeReport, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog,
-    NavigationConfig, OccupancyCatalogs, PassabilityCatalogs, ProjectileReport, UnitCatalog,
-    WeaponCatalog, WorldData, prune_invalid_building_tasks, resolve_pending_unit_orders,
-    step_all_building_construction, step_all_combat_engagement, step_all_combat_strikes,
-    step_all_projectiles, step_all_unit_movement, step_all_worker_tasks,
-    step_combat_ai_acquisition, step_unit_death_pipeline, sync_construction_tasks,
+    AttackTargetingPolicy, AuthoredRelationshipCatalog, BuildingCatalog,
+    BuildingConstructionSettings, BuildingInteractionProfileCatalog,
+    BuildingNavigationBlueprintCatalog, CombatAiScanState, CombatAiSettings, CombatStrikeReport,
+    DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, NavigationConfig, OccupancyCatalogs,
+    PassabilityCatalogs, ProjectileReport, UnitCatalog, WeaponCatalog, WorldData,
+    prune_invalid_building_tasks, resolve_pending_unit_orders, step_all_building_construction,
+    step_all_combat_engagement, step_all_combat_strikes, step_all_projectiles,
+    step_all_unit_movement, step_all_worker_tasks, step_combat_ai_acquisition,
+    step_unit_death_pipeline, sync_construction_tasks,
 };
 
 use super::report::SimulationTickReport;
@@ -39,6 +40,7 @@ pub fn run_simulation_tick(
     interaction_catalog: &BuildingInteractionProfileCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
+    authored: &AuthoredRelationshipCatalog,
     combat_ai_settings: &CombatAiSettings,
     combat_ai_scan: &mut CombatAiScanState,
     building_construction_settings: BuildingConstructionSettings,
@@ -71,6 +73,7 @@ pub fn run_simulation_tick(
         passability,
         nav_config,
         targeting_policy,
+        authored,
         &mut combat_strike,
     );
     let mut projectile_spawn = ProjectileReport::default();
@@ -114,6 +117,7 @@ pub fn run_simulation_tick(
         doodad_catalog,
         nav_config,
         targeting_policy,
+        authored,
         combat_ai_settings,
         combat_ai_scan,
         delta_seconds,
@@ -402,6 +406,7 @@ mod tests {
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
+            &AuthoredRelationshipCatalog::default(),
             &settings,
             &mut scan,
             BuildingConstructionSettings::default(),
@@ -460,6 +465,7 @@ mod tests {
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
+            &AuthoredRelationshipCatalog::default(),
             &CombatAiSettings::default(),
             &mut scan,
             BuildingConstructionSettings::default(),
@@ -503,6 +509,7 @@ mod tests {
                 &crate::world::BuildingInteractionProfileCatalog::default(),
                 &nav,
                 policy,
+                &AuthoredRelationshipCatalog::default(),
                 &settings,
                 &mut scan_a,
                 BuildingConstructionSettings::default(),
@@ -526,6 +533,7 @@ mod tests {
                 &crate::world::BuildingInteractionProfileCatalog::default(),
                 &nav,
                 policy,
+                &AuthoredRelationshipCatalog::default(),
                 &settings,
                 &mut scan_b,
                 BuildingConstructionSettings::default(),

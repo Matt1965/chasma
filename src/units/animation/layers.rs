@@ -275,7 +275,7 @@ mod tests {
     }
 
     fn sample_definition(move_speed_mps: f32) -> UnitDefinition {
-        UnitDefinition::new(
+        UnitDefinition::new_test(
             UnitDefinitionId::new("wolf"),
             "Wolf",
             "Wild",
@@ -316,6 +316,8 @@ mod tests {
             owner_id: None,
             team_id: None,
             affiliation: crate::world::Affiliation::Neutral,
+            faction_id: crate::world::FactionId::new("wild"),
+            species_id: crate::world::SpeciesId::new("wolf"),
             vitals: UnitVitals::full(10),
             combat_state: CombatState::Attacking {
                 target: crate::world::UnitId::new(2),

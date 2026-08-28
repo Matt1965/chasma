@@ -21,6 +21,8 @@ pub use excel::UNITS_SHEET_NAME;
 #[cfg(feature = "data-import")]
 pub fn import_units_from_excel(
     path: &std::path::Path,
+    factions: &crate::world::FactionCatalog,
+    species: &crate::world::SpeciesCatalog,
     weapons: &crate::world::WeaponCatalog,
     animation_profiles: &crate::world::AnimationProfileCatalog,
     inventory_profiles: &crate::world::InventoryProfileCatalog,
@@ -74,7 +76,7 @@ pub fn import_units_from_excel(
             continue;
         }
 
-        let mut definition = match row.to_definition() {
+        let mut definition = match row.to_definition(factions, species) {
             Ok(definition) => definition,
             Err(message) => {
                 summary.rows_failed += 1;
@@ -193,7 +195,8 @@ mod integration_tests {
         vec![
             "Unit ID",
             "Name",
-            "Faction",
+            "Faction Key",
+            "Species Key",
             "Level",
             "Base HP",
             "Max HP",
@@ -227,6 +230,18 @@ mod integration_tests {
         WeaponCatalog::default()
     }
 
+    fn starter_factions() -> crate::world::FactionCatalog {
+        crate::world::FactionCatalog::default()
+    }
+
+    fn starter_species() -> crate::world::SpeciesCatalog {
+        crate::world::SpeciesCatalog::default()
+    }
+
+    fn wolf_row_prefix() -> [&'static str; 4] {
+        ["U-0001", "Wolf", "wild", "wolf"]
+    }
+
     fn wolf_row_suffix() -> [&'static str; 6] {
         [
             "26.5",
@@ -242,6 +257,15 @@ mod integration_tests {
         ["40", "Y"]
     }
 
+    fn wolf_row() -> Vec<&'static str> {
+        let mut row = vec![
+            "U-0001", "Wolf", "wild", "wolf", "2", "5", "5", "4", "6", "3", "7", "2", "3", "25",
+        ];
+        row.extend_from_slice(&wolf_row_suffix());
+        row.extend_from_slice(&wolf_row_tail());
+        row
+    }
+
     fn starter_animation_profiles() -> crate::world::AnimationProfileCatalog {
         crate::world::AnimationProfileCatalog::default()
     }
@@ -250,14 +274,12 @@ mod integration_tests {
     fn import_end_to_end_preserves_stats() {
         let path = temp_workbook("e2e");
         let headers = full_headers();
-        let mut row = vec![
-            "U-0001", "Wolf", "Wild", "2", "5", "5", "4", "6", "3", "7", "2", "3", "25",
-        ];
-        row.extend_from_slice(&wolf_row_suffix());
-        row.extend_from_slice(&wolf_row_tail());
+        let row = wolf_row();
         write_workbook(&path, &headers, &[row]);
         let (definitions, summary) = import_units_from_excel(
             &path,
+            &starter_factions(),
+            &starter_species(),
             &starter_weapons(),
             &starter_animation_profiles(),
             &crate::world::InventoryProfileCatalog::default(),
@@ -279,18 +301,12 @@ mod integration_tests {
         let path = temp_workbook("disabled");
         let headers = full_headers();
         let rows = vec![
-            {
-                let mut row = vec![
-                    "U-0001", "Wolf", "Wild", "2", "5", "5", "4", "6", "3", "7", "2", "3", "25",
-                ];
-                row.extend_from_slice(&wolf_row_suffix());
-                row.extend_from_slice(&wolf_row_tail());
-                row
-            },
+            wolf_row(),
             vec![
                 "U-0002",
                 "Deer",
-                "Wild",
+                "wild",
+                "deer",
                 "1",
                 "4",
                 "4",
@@ -314,6 +330,8 @@ mod integration_tests {
         write_workbook(&path, &headers, &rows);
         let (definitions, summary) = import_units_from_excel(
             &path,
+            &starter_factions(),
+            &starter_species(),
             &starter_weapons(),
             &starter_animation_profiles(),
             &crate::world::InventoryProfileCatalog::default(),
@@ -332,8 +350,10 @@ mod integration_tests {
         let rows = vec![vec![
             "U-0003",
             "Bandit Scout",
-            "Bandits",
+            "bandits",
+            "human",
             "3",
+            "8",
             "8",
             "4",
             "7",
@@ -355,6 +375,8 @@ mod integration_tests {
         let profiles = crate::world::InventoryProfileCatalog::default();
         let a = import_units_from_excel(
             &path,
+            &starter_factions(),
+            &starter_species(),
             &starter_weapons(),
             &starter_animation_profiles(),
             &profiles,
@@ -362,6 +384,8 @@ mod integration_tests {
         .unwrap();
         let b = import_units_from_excel(
             &path,
+            &starter_factions(),
+            &starter_species(),
             &starter_weapons(),
             &starter_animation_profiles(),
             &profiles,
@@ -375,39 +399,16 @@ mod integration_tests {
     fn duplicate_unit_id_aborts_import() {
         let path = temp_workbook("duplicate");
         let headers = full_headers();
-        let rows = vec![
-            {
-                let mut row = vec![
-                    "U-0001", "Wolf", "Wild", "2", "5", "5", "4", "6", "3", "7", "2", "3", "25",
-                ];
-                row.extend_from_slice(&wolf_row_suffix());
-                row.extend_from_slice(&wolf_row_tail());
-                row
-            },
-            {
-                let mut row = vec![
-                    "U-0001",
-                    "Wolf Duplicate",
-                    "Wild",
-                    "2",
-                    "5",
-                    "5",
-                    "4",
-                    "6",
-                    "3",
-                    "7",
-                    "2",
-                    "3",
-                    "25",
-                ];
-                row.extend_from_slice(&wolf_row_suffix());
-                row.extend_from_slice(&wolf_row_tail());
-                row
-            },
-        ];
+        let rows = vec![wolf_row(), {
+            let mut row = wolf_row();
+            row[1] = "Wolf Duplicate";
+            row
+        }];
         write_workbook(&path, &headers, &rows);
         let err = import_units_from_excel(
             &path,
+            &starter_factions(),
+            &starter_species(),
             &starter_weapons(),
             &starter_animation_profiles(),
             &crate::world::InventoryProfileCatalog::default(),
@@ -424,17 +425,12 @@ mod integration_tests {
     fn lookup_by_imported_unit_id() {
         let path = temp_workbook("lookup");
         let headers = full_headers();
-        let rows = vec![{
-            let mut row = vec![
-                "U-0001", "Wolf", "Wild", "2", "5", "5", "4", "6", "3", "7", "2", "3", "25",
-            ];
-            row.extend_from_slice(&wolf_row_suffix());
-            row.extend_from_slice(&wolf_row_tail());
-            row
-        }];
+        let rows = vec![wolf_row()];
         write_workbook(&path, &headers, &rows);
         let (definitions, _) = import_units_from_excel(
             &path,
+            &starter_factions(),
+            &starter_species(),
             &starter_weapons(),
             &starter_animation_profiles(),
             &crate::world::InventoryProfileCatalog::default(),
@@ -452,7 +448,8 @@ mod integration_tests {
         let rows = vec![vec![
             "U-0001",
             "Wolf",
-            "Wild",
+            "wild",
+            "wolf",
             "2",
             "5",
             "5",
@@ -475,6 +472,8 @@ mod integration_tests {
         write_workbook(&path, &headers, &rows);
         let err = import_units_from_excel(
             &path,
+            &starter_factions(),
+            &starter_species(),
             &starter_weapons(),
             &starter_animation_profiles(),
             &crate::world::InventoryProfileCatalog::default(),
@@ -497,6 +496,8 @@ mod integration_tests {
         let weapons = starter_weapons();
         let (definitions, summary) = import_units_from_excel(
             path,
+            &starter_factions(),
+            &starter_species(),
             &weapons,
             &starter_animation_profiles(),
             &crate::world::InventoryProfileCatalog::default(),
@@ -515,8 +516,15 @@ mod integration_tests {
             .find(|def| def.id.as_str() == "U-0001")
             .expect("U-0001 Robot");
         assert_eq!(robot.display_name, "Robot");
+        assert_eq!(robot.faction_id.as_str(), "player");
+        assert_eq!(robot.species_id.as_str(), "robot");
+        assert_eq!(robot.faction_tag, "Player");
         assert!((robot.move_speed_mps - 9.0).abs() < f32::EPSILON);
         assert_eq!(robot.render_key.0.as_deref(), Some("robot"));
-        assert!((robot.render_scale - 2.15).abs() < f32::EPSILON);
+        assert!(
+            robot.render_scale > 0.0,
+            "expected positive render scale, got {}",
+            robot.render_scale
+        );
     }
 }

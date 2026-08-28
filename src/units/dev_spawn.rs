@@ -177,7 +177,7 @@ mod tests {
     use crate::world::{UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
 
     fn stub_definition(id: &str, key: Option<&str>) -> UnitDefinition {
-        UnitDefinition::new(
+        UnitDefinition::new_test(
             UnitDefinitionId::new(id),
             id,
             "Test",

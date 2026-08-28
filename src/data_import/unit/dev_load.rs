@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::data_import::paths::dev_design_workbook_path;
 use crate::logging::{DEV_STARTUP_LOG_PATH, append_log_line};
-use crate::world::UnitCatalog;
+use crate::world::{FactionCatalog, SpeciesCatalog, UnitCatalog};
 
 use super::import_units_from_excel;
 use crate::data_import::DataImportError;
@@ -13,13 +13,22 @@ const SESSION_HEADER: &str = "# chasma dev startup log";
 
 /// Load [`UnitCatalog`] for dev startup from the design workbook `Units` sheet.
 pub fn resolve_dev_unit_catalog(
+    factions: &FactionCatalog,
+    species: &SpeciesCatalog,
     weapons: &crate::world::WeaponCatalog,
     animation_profiles: &crate::world::AnimationProfileCatalog,
     inventory_profiles: &crate::world::InventoryProfileCatalog,
     sizing_reports: Option<&mut Vec<crate::world::AssetSizingReport>>,
 ) -> UnitCatalog {
     let path = dev_design_workbook_path();
-    match try_import_dev_unit_catalog(&path, weapons, animation_profiles, inventory_profiles) {
+    match try_import_dev_unit_catalog(
+        &path,
+        factions,
+        species,
+        weapons,
+        animation_profiles,
+        inventory_profiles,
+    ) {
         Ok((catalog, summary)) => {
             append_log_line(
                 DEV_STARTUP_LOG_PATH,
@@ -91,12 +100,20 @@ pub fn resolve_dev_unit_catalog(
 
 fn try_import_dev_unit_catalog(
     path: &Path,
+    factions: &FactionCatalog,
+    species: &SpeciesCatalog,
     weapons: &crate::world::WeaponCatalog,
     animation_profiles: &crate::world::AnimationProfileCatalog,
     inventory_profiles: &crate::world::InventoryProfileCatalog,
 ) -> Result<(UnitCatalog, crate::data_import::ImportSummary), DataImportError> {
-    let (definitions, summary) =
-        import_units_from_excel(path, weapons, animation_profiles, inventory_profiles)?;
+    let (definitions, summary) = import_units_from_excel(
+        path,
+        factions,
+        species,
+        weapons,
+        animation_profiles,
+        inventory_profiles,
+    )?;
     let catalog = UnitCatalog::from_definitions(definitions).map_err(|err| {
         DataImportError::WorkbookOpen(format!("unit catalog build failed: {err:?}"))
     })?;

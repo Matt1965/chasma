@@ -1,9 +1,18 @@
-//! Attack target validation (ADR-056 C3).
+//! Attack target validation (ADR-056 C3, relationship Phase 5).
+//!
+//! Four authorities live here and must not be conflated:
+//! - **Mechanical targetability** — can combat operate on this pair?
+//! - **Explicit player attack** — player-issued `UnitOrder::Attack` (mechanical + same-team only)
+//! - **Default interaction intent** — conservative right-click classification via autonomous desire
+//! - **Autonomous desire** — relationship-driven proactive hostility (Phase 6)
 
 use crate::world::interaction::InteractionType;
 use crate::world::ownership::{Affiliation, OwnerId, TeamId};
+use crate::world::relationship::AuthoredRelationshipCatalog;
 use crate::world::unit::{UnitOrderError, UnitRecord, UnitState};
 use crate::world::{TargetFilter, UnitCatalog, UnitId, WeaponCatalog, WeaponDefinition, WorldData};
+
+use super::autonomous_desire::{evaluate_autonomous_desire, trace_autonomous_desire_decision};
 
 /// Frozen attacker ownership and weapon filter state at projectile launch (ADR-060, REVIEW-A3).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,67 +77,94 @@ pub enum ProjectileImpactRejection {
     OwnershipUnavailable,
 }
 
-/// Revalidate projectile target legality at impact using launch-time snapshot (REVIEW-A3).
-///
-/// Does not require the source unit to exist or be alive. Does not recheck weapon range.
-pub fn validate_projectile_impact_target(
-    world: &WorldData,
-    target_id: UnitId,
-    snapshot: &ProjectileLaunchSnapshot,
-) -> Result<(), ProjectileImpactRejection> {
-    if snapshot.source_unit_id == target_id {
-        return Err(ProjectileImpactRejection::TargetNowFriendly);
-    }
-    if snapshot.source_affiliation == Affiliation::Unknown && !snapshot.dev_allow_all_targets {
-        return Err(ProjectileImpactRejection::OwnershipUnavailable);
-    }
-    let Some(target) = world.get_unit(target_id) else {
-        return Err(ProjectileImpactRejection::TargetMissing);
-    };
-    if !is_unit_alive(target) {
-        return Err(ProjectileImpactRejection::TargetDead);
-    }
-    let ownership_ok = ownership_allows_attack_parts(
-        snapshot.source_unit_id,
-        snapshot.source_team_id,
-        snapshot.source_affiliation,
-        target,
-        snapshot.dev_allow_all_targets,
-    );
-    if !ownership_ok
-        && !snapshot
-            .weapon_target_filters
-            .contains(&TargetFilter::Neutral)
-    {
-        return Err(ProjectileImpactRejection::TargetNowFriendly);
-    }
-    if !weapon_allows_target_filters(&snapshot.weapon_target_filters, target, ownership_ok) {
-        return Err(ProjectileImpactRejection::TargetFilterRejected);
-    }
-    Ok(())
-}
-
 /// Policy hooks for dev/debug targeting overrides.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct AttackTargetingPolicy {
-    /// When true, ownership hostility checks are skipped (dev inspect mode).
+    /// When true, team and affiliation hostility checks are skipped (dev inspect mode).
     pub dev_allow_all_targets: bool,
-}
-
-impl AttackTargetingPolicy {
-    pub fn from_dev_selection_override(allow_non_player_selection: bool) -> Self {
-        Self {
-            dev_allow_all_targets: allow_non_player_selection,
-        }
-    }
 }
 
 pub fn is_unit_alive(record: &UnitRecord) -> bool {
     record.vitals.current_hp > 0 && !matches!(record.state, UnitState::Dead)
 }
 
-/// Validate an attack target; returns a typed error on failure.
-pub fn validate_attack_target(
+/// Whether dev overrides bypass mechanical team restrictions.
+pub fn dev_bypasses_team_restriction(
+    policy: AttackTargetingPolicy,
+    affiliation: Affiliation,
+) -> bool {
+    policy.dev_allow_all_targets || affiliation == Affiliation::Dev
+}
+
+/// Mechanical same-team veto (friendly-fire semantics remain deferred).
+pub fn same_team_blocks_attack(
+    attacker_team_id: Option<TeamId>,
+    target_team_id: Option<TeamId>,
+    policy: AttackTargetingPolicy,
+    attacker_affiliation: Affiliation,
+) -> bool {
+    if dev_bypasses_team_restriction(policy, attacker_affiliation) {
+        return false;
+    }
+    attacker_team_id.is_some() && attacker_team_id == target_team_id
+}
+
+/// Autonomous acquisition / AttackMove — mechanical validity plus relationship-driven desire.
+pub fn validate_autonomous_attack_target(
+    world: &WorldData,
+    authored: &AuthoredRelationshipCatalog,
+    attacker_id: UnitId,
+    target_id: UnitId,
+    weapon_catalog: &WeaponCatalog,
+    unit_catalog: &UnitCatalog,
+    policy: AttackTargetingPolicy,
+) -> Result<(), UnitOrderError> {
+    validate_mechanical_attack_target(
+        world,
+        attacker_id,
+        target_id,
+        weapon_catalog,
+        unit_catalog,
+        policy,
+    )?;
+
+    let attacker = world
+        .get_unit(attacker_id)
+        .ok_or(UnitOrderError::AttackerNotFound)?;
+    let target = world
+        .get_unit(target_id)
+        .ok_or(UnitOrderError::TargetNotFound)?;
+
+    let decision = evaluate_autonomous_desire(world, authored, attacker, target, policy);
+    if !decision.wants_attack {
+        trace_autonomous_desire_decision(attacker_id, target_id, decision);
+        return Err(UnitOrderError::InvalidOwnershipTarget);
+    }
+
+    Ok(())
+}
+
+pub fn is_valid_autonomous_attack_target(
+    world: &WorldData,
+    authored: &AuthoredRelationshipCatalog,
+    attacker_id: UnitId,
+    target_id: UnitId,
+    weapon_catalog: &WeaponCatalog,
+    unit_catalog: &UnitCatalog,
+    policy: AttackTargetingPolicy,
+) -> bool {
+    validate_autonomous_attack_target(
+        world,
+        authored,
+        attacker_id,
+        target_id,
+        weapon_catalog,
+        unit_catalog,
+        policy,
+    )
+    .is_ok()
+}
+pub fn validate_mechanical_attack_target(
     world: &WorldData,
     attacker_id: UnitId,
     target_id: UnitId,
@@ -154,22 +190,85 @@ pub fn validate_attack_target(
         return Err(UnitOrderError::TargetDead);
     }
 
-    let weapon = weapon_for_unit(attacker, unit_catalog, weapon_catalog)?;
-    let ownership_ok = ownership_allows_attack(attacker, target, policy.dev_allow_all_targets);
-    if !ownership_ok && !weapon.target_filters.contains(&TargetFilter::Neutral) {
+    if snapshot_ownership_unavailable(attacker, policy) {
         return Err(UnitOrderError::InvalidOwnershipTarget);
     }
-    if !weapon_allows_target(weapon, target, ownership_ok) {
+
+    if same_team_blocks_attack(
+        attacker.team_id,
+        target.team_id,
+        policy,
+        attacker.affiliation,
+    ) {
+        return Err(UnitOrderError::InvalidOwnershipTarget);
+    }
+
+    let weapon = weapon_for_unit(attacker, unit_catalog, weapon_catalog)?;
+    if !weapon_allows_target(weapon, target) {
         return Err(UnitOrderError::WeaponCannotTarget);
     }
 
     Ok(())
 }
 
+pub fn is_valid_mechanical_attack_target(
+    world: &WorldData,
+    attacker_id: UnitId,
+    target_id: UnitId,
+    weapon_catalog: &WeaponCatalog,
+    unit_catalog: &UnitCatalog,
+    policy: AttackTargetingPolicy,
+) -> bool {
+    validate_mechanical_attack_target(
+        world,
+        attacker_id,
+        target_id,
+        weapon_catalog,
+        unit_catalog,
+        policy,
+    )
+    .is_ok()
+}
+
+/// Explicit player-issued attack — mechanical validity only (relationship is not a shield).
+pub fn validate_explicit_attack_target(
+    world: &WorldData,
+    attacker_id: UnitId,
+    target_id: UnitId,
+    weapon_catalog: &WeaponCatalog,
+    unit_catalog: &UnitCatalog,
+    policy: AttackTargetingPolicy,
+) -> Result<(), UnitOrderError> {
+    validate_mechanical_attack_target(
+        world,
+        attacker_id,
+        target_id,
+        weapon_catalog,
+        unit_catalog,
+        policy,
+    )
+}
+
+pub fn is_valid_explicit_attack_target(
+    world: &WorldData,
+    attacker_id: UnitId,
+    target_id: UnitId,
+    weapon_catalog: &WeaponCatalog,
+    unit_catalog: &UnitCatalog,
+    policy: AttackTargetingPolicy,
+) -> bool {
+    validate_explicit_attack_target(
+        world,
+        attacker_id,
+        target_id,
+        weapon_catalog,
+        unit_catalog,
+        policy,
+    )
+    .is_ok()
+}
+
 /// Validate a reactive self-defense target after confirmed attributed combat damage.
-///
-/// Distinct from [`validate_attack_target`]: the attributed aggressor may be attacked even when
-/// proactive ownership rules would reject the match (e.g. Wildlife retaliating against Player).
 pub fn validate_reactive_retaliation_target(
     world: &WorldData,
     victim_id: UnitId,
@@ -196,12 +295,12 @@ pub fn validate_reactive_retaliation_target(
         return Err(UnitOrderError::TargetDead);
     }
 
-    let weapon = weapon_for_unit(victim, unit_catalog, weapon_catalog)?;
-    let ownership_ok = ownership_allows_attack(victim, aggressor, policy.dev_allow_all_targets);
     if !reactive_retaliation_ownership_allows(victim, aggressor, policy) {
         return Err(UnitOrderError::InvalidOwnershipTarget);
     }
-    if !weapon_allows_reactive_target(weapon, aggressor, ownership_ok) {
+
+    let weapon = weapon_for_unit(victim, unit_catalog, weapon_catalog)?;
+    if !weapon_allows_target(weapon, aggressor) {
         return Err(UnitOrderError::WeaponCannotTarget);
     }
 
@@ -209,9 +308,6 @@ pub fn validate_reactive_retaliation_target(
 }
 
 /// Validate an already-established combat target for continuation.
-///
-/// Accepts either normal proactive legality or a persisted reactive authorization for exactly
-/// this target.
 pub fn validate_active_combat_target(
     world: &WorldData,
     attacker_id: UnitId,
@@ -220,7 +316,7 @@ pub fn validate_active_combat_target(
     unit_catalog: &UnitCatalog,
     policy: AttackTargetingPolicy,
 ) -> Result<(), UnitOrderError> {
-    if validate_attack_target(
+    if validate_explicit_attack_target(
         world,
         attacker_id,
         target_id,
@@ -269,36 +365,19 @@ pub fn is_valid_active_combat_target(
     .is_ok()
 }
 
-pub fn is_valid_attack_target(
-    world: &WorldData,
-    attacker_id: UnitId,
-    target_id: UnitId,
-    weapon_catalog: &WeaponCatalog,
-    unit_catalog: &UnitCatalog,
-    policy: AttackTargetingPolicy,
-) -> bool {
-    validate_attack_target(
-        world,
-        attacker_id,
-        target_id,
-        weapon_catalog,
-        unit_catalog,
-        policy,
-    )
-    .is_ok()
-}
-
-/// Classify a unit-under-cursor relative to an attacker (interaction layer).
+/// Default right-click interaction classification — uses autonomous desire, not explicit permissiveness.
 pub fn classify_unit_target(
     world: &WorldData,
+    authored: &AuthoredRelationshipCatalog,
     attacker_id: UnitId,
     target_id: UnitId,
     weapon_catalog: &WeaponCatalog,
     unit_catalog: &UnitCatalog,
     policy: AttackTargetingPolicy,
 ) -> InteractionType {
-    if is_valid_attack_target(
+    if is_valid_autonomous_attack_target(
         world,
+        authored,
         attacker_id,
         target_id,
         weapon_catalog,
@@ -316,6 +395,71 @@ pub fn classify_unit_target(
         Affiliation::Neutral => InteractionType::NeutralUnit,
         _ => InteractionType::FriendlyUnit,
     }
+}
+
+/// Revalidate projectile target legality at impact using launch-time snapshot (REVIEW-A3).
+///
+/// Does not require the source unit to exist or be alive. Does not recheck weapon range.
+/// Social hostility changes after launch do not invalidate impact.
+pub fn validate_projectile_impact_target(
+    world: &WorldData,
+    target_id: UnitId,
+    snapshot: &ProjectileLaunchSnapshot,
+) -> Result<(), ProjectileImpactRejection> {
+    if snapshot.source_unit_id == target_id {
+        return Err(ProjectileImpactRejection::TargetNowFriendly);
+    }
+    if snapshot.source_affiliation == Affiliation::Unknown && !snapshot.dev_allow_all_targets {
+        return Err(ProjectileImpactRejection::OwnershipUnavailable);
+    }
+    let Some(target) = world.get_unit(target_id) else {
+        return Err(ProjectileImpactRejection::TargetMissing);
+    };
+    if !is_unit_alive(target) {
+        return Err(ProjectileImpactRejection::TargetDead);
+    }
+    if same_team_blocks_attack(
+        snapshot.source_team_id,
+        target.team_id,
+        AttackTargetingPolicy {
+            dev_allow_all_targets: snapshot.dev_allow_all_targets,
+        },
+        snapshot.source_affiliation,
+    ) {
+        return Err(ProjectileImpactRejection::TargetNowFriendly);
+    }
+    if !weapon_allows_target_filters(&snapshot.weapon_target_filters, target) {
+        return Err(ProjectileImpactRejection::TargetFilterRejected);
+    }
+    Ok(())
+}
+
+/// Mechanical weapon target class only — no affiliation, relationship, or desire input.
+pub fn weapon_allows_target(weapon: &WeaponDefinition, target: &UnitRecord) -> bool {
+    weapon_allows_target_filters(&weapon.target_filters, target)
+}
+
+pub fn weapon_allows_target_filters(filters: &[TargetFilter], target: &UnitRecord) -> bool {
+    if filters.is_empty() {
+        return true;
+    }
+    if filters.contains(&TargetFilter::All) {
+        return true;
+    }
+
+    for filter in filters {
+        match filter {
+            TargetFilter::All => return true,
+            TargetFilter::Units
+            | TargetFilter::Enemies
+            | TargetFilter::Wildlife
+            | TargetFilter::Neutral => return true,
+            TargetFilter::Structures => {
+                let _ = target;
+            }
+        }
+    }
+    false
 }
 
 fn weapon_for_unit<'a>(
@@ -336,99 +480,10 @@ fn weapon_for_unit<'a>(
     Ok(weapon)
 }
 
-/// Runtime ownership hostility (ADR-051). Never uses catalog `faction_tag`.
-fn ownership_allows_attack(
-    attacker: &UnitRecord,
-    target: &UnitRecord,
-    dev_allow_all: bool,
-) -> bool {
-    ownership_allows_attack_parts(
-        attacker.id,
-        attacker.team_id,
-        attacker.affiliation,
-        target,
-        dev_allow_all,
-    )
+fn snapshot_ownership_unavailable(attacker: &UnitRecord, policy: AttackTargetingPolicy) -> bool {
+    attacker.affiliation == Affiliation::Unknown && !policy.dev_allow_all_targets
 }
 
-fn ownership_allows_attack_parts(
-    attacker_id: UnitId,
-    attacker_team_id: Option<TeamId>,
-    attacker_affiliation: Affiliation,
-    target: &UnitRecord,
-    dev_allow_all: bool,
-) -> bool {
-    if dev_allow_all || attacker_affiliation == Affiliation::Dev {
-        return attacker_id != target.id;
-    }
-
-    if attacker_team_id.is_some() && attacker_team_id == target.team_id {
-        return false;
-    }
-
-    match attacker_affiliation {
-        Affiliation::Player => matches!(
-            target.affiliation,
-            Affiliation::Hostile | Affiliation::Wildlife
-        ),
-        Affiliation::Hostile => target.affiliation == Affiliation::Player,
-        Affiliation::Dev => true,
-        _ => false,
-    }
-}
-
-fn weapon_allows_target(
-    weapon: &WeaponDefinition,
-    target: &UnitRecord,
-    ownership_ok: bool,
-) -> bool {
-    weapon_allows_target_filters(&weapon.target_filters, target, ownership_ok)
-}
-
-fn weapon_allows_target_filters(
-    filters: &[TargetFilter],
-    target: &UnitRecord,
-    ownership_ok: bool,
-) -> bool {
-    weapon_allows_target_filters_with_reactive(filters, target, ownership_ok, false)
-}
-
-fn weapon_allows_reactive_target(
-    weapon: &WeaponDefinition,
-    target: &UnitRecord,
-    ownership_ok: bool,
-) -> bool {
-    weapon_allows_target_filters_with_reactive(&weapon.target_filters, target, ownership_ok, true)
-}
-
-fn weapon_allows_target_filters_with_reactive(
-    filters: &[TargetFilter],
-    target: &UnitRecord,
-    ownership_ok: bool,
-    reactive_aggressor: bool,
-) -> bool {
-    if filters.contains(&TargetFilter::All) {
-        return true;
-    }
-
-    for filter in filters {
-        match filter {
-            TargetFilter::All => return true,
-            TargetFilter::Enemies if ownership_ok || reactive_aggressor => return true,
-            TargetFilter::Wildlife if target.affiliation == Affiliation::Wildlife => return true,
-            TargetFilter::Neutral if target.affiliation == Affiliation::Neutral => return true,
-            TargetFilter::Structures => {}
-            TargetFilter::Enemies | TargetFilter::Wildlife | TargetFilter::Neutral => {}
-        }
-    }
-    false
-}
-
-fn units_share_team(a: &UnitRecord, b: &UnitRecord) -> bool {
-    a.team_id.is_some() && a.team_id == b.team_id
-}
-
-/// Whether a confirmed aggressor may be attacked reactively without changing affiliation rules.
 fn reactive_retaliation_ownership_allows(
     victim: &UnitRecord,
     aggressor: &UnitRecord,
@@ -440,7 +495,7 @@ fn reactive_retaliation_ownership_allows(
     if victim.id == aggressor.id {
         return false;
     }
-    if units_share_team(victim, aggressor) {
+    if victim.team_id.is_some() && victim.team_id == aggressor.team_id {
         return false;
     }
     true
@@ -448,10 +503,12 @@ fn reactive_retaliation_ownership_allows(
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_support::phase6_authored_catalog;
     use super::*;
     use crate::world::{
-        ChunkCoord, ChunkLayout, CombatState, LocalPosition, UnitDefinitionId, UnitOwnership,
-        UnitSource, WorldPosition, create_unit, create_unit_with_ownership,
+        AuthoredRelationshipCatalog, ChunkCoord, ChunkLayout, CombatState, LocalPosition,
+        UnitCatalog, UnitDefinitionId, UnitId, UnitOwnership, UnitSource, WeaponCatalog, WorldData,
+        WorldPosition, create_unit, create_unit_with_ownership,
     };
     use bevy::prelude::Vec3;
 
@@ -473,13 +530,21 @@ mod tests {
         AttackTargetingPolicy::default()
     }
 
+    fn authored() -> AuthoredRelationshipCatalog {
+        super::super::test_support::phase6_authored_catalog()
+    }
+
+    fn empty_authored() -> AuthoredRelationshipCatalog {
+        AuthoredRelationshipCatalog::default()
+    }
+
     fn spawn_player(
         world: &mut WorldData,
         catalog: &UnitCatalog,
         id_key: &str,
         position: WorldPosition,
     ) -> UnitId {
-        create_unit_with_ownership(
+        let id = create_unit_with_ownership(
             catalog,
             world,
             &UnitDefinitionId::new(id_key),
@@ -488,7 +553,12 @@ mod tests {
             UnitOwnership::player_default(),
         )
         .unwrap()
-        .id
+        .id;
+        let mut record = world.remove_unit_by_id(id).expect("unit exists");
+        record.faction_id = crate::world::FactionId::new("player");
+        let chunk = crate::world::ChunkId::new(record.placement.position.chunk);
+        world.insert_unit(chunk, record).unwrap();
+        id
     }
 
     fn spawn_hostile(world: &mut WorldData, catalog: &UnitCatalog) -> UnitId {
@@ -530,17 +600,56 @@ mod tests {
         .id
     }
 
+    fn spawn_wild_wolf(world: &mut WorldData, catalog: &UnitCatalog) -> UnitId {
+        create_unit_with_ownership(
+            catalog,
+            world,
+            &UnitDefinitionId::new("wolf"),
+            pos(5.0, 5.0),
+            UnitSource::Authored,
+            UnitOwnership::wildlife(),
+        )
+        .unwrap()
+        .id
+    }
+
     #[test]
-    fn player_can_attack_hostile() {
+    fn explicit_attack_can_target_neutral_when_mechanically_valid() {
         let catalog = UnitCatalog::default();
         let weapons = WeaponCatalog::default();
         let mut world = layout_world();
         let player = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
-        let hostile = spawn_hostile(&mut world, &catalog);
-        assert!(is_valid_attack_target(
+        let neutral = spawn_neutral(&mut world, &catalog);
+        assert!(
+            validate_explicit_attack_target(&world, player, neutral, &weapons, &catalog, policy(),)
+                .is_ok()
+        );
+        assert_eq!(
+            validate_autonomous_attack_target(
+                &world,
+                &empty_authored(),
+                player,
+                neutral,
+                &weapons,
+                &catalog,
+                policy(),
+            ),
+            Err(UnitOrderError::InvalidOwnershipTarget)
+        );
+    }
+
+    #[test]
+    fn player_does_not_autonomously_attack_wild_at_zero_relationship() {
+        let catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = layout_world();
+        let player = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
+        let wild = spawn_wild_wolf(&mut world, &catalog);
+        assert!(!is_valid_autonomous_attack_target(
             &world,
+            &authored(),
             player,
-            hostile,
+            wild,
             &weapons,
             &catalog,
             policy(),
@@ -548,15 +657,16 @@ mod tests {
     }
 
     #[test]
-    fn hostile_can_attack_player() {
+    fn wild_autonomously_attacks_player_via_authored_relationship() {
         let catalog = UnitCatalog::default();
         let weapons = WeaponCatalog::default();
         let mut world = layout_world();
         let player = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
-        let hostile = spawn_hostile(&mut world, &catalog);
-        assert!(is_valid_attack_target(
+        let wild = spawn_wild_wolf(&mut world, &catalog);
+        assert!(is_valid_autonomous_attack_target(
             &world,
-            hostile,
+            &authored(),
+            wild,
             player,
             &weapons,
             &catalog,
@@ -565,28 +675,81 @@ mod tests {
     }
 
     #[test]
-    fn player_cannot_attack_same_team() {
+    fn explicit_and_autonomous_reject_same_team() {
         let catalog = UnitCatalog::default();
         let weapons = WeaponCatalog::default();
         let mut world = layout_world();
         let a = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
         let b = spawn_player(&mut world, &catalog, "bandit", pos(2.0, 2.0));
         assert_eq!(
-            validate_attack_target(&world, a, b, &weapons, &catalog, policy()),
+            validate_explicit_attack_target(&world, a, b, &weapons, &catalog, policy()),
+            Err(UnitOrderError::InvalidOwnershipTarget)
+        );
+        assert_eq!(
+            validate_autonomous_attack_target(
+                &world,
+                &authored(),
+                a,
+                b,
+                &weapons,
+                &catalog,
+                policy()
+            ),
             Err(UnitOrderError::InvalidOwnershipTarget)
         );
     }
 
     #[test]
-    fn player_cannot_attack_neutral_by_default() {
+    fn default_interaction_classifies_neutral_as_non_attackable() {
         let catalog = UnitCatalog::default();
         let weapons = WeaponCatalog::default();
         let mut world = layout_world();
         let player = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
         let neutral = spawn_neutral(&mut world, &catalog);
         assert_eq!(
-            validate_attack_target(&world, player, neutral, &weapons, &catalog, policy()),
-            Err(UnitOrderError::InvalidOwnershipTarget)
+            classify_unit_target(
+                &world,
+                &empty_authored(),
+                player,
+                neutral,
+                &weapons,
+                &catalog,
+                policy(),
+            ),
+            InteractionType::NeutralUnit
+        );
+    }
+
+    #[test]
+    fn default_interaction_uses_relationship_not_affiliation() {
+        let catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = layout_world();
+        let player = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
+        let wild = spawn_wild_wolf(&mut world, &catalog);
+        assert_eq!(
+            classify_unit_target(
+                &world,
+                &authored(),
+                player,
+                wild,
+                &weapons,
+                &catalog,
+                policy(),
+            ),
+            InteractionType::FriendlyUnit
+        );
+        assert_eq!(
+            classify_unit_target(
+                &world,
+                &authored(),
+                wild,
+                player,
+                &weapons,
+                &catalog,
+                policy(),
+            ),
+            InteractionType::AttackableUnit
         );
     }
 
@@ -597,7 +760,7 @@ mod tests {
         let mut world = layout_world();
         let player = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
         assert_eq!(
-            validate_attack_target(&world, player, player, &weapons, &catalog, policy()),
+            validate_explicit_attack_target(&world, player, player, &weapons, &catalog, policy()),
             Err(UnitOrderError::SelfTarget)
         );
     }
@@ -611,7 +774,7 @@ mod tests {
         let hostile = spawn_hostile(&mut world, &catalog);
         world.damage_unit(player, 999).unwrap();
         assert_eq!(
-            validate_attack_target(&world, player, hostile, &weapons, &catalog, policy()),
+            validate_explicit_attack_target(&world, player, hostile, &weapons, &catalog, policy()),
             Err(UnitOrderError::AttackerDead)
         );
     }
@@ -625,37 +788,37 @@ mod tests {
         let hostile = spawn_hostile(&mut world, &catalog);
         world.damage_unit(hostile, 999).unwrap();
         assert_eq!(
-            validate_attack_target(&world, player, hostile, &weapons, &catalog, policy()),
+            validate_explicit_attack_target(&world, player, hostile, &weapons, &catalog, policy()),
             Err(UnitOrderError::TargetDead)
         );
     }
 
     #[test]
-    fn weapon_target_filter_blocks_wildlife_only_weapon_vs_hostile() {
+    fn structures_only_weapon_blocks_unit_targets() {
         let catalog = UnitCatalog::default();
         let mut weapons = WeaponCatalog::default();
         let wolf_bite = weapons
             .get(&crate::world::WeaponDefinitionId::new("weapon_wolf_bite"))
             .unwrap()
             .clone();
-        let mut wildlife_only = wolf_bite.clone();
-        wildlife_only.target_filters = vec![TargetFilter::Wildlife];
-        wildlife_only.id = crate::world::WeaponDefinitionId::new("weapon_test_wildlife");
-        let weapon_catalog = WeaponCatalog::from_definitions(vec![wildlife_only]).unwrap();
+        let mut structures_only = wolf_bite.clone();
+        structures_only.target_filters = vec![TargetFilter::Structures];
+        structures_only.id = crate::world::WeaponDefinitionId::new("weapon_test_structures");
+        let weapon_catalog = WeaponCatalog::from_definitions(vec![structures_only]).unwrap();
 
         let mut unit_catalog = catalog.clone();
         let mut bandit = unit_catalog
             .get(&UnitDefinitionId::new("bandit"))
             .unwrap()
             .clone();
-        bandit.default_weapon_id = crate::world::WeaponDefinitionId::new("weapon_test_wildlife");
+        bandit.default_weapon_id = crate::world::WeaponDefinitionId::new("weapon_test_structures");
         unit_catalog = UnitCatalog::from_definitions(vec![bandit]).unwrap();
 
         let mut world = layout_world();
         let player = spawn_player(&mut world, &unit_catalog, "bandit", pos(1.0, 1.0));
         let hostile = spawn_hostile(&mut world, &unit_catalog);
         assert_eq!(
-            validate_attack_target(
+            validate_mechanical_attack_target(
                 &world,
                 player,
                 hostile,
@@ -668,6 +831,31 @@ mod tests {
     }
 
     #[test]
+    fn legacy_enemies_filter_matches_units_mechanically() {
+        let catalog = UnitCatalog::default();
+        let mut world = layout_world();
+        let neutral = spawn_neutral(&mut world, &catalog);
+        let target = world.get_unit(neutral).unwrap();
+        assert!(weapon_allows_target_filters(
+            &[TargetFilter::Enemies],
+            target
+        ));
+        assert!(weapon_allows_target_filters(
+            &[TargetFilter::Wildlife],
+            target
+        ));
+        assert!(weapon_allows_target_filters(
+            &[TargetFilter::Neutral],
+            target
+        ));
+        assert!(weapon_allows_target_filters(&[TargetFilter::Units], target));
+        assert!(!weapon_allows_target_filters(
+            &[TargetFilter::Structures],
+            target
+        ));
+    }
+
+    #[test]
     fn wildlife_cannot_proactively_attack_player() {
         let catalog = UnitCatalog::default();
         let weapons = WeaponCatalog::default();
@@ -675,7 +863,15 @@ mod tests {
         let player = spawn_player(&mut world, &catalog, "bandit", pos(1.0, 1.0));
         let wildlife = spawn_wildlife(&mut world, &catalog);
         assert_eq!(
-            validate_attack_target(&world, wildlife, player, &weapons, &catalog, policy()),
+            validate_autonomous_attack_target(
+                &world,
+                &empty_authored(),
+                wildlife,
+                player,
+                &weapons,
+                &catalog,
+                policy()
+            ),
             Err(UnitOrderError::InvalidOwnershipTarget)
         );
     }
@@ -714,11 +910,36 @@ mod tests {
             .set_unit_combat_state(wildlife, CombatState::Attacking { target: player })
             .unwrap();
         assert_eq!(
-            validate_attack_target(&world, wildlife, player, &weapons, &catalog, policy()),
+            validate_autonomous_attack_target(
+                &world,
+                &empty_authored(),
+                wildlife,
+                player,
+                &weapons,
+                &catalog,
+                policy()
+            ),
             Err(UnitOrderError::InvalidOwnershipTarget)
         );
         assert!(
             validate_active_combat_target(&world, wildlife, player, &weapons, &catalog, policy(),)
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn active_combat_target_keeps_explicit_neutral_engagement() {
+        let catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = layout_world();
+        let player = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
+        let neutral = spawn_neutral(&mut world, &catalog);
+        assert!(
+            validate_explicit_attack_target(&world, player, neutral, &weapons, &catalog, policy(),)
+                .is_ok()
+        );
+        assert!(
+            validate_active_combat_target(&world, player, neutral, &weapons, &catalog, policy(),)
                 .is_ok()
         );
     }
@@ -740,6 +961,91 @@ mod tests {
                 policy(),
             ),
             Err(UnitOrderError::InvalidOwnershipTarget)
+        );
+    }
+
+    fn reassign_unit_ownership(world: &mut WorldData, unit_id: UnitId, ownership: UnitOwnership) {
+        let mut record = world.remove_unit_by_id(unit_id).expect("unit exists");
+        record.owner_id = ownership.owner_id;
+        record.team_id = ownership.team_id;
+        record.affiliation = ownership.affiliation;
+        let chunk = crate::world::ChunkId::new(record.placement.position.chunk);
+        world.insert_unit(chunk, record).unwrap();
+    }
+
+    #[test]
+    fn projectile_impact_not_blocked_by_social_hostility_change() {
+        let catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = layout_world();
+        let player = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
+        let hostile = spawn_hostile(&mut world, &catalog);
+        let attacker = world.get_unit(player).unwrap().clone();
+        let weapon = weapons
+            .get(
+                &catalog
+                    .get(&attacker.definition_id)
+                    .unwrap()
+                    .default_weapon_id,
+            )
+            .unwrap();
+        let snapshot = ProjectileLaunchSnapshot::capture(&attacker, weapon, policy());
+        reassign_unit_ownership(&mut world, hostile, UnitOwnership::neutral());
+        assert!(validate_projectile_impact_target(&world, hostile, &snapshot).is_ok());
+    }
+
+    #[test]
+    fn projectile_impact_still_blocks_same_team() {
+        let catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = layout_world();
+        let player = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
+        let hostile = spawn_hostile(&mut world, &catalog);
+        let attacker = world.get_unit(player).unwrap().clone();
+        let weapon = weapons
+            .get(
+                &catalog
+                    .get(&attacker.definition_id)
+                    .unwrap()
+                    .default_weapon_id,
+            )
+            .unwrap();
+        let snapshot = ProjectileLaunchSnapshot::capture(&attacker, weapon, policy());
+        reassign_unit_ownership(&mut world, hostile, UnitOwnership::player_default());
+        assert_eq!(
+            validate_projectile_impact_target(&world, hostile, &snapshot),
+            Err(ProjectileImpactRejection::TargetNowFriendly)
+        );
+    }
+
+    #[test]
+    fn dev_allow_all_bypasses_team_for_explicit_and_desire() {
+        let catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = layout_world();
+        let a = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
+        let b = spawn_player(&mut world, &catalog, "bandit", pos(2.0, 2.0));
+        let dev_policy = AttackTargetingPolicy {
+            dev_allow_all_targets: true,
+        };
+        assert!(
+            validate_explicit_attack_target(&world, a, b, &weapons, &catalog, dev_policy).is_ok()
+        );
+        assert!(super::super::autonomous_wants_to_attack(
+            &world,
+            &empty_authored(),
+            world.get_unit(a).unwrap(),
+            world.get_unit(b).unwrap(),
+            dev_policy,
+        ));
+    }
+
+    #[test]
+    fn target_filter_units_parses() {
+        assert_eq!(TargetFilter::parse("Units").unwrap(), TargetFilter::Units);
+        assert_eq!(
+            TargetFilter::parse("enemies").unwrap(),
+            TargetFilter::Enemies
         );
     }
 }

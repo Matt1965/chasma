@@ -8,6 +8,11 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 
+use super::combat_state::CombatState;
+use super::id::UnitId;
+use super::state::UnitState;
+use crate::world::WorldData;
+use crate::world::unit::UnitInsertError;
 use crate::world::{ChunkLayout, WorldPosition};
 
 /// Minimum accepted XZ travel before updating facing (matches movement progress guards).
@@ -39,6 +44,15 @@ pub fn facing_rotation_from_travel(
         return None;
     }
     Some(facing_rotation_from_direction_xz(delta.normalize()))
+}
+
+/// Derive facing from attacker position toward a world target position.
+pub fn facing_rotation_toward_position(
+    from: WorldPosition,
+    to: WorldPosition,
+    layout: ChunkLayout,
+) -> Option<Quat> {
+    facing_rotation_from_travel(from, to, layout)
 }
 
 pub fn model_forward_xz(rotation: Quat) -> Vec2 {
@@ -101,6 +115,27 @@ pub fn step_rotation_yaw_toward(
     let target_yaw = yaw_radians_from_rotation(target);
     let max_step = turn_speed_rad_per_sec * delta_seconds;
     rotation_from_yaw_radians(step_yaw_toward(current_yaw, target_yaw, max_step))
+}
+
+/// Update authoritative facing toward a combat target while stationary and attacking (COMBAT-FACING-1).
+///
+/// Moving units keep travel-derived facing authority. Peaceful or non-attacking units are unchanged.
+pub fn apply_attacking_combat_facing(
+    world: &mut WorldData,
+    unit_id: UnitId,
+    target_id: UnitId,
+) -> Result<(), UnitInsertError> {
+    let Some(record) = world.get_unit(unit_id) else {
+        return Err(UnitInsertError::UnitNotFound);
+    };
+    if matches!(record.state, UnitState::Moving { .. }) {
+        return Ok(());
+    }
+    match record.combat_state {
+        CombatState::Attacking { target } if target == target_id => {}
+        _ => return Ok(()),
+    }
+    world.apply_unit_facing_toward_unit(unit_id, target_id)
 }
 
 #[cfg(test)]
@@ -282,5 +317,162 @@ mod tests {
         let to = pos(1, 0, 10.0, 0.0, 128.0);
         let rotation = facing_rotation_from_travel(from, to, layout).unwrap();
         assert_forward_matches(rotation, Vec2::new(1.0, 0.0));
+    }
+}
+
+#[cfg(test)]
+mod combat_facing_tests {
+    use super::*;
+    use crate::world::navigation::NavigationPath;
+    use crate::world::{
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitCatalog,
+        UnitDefinitionId, UnitSource, create_unit,
+    };
+
+    fn layout() -> ChunkLayout {
+        ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        }
+    }
+
+    fn flat_world() -> crate::world::WorldData {
+        let mut world = crate::world::WorldData::new(layout());
+        let heightfield = Heightfield::from_samples(65, 4.0, vec![0.0; 65 * 65]).unwrap();
+        world.insert(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            ChunkData::new(heightfield, Vec::new()),
+        );
+        world
+    }
+
+    fn pos(x: f32, z: f32) -> WorldPosition {
+        WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::new(x, 0.0, z)),
+        )
+    }
+
+    fn spawn_unit(
+        world: &mut crate::world::WorldData,
+        catalog: &UnitCatalog,
+        x: f32,
+        z: f32,
+        rotation: Quat,
+    ) -> UnitId {
+        create_unit(
+            catalog,
+            world,
+            &UnitDefinitionId::new("wolf"),
+            pos(x, z),
+            UnitSource::Authored,
+        )
+        .map(|record| {
+            world.set_unit_facing_for_test(record.id, rotation).unwrap();
+            record.id
+        })
+        .unwrap()
+    }
+
+    fn assert_forward_toward(from: Quat, from_pos: WorldPosition, to_pos: WorldPosition) {
+        let expected = facing_rotation_toward_position(from_pos, to_pos, layout()).unwrap();
+        let forward = model_forward_xz(from);
+        let expected_forward = model_forward_xz(expected);
+        assert!(
+            (forward - expected_forward).length() < 1e-4,
+            "expected {expected_forward:?}, got {forward:?}"
+        );
+    }
+
+    #[test]
+    fn stationary_attacking_unit_rotates_toward_target() {
+        let catalog = UnitCatalog::default();
+        let mut world = flat_world();
+        let attacker = spawn_unit(&mut world, &catalog, 10.0, 10.0, Quat::from_rotation_y(0.0));
+        let target = spawn_unit(&mut world, &catalog, 10.0, 20.0, Quat::from_rotation_y(0.0));
+        world
+            .set_unit_combat_state(attacker, CombatState::Attacking { target })
+            .unwrap();
+        apply_attacking_combat_facing(&mut world, attacker, target).unwrap();
+        assert_forward_toward(
+            world.get_unit(attacker).unwrap().placement.rotation,
+            pos(10.0, 10.0),
+            pos(10.0, 20.0),
+        );
+    }
+
+    #[test]
+    fn moving_target_updates_authoritative_attacking_facing() {
+        let catalog = UnitCatalog::default();
+        let mut world = flat_world();
+        let attacker = spawn_unit(&mut world, &catalog, 10.0, 10.0, Quat::from_rotation_y(0.0));
+        let target = spawn_unit(&mut world, &catalog, 20.0, 10.0, Quat::from_rotation_y(0.0));
+        world
+            .set_unit_combat_state(attacker, CombatState::Attacking { target })
+            .unwrap();
+        apply_attacking_combat_facing(&mut world, attacker, target).unwrap();
+        world.relocate_unit(target, pos(10.0, 20.0)).unwrap();
+        apply_attacking_combat_facing(&mut world, attacker, target).unwrap();
+        assert_forward_toward(
+            world.get_unit(attacker).unwrap().placement.rotation,
+            pos(10.0, 10.0),
+            pos(10.0, 20.0),
+        );
+    }
+
+    #[test]
+    fn chasing_moving_unit_keeps_travel_facing_authority() {
+        let catalog = UnitCatalog::default();
+        let mut world = flat_world();
+        let initial = Quat::from_rotation_y(0.25);
+        let attacker = spawn_unit(&mut world, &catalog, 10.0, 10.0, initial);
+        let target = spawn_unit(&mut world, &catalog, 20.0, 10.0, Quat::from_rotation_y(0.0));
+        world
+            .set_unit_combat_state(attacker, CombatState::Chasing { target })
+            .unwrap();
+        world
+            .set_unit_state(
+                attacker,
+                UnitState::Moving {
+                    target: pos(30.0, 10.0),
+                    path: NavigationPath::from_surface_positions(vec![pos(30.0, 10.0)]),
+                    waypoint_index: 0,
+                },
+            )
+            .unwrap();
+        apply_attacking_combat_facing(&mut world, attacker, target).unwrap();
+        assert_eq!(
+            world.get_unit(attacker).unwrap().placement.rotation,
+            initial
+        );
+    }
+
+    #[test]
+    fn peaceful_unit_does_not_track_former_target() {
+        let catalog = UnitCatalog::default();
+        let mut world = flat_world();
+        let initial = Quat::from_rotation_y(1.1);
+        let unit = spawn_unit(&mut world, &catalog, 10.0, 10.0, initial);
+        let target = spawn_unit(&mut world, &catalog, 20.0, 10.0, Quat::from_rotation_y(0.0));
+        apply_attacking_combat_facing(&mut world, unit, target).unwrap();
+        assert_eq!(world.get_unit(unit).unwrap().placement.rotation, initial);
+    }
+
+    #[test]
+    fn authoritative_combat_facing_updates_before_visual_catchup() {
+        let catalog = UnitCatalog::default();
+        let mut world = flat_world();
+        let attacker = spawn_unit(&mut world, &catalog, 10.0, 10.0, Quat::from_rotation_y(0.0));
+        let target = spawn_unit(&mut world, &catalog, 10.0, 20.0, Quat::from_rotation_y(0.0));
+        world
+            .set_unit_combat_state(attacker, CombatState::Attacking { target })
+            .unwrap();
+        apply_attacking_combat_facing(&mut world, attacker, target).unwrap();
+        let authoritative = world.get_unit(attacker).unwrap().placement.rotation;
+        let visual = Quat::from_rotation_y(0.0);
+        let stepped =
+            step_rotation_yaw_toward(visual, authoritative, 90.0_f32.to_radians(), 1.0 / 60.0);
+        assert_ne!(stepped, authoritative);
+        assert_forward_toward(authoritative, pos(10.0, 10.0), pos(10.0, 20.0));
     }
 }

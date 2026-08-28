@@ -7,10 +7,10 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use crate::world::{
-    BuildingCatalog, BuildingInteractionProfileCatalog, BuildingNavigationBlueprintCatalog,
-    CorpseSettings, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, InventoryCatalogCtx,
-    InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, NavigationConfig, UnitCatalog,
-    WeaponCatalog,
+    AuthoredRelationshipCatalog, BuildingCatalog, BuildingInteractionProfileCatalog,
+    BuildingNavigationBlueprintCatalog, CorpseSettings, DoodadCatalog, FootprintCatalog,
+    InteriorProfileCatalog, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog,
+    ItemCategoryCatalog, NavigationConfig, UnitCatalog, WeaponCatalog,
 };
 
 /// Read-only catalogs and settings consumed by [`super::run_simulation_tick`].
@@ -23,6 +23,7 @@ pub struct SimulationCatalogParams<'w> {
     pub footprint_catalog: Res<'w, FootprintCatalog>,
     pub interaction_catalog: Res<'w, BuildingInteractionProfileCatalog>,
     pub nav_config: Res<'w, NavigationConfig>,
+    pub authored_relationships: Res<'w, AuthoredRelationshipCatalog>,
     pub interior_catalog: Res<'w, InteriorProfileCatalog>,
     pub nav_blueprint_catalog: Res<'w, BuildingNavigationBlueprintCatalog>,
     pub combat_ai_settings: Res<'w, crate::world::CombatAiSettings>,

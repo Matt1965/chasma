@@ -122,6 +122,7 @@ fn contextual_resolver_does_not_inject_world_data() {
         world: &world,
         unit_catalog: &unit_catalog,
         weapon_catalog: &weapon_catalog,
+        authored_relationships: &crate::world::AuthoredRelationshipCatalog::default(),
         targeting_policy: crate::world::AttackTargetingPolicy::default(),
     };
     let resolved = crate::client::commands::resolve_contextual_command(&ctx).unwrap();
@@ -154,6 +155,7 @@ fn movement_with_empty_catalogs_does_not_panic_on_empty_world() {
         &crate::world::BuildingInteractionProfileCatalog::default(),
         &crate::world::NavigationConfig::default(),
         crate::world::AttackTargetingPolicy::default(),
+        &crate::world::AuthoredRelationshipCatalog::default(),
         &settings,
         &mut scan,
         BuildingConstructionSettings::default(),

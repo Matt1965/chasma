@@ -19,6 +19,8 @@ mod overlay_diagnostics;
 mod path_trace;
 mod pending;
 mod plugin;
+#[cfg(any(test, feature = "dev"))]
+mod relationship_links;
 mod settings;
 mod trace;
 
@@ -34,8 +36,8 @@ pub use movement_observability::{MovementBlockObservability, blocked_reason_labe
 pub use overlay::{
     DebugOverlaySystems, NavigationMaskDrawStats, draw_combat_debug_overlay,
     draw_formation_debug_overlay, draw_intent_debug_overlay, draw_interaction_debug_overlay,
-    draw_navigation_debug_overlay, draw_path_debug_overlay, draw_selection_debug_overlay,
-    draw_steering_debug_overlay,
+    draw_navigation_debug_overlay, draw_path_debug_overlay, draw_relationship_links_overlay,
+    draw_selection_debug_overlay, draw_steering_debug_overlay,
 };
 #[cfg(feature = "dev")]
 pub use overlay_diagnostics::NavigationOverlayDiagnostics;

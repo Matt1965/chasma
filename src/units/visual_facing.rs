@@ -79,7 +79,7 @@ mod tests {
     }
 
     fn sample_definition() -> UnitDefinition {
-        UnitDefinition::new(
+        UnitDefinition::new_test(
             UnitDefinitionId::new("wolf"),
             "Wolf",
             "Wild",

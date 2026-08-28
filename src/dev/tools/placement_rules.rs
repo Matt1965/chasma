@@ -296,7 +296,7 @@ mod tests {
     }
 
     fn strict_slope_catalog() -> UnitCatalog {
-        UnitCatalog::from_definitions(vec![UnitDefinition::new(
+        UnitCatalog::from_definitions(vec![UnitDefinition::new_test(
             UnitDefinitionId::new("strict"),
             "Strict",
             "Test",

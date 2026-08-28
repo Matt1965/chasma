@@ -128,6 +128,36 @@ implementation is a deterministic placeholder only.
 tiered target priority (active combatants first) and closest-in-tier selection — no hidden
 weighting.
 
+## Perception and desire (2026-08-24, accepted direction)
+
+**Candidate detection — Phase 4 implemented (ADR-132 Map).** One perception candidate seam
+(`perceived_units`) backed by `WorldData::query_units_in_radius`, with per-unit authored **Sight
+Range** on `UnitDefinition` / Units sheet. Auto-acquisition and attack-move both consume it. Legacy
+`CombatAiSettings::scan_radius_meters`, `ATTACK_MOVE_SCAN_RADIUS_METERS`, and global
+`sorted_unit_ids()` acquisition scans are removed.
+
+Perception governs **acquisition only**. A target leaving Sight Range must not end active combat;
+leave-range hysteresis (ADR-057) remains the sole disengagement authority.
+
+**Observable AttackMove change:** acquisition radius unified to authored Sight Range (workbook
+default 24 m). AttackMove previously scanned 16 m, so targets between 16–24 m are now acquirable
+during attack-move.
+
+Not in scope for that seam: LOS, vision cones, hearing, memory, alertness, `PER` formulas,
+fog-of-war knowledge.
+
+**Desire — Phase 6 implemented.** Acquisition and AttackMove use
+`validate_autonomous_attack_target` (perception → mechanical → `autonomous_wants_to_attack`).
+Desire consumes `effective_relationship()` with a placeholder `-100` threshold in
+`src/world/combat/autonomous_desire.rs`. Authored `wild -> player = -300` drives Cavecrawler-style
+proactive hostility; reverse direction remains `0` unless authored otherwise.
+
+Relationship code never writes `CombatState`. AI continues to issue normal `UnitOrder::Attack`.
+
+**Retaliation is unchanged.** `reactive_combat_target` remains an attacker-specific combat
+authorization and must not become faction reputation — a shared reputation delta would make an
+entire faction instantly aware of an incident.
+
 ## Non-goals (C9)
 
 No behavior trees, kiting, retreats, abilities, armor, economy AI, sound/VFX, or

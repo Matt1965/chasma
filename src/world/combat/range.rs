@@ -195,7 +195,7 @@ mod tests {
 
     fn large_radius_catalog() -> UnitCatalog {
         UnitCatalog::from_definitions(vec![
-            UnitDefinition::new(
+            UnitDefinition::new_test(
                 UnitDefinitionId::new("big_a"),
                 "Big A",
                 "Test",
@@ -217,7 +217,7 @@ mod tests {
                 true,
                 UnitRenderKey::reserved("big_a"),
             ),
-            UnitDefinition::new(
+            UnitDefinition::new_test(
                 UnitDefinitionId::new("big_b"),
                 "Big B",
                 "Test",

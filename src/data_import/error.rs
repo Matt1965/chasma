@@ -64,6 +64,19 @@ pub enum DataImportError {
         first_row: usize,
         duplicate_row: usize,
     },
+    DuplicateFactionId {
+        id: String,
+        first_row: usize,
+        duplicate_row: usize,
+    },
+    DuplicateSpeciesId {
+        id: String,
+        first_row: usize,
+        duplicate_row: usize,
+    },
+    DuplicateAuthoredRelationshipEdge {
+        description: String,
+    },
     NoValidRows,
 }
 
@@ -164,6 +177,25 @@ impl std::fmt::Display for DataImportError {
                 "duplicate Inventory Profile ID `{}` (rows {first_row} and {duplicate_row})",
                 id.as_str()
             ),
+            Self::DuplicateFactionId {
+                id,
+                first_row,
+                duplicate_row,
+            } => write!(
+                f,
+                "duplicate Faction Key `{id}` (rows {first_row} and {duplicate_row})"
+            ),
+            Self::DuplicateSpeciesId {
+                id,
+                first_row,
+                duplicate_row,
+            } => write!(
+                f,
+                "duplicate Species Key `{id}` (rows {first_row} and {duplicate_row})"
+            ),
+            Self::DuplicateAuthoredRelationshipEdge { description } => {
+                write!(f, "duplicate authored relationship edge: {description}")
+            }
             Self::NoValidRows => write!(f, "no valid rows after import"),
         }
     }

@@ -10,6 +10,7 @@ use super::source::UnitSource;
 use super::state::UnitState;
 use super::vitals::UnitVitals;
 use crate::world::ownership::{Affiliation, OwnerId, TeamId, UnitOwnership};
+use crate::world::relationship::{FactionId, SpeciesId};
 
 /// One authoritative unit instance (ADR-027 U2, ADR-051 O1).
 ///
@@ -30,6 +31,10 @@ pub struct UnitRecord {
     pub team_id: Option<TeamId>,
     /// Broad classification for UI and controllability.
     pub affiliation: Affiliation,
+    /// Runtime-authoritative faction relationship identity (ADR-132 Phase 1).
+    pub faction_id: FactionId,
+    /// Runtime-authoritative species relationship identity (ADR-132 Phase 1).
+    pub species_id: SpeciesId,
     pub vitals: UnitVitals,
     /// Authoritative navigable space (ADR-083 B6).
     pub current_space_id: crate::world::SpaceId,
@@ -50,6 +55,8 @@ impl UnitRecord {
         source: UnitSource,
         ownership: UnitOwnership,
         max_hp: u32,
+        faction_id: FactionId,
+        species_id: SpeciesId,
     ) -> Self {
         Self {
             id,
@@ -61,6 +68,8 @@ impl UnitRecord {
             owner_id: ownership.owner_id,
             team_id: ownership.team_id,
             affiliation: ownership.affiliation,
+            faction_id,
+            species_id,
             vitals: UnitVitals::full(max_hp),
             current_space_id: crate::world::SpaceId::SURFACE,
             combat_state: CombatState::default(),
@@ -68,6 +77,28 @@ impl UnitRecord {
             reactive_combat_target: None,
             inventory_id: None,
         }
+    }
+
+    /// Test helper using neutral wild/wolf identity defaults.
+    #[cfg(test)]
+    pub fn new_test(
+        id: UnitId,
+        definition_id: UnitDefinitionId,
+        placement: UnitPlacement,
+        source: UnitSource,
+        ownership: UnitOwnership,
+        max_hp: u32,
+    ) -> Self {
+        Self::new(
+            id,
+            definition_id,
+            placement,
+            source,
+            ownership,
+            max_hp,
+            FactionId::new("wild"),
+            SpeciesId::new("wolf"),
+        )
     }
 
     pub fn ownership(&self) -> UnitOwnership {

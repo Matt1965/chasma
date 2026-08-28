@@ -141,7 +141,7 @@ mod tests {
 
     #[test]
     fn unit_pick_radius_has_a_usability_floor() {
-        let definition = UnitDefinition::new(
+        let definition = UnitDefinition::new_test(
             UnitDefinitionId::new("tiny"),
             "Tiny",
             "Test",

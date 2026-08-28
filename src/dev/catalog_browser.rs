@@ -149,7 +149,7 @@ mod tests {
     #[test]
     fn catalog_filter_respects_enabled_only() {
         let mut definitions = UnitCatalog::default().definitions().to_vec();
-        definitions.push(UnitDefinition::new(
+        definitions.push(UnitDefinition::new_test(
             UnitDefinitionId::new("disabled_test"),
             "Disabled Test",
             "neutral",

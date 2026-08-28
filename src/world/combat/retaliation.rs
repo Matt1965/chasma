@@ -162,6 +162,7 @@ pub fn try_reactive_combat_retaliation(
 mod tests {
     use super::*;
     use crate::simulation::run_simulation_tick;
+    use crate::world::combat::test_support::phase6_authored_catalog;
     use crate::world::combat::{
         CombatAiScanState, CombatAiSettings, CombatStrikeEvent, CombatStrikeReport,
         step_combat_ai_acquisition,
@@ -169,10 +170,11 @@ mod tests {
     use crate::world::task::{TaskPriority, TaskRecord, TaskState, TaskTarget, TaskType};
     use crate::world::unit::{CombatState, UnitState, resolve_all_pending_unit_orders};
     use crate::world::{
-        Affiliation, BuildingId, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog,
-        FootprintCatalog, Heightfield, LocalPosition, NavigationConfig, PassabilityCatalogs,
-        UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource, WeaponCatalog, WorldPosition,
-        create_unit_with_ownership, default_passability, issue_unit_order, validate_attack_target,
+        Affiliation, AuthoredRelationshipCatalog, BuildingId, ChunkCoord, ChunkData, ChunkId,
+        ChunkLayout, DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition, NavigationConfig,
+        PassabilityCatalogs, UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource,
+        WeaponCatalog, WorldPosition, create_unit_with_ownership, default_passability,
+        issue_unit_order,
     };
     use bevy::prelude::Vec3;
 
@@ -221,13 +223,24 @@ mod tests {
         AttackTargetingPolicy::default()
     }
 
+    fn authored_relationships() -> AuthoredRelationshipCatalog {
+        phase6_authored_catalog()
+    }
+
+    fn patch_player_faction(world: &mut crate::world::WorldData, unit_id: UnitId) {
+        let mut record = world.remove_unit_by_id(unit_id).expect("unit exists");
+        record.faction_id = crate::world::FactionId::new("player");
+        let chunk = ChunkId::new(record.placement.position.chunk);
+        world.insert_unit(chunk, record).unwrap();
+    }
+
     fn spawn_player(
         world: &mut crate::world::WorldData,
         catalog: &UnitCatalog,
         x: f32,
         z: f32,
     ) -> UnitId {
-        create_unit_with_ownership(
+        let id = create_unit_with_ownership(
             catalog,
             world,
             &UnitDefinitionId::new("wolf"),
@@ -236,7 +249,9 @@ mod tests {
             UnitOwnership::player_default(),
         )
         .unwrap()
-        .id
+        .id;
+        patch_player_faction(world, id);
+        id
     }
 
     fn spawn_hostile(
@@ -299,7 +314,7 @@ mod tests {
         x: f32,
         z: f32,
     ) -> UnitId {
-        create_unit_with_ownership(
+        let id = create_unit_with_ownership(
             catalog,
             world,
             &UnitDefinitionId::new("deer"),
@@ -308,7 +323,9 @@ mod tests {
             UnitOwnership::player_default(),
         )
         .unwrap()
-        .id
+        .id;
+        patch_player_faction(world, id);
+        id
     }
 
     fn spawn_hostile_at(
@@ -417,6 +434,7 @@ mod tests {
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             policy(),
+            &authored_relationships(),
             combat_ai_settings,
             &mut scan,
             crate::world::BuildingConstructionSettings::default(),
@@ -468,6 +486,7 @@ mod tests {
                 &DoodadCatalog::default(),
                 &NavigationConfig::default(),
                 policy(),
+                &AuthoredRelationshipCatalog::default(),
                 &settings,
                 &mut scan,
                 1.0,
@@ -481,12 +500,12 @@ mod tests {
     }
 
     #[test]
-    fn wildlife_explicit_attack_on_player_is_rejected() {
+    fn wildlife_explicit_attack_on_player_is_mechanically_allowed() {
         let (catalog, weapons) = catalogs();
         let mut world = flat_world();
         let player = spawn_player_bandit(&mut world, &catalog, 10.0, 10.0);
         let wildlife = spawn_wildlife_bandit(&mut world, &catalog, 11.0, 10.0);
-        assert_eq!(
+        assert!(
             issue_unit_order(
                 &mut world,
                 &catalog,
@@ -496,8 +515,8 @@ mod tests {
                 wildlife,
                 UnitOrder::Attack { target: player },
                 policy(),
-            ),
-            Err(crate::world::UnitOrderError::InvalidOwnershipTarget)
+            )
+            .is_ok()
         );
     }
 
@@ -712,6 +731,7 @@ mod tests {
                 default_passability(),
                 &NavigationConfig::default(),
                 policy(),
+                &AuthoredRelationshipCatalog::default(),
                 &mut strike_report,
             );
             strike_report = step_all_combat_strikes(
@@ -787,6 +807,7 @@ mod tests {
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &settings,
             &mut scan,
             1.0,
@@ -823,6 +844,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut strike_report,
         );
         strike_report = step_all_combat_strikes(

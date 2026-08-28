@@ -292,6 +292,8 @@ struct RestorePlan {
     planner_persistence: super::planner_snapshot::SceneProductionPlannerPersistence,
     settlement_state_persistence: super::settlement_state_snapshot::SceneSettlementStatePersistence,
     construction_plan_persistence: super::construction_snapshot::SceneConstructionPlanPersistence,
+    relationship_standing_persistence:
+        super::relationship_standing_snapshot::SceneRelationshipStandingPersistence,
 }
 
 struct DevWorldEntityBackup {
@@ -482,7 +484,7 @@ fn build_restore_plan(
     let mut units = Vec::with_capacity(scene.unit_records.len());
     let mut unit_ids = HashSet::new();
     for unit in &scene.unit_records {
-        let record = scene_unit_to_record(unit)?;
+        let record = scene_unit_to_record(unit, unit_catalog)?;
         validate_unit_for_restore(unit_catalog, &record, &unit_ids)?;
         unit_ids.insert(record.id);
         units.push(record);
@@ -606,6 +608,7 @@ fn build_restore_plan(
         planner_persistence: scene.planner_persistence.clone(),
         settlement_state_persistence: scene.settlement_state_persistence.clone(),
         construction_plan_persistence: scene.construction_plan_persistence.clone(),
+        relationship_standing_persistence: scene.relationship_standing_persistence.clone(),
     })
 }
 
@@ -688,6 +691,11 @@ fn apply_restore_plan(
     super::construction_snapshot::restore_construction_plan_persistence(
         world,
         &plan.construction_plan_persistence,
+    );
+
+    super::relationship_standing_snapshot::restore_relationship_standing_persistence(
+        world,
+        &plan.relationship_standing_persistence,
     );
 
     crate::world::reconcile_settlement_building_membership(world);
@@ -807,8 +815,11 @@ fn scene_building_to_record(
         })
 }
 
-fn scene_unit_to_record(unit: &SceneUnitRecord) -> Result<UnitRecord, SceneApplyError> {
-    unit.to_record()
+fn scene_unit_to_record(
+    unit: &SceneUnitRecord,
+    catalog: &UnitCatalog,
+) -> Result<UnitRecord, SceneApplyError> {
+    unit.to_record(catalog)
         .map_err(|err| SceneApplyError::InvalidUnitRecord {
             unit_id: unit.id,
             reason: format!("{err:?}"),
@@ -1121,6 +1132,8 @@ mod tests {
             owner_id: None,
             team_id: None,
             affiliation: None,
+            faction_id: None,
+            species_id: None,
             current_space_id: 0,
             inventory_id: None,
         });

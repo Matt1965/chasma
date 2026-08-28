@@ -13,13 +13,13 @@ mod tests {
         step_unit_death_pipeline,
     };
     use crate::world::{
-        AttackTargetingPolicy, BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
-        CombatEngagementStatus, CombatState, DamageType, DoodadCatalog, FootprintCatalog,
-        Heightfield, HitMode, LocalPosition, NavigationConfig, PassabilityCatalogs,
-        ProjectileReport, TargetFilter, UnitCatalog, UnitDefinitionId, UnitId, UnitOrder,
-        UnitOwnership, UnitSource, WeaponCatalog, WeaponDefinition, WeaponDefinitionId, WorldData,
-        WorldPosition, create_unit_with_ownership, default_passability, issue_unit_order,
-        starter_unit_definitions, starter_weapon_definitions,
+        AttackTargetingPolicy, AuthoredRelationshipCatalog, BuildingCatalog, ChunkCoord, ChunkData,
+        ChunkId, ChunkLayout, CombatEngagementStatus, CombatState, DamageType, DoodadCatalog,
+        FootprintCatalog, Heightfield, HitMode, LocalPosition, NavigationConfig,
+        PassabilityCatalogs, ProjectileReport, TargetFilter, UnitCatalog, UnitDefinitionId, UnitId,
+        UnitOrder, UnitOwnership, UnitSource, WeaponCatalog, WeaponDefinition, WeaponDefinitionId,
+        WorldData, WorldPosition, create_unit_with_ownership, default_passability,
+        issue_unit_order, starter_unit_definitions, starter_weapon_definitions,
     };
     use bevy::prelude::Vec3;
 
@@ -140,6 +140,7 @@ mod tests {
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &settings,
             &mut scan,
             crate::world::BuildingConstructionSettings::default(),
@@ -425,6 +426,7 @@ mod tests {
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &settings,
             &mut scan,
             0.2,
@@ -467,6 +469,7 @@ mod tests {
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &settings,
             &mut scan,
             0.2,
@@ -538,6 +541,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut strike_report,
         );
         assert!(matches!(

@@ -50,7 +50,7 @@ mod tests {
 
     #[test]
     fn blank_profile_reference_means_no_inventory() {
-        let unit = UnitDefinition::new(
+        let unit = UnitDefinition::new_test(
             UnitDefinitionId::new("wolf"),
             "Wolf",
             "Wild",

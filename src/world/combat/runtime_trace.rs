@@ -1,6 +1,6 @@
-//! Temporary dev-only combat runtime trace (COMBAT-VERTICAL-1B-RUNTIME-TRACE).
+//! Dev-only combat runtime trace (`COMBAT_TRACE` log lines).
 //!
-//! Event-based `COMBAT_TRACE` log lines for manual combat debugging. Not per-frame.
+//! Event-based tracing for manual combat debugging. Not per-frame.
 
 use crate::world::unit::{UnitId, UnitOrderError};
 use crate::world::{UnitCatalog, WeaponCatalog, WorldData};
@@ -17,7 +17,7 @@ use std::sync::Mutex;
 
 #[cfg(feature = "dev")]
 fn log(line: impl std::fmt::Display) {
-    bevy::log::info!("COMBAT_TRACE {line}");
+    crate::logging::write_combat_trace(line.to_string());
 }
 
 #[cfg(feature = "dev")]
@@ -197,6 +197,24 @@ pub fn retaliation_result(victim: UnitId, attacker: UnitId, issued: bool, detail
     log(format!(
         "9 retaliation_result victim={} attacker={} issued={issued} detail={detail}",
         victim.0, attacker.0
+    ));
+}
+
+#[inline(always)]
+pub fn autonomous_desire_decision(
+    observer: UnitId,
+    target: UnitId,
+    decision: super::autonomous_desire::AutonomousDesireDecision,
+) {
+    #[cfg(feature = "dev")]
+    log(format!(
+        "autonomous_desire observer={} target={} effective={} threshold={} wants_attack={} dev_override={}",
+        observer.0,
+        target.0,
+        decision.effective_relationship,
+        decision.threshold,
+        decision.wants_attack,
+        decision.dev_override
     ));
 }
 

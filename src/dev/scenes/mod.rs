@@ -8,6 +8,7 @@ mod logistics_snapshot;
 mod planner_snapshot;
 mod production_snapshot;
 mod registry;
+mod relationship_standing_snapshot;
 mod save;
 mod settlement_state_snapshot;
 mod snapshot;

@@ -79,9 +79,11 @@ pub use entrance_traversal_trace::{
     record_transition_probe as record_entrance_transition_probe,
 };
 pub use facing::{
-    MOVEMENT_FACING_EPSILON_METERS, facing_rotation_from_direction_xz, facing_rotation_from_travel,
-    model_forward_xz, rotation_from_yaw_radians, shortest_yaw_delta_radians,
-    step_rotation_yaw_toward, step_yaw_toward, xz_displacement_meters, yaw_radians_from_rotation,
+    MOVEMENT_FACING_EPSILON_METERS, apply_attacking_combat_facing,
+    facing_rotation_from_direction_xz, facing_rotation_from_travel,
+    facing_rotation_toward_position, model_forward_xz, rotation_from_yaw_radians,
+    shortest_yaw_delta_radians, step_rotation_yaw_toward, step_yaw_toward, xz_displacement_meters,
+    yaw_radians_from_rotation,
 };
 pub use grounding::{UnitGroundingError, ground_unit_position, ground_unit_to_terrain};
 pub use id::UnitId;

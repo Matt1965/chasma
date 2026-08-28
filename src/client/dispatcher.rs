@@ -19,11 +19,12 @@ use crate::units::input::{
     prune_non_commandable_from_selection,
 };
 use crate::world::{
-    AttackTargetingPolicy, BuildingCatalog, DoodadCatalog, FootprintCatalog, InteractionOrderPlan,
-    InteractionResolveContext, NavigationConfig, NavigationPath, PassabilityCatalogs, UnitCatalog,
-    UnitId, WeaponCatalog, WorldConfig, WorldData, WorldPosition, assign_construct_building_task,
-    assign_operate_workstation_task, filter_commandable_unit_ids, resolve_unit_click_to_order,
-    resolve_world_click_to_order, xz_distance,
+    AttackTargetingPolicy, AuthoredRelationshipCatalog, BuildingCatalog, DoodadCatalog,
+    FootprintCatalog, InteractionOrderPlan, InteractionResolveContext, NavigationConfig,
+    NavigationPath, PassabilityCatalogs, UnitCatalog, UnitId, WeaponCatalog, WorldConfig,
+    WorldData, WorldPosition, assign_construct_building_task, assign_operate_workstation_task,
+    filter_commandable_unit_ids, resolve_unit_click_to_order, resolve_world_click_to_order,
+    xz_distance,
 };
 
 use super::commands::{
@@ -61,6 +62,7 @@ pub struct DispatchSimulationParams<'w> {
     pub footprint_catalog: Res<'w, FootprintCatalog>,
     pub interaction_catalog: Res<'w, crate::world::BuildingInteractionProfileCatalog>,
     pub nav_config: Res<'w, NavigationConfig>,
+    pub authored_relationships: Res<'w, AuthoredRelationshipCatalog>,
     pub field_catalog: Res<'w, crate::world::TerrainFieldCatalog>,
     pub profile_catalog: Res<'w, crate::world::FieldResponseProfileCatalog>,
     pub requirement_catalog: Res<'w, crate::world::BuildingFieldRequirementCatalog>,
@@ -181,6 +183,7 @@ pub fn dispatch_client_intents(
         footprint_catalog,
         interaction_catalog,
         nav_config,
+        authored_relationships,
         field_catalog,
         profile_catalog,
         requirement_catalog,
@@ -208,6 +211,7 @@ pub fn dispatch_client_intents(
                 &footprint_catalog,
                 &interaction_catalog,
                 &nav_config,
+                &authored_relationships,
                 layout,
                 vertical_scale,
                 &settings,
@@ -286,6 +290,7 @@ fn dispatch_one(
     footprint_catalog: &FootprintCatalog,
     interaction_catalog: &crate::world::BuildingInteractionProfileCatalog,
     nav_config: &NavigationConfig,
+    authored_relationships: &AuthoredRelationshipCatalog,
     layout: crate::world::ChunkLayout,
     vertical_scale: f32,
     settings: &PlayerInteractionSettings,
@@ -321,6 +326,7 @@ fn dispatch_one(
             footprint_catalog,
             interaction_catalog,
             nav_config,
+            authored_relationships,
             layout,
             vertical_scale,
             settings,
@@ -343,6 +349,7 @@ fn dispatch_one(
             footprint_catalog,
             interaction_catalog,
             nav_config,
+            authored_relationships,
             layout,
             vertical_scale,
             settings,
@@ -591,6 +598,7 @@ fn resolve_move_target_from_interaction(
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
     pile_settings: &crate::world::ItemPileSettings,
+    authored_relationships: &AuthoredRelationshipCatalog,
     selected: &[UnitId],
     target: CommandTarget,
 ) -> Option<WorldPosition> {
@@ -607,6 +615,7 @@ fn resolve_move_target_from_interaction(
                     unit_catalog,
                     weapon_catalog,
                     pile_settings,
+                    authored_relationships,
                     selected,
                     position,
                 )?
@@ -622,6 +631,7 @@ fn resolve_move_target_from_interaction(
                     unit_catalog,
                     weapon_catalog,
                     pile_settings,
+                    authored_relationships,
                     selected,
                 );
                 resolve_world_click_to_order(&ctx, position)?
@@ -637,6 +647,7 @@ fn resolve_move_target_from_interaction(
                 unit_catalog,
                 weapon_catalog,
                 pile_settings,
+                authored_relationships,
                 selected,
             );
             resolve_unit_click_to_order(&ctx, unit_id)?
@@ -663,6 +674,7 @@ fn try_issue_building_work_orders(
     footprint_catalog: &FootprintCatalog,
     interaction_catalog: &crate::world::BuildingInteractionProfileCatalog,
     nav_config: &NavigationConfig,
+    authored_relationships: &AuthoredRelationshipCatalog,
     position: WorldPosition,
     simulation_tick: u64,
     pile_settings: &crate::world::ItemPileSettings,
@@ -677,6 +689,7 @@ fn try_issue_building_work_orders(
         unit_catalog,
         weapon_catalog,
         pile_settings,
+        authored_relationships,
         &selected,
     );
     let plan = resolve_world_click_to_order(&ctx, position)?;
@@ -741,6 +754,7 @@ fn dispatch_contextual_command(
     footprint_catalog: &FootprintCatalog,
     interaction_catalog: &crate::world::BuildingInteractionProfileCatalog,
     nav_config: &NavigationConfig,
+    authored_relationships: &AuthoredRelationshipCatalog,
     layout: crate::world::ChunkLayout,
     vertical_scale: f32,
     settings: &PlayerInteractionSettings,
@@ -793,6 +807,7 @@ fn dispatch_contextual_command(
             world,
             unit_catalog,
             weapon_catalog,
+            authored_relationships,
             targeting_policy,
         },
         armed_command,
@@ -833,6 +848,7 @@ fn dispatch_contextual_command(
                     footprint_catalog,
                     interaction_catalog,
                     nav_config,
+                    authored_relationships,
                     position,
                     simulation_tick,
                     pile_settings,
@@ -862,6 +878,7 @@ fn dispatch_contextual_command(
                 unit_catalog,
                 weapon_catalog,
                 pile_settings,
+                authored_relationships,
                 &selected_ids,
                 contextual.target,
             ) else {
@@ -1159,11 +1176,11 @@ mod tests {
     use crate::ui::gameplay::{BuildModeState, GameplayBuildingSelection};
     use crate::units::input::SelectedUnits;
     use crate::world::{
-        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog,
-        DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog, Heightfield,
-        LocalPosition, PassabilityCatalogs, UnitDefinitionId, UnitOwnership, UnitSource, UnitState,
-        WorldPosition, create_doodad, create_unit, create_unit_with_ownership,
-        resolve_all_pending_unit_orders,
+        AuthoredRelationshipCatalog, BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+        DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource,
+        FootprintCatalog, Heightfield, LocalPosition, PassabilityCatalogs, UnitDefinitionId,
+        UnitOwnership, UnitSource, UnitState, WorldPosition, create_doodad, create_unit,
+        create_unit_with_ownership, resolve_all_pending_unit_orders,
     };
     use bevy::prelude::{Vec2, Vec3};
 
@@ -1289,6 +1306,7 @@ mod tests {
             &FootprintCatalog::default(),
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
+            &AuthoredRelationshipCatalog::default(),
             layout(),
             1.0,
             &PlayerInteractionSettings::default(),
@@ -1351,6 +1369,7 @@ mod tests {
             &FootprintCatalog::default(),
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &nav_config,
+            &AuthoredRelationshipCatalog::default(),
             layout(),
             1.0,
             &PlayerInteractionSettings::default(),
@@ -1414,6 +1433,7 @@ mod tests {
             &FootprintCatalog::default(),
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
+            &AuthoredRelationshipCatalog::default(),
             layout(),
             1.0,
             &PlayerInteractionSettings::default(),
@@ -1486,6 +1506,7 @@ mod tests {
             &FootprintCatalog::default(),
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &nav_config,
+            &AuthoredRelationshipCatalog::default(),
             layout(),
             1.0,
             &PlayerInteractionSettings::default(),
@@ -1538,6 +1559,7 @@ mod tests {
             &FootprintCatalog::default(),
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
+            &AuthoredRelationshipCatalog::default(),
             layout(),
             1.0,
             &PlayerInteractionSettings::default(),
@@ -1597,6 +1619,7 @@ mod tests {
             &FootprintCatalog::default(),
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
+            &AuthoredRelationshipCatalog::default(),
             layout(),
             1.0,
             &PlayerInteractionSettings::default(),
@@ -1662,6 +1685,7 @@ mod tests {
             &FootprintCatalog::default(),
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &nav_config,
+            &AuthoredRelationshipCatalog::default(),
             layout(),
             1.0,
             &PlayerInteractionSettings::default(),
@@ -1741,6 +1765,7 @@ mod tests {
             &FootprintCatalog::default(),
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
+            &AuthoredRelationshipCatalog::default(),
             layout(),
             1.0,
             &PlayerInteractionSettings::default(),
@@ -1796,6 +1821,7 @@ mod tests {
             &FootprintCatalog::default(),
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
+            &AuthoredRelationshipCatalog::default(),
             layout(),
             1.0,
             &PlayerInteractionSettings::default(),

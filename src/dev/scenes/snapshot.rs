@@ -82,6 +82,10 @@ pub struct SceneDefinition {
     #[serde(default)]
     pub construction_plan_persistence:
         super::construction_snapshot::SceneConstructionPlanPersistence,
+    /// Relationship Standing runtime (ADR-132 Phase 3). Absent in v15 and earlier.
+    #[serde(default)]
+    pub relationship_standing_persistence:
+        super::relationship_standing_snapshot::SceneRelationshipStandingPersistence,
 }
 
 fn default_next_task_id() -> u32 {
@@ -191,6 +195,12 @@ pub struct SceneUnitRecord {
     /// Unit inventory link (ADR-094 I8).
     #[serde(default)]
     pub inventory_id: Option<u32>,
+    /// Runtime faction relationship identity (ADR-132 Phase 1).
+    #[serde(default)]
+    pub faction_id: Option<String>,
+    /// Runtime species relationship identity (ADR-132 Phase 1).
+    #[serde(default)]
+    pub species_id: Option<String>,
 }
 
 fn default_building_uniform_scale_milli() -> i32 {
@@ -408,6 +418,9 @@ impl SceneDefinition {
                 super::settlement_state_snapshot::SceneSettlementStatePersistence::default(),
             construction_plan_persistence:
                 super::construction_snapshot::SceneConstructionPlanPersistence::default(),
+            relationship_standing_persistence:
+                super::relationship_standing_snapshot::SceneRelationshipStandingPersistence::default(
+                ),
         }
     }
 
@@ -528,6 +541,8 @@ pub fn capture_scene(world: &WorldData, ctx: &SceneCaptureContext) -> SceneDefin
         super::settlement_state_snapshot::capture_settlement_state_persistence(world);
     scene.construction_plan_persistence =
         super::construction_snapshot::capture_construction_plan_persistence(world);
+    scene.relationship_standing_persistence =
+        super::relationship_standing_snapshot::capture_relationship_standing_persistence(world);
     scene
 }
 
@@ -545,10 +560,15 @@ impl SceneUnitRecord {
             affiliation: Some(record.affiliation.label().to_string()),
             current_space_id: record.current_space_id.raw(),
             inventory_id: record.inventory_id.map(|id| id.raw()),
+            faction_id: Some(record.faction_id.as_str().to_string()),
+            species_id: Some(record.species_id.as_str().to_string()),
         }
     }
 
-    pub fn to_record(&self) -> Result<UnitRecord, SceneRecordError> {
+    pub fn to_record(
+        &self,
+        catalog: &crate::world::UnitCatalog,
+    ) -> Result<UnitRecord, SceneRecordError> {
         let source = self.source.to_source();
         let mut ownership = default_ownership_for_source(source);
         if let Some(owner) = self.owner_id {
@@ -560,13 +580,31 @@ impl SceneUnitRecord {
         if let Some(label) = self.affiliation.as_deref() {
             ownership.affiliation = affiliation_from_label(label);
         }
+        let definition_id = crate::world::UnitDefinitionId::new(&self.definition_id);
+        let Some(definition) = catalog.get(&definition_id) else {
+            return Err(SceneRecordError::InvalidDefinitionId(
+                self.definition_id.clone(),
+            ));
+        };
+        let faction_id = self
+            .faction_id
+            .as_deref()
+            .map(crate::world::FactionId::new)
+            .unwrap_or_else(|| definition.faction_id.clone());
+        let species_id = self
+            .species_id
+            .as_deref()
+            .map(crate::world::SpeciesId::new)
+            .unwrap_or_else(|| definition.species_id.clone());
         let mut record = UnitRecord::new(
             UnitId::new(self.id),
-            crate::world::UnitDefinitionId::new(&self.definition_id),
+            definition_id,
             crate::world::UnitPlacement::new(self.position.to_world()?, self.rotation.to_quat()),
             source,
             ownership,
-            5,
+            definition.max_hp,
+            faction_id,
+            species_id,
         );
         record.current_space_id = crate::world::SpaceId::new(self.current_space_id);
         record.state = self.state.to_state()?;
@@ -1193,6 +1231,7 @@ impl SceneTreasuryRecord {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SceneRecordError {
     InvalidPosition,
+    InvalidDefinitionId(String),
     UnknownDoodadKind(String),
     InvalidBuildingLifecycle,
     InvalidBuildingProgress,

@@ -3,6 +3,7 @@
 //! Produces orders only — movement/pathfinding remain authoritative downstream.
 
 use crate::world::combat::{AttackTargetingPolicy, classify_unit_target};
+use crate::world::relationship::AuthoredRelationshipCatalog;
 use crate::world::{
     UnitId, UnitOrder, WorldData, WorldPosition, ground_position_in_space, ground_world_position,
     interior_position_walkable, resolve_navigation_space_at_position,
@@ -44,6 +45,7 @@ pub struct InteractionResolveContext<'a> {
     pub query: InteractionQueryContext<'a>,
     pub selected_units: &'a [UnitId],
     pub targeting_policy: AttackTargetingPolicy,
+    pub authored_relationships: &'a AuthoredRelationshipCatalog,
 }
 
 impl<'a> InteractionResolveContext<'a> {
@@ -56,6 +58,7 @@ impl<'a> InteractionResolveContext<'a> {
         unit_catalog: &'a crate::world::UnitCatalog,
         weapon_catalog: &'a crate::world::WeaponCatalog,
         pile_settings: &'a crate::world::ItemPileSettings,
+        authored_relationships: &'a AuthoredRelationshipCatalog,
         selected_units: &'a [UnitId],
     ) -> Self {
         Self {
@@ -71,6 +74,7 @@ impl<'a> InteractionResolveContext<'a> {
             ),
             selected_units,
             targeting_policy: AttackTargetingPolicy::default(),
+            authored_relationships,
         }
     }
 
@@ -186,6 +190,7 @@ pub fn trace_and_resolve_world_click_to_order(
     unit_catalog: &crate::world::UnitCatalog,
     weapon_catalog: &crate::world::WeaponCatalog,
     pile_settings: &crate::world::ItemPileSettings,
+    authored_relationships: &AuthoredRelationshipCatalog,
     selected_units: &[UnitId],
     position: WorldPosition,
 ) -> Option<InteractionOrderPlan> {
@@ -230,6 +235,7 @@ pub fn trace_and_resolve_world_click_to_order(
                     unit_catalog,
                     weapon_catalog,
                     pile_settings,
+                    authored_relationships,
                     selected_units,
                 );
                 resolve_interior_commanded_move_click(&ctx, position)
@@ -274,6 +280,7 @@ pub fn trace_and_resolve_world_click_to_order(
             unit_catalog,
             weapon_catalog,
             pile_settings,
+            authored_relationships,
             selected_units,
         );
         query_world_interaction(&ctx.query, position)?
@@ -353,6 +360,7 @@ pub fn resolve_unit_click_to_order(
     let attacker = *ctx.selected_units.first()?;
     let interaction_type = classify_unit_target(
         ctx.query.world,
+        ctx.authored_relationships,
         attacker,
         target_unit,
         ctx.query.weapon_catalog,
@@ -450,11 +458,35 @@ mod tests {
         SETTINGS.get_or_init(crate::world::ItemPileSettings::default)
     }
 
+    fn authored_relationships() -> &'static AuthoredRelationshipCatalog {
+        use std::sync::OnceLock;
+        static CATALOG: OnceLock<AuthoredRelationshipCatalog> = OnceLock::new();
+        CATALOG.get_or_init(AuthoredRelationshipCatalog::default)
+    }
+
     fn resolve_ctx<'a>(
         world: &'a WorldData,
         catalog: &'a crate::world::DoodadCatalog,
         unit_catalog: &'a crate::world::UnitCatalog,
         weapon_catalog: &'a crate::world::WeaponCatalog,
+        selected: &'a [UnitId],
+    ) -> InteractionResolveContext<'a> {
+        resolve_ctx_with_authored(
+            world,
+            catalog,
+            unit_catalog,
+            weapon_catalog,
+            authored_relationships(),
+            selected,
+        )
+    }
+
+    fn resolve_ctx_with_authored<'a>(
+        world: &'a WorldData,
+        catalog: &'a crate::world::DoodadCatalog,
+        unit_catalog: &'a crate::world::UnitCatalog,
+        weapon_catalog: &'a crate::world::WeaponCatalog,
+        authored: &'a AuthoredRelationshipCatalog,
         selected: &'a [UnitId],
     ) -> InteractionResolveContext<'a> {
         InteractionResolveContext::new(
@@ -466,6 +498,7 @@ mod tests {
             unit_catalog,
             weapon_catalog,
             pile_settings(),
+            authored,
             selected,
         )
     }
@@ -578,7 +611,108 @@ mod tests {
     }
 
     #[test]
-    fn unit_click_on_hostile_resolves_to_attack() {
+    fn unit_click_on_wildlife_resolves_to_move_at_zero_relationship() {
+        use crate::world::combat::test_support::phase6_authored_catalog;
+        use crate::world::{UnitOwnership, create_unit_with_ownership};
+        let unit_catalog = crate::world::UnitCatalog::default();
+        let catalog = crate::world::DoodadCatalog::default();
+        let mut world = flat_world();
+        let player = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let mut record = world.remove_unit_by_id(player).expect("unit exists");
+        record.faction_id = crate::world::FactionId::new("player");
+        let chunk = crate::world::ChunkId::new(record.placement.position.chunk);
+        world.insert_unit(chunk, record).unwrap();
+        let wildlife = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(15.0, 15.0),
+            UnitSource::Authored,
+            UnitOwnership::wildlife(),
+        )
+        .unwrap()
+        .id;
+        let selected = [player];
+        let weapon_catalog = weapons();
+        let authored = phase6_authored_catalog();
+        let ctx = resolve_ctx_with_authored(
+            &world,
+            &catalog,
+            &unit_catalog,
+            &weapon_catalog,
+            &authored,
+            &selected,
+        );
+        let plan = resolve_unit_click_to_order(&ctx, wildlife).unwrap();
+        assert!(matches!(plan, InteractionOrderPlan::MoveTo { .. }));
+    }
+
+    #[test]
+    fn unit_click_on_wildlife_resolves_to_attack_when_relationship_hostile() {
+        use crate::world::relationship::{
+            AuthoredFacetKey, AuthoredRelationshipCatalog, DirectedRelationshipEdgeKey, FactionId,
+        };
+        use crate::world::{UnitOwnership, create_unit_with_ownership};
+        let unit_catalog = crate::world::UnitCatalog::default();
+        let catalog = crate::world::DoodadCatalog::default();
+        let mut world = flat_world();
+        let player = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let mut record = world.remove_unit_by_id(player).expect("unit exists");
+        record.faction_id = crate::world::FactionId::new("player");
+        let chunk = crate::world::ChunkId::new(record.placement.position.chunk);
+        world.insert_unit(chunk, record).unwrap();
+        let wildlife = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(15.0, 15.0),
+            UnitSource::Authored,
+            UnitOwnership::wildlife(),
+        )
+        .unwrap()
+        .id;
+        let selected = [player];
+        let weapon_catalog = weapons();
+        let authored = AuthoredRelationshipCatalog::from_edges([(
+            DirectedRelationshipEdgeKey::new(
+                AuthoredFacetKey::Faction(FactionId::new("player")),
+                AuthoredFacetKey::Faction(FactionId::new("wild")),
+            ),
+            -150,
+        )])
+        .expect("valid player attack edge");
+        let ctx = resolve_ctx_with_authored(
+            &world,
+            &catalog,
+            &unit_catalog,
+            &weapon_catalog,
+            &authored,
+            &selected,
+        );
+        let plan = resolve_unit_click_to_order(&ctx, wildlife).unwrap();
+        assert!(matches!(plan, InteractionOrderPlan::Attack { target } if target == wildlife));
+    }
+
+    #[test]
+    fn unit_click_on_hostile_resolves_to_move_without_relationship() {
         use crate::world::{UnitOwnership, create_unit_with_ownership};
         let unit_catalog = crate::world::UnitCatalog::default();
         let catalog = crate::world::DoodadCatalog::default();
@@ -607,7 +741,7 @@ mod tests {
         let weapon_catalog = weapons();
         let ctx = resolve_ctx(&world, &catalog, &unit_catalog, &weapon_catalog, &selected);
         let plan = resolve_unit_click_to_order(&ctx, hostile).unwrap();
-        assert!(matches!(plan, InteractionOrderPlan::Attack { target } if target == hostile));
+        assert!(matches!(plan, InteractionOrderPlan::MoveTo { .. }));
     }
 
     #[test]

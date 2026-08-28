@@ -31,7 +31,7 @@ mod tests {
 
     #[test]
     fn faction_metadata_does_not_imply_player_control() {
-        let definition = UnitDefinition::new(
+        let definition = UnitDefinition::new_test(
             UnitDefinitionId::new("bandit"),
             "Bandit",
             "Bandits",

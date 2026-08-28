@@ -242,9 +242,88 @@ base crit rate.
 
 ---
 
+# Relationships and Reputation
+
+See [ADR-132](ADRs/ADR-132-relationship-and-reputation-architecture.md).
+
+**Current implementation:** none. Combat hostility is a fixed `Affiliation` matrix, and a creature
+only fights back after being attacked (ADR-062). Everything below is accepted design direction.
+
+## What a relationship is
+
+A relationship answers *what does A think of B* — a signed number, directional, and independent of
+what B thinks of A. A wolf pack may hate a settlement that has never heard of it.
+
+Relationships are not combat-specific. The same value will eventually inform trade prices,
+recruiting, social options, and faction behavior. It is deliberately **not** an `is_hostile` flag.
+
+## Where a relationship comes from
+
+A unit belongs to several groups at once — a faction, a species, and itself as an individual — and
+every applicable directed group relationship contributes. Contributions **add up**; nothing
+overrides anything else.
+
+```text
+Faction trinity -> Species bug        -300
+Species human   -> Species bug        -100
+Personal Unit A -> Unit B             +150
+--------------------------------------------
+Effective                             -250
+```
+
+This is how exceptions work without special cases: a species can generally distrust another species
+while one particular individual is a trusted friend, and both facts remain true and visible.
+
+Two kinds of contribution stay conceptually distinct:
+
+- **Innate disposition** — authored, what a creature is *born* believing. A predator naturally
+  hating people is not a reputation the player earned.
+- **Mutable standing** — what the world has actually learned about you.
+
+Values are intentionally unbounded. A creature authored at roughly −300 is *deeply* hostile, so a
+small kindness does not flip it friendly.
+
+## Relationship is not a decision
+
+A very negative relationship does not mean "attack". Behavior decides what to do with the feeling:
+
+| Creature | Same hostile relationship becomes |
+|----------|-----------------------------------|
+| Territorial predator | Attack |
+| Timid grazer | Flee |
+| Guard | Warn, then escalate |
+| Merchant | Refuse service |
+| Coward | Avoid |
+
+The first implementation gives the placeholder combat AI a simple threshold, which is a temporary
+tuning shortcut rather than the intended long-term equation.
+
+## Player agency
+
+The player may deliberately attack anything mechanically valid. Relationship never acts as an
+invisible protection mechanism, and a good relationship never blocks a chosen attack. Autonomous AI
+targeting is what consults desire; a direct player order does not.
+
+Default right-click behavior stays conservative — clicking a neutral or friendly unit is not an
+attack.
+
+## Reputation is earned, not broadcast
+
+Information propagates; reputation does not appear by magic. A faction should not know about an
+incident merely because it happened. Witnesses, reporting, delay, and blame are their own future
+systems — see ADR-132 §9 — and being attacked is not the same as being guilty. Fighting back is
+self-defense, not a crime.
+
+Consequences may eventually resist trivial abuse: undoing a harm should not always perfectly cancel
+it.
+
+---
+
 # Creature AI
 
 See [ADR-071](ADRs/ADR-071-creature-ai-architecture.md).
+Relationship supplies the social input to this model
+([ADR-132](ADRs/ADR-132-relationship-and-reputation-architecture.md)).
 
 ## Architecture (proposed)
 

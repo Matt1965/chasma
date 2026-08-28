@@ -83,6 +83,21 @@ fn append_inner(path: &str, session_header: &str, line: &str, flush: bool) {
     }
 }
 
+/// Truncate `path` and write a fresh session header (once per process registration).
+///
+/// Used when a dev diagnostic log should start clean each run instead of appending
+/// indefinitely across sessions.
+pub fn begin_fresh_session_log(path: &str, header_line: &str) -> Result<(), FileLogError> {
+    ensure_parent_dir(path).map_err(FileLogError)?;
+    let mut state = log_state().lock().expect("log file mutex poisoned");
+    if let Some(mut writer) = state.writers.remove(path) {
+        let _ = writer.flush();
+    }
+    std::fs::write(path, format!("{header_line}\n")).map_err(FileLogError)?;
+    state.headers_written.insert(path.to_string());
+    Ok(())
+}
+
 /// Write a session header once per process for `path`.
 pub fn write_session_header(path: &str, header_line: &str) -> Result<(), FileLogError> {
     ensure_parent_dir(path).map_err(FileLogError)?;

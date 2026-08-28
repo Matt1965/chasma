@@ -397,7 +397,7 @@ mod tests {
     #[test]
     fn sync_applies_definition_rotation_correction() {
         let mut app = setup_sync_app();
-        let mut definition = UnitDefinition::new(
+        let mut definition = UnitDefinition::new_test(
             UnitDefinitionId::new("wolf"),
             "Wolf",
             "Wild",
@@ -443,7 +443,7 @@ mod tests {
     #[test]
     fn sync_applies_definition_render_scale() {
         let mut app = setup_sync_app();
-        let mut definition = UnitDefinition::new(
+        let mut definition = UnitDefinition::new_test(
             UnitDefinitionId::new("wolf"),
             "Wolf",
             "Wild",
@@ -725,7 +725,7 @@ mod tests {
             world
                 .insert_unit(
                     chunk,
-                    crate::world::UnitRecord::new(
+                    crate::world::UnitRecord::new_test(
                         id,
                         UnitDefinitionId::new("missing_unit"),
                         crate::world::UnitPlacement::new(
@@ -754,7 +754,7 @@ mod tests {
     fn missing_asset_skips_spawn_safely() {
         let mut app = setup_sync_app();
         let chunk = ChunkId::new(ChunkCoord::new(1, 1));
-        let catalog = UnitCatalog::from_definitions(vec![UnitDefinition::new(
+        let catalog = UnitCatalog::from_definitions(vec![UnitDefinition::new_test(
             UnitDefinitionId::new("ghost"),
             "Ghost",
             "Wild",

@@ -148,6 +148,47 @@ filter-invalid:
   destination (`target: None`) when applicable
 - emit `AttackCycleClearedInvalidTarget`
 
+## Targetability vs desire (relationship Phase 5 — implemented)
+
+C3 previously conflated four questions into `validate_attack_target`. Phase 5 splits them in
+`src/world/combat/targeting.rs`:
+
+| Question | Authority | Consumers |
+|----------|-----------|-----------|
+| **Mechanical targetability** | `validate_mechanical_attack_target` — alive, weapon, mechanical `TargetFilter`, self, `TeamId` | Projectile impact, weapon checks |
+| **Explicit player intent** | `validate_explicit_attack_target` — mechanical only | `UnitOrder::Attack`, armed palette Attack |
+| **Default interaction intent** | `classify_unit_target` — autonomous desire, not explicit permissiveness | Right-click / interaction resolver |
+| **Autonomous desire** | `autonomous_wants_to_attack` / `validate_autonomous_attack_target` — `effective_relationship()` + primitive `-100` threshold | AI acquisition, AttackMove scan |
+
+Decisions (implemented):
+
+- `TeamId` remains an **absolute veto** on mechanical paths. Friendly-fire semantics remain deferred.
+- **Default right-click** follows autonomous desire (relationship-driven since Phase 6); explicit Attack
+  uses mechanical permissiveness only.
+- Phase 6 replaced the temporary Affiliation matrix with relationship-driven desire via
+  `effective_relationship()`. `-100` is combat-AI tuning, not universal relationship semantics.
+- Relationship changes alone do not invalidate an already-fired projectile.
+
+### Autonomous desire (Phase 6)
+
+Implementation: `src/world/combat/autonomous_desire.rs`.
+
+- Uses `effective_relationship()` only — never queries authored catalog or Standing directly.
+- `HOSTILE_RELATIONSHIP_THRESHOLD = -100` — primitive placeholder until ADR-071 behavior templates.
+- Authored `wild -> player = -300`; `player -> wild = 0` (directional asymmetry intentional).
+- Dev overrides (`dev_allow_all_targets`, `Affiliation::Dev`) preserved on desire path.
+
+### Weapon target filters (Phase 5)
+
+`TargetFilter::Units` is the mechanical class. `Enemies`, `Wildlife`, and `Neutral` parse as
+deprecated aliases mapping to unit-class matching in `weapon_allows_target` — no affiliation input.
+
+Removed: Neutral ownership bypass on legality; reactive-aggressor parameter on weapon filters.
+Retaliation uses `validate_reactive_retaliation_target` without filter exemptions.
+
+`AttackTargetingPolicy::dev_allow_all_targets` and `Affiliation::Dev` bypass team and affiliation
+checks on both mechanical and desire paths where applicable.
+
 ## Future
 
 - **C4:** range validation, chase, attack-move target acquisition

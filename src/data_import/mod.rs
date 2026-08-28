@@ -10,6 +10,7 @@ mod building;
 mod error;
 mod inventory;
 mod item;
+mod relationship;
 mod schema;
 mod terrain_field;
 mod weapon;
@@ -83,6 +84,18 @@ pub use paths::DEV_DESIGN_WORKBOOK as DEV_DOODAD_EXCEL_PATH;
 pub use paths::DEV_DESIGN_WORKBOOK as DEV_UNIT_EXCEL_PATH;
 #[cfg(feature = "data-import")]
 pub use paths::{DEV_DESIGN_WORKBOOK, dev_design_workbook_path};
+pub use relationship::{
+    FACTION_OPTIONAL_COLUMNS, FACTION_REQUIRED_COLUMNS, FactionImportRow, SPECIES_OPTIONAL_COLUMNS,
+    SPECIES_REQUIRED_COLUMNS, SpeciesImportRow, normalize_relationship_key,
+};
+#[cfg(feature = "data-import")]
+pub use relationship::{
+    FACTIONS_SHEET_NAME, RELATIONSHIP_MATRIX_REPORT_PATH, SPECIES_SHEET_NAME,
+    import_authored_relationship_matrices_from_excel, import_faction_catalog_from_excel,
+    import_relationship_identity_catalogs_from_excel, import_species_catalog_from_excel,
+    resolve_dev_authored_relationship_catalog, resolve_dev_faction_catalog,
+    resolve_dev_species_catalog,
+};
 #[cfg(feature = "data-import")]
 pub use ron::{
     BuildingCatalogRon, BuildingCategoryRon, BuildingDefinitionRon, DoodadCatalogRon,

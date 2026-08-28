@@ -225,10 +225,10 @@ mod tests {
     };
     use crate::world::unit::{AttackCycle, AttackPhase, CombatState};
     use crate::world::{
-        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatStrikeEvent,
-        CombatStrikeReport, DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition,
-        NavigationConfig, PassabilityCatalogs, UnitDefinitionId, UnitOrder, UnitOwnership,
-        UnitSource, WeaponCatalog, create_unit_with_ownership, default_passability,
+        AuthoredRelationshipCatalog, BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+        CombatStrikeEvent, CombatStrikeReport, DoodadCatalog, FootprintCatalog, Heightfield,
+        LocalPosition, NavigationConfig, PassabilityCatalogs, UnitDefinitionId, UnitOrder,
+        UnitOwnership, UnitSource, WeaponCatalog, create_unit_with_ownership, default_passability,
         issue_unit_order, starter_unit_definitions, starter_weapon_definitions,
         step_all_combat_engagement, step_all_combat_strikes,
     };
@@ -400,6 +400,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut strikes,
         );
         strikes
@@ -630,6 +631,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut report,
         );
         assert!(world.get_unit(player).unwrap().attack_cycle.is_none());
@@ -789,6 +791,7 @@ mod tests {
             default_passability(),
             &NavigationConfig::default(),
             policy(),
+            &AuthoredRelationshipCatalog::default(),
             &mut report,
         );
         assert!(world.get_unit(player).unwrap().attack_cycle.is_none());

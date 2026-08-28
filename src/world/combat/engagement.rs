@@ -4,10 +4,11 @@ use bevy::prelude::*;
 
 use crate::world::movement::feel::start_unit_move_to;
 use crate::world::navigation::xz_distance;
+use crate::world::relationship::AuthoredRelationshipCatalog;
 use crate::world::unit::{CombatState, UnitId, UnitOrderError, UnitState};
 use crate::world::{
     AttackTargetingPolicy, NavigationConfig, PassabilityCatalogs, UnitCatalog, WeaponCatalog,
-    WorldData, WorldPosition, validate_active_combat_target, validate_attack_target,
+    WorldData, WorldPosition, apply_attacking_combat_facing, validate_active_combat_target,
 };
 
 use super::cycle_lifecycle::{clear_attack_cycle, clear_attack_cycle_for_invalid_target};
@@ -19,9 +20,6 @@ use super::standoff::{StandoffError, compute_standoff_destination};
 use super::strike::CombatStrikeReport;
 use super::targeting::is_unit_alive;
 use crate::world::unit::unit_can_execute_actions;
-
-/// Radius for attack-move hostile acquisition scans.
-pub const ATTACK_MOVE_SCAN_RADIUS_METERS: f32 = 16.0;
 
 fn combat_pair<'a>(
     world: &'a WorldData,
@@ -78,6 +76,7 @@ pub fn step_all_combat_engagement(
     catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
+    authored: &AuthoredRelationshipCatalog,
     strike_trace: &mut CombatStrikeReport,
 ) -> CombatEngagementReport {
     let unit_ids = world.sorted_unit_ids();
@@ -99,6 +98,7 @@ pub fn step_all_combat_engagement(
             catalogs,
             nav_config,
             targeting_policy,
+            authored,
             unit_id,
             combat_state,
             strike_trace,
@@ -119,6 +119,7 @@ fn step_unit_combat_engagement(
     catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
+    authored: &AuthoredRelationshipCatalog,
     unit_id: UnitId,
     combat_state: CombatState,
     strike_trace: &mut CombatStrikeReport,
@@ -159,6 +160,7 @@ fn step_unit_combat_engagement(
             catalogs,
             nav_config,
             targeting_policy,
+            authored,
             unit_id,
             destination,
             target,
@@ -275,9 +277,14 @@ fn handle_attacking_target(
             .set_unit_combat_state(unit_id, CombatState::Attacking { target })
             .ok();
     }
-    hold_in_attack_range(world, unit_id);
+    hold_attacking_in_range_with_facing(world, unit_id, target);
     trace.status = CombatEngagementStatus::InRangeReady;
     trace
+}
+
+fn hold_attacking_in_range_with_facing(world: &mut WorldData, unit_id: UnitId, target: UnitId) {
+    hold_in_attack_range(world, unit_id);
+    let _ = apply_attacking_combat_facing(world, unit_id, target);
 }
 
 fn handle_chasing_target(
@@ -366,7 +373,7 @@ fn handle_chasing_target(
                 .set_unit_combat_state(unit_id, CombatState::Attacking { target })
                 .ok();
         }
-        hold_in_attack_range(world, unit_id);
+        hold_attacking_in_range_with_facing(world, unit_id, target);
         trace.status = CombatEngagementStatus::InRangeReady;
         return trace;
     }
@@ -392,6 +399,7 @@ fn handle_attack_moving(
     catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
+    authored: &AuthoredRelationshipCatalog,
     unit_id: UnitId,
     destination: WorldPosition,
     target: Option<UnitId>,
@@ -421,6 +429,7 @@ fn handle_attack_moving(
         unit_catalog,
         weapon_catalog,
         targeting_policy,
+        authored,
     ) {
         world
             .set_unit_combat_state(
@@ -504,49 +513,16 @@ pub fn scan_attack_move_target(
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
     targeting_policy: AttackTargetingPolicy,
+    authored: &AuthoredRelationshipCatalog,
 ) -> Option<UnitId> {
-    let attacker = world.get_unit(attacker_id)?;
-    let attacker_pos = attacker.placement.position;
-    let layout = world.layout();
-    let mut best: Option<(f32, UnitId)> = None;
-
-    for candidate_id in world.sorted_unit_ids() {
-        if candidate_id == attacker_id {
-            continue;
-        }
-        if validate_attack_target(
-            world,
-            attacker_id,
-            candidate_id,
-            weapon_catalog,
-            unit_catalog,
-            targeting_policy,
-        )
-        .is_err()
-        {
-            continue;
-        }
-        let candidate = world.get_unit(candidate_id)?;
-        if !is_unit_alive(candidate) {
-            continue;
-        }
-        let distance = xz_distance(attacker_pos, candidate.placement.position, layout);
-        if distance > ATTACK_MOVE_SCAN_RADIUS_METERS {
-            continue;
-        }
-        let replace = match best {
-            None => true,
-            Some((best_distance, best_id)) => {
-                distance < best_distance - f32::EPSILON
-                    || ((distance - best_distance).abs() <= f32::EPSILON && candidate_id < best_id)
-            }
-        };
-        if replace {
-            best = Some((distance, candidate_id));
-        }
-    }
-
-    best.map(|(_, id)| id)
+    super::ai::find_auto_acquire_target(
+        world,
+        attacker_id,
+        unit_catalog,
+        weapon_catalog,
+        targeting_policy,
+        authored,
+    )
 }
 
 fn unit_already_heading_to(world: &WorldData, unit_id: UnitId, destination: WorldPosition) -> bool {
@@ -685,6 +661,8 @@ mod tests {
     use crate::world::combat::range::{
         measure_weapon_range, range_status_from_check, weapon_for_unit_record,
     };
+    use crate::world::combat::test_support::phase6_authored_catalog;
+    use crate::world::relationship::AuthoredRelationshipCatalog;
     use crate::world::{
         BuildingCatalog, BuildingConstructionSettings, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
         CombatStrikeReport, DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition,
@@ -726,8 +704,25 @@ mod tests {
         AttackTargetingPolicy::default()
     }
 
-    fn spawn_player(world: &mut WorldData, catalog: &UnitCatalog, x: f32, z: f32) -> UnitId {
+    fn authored() -> AuthoredRelationshipCatalog {
+        phase6_authored_catalog()
+    }
+
+    fn spawn_wild_wolf(world: &mut WorldData, catalog: &UnitCatalog, x: f32, z: f32) -> UnitId {
         create_unit_with_ownership(
+            catalog,
+            world,
+            &UnitDefinitionId::new("wolf"),
+            pos(x, z),
+            UnitSource::Authored,
+            UnitOwnership::wildlife(),
+        )
+        .unwrap()
+        .id
+    }
+
+    fn spawn_player(world: &mut WorldData, catalog: &UnitCatalog, x: f32, z: f32) -> UnitId {
+        let id = create_unit_with_ownership(
             catalog,
             world,
             &UnitDefinitionId::new("wolf"),
@@ -736,7 +731,12 @@ mod tests {
             UnitOwnership::player_default(),
         )
         .unwrap()
-        .id
+        .id;
+        let mut record = world.remove_unit_by_id(id).expect("unit exists");
+        record.faction_id = crate::world::FactionId::new("player");
+        let chunk = ChunkId::new(record.placement.position.chunk);
+        world.insert_unit(chunk, record).unwrap();
+        id
     }
 
     fn spawn_hostile(world: &mut WorldData, catalog: &UnitCatalog, x: f32, z: f32) -> UnitId {
@@ -761,11 +761,13 @@ mod tests {
             bundle.catalogs(),
             &NavigationConfig::default(),
             policy(),
+            &authored(),
             &mut CombatStrikeReport::default(),
         )
     }
 
     fn run_sim_ticks(world: &mut WorldData, catalog: &UnitCatalog, ticks: u32) {
+        let authored = authored();
         let mut scan = crate::world::CombatAiScanState::default();
         let settings = crate::world::CombatAiSettings::default();
         for tick in 0..ticks {
@@ -779,6 +781,7 @@ mod tests {
                 &crate::world::BuildingInteractionProfileCatalog::default(),
                 &NavigationConfig::default(),
                 policy(),
+                &authored,
                 &settings,
                 &mut scan,
                 BuildingConstructionSettings::default(),
@@ -825,6 +828,7 @@ mod tests {
         weapon_catalog: &WeaponCatalog,
         tick: u64,
     ) {
+        let authored = authored();
         let mut scan = crate::world::CombatAiScanState::default();
         let settings = crate::world::CombatAiSettings::default();
         crate::simulation::run_simulation_tick(
@@ -837,6 +841,7 @@ mod tests {
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             policy(),
+            &authored,
             &settings,
             &mut scan,
             BuildingConstructionSettings::default(),
@@ -898,7 +903,7 @@ mod tests {
         };
 
         let large_catalog = UnitCatalog::from_definitions(vec![
-            UnitDefinition::new(
+            UnitDefinition::new_test(
                 UnitDefinitionId::new("big_a"),
                 "Big A",
                 "Test",
@@ -920,7 +925,7 @@ mod tests {
                 true,
                 UnitRenderKey::reserved("big_a"),
             ),
-            UnitDefinition::new(
+            UnitDefinition::new_test(
                 UnitDefinitionId::new("big_b"),
                 "Big B",
                 "Test",
@@ -1288,12 +1293,11 @@ mod tests {
     }
 
     #[test]
-    fn attack_move_acquires_nearest_valid_hostile() {
+    fn player_attack_move_does_not_acquire_wild_wolf_at_zero_relationship() {
         let catalog = catalog();
         let mut world = flat_world();
         let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
-        let near = spawn_hostile(&mut world, &catalog, 14.0, 10.0);
-        let far = spawn_hostile(&mut world, &catalog, 24.0, 10.0);
+        let wild = spawn_wild_wolf(&mut world, &catalog, 14.0, 10.0);
         issue_unit_order(
             &mut world,
             &catalog,
@@ -1309,19 +1313,51 @@ mod tests {
         .unwrap();
         let report = tick_combat(&mut world, &catalog);
         assert!(
-            report
+            !report
                 .traces
                 .iter()
-                .any(|trace| { trace.status == CombatEngagementStatus::AttackMoveAcquired })
+                .any(|trace| trace.status == CombatEngagementStatus::AttackMoveAcquired)
         );
         assert!(matches!(
             world.get_unit(player).unwrap().combat_state,
+            CombatState::AttackMoving { target: None, .. }
+        ));
+        let _ = wild;
+    }
+
+    #[test]
+    fn wild_attack_move_acquires_player_when_wild_to_player_hostile() {
+        let catalog = catalog();
+        let mut world = flat_world();
+        let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
+        let wild = spawn_wild_wolf(&mut world, &catalog, 14.0, 10.0);
+        issue_unit_order(
+            &mut world,
+            &catalog,
+            &weapons(),
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            wild,
+            UnitOrder::AttackMove {
+                destination: pos(80.0, 80.0),
+            },
+            policy(),
+        )
+        .unwrap();
+        let report = tick_combat(&mut world, &catalog);
+        assert!(
+            report
+                .traces
+                .iter()
+                .any(|trace| trace.status == CombatEngagementStatus::AttackMoveAcquired)
+        );
+        assert!(matches!(
+            world.get_unit(wild).unwrap().combat_state,
             CombatState::AttackMoving {
                 target: Some(target),
                 ..
-            } if target == near
+            } if target == player
         ));
-        let _ = far;
     }
 
     #[test]
@@ -1332,9 +1368,9 @@ mod tests {
         let hostile_a = spawn_hostile(&mut world, &catalog, 15.0, 10.0);
         let hostile_b = spawn_hostile(&mut world, &catalog, 10.0, 15.0);
         let acquired =
-            scan_attack_move_target(&world, player, &catalog, &weapons(), policy()).unwrap();
-        let expected = hostile_a.min(hostile_b);
-        assert_eq!(acquired, expected);
+            scan_attack_move_target(&world, player, &catalog, &weapons(), policy(), &authored());
+        assert!(acquired.is_none());
+        let _ = (hostile_a, hostile_b);
     }
 
     #[test]
@@ -1343,7 +1379,10 @@ mod tests {
         let mut world = flat_world();
         let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
         let friendly = spawn_player(&mut world, &catalog, 12.0, 10.0);
-        assert!(scan_attack_move_target(&world, player, &catalog, &weapons(), policy()).is_none());
+        assert!(
+            scan_attack_move_target(&world, player, &catalog, &weapons(), policy(), &authored(),)
+                .is_none()
+        );
         let _ = friendly;
     }
 
@@ -1385,6 +1424,7 @@ mod tests {
                 &crate::world::BuildingInteractionProfileCatalog::default(),
                 &NavigationConfig::default(),
                 policy(),
+                &authored(),
                 &settings,
                 &mut scan,
                 BuildingConstructionSettings::default(),
@@ -1403,5 +1443,114 @@ mod tests {
             world.get_unit(hostile).unwrap().vitals.current_hp,
             hostile_hp_before
         );
+    }
+
+    #[test]
+    fn attack_move_uses_unified_perception_range_not_legacy_sixteen_meters() {
+        use crate::world::{UnitDefinition, UnitRenderKey, WeaponDefinitionId};
+
+        let mut unit_defs = starter_unit_definitions();
+        unit_defs.push(
+            UnitDefinition::new_test(
+                UnitDefinitionId::new("wild_scout"),
+                "Wild Scout",
+                "Wild",
+                1,
+                5,
+                5,
+                4,
+                4,
+                4,
+                4,
+                4,
+                4,
+                10.0,
+                "Common",
+                4.0,
+                0.5,
+                30.0,
+                WeaponDefinitionId::new("weapon_fists"),
+                true,
+                UnitRenderKey::reserved("wolf"),
+            )
+            .with_sight_range_meters(20.0),
+        );
+        let catalog = UnitCatalog::from_definitions(unit_defs).unwrap();
+        let mut world = flat_world();
+        let wild = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wild_scout"),
+            pos(10.0, 10.0),
+            UnitSource::Authored,
+            UnitOwnership::wildlife(),
+        )
+        .unwrap()
+        .id;
+        let player = spawn_player(&mut world, &catalog, 28.0, 10.0);
+        assert_eq!(
+            scan_attack_move_target(&world, wild, &catalog, &weapons(), policy(), &authored(),),
+            Some(player),
+            "20 m sight should acquire a player ~18 m away; legacy attack-move scan was 16 m"
+        );
+    }
+
+    #[test]
+    fn engaged_chase_continues_after_target_leaves_sight_range() {
+        use crate::world::{UnitDefinition, UnitRenderKey, WeaponDefinitionId};
+
+        let mut unit_defs = starter_unit_definitions();
+        unit_defs[1] = UnitDefinition::new_test(
+            UnitDefinitionId::new("bandit"),
+            "Bandit Scout",
+            "Bandits",
+            3,
+            8,
+            8,
+            4,
+            7,
+            3,
+            6,
+            3,
+            4,
+            31.6,
+            "Elite",
+            3.8,
+            0.45,
+            35.0,
+            WeaponDefinitionId::new("weapon_fists"),
+            true,
+            UnitRenderKey::reserved("bandit"),
+        )
+        .with_sight_range_meters(5.0);
+        let catalog = UnitCatalog::from_definitions(unit_defs).unwrap();
+        let mut world = flat_world();
+        let player = spawn_player(&mut world, &catalog, 0.0, 0.0);
+        let hostile = spawn_hostile(&mut world, &catalog, 3.0, 0.0);
+        issue_unit_order(
+            &mut world,
+            &catalog,
+            &weapons(),
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            hostile,
+            UnitOrder::Attack { target: player },
+            policy(),
+        )
+        .unwrap();
+        tick_combat(&mut world, &catalog);
+        assert!(matches!(
+            world.get_unit(hostile).unwrap().combat_state,
+            CombatState::Attacking { .. } | CombatState::Chasing { .. }
+        ));
+        world
+            .update_unit_position(player, pos(40.0, 0.0))
+            .expect("move target out of sight");
+        tick_combat(&mut world, &catalog);
+        assert!(matches!(
+            world.get_unit(hostile).unwrap().combat_state,
+            CombatState::Attacking { target } | CombatState::Chasing { target }
+                if target == player
+        ));
     }
 }

@@ -286,6 +286,53 @@ When uncertainty exists, choose the solution that preserves architectural flexib
 
 ---
 
+# Cargo / local build (Windows)
+
+The user's normal launch is:
+
+```text
+cargo run --features dev
+```
+
+with **no** extra Cargo/rustc environment overrides.
+
+Repo linker config (`.cargo/config.toml`) sets `rust-lld.exe` for `x86_64-pc-windows-msvc`. AI validation must use the **same** configuration.
+
+**Do not:**
+
+- set `$env:CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=...` (or any linker override) before `cargo check`, `cargo test`, or `cargo run`
+- set `RUSTFLAGS`, `CARGO_ENCODED_RUSTFLAGS`, alternate `--target`, or `CARGO_TARGET_DIR` unless the user explicitly requests it
+- run `cargo clean` or delete `target/` as part of routine validation
+
+Overriding the linker invalidates dependency fingerprints in `target/debug/` and forces the user's next normal `cargo run --features dev` to rebuild the full dependency graph (~0/410 instead of ~408/410).
+
+Use the same commands the user uses, for example:
+
+```text
+cargo check --features dev
+cargo test --features dev --lib <filter>
+cargo run --features dev
+```
+
+---
+
+# Dev UI (graphical)
+
+**Full guide:** [docs/dev-ui.md](docs/dev-ui.md)
+
+Before modifying Dev **windows, panels, buttons, toggles, sliders, text fields, or layout**:
+
+1. Read `docs/dev-ui.md`.
+2. Trace the live path: **Startup spawn → handler → sync → manual click**.
+
+A graphical control is **not complete** until its live construction path, interaction handler, style/value sync, and runtime/manual verification are accounted for.
+
+- **Backing state alone is insufficient.** Tests on `DebugOverlayConfig` or `DevModeState` fields do not prove a checkbox exists.
+- The Debug window's top **summary text** (`format_debug_summary`) is **read-only** — not the toggle UI. Real toggles are `spawn_toggle_row` widgets in collapsible sections below.
+- Do **not** report runtime PASS for visible/interactable UI from state-only tests. If live UI was not clicked, report **MANUAL RUNTIME VERIFICATION PENDING**.
+
+---
+
 # Building navigation invariants
 
 **Full contract:** [docs/building-navigation-authority.md](docs/building-navigation-authority.md)
@@ -301,6 +348,28 @@ When uncertainty exists, choose the solution that preserves architectural flexib
 - Selected Unit Path and Runtime Entrances are **not** core Navigation Editor workflow.
 - Cold load runtime topology must match no-op Save/Apply for the same blueprint data.
 - Doodad/unit collision is not the building fallback. Render geometry never blocks navigation.
+
+# Relationship invariants
+
+**Full contract:** [ADR-132](ADRs/ADR-132-relationship-and-reputation-architecture.md) · authoring: [docs/relationship-authoring.md](docs/relationship-authoring.md)
+
+*Accepted architecture; implementation is planned, not present. Current hostility is a hard-coded `Affiliation` matrix.*
+
+- **One resolver.** No consumer computes relationships itself, and none invents its own combination rule.
+- **One facet-composition authority.** Nothing else assembles a unit's relationship identities.
+- Contributions **stack additively**. No precedence, no “most specific wins”, no weights. Missing edge = 0.
+- Relationship answers *what A thinks of B* — never *should A attack B*. `is_hostile()` is not the foundational API.
+- **Relationship never writes `CombatState`.** `UnitOrder` stays the action boundary.
+- Signed integers, **unclamped**. Thresholds and bands belong to consumers, not to truth.
+- Value and explanation come from the **same calculation path** — never a parallel reimplementation.
+- Ownership, `TeamId`, `Affiliation`, and `faction_tag` are **not** relationship truth. No `HostileAnimal`-style `Affiliation` variants.
+- `TeamId` is an **absolute veto**; a number never enables friendly fire.
+- Weapon targetability is **target class only** — no affiliation, ownership hostility, or relationship input.
+- Player-explicit attack legality, default right-click intent, and autonomous desire are **three separate questions**.
+- Immediate retaliation stays an attacker-specific authorization; it must **not** become faction reputation.
+- Reputation does not propagate magically — incidents, knowledge, and culpability are separate deferred systems reaching relationship through one mutation seam.
+- Perception governs **acquisition only**; it must not become a combat leash.
+- Do not add caching, aggregates, or `(source, target, scope)` keys without profiling or a live consumer.
 
 # Debugging escalation (navigation)
 

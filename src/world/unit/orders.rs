@@ -13,7 +13,7 @@ use crate::world::{
     AttackTargetingPolicy, CommandBufferResolveReport, CommandResolveSuccess, DoodadCatalog,
     NavigationConfig, PassabilityCatalogs, WeaponCatalog, WorldData, WorldPosition,
     clear_attack_cycle_for_order_cancel, hold_in_attack_range, initial_attack_combat_state,
-    reset_attack_cycle_for_retarget, validate_attack_target,
+    reset_attack_cycle_for_retarget, validate_explicit_attack_target,
 };
 
 /// Authoritative command issued to a unit instance.
@@ -138,7 +138,7 @@ pub fn issue_unit_order(
             cancel_unit_task(world, unit_id, TaskCancelReason::PlayerOrder, &mut events);
             let _ = events;
             let _ = (doodad_catalog, nav_config);
-            match validate_attack_target(
+            match validate_explicit_attack_target(
                 world,
                 unit_id,
                 target,
@@ -602,6 +602,7 @@ mod tests {
             &crate::world::BuildingInteractionProfileCatalog::default(),
             &NavigationConfig::default(),
             policy(),
+            &crate::world::AuthoredRelationshipCatalog::default(),
             &CombatAiSettings::default(),
             &mut scan,
             crate::world::BuildingConstructionSettings::default(),

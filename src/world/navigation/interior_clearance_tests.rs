@@ -109,7 +109,7 @@ fn persisted_nav_catalog() -> BuildingNavigationBlueprintCatalog {
 }
 
 fn imported_robot_catalog() -> UnitCatalog {
-    UnitCatalog::from_definitions(vec![UnitDefinition::new(
+    UnitCatalog::from_definitions(vec![UnitDefinition::new_test(
         UnitDefinitionId::new("robot"),
         "Robot",
         "Player",

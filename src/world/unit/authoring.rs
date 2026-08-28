@@ -91,6 +91,8 @@ fn create_unit_with_ownership_impl(
         source,
         ownership,
         definition.max_hp,
+        definition.faction_id.clone(),
+        definition.species_id.clone(),
     );
 
     if let Some(ctx) = inventory_ctx {

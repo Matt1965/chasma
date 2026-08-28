@@ -2,6 +2,7 @@
 #[cfg(test)]
 mod fixtures {
     use crate::world::InventoryProfileId;
+    use crate::world::relationship::{FactionId, SpeciesId};
     use crate::world::unit::catalog::definition::UnitDefinition;
     use crate::world::unit::catalog::definition_id::UnitDefinitionId;
     use crate::world::unit::catalog::render_key::UnitRenderKey;
@@ -13,6 +14,8 @@ mod fixtures {
             UnitDefinition::new(
                 UnitDefinitionId::new("wolf"),
                 "Wolf",
+                FactionId::new("wild"),
+                SpeciesId::new("wolf"),
                 "Wild",
                 2,
                 5,
@@ -35,6 +38,8 @@ mod fixtures {
             UnitDefinition::new(
                 UnitDefinitionId::new("bandit"),
                 "Bandit Scout",
+                FactionId::new("bandits"),
+                SpeciesId::new("human"),
                 "Bandits",
                 3,
                 8,
@@ -59,6 +64,8 @@ mod fixtures {
             UnitDefinition::new(
                 UnitDefinitionId::new("deer"),
                 "Deer",
+                FactionId::new("wild"),
+                SpeciesId::new("deer"),
                 "Wild",
                 1,
                 4,
