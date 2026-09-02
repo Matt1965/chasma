@@ -241,6 +241,10 @@ fn refresh_building_snapshot(
         building_id,
         Some(presentation_info),
         Some(operation_probe),
+        &capture.operation_catalog,
+        &capture.items,
+        &capture.inventory_profiles,
+        operation.assessment_store.get(building_id),
     );
     // Navigation Editor owns blueprint snapshots while inspection/edit is active.
     if !blueprint_inspection.active {

@@ -89,16 +89,17 @@ pub fn load_terrain_fields_from_manifest(
                 }
                 err
             })?;
-            if tile.source_version != manifest.source_version {
+            let expected = entry.expected_source_version(&manifest);
+            if tile.source_version != expected {
                 return Err(TerrainFieldLoadError::SourceVersionMismatch {
                     field_id: field_id.clone(),
-                    manifest: manifest.source_version.clone(),
+                    manifest: expected,
                     tile: tile.source_version.clone(),
                 });
             }
             tile.validate(&field_id)
                 .map_err(TerrainFieldLoadError::Storage)?;
-            temp_store.replace_tile(field_id.clone(), tile, manifest.source_version.clone())?;
+            temp_store.replace_tile(field_id.clone(), tile, expected)?;
             summary.tiles_loaded += 1;
         }
     }

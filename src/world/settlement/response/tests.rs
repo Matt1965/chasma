@@ -9,7 +9,7 @@ use crate::world::settlement::needs::{
     NEED_EVAL_CADENCE_TICKS, NeedCatalog, NeedId, evaluate_settlement_needs_now,
 };
 use crate::world::settlement::state::{SettlementKind, SettlementState};
-use crate::world::{BuildingCatalog, ChunkLayout, InventoryProfileCatalog, WorldData};
+use crate::world::{BuildingCatalog, ChunkLayout, InventoryProfileCatalog, UnitCatalog, WorldData};
 
 fn layout() -> ChunkLayout {
     ChunkLayout {
@@ -32,12 +32,14 @@ fn evaluate_needs(world: &mut WorldData, id: SettlementId, tick: u64) {
     let items = ItemCatalog::default();
     let categories = ItemCategoryCatalog::default();
     let profiles = InventoryProfileCatalog::default();
+    let units = UnitCatalog::default();
     let inventory_ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
     evaluate_settlement_needs_now(
         world,
         &need_catalog,
         &buildings,
         &items,
+        &units,
         &inventory_ctx,
         &EmergencyCatalog::default(),
         id,
@@ -185,10 +187,8 @@ fn unavailable_responses_filtered_from_available_iterator() {
         .filter(|c| c.is_available())
         .collect();
     assert!(
-        available_food
-            .iter()
-            .any(|c| c.response_id.as_str() == "trade_for_food"),
-        "Always-capability trade stub should remain available"
+        available_food.is_empty(),
+        "trade/construct stubs have no live execution path and must be unavailable"
     );
     assert_eq!(
         result.available().count(),

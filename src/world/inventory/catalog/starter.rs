@@ -38,6 +38,15 @@ pub fn starter_definitions() -> Vec<InventoryProfileDefinition> {
             InventoryAccessType::BuildingStorage,
         ),
         profile(
+            "farm_output_buffer",
+            "Farm Output Buffer",
+            1,
+            1,
+            5_000,
+            InventoryAccessType::BuildingStorage,
+        )
+        .with_global_stack_cap(999),
+        profile(
             "corpse_default",
             "Corpse Loot",
             4,

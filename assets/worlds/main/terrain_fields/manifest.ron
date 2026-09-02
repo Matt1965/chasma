@@ -1,7 +1,7 @@
 (
     version: 1,
     world_id: "main",
-    source_version: "tf2_0a9cb5fb5409e8fb",
+    source_version: "tfp_2b228681965eeb41",
     config: (
         chunk_size_meters: 256.0,
         sample_spacing_meters: 8.0,
@@ -11,10 +11,22 @@
         (
             field_id: "copper",
             tile_dir: "copper",
+            source_version: Some("tf2_0ad3e3058ea86d82"),
+        ),
+        (
+            field_id: "iron",
+            tile_dir: "iron",
+            source_version: Some("tf2_d44e45432f2bf2ba"),
+        ),
+        (
+            field_id: "stone",
+            tile_dir: "stone",
+            source_version: Some("tf2_b0e66945690954e9"),
         ),
         (
             field_id: "water",
             tile_dir: "water",
+            source_version: Some("tf2_0a9cb5fb5409e8fb"),
         ),
     ],
 )

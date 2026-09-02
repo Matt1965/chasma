@@ -538,8 +538,8 @@ construction planning, scheduler). Treasuries (I7 / ADR-093) persist on `WorldDa
 **Current milestone (design accepted, implementation pending):** close the physical loop so the
 pipeline produces observable behavior — dedicated `SettlementAnchor`, explicit unit/building
 `settlement_id`, Dev placement of a complete test scene, individual hunger with eat-at-source,
-CategoryStock food + stone competing pressures, rationalized SA3/SA4 scoring, SA5 as sole AI policy
-writer. Player Build Mode settlement placement is staged after this milestone.
+food nutrition vs materials count competing pressures, rationalized SA3/SA4 scoring, SA5 as sole AI
+policy writer. Player Build Mode settlement placement is staged after this milestone.
 
 **Not current implementation targets:**
 
@@ -547,8 +547,8 @@ writer. Player Build Mode settlement placement is staged after this milestone.
 - Starvation consequences, theft/crime, settlement removal, radius growth mechanics
 - Player Build Mode settlement placement (shared `create_settlement` must exist now)
 - `Hive` / `Pack` / `Herd` as placed-anchor settlements
-- Professions / player job-permission UI (ordinary-work boolean gates are being *removed*, not
-  replaced with profession checkboxes in this milestone)
+- Professions / player job-permission UI (physical work-capability flags stay; they are not
+  profession checkboxes and are not removed this milestone)
 
 Potential later systems: housing/defense declared-capability sensors, faction coordination (SA12),
 expansion/growth (SA11).

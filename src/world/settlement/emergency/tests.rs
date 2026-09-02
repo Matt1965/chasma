@@ -9,13 +9,13 @@ use crate::world::settlement::needs::{NeedCatalog, evaluate_settlement_needs_now
 use crate::world::settlement::response::{ResponseCatalog, discover_settlement_responses_now};
 use crate::world::settlement::state::SettlementKind;
 use crate::world::settlement::{
-    ActiveEmergencyInstance, SettlementOwnership, create_settlement_with_treasury,
-    reconcile_settlement_building_membership,
+    ActiveEmergencyInstance, SettlementOwnership, assign_building_settlement,
+    create_settlement_with_treasury,
 };
 use crate::world::{
     Affiliation, BuildingCategoryCatalog, BuildingDefinitionId, BuildingLifecycleState,
-    BuildingOwnership, BuildingSource, ChunkCoord, ChunkExtent, LocalPosition, WorldData,
-    WorldPosition, create_building_with_inventory, starter_building_definitions,
+    BuildingOwnership, BuildingSource, ChunkCoord, ChunkExtent, LocalPosition, UnitCatalog,
+    WorldData, WorldPosition, create_building_with_inventory, starter_building_definitions,
     starter_inventory_profile_definitions, starter_item_category_definitions,
     starter_item_definitions,
 };
@@ -97,7 +97,9 @@ fn setup_settlement() -> (WorldData, crate::world::SettlementId, BuildingCatalog
         0,
     )
     .unwrap();
-    reconcile_settlement_building_membership(&mut world);
+    for building_id in world.sorted_building_ids() {
+        let _ = assign_building_settlement(&mut world, building_id, Some(settlement.settlement_id));
+    }
     if let Some(state) = world
         .settlement_state_store_mut()
         .get_mut(settlement.settlement_id)
@@ -252,6 +254,7 @@ fn emergency_modifiers_alter_need_and_response_scores() {
         &need_catalog,
         &buildings,
         ctx.items,
+        &UnitCatalog::default(),
         ctx,
         &emergency_catalog,
         id,

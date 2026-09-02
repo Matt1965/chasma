@@ -208,13 +208,14 @@ pub fn validate_world_settlement_states(world: &WorldData) -> Vec<SettlementStat
         let Some(record) = world.settlement_store().get_settlement(id) else {
             continue;
         };
-        if world.get_building(record.anchor_building_id).is_none() {
+        if world
+            .settlement_anchor_store()
+            .get(record.anchor_id)
+            .is_none()
+        {
             errors.push(SettlementStateValidationError::BrokenOwnership {
                 settlement_id: id,
-                detail: format!(
-                    "anchor building {} missing",
-                    record.anchor_building_id.raw()
-                ),
+                detail: format!("anchor {} missing", record.anchor_id.raw()),
             });
         }
         if world

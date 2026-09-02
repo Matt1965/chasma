@@ -987,15 +987,17 @@ pub fn sync_navigation_editor_section_visibility(
     };
 
     for (section, mut node) in &mut sections {
-        let show_section = visible
-            && building_selected
-            && match section.id {
-                DevCollapsibleSectionId::NavEditorGeneration => {
-                    show_generation_summary || ui_state.generation_details_expanded
-                }
-                DevCollapsibleSectionId::NavEditorValidation => validation_diag_count > 0,
-                _ => true,
-            };
+        let show_section = match section.id {
+            DevCollapsibleSectionId::NavEditorGeneration => {
+                visible
+                    && building_selected
+                    && (show_generation_summary || ui_state.generation_details_expanded)
+            }
+            DevCollapsibleSectionId::NavEditorValidation => {
+                visible && building_selected && validation_diag_count > 0
+            }
+            _ => continue,
+        };
         node.display = if show_section {
             Display::Flex
         } else {

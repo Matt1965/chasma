@@ -13,7 +13,7 @@ use crate::world::settlement::needs::{NeedCatalog, evaluate_settlement_needs_now
 use crate::world::settlement::response::{ResponseCatalog, discover_settlement_responses_now};
 use crate::world::settlement::state::{NeedCategory, NeedTarget, SettlementKind, SettlementState};
 use crate::world::settlement::{
-    SettlementOwnership, create_settlement_with_treasury, reconcile_settlement_building_membership,
+    SettlementOwnership, assign_building_settlement, create_settlement_with_treasury,
 };
 use crate::world::{
     Affiliation, BuildingCategoryCatalog, BuildingDefinitionId, BuildingLifecycleState,
@@ -170,7 +170,10 @@ impl Sa5Fixture {
             0,
         )
         .unwrap();
-        reconcile_settlement_building_membership(&mut world);
+        for building_id in world.sorted_building_ids() {
+            let _ =
+                assign_building_settlement(&mut world, building_id, Some(settlement.settlement_id));
+        }
 
         // Ensure research pressure (default town targets omit research).
         if let Some(state) = world
@@ -213,6 +216,7 @@ impl Sa5Fixture {
             &need_catalog,
             &self.building_catalog,
             ctx.items,
+            &crate::world::UnitCatalog::default(),
             ctx,
             &EmergencyCatalog::default(),
             self.settlement_id,
@@ -229,6 +233,7 @@ impl Sa5Fixture {
         );
         arbitrate_settlement_intent_now(
             &mut self.world,
+            &need_catalog,
             &response_catalog,
             self.settlement_id,
             tick,
@@ -238,6 +243,7 @@ impl Sa5Fixture {
             &response_catalog,
             &self.building_catalog,
             &self.operation_catalog,
+            ctx,
             self.settlement_id,
             tick,
         );
@@ -258,7 +264,7 @@ impl Sa5Fixture {
 #[test]
 fn food_pressure_enables_farm_by_capability() {
     let mut fx = Sa5Fixture::new();
-    // Start disabled to prove SA5 enables.
+    // Start disabled to prove SA5 enables AI-controlled buildings.
     {
         let store = fx.world.building_production_store_mut();
         let def = fx
@@ -267,8 +273,7 @@ fn food_pressure_enables_farm_by_capability() {
             .unwrap();
         store.ensure_policy_for_building(fx.farm_id, def, &fx.operation_catalog);
         store.get_policy_mut(fx.farm_id).enabled = false;
-        store.get_policy_mut(fx.farm_id).control_source = ControlSource::PlayerControlled;
-        store.get_policy_mut(fx.farm_id).planner_managed = false;
+        store.get_policy_mut(fx.farm_id).control_source = ControlSource::AIControlled;
     }
     fx.run_pipeline(1);
 
@@ -299,6 +304,29 @@ fn food_pressure_enables_farm_by_capability() {
 }
 
 #[test]
+fn player_controlled_building_is_not_overwritten_by_sa5() {
+    let mut fx = Sa5Fixture::new();
+    {
+        let store = fx.world.building_production_store_mut();
+        let def = fx
+            .building_catalog
+            .get(&BuildingDefinitionId::new("prispod_farm"))
+            .unwrap();
+        store.ensure_policy_for_building(fx.farm_id, def, &fx.operation_catalog);
+        store.get_policy_mut(fx.farm_id).enabled = false;
+        store.get_policy_mut(fx.farm_id).control_source = ControlSource::PlayerControlled;
+    }
+    fx.run_pipeline(1);
+
+    let policy = fx.policy(fx.farm_id);
+    assert!(
+        !policy.enabled,
+        "player-controlled farm must not be enabled by SA5"
+    );
+    assert_eq!(policy.control_source, ControlSource::PlayerControlled);
+}
+
+#[test]
 fn construction_pressure_enables_quarry_by_capability() {
     let mut fx = Sa5Fixture::new();
     {
@@ -309,6 +337,7 @@ fn construction_pressure_enables_quarry_by_capability() {
             .unwrap();
         store.ensure_policy_for_building(fx.quarry_id, def, &fx.operation_catalog);
         store.get_policy_mut(fx.quarry_id).enabled = false;
+        store.get_policy_mut(fx.quarry_id).control_source = ControlSource::AIControlled;
     }
     fx.run_pipeline(1);
 
@@ -361,6 +390,7 @@ fn research_pressure_enables_lab_capability_building() {
             .unwrap();
         store.ensure_policy_for_building(fx.workbench_id, def, &fx.operation_catalog);
         store.get_policy_mut(fx.workbench_id).enabled = false;
+        store.get_policy_mut(fx.workbench_id).control_source = ControlSource::AIControlled;
         store.get_policy_mut(fx.workbench_id).selected_operation =
             Some(crate::world::OperationDefinitionId::new("bake_bread"));
     }
@@ -493,6 +523,7 @@ fn unavailable_capability_records_diagnostics_not_construction() {
         &need_catalog,
         &building_catalog,
         ctx.items,
+        &crate::world::UnitCatalog::default(),
         ctx,
         &EmergencyCatalog::default(),
         id,
@@ -507,12 +538,13 @@ fn unavailable_capability_records_diagnostics_not_construction() {
         id,
         1,
     );
-    arbitrate_settlement_intent_now(&mut world, &response_catalog, id, 1);
+    arbitrate_settlement_intent_now(&mut world, &need_catalog, &response_catalog, id, 1);
     propagate_building_intent_now(
         &mut world,
         &response_catalog,
         &building_catalog,
         &operation_catalog,
+        ctx,
         id,
         1,
     );

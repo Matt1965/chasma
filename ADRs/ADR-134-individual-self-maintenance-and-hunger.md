@@ -39,8 +39,11 @@ genuinely shared semantics, generalize then, with evidence.
 
 ### Food is a category, not an item
 
-Edibility is determined by item **category** (`ItemCategoryId` `"food"`), consistent with how SA2
-measures food stock. No unit logic references `bread` or any other specific item id.
+Edibility is determined by item **category** (`ItemCategoryId` `"food"`). How much eating restores is
+authored **nutrition** on the item (ADR-087 / ADR-117), not “one stack = one meal.” No unit logic
+references a hardcoded item id such as `bread`.
+
+Eating restores hunger by that item’s nutrition, clamped to the unit’s authored hunger maximum.
 
 ### Two eating behaviors, both permanent
 
@@ -57,14 +60,18 @@ This also avoids an inventory-full failure path that a mandatory transfer step w
 
 ### Two hunger stages with different interruption authority
 
-| Stage | Approximate threshold | Behavior |
+| Stage | Milestone placeholder | Behavior |
 |---|---|---|
 | **Normal hunger** | ~50% remaining | Seek food **between** ordinary tasks. Do **not** interrupt current work merely for being somewhat hungry. |
 | **Critical hunger** | ~10% remaining | **Interrupt** ordinary work and other non-combat activity to obtain food. |
 
 **Combat outranks hunger at every stage.** Hunger never interrupts combat.
 
-The percentages are **tunable authored data** on the unit definition, not architectural constants.
+Percentages, decay rate, and hunger maximum are **tunable authored data** on the unit definition, not
+architectural constants. Milestone values (~50% / ~10%, test-friendly decay) are placeholders.
+
+Hunger remaining and item nutrition must use **compatible units** so eating a Prispod (nutrition 25)
+and aggregating settlement food value are the same currency (ADR-117).
 
 The architectural consequence is that the self-maintenance layer must express **urgency**, not a
 boolean `is_hungry`. It distinguishes "I should eat when convenient" from "I need to stop what I am
@@ -107,9 +114,8 @@ Hunger is individual, but **demand is settlement-scoped**. Settlement food deman
 **live members** — units whose `settlement_id` matches the settlement (ADR-133). Dead units have
 already cleared membership and must not contribute.
 
-This uses member count and authored per-unit consumption characteristics as **inputs to food
-desired**. It does **not** create or activate a Population need. Member count exists independently of
-whether Population is ever evaluated as a need (ADR-117).
+This uses live members’ authored consumption over a horizon **plus** an authored reserve, in
+**nutrition units** (ADR-117). It does **not** create or activate a Population need.
 
 Non-member and other-settlement units may physically take food under existing inventory access rules,
 but they are never counted as legitimate settlement demand. Unauthorized taking is future theft/crime
@@ -149,8 +155,9 @@ Hunger persists per unit. Restore must **not** normalize it from the catalog the
   **without** activating a Population need.
 - `UnitState` / order handling must accommodate an eating activity and a hunger-driven release of
   ordinary work, without granting hunger authority over combat.
-- Unit definitions gain authored hunger characteristics (decay rate, normal/critical thresholds, food
-  value per meal). Thresholds are data, not architectural constants.
+- Unit definitions gain authored hunger characteristics (maximum in nutrition units, decay rate,
+  normal/critical **fractions** of that maximum). Thresholds and decay are data, not code constants.
+- Item definitions gain authored `nutrition` for food-category items (ADR-087).
 - Dev tooling should surface per-unit hunger and stage so the milestone scenario is diagnosable.
 
 ## References

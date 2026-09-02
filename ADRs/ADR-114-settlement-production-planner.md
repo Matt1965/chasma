@@ -133,8 +133,16 @@ reconcile is retired.
 ### Preserved
 
 - EP9 still does not execute production, move items, assign workers, or mutate `BuildingOperationState`.
-- The production graph remains derived from `OperationCatalog`, not authored as a chain.
+- The production graph remains derived from `OperationCatalog`, not authored as a hardcoded chain.
 - Diagnostics and derived graphs remain unpersisted.
+
+### Food production chains
+
+The production graph is the existing place to see that **intermediate** operations (wheat → flour →
+bread) can still satisfy a food intent: demand walks the graph; SA5 enables producers of demanded
+outputs, not only buildings whose immediate output is edible. **This milestone** does not require a
+processing chain — Prispod farm → edible Prispod is enough. Direct edible farm output is a
+validation simplification, not a permanent “farms always emit meals” rule.
 
 ## References
 

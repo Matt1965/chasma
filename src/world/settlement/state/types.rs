@@ -178,6 +178,7 @@ pub enum NeedCategory {
     Construction,
     Research,
     Luxury,
+    Materials,
     Medicine,
     Population,
     Economy,
@@ -194,6 +195,7 @@ impl NeedCategory {
             Self::Construction => "construction",
             Self::Research => "research",
             Self::Luxury => "luxury",
+            Self::Materials => "materials",
             Self::Medicine => "medicine",
             Self::Population => "population",
             Self::Economy => "economy",
@@ -210,6 +212,7 @@ impl NeedCategory {
             "construction" => Some(Self::Construction),
             "research" => Some(Self::Research),
             "luxury" => Some(Self::Luxury),
+            "materials" => Some(Self::Materials),
             "medicine" => Some(Self::Medicine),
             "population" => Some(Self::Population),
             "economy" => Some(Self::Economy),
@@ -223,7 +226,7 @@ impl NeedCategory {
 #[derive(Debug, Clone, PartialEq, Reflect, Serialize, Deserialize)]
 pub struct NeedTarget {
     pub category: NeedCategory,
-    /// Desired level for this need (units are category-defined by future SA phases).
+    /// Desired level for this need. Units are category-defined (e.g. Food = nutrition reserve).
     pub target_value: u32,
     /// Relative importance weight for future arbitration (storage only in SA1).
     pub weight: f32,
@@ -507,7 +510,9 @@ pub fn default_need_targets_for_kind(kind: SettlementKind) -> Vec<NeedTarget> {
     let growth = NeedTarget::new(NeedCategory::Growth, 1, 0.15);
     match kind {
         SettlementKind::Town | SettlementKind::Village | SettlementKind::Outpost => vec![
+            // Food `target_value` is absolute nutrition reserve (SA2 Phase 5); member consumption is projected separately.
             NeedTarget::new(NeedCategory::Food, 100, 1.0),
+            NeedTarget::new(NeedCategory::Materials, 50, 0.8),
             NeedTarget::new(NeedCategory::Water, 80, 0.9),
             NeedTarget::new(NeedCategory::Housing, 20, 0.7),
             NeedTarget::new(NeedCategory::Defense, 10, 0.5),

@@ -28,6 +28,23 @@ use super::snapshot::{
 const STEERING_SETTINGS: SteeringSettings = SteeringSettings::DEFAULT;
 const FORMATION_TARGET_EPSILON: f32 = 0.25;
 
+fn format_settlement_membership_label(
+    world: &WorldData,
+    settlement_id: Option<crate::world::SettlementId>,
+) -> String {
+    match settlement_id {
+        None => "None".to_string(),
+        Some(id) => {
+            let name = world
+                .settlement_store()
+                .get_settlement(id)
+                .map(|record| record.display_name.clone())
+                .unwrap_or_else(|| "?".to_string());
+            format!("#{} {name}", id.raw())
+        }
+    }
+}
+
 /// Capture a full unit inspection snapshot. Returns `None` if the unit does not exist.
 pub fn capture_unit_inspector_snapshot(
     world: &WorldData,
@@ -108,6 +125,23 @@ pub fn capture_unit_inspector_snapshot(
     let combat = capture_combat_inspector(&record, unit_catalog, weapon_catalog);
     let projectiles = capture_projectiles_for_unit(world, unit_id);
 
+    let (nutrition_current, nutrition_max, hunger_stage) =
+        if let Some(profile) = crate::world::NutritionProfile::from_definition(definition) {
+            let stage = crate::world::evaluate_hunger_stage(record.nutrition.current, &profile);
+            (
+                Some(record.nutrition.current),
+                Some(profile.max),
+                Some(crate::world::hunger_stage_label(stage).to_string()),
+            )
+        } else {
+            (None, None, None)
+        };
+    let self_maintenance_label = match &record.self_maintenance.activity {
+        crate::world::SelfMaintenanceActivity::None => None,
+        crate::world::SelfMaintenanceActivity::SeekingFood { .. } => Some("seeking food".into()),
+        crate::world::SelfMaintenanceActivity::Eating { .. } => Some("eating".into()),
+    };
+
     Some(UnitInspectorSnapshot {
         unit_id,
         definition_id: record.definition_id.clone(),
@@ -127,6 +161,11 @@ pub fn capture_unit_inspector_snapshot(
         display_floor_label,
         inventory_summary,
         affiliation: record.affiliation.label().to_string(),
+        settlement_membership: format_settlement_membership_label(world, record.settlement_id),
+        nutrition_current,
+        nutrition_max,
+        hunger_stage,
+        self_maintenance_label,
     })
 }
 
@@ -182,6 +221,10 @@ pub fn capture_building_inspector_snapshot(
     building_id: BuildingId,
     presentation: Option<BuildingAssetPresentationInfo>,
     operation_probe: Option<BuildingOperationProbe>,
+    operation_catalog: &crate::world::OperationCatalog,
+    item_catalog: &crate::world::ItemCatalog,
+    inventory_profiles: &crate::world::InventoryProfileCatalog,
+    terrain_assessment: Option<&crate::world::BuildingTerrainAssessment>,
 ) -> Option<BuildingInspectorSnapshot> {
     let record = world.get_building(building_id)?.clone();
     let definition = building_catalog.get(&record.definition_id)?;
@@ -232,7 +275,7 @@ pub fn capture_building_inspector_snapshot(
         });
     let presentation = presentation.unwrap_or_default();
     let probe = operation_probe.unwrap_or_default();
-    Some(BuildingInspectorSnapshot {
+    let mut snapshot = BuildingInspectorSnapshot {
         building_id,
         definition_id: record.definition_id.clone(),
         display_name: definition.display_name.clone(),
@@ -286,7 +329,26 @@ pub fn capture_building_inspector_snapshot(
         inventory_bindings_summary,
         hauling_requests_summary: Some(format_hauling_requests_for_building(world, building_id)),
         planner_summary: format_settlement_planner_summary(world, building_id),
-    })
+        settlement_membership: format_settlement_membership_label(world, record.settlement_id),
+        diagnostics_inventory_lines: Vec::new(),
+        diagnostics_terrain_lines: Vec::new(),
+        diagnostics_production_error: None,
+        diagnostics_inventory_error: None,
+        diagnostics_operation_display: None,
+        diagnostics_supported_operations_display: None,
+        diagnostics_terrain_efficiency: None,
+        diagnostics_terrain_limiting: None,
+    };
+    enrich_building_diagnostic_fields(
+        &mut snapshot,
+        world,
+        building_id,
+        operation_catalog,
+        item_catalog,
+        inventory_profiles,
+        terrain_assessment,
+    );
+    Some(snapshot)
 }
 
 /// Capture navigation blueprint inspection data for a building (NV1.2.5).
@@ -657,7 +719,7 @@ fn format_settlement_planner_summary(
                 .map(|r| r.label())
                 .unwrap_or_else(|| "-".into());
             lines.push(format!(
-                "  {} need={} score={:.1} {} impact={:.2} cost={:.1} block={}",
+                "  {} need={} quality={:.1} {} impact={:.2} cost={:.1} block={}",
                 candidate.response_id.as_str(),
                 candidate.need_id.as_str(),
                 candidate.priority_score,
@@ -665,6 +727,10 @@ fn format_settlement_planner_summary(
                 candidate.expected_impact,
                 candidate.estimated_cost,
                 blocking
+            ));
+            lines.push(format!(
+                "    sa3: {}",
+                candidate.quality_score.format_explanation()
             ));
         }
         for diag in &responses.diagnostics {
@@ -693,6 +759,7 @@ fn format_settlement_planner_summary(
                     intent.desired_persistence.as_str(),
                     intent.reasoning
                 ));
+                lines.push(format!("      sa3: {}", intent.quality_explanation));
             }
         }
         if !plan.rejected.is_empty() {
@@ -705,6 +772,10 @@ fn format_settlement_planner_summary(
                     rejected.candidate_score,
                     rejected.arbitration_score,
                     rejected.reason.label()
+                ));
+                lines.push(format!(
+                    "      sa4: {}",
+                    rejected.arbitration.format_reasoning()
                 ));
             }
             if plan.rejected.len() > 12 {
@@ -1275,6 +1346,165 @@ pub fn probe_building_operation(
         }
     }
     probe
+}
+
+fn humanize_identifier(id: &str) -> String {
+    id.split('_')
+        .filter(|part| !part.is_empty())
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first) => first.to_uppercase().chain(chars).collect(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn enrich_building_diagnostic_fields(
+    snapshot: &mut BuildingInspectorSnapshot,
+    world: &WorldData,
+    building_id: BuildingId,
+    operation_catalog: &crate::world::OperationCatalog,
+    item_catalog: &crate::world::ItemCatalog,
+    inventory_profiles: &crate::world::InventoryProfileCatalog,
+    terrain_assessment: Option<&crate::world::BuildingTerrainAssessment>,
+) {
+    use crate::world::OperationDefinitionId;
+
+    if let Some(selected) = snapshot.selected_operation.as_deref() {
+        let operation_id = OperationDefinitionId::new(selected);
+        snapshot.diagnostics_operation_display = operation_catalog
+            .get(&operation_id)
+            .map(|operation| operation.display_name.clone())
+            .or_else(|| Some(humanize_identifier(selected)));
+    }
+
+    if let Some(supported) = snapshot.supported_operations.as_deref() {
+        let ids: Vec<_> = supported.split(", ").filter(|id| !id.is_empty()).collect();
+        if ids.len() > 1 {
+            snapshot.diagnostics_supported_operations_display = Some(
+                ids.iter()
+                    .map(|id| {
+                        operation_catalog
+                            .get(&OperationDefinitionId::new(*id))
+                            .map(|operation| operation.display_name.clone())
+                            .unwrap_or_else(|| humanize_identifier(*id))
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            );
+        }
+    }
+
+    if let Some(validation) = snapshot.validation_state.as_deref() {
+        if validation != "OK" {
+            snapshot.diagnostics_production_error = Some(format!("Production error: {validation}"));
+        }
+    }
+    if snapshot.diagnostics_production_error.is_none() {
+        if let Some(blocking) = snapshot.execution_blocking.as_deref() {
+            if !blocking.is_empty() && blocking != "[]" {
+                snapshot.diagnostics_production_error =
+                    Some(format!("Production error: {blocking}"));
+            }
+        }
+    }
+
+    if let Some(set) = world.building_inventory_binding_store().get(building_id) {
+        for binding in set.bindings() {
+            snapshot
+                .diagnostics_inventory_lines
+                .push(format_binding_inventory_line(
+                    world,
+                    item_catalog,
+                    inventory_profiles,
+                    binding,
+                ));
+            if world.inventory_store().get(binding.inventory_id).is_none() {
+                snapshot.diagnostics_inventory_error = Some(format!(
+                    "Inventory error: {} has no inventory",
+                    binding.binding_id.as_str()
+                ));
+            }
+        }
+    }
+
+    if let Some(assessment) = terrain_assessment {
+        for requirement in &assessment.per_requirement {
+            if let Some(average) = requirement.average_value {
+                snapshot.diagnostics_terrain_lines.push(format!(
+                    "{}: {}",
+                    humanize_identifier(requirement.field_id.as_str()),
+                    crate::world::format_field_average_display(Some(average))
+                ));
+            }
+        }
+        snapshot.diagnostics_terrain_efficiency = snapshot
+            .final_output_rate
+            .clone()
+            .or_else(|| snapshot.terrain_output_rate.clone());
+        snapshot.diagnostics_terrain_limiting = assessment
+            .limiting_field
+            .as_ref()
+            .map(|field| humanize_identifier(field.as_str()));
+    }
+}
+
+fn format_binding_inventory_line(
+    world: &WorldData,
+    item_catalog: &crate::world::ItemCatalog,
+    inventory_profiles: &crate::world::InventoryProfileCatalog,
+    binding: &crate::world::BuildingInventoryBinding,
+) -> String {
+    use crate::world::{InventoryEntryContents, effective_stack_limit};
+    use std::collections::HashMap;
+
+    let role_prefix = binding.role.label();
+    let Some(inventory) = world.inventory_store().get(binding.inventory_id) else {
+        return format!("{role_prefix}: unavailable");
+    };
+    let profile = inventory_profiles.get(inventory.profile_id());
+    let mut totals: HashMap<crate::world::ItemDefinitionId, u32> = HashMap::new();
+    for entry in inventory.placed_entries() {
+        if let InventoryEntryContents::Stack {
+            item_definition_id,
+            quantity,
+        } = &entry.contents
+        {
+            *totals.entry(item_definition_id.clone()).or_insert(0) += *quantity;
+        }
+    }
+    if totals.is_empty() {
+        if matches!(binding.role, crate::world::BuildingInventoryRole::Output) {
+            return "Output buffer: Empty".into();
+        }
+        return format!("{role_prefix}: Empty");
+    }
+    if totals.len() == 1 {
+        let (item_id, quantity) = totals.into_iter().next().expect("single item");
+        let item_name = item_catalog
+            .get(&item_id)
+            .map(|item| item.display_name.clone())
+            .unwrap_or_else(|| humanize_identifier(item_id.as_str()));
+        if let Some(item) = item_catalog.get(&item_id) {
+            let capacity = effective_stack_limit(item, profile, None, None);
+            return format!("{role_prefix} — {item_name}: {quantity} / {capacity}");
+        }
+        return format!("{role_prefix} — {item_name}: {quantity}");
+    }
+    totals
+        .into_iter()
+        .map(|(item_id, quantity)| {
+            let item_name = item_catalog
+                .get(&item_id)
+                .map(|item| item.display_name.clone())
+                .unwrap_or_else(|| humanize_identifier(item_id.as_str()));
+            format!("{role_prefix} — {item_name}: {quantity}")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Capture runtime building asset presentation for dev inspector (ADR-095 BA1).

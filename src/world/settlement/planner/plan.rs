@@ -4,7 +4,6 @@ use std::collections::{HashMap, HashSet};
 
 use crate::world::ItemDefinitionId;
 use crate::world::building::catalog::BuildingCatalog;
-use crate::world::building::operation::ControlSource;
 use crate::world::building::operation::OperationDefinitionId;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::is_building_operational;
@@ -12,7 +11,6 @@ use crate::world::operation::OperationCatalog;
 use crate::world::settlement::SettlementId;
 use crate::world::{BuildingId, WorldData};
 
-use super::apply::{apply_planner_decisions, disable_unselected_planner_buildings};
 use super::graph::{ProductionGraph, detect_production_cycles, propagate_demand};
 use super::inventory::aggregate_settlement_stock;
 use super::types::{
@@ -190,7 +188,7 @@ pub fn replan_settlement_production(
     (decisions, diagnostics)
 }
 
-/// Execute replan and apply policy changes for one settlement (EP9).
+/// Execute replan diagnostics for one settlement (EP9 service — no policy writes).
 pub fn execute_settlement_replan(
     world: &mut WorldData,
     building_catalog: &BuildingCatalog,
@@ -212,27 +210,17 @@ pub fn execute_settlement_replan(
     planner.last_diagnostics = diagnostics;
     planner.last_plan_tick = simulation_tick;
     planner.dirty = false;
-
-    let settlement_buildings: Vec<BuildingId> = world
-        .settlement_store()
-        .buildings_for_settlement(settlement_id);
-    let active: Vec<BuildingId> = decisions
-        .iter()
-        .filter(|decision| decision.enabled)
-        .map(|decision| decision.building_id)
-        .collect();
-    disable_unselected_planner_buildings(world, &settlement_buildings, &active);
-    apply_planner_decisions(world, building_catalog, operation_catalog, &decisions);
+    let _ = decisions;
 }
 
 #[derive(Debug, Clone)]
-struct ProducerCandidate {
-    building_id: BuildingId,
-    operation_id: OperationDefinitionId,
-    policy_priority: u8,
+pub(crate) struct ProducerCandidate {
+    pub building_id: BuildingId,
+    pub operation_id: OperationDefinitionId,
+    pub policy_priority: u8,
 }
 
-fn select_producer_for_settlement(
+pub(crate) fn select_producer_for_settlement(
     graph: &super::graph::ProductionGraph,
     producers: &[ProducerCandidate],
     item_id: &ItemDefinitionId,
@@ -255,7 +243,7 @@ fn select_producer_for_settlement(
         .cloned()
 }
 
-fn discover_settlement_producers(
+pub(crate) fn discover_settlement_producers(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
     settlement_id: SettlementId,
@@ -282,10 +270,6 @@ fn discover_settlement_producers(
             .get_policy(building_id)
             .cloned()
             .unwrap_or_default();
-        if policy.control_source == ControlSource::PlayerControlled && policy.planner_managed {
-            // Player reclaimed a previously planner-managed building.
-            continue;
-        }
         for operation_id in &definition.supported_operations {
             candidates.push(ProducerCandidate {
                 building_id,

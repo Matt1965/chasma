@@ -160,6 +160,16 @@ pub fn dev_mode_keyboard_input(
         dev_state.cycle_spawn_affiliation();
     }
 
+    if keyboard.just_pressed(KeyCode::Escape) && dev_state.settlement_placement_armed {
+        crate::dev::settlement_placement::cancel_settlement_placement(&mut dev_state);
+        return;
+    }
+
+    if keyboard.just_pressed(KeyCode::Escape) && dev_state.unit_assignment_armed {
+        crate::dev::settlement_placement::cancel_unit_assignment(&mut dev_state);
+        return;
+    }
+
     handle_favorite_hotkeys(&keyboard, &mut dev_state);
 }
 
@@ -213,6 +223,18 @@ pub fn handle_dev_right_click_input(
 
     if params.dev_state.placement_tool_active() {
         cancel_dev_placement(&mut params.dev_state, &mut params.preview);
+        params.gate.block_gameplay_mouse = true;
+        return;
+    }
+
+    if params.dev_state.settlement_placement_armed {
+        crate::dev::settlement_placement::cancel_settlement_placement(&mut params.dev_state);
+        params.gate.block_gameplay_mouse = true;
+        return;
+    }
+
+    if params.dev_state.unit_assignment_armed {
+        crate::dev::settlement_placement::cancel_unit_assignment(&mut params.dev_state);
         params.gate.block_gameplay_mouse = true;
         return;
     }
@@ -541,6 +563,10 @@ pub fn handle_dev_spawn_click(
         ) {
             return;
         }
+    }
+
+    if params.dev_state.settlement_placement_armed {
+        return;
     }
 
     if world_selection.has_transform_target() {

@@ -4,14 +4,30 @@ use bevy::prelude::*;
 
 use crate::dev::input::DevPanelUi;
 use crate::dev::inspector::{BuildingDevAction, DevBuildingActionButton};
-use crate::dev::tooltip::DevTooltipTarget;
 use crate::dev::widgets::{
     DevCollapsibleSectionId, spawn_action_button, spawn_collapsible_section,
 };
 use crate::dev::window::DevWindowUi;
 
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BuildingDevSectionKind {
+    Construction,
+    Lifecycle,
+    Production,
+    Doors,
+    Terrain,
+}
+
+#[derive(Component, Debug, Clone, Copy)]
+pub(crate) struct DevBuildingActionSection {
+    pub kind: BuildingDevSectionKind,
+}
+
 #[derive(Component, Debug)]
 pub(crate) struct DevBuildingActionsRoot;
+
+#[derive(Component, Debug)]
+pub(crate) struct DevProductionOperationSelector;
 
 pub fn spawn_building_dev_actions(parent: &mut ChildSpawnerCommands<'_>) {
     parent
@@ -26,49 +42,106 @@ pub fn spawn_building_dev_actions(parent: &mut ChildSpawnerCommands<'_>) {
             },
         ))
         .with_children(|root| {
-            spawn_action_group(root, "Construction", BuildingDevAction::CONSTRUCTION);
-            spawn_action_group(root, "Lifecycle", BuildingDevAction::LIFECYCLE);
-            spawn_action_group(root, "Production", BuildingDevAction::PRODUCTION);
-            spawn_action_group(root, "Inventory", BuildingDevAction::INVENTORY);
-            spawn_action_group(root, "Logistics", BuildingDevAction::LOGISTICS);
-            spawn_action_group(root, "Doors", BuildingDevAction::DOORS);
-            spawn_action_group(root, "Terrain", BuildingDevAction::TERRAIN);
+            spawn_action_section(
+                root,
+                BuildingDevSectionKind::Construction,
+                DevCollapsibleSectionId::SelectedBuildingConstruction,
+                "Construction",
+                BuildingDevAction::CONSTRUCTION,
+                false,
+            );
+            spawn_action_section(
+                root,
+                BuildingDevSectionKind::Lifecycle,
+                DevCollapsibleSectionId::SelectedBuildingLifecycle,
+                "Lifecycle",
+                BuildingDevAction::LIFECYCLE,
+                false,
+            );
+            spawn_action_section(
+                root,
+                BuildingDevSectionKind::Production,
+                DevCollapsibleSectionId::SelectedBuildingProduction,
+                "Production",
+                BuildingDevAction::PRODUCTION_ACTIONS,
+                true,
+            );
+            spawn_action_section(
+                root,
+                BuildingDevSectionKind::Doors,
+                DevCollapsibleSectionId::SelectedBuildingDoors,
+                "Doors",
+                BuildingDevAction::DOORS,
+                false,
+            );
+            spawn_action_section(
+                root,
+                BuildingDevSectionKind::Terrain,
+                DevCollapsibleSectionId::SelectedBuildingTerrain,
+                "Terrain",
+                BuildingDevAction::TERRAIN,
+                false,
+            );
         });
 }
 
-fn spawn_action_group(
+fn spawn_action_section(
     parent: &mut ChildSpawnerCommands<'_>,
+    kind: BuildingDevSectionKind,
+    section_id: DevCollapsibleSectionId,
     title: &str,
     actions: &[BuildingDevAction],
+    include_operation_selector: bool,
 ) {
-    let section_id = match title {
-        "Construction" => DevCollapsibleSectionId::SelectedBuildingConstruction,
-        "Lifecycle" => DevCollapsibleSectionId::SelectedBuildingLifecycle,
-        "Production" => DevCollapsibleSectionId::SelectedBuildingProduction,
-        "Inventory" => DevCollapsibleSectionId::SelectedBuildingInventory,
-        "Logistics" => DevCollapsibleSectionId::SelectedBuildingLogistics,
-        _ => DevCollapsibleSectionId::SelectedBuildingDiagnostics,
-    };
-    spawn_collapsible_section(parent, section_id, title, None, |body| {
-        body.spawn((
+    parent
+        .spawn((
+            DevBuildingActionSection { kind },
             DevPanelUi,
             Node {
-                flex_direction: FlexDirection::Row,
-                flex_wrap: FlexWrap::Wrap,
-                column_gap: Val::Px(4.0),
-                row_gap: Val::Px(4.0),
+                flex_direction: FlexDirection::Column,
+                display: Display::None,
                 ..default()
             },
         ))
-        .with_children(|row| {
-            for action in actions {
-                spawn_action_button(
-                    row,
-                    action.label(),
-                    Some(action.tooltip()),
-                    DevBuildingActionButton { action: *action },
-                );
-            }
+        .with_children(|section| {
+            spawn_collapsible_section(section, section_id, title, None, |body| {
+                if include_operation_selector {
+                    body.spawn((
+                        DevProductionOperationSelector,
+                        DevPanelUi,
+                        Node {
+                            flex_direction: FlexDirection::Row,
+                            flex_wrap: FlexWrap::Wrap,
+                            column_gap: Val::Px(4.0),
+                            row_gap: Val::Px(4.0),
+                            display: Display::None,
+                            margin: UiRect::bottom(Val::Px(4.0)),
+                            ..default()
+                        },
+                    ));
+                }
+                if !actions.is_empty() {
+                    body.spawn((
+                        DevPanelUi,
+                        Node {
+                            flex_direction: FlexDirection::Row,
+                            flex_wrap: FlexWrap::Wrap,
+                            column_gap: Val::Px(4.0),
+                            row_gap: Val::Px(4.0),
+                            ..default()
+                        },
+                    ))
+                    .with_children(|row| {
+                        for action in actions {
+                            spawn_action_button(
+                                row,
+                                action.label(),
+                                Some(action.tooltip()),
+                                DevBuildingActionButton { action: *action },
+                            );
+                        }
+                    });
+                }
+            });
         });
-    });
 }

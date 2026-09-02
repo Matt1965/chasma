@@ -273,11 +273,7 @@ fn create_plan_for_mapping(
         .get_settlement(settlement_id)
         .cloned()
         .ok_or_else(|| format!("settlement {} missing", settlement_id.raw()))?;
-    let anchor = ctx
-        .world
-        .get_building(settlement.anchor_building_id)
-        .map(|b| b.placement.position)
-        .unwrap_or(settlement.interaction_position);
+    let anchor = settlement.center;
 
     let materials: Vec<ConstructionMaterialRequirement> = ctx
         .cost_catalog
@@ -397,10 +393,8 @@ fn commit_site(
     )
     .map_err(|e| format!("place Planned building failed: {e:?}"))?;
 
-    let _ = ctx
-        .world
-        .settlement_store_mut()
-        .link_building_to_settlement(plan.settlement_id, record.id);
+    let _ =
+        crate::world::assign_building_settlement(ctx.world, record.id, Some(plan.settlement_id));
 
     plan.placement = Some(site);
     plan.reserved_building_id = Some(record.id);
@@ -449,11 +443,7 @@ fn retry_blocked_plans(
         else {
             continue;
         };
-        let anchor = ctx
-            .world
-            .get_building(settlement.anchor_building_id)
-            .map(|b| b.placement.position)
-            .unwrap_or(settlement.interaction_position);
+        let anchor = settlement.center;
         let ownership = BuildingOwnership {
             owner_id: settlement.ownership.owner_id,
             team_id: settlement.ownership.team_id,
@@ -664,11 +654,7 @@ pub fn approve_construction_plan(
             .get(plan.settlement_id)
             .cloned()
             .ok_or_else(|| "SettlementState missing".to_string())?;
-        let anchor = ctx
-            .world
-            .get_building(settlement.anchor_building_id)
-            .map(|b| b.placement.position)
-            .unwrap_or(settlement.interaction_position);
+        let anchor = settlement.center;
         let budget = PlacementSearchBudget {
             search_radius_meters: state.policies.construction_search_radius_meters,
             step_meters: 8.0,

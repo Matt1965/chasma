@@ -23,6 +23,7 @@ mod pile_harness;
 mod save_window;
 mod scenes;
 mod selected_object;
+mod settlement_placement;
 mod spawn_tools;
 mod terrain_field;
 mod tools;
@@ -55,7 +56,7 @@ pub use dev_mode::{
     DefinitionId, DevDebugFlags, DevInventoryEndpoint, DevInventoryToolState, DevModeInputGate,
     DevModeState, DevTab, DevTextFieldFocus, SpawnMode,
 };
-pub use fields_window::setup_fields_window_panel;
+pub use fields_window::{setup_fields_window_panel, sync_dev_fields_panel_visibility};
 pub use gizmo::{
     DevTool, DevToolState, DevTransformPreview, GizmoCoordinateSpace, SelectedWorldObject,
     TransformEditState,
@@ -114,13 +115,17 @@ pub use tooltip::{
     sync_dev_tooltip_presentation,
 };
 pub use window::{DevWindowId, DevWindowInteractionState, DevWindowRegistry, setup_dev_workspace};
-pub use world_window::{
-    handle_pile_harness_buttons, handle_treasury_harness_buttons, setup_world_window_panel,
-    sync_dev_world_panel_visibility, sync_world_harness_status,
-};
+pub use world_window::{setup_world_window_panel, sync_dev_world_panel_visibility};
 
 use catalog::{sync_dev_catalog_chrome, track_catalog_tab_selection};
 use catalog_cache::{sync_catalog_browse_index, tick_dev_search_debounce};
+use fields_window::forensics::{
+    fields_forensics_enabled, fields_forensics_post_startup, fields_forensics_update,
+    fields_launcher_trace_after_click, fields_launcher_trace_after_collapsible,
+    fields_launcher_trace_after_fields_visibility, fields_launcher_trace_after_presentation,
+    fields_launcher_trace_before_click, fields_launcher_trace_post_layout,
+    fields_launcher_trace_scripted,
+};
 use gizmo::{
     apply_building_transform_preview, apply_doodad_transform_preview, draw_transform_gizmo,
     handle_gizmo_keyboard, handle_gizmo_mouse, sync_gizmo_target,
@@ -128,7 +133,8 @@ use gizmo::{
 use inspector::{
     handle_blueprint_edit_input, handle_blueprint_inspection_input,
     handle_building_dev_action_buttons, handle_building_production_repeat_button,
-    handle_inspector_input, refresh_inspector_snapshot, sync_inspector_on_selection_revision,
+    handle_inspector_input, handle_production_operation_buttons, refresh_inspector_snapshot,
+    sync_inspector_on_selection_revision,
 };
 use panel::{
     handle_dev_panel_ui_interaction, setup_dev_panel, sync_dev_catalog_panel_visibility,
@@ -136,8 +142,8 @@ use panel::{
     sync_dev_simulation_status,
 };
 use selected_object::{
-    SelectedObjectUiState, handle_selected_object_actions, setup_selected_object_panel,
-    sync_selected_object_panel,
+    BuildingActionUiCache, SelectedObjectUiState, handle_selected_object_actions,
+    setup_selected_object_panel, sync_building_dev_action_sections, sync_selected_object_panel,
 };
 use terrain_field::{
     draw_dev_terrain_field_gizmos, handle_terrain_field_buttons, setup_dev_terrain_field_state,
@@ -151,6 +157,7 @@ use window::{
 };
 
 use bevy::prelude::*;
+use bevy::ui::UiSystems;
 
 /// Dev mode input and panel systems (before intent collection).
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -174,6 +181,7 @@ impl Plugin for DevModePlugin {
             .init_resource::<DevWindowInteractionState>()
             .init_resource::<inspector::WorldInspectorState>()
             .init_resource::<SelectedObjectUiState>()
+            .init_resource::<BuildingActionUiCache>()
             .init_resource::<NavigationEditorUiState>()
             .init_resource::<inspector::BlueprintInspectionState>()
             .init_resource::<BlueprintInspectionScenePresentation>()
@@ -188,6 +196,9 @@ impl Plugin for DevModePlugin {
             .init_resource::<tools::DevPlacementPreviewScratch>()
             .init_resource::<DevPreviewAnchor>()
             .init_resource::<scenes::DevSceneRegistry>()
+            .init_resource::<settlement_placement::SettlementPlacementPreview>()
+            .init_resource::<settlement_placement::SettlementPlacementRejectionFeedbacks>()
+            .init_resource::<settlement_placement::SettlementPlacementRejectionLabelIndex>()
             .add_systems(
                 Startup,
                 (
@@ -204,277 +215,331 @@ impl Plugin for DevModePlugin {
                     setup_dev_terrain_field_state,
                 )
                     .chain(),
-            )
-            .add_systems(
-                Update,
-                (
-                    (
-                        reset_dev_input_gate,
-                        sync_dev_window_viewport,
-                        dev_mode_keyboard_input,
-                        handle_dev_mode_window_lifecycle,
-                        tick_dev_search_debounce,
-                        sync_catalog_browse_index,
-                        update_dev_window_interaction_state,
-                        sync_dev_panel_hover_from_windows,
-                        handle_dev_window_pointer,
-                        focus_dev_window_on_ui_press,
-                        focus_dev_window_on_panel_press,
-                        sync_dev_window_presentation,
-                        sync_dev_world_panel_visibility,
-                        sync_dev_window_computed_sizes,
-                        update_dev_preview_anchor,
-                        tools::update_dev_placement_preview,
-                        sync_dev_panel_content,
-                        sync_dev_simulation_status,
-                    )
-                        .chain(),
-                    (
-                        sync_dev_catalog_chrome,
-                        track_catalog_tab_selection,
-                        sync_dev_save_panel_visibility,
-                        sync_save_window_content,
-                        sync_save_window_name_field_style,
-                        sync_dev_panel_button_styles,
-                        widgets::sync_dev_button_chrome,
-                        widgets::sync_status_line_color,
-                        sync_dev_catalog_panel_visibility,
-                        sync_debug_panel_content,
-                        sync_debug_panel_button_styles,
-                        sync_world_harness_status,
-                        widgets::sync_collapsible_sections,
-                        widgets::handle_collapsible_toggles,
-                        animation_panel::sync_dev_animation_panel,
-                        animation_focus::sync_animation_presentation_focus,
-                    )
-                        .chain(),
-                    (
-                        world_environment::sync_world_environment_panel,
-                        world_environment::sync_world_environment_sliders,
-                        world_environment::sync_world_water_level_slider,
-                        world_environment::sync_world_water_enabled_toggle,
-                        world_environment::sync_world_environment_toggles,
-                        world_environment::sync_world_environment_confirm_bar,
-                        world_environment::tick_world_environment_status,
-                    )
-                        .chain(),
-                )
-                    .chain()
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                widgets::tick_dev_button_activation_flashes.in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                sync_dev_search_box_style.in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                guard_dirty_navigation_selection
-                    .after(sync_inspector_on_selection_revision)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                sync_blueprint_inspection_scene_visibility.in_set(DevModePresentationSystems),
-            )
-            .add_systems(
-                Update,
-                (
-                    apply_navigation_editor_disclosure_hints,
-                    sync_navigation_editor_window_layout,
-                    sync_navigation_editor_responsive_layout,
-                    sync_navigation_editor_overlay_status,
-                    sync_navigation_editor_panel_content,
-                    sync_navigation_editor_panel,
-                    sync_navigation_editor_action_buttons,
-                    sync_navigation_editor_section_visibility,
-                    sync_navigation_editor_disclosure_state,
-                    sync_navigation_editor_toast,
-                    sync_navigation_editor_opacity_slider,
-                    handle_navigation_editor_opacity_slider,
-                )
-                    .chain()
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                sync_open_navigation_editor_buttons.in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                handle_open_navigation_editor_buttons.in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                handle_navigation_editor_actions.in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                sync_dev_tooltip_presentation.in_set(DevModePresentationSystems),
-            )
-            .add_systems(
-                Update,
-                sync_selected_object_panel
-                    .after(handle_blueprint_inspection_input)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                handle_selected_object_actions
-                    .after(handle_gizmo_keyboard)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                sync_inspector_on_selection_revision.in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                handle_dev_right_click_input
-                    .after(sync_dev_panel_hover_from_windows)
-                    .before(handle_dev_spawn_click)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                refresh_inspector_snapshot
-                    .after(sync_inspector_on_selection_revision)
-                    .after(handle_inspector_input)
-                    .after(sync_gizmo_target)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                (
-                    handle_dev_panel_ui_interaction,
-                    handle_save_window_interaction,
-                    handle_debug_toggle_buttons,
-                    world_environment::handle_world_environment_actions,
-                    world_environment::handle_world_cycle_toggles,
-                    world_environment::handle_world_time_presets,
-                    world_environment::handle_world_slider_interaction,
-                    world_environment::handle_world_water_level_slider,
-                    world_environment::handle_world_water_enabled_toggle,
-                    world_environment::handle_world_environment_numeric_keyboard,
-                    world_environment::focus_world_environment_numeric,
-                )
-                    .after(sync_save_window_content)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                handle_terrain_field_buttons
-                    .after(sync_save_window_content)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(Update, sync_dev_debug_controls.in_set(DevModeInputSystems))
-            .add_systems(Update, handle_gizmo_keyboard.in_set(DevModeInputSystems))
-            .add_systems(
-                Update,
-                handle_gizmo_mouse
-                    .after(handle_gizmo_keyboard)
-                    .before(handle_inspector_input)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                handle_inspector_input
-                    .after(sync_save_window_content)
-                    .before(handle_dev_spawn_click)
-                    .in_set(DevModeInputSystems),
-            )
-            // After inspector so a fresh doodad/building pick arms gizmos the same frame
-            // without letting handle_gizmo_mouse treat that click as a TranslateXZ grab.
-            .add_systems(
-                Update,
-                sync_gizmo_target
-                    .after(handle_inspector_input)
-                    .before(handle_dev_spawn_click)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                handle_building_dev_action_buttons.in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                handle_building_production_repeat_button.in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                handle_blueprint_inspection_input.in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                handle_blueprint_edit_input
-                    .after(handle_blueprint_inspection_input)
-                    .before(handle_inspector_input)
-                    .before(sync_dev_gameplay_input_block)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                inventory_tools::handle_dev_items_ground_click
-                    .after(sync_save_window_content)
-                    .before(inventory_tools::handle_dev_held_item_input)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                inventory_tools::handle_dev_held_item_input
-                    .after(inventory_tools::handle_dev_items_ground_click)
-                    .before(handle_dev_spawn_click)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                handle_dev_spawn_click
-                    .after(sync_save_window_content)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                sync_dev_gameplay_input_block
-                    .after(handle_dev_spawn_click)
-                    .after(apply_dev_window_input_gate)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                apply_dev_window_input_gate
-                    .after(handle_dev_window_pointer)
-                    .before(sync_dev_gameplay_input_block)
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                (
-                    inventory_tools::sync_items_section_visibility,
-                    inventory_tools::handle_dev_items_buttons,
-                    inventory_tools::sync_item_quantity_controls,
-                    inventory_tools::sync_items_panel_text,
-                    world_window::handle_pile_harness_buttons,
-                    world_window::handle_treasury_harness_buttons,
-                )
-                    .in_set(DevModeInputSystems),
-            )
-            .add_systems(
-                Update,
-                (
-                    apply_doodad_transform_preview,
-                    apply_building_transform_preview,
-                    draw_transform_gizmo,
-                    sync_dev_terrain_field_panel,
-                    update_dev_terrain_field_probe,
-                    draw_dev_terrain_field_gizmos,
-                    inventory_tools::sync_dev_held_item_screen_ghost,
-                    inventory_tools::sync_dev_held_item_world_ghost,
-                )
-                    .chain()
-                    .in_set(DevModePresentationSystems),
             );
+        if fields_forensics_enabled() {
+            app.add_systems(PostStartup, fields_forensics_post_startup);
+            app.add_systems(
+                Update,
+                (
+                    fields_launcher_trace_scripted,
+                    fields_launcher_trace_before_click,
+                )
+                    .before(handle_dev_window_pointer),
+            );
+            app.add_systems(
+                Update,
+                fields_launcher_trace_after_click.after(handle_dev_window_pointer),
+            );
+            app.add_systems(
+                Update,
+                fields_launcher_trace_after_presentation.after(sync_dev_window_presentation),
+            );
+            app.add_systems(
+                Update,
+                fields_launcher_trace_after_fields_visibility
+                    .after(sync_dev_fields_panel_visibility),
+            );
+            app.add_systems(
+                Update,
+                fields_launcher_trace_after_collapsible
+                    .after(crate::dev::widgets::sync_collapsible_sections),
+            );
+            app.add_systems(
+                PostUpdate,
+                fields_launcher_trace_post_layout.after(UiSystems::Layout),
+            );
+            app.add_systems(Update, fields_forensics_update);
+        }
+        app.add_systems(
+            Update,
+            (
+                (
+                    reset_dev_input_gate,
+                    sync_dev_window_viewport,
+                    dev_mode_keyboard_input,
+                    handle_dev_mode_window_lifecycle,
+                    tick_dev_search_debounce,
+                    sync_catalog_browse_index,
+                    update_dev_window_interaction_state,
+                    sync_dev_panel_hover_from_windows,
+                    handle_dev_window_pointer,
+                    focus_dev_window_on_ui_press,
+                    focus_dev_window_on_panel_press,
+                    sync_dev_window_presentation,
+                    sync_dev_world_panel_visibility,
+                    sync_dev_fields_panel_visibility,
+                    sync_dev_window_computed_sizes,
+                    update_dev_preview_anchor,
+                    tools::update_dev_placement_preview,
+                    sync_dev_panel_content,
+                    sync_dev_simulation_status,
+                )
+                    .chain(),
+                (
+                    sync_dev_catalog_chrome,
+                    track_catalog_tab_selection,
+                    sync_dev_save_panel_visibility,
+                    sync_save_window_content,
+                    sync_save_window_name_field_style,
+                    sync_dev_panel_button_styles,
+                    widgets::sync_dev_button_chrome,
+                    widgets::sync_status_line_color,
+                    sync_dev_catalog_panel_visibility,
+                    sync_debug_panel_content,
+                    sync_debug_panel_button_styles,
+                    sync_terrain_field_button_styles,
+                    widgets::sync_collapsible_sections,
+                    widgets::handle_collapsible_toggles,
+                    animation_panel::sync_dev_animation_panel,
+                    animation_focus::sync_animation_presentation_focus,
+                )
+                    .chain(),
+                (
+                    world_environment::sync_world_environment_panel,
+                    world_environment::sync_world_environment_sliders,
+                    world_environment::sync_world_water_level_slider,
+                    world_environment::sync_world_water_enabled_toggle,
+                    world_environment::sync_world_environment_toggles,
+                    world_environment::sync_world_environment_confirm_bar,
+                    world_environment::tick_world_environment_status,
+                )
+                    .chain(),
+            )
+                .chain()
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            widgets::tick_dev_button_activation_flashes.in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            sync_dev_search_box_style.in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            guard_dirty_navigation_selection
+                .after(sync_inspector_on_selection_revision)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            sync_blueprint_inspection_scene_visibility.in_set(DevModePresentationSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                apply_navigation_editor_disclosure_hints,
+                sync_navigation_editor_window_layout,
+                sync_navigation_editor_responsive_layout,
+                sync_navigation_editor_overlay_status,
+                sync_navigation_editor_panel_content,
+                sync_navigation_editor_panel,
+                sync_navigation_editor_action_buttons,
+                sync_navigation_editor_section_visibility,
+                sync_navigation_editor_disclosure_state,
+                sync_navigation_editor_toast,
+                sync_navigation_editor_opacity_slider,
+                handle_navigation_editor_opacity_slider,
+            )
+                .chain()
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            sync_open_navigation_editor_buttons.in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            handle_open_navigation_editor_buttons.in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            handle_navigation_editor_actions.in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            sync_dev_tooltip_presentation.in_set(DevModePresentationSystems),
+        )
+        .add_systems(
+            Update,
+            sync_selected_object_panel
+                .after(handle_blueprint_inspection_input)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            sync_building_dev_action_sections
+                .after(refresh_inspector_snapshot)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            handle_selected_object_actions
+                .after(handle_gizmo_keyboard)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            sync_inspector_on_selection_revision.in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            handle_dev_right_click_input
+                .after(sync_dev_panel_hover_from_windows)
+                .before(handle_dev_spawn_click)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            refresh_inspector_snapshot
+                .after(sync_inspector_on_selection_revision)
+                .after(handle_inspector_input)
+                .after(sync_gizmo_target)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                handle_dev_panel_ui_interaction,
+                handle_save_window_interaction,
+                handle_debug_toggle_buttons,
+                world_environment::handle_world_environment_actions,
+                world_environment::handle_world_cycle_toggles,
+                world_environment::handle_world_time_presets,
+                world_environment::handle_world_slider_interaction,
+                world_environment::handle_world_water_level_slider,
+                world_environment::handle_world_water_enabled_toggle,
+                world_environment::handle_world_environment_numeric_keyboard,
+                world_environment::focus_world_environment_numeric,
+            )
+                .after(sync_save_window_content)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            handle_terrain_field_buttons
+                .after(sync_save_window_content)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(Update, sync_dev_debug_controls.in_set(DevModeInputSystems))
+        .add_systems(Update, handle_gizmo_keyboard.in_set(DevModeInputSystems))
+        .add_systems(
+            Update,
+            handle_gizmo_mouse
+                .after(handle_gizmo_keyboard)
+                .before(handle_inspector_input)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            handle_inspector_input
+                .after(sync_save_window_content)
+                .before(handle_dev_spawn_click)
+                .in_set(DevModeInputSystems),
+        )
+        // After inspector so a fresh doodad/building pick arms gizmos the same frame
+        // without letting handle_gizmo_mouse treat that click as a TranslateXZ grab.
+        .add_systems(
+            Update,
+            sync_gizmo_target
+                .after(handle_inspector_input)
+                .before(handle_dev_spawn_click)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                handle_building_dev_action_buttons,
+                handle_production_operation_buttons,
+            )
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            handle_building_production_repeat_button.in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            handle_blueprint_inspection_input.in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            handle_blueprint_edit_input
+                .after(handle_blueprint_inspection_input)
+                .before(handle_inspector_input)
+                .before(sync_dev_gameplay_input_block)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            inventory_tools::handle_dev_items_ground_click
+                .after(sync_save_window_content)
+                .before(inventory_tools::handle_dev_held_item_input)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            inventory_tools::handle_dev_held_item_input
+                .after(inventory_tools::handle_dev_items_ground_click)
+                .before(handle_dev_spawn_click)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            handle_dev_spawn_click
+                .after(sync_save_window_content)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            sync_dev_gameplay_input_block
+                .after(handle_dev_spawn_click)
+                .after(apply_dev_window_input_gate)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            apply_dev_window_input_gate
+                .after(handle_dev_window_pointer)
+                .before(sync_dev_gameplay_input_block)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                inventory_tools::sync_items_section_visibility,
+                inventory_tools::handle_dev_items_buttons,
+                inventory_tools::sync_item_quantity_controls,
+                inventory_tools::sync_items_panel_text,
+                settlement_placement::handle_settlement_placement_button,
+                settlement_placement::handle_unit_assignment_button,
+                settlement_placement::handle_settlement_placement_click,
+                settlement_placement::handle_unit_assignment_click,
+                settlement_placement::sync_settlement_placement_button_active,
+                settlement_placement::sync_unit_assignment_button_active,
+                settlement_placement::update_settlement_placement_preview,
+                settlement_placement::clear_settlement_placement_preview_when_disarmed,
+                settlement_placement::sync_settlement_placement_rejection_labels,
+            )
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                apply_doodad_transform_preview,
+                apply_building_transform_preview,
+                draw_transform_gizmo,
+                sync_dev_terrain_field_panel,
+                update_dev_terrain_field_probe,
+                draw_dev_terrain_field_gizmos,
+                settlement_placement::draw_settlement_placement_preview,
+                settlement_placement::billboard_settlement_placement_rejection_labels,
+                inventory_tools::sync_dev_held_item_screen_ghost,
+                inventory_tools::sync_dev_held_item_world_ghost,
+            )
+                .chain()
+                .in_set(DevModePresentationSystems),
+        );
     }
 }

@@ -261,12 +261,19 @@ pub fn import_building_catalog_from_excel(
 
     let (building_defs, building_summary) =
         import_buildings_from_excel(path, &categories, inventory_profiles)?;
-    let buildings = crate::world::BuildingCatalog::from_definitions(building_defs, &categories)
+    let mut buildings = crate::world::BuildingCatalog::from_definitions(building_defs, &categories)
         .map_err(|err| {
             crate::data_import::DataImportError::WorkbookOpen(format!(
                 "building catalog build failed: {err}"
             ))
         })?;
+    crate::world::merge_starter_extensions_into_catalog(&mut buildings, &categories).map_err(
+        |err| {
+            crate::data_import::DataImportError::WorkbookOpen(format!(
+                "building gameplay extension merge failed: {err}"
+            ))
+        },
+    )?;
 
     category_summary.rows_processed += building_summary.rows_processed;
     category_summary.rows_valid += building_summary.rows_valid;
@@ -564,5 +571,74 @@ mod tests {
         let def = &buildings.definitions()[0];
         assert_eq!(def.footprint_type, FootprintType::Circle);
         let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn design_workbook_exports_production_buildings() {
+        let path = crate::data_import::dev_design_workbook_path();
+        if !path.exists() {
+            return;
+        }
+        let profiles = crate::world::InventoryProfileCatalog::default();
+        let (categories, buildings, _) =
+            import_building_catalog_from_excel(&path, &profiles).expect("workbook import");
+
+        let expected_ids = [
+            "barn",
+            "hut",
+            "prispod_farm",
+            "smelter",
+            "stone_quarry",
+            "storage_chest",
+        ];
+        assert_eq!(buildings.len(), expected_ids.len());
+        for id in expected_ids {
+            assert!(
+                buildings
+                    .get(&crate::world::BuildingDefinitionId::new(id))
+                    .is_some(),
+                "missing workbook building `{id}`"
+            );
+        }
+        for leaked in [
+            "copper_mine",
+            "iron_mine",
+            "settlement_core",
+            "water_well",
+            "workbench",
+        ] {
+            assert!(
+                buildings
+                    .get(&crate::world::BuildingDefinitionId::new(leaked))
+                    .is_none(),
+                "starter-only `{leaked}` must not appear in live catalog"
+            );
+        }
+
+        let quarry = buildings
+            .get(&crate::world::BuildingDefinitionId::new("stone_quarry"))
+            .expect("stone_quarry");
+        assert_eq!(quarry.render_key.0.as_deref(), Some("stone_mine"));
+        let farm = buildings
+            .get(&crate::world::BuildingDefinitionId::new("prispod_farm"))
+            .expect("prispod_farm");
+        assert_eq!(farm.render_key.0.as_deref(), Some("prispod_farm"));
+        assert!(
+            quarry
+                .supported_operations
+                .iter()
+                .any(|op| op.as_str() == "mine_stone")
+        );
+        assert!(
+            farm.supported_operations
+                .iter()
+                .any(|op| op.as_str() == "grow_prispods")
+        );
+        crate::data_import::ron::export_buildings_to_ron(
+            std::path::Path::new(DEV_BUILDING_CATALOG_RON_PATH),
+            categories.definitions(),
+            buildings.definitions(),
+        )
+        .expect("catalog ron export");
     }
 }

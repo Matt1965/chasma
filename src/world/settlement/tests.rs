@@ -2,16 +2,18 @@
 
 use bevy::prelude::{Quat, Vec3};
 
+use super::SettlementKind;
 use super::{
     SettlementId, SettlementOwnership, SettlementRecord, SettlementTreasuryRecord,
-    TreasuryAccessPolicy, create_settlement_with_treasury, deposit_gold,
+    TreasuryAccessPolicy, TreasuryError, create_settlement, create_settlement_with_treasury,
+    deposit_gold,
 };
 use crate::world::building::BuildingInteractionProfileCatalog;
 use crate::world::{
     Affiliation, BuildingCatalog, BuildingOwnership, BuildingSource, ChunkCoord, ChunkData,
     ChunkLayout, Heightfield, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog,
     ItemCategoryCatalog, LocalPosition, UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource,
-    WorldData, WorldPosition, count_physical_gold, create_building, create_building_with_inventory,
+    WorldData, WorldPosition, create_building, create_building_with_inventory,
     create_unit_with_inventory, physical_gold_item_id, place_stack_first_fit,
     starter_building_definitions, starter_inventory_profile_definitions,
     starter_item_category_definitions, starter_item_definitions, starter_unit_definitions,
@@ -124,17 +126,10 @@ fn treasury_fixture() -> TreasuryFixture {
 }
 
 #[test]
-fn deposit_success_conserves_total_wealth() {
+fn deposit_requires_linked_treasury_building_interior() {
     let fixture = treasury_fixture();
     let mut world = fixture.world;
-    let before_physical =
-        count_physical_gold(world.inventory_store().get(fixture.inventory_id).unwrap());
-    let before_treasury = world
-        .settlement_store()
-        .get_treasury(fixture.treasury_id)
-        .unwrap()
-        .balance_gold;
-    let report = deposit_gold(
+    let err = deposit_gold(
         &mut world,
         &fixture.building_catalog,
         &fixture.interaction_catalog,
@@ -146,21 +141,62 @@ fn deposit_success_conserves_total_wealth() {
         TreasuryAccessPolicy::OwnerOnly,
         1,
     )
+    .unwrap_err();
+    assert!(matches!(err, TreasuryError::WrongSpace));
+}
+
+#[test]
+fn anchor_only_settlement_has_no_treasury_deposit_building() {
+    let categories =
+        ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
+    let items = ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+    let profiles =
+        InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions()).unwrap();
+    let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+    let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+    let mut world = test_world();
+    let unit = create_unit_with_inventory(
+        &unit_catalog,
+        &mut world,
+        &UnitDefinitionId::new("bandit"),
+        WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::new(1.0, 0.0, 1.0)),
+        ),
+        UnitSource::Authored,
+        UnitOwnership::with_affiliation(Affiliation::Player),
+        &ctx,
+    )
     .unwrap();
-    assert_eq!(report.deposited_gold, 8);
-    let after_physical =
-        count_physical_gold(world.inventory_store().get(fixture.inventory_id).unwrap());
-    let after_treasury = world
-        .settlement_store()
-        .get_treasury(fixture.treasury_id)
-        .unwrap()
-        .balance_gold;
-    assert_eq!(before_physical - after_physical, 8);
-    assert_eq!(after_treasury - before_treasury, 8);
-    assert_eq!(
-        u64::from(before_physical) + before_treasury,
-        u64::from(after_physical) + after_treasury
-    );
+    let inventory_id = unit.inventory_id.unwrap();
+    let report = create_settlement(
+        &mut world,
+        WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::new(10.0, 0.0, 10.0)),
+        ),
+        "Anchor Only",
+        SettlementOwnership::player_default(),
+        SettlementKind::Town,
+        None,
+        None,
+        0,
+    )
+    .unwrap();
+    let err = deposit_gold(
+        &mut world,
+        &BuildingCatalog::default(),
+        &BuildingInteractionProfileCatalog::default(),
+        &ctx,
+        unit.id,
+        inventory_id,
+        report.treasury_id,
+        1,
+        TreasuryAccessPolicy::OwnerOnly,
+        1,
+    )
+    .unwrap_err();
+    assert!(matches!(err, TreasuryError::BuildingNotFound(_)));
 }
 
 #[test]
@@ -190,10 +226,7 @@ fn deposit_insufficient_gold_is_no_op() {
         1,
     )
     .unwrap_err();
-    assert!(matches!(
-        err,
-        super::TreasuryError::InsufficientPhysicalGold { .. }
-    ));
+    assert!(matches!(err, TreasuryError::WrongSpace));
     assert_eq!(
         world.inventory_store().get(fixture.inventory_id).unwrap(),
         &before_inv
@@ -270,7 +303,9 @@ fn duplicate_treasury_id_rejected() {
                 id: SettlementId::new(9999),
                 display_name: "Dup".into(),
                 treasury_id: fixture.treasury_id,
-                anchor_building_id: settlement.anchor_building_id,
+                anchor_id: settlement.anchor_id,
+                center: settlement.center,
+                boundary_radius_meters: settlement.boundary_radius_meters,
                 ownership: settlement.ownership,
                 interaction_position: settlement.interaction_position,
                 created_tick: 0,

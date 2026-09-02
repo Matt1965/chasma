@@ -33,6 +33,8 @@ pub struct ItemDefinition {
     pub backpack_profile_id: Option<InventoryProfileId>,
     pub container_profile_id: Option<InventoryProfileId>,
     pub quality_profile_id: Option<String>,
+    /// Hunger restored when eaten (ADR-087). Zero for non-food items.
+    pub nutrition: u32,
 }
 
 impl ItemDefinition {
@@ -72,6 +74,7 @@ impl ItemDefinition {
             backpack_profile_id: None,
             container_profile_id: None,
             quality_profile_id: None,
+            nutrition: 0,
         }
     }
 
@@ -92,6 +95,11 @@ impl ItemDefinition {
 
     pub fn with_unique_instance_required(mut self, required: bool) -> Self {
         self.unique_instance_required = required;
+        self
+    }
+
+    pub fn with_nutrition(mut self, nutrition: u32) -> Self {
+        self.nutrition = nutrition;
         self
     }
 }

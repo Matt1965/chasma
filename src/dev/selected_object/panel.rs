@@ -8,11 +8,13 @@ use crate::dev::DevModeState;
 use crate::dev::gizmo::{DevToolState, TransformEditState};
 use crate::dev::input::DevPanelUi;
 use crate::dev::inspector::{
-    BuildingProductionRepeatModeButton, BuildingProductionRepeatModeButtonText, WorldInspectorState,
+    BuildingDevCapabilities, BuildingProductionRepeatModeButton,
+    BuildingProductionRepeatModeButtonText, WorldInspectorState,
 };
 use crate::dev::window::{DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowUi};
 use crate::ui::gameplay::primary_selected_unit;
 use crate::units::input::SelectedUnits;
+use crate::world::{BuildingCatalog, BuildingFieldRequirementCatalog, WorldData};
 
 use crate::dev::navigation_editor::{
     navigation_editor_owns_session, spawn_open_navigation_editor_button,
@@ -21,9 +23,9 @@ use crate::dev::tooltip::DevTooltipTarget;
 
 use super::building_actions_ui::DevBuildingActionsRoot;
 use super::format::{
-    EMPTY_STATE, format_building_diagnostics, format_building_navigation_strip,
-    format_building_summary, format_doodad_diagnostics, format_doodad_summary,
-    format_pile_diagnostics, format_pile_summary, format_unit_diagnostics, format_unit_summary,
+    EMPTY_STATE, format_building_diagnostics, format_building_summary, format_doodad_diagnostics,
+    format_doodad_summary, format_pile_diagnostics, format_pile_summary, format_unit_diagnostics,
+    format_unit_summary,
 };
 use super::state::SelectedObjectUiState;
 
@@ -282,6 +284,9 @@ pub fn sync_selected_object_panel(
     registry: Res<DevWindowRegistry>,
     world_selection: Res<WorldSelectionState>,
     selected_units: Res<SelectedUnits>,
+    world: Res<WorldData>,
+    building_catalog: Res<BuildingCatalog>,
+    requirement_catalog: Res<BuildingFieldRequirementCatalog>,
     inspector: Res<WorldInspectorState>,
     ui_state: Res<SelectedObjectUiState>,
     blueprint_inspection: Res<crate::dev::BlueprintInspectionState>,
@@ -424,12 +429,7 @@ pub fn sync_selected_object_panel(
         } else if let Some(snapshot) = inspector.doodad_snapshot.as_ref() {
             format_doodad_summary(snapshot, &tool_state)
         } else if let Some(snapshot) = inspector.building_snapshot.as_ref() {
-            let mut body = format_building_summary(snapshot);
-            body.push_str("\n\n");
-            body.push_str(&format_building_navigation_strip(
-                inspector.blueprint_snapshot.as_ref(),
-            ));
-            body
+            format_building_summary(snapshot)
         } else if let Some(snapshot) = inspector.unit_snapshot.as_ref() {
             let count = if world_selection.category == WorldSelectionCategory::Units {
                 selected_units.0.len().max(1)
@@ -451,11 +451,26 @@ pub fn sync_selected_object_panel(
             if let Some(snapshot) = inspector.doodad_snapshot.as_ref() {
                 format_doodad_diagnostics(snapshot, &tool_state, &edit)
             } else if let Some(snapshot) = inspector.building_snapshot.as_ref() {
-                format_building_diagnostics(
-                    snapshot,
-                    inspector.production_advanced_expanded,
-                    inspector.blueprint_snapshot.as_ref(),
-                )
+                let caps = world_selection
+                    .building_id
+                    .and_then(|building_id| {
+                        BuildingDevCapabilities::for_building(
+                            &world,
+                            &building_catalog,
+                            &requirement_catalog,
+                            building_id,
+                        )
+                    })
+                    .unwrap_or(BuildingDevCapabilities {
+                        construction: true,
+                        lifecycle: true,
+                        production: false,
+                        production_operation_selector: false,
+                        inventory: false,
+                        doors: false,
+                        terrain: false,
+                    });
+                format_building_diagnostics(snapshot, caps)
             } else if let Some(snapshot) = inspector.unit_snapshot.as_ref() {
                 let mut body = format_unit_diagnostics(snapshot);
                 let unit_filter = world_selection

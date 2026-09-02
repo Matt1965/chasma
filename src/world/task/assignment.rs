@@ -100,6 +100,11 @@ pub fn claim_building_task(
     if !unit_can_perform_task(unit_catalog, world, unit_id, task_type) {
         return Err(TaskError::UnitNotEligible(unit_id));
     }
+    if priority != TaskPriority::PlayerAssigned
+        && !super::eligibility::unit_may_autonomously_work_building(world, unit_id, building_id)
+    {
+        return Err(TaskError::UnitNotEligible(unit_id));
+    }
     if !unit_may_work_on_building(&building, unit.ownership()) {
         return Err(TaskError::Unauthorized {
             unit_id,

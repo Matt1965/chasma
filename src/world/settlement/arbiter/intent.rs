@@ -73,8 +73,12 @@ pub struct SettlementIntent {
     /// Arbitration priority (higher = more important). Distinct from SA3 candidate score.
     pub priority: f32,
     pub desired_persistence: IntentPersistence,
-    /// Human-readable why this was selected.
+    /// Human-readable why this was selected (from arbitration breakdown).
     pub reasoning: String,
+    /// SA3 quality explanation from the scorer.
+    pub quality_explanation: String,
+    /// SA4 arbitration breakdown used to compute `priority`.
+    pub arbitration: super::scoring::ArbitrationScoreBreakdown,
     pub diagnostics: Vec<String>,
     /// Future AI / faction seam (opaque key/value).
     pub ai_seams: Vec<(String, String)>,
@@ -115,6 +119,7 @@ pub struct RejectedIntentCandidate {
     pub need_id: NeedId,
     pub candidate_score: f32,
     pub arbitration_score: f32,
+    pub arbitration: super::scoring::ArbitrationScoreBreakdown,
     pub reason: IntentRejectionReason,
 }
 

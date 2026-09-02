@@ -58,12 +58,12 @@ pub fn starter_response_definitions() -> Vec<ResponseDefinition> {
             [CapabilityRequirement::Always],
         )
         .with_ai_tags(["construction", "food"]),
-        // Construction — production path for materials (capability = operation, not building name).
+        // Materials — production path for construction-material stock (not construction backlog).
         ResponseDefinition::new(
             "increase_construction_materials",
             "Increase Construction Materials",
-            "Enable stone-extraction operations that supply construction.",
-            [NeedId::new("construction")],
+            "Enable stone-extraction operations that supply construction materials.",
+            [NeedId::new("materials")],
             ResponseType::IncreaseProduction,
             ExpectedEffect::new(0.75, 25.0),
             12,

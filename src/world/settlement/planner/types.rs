@@ -57,7 +57,11 @@ impl ProductionPriorityCategory {
     }
 }
 
-/// Authored settlement stock goal — desired inventory level for one item (EP9).
+/// Authored settlement stock goal — planner configuration for graph demand simulation (EP9).
+///
+/// Phase 8: StockGoals no longer autonomously enable production policy each tick.
+/// Demand authority is SettlementIntent; stock goals inform `replan_settlement_production`
+/// diagnostics and may be derived from intent in future tooling — not a second AI brain.
 #[derive(Debug, Clone, PartialEq, Eq, Reflect, Serialize, Deserialize)]
 pub struct StockGoal {
     pub item_id: ItemDefinitionId,

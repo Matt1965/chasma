@@ -22,6 +22,7 @@ mod load_tests;
 mod mapping;
 mod modifier;
 mod overlay;
+mod package_incremental_tests;
 mod query;
 mod region;
 mod sample;
@@ -34,11 +35,12 @@ mod stress_tests;
 #[cfg(test)]
 mod tf2_tests;
 mod tile;
+mod water_distribution_tests;
 
 pub use asset::{
     TERRAIN_FIELD_MANIFEST_VERSION, TERRAIN_FIELD_TILE_VERSION, TerrainFieldManifest,
     TerrainFieldManifestConfig, TerrainFieldManifestEntry, TerrainFieldTileFile, decode_manifest,
-    decode_tile, tile_path_for_chunk,
+    decode_tile, package_manifest_source_version, tile_path_for_chunk,
 };
 pub use bake::{
     BiomeDependencyRef, BuildDependencies, FieldBuildReport, PackageReport, TerrainFieldStatistics,

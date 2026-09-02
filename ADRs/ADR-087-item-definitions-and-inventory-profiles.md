@@ -35,7 +35,17 @@ records, transfers, UI grids, or treasury behavior.
 - Physical gold uses the `currency` category.
 - Category IDs are stable machine identifiers — not derived from display names.
 
-### Inventory profiles
+### Nutrition (food value)
+
+Food-category items carry an authored **nutrition** integer: hunger restored when eaten, and the
+unit of settlement food supply (ADR-117). Examples of scale (tuning, not architecture): raw potato
+10, Prispod 25, cooked meat 80, steak and potatoes 200.
+
+- Default `0` for non-food items.
+- This is **not** `Base Value` and not a generic item-value framework.
+- Counting food-category stacks is not an adequate food reserve.
+
+## Inventory profiles
 
 - [`InventoryProfileDefinition`] describes fixed-width × fixed-height container capacity.
 - Units and buildings optionally reference `inventory_profile_id`; blank means no inventory.
@@ -72,7 +82,7 @@ Dev builds import Excel sheets (`Item Categories`, `Items`, `Inventory Profiles`
 
 **Item Categories:** Category ID, Name, Enabled; optional Description, Sort Priority.
 
-**Items:** Item ID, Name, Category, Width, Height, Stackable, Max Stack, Mass Grams, Enabled; optional Description, Render Key, Icon Key, Base Value, Tags, Unique Instance Required.
+**Items:** Item ID, Name, Category, Width, Height, Stackable, Max Stack, Mass Grams, Enabled; optional Description, Render Key, Icon Key, Base Value, Tags, Unique Instance Required, **Nutrition** (food value; default 0).
 
 **Inventory Profiles:** Inventory Profile ID, Name, Grid Width, Grid Height, Enabled; optional Reference Weight Grams, Global Stack Cap, Access Type.
 
@@ -90,8 +100,9 @@ Dev builds import Excel sheets (`Item Categories`, `Items`, `Inventory Profiles`
 - I2 implements authoritative `InventoryRecord` storage — see ADR-088.
 - Unit/building authoring can reserve inventory capacity through data.
 - Dev mode exposes a read-only Items browser (definitions + profiles).
+- Food items later gain authored `nutrition` (ADR-117 / ADR-134); I1 did not originally include it.
 
 ## References
 
-- ADR-073, ADR-027, ADR-044, ADR-088
+- ADR-073, ADR-027, ADR-044, ADR-088, ADR-117, ADR-134
 - DESIGN.md — inventory and equipment

@@ -170,10 +170,14 @@ fn validate_settlement_links(world: &WorldData) -> Vec<String> {
             errors.push(format!("missing settlement {settlement_id:?}"));
             continue;
         };
-        if world.get_building(settlement.anchor_building_id).is_none() {
+        if world
+            .settlement_anchor_store()
+            .get(settlement.anchor_id)
+            .is_none()
+        {
             errors.push(format!(
-                "settlement {settlement_id:?} anchor building {:?} missing",
-                settlement.anchor_building_id
+                "settlement {settlement_id:?} anchor {:?} missing",
+                settlement.anchor_id
             ));
         }
         let Some(treasury_id) = world

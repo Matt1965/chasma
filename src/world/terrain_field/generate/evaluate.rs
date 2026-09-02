@@ -208,24 +208,67 @@ fn lowland_water(
     let channels = ridged_01(seed.wrapping_add(40), x, z, aquifer_scale * 0.55);
     let wet_signal = (aquifer * 0.52 + channels * 0.48) * terrain_capacity;
 
-    Ok(quantize_water_contrast(wet_signal, lowland_bias))
+    Ok(remap_water_response(wet_signal, lowland_bias))
 }
 
-/// Push moisture toward hard dry (0%) or saturated wet (80–100%).
-fn quantize_water_contrast(signal: f32, lowland_bias: f32) -> f32 {
-    let dry_cutoff = (0.20 - lowland_bias * 0.40).clamp(0.06, 0.18);
-    let wet_cutoff = (0.46 - lowland_bias * 0.12).clamp(0.32, 0.48);
-
-    if signal < dry_cutoff {
+/// Spread wet_signal across the full moisture range while preserving a hard dry floor.
+fn remap_water_response(signal: f32, lowland_bias: f32) -> f32 {
+    let dry_floor = (0.12 - lowland_bias * 0.20).clamp(0.05, 0.11);
+    if signal <= dry_floor {
         return 0.0;
     }
-    if signal >= wet_cutoff {
-        let t = ((signal - wet_cutoff) / (1.0 - wet_cutoff)).clamp(0.0, 1.0);
-        return 0.80 + t.powf(0.50) * 0.20;
+
+    // Calibrated to observed main-world wet_signal (~0.10–0.38 on collectable lowland).
+    let wet_ceiling = (0.34 - lowland_bias * 0.04).clamp(0.28, 0.34);
+    let span = (wet_ceiling - dry_floor).max(1e-4);
+    let t = ((signal - dry_floor) / span).clamp(0.0, 1.0);
+    let body = remap_water_tier(t);
+
+    if signal <= wet_ceiling {
+        return body;
     }
 
-    let t = (signal - dry_cutoff) / (wet_cutoff - dry_cutoff);
-    (t.powf(1.6) * 0.24).clamp(0.0, 1.0)
+    let tail_span = (0.50 - wet_ceiling).max(1e-4);
+    let tail = ((signal - wet_ceiling) / tail_span).clamp(0.0, 1.0);
+    let saturated = 0.80 + tail.powf(0.60) * 0.20;
+    let blend = (tail * 2.0).clamp(0.0, 1.0);
+    lerp_water(body, saturated, blend)
+}
+
+fn remap_water_tier(t: f32) -> f32 {
+    const KNOTS: &[(f32, f32)] = &[
+        (0.00, 0.01),
+        (0.18, 0.04),
+        (0.32, 0.08),
+        (0.42, 0.10),
+        (0.55, 0.16),
+        (0.68, 0.24),
+        (0.78, 0.34),
+        (0.86, 0.46),
+        (0.92, 0.58),
+        (0.97, 0.70),
+        (1.00, 0.80),
+    ];
+    piecewise_linear(t, KNOTS)
+}
+
+fn piecewise_linear(x: f32, knots: &[(f32, f32)]) -> f32 {
+    if x <= knots[0].0 {
+        return knots[0].1;
+    }
+    for window in knots.windows(2) {
+        let (x0, y0) = window[0];
+        let (x1, y1) = window[1];
+        if x <= x1 {
+            let u = (x - x0) / (x1 - x0);
+            return y0 + u * (y1 - y0);
+        }
+    }
+    knots.last().map(|(_, y)| *y).unwrap_or(0.0)
+}
+
+fn lerp_water(a: f32, b: f32, t: f32) -> f32 {
+    a + (b - a) * t
 }
 
 fn copper_pockets(
@@ -403,11 +446,13 @@ mod tests {
     }
 
     #[test]
-    fn water_contrast_snaps_to_extremes() {
-        assert_eq!(quantize_water_contrast(0.05, 0.02), 0.0);
-        assert!(quantize_water_contrast(0.70, 0.02) >= 0.80);
-        let mid = quantize_water_contrast(0.30, 0.02);
-        assert!(mid > 0.0 && mid < 0.30);
+    fn water_response_preserves_dry_floor_and_reaches_rich_tail() {
+        assert_eq!(remap_water_response(0.05, 0.02), 0.0);
+        assert!(remap_water_response(0.40, 0.02) >= 0.80);
+        let mid = remap_water_response(0.22, 0.02);
+        assert!(mid > 0.05 && mid < 0.20, "mid was {mid}");
+        let good = remap_water_response(0.30, 0.02);
+        assert!(good >= 0.20 && good <= 0.55, "good was {good}");
     }
 
     #[test]

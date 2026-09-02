@@ -78,6 +78,23 @@ pub struct BuildingInspectorSnapshot {
     pub inventory_bindings_summary: Option<String>,
     pub hauling_requests_summary: Option<String>,
     pub planner_summary: Option<String>,
+    pub settlement_membership: String,
+    /// Human-readable inventory lines for the top-level Diagnostics panel.
+    pub diagnostics_inventory_lines: Vec<String>,
+    /// Human-readable terrain field lines for Diagnostics.
+    pub diagnostics_terrain_lines: Vec<String>,
+    /// Production validation/runtime error for Diagnostics (omit when valid).
+    pub diagnostics_production_error: Option<String>,
+    /// Inventory binding validation error for Diagnostics (omit when valid).
+    pub diagnostics_inventory_error: Option<String>,
+    /// Selected operation display name for Diagnostics.
+    pub diagnostics_operation_display: Option<String>,
+    /// Supported operations display names when multiple operations matter.
+    pub diagnostics_supported_operations_display: Option<String>,
+    /// Overall terrain efficiency display, e.g. "63%".
+    pub diagnostics_terrain_efficiency: Option<String>,
+    /// Limiting terrain field label, e.g. "Water".
+    pub diagnostics_terrain_limiting: Option<String>,
 }
 
 /// Read-only navigation blueprint inspection payload (NV1.2.5).
@@ -133,6 +150,11 @@ pub struct UnitInspectorSnapshot {
     pub display_floor_label: String,
     pub inventory_summary: Option<String>,
     pub affiliation: String,
+    pub settlement_membership: String,
+    pub nutrition_current: Option<f32>,
+    pub nutrition_max: Option<f32>,
+    pub hunger_stage: Option<String>,
+    pub self_maintenance_label: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]

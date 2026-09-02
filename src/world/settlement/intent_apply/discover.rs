@@ -3,7 +3,6 @@
 //! Uses authored `supported_operations` / capability requirements — never building names.
 
 use crate::world::building::catalog::BuildingCatalog;
-use crate::world::building::operation::ControlSource;
 use crate::world::operation::OperationDefinitionId;
 use crate::world::settlement::SettlementId;
 use crate::world::settlement::response::{CapabilityRequirement, ResponseDefinition};
@@ -28,9 +27,9 @@ pub fn primary_operation_requirement(
     None
 }
 
-/// Find complete, claimable settlement buildings supporting `operation_id`.
+/// Find complete settlement buildings supporting `operation_id`.
 ///
-/// Skips player-reclaimed buildings (`PlayerControlled && planner_managed`).
+/// Player-controlled filtering happens at SA5 policy apply (ADR-120 Phase 8).
 pub fn discover_capable_buildings(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
@@ -52,15 +51,6 @@ pub fn discover_capable_buildings(
             continue;
         };
         if !definition.supports_operation(operation_id) {
-            continue;
-        }
-        let policy = world
-            .building_production_store()
-            .get_policy(building_id)
-            .cloned()
-            .unwrap_or_default();
-        if policy.control_source == ControlSource::PlayerControlled && policy.planner_managed {
-            // Player reclaimed a previously AI-managed building.
             continue;
         }
         found.push(CapableBuilding {

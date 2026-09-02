@@ -5,6 +5,7 @@ use super::definition::ItemCategoryDefinition;
 pub fn starter_definitions() -> Vec<ItemCategoryDefinition> {
     vec![
         category("raw_material", "Raw Material", 10),
+        category("construction_material", "Construction Material", 15),
         category("food", "Food", 20),
         category("weapon", "Weapon", 30),
         category("armor", "Armor", 40),

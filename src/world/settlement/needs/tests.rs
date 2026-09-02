@@ -9,7 +9,7 @@ use crate::world::settlement::state::{
     NeedCategory, NeedTarget, SettlementKind, SettlementModifier, SettlementModifierSource,
     SettlementState,
 };
-use crate::world::{BuildingCatalog, ChunkLayout, InventoryProfileCatalog, WorldData};
+use crate::world::{BuildingCatalog, ChunkLayout, InventoryProfileCatalog, UnitCatalog, WorldData};
 
 fn layout() -> ChunkLayout {
     ChunkLayout {
@@ -24,6 +24,7 @@ fn catalogs() -> (
     ItemCatalog,
     ItemCategoryCatalog,
     InventoryProfileCatalog,
+    UnitCatalog,
 ) {
     (
         NeedCatalog::default(),
@@ -31,6 +32,7 @@ fn catalogs() -> (
         ItemCatalog::default(),
         ItemCategoryCatalog::default(),
         InventoryProfileCatalog::default(),
+        UnitCatalog::default(),
     )
 }
 
@@ -43,12 +45,13 @@ fn world_with_settlement(id: SettlementId) -> WorldData {
 }
 
 #[test]
-fn starter_catalog_has_seven_unique_needs() {
+fn starter_catalog_has_eight_unique_needs() {
     let catalog = NeedCatalog::default();
-    assert_eq!(catalog.len(), 7);
+    assert_eq!(catalog.len(), 8);
     assert!(validate_need_catalog(&catalog).is_empty());
     for id in [
         "food",
+        "materials",
         "construction",
         "housing",
         "defense",
@@ -72,7 +75,7 @@ fn duplicate_need_id_rejected() {
 fn food_pressure_from_target_with_empty_stock() {
     let id = SettlementId::new(1);
     let mut world = world_with_settlement(id);
-    let (need_catalog, buildings, items, categories, profiles) = catalogs();
+    let (need_catalog, buildings, items, categories, profiles, units) = catalogs();
     let inventory_ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
 
     evaluate_settlement_needs_now(
@@ -80,6 +83,7 @@ fn food_pressure_from_target_with_empty_stock() {
         &need_catalog,
         &buildings,
         &items,
+        &units,
         &inventory_ctx,
         &EmergencyCatalog::default(),
         id,
@@ -99,7 +103,7 @@ fn food_pressure_from_target_with_empty_stock() {
 fn evaluation_is_deterministic() {
     let id = SettlementId::new(2);
     let mut world = world_with_settlement(id);
-    let (need_catalog, buildings, items, categories, profiles) = catalogs();
+    let (need_catalog, buildings, items, categories, profiles, units) = catalogs();
     let inventory_ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
 
     evaluate_settlement_needs_now(
@@ -107,6 +111,7 @@ fn evaluation_is_deterministic() {
         &need_catalog,
         &buildings,
         &items,
+        &units,
         &inventory_ctx,
         &EmergencyCatalog::default(),
         id,
@@ -119,6 +124,7 @@ fn evaluation_is_deterministic() {
         &need_catalog,
         &buildings,
         &items,
+        &units,
         &inventory_ctx,
         &EmergencyCatalog::default(),
         id,
@@ -132,7 +138,7 @@ fn evaluation_is_deterministic() {
 fn dirty_evaluation_reruns_and_clears_need_dirty() {
     let id = SettlementId::new(3);
     let mut world = world_with_settlement(id);
-    let (need_catalog, buildings, items, categories, profiles) = catalogs();
+    let (need_catalog, buildings, items, categories, profiles, units) = catalogs();
     let inventory_ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
 
     let n = step_settlement_need_evaluation(
@@ -140,6 +146,7 @@ fn dirty_evaluation_reruns_and_clears_need_dirty() {
         &need_catalog,
         &buildings,
         &items,
+        &units,
         &inventory_ctx,
         &EmergencyCatalog::default(),
         1,
@@ -153,6 +160,7 @@ fn dirty_evaluation_reruns_and_clears_need_dirty() {
         &need_catalog,
         &buildings,
         &items,
+        &units,
         &inventory_ctx,
         &EmergencyCatalog::default(),
         2,
@@ -165,6 +173,7 @@ fn dirty_evaluation_reruns_and_clears_need_dirty() {
         &need_catalog,
         &buildings,
         &items,
+        &units,
         &inventory_ctx,
         &EmergencyCatalog::default(),
         3,
@@ -185,7 +194,7 @@ fn dirty_evaluation_reruns_and_clears_need_dirty() {
 fn cadence_triggers_without_dirty() {
     let id = SettlementId::new(4);
     let mut world = world_with_settlement(id);
-    let (need_catalog, buildings, items, categories, profiles) = catalogs();
+    let (need_catalog, buildings, items, categories, profiles, units) = catalogs();
     let inventory_ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
 
     step_settlement_need_evaluation(
@@ -193,6 +202,7 @@ fn cadence_triggers_without_dirty() {
         &need_catalog,
         &buildings,
         &items,
+        &units,
         &inventory_ctx,
         &EmergencyCatalog::default(),
         0,
@@ -202,6 +212,7 @@ fn cadence_triggers_without_dirty() {
         &need_catalog,
         &buildings,
         &items,
+        &units,
         &inventory_ctx,
         &EmergencyCatalog::default(),
         NEED_EVAL_CADENCE_TICKS,
@@ -213,7 +224,7 @@ fn cadence_triggers_without_dirty() {
 fn snapshots_rebuild_after_save_load_clear() {
     let id = SettlementId::new(5);
     let mut world = world_with_settlement(id);
-    let (need_catalog, buildings, items, categories, profiles) = catalogs();
+    let (need_catalog, buildings, items, categories, profiles, units) = catalogs();
     let inventory_ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
 
     evaluate_settlement_needs_now(
@@ -221,6 +232,7 @@ fn snapshots_rebuild_after_save_load_clear() {
         &need_catalog,
         &buildings,
         &items,
+        &units,
         &inventory_ctx,
         &EmergencyCatalog::default(),
         id,
@@ -238,6 +250,7 @@ fn snapshots_rebuild_after_save_load_clear() {
         &need_catalog,
         &buildings,
         &items,
+        &units,
         &inventory_ctx,
         &EmergencyCatalog::default(),
         id,
@@ -278,13 +291,14 @@ fn research_stub_desired_zero_has_zero_pressure() {
             .need_targets
             .push(NeedTarget::new(NeedCategory::Research, 0, 0.1));
     }
-    let (need_catalog, buildings, items, categories, profiles) = catalogs();
+    let (need_catalog, buildings, items, categories, profiles, units) = catalogs();
     let inventory_ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
     evaluate_settlement_needs_now(
         &mut world,
         &need_catalog,
         &buildings,
         &items,
+        &units,
         &inventory_ctx,
         &EmergencyCatalog::default(),
         id,
@@ -303,13 +317,14 @@ fn research_stub_desired_zero_has_zero_pressure() {
 fn mark_settlement_state_dirty_marks_need_store() {
     let id = SettlementId::new(7);
     let mut world = world_with_settlement(id);
-    let (need_catalog, buildings, items, categories, profiles) = catalogs();
+    let (need_catalog, buildings, items, categories, profiles, units) = catalogs();
     let inventory_ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
     evaluate_settlement_needs_now(
         &mut world,
         &need_catalog,
         &buildings,
         &items,
+        &units,
         &inventory_ctx,
         &EmergencyCatalog::default(),
         id,

@@ -262,7 +262,6 @@ pub fn build_and_package_field(
     let package = package_field_layers(
         output_dir,
         world_id,
-        &report.source_version,
         extent,
         config,
         &[(profile.output_field_id.clone(), layer)],
@@ -280,20 +279,11 @@ pub fn build_and_package_all_enabled(
 ) -> Result<(Vec<FieldBuildReport>, PackageReport), TerrainFieldSourceError> {
     let mut layers = Vec::new();
     let mut reports = Vec::new();
-    let mut last_source_version = String::new();
     for profile in profiles.iter().filter(|p| p.enabled) {
         let (layer, report) = build_field_layer_from_profile(profile, extent, config, deps)?;
-        last_source_version = report.source_version.clone();
         layers.push((profile.output_field_id.clone(), layer));
         reports.push(report);
     }
-    let package = package_field_layers(
-        output_dir,
-        world_id,
-        &last_source_version,
-        extent,
-        config,
-        &layers,
-    )?;
+    let package = package_field_layers(output_dir, world_id, extent, config, &layers)?;
     Ok((reports, package))
 }

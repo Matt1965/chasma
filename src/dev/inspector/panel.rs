@@ -32,9 +32,17 @@ pub(crate) fn format_unit_snapshot_full(s: &UnitInspectorSnapshot) -> String {
     );
 
     out.push_str(&format!(
-        "Inventory: {}\n",
+        "Inventory: {}\nSettlement: {}\n",
         s.inventory_summary.as_deref().unwrap_or("none"),
+        s.settlement_membership,
     ));
+    if let (Some(current), Some(max)) = (s.nutrition_current, s.nutrition_max) {
+        out.push_str(&format!(
+            "Nutrition: {current:.1}/{max:.1}  hunger={}  self_maintenance={}\n",
+            s.hunger_stage.as_deref().unwrap_or("-"),
+            s.self_maintenance_label.as_deref().unwrap_or("-"),
+        ));
+    }
 
     out.push_str(&format!(
         "\nCombat detail: weapon={} target={} phase={}\n",
@@ -194,6 +202,7 @@ pub(crate) fn format_building_snapshot_full(
         "Building #{}  {}  def={}\n\
          state={}  progress={:.0}%  operational={}\n\
          hp={}/{}  affiliation={}\n\
+         Settlement: {}\n\
          Chunk ({},{})\n\
          {}\n\
          bindings: {}\n\
@@ -230,6 +239,7 @@ pub(crate) fn format_building_snapshot_full(
         s.current_hp,
         s.max_hp,
         s.affiliation,
+        s.settlement_membership,
         s.chunk.x,
         s.chunk.z,
         s.inventory_summary.as_deref().unwrap_or("no inventory"),

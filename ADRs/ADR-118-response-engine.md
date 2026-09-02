@@ -62,8 +62,15 @@ reason, priority score, supporting buildings, and diagnostics. Results live in
 score = pressure * relief * 100 - estimated_cost + priority_modifier + policy_bonus
 ```
 
-Unavailable candidates score `0`. Future modifiers can extend `score_candidate` without changing
-discovery.
+Unavailable candidates always score `0`. A response is **unavailable** when its downstream execution
+path is not live — not merely when it would score poorly. Example: `construct_food_building` requires
+autonomous construction execution, which is deferred; it must **not** enter arbitration as a viable
+option. “IncreaseProduction will probably score higher” is not an availability gate.
+
+When that execution path is implemented, the same authored response becomes available without a
+scenario-specific exception. Trade stubs without a trade runtime are likewise unavailable.
+
+This is truthful capability discovery, not scripting.
 
 ### No execution
 
@@ -142,6 +149,9 @@ belongs to selection in SA4.
 - Unavailable candidates score `0`.
 - Discovery remains catalog lookup by `NeedId`; scoring changes do not touch discovery.
 - Candidates remain transient and unpersisted.
+- **Availability is execution-path truth.** Responses whose apply/execute path is not implemented
+  (autonomous `ConstructBuilding`, trade without a trade runtime, …) are `Unavailable` with a blocking
+  reason. SA4 must not select them as if they were viable.
 
 ### Component scale
 

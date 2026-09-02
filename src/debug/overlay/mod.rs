@@ -15,6 +15,7 @@ mod path_overlay;
 mod relationship_links_overlay;
 mod runtime_entrance_overlay;
 mod selection_overlay;
+mod settlement_boundary_overlay;
 mod steering_overlay;
 
 pub use authored_overlay_trace::{AuthoredBlueprintOverlayTrace, blueprint_topology_counts};
@@ -35,6 +36,8 @@ pub use relationship_links_overlay::{
 };
 pub use runtime_entrance_overlay::draw_runtime_entrance_overlay;
 pub use selection_overlay::draw_selection_debug_overlay;
+#[cfg(feature = "dev")]
+pub use settlement_boundary_overlay::draw_settlement_boundary_overlay;
 pub use steering_overlay::draw_steering_debug_overlay;
 
 use bevy::prelude::*;

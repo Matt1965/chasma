@@ -12,6 +12,7 @@ pub enum TreasuryError {
     BuildingNotFound(BuildingId),
     BuildingNotSettlementCapable(BuildingId),
     SettlementAlreadyExists(BuildingId),
+    OverlappingPlacement,
     DuplicateTreasuryId(TreasuryId),
     DuplicateSettlementId(SettlementId),
     BuildingAlreadyLinked(BuildingId),
@@ -46,6 +47,9 @@ impl fmt::Display for TreasuryError {
             }
             Self::SettlementAlreadyExists(id) => {
                 write!(f, "building {id:?} already has a settlement")
+            }
+            Self::OverlappingPlacement => {
+                write!(f, "settlement placement overlaps an existing boundary")
             }
             Self::DuplicateTreasuryId(id) => write!(f, "duplicate treasury id {id:?}"),
             Self::DuplicateSettlementId(id) => write!(f, "duplicate settlement id {id:?}"),

@@ -656,6 +656,76 @@ fn production_completion_can_trigger_output_haul_route() {
 }
 
 #[test]
+fn farm_generates_prispod_output_haul_request() {
+    let mut world = flat_world();
+    let categories = BuildingCategoryCatalog::default();
+    let building_catalog =
+        BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
+    let ownership = BuildingOwnership::with_affiliation(Affiliation::Player);
+    let ctx = test_inventory_ctx();
+    let chest = create_building_with_inventory(
+        &building_catalog,
+        &mut world,
+        &BuildingDefinitionId::new("storage_chest"),
+        pos(50.0, 50.0),
+        Quat::IDENTITY,
+        BuildingSource::Authored,
+        ownership,
+        None,
+        ctx,
+    )
+    .unwrap();
+    let farm = create_building_with_inventory(
+        &building_catalog,
+        &mut world,
+        &BuildingDefinitionId::new("prispod_farm"),
+        pos(70.0, 70.0),
+        Quat::IDENTITY,
+        BuildingSource::Authored,
+        ownership,
+        None,
+        ctx,
+    )
+    .unwrap();
+    let farm_output = world
+        .building_inventory_binding_store()
+        .resolve_inventory(farm.id, &BuildingInventoryBindingId::new("primary_output"))
+        .expect("farm output");
+    let (inventory_store, instance_store) = world.inventory_runtime_mut();
+    place_stack_first_fit(
+        inventory_store,
+        instance_store,
+        ctx,
+        farm_output,
+        ItemDefinitionId::new("prispod"),
+        5,
+    )
+    .unwrap();
+    sync_output_surplus_after_production(
+        &mut world,
+        &building_catalog,
+        farm.id,
+        &ItemDefinitionId::new("prispod"),
+        0,
+        ctx,
+    );
+    let requests: Vec<_> = world
+        .hauling_request_store()
+        .requests_for_building(farm.id)
+        .to_vec();
+    assert_eq!(requests.len(), 1);
+    let request = world.hauling_request_store().get(requests[0]).unwrap();
+    assert_eq!(request.item_id.as_str(), "prispod");
+    assert_eq!(
+        request.destination_inventory_id,
+        world
+            .building_inventory_binding_store()
+            .resolve_inventory(chest.id, &BuildingInventoryBindingId::new("primary"))
+            .expect("chest inventory")
+    );
+}
+
+#[test]
 fn cancel_request_releases_reservations() {
     let mut fixture = LogisticsFixture::new();
     let source = fixture.binding_inventory(fixture.chest_id, "primary");

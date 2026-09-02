@@ -167,6 +167,8 @@ fn create_building_impl(
         }
     }
 
+    crate::world::settlement::seed_building_settlement_at_creation(world, id, position);
+
     Ok(record)
 }
 
@@ -356,6 +358,8 @@ fn place_player_building_impl(
     }
 
     let _ = crate::world::sync_construction_tasks(world, catalog, 0);
+
+    crate::world::settlement::seed_building_settlement_at_creation(world, id, position);
 
     Ok(record)
 }

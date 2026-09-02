@@ -1,16 +1,24 @@
 //! SettlementIntent → BuildingOperationPolicy propagation (SA5).
 //!
 //! Policy-only. Never touches BuildingOperationState, tasks, logistics, or construction.
+//! EP9 recommends production paths; SA5 is the sole AI policy writer (ADR-120 Phase 8).
 
 use crate::world::building::catalog::BuildingCatalog;
-use crate::world::building::operation::{BuildingOperationPolicy, ControlSource, RepeatMode};
+use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::operation::{OperationCatalog, validate_operation_selection};
 use crate::world::settlement::SettlementId;
 use crate::world::settlement::arbiter::SettlementIntentPlan;
+use crate::world::settlement::planner::{
+    ProductionIntentRequest, SettlementProductionPlanner, demand_quantity_from_need_snapshot,
+    priority_category_for_need, recommend_production_for_intent,
+};
 use crate::world::settlement::response::{ResponseCatalog, ResponseType};
 use crate::world::{BuildingId, WorldData};
 
 use super::discover::{discover_capable_buildings, primary_operation_requirement};
+use super::policy::{
+    can_sa5_mutate_policy, sa5_apply_policy_decision, sa5_disable_unselected_ai_buildings,
+};
 use super::report::{BuildingIntentPropagationReport, BuildingPolicyAssignment, IgnoredBuilding};
 
 /// Max buildings enabled for a high-priority intent.
@@ -24,6 +32,7 @@ pub struct PropagationContext<'a> {
     pub building_catalog: &'a BuildingCatalog,
     pub operation_catalog: &'a OperationCatalog,
     pub response_catalog: &'a ResponseCatalog,
+    pub inventory_ctx: &'a InventoryCatalogCtx<'a>,
     pub settlement_id: SettlementId,
     pub intent_plan: &'a SettlementIntentPlan,
     pub simulation_tick: u64,
@@ -41,9 +50,16 @@ pub fn propagate_settlement_intent_to_buildings(
         ignored_buildings: Vec::new(),
         deferred_intents: Vec::new(),
         diagnostics: Vec::new(),
+        planner_diagnostics: Vec::new(),
     };
 
-    // Process highest-priority intents first so they win building slots on conflict.
+    let planner = ctx
+        .world
+        .production_planner_store()
+        .get(ctx.settlement_id)
+        .cloned()
+        .unwrap_or_default();
+
     let mut intents = ctx.intent_plan.intents.clone();
     intents.sort_by(|a, b| {
         b.priority
@@ -53,6 +69,7 @@ pub fn propagate_settlement_intent_to_buildings(
     });
 
     let mut claimed: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
+    let mut active_buildings: Vec<BuildingId> = Vec::new();
 
     for intent in &intents {
         let Some(definition) = ctx.response_catalog.get(&intent.chosen_response) else {
@@ -66,10 +83,28 @@ pub fn propagate_settlement_intent_to_buildings(
 
         match intent.response_type {
             ResponseType::IncreaseProduction | ResponseType::Research => {
-                apply_enable_intent(ctx, intent, definition, &mut report, &mut claimed, true);
+                apply_production_intent(
+                    ctx,
+                    intent,
+                    definition,
+                    &planner,
+                    &mut report,
+                    &mut claimed,
+                    &mut active_buildings,
+                    true,
+                );
             }
             ResponseType::DecreaseProduction => {
-                apply_enable_intent(ctx, intent, definition, &mut report, &mut claimed, false);
+                apply_production_intent(
+                    ctx,
+                    intent,
+                    definition,
+                    &planner,
+                    &mut report,
+                    &mut claimed,
+                    &mut active_buildings,
+                    false,
+                );
             }
             ResponseType::ConstructBuilding
             | ResponseType::RepairBuilding
@@ -86,21 +121,30 @@ pub fn propagate_settlement_intent_to_buildings(
         }
     }
 
+    let settlement_buildings = ctx
+        .world
+        .settlement_store()
+        .buildings_for_settlement(ctx.settlement_id);
+    sa5_disable_unselected_ai_buildings(ctx.world, &settlement_buildings, &active_buildings);
+
     report.diagnostics.push(format!(
-        "assignments={} ignored={} deferred={}",
+        "assignments={} ignored={} deferred={} active_buildings={}",
         report.assignments.len(),
         report.ignored_buildings.len(),
-        report.deferred_intents.len()
+        report.deferred_intents.len(),
+        active_buildings.len()
     ));
     report
 }
 
-fn apply_enable_intent(
+fn apply_production_intent(
     ctx: &mut PropagationContext<'_>,
     intent: &crate::world::settlement::arbiter::SettlementIntent,
     definition: &crate::world::settlement::response::ResponseDefinition,
+    planner: &SettlementProductionPlanner,
     report: &mut BuildingIntentPropagationReport,
     claimed: &mut std::collections::BTreeSet<u64>,
+    active_buildings: &mut Vec<BuildingId>,
     enable: bool,
 ) {
     let Some(operation_id) = primary_operation_requirement(definition) else {
@@ -111,21 +155,52 @@ fn apply_enable_intent(
         return;
     };
 
-    let capable = discover_capable_buildings(
+    let demand_quantity =
+        demand_quantity_from_need_snapshot(ctx.world, ctx.settlement_id, &intent.source_need);
+    let request = ProductionIntentRequest {
+        settlement_id: ctx.settlement_id,
+        need_id: intent.source_need.clone(),
+        operation_hint: operation_id.clone(),
+        demand_quantity,
+        enable,
+        priority_category: priority_category_for_need(&intent.source_need),
+        reason: format!(
+            "intent {} response `{}`",
+            intent.intent_id.as_str(),
+            intent.chosen_response.as_str()
+        ),
+    };
+
+    let (mut recommendations, planner_diag) = recommend_production_for_intent(
         ctx.world,
         ctx.building_catalog,
-        ctx.settlement_id,
-        &operation_id,
+        ctx.operation_catalog,
+        ctx.inventory_ctx,
+        planner,
+        &request,
+        ctx.simulation_tick,
     );
+    report.planner_diagnostics.push(planner_diag);
 
-    if capable.is_empty() {
-        report.diagnostics.push(format!(
-            "intent {} response `{}`: no capable buildings for operation `{}`",
-            intent.intent_id.as_str(),
-            intent.chosen_response.as_str(),
-            operation_id.as_str()
-        ));
-        return;
+    if recommendations.is_empty() && enable {
+        // Capability fallback for direct single-stage producers when graph returns nothing.
+        for capable in discover_capable_buildings(
+            ctx.world,
+            ctx.building_catalog,
+            ctx.settlement_id,
+            &operation_id,
+        ) {
+            recommendations.push(crate::world::settlement::planner::PlannerBuildingDecision {
+                building_id: capable.building_id,
+                operation_id: capable.operation_id,
+                enabled: true,
+                priority: intent_priority_to_policy(intent.priority),
+                reason: format!(
+                    "capability fallback for operation `{}`",
+                    operation_id.as_str()
+                ),
+            });
+        }
     }
 
     let max_select = if intent.priority >= HIGH_INTENT_PRIORITY {
@@ -135,117 +210,118 @@ fn apply_enable_intent(
     };
 
     let mut selected = 0usize;
-    for candidate in &capable {
-        if claimed.contains(&candidate.building_id.raw()) {
+    for decision in recommendations {
+        if claimed.contains(&decision.building_id.raw()) {
             report.ignored_buildings.push(IgnoredBuilding {
-                building_id: candidate.building_id,
+                building_id: decision.building_id,
                 response_id: intent.chosen_response.clone(),
                 reason: "already claimed by higher-priority intent".into(),
             });
             continue;
         }
 
-        if selected >= max_select {
+        if selected >= max_select && enable {
             report.ignored_buildings.push(IgnoredBuilding {
-                building_id: candidate.building_id,
+                building_id: decision.building_id,
                 response_id: intent.chosen_response.clone(),
                 reason: format!("distribution limit ({max_select}) reached"),
             });
             continue;
         }
 
-        let Some(record) = ctx.world.get_building(candidate.building_id) else {
+        let Some(record) = ctx.world.get_building(decision.building_id) else {
             report
                 .diagnostics
-                .push(format!("unknown building #{}", candidate.building_id.raw()));
+                .push(format!("unknown building #{}", decision.building_id.raw()));
             continue;
         };
         let Some(building_def) = ctx.building_catalog.get(&record.definition_id) else {
             report.diagnostics.push(format!(
                 "missing building definition for #{}",
-                candidate.building_id.raw()
+                decision.building_id.raw()
             ));
             continue;
         };
         if validate_operation_selection(
             building_def,
-            candidate.building_id,
+            decision.building_id,
             ctx.operation_catalog,
-            &operation_id,
+            &decision.operation_id,
         )
         .is_err()
         {
             report.ignored_buildings.push(IgnoredBuilding {
-                building_id: candidate.building_id,
+                building_id: decision.building_id,
                 response_id: intent.chosen_response.clone(),
-                reason: format!("invalid operation `{}`", operation_id.as_str()),
+                reason: format!("invalid operation `{}`", decision.operation_id.as_str()),
             });
             continue;
         }
 
-        // Snapshot state before policy mutation to prove we don't touch it.
+        let policy_before = ctx
+            .world
+            .building_production_store()
+            .get_policy(decision.building_id)
+            .cloned()
+            .unwrap_or_default();
+        if !can_sa5_mutate_policy(&policy_before) {
+            report.ignored_buildings.push(IgnoredBuilding {
+                building_id: decision.building_id,
+                response_id: intent.chosen_response.clone(),
+                reason: "player-controlled building".into(),
+            });
+            continue;
+        }
+
         let state_before = ctx
             .world
             .building_production_store()
-            .get_state(candidate.building_id)
+            .get_state(decision.building_id)
             .cloned();
 
-        let priority = intent_priority_to_policy(intent.priority);
-        {
-            let store = ctx.world.building_production_store_mut();
-            store.ensure_policy_for_building(
-                candidate.building_id,
-                building_def,
-                ctx.operation_catalog,
-            );
-            let policy = store.get_policy_mut(candidate.building_id);
-            apply_intent_to_policy(policy, &operation_id, enable, priority);
+        if !sa5_apply_policy_decision(
+            ctx.world,
+            ctx.building_catalog,
+            ctx.operation_catalog,
+            &decision,
+        ) {
+            report.ignored_buildings.push(IgnoredBuilding {
+                building_id: decision.building_id,
+                response_id: intent.chosen_response.clone(),
+                reason: "policy apply rejected".into(),
+            });
+            continue;
         }
 
         let state_after = ctx
             .world
             .building_production_store()
-            .get_state(candidate.building_id)
+            .get_state(decision.building_id)
             .cloned();
         if state_before != state_after {
             report.diagnostics.push(format!(
                 "ERROR: BuildingOperationState changed for #{} — propagation must be policy-only",
-                candidate.building_id.raw()
+                decision.building_id.raw()
             ));
         }
 
-        claimed.insert(candidate.building_id.raw());
-        selected += 1;
+        if decision.enabled {
+            claimed.insert(decision.building_id.raw());
+            active_buildings.push(decision.building_id);
+            selected += 1;
+        }
+
         report.assignments.push(BuildingPolicyAssignment {
-            building_id: candidate.building_id,
+            building_id: decision.building_id,
             intent_id: intent.intent_id.clone(),
             response_id: intent.chosen_response.clone(),
             need_id: intent.source_need.clone(),
-            selected_operation: Some(operation_id.clone()),
-            enabled: enable,
-            priority,
-            reason: format!(
-                "capability op=`{}` intent_pri={:.1} enable={enable}",
-                operation_id.as_str(),
-                intent.priority
-            ),
+            selected_operation: Some(decision.operation_id.clone()),
+            enabled: decision.enabled,
+            priority: decision.priority,
+            reason: decision.reason.clone(),
         });
     }
-}
-
-fn apply_intent_to_policy(
-    policy: &mut BuildingOperationPolicy,
-    operation_id: &crate::world::operation::OperationDefinitionId,
-    enable: bool,
-    priority: u8,
-) {
-    policy.planner_managed = true;
-    policy.control_source = ControlSource::AIControlled;
-    policy.enabled = enable;
-    policy.paused = false;
-    policy.selected_operation = Some(operation_id.clone());
-    policy.repeat_mode = RepeatMode::Continuous;
-    policy.priority = priority;
 }
 
 fn intent_priority_to_policy(intent_priority: f32) -> u8 {
@@ -253,11 +329,4 @@ fn intent_priority_to_policy(intent_priority: f32) -> u8 {
         return 128;
     }
     (intent_priority / 4.0).clamp(32.0, 255.0).round() as u8
-}
-
-/// Whether EP9 should leave this building's policy alone.
-pub fn building_owned_by_intent_propagation(world: &WorldData, building_id: BuildingId) -> bool {
-    world
-        .building_intent_propagation_store()
-        .is_building_assigned(building_id)
 }

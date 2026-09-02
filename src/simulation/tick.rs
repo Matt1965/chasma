@@ -122,6 +122,29 @@ pub fn run_simulation_tick(
         combat_ai_scan,
         delta_seconds,
     );
+    {
+        let inventory_ctx_hunger = crate::world::InventoryCatalogCtx::new(
+            item_catalog,
+            item_categories,
+            inventory_profiles,
+        );
+        let passability_hunger = PassabilityCatalogs {
+            doodad: doodad_catalog,
+            building: building_catalog,
+            footprint: footprint_catalog,
+        };
+        let mut hunger_ctx = crate::world::SelfMaintenanceContext {
+            world,
+            unit_catalog,
+            building_catalog,
+            interaction_catalog,
+            item_catalog,
+            inventory_ctx: &inventory_ctx_hunger,
+            passability: passability_hunger,
+            nav_config,
+        };
+        crate::world::step_unit_nutrition_decay(&mut hunger_ctx);
+    }
     let building_construction = step_all_building_construction(
         world,
         building_catalog,
@@ -157,6 +180,7 @@ pub fn run_simulation_tick(
             &need_catalog,
             building_catalog,
             item_catalog,
+            unit_catalog,
             &inventory_ctx_for_needs,
             &emergency_catalog,
             simulation_tick,
@@ -174,6 +198,7 @@ pub fn run_simulation_tick(
         // SA4: Response Arbiter — SettlementIntent only (no execution).
         let _intent = crate::world::step_settlement_response_arbitration(
             world,
+            &need_catalog,
             &response_catalog,
             simulation_tick,
         );
@@ -184,19 +209,11 @@ pub fn run_simulation_tick(
             &response_catalog,
             building_catalog,
             &operation_catalog,
+            &inventory_ctx_for_needs,
             simulation_tick,
         );
         // SA9: mark construction planning dirty when ConstructBuilding intents exist.
         crate::world::mark_construction_planning_dirty_from_intents(world);
-    }
-    if let Some(operation) = operation.as_deref() {
-        let _planner = crate::world::step_settlement_production_planners(
-            world,
-            building_catalog,
-            operation.operation_catalog,
-            operation.inventory_ctx,
-            simulation_tick,
-        );
     }
     {
         // SA9: Strategic Construction Planning — SettlementIntent → ConstructionPlan (before SA6).
@@ -235,6 +252,22 @@ pub fn run_simulation_tick(
             item_categories,
             inventory_profiles,
         );
+        let passability_hunger = PassabilityCatalogs {
+            doodad: doodad_catalog,
+            building: building_catalog,
+            footprint: footprint_catalog,
+        };
+        let mut hunger_ctx = crate::world::SelfMaintenanceContext {
+            world,
+            unit_catalog,
+            building_catalog,
+            interaction_catalog,
+            item_catalog,
+            inventory_ctx: &inventory_ctx_assign,
+            passability: passability_hunger,
+            nav_config,
+        };
+        crate::world::step_unit_self_maintenance_pre_work(&mut hunger_ctx);
         let mut assign_ctx = crate::world::WorkerAssignmentContext {
             world,
             unit_catalog,
@@ -264,6 +297,24 @@ pub fn run_simulation_tick(
         crate::world::InventoryCatalogCtx::new(item_catalog, item_categories, inventory_profiles);
     let hauling = crate::world::step_haul_worker_tasks(world, building_catalog, &inventory_ctx);
     let movement = step_all_unit_movement(world, unit_catalog, passability, delta_seconds);
+    {
+        let passability_hunger = PassabilityCatalogs {
+            doodad: doodad_catalog,
+            building: building_catalog,
+            footprint: footprint_catalog,
+        };
+        let mut hunger_ctx = crate::world::SelfMaintenanceContext {
+            world,
+            unit_catalog,
+            building_catalog,
+            interaction_catalog,
+            item_catalog,
+            inventory_ctx: &inventory_ctx,
+            passability: passability_hunger,
+            nav_config,
+        };
+        crate::world::step_unit_self_maintenance_post_movement(&mut hunger_ctx);
+    }
     SimulationTickReport {
         movement,
         command_resolve,

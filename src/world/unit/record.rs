@@ -6,11 +6,13 @@ use super::combat_state::CombatState;
 use super::id::UnitId;
 use super::metadata::UnitMetadata;
 use super::placement::UnitPlacement;
+use super::self_maintenance::{UnitNutritionState, UnitSelfMaintenanceState};
 use super::source::UnitSource;
 use super::state::UnitState;
 use super::vitals::UnitVitals;
 use crate::world::ownership::{Affiliation, OwnerId, TeamId, UnitOwnership};
 use crate::world::relationship::{FactionId, SpeciesId};
+use crate::world::settlement::SettlementId;
 
 /// One authoritative unit instance (ADR-027 U2, ADR-051 O1).
 ///
@@ -36,6 +38,10 @@ pub struct UnitRecord {
     /// Runtime-authoritative species relationship identity (ADR-132 Phase 1).
     pub species_id: SpeciesId,
     pub vitals: UnitVitals,
+    /// Individual nutrition fullness (ADR-134). Not normalized from catalog on restore.
+    pub nutrition: UnitNutritionState,
+    /// Autonomous self-maintenance activity (ADR-134).
+    pub self_maintenance: UnitSelfMaintenanceState,
     /// Authoritative navigable space (ADR-083 B6).
     pub current_space_id: crate::world::SpaceId,
     pub combat_state: CombatState,
@@ -45,6 +51,8 @@ pub struct UnitRecord {
     pub reactive_combat_target: Option<UnitId>,
     /// Centralized inventory reference when unit definition has a profile (ADR-089 I3).
     pub inventory_id: Option<crate::world::InventoryId>,
+    /// Explicit settlement membership (ADR-133 Phase 2). None = not a member.
+    pub settlement_id: Option<SettlementId>,
 }
 
 impl UnitRecord {
@@ -71,11 +79,14 @@ impl UnitRecord {
             faction_id,
             species_id,
             vitals: UnitVitals::full(max_hp),
+            nutrition: UnitNutritionState::default(),
+            self_maintenance: UnitSelfMaintenanceState::default(),
             current_space_id: crate::world::SpaceId::SURFACE,
             combat_state: CombatState::default(),
             attack_cycle: None,
             reactive_combat_target: None,
             inventory_id: None,
+            settlement_id: None,
         }
     }
 

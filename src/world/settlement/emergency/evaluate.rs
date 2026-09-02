@@ -6,6 +6,7 @@ use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::item::{ItemCatalog, ItemCategoryId};
 use crate::world::settlement::SettlementId;
 use crate::world::settlement::state::{ActiveEmergencyInstance, NeedCategory, SettlementState};
+use crate::world::{collect_settlement_accessible_stock, sum_category_nutrition};
 
 use super::catalog::EmergencyCatalog;
 use super::definition::{EmergencyDefinition, EmergencyEvaluatorKind};
@@ -234,29 +235,21 @@ fn seam_signal(state: &SettlementState, key: &str) -> f32 {
 }
 
 fn food_reserve_signal(ctx: &EmergencyEvalContext<'_>, state: &SettlementState) -> f32 {
-    let desired = state
+    let reserve = state
         .need_targets
         .iter()
         .find(|t| t.category == NeedCategory::Food)
         .map(|t| t.target_value as f32)
         .unwrap_or(100.0)
         .max(1.0);
-    let stock = crate::world::settlement::aggregate_settlement_stock(
+    let stock = collect_settlement_accessible_stock(
         ctx.world,
         ctx.building_catalog,
         ctx.settlement_id,
         &[],
-        ctx.inventory_ctx,
     );
     let food_category = ItemCategoryId::new("food");
-    let mut total = 0u32;
-    for (item_id, qty) in &stock {
-        if let Some(def) = ctx.item_catalog.get(item_id) {
-            if def.category_id == food_category {
-                total = total.saturating_add(*qty);
-            }
-        }
-    }
-    let ratio = (total as f32) / desired;
-    (1.0 - ratio).clamp(0.0, 1.0)
+    let nutrition = sum_category_nutrition(&stock, ctx.item_catalog, &food_category);
+    let ratio = (nutrition.min(u64::from(f32::MAX as u32)) as f32) / reserve;
+    (1.0_f32 - ratio).clamp(0.0, 1.0)
 }

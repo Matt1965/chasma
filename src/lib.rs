@@ -21,6 +21,7 @@ pub mod logging;
 pub mod menu;
 pub mod player;
 pub mod projectiles;
+pub mod settlement_anchors;
 pub mod simulation;
 pub mod terrain;
 pub mod ui;

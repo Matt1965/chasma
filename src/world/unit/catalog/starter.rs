@@ -60,7 +60,8 @@ mod fixtures {
                 UnitRenderKey::reserved("bandit"),
             )
             .with_work_capabilities(UnitWorkCapabilities::builder(1.0))
-            .with_inventory_profile_id(InventoryProfileId::new("unit_backpack_standard")),
+            .with_inventory_profile_id(InventoryProfileId::new("unit_backpack_standard"))
+            .with_nutrition_consumption_per_tick(1.0),
             UnitDefinition::new(
                 UnitDefinitionId::new("deer"),
                 "Deer",

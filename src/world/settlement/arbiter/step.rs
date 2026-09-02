@@ -2,6 +2,7 @@
 
 use crate::world::WorldData;
 use crate::world::settlement::SettlementId;
+use crate::world::settlement::needs::NeedCatalog;
 use crate::world::settlement::response::ResponseCatalog;
 
 use super::arbitrate::{ArbitrationContext, arbitrate_settlement_intent};
@@ -14,6 +15,7 @@ pub const INTENT_ARBITRATION_CADENCE_TICKS: u64 = 30;
 /// Never mutates buildings, tasks, inventories, or BuildingOperationPolicy.
 pub fn step_settlement_response_arbitration(
     world: &mut WorldData,
+    need_catalog: &NeedCatalog,
     response_catalog: &ResponseCatalog,
     simulation_tick: u64,
 ) -> u32 {
@@ -60,6 +62,7 @@ pub fn step_settlement_response_arbitration(
 
         let ctx = ArbitrationContext {
             world,
+            need_catalog,
             response_catalog,
             settlement_id,
             state: &state,
@@ -84,6 +87,7 @@ pub fn step_settlement_response_arbitration(
 /// Force-arbitrate one settlement (tests / tools).
 pub fn arbitrate_settlement_intent_now(
     world: &mut WorldData,
+    need_catalog: &NeedCatalog,
     response_catalog: &ResponseCatalog,
     settlement_id: SettlementId,
     simulation_tick: u64,
@@ -99,6 +103,7 @@ pub fn arbitrate_settlement_intent_now(
     };
     let ctx = ArbitrationContext {
         world,
+        need_catalog,
         response_catalog,
         settlement_id,
         state: &state,

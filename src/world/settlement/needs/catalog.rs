@@ -70,7 +70,8 @@ impl NeedCatalog {
 fn evaluation_method_known(method: NeedEvaluationMethod) -> bool {
     matches!(
         method,
-        NeedEvaluationMethod::FoodStock
+        NeedEvaluationMethod::CategoryNutrition
+            | NeedEvaluationMethod::CategoryCount
             | NeedEvaluationMethod::ConstructionSites
             | NeedEvaluationMethod::HousingCapacity
             | NeedEvaluationMethod::DefensePosture

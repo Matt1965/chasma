@@ -9,6 +9,7 @@ use super::state::{
     BuildingInteriorState, BuildingLifecycleState, BuildingSpaces, ConstructionState,
 };
 use super::vitals::BuildingVitals;
+use crate::world::settlement::SettlementId;
 
 /// One authoritative building instance (ADR-079 B2, ADR-082 B5).
 ///
@@ -31,6 +32,8 @@ pub struct BuildingRecord {
     pub inventory_id: Option<crate::world::InventoryId>,
     /// Runtime lock state for container access (ADR-091 I5).
     pub container_locked: bool,
+    /// Explicit settlement membership (ADR-133 Phase 2). None = not a member.
+    pub settlement_id: Option<SettlementId>,
 }
 
 impl BuildingRecord {
@@ -56,6 +59,7 @@ impl BuildingRecord {
             parent_building_id: None,
             inventory_id: None,
             container_locked: false,
+            settlement_id: None,
         }
     }
 }

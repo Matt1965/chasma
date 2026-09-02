@@ -6,8 +6,8 @@ use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::{InventoryCatalogCtx, place_stack_first_fit};
 use crate::world::operation::OperationCatalog;
 use crate::world::settlement::{
-    SettlementOwnership, StockGoal, create_settlement_with_treasury, execute_settlement_replan,
-    reconcile_settlement_building_membership,
+    SettlementOwnership, StockGoal, apply_production_recommendations_for_tests,
+    assign_building_settlement, create_settlement_with_treasury, replan_settlement_production,
 };
 use crate::world::{
     Affiliation, BuildingCategoryCatalog, BuildingDefinitionId, BuildingLifecycleState,
@@ -151,7 +151,10 @@ impl PlannerFixture {
             0,
         )
         .unwrap();
-        reconcile_settlement_building_membership(&mut world);
+        for building_id in world.sorted_building_ids() {
+            let _ =
+                assign_building_settlement(&mut world, building_id, Some(settlement.settlement_id));
+        }
         let planner = world
             .production_planner_store_mut()
             .ensure(settlement.settlement_id);
@@ -181,14 +184,26 @@ impl PlannerFixture {
             .get(self.settlement_id)
             .cloned()
             .unwrap();
-        execute_settlement_replan(
-            &mut self.world,
+        let (decisions, diagnostics) = replan_settlement_production(
+            &self.world,
             &self.building_catalog,
             &self.operation_catalog,
             ctx,
             self.settlement_id,
-            &mut planner,
+            &planner,
             1,
+        );
+        planner.last_diagnostics = diagnostics;
+        let settlement_buildings = self
+            .world
+            .settlement_store()
+            .buildings_for_settlement(self.settlement_id);
+        apply_production_recommendations_for_tests(
+            &mut self.world,
+            &self.building_catalog,
+            &self.operation_catalog,
+            &settlement_buildings,
+            &decisions,
         );
         self.world
             .production_planner_store_mut()
@@ -394,7 +409,13 @@ fn ep9_planner_multiple_producers_enable_all_candidates() {
     fixture.world.mutate_building(mine_b, |record| {
         record.lifecycle_state = BuildingLifecycleState::Complete;
     });
-    reconcile_settlement_building_membership(&mut fixture.world);
+    for building_id in fixture.world.sorted_building_ids() {
+        let _ = assign_building_settlement(
+            &mut fixture.world,
+            building_id,
+            Some(fixture.settlement_id),
+        );
+    }
     fixture.replan();
     let diagnostics = &fixture
         .world

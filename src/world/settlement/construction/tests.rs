@@ -12,8 +12,8 @@ use crate::world::settlement::needs::NeedId;
 use crate::world::settlement::response::{ResponseId, ResponseType};
 use crate::world::settlement::state::{SettlementKind, SettlementState};
 use crate::world::settlement::{
-    SettlementOwnership, create_settlement_with_treasury, ensure_settlement_states_for_world,
-    reconcile_settlement_building_membership,
+    SettlementOwnership, assign_building_settlement, create_settlement_with_treasury,
+    ensure_settlement_states_for_world,
 };
 use crate::world::{
     Affiliation, BuildingCategoryCatalog, BuildingDefinitionId, BuildingLifecycleState,
@@ -124,7 +124,10 @@ impl Sa9Fixture {
             state.policies.require_construction_approval = false;
             state.policies.require_construction_placement_approval = false;
         }
-        reconcile_settlement_building_membership(&mut world);
+        for building_id in world.sorted_building_ids() {
+            let _ =
+                assign_building_settlement(&mut world, building_id, Some(settlement.settlement_id));
+        }
 
         Self {
             world,
@@ -150,6 +153,8 @@ impl Sa9Fixture {
                 priority,
                 desired_persistence: IntentPersistence::UntilPressureLow,
                 reasoning: "test food construct".into(),
+                quality_explanation: String::new(),
+                arbitration: Default::default(),
                 diagnostics: Vec::new(),
                 ai_seams: Vec::new(),
             }],
@@ -221,11 +226,7 @@ fn sufficient_capacity_prevents_new_plan() {
     fx.world.mutate_building(farm, |r| {
         r.lifecycle_state = BuildingLifecycleState::Complete;
     });
-    let _ = fx
-        .world
-        .settlement_store_mut()
-        .link_building_to_settlement(fx.settlement_id, farm);
-    reconcile_settlement_building_membership(&mut fx.world);
+    let _ = assign_building_settlement(&mut fx.world, farm, Some(fx.settlement_id));
 
     fx.insert_food_construct_intent(80.0, 10);
     let report = fx.plan_now(10);

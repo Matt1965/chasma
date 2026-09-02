@@ -10,7 +10,7 @@ use crate::world::task::assignment::{
 };
 use crate::world::task::{
     TaskCancelReason, TaskId, TaskPriority, TaskState, TaskType, unit_can_perform_task,
-    unit_may_work_on_building,
+    unit_may_autonomously_work_building, unit_may_work_on_building,
 };
 use crate::world::{
     BuildingCatalog, BuildingInteractionProfileCatalog, DoodadCatalog, NavigationConfig,
@@ -70,6 +70,9 @@ pub fn step_worker_assignment(ctx: &mut WorkerAssignmentContext<'_>) -> WorkerAs
 
     // Pass 1: idle workers claim best Available work (deterministic unit-id order).
     for unit_id in &idle_ids {
+        if crate::world::hunger_prevents_work_claim(ctx.world, ctx.unit_catalog, *unit_id) {
+            continue;
+        }
         let (decision, evaluation) = try_assign_worker(
             ctx,
             *unit_id,
@@ -489,6 +492,10 @@ fn evaluate_listings_for_worker(
             if !unit_may_work_on_building(building, ownership) {
                 eligible = false;
                 block = Some("ownership".into());
+            }
+            if !unit_may_autonomously_work_building(ctx.world, unit_id, listing.building_id) {
+                eligible = false;
+                block = Some("settlement membership".into());
             }
         } else {
             eligible = false;

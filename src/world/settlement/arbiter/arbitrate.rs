@@ -3,7 +3,7 @@
 //! Selects strategic intent only. Never executes.
 
 use crate::world::settlement::SettlementId;
-use crate::world::settlement::needs::SettlementNeedEvaluation;
+use crate::world::settlement::needs::{NeedCatalog, SettlementNeedEvaluation};
 use crate::world::settlement::response::{
     CandidateResponse, ResponseCatalog, ResponseType, SettlementResponseCandidates,
 };
@@ -13,6 +13,9 @@ use crate::world::{BuildingLifecycleState, WorldData};
 use super::intent::{
     IntentId, IntentPersistence, IntentRejectionReason, RejectedIntentCandidate, SettlementIntent,
     SettlementIntentPlan,
+};
+use super::scoring::{
+    ArbitrationScoreBreakdown, authored_weight_for_need, compute_arbitration_score,
 };
 
 /// Maximum simultaneous intents a settlement may hold.
@@ -32,6 +35,7 @@ pub const HIGH_PRESSURE_THRESHOLD: u8 = 40;
 /// Read-only arbitration context.
 pub struct ArbitrationContext<'a> {
     pub world: &'a WorldData,
+    pub need_catalog: &'a NeedCatalog,
     pub response_catalog: &'a ResponseCatalog,
     pub settlement_id: SettlementId,
     pub state: &'a SettlementState,
@@ -63,7 +67,9 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
             .snapshot(&candidate.need_id)
             .map(|s| s.pressure)
             .unwrap_or(0);
-        let arb_score = arbitration_score(candidate, pressure, ctx.state, workload);
+        let weight = authored_weight_for_need(&candidate.need_id, ctx.need_catalog, ctx.state);
+        let breakdown = compute_arbitration_score(candidate, pressure, weight, ctx.state, workload);
+        let arb_score = breakdown.total;
 
         if !candidate.priority_score.is_finite() || !arb_score.is_finite() {
             plan.rejected.push(RejectedIntentCandidate {
@@ -71,6 +77,7 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
                 need_id: candidate.need_id.clone(),
                 candidate_score: candidate.priority_score,
                 arbitration_score: arb_score,
+                arbitration: breakdown,
                 reason: IntentRejectionReason::InvalidScore,
             });
             continue;
@@ -82,6 +89,7 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
                 need_id: candidate.need_id.clone(),
                 candidate_score: candidate.priority_score,
                 arbitration_score: arb_score,
+                arbitration: breakdown,
                 reason: IntentRejectionReason::UnknownResponse,
             });
             continue;
@@ -93,6 +101,7 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
                 need_id: candidate.need_id.clone(),
                 candidate_score: candidate.priority_score,
                 arbitration_score: arb_score,
+                arbitration: breakdown,
                 reason: IntentRejectionReason::Unavailable,
             });
             continue;
@@ -104,6 +113,7 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
                 need_id: candidate.need_id.clone(),
                 candidate_score: candidate.priority_score,
                 arbitration_score: arb_score,
+                arbitration: breakdown,
                 reason: IntentRejectionReason::ZeroPressure,
             });
             continue;
@@ -115,6 +125,7 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
                 need_id: candidate.need_id.clone(),
                 candidate_score: candidate.priority_score,
                 arbitration_score: arb_score,
+                arbitration: breakdown,
                 reason: IntentRejectionReason::BelowScoreThreshold,
             });
             continue;
@@ -123,6 +134,7 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
         ranked.push(RankedCandidate {
             candidate,
             pressure,
+            breakdown,
             arb_score,
         });
     }
@@ -164,6 +176,7 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
         if plan.intents.len() >= MAX_SETTLEMENT_INTENTS {
             plan.rejected.push(reject(
                 entry.candidate,
+                entry.breakdown,
                 entry.arb_score,
                 IntentRejectionReason::GlobalBudgetFull,
             ));
@@ -173,6 +186,7 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
         if need_count >= max_for_need {
             plan.rejected.push(reject(
                 entry.candidate,
+                entry.breakdown,
                 entry.arb_score,
                 IntentRejectionReason::NeedSlotFull,
             ));
@@ -182,6 +196,7 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
         if selected_response_ids.contains(entry.candidate.response_id.as_str()) {
             plan.rejected.push(reject(
                 entry.candidate,
+                entry.breakdown,
                 entry.arb_score,
                 IntentRejectionReason::ConflictWithSelected(
                     entry.candidate.response_id.as_str().to_string(),
@@ -196,6 +211,7 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
         ) {
             plan.rejected.push(reject(
                 entry.candidate,
+                entry.breakdown,
                 entry.arb_score,
                 IntentRejectionReason::ConflictWithSelected(conflict),
             ));
@@ -208,10 +224,7 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
             IntentPersistence::Ephemeral
         };
 
-        let reasoning = format!(
-            "pressure={} candidate_score={:.1} arb_score={:.1} workload={:.1}",
-            entry.pressure, entry.candidate.priority_score, entry.arb_score, workload
-        );
+        let reasoning = entry.breakdown.format_reasoning();
 
         let intent = SettlementIntent {
             intent_id: IntentId::compose(
@@ -227,6 +240,8 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
             priority: entry.arb_score,
             desired_persistence: persistence,
             reasoning,
+            quality_explanation: entry.candidate.quality_score.format_explanation(),
+            arbitration: entry.breakdown,
             diagnostics: entry.candidate.diagnostics.clone(),
             ai_seams: Vec::new(),
         };
@@ -252,11 +267,13 @@ pub fn arbitrate_settlement_intent(ctx: &ArbitrationContext<'_>) -> SettlementIn
 struct RankedCandidate<'a> {
     candidate: &'a CandidateResponse,
     pressure: u8,
+    breakdown: ArbitrationScoreBreakdown,
     arb_score: f32,
 }
 
 fn reject(
     candidate: &CandidateResponse,
+    breakdown: ArbitrationScoreBreakdown,
     arb_score: f32,
     reason: IntentRejectionReason,
 ) -> RejectedIntentCandidate {
@@ -265,44 +282,21 @@ fn reject(
         need_id: candidate.need_id.clone(),
         candidate_score: candidate.priority_score,
         arbitration_score: arb_score,
+        arbitration: breakdown,
         reason,
     }
 }
 
-/// Generic arbitration score. Intentionally simple.
+/// Generic arbitration score. Prefer [`compute_arbitration_score`] for breakdowns.
 pub fn arbitration_score(
     candidate: &CandidateResponse,
     pressure: u8,
     state: &SettlementState,
+    need_catalog: &NeedCatalog,
     workload: f32,
 ) -> f32 {
-    if !candidate.is_available() {
-        return 0.0;
-    }
-    // SA8: emergency effects already applied at SA2 (pressure) and SA3 (response score).
-    // Do not double-count with a second emergency bonus here.
-    let mut score = candidate.priority_score + f32::from(pressure) * 2.0;
-    score += policy_bonus(state, candidate);
-    // Soft workload penalty — does not hard-block high pressure.
-    score -= (workload * 0.5).min(40.0);
-    score.max(0.0)
-}
-
-fn policy_bonus(state: &SettlementState, candidate: &CandidateResponse) -> f32 {
-    let mut bonus = 0.0;
-    match candidate.response_type {
-        ResponseType::Expand if state.policies.expansion_enabled => bonus += 5.0,
-        ResponseType::Expand => bonus -= 20.0,
-        ResponseType::Defend => bonus += f32::from(state.policies.aggression) / 32.0,
-        ResponseType::IncreaseProduction | ResponseType::DecreaseProduction
-            if !state.policies.automation_enabled =>
-        {
-            bonus -= 15.0;
-        }
-        ResponseType::Trade if state.policies.player_controlled => bonus += 2.0,
-        _ => {}
-    }
-    bonus
+    let weight = authored_weight_for_need(&candidate.need_id, need_catalog, state);
+    compute_arbitration_score(candidate, pressure, weight, state, workload).total
 }
 
 fn estimate_workload(ctx: &ArbitrationContext<'_>) -> f32 {
@@ -362,10 +356,17 @@ mod tests {
     use crate::world::BuildingId;
     use crate::world::settlement::SettlementId;
     use crate::world::settlement::needs::NeedId;
-    use crate::world::settlement::response::{ResponseAvailability, ResponseId};
+    use crate::world::settlement::response::{
+        ResponseAvailability, ResponseId, ResponseQualityScore,
+    };
     use crate::world::settlement::state::{SettlementKind, SettlementState};
 
     fn candidate(need: &str, response: &str, score: f32, available: bool) -> CandidateResponse {
+        let quality = ResponseQualityScore {
+            total: score,
+            relief_component: score,
+            ..Default::default()
+        };
         CandidateResponse {
             response_id: ResponseId::new(response),
             need_id: NeedId::new(need),
@@ -378,6 +379,7 @@ mod tests {
                 ResponseAvailability::Unavailable
             },
             blocking_reason: None,
+            quality_score: quality,
             priority_score: score,
             supporting_buildings: Vec::<BuildingId>::new(),
             diagnostics: Vec::new(),
@@ -387,9 +389,10 @@ mod tests {
     #[test]
     fn higher_pressure_raises_arbitration_score() {
         let state = SettlementState::new(SettlementId::new(1), SettlementKind::Town, false);
-        let c = candidate("food", "trade_for_food", 100.0, true);
-        let low = arbitration_score(&c, 20, &state, 0.0);
-        let high = arbitration_score(&c, 90, &state, 0.0);
+        let catalog = NeedCatalog::default();
+        let c = candidate("food", "increase_food_production", 30.0, true);
+        let low = arbitration_score(&c, 20, &state, &catalog, 0.0);
+        let high = arbitration_score(&c, 90, &state, &catalog, 0.0);
         assert!(high > low);
     }
 }

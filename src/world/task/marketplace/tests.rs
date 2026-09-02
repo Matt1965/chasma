@@ -3,15 +3,19 @@
 use bevy::prelude::*;
 
 use super::*;
+use crate::world::BuildingLifecycleState;
 use crate::world::inventory::InventoryCatalogCtx;
-use crate::world::task::{TaskPriority, TaskState, TaskType, sync_construction_tasks};
+use crate::world::task::{
+    TaskPriority, TaskState, TaskType, ensure_building_task, sync_construction_tasks,
+};
 use crate::world::{
     BuildingInteractionProfileCatalog, BuildingOwnership, ChunkCoord, ChunkData, ChunkId,
     ChunkLayout, DoodadCatalog, FootprintCatalog, LocalPosition, NavigationConfig,
-    OccupancyCatalogs, PassabilityCatalogs, UnitCatalog, UnitDefinitionId, UnitOwnership,
-    UnitSource, UnitState, WeaponCatalog, WorldData, WorldPosition, create_unit_with_ownership,
-    place_player_building, resolve_pending_unit_orders,
+    OccupancyCatalogs, PassabilityCatalogs, SettlementKind, SettlementOwnership, UnitCatalog,
+    UnitDefinitionId, UnitOwnership, UnitSource, UnitState, WeaponCatalog, WorldData,
+    WorldPosition, create_unit_with_ownership, place_player_building, resolve_pending_unit_orders,
 };
+use crate::world::{assign_building_settlement, assign_unit_settlement, create_settlement};
 
 fn layout() -> ChunkLayout {
     ChunkLayout {
@@ -488,4 +492,144 @@ fn validation_detects_dead_worker_holding_task() {
             .any(|e| matches!(e, AssignmentValidationError::DeadWorkerHoldingTask { .. })),
         "errors={errors:?}"
     );
+}
+
+fn settlement_building(
+    world: &mut WorldData,
+    settlement_center: WorldPosition,
+    building_pos: WorldPosition,
+) -> (crate::world::SettlementId, crate::world::BuildingId) {
+    let settlement = create_settlement(
+        world,
+        settlement_center,
+        "Town",
+        SettlementOwnership::player_default(),
+        SettlementKind::Town,
+        None,
+        None,
+        0,
+    )
+    .unwrap();
+    let (building, doodad, footprint) = catalogs();
+    let building_id = place_player_building(
+        &building,
+        world,
+        &crate::world::BuildingDefinitionId::new("hut"),
+        building_pos,
+        Quat::IDENTITY,
+        BuildingOwnership::with_affiliation(crate::world::Affiliation::Player),
+        occ(&building, &doodad, &footprint),
+    )
+    .unwrap()
+    .id;
+    assign_building_settlement(world, building_id, Some(settlement.settlement_id)).unwrap();
+    (settlement.settlement_id, building_id)
+}
+
+#[test]
+fn marketplace_does_not_assign_settlement_b_member_to_settlement_a_work() {
+    let (building, doodad, footprint) = catalogs();
+    let weapons = WeaponCatalog::default();
+    let unit_catalog = UnitCatalog::default();
+    let interaction = BuildingInteractionProfileCatalog::default();
+    let nav = NavigationConfig::default();
+    let mut world = flat_world();
+    let (settlement_a, building_a) =
+        settlement_building(&mut world, pos(64.0, 64.0), pos(64.0, 64.0));
+    let (settlement_b, building_b) =
+        settlement_building(&mut world, pos(180.0, 180.0), pos(180.0, 180.0));
+    // Only settlement A has open construction work; B's building is complete so it does not list.
+    world.mutate_building(building_b, |record| {
+        record.lifecycle_state = BuildingLifecycleState::Complete;
+        record.construction.progress_0_1 = 1.0;
+        record.vitals.current_hp = record.vitals.max_hp;
+    });
+    ensure_building_task(
+        &mut world,
+        building_a,
+        TaskType::ConstructBuilding,
+        TaskPriority::Normal,
+        1,
+    );
+    let outsider = builder_unit(&mut world, &unit_catalog, pos(65.0, 64.0));
+    assign_unit_settlement(&mut world, outsider, Some(settlement_b)).unwrap();
+
+    let report = run_assign(
+        &mut world,
+        &unit_catalog,
+        &weapons,
+        &doodad,
+        &building,
+        &interaction,
+        &nav,
+        2,
+    );
+    assert!(
+        report.assignments.is_empty(),
+        "settlement B member must not claim settlement A work; assignments={:?}",
+        report.assignments
+    );
+    assert!(world.task_store().unit_task_id(outsider).is_none());
+    let _ = settlement_a;
+}
+
+#[test]
+fn marketplace_assigns_member_settler_to_own_settlement_construction() {
+    let (building, doodad, footprint) = catalogs();
+    let weapons = WeaponCatalog::default();
+    let unit_catalog = UnitCatalog::default();
+    let interaction = BuildingInteractionProfileCatalog::default();
+    let nav = NavigationConfig::default();
+    let mut world = flat_world();
+    let (settlement_id, _) = settlement_building(&mut world, pos(64.0, 64.0), pos(64.0, 64.0));
+    sync_construction_tasks(&mut world, &building, 1);
+    let worker = builder_unit(&mut world, &unit_catalog, pos(60.0, 64.0));
+    assign_unit_settlement(&mut world, worker, Some(settlement_id)).unwrap();
+
+    let report = run_assign(
+        &mut world,
+        &unit_catalog,
+        &weapons,
+        &doodad,
+        &building,
+        &interaction,
+        &nav,
+        2,
+    );
+    assert!(
+        !report.assignments.is_empty(),
+        "member settler should claim settlement construction; diag={:?}",
+        report.diagnostics
+    );
+    assert_eq!(
+        world.task_store().unit_task_id(worker),
+        report.assignments[0].task_id
+    );
+}
+
+#[test]
+fn none_membership_unit_is_not_autonomously_claimed() {
+    let (building, doodad, footprint) = catalogs();
+    let weapons = WeaponCatalog::default();
+    let unit_catalog = UnitCatalog::default();
+    let interaction = BuildingInteractionProfileCatalog::default();
+    let nav = NavigationConfig::default();
+    let mut world = flat_world();
+    settlement_building(&mut world, pos(64.0, 64.0), pos(64.0, 64.0));
+    sync_construction_tasks(&mut world, &building, 1);
+    let worker = builder_unit(&mut world, &unit_catalog, pos(60.0, 64.0));
+    assert!(world.get_unit(worker).unwrap().settlement_id.is_none());
+
+    let report = run_assign(
+        &mut world,
+        &unit_catalog,
+        &weapons,
+        &doodad,
+        &building,
+        &interaction,
+        &nav,
+        2,
+    );
+    assert!(report.assignments.is_empty());
+    assert!(world.task_store().unit_task_id(worker).is_none());
 }

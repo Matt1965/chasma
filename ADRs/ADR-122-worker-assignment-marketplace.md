@@ -31,15 +31,16 @@ decide **who does the work**.
 
 - Task priority
 - Distance
-- Performance (e.g. construction speed) — **not** binary ordinary-work eligibility
+- **Physical capability** for that task kind (`can_construct` / `can_operate_workstation` / `can_haul`)
+- Performance (e.g. construction speed) — **not** a substitute for physical capability
 - Ownership / affiliation
 - Free interaction-point capacity
 - Current reservations / stick hysteresis
 
-> **AMENDED 2026-08-28.** `UnitWorkCapabilities` boolean gates (`can_construct`,
-> `can_operate_workstation`) are removed. Ordinary units may Construct / Operate / Haul. Skill affects
-> ranking/performance, not whether the listing is eligible. Future player job permissions are a
-> separate layer. Strategic stub kinds remain unlisted until they have labor (unchanged).
+> **AMENDED 2026-08-28.** Physical feasibility stays. Skill does not gate eligibility. Haul is **not**
+> `can_operate_workstation`. Settler definitions default to physically able to construct, operate, and
+> haul. Player job permission is a future third layer. Strategic stub kinds remain unlisted until they
+> have labor.
 
 Future seams (not in SA7): skill-as-performance tuning, morale, preferences, professions (ADR-072).
 
@@ -100,5 +101,5 @@ assignment must not treat corpses as members or workers.
 
 ## References
 
-- ADR-115 (incl. 2026-08-28 ordinary-work amendment), ADR-121, ADR-085, ADR-072, ADR-112, ADR-133
+- ADR-115 (ordinary-work physical-capability amendment), ADR-121, ADR-085, ADR-072, ADR-112, ADR-133
 - ARCHITECTURE.md Settlement AI section

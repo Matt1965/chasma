@@ -1,9 +1,9 @@
-//! Treasury deposit access checks (ADR-093 I7).
+//! Treasury deposit access checks (ADR-093 I7, ADR-133).
 
 use bevy::prelude::*;
 
 use super::error::TreasuryError;
-use super::id::TreasuryId;
+use super::id::{SettlementId, TreasuryId};
 use super::record::SettlementOwnership;
 use super::store::SettlementStore;
 use crate::world::building::{
@@ -114,25 +114,38 @@ pub fn can_unit_deposit_to_treasury(
             treasury.settlement_id,
         ));
     };
-    let Some(building) = world.get_building(settlement.anchor_building_id) else {
+    let Some(building_id) = treasury_deposit_building_id(
+        world,
+        building_catalog,
+        interaction_catalog,
+        settlement_store,
+        settlement.id,
+    ) else {
         return TreasuryAccessResult::Denied(TreasuryError::BuildingNotFound(
-            settlement.anchor_building_id,
+            settlement_store
+                .buildings_for_settlement(settlement.id)
+                .first()
+                .copied()
+                .unwrap_or(BuildingId::new(0)),
         ));
+    };
+    let Some(building) = world.get_building(building_id) else {
+        return TreasuryAccessResult::Denied(TreasuryError::BuildingNotFound(building_id));
     };
     if !building_supports_settlement_treasury(
         building_catalog,
         interaction_catalog,
-        settlement.anchor_building_id,
+        building_id,
         world,
     ) {
         return TreasuryAccessResult::Denied(TreasuryError::BuildingNotSettlementCapable(
-            settlement.anchor_building_id,
+            building_id,
         ));
     }
     if !policy.allows(settlement.ownership, unit) {
         return TreasuryAccessResult::Denied(TreasuryError::AccessDenied);
     }
-    if !unit_is_in_building_space(world, unit, settlement.anchor_building_id) {
+    if !unit_is_in_building_space(world, unit, building_id) {
         return TreasuryAccessResult::Denied(TreasuryError::WrongSpace);
     }
     let layout = world.layout();
@@ -143,6 +156,29 @@ pub fn can_unit_deposit_to_treasury(
         return TreasuryAccessResult::Denied(TreasuryError::OutOfRange);
     }
     TreasuryAccessResult::Allowed
+}
+
+/// Treasury-capable building linked to this settlement (legacy cache seam).
+///
+/// Anchor-only settlements with no linked treasury building have no deposit interaction yet.
+fn treasury_deposit_building_id(
+    world: &WorldData,
+    building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
+    settlement_store: &SettlementStore,
+    settlement_id: SettlementId,
+) -> Option<BuildingId> {
+    settlement_store
+        .buildings_for_settlement(settlement_id)
+        .into_iter()
+        .find(|building_id| {
+            building_supports_settlement_treasury(
+                building_catalog,
+                interaction_catalog,
+                *building_id,
+                world,
+            )
+        })
 }
 
 pub fn settlement_interaction_position(

@@ -64,6 +64,11 @@ fn multi_unit_summary_shows_count() {
         display_floor_label: "Surface".into(),
         inventory_summary: None,
         affiliation: "Player".into(),
+        settlement_membership: "None".into(),
+        nutrition_current: None,
+        nutrition_max: None,
+        hunger_stage: None,
+        self_maintenance_label: None,
     };
     let text = format_unit_summary(&snapshot, 3);
     assert!(text.contains("3 selected"));

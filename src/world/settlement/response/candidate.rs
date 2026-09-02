@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use super::definition::ResponseType;
 use super::id::ResponseId;
+use super::quality::ResponseQualityScore;
 use crate::world::BuildingId;
 use crate::world::settlement::SettlementId;
 use crate::world::settlement::needs::NeedId;
@@ -38,6 +39,8 @@ pub enum ResponseBlockingReason {
     DefinitionDisabled,
     /// Blocked or not unlocked by an active emergency (SA8).
     Emergency(String),
+    /// Response type has no live downstream execution path (Phase 6).
+    ExecutionPathUnavailable(String),
 }
 
 impl ResponseBlockingReason {
@@ -49,6 +52,7 @@ impl ResponseBlockingReason {
             Self::ZeroPressure => "need pressure is zero".into(),
             Self::DefinitionDisabled => "response definition disabled".into(),
             Self::Emergency(detail) => format!("emergency: {detail}"),
+            Self::ExecutionPathUnavailable(detail) => format!("no execution path: {detail}"),
         }
     }
 }
@@ -65,7 +69,9 @@ pub struct CandidateResponse {
     pub estimated_cost: f32,
     pub availability: ResponseAvailability,
     pub blocking_reason: Option<ResponseBlockingReason>,
-    /// Deterministic priority score (higher = more attractive). Unavailable → 0.
+    /// SA3 response-quality breakdown (authoritative).
+    pub quality_score: ResponseQualityScore,
+    /// Copy of `quality_score.total` for sorting and legacy consumers.
     pub priority_score: f32,
     pub supporting_buildings: Vec<BuildingId>,
     pub diagnostics: Vec<String>,

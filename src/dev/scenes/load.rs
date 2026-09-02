@@ -6,9 +6,10 @@ use std::time::Instant;
 use bevy::prelude::*;
 
 use crate::world::{
-    BuildingCatalog, BuildingNavigationBlueprintCatalog, BuildingRecord, ChunkId, DoodadCatalog,
-    DoodadRecord, DoodadRestoreError, DoorAccessPolicy, DoorState, FootprintCatalog,
-    InteriorProfileCatalog, OccupancyCatalogs, TaskRecord, UnitCatalog, UnitRecord,
+    BuildingCatalog, BuildingId, BuildingNavigationBlueprintCatalog, BuildingRecord, ChunkId,
+    DoodadCatalog, DoodadRecord, DoodadRestoreError, DoorAccessPolicy, DoorState, FootprintCatalog,
+    InteriorProfileCatalog, OccupancyCatalogs, SettlementAnchorId, SettlementAnchorRecord,
+    SettlementId, SettlementOwnership, SettlementRecord, TaskRecord, UnitCatalog, UnitRecord,
     UnitRestoreError, WorldData, rebuild_building_world_indexes, restore_doodad_record,
     restore_unit_record, validate_building_for_restore, validate_doodad_for_restore,
     validate_unit_for_restore,
@@ -16,9 +17,9 @@ use crate::world::{
 
 use super::inventory_snapshot::SceneInventoryPersistence;
 use super::snapshot::{
-    SCENE_VERSION, SceneBuildingRecord, SceneDefinition, SceneDoodadRecord, SceneSettlementRecord,
-    SceneTaskRecord, SceneTreasuryRecord, SceneUnitRecord, parse_doodad_kind,
-    scene_version_supported,
+    SCENE_VERSION, SceneBuildingRecord, SceneDefinition, SceneDoodadRecord,
+    SceneSettlementAnchorRecord, SceneSettlementRecord, SceneTaskRecord, SceneTreasuryRecord,
+    SceneUnitRecord, parse_doodad_kind, scene_version_supported,
 };
 
 /// Outcome of applying a scene to world data.
@@ -275,7 +276,9 @@ struct RestorePlan {
     doodads: Vec<DoodadRecord>,
     buildings: Vec<BuildingRecord>,
     tasks: Vec<TaskRecord>,
+    settlement_anchors: Vec<crate::world::SettlementAnchorRecord>,
     settlements: Vec<crate::world::SettlementRecord>,
+    legacy_settlement_building_links: Vec<(crate::world::SettlementId, BuildingId)>,
     treasuries: Vec<crate::world::SettlementTreasuryRecord>,
     next_unit_id: u64,
     next_doodad_id: u64,
@@ -285,6 +288,7 @@ struct RestorePlan {
     next_space_id: u32,
     next_portal_id: u32,
     next_settlement_id: u64,
+    next_settlement_anchor_id: u64,
     next_treasury_id: u64,
     inventory_persistence: SceneInventoryPersistence,
     production_persistence: super::production_snapshot::SceneProductionPersistence,
@@ -542,26 +546,16 @@ fn build_restore_plan(
         tasks.push(record);
     }
 
-    let mut settlements = Vec::with_capacity(scene.settlement_records.len());
+    let (settlement_anchors, settlements, legacy_settlement_building_links) =
+        resolve_scene_settlements(scene, &buildings)?;
     let mut settlement_ids = HashSet::new();
-    for settlement in &scene.settlement_records {
-        let record = scene_settlement_to_record(settlement)?;
+    for record in &settlements {
         if settlement_ids.contains(&record.id) {
             return Err(SceneApplyError::SettlementRestore {
                 reason: format!("duplicate settlement id {}", record.id.raw()),
             });
         }
-        if !building_ids.contains(&record.anchor_building_id) {
-            return Err(SceneApplyError::SettlementRestore {
-                reason: format!(
-                    "unknown anchor building {} for settlement {}",
-                    record.anchor_building_id.raw(),
-                    record.id.raw()
-                ),
-            });
-        }
         settlement_ids.insert(record.id);
-        settlements.push(record);
     }
 
     let mut treasuries = Vec::with_capacity(scene.treasury_records.len());
@@ -591,7 +585,9 @@ fn build_restore_plan(
         doodads,
         buildings,
         tasks,
+        settlement_anchors,
         settlements,
+        legacy_settlement_building_links,
         treasuries,
         next_unit_id: scene.next_unit_id,
         next_doodad_id: scene.next_doodad_id,
@@ -601,6 +597,7 @@ fn build_restore_plan(
         next_space_id: scene.next_space_id.max(1),
         next_portal_id: scene.next_portal_id.max(1),
         next_settlement_id: scene.next_settlement_id.max(1),
+        next_settlement_anchor_id: scene.next_settlement_anchor_id.max(1),
         next_treasury_id: scene.next_treasury_id.max(1),
         inventory_persistence: scene.inventory_persistence.clone(),
         production_persistence: scene.production_persistence.clone(),
@@ -645,8 +642,21 @@ fn apply_restore_plan(
             })?;
     }
 
+    world.settlement_anchor_store_mut().clear();
     world.settlement_store_mut().clear();
-    if !plan.settlements.is_empty() || !plan.treasuries.is_empty() {
+    if !plan.settlement_anchors.is_empty()
+        || !plan.settlements.is_empty()
+        || !plan.treasuries.is_empty()
+    {
+        world
+            .settlement_anchor_store_mut()
+            .restore_snapshot(
+                plan.settlement_anchors.clone(),
+                plan.next_settlement_anchor_id,
+            )
+            .map_err(|error| SceneApplyError::SettlementRestore {
+                reason: error.to_string(),
+            })?;
         world
             .settlement_store_mut()
             .restore_snapshot(
@@ -658,6 +668,10 @@ fn apply_restore_plan(
             .map_err(|error| SceneApplyError::SettlementRestore {
                 reason: error.to_string(),
             })?;
+        for (settlement_id, building_id) in &plan.legacy_settlement_building_links {
+            let _ =
+                crate::world::assign_building_settlement(world, *building_id, Some(*settlement_id));
+        }
     }
 
     if !plan.inventory_persistence.inventory_records.is_empty()
@@ -698,7 +712,7 @@ fn apply_restore_plan(
         &plan.relationship_standing_persistence,
     );
 
-    crate::world::reconcile_settlement_building_membership(world);
+    crate::world::rebuild_settlement_membership_indexes(world);
 
     Ok(())
 }
@@ -834,6 +848,127 @@ fn scene_settlement_to_record(
         .map_err(|err| SceneApplyError::SettlementRestore {
             reason: format!("settlement {}: {err:?}", settlement.id),
         })
+}
+
+fn resolve_scene_settlements(
+    scene: &SceneDefinition,
+    buildings: &[BuildingRecord],
+) -> Result<
+    (
+        Vec<SettlementAnchorRecord>,
+        Vec<SettlementRecord>,
+        Vec<(SettlementId, BuildingId)>,
+    ),
+    SceneApplyError,
+> {
+    let mut anchors_by_id = std::collections::BTreeMap::new();
+    for anchor in &scene.settlement_anchor_records {
+        let record = anchor
+            .to_record()
+            .map_err(|err| SceneApplyError::SettlementRestore {
+                reason: format!("anchor {}: {err:?}", anchor.id),
+            })?;
+        anchors_by_id.insert(record.id, record);
+    }
+
+    let mut anchors = Vec::new();
+    let mut settlements = Vec::new();
+    let mut legacy_links = Vec::new();
+    let mut next_anchor_id = scene.next_settlement_anchor_id.max(1);
+
+    for scene_settlement in &scene.settlement_records {
+        if scene_settlement.center.is_some() {
+            let settlement = scene_settlement_to_record(scene_settlement)?;
+            let anchor_id = SettlementAnchorId::new(scene_settlement.anchor_id);
+            let anchor = anchors_by_id.get(&anchor_id).ok_or_else(|| {
+                SceneApplyError::SettlementRestore {
+                    reason: format!(
+                        "missing anchor {} for settlement {}",
+                        anchor_id.raw(),
+                        settlement.id.raw()
+                    ),
+                }
+            })?;
+            if anchor.settlement_id != settlement.id {
+                return Err(SceneApplyError::SettlementRestore {
+                    reason: format!(
+                        "anchor {} settlement mismatch (expected {}, found {})",
+                        anchor_id.raw(),
+                        settlement.id.raw(),
+                        anchor.settlement_id.raw()
+                    ),
+                });
+            }
+            anchors.push(anchor.clone());
+            settlements.push(settlement);
+            continue;
+        }
+
+        let Some(legacy_building_id) = scene_settlement.anchor_building_id else {
+            return Err(SceneApplyError::SettlementRestore {
+                reason: format!(
+                    "settlement {} missing anchor identity (v16 anchor or legacy building)",
+                    scene_settlement.id
+                ),
+            });
+        };
+        let building_id = BuildingId::new(legacy_building_id);
+        let Some(building) = buildings.iter().find(|record| record.id == building_id) else {
+            return Err(SceneApplyError::SettlementRestore {
+                reason: format!(
+                    "unknown anchor building {} for settlement {}",
+                    legacy_building_id, scene_settlement.id
+                ),
+            });
+        };
+
+        let mut ownership = SettlementOwnership::player_default();
+        if let Some(owner) = scene_settlement.owner_id {
+            ownership.owner_id = Some(crate::world::OwnerId::new(owner));
+        }
+        if let Some(team) = scene_settlement.team_id {
+            ownership.team_id = Some(crate::world::TeamId::new(team));
+        }
+        if let Some(label) = scene_settlement.affiliation.as_deref() {
+            ownership.affiliation = super::snapshot::affiliation_from_label(label);
+        }
+
+        let settlement_id = SettlementId::new(scene_settlement.id);
+        let anchor_id = if scene_settlement.anchor_id > 0 {
+            SettlementAnchorId::new(scene_settlement.anchor_id)
+        } else {
+            let id = SettlementAnchorId::new(next_anchor_id);
+            next_anchor_id = next_anchor_id.saturating_add(1);
+            id
+        };
+        let center = building.placement.position;
+        let settlement = SettlementRecord {
+            id: settlement_id,
+            display_name: scene_settlement.display_name.clone(),
+            treasury_id: crate::world::TreasuryId::new(scene_settlement.treasury_id),
+            anchor_id,
+            center,
+            boundary_radius_meters: scene_settlement.boundary_radius_meters,
+            ownership,
+            interaction_position: scene_settlement.interaction_position.to_world().map_err(
+                |err| SceneApplyError::SettlementRestore {
+                    reason: format!("settlement {}: {err:?}", scene_settlement.id),
+                },
+            )?,
+            created_tick: scene_settlement.created_tick,
+        };
+        let anchor = SettlementAnchorRecord {
+            id: anchor_id,
+            settlement_id,
+            position: center,
+            created_tick: scene_settlement.created_tick,
+        };
+        anchors.push(anchor);
+        settlements.push(settlement);
+        legacy_links.push((settlement_id, building_id));
+    }
+
+    Ok((anchors, settlements, legacy_links))
 }
 
 fn scene_treasury_to_record(
@@ -1136,6 +1271,8 @@ mod tests {
             species_id: None,
             current_space_id: 0,
             inventory_id: None,
+            settlement_id: None,
+            current_nutrition: None,
         });
         let err = apply_scene(
             &mut world,
@@ -1412,6 +1549,7 @@ mod tests {
                 inventory_id: None,
                 container_locked: false,
                 navigation_blueprint_override: None,
+                settlement_id: None,
             });
         let err = apply_scene(
             &mut world,
@@ -1538,5 +1676,367 @@ mod tests {
 
         let report = validate_world_inventory_state(&restored, &ctx);
         assert!(report.is_ok(), "{report:?}");
+    }
+
+    #[test]
+    fn scene_v16_round_trip_preserves_settlement_anchor() {
+        use crate::world::{Affiliation, SettlementKind, SettlementOwnership, create_settlement};
+
+        let mut world = flat_world();
+        let report = create_settlement(
+            &mut world,
+            pos(12.0, 18.0),
+            "Persisted",
+            SettlementOwnership::player_default(),
+            SettlementKind::Town,
+            Some(55.0),
+            None,
+            3,
+        )
+        .unwrap();
+        let scene = sample_scene(&world);
+        assert_eq!(scene.version, SCENE_VERSION);
+        assert_eq!(scene.settlement_anchor_records.len(), 1);
+
+        world.dev_clear_units_and_doodads();
+        world.settlement_anchor_store_mut().clear();
+        world.settlement_store_mut().clear();
+
+        apply_scene(
+            &mut world,
+            &UnitCatalog::default(),
+            &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &InteriorProfileCatalog::default(),
+            None,
+            &scene,
+        )
+        .unwrap();
+
+        let settlement = world
+            .settlement_store()
+            .get_settlement(report.settlement_id)
+            .unwrap();
+        assert_eq!(settlement.anchor_id, report.anchor_id);
+        assert_eq!(settlement.center, pos(12.0, 18.0));
+        assert!((settlement.boundary_radius_meters - 55.0).abs() < f32::EPSILON);
+        assert!(
+            world
+                .settlement_anchor_store()
+                .get(report.anchor_id)
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn scene_v15_legacy_settlement_synthesizes_anchor() {
+        use crate::world::{
+            Affiliation, BuildingOwnership, BuildingSource, DEFAULT_TOWN_BOUNDARY_RADIUS_METERS,
+            create_building, starter_building_definitions,
+        };
+        use bevy::prelude::Quat;
+
+        let categories = crate::world::BuildingCategoryCatalog::default();
+        let building_catalog =
+            BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
+        let mut world = flat_world();
+        let building = create_building(
+            &building_catalog,
+            &mut world,
+            &crate::world::BuildingDefinitionId::new("settlement_core"),
+            pos(8.0, 8.0),
+            Quat::IDENTITY,
+            BuildingSource::Authored,
+            BuildingOwnership::with_affiliation(Affiliation::Player),
+            None,
+        )
+        .unwrap();
+        let scene = SceneDefinition {
+            version: 15,
+            scene_id: "legacy".into(),
+            name: "legacy".into(),
+            description: String::new(),
+            created_at: 0,
+            tags: Vec::new(),
+            world_seed: 1,
+            unit_records: Vec::new(),
+            doodad_records: Vec::new(),
+            building_records: vec![SceneBuildingRecord::from_record(
+                world.get_building(building.id).unwrap(),
+                &world,
+            )],
+            camera_state: None,
+            debug_flags: None,
+            next_unit_id: 1,
+            next_doodad_id: 1,
+            next_building_id: 2,
+            task_records: Vec::new(),
+            next_task_id: 1,
+            next_door_id: 1,
+            next_space_id: 1,
+            next_portal_id: 1,
+            settlement_records: vec![SceneSettlementRecord {
+                id: 1,
+                display_name: "Legacy".into(),
+                treasury_id: 1,
+                anchor_id: 0,
+                center: None,
+                boundary_radius_meters: DEFAULT_TOWN_BOUNDARY_RADIUS_METERS,
+                anchor_building_id: Some(building.id.raw()),
+                owner_id: None,
+                team_id: None,
+                affiliation: Some("Player".into()),
+                interaction_position: super::super::snapshot::SceneWorldPosition::from_world(pos(
+                    8.0, 8.0,
+                )),
+                created_tick: 0,
+            }],
+            settlement_anchor_records: Vec::new(),
+            treasury_records: vec![SceneTreasuryRecord {
+                id: 1,
+                settlement_id: 1,
+                balance_gold: 0,
+                created_tick: 0,
+                metadata: String::new(),
+                owner_id: None,
+                team_id: None,
+                affiliation: Some("Player".into()),
+            }],
+            next_settlement_id: 2,
+            next_settlement_anchor_id: 1,
+            next_treasury_id: 2,
+            inventory_persistence: Default::default(),
+            production_persistence: Default::default(),
+            logistics_persistence: Default::default(),
+            planner_persistence: Default::default(),
+            settlement_state_persistence: Default::default(),
+            construction_plan_persistence: Default::default(),
+            relationship_standing_persistence: Default::default(),
+        };
+
+        world.dev_clear_units_and_doodads();
+        apply_scene(
+            &mut world,
+            &UnitCatalog::default(),
+            &DoodadCatalog::default(),
+            &building_catalog,
+            &FootprintCatalog::default(),
+            &InteriorProfileCatalog::default(),
+            None,
+            &scene,
+        )
+        .unwrap();
+
+        let settlement = world
+            .settlement_store()
+            .get_settlement(crate::world::SettlementId::new(1))
+            .unwrap();
+        assert_eq!(settlement.center, pos(8.0, 8.0));
+        assert!(
+            world
+                .settlement_anchor_store()
+                .anchor_for_settlement(settlement.id)
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn scene_v17_round_trip_preserves_explicit_membership() {
+        use crate::world::{
+            Affiliation, BuildingOwnership, BuildingSource, SettlementKind, SettlementOwnership,
+            UnitDefinitionId, UnitSource, assign_unit_settlement, create_building,
+            create_settlement, create_unit,
+        };
+
+        let mut world = flat_world();
+        let unit_catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let building_catalog = BuildingCatalog::default();
+        let footprint_catalog = FootprintCatalog::default();
+        let settlement = create_settlement(
+            &mut world,
+            pos(30.0, 30.0),
+            "Persist",
+            SettlementOwnership::player_default(),
+            SettlementKind::Town,
+            None,
+            None,
+            0,
+        )
+        .unwrap();
+        let unit = create_unit(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(8.0, 8.0),
+            UnitSource::Dev,
+        )
+        .unwrap();
+        assign_unit_settlement(&mut world, unit.id, Some(settlement.settlement_id)).unwrap();
+        let building = create_building(
+            &building_catalog,
+            &mut world,
+            &crate::world::BuildingDefinitionId::new("hut"),
+            pos(30.0, 30.0),
+            Quat::IDENTITY,
+            BuildingSource::Dev,
+            BuildingOwnership::with_affiliation(Affiliation::Player),
+            None,
+        )
+        .unwrap();
+
+        let scene = sample_scene(&world);
+        assert_eq!(scene.version, SCENE_VERSION);
+        let unit_scene = scene
+            .unit_records
+            .iter()
+            .find(|record| record.id == unit.id.raw())
+            .unwrap();
+        let building_scene = scene
+            .building_records
+            .iter()
+            .find(|record| record.id == building.id.raw())
+            .unwrap();
+        assert_eq!(
+            unit_scene.settlement_id,
+            Some(settlement.settlement_id.raw())
+        );
+        assert_eq!(
+            building_scene.settlement_id,
+            Some(settlement.settlement_id.raw())
+        );
+
+        let mut restored = flat_world();
+        apply_scene(
+            &mut restored,
+            &unit_catalog,
+            &doodad_catalog,
+            &building_catalog,
+            &footprint_catalog,
+            &InteriorProfileCatalog::default(),
+            None,
+            &scene,
+        )
+        .unwrap();
+        assert_eq!(
+            restored.get_unit(unit.id).unwrap().settlement_id,
+            Some(settlement.settlement_id)
+        );
+        assert_eq!(
+            restored.get_building(building.id).unwrap().settlement_id,
+            Some(settlement.settlement_id)
+        );
+    }
+
+    #[test]
+    fn scene_v16_missing_membership_loads_as_none_without_backfill() {
+        use super::super::snapshot::{
+            SceneBuildingRecord, SceneDefinition, SceneUnitRecord, SceneUnitSource,
+        };
+
+        let scene = SceneDefinition {
+            version: 16,
+            scene_id: "legacy".into(),
+            name: "legacy".into(),
+            description: String::new(),
+            created_at: 0,
+            tags: Vec::new(),
+            world_seed: 0,
+            unit_records: vec![SceneUnitRecord {
+                id: 1,
+                definition_id: "wolf".into(),
+                position: super::super::snapshot::SceneWorldPosition::from_world(pos(5.0, 5.0)),
+                rotation: super::super::snapshot::SceneQuat::from_quat(Quat::IDENTITY),
+                state: super::super::snapshot::SceneUnitState::Idle,
+                source: SceneUnitSource::Dev,
+                owner_id: None,
+                team_id: None,
+                affiliation: Some("Player".into()),
+                current_space_id: 0,
+                inventory_id: None,
+                faction_id: None,
+                species_id: None,
+                settlement_id: None,
+                current_nutrition: None,
+            }],
+            doodad_records: Vec::new(),
+            building_records: vec![SceneBuildingRecord {
+                id: 2,
+                definition_id: "hut".into(),
+                position: super::super::snapshot::SceneWorldPosition::from_world(pos(20.0, 20.0)),
+                rotation: super::super::snapshot::SceneQuat::from_quat(Quat::IDENTITY),
+                uniform_scale_milli: 1_000,
+                lifecycle_state: "Complete".into(),
+                progress_0_1: 1.0,
+                current_hp: 100,
+                max_hp: 100,
+                source: super::super::snapshot::SceneBuildingSource::Dev,
+                owner_id: None,
+                team_id: None,
+                affiliation: Some("Player".into()),
+                parent_building_id: None,
+                interior_activated: false,
+                interior_profile_id: None,
+                child_doodad_ids: Vec::new(),
+                child_building_ids: Vec::new(),
+                door_states: Vec::new(),
+                inventory_id: None,
+                container_locked: false,
+                navigation_blueprint_override: None,
+                settlement_id: None,
+            }],
+            camera_state: None,
+            debug_flags: None,
+            next_unit_id: 2,
+            next_doodad_id: 1,
+            next_building_id: 3,
+            task_records: Vec::new(),
+            next_task_id: 1,
+            next_door_id: 1,
+            next_space_id: 1,
+            next_portal_id: 1,
+            settlement_records: Vec::new(),
+            settlement_anchor_records: Vec::new(),
+            treasury_records: Vec::new(),
+            next_settlement_id: 1,
+            next_settlement_anchor_id: 1,
+            next_treasury_id: 1,
+            inventory_persistence: Default::default(),
+            production_persistence: Default::default(),
+            logistics_persistence: Default::default(),
+            planner_persistence: Default::default(),
+            settlement_state_persistence: Default::default(),
+            construction_plan_persistence: Default::default(),
+            relationship_standing_persistence: Default::default(),
+        };
+
+        let mut world = flat_world();
+        let unit_catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let building_catalog = BuildingCatalog::default();
+        let footprint_catalog = FootprintCatalog::default();
+        apply_scene(
+            &mut world,
+            &unit_catalog,
+            &doodad_catalog,
+            &building_catalog,
+            &footprint_catalog,
+            &InteriorProfileCatalog::default(),
+            None,
+            &scene,
+        )
+        .unwrap();
+
+        let unit_id = crate::world::UnitId::new(1);
+        let building_id = crate::world::BuildingId::new(2);
+        assert!(world.get_unit(unit_id).unwrap().settlement_id.is_none());
+        assert!(
+            world
+                .get_building(building_id)
+                .unwrap()
+                .settlement_id
+                .is_none()
+        );
     }
 }

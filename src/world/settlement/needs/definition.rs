@@ -7,12 +7,17 @@ use super::id::NeedId;
 use crate::world::settlement::planner::ProductionPriorityCategory;
 use crate::world::settlement::state::NeedCategory;
 
+/// Default planning horizon for food member-consumption projection (30s at 30 Hz).
+pub const DEFAULT_FOOD_PLANNING_HORIZON_TICKS: u32 = 900;
+
 /// How a need measures its current value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NeedMeasurementType {
     /// Sum of matching inventory stock units.
     InventoryStock,
+    /// Sum of matching inventory nutrition units.
+    InventoryNutrition,
     /// Count of buildings matching a lifecycle/role filter.
     BuildingCount,
     /// Count of settlement-affiliated units (workers/population proxy).
@@ -31,13 +36,16 @@ pub enum NeedTargetSource {
     SettlementNeedTarget,
     /// Use `default_desired` from the definition when no authored target exists.
     DefinitionDefault,
+    /// Project live member nutrition consumption over `planning_horizon_ticks` plus Food reserve target.
+    MemberNutritionConsumptionPlusReserve,
 }
 
 /// Which evaluator implementation runs for this need.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NeedEvaluationMethod {
-    FoodStock,
+    CategoryNutrition,
+    CategoryCount,
     ConstructionSites,
     HousingCapacity,
     DefensePosture,
@@ -75,6 +83,12 @@ pub struct NeedDefinition {
     /// Fallback desired value when no authored target exists.
     pub default_desired: u32,
     pub enabled: bool,
+    /// Item category slug for CategoryNutrition / CategoryCount evaluators.
+    #[serde(default)]
+    pub evaluator_category: Option<String>,
+    /// Planning horizon in simulation ticks for member nutrition demand projection.
+    #[serde(default)]
+    pub planning_horizon_ticks: u32,
 }
 
 impl NeedDefinition {
@@ -102,6 +116,18 @@ impl NeedDefinition {
             response_category,
             default_desired,
             enabled: true,
+            evaluator_category: None,
+            planning_horizon_ticks: 0,
         }
+    }
+
+    pub fn with_evaluator_category(mut self, category: impl Into<String>) -> Self {
+        self.evaluator_category = Some(category.into());
+        self
+    }
+
+    pub fn with_planning_horizon_ticks(mut self, ticks: u32) -> Self {
+        self.planning_horizon_ticks = ticks;
+        self
     }
 }

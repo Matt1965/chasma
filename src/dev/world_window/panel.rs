@@ -5,9 +5,8 @@ use bevy::prelude::*;
 
 use crate::dev::dev_mode::DevModeState;
 use crate::dev::input::DevPanelUi;
-use crate::dev::tooltip::{DevTooltipContent, DevTooltipTarget};
+use crate::dev::tooltip::DevTooltipTarget;
 use crate::dev::widgets::DevCollapsibleSectionId;
-use crate::dev::widgets::spawn_collapsible_section;
 use crate::dev::window::{DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowUi};
 use crate::dev::world_environment::DevWorldEnvironmentSection;
 
@@ -85,28 +84,7 @@ pub fn setup_world_window_panel(mut commands: Commands, bodies: Query<(Entity, &
                         TextColor(Color::srgba(0.8, 0.88, 0.95, 1.0)),
                     ));
                     crate::dev::world_environment::spawn_environment_controls(root);
-                    spawn_collapsible_section(
-                        root,
-                        DevCollapsibleSectionId::WorldHarness,
-                        "Test harnesses",
-                        Some(DevTooltipContent::new(
-                            "Pile and treasury test harnesses (ADR-090, ADR-093). Dev diagnostics \
-                             only — use buttons below. Active while this window is open.",
-                        )),
-                        |body| {
-                            super::harness::spawn_harness_buttons(body);
-                            body.spawn((
-                                DevWorldHarnessText,
-                                DevPanelUi,
-                                Text::new(""),
-                                TextFont {
-                                    font_size: 10.0,
-                                    ..default()
-                                },
-                                TextColor(Color::srgba(0.72, 0.82, 0.9, 1.0)),
-                            ));
-                        },
-                    );
+                    crate::dev::settlement_placement::spawn_settlement_section(root);
                 });
         });
         return;

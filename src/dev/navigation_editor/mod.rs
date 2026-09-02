@@ -14,6 +14,9 @@ mod sync_panel;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod section_visibility_tests;
+
 pub use actions::{
     handle_navigation_editor_actions, handle_navigation_editor_close_guard,
     handle_open_navigation_editor_buttons,

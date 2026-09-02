@@ -43,6 +43,15 @@ mod fixtures {
         .with_default(true)
     }
 
+    fn farm_output_binding() -> BuildingInventoryBindingDefinition {
+        BuildingInventoryBindingDefinition::new(
+            "primary_output",
+            BuildingInventoryRole::Output,
+            InventoryProfileId::new("farm_output_buffer"),
+        )
+        .with_default(true)
+    }
+
     fn smelter_inventory_bindings() -> Vec<BuildingInventoryBindingDefinition> {
         vec![
             BuildingInventoryBindingDefinition::new(
@@ -290,13 +299,13 @@ mod fixtures {
             BuildingDefinitionId::new("stone_quarry"),
             "Stone Quarry",
             BuildingCategoryId::new("production"),
-            BuildingRenderKey::reserved("smelter"),
-            BuildingRenderKey::reserved("smelter_collision"),
+            BuildingRenderKey::reserved("stone_mine"),
+            BuildingRenderKey::reserved("stone_mine"),
             450,
             100.0,
             FootprintSpec::Rectangle {
-                width_meters: 6.0,
-                depth_meters: 6.0,
+                width_meters: 16.0,
+                depth_meters: 12.0,
             },
             30.0,
             true,
@@ -306,6 +315,7 @@ mod fixtures {
         .with_default_operation_id(OperationDefinitionId::new("mine_stone"))
         .with_inventory_bindings(vec![primary_output_binding()])
         .with_default_inventory_binding_id(BuildingInventoryBindingId::new("primary_output"))
+        .with_logistics_routes([warehouse_route_output("primary_output", "stone")])
     }
 
     fn tf4_prispod_farm() -> BuildingDefinition {
@@ -313,13 +323,13 @@ mod fixtures {
             BuildingDefinitionId::new("prispod_farm"),
             "Prispod Farm",
             BuildingCategoryId::new("production"),
-            BuildingRenderKey::reserved("hut"),
-            BuildingRenderKey::reserved("hut_collision"),
+            BuildingRenderKey::reserved("prispod_farm"),
+            BuildingRenderKey::reserved("prispod_farm"),
             300,
             80.0,
             FootprintSpec::Rectangle {
-                width_meters: 4.0,
-                depth_meters: 4.0,
+                width_meters: 26.0,
+                depth_meters: 20.0,
             },
             35.0,
             true,
@@ -327,6 +337,9 @@ mod fixtures {
         .with_field_sampling_footprint_id(crate::world::FootprintId::new("farm_cultivation"))
         .with_supported_operations([OperationDefinitionId::new("grow_prispods")])
         .with_default_operation_id(OperationDefinitionId::new("grow_prispods"))
+        .with_inventory_bindings(vec![farm_output_binding()])
+        .with_default_inventory_binding_id(BuildingInventoryBindingId::new("primary_output"))
+        .with_logistics_routes([warehouse_route_output("primary_output", "prispod")])
     }
 
     fn tf4_water_well() -> BuildingDefinition {
@@ -347,6 +360,7 @@ mod fixtures {
         .with_default_operation_id(OperationDefinitionId::new("pump_water"))
         .with_inventory_bindings(vec![primary_output_binding()])
         .with_default_inventory_binding_id(BuildingInventoryBindingId::new("primary_output"))
+        .with_logistics_routes([warehouse_route_output("primary_output", "water")])
     }
 }
 

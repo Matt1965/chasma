@@ -1,61 +1,22 @@
 //! Simulation step hook for settlement production planners (EP9).
+//!
+//! Phase 8: EP9 no longer runs as an independent policy-producing tick stage.
+//! Production graph reasoning is invoked by SA5 when applying production intents.
 
 use crate::world::WorldData;
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::operation::OperationCatalog;
-use crate::world::settlement::SettlementId;
 
-use super::plan::execute_settlement_replan;
-
-/// Advance settlement production planners when dirty or interval elapsed (EP9).
+/// Retained for API compatibility. EP9 policy writes were removed in Phase 8.
 pub fn step_settlement_production_planners(
-    world: &mut WorldData,
-    building_catalog: &BuildingCatalog,
-    operation_catalog: &OperationCatalog,
-    inventory_ctx: &InventoryCatalogCtx<'_>,
-    simulation_tick: u64,
+    _world: &mut WorldData,
+    _building_catalog: &BuildingCatalog,
+    _operation_catalog: &OperationCatalog,
+    _inventory_ctx: &InventoryCatalogCtx<'_>,
+    _simulation_tick: u64,
 ) -> u32 {
-    let settlement_ids: Vec<SettlementId> = world.settlement_store().sorted_settlement_ids();
-    let mut replanned = 0u32;
-    for settlement_id in settlement_ids {
-        let should_replan = world
-            .production_planner_store()
-            .get(settlement_id)
-            .map(|planner| {
-                if !planner.enabled {
-                    false
-                } else if planner.dirty {
-                    true
-                } else {
-                    simulation_tick.saturating_sub(planner.last_plan_tick)
-                        >= planner.replan_interval_ticks
-                }
-            })
-            .unwrap_or(false);
-        if !should_replan {
-            continue;
-        }
-        let planner_snapshot = world.production_planner_store().get(settlement_id).cloned();
-        let Some(mut planner) = planner_snapshot else {
-            continue;
-        };
-        execute_settlement_replan(
-            world,
-            building_catalog,
-            operation_catalog,
-            inventory_ctx,
-            settlement_id,
-            &mut planner,
-            simulation_tick,
-        );
-        let stored = world.production_planner_store_mut().get_mut(settlement_id);
-        stored.last_diagnostics = planner.last_diagnostics;
-        stored.last_plan_tick = planner.last_plan_tick;
-        stored.dirty = planner.dirty;
-        replanned += 1;
-    }
-    replanned
+    0
 }
 
 /// Mark planner dirty when settlement inventory or buildings change (EP9).

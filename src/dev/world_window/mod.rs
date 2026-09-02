@@ -4,6 +4,9 @@ mod harness;
 mod panel;
 
 #[cfg(test)]
+mod panel_tests;
+
+#[cfg(test)]
 mod tests;
 
 pub use harness::{

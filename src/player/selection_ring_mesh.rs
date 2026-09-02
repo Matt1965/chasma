@@ -70,6 +70,49 @@ pub fn build_terrain_selection_ring_mesh(
     mesh
 }
 
+/// World-space render positions along a terrain-conforming ring (outer edge).
+pub fn sample_terrain_ring_render_points(
+    center_render: Vec3,
+    radius: f32,
+    world: &WorldData,
+    layout: ChunkLayout,
+    vertical_scale: f32,
+    segments: usize,
+) -> Vec<Vec3> {
+    let center_y = render_terrain_height_at_global_xz(
+        center_render.x,
+        center_render.z,
+        world,
+        layout,
+        vertical_scale,
+    )
+    .unwrap_or(center_render.y);
+
+    let mut points = Vec::with_capacity(segments);
+    for i in 0..segments {
+        let angle = (i as f32 / segments as f32) * std::f32::consts::TAU;
+        let (sin, cos) = angle.sin_cos();
+        let world_x = center_render.x + cos * radius;
+        let world_z = center_render.z + sin * radius;
+        let terrain_y =
+            render_terrain_height_at_global_xz(world_x, world_z, world, layout, vertical_scale)
+                .unwrap_or(center_y);
+        points.push(Vec3::new(world_x, terrain_y + RING_LIFT_METERS, world_z));
+    }
+    points
+}
+
+/// Draw a closed terrain ring loop via gizmos.
+pub fn draw_terrain_ring_gizmos(gizmos: &mut Gizmos, points: &[Vec3], color: Color) {
+    if points.len() < 2 {
+        return;
+    }
+    for i in 0..points.len() {
+        let next = (i + 1) % points.len();
+        gizmos.line(points[i], points[next], color);
+    }
+}
+
 /// Shared selection ring radius from collision footprint (DV3).
 pub fn selection_ring_radius(world: &WorldData, catalog: &UnitCatalog, unit_id: UnitId) -> f32 {
     let Some(record) = world.get_unit(unit_id) else {

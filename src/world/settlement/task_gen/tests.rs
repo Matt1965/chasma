@@ -11,7 +11,7 @@ use crate::world::settlement::arbiter::{
 use crate::world::settlement::needs::NeedId;
 use crate::world::settlement::response::{ResponseId, ResponseType};
 use crate::world::settlement::{
-    SettlementOwnership, create_settlement_with_treasury, reconcile_settlement_building_membership,
+    SettlementOwnership, assign_building_settlement, create_settlement_with_treasury,
 };
 use crate::world::task::{TaskPriority, TaskState, TaskType};
 use crate::world::{
@@ -121,7 +121,10 @@ impl Sa6Fixture {
             0,
         )
         .unwrap();
-        reconcile_settlement_building_membership(&mut world);
+        for building_id in world.sorted_building_ids() {
+            let _ =
+                assign_building_settlement(&mut world, building_id, Some(settlement.settlement_id));
+        }
 
         Self {
             world,
@@ -144,6 +147,8 @@ impl Sa6Fixture {
                 priority,
                 desired_persistence: IntentPersistence::UntilPressureLow,
                 reasoning: "test food construct".into(),
+                quality_explanation: String::new(),
+                arbitration: Default::default(),
                 diagnostics: Vec::new(),
                 ai_seams: Vec::new(),
             }],

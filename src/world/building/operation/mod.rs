@@ -21,6 +21,8 @@ mod execute_tests;
 #[cfg(test)]
 mod extraction_tests;
 #[cfg(test)]
+mod phase4_content_tests;
+#[cfg(test)]
 mod save_tests;
 #[cfg(test)]
 mod tests;

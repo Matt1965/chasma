@@ -239,6 +239,14 @@ pub fn import_items_from_excel(
             ));
         }
 
+        if definition.category_id.as_str() == "food" && definition.nutrition == 0 {
+            summary.warnings.push(format!(
+                "row {}: food item `{}` has nutrition 0 — provides no usable food value",
+                row.row_number,
+                definition.id.as_str()
+            ));
+        }
+
         definitions.push(definition);
         summary.rows_valid += 1;
     }
@@ -287,6 +295,7 @@ mod tests {
             icon_key: Some("gold".to_string()),
             tags: vec![],
             unique_instance_required: false,
+            nutrition: 0,
             enabled: true,
             enabled_was_blank: false,
         };
@@ -415,13 +424,13 @@ mod integration_tests {
             summary.warnings
         );
         assert!(
-            summary.rows_valid >= 34,
-            "expected 8 categories + 26 items; valid={} processed={}",
+            summary.rows_valid >= 35,
+            "expected 9 categories + 27 items; valid={} processed={}",
             summary.rows_valid,
             summary.rows_processed
         );
-        assert_eq!(items.len(), 26, "expected 26 authored items");
-        assert_eq!(categories.len(), 8, "expected 8 item categories");
+        assert_eq!(items.len(), 27, "expected 27 authored items");
+        assert_eq!(categories.len(), 9, "expected 9 item categories");
 
         let gold = items
             .get(&ItemDefinitionId::new("gold"))
@@ -468,6 +477,11 @@ mod integration_tests {
         assert!(
             categories
                 .get(&crate::world::ItemCategoryId::new("raw_material"))
+                .is_some()
+        );
+        assert!(
+            categories
+                .get(&crate::world::ItemCategoryId::new("construction_material"))
                 .is_some()
         );
     }

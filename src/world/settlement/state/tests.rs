@@ -118,17 +118,20 @@ fn validation_catches_orphan_and_duplicate_need() {
 
     // Insert matching record so MissingState can be tested the other way.
     let id = SettlementId::new(5);
+    let center = WorldPosition::new(
+        ChunkCoord::new(0, 0),
+        LocalPosition::new(bevy::prelude::Vec3::ZERO),
+    );
     let _ = settlement_store.insert_settlement(
         SettlementRecord {
             id,
             display_name: "Camp".into(),
             treasury_id: TreasuryId::new(5),
-            anchor_building_id: BuildingId::new(1),
+            anchor_id: crate::world::SettlementAnchorId::new(1),
+            center,
+            boundary_radius_meters: 64.0,
             ownership: SettlementOwnership::player_default(),
-            interaction_position: WorldPosition::new(
-                ChunkCoord::new(0, 0),
-                LocalPosition::new(bevy::prelude::Vec3::ZERO),
-            ),
+            interaction_position: center,
             created_tick: 0,
         },
         crate::world::settlement::SettlementTreasuryRecord {

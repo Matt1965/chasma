@@ -1,8 +1,8 @@
 //! Starter NeedDefinitions — enough to exercise SA2 architecture.
 
 use super::definition::{
-    NeedDefinition, NeedEvaluationMethod, NeedMeasurementType, NeedResponseCategory,
-    NeedTargetSource,
+    DEFAULT_FOOD_PLANNING_HORIZON_TICKS, NeedDefinition, NeedEvaluationMethod, NeedMeasurementType,
+    NeedResponseCategory, NeedTargetSource,
 };
 use crate::world::settlement::planner::ProductionPriorityCategory;
 use crate::world::settlement::state::NeedCategory;
@@ -12,15 +12,30 @@ pub fn starter_need_definitions() -> Vec<NeedDefinition> {
         NeedDefinition::new(
             "food",
             "Food",
-            "Settlement food stock versus authored food target.",
-            NeedMeasurementType::InventoryStock,
-            NeedTargetSource::SettlementNeedTarget,
+            "Accessible food nutrition versus projected member consumption plus reserve.",
+            NeedMeasurementType::InventoryNutrition,
+            NeedTargetSource::MemberNutritionConsumptionPlusReserve,
             NeedCategory::Food,
-            NeedEvaluationMethod::FoodStock,
+            NeedEvaluationMethod::CategoryNutrition,
             ProductionPriorityCategory::Food,
             NeedResponseCategory::Production,
             100,
-        ),
+        )
+        .with_evaluator_category("food")
+        .with_planning_horizon_ticks(DEFAULT_FOOD_PLANNING_HORIZON_TICKS),
+        NeedDefinition::new(
+            "materials",
+            "Materials",
+            "Construction-material stock versus authored materials target.",
+            NeedMeasurementType::InventoryStock,
+            NeedTargetSource::SettlementNeedTarget,
+            NeedCategory::Materials,
+            NeedEvaluationMethod::CategoryCount,
+            ProductionPriorityCategory::Construction,
+            NeedResponseCategory::Production,
+            50,
+        )
+        .with_evaluator_category("construction_material"),
         NeedDefinition::new(
             "construction",
             "Construction",

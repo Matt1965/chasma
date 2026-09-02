@@ -15,6 +15,7 @@ use super::candidate::{
 };
 use super::catalog::ResponseCatalog;
 use super::definition::{CapabilityRequirement, ResponseDefinition};
+use super::execution::check_execution_path_available;
 use super::score::score_candidate;
 
 /// Read-only discovery context.
@@ -92,13 +93,7 @@ fn build_candidate(
     let (availability, blocking, supporting) =
         evaluate_availability(ctx, definition, snapshot, &mut diagnostics);
     let available = availability.is_available();
-    let priority_score = score_candidate(
-        definition,
-        snapshot,
-        ctx.state,
-        ctx.emergency_catalog,
-        available,
-    );
+    let quality_score = score_candidate(definition, ctx.state, ctx.emergency_catalog, available);
 
     CandidateResponse {
         response_id: definition.id.clone(),
@@ -108,7 +103,8 @@ fn build_candidate(
         estimated_cost: definition.expected_effect.estimated_cost,
         availability,
         blocking_reason: blocking,
-        priority_score,
+        quality_score,
+        priority_score: quality_score.total,
         supporting_buildings: supporting,
         diagnostics,
     }
@@ -163,6 +159,11 @@ fn evaluate_availability(
                 return (ResponseAvailability::Unavailable, Some(reason), supporting);
             }
         }
+    }
+
+    if let Err(reason) = check_execution_path_available(definition) {
+        diagnostics.push(reason.label());
+        return (ResponseAvailability::Unavailable, Some(reason), supporting);
     }
 
     // SA8: emergency unlock / block (authored; not hardcoded by emergency name).

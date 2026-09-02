@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 use super::report::BuildingIntentPropagationReport;
 use crate::world::WorldData;
 use crate::world::building::catalog::BuildingCatalog;
+use crate::world::building::operation::ControlSource;
 use crate::world::operation::OperationCatalog;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,13 +81,10 @@ pub fn validate_propagation_report(
             .building_production_store()
             .get_policy(assignment.building_id)
         {
-            if policy.control_source
-                == crate::world::building::operation::ControlSource::PlayerControlled
-                && policy.planner_managed
-            {
+            if policy.control_source == ControlSource::PlayerControlled {
                 errors.push(PropagationValidationError::ConflictingOwnership {
                     building_id: id,
-                    detail: "player-reclaimed but SA5-assigned".into(),
+                    detail: "player-controlled but SA5-assigned".into(),
                 });
             }
         }

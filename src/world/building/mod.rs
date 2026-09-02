@@ -45,8 +45,8 @@ pub use catalog::{
     BuildingCatalog, BuildingCatalogError, BuildingCatalogRevision, BuildingDefinition,
     BuildingDefinitionId, BuildingRenderKey, BuildingVariantCreateInput,
     BuildingVariantCreateOutcome, create_building_variant, export_building_catalog_snapshot,
-    replace_building_instance_definition, suggest_variant_definition_id,
-    validate_building_definition_id,
+    merge_starter_extensions_into_catalog, replace_building_instance_definition,
+    suggest_variant_definition_id, validate_building_definition_id,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use category::starter_definitions as starter_building_category_definitions;

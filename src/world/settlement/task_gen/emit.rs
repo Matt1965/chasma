@@ -36,7 +36,7 @@ pub fn generate_strategic_tasks_for_settlement(
     };
 
     let mut desired_keys: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
-    let anchor = settlement_anchor_building(ctx.world, ctx.intent_plan.settlement_id);
+    let anchor = primary_settlement_building(ctx.world, ctx.intent_plan.settlement_id);
 
     for intent in &ctx.intent_plan.intents {
         // Production / research intents are policy-driven (SA5) — not task-gen.
@@ -321,14 +321,15 @@ fn merge_key_from_origin(
     merge_key(origin, Some(building_id), task_type)
 }
 
-fn settlement_anchor_building(
+fn primary_settlement_building(
     world: &WorldData,
     settlement_id: crate::world::settlement::SettlementId,
 ) -> Option<BuildingId> {
-    world
+    let mut buildings = world
         .settlement_store()
-        .get_settlement(settlement_id)
-        .map(|record| record.anchor_building_id)
+        .buildings_for_settlement(settlement_id);
+    buildings.sort_by_key(|id| id.raw());
+    buildings.into_iter().next()
 }
 
 fn constructible_settlement_buildings(

@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use super::super::asset::{
     TERRAIN_FIELD_MANIFEST_VERSION, TerrainFieldManifest, TerrainFieldManifestConfig,
     TerrainFieldManifestEntry, TerrainFieldTileFile, decode_manifest,
+    package_manifest_source_version,
 };
 use super::super::contract::{TERRAIN_FIELD_SAMPLE_SPACING_METERS, TERRAIN_FIELD_SAMPLES_PER_EDGE};
 use super::super::id::TerrainFieldId;
@@ -25,7 +26,6 @@ pub struct PackageReport {
 pub fn package_field_layers(
     output_dir: &Path,
     world_id: &str,
-    source_version: &str,
     extent: ChunkExtent,
     config: &WorldConfig,
     layers: &[(TerrainFieldId, TerrainFieldLayer)],
@@ -62,14 +62,16 @@ pub fn package_field_layers(
         manifest_fields.push(TerrainFieldManifestEntry {
             field_id: field_id.as_str().to_string(),
             tile_dir: field_id.as_str().to_string(),
+            source_version: Some(layer.source_version.clone()),
         });
     }
     manifest_fields = merge_manifest_fields(output_dir, manifest_fields);
+    let package_source_version = package_manifest_source_version(&manifest_fields);
 
     let manifest = TerrainFieldManifest {
         version: TERRAIN_FIELD_MANIFEST_VERSION,
         world_id: world_id.to_string(),
-        source_version: source_version.to_string(),
+        source_version: package_source_version.clone(),
         config: TerrainFieldManifestConfig {
             chunk_size_meters: config.chunk_size_meters,
             sample_spacing_meters: TERRAIN_FIELD_SAMPLE_SPACING_METERS,
@@ -88,7 +90,7 @@ pub fn package_field_layers(
     Ok(PackageReport {
         tiles_written,
         manifest_path: output_dir.join("manifest.ron"),
-        source_version: source_version.to_string(),
+        source_version: package_source_version,
     })
 }
 
@@ -103,7 +105,19 @@ fn merge_manifest_fields(
     if manifest_path.exists() {
         if let Ok(text) = fs::read_to_string(&manifest_path) {
             if let Ok(existing) = decode_manifest(&text) {
-                for entry in existing.fields {
+                let legacy_shared = existing
+                    .fields
+                    .iter()
+                    .all(|entry| entry.source_version.is_none())
+                    .then(|| existing.source_version.clone());
+                for mut entry in existing.fields {
+                    if entry.source_version.is_none() {
+                        if let Some(ref shared) = legacy_shared {
+                            if shared.starts_with("tf2_") {
+                                entry.source_version = Some(shared.clone());
+                            }
+                        }
+                    }
                     merged.insert(entry.field_id.clone(), entry);
                 }
             }

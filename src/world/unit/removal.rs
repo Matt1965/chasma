@@ -78,6 +78,7 @@ pub fn finalize_unit_removal(
         }
     };
 
+    crate::world::settlement::clear_unit_settlement_on_removal(world, unit_id);
     let _ = world.remove_unit_by_id(unit_id);
     Ok(outcome)
 }

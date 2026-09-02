@@ -156,6 +156,18 @@ fn parse_row(
         1
     };
 
+    let nutrition = if columns.contains_key("Nutrition") {
+        let raw = text("Nutrition").trim().to_string();
+        if raw.is_empty() {
+            0
+        } else {
+            raw.parse::<u32>()
+                .map_err(|_| format!("invalid Nutrition `{raw}`"))?
+        }
+    } else {
+        0
+    };
+
     Ok(ItemImportRow {
         row_number,
         item_id: text("Item ID"),
@@ -172,6 +184,7 @@ fn parse_row(
         icon_key: optional_text("Icon Key"),
         tags: normalize_tags(&text("Tags")),
         unique_instance_required,
+        nutrition,
         enabled,
         enabled_was_blank,
     })

@@ -8,6 +8,7 @@ use crate::item_piles::{ItemPileRuntimePlugin, ItemPileRuntimeSystems};
 use crate::menu::{MenuInputSystems, MenuPlugin};
 use crate::player::{PlayerControlSystems, PlayerPlugin, RuntimeSyncSystems};
 use crate::projectiles::{ProjectileRuntimeSystems, ProjectilesRuntimePlugin};
+use crate::settlement_anchors::{SettlementAnchorRuntimePlugin, SettlementAnchorRuntimeSystems};
 use crate::simulation::{SimulationControlSystems, SimulationSystems};
 use crate::terrain::{TerrainRuntimePlugin, TerrainStreamingSystems};
 use crate::units::{UnitAnimationSystems, UnitRuntimeSystems, UnitsRuntimePlugin};
@@ -41,6 +42,7 @@ impl Plugin for AppPlugin {
             .add_plugins(TerrainRuntimePlugin)
             .add_plugins(DoodadsRuntimePlugin)
             .add_plugins(ItemPileRuntimePlugin)
+            .add_plugins(SettlementAnchorRuntimePlugin)
             .add_plugins(BuildingsRuntimePlugin)
             .add_plugins(UnitsRuntimePlugin)
             .add_plugins(ProjectilesRuntimePlugin)

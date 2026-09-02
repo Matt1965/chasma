@@ -52,16 +52,8 @@ pub fn format_unit_diagnostics(snapshot: &UnitInspectorSnapshot) -> String {
 
 pub fn format_building_summary(snapshot: &BuildingInspectorSnapshot) -> String {
     format!(
-        "{}\n{}\nHP: {}/{}  State: {} ({:.0}%)\nProduction: {}  Workers: {}\nInventory: {}",
-        snapshot.display_name,
-        snapshot.definition_id.as_str(),
-        snapshot.current_hp,
-        snapshot.max_hp,
-        snapshot.lifecycle_state,
-        snapshot.progress_percent,
-        snapshot.selected_operation.as_deref().unwrap_or("—"),
-        snapshot.assigned_workers.as_deref().unwrap_or("—"),
-        snapshot.inventory_summary.as_deref().unwrap_or("none"),
+        "{}\n{} | HP {}/{}",
+        snapshot.display_name, snapshot.lifecycle_state, snapshot.current_hp, snapshot.max_hp,
     )
 }
 
@@ -97,10 +89,9 @@ pub fn format_building_navigation_authoring(
 
 pub fn format_building_diagnostics(
     snapshot: &BuildingInspectorSnapshot,
-    advanced: bool,
-    blueprint: Option<&BuildingBlueprintInspectorSnapshot>,
+    caps: crate::dev::inspector::BuildingDevCapabilities,
 ) -> String {
-    crate::dev::inspector::format_building_snapshot_full(snapshot, advanced, blueprint)
+    super::building_diagnostics::format_contextual_building_diagnostics(snapshot, caps)
 }
 
 pub fn format_doodad_summary(

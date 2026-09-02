@@ -48,6 +48,10 @@ pub enum DevCollapsibleSectionId {
     SelectedBuildingInventory,
     SelectedBuildingLogistics,
     SelectedBuildingDiagnostics,
+    SelectedBuildingDoors,
+    SelectedBuildingInventoryDiagnostics,
+    SelectedBuildingProductionDiagnostics,
+    SelectedBuildingTerrain,
 }
 
 /// Session-expanded state for collapsible sections.

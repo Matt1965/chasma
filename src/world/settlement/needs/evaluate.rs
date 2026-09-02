@@ -1,5 +1,7 @@
 //! Need evaluation — read-only, independent per need, no actions (SA2).
 
+use crate::world::UnitCatalog;
+use crate::world::UnitState;
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::item::{ItemCatalog, ItemCategoryId};
@@ -7,9 +9,14 @@ use crate::world::settlement::SettlementId;
 use crate::world::settlement::emergency::EmergencyCatalog;
 use crate::world::settlement::state::{NeedCategory, SettlementState};
 use crate::world::{BuildingLifecycleState, WorldData};
+use crate::world::{
+    collect_settlement_accessible_stock, sum_category_count, sum_category_nutrition,
+};
 
 use super::catalog::NeedCatalog;
-use super::definition::{NeedDefinition, NeedEvaluationMethod, NeedTargetSource};
+use super::definition::{
+    DEFAULT_FOOD_PLANNING_HORIZON_TICKS, NeedDefinition, NeedEvaluationMethod, NeedTargetSource,
+};
 use super::pressure::{apply_pressure_modifiers, normalize_pressure};
 use super::snapshot::{NeedSnapshot, SettlementNeedEvaluation};
 
@@ -18,6 +25,7 @@ pub struct NeedEvalContext<'a> {
     pub world: &'a WorldData,
     pub building_catalog: &'a BuildingCatalog,
     pub item_catalog: &'a ItemCatalog,
+    pub unit_catalog: &'a UnitCatalog,
     pub inventory_ctx: &'a InventoryCatalogCtx<'a>,
     pub settlement_id: SettlementId,
     pub state: &'a SettlementState,
@@ -53,9 +61,10 @@ pub fn evaluate_settlement_needs(
 }
 
 fn evaluate_one_need(ctx: &NeedEvalContext<'_>, definition: &NeedDefinition) -> NeedSnapshot {
-    let desired = resolve_desired(ctx.state, definition);
+    let desired = resolve_desired(ctx, definition);
     let (current, source) = match definition.evaluation_method {
-        NeedEvaluationMethod::FoodStock => measure_food_stock(ctx),
+        NeedEvaluationMethod::CategoryNutrition => measure_category_nutrition(ctx, definition),
+        NeedEvaluationMethod::CategoryCount => measure_category_count(ctx, definition),
         NeedEvaluationMethod::ConstructionSites => measure_construction_sites(ctx, desired),
         NeedEvaluationMethod::HousingCapacity => measure_housing_capacity(ctx),
         NeedEvaluationMethod::DefensePosture => measure_defense_posture(ctx),
@@ -100,8 +109,35 @@ fn evaluate_one_need(ctx: &NeedEvalContext<'_>, definition: &NeedDefinition) -> 
     )
 }
 
-pub fn resolve_desired(state: &SettlementState, definition: &NeedDefinition) -> f32 {
+pub fn resolve_desired(ctx: &NeedEvalContext<'_>, definition: &NeedDefinition) -> f32 {
     match definition.target_source {
+        NeedTargetSource::MemberNutritionConsumptionPlusReserve => {
+            let horizon = if definition.planning_horizon_ticks > 0 {
+                definition.planning_horizon_ticks
+            } else {
+                DEFAULT_FOOD_PLANNING_HORIZON_TICKS
+            };
+            let projected = projected_member_nutrition_consumption(ctx, horizon);
+            let reserve = food_reserve_nutrition(ctx.state, definition);
+            projected + reserve
+        }
+        NeedTargetSource::SettlementNeedTarget => ctx
+            .state
+            .need_targets
+            .iter()
+            .find(|t| t.category == definition.target_category)
+            .map(|t| t.target_value as f32)
+            .unwrap_or(definition.default_desired as f32),
+        NeedTargetSource::DefinitionDefault => definition.default_desired as f32,
+    }
+}
+
+/// Backward-compatible helper for callers that only have SettlementState.
+pub fn resolve_desired_from_state(state: &SettlementState, definition: &NeedDefinition) -> f32 {
+    match definition.target_source {
+        NeedTargetSource::MemberNutritionConsumptionPlusReserve => {
+            food_reserve_nutrition(state, definition)
+        }
         NeedTargetSource::SettlementNeedTarget => state
             .need_targets
             .iter()
@@ -112,37 +148,82 @@ pub fn resolve_desired(state: &SettlementState, definition: &NeedDefinition) -> 
     }
 }
 
-fn measure_food_stock(ctx: &NeedEvalContext<'_>) -> (f32, String) {
-    let stock = crate::world::settlement::aggregate_settlement_stock(
-        ctx.world,
-        ctx.building_catalog,
-        ctx.settlement_id,
-        &[],
-        ctx.inventory_ctx,
-    );
-    let food_category = ItemCategoryId::new("food");
-    let mut total = 0u32;
-    for (item_id, qty) in &stock {
-        if let Some(def) = ctx.item_catalog.get(item_id) {
-            if def.category_id == food_category {
-                total = total.saturating_add(*qty);
-            }
+fn food_reserve_nutrition(state: &SettlementState, definition: &NeedDefinition) -> f32 {
+    state
+        .need_targets
+        .iter()
+        .find(|t| t.category == NeedCategory::Food)
+        .map(|t| t.target_value as f32)
+        .unwrap_or(definition.default_desired as f32)
+}
+
+fn projected_member_nutrition_consumption(ctx: &NeedEvalContext<'_>, horizon_ticks: u32) -> f32 {
+    let mut total = 0.0f64;
+    for unit_id in ctx
+        .world
+        .settlement_store()
+        .units_for_settlement(ctx.settlement_id)
+    {
+        let Some(unit) = ctx.world.get_unit(unit_id) else {
+            continue;
+        };
+        if matches!(unit.state, UnitState::Dead) {
+            continue;
         }
+        if unit.settlement_id != Some(ctx.settlement_id) {
+            continue;
+        }
+        let rate = ctx
+            .unit_catalog
+            .get(&unit.definition_id)
+            .map(|def| f64::from(def.nutrition_consumption_per_tick))
+            .unwrap_or(0.0);
+        total += rate * f64::from(horizon_ticks);
     }
+    total.min(f64::from(f32::MAX)) as f32
+}
+
+fn settlement_stock(
+    ctx: &NeedEvalContext<'_>,
+) -> std::collections::HashMap<crate::world::ItemDefinitionId, u32> {
+    collect_settlement_accessible_stock(ctx.world, ctx.building_catalog, ctx.settlement_id, &[])
+}
+
+fn evaluator_category(definition: &NeedDefinition) -> ItemCategoryId {
+    ItemCategoryId::new(definition.evaluator_category.as_deref().unwrap_or_default())
+}
+
+fn measure_category_nutrition(
+    ctx: &NeedEvalContext<'_>,
+    definition: &NeedDefinition,
+) -> (f32, String) {
+    let category = evaluator_category(definition);
+    let stock = settlement_stock(ctx);
+    let nutrition = sum_category_nutrition(&stock, ctx.item_catalog, &category);
     (
-        total as f32,
-        format!("inventory_stock category=food total={total}"),
+        nutrition.min(u64::from(f32::MAX as u32)) as f32,
+        format!(
+            "category_nutrition category={} nutrition={nutrition}",
+            category.as_str()
+        ),
+    )
+}
+
+fn measure_category_count(ctx: &NeedEvalContext<'_>, definition: &NeedDefinition) -> (f32, String) {
+    let category = evaluator_category(definition);
+    let stock = settlement_stock(ctx);
+    let count = sum_category_count(&stock, ctx.item_catalog, &category);
+    (
+        count as f32,
+        format!(
+            "category_count category={} count={count}",
+            category.as_str()
+        ),
     )
 }
 
 fn measure_luxury_stock(ctx: &NeedEvalContext<'_>) -> (f32, String) {
-    let stock = crate::world::settlement::aggregate_settlement_stock(
-        ctx.world,
-        ctx.building_catalog,
-        ctx.settlement_id,
-        &[],
-        ctx.inventory_ctx,
-    );
+    let stock = settlement_stock(ctx);
     let mut total = 0u32;
     for (item_id, qty) in &stock {
         let id = item_id.as_str();
@@ -263,14 +344,15 @@ fn measure_expansion_growth(ctx: &NeedEvalContext<'_>) -> (f32, String) {
 
 #[cfg(test)]
 mod tests {
-    use super::super::definition::{NeedMeasurementType, NeedResponseCategory};
+    use super::super::definition::{NeedMeasurementType, NeedResponseCategory, NeedTargetSource};
     use super::*;
+    use crate::world::UnitCatalog;
     use crate::world::settlement::ProductionPriorityCategory;
     use crate::world::settlement::SettlementId;
     use crate::world::settlement::state::{NeedTarget, SettlementKind, SettlementState};
 
     #[test]
-    fn food_desired_and_pressure_deterministic() {
+    fn food_desired_reserve_only_without_members() {
         let id = SettlementId::new(1);
         let mut state = SettlementState::new(id, SettlementKind::Town, false);
         state.need_targets = vec![NeedTarget::new(NeedCategory::Food, 100, 1.0)];
@@ -278,15 +360,39 @@ mod tests {
             "food",
             "Food",
             "",
-            NeedMeasurementType::InventoryStock,
-            NeedTargetSource::SettlementNeedTarget,
+            NeedMeasurementType::InventoryNutrition,
+            NeedTargetSource::MemberNutritionConsumptionPlusReserve,
             NeedCategory::Food,
-            NeedEvaluationMethod::FoodStock,
+            NeedEvaluationMethod::CategoryNutrition,
             ProductionPriorityCategory::Food,
             NeedResponseCategory::Production,
             100,
-        );
-        assert_eq!(resolve_desired(&state, &def), 100.0);
+        )
+        .with_evaluator_category("food")
+        .with_planning_horizon_ticks(DEFAULT_FOOD_PLANNING_HORIZON_TICKS);
+        let world = WorldData::new(crate::world::ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let buildings = BuildingCatalog::default();
+        let items = ItemCatalog::default();
+        let categories = crate::world::ItemCategoryCatalog::default();
+        let profiles = crate::world::InventoryProfileCatalog::default();
+        let units = UnitCatalog::default();
+        let inventory_ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+        let emergency = EmergencyCatalog::default();
+        let ctx = NeedEvalContext {
+            world: &world,
+            building_catalog: &buildings,
+            item_catalog: &items,
+            unit_catalog: &units,
+            inventory_ctx: &inventory_ctx,
+            settlement_id: id,
+            state: &state,
+            emergency_catalog: &emergency,
+            simulation_tick: 0,
+        };
+        assert_eq!(resolve_desired(&ctx, &def), 100.0);
         assert_eq!(normalize_pressure(0.0, 100.0), 100);
         assert_eq!(normalize_pressure(100.0, 100.0), 0);
     }

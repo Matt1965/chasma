@@ -22,6 +22,7 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Base Value",
     "Tags",
     "Unique Instance Required",
+    "Nutrition",
 ];
 
 #[derive(Debug, Clone, PartialEq)]
@@ -41,6 +42,7 @@ pub struct ItemImportRow {
     pub icon_key: Option<String>,
     pub tags: Vec<String>,
     pub unique_instance_required: bool,
+    pub nutrition: u32,
     pub enabled: bool,
     pub enabled_was_blank: bool,
 }
@@ -74,7 +76,7 @@ impl ItemImportRow {
             definition = definition.with_icon_key(ItemIconKey::reserved(key.trim()));
         }
 
-        definition
+        definition.with_nutrition(self.nutrition)
     }
 }
 

@@ -472,13 +472,14 @@ when haul reservations hold required items. Logistics routes connect mines, proc
 `storage_chest` without production searching remote inventories. Input bindings accept deliveries;
 output bindings advertise supply for surplus hauling.
 
-Settlement production planning (ADR-114 EP9) decides what buildings should produce without
-executing production or moving items. Each settlement owns a `SettlementProductionPlanner` on
-`WorldData` with authored `StockGoal` targets. The planner aggregates storage inventory,
-propagates demand through a catalog-derived production graph, detects circular recipes, and
-updates `BuildingOperationPolicy` (enable, selected operation, priority, repeat). Runtime
-diagnostics and derived graphs are not persisted. `step_settlement_production_planners` runs
-before worker tasks when operation catalogs are available.
+Settlement production planning (ADR-114 EP9) is a **production-graph service**, not an independent
+policy owner. Each settlement owns a `SettlementProductionPlanner` on `WorldData` with authored
+`StockGoal` configuration. The planner aggregates storage inventory, propagates demand through a
+catalog-derived production graph, and detects circular recipes. It does not execute production or
+move items. **SA5 (ADR-120) is the sole AI writer of `BuildingOperationPolicy`.** When SA5 holds a
+production `SettlementIntent`, it may invoke EP9 to recommend enable / operation / priority; SA5
+applies those recommendations. `ControlSource::PlayerControlled` is a hard skip — SA5 must not
+overwrite explicit player policy. Runtime diagnostics and derived graphs are not persisted.
 
 Settlement AI architecture (ADR-115) defines the authoritative long-term structure for all future
 Settlement AI (SA) phases that build on EP1–EP9. Authority flows strictly downward — World →
@@ -510,24 +511,27 @@ never persisted. Evaluation is dirty/cadence driven (not every frame), independe
 produces normalized pressure `0..=100` as the only output future systems should consume. It does
 not plan, generate tasks, or mutate production/buildings/workers.
 
-Response Engine (ADR-118 SA3) converts pressures into scored **`CandidateResponse`** options via an
-authored **`ResponseCatalog`**. Discovery is NeedSnapshot → catalog `supported_need_ids` →
-capability/policy validation → score. Results live in transient `ResponseCandidateStore` (never
+Response Engine (ADR-118 SA3) converts need snapshots into scored **`CandidateResponse`** options via
+an authored **`ResponseCatalog`**. Discovery is NeedSnapshot → catalog `supported_need_ids` →
+capability/prerequisite validation → **response-quality** score (relief, cost, authored modifiers —
+not need pressure, not settlement policy). Results live in transient `ResponseCandidateStore` (never
 persisted). Needs never know responses; responses never know workers; the engine never executes —
 no tasks, policy writes, construction, or inventory changes. Future selection/planning consumes
 candidates only.
 
 Response Arbiter (ADR-119 SA4) evaluates CandidateResponses and produces transient
 **`SettlementIntent`** / `SettlementIntentPlan` on `SettlementIntentStore`. It ranks and selects
-multiple intents under budgets (pressure, scores, policies, workload, emergencies) without modifying
-buildings, tasks, workers, or inventories. Intent is never persisted and rebuilds after load.
-Execution remains a later phase.
+multiple intents under budgets: **urgency** (pressure shaped by authored need weight), candidate
+quality, policy (applied here and only here), and a soft workload penalty. Unavailable candidates
+score `0`; zero-pressure needs are rejected; `MIN_ARBITRATION_SCORE` and `UntilPressureLow`
+hysteresis are preserved. Intent is never persisted and rebuilds after load.
 
 Building Intent Propagation (ADR-120 SA5) converts SettlementIntent into
 **`BuildingOperationPolicy`** changes via capability-based building discovery (`supported_operations`).
-It is the first SA phase that influences the world. It never touches `BuildingOperationState`, tasks,
-logistics, or construction. EP9 skips SA5-assigned buildings so settlement strategy remains
-authoritative for those policies. Workers remain unaware of settlement strategy.
+It is the first SA phase that influences the world, and the **sole AI writer** of that policy. For
+production intents it may invoke EP9 as a graph/producer-discovery service, then write. It never
+touches `BuildingOperationState`, tasks, logistics, or construction. `PlayerControlled` policy is
+never overwritten. Workers remain unaware of settlement strategy.
 
 Emergency Pressure & Priority Reweighting (ADR-123 SA8) evaluates authored `EmergencyDefinition`s
 into persistent `ActiveEmergencyInstance` records (severity, hysteresis, manual overrides). Emergencies
@@ -553,10 +557,12 @@ Intent → need pressure → response priority → task priority. Reports are tr
 tasks (optional `StrategicTaskOrigin`) persist and regenerate safely after load.
 
 Worker Assignment (ADR-122 SA7) treats `TaskStore` (+ open hauling requests) as a **marketplace**.
-Idle workers evaluate priority, distance, capability, and reservations, then claim work through
-existing reservation APIs. Settlement never selects workers. Higher-priority work may preempt with
-hysteresis; interrupted tasks return to Available. PlayerAssigned work is immune to autonomous
-preemption. Assignment reports are transient; authoritative assignments/reservations persist.
+Idle workers evaluate priority, distance, **physical capability** for the task kind, performance,
+and reservations, then claim work through existing reservation APIs. Physical flags
+(`can_construct`, `can_operate_workstation`, `can_haul`) are feasibility, not skill. Haul is not
+operate. Skill never gates eligibility. Settlement never selects workers. Higher-priority work may
+preempt with hysteresis; interrupted tasks return to Available. PlayerAssigned work is immune to
+autonomous preemption. Assignment reports are transient; authoritative assignments/reservations persist.
 
 Planning Scheduler (ADR-125 SA10) determines **when** settlement planner stages run (event-driven dirty
 flags, fallback cadence, budgets, stagger, priority). Stages keep their own evaluation logic; the
@@ -564,7 +570,17 @@ scheduler never plans. Invalidation is strictly downstream — later stages must
 Worker Assignment never invalidates planning. Implementation consolidates per-stage poll loops; it
 does not change Need/Response/Intent/Construction decisions.
 
-**Authoritative SA runtime pipeline:** SA8 → SA2 → SA3 → SA4 → SA5 → (EP9) → SA9 → SA6 → SA7.
+**Authoritative SA runtime pipeline:** SA8 → SA2 → SA3 → SA4 → SA5 (EP9 invoked as a service here) →
+SA9 → SA6 → SA7.
+
+Settlement identity (ADR-133) is a dedicated **`SettlementAnchor`** with explicit center and mutable
+radius. `UnitRecord.settlement_id` and `BuildingRecord.settlement_id` are the sole membership
+authority; derived rosters are caches. Affiliation, faction, team, ownership, and proximity are not
+membership. Settlements may not overlap. Individual hunger (ADR-134) is per-unit self-maintenance,
+not settlement upkeep; settlement food demand aggregates live members only. Population is not an
+active Need. Food need **current** is aggregated item **nutrition**; materials/stone **current** is
+category **count** (ADR-117). Categories choose which items participate; they do not force one value
+function.
 
 Asset sizing (ADR-097, ADR-126–129) treats **meters** as the authoring language: catalog
 `AssetSizingDefinition` owns desired dimensions, baked baseline scale, pivot, and import rotation

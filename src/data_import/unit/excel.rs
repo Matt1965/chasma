@@ -8,6 +8,7 @@ use super::schema::{
 use crate::data_import::asset_sizing::{asset_sizing_from_columns, parse_asset_sizing_columns};
 use crate::data_import::error::{DataImportError, RowImportError};
 use crate::data_import::schema::parse_enabled_cell;
+use crate::world::DEFAULT_NUTRITION_CONSUMPTION_PER_TICK;
 use crate::world::DEFAULT_TURN_SPEED_DEGREES_PER_SECOND;
 
 pub const UNITS_SHEET_NAME: &str = "Units";
@@ -136,6 +137,18 @@ fn parse_row(
         (true, true)
     };
 
+    let optional_bool = |column: &str, default: bool| -> Result<(bool, bool), String> {
+        if !columns.contains_key(column) {
+            return Ok((default, false));
+        }
+        let raw = text(column);
+        if raw.trim().is_empty() {
+            return Ok((default, true));
+        }
+        let (value, _) = parse_enabled_cell(&raw)?;
+        Ok((value, true))
+    };
+
     let base_hp = u32_col("Base HP")?;
     let max_hp = if columns.contains_key("Max HP") {
         let raw = text("Max HP");
@@ -147,6 +160,18 @@ fn parse_row(
     } else {
         base_hp
     };
+
+    let (can_construct, has_can_construct_column) = optional_bool("Can Construct", false)?;
+    let (can_operate_workstation, has_can_operate_workstation_column) =
+        optional_bool("Can Operate Workstation", false)?;
+    let (can_haul, has_can_haul_column) = optional_bool("Can Haul", false)?;
+    let construction_speed = optional_f32("Construction Speed", 1.0)?;
+    let has_construction_speed_column = columns.contains_key("Construction Speed");
+    let nutrition_consumption_per_tick = optional_f32(
+        "Nutrition Consumption Per Tick",
+        DEFAULT_NUTRITION_CONSUMPTION_PER_TICK,
+    )?;
+    let has_nutrition_consumption_column = columns.contains_key("Nutrition Consumption Per Tick");
 
     Ok(UnitImportRow {
         row_number,
@@ -203,6 +228,16 @@ fn parse_row(
         has_turn_speed_column: columns.contains_key(TURN_SPEED_DEG_PER_SEC),
         sight_range_meters: optional_f32(SIGHT_RANGE_METERS, DEFAULT_SIGHT_RANGE_METERS)?,
         has_sight_range_column: columns.contains_key(SIGHT_RANGE_METERS),
+        can_construct,
+        can_operate_workstation,
+        can_haul,
+        construction_speed,
+        has_can_construct_column,
+        has_can_operate_workstation_column,
+        has_can_haul_column,
+        has_construction_speed_column,
+        nutrition_consumption_per_tick,
+        has_nutrition_consumption_column,
         asset_sizing: asset_sizing_from_columns(&parse_asset_sizing_columns(
             columns,
             cells,

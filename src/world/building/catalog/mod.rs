@@ -1,5 +1,6 @@
 mod definition;
 mod definition_id;
+mod merge;
 mod registry;
 mod render_key;
 mod revision;
@@ -8,6 +9,7 @@ mod variant;
 
 pub use definition::BuildingDefinition;
 pub use definition_id::BuildingDefinitionId;
+pub use merge::merge_starter_extensions_into_catalog;
 pub use registry::{BuildingCatalog, BuildingCatalogError};
 pub use render_key::BuildingRenderKey;
 pub use revision::BuildingCatalogRevision;

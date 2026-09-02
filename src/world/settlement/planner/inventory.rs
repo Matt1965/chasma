@@ -6,6 +6,7 @@ use crate::world::ItemDefinitionId;
 use crate::world::building::catalog::{BuildingCatalog, BuildingDefinitionId};
 use crate::world::building::inventory_binding::BuildingInventoryBindingId;
 use crate::world::inventory::{InventoryCatalogCtx, InventoryEntryContents, count_stack_item};
+use crate::world::item::{ItemCatalog, ItemCategoryId};
 use crate::world::settlement::SettlementId;
 use crate::world::{BuildingId, WorldData};
 
@@ -18,6 +19,16 @@ pub fn aggregate_settlement_stock(
     settlement_id: SettlementId,
     local_retentions: &[BuildingLocalRetention],
     _inventory_ctx: &InventoryCatalogCtx<'_>,
+) -> HashMap<ItemDefinitionId, u32> {
+    collect_settlement_accessible_stock(world, building_catalog, settlement_id, local_retentions)
+}
+
+/// Discover settlement-accessible stock from member buildings with logistics supply bindings.
+pub fn collect_settlement_accessible_stock(
+    world: &WorldData,
+    building_catalog: &BuildingCatalog,
+    settlement_id: SettlementId,
+    local_retentions: &[BuildingLocalRetention],
 ) -> HashMap<ItemDefinitionId, u32> {
     let mut totals = HashMap::new();
     let building_ids = world
@@ -69,7 +80,47 @@ pub fn aggregate_settlement_stock(
     totals
 }
 
-fn building_advertises_settlement_supply(
+/// Sum item quantities for one authored category.
+pub fn sum_category_count(
+    stock: &HashMap<ItemDefinitionId, u32>,
+    item_catalog: &ItemCatalog,
+    category: &ItemCategoryId,
+) -> u32 {
+    let mut total = 0u32;
+    for (item_id, qty) in stock {
+        let Some(def) = item_catalog.get(item_id) else {
+            continue;
+        };
+        if def.category_id == *category {
+            total = total.saturating_add(*qty);
+        }
+    }
+    total
+}
+
+/// Sum nutrition (quantity × item nutrition) for one authored category.
+pub fn sum_category_nutrition(
+    stock: &HashMap<ItemDefinitionId, u32>,
+    item_catalog: &ItemCatalog,
+    category: &ItemCategoryId,
+) -> u64 {
+    let mut total = 0u64;
+    for (item_id, qty) in stock {
+        let Some(def) = item_catalog.get(item_id) else {
+            continue;
+        };
+        if def.category_id != *category {
+            continue;
+        }
+        if def.nutrition == 0 {
+            continue;
+        }
+        total = total.saturating_add(u64::from(*qty) * u64::from(def.nutrition));
+    }
+    total
+}
+
+pub fn building_advertises_settlement_supply(
     definition: &crate::world::building::catalog::BuildingDefinition,
 ) -> bool {
     if definition.id == BuildingDefinitionId::new("storage_chest") {

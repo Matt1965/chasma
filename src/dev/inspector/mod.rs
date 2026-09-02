@@ -3,6 +3,7 @@
 mod blueprint_edit;
 mod blueprint_inspection;
 mod building_actions;
+mod building_capabilities;
 mod building_dev_action;
 mod capture;
 mod doodad_actions;
@@ -36,9 +37,11 @@ pub use blueprint_inspection::{
     sync_navigation_blueprint_session,
 };
 pub use building_actions::handle_building_production_repeat_button;
+pub use building_capabilities::BuildingDevCapabilities;
 pub use building_dev_action::{
-    BuildingDevAction, DevBuildingActionButton, apply_building_dev_action,
-    handle_building_dev_action_buttons,
+    BuildingDevAction, DevBuildingActionButton, DevProductionOperationButton,
+    apply_building_dev_action, handle_building_dev_action_buttons,
+    handle_production_operation_buttons,
 };
 pub use capture::capture_building_blueprint_inspection_snapshot;
 pub use capture::{capture_item_pile_inspector_snapshot, capture_unit_inspector_snapshot};

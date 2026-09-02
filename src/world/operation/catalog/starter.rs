@@ -122,7 +122,7 @@ pub fn starter_definitions() -> Vec<OperationDefinition> {
             2,
         )
         .with_outputs(vec![OperationOutputDefinition::Item {
-            item_id: ItemDefinitionId::new("iron_ore"),
+            item_id: ItemDefinitionId::new("prispod"),
             quantity: 1,
             destination_binding: Some(BuildingInventoryBindingId::new("primary_output")),
         }]),

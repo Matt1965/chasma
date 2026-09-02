@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 use super::id::{SettlementId, TreasuryId};
 use super::record::{SettlementRecord, SettlementTreasuryRecord, TreasuryTransactionRecord};
-use crate::world::BuildingId;
+use crate::world::{BuildingId, UnitId};
 
 #[derive(Debug, Clone, Default, PartialEq, Reflect)]
 pub struct SettlementStore {
@@ -16,6 +16,8 @@ pub struct SettlementStore {
     treasuries: BTreeMap<TreasuryId, SettlementTreasuryRecord>,
     settlement_by_building: BTreeMap<BuildingId, SettlementId>,
     settlement_buildings: BTreeMap<SettlementId, BTreeSet<BuildingId>>,
+    settlement_by_unit: BTreeMap<UnitId, SettlementId>,
+    settlement_units: BTreeMap<SettlementId, BTreeSet<UnitId>>,
     treasury_by_settlement: BTreeMap<SettlementId, TreasuryId>,
     transaction_log: Vec<TreasuryTransactionRecord>,
 }
@@ -66,6 +68,10 @@ impl SettlementStore {
         self.settlement_by_building.get(&building_id).copied()
     }
 
+    pub fn settlement_for_unit(&self, unit_id: UnitId) -> Option<SettlementId> {
+        self.settlement_by_unit.get(&unit_id).copied()
+    }
+
     pub fn buildings_for_settlement(&self, settlement_id: SettlementId) -> Vec<BuildingId> {
         self.settlement_buildings
             .get(&settlement_id)
@@ -73,7 +79,64 @@ impl SettlementStore {
             .unwrap_or_default()
     }
 
-    pub fn link_building_to_settlement(
+    pub fn units_for_settlement(&self, settlement_id: SettlementId) -> Vec<UnitId> {
+        self.settlement_units
+            .get(&settlement_id)
+            .map(|set| set.iter().copied().collect())
+            .unwrap_or_default()
+    }
+
+    /// Rebuild building membership cache entry from authoritative record state.
+    pub(crate) fn reindex_building_membership(
+        &mut self,
+        building_id: BuildingId,
+        settlement_id: Option<SettlementId>,
+    ) {
+        if let Some(previous) = self.settlement_by_building.remove(&building_id) {
+            if let Some(set) = self.settlement_buildings.get_mut(&previous) {
+                set.remove(&building_id);
+            }
+        }
+        if let Some(settlement_id) = settlement_id {
+            self.settlement_by_building
+                .insert(building_id, settlement_id);
+            self.settlement_buildings
+                .entry(settlement_id)
+                .or_default()
+                .insert(building_id);
+        }
+    }
+
+    /// Rebuild unit membership cache entry from authoritative record state.
+    pub(crate) fn reindex_unit_membership(
+        &mut self,
+        unit_id: UnitId,
+        settlement_id: Option<SettlementId>,
+    ) {
+        if let Some(previous) = self.settlement_by_unit.remove(&unit_id) {
+            if let Some(set) = self.settlement_units.get_mut(&previous) {
+                set.remove(&unit_id);
+            }
+        }
+        if let Some(settlement_id) = settlement_id {
+            self.settlement_by_unit.insert(unit_id, settlement_id);
+            self.settlement_units
+                .entry(settlement_id)
+                .or_default()
+                .insert(unit_id);
+        }
+    }
+
+    pub(crate) fn clear_membership_indexes(&mut self) {
+        self.settlement_by_building.clear();
+        self.settlement_buildings.clear();
+        self.settlement_by_unit.clear();
+        self.settlement_units.clear();
+    }
+
+    /// Cache-only link retained for internal rebuild paths. Prefer
+    /// [`super::membership::assign_building_settlement`] for authoritative writes.
+    pub(crate) fn link_building_to_settlement_cache(
         &mut self,
         settlement_id: SettlementId,
         building_id: BuildingId,
@@ -91,21 +154,25 @@ impl SettlementStore {
             }
             return Ok(());
         }
-        self.settlement_by_building
-            .insert(building_id, settlement_id);
-        self.settlement_buildings
-            .entry(settlement_id)
-            .or_default()
-            .insert(building_id);
+        self.reindex_building_membership(building_id, Some(settlement_id));
         Ok(())
     }
 
+    #[deprecated(note = "use assign_building_settlement on WorldData")]
+    pub fn link_building_to_settlement(
+        &mut self,
+        settlement_id: SettlementId,
+        building_id: BuildingId,
+    ) -> Result<(), super::error::TreasuryError> {
+        self.link_building_to_settlement_cache(settlement_id, building_id)
+    }
+
     pub fn unlink_building(&mut self, building_id: BuildingId) {
-        if let Some(settlement_id) = self.settlement_by_building.remove(&building_id) {
-            if let Some(set) = self.settlement_buildings.get_mut(&settlement_id) {
-                set.remove(&building_id);
-            }
-        }
+        self.reindex_building_membership(building_id, None);
+    }
+
+    pub fn unlink_unit(&mut self, unit_id: UnitId) {
+        self.reindex_unit_membership(unit_id, None);
     }
 
     pub fn treasury_for_settlement(&self, settlement_id: SettlementId) -> Option<TreasuryId> {
@@ -175,25 +242,11 @@ impl SettlementStore {
                 treasury.id,
             ));
         }
-        if self
-            .settlement_by_building
-            .contains_key(&settlement.anchor_building_id)
-        {
-            return Err(super::error::TreasuryError::SettlementAlreadyExists(
-                settlement.anchor_building_id,
-            ));
-        }
         if treasury.settlement_id != settlement.id {
             return Err(super::error::TreasuryError::SettlementNotFound(
                 treasury.settlement_id,
             ));
         }
-        self.settlement_by_building
-            .insert(settlement.anchor_building_id, settlement.id);
-        self.settlement_buildings
-            .entry(settlement.id)
-            .or_default()
-            .insert(settlement.anchor_building_id);
         self.treasury_by_settlement
             .insert(settlement.id, treasury.id);
         self.treasuries.insert(treasury.id, treasury);
@@ -207,6 +260,11 @@ impl SettlementStore {
         if let Some(members) = self.settlement_buildings.remove(&id) {
             for building_id in members {
                 self.settlement_by_building.remove(&building_id);
+            }
+        }
+        if let Some(members) = self.settlement_units.remove(&id) {
+            for unit_id in members {
+                self.settlement_by_unit.remove(&unit_id);
             }
         }
         if let Some(treasury_id) = treasury_id {

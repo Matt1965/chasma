@@ -65,9 +65,10 @@ Need dirty lives on `NeedEvaluationStore` so evaluation never clears EP9 `planne
 
 ### First needs (architecture exercise only)
 
-> **AMENDED 2026-08-28** — see [Amendment: CategoryStock, member demand, stone](#amendment-2026-08-28--categorystock-member-demand-and-stone).
-> Food is no longer a stub. Construction remains **building-backlog** pressure and is not material
-> stock. Population / `UnitCount` remains deferred as a Need.
+> **AMENDED 2026-08-28; SUPERSEDED IN PART the same day** — see both amendments below.
+> Food is no longer a stub. Construction remains **building-backlog** pressure. Materials is a
+> **separate** stock need. Population / `UnitCount` remains deferred as a Need. Food current is
+> **nutrition**, not item count.
 
 Food, Construction, Housing, Defense, Research, Expansion, Luxury — measurement stubs sufficient to
 exercise the catalog/snapshot/pressure path. No Response behaviors.
@@ -104,65 +105,84 @@ is a valid need and must not be overloaded as "we are short on stone."
 A 2026-08-28 design pass also locked individual hunger (ADR-134) and explicit membership (ADR-133).
 SA2 must observe those, not invent a second population system.
 
-### CategoryStock is the generic category-stock evaluator
+### Category-driven sensing, not one numeric meaning
+
+> **SUPERSEDED 2026-08-28 (later the same day)** — forcing food and stone through one count-based
+> `CategoryStock` evaluator. See [Amendment: nutrition vs count](#amendment-2026-08-28--food-nutrition-vs-material-count).
+> Category as the *discovery* key remains.
 
 Replace per-need inventory special cases (`FoodStock`, `LuxuryStock`, and any item-id matching) with
-one evaluation method:
+**category-driven** aggregation: which items count is `ItemCategoryId`, never a hardcoded item id.
+
+Food and materials are **not** required to share one value function. Stone is quantity. Food is
+nutritional value (amendment below).
+
+SA2 still does not generate actions.
+
+### Food desired uses member demand plus a reserve — not a Population need
+
+Food **current** is settlement-scoped **available food value** (sum of authored nutrition × quantity
+for food-category items in member inventories). 100 raw items and 100 meals are not equivalent.
+
+Food **desired** is, in the **same nutrition units**:
 
 ```text
-NeedEvaluationMethod::CategoryStock { category: ItemCategoryId }
+desired = expected member consumption over an authored horizon
+        + desired reserve / stockpile buffer
 ```
 
-Food and the milestone's second competing need (construction-material / stone stock) are the **same
-evaluator with different authored data**. Luxury can migrate onto the same method when it has a real
-category; it must not keep `id.contains("luxury") || id == "iron_bar"`.
+- Live members only (`settlement_id` match; dead units do not count)
+- Authored per-unit consumption characteristics (ADR-134), compatible with item nutrition
+- Reserve/buffer is authored (`NeedTarget` and/or need definition) — exact numbers are tuning
 
-SA2 still does not generate actions. CategoryStock only reports current stock vs desired.
+**Satisfying immediate consumption does not stop food production.** If the reserve is short, food
+pressure is low but **nonzero**. SA4 arbitrates that against other needs. If stone (or anything else)
+is more urgent, workers do that. If other needs are satisfied, producing surplus food is valid.
 
-### Food desired uses member demand — not a Population need
+**Do not** add a special rule “once minimum food is met, never produce food.” Reserve-building is
+normal need pressure.
 
-Food **current** remains settlement-scoped food-category stock (ADR-133 membership for which
-inventories count as settlement stock).
+**Member count exists ≠ Population is an active Need.** The Population / `UnitCount` evaluator remains
+**deferred**.
 
-Food **desired** uses **live member** consumption:
-
-- count units whose `settlement_id` matches (dead units have `None` and must not count)
-- apply authored per-unit consumption characteristics (ADR-134)
-- optionally compose with an authored buffer / `NeedTarget` stockpile — exact composition is
-  implementation, but member demand **must** be an input
-
-**Member count exists ≠ Population is an active Need.**
-
-This ADR may document an authoritative member-count query because food demand (and future systems)
-need it. The Population / `UnitCount` need evaluator remains **deferred**. Do not restore it because
-the count is now available. Food pressure is the food need; there is no Population pressure in this
-milestone.
-
-Non-members may physically take food later; they are **never** legitimate food demand.
-
-### Stone / construction-material stock is the second competing need
+### Materials stock is the second competing need (not Construction)
 
 The milestone's second need is **material stock**, not construction backlog.
 
-- Author a `NeedDefinition` whose evaluation method is `CategoryStock` for a construction-material
-  category.
-- **Do not** reuse `NeedCategory::Construction` or `NeedEvaluationMethod::ConstructionSites` for this.
-  Construction remains incomplete-building backlog pressure and stays available but is not the
-  competing need.
-- Stone desired is **authored** (`NeedTarget` / definition default), not member-driven. Combined with
-  dynamic food desired, food-vs-stone worker reallocation can emerge from scoring when one pressure
-  overtakes the other — not from scenario scripting.
+| Need | Meaning |
+|---|---|
+| `construction` | Unfinished buildings / construction backlog (`ConstructionSites`) |
+| `materials` | Insufficient construction-material **count** (`NeedCategory::Materials`) |
 
-### Item category for stone (content prerequisite)
+- **Do not** reuse `NeedCategory::Construction` or `NeedEvaluationMethod::ConstructionSites`.
+- Item category: dedicated `construction_material` (or equivalent); assign `stone` to it. Do **not**
+  measure `raw_material` and do **not** special-case item id `stone`.
+- Materials **current** = quantity of that category. Materials **desired** is authored.
+- Rebind `increase_construction_materials` from NeedId `construction` to NeedId `materials`.
 
-Starter `stone` is currently `raw_material` alongside iron ore and coal. Measuring `raw_material`
-would mix unrelated stocks and is **not** acceptable.
+### Amendment (2026-08-28) — food nutrition vs material count
 
-Confirm or author a dedicated item category (e.g. `construction_material`) and assign `stone` to it
-so CategoryStock stays generic. Do **not** special-case item id `stone` in the evaluator.
+Forcing food and stone through one count-based `CategoryStock` was too much generalization. Categories
+still decide *which items participate*. **What the number means is need-specific.**
 
-If `NeedCategory` has no suitable variant for this need, add one for materials / construction-stock.
-Do not overload Construction, Population, or Economy.
+Simplest architecture (do **not** invent a generic item-value framework):
+
+1. **Shared helper:** aggregate matching-category items from settlement-accessible inventories
+   (membership-scoped, as today).
+2. **`CategoryCount { category }`:** `current = sum(quantity)` — materials/stone.
+3. **`CategoryNutrition { category }`:** `current = sum(quantity × item.nutrition)` — food.
+   `nutrition` is an authored field on `ItemDefinition` (ADR-087). Non-food items are 0 and must not
+   be treated as meals.
+
+Luxury may later use `CategoryCount` once it has a real category. Do not keep substring matching.
+
+Current and desired for a given need **must use the same unit**. Mixing item-count desired with
+nutrition current is invalid.
+
+Long-term, an entire production chain may satisfy food (farm → flour → bread). EP9's production graph
+is the existing place for that reasoning (ADR-114). **This milestone** uses a short chain:
+Prispod farm → directly edible Prispod with nutrition. That is a **validation simplification**, not a
+rule that farms always output ready-to-eat food.
 
 ### Housing, defense, and remaining substring sensors
 

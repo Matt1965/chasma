@@ -36,7 +36,7 @@ pub fn starter_definitions() -> Vec<ItemDefinition> {
             ItemDefinitionId::new("stone"),
             "Stone",
             "Quarried stone for construction.",
-            ItemCategoryId::new("raw_material"),
+            ItemCategoryId::new("construction_material"),
             2,
             2,
             true,
@@ -135,7 +135,22 @@ pub fn starter_definitions() -> Vec<ItemDefinition> {
             300,
             2,
             true,
-        ),
+        )
+        .with_nutrition(50),
+        ItemDefinition::new(
+            ItemDefinitionId::new("prispod"),
+            "Prispod",
+            "Edible prispod cultivated on farms.",
+            ItemCategoryId::new("food"),
+            1,
+            1,
+            true,
+            20,
+            250,
+            5,
+            true,
+        )
+        .with_nutrition(25),
         ItemDefinition::new(
             ItemDefinitionId::new("healing_kit"),
             "Healing Kit",

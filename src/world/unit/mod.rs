@@ -36,6 +36,7 @@ mod record;
 mod removal;
 #[cfg(any(test, feature = "dev"))]
 mod restore;
+mod self_maintenance;
 mod source;
 mod state;
 mod store;
@@ -57,8 +58,8 @@ pub use authoring::{
 #[cfg(any(test, feature = "dev"))]
 pub use catalog::starter_definitions;
 pub use catalog::{
-    DEFAULT_TURN_SPEED_DEGREES_PER_SECOND, UnitCatalog, UnitCatalogError, UnitDefinition,
-    UnitDefinitionId, UnitRenderKey, UnitWorkCapabilities,
+    DEFAULT_NUTRITION_CONSUMPTION_PER_TICK, DEFAULT_TURN_SPEED_DEGREES_PER_SECOND, UnitCatalog,
+    UnitCatalogError, UnitDefinition, UnitDefinitionId, UnitRenderKey, UnitWorkCapabilities,
 };
 pub use combat_state::CombatState;
 #[cfg(test)]
@@ -125,6 +126,13 @@ pub use removal::{UnitRemovalOutcome, finalize_unit_removal};
 #[cfg(any(test, feature = "dev"))]
 pub use restore::{
     UnitRestoreError, normalize_restored_unit, restore_unit_record, validate_unit_for_restore,
+};
+pub use self_maintenance::{
+    HungerStage, NutritionProfile, SelfMaintenanceActivity, SelfMaintenanceContext,
+    UnitNutritionState, UnitSelfMaintenanceState, apply_nutrition_decay, evaluate_hunger_stage,
+    hunger_prevents_work_claim, hunger_stage_label, initialize_unit_nutrition,
+    step_unit_nutrition_decay, step_unit_self_maintenance_post_movement,
+    step_unit_self_maintenance_pre_work, unit_in_active_combat,
 };
 pub use source::UnitSource;
 pub use state::UnitState;

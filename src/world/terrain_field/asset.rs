@@ -21,6 +21,36 @@ pub struct TerrainFieldManifestConfig {
 pub struct TerrainFieldManifestEntry {
     pub field_id: String,
     pub tile_dir: String,
+    /// Provenance hash for this field's tiles (`tf2_*` from [`TerrainFieldSourceProvenance`]).
+    /// When absent, loaders fall back to legacy package-wide [`TerrainFieldManifest::source_version`].
+    #[serde(default)]
+    pub source_version: Option<String>,
+}
+
+impl TerrainFieldManifestEntry {
+    /// Expected `source_version` for every tile in this manifest entry.
+    pub fn expected_source_version(&self, manifest: &TerrainFieldManifest) -> String {
+        if let Some(version) = &self.source_version {
+            return version.clone();
+        }
+        manifest.source_version.clone()
+    }
+}
+
+/// Deterministic package identity from per-field provenance hashes (ADR-102).
+pub fn package_manifest_source_version(entries: &[TerrainFieldManifestEntry]) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    for entry in entries {
+        entry.field_id.hash(&mut hasher);
+        entry
+            .source_version
+            .as_deref()
+            .unwrap_or("")
+            .hash(&mut hasher);
+    }
+    format!("tfp_{:016x}", hasher.finish())
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

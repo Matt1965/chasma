@@ -43,9 +43,10 @@ impl Plugin for DebugOverlayPlugin {
                 draw_interaction_debug_overlay, draw_interior_clearance_overlay,
                 draw_navigation_debug_overlay, draw_path_debug_overlay,
                 draw_relationship_links_overlay, draw_runtime_entrance_overlay,
-                draw_selection_debug_overlay, draw_steering_debug_overlay,
-                project_relationship_link_label_positions, setup_navigation_mask_overlay_assets,
-                setup_relationship_link_labels_overlay, sync_navigation_mask_meshes,
+                draw_selection_debug_overlay, draw_settlement_boundary_overlay,
+                draw_steering_debug_overlay, project_relationship_link_label_positions,
+                setup_navigation_mask_overlay_assets, setup_relationship_link_labels_overlay,
+                sync_navigation_mask_meshes,
             };
             use super::overlay_diagnostics::sync_navigation_overlay_diagnostics;
             use super::path_trace::{UnitPathDiagnosticStore, sync_unit_path_diagnostic_store};
@@ -94,6 +95,7 @@ impl Plugin for DebugOverlayPlugin {
                         draw_formation_debug_overlay.run_if(run_debug_formation_overlay),
                         draw_steering_debug_overlay.run_if(run_debug_steering_overlay),
                         draw_selection_debug_overlay.run_if(run_debug_selection_overlay),
+                        draw_settlement_boundary_overlay,
                         draw_combat_debug_overlay.run_if(run_debug_combat_overlay),
                         draw_relationship_links_overlay
                             .run_if(run_debug_relationship_links_overlay),

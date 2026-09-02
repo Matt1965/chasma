@@ -60,30 +60,11 @@ impl BuildingDevAction {
         Self::AddConstructionProgress,
         Self::SetRuins,
     ];
-    pub const LIFECYCLE: &[Self] = &[Self::Damage50, Self::Heal50, Self::Destroy];
-    pub const PRODUCTION: &[Self] = &[
+    pub const LIFECYCLE: &[Self] = &[Self::Damage50, Self::Heal50, Self::SetRuins];
+    pub const PRODUCTION_ACTIONS: &[Self] = &[
         Self::ToggleProductionEnabled,
-        Self::ToggleProductionPaused,
         Self::ResetProductionProgress,
-        Self::CycleOperationForward,
-        Self::CycleOperationBackward,
         Self::ForceProductionCycle,
-        Self::ToggleProductionAdvanced,
-        Self::ValidateProduction,
-    ];
-    pub const INVENTORY: &[Self] = &[
-        Self::LogInventory,
-        Self::AddGold,
-        Self::TransferWithUnit,
-        Self::ToggleContainerLock,
-        Self::ValidateInventoryLinks,
-        Self::ClearBindingInventories,
-    ];
-    pub const LOGISTICS: &[Self] = &[
-        Self::SpawnManualHaul,
-        Self::CancelOpenHauls,
-        Self::ForceCompleteHaul,
-        Self::ForceSettlementReplan,
     ];
     pub const DOORS: &[Self] = &[Self::OpenDoor, Self::LockDoor];
     pub const TERRAIN: &[Self] = &[Self::RebuildTerrainAssessment];
@@ -103,7 +84,7 @@ impl BuildingDevAction {
             Self::TransferWithUnit => "Transfer w/ unit",
             Self::ToggleContainerLock => "Toggle lock",
             Self::ValidateInventoryLinks => "Validate links",
-            Self::ToggleProductionEnabled => "Toggle production",
+            Self::ToggleProductionEnabled => "Enable / disable production",
             Self::ToggleProductionPaused => "Toggle pause",
             Self::ResetProductionProgress => "Reset progress",
             Self::ToggleProductionAdvanced => "Adv. panel",
@@ -171,6 +152,11 @@ impl BuildingDevAction {
 #[derive(Component, Debug, Clone, Copy)]
 pub struct DevBuildingActionButton {
     pub action: BuildingDevAction,
+}
+
+#[derive(Component, Debug, Clone, Copy)]
+pub struct DevProductionOperationButton {
+    pub operation_index: usize,
 }
 
 /// Apply one dev building action. Returns true when inspector snapshot should refresh.
@@ -706,27 +692,23 @@ pub fn apply_building_dev_action(
                 .settlement_store()
                 .settlement_for_building(building_id)
             {
-                let mut planner = world
-                    .production_planner_store()
-                    .get(settlement_id)
-                    .cloned()
-                    .unwrap_or_default();
-                planner.mark_dirty();
-                crate::world::execute_settlement_replan(
+                world
+                    .building_intent_propagation_store_mut()
+                    .mark_dirty(settlement_id);
+                let response_catalog = crate::world::ResponseCatalog::default();
+                crate::world::propagate_building_intent_now(
                     world,
+                    &response_catalog,
                     &params.building_catalog,
                     &building_sim.operation_catalog,
                     &inventory_ctx,
                     settlement_id,
-                    &mut planner,
                     simulation.current_tick,
                 );
-                let stored = world.production_planner_store_mut().get_mut(settlement_id);
-                stored.last_diagnostics = planner.last_diagnostics;
-                stored.last_plan_tick = planner.last_plan_tick;
-                stored.dirty = planner.dirty;
-                inspector.last_message =
-                    format!("Force replanned settlement #{}", settlement_id.raw());
+                inspector.last_message = format!(
+                    "Force propagated SA5 policy for settlement #{}",
+                    settlement_id.raw()
+                );
                 true
             } else {
                 inspector.last_message = "Building is not linked to a settlement".into();
@@ -847,6 +829,69 @@ pub fn apply_building_dev_action(
     }
 }
 
+pub fn handle_production_operation_buttons(
+    dev_state: Res<crate::dev::DevModeState>,
+    world_selection: Res<crate::client::selection::WorldSelectionState>,
+    mut building_sim: BuildingSimulationParams,
+    mut params: DevBuildingActionParams,
+    mut world: ResMut<crate::world::WorldData>,
+    mut inspector: ResMut<WorldInspectorState>,
+    mut gate: ResMut<crate::dev::DevModeInputGate>,
+    buttons: Query<(&Interaction, &DevProductionOperationButton), Changed<Interaction>>,
+) {
+    if !dev_state.enabled {
+        return;
+    }
+    let Some(building_id) = (world_selection.category == WorldSelectionCategory::Building)
+        .then_some(world_selection.building_id)
+        .flatten()
+    else {
+        return;
+    };
+    let Some(record) = world.get_building(building_id) else {
+        return;
+    };
+    let Some(definition) = params.building_catalog.get(&record.definition_id) else {
+        return;
+    };
+    let operations = &definition.supported_operations;
+
+    for (interaction, button) in &buttons {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        let Some(operation_id) = operations.get(button.operation_index) else {
+            continue;
+        };
+        gate.block_gameplay_mouse = true;
+        match crate::world::set_production_selected_operation(
+            &mut world,
+            &params.building_catalog,
+            &building_sim.operation_catalog,
+            building_id,
+            Some(operation_id.clone()),
+        ) {
+            Ok(()) => {
+                inspector.last_message = format!(
+                    "Selected operation {} for building #{}",
+                    operation_id.as_str(),
+                    building_id.raw()
+                );
+                refresh_building_inspector_snapshot(
+                    &world,
+                    &params,
+                    &mut building_sim,
+                    building_id,
+                    &mut inspector,
+                );
+            }
+            Err(error) => {
+                inspector.last_message = format!("Operation select failed: {error}");
+            }
+        }
+    }
+}
+
 pub fn handle_building_dev_action_buttons(
     dev_state: Res<crate::dev::DevModeState>,
     world_selection: Res<crate::client::selection::WorldSelectionState>,
@@ -920,6 +965,10 @@ fn refresh_building_inspector_snapshot(
         building_id,
         None,
         Some(operation_probe),
+        &building_sim.operation_catalog,
+        &params.items,
+        &params.inventory_profiles,
+        building_sim.assessment_store.get(building_id),
     );
 }
 
@@ -932,4 +981,69 @@ fn first_building_door(
         .building_door_ids(building_id)
         .first()
         .copied()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn exposed_action_sections() -> Vec<BuildingDevAction> {
+        [
+            BuildingDevAction::CONSTRUCTION,
+            BuildingDevAction::LIFECYCLE,
+            BuildingDevAction::PRODUCTION_ACTIONS,
+            BuildingDevAction::DOORS,
+            BuildingDevAction::TERRAIN,
+        ]
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect()
+    }
+
+    #[test]
+    fn removed_controls_are_not_exposed_in_primary_sections() {
+        let exposed = exposed_action_sections();
+        let removed = [
+            BuildingDevAction::Destroy,
+            BuildingDevAction::ToggleProductionPaused,
+            BuildingDevAction::ToggleProductionAdvanced,
+            BuildingDevAction::ValidateProduction,
+            BuildingDevAction::ValidateInventoryLinks,
+            BuildingDevAction::CycleOperationForward,
+            BuildingDevAction::CycleOperationBackward,
+            BuildingDevAction::LogInventory,
+            BuildingDevAction::AddGold,
+            BuildingDevAction::TransferWithUnit,
+            BuildingDevAction::ToggleContainerLock,
+            BuildingDevAction::ClearBindingInventories,
+            BuildingDevAction::ForceSettlementReplan,
+            BuildingDevAction::SpawnManualHaul,
+            BuildingDevAction::CancelOpenHauls,
+            BuildingDevAction::ForceCompleteHaul,
+        ];
+        for action in removed {
+            assert!(
+                !exposed.contains(&action),
+                "{action:?} should not appear in primary UI sections"
+            );
+        }
+    }
+
+    #[test]
+    fn production_section_contains_actions_only() {
+        assert_eq!(BuildingDevAction::PRODUCTION_ACTIONS.len(), 3);
+        assert!(
+            !BuildingDevAction::PRODUCTION_ACTIONS.contains(&BuildingDevAction::ValidateProduction)
+        );
+        assert!(
+            !BuildingDevAction::PRODUCTION_ACTIONS
+                .contains(&BuildingDevAction::ValidateInventoryLinks)
+        );
+    }
+
+    #[test]
+    fn lifecycle_section_excludes_destroy_dev_action() {
+        assert!(!BuildingDevAction::LIFECYCLE.contains(&BuildingDevAction::Destroy));
+    }
 }

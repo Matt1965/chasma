@@ -108,6 +108,7 @@ pub struct WorldData {
     corpse_store: super::corpse::CorpseStore,
     /// Authoritative world item piles (ADR-090 I4).
     item_pile_store: super::item_pile::ItemPileStore,
+    settlement_anchor_store: super::settlement::SettlementAnchorStore,
     settlement_store: super::settlement::SettlementStore,
     /// Persistent SettlementState runtime (SA1).
     settlement_state_store: super::settlement::SettlementStateStore,
@@ -212,6 +213,7 @@ impl WorldData {
             item_instance_store: super::inventory::ItemInstanceStore::default(),
             corpse_store: super::corpse::CorpseStore::default(),
             item_pile_store: super::item_pile::ItemPileStore::default(),
+            settlement_anchor_store: super::settlement::SettlementAnchorStore::default(),
             settlement_store: super::settlement::SettlementStore::default(),
             settlement_state_store: super::settlement::SettlementStateStore::default(),
             relationship_standing_store: super::relationship::RelationshipStandingStore::default(),
@@ -368,6 +370,14 @@ impl WorldData {
 
     pub fn item_pile_store_mut(&mut self) -> &mut super::item_pile::ItemPileStore {
         &mut self.item_pile_store
+    }
+
+    pub fn settlement_anchor_store(&self) -> &super::settlement::SettlementAnchorStore {
+        &self.settlement_anchor_store
+    }
+
+    pub fn settlement_anchor_store_mut(&mut self) -> &mut super::settlement::SettlementAnchorStore {
+        &mut self.settlement_anchor_store
     }
 
     pub fn settlement_store(&self) -> &super::settlement::SettlementStore {
@@ -929,6 +939,7 @@ impl WorldData {
 
     /// Remove a building by id alone, returning the removed record.
     pub fn remove_building_by_id(&mut self, id: BuildingId) -> Option<BuildingRecord> {
+        self.settlement_store_mut().unlink_building(id);
         let chunk = self.building_locations.remove(&id)?;
         let store = self.buildings.get_mut(&chunk)?;
         let record = store.take(id)?;
@@ -942,6 +953,19 @@ impl WorldData {
     pub fn get_building(&self, id: BuildingId) -> Option<&BuildingRecord> {
         let chunk = self.building_locations.get(&id)?;
         self.buildings.get(chunk)?.get(id)
+    }
+
+    /// Mutate a unit record in place, returning the updated clone.
+    pub fn mutate_unit(
+        &mut self,
+        id: UnitId,
+        mutate: impl FnOnce(&mut super::unit::UnitRecord),
+    ) -> Option<super::unit::UnitRecord> {
+        let chunk = self.unit_locations.get(&id).copied()?;
+        let store = self.units.get_mut(&chunk)?;
+        let record = store.get_mut(id)?;
+        mutate(record);
+        Some(record.clone())
     }
 
     /// Mutate a building record in place, returning the updated clone.

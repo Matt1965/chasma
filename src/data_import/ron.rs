@@ -277,6 +277,8 @@ pub struct ItemDefinitionRon {
     pub tags: Vec<String>,
     pub unique_instance_required: bool,
     pub enabled: bool,
+    #[serde(default)]
+    pub nutrition: u32,
 }
 
 impl From<&crate::world::ItemCategoryDefinition> for ItemCategoryRon {
@@ -309,6 +311,7 @@ impl From<&crate::world::ItemDefinition> for ItemDefinitionRon {
             tags: definition.tags.clone(),
             unique_instance_required: definition.unique_instance_required,
             enabled: definition.enabled,
+            nutrition: definition.nutrition,
         }
     }
 }

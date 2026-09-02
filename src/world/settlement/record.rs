@@ -2,8 +2,9 @@
 
 use bevy::prelude::*;
 
+use super::anchor::SettlementAnchorId;
 use super::id::{SettlementId, TreasuryId};
-use crate::world::{Affiliation, BuildingId, OwnerId, TeamId, WorldPosition};
+use crate::world::{Affiliation, OwnerId, TeamId, WorldPosition};
 
 /// Faction ownership for a settlement (mirrors building ownership seam).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect)]
@@ -32,15 +33,17 @@ impl SettlementOwnership {
     }
 }
 
-/// Legitimate settlement anchor — not a generic container (ADR-093 I7).
+/// Authoritative settlement identity (ADR-093 I7, ADR-133).
 #[derive(Debug, Clone, PartialEq, Reflect)]
 pub struct SettlementRecord {
     pub id: SettlementId,
     pub display_name: String,
     pub treasury_id: TreasuryId,
-    /// Building that anchors interaction/range (must have settlement_treasury capability).
-    pub anchor_building_id: BuildingId,
+    pub anchor_id: SettlementAnchorId,
+    pub center: WorldPosition,
+    pub boundary_radius_meters: f32,
     pub ownership: SettlementOwnership,
+    /// Treasury / interaction point (defaults to center at creation).
     pub interaction_position: WorldPosition,
     pub created_tick: u64,
 }

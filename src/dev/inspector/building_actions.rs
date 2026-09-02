@@ -117,5 +117,9 @@ fn refresh_building_inspector_snapshot(
         building_id,
         None,
         Some(operation_probe),
+        &building_sim.operation_catalog,
+        &params.items,
+        &params.inventory_profiles,
+        building_sim.assessment_store.get(building_id),
     );
 }

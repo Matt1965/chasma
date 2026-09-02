@@ -40,6 +40,8 @@ pub struct BuildingIntentPropagationReport {
     pub ignored_buildings: Vec<IgnoredBuilding>,
     pub deferred_intents: Vec<String>,
     pub diagnostics: Vec<String>,
+    /// EP9 recommendation diagnostics from this propagation pass (display-only).
+    pub planner_diagnostics: Vec<crate::world::settlement::planner::PlannerDiagnostics>,
 }
 
 impl Default for BuildingIntentPropagationReport {
@@ -52,6 +54,7 @@ impl Default for BuildingIntentPropagationReport {
             ignored_buildings: Vec::new(),
             deferred_intents: Vec::new(),
             diagnostics: Vec::new(),
+            planner_diagnostics: Vec::new(),
         }
     }
 }

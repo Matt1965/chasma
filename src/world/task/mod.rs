@@ -20,7 +20,8 @@ pub use assignment::{
     claim_building_task, ensure_building_task, release_unit_task_to_marketplace,
 };
 pub use eligibility::{
-    building_accepts_workstation_use, building_is_constructible, unit_can_perform_task,
+    building_accepts_workstation_use, building_is_constructible, settlement_for_building_work,
+    unit_can_perform_task, unit_is_settlement_member, unit_may_autonomously_work_building,
     unit_may_work_on_building, unit_work_capabilities,
 };
 pub use error::TaskError;

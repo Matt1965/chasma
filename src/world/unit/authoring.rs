@@ -100,6 +100,8 @@ fn create_unit_with_ownership_impl(
             .map_err(|_| UnitAuthoringError::InventoryAllocationFailed(id))?;
     }
 
+    super::self_maintenance::initialize_unit_nutrition(&mut record.nutrition, definition);
+
     let chunk = crate::world::ChunkId::new(position.chunk);
     if let Err(error) = world.insert_unit(chunk, record.clone()) {
         if let Some(ctx) = inventory_ctx {

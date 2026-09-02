@@ -1,9 +1,9 @@
 //! Excel column schema and conversion into [`UnitDefinition`].
 
-use crate::world::DEFAULT_TURN_SPEED_DEGREES_PER_SECOND;
 use crate::world::asset_sizing::AssetSizingDefinition;
 use crate::world::relationship::{FactionCatalog, FactionId, SpeciesCatalog, SpeciesId};
 use crate::world::{AnimationProfile, AnimationProfileId};
+use crate::world::{DEFAULT_NUTRITION_CONSUMPTION_PER_TICK, DEFAULT_TURN_SPEED_DEGREES_PER_SECOND};
 use crate::world::{UnitDefinition, UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
 
 use super::super::schema::normalize_file_path;
@@ -55,6 +55,11 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Turn Speed Deg/s",
     "Explicit Baseline Scale Uniform",
     "Sight Range",
+    "Can Construct",
+    "Can Operate Workstation",
+    "Can Haul",
+    "Construction Speed",
+    "Nutrition Consumption Per Tick",
 ];
 
 /// Computed workbook column — never imported as authoritative data.
@@ -110,6 +115,16 @@ pub struct UnitImportRow {
     pub has_turn_speed_column: bool,
     pub sight_range_meters: f32,
     pub has_sight_range_column: bool,
+    pub can_construct: bool,
+    pub can_operate_workstation: bool,
+    pub can_haul: bool,
+    pub construction_speed: f32,
+    pub has_can_construct_column: bool,
+    pub has_can_operate_workstation_column: bool,
+    pub has_can_haul_column: bool,
+    pub has_construction_speed_column: bool,
+    pub nutrition_consumption_per_tick: f32,
+    pub has_nutrition_consumption_column: bool,
     pub asset_sizing: AssetSizingDefinition,
 }
 
@@ -202,7 +217,39 @@ impl UnitImportRow {
         definition.asset_sizing = self.asset_sizing.clone();
         definition.turn_speed_degrees_per_second = self.turn_speed_degrees_per_second;
         definition.sight_range_meters = self.sight_range_meters;
+        definition.work_capabilities = self.resolved_work_capabilities();
+        definition.nutrition_consumption_per_tick = self.resolved_nutrition_consumption_per_tick();
         Ok(definition)
+    }
+
+    fn resolved_nutrition_consumption_per_tick(&self) -> f32 {
+        if self.has_nutrition_consumption_column {
+            return self.nutrition_consumption_per_tick;
+        }
+        if self.is_robot_row() {
+            return DEFAULT_NUTRITION_CONSUMPTION_PER_TICK;
+        }
+        DEFAULT_NUTRITION_CONSUMPTION_PER_TICK
+    }
+
+    fn has_any_work_capability_column(&self) -> bool {
+        self.has_can_construct_column
+            || self.has_can_operate_workstation_column
+            || self.has_can_haul_column
+            || self.has_construction_speed_column
+    }
+
+    fn resolved_work_capabilities(&self) -> crate::world::UnitWorkCapabilities {
+        use crate::world::UnitWorkCapabilities;
+        if self.is_robot_row() && !self.has_any_work_capability_column() {
+            return UnitWorkCapabilities::settler_default();
+        }
+        UnitWorkCapabilities {
+            can_construct: self.can_construct,
+            construction_speed: self.construction_speed,
+            can_operate_workstation: self.can_operate_workstation,
+            can_haul: self.can_haul,
+        }
     }
 
     fn is_robot_row(&self) -> bool {
@@ -291,8 +338,55 @@ mod tests {
             has_turn_speed_column: false,
             sight_range_meters: DEFAULT_SIGHT_RANGE_METERS,
             has_sight_range_column: false,
+            can_construct: false,
+            can_operate_workstation: false,
+            can_haul: false,
+            construction_speed: 1.0,
+            has_can_construct_column: false,
+            has_can_operate_workstation_column: false,
+            has_can_haul_column: false,
+            has_construction_speed_column: false,
+            nutrition_consumption_per_tick: DEFAULT_NUTRITION_CONSUMPTION_PER_TICK,
+            has_nutrition_consumption_column: false,
             asset_sizing: AssetSizingDefinition::default(),
         }
+    }
+
+    #[test]
+    fn robot_without_work_capability_columns_gets_settler_defaults() {
+        let factions = crate::world::FactionCatalog::default();
+        let species = crate::world::SpeciesCatalog::default();
+        let mut row = sample_row();
+        row.unit_id = "robot".to_string();
+        row.name = "Robot".to_string();
+        row.file_path = r"\units\robot.glb".to_string();
+        row.faction_key = "player".to_string();
+        row.species_key = "robot".to_string();
+        let def = row.to_definition(&factions, &species).unwrap();
+        assert!(def.work_capabilities.can_construct);
+        assert!(def.work_capabilities.can_operate_workstation);
+        assert!(def.work_capabilities.can_haul);
+    }
+
+    #[test]
+    fn work_capability_columns_override_robot_defaults() {
+        let factions = crate::world::FactionCatalog::default();
+        let species = crate::world::SpeciesCatalog::default();
+        let mut row = sample_row();
+        row.unit_id = "robot".to_string();
+        row.file_path = r"\units\robot.glb".to_string();
+        row.faction_key = "player".to_string();
+        row.species_key = "robot".to_string();
+        row.has_can_construct_column = true;
+        row.has_can_operate_workstation_column = true;
+        row.has_can_haul_column = true;
+        row.can_construct = false;
+        row.can_operate_workstation = false;
+        row.can_haul = true;
+        let def = row.to_definition(&factions, &species).unwrap();
+        assert!(!def.work_capabilities.can_construct);
+        assert!(!def.work_capabilities.can_operate_workstation);
+        assert!(def.work_capabilities.can_haul);
     }
 
     #[test]
@@ -427,5 +521,36 @@ mod tests {
         row.sight_range_meters = 18.0;
         let def = row.to_definition(&factions, &species).unwrap();
         assert!((def.sight_range_meters - 18.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn nutrition_consumption_column_imported() {
+        let factions = FactionCatalog::default();
+        let species = SpeciesCatalog::default();
+        let mut row = sample_row();
+        row.unit_id = "settler".to_string();
+        row.faction_key = "player".to_string();
+        row.species_key = "robot".to_string();
+        row.file_path = r"\units\robot.glb".to_string();
+        row.nutrition_consumption_per_tick = 1.5;
+        row.has_nutrition_consumption_column = true;
+        let def = row.to_definition(&factions, &species).unwrap();
+        assert_eq!(def.nutrition_consumption_per_tick, 1.5);
+    }
+
+    #[test]
+    fn robot_without_nutrition_column_defaults_consumption_rate() {
+        let factions = FactionCatalog::default();
+        let species = SpeciesCatalog::default();
+        let mut row = sample_row();
+        row.unit_id = "robot".to_string();
+        row.file_path = r"\units\robot.glb".to_string();
+        row.faction_key = "player".to_string();
+        row.species_key = "robot".to_string();
+        let def = row.to_definition(&factions, &species).unwrap();
+        assert_eq!(
+            def.nutrition_consumption_per_tick,
+            DEFAULT_NUTRITION_CONSUMPTION_PER_TICK
+        );
     }
 }

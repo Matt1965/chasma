@@ -13,11 +13,23 @@
 - baseline scale: 0.476, 0.870, 0.476
 - warning: inferred desired meters from building footprint — add Desired*M to Excel for explicit authoring
 
+## Building / prispod_farm
+- asset: `assets\buildings\prispod_farm.glb`
+- source: 26.000 × 3.220 × 20.000 m (Some(CombinedVisibleMeshes))
+- baseline scale: 1.000, 3.727, 1.000
+- warning: inferred desired meters from building footprint — add Desired*M to Excel for explicit authoring
+
 ## Building / smelter
 - asset: `assets\buildings\smelter.glb`
 - warning: building footprint sizing inference failed: asset not found: assets\buildings\smelter.glb
 - warning: AT1: catalog lacks metric sizing — runtime presentation may be microscopic or enormous until migrated
 - error: AT1 MissingSizingData: no Desired meters and no explicit baseline — using scale 1.0; author Desired*M or ExplicitBaselineScale and re-import
+
+## Building / stone_quarry
+- asset: `assets\buildings\stone_mine.glb`
+- source: 15.343 × 3.184 × 12.802 m (Some(CombinedVisibleMeshes))
+- baseline scale: 1.043, 2.764, 0.937
+- warning: inferred desired meters from building footprint — add Desired*M to Excel for explicit authoring
 
 ## Building / storage_chest
 - asset: `assets\buildings\chest.glb`

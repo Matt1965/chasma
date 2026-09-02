@@ -4,6 +4,7 @@ use crate::world::combat::AttackTargetingPolicy;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::task::{
     TaskError, TaskEvent, TaskId, TaskPriority, TaskRecord, TaskState, TaskTarget, TaskType,
+    unit_can_perform_task, unit_may_autonomously_work_building,
 };
 use crate::world::{
     DoodadCatalog, NavigationConfig, UnitCatalog, UnitId, UnitOrder, WeaponCatalog, WorldData,
@@ -58,6 +59,9 @@ pub fn assign_hauling_task_with_priority(
     if world.get_unit(unit_id).is_none() {
         return Err(TaskError::UnitNotEligible(unit_id));
     }
+    if !unit_can_perform_task(unit_catalog, world, unit_id, TaskType::Haul) {
+        return Err(TaskError::UnitNotEligible(unit_id));
+    }
     if world.task_store().unit_task_id(unit_id).is_some() {
         return Err(TaskError::TaskAlreadyAssigned(TaskId::new(0)));
     }
@@ -80,6 +84,11 @@ pub fn assign_hauling_task_with_priority(
             request.remaining_quantity.min(1).max(1),
         )
     };
+    if priority != TaskPriority::PlayerAssigned
+        && !unit_may_autonomously_work_building(world, unit_id, owning_building_id)
+    {
+        return Err(TaskError::UnitNotEligible(unit_id));
+    }
     reserve_hauling_request(world, request_id, batch, inventory_ctx)
         .map_err(|_| TaskError::TaskInvalidated(TaskId::new(0)))?;
 

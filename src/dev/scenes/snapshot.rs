@@ -14,13 +14,13 @@ use crate::world::{
 use super::SceneCaptureContext;
 
 /// On-disk scene format version.
-pub const SCENE_VERSION: u32 = 15;
+pub const SCENE_VERSION: u32 = 18;
 
 /// Whether a scene file version can be loaded by the current runtime.
 pub fn scene_version_supported(version: u32) -> bool {
     matches!(
         version,
-        1 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15
+        1 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17
     )
 }
 
@@ -57,9 +57,13 @@ pub struct SceneDefinition {
     #[serde(default)]
     pub settlement_records: Vec<SceneSettlementRecord>,
     #[serde(default)]
+    pub settlement_anchor_records: Vec<SceneSettlementAnchorRecord>,
+    #[serde(default)]
     pub treasury_records: Vec<SceneTreasuryRecord>,
     #[serde(default = "default_next_settlement_id")]
     pub next_settlement_id: u64,
+    #[serde(default = "default_next_settlement_anchor_id")]
+    pub next_settlement_anchor_id: u64,
     #[serde(default = "default_next_treasury_id")]
     pub next_treasury_id: u64,
     /// Full inventory world persistence (ADR-094 I8). Absent in v6 and earlier.
@@ -108,17 +112,42 @@ fn default_next_settlement_id() -> u64 {
     1
 }
 
+fn default_next_settlement_anchor_id() -> u64 {
+    1
+}
+
 fn default_next_treasury_id() -> u64 {
     1
 }
 
-/// Serializable settlement instance for dev scenes (ADR-093 I7).
+fn default_boundary_radius_meters() -> f32 {
+    crate::world::DEFAULT_TOWN_BOUNDARY_RADIUS_METERS
+}
+
+/// Serializable settlement anchor for dev scenes (ADR-133).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SceneSettlementAnchorRecord {
+    pub id: u64,
+    pub settlement_id: u64,
+    pub position: SceneWorldPosition,
+    pub created_tick: u64,
+}
+
+/// Serializable settlement instance for dev scenes (ADR-093 I7, ADR-133).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SceneSettlementRecord {
     pub id: u64,
     pub display_name: String,
     pub treasury_id: u64,
-    pub anchor_building_id: u64,
+    #[serde(default)]
+    pub anchor_id: u64,
+    #[serde(default)]
+    pub center: Option<SceneWorldPosition>,
+    #[serde(default = "default_boundary_radius_meters")]
+    pub boundary_radius_meters: f32,
+    /// Legacy v15 anchor building reference — synthesized into anchor on load.
+    #[serde(default)]
+    pub anchor_building_id: Option<u64>,
     #[serde(default)]
     pub owner_id: Option<u64>,
     #[serde(default)]
@@ -201,6 +230,12 @@ pub struct SceneUnitRecord {
     /// Runtime species relationship identity (ADR-132 Phase 1).
     #[serde(default)]
     pub species_id: Option<String>,
+    /// Explicit settlement membership (ADR-133 Phase 2). Absent in v16 and earlier.
+    #[serde(default)]
+    pub settlement_id: Option<u64>,
+    /// Current nutrition fullness (ADR-134 Phase 7). Absent in v17 and earlier.
+    #[serde(default)]
+    pub current_nutrition: Option<f32>,
 }
 
 fn default_building_uniform_scale_milli() -> i32 {
@@ -249,6 +284,9 @@ pub struct SceneBuildingRecord {
     #[serde(default)]
     pub navigation_blueprint_override:
         Option<crate::world::BuildingNavigationBlueprintInstanceOverride>,
+    /// Explicit settlement membership (ADR-133 Phase 2). Absent in v16 and earlier.
+    #[serde(default)]
+    pub settlement_id: Option<u64>,
 }
 
 /// Serializable door state for scene restore (ADR-084 B7).
@@ -405,8 +443,10 @@ impl SceneDefinition {
             next_space_id: 1,
             next_portal_id: 1,
             settlement_records: Vec::new(),
+            settlement_anchor_records: Vec::new(),
             treasury_records: Vec::new(),
             next_settlement_id: 1,
+            next_settlement_anchor_id: 1,
             next_treasury_id: 1,
             inventory_persistence: super::inventory_snapshot::SceneInventoryPersistence::default(),
             production_persistence: super::production_snapshot::SceneProductionPersistence::default(
@@ -451,13 +491,17 @@ impl SceneDefinition {
     pub fn with_settlement_records(
         mut self,
         settlement_records: Vec<SceneSettlementRecord>,
+        settlement_anchor_records: Vec<SceneSettlementAnchorRecord>,
         treasury_records: Vec<SceneTreasuryRecord>,
         next_settlement_id: u64,
+        next_settlement_anchor_id: u64,
         next_treasury_id: u64,
     ) -> Self {
         self.settlement_records = settlement_records;
+        self.settlement_anchor_records = settlement_anchor_records;
         self.treasury_records = treasury_records;
         self.next_settlement_id = next_settlement_id;
+        self.next_settlement_anchor_id = next_settlement_anchor_id;
         self.next_treasury_id = next_treasury_id;
         self
     }
@@ -491,6 +535,14 @@ pub fn capture_scene(world: &WorldData, ctx: &SceneCaptureContext) -> SceneDefin
             .get(task_id)
             .expect("sorted task id must resolve");
         task_records.push(SceneTaskRecord::from_record(record));
+    }
+    let mut settlement_anchor_records = Vec::new();
+    for anchor_id in world.settlement_anchor_store().sorted_anchor_ids() {
+        let record = world
+            .settlement_anchor_store()
+            .get(anchor_id)
+            .expect("sorted anchor id must resolve");
+        settlement_anchor_records.push(SceneSettlementAnchorRecord::from_record(record));
     }
     let mut settlement_records = Vec::new();
     for settlement_id in world.settlement_store().sorted_settlement_ids() {
@@ -527,8 +579,10 @@ pub fn capture_scene(world: &WorldData, ctx: &SceneCaptureContext) -> SceneDefin
     )
     .with_settlement_records(
         settlement_records,
+        settlement_anchor_records,
         treasury_records,
         world.settlement_store().next_settlement_id(),
+        world.settlement_anchor_store().next_anchor_id(),
         world.settlement_store().next_treasury_id(),
     );
     scene.inventory_persistence = super::inventory_snapshot::capture_inventory_persistence(world);
@@ -562,6 +616,8 @@ impl SceneUnitRecord {
             inventory_id: record.inventory_id.map(|id| id.raw()),
             faction_id: Some(record.faction_id.as_str().to_string()),
             species_id: Some(record.species_id.as_str().to_string()),
+            settlement_id: record.settlement_id.map(|id| id.raw()),
+            current_nutrition: Some(record.nutrition.current),
         }
     }
 
@@ -609,6 +665,13 @@ impl SceneUnitRecord {
         record.current_space_id = crate::world::SpaceId::new(self.current_space_id);
         record.state = self.state.to_state()?;
         record.inventory_id = self.inventory_id.map(crate::world::InventoryId::new);
+        record.settlement_id = self.settlement_id.map(crate::world::SettlementId::new);
+        crate::world::initialize_unit_nutrition(&mut record.nutrition, definition);
+        if let Some(current) = self.current_nutrition {
+            if let Some(profile) = crate::world::NutritionProfile::from_definition(definition) {
+                record.nutrition = crate::world::UnitNutritionState::clamped(current, profile.max);
+            }
+        }
         Ok(record)
     }
 }
@@ -653,6 +716,7 @@ impl SceneBuildingRecord {
             inventory_id: record.inventory_id.map(|id| u64::from(id.raw())),
             container_locked: record.container_locked,
             navigation_blueprint_override: record.interior.navigation_blueprint_override.clone(),
+            settlement_id: record.settlement_id.map(|id| id.raw()),
         }
     }
 
@@ -713,6 +777,7 @@ impl SceneBuildingRecord {
                 None => None,
             },
             container_locked: self.container_locked,
+            settlement_id: self.settlement_id.map(crate::world::SettlementId::new),
         })
     }
 
@@ -1154,13 +1219,36 @@ pub(crate) fn affiliation_from_label(label: &str) -> Affiliation {
     }
 }
 
+impl SceneSettlementAnchorRecord {
+    pub fn from_record(record: &crate::world::SettlementAnchorRecord) -> Self {
+        Self {
+            id: record.id.raw(),
+            settlement_id: record.settlement_id.raw(),
+            position: SceneWorldPosition::from_world(record.position),
+            created_tick: record.created_tick,
+        }
+    }
+
+    pub fn to_record(&self) -> Result<crate::world::SettlementAnchorRecord, SceneRecordError> {
+        Ok(crate::world::SettlementAnchorRecord {
+            id: crate::world::SettlementAnchorId::new(self.id),
+            settlement_id: crate::world::SettlementId::new(self.settlement_id),
+            position: self.position.to_world()?,
+            created_tick: self.created_tick,
+        })
+    }
+}
+
 impl SceneSettlementRecord {
     pub fn from_record(record: &crate::world::SettlementRecord) -> Self {
         Self {
             id: record.id.raw(),
             display_name: record.display_name.clone(),
             treasury_id: record.treasury_id.raw(),
-            anchor_building_id: record.anchor_building_id.raw(),
+            anchor_id: record.anchor_id.raw(),
+            center: Some(SceneWorldPosition::from_world(record.center)),
+            boundary_radius_meters: record.boundary_radius_meters,
+            anchor_building_id: None,
             owner_id: record.ownership.owner_id.map(|id| id.raw()),
             team_id: record.ownership.team_id.map(|id| id.raw()),
             affiliation: Some(record.ownership.affiliation.label().to_string()),
@@ -1184,7 +1272,13 @@ impl SceneSettlementRecord {
             id: crate::world::SettlementId::new(self.id),
             display_name: self.display_name.clone(),
             treasury_id: crate::world::TreasuryId::new(self.treasury_id),
-            anchor_building_id: crate::world::BuildingId::new(self.anchor_building_id),
+            anchor_id: crate::world::SettlementAnchorId::new(self.anchor_id),
+            center: self
+                .center
+                .as_ref()
+                .ok_or(SceneRecordError::InvalidPosition)?
+                .to_world()?,
+            boundary_radius_meters: self.boundary_radius_meters,
             ownership,
             interaction_position: self.interaction_position.to_world()?,
             created_tick: self.created_tick,
@@ -1239,4 +1333,96 @@ pub enum SceneRecordError {
     InvalidTaskType,
     InvalidTaskState,
     InvalidTaskPriority,
+}
+
+#[cfg(test)]
+mod nutrition_scene_tests {
+    use super::*;
+    use bevy::prelude::{Quat, Vec3};
+
+    use crate::world::{
+        Affiliation, ChunkCoord, ChunkLayout, InventoryCatalogCtx, InventoryProfileCatalog,
+        ItemCatalog, ItemCategoryCatalog, LocalPosition, NutritionProfile, UnitCatalog,
+        UnitDefinitionId, UnitOwnership, UnitSource, WorldData, WorldPosition,
+        create_unit_with_inventory, starter_inventory_profile_definitions,
+        starter_item_category_definitions, starter_item_definitions, starter_unit_definitions,
+    };
+
+    fn layout() -> ChunkLayout {
+        ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        }
+    }
+
+    fn pos(x: f32, z: f32) -> WorldPosition {
+        WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::new(x, 0.0, z)),
+        )
+    }
+
+    fn test_inventory_ctx() -> InventoryCatalogCtx<'static> {
+        let categories =
+            ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
+        let items = ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+        let profiles =
+            InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
+                .unwrap();
+        let items = Box::leak(Box::new(items));
+        let categories = Box::leak(Box::new(categories));
+        let profiles = Box::leak(Box::new(profiles));
+        InventoryCatalogCtx::new(items, categories, profiles)
+    }
+
+    #[test]
+    fn scene_round_trip_preserves_nutrition() {
+        let catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+        let mut world = WorldData::new(layout());
+        let ctx = test_inventory_ctx();
+        let unit = create_unit_with_inventory(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::with_affiliation(Affiliation::Player),
+            &ctx,
+        )
+        .unwrap();
+        world
+            .mutate_unit(unit.id, |record| record.nutrition.current = 42.0)
+            .unwrap();
+        let scene_unit = SceneUnitRecord::from_record(world.get_unit(unit.id).unwrap());
+        let restored = scene_unit.to_record(&catalog).unwrap();
+        assert!((restored.nutrition.current - 42.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn legacy_scene_without_nutrition_defaults_full() {
+        let catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+        let scene_unit = SceneUnitRecord {
+            id: 1,
+            definition_id: "bandit".into(),
+            position: SceneWorldPosition::from_world(pos(0.0, 0.0)),
+            rotation: SceneQuat::from_quat(Quat::IDENTITY),
+            state: SceneUnitState::Idle,
+            source: SceneUnitSource::Authored,
+            owner_id: None,
+            team_id: None,
+            affiliation: None,
+            current_space_id: 0,
+            inventory_id: None,
+            faction_id: None,
+            species_id: None,
+            settlement_id: None,
+            current_nutrition: None,
+        };
+        let record = scene_unit.to_record(&catalog).unwrap();
+        let profile = NutritionProfile::from_definition(
+            catalog.get(&UnitDefinitionId::new("bandit")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(record.nutrition.current, profile.max);
+    }
 }

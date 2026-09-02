@@ -241,5 +241,11 @@ pub fn sync_world_harness_status(
         &selected_units,
         &dev_state.treasury_harness_message,
     );
-    **label = format!("{pile}\n\n{treasury}");
+    let settlement = crate::dev::settlement_placement::settlement_placement_status(&dev_state);
+    let settlement_line = if settlement.is_empty() {
+        String::new()
+    } else {
+        format!("\n\n{settlement}")
+    };
+    **label = format!("{pile}\n\n{treasury}{settlement_line}");
 }

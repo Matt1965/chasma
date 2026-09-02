@@ -1,5 +1,6 @@
 //! Cadence-driven need evaluation step (SA2). Read-only over world state; writes snapshots only.
 
+use crate::world::UnitCatalog;
 use crate::world::WorldData;
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::InventoryCatalogCtx;
@@ -22,6 +23,7 @@ pub fn step_settlement_need_evaluation(
     need_catalog: &NeedCatalog,
     building_catalog: &BuildingCatalog,
     item_catalog: &ItemCatalog,
+    unit_catalog: &UnitCatalog,
     inventory_ctx: &InventoryCatalogCtx<'_>,
     emergency_catalog: &EmergencyCatalog,
     simulation_tick: u64,
@@ -53,6 +55,7 @@ pub fn step_settlement_need_evaluation(
             world,
             building_catalog,
             item_catalog,
+            unit_catalog,
             inventory_ctx,
             settlement_id,
             state: &state,
@@ -76,6 +79,7 @@ pub fn evaluate_settlement_needs_now(
     need_catalog: &NeedCatalog,
     building_catalog: &BuildingCatalog,
     item_catalog: &ItemCatalog,
+    unit_catalog: &UnitCatalog,
     inventory_ctx: &InventoryCatalogCtx<'_>,
     emergency_catalog: &EmergencyCatalog,
     settlement_id: SettlementId,
@@ -88,6 +92,7 @@ pub fn evaluate_settlement_needs_now(
         world,
         building_catalog,
         item_catalog,
+        unit_catalog,
         inventory_ctx,
         settlement_id,
         state: &state,

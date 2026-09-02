@@ -2,6 +2,7 @@
 
 use crate::world::WorldData;
 use crate::world::building::catalog::BuildingCatalog;
+use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::operation::OperationCatalog;
 use crate::world::settlement::SettlementId;
 use crate::world::settlement::response::ResponseCatalog;
@@ -19,6 +20,7 @@ pub fn step_building_intent_propagation(
     response_catalog: &ResponseCatalog,
     building_catalog: &BuildingCatalog,
     operation_catalog: &OperationCatalog,
+    inventory_ctx: &InventoryCatalogCtx<'_>,
     simulation_tick: u64,
 ) -> u32 {
     let settlement_ids: Vec<SettlementId> = world
@@ -57,6 +59,7 @@ pub fn step_building_intent_propagation(
             building_catalog,
             operation_catalog,
             response_catalog,
+            inventory_ctx,
             settlement_id,
             intent_plan: &intent_plan,
             simulation_tick,
@@ -74,6 +77,7 @@ pub fn propagate_building_intent_now(
     response_catalog: &ResponseCatalog,
     building_catalog: &BuildingCatalog,
     operation_catalog: &OperationCatalog,
+    inventory_ctx: &InventoryCatalogCtx<'_>,
     settlement_id: SettlementId,
     simulation_tick: u64,
 ) {
@@ -85,6 +89,7 @@ pub fn propagate_building_intent_now(
         building_catalog,
         operation_catalog,
         response_catalog,
+        inventory_ctx,
         settlement_id,
         intent_plan: &intent_plan,
         simulation_tick,

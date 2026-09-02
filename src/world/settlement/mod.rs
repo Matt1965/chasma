@@ -5,6 +5,7 @@
 //! and Strategic Construction Planning (SA9 / ADR-124).
 
 mod access;
+mod anchor;
 mod arbiter;
 mod authoring;
 pub mod construction;
@@ -26,6 +27,12 @@ pub use access::{
     TreasuryAccessPolicy, TreasuryAccessResult, building_supports_settlement_treasury,
     can_unit_deposit_to_treasury, settlement_interaction_position, settlement_interaction_space,
 };
+pub use anchor::{
+    DEFAULT_TOWN_BOUNDARY_RADIUS_METERS, SETTLEMENT_PLACEMENT_MARGIN_METERS, SettlementAnchorId,
+    SettlementAnchorRecord, SettlementAnchorStore, SettlementCreationError,
+    initial_boundary_radius_meters, required_center_separation_meters,
+    settlement_overlaps_existing,
+};
 pub use arbiter::{
     ArbitrationContext, HIGH_PRESSURE_THRESHOLD, INTENT_ARBITRATION_CADENCE_TICKS, IntentId,
     IntentPersistence, IntentRejectionReason, IntentValidationError, MAX_INTENTS_PER_NEED_HIGH,
@@ -34,7 +41,7 @@ pub use arbiter::{
     arbitrate_settlement_intent, arbitrate_settlement_intent_now, arbitration_score,
     step_settlement_response_arbitration, validate_intent, validate_settlement_intent_plan,
 };
-pub use authoring::{CreateSettlementReport, create_settlement_with_treasury};
+pub use authoring::{CreateSettlementReport, create_settlement, create_settlement_with_treasury};
 pub use construction::{
     BuildingCandidateScore, BuildingConstructionCostCatalog, BuildingConstructionCostDefinition,
     CONSTRUCTION_PLANNING_CADENCE_TICKS, CapacityGapEstimate, ConstructionCapabilityKind,
@@ -70,12 +77,18 @@ pub use intent_apply::{
     BuildingIntentPropagationReport, BuildingIntentPropagationStore, BuildingPolicyAssignment,
     CapableBuilding, HIGH_INTENT_PRIORITY, INTENT_PROPAGATION_CADENCE_TICKS, IgnoredBuilding,
     MAX_BUILDINGS_PER_INTENT_HIGH, MAX_BUILDINGS_PER_INTENT_NORMAL, PropagationContext,
-    PropagationValidationError, building_owned_by_intent_propagation, discover_capable_buildings,
+    PropagationValidationError, can_sa5_mutate_policy, discover_capable_buildings,
     primary_operation_requirement, propagate_building_intent_now,
-    propagate_settlement_intent_to_buildings, step_building_intent_propagation,
+    propagate_settlement_intent_to_buildings, sa5_apply_policy_decision,
+    sa5_disable_unselected_ai_buildings, step_building_intent_propagation,
     validate_propagation_report,
 };
-pub use membership::reconcile_settlement_building_membership;
+pub use membership::{
+    SettlementMembershipError, assign_building_settlement, assign_selected_units_at_position,
+    assign_unit_settlement, clear_unit_settlement_on_removal,
+    rebuild_settlement_membership_indexes, seed_building_settlement_at_creation,
+    settlement_containing_position,
+};
 pub use needs::{
     NEED_EVAL_CADENCE_TICKS, NeedBlockingReason, NeedCatalog, NeedCatalogError, NeedDefinition,
     NeedEvalContext, NeedEvaluationMethod, NeedEvaluationStore, NeedEvaluationValidationError,
@@ -87,10 +100,15 @@ pub use needs::{
 };
 pub use planner::{
     BuildingLocalRetention, ItemDemandEntry, PlannerBuildingDecision, PlannerDiagnostics,
-    PlannerShortageKind, PlannerValidationError, ProductionPlannerSaveState,
-    ProductionPlannerStore, ProductionPriorityCategory, SettlementProductionPlanner, StockGoal,
-    aggregate_settlement_stock, execute_settlement_replan, mark_settlement_planner_dirty,
-    replan_settlement_production, step_settlement_production_planners, validate_planner_config,
+    PlannerShortageKind, PlannerValidationError, ProductionIntentRequest,
+    ProductionPlannerSaveState, ProductionPlannerStore, ProductionPriorityCategory,
+    SettlementProductionPlanner, StockGoal, aggregate_settlement_stock,
+    apply_production_recommendations_for_tests, building_advertises_settlement_supply,
+    collect_settlement_accessible_stock, demand_quantity_from_need_snapshot,
+    execute_settlement_replan, mark_settlement_planner_dirty, priority_category_for_need,
+    recommend_production_for_intent, replan_settlement_production,
+    step_settlement_production_planners, sum_category_count, sum_category_nutrition,
+    validate_planner_config,
 };
 pub use record::{
     SettlementOwnership, SettlementRecord, SettlementTreasuryRecord, TreasuryTransactionRecord,
@@ -124,5 +142,7 @@ pub use task_gen::{
     step_settlement_strategic_task_generation, validate_strategic_task_report,
 };
 
+#[cfg(test)]
+mod anchor_tests;
 #[cfg(test)]
 mod tests;

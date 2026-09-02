@@ -173,14 +173,12 @@ A worker knows only:
 - its location and space (`placement`, `current_space_id`).
 
 A worker must **never** know settlement strategy, economic goals, production graphs, or expansion
-plans. Worker **performance** is data (`construction_speed` and similar), resolved from the catalog,
-not settlement context.
+plans.
 
-> **AMENDED 2026-08-28.** Binary ordinary-work eligibility (`UnitWorkCapabilities.can_construct` /
-> `can_operate_workstation`) conflicts with the intended design and is removed. See the amendment
-> below. Skill affects performance, not whether an ordinary unit may Construct / Operate / Haul.
-> Future player job checkboxes are permission, not physical ability. Strategic task execution remains
-> deferred (ADR-121).
+Worker **physical capability**, **performance**, and **player job permission** are three separate
+concepts (see the 2026-08-28 amendment). Physical flags answer “can this kind of unit do this action
+at all?” Performance (e.g. `construction_speed`) answers how well. Player permission is a future
+layer and is not a reuse of the physical flags.
 
 ---
 
@@ -726,10 +724,10 @@ the physical loop so the existing pipeline produces observable behavior:
 
 - settlement identity and explicit membership (ADR-133)
 - individual hunger and eat-at-source / eat-from-inventory (ADR-134)
-- ordinary-work eligibility (this amendment)
+- ordinary-work **physical-capability semantics** (this amendment; ADR-122)
 - rationalized SA3/SA4 scoring (ADR-118 / ADR-119)
-- SA5 as sole AI policy writer; EP9 as a service (ADR-114 / ADR-120)
-- CategoryStock + member-driven food demand + stone stock as the second competing need (ADR-117)
+- SA5 as sole AI writer; EP9 as a service (ADR-114 / ADR-120)
+- category-driven food **nutrition** sensing + materials **count** stock (ADR-117)
 
 Player Build Mode settlement placement is **staged after** that milestone. Dev mode must be able to
 construct and save the complete test scene now.
@@ -747,18 +745,33 @@ construct and save the complete test scene now.
 
 ### Ordinary-work eligibility (corrects §3.3)
 
-Current `UnitWorkCapabilities` boolean gates (`can_construct`, `can_operate_workstation`) conflict
-with the intended design and **must be changed**, not preserved:
+There are **three separate concepts**. Do not collapse them onto one boolean.
 
-- Any **ordinary unit** may Construct, Operate, and Haul.
-- Skill / performance (e.g. `construction_speed`) is separate from eligibility.
-- Future player job checkboxes are **permission**, not physical ability — a third layer, not a reuse
-  of the boolean gates.
-- Strategic task **execution** (Repair / Recruit / Expand stubs in ADR-121) remains deferred; those
-  kinds stay unlisted in the marketplace until they have labor.
+| Concept | Question | Lives on | This milestone |
+|---|---|---|---|
+| **Physical capability** | Can this *kind* of unit perform this *kind* of action at all? | `UnitWorkCapabilities` (definition) | Yes — keep / correct |
+| **Skill / performance** | How quickly/well? | e.g. `construction_speed`, future farming skill | Performance only; **never** eligibility |
+| **Player permission** | May this *particular* unit accept this job? | Future job checkboxes | **Not implemented** |
 
-Do not invent a new boolean to re-encode "ordinary unit." Wildlife / non-worker creatures that never
-enter the worker marketplace are outside this change.
+Physical capability remains meaningful. A humanoid settler can construct and operate; a player-owned
+animal may legitimately be unable to. A unit with Farming skill 2 can still farm if physically
+capable — it is just slow.
+
+**Do not** use physical flags as profession or skill gates. **Do not** delete physical feasibility
+because the previous wording over-reached.
+
+Minimum flags from **current ordinary `TaskType`s** (do not invent extras to future-proof):
+
+- `can_construct` → `ConstructBuilding`
+- `can_operate_workstation` → `OperateWorkstation`
+- `can_haul` → `Haul` — **must not** reuse `can_operate_workstation` (a creature may haul but not
+  operate a workstation)
+
+Settler/worker definitions used in the milestone default to **all three true**. Animal definitions
+author whatever is physically honest. Strategic `TaskType`s stay ineligible until they have labor.
+
+Marketplace eligibility: physical flags + `unit_may_work_on_building` (ownership). Skill is ranking
+or speed, not a gate.
 
 ### Population is not an active Need
 
@@ -780,7 +793,7 @@ milestone. Do not implement them opportunistically.
 
 | ID | Issue | Why deferred |
 |---|---|---|
-| D1 | Housing / defense need sensors match building definition ids by substring | Food/stone use CategoryStock; declared building-capability data is required before housing/defense drive real decisions |
+| D1 | Housing / defense need sensors match building definition ids by substring | Food uses nutrition-by-category; materials use count-by-category; declared building-capability data is required before housing/defense drive real decisions |
 | D2 | Defense measurement includes policy (`aggression`) in SA2 `current` | SA2 must measure world state only; policy already belongs in SA4 |
 | D3 | `SettlementKind::Hive` / `Pack` / `Herd` | A placed non-overlapping anchor defines a *place*. Nomadic groups need a separate abstraction (ADR-116's "one runtime for all autonomous groups" is now questionable) |
 | D4 | Unused need categories / evaluators (`Water`, `Medicine`, `Economy`, `Growth`, `UnitCount`, research stub) and unused strategic `TaskType` labor | Dead surface; do not activate because a field exists |
@@ -795,7 +808,8 @@ milestone. Do not implement them opportunistically.
 | D13 | Generic `RecurringConsumer` / upkeep framework | Hunger is hunger (ADR-134) |
 | D14 | Food reservations / claims | First come, first served; failed arrival re-seeks |
 | D15 | Settlement radius growth mechanics | Radius is already mutable data; growth content is later |
-| D16 | Luxury item-id substring matching | Migrate onto CategoryStock when luxury has a real category; not the milestone's second need |
+| D16 | Luxury item-id substring matching | Migrate onto category-count sensing when luxury has a real category; not the milestone's second need |
+| D17 | Player job-permission layer | Separate from physical capability; not this milestone |
 
 ---
 

@@ -413,11 +413,14 @@ mod tests {
             faction_id: crate::world::FactionId::new("wild"),
             species_id: crate::world::SpeciesId::new("wolf"),
             vitals: UnitVitals::full(10),
+            nutrition: Default::default(),
+            self_maintenance: Default::default(),
             combat_state: CombatState::Peaceful,
             attack_cycle: None,
             reactive_combat_target: None,
             current_space_id: Default::default(),
             inventory_id: None,
+            settlement_id: None,
         }
     }
 
