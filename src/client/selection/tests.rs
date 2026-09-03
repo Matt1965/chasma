@@ -1,12 +1,10 @@
 //! Tests for unified world selection.
 
 use super::*;
-use crate::ui::gameplay::GameplayBuildingSelection;
 use crate::world::{
     BuildingId, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadId, Heightfield, ItemPileId,
-    LocalPosition, UnitId, WorldData, WorldPosition,
+    UnitId, WorldData, WorldPosition,
 };
-use bevy::prelude::Vec3;
 
 fn flat_world() -> WorldData {
     let mut world = WorldData::new(ChunkLayout {
@@ -24,13 +22,11 @@ fn flat_world() -> WorldData {
 fn apply_params<'a>(
     world_selection: &'a mut WorldSelectionState,
     selected_units: &'a mut SelectedUnits,
-    building_selection: &'a mut GameplayBuildingSelection,
     revision: &'a mut WorldSelectionRevision,
 ) -> ApplyWorldSelectionParams<'a> {
     ApplyWorldSelectionParams {
         world_selection,
         selected_units,
-        building_selection,
         hud: None,
         revision: Some(revision),
     }
@@ -44,24 +40,17 @@ fn select_unit_clears_building_category() {
         ..Default::default()
     };
     let mut selected_units = SelectedUnits::default();
-    let mut building_selection = GameplayBuildingSelection::default();
     let mut revision = WorldSelectionRevision::default();
 
     apply_world_selection(
         WorldSelectionChange::SelectUnit {
             unit_id: UnitId::new(5),
         },
-        &mut apply_params(
-            &mut world_selection,
-            &mut selected_units,
-            &mut building_selection,
-            &mut revision,
-        ),
+        &mut apply_params(&mut world_selection, &mut selected_units, &mut revision),
     );
 
     assert_eq!(world_selection.category, WorldSelectionCategory::Units);
     assert!(world_selection.building_id.is_none());
-    assert!(building_selection.building_id.is_none());
     assert!(selected_units.contains(UnitId::new(5)));
     assert_eq!(revision.0, 1);
 }
@@ -71,44 +60,31 @@ fn select_building_clears_units() {
     let mut world_selection = WorldSelectionState::default();
     let mut selected_units = SelectedUnits::default();
     selected_units.set_single(UnitId::new(2));
-    let mut building_selection = GameplayBuildingSelection::default();
     let mut revision = WorldSelectionRevision::default();
 
     apply_world_selection(
         WorldSelectionChange::SelectBuilding {
             building_id: BuildingId::new(9),
         },
-        &mut apply_params(
-            &mut world_selection,
-            &mut selected_units,
-            &mut building_selection,
-            &mut revision,
-        ),
+        &mut apply_params(&mut world_selection, &mut selected_units, &mut revision),
     );
 
     assert_eq!(world_selection.category, WorldSelectionCategory::Building);
     assert_eq!(world_selection.building_id, Some(BuildingId::new(9)));
     assert!(selected_units.is_empty());
-    assert_eq!(building_selection.building_id, Some(BuildingId::new(9)));
 }
 
 #[test]
 fn multi_unit_replace_preserves_primary_rule() {
     let mut world_selection = WorldSelectionState::default();
     let mut selected_units = SelectedUnits::default();
-    let mut building_selection = GameplayBuildingSelection::default();
     let mut revision = WorldSelectionRevision::default();
 
     apply_world_selection(
         WorldSelectionChange::ReplaceUnits {
             unit_ids: vec![UnitId::new(9), UnitId::new(2), UnitId::new(7)],
         },
-        &mut apply_params(
-            &mut world_selection,
-            &mut selected_units,
-            &mut building_selection,
-            &mut revision,
-        ),
+        &mut apply_params(&mut world_selection, &mut selected_units, &mut revision),
     );
 
     assert_eq!(selected_units.0.len(), 3);
@@ -127,22 +103,15 @@ fn clear_all_resets_every_category() {
     };
     let mut selected_units = SelectedUnits::default();
     selected_units.set_single(UnitId::new(1));
-    let mut building_selection = GameplayBuildingSelection::default();
     let mut revision = WorldSelectionRevision::default();
 
     apply_world_selection(
         WorldSelectionChange::ClearAll,
-        &mut apply_params(
-            &mut world_selection,
-            &mut selected_units,
-            &mut building_selection,
-            &mut revision,
-        ),
+        &mut apply_params(&mut world_selection, &mut selected_units, &mut revision),
     );
 
     assert_eq!(world_selection.category, WorldSelectionCategory::None);
     assert!(selected_units.is_empty());
-    assert!(building_selection.building_id.is_none());
 }
 
 #[test]
@@ -154,37 +123,66 @@ fn prune_building_selection_when_missing() {
         ..Default::default()
     };
     let mut selected_units = SelectedUnits::default();
-    let mut building_selection = GameplayBuildingSelection {
-        building_id: Some(BuildingId::new(999)),
-    };
     let mut revision = WorldSelectionRevision::default();
 
     prune_world_selection(
         &world,
-        &mut apply_params(
-            &mut world_selection,
-            &mut selected_units,
-            &mut building_selection,
-            &mut revision,
-        ),
+        &mut apply_params(&mut world_selection, &mut selected_units, &mut revision),
     );
 
     assert_eq!(world_selection.category, WorldSelectionCategory::None);
-    assert!(building_selection.building_id.is_none());
+}
+
+#[test]
+fn prune_preserves_existing_building_selection() {
+    use crate::world::{
+        BuildingDefinitionId, BuildingOwnership, BuildingPlacement, BuildingRecord, BuildingSource,
+        LocalPosition,
+    };
+    use bevy::prelude::{Quat, Vec3};
+
+    let building_id = BuildingId::new(3);
+    let mut world = flat_world();
+    let record = BuildingRecord::new(
+        building_id,
+        BuildingDefinitionId::new("prispod_farm"),
+        BuildingPlacement::new(
+            WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(10.0, 0.0, 10.0)),
+            ),
+            Quat::IDENTITY,
+        ),
+        BuildingOwnership::default(),
+        300,
+        BuildingSource::Authored,
+    );
+    let chunk = ChunkId::new(record.placement.position.chunk);
+    world.insert_building(chunk, record).unwrap();
+
+    let mut world_selection = WorldSelectionState {
+        category: WorldSelectionCategory::Building,
+        building_id: Some(building_id),
+        ..Default::default()
+    };
+    let mut selected_units = SelectedUnits::default();
+    let mut revision = WorldSelectionRevision::default();
+
+    prune_world_selection(
+        &world,
+        &mut apply_params(&mut world_selection, &mut selected_units, &mut revision),
+    );
+
+    assert_eq!(world_selection.category, WorldSelectionCategory::Building);
+    assert_eq!(world_selection.building_id, Some(building_id));
 }
 
 #[test]
 fn select_doodad_then_building_leaves_no_stale_doodad() {
     let mut world_selection = WorldSelectionState::default();
     let mut selected_units = SelectedUnits::default();
-    let mut building_selection = GameplayBuildingSelection::default();
     let mut revision = WorldSelectionRevision::default();
-    let mut params = apply_params(
-        &mut world_selection,
-        &mut selected_units,
-        &mut building_selection,
-        &mut revision,
-    );
+    let mut params = apply_params(&mut world_selection, &mut selected_units, &mut revision);
 
     apply_world_selection(
         WorldSelectionChange::SelectDoodad {
@@ -208,19 +206,13 @@ fn item_pile_selection_clears_units() {
     let mut world_selection = WorldSelectionState::default();
     let mut selected_units = SelectedUnits::default();
     selected_units.set_single(UnitId::new(1));
-    let mut building_selection = GameplayBuildingSelection::default();
     let mut revision = WorldSelectionRevision::default();
 
     apply_world_selection(
         WorldSelectionChange::SelectItemPile {
             pile_id: ItemPileId::new(7),
         },
-        &mut apply_params(
-            &mut world_selection,
-            &mut selected_units,
-            &mut building_selection,
-            &mut revision,
-        ),
+        &mut apply_params(&mut world_selection, &mut selected_units, &mut revision),
     );
 
     assert_eq!(world_selection.category, WorldSelectionCategory::ItemPile);

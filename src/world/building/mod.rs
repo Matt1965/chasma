@@ -95,12 +95,12 @@ pub use interior::{
 };
 pub use inventory::{
     BuildingInventoryContext, BuildingInventoryRemovalPolicy, attach_inventory_on_building_create,
-    building_container_access_policy, building_inventory_operational,
-    can_unit_access_building_inventory, can_unit_access_inventory,
+    building_container_access_policy, building_has_inventory, building_id_for_inventory,
+    building_inventory_operational, can_unit_access_building_inventory, can_unit_access_inventory,
     cleanup_building_inventory_on_delete, create_building_inventory,
     finalize_building_inventory_removal, set_building_container_locked, spill_building_inventory,
-    spill_position_for_building, validate_building_inventory_links,
-    validate_building_inventory_owner,
+    spill_position_for_building, unit_within_building_inventory_range,
+    validate_building_inventory_links, validate_building_inventory_owner,
 };
 pub use inventory_binding::{
     BuildingInventoryBinding, BuildingInventoryBindingDefinition, BuildingInventoryBindingId,
@@ -181,9 +181,10 @@ pub use operation::{
     PRODUCTION_PROGRESS_ONE_UNIT, PRODUCTION_STEPPING_MODEL, ProductionCommandError,
     ProductionExecutionAssessment, ProductionExecutionFailure, ProductionProgress,
     ProductionValidationIssue, RepeatMode, ResolvedProductionInput, ResolvedProductionOutput,
-    apply_operation_ticks, assess_production_execution, cycle_production_selected_operation,
-    execute_production_cycle, expected_ticks_to_complete, production_policy,
-    reset_production_progress, scale_progress, set_production_enabled,
+    apply_operation_ticks, apply_player_production_enabled,
+    apply_player_production_selected_operation, assess_production_execution,
+    cycle_production_selected_operation, execute_production_cycle, expected_ticks_to_complete,
+    production_policy, reset_production_progress, scale_progress, set_production_enabled,
     set_production_execution_mode, set_production_paused, set_production_repeat_count,
     set_production_selected_operation, step_workstation_operation, validate_production_runtime,
     validate_production_runtime_with_catalogs, workstation_workers_for_building,

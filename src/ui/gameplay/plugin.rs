@@ -11,7 +11,10 @@ use super::build_mode::{
     sync_build_mode_ghost_scene, sync_build_mode_terrain_overlay, tint_build_mode_ghost_scene,
     update_build_mode_ghost,
 };
-use super::building_selection::GameplayBuildingSelection;
+use super::building_panel::{
+    BuildingPanelState, handle_building_menu_close_button, handle_building_production_controls,
+    reconcile_building_menu_panel, spawn_building_menu_panel, sync_building_menu_panel,
+};
 use super::command_feedback::{
     MoveCommandFeedback, sync_move_command_indicator, tick_move_command_indicator,
 };
@@ -20,6 +23,11 @@ use super::command_panel::{
 };
 use super::cursor_feedback::{
     GameplayCursorPresentation, GameplayHoveredUnit, sample_gameplay_cursor_context,
+};
+use super::floating_window::{
+    FloatingGameplayWindowRegistry, focus_floating_gameplay_window_on_ui_press,
+    handle_floating_gameplay_window_pointer, measure_floating_gameplay_window_sizes,
+    sync_floating_gameplay_window_presentation, sync_floating_gameplay_window_viewport,
 };
 use super::input_gate::{PlayerHudHoverState, update_player_hud_hover_state};
 use super::inventory::{
@@ -32,7 +40,6 @@ use super::inventory::{
 };
 use super::layout::setup_player_hud_layout;
 use super::player_hud_state::{PlayerHudState, sync_primary_selection};
-use super::selected_building_panel::sync_selected_building_panel;
 use super::selected_unit_panel::sync_selected_unit_panel;
 use super::selection_ui::{clear_gameplay_hud_dirty, sync_gameplay_ui_state};
 use super::squad_panel::{handle_squad_entry_clicks, sync_squad_panel, update_squad_entry_hover};
@@ -68,7 +75,8 @@ impl Plugin for GameplayUiPlugin {
             .insert_resource(PlayerHudState::new_visible())
             .init_resource::<BuildModeState>()
             .init_resource::<BuildModeCursorAnchor>()
-            .init_resource::<GameplayBuildingSelection>()
+            .init_resource::<BuildingPanelState>()
+            .init_resource::<FloatingGameplayWindowRegistry>()
             .init_resource::<PlayerHudHoverState>()
             .init_resource::<GameplayCursorPresentation>()
             .init_resource::<GameplayHoveredUnit>()
@@ -79,6 +87,7 @@ impl Plugin for GameplayUiPlugin {
                 setup_player_hud_layout,
                 spawn_build_catalog_panel,
                 spawn_inventory_panel,
+                spawn_building_menu_panel,
             ),
         );
         #[cfg(feature = "dev")]
@@ -105,6 +114,10 @@ impl Plugin for GameplayUiPlugin {
         )
         .add_systems(
             Update,
+            sync_floating_gameplay_window_viewport.in_set(GameplayInputGateSystems),
+        )
+        .add_systems(
+            Update,
             sample_gameplay_cursor_context.in_set(GameplayCommandInputSystems),
         )
         .add_systems(Update, sync_gameplay_ui_state.in_set(GameplayUiSystems))
@@ -112,7 +125,12 @@ impl Plugin for GameplayUiPlugin {
             Update,
             (
                 sync_selected_unit_panel,
-                sync_selected_building_panel,
+                sync_building_menu_panel,
+                reconcile_building_menu_panel,
+                handle_building_menu_close_button,
+                sync_inventory_panel_visibility,
+                sync_floating_gameplay_window_presentation,
+                measure_floating_gameplay_window_sizes,
                 sync_squad_panel,
                 sync_command_panel_buttons,
                 clear_gameplay_hud_dirty,
@@ -149,8 +167,18 @@ impl Plugin for GameplayUiPlugin {
             (
                 handle_squad_entry_clicks,
                 handle_command_button_clicks,
+                handle_building_production_controls,
                 update_squad_entry_hover,
                 update_command_button_hover,
+            )
+                .chain()
+                .in_set(GameplayCommandInputSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                handle_floating_gameplay_window_pointer,
+                focus_floating_gameplay_window_on_ui_press,
             )
                 .chain()
                 .in_set(GameplayCommandInputSystems),
@@ -164,7 +192,6 @@ impl Plugin for GameplayUiPlugin {
                 collect_inventory_mouse_transfers,
                 handle_inventory_panel_buttons,
                 collect_inventory_keyboard_input,
-                sync_inventory_panel_visibility,
                 reconcile_inventory_ui_from_world,
                 sync_inventory_panel_contents,
                 sync_inventory_drag_ghost,
@@ -172,6 +199,7 @@ impl Plugin for GameplayUiPlugin {
                 cleanup_inventory_drag_previews,
             )
                 .chain()
+                .after(handle_floating_gameplay_window_pointer)
                 .in_set(GameplayCommandInputSystems),
         );
         #[cfg(feature = "dev")]

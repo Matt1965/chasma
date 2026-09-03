@@ -7,7 +7,7 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use crate::ui::gameplay::{GameplayBuildingSelection, PlayerHudState, sync_primary_selection};
+use crate::ui::gameplay::{PlayerHudState, sync_primary_selection};
 use crate::units::input::SelectedUnits;
 use crate::world::{BuildingId, DoodadId, ItemPileId, UnitId, WorldData};
 
@@ -101,7 +101,6 @@ pub struct WorldSelectionWriteParams<'w> {
     pub world_selection: ResMut<'w, WorldSelectionState>,
     pub selection_revision: ResMut<'w, WorldSelectionRevision>,
     pub selected_units: ResMut<'w, SelectedUnits>,
-    pub building_selection: ResMut<'w, GameplayBuildingSelection>,
 }
 
 impl WorldSelectionWriteParams<'_> {
@@ -112,7 +111,6 @@ impl WorldSelectionWriteParams<'_> {
         ApplyWorldSelectionParams {
             world_selection: &mut self.world_selection,
             selected_units: &mut self.selected_units,
-            building_selection: &mut self.building_selection,
             hud,
             revision: Some(&mut self.selection_revision),
         }
@@ -123,7 +121,6 @@ impl WorldSelectionWriteParams<'_> {
 pub struct ApplyWorldSelectionParams<'a> {
     pub world_selection: &'a mut WorldSelectionState,
     pub selected_units: &'a mut SelectedUnits,
-    pub building_selection: &'a mut GameplayBuildingSelection,
     pub hud: Option<&'a mut PlayerHudState>,
     pub revision: Option<&'a mut WorldSelectionRevision>,
 }
@@ -171,21 +168,18 @@ pub fn apply_world_selection(
             clear_world_object_fields(params);
             params.world_selection.category = WorldSelectionCategory::Building;
             params.world_selection.building_id = Some(building_id);
-            params.building_selection.set(Some(building_id));
         }
         WorldSelectionChange::SelectDoodad { doodad_id } => {
             clear_unit_fields(params);
             clear_world_object_fields(params);
             params.world_selection.category = WorldSelectionCategory::Doodad;
             params.world_selection.doodad_id = Some(doodad_id);
-            params.building_selection.set(None);
         }
         WorldSelectionChange::SelectItemPile { pile_id } => {
             clear_unit_fields(params);
             clear_world_object_fields(params);
             params.world_selection.category = WorldSelectionCategory::ItemPile;
             params.world_selection.pile_id = Some(pile_id);
-            params.building_selection.set(None);
         }
         WorldSelectionChange::ClearWorldObject => {
             clear_world_object_fields(params);
@@ -223,7 +217,6 @@ fn clear_world_object_fields(params: &mut ApplyWorldSelectionParams<'_>) {
     params.world_selection.building_id = None;
     params.world_selection.doodad_id = None;
     params.world_selection.pile_id = None;
-    params.building_selection.set(None);
     if matches!(
         params.world_selection.category,
         WorldSelectionCategory::Building
@@ -295,3 +288,4 @@ pub fn prune_world_selection(world: &WorldData, params: &mut ApplyWorldSelection
 mod tests;
 
 pub mod presentation;
+pub mod world_click_pick;

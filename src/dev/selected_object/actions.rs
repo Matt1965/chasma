@@ -141,7 +141,6 @@ fn execute_delete(
     let selection_params = &mut crate::client::selection::ApplyWorldSelectionParams {
         world_selection: &mut gizmo.world_selection,
         selected_units: &mut gizmo.selected_units,
-        building_selection: &mut gizmo.building_selection,
         hud: None,
         revision: Some(&mut gizmo.selection_revision),
     };

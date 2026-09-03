@@ -2,6 +2,7 @@
 //!
 //! Input → Intent → Command → Simulation → Presentation
 
+mod building_interaction_dispatch;
 pub mod commands;
 mod dispatcher;
 mod intent;
@@ -10,6 +11,13 @@ pub mod inventory_intent;
 pub mod pipeline;
 pub mod selection;
 
+pub use building_interaction_dispatch::{
+    OwnedBuildingInteractionOutcome, PendingBuildingPlayerInteraction,
+    PendingBuildingPlayerInteractionState, complete_building_player_interaction,
+    resolve_player_owned_building_target, supersede_pending_building_interaction_for_selection,
+    tick_pending_building_player_interactions, try_complete_pending_building_player_interaction,
+    try_dispatch_owned_building_player_interaction,
+};
 pub use commands::{
     BuiltCommandPlan, CommandAvailability, CommandPaletteEntry, CommandResolutionContext,
     CommandTarget, CommandType, CommandUnavailableReason, ContextualCommandIntent,

@@ -13,6 +13,16 @@ pub fn pick_building_along_ray(
     catalog: &BuildingCatalog,
     buildings: &Query<(&BuildingRenderEntity, &GlobalTransform)>,
 ) -> Option<BuildingId> {
+    pick_building_along_ray_with_distance(ray, world, catalog, buildings).map(|(_, id)| id)
+}
+
+/// Like [`pick_building_along_ray`] but returns ray distance for click precedence.
+pub fn pick_building_along_ray_with_distance(
+    ray: &Ray3d,
+    world: &WorldData,
+    catalog: &BuildingCatalog,
+    buildings: &Query<(&BuildingRenderEntity, &GlobalTransform)>,
+) -> Option<(f32, BuildingId)> {
     let mut best: Option<(f32, BuildingId)> = None;
 
     for (marker, transform) in buildings {
@@ -32,5 +42,5 @@ pub fn pick_building_along_ray(
         }
     }
 
-    best.map(|(_, id)| id)
+    best
 }

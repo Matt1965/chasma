@@ -1,11 +1,20 @@
 //! Inventory panel presentation (ADR-092 I6).
 
 use bevy::prelude::*;
+use bevy::ui::FocusPolicy;
 
 use crate::client::inventory_intent::{
     InventoryIntent, InventoryIntentQueue, entry_revision_for_inventory,
 };
-use crate::ui::gameplay::inventory::drag_preview::source_entry_drag_color;
+use crate::ui::gameplay::floating_window::{
+    FloatingGameplayWindowId, FloatingGameplayWindowRoot, FloatingWindowTitleBarDragRegion,
+    TITLE_BAR_HEIGHT_PX,
+};
+use crate::ui::gameplay::inventory::grid::entry_label;
+use crate::ui::gameplay::inventory::grid::{
+    InventoryEntryWidget, InventoryGridInteraction, InventoryGridPane, InventoryPaneSide,
+    spawn_inventory_grid,
+};
 use crate::ui::gameplay::inventory::preview::{INVENTORY_CELL_PX, drag_state_from_entry};
 use crate::ui::gameplay::inventory::state::{
     InventoryDragPreviewState, InventorySelection, InventoryUiState,
@@ -43,33 +52,6 @@ pub struct InventoryDepositGoldButton {
     pub amount: crate::client::inventory_intent::DepositGoldAmount,
 }
 
-#[derive(Component, Debug, Clone)]
-pub struct InventoryGridPane {
-    pub inventory_id: InventoryId,
-    pub side: InventoryPaneSide,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum InventoryPaneSide {
-    Left,
-    Right,
-}
-
-#[derive(Component, Debug, Clone)]
-pub struct InventoryGridCell {
-    pub inventory_id: InventoryId,
-    pub x: u8,
-    pub y: u8,
-    pub side: InventoryPaneSide,
-}
-
-#[derive(Component, Debug, Clone)]
-pub struct InventoryEntryWidget {
-    pub inventory_id: InventoryId,
-    pub entry_index: usize,
-    pub side: InventoryPaneSide,
-}
-
 #[derive(Component, Debug)]
 pub struct InventoryHeaderText {
     pub side: InventoryPaneSide,
@@ -88,15 +70,17 @@ pub fn spawn_inventory_panel(mut commands: Commands) {
     commands
         .spawn((
             InventoryPanelRoot,
+            FloatingGameplayWindowRoot {
+                id: FloatingGameplayWindowId::UnitInventory,
+            },
             PlayerHudUi,
             Button,
             Interaction::None,
+            FocusPolicy::Block,
             Node {
                 position_type: PositionType::Absolute,
-                left: Val::Percent(10.0),
-                top: Val::Percent(8.0),
-                width: Val::Percent(80.0),
-                max_height: Val::Percent(84.0),
+                width: Val::Px(420.0),
+                max_height: Val::Percent(72.0),
                 flex_direction: FlexDirection::Column,
                 padding: UiRect::all(Val::Px(10.0)),
                 row_gap: Val::Px(8.0),
@@ -104,38 +88,52 @@ pub fn spawn_inventory_panel(mut commands: Commands) {
                 ..default()
             },
             BackgroundColor(BAR_BG),
-            ZIndex(400),
+            ZIndex(411),
         ))
         .with_children(|root| {
-            root.spawn((
-                Node {
-                    width: Val::Percent(100.0),
-                    justify_content: JustifyContent::SpaceBetween,
-                    align_items: AlignItems::Center,
-                    ..default()
-                },
-                children![
-                    (
-                        Text::new("Inventory"),
-                        hud_title_font(),
-                        TextColor(TEXT_PRIMARY),
-                    ),
-                    (
-                        InventoryPanelCloseButton,
+            root.spawn(Node {
+                width: Val::Percent(100.0),
+                justify_content: JustifyContent::SpaceBetween,
+                align_items: AlignItems::Center,
+                column_gap: Val::Px(8.0),
+                ..default()
+            })
+            .with_children(|header| {
+                header
+                    .spawn((
+                        FloatingWindowTitleBarDragRegion {
+                            id: FloatingGameplayWindowId::UnitInventory,
+                        },
                         Button,
                         Node {
-                            padding: UiRect::axes(Val::Px(10.0), Val::Px(4.0)),
+                            flex_grow: 1.0,
+                            min_height: Val::Px(TITLE_BAR_HEIGHT_PX),
+                            align_items: AlignItems::Center,
                             ..default()
                         },
-                        BackgroundColor(PANEL_BG),
-                        children![(
-                            Text::new("Close"),
-                            hud_body_font(),
+                    ))
+                    .with_children(|title| {
+                        title.spawn((
+                            Text::new("Inventory"),
+                            hud_title_font(),
                             TextColor(TEXT_PRIMARY),
-                        )],
-                    ),
-                ],
-            ));
+                        ));
+                    });
+                header.spawn((
+                    InventoryPanelCloseButton,
+                    Button,
+                    Node {
+                        padding: UiRect::axes(Val::Px(10.0), Val::Px(4.0)),
+                        ..default()
+                    },
+                    BackgroundColor(PANEL_BG),
+                    children![(
+                        Text::new("Close"),
+                        hud_body_font(),
+                        TextColor(TEXT_PRIMARY),
+                    )],
+                ));
+            });
             root.spawn((
                 InventoryFeedbackText,
                 Text::new(""),
@@ -427,80 +425,20 @@ fn spawn_pane(
                 Button,
                 Interaction::None,
                 Node {
-                    width: Val::Px(CELL_PX * f32::from(record.grid_width())),
-                    height: Val::Px(CELL_PX * f32::from(record.grid_height())),
-                    position_type: PositionType::Relative,
                     flex_shrink: 0.0,
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.08, 0.08, 0.1, 0.9)),
             ))
             .with_children(|grid| {
-                for y in 0..record.grid_height() {
-                    for x in 0..record.grid_width() {
-                        grid.spawn((
-                            InventoryGridCell {
-                                inventory_id,
-                                x,
-                                y,
-                                side,
-                            },
-                            Button,
-                            Node {
-                                position_type: PositionType::Absolute,
-                                left: Val::Px(f32::from(x) * CELL_PX),
-                                top: Val::Px(f32::from(y) * CELL_PX),
-                                width: Val::Px(CELL_PX - 1.0),
-                                height: Val::Px(CELL_PX - 1.0),
-                                ..default()
-                            },
-                            BackgroundColor(Color::srgba(0.15, 0.15, 0.18, 0.6)),
-                        ));
-                    }
-                }
-                for (entry_index, entry) in record.placed_entries().iter().enumerate() {
-                    let (label, qty) = entry_label(entry, items, instance_store);
-                    let (w, h) = entry_footprint(entry, items, instance_store);
-                    let _ = (w, h);
-                    let _ = label;
-                    grid.spawn((
-                        InventoryEntryWidget {
-                            inventory_id,
-                            entry_index,
-                            side,
-                        },
-                        Button,
-                        Node {
-                            position_type: PositionType::Absolute,
-                            left: Val::Px(f32::from(entry.anchor_x) * CELL_PX),
-                            top: Val::Px(f32::from(entry.anchor_y) * CELL_PX),
-                            width: Val::Px(f32::from(w) * CELL_PX - 1.0),
-                            height: Val::Px(f32::from(h) * CELL_PX - 1.0),
-                            padding: UiRect::all(Val::Px(2.0)),
-                            ..default()
-                        },
-                        BackgroundColor(source_entry_drag_color(
-                            ui,
-                            inventory_id,
-                            entry_index,
-                            Color::srgba(0.25, 0.35, 0.55, 0.95),
-                        )),
-                    ))
-                    .with_children(|item| {
-                        item.spawn((
-                            Text::new(if qty > 1 {
-                                format!("{label}\n×{qty}")
-                            } else {
-                                label
-                            }),
-                            TextFont {
-                                font_size: 10.0,
-                                ..default()
-                            },
-                            TextColor(TEXT_PRIMARY),
-                        ));
-                    });
-                }
+                spawn_inventory_grid(
+                    grid,
+                    record,
+                    inventory_id,
+                    items,
+                    instance_store,
+                    InventoryGridInteraction::Interactive { side },
+                    Some(ui),
+                );
             });
         });
 }
@@ -595,57 +533,6 @@ fn format_weight_line(query: &crate::world::InventoryWeightQuery) -> String {
         ""
     };
     format!("{total_kg:.1} kg ({reference}){burden}")
-}
-
-fn entry_label(
-    entry: &crate::world::PlacedInventoryEntry,
-    items: &ItemCatalog,
-    instance_store: &ItemInstanceStore,
-) -> (String, u32) {
-    match &entry.contents {
-        InventoryEntryContents::Stack {
-            item_definition_id,
-            quantity,
-        } => {
-            let name = items
-                .get(item_definition_id)
-                .map(|d| d.display_name.clone())
-                .unwrap_or_else(|| item_definition_id.as_str().to_string());
-            (name, *quantity)
-        }
-        InventoryEntryContents::Unique { item_instance_id } => {
-            let name = instance_store
-                .get(*item_instance_id)
-                .map(|i| {
-                    items
-                        .get(&i.definition_id)
-                        .map(|d| d.display_name.clone())
-                        .unwrap_or_else(|| i.definition_id.as_str().to_string())
-                })
-                .unwrap_or_else(|| "Unique".into());
-            (name, 1)
-        }
-    }
-}
-
-fn entry_footprint(
-    entry: &crate::world::PlacedInventoryEntry,
-    items: &ItemCatalog,
-    instance_store: &ItemInstanceStore,
-) -> (u8, u8) {
-    let def_id = match &entry.contents {
-        InventoryEntryContents::Stack {
-            item_definition_id, ..
-        } => item_definition_id.clone(),
-        InventoryEntryContents::Unique { item_instance_id } => instance_store
-            .get(*item_instance_id)
-            .map(|i| i.definition_id.clone())
-            .unwrap_or_else(|| ItemDefinitionId::new("unknown")),
-    };
-    items
-        .get(&def_id)
-        .map(|d| (d.grid_width, d.grid_height))
-        .unwrap_or((1, 1))
 }
 
 fn format_item_details(

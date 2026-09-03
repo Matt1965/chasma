@@ -15,8 +15,8 @@
 
 ## Building / prispod_farm
 - asset: `assets\buildings\prispod_farm.glb`
-- source: 26.000 × 3.220 × 20.000 m (Some(CombinedVisibleMeshes))
-- baseline scale: 1.000, 3.727, 1.000
+- source: 12.710 × 2.098 × 9.710 m (Some(CombinedVisibleMeshes))
+- baseline scale: 2.046, 5.719, 2.060
 - warning: inferred desired meters from building footprint — add Desired*M to Excel for explicit authoring
 
 ## Building / smelter

@@ -414,8 +414,8 @@ fn classify_building_hit(
         )
     {
         InteractionType::Treasury
-    } else if record.inventory_id.is_some()
-        && crate::world::building_inventory_operational(record)
+    } else if crate::world::building_has_inventory(ctx.world, building_id)
+        && crate::world::building_inventory_operational(ctx.world, record)
         && profile.is_some_and(|profile| profile.capabilities.container)
     {
         InteractionType::Container

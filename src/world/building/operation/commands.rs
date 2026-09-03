@@ -28,7 +28,7 @@ impl std::fmt::Display for ProductionCommandError {
     }
 }
 
-fn require_building(
+pub(crate) fn require_building(
     world: &WorldData,
     building_id: BuildingId,
 ) -> Result<(), ProductionCommandError> {

@@ -56,6 +56,7 @@ pub fn resolve_contextual_command_with_armed(
                     command_type: CommandType::AttackMove,
                     target: CommandTarget::Terrain { position },
                 }),
+                CommandTarget::Building { .. } => None,
                 _ => None,
             },
             CommandType::Move => Some(ContextualCommandIntent {
@@ -67,6 +68,16 @@ pub fn resolve_contextual_command_with_armed(
                     command_type: CommandType::AttackMove,
                     target: CommandTarget::Terrain { position },
                 }),
+                CommandTarget::Building { building_id } => {
+                    ctx.world
+                        .get_building(building_id)
+                        .map(|building| ContextualCommandIntent {
+                            command_type: CommandType::AttackMove,
+                            target: CommandTarget::Terrain {
+                                position: building.placement.position,
+                            },
+                        })
+                }
                 _ => None,
             },
             _ => None,
@@ -80,6 +91,16 @@ pub fn resolve_contextual_command_with_armed(
                 position: *position,
             },
         }),
+        CommandTarget::Building { building_id } => {
+            ctx.world
+                .get_building(*building_id)
+                .map(|building| ContextualCommandIntent {
+                    command_type: CommandType::Move,
+                    target: CommandTarget::Terrain {
+                        position: building.placement.position,
+                    },
+                })
+        }
         CommandTarget::Unit { unit_id } => {
             let attacker = *ctx.selected_units.first()?;
             if is_valid_autonomous_attack_target(

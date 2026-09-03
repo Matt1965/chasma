@@ -35,8 +35,8 @@ pub fn collect_inventory_keyboard_input(
     }
 }
 
-pub fn inventory_panel_blocks_world_input(ui: &InventoryUiState) -> bool {
-    ui.open
+pub fn inventory_panel_blocks_world_input(_ui: &InventoryUiState) -> bool {
+    false
 }
 
 #[cfg(test)]
@@ -44,10 +44,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn open_panel_blocks_world_input() {
+    fn open_panel_does_not_block_world_input() {
         let mut ui = InventoryUiState::default();
         assert!(!inventory_panel_blocks_world_input(&ui));
         ui.open = true;
-        assert!(inventory_panel_blocks_world_input(&ui));
+        assert!(!inventory_panel_blocks_world_input(&ui));
     }
 }

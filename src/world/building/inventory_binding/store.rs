@@ -122,6 +122,24 @@ impl BuildingInventoryBindingStore {
             .and_then(|set| set.resolve_inventory(binding_id))
     }
 
+    /// Reverse lookup: which building owns this bound inventory (EP4 / BP4).
+    pub fn building_id_for_inventory(&self, inventory_id: InventoryId) -> Option<BuildingId> {
+        for raw_id in self.buildings.keys() {
+            let building_id = BuildingId::new(*raw_id);
+            let Some(set) = self.get(building_id) else {
+                continue;
+            };
+            if set
+                .bindings()
+                .iter()
+                .any(|binding| binding.inventory_id == inventory_id)
+            {
+                return Some(building_id);
+            }
+        }
+        None
+    }
+
     pub fn building_ids(&self) -> impl Iterator<Item = BuildingId> + '_ {
         self.buildings.keys().copied().map(BuildingId::new)
     }

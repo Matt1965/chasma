@@ -83,13 +83,19 @@ fn resolve_move_target(
             .get_unit(*unit_id)
             .map(|record| record.placement.position)
             .ok_or(CommandBuildError::TargetUnitNotFound),
+        CommandTarget::Building { building_id } => world
+            .get_building(*building_id)
+            .map(|record| record.placement.position)
+            .ok_or(CommandBuildError::MissingMoveTarget),
     }
 }
 
 fn resolve_attack_target(target: &CommandTarget) -> Result<UnitId, CommandBuildError> {
     match target {
         CommandTarget::Unit { unit_id } => Ok(*unit_id),
-        CommandTarget::Terrain { .. } => Err(CommandBuildError::MissingAttackTarget),
+        CommandTarget::Terrain { .. } | CommandTarget::Building { .. } => {
+            Err(CommandBuildError::MissingAttackTarget)
+        }
     }
 }
 

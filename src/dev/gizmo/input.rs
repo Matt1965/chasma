@@ -86,6 +86,18 @@ pub fn selected_object(world_selection: &WorldSelectionState) -> Option<Selected
             .map(SelectedWorldObject::Building))
 }
 
+/// Tear down transform gizmo session when dev mode is off.
+///
+/// Does not mutate [`WorldSelectionState`]: gameplay building/doodad selection is independent
+/// of dev transform tooling and must survive across frames while dev mode stays disabled.
+pub(crate) fn reset_gizmo_when_dev_disabled(
+    edit: &mut TransformEditState,
+    tool_state: &mut DevToolState,
+) {
+    edit.full_cancel();
+    tool_state.active_tool = DevTool::Select;
+}
+
 pub fn sync_gizmo_target(mut params: GizmoInputParams) {
     let prev_target = params.edit.target;
     let target = selected_object(&params.world_selection);
@@ -120,19 +132,7 @@ pub fn sync_gizmo_target(mut params: GizmoInputParams) {
     }
 
     if !params.dev_state.enabled {
-        params.edit.full_cancel();
-        params.tool_state.active_tool = DevTool::Select;
-        if params.world_selection.has_transform_target() {
-            let mut apply_params = ApplyWorldSelectionParams {
-                world_selection: &mut params.world_selection,
-                selected_units: &mut params.selected_units,
-                building_selection: &mut params.building_selection,
-                hud: None,
-                revision: Some(&mut params.selection_revision),
-            };
-            apply_world_selection(WorldSelectionChange::ClearWorldObject, &mut apply_params);
-            params.inspector.invalidate_for_selection_change();
-        }
+        reset_gizmo_when_dev_disabled(&mut params.edit, &mut params.tool_state);
         return;
     }
 
@@ -141,7 +141,6 @@ pub fn sync_gizmo_target(mut params: GizmoInputParams) {
         let mut apply_params = ApplyWorldSelectionParams {
             world_selection: &mut params.world_selection,
             selected_units: &mut params.selected_units,
-            building_selection: &mut params.building_selection,
             hud: None,
             revision: Some(&mut params.selection_revision),
         };
@@ -626,6 +625,17 @@ fn building_drag_context(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::client::selection::{
+        ApplyWorldSelectionParams, WorldSelectionCategory, WorldSelectionChange,
+        WorldSelectionRevision, WorldSelectionState, apply_world_selection, prune_world_selection,
+    };
+    use crate::units::input::SelectedUnits;
+    use crate::world::{
+        BuildingDefinitionId, BuildingId, BuildingOwnership, BuildingPlacement, BuildingRecord,
+        BuildingSource, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
+        WorldData, WorldPosition,
+    };
+    use bevy::prelude::{Quat, Vec3};
 
     #[test]
     fn selected_object_returns_doodad_when_category_doodad() {
@@ -638,5 +648,93 @@ mod tests {
             selected_object(&world_selection),
             Some(SelectedWorldObject::Doodad(_))
         ));
+    }
+
+    #[test]
+    fn dev_disabled_gizmo_reset_preserves_gameplay_building_selection() {
+        let mut world_selection = WorldSelectionState {
+            category: WorldSelectionCategory::Building,
+            building_id: Some(BuildingId::new(1)),
+            ..Default::default()
+        };
+        let mut edit = TransformEditState::default();
+        let mut tool_state = DevToolState::default();
+
+        reset_gizmo_when_dev_disabled(&mut edit, &mut tool_state);
+
+        assert_eq!(world_selection.category, WorldSelectionCategory::Building);
+        assert_eq!(world_selection.building_id, Some(BuildingId::new(1)));
+        assert_eq!(tool_state.active_tool, DevTool::Select);
+        assert!(!edit.is_transform_session_active());
+    }
+
+    fn flat_world_with_farm(building_id: BuildingId) -> WorldData {
+        let mut world = WorldData::new(ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let heightfield = Heightfield::from_samples(3, 128.0, vec![0.0; 9]).unwrap();
+        world.insert(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            ChunkData::new(heightfield, Vec::new()),
+        );
+        let record = BuildingRecord::new(
+            building_id,
+            BuildingDefinitionId::new("prispod_farm"),
+            BuildingPlacement::new(
+                WorldPosition::new(
+                    ChunkCoord::new(0, 0),
+                    LocalPosition::new(Vec3::new(10.0, 0.0, 10.0)),
+                ),
+                Quat::IDENTITY,
+            ),
+            BuildingOwnership::default(),
+            300,
+            BuildingSource::Authored,
+        );
+        let chunk = ChunkId::new(record.placement.position.chunk);
+        world.insert_building(chunk, record).unwrap();
+        world
+    }
+
+    fn apply_params<'a>(
+        world_selection: &'a mut WorldSelectionState,
+        selected_units: &'a mut SelectedUnits,
+        revision: &'a mut WorldSelectionRevision,
+    ) -> ApplyWorldSelectionParams<'a> {
+        ApplyWorldSelectionParams {
+            world_selection,
+            selected_units,
+            hud: None,
+            revision: Some(revision),
+        }
+    }
+
+    /// Regression: gameplay SelectBuilding must survive the next-frame dev gizmo sync and prune.
+    #[test]
+    fn gameplay_building_selection_survives_post_dispatch_dev_frame() {
+        let building_id = BuildingId::new(7);
+        let world = flat_world_with_farm(building_id);
+        let mut world_selection = WorldSelectionState::default();
+        let mut selected_units = SelectedUnits::default();
+        let mut revision = WorldSelectionRevision::default();
+
+        apply_world_selection(
+            WorldSelectionChange::SelectBuilding { building_id },
+            &mut apply_params(&mut world_selection, &mut selected_units, &mut revision),
+        );
+        assert_eq!(world_selection.category, WorldSelectionCategory::Building);
+
+        let mut edit = TransformEditState::default();
+        let mut tool_state = DevToolState::default();
+        reset_gizmo_when_dev_disabled(&mut edit, &mut tool_state);
+
+        prune_world_selection(
+            &world,
+            &mut apply_params(&mut world_selection, &mut selected_units, &mut revision),
+        );
+
+        assert_eq!(world_selection.category, WorldSelectionCategory::Building);
+        assert_eq!(world_selection.building_id, Some(building_id));
     }
 }

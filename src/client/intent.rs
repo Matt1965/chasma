@@ -11,6 +11,10 @@ use crate::world::{UnitId, WorldPosition};
 pub enum ClientIntent {
     /// Replace selection with one unit (left-click unit, no shift).
     SelectUnit { unit_id: UnitId },
+    /// Replace world selection with one building (left-click building, no shift).
+    SelectBuilding {
+        building_id: crate::world::BuildingId,
+    },
     /// Shift-click toggle unit membership.
     ToggleUnitSelection { unit_id: UnitId },
     /// Marquee select — replace selection with units in the screen rect.
@@ -19,6 +23,18 @@ pub enum ClientIntent {
     BoxSelectAdd { rect_min: Vec2, rect_max: Vec2 },
     /// Clear the local selection (left-click terrain, no shift).
     ClearSelection,
+    /// Close the persistent owned Building Menu without changing world selection.
+    CloseBuildingMenu,
+    /// Player toggles production enabled/disabled on the open owned building menu (BP3).
+    SetBuildingProductionEnabled {
+        building_id: crate::world::BuildingId,
+        enabled: bool,
+    },
+    /// Player selects the active production operation on the open owned building menu (BP3).
+    SetBuildingProductionOperation {
+        building_id: crate::world::BuildingId,
+        operation: crate::world::OperationDefinitionId,
+    },
     /// Context-aware command from right-click (terrain or unit target).
     ContextualCommand {
         target: super::commands::CommandTarget,

@@ -30,7 +30,7 @@ pub fn resolve_target_building(
     if world_selection.category == WorldSelectionCategory::Building {
         world_selection.building_id
     } else {
-        building_selection.building_id
+        building_selection.open_building_id
     }
 }
 

@@ -115,6 +115,16 @@ impl InventoryUiError {
             TreasuryAccessResult::Denied(error) => Self::from_treasury(error),
         }
     }
+
+    pub fn from_inventory_access_denial(reason: crate::world::InventoryAccessDenialReason) -> Self {
+        use crate::world::InventoryAccessDenialReason;
+        match reason {
+            InventoryAccessDenialReason::OutOfRange => Self::OutOfRange,
+            InventoryAccessDenialReason::ContainerLocked => Self::ContainerLocked,
+            InventoryAccessDenialReason::WrongSpace => Self::WrongSpace,
+            _ => Self::AccessDenied,
+        }
+    }
 }
 
 #[cfg(test)]

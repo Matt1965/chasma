@@ -4,8 +4,8 @@ use crate::client::inventory_intent::entry_revision_for_inventory;
 use crate::ui::gameplay::inventory::errors::InventoryUiError;
 use crate::ui::gameplay::inventory::state::{InventoryDragState, InventoryUiState};
 use crate::world::{
-    BuildingCatalog, EntryIndex, InventoryAccessResult, InventoryId, ItemDefinitionId, WorldData,
-    can_place_footprint, can_unit_access_inventory,
+    BuildingCatalog, BuildingInteractionProfileCatalog, EntryIndex, InventoryAccessResult,
+    InventoryId, ItemDefinitionId, WorldData, can_place_footprint, can_unit_access_inventory,
 };
 
 /// Grid cell size in inventory UI pixels (must match panel layout).
@@ -84,6 +84,7 @@ pub fn drag_state_from_entry(
 pub fn evaluate_drop_target(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
     ui: &InventoryUiState,
     drag: &InventoryDragState,
     target: InventoryDropTarget,
@@ -109,6 +110,7 @@ pub fn evaluate_drop_target(
         } => evaluate_grid_target(
             world,
             building_catalog,
+            interaction_catalog,
             ui,
             drag,
             inventory_id,
@@ -122,6 +124,7 @@ pub fn evaluate_drop_target(
 fn evaluate_grid_target(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
     ui: &InventoryUiState,
     drag: &InventoryDragState,
     inventory_id: InventoryId,
@@ -136,19 +139,26 @@ fn evaluate_grid_target(
 
     if let Some(actor) = ui.actor_unit_id {
         if drag.source_inventory_id != inventory_id
-            && !can_access_pair(
+            && let Some(error) = inventory_access_error(
                 world,
                 building_catalog,
+                interaction_catalog,
                 actor,
                 drag.source_inventory_id,
-                inventory_id,
                 ui,
             )
         {
-            return invalid(target, InventoryUiError::AccessDenied);
+            return invalid(target, error);
         }
-        if !can_access_inventory(world, building_catalog, actor, inventory_id, ui) {
-            return invalid(target, InventoryUiError::AccessDenied);
+        if let Some(error) = inventory_access_error(
+            world,
+            building_catalog,
+            interaction_catalog,
+            actor,
+            inventory_id,
+            ui,
+        ) {
+            return invalid(target, error);
         }
     }
 
@@ -227,36 +237,86 @@ fn invalid(target: InventoryDropTarget, reason: InventoryUiError) -> InventoryPl
     }
 }
 
-fn can_access_inventory(
+fn inventory_access_error(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
     unit_id: crate::world::UnitId,
     inventory_id: InventoryId,
     ui: &InventoryUiState,
-) -> bool {
+) -> Option<InventoryUiError> {
     if ui
         .right_inventory_id
         .is_some_and(|right| right == inventory_id)
         && ui.corpse_id.is_some()
     {
-        return world.inventory_store().get(inventory_id).is_some();
+        return if world.inventory_store().get(inventory_id).is_some() {
+            None
+        } else {
+            Some(InventoryUiError::InventoryClosed)
+        };
     }
-    matches!(
-        can_unit_access_inventory(world, building_catalog, unit_id, inventory_id),
-        InventoryAccessResult::Allowed
+    match can_unit_access_inventory(
+        world,
+        building_catalog,
+        interaction_catalog,
+        unit_id,
+        inventory_id,
+    ) {
+        InventoryAccessResult::Allowed => None,
+        InventoryAccessResult::Denied(reason) => {
+            Some(InventoryUiError::from_inventory_access_denial(reason))
+        }
+    }
+}
+
+fn can_access_inventory(
+    world: &WorldData,
+    building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
+    unit_id: crate::world::UnitId,
+    inventory_id: InventoryId,
+    ui: &InventoryUiState,
+) -> bool {
+    inventory_access_error(
+        world,
+        building_catalog,
+        interaction_catalog,
+        unit_id,
+        inventory_id,
+        ui,
     )
+    .is_none()
 }
 
 fn can_access_pair(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
     unit_id: crate::world::UnitId,
     source: InventoryId,
     destination: InventoryId,
     ui: &InventoryUiState,
 ) -> bool {
-    can_access_inventory(world, building_catalog, unit_id, source, ui)
-        && can_access_inventory(world, building_catalog, unit_id, destination, ui)
+    inventory_access_error(
+        world,
+        building_catalog,
+        interaction_catalog,
+        unit_id,
+        source,
+        ui,
+    )
+    .or_else(|| {
+        inventory_access_error(
+            world,
+            building_catalog,
+            interaction_catalog,
+            unit_id,
+            destination,
+            ui,
+        )
+    })
+    .is_none()
 }
 
 /// Cells occupied by an item footprint at the given anchor.
@@ -274,9 +334,9 @@ pub fn occupied_cells(anchor_x: u8, anchor_y: u8, width: u8, height: u8) -> Vec<
 mod tests {
     use super::*;
     use crate::world::{
-        BuildingCatalog, ChunkLayout, InventoryCatalogCtx, InventoryOwnerRef,
-        InventoryProfileCatalog, InventoryProfileId, ItemCatalog, ItemCategoryCatalog,
-        ItemDefinitionId, WorldData, create_inventory, place_stack,
+        BuildingCatalog, BuildingInteractionProfileCatalog, ChunkLayout, InventoryCatalogCtx,
+        InventoryOwnerRef, InventoryProfileCatalog, InventoryProfileId, ItemCatalog,
+        ItemCategoryCatalog, ItemDefinitionId, WorldData, create_inventory, place_stack,
         starter_inventory_profile_definitions, starter_item_category_definitions,
         starter_item_definitions,
     };
@@ -353,6 +413,7 @@ mod tests {
         drop((inv_store, inst_store));
 
         let building_catalog = BuildingCatalog::default();
+        let interaction_catalog = BuildingInteractionProfileCatalog::default();
         let mut ui = InventoryUiState::default();
         ui.left_inventory_id = Some(inv_id);
 
@@ -368,6 +429,7 @@ mod tests {
         let preview = evaluate_drop_target(
             &world,
             &building_catalog,
+            &interaction_catalog,
             &ui,
             &drag,
             InventoryDropTarget::GridCell {
@@ -384,11 +446,13 @@ mod tests {
     fn ground_drop_requires_unit_inventory_source() {
         let world = test_world();
         let building_catalog = BuildingCatalog::default();
+        let interaction_catalog = BuildingInteractionProfileCatalog::default();
         let ui = InventoryUiState::default();
         let drag = sample_drag(InventoryId::new(1), 1, 1);
         let preview = evaluate_drop_target(
             &world,
             &building_catalog,
+            &interaction_catalog,
             &ui,
             &drag,
             InventoryDropTarget::GroundDrop,

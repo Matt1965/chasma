@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use crate::client::{
     ClientIntentCollectSystems, ClientIntentDispatchSystems, ClientIntentFlushSystems,
     ClientPipelinePlugin, collect_unit_input_intents, dispatch_client_intents,
+    tick_pending_building_player_interactions,
 };
 use crate::debug::DebugOverlayPlugin;
 use crate::simulation::{SimulationPlugin, SimulationSystems};
@@ -131,6 +132,13 @@ impl Plugin for PlayerPlugin {
                 sync_active_viewed_space
                     .after(sync_selection_policy_state)
                     .before(collect_build_mode_intents)
+                    .in_set(PlayerControlSystems),
+            )
+            .add_systems(
+                Update,
+                tick_pending_building_player_interactions
+                    .after(tick_unit_movement)
+                    .before(collect_unit_input_intents)
                     .in_set(PlayerControlSystems),
             )
             .add_systems(

@@ -84,8 +84,15 @@ fn dispatch_one(
                 return InventoryIntentStatus::Rejected;
             }
             if let Some(actor) = ui.actor_unit_id {
-                if !can_access_inventory(world, building_catalog, actor, *inventory_id, ui) {
-                    ui.feedback_message = InventoryUiError::AccessDenied.message();
+                if let Some(message) = inventory_access_denied_message(
+                    world,
+                    building_catalog,
+                    interaction_catalog,
+                    actor,
+                    *inventory_id,
+                    ui,
+                ) {
+                    ui.feedback_message = message;
                     return InventoryIntentStatus::Rejected;
                 }
             }
@@ -120,6 +127,7 @@ fn dispatch_one(
             world,
             ctx,
             building_catalog,
+            interaction_catalog,
             *source_inventory_id,
             *source_entry_index,
             *destination_inventory_id,
@@ -136,6 +144,7 @@ fn dispatch_one(
             world,
             ctx,
             building_catalog,
+            interaction_catalog,
             *source_inventory_id,
             *source_entry_index,
             *destination_inventory_id,
@@ -152,6 +161,7 @@ fn dispatch_one(
             world,
             ctx,
             building_catalog,
+            interaction_catalog,
             *source_inventory_id,
             *source_entry_index,
             *destination_inventory_id,
@@ -176,15 +186,16 @@ fn dispatch_one(
                 return InventoryIntentStatus::Rejected;
             }
             if let Some(actor) = ui.actor_unit_id {
-                if !can_access_pair(
+                if let Some(message) = inventory_access_pair_denied_message(
                     world,
                     building_catalog,
+                    interaction_catalog,
                     actor,
                     *source_inventory_id,
                     *destination_inventory_id,
                     ui,
                 ) {
-                    ui.feedback_message = InventoryUiError::AccessDenied.message();
+                    ui.feedback_message = message;
                     return InventoryIntentStatus::Rejected;
                 }
             }
@@ -222,8 +233,15 @@ fn dispatch_one(
         }
         InventoryIntent::AutoSort { inventory_id } => {
             if let Some(actor) = ui.actor_unit_id {
-                if !can_access_inventory(world, building_catalog, actor, *inventory_id, ui) {
-                    ui.feedback_message = InventoryUiError::AccessDenied.message();
+                if let Some(message) = inventory_access_denied_message(
+                    world,
+                    building_catalog,
+                    interaction_catalog,
+                    actor,
+                    *inventory_id,
+                    ui,
+                ) {
+                    ui.feedback_message = message;
                     return InventoryIntentStatus::Rejected;
                 }
             }
@@ -322,15 +340,16 @@ fn dispatch_one(
             actor_unit_id,
             destination_inventory_id,
         } => {
-            if !can_access_pair(
+            if let Some(message) = inventory_access_pair_denied_message(
                 world,
                 building_catalog,
+                interaction_catalog,
                 *actor_unit_id,
                 *corpse_inventory_id,
                 *destination_inventory_id,
                 ui,
             ) {
-                ui.feedback_message = InventoryUiError::AccessDenied.message();
+                ui.feedback_message = message;
                 return InventoryIntentStatus::Rejected;
             }
             let mut any = false;
@@ -445,6 +464,7 @@ fn transfer_with_policy(
     world: &mut WorldData,
     ctx: &InventoryCatalogCtx<'_>,
     building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
     source_inventory_id: InventoryId,
     source_entry_index: EntryIndex,
     destination_inventory_id: InventoryId,
@@ -461,15 +481,16 @@ fn transfer_with_policy(
         return InventoryIntentStatus::Rejected;
     }
     if let Some(actor) = ui.actor_unit_id {
-        if !can_access_pair(
+        if let Some(message) = inventory_access_pair_denied_message(
             world,
             building_catalog,
+            interaction_catalog,
             actor,
             source_inventory_id,
             destination_inventory_id,
             ui,
         ) {
-            ui.feedback_message = InventoryUiError::AccessDenied.message();
+            ui.feedback_message = message;
             return InventoryIntentStatus::Rejected;
         }
     }
@@ -526,36 +547,106 @@ fn revision_matches(
     entry_revision_for_inventory(world, inventory_id, entry_index) == revision
 }
 
-fn can_access_inventory(
+fn inventory_access_denied_message(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
     unit_id: UnitId,
     inventory_id: InventoryId,
     ui: &InventoryUiState,
-) -> bool {
+) -> Option<String> {
     if ui
         .right_inventory_id
         .is_some_and(|right| right == inventory_id)
         && ui.corpse_id.is_some()
     {
-        return world.inventory_store().get(inventory_id).is_some();
+        return if world.inventory_store().get(inventory_id).is_some() {
+            None
+        } else {
+            Some(InventoryUiError::InventoryClosed.message())
+        };
     }
-    matches!(
-        can_unit_access_inventory(world, building_catalog, unit_id, inventory_id),
-        InventoryAccessResult::Allowed
+    match can_unit_access_inventory(
+        world,
+        building_catalog,
+        interaction_catalog,
+        unit_id,
+        inventory_id,
+    ) {
+        InventoryAccessResult::Allowed => None,
+        InventoryAccessResult::Denied(reason) => {
+            Some(InventoryUiError::from_inventory_access_denial(reason).message())
+        }
+    }
+}
+
+fn inventory_access_pair_denied_message(
+    world: &WorldData,
+    building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
+    unit_id: UnitId,
+    source: InventoryId,
+    destination: InventoryId,
+    ui: &InventoryUiState,
+) -> Option<String> {
+    inventory_access_denied_message(
+        world,
+        building_catalog,
+        interaction_catalog,
+        unit_id,
+        source,
+        ui,
     )
+    .or_else(|| {
+        inventory_access_denied_message(
+            world,
+            building_catalog,
+            interaction_catalog,
+            unit_id,
+            destination,
+            ui,
+        )
+    })
+}
+
+fn can_access_inventory(
+    world: &WorldData,
+    building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
+    unit_id: UnitId,
+    inventory_id: InventoryId,
+    ui: &InventoryUiState,
+) -> bool {
+    inventory_access_denied_message(
+        world,
+        building_catalog,
+        interaction_catalog,
+        unit_id,
+        inventory_id,
+        ui,
+    )
+    .is_none()
 }
 
 fn can_access_pair(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
     unit_id: UnitId,
     source: InventoryId,
     destination: InventoryId,
     ui: &InventoryUiState,
 ) -> bool {
-    can_access_inventory(world, building_catalog, unit_id, source, ui)
-        && can_access_inventory(world, building_catalog, unit_id, destination, ui)
+    inventory_access_pair_denied_message(
+        world,
+        building_catalog,
+        interaction_catalog,
+        unit_id,
+        source,
+        destination,
+        ui,
+    )
+    .is_none()
 }
 
 fn find_corpse_for_inventory(world: &WorldData, inventory_id: InventoryId) -> Option<CorpseId> {
@@ -670,6 +761,15 @@ pub fn try_queue_inventory_open_from_interact(
                     crate::world::LocalPosition::new(Vec3::ZERO),
                 )
             }),
+        crate::client::commands::CommandTarget::Building { building_id } => world
+            .get_building(building_id)
+            .map(|b| b.placement.position)
+            .unwrap_or_else(|| {
+                crate::world::WorldPosition::new(
+                    crate::world::ChunkCoord::new(0, 0),
+                    crate::world::LocalPosition::new(Vec3::ZERO),
+                )
+            }),
     };
     let ctx = InteractionQueryContext::new(
         world,
@@ -690,6 +790,7 @@ pub fn try_queue_inventory_open_from_interact(
                 if let Ok(mode) = try_open_container_inventory(
                     world,
                     building_catalog,
+                    interaction_catalog,
                     actor_unit_id,
                     building_id,
                 ) {
@@ -786,13 +887,19 @@ pub fn try_open_treasury_deposit(
 pub fn try_open_container_inventory(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
     actor_unit_id: UnitId,
     building_id: BuildingId,
 ) -> Result<InventoryOpenMode, InventoryUiError> {
-    let access =
-        can_unit_access_building_inventory(world, building_catalog, actor_unit_id, building_id);
-    if !access.is_allowed() {
-        return Err(InventoryUiError::AccessDenied);
+    let access = can_unit_access_building_inventory(
+        world,
+        building_catalog,
+        interaction_catalog,
+        actor_unit_id,
+        building_id,
+    );
+    if let InventoryAccessResult::Denied(reason) = access {
+        return Err(InventoryUiError::from_inventory_access_denial(reason));
     }
     let building = world
         .get_building(building_id)
@@ -925,7 +1032,13 @@ mod tests {
         world.mutate_building(chest.id, |b| {
             b.lifecycle_state = crate::world::BuildingLifecycleState::Complete;
         });
-        let mode = try_open_container_inventory(&world, &building_catalog, unit.id, chest.id);
+        let mode = try_open_container_inventory(
+            &world,
+            &building_catalog,
+            &BuildingInteractionProfileCatalog::default(),
+            unit.id,
+            chest.id,
+        );
         assert!(mode.is_err());
     }
 

@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use crate::camera::RtsCamera;
+use crate::client::selection::world_click_pick::ClickPickTarget;
 use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::terrain::TerrainRenderAssets;
 use crate::ui::gameplay::{
@@ -16,9 +17,12 @@ use crate::units::UnitRenderEntity;
 use crate::units::input::SelectedUnits;
 use crate::units::input::{
     BoxSelectDrag, cursor_screen_position, cursor_world_ray, normalized_screen_rect,
-    pick_unit_along_ray, pick_unit_command_target_along_ray, terrain_click_to_world_position,
+    pick_unit_command_target_along_ray, terrain_click_to_world_position,
 };
-use crate::world::{UnitCatalog, WorldConfig, WorldData};
+use crate::world::{BuildingCatalog, UnitCatalog, WorldConfig, WorldData};
+
+use crate::buildings::components::BuildingRenderEntity;
+use crate::client::selection::world_click_pick::pick_click_target_along_ray;
 
 use super::intent::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
 
@@ -48,6 +52,7 @@ impl Plugin for ClientPipelinePlugin {
             .init_resource::<crate::client::selection::WorldSelectionState>()
             .init_resource::<crate::client::selection::WorldSelectionRevision>()
             .init_resource::<crate::client::inventory_intent::InventoryIntentQueue>()
+            .init_resource::<crate::client::PendingBuildingPlayerInteractionState>()
             .init_resource::<crate::client::commands::ResolvedCommandFeedback>();
     }
 }
@@ -60,6 +65,7 @@ pub struct CollectUnitInputParams<'w> {
     pub world: ResMut<'w, WorldData>,
     pub config: Res<'w, WorldConfig>,
     pub unit_catalog: Res<'w, UnitCatalog>,
+    pub building_catalog: Res<'w, BuildingCatalog>,
     pub render_assets: Option<Res<'w, TerrainRenderAssets>>,
     pub queue: ResMut<'w, ClientIntentQueue>,
     pub modifiers: ResMut<'w, ClientInputModifiers>,
@@ -76,7 +82,6 @@ impl CollectUnitInputParams<'_> {
     fn blocks_world_intents(&self) -> bool {
         self.menu_block.as_ref().is_some_and(|b| b.blocks())
             || gameplay_input_blocked_by_hud(&self.hud_hover)
-            || crate::ui::gameplay::inventory_panel_blocks_world_input(&self.inventory_ui)
             || self.build_mode.blocks_gameplay_world_intents()
     }
 }
@@ -86,6 +91,7 @@ pub fn collect_unit_input_intents(
     windows: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform), With<RtsCamera>>,
     units: Query<(&UnitRenderEntity, &GlobalTransform)>,
+    buildings: Query<(&BuildingRenderEntity, &GlobalTransform)>,
     mut params: CollectUnitInputParams,
 ) {
     let shift = params
@@ -138,19 +144,31 @@ pub fn collect_unit_input_intents(
                         .push(ClientIntent::BoxSelect { rect_min, rect_max });
                 }
             } else if let Some(ray) = cursor_world_ray(&windows, &camera) {
-                if let Some(unit_id) = pick_unit_along_ray(
+                if let Some(target) = pick_click_target_along_ray(
                     &ray,
                     &params.world,
                     &params.unit_catalog,
+                    &params.building_catalog,
                     &units,
+                    &buildings,
                     selection_policy,
                 ) {
-                    if shift {
-                        params
-                            .queue
-                            .push(ClientIntent::ToggleUnitSelection { unit_id });
-                    } else {
-                        params.queue.push(ClientIntent::SelectUnit { unit_id });
+                    match target {
+                        ClickPickTarget::Unit(unit_id) => {
+                            if shift {
+                                params
+                                    .queue
+                                    .push(ClientIntent::ToggleUnitSelection { unit_id });
+                            } else {
+                                params.queue.push(ClientIntent::SelectUnit { unit_id });
+                            }
+                        }
+                        ClickPickTarget::Building(building_id) if !shift => {
+                            params
+                                .queue
+                                .push(ClientIntent::SelectBuilding { building_id });
+                        }
+                        ClickPickTarget::Building(_) => {}
                     }
                 } else if terrain_click_to_world_position(
                     &ray,
@@ -207,6 +225,24 @@ pub fn collect_unit_input_intents(
                 target: CommandTarget::Unit { unit_id },
             });
         } else {
+            if !params.selected_units.is_empty() {
+                if let Some(target) = pick_click_target_along_ray(
+                    &ray,
+                    &params.world,
+                    &params.unit_catalog,
+                    &params.building_catalog,
+                    &units,
+                    &buildings,
+                    selection_policy,
+                ) {
+                    if let ClickPickTarget::Building(building_id) = target {
+                        params.queue.push(ClientIntent::ContextualCommand {
+                            target: CommandTarget::Building { building_id },
+                        });
+                        return;
+                    }
+                }
+            }
             let click =
                 terrain_click_to_world_position(&ray, &params.world, layout, vertical_scale);
             if let Some(unit_id) = interior_trace_unit {
@@ -263,5 +299,40 @@ mod tests {
             drained[1],
             ClientIntent::ToggleUnitSelection { .. }
         ));
+    }
+
+    #[test]
+    fn open_inventory_does_not_block_world_intents() {
+        use crate::ui::gameplay::{
+            InventoryUiState, PlayerHudHoverState, gameplay_input_blocked_by_hud,
+            inventory_panel_blocks_world_input,
+        };
+
+        let ui = InventoryUiState {
+            open: true,
+            ..Default::default()
+        };
+        let hover = PlayerHudHoverState::default();
+        assert!(!inventory_panel_blocks_world_input(&ui));
+        assert!(!gameplay_input_blocked_by_hud(&hover));
+    }
+
+    #[test]
+    fn hud_hover_blocks_world_input_independently_of_inventory_open() {
+        use crate::ui::gameplay::{
+            InventoryUiState, PlayerHudHoverState, gameplay_input_blocked_by_hud,
+            inventory_panel_blocks_world_input,
+        };
+
+        let ui = InventoryUiState {
+            open: true,
+            ..Default::default()
+        };
+        let hover = PlayerHudHoverState {
+            hovered: true,
+            dev_panel_blocks: false,
+        };
+        assert!(!inventory_panel_blocks_world_input(&ui));
+        assert!(gameplay_input_blocked_by_hud(&hover));
     }
 }

@@ -25,7 +25,7 @@ pub fn guard_dirty_navigation_selection(
     mut inspection: ResMut<BlueprintInspectionState>,
     mut ui_state: ResMut<NavigationEditorUiState>,
     mut selected_units: ResMut<SelectedUnits>,
-    mut building_selection: ResMut<GameplayBuildingSelection>,
+    mut _building_selection: ResMut<GameplayBuildingSelection>,
     mut selection_revision: ResMut<WorldSelectionRevision>,
 ) {
     let revision = selection_revision.0;
@@ -49,7 +49,6 @@ pub fn guard_dirty_navigation_selection(
             let mut params = ApplyWorldSelectionParams {
                 world_selection: &mut world_selection,
                 selected_units: &mut selected_units,
-                building_selection: &mut building_selection,
                 hud: None,
                 revision: Some(&mut selection_revision),
             };

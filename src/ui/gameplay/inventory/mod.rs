@@ -2,6 +2,7 @@
 
 mod drag_preview;
 mod errors;
+mod grid;
 mod input;
 mod panel;
 mod preview;
@@ -12,9 +13,13 @@ pub use drag_preview::{
     update_inventory_drag_preview,
 };
 pub use errors::InventoryUiError;
+pub use grid::{
+    InventoryEntryWidget, InventoryGridCell, InventoryGridInteraction, InventoryGridPane,
+    InventoryPaneSide, ReadOnlyInventoryGrid, spawn_inventory_grid,
+    spawn_read_only_inventory_grid_shell,
+};
 pub use input::{collect_inventory_keyboard_input, inventory_panel_blocks_world_input};
 pub use panel::{
-    InventoryEntryWidget, InventoryGridCell, InventoryGridPane, InventoryPaneSide,
     InventoryPanelRoot, collect_inventory_mouse_transfers, handle_inventory_drag_release,
     handle_inventory_entry_clicks, handle_inventory_panel_buttons,
     reconcile_inventory_ui_from_world, spawn_inventory_panel, sync_inventory_panel_contents,

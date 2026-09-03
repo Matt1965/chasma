@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 
+use super::floating_window::FloatingGameplayWindowRegistry;
 use super::layout::PlayerHudUi;
 
 /// Whether the player HUD is under the cursor (blocks gameplay mouse intents).
@@ -15,9 +16,11 @@ pub struct PlayerHudHoverState {
 /// Track HUD hover from UI interaction states.
 pub fn update_player_hud_hover_state(
     interactions: Query<&Interaction, With<PlayerHudUi>>,
+    registry: Res<FloatingGameplayWindowRegistry>,
     mut hover: ResMut<PlayerHudHoverState>,
 ) {
-    hover.hovered = interactions.iter().any(|state| *state != Interaction::None);
+    hover.hovered =
+        interactions.iter().any(|state| *state != Interaction::None) || registry.is_dragging();
 }
 
 /// Whether gameplay mouse intents should be suppressed this frame.
@@ -27,6 +30,7 @@ pub fn gameplay_input_blocked_by_hud(hover: &PlayerHudHoverState) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use super::super::floating_window::FloatingGameplayWindowId;
     use super::*;
 
     #[test]
@@ -36,9 +40,12 @@ mod tests {
     }
 
     #[test]
-    fn hover_state_blocks_when_hovered() {
+    fn window_drag_blocks_world_input_via_hover_gate() {
+        let registry = FloatingGameplayWindowRegistry::default();
+        let mut registry = registry;
+        registry.begin_drag(FloatingGameplayWindowId::BuildingMenu, Vec2::ZERO);
         let hover = PlayerHudHoverState {
-            hovered: true,
+            hovered: registry.is_dragging(),
             dev_panel_blocks: false,
         };
         assert!(gameplay_input_blocked_by_hud(&hover));

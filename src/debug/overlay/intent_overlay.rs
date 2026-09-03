@@ -44,12 +44,17 @@ pub fn draw_intent_debug_overlay(
                 }
             }
             ClientIntent::SelectUnit { .. }
+            | ClientIntent::SelectBuilding { .. }
             | ClientIntent::ToggleUnitSelection { .. }
             | ClientIntent::BoxSelect { .. }
             | ClientIntent::BoxSelectAdd { .. } => {
                 // Selection intents are visualized via selection overlay.
             }
-            ClientIntent::ClearSelection | ClientIntent::ShiftModifier { .. } => {}
+            ClientIntent::ClearSelection
+            | ClientIntent::CloseBuildingMenu
+            | ClientIntent::SetBuildingProductionEnabled { .. }
+            | ClientIntent::SetBuildingProductionOperation { .. }
+            | ClientIntent::ShiftModifier { .. } => {}
             ClientIntent::PaletteCommand { .. } => {}
             ClientIntent::EnterBuildMode
             | ClientIntent::ExitBuildMode

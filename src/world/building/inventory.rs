@@ -6,9 +6,10 @@ use super::container_access::{
 };
 use super::id::BuildingId;
 use super::interaction_profile::BuildingInteractionProfileCatalog;
+use super::interaction_profile::INTERACTION_WORK_RANGE_METERS;
 use super::inventory_binding::{
     BuildingInventoryBinding, BuildingInventoryBindingId, BuildingInventoryBindingSet,
-    effective_inventory_binding_definitions, primary_building_inventory_id,
+    effective_inventory_binding_definitions,
 };
 use super::inventory_error::BuildingInventoryError;
 use super::record::BuildingRecord;
@@ -21,7 +22,7 @@ use crate::world::item_pile::{
 };
 use crate::world::unit::UnitId;
 use crate::world::{
-    BuildingDefinition, SpaceId, WorldData, WorldPosition, is_building_operational,
+    BuildingDefinition, SpaceId, WorldData, WorldPosition, is_building_operational, xz_distance,
 };
 
 /// How building removal handles container contents (ADR-091 I5).
@@ -209,8 +210,58 @@ pub fn validate_building_inventory_owner(
     }
 }
 
-pub fn building_inventory_operational(record: &BuildingRecord) -> bool {
-    record.inventory_id.is_some() && is_building_operational(record)
+pub fn building_has_inventory(world: &WorldData, building_id: BuildingId) -> bool {
+    if world
+        .building_inventory_binding_store()
+        .get(building_id)
+        .is_some_and(|set| !set.is_empty())
+    {
+        return true;
+    }
+    world
+        .get_building(building_id)
+        .and_then(|record| record.inventory_id)
+        .is_some()
+}
+
+pub fn building_inventory_operational(world: &WorldData, record: &BuildingRecord) -> bool {
+    building_has_inventory(world, record.id) && is_building_operational(record)
+}
+
+pub fn building_id_for_inventory(
+    world: &WorldData,
+    inventory_id: InventoryId,
+) -> Option<BuildingId> {
+    if let Some(building_id) = world
+        .building_inventory_binding_store()
+        .building_id_for_inventory(inventory_id)
+    {
+        return Some(building_id);
+    }
+    let inventory = world.inventory_store().get(inventory_id)?;
+    match inventory.owner() {
+        InventoryOwnerRef::Building(building_id) => Some(*building_id),
+        _ => None,
+    }
+}
+
+pub fn unit_within_building_inventory_range(
+    world: &WorldData,
+    building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
+    unit_id: UnitId,
+    building_id: BuildingId,
+) -> bool {
+    let Some(unit) = world.get_unit(unit_id) else {
+        return false;
+    };
+    let Some(building) = world.get_building(building_id) else {
+        return false;
+    };
+    let layout = world.layout();
+    let (interaction_pos, _) =
+        spill_position_for_building(world, building_catalog, interaction_catalog, building);
+    xz_distance(unit.placement.position, interaction_pos, layout) <= INTERACTION_WORK_RANGE_METERS
 }
 
 fn building_inventory_ids(world: &WorldData, building: &BuildingRecord) -> Vec<InventoryId> {
@@ -230,6 +281,7 @@ fn building_inventory_ids(world: &WorldData, building: &BuildingRecord) -> Vec<I
 pub fn can_unit_access_building_inventory(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
     unit_id: UnitId,
     building_id: BuildingId,
 ) -> InventoryAccessResult {
@@ -243,10 +295,10 @@ pub fn can_unit_access_building_inventory(
             building_id,
         ));
     };
-    let _inventory_id = primary_building_inventory_id(world, building_id) else {
+    if building_inventory_ids(world, building).is_empty() {
         return InventoryAccessResult::Denied(InventoryAccessDenialReason::BuildingHasNoInventory);
-    };
-    if !building_inventory_operational(building) {
+    }
+    if !building_inventory_operational(world, building) {
         return InventoryAccessResult::Denied(InventoryAccessDenialReason::BuildingNotOperational);
     }
     if building.container_locked {
@@ -261,16 +313,25 @@ pub fn can_unit_access_building_inventory(
         }
     };
     let policy = definition.inventory_access_policy;
-    if policy.allows(building.ownership, unit, false) {
-        InventoryAccessResult::Allowed
-    } else {
-        InventoryAccessResult::Denied(InventoryAccessDenialReason::PolicyDenied)
+    if !policy.allows(building.ownership, unit, false) {
+        return InventoryAccessResult::Denied(InventoryAccessDenialReason::PolicyDenied);
     }
+    if !unit_within_building_inventory_range(
+        world,
+        building_catalog,
+        interaction_catalog,
+        unit_id,
+        building_id,
+    ) {
+        return InventoryAccessResult::Denied(InventoryAccessDenialReason::OutOfRange);
+    }
+    InventoryAccessResult::Allowed
 }
 
 pub fn can_unit_access_inventory(
     world: &WorldData,
     building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
     unit_id: UnitId,
     inventory_id: InventoryId,
 ) -> InventoryAccessResult {
@@ -281,9 +342,13 @@ pub fn can_unit_access_inventory(
         }
     };
     match inventory.owner() {
-        InventoryOwnerRef::Building(building_id) => {
-            can_unit_access_building_inventory(world, building_catalog, unit_id, *building_id)
-        }
+        InventoryOwnerRef::Building(building_id) => can_unit_access_building_inventory(
+            world,
+            building_catalog,
+            interaction_catalog,
+            unit_id,
+            *building_id,
+        ),
         InventoryOwnerRef::Unit(unit) if unit == &unit_id => InventoryAccessResult::Allowed,
         InventoryOwnerRef::Corpse(_) => {
             InventoryAccessResult::Denied(InventoryAccessDenialReason::PolicyDenied)
@@ -682,7 +747,13 @@ mod tests {
         world.mutate_building(record.id, |r| {
             r.lifecycle_state = BuildingLifecycleState::Planned;
         });
-        let access = can_unit_access_building_inventory(&world, &catalog, unit.id, record.id);
+        let access = can_unit_access_building_inventory(
+            &world,
+            &catalog,
+            &BuildingInteractionProfileCatalog::default(),
+            unit.id,
+            record.id,
+        );
         assert!(matches!(
             access,
             InventoryAccessResult::Denied(InventoryAccessDenialReason::BuildingNotOperational)
@@ -690,8 +761,18 @@ mod tests {
         world.mutate_building(record.id, |r| {
             r.lifecycle_state = BuildingLifecycleState::Complete;
         });
+        world.mutate_unit(unit.id, |u| {
+            u.placement.position = pos(4.0, 4.0);
+        });
         assert!(
-            can_unit_access_building_inventory(&world, &catalog, unit.id, record.id).is_allowed()
+            can_unit_access_building_inventory(
+                &world,
+                &catalog,
+                &BuildingInteractionProfileCatalog::default(),
+                unit.id,
+                record.id,
+            )
+            .is_allowed()
         );
     }
 
@@ -773,10 +854,137 @@ mod tests {
         )
         .unwrap();
         set_building_container_locked(&mut world, record.id, true).unwrap();
-        let access = can_unit_access_building_inventory(&world, &catalog, unit.id, record.id);
+        let access = can_unit_access_building_inventory(
+            &world,
+            &catalog,
+            &BuildingInteractionProfileCatalog::default(),
+            unit.id,
+            record.id,
+        );
         assert!(matches!(
             access,
             InventoryAccessResult::Denied(InventoryAccessDenialReason::ContainerLocked)
+        ));
+    }
+
+    #[test]
+    fn distant_unit_denied_out_of_range() {
+        let catalog = chest_catalog();
+        let mut world = flat_world();
+        let ctx = test_ctx();
+        let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+        let unit = create_unit_with_inventory(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::with_affiliation(Affiliation::Player),
+            ctx,
+        )
+        .unwrap();
+        let record = create_building_with_inventory(
+            &catalog,
+            &mut world,
+            &BuildingDefinitionId::new("storage_chest"),
+            pos(50.0, 50.0),
+            Quat::IDENTITY,
+            BuildingSource::Authored,
+            BuildingOwnership::with_affiliation(Affiliation::Player),
+            None,
+            ctx,
+        )
+        .unwrap();
+        let access = can_unit_access_building_inventory(
+            &world,
+            &catalog,
+            &BuildingInteractionProfileCatalog::default(),
+            unit.id,
+            record.id,
+        );
+        assert!(matches!(
+            access,
+            InventoryAccessResult::Denied(InventoryAccessDenialReason::OutOfRange)
+        ));
+    }
+
+    #[test]
+    fn smelter_binding_inventories_resolve_to_building_for_access() {
+        let categories = crate::world::BuildingCategoryCatalog::default();
+        let catalog =
+            BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
+        let mut world = flat_world();
+        let ctx = test_ctx();
+        let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+        let unit = create_unit_with_inventory(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(10.0, 10.0),
+            UnitSource::Authored,
+            UnitOwnership::with_affiliation(Affiliation::Player),
+            ctx,
+        )
+        .unwrap();
+        let record = create_building_with_inventory(
+            &catalog,
+            &mut world,
+            &BuildingDefinitionId::new("smelter"),
+            pos(10.5, 10.5),
+            Quat::IDENTITY,
+            BuildingSource::Authored,
+            BuildingOwnership::with_affiliation(Affiliation::Player),
+            None,
+            ctx,
+        )
+        .unwrap();
+        let bindings = world
+            .building_inventory_binding_store()
+            .get(record.id)
+            .expect("smelter bindings");
+        assert!(bindings.len() >= 3);
+        let interaction = BuildingInteractionProfileCatalog::default();
+        for binding in bindings.bindings() {
+            assert_eq!(
+                building_id_for_inventory(&world, binding.inventory_id),
+                Some(record.id)
+            );
+            assert!(
+                can_unit_access_inventory(
+                    &world,
+                    &catalog,
+                    &interaction,
+                    unit.id,
+                    binding.inventory_id,
+                )
+                .is_allowed()
+            );
+        }
+    }
+
+    #[test]
+    fn smelter_operational_without_legacy_inventory_id_field() {
+        let categories = crate::world::BuildingCategoryCatalog::default();
+        let catalog =
+            BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
+        let mut world = flat_world();
+        let ctx = test_ctx();
+        let record = create_building_with_inventory(
+            &catalog,
+            &mut world,
+            &BuildingDefinitionId::new("smelter"),
+            pos(12.0, 12.0),
+            Quat::IDENTITY,
+            BuildingSource::Authored,
+            BuildingOwnership::with_affiliation(Affiliation::Player),
+            None,
+            ctx,
+        )
+        .unwrap();
+        world.mutate_building(record.id, |b| b.inventory_id = None);
+        assert!(building_inventory_operational(
+            &world,
+            world.get_building(record.id).unwrap()
         ));
     }
 }

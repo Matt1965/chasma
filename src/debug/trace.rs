@@ -96,6 +96,10 @@ impl CommandTraceIntentKind {
     pub fn from_intent(intent: &ClientIntent) -> Self {
         match intent {
             ClientIntent::SelectUnit { .. } => Self::SelectUnit,
+            ClientIntent::SelectBuilding { .. } => Self::SelectUnit,
+            ClientIntent::CloseBuildingMenu => Self::ClearSelection,
+            ClientIntent::SetBuildingProductionEnabled { .. }
+            | ClientIntent::SetBuildingProductionOperation { .. } => Self::BuildMode,
             ClientIntent::ToggleUnitSelection { .. } => Self::ToggleUnitSelection,
             ClientIntent::BoxSelect { .. } => Self::BoxSelect,
             ClientIntent::BoxSelectAdd { .. } => Self::BoxSelectAdd,

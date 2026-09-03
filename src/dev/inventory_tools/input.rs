@@ -144,7 +144,6 @@ pub fn handle_dev_items_ground_click(
                 &mut ApplyWorldSelectionParams {
                     world_selection: &mut world_selection,
                     selected_units: &mut selected_units,
-                    building_selection: &mut building_selection,
                     hud: None,
                     revision: Some(&mut selection_revision),
                 },

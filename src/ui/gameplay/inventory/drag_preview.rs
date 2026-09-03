@@ -4,14 +4,16 @@ use bevy::ecs::system::ParamSet;
 use bevy::prelude::*;
 
 use crate::item_piles::ItemPilePresentationSettings;
-use crate::ui::gameplay::inventory::panel::InventoryGridPane;
+use crate::ui::gameplay::inventory::grid::{
+    InventoryGridCell, InventoryGridPane, InventoryPaneSide,
+};
 use crate::ui::gameplay::inventory::preview::{
     INVENTORY_CELL_PX, InventoryDropTarget, InventoryPlacementPreview,
 };
 use crate::ui::gameplay::inventory::state::{InventoryDragPreviewState, InventoryUiState};
 use crate::ui::gameplay::layout::PlayerHudUi;
 use crate::ui::gameplay::styles::TEXT_PRIMARY;
-use crate::world::{BuildingCatalog, WorldConfig, WorldData};
+use crate::world::{BuildingCatalog, BuildingInteractionProfileCatalog, WorldConfig, WorldData};
 
 const GHOST_VALID: Color = Color::srgba(0.35, 0.65, 0.95, 0.55);
 const GHOST_INVALID: Color = Color::srgba(0.95, 0.35, 0.30, 0.60);
@@ -27,20 +29,12 @@ pub struct InventoryGroundPreview;
 pub fn update_inventory_drag_preview(
     world: Res<WorldData>,
     building_catalog: Res<BuildingCatalog>,
+    interaction_catalog: Res<BuildingInteractionProfileCatalog>,
     ui: Res<InventoryUiState>,
     mut preview: ResMut<InventoryDragPreviewState>,
     mut interactions: ParamSet<(
-        Query<(
-            &Interaction,
-            &crate::ui::gameplay::inventory::panel::InventoryGridCell,
-        )>,
-        Query<
-            &Interaction,
-            (
-                With<PlayerHudUi>,
-                Without<crate::ui::gameplay::inventory::panel::InventoryGridCell>,
-            ),
-        >,
+        Query<(&Interaction, &InventoryGridCell)>,
+        Query<&Interaction, (With<PlayerHudUi>, Without<InventoryGridCell>)>,
     )>,
 ) {
     let Some(drag) = ui.dragging.as_ref() else {
@@ -76,6 +70,7 @@ pub fn update_inventory_drag_preview(
     let placement = super::preview::evaluate_drop_target(
         world.as_ref(),
         building_catalog.as_ref(),
+        interaction_catalog.as_ref(),
         ui.as_ref(),
         drag,
         target,

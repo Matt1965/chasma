@@ -52,6 +52,17 @@ pub fn pick_unit_along_ray(
     units: &Query<(&UnitRenderEntity, &GlobalTransform)>,
     policy: SelectionControllabilityPolicy,
 ) -> Option<UnitId> {
+    pick_unit_along_ray_with_distance(ray, world, catalog, units, policy).map(|(_, id)| id)
+}
+
+/// Like [`pick_unit_along_ray`] but returns ray distance for click precedence.
+pub fn pick_unit_along_ray_with_distance(
+    ray: &Ray3d,
+    world: &WorldData,
+    catalog: &UnitCatalog,
+    units: &Query<(&UnitRenderEntity, &GlobalTransform)>,
+    policy: SelectionControllabilityPolicy,
+) -> Option<(f32, UnitId)> {
     pick_unit_along_ray_with_filter(ray, world, catalog, units, |record| {
         unit_is_selectable(record, policy)
     })
@@ -64,7 +75,7 @@ pub fn pick_unit_command_target_along_ray(
     catalog: &UnitCatalog,
     units: &Query<(&UnitRenderEntity, &GlobalTransform)>,
 ) -> Option<UnitId> {
-    pick_unit_along_ray_with_filter(ray, world, catalog, units, is_unit_alive)
+    pick_unit_along_ray_with_filter(ray, world, catalog, units, is_unit_alive).map(|(_, id)| id)
 }
 
 fn pick_unit_along_ray_with_filter(
@@ -73,7 +84,7 @@ fn pick_unit_along_ray_with_filter(
     catalog: &UnitCatalog,
     units: &Query<(&UnitRenderEntity, &GlobalTransform)>,
     include: impl Fn(&crate::world::UnitRecord) -> bool,
-) -> Option<UnitId> {
+) -> Option<(f32, UnitId)> {
     let mut best: Option<(f32, UnitId)> = None;
 
     for (marker, transform) in units {
@@ -96,7 +107,7 @@ fn pick_unit_along_ray_with_filter(
         }
     }
 
-    best.map(|(_, id)| id)
+    best
 }
 
 pub fn unit_pick_radius(definition: &UnitDefinition) -> f32 {

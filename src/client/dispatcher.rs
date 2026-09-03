@@ -10,7 +10,11 @@ use crate::debug::{
 };
 use crate::terrain::TerrainRenderAssets;
 use crate::ui::gameplay::build_mode::BuildModeState;
-use crate::ui::gameplay::{GameplayBuildingSelection, MoveCommandFeedback, PlayerHudState};
+use crate::ui::gameplay::building_panel::{
+    BuildingPanelState, building_owned_by_local_player, on_gameplay_building_selected,
+    reconcile_building_panel,
+};
+use crate::ui::gameplay::{MoveCommandFeedback, PlayerHudState};
 use crate::units::UnitRenderEntity;
 use crate::units::input::{
     MoveOrdersReport, PlayerInteractionSettings, SelectedUnits, collect_units_in_screen_rect,
@@ -21,10 +25,11 @@ use crate::units::input::{
 use crate::world::{
     AttackTargetingPolicy, AuthoredRelationshipCatalog, BuildingCatalog, DoodadCatalog,
     FootprintCatalog, InteractionOrderPlan, InteractionResolveContext, NavigationConfig,
-    NavigationPath, PassabilityCatalogs, UnitCatalog, UnitId, WeaponCatalog, WorldConfig,
-    WorldData, WorldPosition, assign_construct_building_task, assign_operate_workstation_task,
-    filter_commandable_unit_ids, resolve_unit_click_to_order, resolve_world_click_to_order,
-    xz_distance,
+    NavigationPath, OperationCatalog, PassabilityCatalogs, UnitCatalog, UnitId, WeaponCatalog,
+    WorldConfig, WorldData, WorldPosition, apply_player_production_enabled,
+    apply_player_production_selected_operation, assign_construct_building_task,
+    assign_operate_workstation_task, filter_commandable_unit_ids, resolve_unit_click_to_order,
+    resolve_world_click_to_order, xz_distance,
 };
 
 use super::commands::{
@@ -50,6 +55,9 @@ pub struct DispatchPlayerParams<'w> {
     pub build_mode: ResMut<'w, BuildModeState>,
     pub player_ownership: Res<'w, crate::player::LocalPlayerOwnership>,
     pub inventory_queue: ResMut<'w, crate::client::inventory_intent::InventoryIntentQueue>,
+    pub building_panel: ResMut<'w, BuildingPanelState>,
+    pub pending_building_interaction:
+        ResMut<'w, crate::client::PendingBuildingPlayerInteractionState>,
 }
 
 /// Bundled simulation catalogs (keeps dispatch system param count under Bevy limit).
@@ -63,6 +71,7 @@ pub struct DispatchSimulationParams<'w> {
     pub interaction_catalog: Res<'w, crate::world::BuildingInteractionProfileCatalog>,
     pub nav_config: Res<'w, NavigationConfig>,
     pub authored_relationships: Res<'w, AuthoredRelationshipCatalog>,
+    pub operation_catalog: Res<'w, OperationCatalog>,
     pub field_catalog: Res<'w, crate::world::TerrainFieldCatalog>,
     pub profile_catalog: Res<'w, crate::world::FieldResponseProfileCatalog>,
     pub requirement_catalog: Res<'w, crate::world::BuildingFieldRequirementCatalog>,
@@ -158,6 +167,11 @@ pub fn dispatch_client_intents(
     pending_trace.clear();
     pending_trace.tick = frame_index.0;
     prune_world_selection(&world, &mut selection_params.apply(None));
+    reconcile_building_panel(
+        &mut player_params.building_panel,
+        &world,
+        &player_params.player_ownership,
+    );
 
     let intents = queue.drain();
     if intents.is_empty() {
@@ -184,6 +198,7 @@ pub fn dispatch_client_intents(
         interaction_catalog,
         nav_config,
         authored_relationships,
+        operation_catalog,
         field_catalog,
         profile_catalog,
         requirement_catalog,
@@ -224,8 +239,11 @@ pub fn dispatch_client_intents(
                 hud.armed_command,
                 &mut player_params.build_mode,
                 &player_params.player_ownership,
+                &mut player_params.building_panel,
+                &mut player_params.pending_building_interaction,
                 frame_index.0,
                 &mut player_params.inventory_queue,
+                &operation_catalog,
                 &field_catalog,
                 &profile_catalog,
                 &requirement_catalog,
@@ -278,6 +296,59 @@ pub fn dispatch_client_intents(
     pending_trace.report = Some(report);
 }
 
+fn building_production_mutation_allowed(
+    building_panel: &BuildingPanelState,
+    building_id: crate::world::BuildingId,
+    world: &WorldData,
+    player_ownership: &crate::player::LocalPlayerOwnership,
+) -> bool {
+    building_panel.open_building_id == Some(building_id)
+        && world
+            .get_building(building_id)
+            .is_some_and(|building| building_owned_by_local_player(building, player_ownership))
+}
+
+fn dispatch_building_production_enabled(
+    building_id: crate::world::BuildingId,
+    enabled: bool,
+    building_panel: &BuildingPanelState,
+    world: &mut WorldData,
+    player_ownership: &crate::player::LocalPlayerOwnership,
+    _operation_catalog: &OperationCatalog,
+) -> IntentDispatchStatus {
+    if !building_production_mutation_allowed(building_panel, building_id, world, player_ownership) {
+        return IntentDispatchStatus::Ignored;
+    }
+    match apply_player_production_enabled(world, building_id, enabled) {
+        Ok(()) => IntentDispatchStatus::Applied,
+        Err(_) => IntentDispatchStatus::Ignored,
+    }
+}
+
+fn dispatch_building_production_operation(
+    building_id: crate::world::BuildingId,
+    operation: crate::world::OperationDefinitionId,
+    building_panel: &BuildingPanelState,
+    world: &mut WorldData,
+    player_ownership: &crate::player::LocalPlayerOwnership,
+    building_catalog: &BuildingCatalog,
+    operation_catalog: &OperationCatalog,
+) -> IntentDispatchStatus {
+    if !building_production_mutation_allowed(building_panel, building_id, world, player_ownership) {
+        return IntentDispatchStatus::Ignored;
+    }
+    match apply_player_production_selected_operation(
+        world,
+        building_catalog,
+        operation_catalog,
+        building_id,
+        operation,
+    ) {
+        Ok(()) => IntentDispatchStatus::Applied,
+        Err(_) => IntentDispatchStatus::Ignored,
+    }
+}
+
 fn dispatch_one(
     intent: &ClientIntent,
     apply_params: &mut ApplyWorldSelectionParams<'_>,
@@ -303,8 +374,11 @@ fn dispatch_one(
     armed_command: Option<CommandType>,
     build_mode: &mut BuildModeState,
     player_ownership: &crate::player::LocalPlayerOwnership,
+    building_panel: &mut BuildingPanelState,
+    pending_building_interaction: &mut crate::client::PendingBuildingPlayerInteractionState,
     simulation_tick: u64,
     inventory_queue: &mut crate::client::inventory_intent::InventoryIntentQueue,
+    operation_catalog: &OperationCatalog,
     field_catalog: &crate::world::TerrainFieldCatalog,
     profile_catalog: &crate::world::FieldResponseProfileCatalog,
     requirement_catalog: &crate::world::BuildingFieldRequirementCatalog,
@@ -336,6 +410,9 @@ fn dispatch_one(
             simulation_tick,
             inventory_queue,
             pile_settings,
+            player_ownership,
+            building_panel,
+            pending_building_interaction,
         ),
         ClientIntent::MoveCommand { target } => dispatch_contextual_command(
             CommandTarget::Terrain { position: *target },
@@ -359,6 +436,9 @@ fn dispatch_one(
             simulation_tick,
             inventory_queue,
             pile_settings,
+            player_ownership,
+            building_panel,
+            pending_building_interaction,
         ),
         ClientIntent::SelectUnit { unit_id } => {
             if world
@@ -374,6 +454,52 @@ fn dispatch_one(
                 IntentDispatchStatus::Ignored
             }
         }
+        ClientIntent::SelectBuilding { building_id } => {
+            if world.get_building(*building_id).is_some() {
+                apply_world_selection(
+                    WorldSelectionChange::SelectBuilding {
+                        building_id: *building_id,
+                    },
+                    apply_params,
+                );
+                on_gameplay_building_selected(
+                    *building_id,
+                    building_panel,
+                    world,
+                    player_ownership,
+                );
+                IntentDispatchStatus::Applied
+            } else {
+                IntentDispatchStatus::Ignored
+            }
+        }
+        ClientIntent::CloseBuildingMenu => {
+            building_panel.close();
+            IntentDispatchStatus::Applied
+        }
+        ClientIntent::SetBuildingProductionEnabled {
+            building_id,
+            enabled,
+        } => dispatch_building_production_enabled(
+            *building_id,
+            *enabled,
+            building_panel,
+            world,
+            player_ownership,
+            operation_catalog,
+        ),
+        ClientIntent::SetBuildingProductionOperation {
+            building_id,
+            operation,
+        } => dispatch_building_production_operation(
+            *building_id,
+            operation.clone(),
+            building_panel,
+            world,
+            player_ownership,
+            building_catalog,
+            operation_catalog,
+        ),
         ClientIntent::ToggleUnitSelection { unit_id } => {
             if world
                 .get_unit(*unit_id)
@@ -446,6 +572,7 @@ fn dispatch_one(
             settings,
             move_report,
             pending_trace,
+            pending_building_interaction,
         ),
         ClientIntent::EnterBuildMode => {
             build_mode.enter_catalog();
@@ -652,6 +779,12 @@ fn resolve_move_target_from_interaction(
             );
             resolve_unit_click_to_order(&ctx, unit_id)?
         }
+        CommandTarget::Building { building_id } => {
+            let building = world.get_building(building_id)?;
+            InteractionOrderPlan::MoveTo {
+                target: building.placement.position,
+            }
+        }
     };
     match plan {
         InteractionOrderPlan::MoveTo { target } => Some(target),
@@ -678,6 +811,7 @@ fn try_issue_building_work_orders(
     position: WorldPosition,
     simulation_tick: u64,
     pile_settings: &crate::world::ItemPileSettings,
+    player_ownership: &crate::player::LocalPlayerOwnership,
 ) -> Option<MoveOrdersReport> {
     let selected: Vec<_> = selection.iter().collect();
     let ctx = InteractionResolveContext::new(
@@ -695,7 +829,17 @@ fn try_issue_building_work_orders(
     let plan = resolve_world_click_to_order(&ctx, position)?;
     let (building_id, construct) = match plan {
         InteractionOrderPlan::ConstructBuilding { building_id } => (building_id, true),
-        InteractionOrderPlan::OperateWorkstation { building_id } => (building_id, false),
+        InteractionOrderPlan::OperateWorkstation { building_id } => {
+            if world.get_building(building_id).is_some_and(|building| {
+                crate::ui::gameplay::building_panel::building_owned_by_local_player(
+                    building,
+                    player_ownership,
+                )
+            }) {
+                return None;
+            }
+            (building_id, false)
+        }
         _ => return None,
     };
 
@@ -764,6 +908,9 @@ fn dispatch_contextual_command(
     simulation_tick: u64,
     inventory_queue: &mut crate::client::inventory_intent::InventoryIntentQueue,
     pile_settings: &crate::world::ItemPileSettings,
+    player_ownership: &crate::player::LocalPlayerOwnership,
+    building_panel: &mut BuildingPanelState,
+    pending_building_interaction: &mut crate::client::PendingBuildingPlayerInteractionState,
 ) -> IntentDispatchStatus {
     if selection.is_empty() {
         return IntentDispatchStatus::Ignored;
@@ -773,6 +920,55 @@ fn dispatch_contextual_command(
     if selection.is_empty() {
         return IntentDispatchStatus::Ignored;
     }
+
+    if let Some(actor) = crate::ui::gameplay::primary_selected_unit(selection) {
+        if let Some(building_id) = crate::client::resolve_player_owned_building_target(
+            world,
+            building_catalog,
+            interaction_catalog,
+            doodad_catalog,
+            footprint_catalog,
+            unit_catalog,
+            weapon_catalog,
+            pile_settings,
+            player_ownership,
+            target,
+        ) && crate::client::try_dispatch_owned_building_player_interaction(
+            world,
+            building_panel,
+            inventory_queue,
+            pending_building_interaction,
+            player_ownership,
+            building_catalog,
+            interaction_catalog,
+            unit_catalog,
+            weapon_catalog,
+            doodad_catalog,
+            nav_config,
+            actor,
+            building_id,
+        )
+        .is_some()
+        {
+            pending_trace.resolved_command = Some(CommandType::Move);
+            return IntentDispatchStatus::Applied;
+        }
+    }
+
+    let contextual_target = match target {
+        CommandTarget::Building { building_id } => world
+            .get_building(building_id)
+            .map(|building| CommandTarget::Terrain {
+                position: building.placement.position,
+            })
+            .unwrap_or(CommandTarget::Terrain {
+                position: WorldPosition::new(
+                    crate::world::ChunkCoord::new(0, 0),
+                    crate::world::LocalPosition::new(Vec3::ZERO),
+                ),
+            }),
+        other => other,
+    };
 
     if armed_command == Some(CommandType::Interact) {
         if let Some(actor) = selection.iter().next() {
@@ -786,9 +982,10 @@ fn dispatch_contextual_command(
                 weapon_catalog,
                 pile_settings,
                 actor,
-                target,
+                contextual_target,
                 inventory_queue,
             ) {
+                pending_building_interaction.clear_for_unit(actor);
                 pending_trace.resolved_command = Some(CommandType::Interact);
                 return IntentDispatchStatus::Applied;
             }
@@ -803,7 +1000,7 @@ fn dispatch_contextual_command(
     let Some(contextual) = resolve_contextual_command_with_armed(
         &CommandResolutionContext {
             selected_units: &selected,
-            target,
+            target: contextual_target,
             world,
             unit_catalog,
             weapon_catalog,
@@ -837,6 +1034,10 @@ fn dispatch_contextual_command(
 
     match plan {
         BuiltCommandPlan::MoveTo { .. } => {
+            crate::client::supersede_pending_building_interaction_for_selection(
+                pending_building_interaction,
+                selection,
+            );
             if let CommandTarget::Terrain { position } = contextual.target {
                 if let Some(work_report) = try_issue_building_work_orders(
                     world,
@@ -852,6 +1053,7 @@ fn dispatch_contextual_command(
                     position,
                     simulation_tick,
                     pile_settings,
+                    player_ownership,
                 ) {
                     *move_report = Some(work_report);
                     return IntentDispatchStatus::Applied;
@@ -975,6 +1177,10 @@ fn dispatch_contextual_command(
             IntentDispatchStatus::Applied
         }
         BuiltCommandPlan::Attack { target } => {
+            crate::client::supersede_pending_building_interaction_for_selection(
+                pending_building_interaction,
+                selection,
+            );
             *move_report = Some(issue_attack_orders_to_selection(
                 world,
                 selection,
@@ -988,6 +1194,10 @@ fn dispatch_contextual_command(
             IntentDispatchStatus::Applied
         }
         BuiltCommandPlan::AttackMove { destination } => {
+            crate::client::supersede_pending_building_interaction_for_selection(
+                pending_building_interaction,
+                selection,
+            );
             *move_report = Some(issue_attack_move_orders_to_selection(
                 world,
                 selection,
@@ -1001,6 +1211,10 @@ fn dispatch_contextual_command(
             IntentDispatchStatus::Applied
         }
         BuiltCommandPlan::StopAll => {
+            crate::client::supersede_pending_building_interaction_for_selection(
+                pending_building_interaction,
+                selection,
+            );
             *move_report = Some(issue_idle_orders_to_selection(
                 world,
                 unit_catalog,
@@ -1030,6 +1244,7 @@ fn dispatch_palette_command(
     _settings: &PlayerInteractionSettings,
     move_report: &mut Option<MoveOrdersReport>,
     pending_trace: &mut PendingDispatchTrace,
+    pending_building_interaction: &mut crate::client::PendingBuildingPlayerInteractionState,
 ) -> IntentDispatchStatus {
     if selection.is_empty() {
         return IntentDispatchStatus::Ignored;
@@ -1074,6 +1289,10 @@ fn dispatch_palette_command(
     match plan {
         BuiltCommandPlan::MoveTo { .. } => IntentDispatchStatus::Ignored,
         BuiltCommandPlan::AttackMove { destination } => {
+            crate::client::supersede_pending_building_interaction_for_selection(
+                pending_building_interaction,
+                selection,
+            );
             *move_report = Some(issue_attack_move_orders_to_selection(
                 world,
                 selection,
@@ -1088,6 +1307,10 @@ fn dispatch_palette_command(
         }
         BuiltCommandPlan::Attack { .. } => IntentDispatchStatus::Ignored,
         BuiltCommandPlan::StopAll => {
+            crate::client::supersede_pending_building_interaction_for_selection(
+                pending_building_interaction,
+                selection,
+            );
             *move_report = Some(issue_idle_orders_to_selection(
                 world,
                 unit_catalog,
@@ -1173,16 +1396,17 @@ mod tests {
     use crate::client::commands::CommandType;
     use crate::client::selection::{WorldSelectionRevision, WorldSelectionState};
     use crate::player::LocalPlayerOwnership;
-    use crate::ui::gameplay::{BuildModeState, GameplayBuildingSelection};
+    use crate::ui::gameplay::BuildModeState;
+    use crate::ui::gameplay::building_panel::BuildingPanelState;
     use crate::units::input::SelectedUnits;
     use crate::world::{
         AuthoredRelationshipCatalog, BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
         DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource,
         FootprintCatalog, Heightfield, LocalPosition, PassabilityCatalogs, UnitDefinitionId,
         UnitOwnership, UnitSource, UnitState, WorldPosition, create_doodad, create_unit,
-        create_unit_with_ownership, resolve_all_pending_unit_orders,
+        create_unit_with_ownership, resolve_all_pending_unit_orders, starter_unit_definitions,
     };
-    use bevy::prelude::{Vec2, Vec3};
+    use bevy::prelude::{Quat, Vec2, Vec3};
 
     fn layout() -> ChunkLayout {
         ChunkLayout {
@@ -1230,7 +1454,6 @@ mod tests {
         world_selection: WorldSelectionState,
         revision: WorldSelectionRevision,
         selected_units: SelectedUnits,
-        building_selection: GameplayBuildingSelection,
     }
 
     impl DispatchSelectionBundle {
@@ -1239,7 +1462,6 @@ mod tests {
                 world_selection: WorldSelectionState::default(),
                 revision: WorldSelectionRevision::default(),
                 selected_units: SelectedUnits::default(),
-                building_selection: GameplayBuildingSelection::default(),
             }
         }
 
@@ -1247,7 +1469,6 @@ mod tests {
             ApplyWorldSelectionParams {
                 world_selection: &mut self.world_selection,
                 selected_units: &mut self.selected_units,
-                building_selection: &mut self.building_selection,
                 hud: None,
                 revision: Some(&mut self.revision),
             }
@@ -1319,8 +1540,11 @@ mod tests {
             None,
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
+            &mut BuildingPanelState::default(),
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &OperationCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1382,8 +1606,11 @@ mod tests {
             None,
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
+            &mut BuildingPanelState::default(),
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &OperationCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1446,8 +1673,11 @@ mod tests {
             None,
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
+            &mut BuildingPanelState::default(),
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &OperationCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1519,8 +1749,11 @@ mod tests {
             None,
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
+            &mut BuildingPanelState::default(),
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &OperationCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1572,8 +1805,11 @@ mod tests {
             None,
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
+            &mut BuildingPanelState::default(),
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &OperationCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1632,8 +1868,11 @@ mod tests {
             None,
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
+            &mut BuildingPanelState::default(),
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &OperationCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1698,8 +1937,11 @@ mod tests {
             None,
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
+            &mut BuildingPanelState::default(),
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &OperationCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1778,8 +2020,11 @@ mod tests {
             None,
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
+            &mut BuildingPanelState::default(),
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &OperationCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1834,8 +2079,11 @@ mod tests {
             None,
             &mut BuildModeState::default(),
             &LocalPlayerOwnership::default(),
+            &mut BuildingPanelState::default(),
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &OperationCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1881,5 +2129,214 @@ mod tests {
             report.rejected_reason_counts(),
             vec![(CommandUnavailableReason::FeatureNotImplemented, 1)]
         );
+    }
+
+    #[test]
+    fn contextual_owned_building_opens_menu_and_inventory_without_work_task() {
+        use crate::client::inventory_intent::{InventoryIntent, InventoryOpenMode};
+        use crate::world::{
+            Affiliation, BuildingCategoryCatalog, BuildingDefinitionId, BuildingOwnership,
+            BuildingSource, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog,
+            ItemCategoryCatalog, create_building_with_inventory, create_unit_with_inventory,
+            starter_building_definitions, starter_inventory_profile_definitions,
+            starter_item_category_definitions, starter_item_definitions,
+        };
+
+        fn inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
+            static CTX: std::sync::OnceLock<InventoryCatalogCtx<'static>> =
+                std::sync::OnceLock::new();
+            CTX.get_or_init(|| {
+                let categories =
+                    ItemCategoryCatalog::from_definitions(starter_item_category_definitions())
+                        .unwrap();
+                let items =
+                    ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+                let profiles = InventoryProfileCatalog::from_definitions(
+                    starter_inventory_profile_definitions(),
+                )
+                .unwrap();
+                let items = Box::leak(Box::new(items));
+                let categories = Box::leak(Box::new(categories));
+                let profiles = Box::leak(Box::new(profiles));
+                InventoryCatalogCtx::new(items, categories, profiles)
+            })
+        }
+
+        let mut sel = DispatchSelectionBundle::new();
+        let mut move_feedback = MoveCommandFeedback::default();
+        let mut world = flat_world();
+        let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        let mut terrain = DispatchTerrainBundle::new();
+        let mut panel = BuildingPanelState::default();
+        let categories = BuildingCategoryCatalog::default();
+        let building_catalog =
+            BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
+        let interaction = crate::world::BuildingInteractionProfileCatalog::default();
+        let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+        let doodad_catalog = DoodadCatalog::default();
+        let nav_config = NavigationConfig::default();
+        let ctx = inventory_ctx();
+        let farm = create_building_with_inventory(
+            &building_catalog,
+            &mut world,
+            &BuildingDefinitionId::new("prispod_farm"),
+            pos(30.0, 30.0),
+            Quat::IDENTITY,
+            BuildingSource::Authored,
+            BuildingOwnership::with_affiliation(Affiliation::Player),
+            None,
+            ctx,
+        )
+        .unwrap();
+        let unit = create_unit_with_inventory(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(30.5, 30.5),
+            UnitSource::Authored,
+            UnitOwnership::with_affiliation(Affiliation::Player),
+            ctx,
+        )
+        .unwrap();
+        sel.selected_units.set_single(unit.id);
+        let tasks_before = world.task_store().sorted_task_ids().len();
+
+        let status = dispatch_one(
+            &ClientIntent::ContextualCommand {
+                target: CommandTarget::Building {
+                    building_id: farm.id,
+                },
+            },
+            &mut sel.apply_params(),
+            &mut move_feedback,
+            &mut world,
+            &unit_catalog,
+            &WeaponCatalog::default(),
+            &doodad_catalog,
+            &building_catalog,
+            &FootprintCatalog::default(),
+            &interaction,
+            &nav_config,
+            &AuthoredRelationshipCatalog::default(),
+            layout(),
+            1.0,
+            &PlayerInteractionSettings::default(),
+            None,
+            None,
+            &mut modifiers,
+            &mut None,
+            &mut PendingDispatchTrace::default(),
+            SelectionControllabilityPolicy::gameplay_default(),
+            None,
+            &mut BuildModeState::default(),
+            &LocalPlayerOwnership::default(),
+            &mut panel,
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            0,
+            &mut inventory_queue,
+            &OperationCatalog::default(),
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
+        );
+        assert_eq!(status, IntentDispatchStatus::Applied);
+        assert_eq!(panel.open_building_id, Some(farm.id));
+        let intents = inventory_queue.drain();
+        assert!(matches!(
+            intents.first(),
+            Some(InventoryIntent::Open(InventoryOpenMode::UnitOnly { unit_id }))
+                if *unit_id == unit.id
+        ));
+        assert_eq!(world.task_store().sorted_task_ids().len(), tasks_before);
+    }
+
+    #[test]
+    fn move_command_applies_while_inventory_intents_are_queued() {
+        let mut sel = DispatchSelectionBundle::new();
+        let mut move_feedback = MoveCommandFeedback::default();
+        let mut world = flat_world();
+        let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        inventory_queue.push(crate::client::inventory_intent::InventoryIntent::Open(
+            crate::client::inventory_intent::InventoryOpenMode::UnitOnly {
+                unit_id: UnitId::new(1),
+            },
+        ));
+        let mut terrain = DispatchTerrainBundle::new();
+        let catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let nav_config = NavigationConfig::default();
+        let unit_id = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(4.0, 4.0),
+            UnitSource::Authored,
+            crate::world::UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        sel.selected_units.set_single(unit_id);
+
+        let status = dispatch_one(
+            &ClientIntent::MoveCommand {
+                target: pos(40.0, 40.0),
+            },
+            &mut sel.apply_params(),
+            &mut move_feedback,
+            &mut world,
+            &catalog,
+            &WeaponCatalog::default(),
+            &doodad_catalog,
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
+            &nav_config,
+            &AuthoredRelationshipCatalog::default(),
+            layout(),
+            1.0,
+            &PlayerInteractionSettings::default(),
+            None,
+            None,
+            &mut modifiers,
+            &mut None,
+            &mut PendingDispatchTrace::default(),
+            SelectionControllabilityPolicy::gameplay_default(),
+            None,
+            &mut BuildModeState::default(),
+            &LocalPlayerOwnership::default(),
+            &mut BuildingPanelState::default(),
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            0,
+            &mut inventory_queue,
+            &OperationCatalog::default(),
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
+        );
+        assert_eq!(status, IntentDispatchStatus::Applied);
+        resolve_all_pending_unit_orders(
+            &mut world,
+            &catalog,
+            PassabilityCatalogs {
+                doodad: &doodad_catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav_config,
+        );
+        assert!(matches!(
+            world.get_unit(unit_id).unwrap().state,
+            UnitState::Moving { .. }
+        ));
     }
 }

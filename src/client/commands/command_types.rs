@@ -68,8 +68,16 @@ impl CommandType {
 /// What the player clicked or targeted when issuing a command.
 #[derive(Debug, Clone, Copy, PartialEq, Reflect)]
 pub enum CommandTarget {
-    Terrain { position: WorldPosition },
-    Unit { unit_id: UnitId },
+    Terrain {
+        position: WorldPosition,
+    },
+    Unit {
+        unit_id: UnitId,
+    },
+    /// Player right-clicked a building footprint (BP4.5).
+    Building {
+        building_id: crate::world::BuildingId,
+    },
 }
 
 /// Resolved command after context classification (intent → context).

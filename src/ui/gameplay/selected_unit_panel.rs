@@ -1,11 +1,15 @@
-//! Bottom-left selected unit stats panel (P-UI1).
+//! Bottom-left selected-object stats panel (P-UI1, BP1).
 
 use bevy::prelude::*;
 
+use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    UnitCatalog, UnitDefinition, UnitId, UnitRecord, UnitState, WeaponCatalog, WorldData,
+    BuildingCatalog, UnitCatalog, UnitDefinition, UnitId, UnitRecord, UnitState, WeaponCatalog,
+    WorldData,
 };
+
+use super::building_panel::format_building_shell;
 
 use super::combat_display::{
     append_combat_state_lines, append_weapon_hud_lines, average_hp_percent, combat_target_id,
@@ -30,6 +34,56 @@ pub struct SelectedUnitPanelSnapshot {
     pub lines: Vec<String>,
 }
 
+const NO_SELECTION_LABEL: &str = "No selection";
+
+/// Bottom-bar content from [`WorldSelectionState`] (units, buildings, or none).
+pub fn build_selected_panel_snapshot(
+    world_selection: &WorldSelectionState,
+    selected_units: &SelectedUnits,
+    world: &WorldData,
+    unit_catalog: &UnitCatalog,
+    building_catalog: &BuildingCatalog,
+    weapon_catalog: &WeaponCatalog,
+) -> SelectedUnitPanelSnapshot {
+    match world_selection.category {
+        WorldSelectionCategory::Building => {
+            let Some(building_id) = world_selection.building_id else {
+                return no_selection_snapshot();
+            };
+            let Some(record) = world.get_building(building_id) else {
+                return no_selection_snapshot();
+            };
+            let display_name = building_catalog
+                .get(&record.definition_id)
+                .map(|def| def.display_name.as_str())
+                .unwrap_or(record.definition_id.as_str());
+            let body = format_building_shell(
+                display_name,
+                record.lifecycle_state,
+                record.vitals.current_hp,
+                record.vitals.max_hp,
+            );
+            SelectedUnitPanelSnapshot {
+                selection_count: 0,
+                primary_unit: None,
+                lines: body.lines().map(str::to_string).collect(),
+            }
+        }
+        WorldSelectionCategory::Units => {
+            build_selected_unit_snapshot(selected_units, world, unit_catalog, weapon_catalog)
+        }
+        _ => no_selection_snapshot(),
+    }
+}
+
+fn no_selection_snapshot() -> SelectedUnitPanelSnapshot {
+    SelectedUnitPanelSnapshot {
+        selection_count: 0,
+        primary_unit: None,
+        lines: vec![NO_SELECTION_LABEL.to_string()],
+    }
+}
+
 pub fn build_selected_unit_snapshot(
     selection: &SelectedUnits,
     world: &WorldData,
@@ -40,11 +94,7 @@ pub fn build_selected_unit_snapshot(
     let primary = primary_selected_unit(selection);
 
     if count == 0 {
-        return SelectedUnitPanelSnapshot {
-            selection_count: 0,
-            primary_unit: None,
-            lines: vec!["No unit selected".to_string()],
-        };
+        return no_selection_snapshot();
     }
 
     if count > 1 {
@@ -175,7 +225,7 @@ pub fn spawn_selected_unit_panel(parent: &mut ChildSpawnerCommands) {
         .with_children(|panel| {
             panel.spawn((
                 SelectedUnitPanelText,
-                Text::new("No unit selected"),
+                Text::new(NO_SELECTION_LABEL),
                 hud_title_font(),
                 TextColor(TEXT_PRIMARY),
             ));
@@ -184,14 +234,23 @@ pub fn spawn_selected_unit_panel(parent: &mut ChildSpawnerCommands) {
 
 /// Refresh stat text when the derived snapshot changes.
 pub fn sync_selected_unit_panel(
+    world_selection: Res<WorldSelectionState>,
     selection: Res<SelectedUnits>,
     world: Res<WorldData>,
-    catalog: Res<UnitCatalog>,
+    unit_catalog: Res<UnitCatalog>,
+    building_catalog: Res<BuildingCatalog>,
     weapon_catalog: Res<WeaponCatalog>,
     mut cache: Local<Option<SelectedUnitPanelSnapshot>>,
     mut text: Query<&mut Text, With<SelectedUnitPanelText>>,
 ) {
-    let snapshot = build_selected_unit_snapshot(&selection, &world, &catalog, &weapon_catalog);
+    let snapshot = build_selected_panel_snapshot(
+        &world_selection,
+        &selection,
+        &world,
+        &unit_catalog,
+        &building_catalog,
+        &weapon_catalog,
+    );
     if cache.as_ref() == Some(&snapshot) {
         return;
     }
@@ -206,11 +265,18 @@ pub fn sync_selected_unit_panel(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{
-        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitDefinitionId,
-        UnitSource, WeaponCatalog, WorldPosition, create_unit, starter_weapon_definitions,
+    use crate::client::selection::{
+        ApplyWorldSelectionParams, WorldSelectionCategory, WorldSelectionChange,
+        WorldSelectionRevision, WorldSelectionState, apply_world_selection,
     };
-    use bevy::prelude::Vec3;
+    use crate::ui::gameplay::building_panel::BuildingPanelState;
+    use crate::world::{
+        Affiliation, BuildingDefinitionId, BuildingId, BuildingOwnership, BuildingPlacement,
+        BuildingRecord, BuildingSource, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield,
+        LocalPosition, UnitDefinitionId, UnitId, UnitSource, WeaponCatalog, WorldData,
+        WorldPosition, create_unit, starter_weapon_definitions,
+    };
+    use bevy::prelude::{Quat, Vec3};
 
     fn flat_world() -> WorldData {
         let mut world = WorldData::new(ChunkLayout {
@@ -240,28 +306,257 @@ mod tests {
         WeaponCatalog::from_definitions(starter_weapon_definitions()).unwrap()
     }
 
+    fn building_catalog() -> BuildingCatalog {
+        BuildingCatalog::default()
+    }
+
+    fn snapshot(
+        world_selection: &WorldSelectionState,
+        selected_units: &SelectedUnits,
+        world: &WorldData,
+    ) -> SelectedUnitPanelSnapshot {
+        build_selected_panel_snapshot(
+            world_selection,
+            selected_units,
+            world,
+            &wolf_catalog(),
+            &building_catalog(),
+            &default_weapons(),
+        )
+    }
+
+    fn insert_building(world: &mut WorldData, id: u64, ownership: BuildingOwnership) -> BuildingId {
+        let building_id = BuildingId::new(id);
+        let record = BuildingRecord::new(
+            building_id,
+            BuildingDefinitionId::new("prispod_farm"),
+            BuildingPlacement::new(pos(10.0, 10.0), Quat::IDENTITY),
+            ownership,
+            300,
+            BuildingSource::Authored,
+        );
+        let chunk = ChunkId::new(record.placement.position.chunk);
+        world.insert_building(chunk, record).unwrap();
+        building_id
+    }
+
+    fn select_building(
+        world_selection: &mut WorldSelectionState,
+        selected_units: &mut SelectedUnits,
+        building_id: BuildingId,
+    ) {
+        let mut revision = WorldSelectionRevision::default();
+        apply_world_selection(
+            WorldSelectionChange::SelectBuilding { building_id },
+            &mut ApplyWorldSelectionParams {
+                world_selection,
+                selected_units,
+                hud: None,
+                revision: Some(&mut revision),
+            },
+        );
+    }
+
     #[test]
-    fn empty_selection_shows_empty_state() {
-        let snapshot = build_selected_unit_snapshot(
+    fn empty_selection_shows_no_selection_state() {
+        let snapshot = snapshot(
+            &WorldSelectionState::default(),
             &SelectedUnits::default(),
             &flat_world(),
-            &wolf_catalog(),
-            &default_weapons(),
         );
         assert_eq!(snapshot.selection_count, 0);
-        assert_eq!(snapshot.lines[0], "No unit selected");
+        assert_eq!(snapshot.lines[0], NO_SELECTION_LABEL);
+    }
+
+    #[test]
+    fn selected_unit_shows_existing_unit_info() {
+        let catalog = wolf_catalog();
+        let mut world = flat_world();
+        let unit_id = create_unit(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(4.0, 4.0),
+            UnitSource::Authored,
+        )
+        .unwrap()
+        .id;
+        let mut selected_units = SelectedUnits::default();
+        selected_units.set_single(unit_id);
+        let world_selection = WorldSelectionState {
+            category: WorldSelectionCategory::Units,
+            ..Default::default()
+        };
+        let joined = snapshot(&world_selection, &selected_units, &world)
+            .lines
+            .join("\n");
+        assert!(joined.contains("Wolf"));
+        assert!(joined.contains("HP: 5/5"));
+    }
+
+    #[test]
+    fn selected_owned_building_shows_public_stats() {
+        let mut world = flat_world();
+        let farm = insert_building(
+            &mut world,
+            1,
+            BuildingOwnership::with_affiliation(Affiliation::Player),
+        );
+        let mut world_selection = WorldSelectionState::default();
+        let mut selected_units = SelectedUnits::default();
+        select_building(&mut world_selection, &mut selected_units, farm);
+        let joined = snapshot(&world_selection, &selected_units, &world)
+            .lines
+            .join("\n");
+        assert!(joined.contains("Prispod Farm"));
+        assert!(joined.contains("Complete"));
+        assert!(joined.contains("HP 300 / 300"));
+    }
+
+    #[test]
+    fn selected_foreign_building_shows_public_stats() {
+        let mut world = flat_world();
+        let smelter = insert_building(
+            &mut world,
+            2,
+            BuildingOwnership::with_affiliation(Affiliation::Hostile),
+        );
+        let mut world_selection = WorldSelectionState::default();
+        let mut selected_units = SelectedUnits::default();
+        select_building(&mut world_selection, &mut selected_units, smelter);
+        let joined = snapshot(&world_selection, &selected_units, &world)
+            .lines
+            .join("\n");
+        assert!(joined.contains("Prispod Farm"));
+        assert!(joined.contains("HP 300 / 300"));
+    }
+
+    #[test]
+    fn building_stats_visible_when_menu_targets_same_building() {
+        let mut world = flat_world();
+        let farm = insert_building(
+            &mut world,
+            3,
+            BuildingOwnership::with_affiliation(Affiliation::Player),
+        );
+        let mut world_selection = WorldSelectionState::default();
+        let mut selected_units = SelectedUnits::default();
+        select_building(&mut world_selection, &mut selected_units, farm);
+        let _menu_open = BuildingPanelState {
+            open_building_id: Some(farm),
+        };
+        let joined = snapshot(&world_selection, &selected_units, &world)
+            .lines
+            .join("\n");
+        assert!(joined.contains("Prispod Farm"));
+        assert!(joined.contains("HP 300 / 300"));
+    }
+
+    #[test]
+    fn open_farm_menu_and_select_unit_shows_unit_stats() {
+        let catalog = wolf_catalog();
+        let mut world = flat_world();
+        let farm = insert_building(
+            &mut world,
+            4,
+            BuildingOwnership::with_affiliation(Affiliation::Player),
+        );
+        let unit_id = create_unit(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+        )
+        .unwrap()
+        .id;
+        let mut world_selection = WorldSelectionState::default();
+        let mut selected_units = SelectedUnits::default();
+        select_building(&mut world_selection, &mut selected_units, farm);
+        let _menu_open = BuildingPanelState {
+            open_building_id: Some(farm),
+        };
+        let mut revision = WorldSelectionRevision::default();
+        apply_world_selection(
+            WorldSelectionChange::SelectUnit { unit_id },
+            &mut ApplyWorldSelectionParams {
+                world_selection: &mut world_selection,
+                selected_units: &mut selected_units,
+                hud: None,
+                revision: Some(&mut revision),
+            },
+        );
+        let joined = snapshot(&world_selection, &selected_units, &world)
+            .lines
+            .join("\n");
+        assert!(joined.contains("Wolf"));
+        assert!(_menu_open.open_building_id == Some(farm));
+    }
+
+    #[test]
+    fn open_farm_menu_and_select_foreign_building_shows_foreign_stats() {
+        let mut world = flat_world();
+        let farm = insert_building(
+            &mut world,
+            5,
+            BuildingOwnership::with_affiliation(Affiliation::Player),
+        );
+        let foreign = insert_building(
+            &mut world,
+            6,
+            BuildingOwnership::with_affiliation(Affiliation::Hostile),
+        );
+        let mut world_selection = WorldSelectionState::default();
+        let mut selected_units = SelectedUnits::default();
+        select_building(&mut world_selection, &mut selected_units, foreign);
+        let menu = BuildingPanelState {
+            open_building_id: Some(farm),
+        };
+        let joined = snapshot(&world_selection, &selected_units, &world)
+            .lines
+            .join("\n");
+        assert!(joined.contains("Prispod Farm"));
+        assert_eq!(menu.open_building_id, Some(farm));
+    }
+
+    #[test]
+    fn clear_selection_shows_no_selection_while_menu_stays_open() {
+        let mut world = flat_world();
+        let farm = insert_building(
+            &mut world,
+            7,
+            BuildingOwnership::with_affiliation(Affiliation::Player),
+        );
+        let mut world_selection = WorldSelectionState::default();
+        let mut selected_units = SelectedUnits::default();
+        select_building(&mut world_selection, &mut selected_units, farm);
+        let menu = BuildingPanelState {
+            open_building_id: Some(farm),
+        };
+        let mut revision = WorldSelectionRevision::default();
+        apply_world_selection(
+            WorldSelectionChange::ClearAll,
+            &mut ApplyWorldSelectionParams {
+                world_selection: &mut world_selection,
+                selected_units: &mut selected_units,
+                hud: None,
+                revision: Some(&mut revision),
+            },
+        );
+        let snapshot = snapshot(&world_selection, &selected_units, &world);
+        assert_eq!(snapshot.lines[0], NO_SELECTION_LABEL);
+        assert_eq!(menu.open_building_id, Some(farm));
     }
 
     #[test]
     fn multi_selection_shows_count() {
         let mut selection = SelectedUnits::default();
         selection.replace_with([UnitId::new(1), UnitId::new(2)]);
-        let snapshot = build_selected_unit_snapshot(
-            &selection,
-            &flat_world(),
-            &wolf_catalog(),
-            &default_weapons(),
-        );
+        let world_selection = WorldSelectionState {
+            category: WorldSelectionCategory::Units,
+            ..Default::default()
+        };
+        let snapshot = snapshot(&world_selection, &selection, &flat_world());
         assert_eq!(snapshot.selection_count, 2);
         assert!(snapshot.lines[0].contains("2 units"));
     }
@@ -281,9 +576,13 @@ mod tests {
         .id;
         let mut selection = SelectedUnits::default();
         selection.set_single(unit_id);
-        let snapshot =
-            build_selected_unit_snapshot(&selection, &world, &catalog, &default_weapons());
-        let joined = snapshot.lines.join("\n");
+        let world_selection = WorldSelectionState {
+            category: WorldSelectionCategory::Units,
+            ..Default::default()
+        };
+        let joined = snapshot(&world_selection, &selection, &world)
+            .lines
+            .join("\n");
         assert!(joined.contains("Wolf"));
         assert!(joined.contains("HP: 5/5"));
         assert!(joined.contains("Base HP: 5"));
@@ -308,14 +607,17 @@ mod tests {
         let before = world.get_unit(unit_id).unwrap().clone();
         let mut selection = SelectedUnits::default();
         selection.set_single(unit_id);
-        let _ = build_selected_unit_snapshot(&selection, &world, &catalog, &default_weapons());
+        let world_selection = WorldSelectionState {
+            category: WorldSelectionCategory::Units,
+            ..Default::default()
+        };
+        let _ = snapshot(&world_selection, &selection, &world);
         assert_eq!(world.get_unit(unit_id).unwrap(), &before);
     }
 
     #[test]
     fn dead_unit_selection_handled_gracefully() {
         let catalog = wolf_catalog();
-        let weapons = default_weapons();
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
@@ -331,8 +633,13 @@ mod tests {
             .expect("set dead");
         let mut selection = SelectedUnits::default();
         selection.set_single(unit_id);
-        let snapshot = build_selected_unit_snapshot(&selection, &world, &catalog, &weapons);
-        let joined = snapshot.lines.join("\n");
+        let world_selection = WorldSelectionState {
+            category: WorldSelectionCategory::Units,
+            ..Default::default()
+        };
+        let joined = snapshot(&world_selection, &selection, &world)
+            .lines
+            .join("\n");
         assert!(joined.contains("Dead"));
         assert!(joined.contains("HP:"));
     }

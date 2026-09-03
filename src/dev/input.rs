@@ -302,7 +302,6 @@ pub fn handle_dev_right_click_input(
             let mut apply_params = ApplyWorldSelectionParams {
                 world_selection: &mut params.world_selection,
                 selected_units: &mut params.selected_units,
-                building_selection: &mut params.building_selection,
                 hud: None,
                 revision: Some(&mut params.selection_revision),
             };

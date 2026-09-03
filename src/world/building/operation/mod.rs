@@ -5,6 +5,7 @@ mod inventory_role;
 mod lifecycle;
 mod operation_id;
 mod params;
+mod player_policy;
 mod policy;
 mod progress;
 mod query;
@@ -41,6 +42,9 @@ pub use inventory_role::{BuildingInventoryBinding, BuildingInventoryRole};
 pub use lifecycle::OperationLifecycle;
 pub use operation_id::{OperationDefinitionId, OperationId};
 pub use params::BuildingOperationParams;
+pub use player_policy::{
+    apply_player_production_enabled, apply_player_production_selected_operation,
+};
 pub use policy::{BuildingOperationPolicy, ControlSource, RepeatMode};
 pub use progress::{
     BASE_OPERATION_PROGRESS_PER_TICK, PRODUCTION_PROGRESS_ONE_UNIT, ProductionProgress,
