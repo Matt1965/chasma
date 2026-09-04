@@ -148,13 +148,31 @@ fn unit_none_membership_remains_none() {
 fn affiliation_does_not_imply_unit_membership() {
     let mut world = test_world();
     let settlement_id = spawn_settlement(&mut world, 20.0, 20.0, "A");
-    let unit_id = spawn_unit(&mut world, 20.0, 20.0, Affiliation::Player);
+    // Outside DEFAULT_TOWN_BOUNDARY_RADIUS_METERS (64m) from settlement center.
+    let unit_id = spawn_unit(&mut world, 100.0, 100.0, Affiliation::Player);
     assert!(world.get_unit(unit_id).unwrap().settlement_id.is_none());
     assert!(
         world
             .settlement_store()
             .units_for_settlement(settlement_id)
             .is_empty()
+    );
+}
+
+#[test]
+fn unit_created_inside_settlement_seeds_membership() {
+    let mut world = test_world();
+    let settlement_id = spawn_settlement(&mut world, 20.0, 20.0, "A");
+    let unit_id = spawn_unit(&mut world, 20.0, 20.0, Affiliation::Player);
+    assert_eq!(
+        world.get_unit(unit_id).unwrap().settlement_id,
+        Some(settlement_id)
+    );
+    assert!(
+        world
+            .settlement_store()
+            .units_for_settlement(settlement_id)
+            .contains(&unit_id)
     );
 }
 
@@ -379,7 +397,8 @@ fn rebuild_indexes_from_record_fields_after_manual_mutation() {
 fn none_membership_not_in_settlement_roster() {
     let mut world = test_world();
     let settlement_id = spawn_settlement(&mut world, 22.0, 22.0, "A");
-    let unit_id = spawn_unit(&mut world, 6.0, 6.0, Affiliation::Player);
+    // Outside DEFAULT_TOWN_BOUNDARY_RADIUS_METERS (64m) from settlement center.
+    let unit_id = spawn_unit(&mut world, 100.0, 100.0, Affiliation::Player);
     assert!(
         !world
             .settlement_store()

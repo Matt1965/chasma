@@ -204,7 +204,10 @@ pub fn ensure_building_task(
             if task.task_type == task_type
                 && matches!(
                     task.state,
-                    TaskState::Available | TaskState::Assigned | TaskState::InProgress
+                    TaskState::Available
+                        | TaskState::Assigned
+                        | TaskState::InProgress
+                        | TaskState::BlockedWaiting
                 )
             {
                 return Ok(task_id);

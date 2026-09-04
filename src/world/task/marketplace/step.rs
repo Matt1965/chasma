@@ -13,9 +13,10 @@ use crate::world::task::{
     unit_may_autonomously_work_building, unit_may_work_on_building,
 };
 use crate::world::{
-    BuildingCatalog, BuildingInteractionProfileCatalog, DoodadCatalog, NavigationConfig,
-    OperationCatalog, UnitCatalog, UnitId, UnitOrder, UnitState, WeaponCatalog, WorldData,
-    interaction_point_world_position, issue_unit_order, unit_may_autonomously_perform_work,
+    BuildingCatalog, BuildingInteractionProfileCatalog, DoodadCatalog,
+    INTERACTION_WORK_RANGE_METERS, NavigationConfig, OperationCatalog, UnitCatalog, UnitId,
+    UnitOrder, UnitState, WeaponCatalog, WorldData, interaction_point_world_position,
+    issue_unit_order, unit_may_autonomously_perform_work,
 };
 
 use super::candidates::{MarketplaceCandidate, MarketplaceListing, MarketplaceListingKind};
@@ -71,7 +72,14 @@ pub fn step_worker_assignment(ctx: &mut WorkerAssignmentContext<'_>) -> WorkerAs
 
     // Pass 1: idle workers claim best Available work (deterministic unit-id order).
     for unit_id in &idle_ids {
-        if crate::world::hunger_prevents_work_claim(ctx.world, ctx.unit_catalog, *unit_id) {
+        if crate::world::hunger_prevents_work_claim(
+            ctx.world,
+            ctx.unit_catalog,
+            ctx.building_catalog,
+            ctx.interaction_catalog,
+            ctx.inventory_ctx.items,
+            *unit_id,
+        ) {
             continue;
         }
         let (decision, evaluation) = try_assign_worker(
@@ -102,6 +110,15 @@ pub fn step_worker_assignment(ctx: &mut WorkerAssignmentContext<'_>) -> WorkerAs
             continue;
         };
         if current.priority == TaskPriority::PlayerAssigned {
+            continue;
+        }
+        // Active workstation labor is execution — do not preempt mid-shift (SA7).
+        if current.task_type == TaskType::OperateWorkstation
+            && matches!(
+                current.state,
+                TaskState::Assigned | TaskState::InProgress | TaskState::BlockedWaiting
+            )
+        {
             continue;
         }
         let stick = ctx.world.worker_assignment_store().stick(unit_id).cloned();
@@ -636,7 +653,24 @@ fn resume_stalled_assignments(
         let Some(point) = profile.points.iter().find(|p| p.key == point_key) else {
             continue;
         };
-        let target = interaction_point_world_position(&building, ctx.world.layout(), point);
+        let layout = ctx.world.layout();
+        let target = interaction_point_world_position(&building, layout, point);
+        let unit_global = unit.placement.position.to_global(layout);
+        let work_global = target.to_global(layout);
+        let dx = unit_global.x - work_global.x;
+        let dz = unit_global.z - work_global.z;
+        let distance = (dx * dx + dz * dz).sqrt();
+        if distance <= INTERACTION_WORK_RANGE_METERS {
+            continue;
+        }
+        if matches!(
+            unit.state,
+            UnitState::Working {
+                task_id: working_task_id
+            } if working_task_id == task_id
+        ) {
+            continue;
+        }
         if issue_unit_order(
             ctx.world,
             ctx.unit_catalog,

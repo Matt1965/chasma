@@ -22,12 +22,12 @@ use crate::world::movement::feel::{
 };
 use crate::world::movement::steering::SteeringSettings;
 use crate::world::{
-    BuildingCatalog, ChunkLayout, DoodadCatalog, FootprintCatalog, NavigationWaypoint,
-    OccupancySource, PassabilityAgent, PassabilityBlockReason, PassabilityCatalogs,
-    PassabilityResult, SlopeWalkability, SpaceId, WorldData, WorldPosition, apply_steering,
-    classify_slope_walkability, ground_position_in_space, is_segment_walkable_in_space,
-    query_navigation_point_legality, try_open_door_at_portal_for_unit, try_portal_transition,
-    xz_distance,
+    BuildingCatalog, ChunkLayout, DoodadCatalog, FootprintCatalog, INTERACTION_WORK_RANGE_METERS,
+    NavigationWaypoint, OccupancySource, PassabilityAgent, PassabilityBlockReason,
+    PassabilityCatalogs, PassabilityResult, SlopeWalkability, SpaceId, TaskType, WorldData,
+    WorldPosition, apply_steering, classify_slope_walkability, ground_position_in_space,
+    is_segment_walkable_in_space, query_navigation_point_legality,
+    try_open_door_at_portal_for_unit, try_portal_transition, xz_distance,
 };
 /// Distance below which a unit snaps to its move target (meters).
 pub const MOVEMENT_ARRIVAL_TOLERANCE_METERS: f32 = 0.05;
@@ -42,6 +42,44 @@ const PARTIAL_ARRIVAL_DISTANCE_METERS: f32 = MOVEMENT_PARTIAL_ARRIVAL_TOLERANCE_
 
 static STEERING_SETTINGS: SteeringSettings = SteeringSettings::DEFAULT;
 static FEEL_SETTINGS: MovementFeelSettings = MovementFeelSettings::DEFAULT;
+
+/// After travel completes, assigned building labor should enter `Working` when in range.
+fn finish_travel_arrival(
+    world: &mut WorldData,
+    unit_id: UnitId,
+    travel_target: WorldPosition,
+) -> Result<(), UnitMovementError> {
+    if let Some(task_id) = world.task_store().unit_task_id(unit_id) {
+        let labor_task = world.task_store().get(task_id).is_some_and(|task| {
+            matches!(
+                task.task_type,
+                TaskType::ConstructBuilding | TaskType::OperateWorkstation
+            )
+        });
+        if labor_task {
+            let layout = world.layout();
+            let unit_pos = world
+                .get_unit(unit_id)
+                .ok_or(UnitMovementError::UnitNotFound)?
+                .placement
+                .position;
+            if xz_distance(unit_pos, travel_target, layout) <= INTERACTION_WORK_RANGE_METERS {
+                if world
+                    .set_unit_state(unit_id, UnitState::Working { task_id })
+                    .is_ok()
+                {
+                    world.movement_smoothing_mut().clear_unit(unit_id);
+                    return Ok(());
+                }
+            }
+        }
+    }
+    world
+        .set_unit_state(unit_id, UnitState::Idle)
+        .map_err(|_| UnitMovementError::UnitNotFound)?;
+    world.movement_smoothing_mut().clear_unit(unit_id);
+    Ok(())
+}
 
 fn apply_accepted_movement_facing(
     world: &mut WorldData,
@@ -488,7 +526,7 @@ fn complete_portal_waypoint_if_ready(
             waypoints_remaining: path.len().saturating_sub(next_index),
         });
     if next_index >= path.len() {
-        if world.set_unit_state(unit_id, UnitState::Idle).is_err() {
+        if finish_travel_arrival(world, unit_id, target).is_err() {
             return Some(UnitMovementStepOutcome::Failed(
                 UnitMovementError::UnitNotFound,
             ));
@@ -589,10 +627,9 @@ pub fn step_unit_movement(
         waypoint_index += 1;
     }
     if waypoint_index >= path.len() {
-        if world.set_unit_state(unit_id, UnitState::Idle).is_err() {
+        if finish_travel_arrival(world, unit_id, target).is_err() {
             return UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound);
         }
-        world.movement_smoothing_mut().clear_unit(unit_id);
         return UnitMovementStepOutcome::Arrived;
     }
 
@@ -617,10 +654,9 @@ pub fn step_unit_movement(
         }
     }
     let Some(waypoint) = path.waypoints.get(effective_index).copied() else {
-        if world.set_unit_state(unit_id, UnitState::Idle).is_err() {
+        if finish_travel_arrival(world, unit_id, target).is_err() {
             return UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound);
         }
-        world.movement_smoothing_mut().clear_unit(unit_id);
         return UnitMovementStepOutcome::Arrived;
     };
 
@@ -657,10 +693,9 @@ pub fn step_unit_movement(
         } else {
             let next_index = effective_index + 1;
             if next_index >= path.len() {
-                if world.set_unit_state(unit_id, UnitState::Idle).is_err() {
+                if finish_travel_arrival(world, unit_id, target).is_err() {
                     return UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound);
                 }
-                world.movement_smoothing_mut().clear_unit(unit_id);
                 return UnitMovementStepOutcome::Arrived;
             }
             if world
@@ -1131,10 +1166,9 @@ pub fn step_unit_movement(
         } else {
             let next_index = effective_index + 1;
             if next_index >= path.len() {
-                if world.set_unit_state(unit_id, UnitState::Idle).is_err() {
+                if finish_travel_arrival(world, unit_id, target).is_err() {
                     UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound)
                 } else {
-                    world.movement_smoothing_mut().clear_unit(unit_id);
                     UnitMovementStepOutcome::Arrived
                 }
             } else if world
@@ -1349,7 +1383,7 @@ fn apply_blocked_movement(
     layout: ChunkLayout,
 ) -> UnitMovementStepOutcome {
     let Some(waypoint) = path.waypoints.get(waypoint_index).copied() else {
-        if world.set_unit_state(unit_id, UnitState::Idle).is_err() {
+        if finish_travel_arrival(world, unit_id, target).is_err() {
             return UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound);
         }
         return UnitMovementStepOutcome::Arrived;
@@ -1381,7 +1415,7 @@ fn apply_blocked_movement(
     if dist_to_target <= PARTIAL_ARRIVAL_DISTANCE_METERS
         && !path_has_pending_portal(&path, waypoint_index)
     {
-        if world.set_unit_state(unit_id, UnitState::Idle).is_err() {
+        if finish_travel_arrival(world, unit_id, target).is_err() {
             return UnitMovementStepOutcome::Failed(UnitMovementError::UnitNotFound);
         }
         return UnitMovementStepOutcome::Arrived;

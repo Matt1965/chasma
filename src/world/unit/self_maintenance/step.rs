@@ -4,7 +4,7 @@ use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::item::ItemCatalog;
 use crate::world::movement::feel::start_unit_move_to;
-use crate::world::task::release_unit_task_to_marketplace;
+use crate::world::task::{TaskState, TaskType, release_unit_task_to_marketplace};
 use crate::world::unit::catalog::UnitCatalog;
 use crate::world::unit::{CombatState, UnitId, UnitState, unit_can_execute_actions};
 use crate::world::{
@@ -122,9 +122,22 @@ pub fn step_unit_self_maintenance_pre_work(ctx: &mut SelfMaintenanceContext<'_>)
         }
 
         if stage == HungerStage::Critical && matches!(snapshot.state, UnitState::Working { .. }) {
-            let mut events = Vec::new();
-            release_unit_task_to_marketplace(ctx.world, unit_id, &mut events);
-            let _ = events;
+            let abandon_work = ctx
+                .world
+                .task_store()
+                .unit_task_id(unit_id)
+                .and_then(|task_id| ctx.world.task_store().get(task_id))
+                .is_none_or(|task| {
+                    !matches!(
+                        (task.task_type, task.state),
+                        (TaskType::OperateWorkstation, TaskState::InProgress)
+                    )
+                });
+            if abandon_work {
+                let mut events = Vec::new();
+                release_unit_task_to_marketplace(ctx.world, unit_id, &mut events);
+                let _ = events;
+            }
         }
 
         let may_begin_seek = match stage {
@@ -233,9 +246,16 @@ pub fn step_unit_self_maintenance_post_movement(ctx: &mut SelfMaintenanceContext
 }
 
 /// Whether SA7 should skip assigning new work to this unit due to hunger.
+///
+/// Hungry or critically hungry idle workers defer to food when an accessible source exists.
+/// When no food is reachable, work claims remain allowed so units can still perform
+/// food-producing labor (for example farm harvest).
 pub fn hunger_prevents_work_claim(
     world: &WorldData,
     unit_catalog: &UnitCatalog,
+    building_catalog: &BuildingCatalog,
+    interaction_catalog: &BuildingInteractionProfileCatalog,
+    item_catalog: &ItemCatalog,
     unit_id: UnitId,
 ) -> bool {
     let Some(record) = world.get_unit(unit_id) else {
@@ -253,15 +273,24 @@ pub fn hunger_prevents_work_claim(
     if record.self_maintenance.is_seeking_or_eating() {
         return true;
     }
-    let stage = evaluate_hunger_stage(record.nutrition.current, &profile);
-    match stage {
-        HungerStage::Critical => true,
-        HungerStage::Normal => {
-            matches!(record.state, UnitState::Idle)
-                && world.task_store().unit_task_id(unit_id).is_none()
-        }
-        HungerStage::Fed => false,
+    if !matches!(record.state, UnitState::Idle)
+        || world.task_store().unit_task_id(unit_id).is_some()
+    {
+        return false;
     }
+    let stage = evaluate_hunger_stage(record.nutrition.current, &profile);
+    if stage == HungerStage::Fed {
+        return false;
+    }
+    select_food_source(
+        world,
+        building_catalog,
+        interaction_catalog,
+        item_catalog,
+        unit_id,
+        record.settlement_id,
+    )
+    .is_some()
 }
 
 fn begin_eating_at_destination(

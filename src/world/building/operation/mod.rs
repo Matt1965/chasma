@@ -25,6 +25,8 @@ mod extraction_tests;
 #[cfg(test)]
 mod farm_tests;
 #[cfg(test)]
+mod farm_worker_persistence_tests;
+#[cfg(test)]
 mod phase4_content_tests;
 #[cfg(test)]
 mod save_tests;

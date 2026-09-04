@@ -31,6 +31,15 @@ pub fn step_building_intent_propagation(
 
     let mut propagated = 0u32;
     for settlement_id in settlement_ids {
+        let planning_automation_enabled = world
+            .settlement_state_store()
+            .get(settlement_id)
+            .map(|state| state.policies.automation_enabled)
+            .unwrap_or(true);
+        if !planning_automation_enabled {
+            continue;
+        }
+
         let Some(intent_plan) = world.settlement_intent_store().get(settlement_id).cloned() else {
             continue;
         };

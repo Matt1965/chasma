@@ -619,7 +619,8 @@ fn none_membership_unit_is_not_autonomously_claimed() {
     let mut world = flat_world();
     settlement_building(&mut world, pos(64.0, 64.0), pos(64.0, 64.0));
     sync_construction_tasks(&mut world, &building, 1);
-    let worker = builder_unit(&mut world, &unit_catalog, pos(60.0, 64.0));
+    // Outside town boundary (64m) so creation does not seed settlement membership.
+    let worker = builder_unit(&mut world, &unit_catalog, pos(64.0, 150.0));
     assert!(world.get_unit(worker).unwrap().settlement_id.is_none());
 
     let report = run_assign(

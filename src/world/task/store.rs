@@ -146,7 +146,10 @@ impl TaskStore {
         if let Some(task) = self.tasks.get_mut(&task_id) {
             task.assigned_unit_id = None;
             task.reserved_point_key = None;
-            if matches!(task.state, TaskState::Assigned | TaskState::InProgress) {
+            if matches!(
+                task.state,
+                TaskState::Assigned | TaskState::InProgress | TaskState::BlockedWaiting
+            ) {
                 task.state = TaskState::Available;
             }
         }

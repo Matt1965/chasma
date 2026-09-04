@@ -381,7 +381,30 @@ pub(crate) fn resolve_one(
         UnitOrder::MoveTo { target } => {
             start_unit_move_to(world, unit_catalog, catalogs, nav_config, unit_id, target)
         }
-        UnitOrder::Work { target, .. } => {
+        UnitOrder::Work { target, task_id } => {
+            if world.get_unit(unit_id).is_some_and(|unit| {
+                matches!(
+                    unit.state,
+                    UnitState::Working {
+                        task_id: working_task_id
+                    } if working_task_id == task_id
+                )
+            }) {
+                return Ok(());
+            }
+            let unit = world
+                .get_unit(unit_id)
+                .ok_or(UnitOrderError::UnitNotFound)?;
+            let layout = world.layout();
+            let unit_global = unit.placement.position.to_global(layout);
+            let work_global = target.to_global(layout);
+            let dx = unit_global.x - work_global.x;
+            let dz = unit_global.z - work_global.z;
+            if (dx * dx + dz * dz).sqrt() <= crate::world::INTERACTION_WORK_RANGE_METERS {
+                return world
+                    .set_unit_state(unit_id, UnitState::Working { task_id })
+                    .map_err(|_| UnitOrderError::UnitNotFound);
+            }
             start_unit_move_to(world, unit_catalog, catalogs, nav_config, unit_id, target)
         }
         UnitOrder::Attack { .. } | UnitOrder::AttackMove { .. } => {

@@ -88,7 +88,7 @@ pub use membership::{
     SettlementMembershipError, assign_building_settlement, assign_selected_units_at_position,
     assign_unit_settlement, clear_unit_settlement_on_removal,
     rebuild_settlement_membership_indexes, seed_building_settlement_at_creation,
-    settlement_containing_position,
+    seed_unit_settlement_at_creation, settlement_containing_position,
 };
 pub use needs::{
     NEED_EVAL_CADENCE_TICKS, NeedBlockingReason, NeedCatalog, NeedCatalogError, NeedDefinition,

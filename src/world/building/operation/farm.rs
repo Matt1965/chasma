@@ -134,7 +134,8 @@ pub fn step_all_farm_passive_growth(
                 .farm_state(building_id)
                 .cloned()
                 .unwrap_or_default();
-            sync_farm_runtime_lifecycle(world, building_id, &farm, &policy, 0);
+            let active_workers = workstation_workers_for_building(world, building_id).len() as u32;
+            sync_farm_runtime_lifecycle(world, building_id, &farm, &policy, active_workers);
             update_farm_output_block_state(
                 world,
                 building_id,

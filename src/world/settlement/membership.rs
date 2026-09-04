@@ -170,6 +170,18 @@ pub fn seed_building_settlement_at_creation(
     }
 }
 
+/// Seed unit membership once at creation from placement position.
+pub fn seed_unit_settlement_at_creation(
+    world: &mut WorldData,
+    unit_id: UnitId,
+    position: WorldPosition,
+) {
+    let Some(settlement_id) = settlement_containing_position(world, position) else {
+        return;
+    };
+    let _ = assign_unit_settlement(world, unit_id, Some(settlement_id));
+}
+
 /// Assign all `unit_ids` to the settlement whose boundary contains `click_position`.
 pub fn assign_selected_units_at_position(
     world: &mut WorldData,

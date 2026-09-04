@@ -89,6 +89,17 @@ impl Phase7Fixture {
         .unwrap()
     }
 
+    fn hunger_blocks_claim(&self, unit_id: crate::world::UnitId) -> bool {
+        hunger_prevents_work_claim(
+            &self.world,
+            &self.unit_catalog,
+            &self.building_catalog,
+            &self.interaction_catalog,
+            self.items,
+            unit_id,
+        )
+    }
+
     fn maintenance_ctx(&mut self) -> SelfMaintenanceContext<'_> {
         SelfMaintenanceContext {
             world: &mut self.world,
@@ -272,6 +283,27 @@ fn new_unit_with_consumption_starts_full() {
     initialize_unit_nutrition(&mut nutrition, def);
     let profile = NutritionProfile::from_definition(def).unwrap();
     assert_eq!(nutrition.current, profile.max);
+}
+
+#[test]
+fn created_unit_with_inventory_starts_non_critical() {
+    let mut fx = Phase7Fixture::new();
+    let unit_id = create_unit_with_inventory(
+        &fx.unit_catalog,
+        &mut fx.world,
+        &UnitDefinitionId::new("bandit"),
+        pos(1.0, 1.0),
+        UnitSource::Authored,
+        UnitOwnership::with_affiliation(Affiliation::Player),
+        &fx.inventory_ctx,
+    )
+    .unwrap()
+    .id;
+    let profile = fx.bandit_profile();
+    let nutrition = fx.world.get_unit(unit_id).unwrap().nutrition.current;
+    assert_eq!(nutrition, profile.max);
+    assert_eq!(evaluate_hunger_stage(nutrition, &profile), HungerStage::Fed);
+    assert!(!fx.hunger_blocks_claim(unit_id));
 }
 
 #[test]
@@ -690,17 +722,25 @@ fn normal_hunger_does_not_interrupt_ongoing_work() {
 }
 
 #[test]
-fn normal_hungry_idle_blocks_new_work_claim() {
+fn normal_hungry_idle_blocks_new_work_claim_when_food_available() {
+    let mut fx = Phase7Fixture::new();
+    let (settlement, _) = fx.spawn_settlement(30.0, 30.0);
+    let chest = fx.spawn_member_chest(settlement, 32.0, 32.0);
+    fx.stock_chest(chest, "prispod", 5);
+    let unit_id = fx.spawn_member(settlement, 5.0, 5.0);
+    let profile = fx.bandit_profile();
+    set_nutrition(unit_id, &mut fx.world, profile.normal_threshold);
+    assert!(fx.hunger_blocks_claim(unit_id));
+}
+
+#[test]
+fn critical_hungry_idle_allows_work_claim_when_no_food_available() {
     let mut fx = Phase7Fixture::new();
     let (settlement, _) = fx.spawn_settlement(30.0, 30.0);
     let unit_id = fx.spawn_member(settlement, 5.0, 5.0);
     let profile = fx.bandit_profile();
-    set_nutrition(unit_id, &mut fx.world, profile.normal_threshold);
-    assert!(hunger_prevents_work_claim(
-        &fx.world,
-        &fx.unit_catalog,
-        unit_id
-    ));
+    set_nutrition(unit_id, &mut fx.world, profile.critical_threshold);
+    assert!(!fx.hunger_blocks_claim(unit_id));
 }
 
 #[test]
@@ -813,11 +853,7 @@ fn sa7_does_not_trap_critically_hungry_worker_in_reclaim_churn() {
     set_nutrition(unit_id, &mut fx.world, profile.critical_threshold);
     let mut ctx = fx.maintenance_ctx();
     step_unit_self_maintenance_pre_work(&mut ctx);
-    assert!(hunger_prevents_work_claim(
-        &fx.world,
-        &fx.unit_catalog,
-        unit_id
-    ));
+    assert!(fx.hunger_blocks_claim(unit_id));
     let operation_catalog = crate::world::OperationCatalog::default();
     let mut assign_ctx = crate::world::WorkerAssignmentContext {
         world: &mut fx.world,

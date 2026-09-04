@@ -116,6 +116,7 @@ fn create_unit_with_ownership_impl(
     }
 
     super::navigation_membership::initialize_unit_navigation_membership(world, id);
+    crate::world::settlement::seed_unit_settlement_at_creation(world, id, position);
 
     Ok(record)
 }
