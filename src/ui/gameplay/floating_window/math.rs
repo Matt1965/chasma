@@ -44,6 +44,10 @@ pub fn default_unit_inventory_position(viewport: Vec2) -> Vec2 {
     Vec2::new(x, 72.0)
 }
 
+pub fn default_unit_skills_position(viewport: Vec2) -> Vec2 {
+    Vec2::new(12.0, (viewport.y * 0.45).clamp(280.0, 420.0))
+}
+
 pub fn z_index_for_focus_order(focus_index: usize) -> i32 {
     Z_INDEX_BASE + focus_index as i32
 }

@@ -23,6 +23,9 @@ pub enum DevWindowId {
     /// Environment and time-of-day authoring (Slice 8).
     World,
 
+    /// Camera-focused settlement dev tools.
+    Settlement,
+
     /// Terrain field construction and probe (Slice 8).
     Fields,
 }
@@ -42,6 +45,8 @@ impl DevWindowId {
 
             Self::World => "World",
 
+            Self::Settlement => "Settlement",
+
             Self::Fields => "Fields",
         }
     }
@@ -56,7 +61,12 @@ impl DevWindowId {
         match self {
             Self::Catalog | Self::SelectedObject => true,
 
-            Self::Save | Self::NavigationEditor | Self::Debug | Self::World | Self::Fields => false,
+            Self::Save
+            | Self::NavigationEditor
+            | Self::Debug
+            | Self::World
+            | Self::Settlement
+            | Self::Fields => false,
         }
     }
 
@@ -68,6 +78,7 @@ impl DevWindowId {
             | Self::NavigationEditor
             | Self::Debug
             | Self::World
+            | Self::Settlement
             | Self::Fields => true,
         }
     }
@@ -82,6 +93,7 @@ impl DevWindowId {
     pub const ADVANCED_LAUNCHER: &'static [DevWindowId] = &[
         Self::Debug,
         Self::World,
+        Self::Settlement,
         Self::Fields,
         Self::NavigationEditor,
     ];

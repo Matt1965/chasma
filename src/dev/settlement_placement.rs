@@ -15,12 +15,11 @@ use crate::player::selection_ring_mesh::{
 };
 use crate::simulation::SimulationControlState;
 use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
-use crate::units::input::SelectedUnits;
 use crate::units::input::{cursor_world_ray, terrain_click_to_world_position};
 use crate::world::{
     CreateSettlementReport, DEFAULT_TOWN_BOUNDARY_RADIUS_METERS, SettlementCreationError,
-    SettlementId, SettlementKind, SettlementMembershipError, SettlementOwnership, WorldConfig,
-    WorldData, WorldPosition, assign_selected_units_at_position, create_settlement,
+    SettlementId, SettlementKind, SettlementOwnership, WorldConfig, WorldData, WorldPosition,
+    create_settlement,
 };
 
 pub const SETTLEMENT_OVERLAP_FEEDBACK: &str = "Too Close to Existing Settlement";
@@ -28,13 +27,6 @@ const REJECTION_FEEDBACK_SECS: f32 = 2.5;
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct DevSettlementPlacementButton;
-
-#[derive(Component, Debug, Clone, Copy)]
-pub struct DevUnitAssignmentButton;
-
-/// Root of the World window's Settlement section (distinct from Environment).
-#[derive(Component, Debug, Clone, Copy)]
-pub struct DevWorldSettlementSection;
 
 #[derive(Component, Debug)]
 pub struct SettlementPlacementRejectionLabel;
@@ -63,56 +55,13 @@ pub struct SettlementPlacementRejectionLabelIndex {
     pub entities: Vec<Entity>,
 }
 
-pub fn spawn_settlement_section(parent: &mut ChildSpawnerCommands<'_>) {
-    parent
-        .spawn((
-            DevWorldSettlementSection,
-            DevPanelUi,
-            Node {
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(6.0),
-                ..default()
-            },
-        ))
-        .with_children(|section| {
-            section.spawn((
-                DevPanelUi,
-                Text::new("Settlement"),
-                TextFont {
-                    font_size: 11.0,
-                    ..default()
-                },
-                TextColor(Color::srgba(0.8, 0.88, 0.95, 1.0)),
-            ));
-            crate::dev::widgets::spawn_action_button(
-                section,
-                "Place Settlement Anchor",
-                Some(
-                    "Arm settlement anchor placement — left-click terrain to create settlement; \
-                     right-click or Escape to cancel",
-                ),
-                DevSettlementPlacementButton,
-            );
-            crate::dev::widgets::spawn_action_button(
-                section,
-                "Assign Selected Units",
-                Some(
-                    "Arm unit assignment — left-click inside a settlement boundary to assign \
-                     currently selected units; right-click or Escape to cancel",
-                ),
-                DevUnitAssignmentButton,
-            );
-        });
+pub fn spawn_settlement_section(_parent: &mut ChildSpawnerCommands<'_>) {
+    // Settlement Dev controls live in the Settlement window (settlement_window module).
 }
 
 pub fn cancel_settlement_placement(dev_state: &mut DevModeState) {
     dev_state.settlement_placement_armed = false;
     dev_state.settlement_placement_message = "Settlement placement cancelled".into();
-}
-
-pub fn cancel_unit_assignment(dev_state: &mut DevModeState) {
-    dev_state.unit_assignment_armed = false;
-    dev_state.unit_assignment_message = "Unit assignment cancelled".into();
 }
 
 pub fn handle_settlement_placement_button(
@@ -121,7 +70,10 @@ pub fn handle_settlement_placement_button(
     mut dev_state: ResMut<DevModeState>,
     buttons: Query<(&Interaction, &DevSettlementPlacementButton), Changed<Interaction>>,
 ) {
-    if !registry.window_active(dev_state.enabled, crate::dev::window::DevWindowId::World) {
+    if !registry.window_active(
+        dev_state.enabled,
+        crate::dev::window::DevWindowId::Settlement,
+    ) {
         return;
     }
     for (interaction, _) in &buttons {
@@ -129,33 +81,10 @@ pub fn handle_settlement_placement_button(
             continue;
         }
         gate.block_gameplay_mouse = true;
-        dev_state.unit_assignment_armed = false;
         dev_state.settlement_placement_armed = true;
         dev_state.cancel_placement_tool();
         dev_state.settlement_placement_message =
             "Settlement anchor armed — left-click terrain".into();
-    }
-}
-
-pub fn handle_unit_assignment_button(
-    registry: Res<crate::dev::window::DevWindowRegistry>,
-    mut gate: ResMut<DevModeInputGate>,
-    mut dev_state: ResMut<DevModeState>,
-    buttons: Query<(&Interaction, &DevUnitAssignmentButton), Changed<Interaction>>,
-) {
-    if !registry.window_active(dev_state.enabled, crate::dev::window::DevWindowId::World) {
-        return;
-    }
-    for (interaction, _) in &buttons {
-        if *interaction != Interaction::Pressed {
-            continue;
-        }
-        gate.block_gameplay_mouse = true;
-        dev_state.settlement_placement_armed = false;
-        dev_state.unit_assignment_armed = true;
-        dev_state.cancel_placement_tool();
-        dev_state.unit_assignment_message =
-            "Unit assignment armed — left-click inside a settlement boundary".into();
     }
 }
 
@@ -167,16 +96,6 @@ pub fn sync_settlement_placement_button_active(
     >,
 ) {
     let active = dev_state.enabled && dev_state.settlement_placement_armed;
-    for mut chrome in &mut buttons {
-        chrome.active = active;
-    }
-}
-
-pub fn sync_unit_assignment_button_active(
-    dev_state: Res<DevModeState>,
-    mut buttons: Query<&mut crate::dev::widgets::DevButtonChrome, With<DevUnitAssignmentButton>>,
-) {
-    let active = dev_state.enabled && dev_state.unit_assignment_armed;
     for mut chrome in &mut buttons {
         chrome.active = active;
     }
@@ -335,72 +254,6 @@ pub fn handle_settlement_placement_click(
     dev_state.settlement_placement_message = message;
 }
 
-pub fn handle_unit_assignment_click(
-    mut dev_state: ResMut<DevModeState>,
-    mut gate: ResMut<DevModeInputGate>,
-    panel_hovered: Res<DevPanelHoverState>,
-    mouse_buttons: Res<ButtonInput<MouseButton>>,
-    windows: Query<&Window, With<PrimaryWindow>>,
-    camera: Query<(&Camera, &GlobalTransform), With<RtsCamera>>,
-    config: Res<WorldConfig>,
-    render_assets: Option<Res<TerrainRenderAssets>>,
-    mut world: ResMut<WorldData>,
-    selected_units: Res<SelectedUnits>,
-) {
-    if !dev_state.enabled || !dev_state.unit_assignment_armed {
-        return;
-    }
-    if panel_hovered.hovered || gate.spawn_handled_this_frame {
-        return;
-    }
-    if !mouse_buttons.just_pressed(MouseButton::Left) {
-        return;
-    }
-    if selected_units.0.is_empty() {
-        dev_state.unit_assignment_message =
-            "Select unit(s) before assigning to a settlement".into();
-        return;
-    }
-
-    let Some(ray) = cursor_world_ray(&windows, &camera) else {
-        return;
-    };
-    let layout = config.chunk_layout();
-    let vertical_scale = render_assets
-        .as_ref()
-        .map(|assets| assets.vertical_scale)
-        .unwrap_or(1.0);
-    let Some(click) = terrain_click_to_world_position(&ray, &world, layout, vertical_scale) else {
-        return;
-    };
-    let Some(position) = dev_spawn_position_from_terrain_click(&world, click.world_position) else {
-        return;
-    };
-
-    gate.block_gameplay_mouse = true;
-    gate.spawn_handled_this_frame = true;
-
-    let unit_ids: Vec<_> = selected_units.0.iter().copied().collect();
-    let message = match assign_selected_units_at_position(&mut world, &unit_ids, position) {
-        Ok((settlement_id, count)) => {
-            let name = world
-                .settlement_store()
-                .get_settlement(settlement_id)
-                .map(|record| record.display_name.clone())
-                .unwrap_or_else(|| format!("#{}", settlement_id.raw()));
-            format!(
-                "Assigned {count} unit(s) to settlement #{} ({name}) — assignment still armed",
-                settlement_id.raw()
-            )
-        }
-        Err(SettlementMembershipError::NoSettlementAtPosition) => {
-            "No settlement at click position — click inside a settlement boundary".into()
-        }
-        Err(error) => format!("Unit assignment failed: {error}"),
-    };
-    dev_state.unit_assignment_message = message;
-}
-
 pub fn sync_settlement_placement_rejection_labels(
     mut commands: Commands,
     time: Res<Time>,
@@ -545,10 +398,6 @@ fn apply_dev_placement_policy_guard(world: &mut WorldData, settlement_id: Settle
 pub fn settlement_placement_status(dev_state: &DevModeState) -> String {
     if dev_state.settlement_placement_armed {
         "Settlement anchor armed — left-click terrain".to_string()
-    } else if dev_state.unit_assignment_armed {
-        "Unit assignment armed — left-click inside a settlement boundary".to_string()
-    } else if !dev_state.unit_assignment_message.is_empty() {
-        dev_state.unit_assignment_message.clone()
     } else if !dev_state.settlement_placement_message.is_empty() {
         dev_state.settlement_placement_message.clone()
     } else {
@@ -560,9 +409,9 @@ pub fn settlement_placement_status(dev_state: &DevModeState) -> String {
 mod tests {
     use super::*;
     use crate::dev::dev_mode::DevModeInputGate;
+    use crate::dev::settlement_window::setup_settlement_window_panel;
     use crate::dev::widgets::DevCollapsibleState;
     use crate::dev::window::{DevWindowRegistry, setup_dev_workspace};
-    use crate::dev::world_window::setup_world_window_panel;
     use crate::world::{
         ChunkCoord, ChunkData, ChunkLayout, Heightfield, LocalPosition, SettlementOwnership,
     };
@@ -731,7 +580,7 @@ mod tests {
             .run_system_once(setup_dev_workspace)
             .expect("workspace");
         app.world_mut()
-            .run_system_once(setup_world_window_panel)
+            .run_system_once(setup_settlement_window_panel)
             .expect("panel");
         let button = app
             .world_mut()

@@ -314,12 +314,19 @@ fn dispatch_building_production_enabled(
     building_panel: &BuildingPanelState,
     world: &mut WorldData,
     player_ownership: &crate::player::LocalPlayerOwnership,
-    _operation_catalog: &OperationCatalog,
+    building_catalog: &BuildingCatalog,
+    operation_catalog: &OperationCatalog,
 ) -> IntentDispatchStatus {
     if !building_production_mutation_allowed(building_panel, building_id, world, player_ownership) {
         return IntentDispatchStatus::Ignored;
     }
-    match apply_player_production_enabled(world, building_id, enabled) {
+    match apply_player_production_enabled(
+        world,
+        building_catalog,
+        operation_catalog,
+        building_id,
+        enabled,
+    ) {
         Ok(()) => IntentDispatchStatus::Applied,
         Err(_) => IntentDispatchStatus::Ignored,
     }
@@ -486,6 +493,7 @@ fn dispatch_one(
             building_panel,
             world,
             player_ownership,
+            building_catalog,
             operation_catalog,
         ),
         ClientIntent::SetBuildingProductionOperation {

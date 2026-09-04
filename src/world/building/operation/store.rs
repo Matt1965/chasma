@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use super::farm::{FarmProductionState, is_prispod_farm_definition};
 use super::lifecycle::OperationLifecycle;
 use super::operation_id::OperationDefinitionId;
 use super::policy::BuildingOperationPolicy;
@@ -44,6 +45,8 @@ impl Default for BuildingOperationState {
 pub struct BuildingProductionSaveState {
     pub states: HashMap<u64, BuildingOperationState>,
     pub policies: HashMap<u64, BuildingOperationPolicy>,
+    #[serde(default)]
+    pub farm_states: HashMap<u64, FarmProductionState>,
 }
 
 /// Authoritative per-building production state and policy (EP2).
@@ -51,6 +54,7 @@ pub struct BuildingProductionSaveState {
 pub struct BuildingProductionStore {
     states: HashMap<BuildingId, BuildingOperationState>,
     policies: HashMap<BuildingId, BuildingOperationPolicy>,
+    farm_states: HashMap<BuildingId, FarmProductionState>,
 }
 
 impl BuildingProductionStore {
@@ -66,6 +70,11 @@ impl BuildingProductionStore {
                 .iter()
                 .map(|(id, policy)| (id.raw(), policy.clone()))
                 .collect(),
+            farm_states: self
+                .farm_states
+                .iter()
+                .map(|(id, state)| (id.raw(), state.clone()))
+                .collect(),
         }
     }
 
@@ -80,16 +89,23 @@ impl BuildingProductionStore {
             .into_iter()
             .map(|(raw, policy)| (BuildingId::new(raw), policy))
             .collect();
+        self.farm_states = state
+            .farm_states
+            .into_iter()
+            .map(|(raw, state)| (BuildingId::new(raw), state))
+            .collect();
     }
 
     pub fn clear(&mut self) {
         self.states.clear();
         self.policies.clear();
+        self.farm_states.clear();
     }
 
     pub fn remove(&mut self, building_id: BuildingId) {
         self.states.remove(&building_id);
         self.policies.remove(&building_id);
+        self.farm_states.remove(&building_id);
     }
 
     pub fn get(&self, building_id: BuildingId) -> Option<&BuildingOperationState> {
@@ -153,9 +169,18 @@ impl BuildingProductionStore {
         self.states
             .keys()
             .chain(self.policies.keys())
+            .chain(self.farm_states.keys())
             .copied()
             .collect::<std::collections::BTreeSet<_>>()
             .into_iter()
+    }
+
+    pub fn farm_state(&self, building_id: BuildingId) -> Option<&FarmProductionState> {
+        self.farm_states.get(&building_id)
+    }
+
+    pub fn farm_state_mut(&mut self, building_id: BuildingId) -> &mut FarmProductionState {
+        self.farm_states.entry(building_id).or_default()
     }
 
     pub fn len(&self) -> usize {

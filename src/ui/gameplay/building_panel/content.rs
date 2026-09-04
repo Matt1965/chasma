@@ -2,10 +2,11 @@
 
 use crate::world::building_operational_efficiency;
 use crate::world::{
-    BuildingCatalog, BuildingId, BuildingInventoryBinding, BuildingOperationParams, InventoryId,
-    InventoryProfileCatalog, OperationCatalog, OperationDefinitionId, PRODUCTION_PROGRESS_ONE_UNIT,
-    WorldData, assess_production_execution, effective_inventory_binding_definitions,
-    format_efficiency_display,
+    BuildingCatalog, BuildingId, BuildingInventoryBinding, BuildingOperationParams,
+    FarmProductionPhase, InventoryId, InventoryProfileCatalog, OperationCatalog,
+    OperationDefinitionId, OperationalLimitingFactor, PRODUCTION_PROGRESS_ONE_UNIT, WorldData,
+    assess_production_execution, effective_inventory_binding_definitions, farm_growth_percent,
+    farm_harvest_percent, format_efficiency_display, is_prispod_farm_definition,
 };
 
 /// Player-facing building panel snapshot derived from authoritative world data.
@@ -191,39 +192,58 @@ fn build_production_readout(
         Vec::new()
     };
 
-    let progress_percent = world
-        .building_production_store()
-        .get_state(building_id)
-        .map(|state| {
-            ((state.progress.value() as u128 * 100) / PRODUCTION_PROGRESS_ONE_UNIT as u128) as u32
-        });
+    let (operation_name, progress_percent) = if is_prispod_farm_definition(definition) {
+        let store = world.building_production_store();
+        let phase = store
+            .farm_state(building_id)
+            .map(|farm| farm.phase)
+            .unwrap_or(FarmProductionPhase::Growing);
+        match phase {
+            FarmProductionPhase::Growing => (
+                "Growing".to_string(),
+                Some(farm_growth_percent(store, building_id)),
+            ),
+            FarmProductionPhase::ReadyToHarvest => ("Ready to Harvest".to_string(), None),
+            FarmProductionPhase::Harvesting => (
+                "Harvesting".to_string(),
+                Some(farm_harvest_percent(store, building_id)),
+            ),
+        }
+    } else {
+        let progress_percent = world
+            .building_production_store()
+            .get_state(building_id)
+            .map(|state| {
+                ((state.progress.value() as u128 * 100) / PRODUCTION_PROGRESS_ONE_UNIT as u128)
+                    as u32
+            });
+        (operation_name, progress_percent)
+    };
 
-    let efficiency_display = selected_operation.and_then(|op| {
+    let operational_report = selected_operation.and_then(|op| {
         let mut ctx = operation_params.efficiency_context(world, building_catalog);
-        building_operational_efficiency(&mut ctx, building_id, Some(op))
-            .ok()
-            .map(|report| format_efficiency_display(report.final_output_efficiency_basis_points))
+        building_operational_efficiency(&mut ctx, building_id, Some(op)).ok()
     });
 
-    let blocking_label = selected_operation
-        .and_then(|op| {
-            assess_production_execution(
-                world,
-                operation_params.inventory_ctx,
-                building_id,
-                op,
-                definition,
-            )
-            .blocking
-            .map(|failure| failure.limiting_factor().label().to_string())
-        })
+    let efficiency_display = operational_report
+        .as_ref()
+        .map(|report| format_efficiency_display(report.final_output_efficiency_basis_points));
+
+    let blocking_label = operational_report
+        .filter(|report| report.limiting_factor != OperationalLimitingFactor::None)
+        .map(|report| report.limiting_factor.label().to_string())
         .or_else(|| {
-            world
-                .building_production_store()
-                .get_state(building_id)
-                .and_then(|state| state.blocked_reason.as_ref())
-                .map(|reason| reason.label().to_string())
-                .filter(|label| label != &"None")
+            selected_operation.and_then(|op| {
+                assess_production_execution(
+                    world,
+                    operation_params.inventory_ctx,
+                    building_id,
+                    op,
+                    definition,
+                )
+                .blocking
+                .map(|failure| failure.limiting_factor().label().to_string())
+            })
         });
 
     BuildingPanelProduction {
@@ -568,8 +588,8 @@ mod tests {
         let building_id = place(&mut world, &catalog, &farm);
         world
             .building_production_store_mut()
-            .get_or_default_mut(building_id)
-            .progress = crate::world::ProductionProgress(420_000);
+            .farm_state_mut(building_id)
+            .growth_progress = crate::world::ProductionProgress(420_000);
         let mut bundle = TestOperationBundle::new();
         let mut params = bundle.params();
         let snapshot = build_building_panel_snapshot(
@@ -582,9 +602,8 @@ mod tests {
         )
         .unwrap();
         let production = snapshot.production.expect("farm production");
-        assert_eq!(production.operation_name, "Grow Prispods");
-        assert!(production.progress_percent.is_some());
-        assert!(!production.operation_name.contains("grow_prispods"));
+        assert_eq!(production.operation_name, "Growing");
+        assert_eq!(production.progress_percent, Some(42));
     }
 
     #[test]

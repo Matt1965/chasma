@@ -14,6 +14,7 @@ use crate::world::{BuildingCatalog, BuildingId, WorldData};
 use super::error::{OperationCompletionReport, OperationError, OperationStepReport};
 use super::execute::assess_production_execution;
 use super::execute::execute_production_cycle;
+use super::farm::{is_prispod_farm_definition, step_farm_harvest_operation};
 use super::lifecycle::{OperationLifecycle, set_blocked};
 use super::params::BuildingOperationParams;
 use crate::world::operation::OperationOutputDefinition;
@@ -37,6 +38,19 @@ pub fn step_workstation_operation(
     let definition = world
         .get_building(building_id)
         .and_then(|record| building_catalog.get(&record.definition_id).cloned());
+
+    if definition
+        .as_ref()
+        .is_some_and(|def| is_prispod_farm_definition(def))
+    {
+        return step_farm_harvest_operation(
+            world,
+            operation,
+            building_catalog,
+            building_id,
+            worker_id,
+        );
+    }
 
     if let Some(definition) = definition.as_ref() {
         world

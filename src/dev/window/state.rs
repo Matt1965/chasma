@@ -8,8 +8,8 @@ use super::id::DevWindowId;
 use super::math::{
     DEFAULT_PANEL_WIDTH_PX, default_catalog_position, default_debug_position,
     default_fields_position, default_navigation_editor_position, default_save_position,
-    default_selected_object_position, default_world_position, navigation_editor_panel_width,
-    z_index_for_focus_order,
+    default_selected_object_position, default_settlement_position, default_world_position,
+    navigation_editor_panel_width, z_index_for_focus_order,
 };
 
 /// Per-window session state (not persisted to disk or scene saves).
@@ -36,6 +36,7 @@ impl DevWindowSessionState {
             DevWindowId::NavigationEditor => default_navigation_editor_position(viewport, width),
             DevWindowId::Debug => default_debug_position(viewport, width),
             DevWindowId::World => default_world_position(viewport, width),
+            DevWindowId::Settlement => default_settlement_position(viewport, width),
             DevWindowId::Fields => default_fields_position(viewport, width),
         };
         Self {
@@ -98,6 +99,10 @@ impl Default for DevWindowRegistry {
             DevWindowSessionState::new_default(DevWindowId::World, viewport),
         );
         windows.insert(
+            DevWindowId::Settlement,
+            DevWindowSessionState::new_default(DevWindowId::Settlement, viewport),
+        );
+        windows.insert(
             DevWindowId::Fields,
             DevWindowSessionState::new_default(DevWindowId::Fields, viewport),
         );
@@ -110,6 +115,7 @@ impl Default for DevWindowRegistry {
                 DevWindowId::NavigationEditor,
                 DevWindowId::Debug,
                 DevWindowId::World,
+                DevWindowId::Settlement,
                 DevWindowId::Fields,
             ],
             drag: None,

@@ -212,6 +212,9 @@ pub fn run_simulation_tick(
             &inventory_ctx_for_needs,
             simulation_tick,
         );
+        if let Some(ref mut op) = operation {
+            crate::world::step_all_farm_passive_growth(world, building_catalog, op);
+        }
         // SA9: mark construction planning dirty when ConstructBuilding intents exist.
         crate::world::mark_construction_planning_dirty_from_intents(world);
     }
@@ -268,12 +271,21 @@ pub fn run_simulation_tick(
             nav_config,
         };
         crate::world::step_unit_self_maintenance_pre_work(&mut hunger_ctx);
+        static DEFAULT_OPERATION_CATALOG: std::sync::OnceLock<crate::world::OperationCatalog> =
+            std::sync::OnceLock::new();
+        let operation_catalog = operation
+            .as_ref()
+            .map(|params| params.operation_catalog)
+            .unwrap_or_else(|| {
+                DEFAULT_OPERATION_CATALOG.get_or_init(crate::world::OperationCatalog::default)
+            });
         let mut assign_ctx = crate::world::WorkerAssignmentContext {
             world,
             unit_catalog,
             weapon_catalog,
             doodad_catalog,
             building_catalog,
+            operation_catalog,
             interaction_catalog,
             nav_config,
             inventory_ctx: &inventory_ctx_assign,

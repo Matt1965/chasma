@@ -22,6 +22,7 @@ mod response;
 mod state;
 mod store;
 mod task_gen;
+mod workforce;
 
 pub use access::{
     TreasuryAccessPolicy, TreasuryAccessResult, building_supports_settlement_treasury,
@@ -140,6 +141,12 @@ pub use task_gen::{
     StrategicTaskValidationError, generate_strategic_tasks_for_settlement,
     generate_strategic_tasks_now, intent_to_task_priority, starter_strategic_task_templates,
     step_settlement_strategic_task_generation, validate_strategic_task_report,
+};
+pub use workforce::{
+    WorkPermissionDomain, WorkforcePermissionError, WorkforcePermissionStore,
+    clear_settlement_workforce_permissions, clear_unit_workforce_permissions,
+    set_unit_work_permission, unit_may_autonomously_perform_work, unit_work_allowed,
+    work_permission_domain_for_task,
 };
 
 #[cfg(test)]

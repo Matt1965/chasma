@@ -118,12 +118,14 @@ fn run_assign(
     tick: u64,
 ) -> WorkerAssignmentReport {
     let inventory_ctx = empty_inventory_ctx();
+    let operation_catalog = crate::world::OperationCatalog::default();
     let mut ctx = WorkerAssignmentContext {
         world,
         unit_catalog,
         weapon_catalog: weapons,
         doodad_catalog: doodad,
         building_catalog: building,
+        operation_catalog: &operation_catalog,
         interaction_catalog: interaction,
         nav_config: nav,
         inventory_ctx: &inventory_ctx,

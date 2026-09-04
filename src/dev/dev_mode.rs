@@ -139,10 +139,6 @@ pub struct DevModeState {
     pub settlement_placement_armed: bool,
     /// Latest settlement placement status message (ADR-133).
     pub settlement_placement_message: String,
-    /// Assign selected units to a settlement on next boundary click (ADR-133 Phase 2).
-    pub unit_assignment_armed: bool,
-    /// Latest unit assignment status message (ADR-133 Phase 2).
-    pub unit_assignment_message: String,
     pub scene_name_input: String,
     pub selected_scene_id: Option<String>,
     pub last_loaded_scene_id: Option<String>,
@@ -184,8 +180,6 @@ impl Default for DevModeState {
             treasury_harness_message: String::new(),
             settlement_placement_armed: false,
             settlement_placement_message: String::new(),
-            unit_assignment_armed: false,
-            unit_assignment_message: String::new(),
             scene_name_input: "Untitled Scene".to_string(),
             selected_scene_id: None,
             last_loaded_scene_id: None,

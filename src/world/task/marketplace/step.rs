@@ -14,8 +14,8 @@ use crate::world::task::{
 };
 use crate::world::{
     BuildingCatalog, BuildingInteractionProfileCatalog, DoodadCatalog, NavigationConfig,
-    UnitCatalog, UnitId, UnitOrder, UnitState, WeaponCatalog, WorldData,
-    interaction_point_world_position, issue_unit_order,
+    OperationCatalog, UnitCatalog, UnitId, UnitOrder, UnitState, WeaponCatalog, WorldData,
+    interaction_point_world_position, issue_unit_order, unit_may_autonomously_perform_work,
 };
 
 use super::candidates::{MarketplaceCandidate, MarketplaceListing, MarketplaceListingKind};
@@ -31,6 +31,7 @@ pub struct WorkerAssignmentContext<'a> {
     pub weapon_catalog: &'a WeaponCatalog,
     pub doodad_catalog: &'a DoodadCatalog,
     pub building_catalog: &'a BuildingCatalog,
+    pub operation_catalog: &'a OperationCatalog,
     pub interaction_catalog: &'a BuildingInteractionProfileCatalog,
     pub nav_config: &'a NavigationConfig,
     pub inventory_ctx: &'a InventoryCatalogCtx<'a>,
@@ -302,6 +303,7 @@ fn claim_listing(
                 ctx.weapon_catalog,
                 ctx.doodad_catalog,
                 ctx.building_catalog,
+                ctx.operation_catalog,
                 ctx.interaction_catalog,
                 ctx.nav_config,
                 unit_id,
@@ -496,6 +498,19 @@ fn evaluate_listings_for_worker(
             if !unit_may_autonomously_work_building(ctx.world, unit_id, listing.building_id) {
                 eligible = false;
                 block = Some("settlement membership".into());
+            }
+            if eligible
+                && !unit_may_autonomously_perform_work(
+                    ctx.world,
+                    ctx.building_catalog,
+                    ctx.operation_catalog,
+                    unit_id,
+                    listing.building_id,
+                    listing.task_type,
+                )
+            {
+                eligible = false;
+                block = Some("workforce permission".into());
             }
         } else {
             eligible = false;

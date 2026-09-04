@@ -7,15 +7,17 @@ use bevy::prelude::*;
 pub enum FloatingGameplayWindowId {
     BuildingMenu,
     UnitInventory,
+    UnitSkills,
 }
 
 impl FloatingGameplayWindowId {
-    pub const ALL: [Self; 2] = [Self::BuildingMenu, Self::UnitInventory];
+    pub const ALL: [Self; 3] = [Self::BuildingMenu, Self::UnitInventory, Self::UnitSkills];
 
     pub fn label(self) -> &'static str {
         match self {
             Self::BuildingMenu => "Building Menu",
             Self::UnitInventory => "Unit Inventory",
+            Self::UnitSkills => "Unit Skills",
         }
     }
 }

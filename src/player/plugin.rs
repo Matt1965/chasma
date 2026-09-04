@@ -2,8 +2,8 @@ use bevy::prelude::*;
 
 use crate::client::{
     ClientIntentCollectSystems, ClientIntentDispatchSystems, ClientIntentFlushSystems,
-    ClientPipelinePlugin, collect_unit_input_intents, dispatch_client_intents,
-    tick_pending_building_player_interactions,
+    ClientPipelinePlugin, SettlementContextPlugin, collect_unit_input_intents,
+    dispatch_client_intents, tick_pending_building_player_interactions,
 };
 use crate::debug::DebugOverlayPlugin;
 use crate::simulation::{SimulationPlugin, SimulationSystems};
@@ -44,6 +44,7 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(ClientPipelinePlugin)
+            .add_plugins(SettlementContextPlugin)
             .add_plugins(SimulationPlugin)
             .add_plugins(DebugOverlayPlugin)
             .add_plugins(GameplayUiPlugin);

@@ -7,8 +7,9 @@ use crate::world::task::{
     unit_can_perform_task, unit_may_autonomously_work_building,
 };
 use crate::world::{
-    DoodadCatalog, NavigationConfig, UnitCatalog, UnitId, UnitOrder, WeaponCatalog, WorldData,
-    issue_unit_order,
+    DoodadCatalog, NavigationConfig, UnitCatalog, UnitId, UnitOrder, WeaponCatalog,
+    WorkPermissionDomain, WorldData, issue_unit_order, settlement_for_building_work,
+    unit_work_allowed,
 };
 
 use super::execute::reserve_hauling_request;
@@ -84,10 +85,15 @@ pub fn assign_hauling_task_with_priority(
             request.remaining_quantity.min(1).max(1),
         )
     };
-    if priority != TaskPriority::PlayerAssigned
-        && !unit_may_autonomously_work_building(world, unit_id, owning_building_id)
-    {
-        return Err(TaskError::UnitNotEligible(unit_id));
+    if priority != TaskPriority::PlayerAssigned {
+        if !unit_may_autonomously_work_building(world, unit_id, owning_building_id) {
+            return Err(TaskError::UnitNotEligible(unit_id));
+        }
+        if let Some(settlement_id) = settlement_for_building_work(world, owning_building_id) {
+            if !unit_work_allowed(world, settlement_id, unit_id, WorkPermissionDomain::Hauling) {
+                return Err(TaskError::UnitNotEligible(unit_id));
+            }
+        }
     }
     reserve_hauling_request(world, request_id, batch, inventory_ctx)
         .map_err(|_| TaskError::TaskInvalidated(TaskId::new(0)))?;

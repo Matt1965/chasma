@@ -10,6 +10,7 @@ pub mod inventory_dispatch;
 pub mod inventory_intent;
 pub mod pipeline;
 pub mod selection;
+pub mod settlement_context;
 
 pub use building_interaction_dispatch::{
     OwnedBuildingInteractionOutcome, PendingBuildingPlayerInteraction,
@@ -44,4 +45,9 @@ pub use selection::{
     ApplyWorldSelectionParams, WorldSelectionCategory, WorldSelectionChange,
     WorldSelectionRevision, WorldSelectionState, WorldSelectionWriteParams, apply_world_selection,
     prune_world_selection,
+};
+pub use settlement_context::{
+    CameraSettlementContext, SettlementContextPlugin, SettlementContextSystems,
+    SettlementFocusConfig, camera_view_focus_position, derive_camera_focus_position,
+    is_player_manageable_settlement, resolve_focused_player_settlement, viewport_center_world_ray,
 };

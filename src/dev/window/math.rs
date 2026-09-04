@@ -113,6 +113,13 @@ pub fn default_world_position(viewport: Vec2, window_width: f32) -> Vec2 {
     Vec2::new(LAUNCHER_LEFT_PX, top + 200.0)
 }
 
+/// Default top-left for the Settlement window (left side, below World).
+pub fn default_settlement_position(viewport: Vec2, window_width: f32) -> Vec2 {
+    let _ = viewport;
+    let top = LAUNCHER_TOP_PX + LAUNCHER_HEIGHT_PX + 6.0;
+    Vec2::new(LAUNCHER_LEFT_PX, top + 320.0)
+}
+
 /// Default top-left for the Fields window (wider placement, center-left).
 pub fn default_fields_position(viewport: Vec2, window_width: f32) -> Vec2 {
     let _ = viewport;

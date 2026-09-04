@@ -818,12 +818,14 @@ fn sa7_does_not_trap_critically_hungry_worker_in_reclaim_churn() {
         &fx.unit_catalog,
         unit_id
     ));
+    let operation_catalog = crate::world::OperationCatalog::default();
     let mut assign_ctx = crate::world::WorkerAssignmentContext {
         world: &mut fx.world,
         unit_catalog: &fx.unit_catalog,
         weapon_catalog: &fx.weapon_catalog,
         doodad_catalog: &fx.doodad_catalog,
         building_catalog: &fx.building_catalog,
+        operation_catalog: &operation_catalog,
         interaction_catalog: &fx.interaction_catalog,
         nav_config: &fx.nav_config,
         inventory_ctx: &fx.inventory_ctx,

@@ -190,6 +190,19 @@ pub fn starter_interaction_profiles() -> Vec<BuildingInteractionProfile> {
                 task_type: TaskType::OperateWorkstation,
                 enabled_states: complete,
             }]),
+        BuildingInteractionProfile::new("prispod_farm")
+            .with_capabilities(BuildingCapabilities {
+                workstation: true,
+                ..Default::default()
+            })
+            .with_points(vec![InteractionPointDefinition {
+                key: "harvest",
+                local_position: Vec3::new(0.0, 0.0, 1.2),
+                local_facing: Quat::IDENTITY,
+                capacity: 2,
+                task_type: TaskType::OperateWorkstation,
+                enabled_states: complete,
+            }]),
     ]
 }
 

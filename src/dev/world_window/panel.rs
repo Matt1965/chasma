@@ -84,7 +84,6 @@ pub fn setup_world_window_panel(mut commands: Commands, bodies: Query<(Entity, &
                         TextColor(Color::srgba(0.8, 0.88, 0.95, 1.0)),
                     ));
                     crate::dev::world_environment::spawn_environment_controls(root);
-                    crate::dev::settlement_placement::spawn_settlement_section(root);
                 });
         });
         return;

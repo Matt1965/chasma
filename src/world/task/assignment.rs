@@ -10,8 +10,8 @@ use super::record::TaskRecord;
 use super::types::{TaskCancelReason, TaskPriority, TaskState, TaskTarget, TaskType};
 use crate::world::combat::AttackTargetingPolicy;
 use crate::world::{
-    BuildingCatalog, BuildingId, DoodadCatalog, NavigationConfig, UnitCatalog, UnitId, UnitOrder,
-    WorldData, issue_unit_order,
+    BuildingCatalog, BuildingId, DoodadCatalog, NavigationConfig, OperationCatalog, UnitCatalog,
+    UnitId, UnitOrder, WorldData, issue_unit_order, unit_may_autonomously_perform_work,
 };
 use crate::world::{
     BuildingInteractionProfile, BuildingInteractionProfileCatalog, InteractionPointDefinition,
@@ -36,6 +36,7 @@ pub fn assign_construct_building_task(
         weapon_catalog,
         doodad_catalog,
         building_catalog,
+        &OperationCatalog::default(),
         interaction_catalog,
         nav_config,
         unit_id,
@@ -64,6 +65,7 @@ pub fn assign_operate_workstation_task(
         weapon_catalog,
         doodad_catalog,
         building_catalog,
+        &OperationCatalog::default(),
         interaction_catalog,
         nav_config,
         unit_id,
@@ -81,6 +83,7 @@ pub fn claim_building_task(
     weapon_catalog: &crate::world::WeaponCatalog,
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
+    operation_catalog: &OperationCatalog,
     interaction_catalog: &BuildingInteractionProfileCatalog,
     nav_config: &NavigationConfig,
     unit_id: UnitId,
@@ -100,10 +103,20 @@ pub fn claim_building_task(
     if !unit_can_perform_task(unit_catalog, world, unit_id, task_type) {
         return Err(TaskError::UnitNotEligible(unit_id));
     }
-    if priority != TaskPriority::PlayerAssigned
-        && !super::eligibility::unit_may_autonomously_work_building(world, unit_id, building_id)
-    {
-        return Err(TaskError::UnitNotEligible(unit_id));
+    if priority != TaskPriority::PlayerAssigned {
+        if !super::eligibility::unit_may_autonomously_work_building(world, unit_id, building_id) {
+            return Err(TaskError::UnitNotEligible(unit_id));
+        }
+        if !unit_may_autonomously_perform_work(
+            world,
+            building_catalog,
+            operation_catalog,
+            unit_id,
+            building_id,
+            task_type,
+        ) {
+            return Err(TaskError::UnitNotEligible(unit_id));
+        }
     }
     if !unit_may_work_on_building(&building, unit.ownership()) {
         return Err(TaskError::Unauthorized {

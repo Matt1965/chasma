@@ -51,6 +51,11 @@ use super::terrain_analysis::{
     spawn_terrain_analysis_ui, sync_terrain_analysis_dev_diagnostics, sync_terrain_analysis_panel,
     update_terrain_analysis_cursor_readout,
 };
+use super::unit_skills::{
+    UnitSkillsPanelState, collect_unit_skills_keyboard_input, handle_unit_skills_close_button,
+    reconcile_unit_skills_panel, spawn_unit_skills_panel, sync_unit_skills_panel,
+    sync_unit_skills_panel_visibility,
+};
 
 /// HUD hover gate — must run before intent collection reads [`PlayerHudHoverState`].
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -76,6 +81,7 @@ impl Plugin for GameplayUiPlugin {
             .init_resource::<BuildModeState>()
             .init_resource::<BuildModeCursorAnchor>()
             .init_resource::<BuildingPanelState>()
+            .init_resource::<UnitSkillsPanelState>()
             .init_resource::<FloatingGameplayWindowRegistry>()
             .init_resource::<PlayerHudHoverState>()
             .init_resource::<GameplayCursorPresentation>()
@@ -88,6 +94,7 @@ impl Plugin for GameplayUiPlugin {
                 spawn_build_catalog_panel,
                 spawn_inventory_panel,
                 spawn_building_menu_panel,
+                spawn_unit_skills_panel,
             ),
         );
         #[cfg(feature = "dev")]
@@ -129,6 +136,10 @@ impl Plugin for GameplayUiPlugin {
                 reconcile_building_menu_panel,
                 handle_building_menu_close_button,
                 sync_inventory_panel_visibility,
+                reconcile_unit_skills_panel,
+                sync_unit_skills_panel_visibility,
+                sync_unit_skills_panel,
+                handle_unit_skills_close_button,
                 sync_floating_gameplay_window_presentation,
                 measure_floating_gameplay_window_sizes,
                 sync_squad_panel,
@@ -192,6 +203,7 @@ impl Plugin for GameplayUiPlugin {
                 collect_inventory_mouse_transfers,
                 handle_inventory_panel_buttons,
                 collect_inventory_keyboard_input,
+                collect_unit_skills_keyboard_input,
                 reconcile_inventory_ui_from_world,
                 sync_inventory_panel_contents,
                 sync_inventory_drag_ghost,

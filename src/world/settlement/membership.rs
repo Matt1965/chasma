@@ -119,6 +119,10 @@ pub fn assign_unit_settlement(
         .ok_or(SettlementMembershipError::UnitNotFound(unit_id))?;
     world
         .settlement_store_mut()
+        .workforce_permissions_mut()
+        .clear_unit(unit_id);
+    world
+        .settlement_store_mut()
         .reindex_unit_membership(unit_id, settlement_id);
     Ok(())
 }

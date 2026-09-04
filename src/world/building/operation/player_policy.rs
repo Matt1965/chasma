@@ -14,11 +14,18 @@ use super::policy::ControlSource;
 /// Player toggles production enabled/disabled and takes manual control atomically.
 pub fn apply_player_production_enabled(
     world: &mut WorldData,
+    building_catalog: &BuildingCatalog,
+    operation_catalog: &OperationCatalog,
     building_id: BuildingId,
     enabled: bool,
 ) -> Result<(), ProductionCommandError> {
     require_building(world, building_id)?;
+    let definition = world
+        .get_building(building_id)
+        .and_then(|record| building_catalog.get(&record.definition_id))
+        .ok_or(ProductionCommandError::BuildingNotFound(building_id))?;
     let store = world.building_production_store_mut();
+    store.ensure_policy_for_building(building_id, definition, operation_catalog);
     let policy = store.get_policy_mut(building_id);
     policy.enabled = enabled;
     policy.control_source = ControlSource::PlayerControlled;
@@ -140,7 +147,14 @@ mod tests {
             store.get_policy_mut(farm).control_source = ControlSource::AIControlled;
         }
 
-        apply_player_production_enabled(&mut world, farm, true).unwrap();
+        apply_player_production_enabled(
+            &mut world,
+            &building_catalog,
+            &operation_catalog,
+            farm,
+            true,
+        )
+        .unwrap();
         let policy = world.building_production_store().get_policy(farm).unwrap();
         assert!(policy.enabled);
         assert_eq!(policy.control_source, ControlSource::PlayerControlled);
@@ -177,7 +191,14 @@ mod tests {
             store.get_policy_mut(farm).control_source = ControlSource::AIControlled;
         }
 
-        apply_player_production_enabled(&mut world, farm, false).unwrap();
+        apply_player_production_enabled(
+            &mut world,
+            &building_catalog,
+            &operation_catalog,
+            farm,
+            false,
+        )
+        .unwrap();
         let policy = world.building_production_store().get_policy(farm).unwrap();
         assert!(!policy.enabled);
         assert_eq!(policy.control_source, ControlSource::PlayerControlled);

@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use super::id::FloatingGameplayWindowId;
 use super::math::{
     clamp_window_position, default_building_menu_position, default_unit_inventory_position,
-    z_index_for_focus_order,
+    default_unit_skills_position, z_index_for_focus_order,
 };
 
 /// Per-window session layout (not persisted across application launches).
@@ -26,6 +26,7 @@ impl FloatingWindowSessionState {
         let position = match id {
             FloatingGameplayWindowId::BuildingMenu => default_building_menu_position(viewport),
             FloatingGameplayWindowId::UnitInventory => default_unit_inventory_position(viewport),
+            FloatingGameplayWindowId::UnitSkills => default_unit_skills_position(viewport),
         };
         Self {
             position,
@@ -41,6 +42,7 @@ fn default_computed_size(id: FloatingGameplayWindowId, viewport: Vec2) -> Vec2 {
         FloatingGameplayWindowId::UnitInventory => {
             Vec2::new((viewport.x * 0.42).clamp(280.0, 520.0), viewport.y * 0.72)
         }
+        FloatingGameplayWindowId::UnitSkills => Vec2::new(300.0, viewport.y * 0.55),
     }
 }
 
@@ -177,7 +179,7 @@ mod tests {
     #[test]
     fn bottom_hud_is_not_a_floating_window_id() {
         let ids: Vec<_> = FloatingGameplayWindowId::ALL.to_vec();
-        assert_eq!(ids.len(), 2);
+        assert_eq!(ids.len(), 3);
     }
 
     #[test]

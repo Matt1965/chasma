@@ -37,6 +37,12 @@ pub fn spawn_production_controls(
             spawn_production_toggle(section, production.enabled);
             if production.show_operation_selector {
                 spawn_operation_selector(section, production);
+            } else if let Some(progress) = production.progress_percent {
+                section.spawn((
+                    Text::new(format!("{} — {}%", production.operation_name, progress)),
+                    super::super::styles::hud_body_font(),
+                    TextColor(super::super::styles::TEXT_PRIMARY),
+                ));
             } else {
                 section.spawn((
                     Text::new(&production.operation_name),
@@ -44,12 +50,14 @@ pub fn spawn_production_controls(
                     TextColor(super::super::styles::TEXT_PRIMARY),
                 ));
             }
-            if let Some(progress) = production.progress_percent {
-                section.spawn((
-                    Text::new(format!("Progress: {progress}%")),
-                    super::super::styles::hud_body_font(),
-                    TextColor(super::super::styles::TEXT_MUTED),
-                ));
+            if production.show_operation_selector {
+                if let Some(progress) = production.progress_percent {
+                    section.spawn((
+                        Text::new(format!("Progress: {progress}%")),
+                        super::super::styles::hud_body_font(),
+                        TextColor(super::super::styles::TEXT_MUTED),
+                    ));
+                }
             }
             if let Some(efficiency) = &production.efficiency_display {
                 section.spawn((

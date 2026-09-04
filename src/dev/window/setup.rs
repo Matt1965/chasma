@@ -17,7 +17,8 @@ use super::math::{
     DEFAULT_PANEL_BODY_PADDING_PX, DEFAULT_PANEL_WIDTH_PX, LAUNCHER_LEFT_PX, LAUNCHER_TOP_PX,
     TITLE_BAR_HEIGHT_PX, default_catalog_position, default_debug_position, default_fields_position,
     default_navigation_editor_position, default_save_position, default_selected_object_position,
-    default_world_position, navigation_editor_body_max_height, navigation_editor_panel_width,
+    default_settlement_position, default_world_position, navigation_editor_body_max_height,
+    navigation_editor_panel_width,
 };
 
 use super::state::DevWindowRegistry;
@@ -51,6 +52,8 @@ pub fn setup_dev_workspace(mut commands: Commands, registry: Res<DevWindowRegist
     spawn_debug_window(&mut commands, registry.session(DevWindowId::Debug));
 
     spawn_world_window(&mut commands, registry.session(DevWindowId::World));
+
+    spawn_settlement_window(&mut commands, registry.session(DevWindowId::Settlement));
 
     spawn_fields_window(&mut commands, registry.session(DevWindowId::Fields));
 }
@@ -93,7 +96,8 @@ fn spawn_workspace_launcher(commands: &mut Commands) {
                 column,
                 DevLauncherGroup::Advanced,
                 "Advanced",
-                "Show or hide advanced authoring windows: Debug, World, Fields, and Navigation Editor.",
+                "Show or hide advanced authoring windows: Debug, World, Settlement, Fields, and \
+                 Navigation Editor.",
                 DevWindowId::ADVANCED_LAUNCHER,
             );
         });
@@ -177,6 +181,9 @@ fn spawn_launcher_button(parent: &mut ChildSpawnerCommands, window: DevWindowId)
         }
         DevWindowId::Debug => "Toggle the Debug window (runtime diagnostic overlays).",
         DevWindowId::World => "Toggle the World window (time, cycle, and environment).",
+        DevWindowId::Settlement => {
+            "Toggle the Settlement window (camera-focused settlement dev tools)."
+        }
         DevWindowId::Fields => "Toggle the Fields window (terrain field tools).",
     };
     parent.spawn((
@@ -578,6 +585,24 @@ pub fn spawn_world_window(
         Some(620.0),
         None,
         904,
+    );
+}
+
+/// Spawn the Settlement window shell.
+
+pub fn spawn_settlement_window(
+    commands: &mut Commands,
+    session: Option<&super::state::DevWindowSessionState>,
+) {
+    spawn_advanced_window_shell(
+        commands,
+        DevWindowId::Settlement,
+        session,
+        default_settlement_position,
+        DEFAULT_PANEL_WIDTH_PX,
+        Some(360.0),
+        None,
+        906,
     );
 }
 

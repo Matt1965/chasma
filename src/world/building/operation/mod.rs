@@ -1,6 +1,7 @@
 mod commands;
 mod error;
 mod execute;
+mod farm;
 mod inventory_role;
 mod lifecycle;
 mod operation_id;
@@ -22,6 +23,8 @@ mod execute_tests;
 #[cfg(test)]
 mod extraction_tests;
 #[cfg(test)]
+mod farm_tests;
+#[cfg(test)]
 mod phase4_content_tests;
 #[cfg(test)]
 mod save_tests;
@@ -37,6 +40,13 @@ pub use error::{OperationCompletionReport, OperationError, OperationStepReport};
 pub use execute::{
     ProductionExecutionAssessment, ProductionExecutionFailure, ResolvedProductionInput,
     ResolvedProductionOutput, assess_production_execution, execute_production_cycle,
+};
+pub use farm::{
+    FarmProductionPhase, FarmProductionState, GROW_PRISPODS_OPERATION_ID,
+    PRISPOD_FARM_DEFINITION_ID, farm_growth_percent, farm_harvest_percent,
+    farm_needs_harvest_worker, grow_prispods_operation_id, is_prispod_farm_definition,
+    progress_to_percent, reconcile_farm_harvest_phase, step_all_farm_passive_growth,
+    step_farm_harvest_operation,
 };
 pub use inventory_role::{BuildingInventoryBinding, BuildingInventoryRole};
 pub use lifecycle::OperationLifecycle;

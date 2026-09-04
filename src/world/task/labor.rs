@@ -226,6 +226,13 @@ pub fn step_all_worker_tasks(
                     unit_id,
                 ) {
                     Ok(step_report) => {
+                        if crate::world::is_prispod_farm_definition(definition) {
+                            crate::world::reconcile_farm_harvest_phase(
+                                world,
+                                building_id,
+                                definition,
+                            );
+                        }
                         if step_report.can_operate {
                             if let Some(task) = world.task_store_mut().get_mut(task_id) {
                                 task.state = TaskState::InProgress;

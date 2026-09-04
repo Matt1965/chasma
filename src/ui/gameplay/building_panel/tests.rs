@@ -494,7 +494,7 @@ fn farm_production_controls_have_toggle_without_operation_selector() {
     let production = snapshot.production.expect("farm production");
     assert!(!production.show_operation_selector);
     assert!(production.operation_options.is_empty());
-    assert_eq!(production.operation_name, "Grow Prispods");
+    assert_eq!(production.operation_name, "Growing");
 }
 
 #[test]
@@ -910,6 +910,84 @@ fn viewing_building_panel_does_not_mutate_selected_operation() {
 }
 
 #[test]
+fn production_blocking_readout_uses_live_terrain_not_stale_runtime_reason() {
+    use crate::world::{
+        BuildingOperationParams, BuildingTerrainAssessmentStore, OperationCatalog,
+        OperationalLimitingFactor, TerrainFieldId, bootstrap_constant_field,
+        create_building_with_inventory, field_value_from_percent, starter_building_definitions,
+        starter_operation_definitions,
+    };
+
+    let farm = starter_building_definitions()
+        .into_iter()
+        .find(|def| def.id.as_str() == "prispod_farm")
+        .expect("farm");
+    let categories = BuildingCategoryCatalog::default();
+    let catalog = BuildingCatalog::from_definitions(vec![farm.clone()], &categories).unwrap();
+    let mut world = flat_world();
+    world.set_authored_extent(crate::world::ChunkExtent {
+        min: ChunkCoord::new(0, 0),
+        max: ChunkCoord::new(1, 1),
+    });
+    bootstrap_constant_field(
+        world.terrain_fields_mut(),
+        TerrainFieldId::new("water"),
+        ChunkCoord::new(0, 0),
+        field_value_from_percent(80.0),
+    );
+    let building_id = create_building_with_inventory(
+        &catalog,
+        &mut world,
+        &farm.id,
+        pos(64.0, 64.0),
+        Quat::IDENTITY,
+        BuildingSource::Authored,
+        BuildingOwnership::with_affiliation(Affiliation::Player),
+        None,
+        &inventory_ctx(),
+    )
+    .unwrap()
+    .id;
+    {
+        let store = world.building_production_store_mut();
+        store.ensure_policy_for_building(
+            building_id,
+            &farm,
+            &OperationCatalog::from_definitions(starter_operation_definitions()).unwrap(),
+        );
+        store.get_policy_mut(building_id).enabled = true;
+        store.get_state_mut(building_id).blocked_reason = Some(
+            OperationalLimitingFactor::TerrainAverageBelowMinimum(TerrainFieldId::new("water")),
+        );
+    }
+    let mut assessment = BuildingTerrainAssessmentStore::default();
+    let operation_catalog =
+        OperationCatalog::from_definitions(starter_operation_definitions()).unwrap();
+    let mut params = BuildingOperationParams {
+        field_catalog: &crate::world::TerrainFieldCatalog::default(),
+        requirement_catalog: &crate::world::BuildingFieldRequirementCatalog::default(),
+        profile_catalog: &crate::world::FieldResponseProfileCatalog::default(),
+        footprint_catalog: &crate::world::FootprintCatalog::default(),
+        operation_catalog: &operation_catalog,
+        inventory_ctx: &inventory_ctx(),
+        requirement_revision: 0,
+        profile_revision: 0,
+        assessment_store: &mut assessment,
+    };
+    let snapshot = build_building_panel_snapshot(
+        &world,
+        &catalog,
+        &operation_catalog,
+        &mut params,
+        inventory_profiles(),
+        building_id,
+    )
+    .unwrap();
+    let production = snapshot.production.expect("production");
+    assert!(production.blocking_label.is_none());
+}
+
+#[test]
 fn sa5_does_not_overwrite_player_controlled_building_after_player_disable() {
     use crate::world::{
         Affiliation, BuildingCategoryCatalog, BuildingDefinitionId, BuildingLifecycleState,
@@ -994,7 +1072,14 @@ fn sa5_does_not_overwrite_player_controlled_building_after_player_disable() {
         store.get_policy_mut(farm).control_source = ControlSource::AIControlled;
     }
 
-    apply_player_production_enabled(&mut world, farm, false).unwrap();
+    apply_player_production_enabled(
+        &mut world,
+        &building_catalog,
+        &operation_catalog,
+        farm,
+        false,
+    )
+    .unwrap();
 
     let need_catalog = NeedCatalog::default();
     let response_catalog = ResponseCatalog::default();

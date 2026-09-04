@@ -20,6 +20,7 @@ mod state;
 mod styles;
 #[cfg(feature = "dev")]
 pub mod terrain_analysis;
+mod unit_skills;
 
 pub use build_mode::{
     BuildModeState, collect_build_mode_intents, draw_build_mode_ghost, handle_build_catalog_clicks,
@@ -74,3 +75,7 @@ pub use state::{
 };
 #[cfg(feature = "dev")]
 pub use terrain_analysis::TerrainAnalysisToggleButton;
+pub use unit_skills::{
+    UnitSkillsPanelState, build_unit_skills_snapshot, collect_unit_skills_keyboard_input,
+    format_unit_skills_panel_text, panel_contains_workforce_permission_controls,
+};

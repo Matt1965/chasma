@@ -24,6 +24,7 @@ mod save_window;
 mod scenes;
 mod selected_object;
 mod settlement_placement;
+mod settlement_window;
 mod spawn_tools;
 mod terrain_field;
 mod tools;
@@ -99,6 +100,12 @@ pub use save_window::{
 pub use scenes::{
     DEV_SCENES_DIR, SceneApplyReport, SceneCaptureContext, SceneDebugFlagsSnapshot, SceneRegistry,
     SceneRegistryEntry, apply_scene, capture_scene, clear_world_entities,
+};
+pub use settlement_window::{
+    handle_settlement_add_units_button, handle_settlement_ai_toggle, setup_settlement_window_panel,
+    sync_dev_settlement_panel_visibility, sync_settlement_ai_toggle_styles,
+    sync_settlement_dev_action_availability, sync_settlement_dev_button_styles,
+    sync_settlement_dev_panel,
 };
 pub use spawn_tools::{
     DevSpawnOutcome, dev_spawn_position_from_terrain_click, spawn_by_mode_at_position,
@@ -209,6 +216,7 @@ impl Plugin for DevModePlugin {
                     setup_navigation_editor_panel,
                     setup_debug_window_panel,
                     setup_world_window_panel,
+                    setup_settlement_window_panel,
                     setup_fields_window_panel,
                     setup_dev_tooltip,
                     scenes::init_dev_scene_registry,
@@ -267,6 +275,7 @@ impl Plugin for DevModePlugin {
                     focus_dev_window_on_panel_press,
                     sync_dev_window_presentation,
                     sync_dev_world_panel_visibility,
+                    sync_dev_settlement_panel_visibility,
                     sync_dev_fields_panel_visibility,
                     sync_dev_window_computed_sizes,
                     update_dev_preview_anchor,
@@ -302,6 +311,10 @@ impl Plugin for DevModePlugin {
                     world_environment::sync_world_environment_toggles,
                     world_environment::sync_world_environment_confirm_bar,
                     world_environment::tick_world_environment_status,
+                    sync_settlement_dev_panel,
+                    sync_settlement_dev_action_availability,
+                    sync_settlement_dev_button_styles,
+                    sync_settlement_ai_toggle_styles,
                 )
                     .chain(),
             )
@@ -513,11 +526,10 @@ impl Plugin for DevModePlugin {
                 inventory_tools::sync_item_quantity_controls,
                 inventory_tools::sync_items_panel_text,
                 settlement_placement::handle_settlement_placement_button,
-                settlement_placement::handle_unit_assignment_button,
                 settlement_placement::handle_settlement_placement_click,
-                settlement_placement::handle_unit_assignment_click,
                 settlement_placement::sync_settlement_placement_button_active,
-                settlement_placement::sync_unit_assignment_button_active,
+                handle_settlement_add_units_button,
+                handle_settlement_ai_toggle,
                 settlement_placement::update_settlement_placement_preview,
                 settlement_placement::clear_settlement_placement_preview_when_disarmed,
                 settlement_placement::sync_settlement_placement_rejection_labels,

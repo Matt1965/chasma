@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 use super::id::{SettlementId, TreasuryId};
 use super::record::{SettlementRecord, SettlementTreasuryRecord, TreasuryTransactionRecord};
+use super::workforce::WorkforcePermissionStore;
 use crate::world::{BuildingId, UnitId};
 
 #[derive(Debug, Clone, Default, PartialEq, Reflect)]
@@ -20,6 +21,7 @@ pub struct SettlementStore {
     settlement_units: BTreeMap<SettlementId, BTreeSet<UnitId>>,
     treasury_by_settlement: BTreeMap<SettlementId, TreasuryId>,
     transaction_log: Vec<TreasuryTransactionRecord>,
+    workforce_permissions: WorkforcePermissionStore,
 }
 
 impl SettlementStore {
@@ -172,6 +174,7 @@ impl SettlementStore {
     }
 
     pub fn unlink_unit(&mut self, unit_id: UnitId) {
+        self.workforce_permissions.clear_unit(unit_id);
         self.reindex_unit_membership(unit_id, None);
     }
 
@@ -270,6 +273,15 @@ impl SettlementStore {
         if let Some(treasury_id) = treasury_id {
             self.treasuries.remove(&treasury_id);
         }
+        self.workforce_permissions.clear_settlement(id);
         Some(settlement)
+    }
+
+    pub fn workforce_permissions(&self) -> &WorkforcePermissionStore {
+        &self.workforce_permissions
+    }
+
+    pub fn workforce_permissions_mut(&mut self) -> &mut WorkforcePermissionStore {
+        &mut self.workforce_permissions
     }
 }
