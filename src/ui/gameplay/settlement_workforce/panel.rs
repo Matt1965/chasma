@@ -71,10 +71,10 @@ pub fn spawn_settlement_workforce_panel(mut commands: Commands) {
             Node {
                 position_type: PositionType::Absolute,
                 width: Val::Px(640.0),
+                height: Val::Percent(62.0),
                 max_width: Val::Percent(92.0),
                 max_height: Val::Percent(75.0),
                 flex_direction: FlexDirection::Column,
-                overflow: Overflow::scroll(),
                 padding: UiRect::all(Val::Px(10.0)),
                 row_gap: Val::Px(6.0),
                 display: Display::None,
@@ -128,9 +128,11 @@ pub fn spawn_settlement_workforce_panel(mut commands: Commands) {
             root.spawn((
                 SettlementWorkforceMatrixBody,
                 Node {
+                    width: Val::Percent(100.0),
+                    min_height: Val::Px(0.0),
                     flex_direction: FlexDirection::Column,
+                    flex_grow: 1.0,
                     overflow: Overflow::scroll(),
-                    max_height: Val::Px(480.0),
                     row_gap: Val::Px(4.0),
                     ..default()
                 },
