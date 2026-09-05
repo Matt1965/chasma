@@ -1,5 +1,6 @@
 //! OperateWorkstation marketplace listings — farms only when ready to harvest.
 
+use crate::world::building::operation::building_work_priority_to_task_priority_for_building;
 use crate::world::building::operation::{farm_needs_harvest_worker, is_prispod_farm_definition};
 use crate::world::task::{
     TaskPriority, TaskState, TaskType, building_accepts_workstation_use, ensure_building_task,
@@ -8,13 +9,7 @@ use crate::world::{BuildingCatalog, WorldData};
 
 /// Map building operation policy priority (0..=255) into TaskPriority.
 pub fn policy_priority_to_task_priority(policy_priority: u8) -> TaskPriority {
-    if policy_priority >= 200 {
-        TaskPriority::High
-    } else if policy_priority >= 80 {
-        TaskPriority::Normal
-    } else {
-        TaskPriority::Low
-    }
+    crate::world::building::operation::building_work_priority_to_task_priority(policy_priority)
 }
 
 /// Create/refresh Available OperateWorkstation tasks for buildings that want labor.
@@ -55,7 +50,7 @@ pub fn sync_operate_workstation_tasks(
             cancel_available_operate_tasks(world, building_id);
             continue;
         }
-        let priority = policy_priority_to_task_priority(policy.priority);
+        let priority = building_work_priority_to_task_priority_for_building(world, building_id);
         let _ = ensure_building_task(
             world,
             building_id,

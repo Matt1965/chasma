@@ -6,7 +6,7 @@
 
 use std::fmt;
 
-use crate::world::{BuildingId, UnitId, WorldData, WorldPosition, xz_distance};
+use crate::world::{BuildingId, UnitId, UnitState, WorldData, WorldPosition, xz_distance};
 
 use super::id::SettlementId;
 
@@ -71,6 +71,21 @@ pub fn settlement_containing_position(
     None
 }
 
+/// Alive settlement members from authoritative [`UnitRecord::settlement_id`] (sorted).
+pub fn settlement_member_unit_ids(world: &WorldData, settlement_id: SettlementId) -> Vec<UnitId> {
+    let mut ids = world
+        .sorted_unit_ids()
+        .into_iter()
+        .filter(|&unit_id| {
+            world.get_unit(unit_id).is_some_and(|record| {
+                record.state != UnitState::Dead && record.settlement_id == Some(settlement_id)
+            })
+        })
+        .collect::<Vec<_>>();
+    ids.sort_by_key(|id| id.raw());
+    ids
+}
+
 /// Rebuild all derived membership indexes from authoritative record fields.
 pub fn rebuild_settlement_membership_indexes(world: &mut WorldData) {
     world.settlement_store_mut().clear_membership_indexes();
@@ -121,10 +136,18 @@ pub fn assign_unit_settlement(
         .settlement_store_mut()
         .workforce_permissions_mut()
         .clear_unit(unit_id);
+    sync_unit_membership_index_from_record(world, unit_id);
+    Ok(())
+}
+
+/// Keep derived unit membership cache aligned with the authoritative record field.
+pub(crate) fn sync_unit_membership_index_from_record(world: &mut WorldData, unit_id: UnitId) {
+    let settlement_id = world
+        .get_unit(unit_id)
+        .and_then(|record| record.settlement_id);
     world
         .settlement_store_mut()
         .reindex_unit_membership(unit_id, settlement_id);
-    Ok(())
 }
 
 /// Assign or clear explicit building membership.

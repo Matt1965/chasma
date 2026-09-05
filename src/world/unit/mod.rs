@@ -43,6 +43,7 @@ mod store;
 #[cfg(feature = "dev")]
 pub(crate) mod surface_goal_passability_probe;
 mod vitals;
+mod work_skill;
 
 #[cfg(any(test, feature = "dev"))]
 pub use animation_profile::starter_definitions as starter_animation_profile_definitions;
@@ -138,6 +139,12 @@ pub use source::UnitSource;
 pub use state::UnitState;
 pub use store::ChunkUnitStore;
 pub use vitals::UnitVitals;
+pub use work_skill::{
+    DEFAULT_WORK_SKILL_VALUE, UnitWorkSkillState, WorkSkillCatalog, WorkSkillCatalogError,
+    WorkSkillDefinition, WorkSkillError, WorkSkillId, initialize_unit_work_skills,
+    set_work_skill_value, starter_work_skill_definitions, work_skill_for_permission_domain,
+    work_skill_for_task, work_skill_value,
+};
 
 #[cfg(test)]
 mod waypoint_lookahead_tests;

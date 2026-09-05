@@ -5,8 +5,13 @@ use bevy::prelude::*;
 use crate::client::{ClientIntent, ClientIntentQueue};
 use crate::world::OperationDefinitionId;
 
-use super::content::BuildingPanelProduction;
+use super::content::{BuildingPanelProduction, BuildingPanelWorkPriority};
 use super::state::BuildingPanelState;
+
+#[derive(Component, Debug, Clone, Copy)]
+pub struct BuildingWorkPriorityButton {
+    pub increase: bool,
+}
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct BuildingProductionToggleButton {
@@ -16,6 +21,49 @@ pub struct BuildingProductionToggleButton {
 #[derive(Component, Debug, Clone)]
 pub struct BuildingProductionOperationButton {
     pub operation: OperationDefinitionId,
+}
+
+pub fn spawn_work_priority_controls(
+    parent: &mut ChildSpawnerCommands<'_>,
+    work_priority: &BuildingPanelWorkPriority,
+) {
+    parent
+        .spawn((Node {
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            column_gap: Val::Px(6.0),
+            row_gap: Val::Px(4.0),
+            ..default()
+        },))
+        .with_children(|row| {
+            row.spawn((
+                Text::new(format!("Priority: {}", work_priority.label)),
+                super::super::styles::hud_body_font(),
+                TextColor(super::super::styles::TEXT_PRIMARY),
+            ));
+            spawn_priority_button(row, "-", false);
+            spawn_priority_button(row, "+", true);
+        });
+}
+
+fn spawn_priority_button(parent: &mut ChildSpawnerCommands<'_>, label: &str, increase: bool) {
+    parent
+        .spawn((
+            BuildingWorkPriorityButton { increase },
+            Button,
+            Node {
+                padding: UiRect::axes(Val::Px(8.0), Val::Px(3.0)),
+                ..default()
+            },
+            BackgroundColor(super::super::styles::CMD_BTN_ENABLED_BG),
+        ))
+        .with_children(|button| {
+            button.spawn((
+                Text::new(label),
+                super::super::styles::hud_body_font(),
+                TextColor(super::super::styles::TEXT_PRIMARY),
+            ));
+        });
 }
 
 pub fn spawn_production_controls(
@@ -155,10 +203,25 @@ pub fn handle_building_production_controls(
         (&Interaction, &BuildingProductionOperationButton),
         Changed<Interaction>,
     >,
+    priority_buttons: Query<
+        (&Interaction, &BuildingWorkPriorityButton),
+        (Changed<Interaction>, With<BuildingWorkPriorityButton>),
+    >,
 ) {
     let Some(building_id) = panel.open_building_id else {
         return;
     };
+
+    for (interaction, button) in &priority_buttons {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        queue.push(ClientIntent::AdjustBuildingWorkPriority {
+            building_id,
+            increase: button.increase,
+        });
+        return;
+    }
 
     for (interaction, button) in &toggle_buttons {
         if *interaction != Interaction::Pressed {

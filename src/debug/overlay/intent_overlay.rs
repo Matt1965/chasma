@@ -54,6 +54,7 @@ pub fn draw_intent_debug_overlay(
             | ClientIntent::CloseBuildingMenu
             | ClientIntent::SetBuildingProductionEnabled { .. }
             | ClientIntent::SetBuildingProductionOperation { .. }
+            | ClientIntent::AdjustBuildingWorkPriority { .. }
             | ClientIntent::ShiftModifier { .. } => {}
             ClientIntent::PaletteCommand { .. } => {}
             ClientIntent::EnterBuildMode

@@ -16,7 +16,7 @@ fn container_storage_uses_unit_inventory_floating_window() {
             .session(FloatingGameplayWindowId::UnitInventory)
             .is_some()
     );
-    assert_eq!(FloatingGameplayWindowId::ALL.len(), 3);
+    assert_eq!(FloatingGameplayWindowId::ALL.len(), 4);
 }
 
 #[test]

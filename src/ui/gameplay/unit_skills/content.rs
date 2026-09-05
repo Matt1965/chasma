@@ -5,8 +5,8 @@ use crate::ui::gameplay::combat_display::{
 };
 use crate::ui::gameplay::selected_unit_panel::unit_state_label;
 use crate::world::{
-    NutritionProfile, UnitCatalog, UnitId, UnitRecord, WeaponCatalog, WorldData,
-    evaluate_hunger_stage, hunger_stage_label,
+    NutritionProfile, UnitCatalog, UnitId, UnitRecord, WeaponCatalog, WorkSkillCatalog, WorldData,
+    evaluate_hunger_stage, hunger_stage_label, work_skill_value,
 };
 
 /// One labeled stat row in the skills panel.
@@ -36,6 +36,7 @@ pub fn build_unit_skills_snapshot(
     world: &WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    work_skill_catalog: &WorkSkillCatalog,
 ) -> Option<UnitSkillsPanelSnapshot> {
     let record = world.get_unit(unit_id)?;
     let def = unit_catalog.get(&record.definition_id)?;
@@ -43,8 +44,10 @@ pub fn build_unit_skills_snapshot(
         unit_id,
         record,
         def,
+        world,
         unit_catalog,
         weapon_catalog,
+        work_skill_catalog,
     ))
 }
 
@@ -52,8 +55,10 @@ fn build_snapshot_from_record(
     unit_id: UnitId,
     record: &UnitRecord,
     def: &crate::world::UnitDefinition,
+    world: &WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    work_skill_catalog: &WorkSkillCatalog,
 ) -> UnitSkillsPanelSnapshot {
     let mut sections = Vec::new();
 
@@ -122,6 +127,20 @@ fn build_snapshot_from_record(
         ],
     });
 
+    let work_skill_lines = work_skill_catalog
+        .enabled_definitions_ordered()
+        .into_iter()
+        .filter_map(|definition| {
+            work_skill_value(world, work_skill_catalog, unit_id, &definition.id)
+                .ok()
+                .map(|value| line(definition.display_name.clone(), value.to_string()))
+        })
+        .collect();
+    sections.push(UnitSkillsSection {
+        title: "Work Skills".into(),
+        lines: work_skill_lines,
+    });
+
     let mut combat_lines = Vec::new();
     if let Some(weapon) = weapon_display_for_unit(record, unit_catalog, weapon_catalog) {
         append_weapon_hud_lines(&mut combat_lines, &weapon);
@@ -177,7 +196,7 @@ pub fn format_unit_skills_panel_text(snapshot: &UnitSkillsPanelSnapshot) -> Stri
 pub fn panel_contains_workforce_permission_controls(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
     lower.contains("allowed farming")
-        || lower.contains("allowed mining")
+        || lower.contains("allowed general labor")
         || lower.contains("workforce permission")
         || lower.contains("work permission")
 }
@@ -241,6 +260,10 @@ mod tests {
         WeaponCatalog::from_definitions(starter_weapon_definitions()).unwrap()
     }
 
+    fn work_skills() -> crate::world::WorkSkillCatalog {
+        crate::world::WorkSkillCatalog::default()
+    }
+
     #[test]
     fn snapshot_uses_human_readable_names() {
         let catalog = catalog();
@@ -254,7 +277,9 @@ mod tests {
         )
         .unwrap()
         .id;
-        let snapshot = build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons()).unwrap();
+        let snapshot =
+            build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills())
+                .unwrap();
         assert_eq!(snapshot.title, "Wolf");
         let text = format_unit_skills_panel_text(&snapshot);
         assert!(text.contains("Strength: 4"));
@@ -275,7 +300,9 @@ mod tests {
         )
         .unwrap()
         .id;
-        let snapshot = build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons()).unwrap();
+        let snapshot =
+            build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills())
+                .unwrap();
         let text = format_unit_skills_panel_text(&snapshot);
         assert!(text.contains("Work capability"));
         assert!(text.contains("Construction: Capable"));
@@ -295,11 +322,15 @@ mod tests {
         )
         .unwrap()
         .id;
-        let first = build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons()).unwrap();
+        let first =
+            build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills())
+                .unwrap();
         world
             .mutate_unit(unit_id, |record| record.vitals.current_hp = 2)
             .expect("mutate");
-        let second = build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons()).unwrap();
+        let second =
+            build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills())
+                .unwrap();
         assert_ne!(first, second);
         assert!(format_unit_skills_panel_text(&second).contains("HP: 2/5"));
     }
@@ -318,7 +349,10 @@ mod tests {
         .unwrap()
         .id;
         world.remove_unit_by_id(unit_id);
-        assert!(build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons()).is_none());
+        assert!(
+            build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills())
+                .is_none()
+        );
     }
 
     #[test]
@@ -337,7 +371,112 @@ mod tests {
         world
             .set_unit_state(unit_id, UnitState::Dead)
             .expect("dead");
-        let snapshot = build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons()).unwrap();
+        let snapshot =
+            build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills())
+                .unwrap();
         assert!(format_unit_skills_panel_text(&snapshot).contains("State: Dead"));
+    }
+
+    #[test]
+    fn work_skills_section_lists_catalog_display_names() {
+        let catalog = catalog();
+        let mut world = flat_world();
+        let unit_id = create_unit(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+        )
+        .unwrap()
+        .id;
+        let text = format_unit_skills_panel_text(
+            &build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills())
+                .unwrap(),
+        );
+        assert!(text.contains("Work Skills"));
+        assert!(text.contains("Farming: 0"));
+        assert!(text.contains("General Labor: 0"));
+        assert!(text.contains("Construction: 0"));
+        assert!(text.contains("Cooking: 0"));
+        assert!(text.contains("Science: 0"));
+        assert!(text.contains("Smithing: 0"));
+        assert!(!text.contains("farming:"));
+    }
+
+    #[test]
+    fn work_skills_section_reflects_per_unit_values_and_selection() {
+        let catalog = catalog();
+        let work_skills = work_skills();
+        let mut world = flat_world();
+        let bob = create_unit(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+        )
+        .unwrap()
+        .id;
+        let larry = create_unit(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(2.0, 2.0),
+            UnitSource::Authored,
+        )
+        .unwrap()
+        .id;
+        crate::world::set_work_skill_value(
+            &mut world,
+            &work_skills,
+            bob,
+            &crate::world::WorkSkillId::new("farming"),
+            10,
+        )
+        .unwrap();
+        crate::world::set_work_skill_value(
+            &mut world,
+            &work_skills,
+            larry,
+            &crate::world::WorkSkillId::new("farming"),
+            40,
+        )
+        .unwrap();
+        let bob_text = format_unit_skills_panel_text(
+            &build_unit_skills_snapshot(bob, &world, &catalog, &weapons(), &work_skills).unwrap(),
+        );
+        let larry_text = format_unit_skills_panel_text(
+            &build_unit_skills_snapshot(larry, &world, &catalog, &weapons(), &work_skills).unwrap(),
+        );
+        assert!(bob_text.contains("Farming: 10"));
+        assert!(larry_text.contains("Farming: 40"));
+    }
+
+    #[test]
+    fn work_skills_section_includes_new_catalog_entries_without_ui_rewrite() {
+        let catalog = catalog();
+        let mut definitions = crate::world::starter_work_skill_definitions();
+        definitions.push(crate::world::WorkSkillDefinition::new(
+            "prospecting",
+            "Prospecting",
+            70,
+        ));
+        let work_skills = crate::world::WorkSkillCatalog::from_definitions(definitions).unwrap();
+        let mut world = flat_world();
+        let unit_id = create_unit(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+        )
+        .unwrap()
+        .id;
+        let text = format_unit_skills_panel_text(
+            &build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills)
+                .unwrap(),
+        );
+        assert!(text.contains("Prospecting: 0"));
     }
 }

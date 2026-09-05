@@ -35,6 +35,11 @@ pub enum ClientIntent {
         building_id: crate::world::BuildingId,
         operation: crate::world::OperationDefinitionId,
     },
+    /// Player adjusts building work priority on the open owned building menu.
+    AdjustBuildingWorkPriority {
+        building_id: crate::world::BuildingId,
+        increase: bool,
+    },
     /// Context-aware command from right-click (terrain or unit target).
     ContextualCommand {
         target: super::commands::CommandTarget,

@@ -88,7 +88,7 @@ pub use membership::{
     SettlementMembershipError, assign_building_settlement, assign_selected_units_at_position,
     assign_unit_settlement, clear_unit_settlement_on_removal,
     rebuild_settlement_membership_indexes, seed_building_settlement_at_creation,
-    seed_unit_settlement_at_creation, settlement_containing_position,
+    seed_unit_settlement_at_creation, settlement_containing_position, settlement_member_unit_ids,
 };
 pub use needs::{
     NEED_EVAL_CADENCE_TICKS, NeedBlockingReason, NeedCatalog, NeedCatalogError, NeedDefinition,
@@ -144,9 +144,10 @@ pub use task_gen::{
 };
 pub use workforce::{
     WorkPermissionDomain, WorkforcePermissionError, WorkforcePermissionStore,
-    clear_settlement_workforce_permissions, clear_unit_workforce_permissions,
-    set_unit_work_permission, unit_may_autonomously_perform_work, unit_work_allowed,
-    work_permission_domain_for_task,
+    allow_all_unit_work_permissions, clear_settlement_workforce_permissions,
+    clear_unit_workforce_permissions, deny_all_unit_work_permissions, set_unit_work_permission,
+    unit_may_autonomously_perform_work, unit_physically_capable_for_work_permission,
+    unit_work_allowed, work_permission_domain_for_task,
 };
 
 #[cfg(test)]

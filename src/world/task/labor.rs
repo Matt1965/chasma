@@ -254,6 +254,9 @@ pub fn step_all_worker_tasks(
                             if let Some(task) = world.task_store_mut().get_mut(task_id) {
                                 task.state = TaskState::Completed;
                             }
+                            world.mutate_unit(unit_id, |record| {
+                                record.self_maintenance.clear();
+                            });
                             report.tasks_completed += 1;
                         } else if step_report.can_operate {
                             if let Some(task) = world.task_store_mut().get_mut(task_id) {

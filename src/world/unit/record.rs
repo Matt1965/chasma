@@ -10,6 +10,7 @@ use super::self_maintenance::{UnitNutritionState, UnitSelfMaintenanceState};
 use super::source::UnitSource;
 use super::state::UnitState;
 use super::vitals::UnitVitals;
+use super::work_skill::UnitWorkSkillState;
 use crate::world::ownership::{Affiliation, OwnerId, TeamId, UnitOwnership};
 use crate::world::relationship::{FactionId, SpeciesId};
 use crate::world::settlement::SettlementId;
@@ -53,6 +54,8 @@ pub struct UnitRecord {
     pub inventory_id: Option<crate::world::InventoryId>,
     /// Explicit settlement membership (ADR-133 Phase 2). None = not a member.
     pub settlement_id: Option<SettlementId>,
+    /// Individual work skill progression (per-unit overrides).
+    pub work_skills: UnitWorkSkillState,
 }
 
 impl UnitRecord {
@@ -87,6 +90,7 @@ impl UnitRecord {
             reactive_combat_target: None,
             inventory_id: None,
             settlement_id: None,
+            work_skills: UnitWorkSkillState::default(),
         }
     }
 

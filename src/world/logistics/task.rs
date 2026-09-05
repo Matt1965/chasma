@@ -90,7 +90,12 @@ pub fn assign_hauling_task_with_priority(
             return Err(TaskError::UnitNotEligible(unit_id));
         }
         if let Some(settlement_id) = settlement_for_building_work(world, owning_building_id) {
-            if !unit_work_allowed(world, settlement_id, unit_id, WorkPermissionDomain::Hauling) {
+            if !unit_work_allowed(
+                world,
+                settlement_id,
+                unit_id,
+                WorkPermissionDomain::GeneralLabor,
+            ) {
                 return Err(TaskError::UnitNotEligible(unit_id));
             }
         }

@@ -15,6 +15,7 @@ mod player_hud_state;
 mod plugin;
 mod selected_unit_panel;
 mod selection_ui;
+mod settlement_workforce;
 mod squad_panel;
 mod state;
 mod styles;
@@ -67,6 +68,9 @@ pub use selected_unit_panel::{
     format_single_unit_lines, format_unit_detail_lines, unit_state_label,
 };
 pub use selection_ui::{clear_gameplay_hud_dirty, sync_gameplay_ui_state};
+pub use settlement_workforce::{
+    SettlementWorkforcePanelState, build_settlement_workforce_snapshot,
+};
 pub use squad_panel::{squad_display_name, squad_panel_unit_ids};
 pub use state::{
     CommandHoverContext, GameplayCommandState, GameplayCursorMode, GameplayUiSnapshot,

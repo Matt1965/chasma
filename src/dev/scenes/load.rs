@@ -1273,6 +1273,7 @@ mod tests {
             inventory_id: None,
             settlement_id: None,
             current_nutrition: None,
+            work_skill_overrides: Vec::new(),
         });
         let err = apply_scene(
             &mut world,
@@ -1959,6 +1960,7 @@ mod tests {
                 species_id: None,
                 settlement_id: None,
                 current_nutrition: None,
+                work_skill_overrides: Vec::new(),
             }],
             doodad_records: Vec::new(),
             building_records: vec![SceneBuildingRecord {

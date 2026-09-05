@@ -4,7 +4,8 @@ use crate::world::BuildingId;
 use crate::world::WorldData;
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::building::operation::{
-    BuildingOperationPolicy, OperationDefinitionId, OperationLifecycle, RepeatMode,
+    BuildingOperationPolicy, BuildingWorkPriorityLevel, OperationDefinitionId, OperationLifecycle,
+    RepeatMode, building_work_priority_u8_for_level,
 };
 use crate::world::operation::{
     OperationCatalog, OperationSelectionError, validate_operation_selection,
@@ -145,6 +146,24 @@ pub fn production_policy(
         .building_production_store()
         .get_policy(building_id)
         .cloned()
+}
+
+pub fn set_building_work_priority(
+    world: &mut WorldData,
+    building_catalog: &BuildingCatalog,
+    operation_catalog: &OperationCatalog,
+    building_id: BuildingId,
+    level: BuildingWorkPriorityLevel,
+) -> Result<(), ProductionCommandError> {
+    require_building(world, building_id)?;
+    let definition = world
+        .get_building(building_id)
+        .and_then(|record| building_catalog.get(&record.definition_id))
+        .ok_or(ProductionCommandError::BuildingNotFound(building_id))?;
+    let store = world.building_production_store_mut();
+    store.ensure_policy_for_building(building_id, definition, operation_catalog);
+    store.get_policy_mut(building_id).priority = building_work_priority_u8_for_level(level);
+    Ok(())
 }
 
 pub fn cycle_production_selected_operation(

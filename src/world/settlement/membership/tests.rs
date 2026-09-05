@@ -426,3 +426,24 @@ fn assign_selected_units_at_position_assigns_inside_boundary() {
         Some(settlement_id)
     );
 }
+
+#[test]
+fn settlement_member_unit_ids_reads_authoritative_records_when_index_stale() {
+    let mut world = test_world();
+    let settlement_id = spawn_settlement(&mut world, 18.0, 18.0, "A");
+    let u1 = spawn_unit(&mut world, 4.0, 4.0, Affiliation::Player);
+    let u2 = spawn_unit(&mut world, 5.0, 5.0, Affiliation::Player);
+    assign_unit_settlement(&mut world, u1, Some(settlement_id)).unwrap();
+    assign_unit_settlement(&mut world, u2, Some(settlement_id)).unwrap();
+    world.settlement_store_mut().clear_membership_indexes();
+    assert!(
+        world
+            .settlement_store()
+            .units_for_settlement(settlement_id)
+            .is_empty()
+    );
+    let members = super::settlement_member_unit_ids(&world, settlement_id);
+    assert_eq!(members.len(), 2);
+    assert!(members.contains(&u1));
+    assert!(members.contains(&u2));
+}

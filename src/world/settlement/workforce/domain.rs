@@ -5,31 +5,40 @@ use serde::{Deserialize, Serialize};
 
 /// Binary allow/deny categories for autonomous settlement work eligibility.
 ///
-/// Distinct from physical [`UnitWorkCapabilities`] and from future priority scores.
+/// Aligned with [`crate::world::WorkSkillId`] taxonomy. Distinct from physical
+/// [`UnitWorkCapabilities`] and from future priority scores.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect, Serialize, Deserialize,
 )]
 pub enum WorkPermissionDomain {
     Farming,
-    Mining,
+    /// Manual labor including extraction and hauling.
+    #[serde(alias = "Mining", alias = "Hauling")]
+    GeneralLabor,
     Construction,
-    Hauling,
+    Cooking,
+    Science,
+    Smithing,
 }
 
 impl WorkPermissionDomain {
-    pub const ALL: [Self; 4] = [
+    pub const ALL: [Self; 6] = [
         Self::Farming,
-        Self::Mining,
+        Self::GeneralLabor,
         Self::Construction,
-        Self::Hauling,
+        Self::Cooking,
+        Self::Science,
+        Self::Smithing,
     ];
 
     pub fn label(self) -> &'static str {
         match self {
             Self::Farming => "Farming",
-            Self::Mining => "Mining",
+            Self::GeneralLabor => "General Labor",
             Self::Construction => "Construction",
-            Self::Hauling => "Hauling",
+            Self::Cooking => "Cooking",
+            Self::Science => "Science",
+            Self::Smithing => "Smithing",
         }
     }
 }

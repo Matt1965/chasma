@@ -24,7 +24,7 @@ use crate::world::{
 
 use super::super::layout::PlayerHudUi;
 use super::content::{BuildingPanelSnapshot, build_building_panel_snapshot};
-use super::controls::spawn_production_controls;
+use super::controls::{spawn_production_controls, spawn_work_priority_controls};
 use super::format::format_building_header_line;
 use super::interaction::{
     building_inventory_grid_interaction, building_inventory_transfer_eligible,
@@ -264,6 +264,9 @@ fn spawn_panel_content(
     grid_interaction: InventoryGridInteraction,
     inventory_ui: Option<&InventoryUiState>,
 ) {
+    if let Some(work_priority) = &snapshot.work_priority {
+        spawn_work_priority_controls(parent, work_priority);
+    }
     if let Some(production) = &snapshot.production {
         spawn_production_controls(parent, production);
     }

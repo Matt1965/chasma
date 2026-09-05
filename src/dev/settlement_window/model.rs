@@ -1,7 +1,9 @@
 //! Pure settlement Dev UI model (camera context + world reads).
 
 use crate::client::CameraSettlementContext;
-use crate::world::{SettlementId, UnitId, WorldData, assign_unit_settlement};
+use crate::world::{
+    SettlementId, UnitId, WorldData, assign_unit_settlement, settlement_member_unit_ids,
+};
 
 /// Read-only settlement summary for Dev UI.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,10 +38,7 @@ pub fn build_settlement_dev_summary(
     let Some(record) = world.settlement_store().get_settlement(settlement_id) else {
         return SettlementDevSummary::default();
     };
-    let unit_count = world
-        .settlement_store()
-        .units_for_settlement(settlement_id)
-        .len();
+    let unit_count = settlement_member_unit_ids(world, settlement_id).len();
     let building_count = world
         .settlement_store()
         .buildings_for_settlement(settlement_id)

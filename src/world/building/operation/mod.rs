@@ -8,6 +8,7 @@ mod operation_id;
 mod params;
 mod player_policy;
 mod policy;
+mod priority;
 mod progress;
 mod query;
 mod step;
@@ -29,14 +30,17 @@ mod farm_worker_persistence_tests;
 #[cfg(test)]
 mod phase4_content_tests;
 #[cfg(test)]
+mod priority_tests;
+#[cfg(test)]
 mod save_tests;
 #[cfg(test)]
 mod tests;
 
 pub use commands::{
     ProductionCommandError, cycle_production_selected_operation, production_policy,
-    reset_production_progress, set_production_enabled, set_production_execution_mode,
-    set_production_paused, set_production_repeat_count, set_production_selected_operation,
+    reset_production_progress, set_building_work_priority, set_production_enabled,
+    set_production_execution_mode, set_production_paused, set_production_repeat_count,
+    set_production_selected_operation,
 };
 pub use error::{OperationCompletionReport, OperationError, OperationStepReport};
 pub use execute::{
@@ -55,9 +59,18 @@ pub use lifecycle::OperationLifecycle;
 pub use operation_id::{OperationDefinitionId, OperationId};
 pub use params::BuildingOperationParams;
 pub use player_policy::{
-    apply_player_production_enabled, apply_player_production_selected_operation,
+    apply_player_building_work_priority, apply_player_production_enabled,
+    apply_player_production_selected_operation,
 };
 pub use policy::{BuildingOperationPolicy, ControlSource, RepeatMode};
+pub use priority::{
+    BUILDING_WORK_PRIORITY_HIGH_U8, BUILDING_WORK_PRIORITY_LOW_U8,
+    BUILDING_WORK_PRIORITY_NORMAL_U8, BuildingWorkPriorityLevel, DEFAULT_BUILDING_WORK_PRIORITY_U8,
+    building_work_priority_label, building_work_priority_level,
+    building_work_priority_level_from_u8, building_work_priority_to_task_priority,
+    building_work_priority_to_task_priority_for_building, building_work_priority_u8,
+    building_work_priority_u8_for_level, step_building_work_priority_level,
+};
 pub use progress::{
     BASE_OPERATION_PROGRESS_PER_TICK, PRODUCTION_PROGRESS_ONE_UNIT, ProductionProgress,
     scale_progress,

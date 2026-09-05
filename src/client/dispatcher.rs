@@ -26,10 +26,10 @@ use crate::world::{
     AttackTargetingPolicy, AuthoredRelationshipCatalog, BuildingCatalog, DoodadCatalog,
     FootprintCatalog, InteractionOrderPlan, InteractionResolveContext, NavigationConfig,
     NavigationPath, OperationCatalog, PassabilityCatalogs, UnitCatalog, UnitId, WeaponCatalog,
-    WorldConfig, WorldData, WorldPosition, apply_player_production_enabled,
-    apply_player_production_selected_operation, assign_construct_building_task,
-    assign_operate_workstation_task, filter_commandable_unit_ids, resolve_unit_click_to_order,
-    resolve_world_click_to_order, xz_distance,
+    WorldConfig, WorldData, WorldPosition, apply_player_building_work_priority,
+    apply_player_production_enabled, apply_player_production_selected_operation,
+    assign_construct_building_task, assign_operate_workstation_task, filter_commandable_unit_ids,
+    resolve_unit_click_to_order, resolve_world_click_to_order, xz_distance,
 };
 
 use super::commands::{
@@ -356,6 +356,30 @@ fn dispatch_building_production_operation(
     }
 }
 
+fn dispatch_building_work_priority(
+    building_id: crate::world::BuildingId,
+    increase: bool,
+    building_panel: &BuildingPanelState,
+    world: &mut WorldData,
+    player_ownership: &crate::player::LocalPlayerOwnership,
+    building_catalog: &BuildingCatalog,
+    operation_catalog: &OperationCatalog,
+) -> IntentDispatchStatus {
+    if !building_production_mutation_allowed(building_panel, building_id, world, player_ownership) {
+        return IntentDispatchStatus::Ignored;
+    }
+    match apply_player_building_work_priority(
+        world,
+        building_catalog,
+        operation_catalog,
+        building_id,
+        increase,
+    ) {
+        Ok(()) => IntentDispatchStatus::Applied,
+        Err(_) => IntentDispatchStatus::Ignored,
+    }
+}
+
 fn dispatch_one(
     intent: &ClientIntent,
     apply_params: &mut ApplyWorldSelectionParams<'_>,
@@ -502,6 +526,18 @@ fn dispatch_one(
         } => dispatch_building_production_operation(
             *building_id,
             operation.clone(),
+            building_panel,
+            world,
+            player_ownership,
+            building_catalog,
+            operation_catalog,
+        ),
+        ClientIntent::AdjustBuildingWorkPriority {
+            building_id,
+            increase,
+        } => dispatch_building_work_priority(
+            *building_id,
+            *increase,
             building_panel,
             world,
             player_ownership,
@@ -2346,5 +2382,228 @@ mod tests {
             world.get_unit(unit_id).unwrap().state,
             UnitState::Moving { .. }
         ));
+    }
+
+    #[test]
+    fn adjust_building_work_priority_via_client_intent() {
+        use crate::world::{
+            Affiliation, BuildingCategoryCatalog, BuildingDefinitionId, BuildingOwnership,
+            BuildingSource, BuildingWorkPriorityLevel, ControlSource, InventoryCatalogCtx,
+            InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, OperationCatalog,
+            building_work_priority_u8, building_work_priority_u8_for_level,
+            create_building_with_inventory, starter_building_definitions,
+            starter_inventory_profile_definitions, starter_item_category_definitions,
+            starter_item_definitions, starter_operation_definitions,
+        };
+
+        fn inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
+            static CTX: std::sync::OnceLock<InventoryCatalogCtx<'static>> =
+                std::sync::OnceLock::new();
+            CTX.get_or_init(|| {
+                let categories =
+                    ItemCategoryCatalog::from_definitions(starter_item_category_definitions())
+                        .unwrap();
+                let items =
+                    ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+                let profiles = InventoryProfileCatalog::from_definitions(
+                    starter_inventory_profile_definitions(),
+                )
+                .unwrap();
+                let items = Box::leak(Box::new(items));
+                let categories = Box::leak(Box::new(categories));
+                let profiles = Box::leak(Box::new(profiles));
+                InventoryCatalogCtx::new(items, categories, profiles)
+            })
+        }
+
+        let mut sel = DispatchSelectionBundle::new();
+        let mut move_feedback = MoveCommandFeedback::default();
+        let mut world = flat_world();
+        let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        let mut terrain = DispatchTerrainBundle::new();
+        let mut panel = BuildingPanelState::default();
+        let categories = BuildingCategoryCatalog::default();
+        let building_catalog =
+            BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
+        let operation_catalog =
+            OperationCatalog::from_definitions(starter_operation_definitions()).unwrap();
+        let hut = create_building_with_inventory(
+            &building_catalog,
+            &mut world,
+            &BuildingDefinitionId::new("hut"),
+            pos(20.0, 20.0),
+            Quat::IDENTITY,
+            BuildingSource::Authored,
+            BuildingOwnership::with_affiliation(Affiliation::Player),
+            None,
+            inventory_ctx(),
+        )
+        .unwrap()
+        .id;
+        panel.open(hut);
+        assert_eq!(
+            building_work_priority_u8(&world, hut),
+            building_work_priority_u8_for_level(BuildingWorkPriorityLevel::Normal)
+        );
+
+        let status = dispatch_one(
+            &ClientIntent::AdjustBuildingWorkPriority {
+                building_id: hut,
+                increase: true,
+            },
+            &mut sel.apply_params(),
+            &mut move_feedback,
+            &mut world,
+            &UnitCatalog::default(),
+            &WeaponCatalog::default(),
+            &DoodadCatalog::default(),
+            &building_catalog,
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
+            &NavigationConfig::default(),
+            &AuthoredRelationshipCatalog::default(),
+            layout(),
+            1.0,
+            &PlayerInteractionSettings::default(),
+            None,
+            None,
+            &mut modifiers,
+            &mut None,
+            &mut PendingDispatchTrace::default(),
+            SelectionControllabilityPolicy::gameplay_default(),
+            None,
+            &mut BuildModeState::default(),
+            &LocalPlayerOwnership::default(),
+            &mut panel,
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            0,
+            &mut inventory_queue,
+            &operation_catalog,
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
+        );
+        assert_eq!(status, IntentDispatchStatus::Applied);
+        let policy = world.building_production_store().get_policy(hut).unwrap();
+        assert_eq!(
+            policy.priority,
+            building_work_priority_u8_for_level(BuildingWorkPriorityLevel::High)
+        );
+        assert_eq!(policy.control_source, ControlSource::PlayerControlled);
+    }
+
+    #[test]
+    fn foreign_building_work_priority_intent_is_ignored() {
+        use crate::world::{
+            Affiliation, BuildingCategoryCatalog, BuildingDefinitionId, BuildingOwnership,
+            BuildingSource, BuildingWorkPriorityLevel, InventoryCatalogCtx,
+            InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, OperationCatalog,
+            building_work_priority_u8, building_work_priority_u8_for_level,
+            create_building_with_inventory, starter_building_definitions,
+            starter_inventory_profile_definitions, starter_item_category_definitions,
+            starter_item_definitions, starter_operation_definitions,
+        };
+
+        fn inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
+            static CTX: std::sync::OnceLock<InventoryCatalogCtx<'static>> =
+                std::sync::OnceLock::new();
+            CTX.get_or_init(|| {
+                let categories =
+                    ItemCategoryCatalog::from_definitions(starter_item_category_definitions())
+                        .unwrap();
+                let items =
+                    ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+                let profiles = InventoryProfileCatalog::from_definitions(
+                    starter_inventory_profile_definitions(),
+                )
+                .unwrap();
+                let items = Box::leak(Box::new(items));
+                let categories = Box::leak(Box::new(categories));
+                let profiles = Box::leak(Box::new(profiles));
+                InventoryCatalogCtx::new(items, categories, profiles)
+            })
+        }
+
+        let mut sel = DispatchSelectionBundle::new();
+        let mut move_feedback = MoveCommandFeedback::default();
+        let mut world = flat_world();
+        let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        let mut terrain = DispatchTerrainBundle::new();
+        let mut panel = BuildingPanelState::default();
+        let categories = BuildingCategoryCatalog::default();
+        let building_catalog =
+            BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
+        let operation_catalog =
+            OperationCatalog::from_definitions(starter_operation_definitions()).unwrap();
+        let foreign = create_building_with_inventory(
+            &building_catalog,
+            &mut world,
+            &BuildingDefinitionId::new("hut"),
+            pos(20.0, 20.0),
+            Quat::IDENTITY,
+            BuildingSource::Authored,
+            BuildingOwnership {
+                owner_id: Some(crate::world::OwnerId::new(999)),
+                team_id: None,
+                affiliation: Affiliation::Hostile,
+            },
+            None,
+            inventory_ctx(),
+        )
+        .unwrap()
+        .id;
+
+        let status = dispatch_one(
+            &ClientIntent::AdjustBuildingWorkPriority {
+                building_id: foreign,
+                increase: true,
+            },
+            &mut sel.apply_params(),
+            &mut move_feedback,
+            &mut world,
+            &UnitCatalog::default(),
+            &WeaponCatalog::default(),
+            &DoodadCatalog::default(),
+            &building_catalog,
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
+            &NavigationConfig::default(),
+            &AuthoredRelationshipCatalog::default(),
+            layout(),
+            1.0,
+            &PlayerInteractionSettings::default(),
+            None,
+            None,
+            &mut modifiers,
+            &mut None,
+            &mut PendingDispatchTrace::default(),
+            SelectionControllabilityPolicy::gameplay_default(),
+            None,
+            &mut BuildModeState::default(),
+            &LocalPlayerOwnership::default(),
+            &mut panel,
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            0,
+            &mut inventory_queue,
+            &operation_catalog,
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
+        );
+        assert_eq!(status, IntentDispatchStatus::Ignored);
+        assert_eq!(
+            building_work_priority_u8(&world, foreign),
+            building_work_priority_u8_for_level(BuildingWorkPriorityLevel::Normal)
+        );
     }
 }

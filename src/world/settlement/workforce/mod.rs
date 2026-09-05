@@ -9,9 +9,10 @@ mod store;
 mod tests;
 
 pub use api::{
-    WorkforcePermissionError, clear_settlement_workforce_permissions,
-    clear_unit_workforce_permissions, set_unit_work_permission, unit_may_autonomously_perform_work,
-    unit_work_allowed,
+    WorkforcePermissionError, allow_all_unit_work_permissions,
+    clear_settlement_workforce_permissions, clear_unit_workforce_permissions,
+    deny_all_unit_work_permissions, set_unit_work_permission, unit_may_autonomously_perform_work,
+    unit_physically_capable_for_work_permission, unit_work_allowed,
 };
 pub use domain::WorkPermissionDomain;
 pub use mapping::work_permission_domain_for_task;

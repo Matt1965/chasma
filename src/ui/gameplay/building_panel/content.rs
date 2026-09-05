@@ -1,6 +1,5 @@
 //! Building Panel content snapshot (BP2): bindings, production readout, inventory sections.
 
-use crate::world::building_operational_efficiency;
 use crate::world::{
     BuildingCatalog, BuildingId, BuildingInventoryBinding, BuildingOperationParams,
     FarmProductionPhase, InventoryId, InventoryProfileCatalog, OperationCatalog,
@@ -8,13 +7,23 @@ use crate::world::{
     assess_production_execution, effective_inventory_binding_definitions, farm_growth_percent,
     farm_harvest_percent, format_efficiency_display, is_prispod_farm_definition,
 };
+use crate::world::{
+    building_is_constructible, building_operational_efficiency, building_work_priority_label,
+    building_work_priority_level,
+};
 
 /// Player-facing building panel snapshot derived from authoritative world data.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildingPanelSnapshot {
     pub header: BuildingPanelHeader,
+    pub work_priority: Option<BuildingPanelWorkPriority>,
     pub production: Option<BuildingPanelProduction>,
     pub inventories: Vec<BuildingPanelInventorySection>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildingPanelWorkPriority {
+    pub label: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,6 +64,11 @@ pub struct BuildingPanelInventorySection {
 impl BuildingPanelSnapshot {
     pub fn content_signature(&self) -> u64 {
         let mut sig = self.header.signature();
+        if let Some(work_priority) = &self.work_priority {
+            sig = sig
+                .wrapping_mul(31)
+                .wrapping_add(work_priority.label.len() as u64);
+        }
         if let Some(production) = &self.production {
             sig = sig.wrapping_mul(31).wrapping_add(production.signature());
         }
@@ -122,6 +136,15 @@ pub fn build_building_panel_snapshot(
         max_hp: record.vitals.max_hp,
     };
 
+    let work_priority = if building_shows_work_priority(record, definition) {
+        Some(BuildingPanelWorkPriority {
+            label: building_work_priority_label(building_work_priority_level(world, building_id))
+                .to_string(),
+        })
+    } else {
+        None
+    };
+
     let production = if definition.supported_operations.is_empty() {
         None
     } else {
@@ -146,9 +169,17 @@ pub fn build_building_panel_snapshot(
 
     Some(BuildingPanelSnapshot {
         header,
+        work_priority,
         production,
         inventories,
     })
+}
+
+pub fn building_shows_work_priority(
+    record: &crate::world::BuildingRecord,
+    definition: &crate::world::BuildingDefinition,
+) -> bool {
+    building_is_constructible(record) || !definition.supported_operations.is_empty()
 }
 
 fn build_production_readout(

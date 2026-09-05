@@ -101,6 +101,7 @@ fn create_unit_with_ownership_impl(
     }
 
     super::self_maintenance::initialize_unit_nutrition(&mut record.nutrition, definition);
+    super::work_skill::initialize_unit_work_skills(&mut record.work_skills);
 
     let chunk = crate::world::ChunkId::new(position.chunk);
     if let Err(error) = world.insert_unit(chunk, record.clone()) {

@@ -255,6 +255,29 @@ pub fn run_simulation_tick(
             item_categories,
             inventory_profiles,
         );
+        static DEFAULT_OPERATION_CATALOG: std::sync::OnceLock<crate::world::OperationCatalog> =
+            std::sync::OnceLock::new();
+        let operation_catalog = operation
+            .as_ref()
+            .map(|params| params.operation_catalog)
+            .unwrap_or_else(|| {
+                DEFAULT_OPERATION_CATALOG.get_or_init(crate::world::OperationCatalog::default)
+            });
+        {
+            let mut assign_ctx = crate::world::WorkerAssignmentContext {
+                world,
+                unit_catalog,
+                weapon_catalog,
+                doodad_catalog,
+                building_catalog,
+                operation_catalog,
+                interaction_catalog,
+                nav_config,
+                inventory_ctx: &inventory_ctx_assign,
+                simulation_tick,
+            };
+            let _assignment = crate::world::step_worker_assignment(&mut assign_ctx);
+        }
         let passability_hunger = PassabilityCatalogs {
             doodad: doodad_catalog,
             building: building_catalog,
@@ -270,28 +293,10 @@ pub fn run_simulation_tick(
             passability: passability_hunger,
             nav_config,
         };
+        // Hunger seeking runs after marketplace assignment so idle workers can claim
+        // productive work (for example farm harvest) before opportunistic food seeking
+        // blocks new claims for the rest of the tick.
         crate::world::step_unit_self_maintenance_pre_work(&mut hunger_ctx);
-        static DEFAULT_OPERATION_CATALOG: std::sync::OnceLock<crate::world::OperationCatalog> =
-            std::sync::OnceLock::new();
-        let operation_catalog = operation
-            .as_ref()
-            .map(|params| params.operation_catalog)
-            .unwrap_or_else(|| {
-                DEFAULT_OPERATION_CATALOG.get_or_init(crate::world::OperationCatalog::default)
-            });
-        let mut assign_ctx = crate::world::WorkerAssignmentContext {
-            world,
-            unit_catalog,
-            weapon_catalog,
-            doodad_catalog,
-            building_catalog,
-            operation_catalog,
-            interaction_catalog,
-            nav_config,
-            inventory_ctx: &inventory_ctx_assign,
-            simulation_tick,
-        };
-        let _assignment = crate::world::step_worker_assignment(&mut assign_ctx);
     }
     let worker_tasks = step_all_worker_tasks(
         world,

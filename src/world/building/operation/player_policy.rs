@@ -10,6 +10,10 @@ use super::commands::{
 use super::lifecycle::OperationLifecycle;
 use super::operation_id::OperationDefinitionId;
 use super::policy::ControlSource;
+use super::priority::{
+    BuildingWorkPriorityLevel, building_work_priority_u8_for_level,
+    step_building_work_priority_level,
+};
 
 /// Player toggles production enabled/disabled and takes manual control atomically.
 pub fn apply_player_production_enabled(
@@ -57,6 +61,35 @@ pub fn apply_player_production_selected_operation(
         .building_production_store_mut()
         .get_policy_mut(building_id)
         .control_source = ControlSource::PlayerControlled;
+    Ok(())
+}
+
+/// Player adjusts building work priority and takes manual control atomically.
+pub fn apply_player_building_work_priority(
+    world: &mut WorldData,
+    building_catalog: &BuildingCatalog,
+    operation_catalog: &OperationCatalog,
+    building_id: BuildingId,
+    increase: bool,
+) -> Result<(), ProductionCommandError> {
+    require_building(world, building_id)?;
+    let definition = world
+        .get_building(building_id)
+        .and_then(|record| building_catalog.get(&record.definition_id))
+        .ok_or(ProductionCommandError::BuildingNotFound(building_id))?;
+    let store = world.building_production_store_mut();
+    store.ensure_policy_for_building(building_id, definition, operation_catalog);
+    let current_priority = store
+        .get_policy(building_id)
+        .map(|policy| policy.priority)
+        .unwrap_or(super::priority::DEFAULT_BUILDING_WORK_PRIORITY_U8);
+    let level = step_building_work_priority_level(
+        super::priority::building_work_priority_level_from_u8(current_priority),
+        increase,
+    );
+    let policy = store.get_policy_mut(building_id);
+    policy.priority = building_work_priority_u8_for_level(level);
+    policy.control_source = ControlSource::PlayerControlled;
     Ok(())
 }
 

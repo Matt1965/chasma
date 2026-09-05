@@ -1323,3 +1323,67 @@ fn foreign_building_inventory_access_denied() {
         InventoryAccessResult::Denied(InventoryAccessDenialReason::PolicyDenied)
     ));
 }
+
+#[test]
+fn owned_constructible_building_shows_human_readable_work_priority() {
+    use crate::world::{
+        BuildingOperationParams, BuildingTerrainAssessmentStore, OperationCatalog,
+        create_building_with_inventory, starter_building_definitions,
+        starter_operation_definitions,
+    };
+
+    let farm = starter_building_definitions()
+        .into_iter()
+        .find(|def| def.id.as_str() == "prispod_farm")
+        .expect("farm");
+    let categories = BuildingCategoryCatalog::default();
+    let catalog = BuildingCatalog::from_definitions(vec![farm.clone()], &categories).unwrap();
+    let mut world = flat_world();
+    let building_id = create_building_with_inventory(
+        &catalog,
+        &mut world,
+        &farm.id,
+        pos(1.0, 1.0),
+        Quat::IDENTITY,
+        BuildingSource::Authored,
+        BuildingOwnership::with_affiliation(Affiliation::Player),
+        None,
+        inventory_ctx(),
+    )
+    .unwrap()
+    .id;
+    let mut assessment = BuildingTerrainAssessmentStore::default();
+    let operation_catalog =
+        OperationCatalog::from_definitions(starter_operation_definitions()).unwrap();
+    let mut params = BuildingOperationParams {
+        field_catalog: &crate::world::TerrainFieldCatalog::default(),
+        requirement_catalog: &crate::world::BuildingFieldRequirementCatalog::default(),
+        profile_catalog: &crate::world::FieldResponseProfileCatalog::default(),
+        footprint_catalog: &crate::world::FootprintCatalog::default(),
+        operation_catalog: &operation_catalog,
+        inventory_ctx: &inventory_ctx(),
+        requirement_revision: 0,
+        profile_revision: 0,
+        assessment_store: &mut assessment,
+    };
+    let snapshot = build_building_panel_snapshot(
+        &world,
+        &catalog,
+        &operation_catalog,
+        &mut params,
+        inventory_profiles(),
+        building_id,
+    )
+    .unwrap();
+    let work_priority = snapshot.work_priority.expect("work priority row");
+    assert_eq!(work_priority.label, "Normal");
+}
+
+#[test]
+fn foreign_building_does_not_expose_work_priority_controls() {
+    let mut world = flat_world();
+    let foreign = insert_building(&mut world, 17, foreign_ownership());
+    let mut panel = BuildingPanelState::default();
+    on_gameplay_building_selected(foreign, &mut panel, &world, &player());
+    assert!(panel.open_building_id.is_none());
+}

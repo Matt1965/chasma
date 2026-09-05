@@ -13,7 +13,7 @@ use crate::ui::gameplay::styles::{
     BAR_BG, TEXT_MUTED, TEXT_PRIMARY, hud_body_font, hud_title_font,
 };
 use crate::units::input::SelectedUnits;
-use crate::world::{UnitCatalog, WeaponCatalog, WorldData};
+use crate::world::{UnitCatalog, WeaponCatalog, WorkSkillCatalog, WorldData};
 
 use super::content::{build_unit_skills_snapshot, format_unit_skills_panel_text};
 use super::state::UnitSkillsPanelState;
@@ -146,6 +146,7 @@ pub fn sync_unit_skills_panel(
     world: Res<WorldData>,
     unit_catalog: Res<UnitCatalog>,
     weapon_catalog: Res<WeaponCatalog>,
+    work_skill_catalog: Res<WorkSkillCatalog>,
     mut cache: Local<Option<String>>,
     mut body: Query<&mut Text, With<UnitSkillsPanelBodyText>>,
     mut title: Query<
@@ -163,9 +164,13 @@ pub fn sync_unit_skills_panel(
     let Some(unit_id) = panel.displayed_unit_id else {
         return;
     };
-    let Some(snapshot) =
-        build_unit_skills_snapshot(unit_id, &world, &unit_catalog, &weapon_catalog)
-    else {
+    let Some(snapshot) = build_unit_skills_snapshot(
+        unit_id,
+        &world,
+        &unit_catalog,
+        &weapon_catalog,
+        &work_skill_catalog,
+    ) else {
         return;
     };
     let formatted = format_unit_skills_panel_text(&snapshot);

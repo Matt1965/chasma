@@ -34,6 +34,7 @@ fn headless_app() -> App {
         .init_resource::<BuildModeState>()
         .init_resource::<UnitCatalog>()
         .init_resource::<WeaponCatalog>()
+        .init_resource::<crate::world::WorkSkillCatalog>()
         .init_resource::<FloatingGameplayWindowRegistry>();
     app
 }
@@ -259,6 +260,7 @@ fn sync_updates_body_text_for_open_panel() {
         app.world().resource::<WorldData>(),
         &catalog,
         &weapons(),
+        app.world().resource::<crate::world::WorkSkillCatalog>(),
     )
     .unwrap();
     let expected = format_unit_skills_panel_text(&snapshot);

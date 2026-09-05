@@ -1141,4 +1141,269 @@ mod schedule_level {
             "two full natural grow→harvest cycles should complete without Force Cycle"
         );
     }
+
+    #[test]
+    fn scheduled_two_workers_reuse_across_four_priority_farms() {
+        use crate::world::building::operation::{
+            BuildingWorkPriorityLevel, set_building_work_priority,
+        };
+        use std::collections::{BTreeMap, BTreeSet};
+
+        let mut world = flat_world();
+        bootstrap_constant_field(
+            world.terrain_fields_mut(),
+            TerrainFieldId::new("water"),
+            ChunkCoord::new(0, 0),
+            field_value_from_percent(50.0),
+        );
+        let settlement_id = create_settlement(
+            &mut world,
+            pos(64.0, 64.0),
+            "Priority Farm Town",
+            SettlementOwnership::player_default(),
+            SettlementKind::Town,
+            None,
+            None,
+            0,
+        )
+        .unwrap()
+        .settlement_id;
+        ensure_settlement_states_for_world(&mut world);
+
+        let building_catalog = building_catalog();
+        let operation_catalog = operation_catalog();
+        let terrain_catalogs = terrain_catalogs(&building_catalog);
+        let mut assessment_store = crate::world::BuildingTerrainAssessmentStore::default();
+        let definition = prispod_farm_definition();
+        let unit_catalog = UnitCatalog::default();
+
+        let farm_positions = [
+            (pos(58.0, 58.0), BuildingWorkPriorityLevel::High),
+            (pos(70.0, 58.0), BuildingWorkPriorityLevel::High),
+            (pos(58.0, 70.0), BuildingWorkPriorityLevel::Low),
+            (pos(70.0, 70.0), BuildingWorkPriorityLevel::Low),
+        ];
+        let mut farm_ids = Vec::new();
+        for (position, priority_level) in farm_positions {
+            let building_id = world.allocate_building_id();
+            let mut record = BuildingRecord::new(
+                building_id,
+                definition.id.clone(),
+                BuildingPlacement::new(position, Quat::IDENTITY),
+                BuildingOwnership::with_affiliation(Affiliation::Player),
+                definition.max_hp,
+                BuildingSource::Authored,
+            );
+            record.lifecycle_state = BuildingLifecycleState::Complete;
+            record.construction.progress_0_1 = 1.0;
+            attach_inventory_on_building_create(
+                &mut world,
+                test_inventory_ctx(),
+                &mut record,
+                &definition,
+            )
+            .unwrap();
+            world
+                .insert_building(ChunkId::new(ChunkCoord::new(0, 0)), record)
+                .unwrap();
+            assign_building_settlement(&mut world, building_id, Some(settlement_id)).unwrap();
+            set_building_work_priority(
+                &mut world,
+                &building_catalog,
+                &operation_catalog,
+                building_id,
+                priority_level,
+            )
+            .unwrap();
+            farm_ids.push(building_id);
+        }
+
+        let worker_a = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(64.0, 62.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let worker_b = create_unit_with_ownership(
+            &unit_catalog,
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(64.0, 66.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        assign_unit_settlement(&mut world, worker_a, Some(settlement_id)).unwrap();
+        assign_unit_settlement(&mut world, worker_b, Some(settlement_id)).unwrap();
+
+        for &farm_id in &farm_ids {
+            grow_farm_to_ready(
+                &mut world,
+                &mut assessment_store,
+                &terrain_catalogs,
+                &operation_catalog,
+                &building_catalog,
+                farm_id,
+            );
+        }
+
+        let interaction = BuildingInteractionProfileCatalog::default();
+        let weapons = WeaponCatalog::from_definitions(starter_weapon_definitions()).unwrap();
+        let doodad = DoodadCatalog::default();
+        let footprint = FootprintCatalog::default();
+        let nav = NavigationConfig::default();
+        let interior = InteriorProfileCatalog::default();
+        let nav_blueprint = BuildingNavigationBlueprintCatalog::default();
+        let mut combat_scan = CombatAiScanState::default();
+
+        let high_farms = BTreeSet::from([farm_ids[0], farm_ids[1]]);
+        let low_farms = BTreeSet::from([farm_ids[2], farm_ids[3]]);
+
+        sync_operate_workstation_tasks(&mut world, &building_catalog, 1);
+        let first_assign = {
+            let inventory_ctx = test_inventory_ctx();
+            let mut assign_ctx = WorkerAssignmentContext {
+                world: &mut world,
+                unit_catalog: &unit_catalog,
+                weapon_catalog: &weapons,
+                doodad_catalog: &doodad,
+                building_catalog: &building_catalog,
+                operation_catalog: &operation_catalog,
+                interaction_catalog: &interaction,
+                nav_config: &nav,
+                inventory_ctx,
+                simulation_tick: 1,
+            };
+            step_worker_assignment(&mut assign_ctx)
+        };
+        assert_eq!(first_assign.assignments.len(), 2);
+        for assignment in &first_assign.assignments {
+            let task_id = assignment.task_id.expect("task");
+            let building_id = world
+                .task_store()
+                .get(task_id)
+                .unwrap()
+                .target_building_id();
+            assert!(
+                high_farms.contains(&building_id),
+                "initial claims should prefer high-priority farms"
+            );
+        }
+
+        let mut worker_claims: BTreeMap<UnitId, u32> = BTreeMap::new();
+        let mut worker_completions: BTreeMap<UnitId, u32> = BTreeMap::new();
+        let mut had_task: BTreeMap<UnitId, bool> = BTreeMap::new();
+        let mut saw_low_claim = false;
+
+        let harvest_ticks =
+            expected_ticks_to_complete(EFFICIENCY_BASIS_POINTS_ONE_HUNDRED_PERCENT) as u32;
+        let max_ticks = (harvest_ticks + 120) * 8;
+
+        for tick in 1..=max_ticks {
+            let inventory_ctx = test_inventory_ctx();
+            let mut operation = BuildingOperationParams {
+                field_catalog: terrain_catalogs.fields,
+                requirement_catalog: terrain_catalogs.requirements,
+                profile_catalog: terrain_catalogs.profiles,
+                footprint_catalog: terrain_catalogs.footprints,
+                operation_catalog: &operation_catalog,
+                inventory_ctx,
+                requirement_revision: terrain_catalogs.requirement_revision,
+                profile_revision: terrain_catalogs.profile_revision,
+                assessment_store: &mut assessment_store,
+            };
+            let _ = run_simulation_tick(
+                &mut world,
+                &unit_catalog,
+                &weapons,
+                &doodad,
+                &building_catalog,
+                &footprint,
+                &interaction,
+                &nav,
+                crate::world::AttackTargetingPolicy::default(),
+                &AuthoredRelationshipCatalog::default(),
+                &CombatAiSettings::default(),
+                &mut combat_scan,
+                BuildingConstructionSettings::default(),
+                &interior,
+                Some(&nav_blueprint),
+                inventory_ctx.items,
+                inventory_ctx.categories,
+                inventory_ctx.profiles,
+                &CorpseSettings::default(),
+                SIMULATION_TICK_SECONDS,
+                tick as u64,
+                Some(&mut operation),
+            );
+
+            for worker in [worker_a, worker_b] {
+                let has_task = world.task_store().unit_task_id(worker).is_some();
+                let had = had_task.get(&worker).copied().unwrap_or(false);
+                if has_task && !had {
+                    worker_claims
+                        .insert(worker, worker_claims.get(&worker).copied().unwrap_or(0) + 1);
+                    let task_id = world.task_store().unit_task_id(worker).unwrap();
+                    let building_id = world
+                        .task_store()
+                        .get(task_id)
+                        .unwrap()
+                        .target_building_id();
+                    if low_farms.contains(&building_id) {
+                        saw_low_claim = true;
+                    }
+                }
+                if !has_task && had {
+                    worker_completions.insert(
+                        worker,
+                        worker_completions.get(&worker).copied().unwrap_or(0) + 1,
+                    );
+                }
+                had_task.insert(worker, has_task);
+            }
+
+            if worker_claims.get(&worker_a).copied().unwrap_or(0) >= 2
+                && worker_claims.get(&worker_b).copied().unwrap_or(0) >= 2
+                && worker_completions.get(&worker_a).copied().unwrap_or(0) >= 1
+                && worker_completions.get(&worker_b).copied().unwrap_or(0) >= 1
+                && saw_low_claim
+            {
+                break;
+            }
+        }
+
+        assert!(
+            worker_claims.get(&worker_a).copied().unwrap_or(0) >= 2,
+            "worker A should claim harvest work repeatedly; claims={worker_claims:?}"
+        );
+        assert!(
+            worker_claims.get(&worker_b).copied().unwrap_or(0) >= 2,
+            "worker B should claim harvest work repeatedly; claims={worker_claims:?}"
+        );
+        assert!(
+            worker_completions.get(&worker_a).copied().unwrap_or(0) >= 1,
+            "worker A should complete at least one harvest"
+        );
+        assert!(
+            worker_completions.get(&worker_b).copied().unwrap_or(0) >= 1,
+            "worker B should complete at least one harvest"
+        );
+        assert!(
+            saw_low_claim,
+            "low-priority farms should eventually be claimed"
+        );
+        assert_eq!(
+            world.get_unit(worker_a).unwrap().settlement_id,
+            Some(settlement_id)
+        );
+        assert_eq!(
+            world.get_unit(worker_b).unwrap().settlement_id,
+            Some(settlement_id)
+        );
+    }
 }

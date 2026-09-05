@@ -2,7 +2,8 @@
 
 use std::fmt;
 
-use crate::world::{SettlementId, UnitId, WorldData};
+use crate::world::task::unit_work_capabilities;
+use crate::world::{SettlementId, UnitCatalog, UnitId, WorldData};
 use crate::world::{settlement_for_building_work, unit_is_settlement_member};
 
 use super::domain::WorkPermissionDomain;
@@ -92,11 +93,56 @@ pub fn set_unit_work_permission(
     Ok(())
 }
 
+/// Physical capability for a permission domain, when a reliable mapping exists.
+///
+/// Returns `None` when capability architecture cannot classify the domain cleanly.
+/// UI should still show the permission checkbox and let task eligibility enforce capability.
+pub fn unit_physically_capable_for_work_permission(
+    catalog: &UnitCatalog,
+    world: &WorldData,
+    unit_id: UnitId,
+    domain: WorkPermissionDomain,
+) -> Option<bool> {
+    let caps = unit_work_capabilities(catalog, world, unit_id)?;
+    Some(match domain {
+        WorkPermissionDomain::Farming => caps.can_operate_workstation,
+        WorkPermissionDomain::Construction => caps.can_construct,
+        WorkPermissionDomain::GeneralLabor
+        | WorkPermissionDomain::Cooking
+        | WorkPermissionDomain::Science
+        | WorkPermissionDomain::Smithing => return None,
+    })
+}
+
 pub fn clear_unit_workforce_permissions(world: &mut WorldData, unit_id: UnitId) {
     world
         .settlement_store_mut()
         .workforce_permissions_mut()
         .clear_unit(unit_id);
+}
+
+/// Disable all current player-controllable workforce permission domains for one member.
+pub fn deny_all_unit_work_permissions(
+    world: &mut WorldData,
+    settlement_id: SettlementId,
+    unit_id: UnitId,
+) -> Result<(), WorkforcePermissionError> {
+    for domain in WorkPermissionDomain::ALL {
+        set_unit_work_permission(world, settlement_id, unit_id, domain, false)?;
+    }
+    Ok(())
+}
+
+/// Restore all current player-controllable workforce permission domains for one member.
+pub fn allow_all_unit_work_permissions(
+    world: &mut WorldData,
+    settlement_id: SettlementId,
+    unit_id: UnitId,
+) -> Result<(), WorkforcePermissionError> {
+    for domain in WorkPermissionDomain::ALL {
+        set_unit_work_permission(world, settlement_id, unit_id, domain, true)?;
+    }
+    Ok(())
 }
 
 pub fn clear_settlement_workforce_permissions(world: &mut WorldData, settlement_id: SettlementId) {

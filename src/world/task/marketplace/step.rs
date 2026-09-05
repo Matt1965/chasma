@@ -451,7 +451,7 @@ fn collect_open_listings(ctx: &WorkerAssignmentContext<'_>) -> Vec<MarketplaceLi
             haul_request_id: Some(request.id),
             building_id: request.owning_building_id,
             task_type: TaskType::Haul,
-            priority: haul_priority_to_task(request.priority),
+            priority: haul_listing_priority(ctx.world, request),
             created_tick: request.created_tick,
         });
     }
@@ -463,6 +463,16 @@ fn marketplace_task_type(task_type: TaskType) -> bool {
     matches!(
         task_type,
         TaskType::ConstructBuilding | TaskType::OperateWorkstation
+    )
+}
+
+fn haul_listing_priority(
+    world: &crate::world::WorldData,
+    request: &crate::world::logistics::HaulingRequest,
+) -> TaskPriority {
+    crate::world::building::operation::building_work_priority_to_task_priority_for_building(
+        world,
+        request.owning_building_id,
     )
 }
 

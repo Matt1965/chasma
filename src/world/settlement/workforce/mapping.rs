@@ -19,7 +19,7 @@ pub fn work_permission_domain_for_task(
 ) -> Option<WorkPermissionDomain> {
     match task_type {
         TaskType::ConstructBuilding => Some(WorkPermissionDomain::Construction),
-        TaskType::Haul => Some(WorkPermissionDomain::Hauling),
+        TaskType::Haul => Some(WorkPermissionDomain::GeneralLabor),
         TaskType::OperateWorkstation => work_permission_domain_for_operate_workstation(
             world,
             building_catalog,
@@ -56,7 +56,7 @@ fn work_permission_domain_for_operate_workstation(
     let operation = operation_catalog.get(&operation_id)?;
     match operation.category {
         OperationCategory::Agriculture => Some(WorkPermissionDomain::Farming),
-        OperationCategory::Extraction => Some(WorkPermissionDomain::Mining),
+        OperationCategory::Extraction => Some(WorkPermissionDomain::GeneralLabor),
         OperationCategory::Processing
         | OperationCategory::Crafting
         | OperationCategory::Research

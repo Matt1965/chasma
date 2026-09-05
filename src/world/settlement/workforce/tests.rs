@@ -233,7 +233,7 @@ fn construction_disallowed_blocks_autonomous_construction_only() {
 }
 
 #[test]
-fn mining_disallowed_does_not_block_farming_domain() {
+fn general_labor_disallowed_does_not_block_farming_domain() {
     let mut world = flat_world();
     let unit_catalog = UnitCatalog::default();
     let (settlement_id, worker) = settlement_with_worker(&mut world, &unit_catalog);
@@ -241,7 +241,7 @@ fn mining_disallowed_does_not_block_farming_domain() {
         &mut world,
         settlement_id,
         worker,
-        WorkPermissionDomain::Mining,
+        WorkPermissionDomain::GeneralLabor,
         false,
     )
     .unwrap();
@@ -249,7 +249,7 @@ fn mining_disallowed_does_not_block_farming_domain() {
         &world,
         settlement_id,
         worker,
-        WorkPermissionDomain::Mining
+        WorkPermissionDomain::GeneralLabor
     ));
     assert!(unit_work_allowed(
         &world,
@@ -330,7 +330,7 @@ fn domain_mapping_uses_operation_category_not_building_name() {
         building_id,
         TaskType::OperateWorkstation,
     );
-    assert_eq!(domain, Some(WorkPermissionDomain::Mining));
+    assert_eq!(domain, Some(WorkPermissionDomain::GeneralLabor));
 }
 
 #[test]
@@ -512,7 +512,7 @@ fn reassigned_unit_does_not_inherit_previous_settlement_denials() {
         &mut world,
         settlement_a,
         worker,
-        WorkPermissionDomain::Hauling,
+        WorkPermissionDomain::GeneralLabor,
         false,
     )
     .unwrap();
@@ -521,7 +521,7 @@ fn reassigned_unit_does_not_inherit_previous_settlement_denials() {
         &world,
         settlement_b,
         worker,
-        WorkPermissionDomain::Hauling
+        WorkPermissionDomain::GeneralLabor
     ));
 }
 
@@ -566,5 +566,88 @@ fn farming_permission_denied_blocks_autonomous_operate_gate() {
         settlement_id,
         worker,
         WorkPermissionDomain::Farming
+    ));
+}
+
+#[test]
+fn permission_domain_taxonomy_has_six_current_categories() {
+    assert_eq!(WorkPermissionDomain::ALL.len(), 6);
+    assert!(WorkPermissionDomain::ALL.contains(&WorkPermissionDomain::Farming));
+    assert!(WorkPermissionDomain::ALL.contains(&WorkPermissionDomain::GeneralLabor));
+    assert!(WorkPermissionDomain::ALL.contains(&WorkPermissionDomain::Construction));
+    assert!(WorkPermissionDomain::ALL.contains(&WorkPermissionDomain::Cooking));
+    assert!(WorkPermissionDomain::ALL.contains(&WorkPermissionDomain::Science));
+    assert!(WorkPermissionDomain::ALL.contains(&WorkPermissionDomain::Smithing));
+}
+
+#[test]
+fn general_labor_denied_blocks_haul_and_extraction() {
+    let mut world = flat_world();
+    let unit_catalog = UnitCatalog::default();
+    let building_catalog = crate::world::BuildingCatalog::default();
+    let ops = OperationCatalog::default();
+    let (settlement_id, worker) = settlement_with_worker(&mut world, &unit_catalog);
+    set_unit_work_permission(
+        &mut world,
+        settlement_id,
+        worker,
+        WorkPermissionDomain::GeneralLabor,
+        false,
+    )
+    .unwrap();
+    let hut = building_catalog
+        .get(&BuildingDefinitionId::new("hut"))
+        .expect("hut");
+    let quarry_id = place_hut(&mut world, &building_catalog);
+    enable_operate_policy(
+        &mut world,
+        quarry_id,
+        hut,
+        &ops,
+        crate::world::OperationDefinitionId::new("mine_stone"),
+    );
+    assign_building_settlement(&mut world, quarry_id, Some(settlement_id)).unwrap();
+    assert!(!unit_may_autonomously_perform_work(
+        &world,
+        &building_catalog,
+        &ops,
+        worker,
+        quarry_id,
+        TaskType::OperateWorkstation,
+    ));
+    assert!(!unit_may_autonomously_perform_work(
+        &world,
+        &building_catalog,
+        &ops,
+        worker,
+        quarry_id,
+        TaskType::Haul,
+    ));
+}
+
+#[test]
+fn cooking_permission_does_not_block_farming_or_construction() {
+    let mut world = flat_world();
+    let unit_catalog = UnitCatalog::default();
+    let building_catalog = crate::world::BuildingCatalog::default();
+    let ops = OperationCatalog::default();
+    let (settlement_id, worker) = settlement_with_worker(&mut world, &unit_catalog);
+    set_unit_work_permission(
+        &mut world,
+        settlement_id,
+        worker,
+        WorkPermissionDomain::Cooking,
+        false,
+    )
+    .unwrap();
+    let hut_id = place_hut(&mut world, &building_catalog);
+    assign_building_settlement(&mut world, hut_id, Some(settlement_id)).unwrap();
+    assert!(unit_may_autonomously_perform_work(
+        &world,
+        &building_catalog,
+        &ops,
+        worker,
+        hut_id,
+        TaskType::ConstructBuilding,
     ));
 }

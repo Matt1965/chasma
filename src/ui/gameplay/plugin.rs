@@ -42,6 +42,12 @@ use super::layout::setup_player_hud_layout;
 use super::player_hud_state::{PlayerHudState, sync_primary_selection};
 use super::selected_unit_panel::sync_selected_unit_panel;
 use super::selection_ui::{clear_gameplay_hud_dirty, sync_gameplay_ui_state};
+use super::settlement_workforce::{
+    SettlementWorkforcePanelState, collect_settlement_workforce_keyboard_input,
+    handle_settlement_workforce_close_button, handle_settlement_workforce_controls,
+    spawn_settlement_workforce_panel, sync_settlement_workforce_panel,
+    sync_settlement_workforce_panel_visibility,
+};
 use super::squad_panel::{handle_squad_entry_clicks, sync_squad_panel, update_squad_entry_hover};
 use super::state::GameplayUiState;
 #[cfg(feature = "dev")]
@@ -82,6 +88,7 @@ impl Plugin for GameplayUiPlugin {
             .init_resource::<BuildModeCursorAnchor>()
             .init_resource::<BuildingPanelState>()
             .init_resource::<UnitSkillsPanelState>()
+            .init_resource::<SettlementWorkforcePanelState>()
             .init_resource::<FloatingGameplayWindowRegistry>()
             .init_resource::<PlayerHudHoverState>()
             .init_resource::<GameplayCursorPresentation>()
@@ -95,6 +102,7 @@ impl Plugin for GameplayUiPlugin {
                 spawn_inventory_panel,
                 spawn_building_menu_panel,
                 spawn_unit_skills_panel,
+                spawn_settlement_workforce_panel,
             ),
         );
         #[cfg(feature = "dev")]
@@ -140,6 +148,9 @@ impl Plugin for GameplayUiPlugin {
                 sync_unit_skills_panel_visibility,
                 sync_unit_skills_panel,
                 handle_unit_skills_close_button,
+                sync_settlement_workforce_panel_visibility,
+                sync_settlement_workforce_panel,
+                handle_settlement_workforce_close_button,
                 sync_floating_gameplay_window_presentation,
                 measure_floating_gameplay_window_sizes,
                 sync_squad_panel,
@@ -179,6 +190,7 @@ impl Plugin for GameplayUiPlugin {
                 handle_squad_entry_clicks,
                 handle_command_button_clicks,
                 handle_building_production_controls,
+                handle_settlement_workforce_controls,
                 update_squad_entry_hover,
                 update_command_button_hover,
             )
@@ -204,6 +216,7 @@ impl Plugin for GameplayUiPlugin {
                 handle_inventory_panel_buttons,
                 collect_inventory_keyboard_input,
                 collect_unit_skills_keyboard_input,
+                collect_settlement_workforce_keyboard_input,
                 reconcile_inventory_ui_from_world,
                 sync_inventory_panel_contents,
                 sync_inventory_drag_ghost,

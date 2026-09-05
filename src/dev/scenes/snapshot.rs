@@ -236,6 +236,15 @@ pub struct SceneUnitRecord {
     /// Current nutrition fullness (ADR-134 Phase 7). Absent in v17 and earlier.
     #[serde(default)]
     pub current_nutrition: Option<f32>,
+    /// Per-unit work skill overrides. Absent in legacy scenes.
+    #[serde(default)]
+    pub work_skill_overrides: Vec<SceneWorkSkillOverride>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SceneWorkSkillOverride {
+    pub skill_id: String,
+    pub value: i64,
 }
 
 fn default_building_uniform_scale_milli() -> i32 {
@@ -618,6 +627,15 @@ impl SceneUnitRecord {
             species_id: Some(record.species_id.as_str().to_string()),
             settlement_id: record.settlement_id.map(|id| id.raw()),
             current_nutrition: Some(record.nutrition.current),
+            work_skill_overrides: record
+                .work_skills
+                .overrides()
+                .iter()
+                .map(|(skill_id, value)| SceneWorkSkillOverride {
+                    skill_id: skill_id.as_str().to_string(),
+                    value: *value,
+                })
+                .collect(),
         }
     }
 
@@ -671,6 +689,12 @@ impl SceneUnitRecord {
             if let Some(profile) = crate::world::NutritionProfile::from_definition(definition) {
                 record.nutrition = crate::world::UnitNutritionState::clamped(current, profile.max);
             }
+        }
+        for override_entry in &self.work_skill_overrides {
+            record.work_skills.set(
+                crate::world::WorkSkillId::new(override_entry.skill_id.clone()),
+                override_entry.value,
+            );
         }
         Ok(record)
     }
@@ -1417,6 +1441,7 @@ mod nutrition_scene_tests {
             species_id: None,
             settlement_id: None,
             current_nutrition: None,
+            work_skill_overrides: Vec::new(),
         };
         let record = scene_unit.to_record(&catalog).unwrap();
         let profile = NutritionProfile::from_definition(

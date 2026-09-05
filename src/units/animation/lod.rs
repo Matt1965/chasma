@@ -272,6 +272,7 @@ mod tests {
             current_space_id: Default::default(),
             inventory_id: None,
             settlement_id: None,
+            work_skills: Default::default(),
         }
     }
 
