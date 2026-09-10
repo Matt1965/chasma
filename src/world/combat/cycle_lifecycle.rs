@@ -18,6 +18,10 @@ pub fn combat_engagement_target(combat_state: &CombatState) -> Option<UnitId> {
             target: Some(target),
             ..
         } => Some(*target),
+        CombatState::Holding {
+            target: Some(target),
+            ..
+        } => Some(*target),
         _ => None,
     }
 }
@@ -29,6 +33,10 @@ pub fn is_attack_capable_combat_state(combat_state: &CombatState) -> bool {
         CombatState::Attacking { .. }
             | CombatState::Chasing { .. }
             | CombatState::AttackMoving {
+                target: Some(_),
+                ..
+            }
+            | CombatState::Holding {
                 target: Some(_),
                 ..
             }

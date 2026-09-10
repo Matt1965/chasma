@@ -98,6 +98,7 @@ pub fn tick_unit_movement(
             &catalogs.building_catalog,
             &catalogs.footprint_catalog,
             &inventory_ctx,
+            tick,
         );
         let step_report = run_simulation_tick(
             &mut world,

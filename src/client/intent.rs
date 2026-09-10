@@ -40,6 +40,20 @@ pub enum ClientIntent {
         building_id: crate::world::BuildingId,
         increase: bool,
     },
+    /// Player toggles whether a storage-capable building accepts one item category.
+    SetBuildingStorageCategoryAccepted {
+        building_id: crate::world::BuildingId,
+        category_id: crate::world::ItemCategoryId,
+        accepted: bool,
+    },
+    /// Player restores default accept-all storage filters on the open owned building menu.
+    AcceptAllBuildingStorageCategories {
+        building_id: crate::world::BuildingId,
+    },
+    /// Player rejects all inbound storage categories on the open owned building menu.
+    ClearAllBuildingStorageCategories {
+        building_id: crate::world::BuildingId,
+    },
     /// Context-aware command from right-click (terrain or unit target).
     ContextualCommand {
         target: super::commands::CommandTarget,

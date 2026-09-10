@@ -36,6 +36,7 @@ pub fn finalize_unit_definition(
         doodad_kind_height_hint_meters: None,
         unit_height_hint_meters: Some(unit_default_desired_height_meters(
             definition.id.as_str(),
+            definition.render_key.0.as_deref(),
             definition.collision_radius_meters,
         )),
     });

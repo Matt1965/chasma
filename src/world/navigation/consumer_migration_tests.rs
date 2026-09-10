@@ -815,6 +815,7 @@ fn vertical_player_command_inside_concave_region_moves_unit() {
         &NavigationConfig::default(),
         goal,
         AttackTargetingPolicy::default(),
+        &[],
     );
     assert_eq!(report.issued, 1);
     let resolve_report = resolve_pending_unit_orders(
@@ -916,6 +917,7 @@ fn vertical_player_command_does_not_cross_closed_boundary_to_nowhere() {
         &NavigationConfig::default(),
         void_goal,
         AttackTargetingPolicy::default(),
+        &[],
     );
     resolve_pending_unit_orders(
         &mut world,

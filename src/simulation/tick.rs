@@ -143,7 +143,7 @@ pub fn run_simulation_tick(
             passability: passability_hunger,
             nav_config,
         };
-        crate::world::step_unit_nutrition_decay(&mut hunger_ctx);
+        crate::world::step_unit_nutrition_decay(&mut hunger_ctx, delta_seconds);
     }
     let building_construction = step_all_building_construction(
         world,
@@ -312,7 +312,28 @@ pub fn run_simulation_tick(
     );
     let inventory_ctx =
         crate::world::InventoryCatalogCtx::new(item_catalog, item_categories, inventory_profiles);
-    let hauling = crate::world::step_haul_worker_tasks(world, building_catalog, &inventory_ctx);
+    crate::world::sync_dirty_storage_logistics(
+        world,
+        building_catalog,
+        simulation_tick,
+        &inventory_ctx,
+    );
+    crate::world::retry_blocked_hauling_requests(
+        world,
+        building_catalog,
+        simulation_tick,
+        &inventory_ctx,
+    );
+    let hauling = crate::world::step_haul_worker_tasks(
+        world,
+        building_catalog,
+        interaction_catalog,
+        &inventory_ctx,
+        unit_catalog,
+        passability,
+        nav_config,
+        simulation_tick,
+    );
     let movement = step_all_unit_movement(world, unit_catalog, passability, delta_seconds);
     {
         let passability_hunger = PassabilityCatalogs {

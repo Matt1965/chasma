@@ -125,6 +125,7 @@ fn grow_farm_to_ready(
         requirement_revision: terrain_catalogs.requirement_revision,
         profile_revision: terrain_catalogs.profile_revision,
         assessment_store,
+        simulation_tick: 0,
     };
     let ticks = expected_ticks_to_complete(EFFICIENCY_BASIS_POINTS_ONE_HUNDRED_PERCENT) as u32;
     for _ in 0..ticks {
@@ -167,6 +168,7 @@ fn step_farm_labor(
         requirement_revision: terrain_catalogs.requirement_revision,
         profile_revision: terrain_catalogs.profile_revision,
         assessment_store,
+        simulation_tick: 0,
     };
     let _ = step_all_worker_tasks(
         world,
@@ -874,6 +876,7 @@ mod schedule_level {
                 requirement_revision: self.terrain_catalogs.requirement_revision,
                 profile_revision: self.terrain_catalogs.profile_revision,
                 assessment_store: &mut self.assessment_store,
+                simulation_tick: tick,
             };
             let _ = run_simulation_tick(
                 &mut self.world,
@@ -1074,6 +1077,10 @@ mod schedule_level {
             "runtime unit creation must start at authored fullness"
         );
 
+        harness.world.mutate_unit(harness.worker_id, |record| {
+            record.nutrition.current = profile.critical_threshold;
+        });
+
         let harvest_ticks =
             expected_ticks_to_complete(EFFICIENCY_BASIS_POINTS_ONE_HUNDRED_PERCENT) as u32;
         let max_ticks = 500 + harvest_ticks + 250;
@@ -1104,8 +1111,7 @@ mod schedule_level {
 
         assert!(
             saw_critical_before_claim,
-            "passive farm growth should outlast starting nutrition and reach critical hunger \
-             before harvest work is claimed"
+            "worker must be critically hungry before harvest work is claimed"
         );
         assert!(
             assigned,
@@ -1316,6 +1322,7 @@ mod schedule_level {
                 requirement_revision: terrain_catalogs.requirement_revision,
                 profile_revision: terrain_catalogs.profile_revision,
                 assessment_store: &mut assessment_store,
+                simulation_tick: tick as u64,
             };
             let _ = run_simulation_tick(
                 &mut world,

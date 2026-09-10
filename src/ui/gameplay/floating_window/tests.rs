@@ -1,11 +1,59 @@
 //! BP5 floating-window focused tests (spec items A–T where unit-testable).
 
+use bevy::ecs::system::RunSystemOnce;
 use bevy::prelude::*;
 
 use super::id::FloatingGameplayWindowId;
+use super::shell::{FloatingWindowChrome, FloatingWindowTitleRail};
 use super::state::FloatingGameplayWindowRegistry;
+use crate::ui::gameplay::building_panel::spawn_building_menu_panel;
+use crate::ui::gameplay::inventory::spawn_inventory_panel;
 use crate::ui::gameplay::inventory::{InventoryDragState, InventoryUiState};
+use crate::ui::gameplay::settlement_workforce::spawn_settlement_workforce_panel;
+use crate::ui::gameplay::unit_skills::spawn_unit_skills_panel;
 use crate::world::{InventoryId, ItemDefinitionId};
+
+fn headless_ui_app() -> App {
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), bevy::ui::UiPlugin));
+    app.init_resource::<FloatingGameplayWindowRegistry>();
+    app
+}
+
+#[test]
+fn gameplay_floating_windows_share_tier2_chrome() {
+    let mut app = headless_ui_app();
+    app.world_mut()
+        .run_system_once(spawn_building_menu_panel)
+        .expect("building menu");
+    app.world_mut()
+        .run_system_once(spawn_inventory_panel)
+        .expect("inventory");
+    app.world_mut()
+        .run_system_once(spawn_unit_skills_panel)
+        .expect("unit skills");
+    app.world_mut()
+        .run_system_once(spawn_settlement_workforce_panel)
+        .expect("workforce");
+    let mut world = app.world_mut();
+    assert_eq!(
+        world
+            .query::<&FloatingWindowChrome>()
+            .iter(&mut world)
+            .count(),
+        4,
+        "each gameplay floating window should spawn shared inner chrome"
+    );
+    assert_eq!(
+        world
+            .query::<&FloatingWindowTitleRail>()
+            .iter(&mut world)
+            .count(),
+        4,
+        "each gameplay floating window should spawn a title rail"
+    );
+    assert_eq!(FloatingGameplayWindowId::ALL.len(), 4);
+}
 
 #[test]
 fn container_storage_uses_unit_inventory_floating_window() {

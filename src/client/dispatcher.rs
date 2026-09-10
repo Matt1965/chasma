@@ -19,7 +19,7 @@ use crate::units::UnitRenderEntity;
 use crate::units::input::{
     MoveOrdersReport, PlayerInteractionSettings, SelectedUnits, collect_units_in_screen_rect,
     issue_attack_move_orders_to_selection, issue_attack_orders_to_selection,
-    issue_idle_orders_to_selection, issue_move_orders_to_selection,
+    issue_hold_orders_to_selection, issue_idle_orders_to_selection, issue_move_orders_to_selection,
     prune_non_commandable_from_selection,
 };
 use crate::world::{
@@ -28,8 +28,10 @@ use crate::world::{
     NavigationPath, OperationCatalog, PassabilityCatalogs, UnitCatalog, UnitId, WeaponCatalog,
     WorldConfig, WorldData, WorldPosition, apply_player_building_work_priority,
     apply_player_production_enabled, apply_player_production_selected_operation,
-    assign_construct_building_task, assign_operate_workstation_task, filter_commandable_unit_ids,
-    resolve_unit_click_to_order, resolve_world_click_to_order, xz_distance,
+    apply_player_storage_accept_all, apply_player_storage_category_accepted,
+    apply_player_storage_clear_all, assign_construct_building_task,
+    assign_operate_workstation_task, filter_commandable_unit_ids, resolve_unit_click_to_order,
+    resolve_world_click_to_order, xz_distance,
 };
 
 use super::commands::{
@@ -38,6 +40,13 @@ use super::commands::{
     resolve_contextual_command_with_armed, resolve_palette_command,
 };
 use super::intent::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
+
+fn exclude_occupants_for_command_target(target: &CommandTarget) -> Vec<UnitId> {
+    match target {
+        CommandTarget::Unit { unit_id } => vec![*unit_id],
+        _ => Vec::new(),
+    }
+}
 use crate::world::{
     BuildingOwnership, BuildingPlacementConfig, BuildingPlacementContext, OccupancyCatalogs,
     SelectionControllabilityPolicy, place_player_building, unit_is_selectable,
@@ -72,6 +81,7 @@ pub struct DispatchSimulationParams<'w> {
     pub nav_config: Res<'w, NavigationConfig>,
     pub authored_relationships: Res<'w, AuthoredRelationshipCatalog>,
     pub operation_catalog: Res<'w, OperationCatalog>,
+    pub item_category_catalog: Res<'w, crate::world::ItemCategoryCatalog>,
     pub field_catalog: Res<'w, crate::world::TerrainFieldCatalog>,
     pub profile_catalog: Res<'w, crate::world::FieldResponseProfileCatalog>,
     pub requirement_catalog: Res<'w, crate::world::BuildingFieldRequirementCatalog>,
@@ -199,6 +209,7 @@ pub fn dispatch_client_intents(
         nav_config,
         authored_relationships,
         operation_catalog,
+        item_category_catalog,
         field_catalog,
         profile_catalog,
         requirement_catalog,
@@ -244,6 +255,7 @@ pub fn dispatch_client_intents(
                 frame_index.0,
                 &mut player_params.inventory_queue,
                 &operation_catalog,
+                &item_category_catalog,
                 &field_catalog,
                 &profile_catalog,
                 &requirement_catalog,
@@ -380,6 +392,68 @@ fn dispatch_building_work_priority(
     }
 }
 
+fn dispatch_building_storage_category(
+    building_id: crate::world::BuildingId,
+    category_id: crate::world::ItemCategoryId,
+    accepted: bool,
+    building_panel: &BuildingPanelState,
+    world: &mut WorldData,
+    player_ownership: &crate::player::LocalPlayerOwnership,
+    building_catalog: &BuildingCatalog,
+) -> IntentDispatchStatus {
+    if !building_production_mutation_allowed(building_panel, building_id, world, player_ownership) {
+        return IntentDispatchStatus::Ignored;
+    }
+    match apply_player_storage_category_accepted(
+        world,
+        building_catalog,
+        building_id,
+        category_id,
+        accepted,
+    ) {
+        Ok(()) => IntentDispatchStatus::Applied,
+        Err(_) => IntentDispatchStatus::Ignored,
+    }
+}
+
+fn dispatch_building_storage_accept_all(
+    building_id: crate::world::BuildingId,
+    building_panel: &BuildingPanelState,
+    world: &mut WorldData,
+    player_ownership: &crate::player::LocalPlayerOwnership,
+    building_catalog: &BuildingCatalog,
+) -> IntentDispatchStatus {
+    if !building_production_mutation_allowed(building_panel, building_id, world, player_ownership) {
+        return IntentDispatchStatus::Ignored;
+    }
+    match apply_player_storage_accept_all(world, building_catalog, building_id) {
+        Ok(()) => IntentDispatchStatus::Applied,
+        Err(_) => IntentDispatchStatus::Ignored,
+    }
+}
+
+fn dispatch_building_storage_clear_all(
+    building_id: crate::world::BuildingId,
+    building_panel: &BuildingPanelState,
+    world: &mut WorldData,
+    player_ownership: &crate::player::LocalPlayerOwnership,
+    building_catalog: &BuildingCatalog,
+    item_category_catalog: &crate::world::ItemCategoryCatalog,
+) -> IntentDispatchStatus {
+    if !building_production_mutation_allowed(building_panel, building_id, world, player_ownership) {
+        return IntentDispatchStatus::Ignored;
+    }
+    match apply_player_storage_clear_all(
+        world,
+        building_catalog,
+        item_category_catalog,
+        building_id,
+    ) {
+        Ok(()) => IntentDispatchStatus::Applied,
+        Err(_) => IntentDispatchStatus::Ignored,
+    }
+}
+
 fn dispatch_one(
     intent: &ClientIntent,
     apply_params: &mut ApplyWorldSelectionParams<'_>,
@@ -410,6 +484,7 @@ fn dispatch_one(
     simulation_tick: u64,
     inventory_queue: &mut crate::client::inventory_intent::InventoryIntentQueue,
     operation_catalog: &OperationCatalog,
+    item_category_catalog: &crate::world::ItemCategoryCatalog,
     field_catalog: &crate::world::TerrainFieldCatalog,
     profile_catalog: &crate::world::FieldResponseProfileCatalog,
     requirement_catalog: &crate::world::BuildingFieldRequirementCatalog,
@@ -544,6 +619,38 @@ fn dispatch_one(
             building_catalog,
             operation_catalog,
         ),
+        ClientIntent::SetBuildingStorageCategoryAccepted {
+            building_id,
+            category_id,
+            accepted,
+        } => dispatch_building_storage_category(
+            *building_id,
+            category_id.clone(),
+            *accepted,
+            building_panel,
+            world,
+            player_ownership,
+            building_catalog,
+        ),
+        ClientIntent::AcceptAllBuildingStorageCategories { building_id } => {
+            dispatch_building_storage_accept_all(
+                *building_id,
+                building_panel,
+                world,
+                player_ownership,
+                building_catalog,
+            )
+        }
+        ClientIntent::ClearAllBuildingStorageCategories { building_id } => {
+            dispatch_building_storage_clear_all(
+                *building_id,
+                building_panel,
+                world,
+                player_ownership,
+                building_catalog,
+                item_category_catalog,
+            )
+        }
         ClientIntent::ToggleUnitSelection { unit_id } => {
             if world
                 .get_unit(*unit_id)
@@ -1164,6 +1271,7 @@ fn dispatch_contextual_command(
             if settings.debug_unit_interaction {
                 log_move_target(&resolved_target, layout);
             }
+            let exclude = exclude_occupants_for_command_target(&contextual.target);
             let move_report_result = issue_move_orders_to_selection(
                 world,
                 selection,
@@ -1173,6 +1281,7 @@ fn dispatch_contextual_command(
                 nav_config,
                 resolved_target,
                 targeting_policy,
+                &exclude,
             );
             #[cfg(feature = "dev")]
             if selected_ids.len() == 1 {
@@ -1242,6 +1351,7 @@ fn dispatch_contextual_command(
                 pending_building_interaction,
                 selection,
             );
+            let exclude = exclude_occupants_for_command_target(&contextual.target);
             *move_report = Some(issue_attack_move_orders_to_selection(
                 world,
                 selection,
@@ -1250,6 +1360,23 @@ fn dispatch_contextual_command(
                 doodad_catalog,
                 nav_config,
                 destination,
+                targeting_policy,
+                &exclude,
+            ));
+            IntentDispatchStatus::Applied
+        }
+        BuiltCommandPlan::HoldAll => {
+            crate::client::supersede_pending_building_interaction_for_selection(
+                pending_building_interaction,
+                selection,
+            );
+            *move_report = Some(issue_hold_orders_to_selection(
+                world,
+                selection,
+                unit_catalog,
+                weapon_catalog,
+                doodad_catalog,
+                nav_config,
                 targeting_policy,
             ));
             IntentDispatchStatus::Applied
@@ -1346,10 +1473,27 @@ fn dispatch_palette_command(
                 nav_config,
                 destination,
                 targeting_policy,
+                &[],
             ));
             IntentDispatchStatus::Applied
         }
         BuiltCommandPlan::Attack { .. } => IntentDispatchStatus::Ignored,
+        BuiltCommandPlan::HoldAll => {
+            crate::client::supersede_pending_building_interaction_for_selection(
+                pending_building_interaction,
+                selection,
+            );
+            *move_report = Some(issue_hold_orders_to_selection(
+                world,
+                selection,
+                unit_catalog,
+                weapon_catalog,
+                doodad_catalog,
+                nav_config,
+                targeting_policy,
+            ));
+            IntentDispatchStatus::Applied
+        }
         BuiltCommandPlan::StopAll => {
             crate::client::supersede_pending_building_interaction_for_selection(
                 pending_building_interaction,
@@ -1445,10 +1589,11 @@ mod tests {
     use crate::units::input::SelectedUnits;
     use crate::world::{
         AuthoredRelationshipCatalog, BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
-        DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource,
-        FootprintCatalog, Heightfield, LocalPosition, PassabilityCatalogs, UnitDefinitionId,
-        UnitOwnership, UnitSource, UnitState, WorldPosition, create_doodad, create_unit,
-        create_unit_with_ownership, resolve_all_pending_unit_orders, starter_unit_definitions,
+        CombatState, DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource,
+        FootprintCatalog, Heightfield, ItemCategoryCatalog, LocalPosition, PassabilityCatalogs,
+        UnitDefinitionId, UnitOwnership, UnitSource, UnitState, WorldPosition, create_doodad,
+        create_unit, create_unit_with_ownership, resolve_all_pending_unit_orders,
+        starter_unit_definitions,
     };
     use bevy::prelude::{Quat, Vec2, Vec3};
 
@@ -1589,6 +1734,7 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCategoryCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1655,6 +1801,7 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCategoryCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1722,6 +1869,7 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCategoryCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1798,6 +1946,7 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCategoryCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1854,6 +2003,7 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCategoryCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1917,6 +2067,7 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCategoryCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1986,6 +2137,7 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCategoryCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2013,9 +2165,7 @@ mod tests {
     }
 
     #[test]
-    fn palette_hold_position_rejected_without_world_mutation() {
-        use crate::client::commands::CommandUnavailableReason;
-
+    fn palette_hold_position_applies_holding_combat_state() {
         let mut sel = DispatchSelectionBundle::new();
         let mut move_feedback = MoveCommandFeedback::default();
         let mut world = flat_world();
@@ -2035,7 +2185,7 @@ mod tests {
         .unwrap()
         .id;
         sel.selected_units.set_single(unit_id);
-        let state_before = world.get_unit(unit_id).unwrap().state.clone();
+        let anchor = world.get_unit(unit_id).unwrap().placement.position;
 
         let status = dispatch_one(
             &ClientIntent::PaletteCommand {
@@ -2069,6 +2219,7 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCategoryCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2077,15 +2228,15 @@ mod tests {
             &mut terrain.assessment_store,
             &crate::world::ItemPileSettings::default(),
         );
-        assert_eq!(
-            status,
-            IntentDispatchStatus::Rejected(CommandUnavailableReason::FeatureNotImplemented)
-        );
-        assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
-        assert_eq!(
-            pending.unavailable_reason,
-            Some(CommandUnavailableReason::FeatureNotImplemented)
-        );
+        assert_eq!(status, IntentDispatchStatus::Applied);
+        assert!(matches!(
+            world.get_unit(unit_id).unwrap().combat_state,
+            CombatState::Holding {
+                anchor: held,
+                target: None
+            } if held == anchor
+        ));
+        assert_eq!(pending.resolved_command, Some(CommandType::HoldPosition));
     }
 
     #[test]
@@ -2128,6 +2279,7 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCategoryCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2155,24 +2307,19 @@ mod tests {
                     intent: ClientIntent::PaletteCommand {
                         command_type: CommandType::HoldPosition,
                     },
-                    status: IntentDispatchStatus::Rejected(
-                        CommandUnavailableReason::FeatureNotImplemented,
-                    ),
+                    status: IntentDispatchStatus::Applied,
                 },
             ],
         };
         assert_eq!(report.total(), 3);
-        assert_eq!(report.applied(), 1);
+        assert_eq!(report.applied(), 2);
         assert_eq!(report.ignored(), 1);
-        assert_eq!(report.rejected(), 1);
+        assert_eq!(report.rejected(), 0);
         assert_eq!(
             report.applied() + report.ignored() + report.rejected(),
             report.total()
         );
-        assert_eq!(
-            report.rejected_reason_counts(),
-            vec![(CommandUnavailableReason::FeatureNotImplemented, 1)]
-        );
+        assert!(report.rejected_reason_counts().is_empty());
     }
 
     #[test]
@@ -2280,6 +2427,7 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCategoryCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2359,6 +2507,7 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCategoryCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2480,6 +2629,7 @@ mod tests {
             0,
             &mut inventory_queue,
             &operation_catalog,
+            &ItemCategoryCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2592,6 +2742,7 @@ mod tests {
             0,
             &mut inventory_queue,
             &operation_catalog,
+            &ItemCategoryCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,

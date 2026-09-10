@@ -6,10 +6,17 @@
 use crate::world::asset_sizing::{AssetSizingDefinition, SizeReferenceAxis};
 
 /// Typical standing height for a unit when Desired Height M is missing.
-pub fn unit_default_desired_height_meters(unit_id: &str, collision_radius_meters: f32) -> f32 {
+pub fn unit_default_desired_height_meters(
+    unit_id: &str,
+    render_key: Option<&str>,
+    collision_radius_meters: f32,
+) -> f32 {
+    if render_key == Some("robot") {
+        return 1.75;
+    }
     let id = unit_id.trim().to_ascii_lowercase();
     match id.as_str() {
-        "robot" | "player" | "player_robot" => 1.75,
+        "robot" | "player" | "player_robot" | "u-0001" => 1.75,
         "wolf" | "fox" | "dog" | "coyote" => 0.9,
         "deer" | "elk" => 1.35,
         "bear" => 1.6,
@@ -59,12 +66,20 @@ mod tests {
 
     #[test]
     fn wolf_height_target() {
-        assert!((unit_default_desired_height_meters("wolf", 0.6) - 0.9).abs() < f32::EPSILON);
+        assert!((unit_default_desired_height_meters("wolf", None, 0.6) - 0.9).abs() < f32::EPSILON);
     }
 
     #[test]
     fn fox_height_target() {
-        assert!((unit_default_desired_height_meters("fox", 0.25) - 0.9).abs() < f32::EPSILON);
+        assert!((unit_default_desired_height_meters("fox", None, 0.25) - 0.9).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn robot_render_key_targets_humanoid_height_not_collision_radius() {
+        assert!(
+            (unit_default_desired_height_meters("U-0001", Some("robot"), 0.5) - 1.75).abs()
+                < f32::EPSILON
+        );
     }
 
     #[test]
@@ -137,6 +152,78 @@ mod integration_tests {
         assert!(
             (visual_scale.x - 1.0 / 1200.0).abs() < 0.0002,
             "runtime scale should correct raw mm vertices, got {visual_scale:?}"
+        );
+    }
+
+    #[test]
+    fn prispod_farm_matches_source_model_dimensions() {
+        let path = crate::data_import::dev_design_workbook_path();
+        if !path.exists() {
+            return;
+        }
+        let profiles = crate::world::InventoryProfileCatalog::default();
+        let (_, buildings, _) =
+            crate::data_import::import_building_catalog_from_excel(&path, &profiles)
+                .expect("workbook import");
+        let farm = buildings
+            .get(&BuildingDefinitionId::new("prispod_farm"))
+            .expect("prispod_farm");
+        let crate::world::FootprintSpec::Rectangle {
+            width_meters,
+            depth_meters,
+        } = farm.footprint
+        else {
+            panic!("expected rectangle footprint");
+        };
+        assert!((width_meters - 13.0).abs() < 0.01);
+        assert!((depth_meters - 10.0).abs() < 0.01);
+        let final_dims = farm
+            .asset_sizing
+            .approximate_final_dimensions_meters()
+            .expect("farm final dims");
+        assert!(
+            (final_dims.width_meters - 12.7).abs() < 0.2,
+            "farm width should match authored model, got {final_dims:?}"
+        );
+        assert!(
+            (final_dims.height_meters - 2.1).abs() < 0.2,
+            "farm height should be ~2 m, got {final_dims:?}"
+        );
+        assert!(
+            (final_dims.depth_meters - 9.7).abs() < 0.2,
+            "farm depth should match authored model, got {final_dims:?}"
+        );
+    }
+
+    #[test]
+    fn robot_import_targets_one_point_seven_five_meter_height() {
+        let path = crate::data_import::dev_design_workbook_path();
+        if !path.exists() {
+            return;
+        }
+        let (definitions, _) = crate::data_import::import_units_from_excel(
+            &path,
+            &crate::world::FactionCatalog::default(),
+            &crate::world::SpeciesCatalog::default(),
+            &crate::world::WeaponCatalog::from_definitions(
+                crate::world::starter_weapon_definitions(),
+            )
+            .unwrap(),
+            &crate::world::AnimationProfileCatalog::default(),
+            &crate::world::InventoryProfileCatalog::default(),
+        )
+        .expect("unit import");
+        let robot = definitions
+            .iter()
+            .find(|def| def.render_key.0.as_deref() == Some("robot"))
+            .expect("robot row");
+        let final_dims = robot
+            .asset_sizing
+            .approximate_final_dimensions_meters()
+            .expect("robot final dims");
+        assert!(
+            (final_dims.height_meters - 1.75).abs() < 0.1,
+            "robot standing height should be ~1.75 m, got {final_dims:?}"
         );
     }
 }

@@ -9,7 +9,7 @@ use super::request::HaulingRequest;
 use super::types::HaulingRequestStatus;
 use crate::world::{BuildingId, InventoryId, ItemDefinitionId, UnitId};
 
-#[derive(Debug, Clone, Default, PartialEq, Reflect)]
+#[derive(Debug, Clone, PartialEq, Reflect)]
 pub struct HaulingRequestStore {
     next_request_id: u32,
     requests: BTreeMap<HaulingRequestId, HaulingRequest>,
@@ -17,8 +17,22 @@ pub struct HaulingRequestStore {
     open_by_key: HashMap<(InventoryId, InventoryId, ItemDefinitionId), HaulingRequestId>,
 }
 
+impl Default for HaulingRequestStore {
+    fn default() -> Self {
+        Self {
+            next_request_id: 1,
+            requests: BTreeMap::new(),
+            building_requests: HashMap::new(),
+            open_by_key: HashMap::new(),
+        }
+    }
+}
+
 impl HaulingRequestStore {
     pub fn allocate_id(&mut self) -> HaulingRequestId {
+        if self.next_request_id == 0 {
+            self.next_request_id = 1;
+        }
         let id = HaulingRequestId::new(self.next_request_id);
         self.next_request_id += 1;
         id
@@ -50,9 +64,37 @@ impl HaulingRequestStore {
             .copied()
             .and_then(|id| {
                 self.get(id)
-                    .filter(|request| request.status.is_open())
+                    .filter(|request| request.status.is_consolidatable())
                     .map(|_| id)
             })
+    }
+
+    pub fn blocked_request_for_key(
+        &self,
+        source: InventoryId,
+        destination: InventoryId,
+        item_id: &ItemDefinitionId,
+    ) -> Option<HaulingRequestId> {
+        self.sorted_request_ids().into_iter().find(|id| {
+            self.get(*id).is_some_and(|request| {
+                request.status == HaulingRequestStatus::Blocked
+                    && request.source_inventory_id == source
+                    && request.destination_inventory_id == destination
+                    && request.item_id == *item_id
+            })
+        })
+    }
+
+    pub fn refresh_open_key(&mut self, id: HaulingRequestId) {
+        let Some(request) = self.requests.get(&id) else {
+            return;
+        };
+        let key = request.consolidation_key();
+        if request.status.is_consolidatable() {
+            self.open_by_key.insert(key, id);
+        } else {
+            self.open_by_key.remove(&key);
+        }
     }
 
     pub fn sorted_request_ids(&self) -> Vec<HaulingRequestId> {
@@ -67,7 +109,7 @@ impl HaulingRequestStore {
             .entry(building_id)
             .or_default()
             .push(id);
-        if request.status.is_open() {
+        if request.status.is_consolidatable() {
             self.open_by_key.insert(key, id);
         }
         let next = id.raw().saturating_add(1);
@@ -108,7 +150,7 @@ impl HaulingRequestStore {
     ) -> Vec<HaulingRequestId> {
         let mut cancelled = Vec::new();
         for request in self.requests.values_mut() {
-            if request.status.is_open()
+            if request.status.is_consolidatable()
                 && (request.source_inventory_id == inventory_id
                     || request.destination_inventory_id == inventory_id)
             {
@@ -132,10 +174,32 @@ impl HaulingRequestStore {
     }
 
     pub fn restore_next_request_id(&mut self, next: u32) {
-        self.next_request_id = self.next_request_id.max(next);
+        self.next_request_id = self.next_request_id.max(next.max(1));
     }
 
     pub fn assigned_unit(&self, id: HaulingRequestId) -> Option<UnitId> {
         self.get(id).and_then(|request| request.assigned_unit_id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hauling_request_ids_start_at_one() {
+        let mut store = HaulingRequestStore::default();
+        let first = store.allocate_id();
+        assert_eq!(first, HaulingRequestId::new(1));
+        assert!(first.is_valid());
+        assert_ne!(first, HaulingRequestId::INVALID);
+
+        let second = store.allocate_id();
+        let third = store.allocate_id();
+        assert_eq!(second, HaulingRequestId::new(2));
+        assert_eq!(third, HaulingRequestId::new(3));
+        for id in [first, second, third] {
+            assert_ne!(id, HaulingRequestId::INVALID);
+        }
     }
 }

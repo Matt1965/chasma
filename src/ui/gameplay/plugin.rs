@@ -2,7 +2,14 @@
 
 use bevy::prelude::*;
 
+use bevy::ui::UiSystems;
+
 use crate::player::GameplayPresentationSystems;
+
+use super::hud::{
+    HudViewportGeometry, apply_hud_viewport_geometry, measure_hud_viewport_geometry,
+    sync_hud_plate_frames,
+};
 
 use super::build_mode::{
     BuildModeCursorAnchor, BuildModeState, clear_build_mode_terrain_overlay_on_exit,
@@ -24,10 +31,15 @@ use super::command_panel::{
 use super::cursor_feedback::{
     GameplayCursorPresentation, GameplayHoveredUnit, sample_gameplay_cursor_context,
 };
+use super::fields_menu::{
+    FieldsMenuState, dismiss_fields_menu_on_outside_click, handle_fields_menu_option_clicks,
+    sync_fields_menu_option_highlights, sync_fields_menu_visibility,
+};
 use super::floating_window::{
     FloatingGameplayWindowRegistry, focus_floating_gameplay_window_on_ui_press,
     handle_floating_gameplay_window_pointer, measure_floating_gameplay_window_sizes,
     sync_floating_gameplay_window_presentation, sync_floating_gameplay_window_viewport,
+    update_floating_window_raised_button_hover,
 };
 use super::input_gate::{PlayerHudHoverState, update_player_hud_hover_state};
 use super::inventory::{
@@ -43,12 +55,16 @@ use super::player_hud_state::{PlayerHudState, sync_primary_selection};
 use super::selected_unit_panel::sync_selected_unit_panel;
 use super::selection_ui::{clear_gameplay_hud_dirty, sync_gameplay_ui_state};
 use super::settlement_workforce::{
-    SettlementWorkforcePanelState, collect_settlement_workforce_keyboard_input,
-    handle_settlement_workforce_close_button, handle_settlement_workforce_controls,
-    spawn_settlement_workforce_panel, sync_settlement_workforce_panel,
+    SettlementWorkforcePanelState, SettlementWorkforceScrollPlugin,
+    collect_settlement_workforce_keyboard_input, handle_settlement_workforce_close_button,
+    handle_settlement_workforce_controls, spawn_settlement_workforce_panel,
+    sync_settlement_workforce_panel, sync_settlement_workforce_panel_dimensions,
     sync_settlement_workforce_panel_visibility,
 };
-use super::squad_panel::{handle_squad_entry_clicks, sync_squad_panel, update_squad_entry_hover};
+use super::squad_panel::{
+    handle_squad_entry_clicks, sync_squad_entry_presentation, sync_squad_panel,
+    update_squad_entry_hover,
+};
 use super::state::GameplayUiState;
 #[cfg(feature = "dev")]
 use super::terrain_analysis::{
@@ -62,6 +78,7 @@ use super::unit_skills::{
     reconcile_unit_skills_panel, spawn_unit_skills_panel, sync_unit_skills_panel,
     sync_unit_skills_panel_visibility,
 };
+use super::utility_panel::{handle_utility_button_clicks, update_utility_button_hover};
 
 /// HUD hover gate — must run before intent collection reads [`PlayerHudHoverState`].
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -89,7 +106,11 @@ impl Plugin for GameplayUiPlugin {
             .init_resource::<BuildingPanelState>()
             .init_resource::<UnitSkillsPanelState>()
             .init_resource::<SettlementWorkforcePanelState>()
+            .init_resource::<FieldsMenuState>()
             .init_resource::<FloatingGameplayWindowRegistry>()
+            .add_plugins(SettlementWorkforceScrollPlugin)
+            .add_plugins(super::roster_scroll::SquadRosterScrollPlugin)
+            .init_resource::<HudViewportGeometry>()
             .init_resource::<PlayerHudHoverState>()
             .init_resource::<GameplayCursorPresentation>()
             .init_resource::<GameplayHoveredUnit>()
@@ -149,12 +170,29 @@ impl Plugin for GameplayUiPlugin {
                 sync_unit_skills_panel,
                 handle_unit_skills_close_button,
                 sync_settlement_workforce_panel_visibility,
+                sync_settlement_workforce_panel_dimensions,
                 sync_settlement_workforce_panel,
                 handle_settlement_workforce_close_button,
+                sync_fields_menu_visibility,
+                sync_fields_menu_option_highlights,
                 sync_floating_gameplay_window_presentation,
                 measure_floating_gameplay_window_sizes,
                 sync_squad_panel,
+                sync_squad_entry_presentation,
                 sync_command_panel_buttons,
+            )
+                .after(sync_gameplay_ui_state)
+                .in_set(GameplayUiSystems),
+        )
+        .add_systems(
+            Update,
+            update_floating_window_raised_button_hover
+                .after(sync_gameplay_ui_state)
+                .in_set(GameplayUiSystems),
+        )
+        .add_systems(
+            Update,
+            (
                 clear_gameplay_hud_dirty,
                 sync_move_command_indicator,
                 tick_move_command_indicator,
@@ -189,10 +227,14 @@ impl Plugin for GameplayUiPlugin {
             (
                 handle_squad_entry_clicks,
                 handle_command_button_clicks,
+                handle_utility_button_clicks,
+                handle_fields_menu_option_clicks,
+                dismiss_fields_menu_on_outside_click,
                 handle_building_production_controls,
                 handle_settlement_workforce_controls,
                 update_squad_entry_hover,
                 update_command_button_hover,
+                update_utility_button_hover,
             )
                 .chain()
                 .in_set(GameplayCommandInputSystems),
@@ -251,6 +293,13 @@ impl Plugin for GameplayUiPlugin {
             Update,
             sync_terrain_analysis_dev_diagnostics.in_set(GameplayUiSystems),
         );
+        app.add_systems(
+            PostUpdate,
+            (measure_hud_viewport_geometry, apply_hud_viewport_geometry)
+                .chain()
+                .before(UiSystems::Layout),
+        );
+        app.add_systems(PostUpdate, sync_hud_plate_frames.after(UiSystems::Layout));
         app.add_systems(
             Update,
             crate::client::dispatch_inventory_intents

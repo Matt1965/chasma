@@ -35,6 +35,7 @@ impl FormationPlanner {
         world: &WorldData,
         catalog: &UnitCatalog,
         layout: ChunkLayout,
+        exclude_occupants: &[UnitId],
     ) -> FormationMovePlan {
         if unit_ids.is_empty() {
             return FormationMovePlan::default();
@@ -47,7 +48,13 @@ impl FormationPlanner {
             let unit_id = sorted[0];
             let mut batch = std::collections::HashMap::new();
             let validated = super::destination_validation::resolve_move_destination(
-                unit_id, target, world, catalog, layout, &batch,
+                unit_id,
+                target,
+                world,
+                catalog,
+                layout,
+                &batch,
+                exclude_occupants,
             );
             batch.insert(unit_id, validated);
             return FormationMovePlan {
@@ -77,6 +84,7 @@ impl FormationPlanner {
                     catalog,
                     layout,
                     &batch_resolved,
+                    exclude_occupants,
                 );
                 batch_resolved.insert(unit_id, validated);
                 FormationAssignment {
@@ -169,6 +177,7 @@ mod tests {
             &world,
             &catalog,
             layout(),
+            &[],
         );
         assert_eq!(plan.assignments.len(), 1);
         assert_eq!(plan.assignments[0].unit_id, unit_id);
@@ -192,6 +201,7 @@ mod tests {
             &world,
             &catalog,
             layout(),
+            &[],
         );
         assert_eq!(plan.assignments.len(), 3);
 
@@ -223,6 +233,7 @@ mod tests {
             &world,
             &catalog,
             layout(),
+            &[],
         );
         let b = FormationPlanner::plan_move(
             FormationKind::Circle,
@@ -231,6 +242,7 @@ mod tests {
             &world,
             &catalog,
             layout(),
+            &[],
         );
         assert_eq!(a, b);
     }
@@ -250,6 +262,7 @@ mod tests {
             &world,
             &catalog,
             layout(),
+            &[],
         );
         let shuffled = FormationPlanner::plan_move(
             FormationKind::Circle,
@@ -258,6 +271,7 @@ mod tests {
             &world,
             &catalog,
             layout(),
+            &[],
         );
         assert_eq!(forward, shuffled);
     }
@@ -277,6 +291,7 @@ mod tests {
             &world,
             &catalog,
             layout(),
+            &[],
         );
         assert!(plan.assignments[0].unit_id < plan.assignments[1].unit_id);
     }
@@ -309,6 +324,7 @@ mod tests {
             &world,
             &catalog,
             layout(),
+            &[],
         );
         assert_ne!(plan.assignments[0].target, click);
     }
@@ -331,6 +347,7 @@ mod tests {
             &world,
             &catalog,
             layout(),
+            &[],
         );
         for assignment in plan.assignments {
             let result = crate::world::issue_unit_order(

@@ -410,6 +410,7 @@ pub(crate) fn resolve_one(
         UnitOrder::Attack { .. } | UnitOrder::AttackMove { .. } => {
             Err(UnitOrderError::AttackerNotFound)
         }
+        UnitOrder::Hold { .. } => Err(UnitOrderError::UnitNotFound),
     }
 }
 

@@ -1,6 +1,9 @@
 //! Inventory reservation operations (EP7).
 
-use crate::world::inventory::{InventoryCatalogCtx, count_stack_item};
+use crate::world::inventory::{
+    InventoryCatalogCtx, count_stack_item, max_accept_stack_quantity,
+    simulate_place_stack_merge_then_first_fit,
+};
 use crate::world::{InventoryId, ItemDefinitionId};
 
 use super::super::id::HaulingRequestId;
@@ -131,61 +134,44 @@ pub fn release_request_reservations(
     }
 }
 
-fn can_accept_quantity(
+/// Whether a destination inventory can physically fit `quantity` more of `item_id`.
+pub fn destination_can_fit_stack_quantity(
     inventory_store: &crate::world::InventoryStore,
-    _reservations: &InventoryReservationStore,
+    reservations: &InventoryReservationStore,
     inventory_ctx: &InventoryCatalogCtx<'_>,
     inventory_id: InventoryId,
     item_id: &ItemDefinitionId,
     quantity: u32,
 ) -> bool {
-    let Some(record) = inventory_store.get(inventory_id) else {
-        return false;
-    };
-    let mut sim = record.clone();
-    simulate_place_stack_quantity(&mut sim, inventory_ctx, item_id, quantity)
+    can_accept_quantity(
+        inventory_store,
+        reservations,
+        inventory_ctx,
+        inventory_id,
+        item_id,
+        quantity,
+    )
 }
 
-fn simulate_place_stack_quantity(
-    record: &mut crate::world::inventory::InventoryRecord,
-    ctx: &InventoryCatalogCtx<'_>,
+fn can_accept_quantity(
+    inventory_store: &crate::world::InventoryStore,
+    reservations: &InventoryReservationStore,
+    inventory_ctx: &InventoryCatalogCtx<'_>,
+    inventory_id: InventoryId,
     item_id: &ItemDefinitionId,
-    mut quantity: u32,
+    quantity: u32,
 ) -> bool {
-    use crate::world::inventory::{
-        InventoryError, PlacedInventoryEntry, can_place_entry, first_fit_position,
-    };
     if quantity == 0 {
         return true;
     }
-    let Ok(item) = ctx.require_item(item_id) else {
+    let Some(record) = inventory_store.get(inventory_id) else {
         return false;
     };
-    if item.unique_instance_required || !item.stackable {
+    let reserved = reservations.reserved_destination_capacity(inventory_id);
+    let max_accept = max_accept_stack_quantity(record, inventory_ctx, item_id);
+    if quantity > max_accept.saturating_sub(reserved) {
         return false;
     }
-    let Ok(limit) = ctx.stack_limit_for(item, record.profile_id()) else {
-        return false;
-    };
-    while quantity > 0 {
-        let chunk = quantity.min(limit);
-        let Ok((anchor_x, anchor_y)) =
-            first_fit_position(record, item.grid_width, item.grid_height)
-        else {
-            return false;
-        };
-        let entry = PlacedInventoryEntry::stack(anchor_x, anchor_y, item_id.clone(), chunk);
-        if can_place_entry(record, &entry, item_id, None, ctx).is_err() {
-            return false;
-        }
-        record.placed_entries_mut().push(entry);
-        if record
-            .rebuild_derived(ctx, |id| Err(InventoryError::ItemInstanceNotFound(id)))
-            .is_err()
-        {
-            return false;
-        }
-        quantity = quantity.saturating_sub(chunk);
-    }
-    true
+    let mut sim = record.clone();
+    simulate_place_stack_merge_then_first_fit(&mut sim, inventory_ctx, item_id, quantity)
 }

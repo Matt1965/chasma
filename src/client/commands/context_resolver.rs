@@ -52,11 +52,6 @@ pub fn resolve_contextual_command_with_armed(
                         target: CommandTarget::Unit { unit_id },
                     })
                 }
-                CommandTarget::Terrain { position } => Some(ContextualCommandIntent {
-                    command_type: CommandType::AttackMove,
-                    target: CommandTarget::Terrain { position },
-                }),
-                CommandTarget::Building { .. } => None,
                 _ => None,
             },
             CommandType::Move => Some(ContextualCommandIntent {
@@ -433,7 +428,7 @@ mod tests {
     }
 
     #[test]
-    fn armed_attack_on_terrain_resolves_to_attack_move() {
+    fn armed_attack_on_terrain_does_not_fallback_to_attack_move() {
         let world = WorldData::new(ChunkLayout {
             chunk_size_meters: 256.0,
             units_per_meter: 1.0,
@@ -453,8 +448,7 @@ mod tests {
                 &authored(),
             ),
             Some(CommandType::Attack),
-        )
-        .unwrap();
-        assert_eq!(resolved.command_type, CommandType::AttackMove);
+        );
+        assert!(resolved.is_none());
     }
 }

@@ -20,8 +20,8 @@ pub use terrain_click::{
 pub use box_select::{BoxSelectDrag, collect_units_in_screen_rect, normalized_screen_rect};
 pub use commands::{
     MoveOrderUnitTrace, MoveOrdersReport, issue_attack_move_orders_to_selection,
-    issue_attack_orders_to_selection, issue_idle_orders_to_selection,
-    issue_move_orders_to_selection,
+    issue_attack_orders_to_selection, issue_hold_orders_to_selection,
+    issue_idle_orders_to_selection, issue_move_orders_to_selection,
 };
 pub use controllability::{apply_selectable_filter, prune_non_commandable_from_selection};
 pub use picking::{

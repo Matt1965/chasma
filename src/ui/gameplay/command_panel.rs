@@ -9,11 +9,13 @@ use crate::client::{
 use crate::units::input::SelectedUnits;
 use crate::world::UnitCatalog;
 
+use super::hud::{
+    HudViewportGeometry, hud_button_depth_style, hud_button_shell_style, hud_section_node,
+    spawn_hud_button_top_highlight,
+};
 use super::layout::PlayerHudUi;
 use super::player_hud_state::PlayerHudState;
-use super::styles::{
-    CMD_BTN_BORDER, PANEL_BG, TEXT_MUTED, TEXT_PRIMARY, command_button_bg, hud_body_font,
-};
+use super::styles::{HUD_COMMAND_BUTTON_HEIGHT_PERCENT, TEXT_PRIMARY, hud_title_font};
 
 /// Marker for the command panel root.
 #[derive(Component, Debug)]
@@ -37,7 +39,7 @@ impl HudCommandButton {
             Self::Stop => "Stop",
             Self::HoldPosition => "Hold",
             Self::Attack => "Attack",
-            Self::AttackMove => "Attack Move",
+            Self::AttackMove => "Atk Mv",
             Self::Interact => "Interact",
         }
     }
@@ -53,9 +55,12 @@ impl HudCommandButton {
         }
     }
 
-    /// Only Stop uses immediate palette dispatch; other commands arm for right-click.
+    /// Stop and Hold issue immediately; Move/Attack/AttackMove arm for right-click.
     pub fn emits_palette_intent(self) -> bool {
-        matches!(self, HudCommandButton::Stop)
+        matches!(
+            self,
+            HudCommandButton::Stop | HudCommandButton::HoldPosition
+        )
     }
 }
 
@@ -78,74 +83,90 @@ pub fn command_button_enabled(
     }
 }
 
+/// Visible command buttons in the bottom HUD command panel.
 pub const COMMAND_GRID: [HudCommandButton; 5] = [
     HudCommandButton::Move,
-    HudCommandButton::Stop,
-    HudCommandButton::HoldPosition,
     HudCommandButton::Attack,
-    HudCommandButton::Interact,
+    HudCommandButton::AttackMove,
+    HudCommandButton::HoldPosition,
+    HudCommandButton::Stop,
 ];
 
-pub fn spawn_command_panel(parent: &mut ChildSpawnerCommands) {
+pub fn spawn_command_panel(parent: &mut ChildSpawnerCommands<'_>) {
+    let geom = HudViewportGeometry::default();
     parent
         .spawn((
             CommandPanelRoot,
-            Node {
-                flex_direction: FlexDirection::Column,
-                flex_grow: 1.0,
-                flex_basis: Val::Percent(32.0),
-                padding: UiRect::all(Val::Px(super::styles::PANEL_PADDING_PX)),
-                row_gap: Val::Px(6.0),
-                ..default()
-            },
-            BackgroundColor(PANEL_BG),
+            PlayerHudUi,
+            hud_section_node(geom.command_width),
         ))
         .with_children(|panel| {
-            panel.spawn((
-                Text::new("Commands"),
-                hud_body_font(),
-                TextColor(TEXT_MUTED),
-            ));
             panel
                 .spawn(Node {
-                    display: Display::Grid,
-                    grid_template_columns: RepeatedGridTrack::flex(3, 1.0),
-                    row_gap: Val::Px(4.0),
-                    column_gap: Val::Px(4.0),
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(6.0),
+                    align_items: AlignItems::Center,
+                    justify_content: JustifyContent::SpaceEvenly,
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
                     ..default()
                 })
-                .with_children(|grid| {
+                .with_children(|row| {
                     for button in COMMAND_GRID {
-                        spawn_command_button(grid, button);
+                        spawn_command_button(row, button);
                     }
                 });
         });
 }
 
-fn spawn_command_button(parent: &mut ChildSpawnerCommands, button: HudCommandButton) {
+fn spawn_command_button(parent: &mut ChildSpawnerCommands<'_>, button: HudCommandButton) {
+    let geom = HudViewportGeometry::default();
+    let radius = BorderRadius::all(Val::Px(6.0));
     parent
         .spawn((
             button,
             PlayerHudUi,
             Button,
             Node {
-                min_height: Val::Px(36.0),
+                flex_grow: 0.0,
+                flex_basis: Val::Px(geom.command_button_width),
+                width: Val::Px(geom.command_button_width),
+                height: Val::Percent(HUD_COMMAND_BUTTON_HEIGHT_PERCENT),
+                align_self: AlignSelf::Center,
                 padding: UiRect::all(Val::Px(4.0)),
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 border: UiRect::all(Val::Px(1.0)),
+                border_radius: radius,
+                overflow: Overflow::clip(),
                 ..default()
             },
-            BackgroundColor(super::styles::CMD_BTN_DISABLED_BG),
-            BorderColor::all(CMD_BTN_BORDER),
+            hud_button_depth_style(),
         ))
         .with_children(|btn| {
+            spawn_hud_button_top_highlight(btn);
             btn.spawn((
                 Text::new(button.label()),
-                hud_body_font(),
+                hud_title_font(),
                 TextColor(TEXT_PRIMARY),
             ));
         });
+}
+
+fn apply_command_button_shell(
+    button: HudCommandButton,
+    selection: &SelectedUnits,
+    catalog: &UnitCatalog,
+    hud: &PlayerHudState,
+    interaction: &Interaction,
+    bg: &mut BackgroundColor,
+    border: &mut BorderColor,
+) {
+    let enabled = command_button_enabled(button, selection, catalog);
+    let armed = hud.armed_command == Some(button.command_type());
+    let (next_bg, next_border) = hud_button_shell_style(interaction, enabled, armed);
+    *bg = next_bg;
+    *border = next_border;
 }
 
 /// Sync enabled / armed visuals on command buttons.
@@ -153,28 +174,26 @@ pub fn sync_command_panel_buttons(
     selection: Res<SelectedUnits>,
     catalog: Res<UnitCatalog>,
     hud: Res<PlayerHudState>,
-    mut buttons: Query<(&HudCommandButton, &mut BackgroundColor, &mut BorderColor)>,
+    mut buttons: Query<(
+        &HudCommandButton,
+        &Interaction,
+        &mut BackgroundColor,
+        &mut BorderColor,
+    )>,
 ) {
     if !selection.is_changed() && !hud.is_changed() {
         return;
     }
-    for (button, mut bg, mut border) in &mut buttons {
-        let enabled = command_button_enabled(*button, &selection, &catalog);
-        let armed = hud.armed_command == Some(button.command_type());
-        *bg = if enabled {
-            if armed {
-                BackgroundColor(super::styles::CMD_BTN_ARMED_BG)
-            } else {
-                BackgroundColor(super::styles::CMD_BTN_ENABLED_BG)
-            }
-        } else {
-            BackgroundColor(super::styles::CMD_BTN_DISABLED_BG)
-        };
-        border.set_all(if armed && enabled {
-            super::styles::ACCENT_GREEN
-        } else {
-            CMD_BTN_BORDER
-        });
+    for (button, interaction, mut bg, mut border) in &mut buttons {
+        apply_command_button_shell(
+            *button,
+            &selection,
+            &catalog,
+            &hud,
+            interaction,
+            &mut bg,
+            &mut border,
+        );
     }
 }
 
@@ -182,12 +201,26 @@ pub fn update_command_button_hover(
     selection: Res<SelectedUnits>,
     catalog: Res<UnitCatalog>,
     hud: Res<PlayerHudState>,
-    mut query: Query<(&Interaction, &HudCommandButton, &mut BackgroundColor), Changed<Interaction>>,
+    mut query: Query<
+        (
+            &Interaction,
+            &HudCommandButton,
+            &mut BackgroundColor,
+            &mut BorderColor,
+        ),
+        Changed<Interaction>,
+    >,
 ) {
-    for (interaction, button, mut bg) in &mut query {
-        let enabled = command_button_enabled(*button, &selection, &catalog);
-        let armed = hud.armed_command == Some(button.command_type());
-        *bg = command_button_bg(interaction, enabled, armed);
+    for (interaction, button, mut bg, mut border) in &mut query {
+        apply_command_button_shell(
+            *button,
+            &selection,
+            &catalog,
+            &hud,
+            interaction,
+            &mut bg,
+            &mut border,
+        );
     }
 }
 
@@ -210,8 +243,10 @@ pub fn handle_command_button_clicks(
         match *button {
             HudCommandButton::Move => hud.armed_command = Some(CommandType::Move),
             HudCommandButton::Attack => hud.armed_command = Some(CommandType::Attack),
-            HudCommandButton::Interact => hud.armed_command = Some(CommandType::Interact),
-            HudCommandButton::Stop if button.emits_palette_intent() => {
+            HudCommandButton::AttackMove => hud.armed_command = Some(CommandType::AttackMove),
+            HudCommandButton::Stop | HudCommandButton::HoldPosition
+                if button.emits_palette_intent() =>
+            {
                 queue.push(ClientIntent::PaletteCommand { command_type });
                 hud.armed_command = None;
             }
@@ -226,10 +261,21 @@ mod tests {
     use crate::client::{
         CommandAvailability, CommandPaletteEntry, CommandUnavailableReason, command_tooltip,
     };
+    use crate::ui::gameplay::hud::hud_button_shell_style;
 
     fn command_button_tooltip(button: HudCommandButton, selection: &SelectedUnits) -> String {
         let command_type = button.command_type();
         command_tooltip(command_type, command_availability(command_type, selection))
+    }
+
+    #[test]
+    fn command_shell_uses_hud_palette_not_legacy_cyan() {
+        let (_, border) = hud_button_shell_style(&Interaction::None, true, false);
+        let edge = border.left.to_srgba();
+        assert!(
+            edge.green > edge.blue,
+            "command buttons must not restore the cyan HUD border palette"
+        );
     }
 
     #[test]
@@ -269,41 +315,40 @@ mod tests {
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
         assert!(command_button_enabled(
-            HudCommandButton::Attack,
+            HudCommandButton::AttackMove,
             &selection,
             &UnitCatalog::default()
         ));
     }
 
     #[test]
-    fn hold_position_disabled_with_explicit_reason() {
+    fn hold_position_enabled_with_selection() {
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
-        assert!(!command_button_enabled(
+        assert!(command_button_enabled(
             HudCommandButton::HoldPosition,
             &selection,
             &UnitCatalog::default()
         ));
-        let tooltip = command_button_tooltip(HudCommandButton::HoldPosition, &selection);
-        assert!(tooltip.contains("Not implemented"));
     }
 
     #[test]
-    fn interact_enabled_with_selection() {
-        let mut selection = SelectedUnits::default();
-        selection.set_single(crate::world::UnitId::new(1));
-        assert!(command_button_enabled(
-            HudCommandButton::Interact,
-            &selection,
-            &UnitCatalog::default()
-        ));
+    fn interact_not_in_visible_command_grid() {
+        assert!(!COMMAND_GRID.contains(&HudCommandButton::Interact));
     }
 
     #[test]
-    fn only_stop_emits_palette_intent() {
+    fn stop_and_hold_emit_palette_intent() {
         assert!(HudCommandButton::Stop.emits_palette_intent());
-        assert!(!HudCommandButton::HoldPosition.emits_palette_intent());
+        assert!(HudCommandButton::HoldPosition.emits_palette_intent());
         assert!(!HudCommandButton::Move.emits_palette_intent());
+    }
+
+    #[test]
+    fn visible_grid_includes_hold_and_attack_move() {
+        assert!(COMMAND_GRID.contains(&HudCommandButton::HoldPosition));
+        assert!(COMMAND_GRID.contains(&HudCommandButton::AttackMove));
+        assert!(!COMMAND_GRID.contains(&HudCommandButton::Interact));
     }
 
     #[test]

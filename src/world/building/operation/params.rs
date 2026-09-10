@@ -16,6 +16,7 @@ pub struct BuildingOperationParams<'a> {
     pub requirement_revision: u64,
     pub profile_revision: u64,
     pub assessment_store: &'a mut BuildingTerrainAssessmentStore,
+    pub simulation_tick: u64,
 }
 
 impl<'a> BuildingOperationParams<'a> {

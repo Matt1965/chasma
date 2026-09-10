@@ -579,6 +579,15 @@ fn resume_chase_after_failed_strike(world: &mut WorldData, attacker_id: UnitId, 
                 },
             );
         }
+        Some(CombatState::Holding { anchor, .. }) => {
+            let _ = world.set_unit_combat_state(
+                attacker_id,
+                CombatState::Holding {
+                    anchor,
+                    target: Some(target_id),
+                },
+            );
+        }
         _ => {}
     }
 }

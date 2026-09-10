@@ -107,6 +107,7 @@ fn refresh_building_inspector_snapshot(
         &params.building_catalog,
         &params.footprint_catalog,
         &inventory_ctx,
+        0,
     );
     let operation_probe =
         probe_building_operation(world, &params.building_catalog, &mut operation, building_id);

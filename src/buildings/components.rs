@@ -42,3 +42,16 @@ pub struct BuildingSceneTags {
 pub struct BuildingLifecycleTintApplied {
     pub lifecycle_state: BuildingLifecycleState,
 }
+
+/// Pristine GLB [`StandardMaterial`] handle captured on first lifecycle preparation.
+#[derive(Component, Debug, Clone, Reflect)]
+#[reflect(Component)]
+pub struct OriginalBuildingMaterial {
+    pub handle: Handle<StandardMaterial>,
+}
+
+impl OriginalBuildingMaterial {
+    pub fn new(handle: Handle<StandardMaterial>) -> Self {
+        Self { handle }
+    }
+}

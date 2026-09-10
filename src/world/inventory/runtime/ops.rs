@@ -202,25 +202,41 @@ pub fn place_stack_first_fit(
     item_definition_id: ItemDefinitionId,
     quantity: u32,
 ) -> Result<EntryIndex, InventoryError> {
-    let (anchor_x, anchor_y) = {
-        let record = inventory_store
-            .get(inventory_id)
-            .ok_or(InventoryError::InventoryNotFound(inventory_id))?;
-        validate_stack_item(ctx, &item_definition_id, quantity, record.profile_id())?;
-        let item = ctx.require_item(&item_definition_id)?;
-        let (width, height) = footprint_for_definition(item);
-        first_fit_position(record, width, height)?
-    };
-    place_stack(
-        inventory_store,
-        instance_store,
+    let record = inventory_store
+        .get(inventory_id)
+        .ok_or(InventoryError::InventoryNotFound(inventory_id))?;
+    validate_stack_item(ctx, &item_definition_id, quantity, record.profile_id())?;
+    let before_len = record.placed_entries().len();
+    let mut record = record.clone();
+    if !super::grid::simulate_place_stack_merge_then_first_fit(
+        &mut record,
         ctx,
-        inventory_id,
-        item_definition_id,
+        &item_definition_id,
         quantity,
-        anchor_x,
-        anchor_y,
-    )
+    ) {
+        return Err(InventoryError::NoFitPosition { inventory_id });
+    }
+    let entry_index = if record.placed_entries().len() > before_len {
+        record.placed_entries().len() - 1
+    } else {
+        record
+            .placed_entries()
+            .iter()
+            .position(|entry| {
+                matches!(
+                    &entry.contents,
+                    super::entry::InventoryEntryContents::Stack {
+                        item_definition_id: id,
+                        ..
+                    } if *id == item_definition_id
+                )
+            })
+            .unwrap_or(before_len)
+    };
+    let record_mut = require_inventory_mut(inventory_store, inventory_id)?;
+    *record_mut = record;
+    rebuild_inventory(record_mut, ctx, instance_store)?;
+    Ok(entry_index)
 }
 
 pub fn place_unique(

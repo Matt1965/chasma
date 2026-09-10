@@ -7,8 +7,9 @@ use crate::client::inventory_intent::{
     InventoryIntent, InventoryIntentQueue, entry_revision_for_inventory,
 };
 use crate::ui::gameplay::floating_window::{
-    FloatingGameplayWindowId, FloatingGameplayWindowRoot, FloatingWindowTitleBarDragRegion,
-    TITLE_BAR_HEIGHT_PX,
+    FloatingGameplayWindowId, FloatingGameplayWindowRoot, floating_window_shell_colors,
+    floating_window_shell_node, spawn_floating_raised_button, spawn_floating_section_well,
+    spawn_floating_title_rail, spawn_floating_window_body, spawn_floating_window_inner_frame,
 };
 use crate::ui::gameplay::inventory::grid::entry_label;
 use crate::ui::gameplay::inventory::grid::{
@@ -20,9 +21,7 @@ use crate::ui::gameplay::inventory::state::{
     InventoryDragPreviewState, InventorySelection, InventoryUiState,
 };
 use crate::ui::gameplay::layout::PlayerHudUi;
-use crate::ui::gameplay::styles::{
-    BAR_BG, PANEL_BG, TEXT_MUTED, TEXT_PRIMARY, hud_body_font, hud_title_font,
-};
+use crate::ui::gameplay::styles::{TEXT_MUTED, TEXT_PRIMARY, panel_body_font, panel_title_font};
 use crate::world::{
     InventoryCatalogCtx, InventoryEntryContents, InventoryId, InventoryProfileCatalog, ItemCatalog,
     ItemCategoryCatalog, ItemDefinitionId, ItemInstanceStore, WorldData, query_inventory_weight,
@@ -67,6 +66,11 @@ pub struct InventoryDetailsText;
 pub struct InventoryEquipmentPlaceholder;
 
 pub fn spawn_inventory_panel(mut commands: Commands) {
+    let (shell_bg, shell_border) = floating_window_shell_colors();
+    let mut shell_node = floating_window_shell_node();
+    shell_node.width = Val::Px(420.0);
+    shell_node.max_height = Val::Percent(72.0);
+
     commands
         .spawn((
             InventoryPanelRoot,
@@ -77,90 +81,57 @@ pub fn spawn_inventory_panel(mut commands: Commands) {
             Button,
             Interaction::None,
             FocusPolicy::Block,
-            Node {
-                position_type: PositionType::Absolute,
-                width: Val::Px(420.0),
-                max_height: Val::Percent(72.0),
-                flex_direction: FlexDirection::Column,
-                padding: UiRect::all(Val::Px(10.0)),
-                row_gap: Val::Px(8.0),
-                display: Display::None,
-                ..default()
-            },
-            BackgroundColor(BAR_BG),
+            shell_node,
+            shell_bg,
+            shell_border,
             ZIndex(411),
         ))
         .with_children(|root| {
-            root.spawn(Node {
-                width: Val::Percent(100.0),
-                justify_content: JustifyContent::SpaceBetween,
-                align_items: AlignItems::Center,
-                column_gap: Val::Px(8.0),
-                ..default()
-            })
-            .with_children(|header| {
-                header
-                    .spawn((
-                        FloatingWindowTitleBarDragRegion {
-                            id: FloatingGameplayWindowId::UnitInventory,
-                        },
-                        Button,
-                        Node {
-                            flex_grow: 1.0,
-                            min_height: Val::Px(TITLE_BAR_HEIGHT_PX),
-                            align_items: AlignItems::Center,
-                            ..default()
-                        },
-                    ))
-                    .with_children(|title| {
+            spawn_floating_window_inner_frame(root, |frame| {
+                spawn_floating_title_rail(
+                    frame,
+                    FloatingGameplayWindowId::UnitInventory,
+                    |title| {
                         title.spawn((
                             Text::new("Inventory"),
-                            hud_title_font(),
+                            panel_title_font(),
                             TextColor(TEXT_PRIMARY),
                         ));
-                    });
-                header.spawn((
-                    InventoryPanelCloseButton,
-                    Button,
-                    Node {
-                        padding: UiRect::axes(Val::Px(10.0), Val::Px(4.0)),
-                        ..default()
                     },
-                    BackgroundColor(PANEL_BG),
-                    children![(
-                        Text::new("Close"),
-                        hud_body_font(),
-                        TextColor(TEXT_PRIMARY),
-                    )],
-                ));
+                    Some((InventoryPanelCloseButton, "Close")),
+                );
+                spawn_floating_window_body(frame, |body| {
+                    body.spawn((
+                        InventoryFeedbackText,
+                        Text::new(""),
+                        panel_body_font(),
+                        TextColor(TEXT_MUTED),
+                    ));
+                    body.spawn((
+                        Node {
+                            width: Val::Percent(100.0),
+                            flex_grow: 1.0,
+                            column_gap: Val::Px(12.0),
+                            ..default()
+                        },
+                        InventoryDualPaneRow,
+                    ));
+                    spawn_floating_section_well(body, |details| {
+                        details.spawn((
+                            InventoryDetailsText,
+                            Text::new("Select an item for details."),
+                            panel_body_font(),
+                            TextColor(TEXT_MUTED),
+                        ));
+                    });
+                    body.spawn((
+                        InventoryEquipmentPlaceholder,
+                        Text::new("Equipment slots (Head, Body, Weapon, Offhand, Backpack) | not implemented in I6."),
+                        panel_body_font(),
+                        TextColor(TEXT_MUTED),
+                    ));
+                });
             });
-            root.spawn((
-                InventoryFeedbackText,
-                Text::new(""),
-                hud_body_font(),
-                TextColor(TEXT_MUTED),
-            ));
-            root.spawn((
-                Node {
-                    width: Val::Percent(100.0),
-                    flex_grow: 1.0,
-                    column_gap: Val::Px(12.0),
-                    ..default()
-                },
-                InventoryDualPaneRow,
-            ));
-            root.spawn((
-                InventoryDetailsText,
-                Text::new("Select an item for details."),
-                hud_body_font(),
-                TextColor(TEXT_MUTED),
-            ));
-            root.spawn((
-                InventoryEquipmentPlaceholder,
-                Text::new("Equipment slots (Head, Body, Weapon, Offhand, Backpack) — not implemented in I6."),
-                hud_body_font(),
-                TextColor(TEXT_MUTED),
-            ));
         });
 }
 
@@ -306,37 +277,34 @@ pub fn sync_inventory_panel_contents(
                 &ui,
             );
         } else if ui.pile_id.is_some() {
-            parent.spawn((
-                Node {
-                    flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(6.0),
-                    ..default()
-                },
-                InventoryPaneContainer {
-                    side: InventoryPaneSide::Right,
-                },
-                children![
-                    (
+            parent
+                .spawn((
+                    Node {
+                        flex_direction: FlexDirection::Column,
+                        row_gap: Val::Px(6.0),
+                        ..default()
+                    },
+                    InventoryPaneContainer {
+                        side: InventoryPaneSide::Right,
+                    },
+                ))
+                .with_children(|pile| {
+                    pile.spawn((
                         Text::new("World Pile"),
-                        hud_body_font(),
+                        panel_body_font(),
                         TextColor(TEXT_PRIMARY),
-                    ),
-                    (
+                    ));
+                    spawn_floating_raised_button(
+                        pile,
                         InventoryPickupFullButton,
-                        Button,
+                        "Pick Up Full",
                         Node {
                             padding: UiRect::all(Val::Px(6.0)),
+                            align_self: AlignSelf::FlexStart,
                             ..default()
                         },
-                        BackgroundColor(PANEL_BG),
-                        children![(
-                            Text::new("Pick Up Full"),
-                            hud_body_font(),
-                            TextColor(TEXT_PRIMARY),
-                        )],
-                    ),
-                ],
-            ));
+                    );
+                });
         }
     });
 }
@@ -380,65 +348,53 @@ fn spawn_pane(
             pane.spawn((
                 InventoryHeaderText { side },
                 Text::new(format!("{title}\n{weight}\n{gold_line}")),
-                hud_body_font(),
+                panel_body_font(),
                 TextColor(TEXT_PRIMARY),
             ));
-            pane.spawn((
+            spawn_floating_raised_button(
+                pane,
                 InventoryAutoSortButton { inventory_id },
-                Button,
+                "Auto-Sort",
                 Node {
                     padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
                     align_self: AlignSelf::FlexStart,
                     ..default()
                 },
-                BackgroundColor(PANEL_BG),
-            ))
-            .with_children(|btn| {
-                btn.spawn((
-                    Text::new("Auto-Sort"),
-                    hud_body_font(),
-                    TextColor(TEXT_PRIMARY),
-                ));
-            });
+            );
             if side == InventoryPaneSide::Right {
-                pane.spawn((
+                spawn_floating_raised_button(
+                    pane,
                     InventoryLootAllButton,
-                    Button,
+                    "Loot All",
                     Node {
                         padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
                         align_self: AlignSelf::FlexStart,
                         ..default()
                     },
-                    BackgroundColor(PANEL_BG),
-                ))
-                .with_children(|btn| {
-                    btn.spawn((
-                        Text::new("Loot All"),
-                        hud_body_font(),
-                        TextColor(TEXT_PRIMARY),
-                    ));
-                });
-            }
-            pane.spawn((
-                InventoryGridPane { inventory_id, side },
-                PlayerHudUi,
-                Button,
-                Interaction::None,
-                Node {
-                    flex_shrink: 0.0,
-                    ..default()
-                },
-            ))
-            .with_children(|grid| {
-                spawn_inventory_grid(
-                    grid,
-                    record,
-                    inventory_id,
-                    items,
-                    instance_store,
-                    InventoryGridInteraction::Interactive { side },
-                    Some(ui),
                 );
+            }
+            spawn_floating_section_well(pane, |well| {
+                well.spawn((
+                    InventoryGridPane { inventory_id, side },
+                    PlayerHudUi,
+                    Button,
+                    Interaction::None,
+                    Node {
+                        flex_shrink: 0.0,
+                        ..default()
+                    },
+                ))
+                .with_children(|grid| {
+                    spawn_inventory_grid(
+                        grid,
+                        record,
+                        inventory_id,
+                        items,
+                        instance_store,
+                        InventoryGridInteraction::Interactive { side },
+                        Some(ui),
+                    );
+                });
             });
         });
 }
@@ -473,7 +429,7 @@ fn spawn_treasury_pane(
                     side: InventoryPaneSide::Right,
                 },
                 Text::new(format!("{title}\nTreasury Gold: {balance}")),
-                hud_body_font(),
+                panel_body_font(),
                 TextColor(TEXT_PRIMARY),
             ));
             for (label, amount) in [
@@ -481,19 +437,16 @@ fn spawn_treasury_pane(
                 ("Deposit Half", DepositGoldAmount::Half),
                 ("Deposit All", DepositGoldAmount::All),
             ] {
-                pane.spawn((
+                spawn_floating_raised_button(
+                    pane,
                     InventoryDepositGoldButton { amount },
-                    Button,
+                    label,
                     Node {
                         padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
                         align_self: AlignSelf::FlexStart,
                         ..default()
                     },
-                    BackgroundColor(PANEL_BG),
-                ))
-                .with_children(|btn| {
-                    btn.spawn((Text::new(label), hud_body_font(), TextColor(TEXT_PRIMARY)));
-                });
+                );
             }
         });
 }
@@ -528,7 +481,7 @@ fn format_weight_line(query: &crate::world::InventoryWeightQuery) -> String {
         .map(|g| format!("{:.1} kg ref", g as f64 / 1000.0))
         .unwrap_or_else(|| "no ref".into());
     let burden = if query.over_reference_grams > 0 {
-        " · heavy"
+        " | heavy"
     } else {
         ""
     };
@@ -560,14 +513,14 @@ fn format_item_details(
             .unwrap_or_else(|| ItemDefinitionId::new("unknown")),
     };
     let Some(def) = items.get(&def_id) else {
-        return format!("{name} — missing definition");
+        return format!("{name} | missing definition");
     };
     let mass = def.mass_grams_per_unit.saturating_mul(qty);
     let weight = query_inventory_weight(record, ctx)
         .map(|q| format!("{:.1} kg total inv", q.total_mass_grams as f64 / 1000.0))
         .unwrap_or_default();
     format!(
-        "{name}\n{}\nCategory: {}\nSize: {}×{}\nQty: {qty}\nMass: {:.2} kg\nValue: {} gold\nTags: {}\n{weight}",
+        "{name}\n{}\nCategory: {}\nSize: {}x{}\nQty: {qty}\nMass: {:.2} kg\nValue: {} gold\nTags: {}\n{weight}",
         def.description,
         def.category_id.as_str(),
         def.grid_width,

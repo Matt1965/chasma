@@ -81,7 +81,7 @@ pub fn validate_row(row: &UnitImportRow) -> Result<(), crate::data_import::RowIm
 mod tests {
     use super::*;
     use crate::data_import::unit::schema::UnitImportRow;
-    use crate::world::DEFAULT_NUTRITION_CONSUMPTION_PER_TICK;
+    use crate::world::DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND;
     use crate::world::DEFAULT_TURN_SPEED_DEGREES_PER_SECOND;
 
     fn row_with(move_speed: f32, collision: f32) -> UnitImportRow {
@@ -129,7 +129,7 @@ mod tests {
             has_can_operate_workstation_column: false,
             has_can_haul_column: false,
             has_construction_speed_column: false,
-            nutrition_consumption_per_tick: DEFAULT_NUTRITION_CONSUMPTION_PER_TICK,
+            nutrition_consumption_per_second: DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND,
             has_nutrition_consumption_column: false,
             asset_sizing: Default::default(),
         }

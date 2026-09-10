@@ -149,6 +149,7 @@ pub fn tint_build_mode_ghost_scene(
     ghosts: Query<(Entity, &BuildModeGhostScene), With<BuildModeGhostTintPending>>,
     children: Query<&Children>,
     mesh_materials: Query<&MeshMaterial3d<StandardMaterial>>,
+    originals: Query<&crate::buildings::OriginalBuildingMaterial>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for (entity, _) in &ghosts {
@@ -157,6 +158,7 @@ pub fn tint_build_mode_ghost_scene(
             entity,
             &children,
             &mesh_materials,
+            &originals,
             &mut materials,
             BuildingLifecycleState::Planned,
             Affiliation::Player,

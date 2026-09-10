@@ -417,7 +417,7 @@ pub fn step_farm_harvest_operation(
                         building_catalog,
                         building_id,
                         item_id,
-                        0,
+                        operation.simulation_tick,
                         operation.inventory_ctx,
                     );
                 }
@@ -435,7 +435,7 @@ pub fn step_farm_harvest_operation(
                 building_catalog,
                 building_id,
                 &assessment,
-                0,
+                operation.simulation_tick,
                 operation.inventory_ctx,
             );
             let _ = limiting_factor;

@@ -100,7 +100,10 @@ impl CommandTraceIntentKind {
             ClientIntent::CloseBuildingMenu => Self::ClearSelection,
             ClientIntent::SetBuildingProductionEnabled { .. }
             | ClientIntent::SetBuildingProductionOperation { .. }
-            | ClientIntent::AdjustBuildingWorkPriority { .. } => Self::BuildMode,
+            | ClientIntent::AdjustBuildingWorkPriority { .. }
+            | ClientIntent::SetBuildingStorageCategoryAccepted { .. }
+            | ClientIntent::AcceptAllBuildingStorageCategories { .. }
+            | ClientIntent::ClearAllBuildingStorageCategories { .. } => Self::BuildMode,
             ClientIntent::ToggleUnitSelection { .. } => Self::ToggleUnitSelection,
             ClientIntent::BoxSelect { .. } => Self::BoxSelect,
             ClientIntent::BoxSelectAdd { .. } => Self::BoxSelectAdd,

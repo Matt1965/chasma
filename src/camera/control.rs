@@ -65,6 +65,10 @@ pub fn apply_rts_camera_control(
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     mouse_motion: Res<AccumulatedMouseMotion>,
     mouse_scroll: Res<AccumulatedMouseScroll>,
+    // Previous frame's value: the HUD gate writes this from `PlayerControlSystems`, which runs
+    // after `RuntimeSyncSystems` and therefore after this system. Ordering the gate
+    // `before(CameraControlSystems)` closes a cycle through view focus and terrain streaming.
+    hud_hover: Option<Res<crate::ui::gameplay::PlayerHudHoverState>>,
     #[cfg(feature = "dev")] dev_gate: Option<Res<crate::dev::DevModeInputGate>>,
     menu_block: Option<Res<crate::menu::MenuInputBlock>>,
     mut query: Query<(&mut RtsCameraState, &mut Transform), With<RtsCamera>>,
@@ -93,9 +97,10 @@ pub fn apply_rts_camera_control(
     #[cfg(feature = "dev")]
     let block_scroll = dev_gate
         .as_ref()
-        .is_some_and(|gate| gate.block_camera_scroll);
+        .is_some_and(|gate| gate.block_camera_scroll)
+        || hud_hover.is_some_and(|hover| hover.blocks_camera_scroll);
     #[cfg(not(feature = "dev"))]
-    let block_scroll = false;
+    let block_scroll = hud_hover.is_some_and(|hover| hover.blocks_camera_scroll);
 
     // --- Pan (XZ, relative to camera yaw) ---
     let mut pan = Vec2::ZERO;
@@ -114,11 +119,10 @@ pub fn apply_rts_camera_control(
 
     if pan != Vec2::ZERO {
         let direction = pan.normalize();
-        let speed = if keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight) {
-            settings.pan_speed * settings.fast_pan_multiplier
-        } else {
-            settings.pan_speed
-        };
+        let shift_held = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+        // Use the smoothed orbit distance from the prior frame so pan speed eases
+        // with zoom smoothing rather than reacting to raw scroll targets.
+        let speed = settings.effective_pan_speed(state.distance, shift_held);
         let forward = yaw_forward_xz(state.target_yaw);
         let right = yaw_right_xz(state.target_yaw);
         let delta = (forward * direction.y + right * direction.x) * speed * dt;

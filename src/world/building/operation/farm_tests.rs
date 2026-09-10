@@ -101,6 +101,7 @@ fn operation_params<'a>(
         requirement_revision: catalogs.requirement_revision,
         profile_revision: catalogs.profile_revision,
         assessment_store,
+        simulation_tick: 0,
     }
 }
 
@@ -335,7 +336,7 @@ fn output_full_preserves_ready_crop() {
         test_inventory_ctx(),
         inventory_id,
         ItemDefinitionId::new("prispod"),
-        1,
+        20,
     )
     .unwrap();
     let mut assessment_store = crate::world::BuildingTerrainAssessmentStore::default();
@@ -360,7 +361,55 @@ fn output_full_preserves_ready_crop() {
             world.inventory_store().get(inventory_id).unwrap(),
             &ItemDefinitionId::new("prispod"),
         ),
-        1
+        20
+    );
+}
+
+#[test]
+fn farm_output_buffer_merges_prispods_up_to_stack_cap() {
+    let (mut world, building_id, ..) = setup_farm(50.0);
+    let inventory_id = binding_inventory(&world, building_id);
+    assert_eq!(
+        world
+            .inventory_store()
+            .get(inventory_id)
+            .unwrap()
+            .placed_entries()
+            .len(),
+        0
+    );
+
+    for expected in 1..=20u32 {
+        let (store, instances) = world.inventory_runtime_mut();
+        crate::world::place_stack_first_fit(
+            store,
+            instances,
+            test_inventory_ctx(),
+            inventory_id,
+            ItemDefinitionId::new("prispod"),
+            1,
+        )
+        .unwrap();
+        let record = world.inventory_store().get(inventory_id).unwrap();
+        assert_eq!(record.placed_entries().len(), 1, "placement {expected}");
+        assert_eq!(
+            count_stack_item(record, &ItemDefinitionId::new("prispod")),
+            expected
+        );
+    }
+
+    let (store, instances) = world.inventory_runtime_mut();
+    let result = crate::world::place_stack_first_fit(
+        store,
+        instances,
+        test_inventory_ctx(),
+        inventory_id,
+        ItemDefinitionId::new("prispod"),
+        1,
+    );
+    assert!(
+        result.is_err(),
+        "twenty-first prispod must not fit 1x1 buffer"
     );
 }
 
@@ -376,7 +425,7 @@ fn clearing_output_allows_harvest_completion() {
         test_inventory_ctx(),
         inventory_id,
         ItemDefinitionId::new("prispod"),
-        1,
+        20,
     )
     .unwrap();
     let mut assessment_store = crate::world::BuildingTerrainAssessmentStore::default();
@@ -391,6 +440,11 @@ fn clearing_output_allows_harvest_completion() {
         ticks,
     )
     .unwrap();
+    let farm = world
+        .building_production_store()
+        .farm_state(building_id)
+        .unwrap();
+    assert_eq!(farm.phase, FarmProductionPhase::ReadyToHarvest);
     if let Some(record) = world.inventory_store().get(inventory_id) {
         if !record.placed_entries().is_empty() {
             let (store, instances) = world.inventory_runtime_mut();

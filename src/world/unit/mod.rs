@@ -59,7 +59,7 @@ pub use authoring::{
 #[cfg(any(test, feature = "dev"))]
 pub use catalog::starter_definitions;
 pub use catalog::{
-    DEFAULT_NUTRITION_CONSUMPTION_PER_TICK, DEFAULT_TURN_SPEED_DEGREES_PER_SECOND, UnitCatalog,
+    DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND, DEFAULT_TURN_SPEED_DEGREES_PER_SECOND, UnitCatalog,
     UnitCatalogError, UnitDefinition, UnitDefinitionId, UnitRenderKey, UnitWorkCapabilities,
 };
 pub use combat_state::CombatState;
@@ -117,7 +117,7 @@ pub use navigation_membership::{
 };
 pub use orders::{
     UnitOrder, UnitOrderError, apply_validated_attack_order, issue_unit_order,
-    resolve_all_pending_unit_orders, resolve_pending_unit_orders,
+    resolve_all_pending_unit_orders, resolve_pending_unit_orders, unit_holds_position,
 };
 pub use placement::UnitPlacement;
 pub use portal_trace::{PortalTransitionEvent, PortalTransitionTrace};

@@ -114,7 +114,7 @@ fn build_snapshot_from_record(
             line(
                 "Construction",
                 if caps.can_construct {
-                    format!("Capable ({:.2}× speed)", caps.construction_speed)
+                    format!("Capable ({:.2}x speed)", caps.construction_speed)
                 } else {
                     "Not capable".into()
                 },
@@ -145,7 +145,7 @@ fn build_snapshot_from_record(
     if let Some(weapon) = weapon_display_for_unit(record, unit_catalog, weapon_catalog) {
         append_weapon_hud_lines(&mut combat_lines, &weapon);
     } else {
-        combat_lines.push("Weapon: —".into());
+        combat_lines.push("Weapon: -".into());
     }
     append_combat_state_lines(
         &mut combat_lines,

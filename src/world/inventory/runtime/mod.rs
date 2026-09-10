@@ -31,7 +31,8 @@ pub use error::InventoryError;
 pub use grid::{
     can_place_entry, can_place_footprint, cells_for_entry, cells_for_footprint, entry_mass_grams,
     first_fit_position, footprint_for_definition, footprint_for_entry, footprint_in_bounds,
-    half_stack_quantity, rebuild_derived_state, validate_inventory_caches, validate_stack_quantity,
+    half_stack_quantity, max_accept_stack_quantity, rebuild_derived_state,
+    simulate_place_stack_merge_then_first_fit, validate_inventory_caches, validate_stack_quantity,
 };
 pub use id::{InventoryId, ItemInstanceId};
 pub use instance::{ItemInstance, ItemInstanceMetadata};

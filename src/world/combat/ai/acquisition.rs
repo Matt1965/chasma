@@ -183,6 +183,9 @@ pub fn unit_eligible_for_auto_acquire(
     if is_player_controllable(record) && !settings.player_units_auto_acquire {
         return false;
     }
+    if matches!(record.combat_state, CombatState::Holding { .. }) {
+        return false;
+    }
     match &record.state {
         UnitState::Dead => false,
         UnitState::Working { .. } => false,
@@ -222,6 +225,16 @@ pub fn unit_needs_auto_acquire_target(
                 policy,
             )
         }
+        CombatState::Holding { target, .. } => target.is_none_or(|target_id| {
+            !is_valid_active_combat_target(
+                world,
+                unit_id,
+                target_id,
+                weapon_catalog,
+                unit_catalog,
+                policy,
+            )
+        }),
     }
 }
 

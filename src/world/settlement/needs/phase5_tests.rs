@@ -2,6 +2,7 @@
 
 use bevy::prelude::{Quat, Vec3};
 
+use crate::simulation::SIMULATION_TICK_SECONDS;
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::item::{ItemCatalog, ItemCategoryCatalog, ItemDefinition, ItemDefinitionId};
@@ -24,6 +25,12 @@ use crate::world::{
     starter_building_definitions, starter_inventory_profile_definitions,
     starter_item_category_definitions, starter_item_definitions, starter_unit_definitions,
 };
+
+fn projected_food_consumption_per_member() -> f32 {
+    crate::world::DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND
+        * DEFAULT_FOOD_PLANNING_HORIZON_TICKS as f32
+        * SIMULATION_TICK_SECONDS
+}
 
 struct Phase5Fixture {
     world: WorldData,
@@ -374,7 +381,7 @@ fn one_live_member_creates_projected_food_demand() {
     fx.spawn_member(fx.settlement_a, 5.0, 5.0);
     fx.evaluate(fx.settlement_a, 1);
     let food = fx.food_snapshot(fx.settlement_a);
-    let projected = DEFAULT_FOOD_PLANNING_HORIZON_TICKS as f32;
+    let projected = projected_food_consumption_per_member();
     assert_eq!(food.desired_value, projected + 100.0);
 }
 
@@ -388,7 +395,7 @@ fn more_members_increase_food_desired() {
     fx.evaluate(fx.settlement_a, 2);
     let two = fx.food_snapshot(fx.settlement_a).desired_value;
     assert!(two > one);
-    assert_eq!(two - one, DEFAULT_FOOD_PLANNING_HORIZON_TICKS as f32);
+    assert!((two - one - projected_food_consumption_per_member()).abs() < 1e-4);
 }
 
 #[test]
@@ -432,7 +439,7 @@ fn dead_member_does_not_increase_food_desired() {
 fn different_unit_consumption_rates_change_demand() {
     let mut fx = Phase5Fixture::new();
     let mut defs = starter_unit_definitions();
-    defs[1] = defs[1].clone().with_nutrition_consumption_per_tick(2.0);
+    defs[1] = defs[1].clone().with_nutrition_consumption_per_second(0.2);
     fx.unit_catalog = UnitCatalog::from_definitions(defs).unwrap();
     fx.spawn_member(fx.settlement_a, 5.0, 5.0);
     fx.evaluate(fx.settlement_a, 1);
@@ -460,7 +467,7 @@ fn food_desired_is_projected_consumption_plus_reserve() {
     let food = fx.food_snapshot(fx.settlement_a);
     assert_eq!(
         food.desired_value,
-        DEFAULT_FOOD_PLANNING_HORIZON_TICKS as f32 + 250.0
+        projected_food_consumption_per_member() + 250.0
     );
 }
 
@@ -468,13 +475,12 @@ fn food_desired_is_projected_consumption_plus_reserve() {
 fn reserve_shortage_keeps_low_nonzero_pressure() {
     let mut fx = Phase5Fixture::new();
     fx.spawn_member(fx.settlement_a, 5.0, 5.0);
-    let desired = DEFAULT_FOOD_PLANNING_HORIZON_TICKS as f32 + 100.0;
+    let desired = projected_food_consumption_per_member() + 100.0;
     let chest = fx.spawn_member_chest(fx.settlement_a, 10.0, 10.0);
-    fx.stock_chest(chest, "prepared_meal", 4);
-    fx.stock_chest(chest, "prispod", 6);
+    fx.stock_chest(chest, "prispod", 4);
     fx.evaluate(fx.settlement_a, 1);
     let food = fx.food_snapshot(fx.settlement_a);
-    assert_eq!(food.current_value, 950.0);
+    assert_eq!(food.current_value, 100.0);
     assert_eq!(food.desired_value, desired);
     assert!(food.pressure > 0);
     assert!(food.pressure < 20);

@@ -413,42 +413,11 @@ fn place_stack_quantity_on_record(
     record: &mut InventoryRecord,
     ctx: &InventoryCatalogCtx<'_>,
     item_id: &ItemDefinitionId,
-    mut quantity: u32,
+    quantity: u32,
 ) -> bool {
-    if quantity == 0 {
-        return true;
-    }
-    let Ok(item) = ctx.require_item(item_id) else {
-        return false;
-    };
-    if item.unique_instance_required || !item.stackable {
-        return false;
-    }
-    let Ok(limit) = ctx.stack_limit_for(item, record.profile_id()) else {
-        return false;
-    };
-
-    while quantity > 0 {
-        let chunk = quantity.min(limit);
-        let Ok((anchor_x, anchor_y)) =
-            first_fit_position(record, item.grid_width, item.grid_height)
-        else {
-            return false;
-        };
-        let entry = PlacedInventoryEntry::stack(anchor_x, anchor_y, item_id.clone(), chunk);
-        if can_place_entry(record, &entry, item_id, None, ctx).is_err() {
-            return false;
-        }
-        record.placed_entries_mut().push(entry);
-        if record
-            .rebuild_derived(ctx, |id| Err(InventoryError::ItemInstanceNotFound(id)))
-            .is_err()
-        {
-            return false;
-        }
-        quantity -= chunk;
-    }
-    true
+    crate::world::inventory::simulate_place_stack_merge_then_first_fit(
+        record, ctx, item_id, quantity,
+    )
 }
 
 fn place_stack_quantity_first_fit(

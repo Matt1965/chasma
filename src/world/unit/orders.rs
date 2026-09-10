@@ -31,6 +31,10 @@ pub enum UnitOrder {
     AttackMove {
         destination: WorldPosition,
     },
+    /// Hold at the current world position; attack in-range targets without chasing.
+    Hold {
+        anchor: WorldPosition,
+    },
     /// Travel to and perform an assigned work task (ADR-085 B8).
     Work {
         task_id: crate::world::TaskId,
@@ -76,6 +80,13 @@ impl std::fmt::Display for UnitOrderError {
             Self::WeaponCannotTarget => write!(f, "weapon cannot target"),
         }
     }
+}
+
+/// Returns true when the unit has an active hold-position player order.
+pub fn unit_holds_position(world: &WorldData, unit_id: UnitId) -> bool {
+    world
+        .get_unit(unit_id)
+        .is_some_and(|record| record.combat_state.is_holding())
 }
 
 /// Issue an order to a unit.
@@ -193,6 +204,38 @@ pub fn issue_unit_order(
                     },
                 )
                 .map_err(|_| UnitOrderError::AttackerNotFound)?;
+            Ok(())
+        }
+        UnitOrder::Hold { anchor } => {
+            let mut events = Vec::new();
+            cancel_unit_task(world, unit_id, TaskCancelReason::PlayerOrder, &mut events);
+            let _ = events;
+            let _ = (
+                doodad_catalog,
+                nav_config,
+                weapon_catalog,
+                unit_catalog,
+                targeting_policy,
+            );
+            if world.get_unit(unit_id).is_none() {
+                return Err(UnitOrderError::UnitNotFound);
+            }
+            world.command_buffer_mut().clear_pending(unit_id);
+            world.movement_smoothing_mut().clear_unit(unit_id);
+            clear_attack_cycle_for_order_cancel(world, unit_id, None, unit_catalog, weapon_catalog);
+            let _ = world.set_reactive_combat_target(unit_id, None);
+            world
+                .set_unit_state(unit_id, UnitState::Idle)
+                .map_err(|_| UnitOrderError::UnitNotFound)?;
+            world
+                .set_unit_combat_state(
+                    unit_id,
+                    CombatState::Holding {
+                        anchor,
+                        target: None,
+                    },
+                )
+                .map_err(|_| UnitOrderError::UnitNotFound)?;
             Ok(())
         }
         UnitOrder::Work { .. } => {

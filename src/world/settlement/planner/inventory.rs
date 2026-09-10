@@ -123,7 +123,7 @@ pub fn sum_category_nutrition(
 pub fn building_advertises_settlement_supply(
     definition: &crate::world::building::catalog::BuildingDefinition,
 ) -> bool {
-    if definition.id == BuildingDefinitionId::new("storage_chest") {
+    if crate::world::building::storage_policy::building_is_storage_capable(definition) {
         return true;
     }
     definition

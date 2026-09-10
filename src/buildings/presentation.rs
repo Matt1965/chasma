@@ -67,6 +67,7 @@ pub fn apply_building_lifecycle_tints(
     >,
     children: Query<&Children>,
     mesh_materials: Query<&MeshMaterial3d<StandardMaterial>>,
+    originals: Query<&super::components::OriginalBuildingMaterial>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for (root, marker, applied) in &roots {
@@ -81,6 +82,7 @@ pub fn apply_building_lifecycle_tints(
             root,
             &children,
             &mesh_materials,
+            &originals,
             &mut materials,
             marker.lifecycle_state,
             record.ownership.affiliation,

@@ -3,7 +3,6 @@ use bevy::prelude::*;
 use crate::world::building::catalog::BuildingDefinition;
 use crate::world::building::field_requirement::BuildingFieldRequirementDefinition;
 use crate::world::building::placement::BuildingPlacement;
-use crate::world::occupancy::scale_footprint_shape;
 use crate::world::occupancy::{
     FootprintShape, OccupancyCellCoord, OccupancyError, QuantizedRotation,
     effective_building_footprint_for_placement, occupied_cells_for_footprint_yaw,
@@ -43,10 +42,10 @@ fn resolve_sampling_footprint_shape(
     uniform_scale: f32,
 ) -> Result<FootprintShape, super::error::TerrainAssessmentError> {
     if let Some(footprint_id) = &requirement.sampling_footprint_id {
-        return footprint_shape_from_catalog(footprint_catalog, footprint_id, uniform_scale);
+        return footprint_shape_from_catalog(footprint_catalog, footprint_id);
     }
     if let Some(footprint_id) = &building_definition.field_sampling_footprint_id {
-        return footprint_shape_from_catalog(footprint_catalog, footprint_id, uniform_scale);
+        return footprint_shape_from_catalog(footprint_catalog, footprint_id);
     }
     let shape = effective_building_footprint_for_placement(
         building_definition,
@@ -57,10 +56,15 @@ fn resolve_sampling_footprint_shape(
     Ok(shape.into_owned())
 }
 
+/// Catalog operational footprints are authored in world meters (ADR-104 TF4).
+///
+/// `BuildingPlacement.uniform_scale` is instance gameplay scaling for occupancy and
+/// building-definition footprints. It must not resize explicit metric sampling regions
+/// such as `quarry_excavation` or `farm_cultivation` — those dimensions already
+/// describe the operational work area in meters.
 fn footprint_shape_from_catalog(
     footprint_catalog: &FootprintCatalog,
     footprint_id: &crate::world::FootprintId,
-    uniform_scale: f32,
 ) -> Result<FootprintShape, super::error::TerrainAssessmentError> {
     let footprint = footprint_catalog.get(footprint_id).ok_or_else(|| {
         super::error::TerrainAssessmentError::OperationalFootprintUnavailable(format!(
@@ -79,12 +83,7 @@ fn footprint_shape_from_catalog(
     footprint.validate().map_err(|err| {
         super::error::TerrainAssessmentError::OperationalFootprintUnavailable(format!("{err:?}"))
     })?;
-    let shape = if (uniform_scale - 1.0).abs() < 0.0001 {
-        footprint.shape.clone()
-    } else {
-        scale_footprint_shape(&footprint.shape, uniform_scale)
-    };
-    Ok(shape)
+    Ok(footprint.shape.clone())
 }
 
 fn map_footprint_error(error: OccupancyError) -> super::error::TerrainAssessmentError {

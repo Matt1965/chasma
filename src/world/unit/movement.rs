@@ -53,7 +53,7 @@ fn finish_travel_arrival(
         let labor_task = world.task_store().get(task_id).is_some_and(|task| {
             matches!(
                 task.task_type,
-                TaskType::ConstructBuilding | TaskType::OperateWorkstation
+                TaskType::ConstructBuilding | TaskType::OperateWorkstation | TaskType::Haul
             )
         });
         if labor_task {
@@ -2455,6 +2455,7 @@ mod tests {
             &world,
             &catalog,
             layout(),
+            &[],
         );
         for assignment in plan.assignments {
             issue_unit_order(

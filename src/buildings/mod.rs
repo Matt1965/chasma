@@ -22,6 +22,7 @@ pub use assets::{
 };
 pub use components::{
     BuildingDiagnosticFallback, BuildingRenderEntity, BuildingSceneRoot, BuildingSceneTags,
+    OriginalBuildingMaterial,
 };
 pub use fallback::{BuildingFallbackAssets, BuildingFallbackReason};
 pub use picking::pick_building_along_ray;
@@ -40,6 +41,7 @@ impl Plugin for BuildingsRuntimePlugin {
             .register_type::<BuildingSceneRoot>()
             .register_type::<BuildingDiagnosticFallback>()
             .register_type::<BuildingSceneTags>()
+            .register_type::<OriginalBuildingMaterial>()
             .register_type::<BuildingFallbackReason>()
             .init_resource::<BuildingRenderIndex>()
             .init_resource::<BuildingFallbackAssets>()

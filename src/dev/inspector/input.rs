@@ -227,6 +227,7 @@ fn refresh_building_snapshot(
         requirement_revision: capture.requirement_revision.0,
         profile_revision: capture.profile_revision.0,
         assessment_store: &mut capture.assessments,
+        simulation_tick: 0,
     };
     let operation_probe = probe_building_operation(
         &capture.world,

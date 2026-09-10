@@ -1,15 +1,18 @@
 //! Building Panel content snapshot (BP2): bindings, production readout, inventory sections.
 
+use crate::world::ItemCategoryId;
 use crate::world::{
     BuildingCatalog, BuildingId, BuildingInventoryBinding, BuildingOperationParams,
-    FarmProductionPhase, InventoryId, InventoryProfileCatalog, OperationCatalog,
-    OperationDefinitionId, OperationalLimitingFactor, PRODUCTION_PROGRESS_ONE_UNIT, WorldData,
-    assess_production_execution, effective_inventory_binding_definitions, farm_growth_percent,
-    farm_harvest_percent, format_efficiency_display, is_prispod_farm_definition,
+    FarmProductionPhase, InventoryId, InventoryProfileCatalog, ItemCategoryCatalog,
+    OperationCatalog, OperationDefinitionId, OperationalLimitingFactor,
+    PRODUCTION_PROGRESS_ONE_UNIT, WorldData, assess_production_execution,
+    building_is_storage_capable, effective_inventory_binding_definitions,
+    effective_storage_category_accepted, farm_growth_percent, farm_harvest_percent,
+    format_efficiency_display, is_prispod_farm_definition,
 };
 use crate::world::{
-    building_is_constructible, building_operational_efficiency, building_work_priority_label,
-    building_work_priority_level,
+    building_is_constructible, building_operational_efficiency, building_storage_policy,
+    building_work_priority_label, building_work_priority_level,
 };
 
 /// Player-facing building panel snapshot derived from authoritative world data.
@@ -17,8 +20,21 @@ use crate::world::{
 pub struct BuildingPanelSnapshot {
     pub header: BuildingPanelHeader,
     pub work_priority: Option<BuildingPanelWorkPriority>,
+    pub storage: Option<BuildingPanelStorageSettings>,
     pub production: Option<BuildingPanelProduction>,
     pub inventories: Vec<BuildingPanelInventorySection>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildingPanelStorageCategory {
+    pub category_id: ItemCategoryId,
+    pub display_name: String,
+    pub accepted: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildingPanelStorageSettings {
+    pub categories: Vec<BuildingPanelStorageCategory>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,6 +56,7 @@ pub struct BuildingPanelProduction {
     pub progress_percent: Option<u32>,
     pub efficiency_display: Option<String>,
     pub blocking_label: Option<String>,
+    pub terrain_field_lines: Vec<String>,
     pub enabled: bool,
     pub show_operation_selector: bool,
     pub operation_options: Vec<BuildingPanelOperationOption>,
@@ -68,6 +85,15 @@ impl BuildingPanelSnapshot {
             sig = sig
                 .wrapping_mul(31)
                 .wrapping_add(work_priority.label.len() as u64);
+        }
+        if let Some(storage) = &self.storage {
+            for category in &storage.categories {
+                sig = sig
+                    .wrapping_mul(31)
+                    .wrapping_add(category.display_name.len() as u64)
+                    .wrapping_mul(31)
+                    .wrapping_add(u64::from(category.accepted));
+            }
         }
         if let Some(production) = &self.production {
             sig = sig.wrapping_mul(31).wrapping_add(production.signature());
@@ -112,6 +138,9 @@ impl BuildingPanelProduction {
         if let Some(blocked) = &self.blocking_label {
             sig = sig.wrapping_mul(31).wrapping_add(blocked.len() as u64);
         }
+        for line in &self.terrain_field_lines {
+            sig = sig.wrapping_mul(31).wrapping_add(line.len() as u64);
+        }
         sig
     }
 }
@@ -123,6 +152,7 @@ pub fn build_building_panel_snapshot(
     operation_catalog: &OperationCatalog,
     operation_params: &mut BuildingOperationParams<'_>,
     profile_catalog: &InventoryProfileCatalog,
+    category_catalog: &ItemCategoryCatalog,
     building_id: BuildingId,
 ) -> Option<BuildingPanelSnapshot> {
     let record = world.get_building(building_id)?;
@@ -141,6 +171,12 @@ pub fn build_building_panel_snapshot(
             label: building_work_priority_label(building_work_priority_level(world, building_id))
                 .to_string(),
         })
+    } else {
+        None
+    };
+
+    let storage = if building_is_storage_capable(definition) {
+        Some(build_storage_settings(world, category_catalog, building_id))
     } else {
         None
     };
@@ -170,9 +206,27 @@ pub fn build_building_panel_snapshot(
     Some(BuildingPanelSnapshot {
         header,
         work_priority,
+        storage,
         production,
         inventories,
     })
+}
+
+fn build_storage_settings(
+    world: &WorldData,
+    category_catalog: &ItemCategoryCatalog,
+    building_id: BuildingId,
+) -> BuildingPanelStorageSettings {
+    let policy = building_storage_policy(world, building_id);
+    let categories = category_catalog
+        .enabled_definitions()
+        .map(|category| BuildingPanelStorageCategory {
+            category_id: category.id.clone(),
+            display_name: category.display_name.clone(),
+            accepted: effective_storage_category_accepted(&policy, &category.id),
+        })
+        .collect();
+    BuildingPanelStorageSettings { categories }
 }
 
 pub fn building_shows_work_priority(
@@ -251,7 +305,13 @@ fn build_production_readout(
         (operation_name, progress_percent)
     };
 
-    let operational_report = selected_operation.and_then(|op| {
+    let efficiency_operation = selected_operation.or_else(|| {
+        effective_operation_id
+            .as_ref()
+            .and_then(|id| operation_catalog.get(id))
+    });
+
+    let operational_report = efficiency_operation.and_then(|op| {
         let mut ctx = operation_params.efficiency_context(world, building_catalog);
         building_operational_efficiency(&mut ctx, building_id, Some(op)).ok()
     });
@@ -277,11 +337,35 @@ fn build_production_readout(
             })
         });
 
+    let terrain_field_lines = operation_params
+        .assessment_store
+        .get(building_id)
+        .map(|assessment| {
+            assessment
+                .per_requirement
+                .iter()
+                .map(|req| {
+                    let evaluation = operation_params
+                        .requirement_catalog
+                        .lookup(&definition.id, &req.field_id)
+                        .map(|requirement| {
+                            crate::world::evaluate_field_requirement(requirement, req)
+                        })
+                        .unwrap_or_else(|| {
+                            crate::world::evaluate_field_requirement_assessment(req)
+                        });
+                    crate::world::format_field_requirement_diagnostic(&evaluation)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
     BuildingPanelProduction {
         operation_name,
         progress_percent,
         efficiency_display,
         blocking_label,
+        terrain_field_lines,
         enabled,
         show_operation_selector,
         operation_options,
@@ -506,6 +590,7 @@ mod tests {
             requirement_revision: 0,
             profile_revision: 0,
             assessment_store,
+            simulation_tick: 0,
         }
     }
 
@@ -528,6 +613,7 @@ mod tests {
             shared_operation_catalog(),
             &mut params,
             shared_inventory_profiles(),
+            &ItemCategoryCatalog::default(),
             building_id,
         )
         .unwrap();
@@ -553,6 +639,7 @@ mod tests {
             shared_operation_catalog(),
             &mut params,
             shared_inventory_profiles(),
+            &ItemCategoryCatalog::default(),
             building_id,
         )
         .unwrap();
@@ -584,6 +671,7 @@ mod tests {
             shared_operation_catalog(),
             &mut params,
             shared_inventory_profiles(),
+            &ItemCategoryCatalog::default(),
             building_id,
         )
         .unwrap();
@@ -629,6 +717,7 @@ mod tests {
             shared_operation_catalog(),
             &mut params,
             shared_inventory_profiles(),
+            &ItemCategoryCatalog::default(),
             building_id,
         )
         .unwrap();
@@ -651,6 +740,7 @@ mod tests {
             shared_operation_catalog(),
             &mut params,
             shared_inventory_profiles(),
+            &ItemCategoryCatalog::default(),
             building_id,
         )
         .unwrap();
@@ -672,6 +762,7 @@ mod tests {
             shared_operation_catalog(),
             &mut params,
             shared_inventory_profiles(),
+            &ItemCategoryCatalog::default(),
             building_id,
         )
         .unwrap();
@@ -693,6 +784,7 @@ mod tests {
             shared_operation_catalog(),
             &mut params,
             shared_inventory_profiles(),
+            &ItemCategoryCatalog::default(),
             building_id,
         )
         .unwrap();

@@ -21,6 +21,11 @@ pub enum CombatState {
         destination: crate::world::WorldPosition,
         target: Option<crate::world::UnitId>,
     },
+    /// Hold position — anchored at `anchor`; may attack in-range targets without chasing.
+    Holding {
+        anchor: crate::world::WorldPosition,
+        target: Option<crate::world::UnitId>,
+    },
 }
 impl CombatState {
     pub fn label(&self) -> &'static str {
@@ -31,7 +36,12 @@ impl CombatState {
             Self::Attacking { .. } => "Attacking",
             Self::Chasing { .. } => "Chasing",
             Self::AttackMoving { .. } => "AttackMoving",
+            Self::Holding { .. } => "Holding",
         }
+    }
+
+    pub fn is_holding(&self) -> bool {
+        matches!(self, Self::Holding { .. })
     }
 }
 #[cfg(test)]

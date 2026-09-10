@@ -331,6 +331,124 @@ pub fn half_stack_quantity(current: u32) -> u32 {
     current.div_ceil(2)
 }
 
+/// Maximum quantity of `item_id` that can be placed into `record` using merge-then-first-fit.
+pub fn max_accept_stack_quantity(
+    record: &InventoryRecord,
+    ctx: &InventoryCatalogCtx<'_>,
+    item_id: &ItemDefinitionId,
+) -> u32 {
+    let Ok(item) = ctx.require_item(item_id) else {
+        return 0;
+    };
+    if item.unique_instance_required || !item.stackable {
+        return 0;
+    }
+    let Ok(stack_limit) = ctx.stack_limit_for(item, record.profile_id()) else {
+        return 0;
+    };
+
+    let mut merge_headroom = 0u32;
+    for entry in record.placed_entries() {
+        let InventoryEntryContents::Stack {
+            item_definition_id,
+            quantity,
+        } = &entry.contents
+        else {
+            continue;
+        };
+        if item_definition_id != item_id {
+            continue;
+        }
+        merge_headroom = merge_headroom.saturating_add(stack_limit.saturating_sub(*quantity));
+    }
+
+    let (width, height) = footprint_for_definition(item);
+    let mut empty_cell_capacity = 0u32;
+    for y in 0..record.grid_height() {
+        for x in 0..record.grid_width() {
+            if can_place_footprint(record, x, y, width, height, None) {
+                empty_cell_capacity = empty_cell_capacity.saturating_add(stack_limit);
+            }
+        }
+    }
+
+    merge_headroom.saturating_add(empty_cell_capacity)
+}
+
+/// Whether `quantity` of `item_id` can be placed into `record` using merge-then-first-fit.
+pub fn simulate_place_stack_merge_then_first_fit(
+    record: &mut InventoryRecord,
+    ctx: &InventoryCatalogCtx<'_>,
+    item_id: &ItemDefinitionId,
+    quantity: u32,
+) -> bool {
+    if quantity == 0 {
+        return true;
+    }
+    let Ok(item) = ctx.require_item(item_id) else {
+        return false;
+    };
+    if item.unique_instance_required || !item.stackable {
+        return false;
+    }
+    let Ok(stack_limit) = ctx.stack_limit_for(item, record.profile_id()) else {
+        return false;
+    };
+
+    let mut remaining = quantity;
+    let indices: Vec<EntryIndex> = (0..record.placed_entries().len()).collect();
+    for entry_index in indices {
+        if remaining == 0 {
+            break;
+        }
+        let entry = record.placed_entries()[entry_index].clone();
+        let InventoryEntryContents::Stack {
+            item_definition_id,
+            quantity: dest_qty,
+        } = &entry.contents
+        else {
+            continue;
+        };
+        if item_definition_id != item_id {
+            continue;
+        }
+        let room = stack_limit.saturating_sub(*dest_qty);
+        if room == 0 {
+            continue;
+        }
+        let merge_qty = remaining.min(room);
+        let Some(new_qty) = dest_qty.checked_add(merge_qty) else {
+            return false;
+        };
+        record.placed_entries_mut()[entry_index].contents = InventoryEntryContents::Stack {
+            item_definition_id: item_definition_id.clone(),
+            quantity: new_qty,
+        };
+        remaining -= merge_qty;
+    }
+
+    let (width, height) = footprint_for_definition(item);
+    while remaining > 0 {
+        let chunk = remaining.min(stack_limit);
+        let Ok((anchor_x, anchor_y)) = first_fit_position(record, width, height) else {
+            return false;
+        };
+        let entry = PlacedInventoryEntry::stack(anchor_x, anchor_y, item_id.clone(), chunk);
+        if can_place_entry(record, &entry, item_id, None, ctx).is_err() {
+            return false;
+        }
+        record.placed_entries_mut().push(entry);
+        if record
+            .rebuild_derived(ctx, |id| Err(InventoryError::ItemInstanceNotFound(id)))
+            .is_err()
+        {
+            return false;
+        }
+        remaining -= chunk;
+    }
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

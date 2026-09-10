@@ -5,6 +5,7 @@ pub mod field_response;
 pub mod footprint;
 pub mod operation;
 pub mod operational_efficiency;
+pub mod storage_policy;
 pub mod terrain_assessment;
 
 mod asset_pivot;
@@ -220,14 +221,28 @@ pub use record::BuildingRecord;
 pub use restore::{BuildingRestoreError, validate_building_for_restore};
 pub use source::BuildingSource;
 pub use state::{BuildingInteriorState, BuildingLifecycleState, BuildingSpaces, ConstructionState};
+pub use storage_policy::{
+    BuildingStoragePolicy, BuildingStoragePolicySaveState, BuildingStoragePolicyStore,
+    all_storage_filter_categories, apply_player_storage_accept_all,
+    apply_player_storage_category_accepted, apply_player_storage_clear_all,
+    binding_is_production_output_surplus_source, building_is_production_output_surplus_source,
+    building_is_storage_capable, building_storage_accepts_item,
+    building_storage_accepts_item_for_definition, building_storage_policy,
+    default_storage_delivery_binding_id, effective_storage_category_accepted,
+    mark_settlement_storage_logistics_wakeup, mark_storage_logistics_dirty_for_inventory,
+    storage_item_is_misfiled, storage_policy_accepts_category,
+};
 pub use store::ChunkBuildingStore;
 pub use terrain_assessment::{
     AssessmentRebuildOutcome, AssessmentRebuildReport, BuildingFieldRequirementAssessment,
-    BuildingTerrainAssessment, BuildingTerrainAssessmentKey, BuildingTerrainAssessmentStore,
-    BuildingTerrainWarning, TerrainAssessmentCatalogs, TerrainAssessmentError,
-    assess_building_terrain, assess_building_terrain_at_placement, assessment_revision_fingerprint,
-    ensure_building_terrain_assessment, format_coverage_display, format_efficiency_display,
-    format_field_average_display, hash_sample_cells, invalidate_buildings_for_changed_fields,
+    BuildingFieldRequirementEvaluation, BuildingTerrainAssessment, BuildingTerrainAssessmentKey,
+    BuildingTerrainAssessmentStore, BuildingTerrainWarning, FieldRequirementFailureReason,
+    TerrainAssessmentCatalogs, TerrainAssessmentError, assess_building_terrain,
+    assess_building_terrain_at_placement, assessment_revision_fingerprint,
+    ensure_building_terrain_assessment, evaluate_field_requirement,
+    evaluate_field_requirement_assessment, format_coverage_display, format_efficiency_display,
+    format_field_average_display, format_field_requirement_diagnostic, hash_sample_cells,
+    invalidate_buildings_for_changed_fields, primary_failure_for_assessment,
     rebuild_all_building_terrain_assessments, rebuild_building_terrain_assessment,
     resolve_building_field_sample_cells,
 };

@@ -192,7 +192,6 @@ pub fn derive_cursor_mode(
     }
     if let Some(crate::client::CommandType::Attack) = armed {
         return match hover {
-            CommandHoverContext::Terrain => GameplayCursorMode::AttackMove,
             _ if hover_attackable => GameplayCursorMode::Attack,
             _ => GameplayCursorMode::Default,
         };

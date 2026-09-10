@@ -106,6 +106,25 @@ pub fn attach_inventory_on_building_create(
         BuildingInventoryBindingSet::from_bindings(runtime_bindings),
     );
     crate::world::register_building_logistics_endpoints(world, definition, building.id);
+    if crate::world::building::storage_policy::building_is_storage_capable(definition) {
+        if let Some(settlement_id) = world
+            .settlement_store()
+            .settlement_for_building(building.id)
+        {
+            for candidate in world
+                .settlement_store()
+                .buildings_for_settlement(settlement_id)
+            {
+                world
+                    .building_storage_policy_store_mut()
+                    .mark_logistics_dirty(candidate);
+            }
+        } else {
+            world
+                .building_storage_policy_store_mut()
+                .mark_logistics_dirty(building.id);
+        }
+    }
     Ok(())
 }
 

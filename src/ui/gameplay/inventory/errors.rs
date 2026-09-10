@@ -33,7 +33,7 @@ impl InventoryUiError {
         match self {
             Self::NoRoom => "No room in destination inventory.".into(),
             Self::StackFull => "Destination stack is full.".into(),
-            Self::ItemChanged => "Item changed — try again.".into(),
+            Self::ItemChanged => "Item changed | try again.".into(),
             Self::InventoryClosed => "Inventory is no longer available.".into(),
             Self::AccessDenied => "Access denied.".into(),
             Self::OutOfRange => "Out of interaction range.".into(),
@@ -41,7 +41,7 @@ impl InventoryUiError {
             Self::ContainerLocked => "Container is locked.".into(),
             Self::InvalidTargetCell => "Cannot place item there.".into(),
             Self::CannotMerge => "Stacks cannot merge.".into(),
-            Self::CannotSwap => "Cannot swap items — not enough space.".into(),
+            Self::CannotSwap => "Cannot swap items | not enough space.".into(),
             Self::QuantityUnavailable => "Requested quantity unavailable.".into(),
             Self::ItemAlreadyMoved => "Item was already moved.".into(),
             Self::AutoSortFailed => "Auto-sort failed.".into(),

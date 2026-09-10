@@ -138,6 +138,8 @@ pub struct WorldData {
     building_production: super::building::operation::BuildingProductionStore,
     /// Role-tagged building inventory bindings (EP4).
     building_inventory_bindings: super::building::inventory_binding::BuildingInventoryBindingStore,
+    /// Per-building inbound storage acceptance filters.
+    building_storage_policies: super::building::storage_policy::BuildingStoragePolicyStore,
     /// Authoritative hauling requests (EP7).
     hauling_requests: super::logistics::HaulingRequestStore,
     /// Inventory reservations for hauling (EP7).
@@ -233,6 +235,8 @@ impl WorldData {
             building_production: super::building::operation::BuildingProductionStore::default(),
             building_inventory_bindings:
                 super::building::inventory_binding::BuildingInventoryBindingStore::default(),
+            building_storage_policies:
+                super::building::storage_policy::BuildingStoragePolicyStore::default(),
             hauling_requests: super::logistics::HaulingRequestStore::default(),
             inventory_reservations: super::logistics::InventoryReservationStore::default(),
             logistics_endpoint_index: super::logistics::LogisticsEndpointIndex::default(),
@@ -526,6 +530,18 @@ impl WorldData {
         &mut self,
     ) -> &mut super::building::inventory_binding::BuildingInventoryBindingStore {
         &mut self.building_inventory_bindings
+    }
+
+    pub fn building_storage_policy_store(
+        &self,
+    ) -> &super::building::storage_policy::BuildingStoragePolicyStore {
+        &self.building_storage_policies
+    }
+
+    pub fn building_storage_policy_store_mut(
+        &mut self,
+    ) -> &mut super::building::storage_policy::BuildingStoragePolicyStore {
+        &mut self.building_storage_policies
     }
 
     pub fn hauling_request_store(&self) -> &super::logistics::HaulingRequestStore {
@@ -1086,6 +1102,7 @@ impl WorldData {
         self.item_pile_store_mut().clear();
         self.building_production_store_mut().clear();
         self.building_inventory_binding_store_mut().clear();
+        self.building_storage_policy_store_mut().clear();
         self.hauling_request_store_mut().clear();
         self.inventory_reservation_store_mut().clear();
         self.logistics_endpoint_index_mut().clear();

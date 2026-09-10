@@ -45,12 +45,12 @@ impl HaulingRequestStatus {
     pub fn is_open(self) -> bool {
         matches!(
             self,
-            Self::Pending
-                | Self::Assigned
-                | Self::InProgress
-                | Self::PartiallyFulfilled
-                | Self::Blocked
+            Self::Pending | Self::Assigned | Self::InProgress | Self::PartiallyFulfilled
         )
+    }
+
+    pub fn is_consolidatable(self) -> bool {
+        self.is_open()
     }
 
     pub fn label(self) -> &'static str {
@@ -71,6 +71,7 @@ impl HaulingRequestStatus {
 pub enum HaulingGenerationReason {
     OutputSurplus,
     InputDeficit,
+    MisfiledRelocation,
     ManualDev,
 }
 
@@ -79,6 +80,7 @@ impl HaulingGenerationReason {
         match self {
             Self::OutputSurplus => "OutputSurplus",
             Self::InputDeficit => "InputDeficit",
+            Self::MisfiledRelocation => "MisfiledRelocation",
             Self::ManualDev => "ManualDev",
         }
     }
@@ -147,7 +149,17 @@ impl HaulingBlockingReason {
             Self::WorkerUnavailable => "WorkerUnavailable",
         }
     }
+
+    pub fn is_recoverable(self) -> bool {
+        matches!(
+            self,
+            Self::DestinationFull | Self::ReservationFailed | Self::NoAvailableItems
+        )
+    }
 }
+
+/// Ticks a blocked haul must wait before automatic retry.
+pub const BLOCKED_HAUL_RETRY_COOLDOWN_TICKS: u64 = 30;
 
 /// Data-driven logistics route trigger (EP7).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Serialize, Deserialize)]

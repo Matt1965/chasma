@@ -10,8 +10,8 @@ use crate::world::{
     ItemCategoryCatalog, ItemPileId, ItemPileSettings, TransferPlacementPolicy,
     TreasuryAccessPolicy, UnitId, WorldData, auto_sort, can_unit_access_building_inventory,
     can_unit_access_inventory, count_physical_gold, deposit_gold, drop_unit_inventory_entry,
-    half_stack_quantity, loot_corpse_entry, move_entry, pickup_pile_into_inventory,
-    transfer_entry_full, transfer_half, transfer_one,
+    half_stack_quantity, loot_corpse_entry, mark_storage_logistics_dirty_for_inventory, move_entry,
+    pickup_pile_into_inventory, transfer_entry_full, transfer_half, transfer_one,
 };
 
 use super::inventory_intent::{
@@ -221,6 +221,11 @@ fn dispatch_one(
                 policy,
             ) {
                 Ok(_) => {
+                    mark_storage_logistics_dirty_for_inventory(
+                        world,
+                        building_catalog,
+                        *destination_inventory_id,
+                    );
                     ui.feedback_message.clear();
                     ui.invalidate_drag();
                     InventoryIntentStatus::Applied
@@ -527,6 +532,11 @@ fn transfer_with_policy(
     };
     match result {
         Ok(_) => {
+            mark_storage_logistics_dirty_for_inventory(
+                world,
+                building_catalog,
+                destination_inventory_id,
+            );
             ui.feedback_message.clear();
             ui.invalidate_drag();
             InventoryIntentStatus::Applied

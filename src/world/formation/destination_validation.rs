@@ -69,6 +69,7 @@ pub fn resolve_move_destination(
     catalog: &UnitCatalog,
     layout: ChunkLayout,
     batch_resolved: &HashMap<UnitId, WorldPosition>,
+    exclude_occupants: &[UnitId],
 ) -> WorldPosition {
     let mover_radius = unit_collision_radius(world, catalog, mover_id);
     let query_radius = mover_radius + OCCUPANT_QUERY_PADDING_METERS;
@@ -82,6 +83,9 @@ pub fn resolve_move_destination(
 
     let mut occupants = Vec::new();
     for occupier_id in occupant_ids {
+        if exclude_occupants.contains(&occupier_id) {
+            continue;
+        }
         let Some(position) = occupant_position(occupier_id, world, batch_resolved) else {
             continue;
         };
@@ -172,8 +176,15 @@ mod tests {
         let idle = spawn(&catalog, &mut world, 20.0, 20.0);
         let mover = spawn(&catalog, &mut world, 4.0, 4.0);
         let click = world.get_unit(idle).unwrap().placement.position;
-        let resolved =
-            resolve_move_destination(mover, click, &world, &catalog, layout(), &HashMap::new());
+        let resolved = resolve_move_destination(
+            mover,
+            click,
+            &world,
+            &catalog,
+            layout(),
+            &HashMap::new(),
+            &[],
+        );
         let wolf_radius = catalog
             .get(&UnitDefinitionId::new("wolf"))
             .unwrap()
@@ -190,8 +201,24 @@ mod tests {
         let idle = spawn(&catalog, &mut world, 15.0, 15.0);
         let mover = spawn(&catalog, &mut world, 2.0, 2.0);
         let click = world.get_unit(idle).unwrap().placement.position;
-        let a = resolve_move_destination(mover, click, &world, &catalog, layout(), &HashMap::new());
-        let b = resolve_move_destination(mover, click, &world, &catalog, layout(), &HashMap::new());
+        let a = resolve_move_destination(
+            mover,
+            click,
+            &world,
+            &catalog,
+            layout(),
+            &HashMap::new(),
+            &[],
+        );
+        let b = resolve_move_destination(
+            mover,
+            click,
+            &world,
+            &catalog,
+            layout(),
+            &HashMap::new(),
+            &[],
+        );
         assert_eq!(a, b);
     }
 
@@ -201,8 +228,15 @@ mod tests {
         let world = flat_world();
         let mover = UnitId::new(99);
         let target = pos(40.0, 40.0);
-        let resolved =
-            resolve_move_destination(mover, target, &world, &catalog, layout(), &HashMap::new());
+        let resolved = resolve_move_destination(
+            mover,
+            target,
+            &world,
+            &catalog,
+            layout(),
+            &HashMap::new(),
+            &[],
+        );
         assert_eq!(resolved, target);
     }
 }

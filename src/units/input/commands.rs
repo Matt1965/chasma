@@ -26,6 +26,27 @@ pub struct MoveOrderUnitTrace {
     pub error: Option<UnitOrderError>,
 }
 
+/// Default formation layout for player group move / attack-move arrival slots.
+pub const GROUP_ARRIVAL_FORMATION: FormationKind = FormationKind::Circle;
+
+fn plan_group_arrival_slots(
+    unit_ids: &[crate::world::UnitId],
+    anchor: WorldPosition,
+    world: &WorldData,
+    unit_catalog: &UnitCatalog,
+    exclude_occupants: &[crate::world::UnitId],
+) -> crate::world::FormationMovePlan {
+    FormationPlanner::plan_move(
+        GROUP_ARRIVAL_FORMATION,
+        unit_ids,
+        anchor,
+        world,
+        unit_catalog,
+        world.layout(),
+        exclude_occupants,
+    )
+}
+
 /// Issue formation-distributed `MoveTo` orders for each selected unit.
 ///
 /// Does not mutate selection or bypass [`issue_unit_order`].
@@ -38,21 +59,14 @@ pub fn issue_move_orders_to_selection(
     nav_config: &NavigationConfig,
     target: WorldPosition,
     targeting_policy: AttackTargetingPolicy,
+    exclude_occupants: &[crate::world::UnitId],
 ) -> MoveOrdersReport {
     let unit_ids = filter_commandable_unit_ids(world, selection.iter());
     if unit_ids.is_empty() {
         return MoveOrdersReport::default();
     }
 
-    let layout = world.layout();
-    let plan = FormationPlanner::plan_move(
-        FormationKind::Grid,
-        &unit_ids,
-        target,
-        world,
-        unit_catalog,
-        layout,
-    );
+    let plan = plan_group_arrival_slots(&unit_ids, target, world, unit_catalog, exclude_occupants);
 
     let mut report = MoveOrdersReport::default();
     for assignment in plan.assignments {
@@ -224,7 +238,7 @@ pub fn issue_attack_orders_to_selection(
     report
 }
 
-/// Issue `AttackMove` orders for every selected unit.
+/// Issue `AttackMove` orders with per-unit arrival slots around the anchor.
 pub fn issue_attack_move_orders_to_selection(
     world: &mut WorldData,
     selection: &SelectedUnits,
@@ -234,6 +248,67 @@ pub fn issue_attack_move_orders_to_selection(
     nav_config: &NavigationConfig,
     destination: WorldPosition,
     targeting_policy: AttackTargetingPolicy,
+    exclude_occupants: &[crate::world::UnitId],
+) -> MoveOrdersReport {
+    let unit_ids = filter_commandable_unit_ids(world, selection.iter());
+    if unit_ids.is_empty() {
+        return MoveOrdersReport::default();
+    }
+
+    let plan = plan_group_arrival_slots(
+        &unit_ids,
+        destination,
+        world,
+        unit_catalog,
+        exclude_occupants,
+    );
+
+    let mut report = MoveOrdersReport::default();
+    for assignment in plan.assignments {
+        let order = UnitOrder::AttackMove {
+            destination: assignment.target,
+        };
+        match issue_unit_order(
+            world,
+            unit_catalog,
+            weapon_catalog,
+            doodad_catalog,
+            nav_config,
+            assignment.unit_id,
+            order,
+            targeting_policy,
+        ) {
+            Ok(()) => {
+                report.issued += 1;
+                report.unit_traces.push(MoveOrderUnitTrace {
+                    unit_id: assignment.unit_id,
+                    order,
+                    error: None,
+                });
+            }
+            Err(error) => {
+                report.failed += 1;
+                report.unit_traces.push(MoveOrderUnitTrace {
+                    unit_id: assignment.unit_id,
+                    order,
+                    error: Some(error),
+                });
+                log_order_failure(assignment.unit_id, order, error);
+            }
+        }
+    }
+    report
+}
+
+/// Issue `Hold` orders at each unit's current position.
+pub fn issue_hold_orders_to_selection(
+    world: &mut WorldData,
+    selection: &SelectedUnits,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
+    targeting_policy: AttackTargetingPolicy,
 ) -> MoveOrdersReport {
     let unit_ids = filter_commandable_unit_ids(world, selection.iter());
     if unit_ids.is_empty() {
@@ -242,7 +317,12 @@ pub fn issue_attack_move_orders_to_selection(
 
     let mut report = MoveOrdersReport::default();
     for unit_id in unit_ids {
-        let order = UnitOrder::AttackMove { destination };
+        let Some(record) = world.get_unit(unit_id) else {
+            report.failed += 1;
+            continue;
+        };
+        let anchor = record.placement.position;
+        let order = UnitOrder::Hold { anchor };
         match issue_unit_order(
             world,
             unit_catalog,
@@ -268,7 +348,6 @@ pub fn issue_attack_move_orders_to_selection(
                     order,
                     error: Some(error),
                 });
-                log_order_failure(unit_id, order, error);
             }
         }
     }
@@ -399,6 +478,7 @@ mod tests {
             &nav_config,
             target,
             policy,
+            &[],
         );
         resolve_all_pending_unit_orders(
             &mut world,
@@ -465,6 +545,7 @@ mod tests {
             &nav_config,
             click,
             policy,
+            &[],
         );
         resolve_all_pending_unit_orders(
             &mut world,
@@ -528,6 +609,7 @@ mod tests {
             &nav_config,
             click,
             policy,
+            &[idle],
         );
         resolve_all_pending_unit_orders(
             &mut world,
@@ -596,6 +678,7 @@ mod tests {
             &nav_config,
             pos(40.0, 40.0),
             policy,
+            &[],
         );
         resolve_all_pending_unit_orders(
             &mut world,
@@ -772,6 +855,7 @@ mod tests {
             &nav_config,
             destination,
             policy,
+            &[],
         );
         assert_eq!(report.issued, 1);
         assert!(matches!(
@@ -780,6 +864,338 @@ mod tests {
                 destination: d,
                 target: None
             } if d == destination
+        ));
+    }
+
+    #[test]
+    fn ten_unit_group_move_assigns_distinct_non_overlapping_slots() {
+        use crate::world::collision_separation_meters;
+
+        let catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let nav_config = NavigationConfig::default();
+        let mut world = flat_world();
+        let mut unit_ids = Vec::new();
+        for index in 0..10 {
+            let id = create_unit_with_ownership(
+                &catalog,
+                &mut world,
+                &UnitDefinitionId::new("wolf"),
+                pos(2.0 + index as f32, 2.0),
+                UnitSource::Authored,
+                UnitOwnership::player_default(),
+            )
+            .unwrap()
+            .id;
+            unit_ids.push(id);
+        }
+
+        let mut selection = SelectedUnits::default();
+        selection.replace_with(unit_ids.clone());
+        let click = pos(40.0, 40.0);
+        let weapons = WeaponCatalog::default();
+        let policy = AttackTargetingPolicy::default();
+        issue_move_orders_to_selection(
+            &mut world,
+            &selection,
+            &catalog,
+            &weapons,
+            &doodad_catalog,
+            &nav_config,
+            click,
+            policy,
+            &[],
+        );
+        resolve_all_pending_unit_orders(
+            &mut world,
+            &catalog,
+            PassabilityCatalogs {
+                doodad: &doodad_catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav_config,
+        );
+
+        let wolf_radius = catalog
+            .get(&UnitDefinitionId::new("wolf"))
+            .unwrap()
+            .collision_radius_meters;
+        let min_sep = collision_separation_meters(wolf_radius, wolf_radius);
+        let destinations: Vec<WorldPosition> = unit_ids
+            .iter()
+            .map(|unit_id| moving_target(*unit_id, &world))
+            .collect();
+        for (index, destination) in destinations.iter().enumerate() {
+            for (other_index, other) in destinations.iter().enumerate() {
+                if index == other_index {
+                    continue;
+                }
+                assert_ne!(destination, other);
+                let layout = world.layout();
+                let a = destination.to_global(layout);
+                let b = other.to_global(layout);
+                let dist = Vec2::new(a.x - b.x, a.z - b.z).length();
+                assert!(
+                    dist + 1e-3 >= min_sep,
+                    "slots must respect collision separation"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn attack_move_group_spreads_final_destinations() {
+        let catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let nav_config = NavigationConfig::default();
+        let mut world = flat_world();
+
+        let a = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(4.0, 4.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let b = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(8.0, 8.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+
+        let mut selection = SelectedUnits::default();
+        selection.replace_with([a, b]);
+        let destination = pos(40.0, 40.0);
+        let weapons = WeaponCatalog::default();
+        let policy = AttackTargetingPolicy::default();
+        issue_attack_move_orders_to_selection(
+            &mut world,
+            &selection,
+            &catalog,
+            &weapons,
+            &doodad_catalog,
+            &nav_config,
+            destination,
+            policy,
+            &[],
+        );
+
+        let slot_a = match &world.get_unit(a).unwrap().combat_state {
+            CombatState::AttackMoving { destination, .. } => *destination,
+            _ => panic!("expected attack moving"),
+        };
+        let slot_b = match &world.get_unit(b).unwrap().combat_state {
+            CombatState::AttackMoving { destination, .. } => *destination,
+            _ => panic!("expected attack moving"),
+        };
+        assert_ne!(slot_a, slot_b);
+        assert_ne!(slot_a, destination);
+        assert_ne!(slot_b, destination);
+    }
+
+    #[test]
+    fn move_to_unit_group_surrounds_target_instead_of_stacking() {
+        let catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let nav_config = NavigationConfig::default();
+        let mut world = flat_world();
+
+        let target = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(20.0, 20.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let a = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(4.0, 4.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let b = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(8.0, 8.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+
+        let anchor = world.get_unit(target).unwrap().placement.position;
+        let mut selection = SelectedUnits::default();
+        selection.replace_with([a, b]);
+        let weapons = WeaponCatalog::default();
+        let policy = AttackTargetingPolicy::default();
+        issue_move_orders_to_selection(
+            &mut world,
+            &selection,
+            &catalog,
+            &weapons,
+            &doodad_catalog,
+            &nav_config,
+            anchor,
+            policy,
+            &[target],
+        );
+        resolve_all_pending_unit_orders(
+            &mut world,
+            &catalog,
+            PassabilityCatalogs {
+                doodad: &doodad_catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav_config,
+        );
+
+        let target_a = moving_target(a, &world);
+        let target_b = moving_target(b, &world);
+        assert_ne!(target_a, target_b);
+        assert_ne!(target_a, anchor);
+        assert_ne!(target_b, anchor);
+    }
+
+    #[test]
+    fn group_arrival_slot_assignment_is_deterministic() {
+        let catalog = UnitCatalog::default();
+        let mut world = flat_world();
+        let unit_ids: Vec<_> = (0..6)
+            .map(|index| {
+                create_unit_with_ownership(
+                    &catalog,
+                    &mut world,
+                    &UnitDefinitionId::new("wolf"),
+                    pos(2.0 + index as f32, 2.0),
+                    UnitSource::Authored,
+                    UnitOwnership::player_default(),
+                )
+                .unwrap()
+                .id
+            })
+            .collect();
+        let anchor = pos(40.0, 40.0);
+        let plan_a = plan_group_arrival_slots(&unit_ids, anchor, &world, &catalog, &[]);
+        let plan_b = plan_group_arrival_slots(&unit_ids, anchor, &world, &catalog, &[]);
+        assert_eq!(plan_a.assignments, plan_b.assignments);
+    }
+
+    #[test]
+    fn single_unit_move_uses_requested_point_directly() {
+        let catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let nav_config = NavigationConfig::default();
+        let mut world = flat_world();
+        let unit_id = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(4.0, 4.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+
+        let mut selection = SelectedUnits::default();
+        selection.set_single(unit_id);
+        let click = pos(40.0, 40.0);
+        let weapons = WeaponCatalog::default();
+        let policy = AttackTargetingPolicy::default();
+        issue_move_orders_to_selection(
+            &mut world,
+            &selection,
+            &catalog,
+            &weapons,
+            &doodad_catalog,
+            &nav_config,
+            click,
+            policy,
+            &[],
+        );
+        resolve_all_pending_unit_orders(
+            &mut world,
+            &catalog,
+            PassabilityCatalogs {
+                doodad: &doodad_catalog,
+                building: &BuildingCatalog::default(),
+                footprint: &FootprintCatalog::default(),
+            },
+            &nav_config,
+        );
+
+        assert_eq!(moving_target(unit_id, &world), click);
+    }
+
+    #[test]
+    fn stop_clears_hold_combat_state() {
+        let catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let nav_config = NavigationConfig::default();
+        let policy = AttackTargetingPolicy::default();
+        let mut world = flat_world();
+        let unit_id = create_unit_with_ownership(
+            &catalog,
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(4.0, 4.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+
+        let mut selection = SelectedUnits::default();
+        selection.set_single(unit_id);
+        issue_hold_orders_to_selection(
+            &mut world,
+            &selection,
+            &catalog,
+            &weapons,
+            &doodad_catalog,
+            &nav_config,
+            policy,
+        );
+        assert!(matches!(
+            world.get_unit(unit_id).unwrap().combat_state,
+            CombatState::Holding { .. }
+        ));
+
+        issue_idle_orders_to_selection(
+            &mut world,
+            &catalog,
+            &weapons,
+            &doodad_catalog,
+            &nav_config,
+            &selection,
+            policy,
+        );
+        assert_eq!(
+            world.get_unit(unit_id).unwrap().combat_state,
+            CombatState::Peaceful
+        );
+        assert!(matches!(
+            world.get_unit(unit_id).unwrap().state,
+            UnitState::Idle
         ));
     }
 }

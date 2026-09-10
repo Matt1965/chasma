@@ -29,6 +29,7 @@ pub struct HaulingRequest {
     pub execution_phase: HaulExecutionPhase,
     pub picked_up_quantity: u32,
     pub created_tick: u64,
+    pub blocked_at_tick: Option<u64>,
 }
 
 impl HaulingRequest {
@@ -61,6 +62,7 @@ impl HaulingRequest {
             execution_phase: HaulExecutionPhase::Pending,
             picked_up_quantity: 0,
             created_tick,
+            blocked_at_tick: None,
         }
     }
 

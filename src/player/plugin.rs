@@ -41,6 +41,50 @@ pub struct PlayerControlSystems;
 /// Owns player-facing unit interaction (selection and move commands).
 pub struct PlayerPlugin;
 
+/// Input-to-presentation order inside [`PlayerControlSystems`].
+///
+/// Every set here is a child of [`PlayerControlSystems`], which
+/// [`crate::app::configure_update_pipeline_sets`] places after runtime sync.
+/// Ordering any of them relative to sets that run earlier in the frame
+/// (camera, view focus, terrain streaming) produces a schedule cycle.
+pub(crate) fn configure_player_control_sets(app: &mut App) {
+    #[cfg(feature = "dev")]
+    {
+        use crate::dev::{DevModeInputSystems, DevModePresentationSystems};
+        app.configure_sets(
+            Update,
+            (
+                DevModeInputSystems,
+                GameplayInputGateSystems,
+                ClientIntentCollectSystems,
+                GameplayCommandInputSystems,
+                ClientIntentDispatchSystems,
+                ClientIntentFlushSystems,
+                GameplayPresentationSystems,
+                DevModePresentationSystems,
+                DebugPresentationSystems,
+            )
+                .chain()
+                .in_set(PlayerControlSystems),
+        );
+    }
+    #[cfg(not(feature = "dev"))]
+    app.configure_sets(
+        Update,
+        (
+            GameplayInputGateSystems,
+            ClientIntentCollectSystems,
+            GameplayCommandInputSystems,
+            ClientIntentDispatchSystems,
+            ClientIntentFlushSystems,
+            GameplayPresentationSystems,
+            DebugPresentationSystems,
+        )
+            .chain()
+            .in_set(PlayerControlSystems),
+    );
+}
+
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(ClientPipelinePlugin)
@@ -50,41 +94,7 @@ impl Plugin for PlayerPlugin {
             .add_plugins(GameplayUiPlugin);
         #[cfg(feature = "dev")]
         app.add_plugins(crate::dev::DevModePlugin);
-        #[cfg(feature = "dev")]
-        {
-            use crate::dev::{DevModeInputSystems, DevModePresentationSystems};
-            app.configure_sets(
-                Update,
-                (
-                    DevModeInputSystems,
-                    GameplayInputGateSystems,
-                    ClientIntentCollectSystems,
-                    GameplayCommandInputSystems,
-                    ClientIntentDispatchSystems,
-                    ClientIntentFlushSystems,
-                    GameplayPresentationSystems,
-                    DevModePresentationSystems,
-                    DebugPresentationSystems,
-                )
-                    .chain()
-                    .in_set(PlayerControlSystems),
-            );
-        }
-        #[cfg(not(feature = "dev"))]
-        app.configure_sets(
-            Update,
-            (
-                GameplayInputGateSystems,
-                ClientIntentCollectSystems,
-                GameplayCommandInputSystems,
-                ClientIntentDispatchSystems,
-                ClientIntentFlushSystems,
-                GameplayPresentationSystems,
-                DebugPresentationSystems,
-            )
-                .chain()
-                .in_set(PlayerControlSystems),
-        );
+        configure_player_control_sets(app);
         #[cfg(feature = "dev")]
         app.configure_sets(
             Update,

@@ -275,6 +275,7 @@ fn issue_approach_to_building_interaction(
         nav_config,
         target,
         AttackTargetingPolicy::default(),
+        &[],
     )
 }
 

@@ -14,7 +14,8 @@ use crate::units::input::SelectedUnits;
 use crate::world::{
     Affiliation, BuildingCatalog, BuildingCategoryCatalog, BuildingDefinitionId, BuildingId,
     BuildingOwnership, BuildingPlacement, BuildingRecord, BuildingSource, ChunkCoord, ChunkData,
-    ChunkId, ChunkLayout, Heightfield, LocalPosition, UnitId, WorldData, WorldPosition,
+    ChunkId, ChunkLayout, Heightfield, ItemCategoryCatalog, LocalPosition, UnitId, WorldData,
+    WorldPosition,
 };
 use bevy::prelude::{Quat, Vec3};
 
@@ -370,6 +371,7 @@ fn panel_snapshot_uses_binding_store_for_multiple_inventories() {
         requirement_revision: 0,
         profile_revision: 0,
         assessment_store: &mut assessment,
+        simulation_tick: 0,
     };
     let snapshot = build_building_panel_snapshot(
         &world,
@@ -377,6 +379,7 @@ fn panel_snapshot_uses_binding_store_for_multiple_inventories() {
         &operation_catalog,
         &mut params,
         inventory_profiles(),
+        &ItemCategoryCatalog::default(),
         building_id,
     )
     .unwrap();
@@ -427,6 +430,7 @@ fn non_production_building_has_no_production_section() {
         requirement_revision: 0,
         profile_revision: 0,
         assessment_store: &mut assessment,
+        simulation_tick: 0,
     };
     let snapshot = build_building_panel_snapshot(
         &world,
@@ -434,6 +438,7 @@ fn non_production_building_has_no_production_section() {
         &operation_catalog,
         &mut params,
         inventory_profiles(),
+        &ItemCategoryCatalog::default(),
         building_id,
     )
     .unwrap();
@@ -481,6 +486,7 @@ fn farm_production_controls_have_toggle_without_operation_selector() {
         requirement_revision: 0,
         profile_revision: 0,
         assessment_store: &mut assessment,
+        simulation_tick: 0,
     };
     let snapshot = build_building_panel_snapshot(
         &world,
@@ -488,6 +494,7 @@ fn farm_production_controls_have_toggle_without_operation_selector() {
         &operation_catalog,
         &mut params,
         inventory_profiles(),
+        &ItemCategoryCatalog::default(),
         building_id,
     )
     .unwrap();
@@ -538,6 +545,7 @@ fn multi_operation_fixture_exposes_selector_with_display_names() {
         requirement_revision: 0,
         profile_revision: 0,
         assessment_store: &mut assessment,
+        simulation_tick: 0,
     };
     let snapshot = build_building_panel_snapshot(
         &world,
@@ -545,6 +553,7 @@ fn multi_operation_fixture_exposes_selector_with_display_names() {
         &operation_catalog,
         &mut params,
         inventory_profiles(),
+        &ItemCategoryCatalog::default(),
         building_id,
     )
     .unwrap();
@@ -606,6 +615,7 @@ fn production_controls_snapshot_has_no_automation_fields() {
         requirement_revision: 0,
         profile_revision: 0,
         assessment_store: &mut assessment,
+        simulation_tick: 0,
     };
     {
         let store = world.building_production_store_mut();
@@ -618,6 +628,7 @@ fn production_controls_snapshot_has_no_automation_fields() {
         &operation_catalog,
         &mut params,
         inventory_profiles(),
+        &ItemCategoryCatalog::default(),
         farm_id,
     )
     .unwrap()
@@ -670,6 +681,7 @@ fn viewing_building_panel_does_not_change_control_source() {
         requirement_revision: 0,
         profile_revision: 0,
         assessment_store: &mut assessment,
+        simulation_tick: 0,
     };
     {
         let store = world.building_production_store_mut();
@@ -687,6 +699,7 @@ fn viewing_building_panel_does_not_change_control_source() {
         &operation_catalog,
         &mut params,
         inventory_profiles(),
+        &ItemCategoryCatalog::default(),
         building_id,
     );
     let after = world
@@ -761,6 +774,7 @@ fn smelter_merged_live_catalog_path_exposes_four_bindings_in_snapshot() {
         requirement_revision: 0,
         profile_revision: 0,
         assessment_store: &mut assessment,
+        simulation_tick: 0,
     };
     let snapshot = build_building_panel_snapshot(
         &world,
@@ -768,6 +782,7 @@ fn smelter_merged_live_catalog_path_exposes_four_bindings_in_snapshot() {
         &operation_catalog,
         &mut params,
         inventory_profiles(),
+        &ItemCategoryCatalog::default(),
         building_id,
     )
     .unwrap();
@@ -823,6 +838,7 @@ fn empty_output_and_waste_bindings_remain_in_snapshot() {
         requirement_revision: 0,
         profile_revision: 0,
         assessment_store: &mut assessment,
+        simulation_tick: 0,
     };
     let snapshot = build_building_panel_snapshot(
         &world,
@@ -830,6 +846,7 @@ fn empty_output_and_waste_bindings_remain_in_snapshot() {
         &operation_catalog,
         &mut params,
         inventory_profiles(),
+        &ItemCategoryCatalog::default(),
         building_id,
     )
     .unwrap();
@@ -889,6 +906,7 @@ fn viewing_building_panel_does_not_mutate_selected_operation() {
         requirement_revision: 0,
         profile_revision: 0,
         assessment_store: &mut assessment,
+        simulation_tick: 0,
     };
     let selected_before = world
         .building_production_store()
@@ -900,6 +918,7 @@ fn viewing_building_panel_does_not_mutate_selected_operation() {
         &operation_catalog,
         &mut params,
         inventory_profiles(),
+        &ItemCategoryCatalog::default(),
         building_id,
     );
     let selected_after = world
@@ -973,6 +992,7 @@ fn production_blocking_readout_uses_live_terrain_not_stale_runtime_reason() {
         requirement_revision: 0,
         profile_revision: 0,
         assessment_store: &mut assessment,
+        simulation_tick: 0,
     };
     let snapshot = build_building_panel_snapshot(
         &world,
@@ -980,6 +1000,7 @@ fn production_blocking_readout_uses_live_terrain_not_stale_runtime_reason() {
         &operation_catalog,
         &mut params,
         inventory_profiles(),
+        &ItemCategoryCatalog::default(),
         building_id,
     )
     .unwrap();
@@ -1365,6 +1386,7 @@ fn owned_constructible_building_shows_human_readable_work_priority() {
         requirement_revision: 0,
         profile_revision: 0,
         assessment_store: &mut assessment,
+        simulation_tick: 0,
     };
     let snapshot = build_building_panel_snapshot(
         &world,
@@ -1372,6 +1394,7 @@ fn owned_constructible_building_shows_human_readable_work_priority() {
         &operation_catalog,
         &mut params,
         inventory_profiles(),
+        &ItemCategoryCatalog::default(),
         building_id,
     )
     .unwrap();
@@ -1386,4 +1409,24 @@ fn foreign_building_does_not_expose_work_priority_controls() {
     let mut panel = BuildingPanelState::default();
     on_gameplay_building_selected(foreign, &mut panel, &world, &player());
     assert!(panel.open_building_id.is_none());
+}
+
+#[test]
+fn building_panel_uses_panel_typography_not_hud_band_sizes() {
+    use crate::ui::gameplay::{HUD_BODY_FONT_SIZE, HUD_TITLE_FONT_SIZE};
+    use crate::ui::gameplay::{
+        PANEL_BODY_FONT_SIZE, PANEL_TITLE_FONT_SIZE, panel_body_font, panel_title_font,
+    };
+
+    assert_eq!(panel_body_font().font_size, PANEL_BODY_FONT_SIZE);
+    assert_eq!(panel_title_font().font_size, PANEL_TITLE_FONT_SIZE);
+    assert!(HUD_TITLE_FONT_SIZE > PANEL_TITLE_FONT_SIZE);
+    assert!(HUD_BODY_FONT_SIZE > PANEL_BODY_FONT_SIZE);
+
+    let menu_source = include_str!("menu.rs");
+    let controls_source = include_str!("controls.rs");
+    assert!(menu_source.contains("panel_title_font"));
+    assert!(menu_source.contains("panel_body_font"));
+    assert!(!menu_source.contains("hud_body_font"));
+    assert!(!controls_source.contains("hud_body_font"));
 }

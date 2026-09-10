@@ -3,6 +3,8 @@
 pub mod execute;
 pub mod generation;
 mod id;
+pub mod misfiled;
+mod recovery;
 mod register;
 mod request;
 mod reservation;
@@ -25,6 +27,11 @@ pub use generation::{
     sync_output_surplus_after_production,
 };
 pub use id::HaulingRequestId;
+pub use misfiled::{
+    mark_all_settlement_buildings_logistics_dirty, mark_settlement_storage_logistics_dirty,
+    sync_dirty_storage_logistics, sync_misfiled_storage_for_building,
+};
+pub use recovery::retry_blocked_hauling_requests;
 pub use register::{
     cancel_logistics_for_building_removal, register_building_logistics_endpoints,
     unregister_building_logistics_endpoints,
@@ -32,7 +39,8 @@ pub use register::{
 pub use request::HaulingRequest;
 pub use reservation::{
     InventoryReservationSaveState, InventoryReservationStore, available_stack_quantity,
-    release_request_reservations, reserve_destination_capacity, reserve_source_items,
+    destination_can_fit_stack_quantity, release_request_reservations, reserve_destination_capacity,
+    reserve_source_items,
 };
 pub use route::{BuildingLogisticsRouteDefinition, LogisticsEndpointIndex, LogisticsEndpointKey};
 pub use save::{

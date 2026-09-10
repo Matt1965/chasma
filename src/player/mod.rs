@@ -12,6 +12,7 @@ mod space_view;
 
 pub use move_feedback::MoveCommandFeedback;
 pub use ownership::{LocalPlayerOwnership, selection_policy_for_frame};
+pub(crate) use plugin::configure_player_control_sets;
 pub use plugin::{
     DebugPresentationSystems, GameplayPresentationSystems, PlayerControlSystems, PlayerPlugin,
     RuntimeSyncSystems,

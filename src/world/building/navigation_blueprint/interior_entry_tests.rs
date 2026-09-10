@@ -716,6 +716,7 @@ fn level6_player_command_path_issues_interior_move_order() {
         &NavigationConfig::default(),
         target,
         AttackTargetingPolicy::default(),
+        &[],
     );
     assert_eq!(move_report.issued, 1, "player move should be accepted");
 
@@ -968,6 +969,7 @@ fn issue_player_move(
         &NavigationConfig::default(),
         target,
         AttackTargetingPolicy::default(),
+        &[],
     );
     assert_eq!(report.issued, 1, "player move should be accepted");
     let catalogs = PassabilityCatalogs {
@@ -1146,6 +1148,7 @@ fn player_command_interior_footprint_cross_and_boundary_enforcement() {
         &NavigationConfig::default(),
         outside_click,
         AttackTargetingPolicy::default(),
+        &[],
     );
     let _ = resolve_pending_unit_orders(
         &mut world,

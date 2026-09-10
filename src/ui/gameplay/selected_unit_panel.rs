@@ -16,15 +16,39 @@ use super::combat_display::{
     weapon_display_for_unit,
 };
 
+use super::hud::{
+    HudStatBarFill, HudStatBarId, HudStatBarValueText, HudViewportGeometry, hp_bar_color,
+    hud_inset_fill_style, hud_inset_rim_style, hud_section_node_with_horizontal_padding,
+    nutrition_bar_color, spawn_stat_bar_row, sync_stat_bar,
+};
+use super::layout::PlayerHudUi;
 use super::player_hud_state::primary_selected_unit;
-use super::styles::{PANEL_BG, TEXT_PRIMARY, hud_title_font};
+use super::styles::HUD_SECTION_PADDING_X_SELECTED_LEFT_PX;
+use super::styles::{TEXT_MUTED, TEXT_PRIMARY, hud_body_font, hud_heading_font};
+use crate::world::NutritionProfile;
 
 /// Marker for the selected-unit panel root.
 #[derive(Component, Debug)]
 pub struct SelectedUnitPanelRoot;
 
+/// Portrait plate whose width tracks responsive HUD geometry.
+#[derive(Component, Debug)]
+pub struct SelectedUnitPortraitFrame;
+
 #[derive(Component, Debug)]
 pub(crate) struct SelectedUnitPanelText;
+
+#[derive(Component, Debug)]
+pub(crate) struct SelectedUnitNameText;
+
+#[derive(Component, Debug)]
+pub(crate) struct SelectedUnitSubtitleText;
+
+#[derive(Component, Debug)]
+pub(crate) struct SelectedUnitPortraitFallback;
+
+#[derive(Component, Debug)]
+pub(crate) struct SelectedUnitNutritionRow;
 
 /// Read-only snapshot for HUD stat display and change detection.
 #[derive(Debug, Clone, PartialEq)]
@@ -35,6 +59,8 @@ pub struct SelectedUnitPanelSnapshot {
 }
 
 const NO_SELECTION_LABEL: &str = "No selection";
+
+pub const HUD_NO_SELECTION_LABEL: &str = NO_SELECTION_LABEL;
 
 /// Bottom-bar content from [`WorldSelectionState`] (units, buildings, or none).
 pub fn build_selected_panel_snapshot(
@@ -135,7 +161,7 @@ fn primary_unit_summary(
         .map(|w| w.name)
         .unwrap_or_else(|| "unknown".to_string());
     Some(format!(
-        "{} — {} / weapon: {}",
+        "{} | {} / weapon: {}",
         def.display_name,
         unit_state_label(&record.state),
         weapon
@@ -207,32 +233,121 @@ pub fn unit_state_label(state: &UnitState) -> &'static str {
     }
 }
 
-pub fn spawn_selected_unit_panel(parent: &mut ChildSpawnerCommands) {
+pub fn spawn_selected_unit_panel(parent: &mut ChildSpawnerCommands<'_>) {
+    let geom = HudViewportGeometry::default();
     parent
         .spawn((
             SelectedUnitPanelRoot,
-            Node {
-                flex_direction: FlexDirection::Column,
-                flex_grow: 1.0,
-                flex_basis: Val::Percent(32.0),
-                padding: UiRect::all(Val::Px(super::styles::PANEL_PADDING_PX)),
-                row_gap: Val::Px(2.0),
-                overflow: Overflow::scroll_y(),
-                ..default()
-            },
-            BackgroundColor(PANEL_BG),
+            PlayerHudUi,
+            hud_section_node_with_horizontal_padding(
+                geom.selected_width,
+                HUD_SECTION_PADDING_X_SELECTED_LEFT_PX,
+                super::styles::HUD_SECTION_PADDING_X_PX,
+            ),
         ))
         .with_children(|panel| {
+            panel
+                .spawn(Node {
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(8.0),
+                    align_items: AlignItems::Center,
+                    height: Val::Percent(100.0),
+                    ..default()
+                })
+                .with_children(|row| {
+                    // Portrait fills most of the section height, as in the mockup.
+                    let portrait_radius = BorderRadius::all(Val::Px(6.0));
+                    row.spawn((
+                        SelectedUnitPortraitFrame,
+                        Node {
+                            width: Val::Px(geom.portrait_width),
+                            height: Val::Percent(88.0),
+                            padding: UiRect::all(Val::Px(2.0)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            flex_shrink: 0.0,
+                            border: UiRect::all(Val::Px(1.0)),
+                            border_radius: portrait_radius,
+                            ..default()
+                        },
+                        hud_inset_rim_style(),
+                    ))
+                    .with_children(|rim| {
+                        rim.spawn((
+                            Node {
+                                width: Val::Percent(100.0),
+                                height: Val::Percent(100.0),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                border_radius: portrait_radius,
+                                ..default()
+                            },
+                            hud_inset_fill_style(),
+                        ))
+                        .with_children(|portrait| {
+                            portrait.spawn((
+                                SelectedUnitPortraitFallback,
+                                Text::new("?"),
+                                hud_heading_font(),
+                                TextColor(TEXT_MUTED),
+                            ));
+                        });
+                    });
+                    row.spawn(Node {
+                        flex_direction: FlexDirection::Column,
+                        row_gap: Val::Px(2.0),
+                        flex_grow: 1.0,
+                        min_width: Val::Px(0.0),
+                        justify_content: JustifyContent::Center,
+                        ..default()
+                    })
+                    .with_children(|info| {
+                        info.spawn((
+                            SelectedUnitNameText,
+                            Text::new(NO_SELECTION_LABEL),
+                            hud_heading_font(),
+                            TextColor(TEXT_PRIMARY),
+                        ));
+                        info.spawn((
+                            SelectedUnitSubtitleText,
+                            Text::new(""),
+                            hud_body_font(),
+                            TextColor(TEXT_MUTED),
+                            Node {
+                                margin: UiRect::bottom(Val::Px(6.0)),
+                                ..default()
+                            },
+                        ));
+                        spawn_stat_bar_row(info, "HP", HudStatBarId::Hp, hp_bar_color());
+                        info.spawn((
+                            SelectedUnitNutritionRow,
+                            Node {
+                                width: Val::Percent(100.0),
+                                ..default()
+                            },
+                        ))
+                        .with_children(|nutrition_row| {
+                            spawn_stat_bar_row(
+                                nutrition_row,
+                                "Food",
+                                HudStatBarId::Nutrition,
+                                nutrition_bar_color(),
+                            );
+                        });
+                    });
+                });
             panel.spawn((
                 SelectedUnitPanelText,
+                Node {
+                    display: Display::None,
+                    ..default()
+                },
                 Text::new(NO_SELECTION_LABEL),
-                hud_title_font(),
-                TextColor(TEXT_PRIMARY),
             ));
         });
 }
 
-/// Refresh stat text when the derived snapshot changes.
+/// Refresh compact HUD stat presentation when selection or vitals change.
 pub fn sync_selected_unit_panel(
     world_selection: Res<WorldSelectionState>,
     selection: Res<SelectedUnits>,
@@ -241,7 +356,17 @@ pub fn sync_selected_unit_panel(
     building_catalog: Res<BuildingCatalog>,
     weapon_catalog: Res<WeaponCatalog>,
     mut cache: Local<Option<SelectedUnitPanelSnapshot>>,
-    mut text: Query<&mut Text, With<SelectedUnitPanelText>>,
+    mut text_set: ParamSet<(
+        Query<&mut Text, With<SelectedUnitPanelText>>,
+        Query<&mut Text, With<SelectedUnitNameText>>,
+        Query<&mut Text, With<SelectedUnitSubtitleText>>,
+        Query<&mut Text, With<SelectedUnitPortraitFallback>>,
+        Query<(&HudStatBarValueText, &mut Text)>,
+    )>,
+    mut node_set: ParamSet<(
+        Query<&mut Node, With<SelectedUnitNutritionRow>>,
+        Query<(&HudStatBarFill, &mut Node)>,
+    )>,
 ) {
     let snapshot = build_selected_panel_snapshot(
         &world_selection,
@@ -256,10 +381,137 @@ pub fn sync_selected_unit_panel(
     }
     *cache = Some(snapshot.clone());
 
-    let Ok(mut text) = text.single_mut() else {
-        return;
-    };
-    **text = snapshot.lines.join("\n");
+    if let Ok(mut text) = text_set.p0().single_mut() {
+        **text = snapshot.lines.join("\n");
+    }
+
+    struct BarUpdate {
+        id: HudStatBarId,
+        current: f32,
+        max: f32,
+    }
+
+    let mut name = NO_SELECTION_LABEL.to_string();
+    let mut subtitle = String::new();
+    let mut portrait = "?".to_string();
+    let mut show_nutrition = false;
+    let mut bar_updates: Vec<BarUpdate> = Vec::new();
+
+    match world_selection.category {
+        WorldSelectionCategory::Building => {
+            if let Some(building_id) = world_selection.building_id {
+                if let Some(record) = world.get_building(building_id) {
+                    let display_name = building_catalog
+                        .get(&record.definition_id)
+                        .map(|def| def.display_name.as_str())
+                        .unwrap_or(record.definition_id.as_str());
+                    name = display_name.to_string();
+                    subtitle = record.lifecycle_state.label().to_string();
+                    portrait = display_name
+                        .chars()
+                        .next()
+                        .map(|c| c.to_ascii_uppercase().to_string())
+                        .unwrap_or_else(|| "B".to_string());
+                    bar_updates.push(BarUpdate {
+                        id: HudStatBarId::Hp,
+                        current: record.vitals.current_hp as f32,
+                        max: record.vitals.max_hp as f32,
+                    });
+                }
+            }
+        }
+        WorldSelectionCategory::Units => {
+            if selection.is_empty() {
+                bar_updates.push(BarUpdate {
+                    id: HudStatBarId::Hp,
+                    current: 0.0,
+                    max: 0.0,
+                });
+                bar_updates.push(BarUpdate {
+                    id: HudStatBarId::Nutrition,
+                    current: 0.0,
+                    max: 0.0,
+                });
+            } else if selection.0.len() > 1 {
+                name = format!("{} units selected", selection.0.len());
+                subtitle = average_hp_percent(&selection, &world)
+                    .map(|avg| format!("Average HP {:.0}%", avg))
+                    .unwrap_or_default();
+                portrait = selection.0.len().to_string();
+                if let Some(avg) = average_hp_percent(&selection, &world) {
+                    bar_updates.push(BarUpdate {
+                        id: HudStatBarId::Hp,
+                        current: avg,
+                        max: 100.0,
+                    });
+                }
+            } else if let Some(unit_id) = primary_selected_unit(&selection) {
+                if let Some(record) = world.get_unit(unit_id) {
+                    if let Some(def) = unit_catalog.get(&record.definition_id) {
+                        name = def.display_name.clone();
+                        subtitle = format!(
+                            "{} | {}",
+                            unit_state_label(&record.state),
+                            def.tier.as_str()
+                        );
+                        portrait = def
+                            .display_name
+                            .chars()
+                            .next()
+                            .map(|c| c.to_ascii_uppercase().to_string())
+                            .unwrap_or_else(|| "?".to_string());
+                        bar_updates.push(BarUpdate {
+                            id: HudStatBarId::Hp,
+                            current: record.vitals.current_hp as f32,
+                            max: record.vitals.max_hp as f32,
+                        });
+                        if let Some(profile) = NutritionProfile::from_definition(def) {
+                            show_nutrition = true;
+                            bar_updates.push(BarUpdate {
+                                id: HudStatBarId::Nutrition,
+                                current: record.nutrition.current,
+                                max: profile.max,
+                            });
+                        }
+                    } else {
+                        name = format!("Unit #{}", unit_id.raw());
+                        subtitle = record.definition_id.as_str().to_string();
+                    }
+                } else {
+                    name = format!("Unit #{}", unit_id.raw());
+                }
+            }
+        }
+        _ => {}
+    }
+
+    if let Ok(mut nutrition_node) = node_set.p0().single_mut() {
+        nutrition_node.display = if show_nutrition {
+            Display::Flex
+        } else {
+            Display::None
+        };
+    }
+
+    if let Ok(mut name_text) = text_set.p1().single_mut() {
+        **name_text = name;
+    }
+    if let Ok(mut subtitle_text) = text_set.p2().single_mut() {
+        **subtitle_text = subtitle;
+    }
+    if let Ok(mut portrait_text) = text_set.p3().single_mut() {
+        **portrait_text = portrait;
+    }
+
+    for bar in bar_updates {
+        sync_stat_bar(
+            bar.id,
+            bar.current,
+            bar.max,
+            &mut node_set.p1(),
+            &mut text_set.p4(),
+        );
+    }
 }
 
 #[cfg(test)]

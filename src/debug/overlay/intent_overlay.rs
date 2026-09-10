@@ -55,6 +55,9 @@ pub fn draw_intent_debug_overlay(
             | ClientIntent::SetBuildingProductionEnabled { .. }
             | ClientIntent::SetBuildingProductionOperation { .. }
             | ClientIntent::AdjustBuildingWorkPriority { .. }
+            | ClientIntent::SetBuildingStorageCategoryAccepted { .. }
+            | ClientIntent::AcceptAllBuildingStorageCategories { .. }
+            | ClientIntent::ClearAllBuildingStorageCategories { .. }
             | ClientIntent::ShiftModifier { .. } => {}
             ClientIntent::PaletteCommand { .. } => {}
             ClientIntent::EnterBuildMode

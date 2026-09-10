@@ -27,6 +27,7 @@ pub fn unit_in_active_combat(combat_state: &CombatState) -> bool {
         CombatState::Attacking { .. }
             | CombatState::Chasing { .. }
             | CombatState::AttackMoving { .. }
+            | CombatState::Holding { .. }
     )
 }
 
@@ -54,7 +55,7 @@ pub struct SelfMaintenanceContext<'a> {
 }
 
 /// Decay nutrition for all living units using the shared authored consumption rate.
-pub fn step_unit_nutrition_decay(ctx: &mut SelfMaintenanceContext<'_>) {
+pub fn step_unit_nutrition_decay(ctx: &mut SelfMaintenanceContext<'_>, delta_seconds: f32) {
     let unit_ids = ctx.world.sorted_unit_ids();
     for unit_id in unit_ids {
         let Some(definition) = ctx
@@ -68,7 +69,7 @@ pub fn step_unit_nutrition_decay(ctx: &mut SelfMaintenanceContext<'_>) {
             continue;
         };
         ctx.world.mutate_unit(unit_id, |record| {
-            apply_nutrition_decay(&mut record.nutrition, &profile);
+            apply_nutrition_decay(&mut record.nutrition, &profile, delta_seconds);
         });
     }
 }
@@ -411,6 +412,7 @@ fn resolve_eating_source(
                 *inventory_id,
                 unit.placement.position,
                 ctx.world.layout(),
+                super::food::active_haul_cargo_item(ctx.world, unit_id).as_ref(),
             )
         }
         FoodSourceRef::SettlementStorage {

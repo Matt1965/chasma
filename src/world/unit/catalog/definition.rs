@@ -12,8 +12,8 @@ use crate::world::weapon::WeaponDefinitionId;
 /// Default presentation yaw rate when the Units sheet omits `Turn Speed Deg/s` (UNIT-TURN-1).
 pub const DEFAULT_TURN_SPEED_DEGREES_PER_SECOND: f32 = 540.0;
 
-/// Default nutrition consumed per simulation tick when the Units sheet omits the column (ADR-134).
-pub const DEFAULT_NUTRITION_CONSUMPTION_PER_TICK: f32 = 1.0;
+/// Default nutrition consumed per real second when the Units sheet omits the column (ADR-134).
+pub const DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND: f32 = 0.1;
 
 /// Default nutrition capacity when consumption is enabled (ADR-134 milestone tuning).
 pub const DEFAULT_NUTRITION_MAX: f32 = 100.0;
@@ -78,8 +78,8 @@ pub struct UnitDefinition {
     pub inventory_profile_id: Option<InventoryProfileId>,
     /// Authoritative corpse lifetime override in simulation ticks (ADR-089 I3).
     pub corpse_lifetime_ticks: Option<u64>,
-    /// Nutrition consumed per simulation tick — shared by settlement food demand (SA2) and hunger (ADR-134).
-    pub nutrition_consumption_per_tick: f32,
+    /// Nutrition consumed per real second — shared by settlement food demand (SA2) and hunger (ADR-134).
+    pub nutrition_consumption_per_second: f32,
     /// Maximum nutrition capacity in hunger units (ADR-134). Zero uses [`DEFAULT_NUTRITION_MAX`] when consumption > 0.
     pub nutrition_max: f32,
     /// Normal-hunger threshold as a fraction of max (ADR-134).
@@ -147,7 +147,7 @@ impl UnitDefinition {
             work_capabilities: super::work::UnitWorkCapabilities::default(),
             inventory_profile_id: None,
             corpse_lifetime_ticks: None,
-            nutrition_consumption_per_tick: DEFAULT_NUTRITION_CONSUMPTION_PER_TICK,
+            nutrition_consumption_per_second: DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND,
             nutrition_max: 0.0,
             hunger_normal_threshold_fraction: DEFAULT_HUNGER_NORMAL_THRESHOLD_FRACTION,
             hunger_critical_threshold_fraction: DEFAULT_HUNGER_CRITICAL_THRESHOLD_FRACTION,
@@ -230,8 +230,8 @@ impl UnitDefinition {
         self
     }
 
-    pub fn with_nutrition_consumption_per_tick(mut self, rate: f32) -> Self {
-        self.nutrition_consumption_per_tick = rate;
+    pub fn with_nutrition_consumption_per_second(mut self, rate: f32) -> Self {
+        self.nutrition_consumption_per_second = rate;
         if rate > 0.0 && self.nutrition_max <= 0.0 {
             self.nutrition_max = DEFAULT_NUTRITION_MAX;
         }

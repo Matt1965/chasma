@@ -41,4 +41,7 @@ pub fn cancel_logistics_for_building_removal(world: &mut WorldData, building_id:
     for request_id in cancelled {
         cancel_hauling_request(world, request_id);
     }
+    world
+        .building_storage_policy_store_mut()
+        .remove_building(building_id);
 }

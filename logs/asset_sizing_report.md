@@ -16,8 +16,7 @@
 ## Building / prispod_farm
 - asset: `assets\buildings\prispod_farm.glb`
 - source: 12.710 × 2.098 × 9.710 m (Some(CombinedVisibleMeshes))
-- baseline scale: 2.046, 5.719, 2.060
-- warning: inferred desired meters from building footprint — add Desired*M to Excel for explicit authoring
+- baseline scale: 0.999, 1.001, 0.999
 
 ## Building / smelter
 - asset: `assets\buildings\smelter.glb`
@@ -27,8 +26,8 @@
 
 ## Building / stone_quarry
 - asset: `assets\buildings\stone_mine.glb`
-- source: 15.343 × 3.184 × 12.802 m (Some(CombinedVisibleMeshes))
-- baseline scale: 1.043, 2.764, 0.937
+- source: 4.470 × 2.209 × 4.419 m (Some(CombinedVisibleMeshes))
+- baseline scale: 3.580, 3.983, 2.716
 - warning: inferred desired meters from building footprint — add Desired*M to Excel for explicit authoring
 
 ## Building / storage_chest
@@ -48,7 +47,7 @@
 ## Unit / U-0001
 - asset: `assets\units\robot.glb`
 - source: 0.524 × 0.996 × 0.809 m (Some(CombinedVisibleMeshes))
-- baseline scale: 1.194, 1.194, 1.194
+- baseline scale: 1.756, 1.756, 1.756
 - warning: inferred desired meters from unit height hint — add Desired*M to Excel for explicit authoring
 
 ## Unit / U-0002

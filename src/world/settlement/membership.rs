@@ -174,6 +174,12 @@ pub fn assign_building_settlement(
     world
         .settlement_store_mut()
         .reindex_building_membership(building_id, settlement_id);
+    if settlement_id.is_some() {
+        crate::world::logistics::misfiled::mark_all_settlement_buildings_logistics_dirty(
+            world,
+            settlement_id.unwrap(),
+        );
+    }
     Ok(())
 }
 

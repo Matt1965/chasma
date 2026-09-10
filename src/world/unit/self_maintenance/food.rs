@@ -41,6 +41,7 @@ pub fn find_edible_in_inventory(
     inventory_id: InventoryId,
     unit_position: WorldPosition,
     layout: crate::world::ChunkLayout,
+    exclude_item: Option<&ItemDefinitionId>,
 ) -> Option<EdibleStack> {
     let inventory = world.inventory_store().get(inventory_id)?;
     let unit_global = unit_position.to_global(layout);
@@ -56,6 +57,9 @@ pub fn find_edible_in_inventory(
         if *quantity == 0 || !is_edible_food(item_catalog, item_definition_id) {
             continue;
         }
+        if exclude_item == Some(item_definition_id) {
+            continue;
+        }
         let nutrition = item_catalog.get(item_definition_id)?.nutrition;
         let candidate = EdibleStack {
             inventory_id,
@@ -69,6 +73,26 @@ pub fn find_edible_in_inventory(
         update_nearest_edible(&mut best, candidate, &unit_global, layout);
     }
     best
+}
+
+pub(crate) fn active_haul_cargo_item(
+    world: &WorldData,
+    unit_id: UnitId,
+) -> Option<ItemDefinitionId> {
+    let task_id = world.task_store().unit_task_id(unit_id)?;
+    let task = world.task_store().get(task_id)?;
+    if task.task_type != crate::world::task::TaskType::Haul {
+        return None;
+    }
+    let request_id = task.hauling_request_id()?;
+    world
+        .hauling_request_store()
+        .get(request_id)
+        .map(|request| request.item_id.clone())
+}
+
+fn is_active_haul_cargo(world: &WorldData, unit_id: UnitId, item_id: &ItemDefinitionId) -> bool {
+    active_haul_cargo_item(world, unit_id).is_some_and(|cargo| cargo == *item_id)
 }
 
 /// Find the nearest edible stack in accessible settlement storage inventories.
@@ -207,6 +231,9 @@ pub fn eat_one_from_inventory(
     item_id: &ItemDefinitionId,
     item_catalog: &ItemCatalog,
 ) -> bool {
+    if is_active_haul_cargo(world, unit_id, item_id) {
+        return false;
+    }
     let (inventory_store, instance_store) = world.inventory_runtime_mut();
     let consumed = consume_stack_item(
         inventory_store,
@@ -256,9 +283,15 @@ pub fn select_food_source(
     let layout = world.layout();
     let position = unit.placement.position;
     if let Some(inventory_id) = unit.inventory_id {
-        if let Some(edible) =
-            find_edible_in_inventory(world, item_catalog, inventory_id, position, layout)
-        {
+        let exclude = active_haul_cargo_item(world, unit_id);
+        if let Some(edible) = find_edible_in_inventory(
+            world,
+            item_catalog,
+            inventory_id,
+            position,
+            layout,
+            exclude.as_ref(),
+        ) {
             return Some(edible);
         }
     }

@@ -77,7 +77,7 @@ pub fn spawn_terrain_analysis_ui(mut commands: Commands) {
             ));
             root.spawn((
                 TerrainAnalysisCursorText,
-                Text::new("Cursor: —"),
+                Text::new("Cursor: -"),
                 TextFont {
                     font_size: 12.0,
                     ..default()
@@ -260,7 +260,7 @@ pub fn sync_terrain_analysis_panel(
         if let Some(def) = catalog.get(id) {
             let style = &def.overlay_style;
             lines.push(format!(
-                "Legend: low→high  cutoff={}",
+                "Legend: low->high  cutoff={}",
                 style.visibility_cutoff
             ));
             if !style.qualitative_labels.is_empty() {
@@ -377,11 +377,11 @@ pub fn update_terrain_analysis_cursor_readout(
         return;
     };
     let Some(field_id) = overlay_state.effective_field() else {
-        **text = "Cursor: —".to_string();
+        **text = "Cursor: -".to_string();
         return;
     };
     let Some(ray) = crate::units::input::cursor_world_ray(&windows, &camera) else {
-        **text = "Cursor: —".to_string();
+        **text = "Cursor: -".to_string();
         return;
     };
     let layout = world.layout();
@@ -392,7 +392,7 @@ pub fn update_terrain_analysis_cursor_readout(
     let Some(click) =
         crate::units::input::terrain_click_to_world_position(&ray, &world, layout, vertical_scale)
     else {
-        **text = "Cursor: —".to_string();
+        **text = "Cursor: -".to_string();
         return;
     };
     let sample = sample_terrain_field_at(&world, &catalog, field_id, click.world_position);
@@ -406,11 +406,11 @@ fn format_cursor_sample(sample: &TerrainFieldSample, catalog: &TerrainFieldCatal
     let pct = sample
         .as_percent()
         .map(|p| format!("{p:.1}%"))
-        .unwrap_or_else(|| "—".to_string());
+        .unwrap_or_else(|| "-".to_string());
     let label = catalog
         .get(&sample.field_id)
         .and_then(|d| d.overlay_style.qualitative_label_for_value(sample.value))
-        .unwrap_or("—");
+        .unwrap_or("-");
     format!("Cursor: {pct} ({label})  raw={}", sample.value)
 }
 

@@ -2,6 +2,7 @@
 
 mod components;
 mod mesh;
+mod player_select;
 mod state;
 mod sync;
 
@@ -9,6 +10,7 @@ pub use components::TerrainFieldOverlayMesh;
 pub use mesh::{
     TerrainFieldOverlayAssets, build_field_overlay_mesh, setup_terrain_field_overlay_assets,
 };
+pub use player_select::{PLAYER_FIELD_MENU_IDS, apply_player_field_overlay_selection};
 pub use state::{
     DEFAULT_OVERLAY_OPACITY_BP, MAX_PLAYER_OVERLAY_OPACITY_BP, TerrainFieldAuxiliaryOverlays,
     TerrainOverlaySelection, TerrainOverlayState,

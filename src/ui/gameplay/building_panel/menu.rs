@@ -6,8 +6,9 @@ use bevy::ui::FocusPolicy;
 
 use crate::player::LocalPlayerOwnership;
 use crate::ui::gameplay::floating_window::{
-    FloatingGameplayWindowId, FloatingGameplayWindowRoot, FloatingWindowTitleBarDragRegion,
-    TITLE_BAR_HEIGHT_PX,
+    FloatingGameplayWindowId, FloatingGameplayWindowRoot, WINDOW_BODY_PADDING_PX,
+    floating_window_shell_colors, floating_window_shell_node, spawn_floating_close_button,
+    spawn_floating_title_rail_drag_only, spawn_floating_window_inner_frame,
 };
 use crate::ui::gameplay::inventory::{
     InventoryGridInteraction, InventoryGridPane, InventoryPaneSide, InventoryUiState,
@@ -24,7 +25,9 @@ use crate::world::{
 
 use super::super::layout::PlayerHudUi;
 use super::content::{BuildingPanelSnapshot, build_building_panel_snapshot};
-use super::controls::{spawn_production_controls, spawn_work_priority_controls};
+use super::controls::{
+    spawn_production_controls, spawn_storage_controls, spawn_work_priority_controls,
+};
 use super::format::format_building_header_line;
 use super::interaction::{
     building_inventory_grid_interaction, building_inventory_transfer_eligible,
@@ -69,6 +72,14 @@ pub struct BuildingPanelSyncParams<'w> {
 }
 
 pub fn spawn_building_menu_panel(mut commands: Commands) {
+    let (shell_bg, shell_border) = floating_window_shell_colors();
+    let mut shell_node = floating_window_shell_node();
+    shell_node.min_width = Val::Px(220.0);
+    shell_node.max_width = Val::Px(360.0);
+    shell_node.width = Val::Px(280.0);
+    shell_node.height = Val::Percent(65.0);
+    shell_node.max_height = Val::Percent(70.0);
+
     commands
         .spawn((
             BuildingMenuPanelRoot,
@@ -79,83 +90,63 @@ pub fn spawn_building_menu_panel(mut commands: Commands) {
             Button,
             Interaction::None,
             FocusPolicy::Block,
-            Node {
-                position_type: PositionType::Absolute,
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(8.0),
-                padding: UiRect::all(Val::Px(super::super::styles::PANEL_PADDING_PX)),
-                min_width: Val::Px(220.0),
-                max_width: Val::Px(360.0),
-                height: Val::Percent(65.0),
-                max_height: Val::Percent(70.0),
-                display: Display::None,
-                ..default()
-            },
-            BackgroundColor(super::super::styles::PANEL_BG),
+            shell_node,
+            shell_bg,
+            shell_border,
             ZIndex(410),
         ))
-        .with_children(|panel| {
-            panel
-                .spawn((
-                    FloatingWindowTitleBarDragRegion {
-                        id: FloatingGameplayWindowId::BuildingMenu,
+        .with_children(|root| {
+            spawn_floating_window_inner_frame(root, |frame| {
+                spawn_floating_title_rail_drag_only(
+                    frame,
+                    FloatingGameplayWindowId::BuildingMenu,
+                    |title| {
+                        title.spawn((
+                            BuildingMenuHeaderText,
+                            Text::new(""),
+                            super::super::styles::panel_title_font(),
+                            TextColor(super::super::styles::TEXT_PRIMARY),
+                        ));
                     },
-                    Button,
-                    Node {
-                        width: Val::Percent(100.0),
-                        min_height: Val::Px(TITLE_BAR_HEIGHT_PX),
-                        align_items: AlignItems::Center,
-                        ..default()
-                    },
-                ))
-                .with_children(|title| {
-                    title.spawn((
-                        BuildingMenuHeaderText,
-                        Text::new(""),
-                        super::super::styles::hud_title_font(),
-                        TextColor(super::super::styles::TEXT_PRIMARY),
-                    ));
-                });
-            panel
-                .spawn((
-                    BuildingMenuScrollBody,
-                    Node {
-                        flex_direction: FlexDirection::Column,
-                        row_gap: Val::Px(8.0),
-                        overflow: Overflow::scroll_y(),
-                        flex_grow: 1.0,
-                        min_height: Val::Px(0.0),
-                        ..default()
-                    },
-                ))
-                .with_children(|scroll| {
-                    scroll.spawn((
-                        BuildingMenuContentHost,
+                );
+                frame
+                    .spawn((
+                        BuildingMenuScrollBody,
                         Node {
                             flex_direction: FlexDirection::Column,
-                            row_gap: Val::Px(10.0),
+                            row_gap: Val::Px(8.0),
+                            overflow: Overflow::scroll_y(),
+                            flex_grow: 1.0,
+                            min_height: Val::Px(0.0),
+                            padding: UiRect::all(Val::Px(WINDOW_BODY_PADDING_PX)),
                             ..default()
                         },
-                    ));
-                });
-            panel
-                .spawn((
-                    BuildingMenuCloseButton,
-                    Button,
-                    Node {
-                        padding: UiRect::axes(Val::Px(10.0), Val::Px(4.0)),
-                        align_self: AlignSelf::FlexStart,
+                    ))
+                    .with_children(|scroll| {
+                        scroll.spawn((
+                            BuildingMenuContentHost,
+                            Node {
+                                flex_direction: FlexDirection::Column,
+                                row_gap: Val::Px(10.0),
+                                ..default()
+                            },
+                        ));
+                    });
+                frame
+                    .spawn(Node {
+                        flex_shrink: 0.0,
+                        padding: UiRect::new(
+                            Val::Px(WINDOW_BODY_PADDING_PX),
+                            Val::Px(WINDOW_BODY_PADDING_PX),
+                            Val::Px(0.0),
+                            Val::Px(WINDOW_BODY_PADDING_PX),
+                        ),
                         ..default()
-                    },
-                    BackgroundColor(super::super::styles::CMD_BTN_ENABLED_BG),
-                ))
-                .with_children(|button| {
-                    button.spawn((
-                        Text::new("Close"),
-                        super::super::styles::hud_body_font(),
-                        TextColor(super::super::styles::TEXT_PRIMARY),
-                    ));
-                });
+                    })
+                    .with_children(|footer| {
+                        spawn_floating_close_button(footer, BuildingMenuCloseButton, "Close");
+                    });
+            });
         });
 }
 
@@ -189,6 +180,7 @@ pub fn sync_building_menu_panel(
         requirement_revision: params.requirement_revision.0,
         profile_revision: params.profile_revision.0,
         assessment_store: &mut params.assessment_store,
+        simulation_tick: 0,
     };
 
     let Some(snapshot) = build_building_panel_snapshot(
@@ -197,6 +189,7 @@ pub fn sync_building_menu_panel(
         &params.operation_catalog,
         &mut operation_params,
         &params.profiles,
+        &params.categories,
         building_id,
     ) else {
         root_node.display = Display::None;
@@ -267,6 +260,9 @@ fn spawn_panel_content(
     if let Some(work_priority) = &snapshot.work_priority {
         spawn_work_priority_controls(parent, work_priority);
     }
+    if let Some(storage) = &snapshot.storage {
+        spawn_storage_controls(parent, storage);
+    }
     if let Some(production) = &snapshot.production {
         spawn_production_controls(parent, production);
     }
@@ -282,7 +278,7 @@ fn spawn_panel_content(
             .with_children(|binding_section| {
                 binding_section.spawn((
                     Text::new(&section.label),
-                    super::super::styles::hud_body_font(),
+                    super::super::styles::panel_body_font(),
                     TextColor(super::super::styles::TEXT_PRIMARY),
                 ));
                 if let Some(record) = world.inventory_store().get(section.inventory_id) {
@@ -326,20 +322,12 @@ fn spawn_panel_content(
 
 pub fn handle_building_menu_close_button(
     mut panel: ResMut<BuildingPanelState>,
-    mut interactions: Query<
-        (&Interaction, &mut BackgroundColor),
-        (Changed<Interaction>, With<BuildingMenuCloseButton>),
-    >,
+    buttons: Query<&Interaction, (Changed<Interaction>, With<BuildingMenuCloseButton>)>,
 ) {
-    for (interaction, mut bg) in &mut interactions {
-        *bg = match *interaction {
-            Interaction::Pressed => {
-                panel.close();
-                BackgroundColor(super::super::styles::CMD_BTN_ENABLED_PRESSED)
-            }
-            Interaction::Hovered => BackgroundColor(super::super::styles::CMD_BTN_ENABLED_HOVER),
-            Interaction::None => BackgroundColor(super::super::styles::CMD_BTN_ENABLED_BG),
-        };
+    for interaction in &buttons {
+        if *interaction == Interaction::Pressed {
+            panel.close();
+        }
     }
 }
 

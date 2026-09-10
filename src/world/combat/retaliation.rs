@@ -5,7 +5,7 @@
 //! hostile it may legally attack.
 
 use crate::world::unit::{
-    UnitId, UnitOrder, apply_validated_attack_order, unit_can_execute_actions,
+    CombatState, UnitId, UnitOrder, apply_validated_attack_order, unit_can_execute_actions,
 };
 use crate::world::{
     AttackTargetingPolicy, DoodadCatalog, NavigationConfig, UnitCatalog, WeaponCatalog, WorldData,
@@ -132,6 +132,43 @@ pub fn try_reactive_combat_retaliation(
             },
         );
         return kept;
+    }
+    if matches!(victim.combat_state, CombatState::Holding { .. }) {
+        if !super::engagement::target_in_weapon_range_for_attacker(
+            world,
+            victim_id,
+            attacker_id,
+            unit_catalog,
+            weapon_catalog,
+        ) {
+            #[cfg(feature = "dev")]
+            super::runtime_trace::retaliation_result(
+                victim_id,
+                attacker_id,
+                false,
+                "holding_out_of_range",
+            );
+            return false;
+        }
+        let anchor = match victim.combat_state {
+            CombatState::Holding { anchor, .. } => anchor,
+            _ => victim.placement.position,
+        };
+        let _ = world.set_unit_combat_state(
+            victim_id,
+            CombatState::Holding {
+                anchor,
+                target: Some(attacker_id),
+            },
+        );
+        #[cfg(feature = "dev")]
+        super::runtime_trace::retaliation_result(
+            victim_id,
+            attacker_id,
+            true,
+            "holding_in_range_retaliation",
+        );
+        return true;
     }
     let mut events = Vec::new();
     cancel_unit_task(world, victim_id, TaskCancelReason::PlayerOrder, &mut events);

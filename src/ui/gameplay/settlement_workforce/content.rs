@@ -2,6 +2,7 @@
 
 use crate::client::CameraSettlementContext;
 use crate::ui::gameplay::squad_panel::squad_display_name;
+use crate::ui::gameplay::text::format_ui_title;
 use crate::world::{
     SettlementId, UnitCatalog, UnitId, WorkPermissionDomain, WorkSkillCatalog, WorldData,
     unit_physically_capable_for_work_permission, unit_work_allowed,
@@ -74,7 +75,7 @@ pub fn build_settlement_workforce_snapshot(
     if member_ids.is_empty() {
         return SettlementWorkforceSnapshot {
             settlement_id: Some(settlement_id),
-            title: format!("Settlement Workforce — {}", settlement_name),
+            title: format_ui_title("Settlement Workforce", &settlement_name),
             empty_message: Some(NO_SETTLEMENT_WORKERS_MESSAGE.into()),
             permission_columns,
             rows: Vec::new(),
@@ -96,7 +97,7 @@ pub fn build_settlement_workforce_snapshot(
 
     SettlementWorkforceSnapshot {
         settlement_id: Some(settlement_id),
-        title: format!("Settlement Workforce — {}", settlement_name),
+        title: format_ui_title("Settlement Workforce", &settlement_name),
         empty_message: None,
         permission_columns,
         rows,

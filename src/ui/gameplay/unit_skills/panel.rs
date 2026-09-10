@@ -4,14 +4,14 @@ use bevy::prelude::*;
 use bevy::ui::FocusPolicy;
 
 use crate::ui::gameplay::floating_window::{
-    FloatingGameplayWindowId, FloatingGameplayWindowRoot, FloatingWindowTitleBarDragRegion,
-    TITLE_BAR_HEIGHT_PX,
+    FloatingGameplayWindowId, FloatingGameplayWindowRoot, floating_window_shell_colors,
+    floating_window_shell_node, spawn_floating_title_rail, spawn_floating_window_body,
+    spawn_floating_window_inner_frame,
 };
 use crate::ui::gameplay::layout::PlayerHudUi;
 use crate::ui::gameplay::player_hud_state::primary_selected_unit;
-use crate::ui::gameplay::styles::{
-    BAR_BG, TEXT_MUTED, TEXT_PRIMARY, hud_body_font, hud_title_font,
-};
+use crate::ui::gameplay::styles::{TEXT_PRIMARY, panel_body_font, panel_title_font};
+use crate::ui::gameplay::text::format_ui_title;
 use crate::units::input::SelectedUnits;
 use crate::world::{UnitCatalog, WeaponCatalog, WorkSkillCatalog, WorldData};
 
@@ -31,6 +31,11 @@ pub struct UnitSkillsPanelTitleText;
 pub struct UnitSkillsPanelBodyText;
 
 pub fn spawn_unit_skills_panel(mut commands: Commands) {
+    let (shell_bg, shell_border) = floating_window_shell_colors();
+    let mut shell_node = floating_window_shell_node();
+    shell_node.width = Val::Px(300.0);
+    shell_node.max_height = Val::Percent(70.0);
+
     commands
         .spawn((
             UnitSkillsPanelRoot,
@@ -41,72 +46,40 @@ pub fn spawn_unit_skills_panel(mut commands: Commands) {
             Button,
             Interaction::None,
             FocusPolicy::Block,
-            Node {
-                position_type: PositionType::Absolute,
-                width: Val::Px(300.0),
-                max_height: Val::Percent(70.0),
-                flex_direction: FlexDirection::Column,
-                padding: UiRect::all(Val::Px(10.0)),
-                row_gap: Val::Px(6.0),
-                display: Display::None,
-                ..default()
-            },
-            BackgroundColor(BAR_BG),
+            shell_node,
+            shell_bg,
+            shell_border,
             ZIndex(411),
         ))
         .with_children(|root| {
-            root.spawn(Node {
-                width: Val::Percent(100.0),
-                justify_content: JustifyContent::SpaceBetween,
-                align_items: AlignItems::Center,
-                column_gap: Val::Px(8.0),
-                ..default()
-            })
-            .with_children(|header| {
-                header
-                    .spawn((
-                        FloatingWindowTitleBarDragRegion {
-                            id: FloatingGameplayWindowId::UnitSkills,
-                        },
-                        Button,
-                        Node {
-                            flex_grow: 1.0,
-                            min_height: Val::Px(TITLE_BAR_HEIGHT_PX),
-                            align_items: AlignItems::Center,
-                            ..default()
-                        },
-                    ))
-                    .with_children(|title| {
+            spawn_floating_window_inner_frame(root, |frame| {
+                spawn_floating_title_rail(
+                    frame,
+                    FloatingGameplayWindowId::UnitSkills,
+                    |title| {
                         title.spawn((
                             UnitSkillsPanelTitleText,
                             Text::new("Unit Skills"),
-                            hud_title_font(),
+                            panel_title_font(),
                             TextColor(TEXT_PRIMARY),
                         ));
-                    });
-                header.spawn((
-                    UnitSkillsPanelCloseButton,
-                    Button,
-                    Node {
-                        padding: UiRect::axes(Val::Px(6.0), Val::Px(2.0)),
-                        ..default()
                     },
-                    Text::new("×"),
-                    hud_title_font(),
-                    TextColor(TEXT_MUTED),
-                ));
+                    Some((UnitSkillsPanelCloseButton, "X")),
+                );
+                spawn_floating_window_body(frame, |body| {
+                    body.spawn((
+                        UnitSkillsPanelBodyText,
+                        Text::new(""),
+                        panel_body_font(),
+                        TextColor(TEXT_PRIMARY),
+                        Node {
+                            overflow: Overflow::scroll_y(),
+                            max_height: Val::Px(420.0),
+                            ..default()
+                        },
+                    ));
+                });
             });
-            root.spawn((
-                UnitSkillsPanelBodyText,
-                Text::new(""),
-                hud_body_font(),
-                TextColor(TEXT_PRIMARY),
-                Node {
-                    overflow: Overflow::scroll_y(),
-                    max_height: Val::Px(420.0),
-                    ..default()
-                },
-            ));
         });
 }
 
@@ -182,7 +155,7 @@ pub fn sync_unit_skills_panel(
         **text = formatted;
     }
     if let Ok(mut text) = title.single_mut() {
-        **text = format!("Unit Skills — {}", snapshot.title);
+        **text = format_ui_title("Unit Skills", &snapshot.title);
     }
 }
 

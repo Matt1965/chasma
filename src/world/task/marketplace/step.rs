@@ -72,6 +72,9 @@ pub fn step_worker_assignment(ctx: &mut WorkerAssignmentContext<'_>) -> WorkerAs
 
     // Pass 1: idle workers claim best Available work (deterministic unit-id order).
     for unit_id in &idle_ids {
+        if crate::world::unit_holds_position(ctx.world, *unit_id) {
+            continue;
+        }
         if crate::world::hunger_prevents_work_claim(
             ctx.world,
             ctx.unit_catalog,

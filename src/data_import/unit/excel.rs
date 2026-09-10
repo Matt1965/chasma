@@ -8,7 +8,7 @@ use super::schema::{
 use crate::data_import::asset_sizing::{asset_sizing_from_columns, parse_asset_sizing_columns};
 use crate::data_import::error::{DataImportError, RowImportError};
 use crate::data_import::schema::parse_enabled_cell;
-use crate::world::DEFAULT_NUTRITION_CONSUMPTION_PER_TICK;
+use crate::world::DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND;
 use crate::world::DEFAULT_TURN_SPEED_DEGREES_PER_SECOND;
 
 pub const UNITS_SHEET_NAME: &str = "Units";
@@ -167,11 +167,15 @@ fn parse_row(
     let (can_haul, has_can_haul_column) = optional_bool("Can Haul", false)?;
     let construction_speed = optional_f32("Construction Speed", 1.0)?;
     let has_construction_speed_column = columns.contains_key("Construction Speed");
-    let nutrition_consumption_per_tick = optional_f32(
-        "Nutrition Consumption Per Tick",
-        DEFAULT_NUTRITION_CONSUMPTION_PER_TICK,
-    )?;
-    let has_nutrition_consumption_column = columns.contains_key("Nutrition Consumption Per Tick");
+    let nutrition_column = if columns.contains_key("Nutrition Consumption Per Second") {
+        "Nutrition Consumption Per Second"
+    } else {
+        "Nutrition Consumption Per Tick"
+    };
+    let nutrition_consumption_per_second =
+        optional_f32(nutrition_column, DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND)?;
+    let has_nutrition_consumption_column = columns.contains_key("Nutrition Consumption Per Second")
+        || columns.contains_key("Nutrition Consumption Per Tick");
 
     Ok(UnitImportRow {
         row_number,
@@ -236,7 +240,7 @@ fn parse_row(
         has_can_operate_workstation_column,
         has_can_haul_column,
         has_construction_speed_column,
-        nutrition_consumption_per_tick,
+        nutrition_consumption_per_second,
         has_nutrition_consumption_column,
         asset_sizing: asset_sizing_from_columns(&parse_asset_sizing_columns(
             columns,

@@ -37,6 +37,8 @@ pub struct HaulingRequestRecord {
     pub execution_phase: HaulExecutionPhase,
     pub picked_up_quantity: u32,
     pub created_tick: u64,
+    #[serde(default)]
+    pub blocked_at_tick: Option<u64>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -105,6 +107,7 @@ fn to_record(request: &HaulingRequest) -> HaulingRequestRecord {
         execution_phase: request.execution_phase,
         picked_up_quantity: request.picked_up_quantity,
         created_tick: request.created_tick,
+        blocked_at_tick: request.blocked_at_tick,
     }
 }
 
@@ -127,5 +130,6 @@ fn from_record(record: HaulingRequestRecord) -> HaulingRequest {
         execution_phase: record.execution_phase,
         picked_up_quantity: record.picked_up_quantity,
         created_tick: record.created_tick,
+        blocked_at_tick: record.blocked_at_tick,
     }
 }

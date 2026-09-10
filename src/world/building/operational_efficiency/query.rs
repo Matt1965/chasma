@@ -208,23 +208,10 @@ fn limiting_from_requirement(
 ) -> Vec<OperationalLimitingFactor> {
     let field_id = requirement.field_id.clone();
     let mut factors = Vec::new();
-    if requirement.availability != RequirementAssessmentAvailability::Available {
-        factors.push(OperationalLimitingFactor::TerrainFieldUnavailable(
-            field_id.clone(),
-        ));
-    }
-    if !requirement.average_requirement_met {
-        factors.push(OperationalLimitingFactor::TerrainAverageBelowMinimum(
-            field_id.clone(),
-        ));
-    }
-    if !requirement.coverage_requirement_met {
-        factors.push(OperationalLimitingFactor::TerrainCoverageBelowMinimum(
-            field_id.clone(),
-        ));
-    }
-    if requirement.response_efficiency_basis_points.value() == 0 {
-        factors.push(OperationalLimitingFactor::TerrainResponseZero(field_id));
+    if let Some(failure) =
+        crate::world::building::terrain_assessment::primary_failure_for_assessment(requirement)
+    {
+        factors.push(limiting_factor_from_field_failure(failure, field_id));
     }
     for warning in &requirement.warnings {
         if matches!(warning, BuildingTerrainWarning::DataUnavailable) {
@@ -234,6 +221,27 @@ fn limiting_from_requirement(
         }
     }
     factors
+}
+
+fn limiting_factor_from_field_failure(
+    failure: crate::world::building::terrain_assessment::FieldRequirementFailureReason,
+    field_id: crate::world::TerrainFieldId,
+) -> OperationalLimitingFactor {
+    use crate::world::building::terrain_assessment::FieldRequirementFailureReason;
+    match failure {
+        FieldRequirementFailureReason::FieldUnavailable => {
+            OperationalLimitingFactor::TerrainFieldUnavailable(field_id)
+        }
+        FieldRequirementFailureReason::AverageBelowMinimum => {
+            OperationalLimitingFactor::TerrainAverageBelowMinimum(field_id)
+        }
+        FieldRequirementFailureReason::CoverageBelowMinimum => {
+            OperationalLimitingFactor::TerrainCoverageBelowMinimum(field_id)
+        }
+        FieldRequirementFailureReason::ResponseZero => {
+            OperationalLimitingFactor::TerrainResponseZero(field_id)
+        }
+    }
 }
 
 fn factor_rank(factor: &OperationalLimitingFactor) -> u8 {

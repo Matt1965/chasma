@@ -1,5 +1,6 @@
 //! Need evaluation — read-only, independent per need, no actions (SA2).
 
+use crate::simulation::SIMULATION_TICK_SECONDS;
 use crate::world::UnitCatalog;
 use crate::world::UnitState;
 use crate::world::building::catalog::BuildingCatalog;
@@ -176,9 +177,10 @@ fn projected_member_nutrition_consumption(ctx: &NeedEvalContext<'_>, horizon_tic
         let rate = ctx
             .unit_catalog
             .get(&unit.definition_id)
-            .map(|def| f64::from(def.nutrition_consumption_per_tick))
+            .map(|def| f64::from(def.nutrition_consumption_per_second))
             .unwrap_or(0.0);
-        total += rate * f64::from(horizon_ticks);
+        let horizon_seconds = f64::from(horizon_ticks) * f64::from(SIMULATION_TICK_SECONDS);
+        total += rate * horizon_seconds;
     }
     total.min(f64::from(f32::MAX)) as f32
 }

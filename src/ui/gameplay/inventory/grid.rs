@@ -5,13 +5,45 @@ use bevy::prelude::*;
 use crate::ui::gameplay::inventory::drag_preview::source_entry_drag_color;
 use crate::ui::gameplay::inventory::preview::INVENTORY_CELL_PX;
 use crate::ui::gameplay::inventory::state::InventoryUiState;
-use crate::ui::gameplay::styles::{TEXT_PRIMARY, hud_body_font};
+use crate::ui::gameplay::styles::{
+    HUD_RECESSED_CORE, HUD_RECESSED_FACE, HUD_ROSTER_SLOT_BORDER, TEXT_PRIMARY, panel_body_font,
+};
 use crate::world::{
     InventoryEntryContents, InventoryId, InventoryRecord, ItemCatalog, ItemDefinitionId,
     ItemInstanceStore, PlacedInventoryEntry,
 };
 
 const CELL_PX: f32 = INVENTORY_CELL_PX;
+const INVENTORY_CELL_BORDER_PX: f32 = 1.0;
+const INVENTORY_GRID_OUTER_BORDER_PX: f32 = 1.0;
+
+/// Recessed inventory well with a slightly stronger bronze outer rim.
+fn inventory_grid_shell_style() -> (BackgroundColor, BorderColor) {
+    (
+        BackgroundColor(HUD_RECESSED_FACE),
+        BorderColor::all(Color::srgba(0.48, 0.39, 0.30, 0.58)),
+    )
+}
+
+/// Per-slot outline — muted bronze on charcoal so every cell reads at gameplay distance.
+fn inventory_grid_cell_style() -> (BackgroundColor, BorderColor) {
+    (
+        BackgroundColor(HUD_RECESSED_CORE),
+        BorderColor::all(HUD_ROSTER_SLOT_BORDER),
+    )
+}
+
+fn inventory_grid_cell_node(x: u8, y: u8) -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(f32::from(x) * CELL_PX),
+        top: Val::Px(f32::from(y) * CELL_PX),
+        width: Val::Px(CELL_PX),
+        height: Val::Px(CELL_PX),
+        border: UiRect::all(Val::Px(INVENTORY_CELL_BORDER_PX)),
+        ..default()
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InventoryPaneSide {
@@ -69,15 +101,18 @@ pub fn spawn_inventory_grid(
         InventoryGridInteraction::Interactive { side } => side,
     };
 
+    let (grid_bg, grid_border) = inventory_grid_shell_style();
     let mut grid_entity = parent.spawn((
         Node {
             width: Val::Px(CELL_PX * f32::from(record.grid_width())),
             height: Val::Px(CELL_PX * f32::from(record.grid_height())),
             position_type: PositionType::Relative,
             flex_shrink: 0.0,
+            border: UiRect::all(Val::Px(INVENTORY_GRID_OUTER_BORDER_PX)),
             ..default()
         },
-        BackgroundColor(Color::srgba(0.08, 0.08, 0.1, 0.9)),
+        grid_bg,
+        grid_border,
     ));
     if !interactive {
         grid_entity.insert(ReadOnlyInventoryGrid);
@@ -86,15 +121,8 @@ pub fn spawn_inventory_grid(
     grid_entity.with_children(|grid| {
         for y in 0..record.grid_height() {
             for x in 0..record.grid_width() {
-                let cell_node = Node {
-                    position_type: PositionType::Absolute,
-                    left: Val::Px(f32::from(x) * CELL_PX),
-                    top: Val::Px(f32::from(y) * CELL_PX),
-                    width: Val::Px(CELL_PX - 1.0),
-                    height: Val::Px(CELL_PX - 1.0),
-                    ..default()
-                };
-                let cell_bg = BackgroundColor(Color::srgba(0.15, 0.15, 0.18, 0.6));
+                let cell_node = inventory_grid_cell_node(x, y);
+                let (cell_bg, cell_border) = inventory_grid_cell_style();
                 if interactive {
                     grid.spawn((
                         InventoryGridCell {
@@ -106,9 +134,10 @@ pub fn spawn_inventory_grid(
                         Button,
                         cell_node,
                         cell_bg,
+                        cell_border,
                     ));
                 } else {
-                    grid.spawn((cell_node, cell_bg));
+                    grid.spawn((cell_node, cell_bg, cell_border));
                 }
             }
         }
@@ -137,7 +166,7 @@ pub fn spawn_inventory_grid(
                 BackgroundColor(base_color)
             };
             let text = if qty > 1 {
-                format!("{label}\n×{qty}")
+                format!("{label}\nx{qty}")
             } else {
                 label
             };
@@ -235,6 +264,7 @@ pub fn spawn_read_only_inventory_grid_shell(
     grid_width: u8,
     grid_height: u8,
 ) {
+    let (grid_bg, grid_border) = inventory_grid_shell_style();
     parent
         .spawn((
             Node {
@@ -242,26 +272,55 @@ pub fn spawn_read_only_inventory_grid_shell(
                 height: Val::Px(CELL_PX * f32::from(grid_height)),
                 position_type: PositionType::Relative,
                 flex_shrink: 0.0,
+                border: UiRect::all(Val::Px(INVENTORY_GRID_OUTER_BORDER_PX)),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.08, 0.08, 0.1, 0.9)),
+            grid_bg,
+            grid_border,
             ReadOnlyInventoryGrid,
         ))
         .with_children(|grid| {
             for y in 0..grid_height {
                 for x in 0..grid_width {
-                    grid.spawn((
-                        Node {
-                            position_type: PositionType::Absolute,
-                            left: Val::Px(f32::from(x) * CELL_PX),
-                            top: Val::Px(f32::from(y) * CELL_PX),
-                            width: Val::Px(CELL_PX - 1.0),
-                            height: Val::Px(CELL_PX - 1.0),
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgba(0.15, 0.15, 0.18, 0.6)),
-                    ));
+                    let (cell_bg, cell_border) = inventory_grid_cell_style();
+                    grid.spawn((inventory_grid_cell_node(x, y), cell_bg, cell_border));
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn inventory_grid_cells_declare_visible_hairline_borders() {
+        let node = inventory_grid_cell_node(2, 1);
+        assert!(matches!(
+            node.border.left,
+            Val::Px(px) if px >= INVENTORY_CELL_BORDER_PX
+        ));
+        assert_eq!(node.width, Val::Px(CELL_PX));
+        assert_eq!(node.height, Val::Px(CELL_PX));
+    }
+
+    #[test]
+    fn inventory_grid_cell_borders_use_warm_charcoal_palette() {
+        let (_, cell_border) = inventory_grid_cell_style();
+        let edge = cell_border.left.to_srgba();
+        assert!(
+            edge.alpha > 0.35,
+            "cell borders must be visible at gameplay distance"
+        );
+        assert!(
+            edge.red > edge.blue,
+            "inventory grid lines should read bronze/charcoal, not cyan"
+        );
+        let (_, shell_border) = inventory_grid_shell_style();
+        let rim = shell_border.left.to_srgba();
+        assert!(
+            rim.alpha > 0.4,
+            "grid outer rim should be slightly stronger than cells"
+        );
+    }
 }

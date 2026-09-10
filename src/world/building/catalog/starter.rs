@@ -328,8 +328,8 @@ mod fixtures {
             300,
             80.0,
             FootprintSpec::Rectangle {
-                width_meters: 26.0,
-                depth_meters: 20.0,
+                width_meters: 13.0,
+                depth_meters: 10.0,
             },
             35.0,
             true,

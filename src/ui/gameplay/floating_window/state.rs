@@ -47,7 +47,7 @@ fn default_computed_size(id: FloatingGameplayWindowId, viewport: Vec2) -> Vec2 {
         }
         FloatingGameplayWindowId::UnitSkills => Vec2::new(300.0, viewport.y * 0.55),
         FloatingGameplayWindowId::SettlementWorkforce => {
-            Vec2::new((viewport.x * 0.72).clamp(520.0, 900.0), viewport.y * 0.62)
+            Vec2::new((viewport.x * 0.72).clamp(860.0, 900.0), viewport.y * 0.62)
         }
     }
 }

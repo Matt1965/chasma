@@ -83,17 +83,13 @@ mod tests {
     }
 
     #[test]
-    fn hold_position_disabled_with_explicit_reason() {
+    fn hold_position_enabled_with_selection() {
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
         let hold = available_commands_for_selection(&selection, &UnitCatalog::default())
             .into_iter()
             .find(|e| e.command_type == CommandType::HoldPosition)
             .expect("hold entry");
-        assert!(!hold.is_enabled());
-        assert_eq!(
-            hold.availability.reason(),
-            Some(CommandUnavailableReason::FeatureNotImplemented)
-        );
+        assert!(hold.is_enabled());
     }
 }

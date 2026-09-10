@@ -27,6 +27,7 @@ impl BuildingSimulationParams<'_> {
         _building_catalog: &'a crate::world::BuildingCatalog,
         footprint_catalog: &'a crate::world::FootprintCatalog,
         inventory_ctx: &'a crate::world::InventoryCatalogCtx<'a>,
+        simulation_tick: u64,
     ) -> crate::world::BuildingOperationParams<'a> {
         crate::world::BuildingOperationParams {
             field_catalog: &self.field_catalog,
@@ -38,6 +39,7 @@ impl BuildingSimulationParams<'_> {
             requirement_revision: self.requirement_revision.0,
             profile_revision: self.profile_revision.0,
             assessment_store: &mut self.assessment_store,
+            simulation_tick,
         }
     }
 }

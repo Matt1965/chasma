@@ -13,6 +13,7 @@ pub enum BuiltCommandPlan {
     Attack { target: UnitId },
     AttackMove { destination: WorldPosition },
     StopAll,
+    HoldAll,
     NoOp,
 }
 
@@ -50,10 +51,8 @@ pub fn build_command_plan(
             Ok(BuiltCommandPlan::AttackMove { destination })
         }
         CommandType::Stop => Ok(BuiltCommandPlan::StopAll),
+        CommandType::HoldPosition => Ok(BuiltCommandPlan::HoldAll),
         CommandType::Interact => Ok(BuiltCommandPlan::NoOp),
-        CommandType::HoldPosition => Err(CommandBuildError::FeatureUnavailable(
-            CommandUnavailableReason::FeatureNotImplemented,
-        )),
     }
 }
 
@@ -186,7 +185,7 @@ mod tests {
     }
 
     #[test]
-    fn hold_position_rejects_as_unimplemented() {
+    fn hold_position_builds_hold_all_plan() {
         let world = flat_world();
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
@@ -196,12 +195,10 @@ mod tests {
                 position: pos(0.0, 0.0),
             },
         };
-        assert!(matches!(
-            build_command_plan(&intent, &selection, &world),
-            Err(CommandBuildError::FeatureUnavailable(
-                CommandUnavailableReason::FeatureNotImplemented
-            ))
-        ));
+        assert_eq!(
+            build_command_plan(&intent, &selection, &world).unwrap(),
+            BuiltCommandPlan::HoldAll
+        );
     }
 
     #[test]

@@ -3,7 +3,9 @@
 use crate::world::asset_sizing::AssetSizingDefinition;
 use crate::world::relationship::{FactionCatalog, FactionId, SpeciesCatalog, SpeciesId};
 use crate::world::{AnimationProfile, AnimationProfileId};
-use crate::world::{DEFAULT_NUTRITION_CONSUMPTION_PER_TICK, DEFAULT_TURN_SPEED_DEGREES_PER_SECOND};
+use crate::world::{
+    DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND, DEFAULT_TURN_SPEED_DEGREES_PER_SECOND,
+};
 use crate::world::{UnitDefinition, UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
 
 use super::super::schema::normalize_file_path;
@@ -59,6 +61,7 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Can Operate Workstation",
     "Can Haul",
     "Construction Speed",
+    "Nutrition Consumption Per Second",
     "Nutrition Consumption Per Tick",
 ];
 
@@ -123,7 +126,7 @@ pub struct UnitImportRow {
     pub has_can_operate_workstation_column: bool,
     pub has_can_haul_column: bool,
     pub has_construction_speed_column: bool,
-    pub nutrition_consumption_per_tick: f32,
+    pub nutrition_consumption_per_second: f32,
     pub has_nutrition_consumption_column: bool,
     pub asset_sizing: AssetSizingDefinition,
 }
@@ -218,18 +221,19 @@ impl UnitImportRow {
         definition.turn_speed_degrees_per_second = self.turn_speed_degrees_per_second;
         definition.sight_range_meters = self.sight_range_meters;
         definition.work_capabilities = self.resolved_work_capabilities();
-        definition.nutrition_consumption_per_tick = self.resolved_nutrition_consumption_per_tick();
+        definition.nutrition_consumption_per_second =
+            self.resolved_nutrition_consumption_per_second();
         Ok(definition)
     }
 
-    fn resolved_nutrition_consumption_per_tick(&self) -> f32 {
+    fn resolved_nutrition_consumption_per_second(&self) -> f32 {
         if self.has_nutrition_consumption_column {
-            return self.nutrition_consumption_per_tick;
+            return self.nutrition_consumption_per_second;
         }
         if self.is_robot_row() {
-            return DEFAULT_NUTRITION_CONSUMPTION_PER_TICK;
+            return DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND;
         }
-        DEFAULT_NUTRITION_CONSUMPTION_PER_TICK
+        DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND
     }
 
     fn has_any_work_capability_column(&self) -> bool {
@@ -346,7 +350,7 @@ mod tests {
             has_can_operate_workstation_column: false,
             has_can_haul_column: false,
             has_construction_speed_column: false,
-            nutrition_consumption_per_tick: DEFAULT_NUTRITION_CONSUMPTION_PER_TICK,
+            nutrition_consumption_per_second: DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND,
             has_nutrition_consumption_column: false,
             asset_sizing: AssetSizingDefinition::default(),
         }
@@ -532,10 +536,10 @@ mod tests {
         row.faction_key = "player".to_string();
         row.species_key = "robot".to_string();
         row.file_path = r"\units\robot.glb".to_string();
-        row.nutrition_consumption_per_tick = 1.5;
+        row.nutrition_consumption_per_second = 1.5;
         row.has_nutrition_consumption_column = true;
         let def = row.to_definition(&factions, &species).unwrap();
-        assert_eq!(def.nutrition_consumption_per_tick, 1.5);
+        assert_eq!(def.nutrition_consumption_per_second, 1.5);
     }
 
     #[test]
@@ -549,8 +553,8 @@ mod tests {
         row.species_key = "robot".to_string();
         let def = row.to_definition(&factions, &species).unwrap();
         assert_eq!(
-            def.nutrition_consumption_per_tick,
-            DEFAULT_NUTRITION_CONSUMPTION_PER_TICK
+            def.nutrition_consumption_per_second,
+            DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND
         );
     }
 }

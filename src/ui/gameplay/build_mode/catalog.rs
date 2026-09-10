@@ -1,6 +1,7 @@
 //! Player build catalog panel (ADR-081 B4).
 
 use bevy::prelude::*;
+use bevy::ui::FocusPolicy;
 
 use crate::client::{ClientIntent, ClientIntentQueue};
 use crate::world::{
@@ -11,7 +12,7 @@ use crate::world::{
 use super::state::{BuildModePhase, BuildModeState};
 use crate::ui::gameplay::layout::PlayerHudUi;
 use crate::ui::gameplay::styles::{
-    BAR_BG, PANEL_BG, TEXT_MUTED, TEXT_PRIMARY, hud_body_font, hud_title_font,
+    BAR_BG, PANEL_BG, TEXT_MUTED, TEXT_PRIMARY, panel_body_font, panel_title_font,
 };
 /// Root node for the build catalog overlay.
 #[derive(Component, Debug)]
@@ -44,6 +45,9 @@ pub fn spawn_build_catalog_panel(mut commands: Commands) {
         .spawn((
             BuildCatalogRoot,
             PlayerHudUi,
+            Button,
+            Interaction::None,
+            FocusPolicy::Block,
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(8.0),
@@ -81,7 +85,7 @@ pub fn spawn_build_catalog_panel(mut commands: Commands) {
             .with_children(|search| {
                 search.spawn((
                     Text::new("Search..."),
-                    hud_body_font(),
+                    panel_body_font(),
                     TextColor(TEXT_MUTED),
                 ));
             });
@@ -108,8 +112,8 @@ pub fn spawn_build_catalog_panel(mut commands: Commands) {
             ));
             root.spawn((
                 BuildStatusText,
-                Text::new("Press B to exit • R rotate • Esc cancel"),
-                hud_body_font(),
+                Text::new("Press B to exit | R rotate | Esc cancel"),
+                panel_body_font(),
                 TextColor(TEXT_MUTED),
             ));
         });
@@ -203,7 +207,7 @@ fn build_status_line(build_mode: &BuildModeState, building_catalog: &BuildingCat
             let rotation = build_mode.ghost_rotation_quadrants() * 90;
             let placement_line = if let Some(validation) = &build_mode.last_validation {
                 if validation.valid {
-                    "Valid — click to place".to_string()
+                    "Valid | click to place".to_string()
                 } else if let Some(reason) = validation.primary_reason {
                     reason.label().to_string()
                 } else {
@@ -219,9 +223,9 @@ fn build_status_line(build_mode: &BuildModeState, building_catalog: &BuildingCat
                 .map(format_build_terrain_status)
                 .unwrap_or_default();
             if terrain_line.is_empty() {
-                format!("{name} • {rotation}° • {placement_line}")
+                format!("{name} | {rotation} deg | {placement_line}")
             } else {
-                format!("{name} • {rotation}° • {placement_line}\n{terrain_line}")
+                format!("{name} | {rotation} deg | {placement_line}\n{terrain_line}")
             }
         }
     }
@@ -230,11 +234,10 @@ fn build_status_line(build_mode: &BuildModeState, building_catalog: &BuildingCat
 fn format_build_terrain_status(assessment: &crate::world::BuildingTerrainAssessment) -> String {
     let mut lines = Vec::new();
     for requirement in &assessment.per_requirement {
-        let field = requirement.field_id.as_str();
-        let average = crate::world::format_field_average_display(requirement.average_value);
-        let coverage =
-            crate::world::format_coverage_display(requirement.usable_coverage_basis_points);
-        lines.push(format!("{field}: {average} • Coverage {coverage}"));
+        let evaluation = crate::world::evaluate_field_requirement_assessment(requirement);
+        lines.push(crate::world::format_field_requirement_diagnostic(
+            &evaluation,
+        ));
     }
     lines.push(format!(
         "Expected Output Rate: {}",
@@ -280,7 +283,7 @@ fn spawn_category_button(
             BackgroundColor(PANEL_BG),
         ))
         .with_children(|btn| {
-            btn.spawn((Text::new(label), hud_body_font(), TextColor(TEXT_PRIMARY)));
+            btn.spawn((Text::new(label), panel_body_font(), TextColor(TEXT_PRIMARY)));
         });
     });
 }
@@ -292,7 +295,7 @@ fn spawn_definition_button(
 ) {
     let summary = footprint_summary(definition);
     let details = format!(
-        "{} • {} HP • {:.0}s",
+        "{} | {} HP | {:.0}s",
         summary, definition.max_hp, definition.build_time_seconds
     );
     commands.entity(parent).with_children(|list| {
@@ -312,10 +315,10 @@ fn spawn_definition_button(
         .with_children(|btn| {
             btn.spawn((
                 Text::new(definition.display_name.clone()),
-                hud_title_font(),
+                panel_title_font(),
                 TextColor(TEXT_PRIMARY),
             ));
-            btn.spawn((Text::new(details), hud_body_font(), TextColor(TEXT_MUTED)));
+            btn.spawn((Text::new(details), panel_body_font(), TextColor(TEXT_MUTED)));
         });
     });
 }
@@ -325,7 +328,7 @@ fn footprint_summary(definition: &BuildingDefinition) -> String {
         FootprintSpec::Rectangle {
             width_meters,
             depth_meters,
-        } => format!("{width_meters:.0}×{depth_meters:.0}m"),
+        } => format!("{width_meters:.0}x{depth_meters:.0}m"),
         FootprintSpec::Circle { radius_meters } => format!("r={radius_meters:.1}m"),
         FootprintSpec::MeshDerived => "mesh".to_string(),
     }

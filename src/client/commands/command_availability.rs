@@ -60,10 +60,8 @@ pub fn command_availability(
         | CommandType::Stop
         | CommandType::Attack
         | CommandType::AttackMove
+        | CommandType::HoldPosition
         | CommandType::Interact => CommandAvailability::Available,
-        CommandType::HoldPosition => {
-            CommandAvailability::Unavailable(CommandUnavailableReason::FeatureNotImplemented)
-        }
     }
 }
 
@@ -92,14 +90,10 @@ mod tests {
     }
 
     #[test]
-    fn hold_reports_feature_not_implemented() {
+    fn hold_is_available_with_selection() {
         let mut selection = SelectedUnits::default();
         selection.set_single(crate::world::UnitId::new(1));
-        let hold = command_availability(CommandType::HoldPosition, &selection);
-        assert_eq!(
-            hold,
-            CommandAvailability::Unavailable(CommandUnavailableReason::FeatureNotImplemented)
-        );
+        assert!(command_availability(CommandType::HoldPosition, &selection).is_available());
     }
 
     #[test]

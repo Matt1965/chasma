@@ -18,6 +18,9 @@ use crate::world::WorldFoundationPlugin;
 mod view_focus;
 mod window_identity;
 
+#[cfg(test)]
+mod pipeline_order_tests;
+
 pub use view_focus::publish_primary_view_focus;
 pub use window_identity::{WINDOW_ICON_ASSET_PATH, WindowIconInstallState, set_window_icon_once};
 
@@ -49,60 +52,71 @@ impl Plugin for AppPlugin {
             .add_plugins(MenuPlugin)
             .add_plugins(PlayerPlugin)
             .add_plugins(EnvironmentPlugin)
-            .add_plugins(CameraPlugin)
-            .configure_sets(Update, MenuInputSystems.before(PlayerControlSystems))
-            .configure_sets(Update, MenuInputSystems.before(CameraControlSystems))
-            .configure_sets(Update, MenuInputSystems.before(SimulationControlSystems));
-        #[cfg(feature = "dev")]
-        app.configure_sets(
-            Update,
-            MenuInputSystems.before(crate::dev::DevModeInputSystems),
-        );
-        app.configure_sets(Update, ViewFocusSystems.after(CameraControlSystems))
-            .configure_sets(Update, TerrainStreamingSystems.after(ViewFocusSystems))
-            .configure_sets(
-                Update,
-                DoodadRuntimeSystems
-                    .after(TerrainStreamingSystems)
-                    .in_set(RuntimeSyncSystems),
-            )
-            .configure_sets(
-                Update,
-                ItemPileRuntimeSystems
-                    .after(DoodadRuntimeSystems)
-                    .in_set(RuntimeSyncSystems),
-            )
-            .configure_sets(
-                Update,
-                BuildingRuntimeSystems
-                    .after(ItemPileRuntimeSystems)
-                    .in_set(RuntimeSyncSystems),
-            )
-            .configure_sets(
-                Update,
-                UnitRuntimeSystems
-                    .after(BuildingRuntimeSystems)
-                    .in_set(RuntimeSyncSystems),
-            )
-            .configure_sets(
-                Update,
-                UnitAnimationSystems
-                    .after(UnitRuntimeSystems)
-                    .after(SimulationSystems),
-            )
-            .configure_sets(
-                Update,
-                ProjectileRuntimeSystems
-                    .after(UnitRuntimeSystems)
-                    .in_set(RuntimeSyncSystems),
-            )
-            .configure_sets(Update, PlayerControlSystems.after(RuntimeSyncSystems))
-            .configure_sets(Update, SimulationControlSystems.before(SimulationSystems))
-            .add_systems(Update, publish_primary_view_focus.in_set(ViewFocusSystems));
+            .add_plugins(CameraPlugin);
+        configure_update_pipeline_sets(app);
+        app.add_systems(Update, publish_primary_view_focus.in_set(ViewFocusSystems));
 
         #[cfg(feature = "dev")]
         {
             app.add_plugins(crate::terrain::preview::TerrainPreviewPlugin);
         }
     }
+}
+
+/// Frame-order contract for the `Update` schedule.
+///
+/// Camera runs first, view focus and terrain streaming follow it, runtime sync
+/// follows streaming, and player control (including all HUD input gates) runs
+/// last. Nothing inside [`PlayerControlSystems`] may be ordered before
+/// [`CameraControlSystems`]: that closes a cycle back through
+/// [`RuntimeSyncSystems`] and aborts schedule construction at startup.
+pub(crate) fn configure_update_pipeline_sets(app: &mut App) {
+    app.configure_sets(Update, MenuInputSystems.before(PlayerControlSystems))
+        .configure_sets(Update, MenuInputSystems.before(CameraControlSystems))
+        .configure_sets(Update, MenuInputSystems.before(SimulationControlSystems));
+    #[cfg(feature = "dev")]
+    app.configure_sets(
+        Update,
+        MenuInputSystems.before(crate::dev::DevModeInputSystems),
+    );
+    app.configure_sets(Update, ViewFocusSystems.after(CameraControlSystems))
+        .configure_sets(Update, TerrainStreamingSystems.after(ViewFocusSystems))
+        .configure_sets(
+            Update,
+            DoodadRuntimeSystems
+                .after(TerrainStreamingSystems)
+                .in_set(RuntimeSyncSystems),
+        )
+        .configure_sets(
+            Update,
+            ItemPileRuntimeSystems
+                .after(DoodadRuntimeSystems)
+                .in_set(RuntimeSyncSystems),
+        )
+        .configure_sets(
+            Update,
+            BuildingRuntimeSystems
+                .after(ItemPileRuntimeSystems)
+                .in_set(RuntimeSyncSystems),
+        )
+        .configure_sets(
+            Update,
+            UnitRuntimeSystems
+                .after(BuildingRuntimeSystems)
+                .in_set(RuntimeSyncSystems),
+        )
+        .configure_sets(
+            Update,
+            UnitAnimationSystems
+                .after(UnitRuntimeSystems)
+                .after(SimulationSystems),
+        )
+        .configure_sets(
+            Update,
+            ProjectileRuntimeSystems
+                .after(UnitRuntimeSystems)
+                .in_set(RuntimeSyncSystems),
+        )
+        .configure_sets(Update, PlayerControlSystems.after(RuntimeSyncSystems))
+        .configure_sets(Update, SimulationControlSystems.before(SimulationSystems));
 }

@@ -310,20 +310,19 @@ fn created_unit_with_inventory_starts_non_critical() {
 fn zero_consumption_rate_does_not_decay() {
     let catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
     let mut wolf = catalog.get(&UnitDefinitionId::new("wolf")).unwrap().clone();
-    wolf.nutrition_consumption_per_tick = 0.0;
+    wolf.nutrition_consumption_per_second = 0.0;
     assert!(NutritionProfile::from_definition(&wolf).is_none());
 }
 
 #[test]
-fn decay_uses_authored_consumption_per_tick() {
+fn decay_uses_authored_consumption_per_second() {
     let catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
     let def = catalog.get(&UnitDefinitionId::new("bandit")).unwrap();
     let profile = NutritionProfile::from_definition(def).unwrap();
     let mut nutrition = UnitNutritionState::full(profile.max);
-    apply_nutrition_decay(&mut nutrition, &profile);
-    assert_eq!(
-        nutrition.current,
-        profile.max - def.nutrition_consumption_per_tick
+    apply_nutrition_decay(&mut nutrition, &profile, 1.0);
+    assert!(
+        (nutrition.current - (profile.max - def.nutrition_consumption_per_second)).abs() < 1e-4
     );
 }
 
@@ -334,7 +333,7 @@ fn nutrition_never_drops_below_zero() {
     let profile = NutritionProfile::from_definition(def).unwrap();
     let mut nutrition = UnitNutritionState { current: 0.5 };
     for _ in 0..10 {
-        apply_nutrition_decay(&mut nutrition, &profile);
+        apply_nutrition_decay(&mut nutrition, &profile, 1.0);
     }
     assert_eq!(nutrition.current, 0.0);
 }
@@ -345,8 +344,8 @@ fn decay_field_matches_phase5_projected_demand_source() {
     let def = catalog.get(&UnitDefinitionId::new("bandit")).unwrap();
     let profile = NutritionProfile::from_definition(def).unwrap();
     assert_eq!(
-        profile.consumption_per_tick,
-        def.nutrition_consumption_per_tick
+        profile.consumption_per_second,
+        def.nutrition_consumption_per_second
     );
 }
 
@@ -967,7 +966,7 @@ fn zero_nutrition_does_not_reduce_hp() {
     for _ in 0..5 {
         let mut ctx = fx.maintenance_ctx();
         step_unit_self_maintenance_pre_work(&mut ctx);
-        crate::world::step_unit_nutrition_decay(&mut ctx);
+        crate::world::step_unit_nutrition_decay(&mut ctx, 1.0 / 30.0);
     }
     let record = fx.world.get_unit(unit_id).unwrap();
     assert_eq!(record.vitals.current_hp, max_hp);

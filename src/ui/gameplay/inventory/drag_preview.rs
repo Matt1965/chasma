@@ -143,7 +143,7 @@ pub fn sync_inventory_drag_ghost(
         ))
         .with_children(|ghost| {
             ghost.spawn((
-                Text::new(format!("{}×{}", drag.grid_width, drag.grid_height)),
+                Text::new(format!("{}x{}", drag.grid_width, drag.grid_height)),
                 TextFont {
                     font_size: 9.0,
                     ..default()

@@ -18,7 +18,7 @@ use super::range::{
 };
 use super::standoff::{StandoffError, compute_standoff_destination};
 use super::strike::CombatStrikeReport;
-use super::targeting::is_unit_alive;
+use super::targeting::{is_unit_alive, validate_explicit_attack_target};
 use crate::world::unit::unit_can_execute_actions;
 
 fn combat_pair<'a>(
@@ -163,6 +163,19 @@ fn step_unit_combat_engagement(
             authored,
             unit_id,
             destination,
+            target,
+            strike_trace,
+        )),
+        CombatState::Holding { anchor, target } => Some(handle_holding(
+            world,
+            unit_catalog,
+            weapon_catalog,
+            catalogs,
+            nav_config,
+            targeting_policy,
+            authored,
+            unit_id,
+            anchor,
             target,
             strike_trace,
         )),
@@ -390,6 +403,211 @@ fn handle_chasing_target(
         &mut trace,
     );
     trace
+}
+
+/// Whether `target_id` is within `attacker_id`'s weapon range right now.
+pub fn target_in_weapon_range_for_attacker(
+    world: &WorldData,
+    attacker_id: UnitId,
+    target_id: UnitId,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
+) -> bool {
+    let Some(attacker) = world.get_unit(attacker_id) else {
+        return false;
+    };
+    let Some(target) = world.get_unit(target_id) else {
+        return false;
+    };
+    let Ok(weapon) = weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) else {
+        return false;
+    };
+    is_in_weapon_range(world, attacker, target, unit_catalog, weapon)
+}
+
+fn handle_holding(
+    world: &mut WorldData,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
+    _catalogs: PassabilityCatalogs<'_>,
+    _nav_config: &NavigationConfig,
+    targeting_policy: AttackTargetingPolicy,
+    authored: &AuthoredRelationshipCatalog,
+    unit_id: UnitId,
+    anchor: WorldPosition,
+    target: Option<UnitId>,
+    strike_trace: &mut CombatStrikeReport,
+) -> CombatEngagementTrace {
+    let mut trace = CombatEngagementTrace {
+        unit_id,
+        status: CombatEngagementStatus::InRangeReady,
+        target,
+        center_distance_meters: None,
+        edge_distance_meters: None,
+        weapon_range_meters: None,
+        chase_destination: None,
+    };
+
+    hold_in_attack_range(world, unit_id);
+    let _ = anchor;
+
+    let active_target = if let Some(target_id) = target {
+        if validate_active_combat_target(
+            world,
+            unit_id,
+            target_id,
+            weapon_catalog,
+            unit_catalog,
+            targeting_policy,
+        )
+        .is_ok()
+        {
+            Some(target_id)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let target_id = if let Some(target_id) = active_target {
+        target_id
+    } else if let Some(acquired) = scan_hold_range_target(
+        world,
+        unit_id,
+        unit_catalog,
+        weapon_catalog,
+        targeting_policy,
+        authored,
+    ) {
+        world
+            .set_unit_combat_state(
+                unit_id,
+                CombatState::Holding {
+                    anchor,
+                    target: Some(acquired),
+                },
+            )
+            .ok();
+        acquired
+    } else {
+        if target.is_some() {
+            world
+                .set_unit_combat_state(
+                    unit_id,
+                    CombatState::Holding {
+                        anchor,
+                        target: None,
+                    },
+                )
+                .ok();
+        }
+        trace.target = None;
+        return trace;
+    };
+
+    trace.target = Some(target_id);
+
+    let Some((attacker, target_record)) = combat_pair(world, unit_id, target_id) else {
+        world
+            .set_unit_combat_state(
+                unit_id,
+                CombatState::Holding {
+                    anchor,
+                    target: None,
+                },
+            )
+            .ok();
+        trace.status = CombatEngagementStatus::TargetInvalid;
+        trace.target = None;
+        return trace;
+    };
+    let weapon = match weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) {
+        Ok(weapon) => weapon,
+        Err(_) => {
+            trace.status = CombatEngagementStatus::MissingWeapon;
+            return trace;
+        }
+    };
+    let check = measure_weapon_range(world, attacker, target_record, weapon, unit_catalog);
+    trace.center_distance_meters = Some(check.center_distance_meters);
+    trace.edge_distance_meters = Some(check.edge_distance_meters);
+    trace.weapon_range_meters = Some(check.weapon_range_meters);
+
+    if !matches!(range_status_from_check(&check), RangeStatus::InRange) {
+        world
+            .set_unit_combat_state(
+                unit_id,
+                CombatState::Holding {
+                    anchor,
+                    target: None,
+                },
+            )
+            .ok();
+        clear_attack_cycle_for_invalid_target(
+            world,
+            unit_id,
+            target_id,
+            Some(strike_trace),
+            unit_catalog,
+            weapon_catalog,
+        );
+        trace.target = None;
+        return trace;
+    }
+
+    hold_attacking_in_range_with_facing(world, unit_id, target_id);
+    trace.status = CombatEngagementStatus::InRangeReady;
+    trace
+}
+
+/// Nearest hostile target already within weapon range (hold — no chase acquisition).
+pub fn scan_hold_range_target(
+    world: &WorldData,
+    attacker_id: UnitId,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
+    targeting_policy: AttackTargetingPolicy,
+    _authored: &AuthoredRelationshipCatalog,
+) -> Option<UnitId> {
+    let attacker = world.get_unit(attacker_id)?;
+    let attacker_pos = attacker.placement.position;
+    let layout = world.layout();
+    let Ok(weapon) = weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) else {
+        return None;
+    };
+
+    let mut best: Option<(f32, UnitId)> = None;
+    for candidate_id in crate::world::perceived_units(world, unit_catalog, attacker_id) {
+        if validate_explicit_attack_target(
+            world,
+            attacker_id,
+            candidate_id,
+            weapon_catalog,
+            unit_catalog,
+            targeting_policy,
+        )
+        .is_err()
+        {
+            continue;
+        }
+        let candidate = world.get_unit(candidate_id)?;
+        if !is_in_weapon_range(world, attacker, candidate, unit_catalog, weapon) {
+            continue;
+        }
+        let distance = xz_distance(attacker_pos, candidate.placement.position, layout);
+        let replace = match best {
+            None => true,
+            Some((best_distance, best_id)) => {
+                distance < best_distance - f32::EPSILON
+                    || ((distance - best_distance).abs() <= f32::EPSILON && candidate_id < best_id)
+            }
+        };
+        if replace {
+            best = Some((distance, candidate_id));
+        }
+    }
+    best.map(|(_, id)| id)
 }
 
 fn handle_attack_moving(
@@ -670,7 +888,7 @@ mod tests {
         create_unit_with_ownership, default_passability, issue_unit_order,
         resolve_all_pending_unit_orders, starter_unit_definitions,
     };
-    use bevy::prelude::Vec3;
+    use bevy::prelude::{Vec2, Vec3};
 
     fn flat_world() -> WorldData {
         let mut world = WorldData::new(ChunkLayout {
@@ -1551,6 +1769,95 @@ mod tests {
             world.get_unit(hostile).unwrap().combat_state,
             CombatState::Attacking { target } | CombatState::Chasing { target }
                 if target == player
+        ));
+    }
+
+    fn issue_hold(world: &mut WorldData, catalog: &UnitCatalog, unit_id: UnitId) {
+        let anchor = world.get_unit(unit_id).unwrap().placement.position;
+        issue_unit_order(
+            world,
+            catalog,
+            &weapons(),
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            unit_id,
+            UnitOrder::Hold { anchor },
+            policy(),
+        )
+        .unwrap();
+    }
+
+    fn global_xz(world: &WorldData, position: WorldPosition) -> Vec2 {
+        let global = position.to_global(world.layout());
+        Vec2::new(global.x, global.z)
+    }
+
+    #[test]
+    fn holding_unit_does_not_chase_approaching_enemy() {
+        let catalog = catalog();
+        let mut world = flat_world();
+        let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
+        let hostile = spawn_hostile(&mut world, &catalog, 20.0, 10.0);
+        issue_hold(&mut world, &catalog, player);
+        let anchor = global_xz(&world, world.get_unit(player).unwrap().placement.position);
+
+        for tick in 0..30 {
+            world
+                .update_unit_position(hostile, pos(20.0 - tick as f32 * 0.2, 10.0))
+                .expect("advance hostile");
+            run_one_sim_tick(&mut world, &catalog, &weapons(), tick as u64);
+        }
+
+        let held = global_xz(&world, world.get_unit(player).unwrap().placement.position);
+        assert!(
+            held.distance(anchor) < 0.05,
+            "holding unit must not leave anchor while enemy approaches"
+        );
+        assert!(matches!(
+            world.get_unit(player).unwrap().combat_state,
+            CombatState::Holding { target: None, .. }
+        ));
+    }
+
+    #[test]
+    fn holding_unit_attacks_hostile_already_in_range() {
+        let catalog = catalog();
+        let mut world = flat_world();
+        let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
+        let hostile = spawn_hostile(&mut world, &catalog, 11.0, 10.0);
+        issue_hold(&mut world, &catalog, player);
+        tick_combat(&mut world, &catalog);
+        let combat = world.get_unit(player).unwrap().combat_state.clone();
+        assert!(
+            matches!(
+                combat,
+                CombatState::Holding {
+                    target: Some(target),
+                    ..
+                } if target == hostile
+            ) || matches!(combat, CombatState::Attacking { target } if target == hostile)
+        );
+    }
+
+    #[test]
+    fn holding_persists_after_target_leaves_range() {
+        let catalog = catalog();
+        let mut world = flat_world();
+        let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
+        let hostile = spawn_hostile(&mut world, &catalog, 11.0, 10.0);
+        issue_hold(&mut world, &catalog, player);
+        tick_combat(&mut world, &catalog);
+        world
+            .update_unit_position(hostile, pos(40.0, 10.0))
+            .expect("retreat hostile");
+        tick_combat(&mut world, &catalog);
+        let anchor = world.get_unit(player).unwrap().placement.position;
+        assert!(matches!(
+            world.get_unit(player).unwrap().combat_state,
+            CombatState::Holding {
+                anchor: held,
+                target: None
+            } if held == anchor
         ));
     }
 }

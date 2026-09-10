@@ -7,12 +7,15 @@ pub mod combat_display;
 mod command_feedback;
 mod command_panel;
 mod cursor_feedback;
+mod fields_menu;
 mod floating_window;
+mod hud;
 mod input_gate;
 mod inventory;
 mod layout;
 mod player_hud_state;
 mod plugin;
+mod roster_scroll;
 mod selected_unit_panel;
 mod selection_ui;
 mod settlement_workforce;
@@ -21,7 +24,10 @@ mod state;
 mod styles;
 #[cfg(feature = "dev")]
 pub mod terrain_analysis;
+mod text;
+mod typography;
 mod unit_skills;
+mod utility_panel;
 
 pub use build_mode::{
     BuildModeState, collect_build_mode_intents, draw_build_mode_ghost, handle_build_catalog_clicks,
@@ -56,7 +62,7 @@ pub use inventory::{
     reconcile_inventory_ui_from_world, spawn_inventory_panel, sync_inventory_panel_contents,
     sync_inventory_panel_visibility,
 };
-pub use layout::{GameplayHudRoot, PlayerHudUi, setup_player_hud_layout};
+pub use layout::{GameplayHudRoot, PlayerHudUi, bottom_hud_rect_contains, setup_player_hud_layout};
 pub use player_hud_state::{
     PlayerHudState, SquadFilterMode, primary_selected_unit, sync_primary_selection,
 };
@@ -71,7 +77,7 @@ pub use selection_ui::{clear_gameplay_hud_dirty, sync_gameplay_ui_state};
 pub use settlement_workforce::{
     SettlementWorkforcePanelState, build_settlement_workforce_snapshot,
 };
-pub use squad_panel::{squad_display_name, squad_panel_unit_ids};
+pub use squad_panel::{owned_roster_unit_ids, squad_display_name, squad_panel_unit_ids};
 pub use state::{
     CommandHoverContext, GameplayCommandState, GameplayCursorMode, GameplayUiSnapshot,
     GameplayUiState, command_state_display, derive_command_state, derive_cursor_mode,
@@ -79,6 +85,11 @@ pub use state::{
 };
 #[cfg(feature = "dev")]
 pub use terrain_analysis::TerrainAnalysisToggleButton;
+pub use typography::{
+    HUD_BODY_FONT_SIZE, HUD_CAPTION_FONT_SIZE, HUD_HEADING_FONT_SIZE, HUD_TITLE_FONT_SIZE,
+    PANEL_BODY_FONT_SIZE, PANEL_TITLE_FONT_SIZE, hud_body_font, hud_caption_font, hud_heading_font,
+    hud_title_font, panel_body_font, panel_title_font,
+};
 pub use unit_skills::{
     UnitSkillsPanelState, build_unit_skills_snapshot, collect_unit_skills_keyboard_input,
     format_unit_skills_panel_text, panel_contains_workforce_permission_controls,

@@ -110,6 +110,7 @@ fn operation_params<'a>(
         requirement_revision: catalogs.requirement_revision,
         profile_revision: catalogs.profile_revision,
         assessment_store,
+        simulation_tick: 0,
     }
 }
 

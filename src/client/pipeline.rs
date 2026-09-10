@@ -331,6 +331,7 @@ mod tests {
         let hover = PlayerHudHoverState {
             hovered: true,
             dev_panel_blocks: false,
+            blocks_camera_scroll: false,
         };
         assert!(!inventory_panel_blocks_world_input(&ui));
         assert!(gameplay_input_blocked_by_hud(&hover));
