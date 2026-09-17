@@ -6,6 +6,7 @@ mod attach;
 mod cargo;
 mod container;
 mod effective_weapon;
+mod fit;
 mod inventories;
 mod placement;
 mod presentation;
@@ -40,6 +41,10 @@ pub use container::{
     is_container_item, release_container_inventory_if_empty,
 };
 pub use effective_weapon::{effective_weapon_for_unit, effective_weapon_id_for_unit};
+pub use fit::{
+    DEFAULT_EQUIPMENT_FIT_SCALE, effective_rigid_local_scale, effective_rigid_local_translation,
+    skinned_fit_is_baked_offline,
+};
 pub use inventories::UnitEquipmentInventories;
 pub use placement::validate_item_placement;
 pub use presentation::{

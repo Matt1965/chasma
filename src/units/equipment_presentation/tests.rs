@@ -101,6 +101,8 @@ fn visual_mapping(
         stowed_local_translation: Vec3::ZERO,
         stowed_local_rotation: Quat::IDENTITY,
         stowed_local_scale: Vec3::ONE,
+        fit_scale: 1.04,
+        fit_offset: Vec3::new(0.0, 0.005, 0.0),
         consumed_morph_params: Vec::new(),
     }
 }
@@ -507,4 +509,32 @@ fn human_socket_map_resolves_semantic_targets() {
         Some("spine_02")
     );
     assert!(bone_suffix_for_socket("unknown_species", EquipmentAttachmentSocket::Head).is_none());
+}
+
+#[test]
+fn skinned_fit_metadata_does_not_change_runtime_transform() {
+    let mut mapping = visual_mapping(
+        "test_helmet",
+        "equipment/human_male/ranger_body",
+        EquipmentPresentationMode::SkinnedOverlay,
+        None,
+    );
+    mapping.fit_scale = 1.04;
+    mapping.fit_offset = Vec3::new(0.0, 0.005, 0.0);
+    let visuals = EquipmentVisualCatalog::from_mappings(vec![mapping]).unwrap();
+    let mut world = flat_world();
+    let ctx = test_ctx();
+    let unit = spawn_bandit(&mut world, ctx);
+    equip_unique(&mut world, ctx, &unit, "test_helmet", EquipmentSlot::Head);
+    let unit = world.get_unit(unit.id).unwrap();
+    let desired = desired_equipment_presentations_for_unit(
+        &world,
+        test_items(),
+        &visuals,
+        TEST_UNIT_RENDER_KEY,
+        unit,
+    );
+    assert_eq!(desired.len(), 1);
+    assert_eq!(desired[0].presentation.local_scale, Vec3::ONE);
+    assert_eq!(desired[0].presentation.local_translation, Vec3::ZERO);
 }

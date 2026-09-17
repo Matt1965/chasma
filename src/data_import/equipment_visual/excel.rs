@@ -111,6 +111,8 @@ fn parse_row(
         stowed_local_translation: optional("Stowed Local Translation"),
         stowed_local_rotation: optional("Stowed Local Rotation"),
         stowed_local_scale: optional("Stowed Local Scale"),
+        fit_scale: optional("Fit Scale"),
+        fit_offset: optional("Fit Offset"),
         consumed_morph_params: optional("Consumed Morph Params"),
     })
 }

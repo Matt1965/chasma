@@ -18,6 +18,8 @@ pub use dev_load::resolve_dev_equipment_visual_catalog;
 pub use excel::EQUIPMENT_VISUALS_SHEET_NAME;
 
 #[cfg(test)]
+mod fit_tests;
+#[cfg(test)]
 mod tests;
 
 #[cfg(feature = "data-import")]
