@@ -192,6 +192,8 @@ fn resolve_clips_for_graph(ctx: &mut GraphBuildContext<'_>) -> ResolvedClipSet {
         AnimationClipKey::Run,
         AnimationClipKey::TurnLeft,
         AnimationClipKey::TurnRight,
+        AnimationClipKey::Swim,
+        AnimationClipKey::SwimIdle,
     ] {
         let Some((clip_name, _resolved)) = ctx.profile.resolve_clip_name(key) else {
             continue;

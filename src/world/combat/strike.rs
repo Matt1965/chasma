@@ -1,6 +1,6 @@
 //! Weapon strike resolution and damage application (ADR-058 C5).
 
-use crate::world::unit::{AttackCycle, AttackPhase, CombatState, UnitId, unit_can_execute_actions};
+use crate::world::unit::{AttackCycle, AttackPhase, CombatState, UnitId};
 use crate::world::{
     AttackTargetingPolicy, DoodadCatalog, HitMode, NavigationConfig, ProjectileRecord,
     ProjectileReport, UnitCatalog, WeaponCatalog, WorldData, spawn_projectile_from_strike,
@@ -119,7 +119,7 @@ fn step_unit_combat_strike(
     let cycle_target = attacker.attack_cycle.as_ref().map(|cycle| cycle.target);
     let combat_target = combat_engagement_target(&attacker.combat_state);
 
-    if !unit_can_execute_actions(world, unit_id) {
+    if !crate::world::unit_can_perform_normal_actions(world, unit_id) {
         if attacker.attack_cycle.is_some() {
             clear_attack_cycle(world, unit_id);
         }
@@ -484,7 +484,7 @@ fn resolve_projectile_strike(
         return;
     }
 
-    if !unit_can_execute_actions(world, attacker_id) {
+    if !crate::world::unit_can_perform_normal_actions(world, attacker_id) {
         return;
     }
 
@@ -531,7 +531,7 @@ fn validate_strike_target(
     unit_catalog: &UnitCatalog,
     targeting_policy: AttackTargetingPolicy,
 ) -> bool {
-    if !unit_can_execute_actions(world, attacker_id) {
+    if !crate::world::unit_can_perform_normal_actions(world, attacker_id) {
         return false;
     }
     if validate_active_combat_target(

@@ -119,7 +119,7 @@ fn scan_unit_for_acquisition(
     unit_id: UnitId,
 ) -> Option<CombatAiTrace> {
     let record = world.get_unit(unit_id)?;
-    if !unit_can_execute_actions(world, unit_id) {
+    if !crate::world::unit_can_perform_normal_actions(world, unit_id) {
         return None;
     }
     if !unit_eligible_for_auto_acquire(record, settings) {

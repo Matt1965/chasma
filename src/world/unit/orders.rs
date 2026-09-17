@@ -13,7 +13,8 @@ use crate::world::{
     AttackTargetingPolicy, CommandBufferResolveReport, CommandResolveSuccess, DoodadCatalog,
     NavigationConfig, PassabilityCatalogs, WeaponCatalog, WorldData, WorldPosition,
     clear_attack_cycle_for_order_cancel, hold_in_attack_range, initial_attack_combat_state,
-    reset_attack_cycle_for_retarget, validate_explicit_attack_target,
+    reset_attack_cycle_for_retarget, unit_can_perform_normal_actions,
+    unit_order_requires_normal_actions, validate_explicit_attack_target,
 };
 
 /// Authoritative command issued to a unit instance.
@@ -107,6 +108,10 @@ pub fn issue_unit_order(
         return Err(UnitOrderError::UnitNotFound);
     }
     if !unit_can_execute_actions(world, unit_id) {
+        return Err(UnitOrderError::UnitNotFound);
+    }
+    if unit_order_requires_normal_actions(order) && !unit_can_perform_normal_actions(world, unit_id)
+    {
         return Err(UnitOrderError::UnitNotFound);
     }
     match order {

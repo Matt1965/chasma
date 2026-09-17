@@ -14,6 +14,8 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Turn Right Animation",
     "Turn Left Duration",
     "Turn Right Duration",
+    "Swim Animation",
+    "Swim Idle Animation",
 ];
 
 pub const DEFAULT_LOCOMOTION_REFERENCE_SPEED_MPS: f32 = 4.0;
@@ -45,6 +47,10 @@ pub struct AnimationProfileImportRow {
     pub has_turn_right_column: bool,
     pub has_turn_left_duration_column: bool,
     pub has_turn_right_duration_column: bool,
+    pub swim_animation: String,
+    pub swim_idle_animation: String,
+    pub has_swim_column: bool,
+    pub has_swim_idle_column: bool,
 }
 
 impl AnimationProfileImportRow {
@@ -90,6 +96,10 @@ impl AnimationProfileImportRow {
             self.turn_left_duration_seconds,
             self.turn_right_duration_seconds,
         )
+        .with_swim_clips(
+            Self::optional_clip(self.has_swim_column, &self.swim_animation),
+            Self::optional_clip(self.has_swim_idle_column, &self.swim_idle_animation),
+        )
     }
 }
 
@@ -124,6 +134,10 @@ mod tests {
             has_turn_right_column: false,
             has_turn_left_duration_column: false,
             has_turn_right_duration_column: false,
+            swim_animation: String::new(),
+            swim_idle_animation: String::new(),
+            has_swim_column: false,
+            has_swim_idle_column: false,
         }
     }
 

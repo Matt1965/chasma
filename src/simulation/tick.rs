@@ -10,9 +10,9 @@ use crate::world::{
     BuildingNavigationBlueprintCatalog, CombatAiScanState, CombatAiSettings, CombatStrikeReport,
     DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, NavigationConfig, OccupancyCatalogs,
     PassabilityCatalogs, ProjectileReport, UnitCatalog, WeaponCatalog, WorldData,
-    prune_invalid_building_tasks, resolve_pending_unit_orders, step_all_building_construction,
-    step_all_combat_engagement, step_all_combat_strikes, step_all_projectiles,
-    step_all_unit_movement, step_all_worker_tasks, step_combat_ai_acquisition,
+    prune_invalid_building_tasks, refresh_all_unit_locomotion, resolve_pending_unit_orders,
+    step_all_building_construction, step_all_combat_engagement, step_all_combat_strikes,
+    step_all_projectiles, step_all_unit_movement, step_all_worker_tasks, step_combat_ai_acquisition,
     step_unit_death_pipeline, sync_construction_tasks,
 };
 
@@ -65,6 +65,7 @@ pub fn run_simulation_tick(
         footprint: footprint_catalog,
     };
     let command_resolve = resolve_pending_unit_orders(world, unit_catalog, passability, nav_config);
+    refresh_all_unit_locomotion(world, unit_catalog, weapon_catalog);
     let mut combat_strike = CombatStrikeReport::default();
     let combat = step_all_combat_engagement(
         world,
@@ -335,6 +336,7 @@ pub fn run_simulation_tick(
         simulation_tick,
     );
     let movement = step_all_unit_movement(world, unit_catalog, passability, delta_seconds);
+    refresh_all_unit_locomotion(world, unit_catalog, weapon_catalog);
     {
         let passability_hunger = PassabilityCatalogs {
             doodad: doodad_catalog,

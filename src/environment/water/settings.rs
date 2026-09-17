@@ -12,7 +12,9 @@ pub const DEFAULT_WATER_EXTENT_PADDING_METERS: f32 = 16_384.0;
 pub const DEFAULT_SHALLOW_OCEAN_COLOR: Color =
     Color::srgb(34.0 / 255.0, 107.0 / 255.0, 120.0 / 255.0);
 
-/// Visual-only water configuration (Environment layer; not simulation truth).
+/// Visual water configuration observed from [`crate::world::WorldWaterState`].
+///
+/// `water_level` is presentation/render Y. Gameplay sea level lives in simulation meters.
 #[derive(Debug, Clone, Resource, Reflect, PartialEq)]
 #[reflect(Resource)]
 pub struct WaterSettings {

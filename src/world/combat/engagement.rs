@@ -82,7 +82,7 @@ pub fn step_all_combat_engagement(
     let unit_ids = world.sorted_unit_ids();
     let mut report = CombatEngagementReport::default();
     for unit_id in unit_ids {
-        if !unit_can_execute_actions(world, unit_id) {
+        if !crate::world::unit_can_perform_normal_actions(world, unit_id) {
             continue;
         }
         let Some(combat_state) = world

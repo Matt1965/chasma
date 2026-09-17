@@ -81,6 +81,11 @@ pub struct WorldData {
     /// Per-unit direction smoothing cache (ADR-037 U12).
     #[reflect(ignore)]
     movement_smoothing: super::movement::feel::MovementSmoothingState,
+    /// Gameplay water surface (simulation meters).
+    water: super::water::WorldWaterState,
+    /// Transient Ground/Water hysteresis (not saved).
+    #[reflect(ignore)]
+    locomotion_surfaces: HashMap<UnitId, super::water::LocomotionSurface>,
     /// Deferred unit removal queue (ADR-059 C6).
     #[reflect(ignore)]
     removal_queue: UnitRemovalQueue,
@@ -203,6 +208,8 @@ impl WorldData {
             authored_extent: None,
             command_buffer: super::movement::feel::UnitCommandBuffer::default(),
             movement_smoothing: super::movement::feel::MovementSmoothingState::default(),
+            water: super::water::WorldWaterState::default(),
+            locomotion_surfaces: HashMap::new(),
             removal_queue: UnitRemovalQueue::default(),
             kill_attributions: HashMap::new(),
             projectiles: HashMap::new(),
@@ -642,6 +649,30 @@ impl WorldData {
         &mut self.movement_smoothing
     }
 
+    pub fn water(&self) -> &super::water::WorldWaterState {
+        &self.water
+    }
+
+    pub fn water_mut(&mut self) -> &mut super::water::WorldWaterState {
+        &mut self.water
+    }
+
+    pub fn locomotion_surface(&self, unit_id: UnitId) -> Option<super::water::LocomotionSurface> {
+        self.locomotion_surfaces.get(&unit_id).copied()
+    }
+
+    pub fn set_locomotion_surface(
+        &mut self,
+        unit_id: UnitId,
+        surface: super::water::LocomotionSurface,
+    ) {
+        self.locomotion_surfaces.insert(unit_id, surface);
+    }
+
+    pub fn clear_locomotion_surface(&mut self, unit_id: UnitId) {
+        self.locomotion_surfaces.remove(&unit_id);
+    }
+
     /// The spatial layout this world was realized with.
     pub fn layout(&self) -> ChunkLayout {
         self.layout
@@ -866,6 +897,7 @@ impl WorldData {
             return false;
         }
         self.unit_locations.remove(&id);
+        self.locomotion_surfaces.remove(&id);
         if self.units.get(&chunk).is_some_and(|store| store.is_empty()) {
             self.units.remove(&chunk);
         }
@@ -874,6 +906,7 @@ impl WorldData {
 
     /// Remove a unit by id alone, returning the removed record (ADR-027 U2).
     pub fn remove_unit_by_id(&mut self, id: UnitId) -> Option<UnitRecord> {
+        self.locomotion_surfaces.remove(&id);
         let chunk = self.unit_locations.remove(&id)?;
         let store = self.units.get_mut(&chunk)?;
         let record = store.take(id)?;
@@ -1111,6 +1144,7 @@ impl WorldData {
         self.interior_activation_outcomes_mut().clear();
         let _ = self.command_buffer_mut().take_pending_sorted();
         self.movement_smoothing_mut().clear_all();
+        self.locomotion_surfaces.clear();
         self.dev_clear_transient_simulation_state();
     }
 

@@ -145,6 +145,10 @@ fn parse_row(
         has_turn_right_column: columns.contains_key("Turn Right Animation"),
         has_turn_left_duration_column: columns.contains_key("Turn Left Duration"),
         has_turn_right_duration_column: columns.contains_key("Turn Right Duration"),
+        swim_animation: text("Swim Animation"),
+        swim_idle_animation: text("Swim Idle Animation"),
+        has_swim_column: columns.contains_key("Swim Animation"),
+        has_swim_idle_column: columns.contains_key("Swim Idle Animation"),
     })
 }
 

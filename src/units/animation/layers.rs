@@ -7,8 +7,8 @@ use std::time::Duration;
 use bevy::prelude::Reflect;
 
 use crate::world::{
-    AnimationClipKey, AnimationProfile, AttackPhase, ChunkLayout, UnitDefinition, UnitRecord,
-    UnitState, WeaponDefinition,
+    AnimationClipKey, AnimationProfile, AttackPhase, ChunkLayout, LocomotionSurface, UnitDefinition,
+    UnitRecord, UnitState, WeaponDefinition,
 };
 
 use super::components::DeathPresentation;
@@ -128,6 +128,7 @@ pub fn derive_layered_animation_intent(
     delta_seconds: f32,
     hit_reaction_requested: bool,
     hit_reaction_active: bool,
+    surface: LocomotionSurface,
 ) -> Option<UnitLayeredAnimationIntent> {
     if !profile.enabled {
         return None;
@@ -181,6 +182,7 @@ pub fn derive_layered_animation_intent(
         layout,
         locomotion,
         delta_seconds,
+        surface,
     )?;
 
     Some(UnitLayeredAnimationIntent {
@@ -369,6 +371,7 @@ mod tests {
             0.016,
             hit_requested,
             hit_active,
+            LocomotionSurface::Ground,
         )
         .unwrap()
     }
@@ -527,6 +530,7 @@ mod tests {
             0.016,
             false,
             false,
+            LocomotionSurface::Ground,
         );
         assert!(record.attack_cycle.is_some());
     }

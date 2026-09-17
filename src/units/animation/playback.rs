@@ -461,6 +461,7 @@ fn resolve_layered_context<'a>(
         delta_seconds,
         hit_requested,
         hit_active,
+        crate::world::unit_locomotion_surface(world, marker.unit_id),
     )?;
     let built = assets.graph_for(&definition.id)?;
     Some(LayeredPlaybackContext {

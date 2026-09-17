@@ -128,6 +128,16 @@ pub fn step_all_worker_tasks(
             report.tasks_canceled += 1;
             continue;
         }
+        if crate::world::unit_is_swimming(world, unit_id) {
+            cancel_unit_task(
+                world,
+                unit_id,
+                TaskCancelReason::Invalidated,
+                &mut report.events,
+            );
+            report.tasks_canceled += 1;
+            continue;
+        }
 
         let unit_global = unit.placement.position.to_global(layout);
         let work_global = work_pos.to_global(layout);

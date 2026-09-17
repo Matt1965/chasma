@@ -1,7 +1,8 @@
 use std::time::Duration;
 
 use crate::world::{
-    AnimationClipKey, AnimationProfile, AttackPhase, UnitDefinition, UnitRecord, WeaponDefinition,
+    AnimationClipKey, AnimationProfile, AttackPhase, LocomotionSurface, UnitDefinition, UnitRecord,
+    WeaponDefinition,
 };
 
 use super::layers::{
@@ -67,6 +68,7 @@ pub fn derive_unit_animation_intent(
     delta_seconds: f32,
     hit_reaction_requested: bool,
     hit_reaction_active: bool,
+    surface: LocomotionSurface,
 ) -> Option<UnitAnimationIntent> {
     let layered = derive_layered_animation_intent(
         record,
@@ -79,6 +81,7 @@ pub fn derive_unit_animation_intent(
         delta_seconds,
         hit_reaction_requested,
         hit_reaction_active,
+        surface,
     )?;
     Some(flatten_layered_intent(&layered))
 }
@@ -284,6 +287,7 @@ mod tests {
             0.016,
             hit_requested,
             hit_active,
+            LocomotionSurface::Ground,
         )
         .unwrap()
     }
@@ -359,6 +363,7 @@ mod tests {
             0.016,
             false,
             false,
+            LocomotionSurface::Ground,
         )
         .unwrap();
         assert!(matches!(
@@ -507,6 +512,7 @@ mod tests {
             0.016,
             false,
             false,
+            LocomotionSurface::Ground,
         );
         assert!(record.attack_cycle.is_some());
     }
