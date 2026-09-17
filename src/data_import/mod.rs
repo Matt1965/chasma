@@ -4,9 +4,12 @@
 //! catalog definitions. No ECS systems, runtime Excel dependency, or rendering coupling.
 
 mod animation;
+mod appearance;
+mod armor;
 #[cfg(feature = "data-import")]
 pub mod asset_sizing;
 mod building;
+mod equipment_visual;
 mod error;
 mod inventory;
 mod item;
@@ -49,6 +52,16 @@ pub use animation::{
     resolve_dev_animation_profile_catalog,
 };
 #[cfg(feature = "data-import")]
+pub use appearance::{
+    APPEARANCE_BODY_VARIANTS_SHEET_NAME, APPEARANCE_PARAMETERS_SHEET_NAME,
+    APPEARANCE_PROFILES_SHEET_NAME, import_appearance_profiles_from_excel,
+    resolve_dev_appearance_profile_catalog,
+};
+#[cfg(feature = "data-import")]
+pub use armor::{
+    ARMOR_PROFILES_SHEET_NAME, import_armor_profiles_from_excel, resolve_dev_armor_profile_catalog,
+};
+#[cfg(feature = "data-import")]
 pub use building::{
     BUILDING_CATEGORIES_SHEET_NAME, BUILDINGS_SHEET_NAME, DEV_BUILDING_CATALOG_RON_PATH,
     import_building_catalog_from_excel, import_buildings_from_excel, resolve_dev_building_catalog,
@@ -57,6 +70,14 @@ pub use building::{
 pub use building::{
     BUILDING_OPTIONAL_COLUMNS, BUILDING_REQUIRED_COLUMNS, BuildingCategoryImportRow,
     BuildingImportRow, normalize_building_file_path_to_render_key,
+};
+pub use equipment_visual::{
+    EQUIPMENT_VISUAL_OPTIONAL_COLUMNS, EQUIPMENT_VISUAL_REQUIRED_COLUMNS, EquipmentVisualImportRow,
+};
+#[cfg(feature = "data-import")]
+pub use equipment_visual::{
+    EQUIPMENT_VISUALS_SHEET_NAME, import_equipment_visuals_from_excel,
+    resolve_dev_equipment_visual_catalog,
 };
 #[cfg(feature = "data-import")]
 pub use inventory::{

@@ -185,7 +185,8 @@ mod tests {
         .unwrap();
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &crate::world::UnitDefinitionId::new("bandit"),
             pos(66.0, 66.0),
             UnitSource::Authored,

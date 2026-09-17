@@ -1,8 +1,10 @@
 use bevy::prelude::*;
 
 use crate::units::components::{UnitRenderEntity, UnitRenderMetadata};
+use crate::world::equipment::effective_weapon_for_unit;
 use crate::world::{
-    AnimationProfileCatalog, AttackPhase, UnitCatalog, UnitId, WeaponCatalog, WorldData,
+    AnimationProfileCatalog, AppearanceProfileCatalog, AttackPhase, ItemCatalog, UnitCatalog,
+    UnitId, WeaponCatalog, WorldData,
 };
 
 use super::assets::UnitAnimationAssets;
@@ -31,6 +33,7 @@ use super::settings::UnitAnimationSettings;
 use super::sync_timing::{
     attack_playback_key, should_restart_attack_playback, should_seek_attack_strike,
 };
+use super::work_presentation::WorkPresentationContext;
 
 /// Apply derived layered animation intent through [`AnimationPlayer`] (A1–A4).
 pub fn sync_unit_animation_playback(
@@ -194,6 +197,11 @@ pub fn sync_unit_animation_playback(
             );
         }
 
+        let work_ctx = WorkPresentationContext {
+            world: &params.world,
+            building_catalog: &params.building_catalog,
+            operation_catalog: &params.operation_catalog,
+        };
         let resolved = match resolve_layered_context(
             death,
             metadata,
@@ -202,13 +210,16 @@ pub fn sync_unit_animation_playback(
             hit_active.is_some(),
             &params.world,
             &params.catalog,
+            &params.items,
             &params.weapons,
             &params.profiles,
+            &params.appearance_profiles,
             &params.settings,
             &params.assets,
             layout,
             presentation_delta,
             &mut params.state_index,
+            Some(&work_ctx),
         ) {
             Some(value) => value,
             None => continue,
@@ -224,6 +235,26 @@ pub fn sync_unit_animation_playback(
             locomotion,
         } = resolved;
 
+        let persisted = unit_id.and_then(|id| params.state_index.states.get(&id).cloned());
+        let cycle = unit_id
+            .and_then(|id| params.world.get_unit(id))
+            .and_then(|r| r.attack_cycle.as_ref());
+        let previous_phase = persisted.as_ref().and_then(|s| s.last_attack_phase);
+        let previous_attack_key = persisted.as_ref().and_then(|s| s.attack_key.as_ref());
+        let unarmed_strike_parity = persisted
+            .as_ref()
+            .map(|state| state.unarmed_strike_parity)
+            .unwrap_or(0);
+        let attack_restart = cycle.zip(weapon_opt).is_some_and(|(cycle, weapon)| {
+            should_restart_attack_playback(
+                previous_phase,
+                cycle,
+                previous_attack_key,
+                weapon,
+            )
+        });
+        // Variant is stable for the duration of an attack; parity advances only on transition.
+        let use_alternate_attack_variant = unarmed_strike_parity % 2 == 1;
         let targets = resolve_layered_playback_targets(
             &layered_intent,
             layering_mode,
@@ -231,17 +262,12 @@ pub fn sync_unit_animation_playback(
             weapon_opt,
             profile,
             &params.settings,
+            use_alternate_attack_variant,
         );
         let playback_clip = primary_playback_clip(&targets);
         let layered_clips = layered_state_from_targets(&targets);
 
-        let persisted = unit_id.and_then(|id| params.state_index.states.get(&id).cloned());
         let previous_layers = persisted.as_ref().map(|state| state.layers.clone());
-        let previous_phase = persisted.as_ref().and_then(|s| s.last_attack_phase);
-        let previous_attack_key = persisted.as_ref().and_then(|s| s.attack_key.as_ref());
-        let cycle = unit_id
-            .and_then(|id| params.world.get_unit(id))
-            .and_then(|r| r.attack_cycle.as_ref());
 
         let mut attack_blend_out = None;
         if targets.upper.is_some() {
@@ -378,6 +404,12 @@ pub fn sync_unit_animation_playback(
         layered_state.upper_node = applied.upper_node;
         layered_state.full_body_node = applied.full_body_node;
 
+        let next_unarmed_strike_parity = if attack_restart {
+            unarmed_strike_parity + 1
+        } else {
+            unarmed_strike_parity
+        };
+
         if let Some(id) = unit_id {
             params.state_index.states.insert(
                 id,
@@ -388,6 +420,7 @@ pub fn sync_unit_animation_playback(
                     last_attack_phase: cycle.map(|cycle| cycle.phase),
                     attack_key,
                     attack_blend_out,
+                    unarmed_strike_parity: next_unarmed_strike_parity,
                     locomotion,
                     lod: lod_state.clone(),
                 },
@@ -416,13 +449,16 @@ fn resolve_layered_context<'a>(
     hit_active: bool,
     world: &'a WorldData,
     catalog: &'a UnitCatalog,
+    items: &'a ItemCatalog,
     weapons: &'a WeaponCatalog,
     profiles: &'a AnimationProfileCatalog,
+    appearance_profiles: &'a AppearanceProfileCatalog,
     settings: &UnitAnimationSettings,
     assets: &'a UnitAnimationAssets,
     layout: crate::world::ChunkLayout,
     delta_seconds: f32,
     state_index: &mut UnitAnimationStateIndex,
+    work_ctx: Option<&WorkPresentationContext<'a>>,
 ) -> Option<LayeredPlaybackContext<'a>> {
     if let (Some(death), Some(metadata)) = (death, metadata) {
         let profile = profiles.get(&death.profile_id)?;
@@ -444,7 +480,7 @@ fn resolve_layered_context<'a>(
     let definition = catalog.get(&record.definition_id)?;
     let profile_id = definition.animation_profile_id.as_ref()?;
     let profile = profiles.get(profile_id)?;
-    let weapon = weapons.get(&definition.default_weapon_id)?;
+    let weapon = effective_weapon_for_unit(world, record, catalog, items, weapons).ok()?;
     let mut locomotion = state_index
         .states
         .get(&marker.unit_id)
@@ -461,8 +497,11 @@ fn resolve_layered_context<'a>(
         delta_seconds,
         hit_requested,
         hit_active,
+        work_ctx,
     )?;
-    let built = assets.graph_for(&definition.id)?;
+    let built = assets
+        .graph_for_unit(record, definition, appearance_profiles)
+        .or_else(|| assets.graph_for(&definition.id))?;
     Some(LayeredPlaybackContext {
         profile_id: profile_id.clone(),
         layered_intent,
@@ -659,23 +698,29 @@ fn should_restart_attack_layer(
     previous_layers: Option<&LayeredPlaybackState>,
     targets: &LayeredPlaybackTargets,
 ) -> bool {
+    if !matches!(intent.upper, super::layers::UpperBodyIntent::Attack { .. }) {
+        return false;
+    }
     let Some(previous_layers) = previous_layers else {
         return false;
     };
-    if previous_layers.upper == targets.upper.as_ref().map(|t| t.clip.clone()) {
-        return matches!(intent.upper, super::layers::UpperBodyIntent::Attack { .. })
-            && cycle.is_some_and(|cycle| {
-                weapon.is_some_and(|weapon| {
-                    should_restart_attack_playback(
-                        previous_phase,
-                        cycle,
-                        previous_attack_key,
-                        weapon,
-                    )
-                })
-            });
+    let current_attack_clip = targets
+        .full_body
+        .as_ref()
+        .map(|t| t.clip.clone())
+        .or_else(|| targets.upper.as_ref().map(|t| t.clip.clone()));
+    let previous_attack_clip = previous_layers
+        .full_body
+        .clone()
+        .or(previous_layers.upper.clone());
+    if current_attack_clip.is_none() || previous_attack_clip != current_attack_clip {
+        return false;
     }
-    false
+    cycle.is_some_and(|cycle| {
+        weapon.is_some_and(|weapon| {
+            should_restart_attack_playback(previous_phase, cycle, previous_attack_key, weapon)
+        })
+    })
 }
 
 fn update_lower_playback_speed(
@@ -744,6 +789,8 @@ fn update_persisted_state(
     let Some(mut state) = persisted else {
         return;
     };
+    let previous_phase = state.last_attack_phase;
+    let previous_attack_key = state.attack_key.clone();
     state.last_attack_phase = match &intent.upper {
         super::layers::UpperBodyIntent::Attack { phase, .. } => Some(*phase),
         super::layers::UpperBodyIntent::None => state.last_attack_phase,
@@ -807,6 +854,7 @@ mod tests {
             last_attack_phase: None,
             attack_key: None,
             attack_blend_out: None,
+            unarmed_strike_parity: 0,
             locomotion: LocomotionPresentationState::default(),
             lod: AnimationLodPresentationState::default(),
         };
@@ -832,6 +880,7 @@ mod tests {
             last_attack_phase: None,
             attack_key: None,
             attack_blend_out: None,
+            unarmed_strike_parity: 0,
             locomotion: LocomotionPresentationState::default(),
             lod: AnimationLodPresentationState::default(),
         };
@@ -857,6 +906,7 @@ mod tests {
             last_attack_phase: None,
             attack_key: None,
             attack_blend_out: None,
+            unarmed_strike_parity: 0,
             locomotion: LocomotionPresentationState::default(),
             lod: AnimationLodPresentationState::default(),
         };
@@ -886,6 +936,7 @@ mod tests {
             last_attack_phase: Some(AttackPhase::Recovery),
             attack_key: None,
             attack_blend_out: None,
+            unarmed_strike_parity: 0,
             locomotion: LocomotionPresentationState::default(),
             lod: AnimationLodPresentationState::default(),
         };
@@ -919,6 +970,7 @@ mod tests {
                 last_attack_phase: None,
                 attack_key: None,
                 attack_blend_out: None,
+                unarmed_strike_parity: 0,
                 locomotion: locomotion.clone(),
                 lod: AnimationLodPresentationState::default(),
             },
@@ -980,5 +1032,152 @@ mod tests {
         };
         let progress = 1.0 - fade.remaining_seconds / fade.duration_seconds;
         assert_eq!(progress, 0.0);
+    }
+
+    #[test]
+    fn full_body_attack_restart_does_not_misfire_on_none_upper_layers() {
+        use crate::units::animation::layers::{
+            FullBodyOverride, LowerBodyIntent, UnitLayeredAnimationIntent, UpperBodyIntent,
+        };
+        use crate::units::animation::layered_playback::LayerClipTarget;
+        use crate::units::animation::sync_timing::attack_playback_key;
+        use crate::world::{
+            AttackCycle, DamageType, HitMode, TargetFilter, WeaponAttackAnimation,
+            WeaponDefinition, WeaponDefinitionId,
+        };
+
+        let weapon_id = WeaponDefinitionId::new("weapon_iron_sword");
+        let weapon = WeaponDefinition::new(
+            weapon_id.clone(),
+            "Iron Sword",
+            "Iron Sword",
+            5.0,
+            DamageType::Slashing,
+            1.5,
+            1.0,
+            0.2,
+            0.15,
+            HitMode::Melee,
+            None,
+            0.0,
+            "Sword_Attack",
+            vec![TargetFilter::Enemies],
+            None,
+            true,
+        )
+        .with_attack_animation(WeaponAttackAnimation::default());
+        let cycle = AttackCycle {
+            target: UnitId::new(2),
+            phase: AttackPhase::Strike,
+            phase_remaining_seconds: 0.05,
+            struck_this_cycle: true,
+        };
+        let key = attack_playback_key(&cycle, &weapon);
+        let attack_clip = AnimationPlaybackClip::Attack(weapon_id.clone());
+        let previous_layers = LayeredPlaybackState {
+            full_body: Some(attack_clip.clone()),
+            full_body_node: Some(AnimationNodeIndex::new(4)),
+            ..Default::default()
+        };
+        let targets = LayeredPlaybackTargets {
+            full_body: Some(LayerClipTarget {
+                clip: attack_clip,
+                node: AnimationNodeIndex::new(4),
+                duration: 1.0,
+                speed: 1.0,
+                blend: std::time::Duration::from_millis(150),
+                looping: false,
+                freeze_pose: false,
+            }),
+            ..Default::default()
+        };
+        let intent = UnitLayeredAnimationIntent {
+            lower: LowerBodyIntent::Suppressed,
+            upper: UpperBodyIntent::Attack {
+                weapon_id: weapon_id.clone(),
+                phase: AttackPhase::Strike,
+                blend: std::time::Duration::from_millis(150),
+                blend_out: std::time::Duration::from_millis(150),
+            },
+            overlay: super::super::layers::OverlayIntent::None,
+            override_mode: FullBodyOverride::None,
+        };
+
+        assert!(
+            !should_restart_attack_layer(
+                &intent,
+                Some(&cycle),
+                Some(&weapon),
+                Some(AttackPhase::Strike),
+                Some(&key),
+                Some(&previous_layers),
+                &targets,
+            ),
+            "sustained full-body attack must not restart every frame",
+        );
+    }
+
+    #[test]
+    fn unarmed_strike_parity_advances_only_on_transition_restart() {
+        use crate::units::animation::sync_timing::should_restart_attack_playback;
+        use crate::world::{
+            AttackCycle, DamageType, HitMode, TargetFilter, WeaponAttackAnimation,
+            WeaponDefinition, WeaponDefinitionId,
+        };
+
+        let weapon = WeaponDefinition::new(
+            WeaponDefinitionId::new("weapon_fists"),
+            "Fists",
+            "Fists",
+            1.0,
+            DamageType::Blunt,
+            1.0,
+            1.0,
+            0.15,
+            0.1,
+            HitMode::Melee,
+            None,
+            0.0,
+            "Punch_Jab",
+            vec![TargetFilter::Enemies],
+            None,
+            true,
+        )
+        .with_attack_animation(WeaponAttackAnimation::default());
+        let cycle = AttackCycle {
+            target: UnitId::new(2),
+            phase: AttackPhase::Strike,
+            phase_remaining_seconds: 0.05,
+            struck_this_cycle: true,
+        };
+        let key = super::super::sync_timing::attack_playback_key(&cycle, &weapon);
+
+        let mut parity = 0u8;
+        for _ in 0..120 {
+            let restart = should_restart_attack_playback(
+                Some(AttackPhase::Strike),
+                &cycle,
+                Some(&key),
+                &weapon,
+            );
+            if restart {
+                parity += 1;
+            }
+        }
+        assert_eq!(
+            parity,
+            0,
+            "parity must not advance while the same attack cycle remains active",
+        );
+
+        let windup = AttackCycle::start_windup(UnitId::new(2), 0.15);
+        assert!(should_restart_attack_playback(
+            Some(AttackPhase::Recovery),
+            &windup,
+            Some(&key),
+            &weapon,
+        ));
+        parity += 1;
+        assert_eq!(parity, 1);
     }
 }

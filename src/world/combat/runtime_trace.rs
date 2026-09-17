@@ -109,7 +109,13 @@ pub fn attacker_weapon_definition(
             ));
             return;
         };
-        match weapon_for_unit_record(record, unit_catalog, weapon_catalog) {
+        match weapon_for_unit_record(
+            world,
+            record,
+            unit_catalog,
+            &crate::world::ItemCatalog::default(),
+            weapon_catalog,
+        ) {
             Ok(weapon) => log_weapon_definition(attacker, weapon),
             Err(_) => log(format!(
                 "weapon_definition attacker={} unit_def={} weapon=MISSING_OR_DISABLED",

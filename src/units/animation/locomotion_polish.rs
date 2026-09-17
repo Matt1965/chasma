@@ -48,6 +48,7 @@ pub fn resolve_polished_lower_body(
     layout: ChunkLayout,
     locomotion: &mut LocomotionPresentationState,
     delta_seconds: f32,
+    work_clip: Option<AnimationClipKey>,
 ) -> Option<LowerBodyIntent> {
     tick_turn_timer(locomotion, delta_seconds);
 
@@ -60,8 +61,9 @@ pub fn resolve_polished_lower_body(
         return Some(turn_clip);
     }
 
-    let desired =
-        locomotion_clip_with_hysteresis(record, definition, profile, settings, locomotion);
+    let desired = work_clip.unwrap_or_else(|| {
+        locomotion_clip_with_hysteresis(record, definition, profile, settings, locomotion)
+    });
     let (_clip_name, resolved) = profile.resolve_clip_name(desired)?;
 
     let target_speed = locomotion_playback_speed(
@@ -203,7 +205,7 @@ pub fn locomotion_playback_speed(
     heading_delta: Option<f32>,
 ) -> f32 {
     let reference = profile.locomotion_reference_speed_mps.max(0.01);
-    let base = if matches!(clip, AnimationClipKey::Idle) {
+    let base = if matches!(clip, AnimationClipKey::Idle | AnimationClipKey::Work) {
         settings.locomotion_speed_scale
     } else {
         (definition.move_speed_mps / reference).max(0.05) * settings.locomotion_speed_scale
@@ -420,8 +422,10 @@ mod tests {
             reactive_combat_target: None,
             current_space_id: Default::default(),
             inventory_id: None,
+            equipment: None,
             settlement_id: None,
             work_skills: Default::default(),
+            appearance: None,
         }
     }
 

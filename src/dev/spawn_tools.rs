@@ -3,14 +3,14 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    BuildingCatalog, BuildingDefinitionId, BuildingNavigationBlueprintCatalog, BuildingOwnership,
-    BuildingSource, DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource,
-    FootprintCatalog, InteriorProfileCatalog, InventoryCatalogCtx, InventoryProfileCatalog,
-    ItemCatalog, ItemCategoryCatalog, UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource,
-    WorldData, WorldPosition, create_dev_complete_building,
-    create_dev_complete_building_with_inventory, create_doodad, create_unit_with_inventory,
-    starter_inventory_profile_definitions, starter_item_category_definitions,
-    starter_item_definitions, try_activate_interior_if_complete,
+    AppearanceProfileCatalog, BuildingCatalog, BuildingDefinitionId,
+    BuildingNavigationBlueprintCatalog, BuildingOwnership, BuildingSource, DoodadCatalog,
+    DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog,
+    InteriorProfileCatalog, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog,
+    ItemCategoryCatalog, UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource, WorldData,
+    WorldPosition, create_dev_complete_building, create_dev_complete_building_with_inventory,
+    create_doodad, create_unit_with_inventory, starter_inventory_profile_definitions,
+    starter_item_category_definitions, starter_item_definitions, try_activate_interior_if_complete,
 };
 
 use super::dev_mode::{DefinitionId, SpawnMode};
@@ -38,6 +38,7 @@ pub fn dev_spawn_position_from_terrain_click(
 pub fn spawn_selected_at_position(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
+    appearance_profiles: &AppearanceProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
@@ -57,6 +58,7 @@ pub fn spawn_selected_at_position(
             let ownership = UnitOwnership::with_affiliation(spawn_affiliation);
             match create_unit_with_inventory(
                 unit_catalog,
+                appearance_profiles,
                 world,
                 definition_id,
                 position,
@@ -151,6 +153,7 @@ pub fn spawn_selected_at_position(
 pub fn spawn_by_mode_at_position(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
+    appearance_profiles: &AppearanceProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
@@ -169,6 +172,7 @@ pub fn spawn_by_mode_at_position(
     spawn_selected_at_position(
         world,
         unit_catalog,
+        appearance_profiles,
         doodad_catalog,
         building_catalog,
         footprint_catalog,
@@ -236,6 +240,7 @@ mod tests {
         let outcome = spawn_by_mode_at_position(
             &mut world,
             &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &doodad_catalog,
             &building_catalog,
             &footprint_catalog,
@@ -267,6 +272,7 @@ mod tests {
         let outcome = spawn_by_mode_at_position(
             &mut world,
             &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &doodad_catalog,
             &building_catalog,
             &footprint_catalog,
@@ -315,7 +321,8 @@ mod tests {
         let click = pos(20.0, 20.0);
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(18.0, 18.0),
             UnitSource::Dev,
@@ -326,6 +333,7 @@ mod tests {
         let outcome = spawn_selected_at_position(
             &mut world,
             &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &doodad_catalog,
             &building_catalog,
             &footprint_catalog,
@@ -396,6 +404,7 @@ mod tests {
         let outcome = spawn_selected_at_position(
             &mut world,
             &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &doodad_catalog,
             &building_catalog,
             &footprint_catalog,

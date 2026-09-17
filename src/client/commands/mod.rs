@@ -118,12 +118,14 @@ mod tests {
         });
         let unit_catalog = crate::world::UnitCatalog::default();
         let weapon_catalog = crate::world::WeaponCatalog::default();
+        let item_catalog = crate::world::ItemCatalog::default();
         let ctx = CommandResolutionContext {
             selected_units: &units,
             target: target.clone(),
             world: &world,
             unit_catalog: &unit_catalog,
             weapon_catalog: &weapon_catalog,
+            item_catalog: &item_catalog,
             authored_relationships: &crate::world::AuthoredRelationshipCatalog::default(),
             targeting_policy: crate::world::AttackTargetingPolicy::default(),
         };

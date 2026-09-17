@@ -8,6 +8,7 @@ use bevy::prelude::*;
 
 mod components;
 mod control;
+pub mod render_layers;
 mod settings;
 mod setup;
 mod terrain_bind;

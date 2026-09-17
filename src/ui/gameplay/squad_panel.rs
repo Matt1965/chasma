@@ -495,7 +495,8 @@ mod tests {
         let mut world = flat_world();
         let id = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(2.0, 2.0),
             UnitSource::Authored,
@@ -514,7 +515,8 @@ mod tests {
         for i in 0..15 {
             create_unit_with_ownership(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(i as f32, 0.0),
                 UnitSource::Authored,
@@ -538,7 +540,8 @@ mod tests {
         let mut world = flat_world();
         let id = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(2.0, 2.0),
             UnitSource::Authored,

@@ -655,6 +655,7 @@ fn executor_accepts_universally_legal_interior_segment() {
     let goal = local_xz_to_world(&world, building_id, Vec2::new(3.5, 3.5), floor_y);
     let unit_id = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         start,
@@ -726,6 +727,7 @@ fn executor_rejects_universally_illegal_interior_segment() {
     );
     let unit_id = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         start,
@@ -791,6 +793,7 @@ fn vertical_player_command_inside_concave_region_moves_unit() {
     let goal = local_xz_to_world(&world, building_id, Vec2::new(10.0, 10.0), floor_y);
     let unit_id = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         start,
@@ -811,6 +814,7 @@ fn vertical_player_command_inside_concave_region_moves_unit() {
         &selected,
         &unit_catalog,
         &weapon_catalog,
+        &crate::world::ItemCatalog::default(),
         &catalogs.doodad,
         &NavigationConfig::default(),
         goal,
@@ -895,6 +899,7 @@ fn vertical_player_command_does_not_cross_closed_boundary_to_nowhere() {
     );
     let unit_id = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         start,
@@ -913,6 +918,7 @@ fn vertical_player_command_does_not_cross_closed_boundary_to_nowhere() {
         &selected,
         &unit_catalog,
         &weapon_catalog,
+        &crate::world::ItemCatalog::default(),
         &catalogs.doodad,
         &NavigationConfig::default(),
         void_goal,

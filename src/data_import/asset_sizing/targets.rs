@@ -11,12 +11,16 @@ pub fn unit_default_desired_height_meters(
     render_key: Option<&str>,
     collision_radius_meters: f32,
 ) -> f32 {
-    if render_key == Some("robot") {
+    if render_key == Some("robot")
+        || render_key == Some("human_male")
+        || render_key == Some("human_female")
+    {
         return 1.75;
     }
     let id = unit_id.trim().to_ascii_lowercase();
     match id.as_str() {
-        "robot" | "player" | "player_robot" | "u-0001" => 1.75,
+        "robot" | "player" | "player_robot" | "u-0001" | "u-0004" | "u-0005" | "human_male"
+        | "human_female" => 1.75,
         "wolf" | "fox" | "dog" | "coyote" => 0.9,
         "deer" | "elk" => 1.35,
         "bear" => 1.6,
@@ -80,6 +84,16 @@ mod tests {
             (unit_default_desired_height_meters("U-0001", Some("robot"), 0.5) - 1.75).abs()
                 < f32::EPSILON
         );
+    }
+
+    #[test]
+    fn human_render_keys_target_humanoid_height() {
+        for key in ["human_male", "human_female"] {
+            assert!(
+                (unit_default_desired_height_meters("U-0004", Some(key), 0.4) - 1.75).abs()
+                    < f32::EPSILON
+            );
+        }
     }
 
     #[test]
@@ -211,6 +225,7 @@ mod integration_tests {
             .unwrap(),
             &crate::world::AnimationProfileCatalog::default(),
             &crate::world::InventoryProfileCatalog::default(),
+        &crate::world::AppearanceProfileCatalog::empty(),
         )
         .expect("unit import");
         let robot = definitions

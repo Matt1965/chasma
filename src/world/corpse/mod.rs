@@ -1,6 +1,9 @@
 //! Authoritative corpse records and lifecycle (ADR-089 I3).
 
+mod access;
 mod authoring;
+#[cfg(test)]
+mod equipment_tests;
 mod error;
 mod id;
 mod lifecycle;
@@ -8,9 +11,10 @@ mod record;
 mod settings;
 mod store;
 
+pub use access::is_corpse_loot_inventory;
 pub use authoring::{
     corpse_lifetime_ticks, create_corpse_from_unit, remove_corpse_with_inventory,
-    transfer_inventory_to_corpse,
+    transfer_equipment_to_corpse, transfer_inventory_to_corpse,
 };
 pub use error::CorpseError;
 pub use id::CorpseId;

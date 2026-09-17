@@ -245,16 +245,14 @@ fn inventory_access_error(
     inventory_id: InventoryId,
     ui: &InventoryUiState,
 ) -> Option<InventoryUiError> {
-    if ui
-        .right_inventory_id
-        .is_some_and(|right| right == inventory_id)
-        && ui.corpse_id.is_some()
-    {
-        return if world.inventory_store().get(inventory_id).is_some() {
-            None
-        } else {
-            Some(InventoryUiError::InventoryClosed)
-        };
+    if let Some(corpse_id) = ui.corpse_id {
+        if crate::world::is_corpse_loot_inventory(world, corpse_id, inventory_id) {
+            return if world.inventory_store().get(inventory_id).is_some() {
+                None
+            } else {
+                Some(InventoryUiError::InventoryClosed)
+            };
+        }
     }
     match can_unit_access_inventory(
         world,

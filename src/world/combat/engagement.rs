@@ -73,6 +73,7 @@ pub fn step_all_combat_engagement(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -95,6 +96,7 @@ pub fn step_all_combat_engagement(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             catalogs,
             nav_config,
             targeting_policy,
@@ -116,6 +118,7 @@ fn step_unit_combat_engagement(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -130,6 +133,7 @@ fn step_unit_combat_engagement(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             catalogs,
             nav_config,
             targeting_policy,
@@ -142,6 +146,7 @@ fn step_unit_combat_engagement(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             catalogs,
             nav_config,
             targeting_policy,
@@ -157,6 +162,7 @@ fn step_unit_combat_engagement(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             catalogs,
             nav_config,
             targeting_policy,
@@ -170,6 +176,7 @@ fn step_unit_combat_engagement(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             catalogs,
             nav_config,
             targeting_policy,
@@ -186,6 +193,7 @@ fn handle_attacking_target(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -210,6 +218,7 @@ fn handle_attacking_target(
         target,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         targeting_policy,
     )
     .is_err()
@@ -222,6 +231,7 @@ fn handle_attacking_target(
             strike_trace,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
         );
         trace.status = CombatEngagementStatus::TargetInvalid;
         trace.target = None;
@@ -237,26 +247,28 @@ fn handle_attacking_target(
             strike_trace,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
         );
         trace.status = CombatEngagementStatus::TargetInvalid;
         trace.target = None;
         return trace;
     };
-    let weapon = match weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) {
-        Ok(weapon) => weapon,
-        Err(_) => {
-            clear_attack_cycle_for_invalid_target(
-                world,
-                unit_id,
-                target,
-                Some(strike_trace),
-                unit_catalog,
-                weapon_catalog,
-            );
-            trace.status = CombatEngagementStatus::MissingWeapon;
-            return trace;
-        }
-    };
+    let weapon =
+        match weapon_for_unit_record(world, attacker, unit_catalog, item_catalog, weapon_catalog) {
+            Ok(weapon) => weapon,
+            Err(_) => {
+                clear_attack_cycle_for_invalid_target(
+                    world,
+                    unit_id,
+                    target,
+                    Some(strike_trace),
+                    unit_catalog,
+                    weapon_catalog,
+                );
+                trace.status = CombatEngagementStatus::MissingWeapon;
+                return trace;
+            }
+        };
     let check = measure_weapon_range(world, attacker, target_record, weapon, unit_catalog);
     trace.center_distance_meters = Some(check.center_distance_meters);
     trace.edge_distance_meters = Some(check.edge_distance_meters);
@@ -275,6 +287,7 @@ fn handle_attacking_target(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             catalogs,
             nav_config,
             unit_id,
@@ -304,6 +317,7 @@ fn handle_chasing_target(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -328,6 +342,7 @@ fn handle_chasing_target(
         target,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         targeting_policy,
     )
     .is_err()
@@ -340,6 +355,7 @@ fn handle_chasing_target(
             strike_trace,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
         );
         trace.status = CombatEngagementStatus::TargetInvalid;
         trace.target = None;
@@ -355,26 +371,28 @@ fn handle_chasing_target(
             strike_trace,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
         );
         trace.status = CombatEngagementStatus::TargetInvalid;
         trace.target = None;
         return trace;
     };
-    let weapon = match weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) {
-        Ok(weapon) => weapon,
-        Err(_) => {
-            clear_attack_cycle_for_invalid_target(
-                world,
-                unit_id,
-                target,
-                Some(strike_trace),
-                unit_catalog,
-                weapon_catalog,
-            );
-            trace.status = CombatEngagementStatus::MissingWeapon;
-            return trace;
-        }
-    };
+    let weapon =
+        match weapon_for_unit_record(world, attacker, unit_catalog, item_catalog, weapon_catalog) {
+            Ok(weapon) => weapon,
+            Err(_) => {
+                clear_attack_cycle_for_invalid_target(
+                    world,
+                    unit_id,
+                    target,
+                    Some(strike_trace),
+                    unit_catalog,
+                    weapon_catalog,
+                );
+                trace.status = CombatEngagementStatus::MissingWeapon;
+                return trace;
+            }
+        };
     let check = measure_weapon_range(world, attacker, target_record, weapon, unit_catalog);
     trace.center_distance_meters = Some(check.center_distance_meters);
     trace.edge_distance_meters = Some(check.edge_distance_meters);
@@ -395,6 +413,7 @@ fn handle_chasing_target(
         world,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
         catalogs,
         nav_config,
         unit_id,
@@ -412,6 +431,7 @@ pub fn target_in_weapon_range_for_attacker(
     target_id: UnitId,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
 ) -> bool {
     let Some(attacker) = world.get_unit(attacker_id) else {
         return false;
@@ -419,7 +439,9 @@ pub fn target_in_weapon_range_for_attacker(
     let Some(target) = world.get_unit(target_id) else {
         return false;
     };
-    let Ok(weapon) = weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) else {
+    let Ok(weapon) =
+        weapon_for_unit_record(world, attacker, unit_catalog, item_catalog, weapon_catalog)
+    else {
         return false;
     };
     is_in_weapon_range(world, attacker, target, unit_catalog, weapon)
@@ -429,6 +451,7 @@ fn handle_holding(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     _catalogs: PassabilityCatalogs<'_>,
     _nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -458,6 +481,7 @@ fn handle_holding(
             target_id,
             weapon_catalog,
             unit_catalog,
+            item_catalog,
             targeting_policy,
         )
         .is_ok()
@@ -477,6 +501,7 @@ fn handle_holding(
         unit_id,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
         targeting_policy,
         authored,
     ) {
@@ -522,13 +547,14 @@ fn handle_holding(
         trace.target = None;
         return trace;
     };
-    let weapon = match weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) {
-        Ok(weapon) => weapon,
-        Err(_) => {
-            trace.status = CombatEngagementStatus::MissingWeapon;
-            return trace;
-        }
-    };
+    let weapon =
+        match weapon_for_unit_record(world, attacker, unit_catalog, item_catalog, weapon_catalog) {
+            Ok(weapon) => weapon,
+            Err(_) => {
+                trace.status = CombatEngagementStatus::MissingWeapon;
+                return trace;
+            }
+        };
     let check = measure_weapon_range(world, attacker, target_record, weapon, unit_catalog);
     trace.center_distance_meters = Some(check.center_distance_meters);
     trace.edge_distance_meters = Some(check.edge_distance_meters);
@@ -567,13 +593,16 @@ pub fn scan_hold_range_target(
     attacker_id: UnitId,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     targeting_policy: AttackTargetingPolicy,
     _authored: &AuthoredRelationshipCatalog,
 ) -> Option<UnitId> {
     let attacker = world.get_unit(attacker_id)?;
     let attacker_pos = attacker.placement.position;
     let layout = world.layout();
-    let Ok(weapon) = weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) else {
+    let Ok(weapon) =
+        weapon_for_unit_record(world, attacker, unit_catalog, item_catalog, weapon_catalog)
+    else {
         return None;
     };
 
@@ -585,6 +614,7 @@ pub fn scan_hold_range_target(
             candidate_id,
             weapon_catalog,
             unit_catalog,
+            item_catalog,
             targeting_policy,
         )
         .is_err()
@@ -614,6 +644,7 @@ fn handle_attack_moving(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -628,6 +659,7 @@ fn handle_attack_moving(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             catalogs,
             nav_config,
             targeting_policy,
@@ -646,6 +678,7 @@ fn handle_attack_moving(
         unit_id,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
         targeting_policy,
         authored,
     ) {
@@ -662,6 +695,7 @@ fn handle_attack_moving(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             catalogs,
             nav_config,
             targeting_policy,
@@ -730,6 +764,7 @@ pub fn scan_attack_move_target(
     attacker_id: UnitId,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     targeting_policy: AttackTargetingPolicy,
     authored: &AuthoredRelationshipCatalog,
 ) -> Option<UnitId> {
@@ -738,6 +773,7 @@ pub fn scan_attack_move_target(
         attacker_id,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
         targeting_policy,
         authored,
     )
@@ -757,6 +793,7 @@ fn begin_chase_to_target(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     unit_id: UnitId,
@@ -827,6 +864,7 @@ fn apply_invalid_target_state(
     strike_trace: &mut CombatStrikeReport,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
 ) {
     hold_in_attack_range(world, unit_id);
     clear_attack_cycle_for_invalid_target(
@@ -854,6 +892,7 @@ pub fn initial_attack_combat_state(
     target_id: UnitId,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
 ) -> CombatState {
     let Some(attacker) = world.get_unit(attacker_id) else {
         return CombatState::Attacking { target: target_id };
@@ -861,7 +900,9 @@ pub fn initial_attack_combat_state(
     let Some(target) = world.get_unit(target_id) else {
         return CombatState::Attacking { target: target_id };
     };
-    let Ok(weapon) = weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) else {
+    let Ok(weapon) =
+        weapon_for_unit_record(world, attacker, unit_catalog, item_catalog, weapon_catalog)
+    else {
         return CombatState::Attacking { target: target_id };
     };
     if is_in_weapon_range(world, attacker, target, unit_catalog, weapon) {
@@ -928,8 +969,7 @@ mod tests {
 
     fn spawn_wild_wolf(world: &mut WorldData, catalog: &UnitCatalog, x: f32, z: f32) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,
@@ -941,8 +981,7 @@ mod tests {
 
     fn spawn_player(world: &mut WorldData, catalog: &UnitCatalog, x: f32, z: f32) -> UnitId {
         let id = create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,
@@ -959,8 +998,7 @@ mod tests {
 
     fn spawn_hostile(world: &mut WorldData, catalog: &UnitCatalog, x: f32, z: f32) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("bandit"),
             pos(x, z),
             UnitSource::Authored,
@@ -976,6 +1014,7 @@ mod tests {
             world,
             catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             bundle.catalogs(),
             &NavigationConfig::default(),
             policy(),
@@ -1006,6 +1045,7 @@ mod tests {
                 &crate::world::InteriorProfileCatalog::default(),
                 None,
                 &crate::world::ItemCatalog::default(),
+                &crate::world::ArmorProfileCatalog::default(),
                 &crate::world::ItemCategoryCatalog::default(),
                 &crate::world::InventoryProfileCatalog::default(),
                 &crate::world::CorpseSettings::default(),
@@ -1025,7 +1065,8 @@ mod tests {
     ) -> f32 {
         let attacker = world.get_unit(attacker).unwrap();
         let target = world.get_unit(target).unwrap();
-        let weapon = weapon_for_unit_record(attacker, catalog, weapons).unwrap();
+        let items = crate::world::ItemCatalog::default();
+        let weapon = weapon_for_unit_record(world, attacker, catalog, &items, weapons).unwrap();
         measure_weapon_range(world, attacker, target, weapon, catalog).edge_distance_meters
     }
 
@@ -1036,7 +1077,8 @@ mod tests {
         attacker: UnitId,
     ) -> f32 {
         let attacker = world.get_unit(attacker).unwrap();
-        let weapon = weapon_for_unit_record(attacker, catalog, weapons).unwrap();
+        let items = crate::world::ItemCatalog::default();
+        let weapon = weapon_for_unit_record(world, attacker, catalog, &items, weapons).unwrap();
         weapon.range_meters
     }
 
@@ -1044,6 +1086,7 @@ mod tests {
         world: &mut WorldData,
         catalog: &UnitCatalog,
         weapon_catalog: &WeaponCatalog,
+        item_catalog: &crate::world::ItemCatalog,
         tick: u64,
     ) {
         let authored = authored();
@@ -1066,6 +1109,7 @@ mod tests {
             &crate::world::InteriorProfileCatalog::default(),
             None,
             &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &crate::world::ItemCategoryCatalog::default(),
             &crate::world::InventoryProfileCatalog::default(),
             &crate::world::CorpseSettings::default(),
@@ -1087,6 +1131,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -1095,7 +1140,13 @@ mod tests {
         )
         .unwrap();
         for tick in 0..120 {
-            run_one_sim_tick(&mut world, &catalog, &weapons, tick);
+            run_one_sim_tick(
+                &mut world,
+                &catalog,
+                &weapons,
+                &crate::world::ItemCatalog::default(),
+                tick,
+            );
             let record = world.get_unit(player).unwrap();
             if matches!(record.state, UnitState::Idle)
                 && matches!(
@@ -1189,7 +1240,8 @@ mod tests {
         let mut world = flat_world();
         let player = create_unit_with_ownership(
             &large_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("big_a"),
             pos(10.0, 10.0),
             UnitSource::Authored,
@@ -1199,7 +1251,8 @@ mod tests {
         .id;
         let hostile = create_unit_with_ownership(
             &large_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("big_b"),
             pos(20.0, 10.0),
             UnitSource::Authored,
@@ -1211,6 +1264,7 @@ mod tests {
             &mut world,
             &large_catalog,
             &short_weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -1220,10 +1274,19 @@ mod tests {
         .unwrap();
         let mut entered_range = false;
         for tick in 0..120 {
-            run_one_sim_tick(&mut world, &large_catalog, &short_weapons, tick);
+            run_one_sim_tick(
+                &mut world,
+                &large_catalog,
+                &short_weapons,
+                &crate::world::ItemCatalog::default(),
+                tick,
+            );
             let attacker = world.get_unit(player).unwrap();
             let target = world.get_unit(hostile).unwrap();
-            let weapon = weapon_for_unit_record(attacker, &large_catalog, &short_weapons).unwrap();
+            let items = crate::world::ItemCatalog::default();
+            let weapon =
+                weapon_for_unit_record(&world, attacker, &large_catalog, &items, &short_weapons)
+                    .unwrap();
             let check = measure_weapon_range(&world, attacker, target, weapon, &large_catalog);
             if range_status_from_check(&check) == RangeStatus::InRange {
                 entered_range = true;
@@ -1247,6 +1310,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -1260,7 +1324,13 @@ mod tests {
                 let z = 10.0 + ((tick as f32) * 0.15).sin();
                 world.relocate_unit(hostile, pos(24.0, z)).unwrap();
             }
-            run_one_sim_tick(&mut world, &catalog, &weapons, tick);
+            run_one_sim_tick(
+                &mut world,
+                &catalog,
+                &weapons,
+                &crate::world::ItemCatalog::default(),
+                tick,
+            );
             let edge = edge_distance(&world, player, hostile, &catalog, &weapons);
             if edge <= weapon_range_for(&catalog, &weapons, &world, player) {
                 entered_range = true;
@@ -1287,6 +1357,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -1294,11 +1365,18 @@ mod tests {
             policy(),
         )
         .unwrap();
-        run_one_sim_tick(&mut world, &catalog, &weapons, 0);
+        run_one_sim_tick(
+            &mut world,
+            &catalog,
+            &weapons,
+            &crate::world::ItemCatalog::default(),
+            0,
+        );
         issue_unit_order(
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -1320,7 +1398,13 @@ mod tests {
         );
         assert!(world.get_unit(player).unwrap().attack_cycle.is_none());
         for tick in 1..80 {
-            run_one_sim_tick(&mut world, &catalog, &weapons, tick);
+            run_one_sim_tick(
+                &mut world,
+                &catalog,
+                &weapons,
+                &crate::world::ItemCatalog::default(),
+                tick,
+            );
         }
         assert_eq!(
             world.get_unit(hostile).unwrap().vitals.current_hp,
@@ -1340,6 +1424,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -1372,6 +1457,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -1418,6 +1504,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -1446,6 +1533,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -1480,6 +1568,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -1520,6 +1609,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -1553,6 +1643,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             wild,
@@ -1585,8 +1676,15 @@ mod tests {
         let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
         let hostile_a = spawn_hostile(&mut world, &catalog, 15.0, 10.0);
         let hostile_b = spawn_hostile(&mut world, &catalog, 10.0, 15.0);
-        let acquired =
-            scan_attack_move_target(&world, player, &catalog, &weapons(), policy(), &authored());
+        let acquired = scan_attack_move_target(
+            &world,
+            player,
+            &catalog,
+            &weapons(),
+            &crate::world::ItemCatalog::default(),
+            policy(),
+            &authored(),
+        );
         assert!(acquired.is_none());
         let _ = (hostile_a, hostile_b);
     }
@@ -1598,8 +1696,16 @@ mod tests {
         let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
         let friendly = spawn_player(&mut world, &catalog, 12.0, 10.0);
         assert!(
-            scan_attack_move_target(&world, player, &catalog, &weapons(), policy(), &authored(),)
-                .is_none()
+            scan_attack_move_target(
+                &world,
+                player,
+                &catalog,
+                &weapons(),
+                &crate::world::ItemCatalog::default(),
+                policy(),
+                &authored(),
+            )
+            .is_none()
         );
         let _ = friendly;
     }
@@ -1615,6 +1721,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -1649,6 +1756,7 @@ mod tests {
                 &crate::world::InteriorProfileCatalog::default(),
                 None,
                 &crate::world::ItemCatalog::default(),
+                &crate::world::ArmorProfileCatalog::default(),
                 &crate::world::ItemCategoryCatalog::default(),
                 &crate::world::InventoryProfileCatalog::default(),
                 &crate::world::CorpseSettings::default(),
@@ -1697,7 +1805,8 @@ mod tests {
         let mut world = flat_world();
         let wild = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wild_scout"),
             pos(10.0, 10.0),
             UnitSource::Authored,
@@ -1707,7 +1816,15 @@ mod tests {
         .id;
         let player = spawn_player(&mut world, &catalog, 28.0, 10.0);
         assert_eq!(
-            scan_attack_move_target(&world, wild, &catalog, &weapons(), policy(), &authored(),),
+            scan_attack_move_target(
+                &world,
+                wild,
+                &catalog,
+                &weapons(),
+                &crate::world::ItemCatalog::default(),
+                policy(),
+                &authored(),
+            ),
             Some(player),
             "20 m sight should acquire a player ~18 m away; legacy attack-move scan was 16 m"
         );
@@ -1749,6 +1866,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             hostile,
@@ -1778,6 +1896,7 @@ mod tests {
             world,
             catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             unit_id,
@@ -1805,7 +1924,13 @@ mod tests {
             world
                 .update_unit_position(hostile, pos(20.0 - tick as f32 * 0.2, 10.0))
                 .expect("advance hostile");
-            run_one_sim_tick(&mut world, &catalog, &weapons(), tick as u64);
+            run_one_sim_tick(
+                &mut world,
+                &catalog,
+                &weapons(),
+                &crate::world::ItemCatalog::default(),
+                tick as u64,
+            );
         }
 
         let held = global_xz(&world, world.get_unit(player).unwrap().placement.position);

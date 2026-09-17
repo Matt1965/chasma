@@ -17,7 +17,7 @@ use crate::world::{
 
 use super::inventory_snapshot::SceneInventoryPersistence;
 use super::snapshot::{
-    SCENE_VERSION, SceneBuildingRecord, SceneDefinition, SceneDoodadRecord,
+    SCENE_VERSION, SceneBuildingRecord, SceneDefinition, SceneDoodadRecord, SceneRecordError,
     SceneSettlementAnchorRecord, SceneSettlementRecord, SceneTaskRecord, SceneTreasuryRecord,
     SceneUnitRecord, parse_doodad_kind, scene_version_supported,
 };
@@ -371,9 +371,16 @@ pub fn apply_scene(
     footprint_catalog: &FootprintCatalog,
     interior_catalog: &InteriorProfileCatalog,
     nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
     scene: &SceneDefinition,
 ) -> Result<SceneApplyReport, SceneApplyError> {
-    let plan = build_restore_plan(unit_catalog, doodad_catalog, building_catalog, scene)?;
+    let plan = build_restore_plan(
+        unit_catalog,
+        appearance_profiles,
+        doodad_catalog,
+        building_catalog,
+        scene,
+    )?;
     let backup = DevWorldEntityBackup::capture(world);
     let started = Instant::now();
 
@@ -474,6 +481,7 @@ pub fn apply_scene(
 
 fn build_restore_plan(
     unit_catalog: &UnitCatalog,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
     scene: &SceneDefinition,
@@ -488,7 +496,7 @@ fn build_restore_plan(
     let mut units = Vec::with_capacity(scene.unit_records.len());
     let mut unit_ids = HashSet::new();
     for unit in &scene.unit_records {
-        let record = scene_unit_to_record(unit, unit_catalog)?;
+        let record = scene_unit_to_record(unit, unit_catalog, appearance_profiles)?;
         validate_unit_for_restore(unit_catalog, &record, &unit_ids)?;
         unit_ids.insert(record.id);
         units.push(record);
@@ -714,6 +722,13 @@ fn apply_restore_plan(
 
     crate::world::rebuild_settlement_membership_indexes(world);
 
+    let ctx = dev_inventory_catalog_ctx();
+    crate::world::reconcile_legacy_unit_equipment(world, ctx.profiles).map_err(|error| {
+        SceneApplyError::InventoryRestore {
+            reason: format!("legacy unit equipment migration: {error}"),
+        }
+    })?;
+
     Ok(())
 }
 
@@ -832,12 +847,20 @@ fn scene_building_to_record(
 fn scene_unit_to_record(
     unit: &SceneUnitRecord,
     catalog: &UnitCatalog,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
 ) -> Result<UnitRecord, SceneApplyError> {
-    unit.to_record(catalog)
-        .map_err(|err| SceneApplyError::InvalidUnitRecord {
+    unit.to_record(catalog, appearance_profiles).map_err(|err| match err {
+        SceneRecordError::InvalidDefinitionId(definition_id) => {
+            SceneApplyError::MissingUnitDefinition {
+                unit_id: unit.id,
+                definition_id,
+            }
+        }
+        other => SceneApplyError::InvalidUnitRecord {
             unit_id: unit.id,
-            reason: format!("{err:?}"),
-        })
+            reason: format!("{other:?}"),
+        },
+    })
 }
 
 fn scene_settlement_to_record(
@@ -1063,7 +1086,8 @@ mod tests {
         let doodad_catalog = DoodadCatalog::default();
         create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(10.0, 10.0),
             UnitSource::Dev,
@@ -1071,7 +1095,8 @@ mod tests {
         .unwrap();
         create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("deer"),
             pos(20.0, 20.0),
             UnitSource::Dev,
@@ -1089,6 +1114,7 @@ mod tests {
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap();
@@ -1122,6 +1148,7 @@ mod tests {
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap();
@@ -1135,7 +1162,8 @@ mod tests {
         let doodad_catalog = DoodadCatalog::default();
         create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Dev,
@@ -1143,7 +1171,8 @@ mod tests {
         .unwrap();
         create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("deer"),
             pos(2.0, 2.0),
             UnitSource::Dev,
@@ -1152,7 +1181,8 @@ mod tests {
         let scene = sample_scene(&world);
         create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(3.0, 3.0),
             UnitSource::Dev,
@@ -1166,6 +1196,7 @@ mod tests {
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap();
@@ -1179,7 +1210,8 @@ mod tests {
         let doodad_catalog = DoodadCatalog::default();
         create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(5.0, 5.0),
             UnitSource::Dev,
@@ -1196,6 +1228,7 @@ mod tests {
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap_err();
@@ -1210,7 +1243,8 @@ mod tests {
         let doodad_catalog = DoodadCatalog::default();
         create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Dev,
@@ -1227,6 +1261,7 @@ mod tests {
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap_err();
@@ -1271,9 +1306,12 @@ mod tests {
             species_id: None,
             current_space_id: 0,
             inventory_id: None,
+            equipment: None,
             settlement_id: None,
             current_nutrition: None,
             work_skill_overrides: Vec::new(),
+        
+            appearance: None,
         });
         let err = apply_scene(
             &mut world,
@@ -1283,6 +1321,7 @@ mod tests {
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap_err();
@@ -1299,7 +1338,8 @@ mod tests {
         let doodad_catalog = DoodadCatalog::default();
         create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(8.0, 8.0),
             UnitSource::Dev,
@@ -1314,6 +1354,7 @@ mod tests {
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene_a,
         )
         .unwrap();
@@ -1329,7 +1370,8 @@ mod tests {
         let doodad_catalog = DoodadCatalog::default();
         let id = create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(8.0, 8.0),
             UnitSource::Dev,
@@ -1345,6 +1387,7 @@ mod tests {
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap();
@@ -1391,6 +1434,7 @@ mod tests {
             &footprint_catalog,
             &InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap();
@@ -1481,6 +1525,7 @@ mod tests {
             &footprint_catalog,
             &InteriorProfileCatalog::default(),
             Some(&nav_catalog),
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap();
@@ -1560,6 +1605,7 @@ mod tests {
             &footprint_catalog,
             &InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap_err();
@@ -1640,7 +1686,6 @@ mod tests {
 
         let scene = sample_scene(&world);
         assert_eq!(scene.version, super::super::snapshot::SCENE_VERSION);
-        assert_eq!(scene.version, 8);
         assert_eq!(scene.inventory_persistence.inventory_records.len(), 1);
         assert!(
             scene
@@ -1711,6 +1756,7 @@ mod tests {
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap();
@@ -1825,6 +1871,7 @@ mod tests {
             &FootprintCatalog::default(),
             &InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap();
@@ -1868,7 +1915,8 @@ mod tests {
         .unwrap();
         let unit = create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(8.0, 8.0),
             UnitSource::Dev,
@@ -1917,6 +1965,7 @@ mod tests {
             &footprint_catalog,
             &InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap();
@@ -1956,12 +2005,15 @@ mod tests {
                 affiliation: Some("Player".into()),
                 current_space_id: 0,
                 inventory_id: None,
+                equipment: None,
                 faction_id: None,
                 species_id: None,
                 settlement_id: None,
                 current_nutrition: None,
                 work_skill_overrides: Vec::new(),
-            }],
+            
+            appearance: None,
+        }],
             doodad_records: Vec::new(),
             building_records: vec![SceneBuildingRecord {
                 id: 2,
@@ -2026,6 +2078,7 @@ mod tests {
             &footprint_catalog,
             &InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap();
@@ -2040,5 +2093,161 @@ mod tests {
                 .settlement_id
                 .is_none()
         );
+    }
+
+    #[test]
+    fn legacy_scene_unit_without_equipment_receives_canonical_slots_on_load() {
+        use super::super::snapshot::{SceneDefinition, SceneUnitRecord, SceneUnitSource};
+        use crate::world::{
+            EquipmentSlot, InventoryOwnerRef, UnitEquipmentInventories,
+            validate_unit_equipment_links, validate_world_inventory_state,
+        };
+
+        let scene = SceneDefinition {
+            version: 16,
+            scene_id: "legacy-equipment".into(),
+            name: "legacy-equipment".into(),
+            description: String::new(),
+            created_at: 0,
+            tags: Vec::new(),
+            world_seed: 0,
+            unit_records: vec![SceneUnitRecord {
+                id: 1,
+                definition_id: "wolf".into(),
+                position: super::super::snapshot::SceneWorldPosition::from_world(pos(5.0, 5.0)),
+                rotation: super::super::snapshot::SceneQuat::from_quat(Quat::IDENTITY),
+                state: super::super::snapshot::SceneUnitState::Idle,
+                source: SceneUnitSource::Dev,
+                owner_id: None,
+                team_id: None,
+                affiliation: Some("Player".into()),
+                current_space_id: 0,
+                inventory_id: None,
+                equipment: None,
+                faction_id: None,
+                species_id: None,
+                settlement_id: None,
+                current_nutrition: None,
+                work_skill_overrides: Vec::new(),
+            
+            appearance: None,
+        }],
+            doodad_records: Vec::new(),
+            building_records: Vec::new(),
+            camera_state: None,
+            debug_flags: None,
+            next_unit_id: 2,
+            next_doodad_id: 1,
+            next_building_id: 1,
+            task_records: Vec::new(),
+            next_task_id: 1,
+            next_door_id: 1,
+            next_space_id: 1,
+            next_portal_id: 1,
+            settlement_records: Vec::new(),
+            settlement_anchor_records: Vec::new(),
+            treasury_records: Vec::new(),
+            next_settlement_id: 1,
+            next_settlement_anchor_id: 1,
+            next_treasury_id: 1,
+            inventory_persistence: Default::default(),
+            production_persistence: Default::default(),
+            logistics_persistence: Default::default(),
+            planner_persistence: Default::default(),
+            settlement_state_persistence: Default::default(),
+            construction_plan_persistence: Default::default(),
+            relationship_standing_persistence: Default::default(),
+        };
+
+        let mut world = flat_world();
+        apply_scene(
+            &mut world,
+            &UnitCatalog::default(),
+            &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &InteriorProfileCatalog::default(),
+            None,
+            &crate::world::AppearanceProfileCatalog::empty(),
+            &scene,
+        )
+        .unwrap();
+
+        let unit_id = crate::world::UnitId::new(1);
+        let unit = world.get_unit(unit_id).unwrap();
+        let equipment = unit
+            .equipment
+            .as_ref()
+            .expect("legacy unit must receive equipment on load");
+        assert_eq!(
+            equipment.all_inventory_ids().len(),
+            EquipmentSlot::ALL.len(),
+            "expected exactly eight equipment inventories"
+        );
+        for slot in EquipmentSlot::ALL {
+            let inventory_id = equipment.inventory_id(slot);
+            let inventory = world
+                .inventory_store()
+                .get(inventory_id)
+                .expect("equipment inventory must exist");
+            assert_eq!(
+                inventory.owner(),
+                &InventoryOwnerRef::UnitEquipment { unit_id, slot }
+            );
+            assert_eq!(inventory.profile_id(), &slot.profile_id());
+            assert!(inventory.placed_entries().is_empty());
+        }
+        validate_unit_equipment_links(&world, unit_id).unwrap();
+        let ctx = dev_inventory_catalog_ctx();
+        let report = validate_world_inventory_state(&world, ctx);
+        assert!(report.is_ok(), "{report:?}");
+    }
+
+    #[test]
+    fn scene_load_preserves_existing_unit_equipment_inventory_ids() {
+        use crate::world::UnitEquipmentInventories;
+
+        let mut world = flat_world();
+        let unit_catalog = UnitCatalog::default();
+        let doodad_catalog = DoodadCatalog::default();
+        let unit = create_unit(
+            &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(10.0, 10.0),
+            UnitSource::Dev,
+        )
+        .unwrap();
+        let before: UnitEquipmentInventories = unit.equipment.unwrap();
+
+        let scene = sample_scene(&world);
+        world.dev_clear_units_and_doodads();
+        apply_scene(
+            &mut world,
+            &unit_catalog,
+            &doodad_catalog,
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &InteriorProfileCatalog::default(),
+            None,
+            &crate::world::AppearanceProfileCatalog::empty(),
+            &scene,
+        )
+        .unwrap();
+
+        let restored = world.get_unit(unit.id).unwrap();
+        let after = restored
+            .equipment
+            .as_ref()
+            .expect("equipment must survive scene round-trip");
+        assert_eq!(after.head, before.head);
+        assert_eq!(after.body, before.body);
+        assert_eq!(after.arms, before.arms);
+        assert_eq!(after.legs, before.legs);
+        assert_eq!(after.feet, before.feet);
+        assert_eq!(after.weapon, before.weapon);
+        assert_eq!(after.offhand, before.offhand);
+        assert_eq!(after.backpack, before.backpack);
     }
 }

@@ -9,6 +9,8 @@ pub enum AppScreen {
     MainMenu,
     Loading,
     InGame,
+    /// Full-screen Unit Editor (CG3). Blocks gameplay input while active.
+    UnitEditor,
 }
 
 /// How the current InGame/Loading session was requested.

@@ -98,8 +98,7 @@ fn execute_interior_to_surface_movement(
     let layout = world.layout();
 
     let unit_id = create_unit(
-        unit_catalog,
-        world,
+        unit_catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
         &UnitDefinitionId::new("robot"),
         interior_start,
         UnitSource::Authored,
@@ -222,6 +221,7 @@ fn post_exit_trace_arms_after_exterior_entrance_transition() {
     let unit_catalog = robot_catalog();
     let unit_id = create_unit(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("robot"),
         start,

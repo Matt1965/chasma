@@ -84,7 +84,8 @@ mod tests {
         let unit_catalog = UnitCatalog::default();
         let unit_a = create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Dev,
@@ -93,7 +94,8 @@ mod tests {
         .id;
         let unit_b = create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("deer"),
             pos(2.0, 2.0),
             UnitSource::Dev,
@@ -125,6 +127,7 @@ mod tests {
             &crate::world::FootprintCatalog::default(),
             &crate::world::InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap();
@@ -158,7 +161,8 @@ mod tests {
         let unit_catalog = UnitCatalog::default();
         let unit_a = create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Dev,
@@ -167,7 +171,8 @@ mod tests {
         .id;
         let unit_b = create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("deer"),
             pos(2.0, 2.0),
             UnitSource::Dev,
@@ -188,6 +193,7 @@ mod tests {
             &crate::world::FootprintCatalog::default(),
             &crate::world::InteriorProfileCatalog::default(),
             None,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
         )
         .unwrap();

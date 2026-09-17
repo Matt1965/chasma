@@ -361,8 +361,7 @@ mod combat_facing_tests {
         rotation: Quat,
     ) -> UnitId {
         create_unit(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,

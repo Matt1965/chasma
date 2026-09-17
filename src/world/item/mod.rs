@@ -14,6 +14,9 @@ mod validation;
 
 #[cfg(any(test, feature = "dev"))]
 pub use catalog::starter_definitions;
+#[cfg(test)]
+#[cfg(test)]
+pub use catalog::test_equipment_fixture_definitions;
 pub use catalog::{ItemCatalog, ItemCatalogError};
 #[cfg(any(test, feature = "dev"))]
 pub use category::starter_definitions as starter_item_category_definitions;
@@ -24,5 +27,6 @@ pub use definition_id::ItemDefinitionId;
 pub use icon_key::ItemIconKey;
 pub use render_key::ItemRenderKey;
 pub use validation::{
-    ItemValidationError, MAX_ITEM_GRID_DIMENSION, normalize_tags, validate_item_definition,
+    ItemValidationError, MAX_ITEM_GRID_DIMENSION, normalize_tags,
+    validate_item_armor_profile_reference, validate_item_definition,
 };

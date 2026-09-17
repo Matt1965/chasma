@@ -21,7 +21,7 @@ mod navigation_editor;
 mod panel;
 mod pile_harness;
 mod save_window;
-mod scenes;
+pub mod scenes;
 mod selected_object;
 mod settlement_placement;
 mod settlement_window;
@@ -99,7 +99,8 @@ pub use save_window::{
 };
 pub use scenes::{
     DEV_SCENES_DIR, SceneApplyReport, SceneCaptureContext, SceneDebugFlagsSnapshot, SceneRegistry,
-    SceneRegistryEntry, apply_scene, capture_scene, clear_world_entities,
+    SceneRegistryEntry, apply_scene, capture_inventory_persistence, capture_scene,
+    clear_world_entities, restore_inventory_persistence,
 };
 pub use settlement_window::{
     handle_settlement_add_units_button, handle_settlement_ai_toggle, setup_settlement_window_panel,
@@ -150,6 +151,7 @@ use panel::{
 };
 use selected_object::{
     BuildingActionUiCache, SelectedObjectUiState, handle_selected_object_actions,
+    handle_selected_object_edit_unit,
     setup_selected_object_panel, sync_building_dev_action_sections, sync_selected_object_panel,
 };
 use terrain_field::{
@@ -391,6 +393,10 @@ impl Plugin for DevModePlugin {
             handle_selected_object_actions
                 .after(handle_gizmo_keyboard)
                 .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            handle_selected_object_edit_unit.in_set(DevModeInputSystems),
         )
         .add_systems(
             Update,

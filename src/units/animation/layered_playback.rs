@@ -42,6 +42,7 @@ pub fn resolve_layered_playback_targets(
     weapon: Option<&WeaponDefinition>,
     profile: &AnimationProfile,
     settings: &UnitAnimationSettings,
+    use_alternate_attack_variant: bool,
 ) -> LayeredPlaybackTargets {
     if !matches!(intent.override_mode, FullBodyOverride::None) {
         return LayeredPlaybackTargets {
@@ -51,7 +52,13 @@ pub fn resolve_layered_playback_targets(
     }
 
     let lower = resolve_lower_target(&intent.lower, built);
-    let upper = resolve_upper_target(&intent.upper, built, weapon, mode);
+    let upper = resolve_upper_target(
+        &intent.upper,
+        built,
+        weapon,
+        mode,
+        use_alternate_attack_variant,
+    );
 
     if mode == UnitAnimationLayeringMode::Masked && intent.uses_masked_layers() {
         return LayeredPlaybackTargets {
@@ -132,6 +139,28 @@ fn resolve_full_body_override(
                 freeze_pose: false,
             })
         }
+        FullBodyOverride::CombatIdle { weapon_id, blend } => {
+            let node = built
+                .combat_idle_nodes
+                .get(weapon_id)
+                .or(built.idle_fallback_node.as_ref())
+                .copied()?;
+            let duration = built
+                .combat_idle_durations
+                .get(weapon_id)
+                .or_else(|| built.locomotion_durations.get(&AnimationClipKey::Idle))
+                .copied()
+                .unwrap_or(1.0);
+            Some(LayerClipTarget {
+                clip: AnimationPlaybackClip::CombatIdle(weapon_id.clone()),
+                node,
+                duration,
+                speed: 1.0,
+                blend: *blend,
+                looping: true,
+                freeze_pose: false,
+            })
+        }
     }
 }
 
@@ -180,6 +209,7 @@ fn resolve_upper_target(
     built: &DefinitionAnimationGraph,
     weapon: Option<&WeaponDefinition>,
     mode: UnitAnimationLayeringMode,
+    use_alternate_attack_variant: bool,
 ) -> Option<LayerClipTarget> {
     let UpperBodyIntent::Attack {
         weapon_id, blend, ..
@@ -188,27 +218,40 @@ fn resolve_upper_target(
         return None;
     };
     let weapon = weapon?;
+    let variant_node = use_alternate_attack_variant
+        && built.attack_variant_nodes.contains_key(weapon_id);
     let node = if mode == UnitAnimationLayeringMode::Masked {
-        *built.attack_nodes.get(weapon_id)?
+        if variant_node {
+            *built.attack_variant_nodes.get(weapon_id)?
+        } else {
+            *built.attack_nodes.get(weapon_id)?
+        }
     } else {
-        built
-            .attack_nodes
-            .get(weapon_id)
-            .or(built.idle_fallback_node.as_ref())
-            .copied()?
-    };
-    let _ = resolve_attack_clip_name(weapon);
-    let duration = built
-        .attack_durations
-        .get(weapon_id)
-        .copied()
-        .or_else(|| {
+        if variant_node {
             built
-                .locomotion_durations
-                .get(&AnimationClipKey::Idle)
-                .copied()
-        })
-        .unwrap_or(1.0);
+                .attack_variant_nodes
+                .get(weapon_id)
+                .or(built.idle_fallback_node.as_ref())
+                .copied()?
+        } else {
+            built
+                .attack_nodes
+                .get(weapon_id)
+                .or(built.idle_fallback_node.as_ref())
+                .copied()?
+        }
+    };
+    let _ = resolve_attack_clip_name(weapon, use_alternate_attack_variant);
+    let duration = if variant_node {
+        built
+            .attack_variant_durations
+            .get(weapon_id)
+            .copied()
+    } else {
+        built.attack_durations.get(weapon_id).copied()
+    }
+    .or_else(|| built.locomotion_durations.get(&AnimationClipKey::Idle).copied())
+    .unwrap_or(1.0);
     let speed = attack_intent_speed(weapon, duration);
     Some(LayerClipTarget {
         clip: AnimationPlaybackClip::Attack(weapon_id.clone()),
@@ -276,14 +319,17 @@ mod tests {
         let share_key = crate::units::animation::AnimationGraphShareKey {
             profile_id: AnimationProfileId::new("humanoid"),
             gltf_asset_path: "units/test.glb".to_string(),
-            default_weapon_id: WeaponDefinitionId::new("weapon_test"),
         };
         DefinitionAnimationGraph {
             graph: Handle::default(),
             locomotion_nodes: Default::default(),
             attack_nodes: Default::default(),
+            attack_variant_nodes: Default::default(),
+            combat_idle_nodes: Default::default(),
             locomotion_durations: Default::default(),
             attack_durations: Default::default(),
+            attack_variant_durations: Default::default(),
+            combat_idle_durations: Default::default(),
             death_node: None,
             death_duration: None,
             hit_reaction_node: None,
@@ -353,6 +399,7 @@ mod tests {
                 true,
             ),
             &UnitAnimationSettings::default(),
+            false,
         );
         assert_eq!(targets.lower.as_ref().map(|t| t.node), Some(walk_node));
         assert!(targets.upper.is_none());

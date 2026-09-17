@@ -8,6 +8,7 @@
 //! `world/obstacle/` — not under this module.
 
 pub mod animation_profile;
+pub mod appearance;
 mod attack_cycle;
 mod authoring;
 mod catalog;
@@ -34,6 +35,8 @@ pub(crate) mod post_exit_jitter_trace;
 mod query;
 mod record;
 mod removal;
+#[cfg(test)]
+mod removal_tests;
 #[cfg(any(test, feature = "dev"))]
 mod restore;
 mod self_maintenance;
@@ -50,6 +53,17 @@ pub use animation_profile::starter_definitions as starter_animation_profile_defi
 pub use animation_profile::{
     AnimationClipKey, AnimationProfile, AnimationProfileCatalog, AnimationProfileCatalogError,
     AnimationProfileId,
+};
+pub use appearance::{
+    AppearanceError, AppearanceParamId, AppearanceParameterDefinition, AppearanceProfile,
+    AppearanceProfileCatalog, AppearanceProfileCatalogError, AppearanceProfileId,
+    BodyVariantDefinition, BodyVariantId, CG2_MORPH_SEMANTIC_PARAMS, HUMAN_MORPH_TARGET_NAMES,
+    MorphMappingSide, MorphResolveError, MorphTargetMapping, UnitAppearance,
+    definition_has_appearance_support, effective_render_key_for_appearance,
+    effective_unit_render_key, effective_unit_render_key_str,
+    resolve_canonical_default_appearance, resolve_equipment_morph_weights, resolve_morph_weights,
+    validate_profile_morph_mappings,
+    validate_unit_appearance,
 };
 pub use attack_cycle::{AttackCycle, AttackPhase};
 pub use authoring::{
@@ -130,10 +144,11 @@ pub use restore::{
 };
 pub use self_maintenance::{
     HungerStage, NutritionProfile, SelfMaintenanceActivity, SelfMaintenanceContext,
-    UnitNutritionState, UnitSelfMaintenanceState, apply_nutrition_decay, evaluate_hunger_stage,
-    hunger_prevents_work_claim, hunger_stage_label, initialize_unit_nutrition,
-    step_unit_nutrition_decay, step_unit_self_maintenance_post_movement,
-    step_unit_self_maintenance_pre_work, unit_in_active_combat,
+    UnitNutritionState, UnitSelfMaintenanceState, apply_nutrition_decay, eat_one_from_inventory,
+    evaluate_hunger_stage, hunger_prevents_work_claim, hunger_stage_label,
+    initialize_unit_nutrition, select_food_source, step_unit_nutrition_decay,
+    step_unit_self_maintenance_post_movement, step_unit_self_maintenance_pre_work,
+    unit_in_active_combat,
 };
 pub use source::UnitSource;
 pub use state::UnitState;

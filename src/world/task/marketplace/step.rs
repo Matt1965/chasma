@@ -688,6 +688,7 @@ fn resume_stalled_assignments(
             ctx.world,
             ctx.unit_catalog,
             ctx.weapon_catalog,
+            ctx.inventory_ctx.items,
             ctx.doodad_catalog,
             ctx.nav_config,
             unit_id,

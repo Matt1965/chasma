@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use super::access::InventoryAccessType;
 use super::profile_id::InventoryProfileId;
+use crate::world::equipment::EquipmentSlot;
 
 /// Authoritative description of a fixed-grid inventory container profile (ADR-087 I1).
 ///
@@ -18,6 +19,10 @@ pub struct InventoryProfileDefinition {
     pub global_stack_cap: Option<u32>,
     pub access_type: InventoryAccessType,
     pub enabled: bool,
+    /// Semantic equipment slot when this profile backs a unit equipment inventory.
+    pub equipment_slot: Option<EquipmentSlot>,
+    /// Maximum placed entries allowed in this container. Equipment slots use `1`.
+    pub max_placed_entries: Option<u8>,
 }
 
 impl InventoryProfileDefinition {
@@ -39,6 +44,8 @@ impl InventoryProfileDefinition {
             global_stack_cap: None,
             access_type: InventoryAccessType::default(),
             enabled,
+            equipment_slot: None,
+            max_placed_entries: None,
         }
     }
 
@@ -54,6 +61,16 @@ impl InventoryProfileDefinition {
 
     pub fn with_access_type(mut self, access_type: InventoryAccessType) -> Self {
         self.access_type = access_type;
+        self
+    }
+
+    pub fn with_equipment_slot(mut self, slot: EquipmentSlot) -> Self {
+        self.equipment_slot = Some(slot);
+        self
+    }
+
+    pub fn with_max_placed_entries(mut self, max: u8) -> Self {
+        self.max_placed_entries = Some(max);
         self
     }
 }

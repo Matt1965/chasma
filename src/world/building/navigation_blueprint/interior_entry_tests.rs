@@ -606,6 +606,7 @@ fn level5_robot_enters_one_region_hut_through_entrance() {
 
     let unit_id = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         start,
@@ -672,6 +673,7 @@ fn level6_player_command_path_issues_interior_move_order() {
 
     let unit_id = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         start,
@@ -712,6 +714,7 @@ fn level6_player_command_path_issues_interior_move_order() {
         &selected,
         &unit_catalog,
         &weapon_catalog,
+        &crate::world::ItemCatalog::default(),
         &doodad_catalog,
         &NavigationConfig::default(),
         target,
@@ -778,6 +781,7 @@ fn surface_unit_near_interior_goal_xz_still_requires_portal() {
 
     let unit_id = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         near_surface,
@@ -936,6 +940,7 @@ fn place_interior_unit(
     let position = local_xz_to_world(world, building_id, local_xz, floor_y);
     let unit_id = create_unit_with_ownership(
         unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         world,
         &UnitDefinitionId::new("wolf"),
         position,
@@ -965,6 +970,7 @@ fn issue_player_move(
         selected,
         unit_catalog,
         weapon_catalog,
+        &crate::world::ItemCatalog::default(),
         doodad_catalog,
         &NavigationConfig::default(),
         target,
@@ -1144,6 +1150,7 @@ fn player_command_interior_footprint_cross_and_boundary_enforcement() {
         &selected,
         &unit_catalog,
         &weapon_catalog,
+        &crate::world::ItemCatalog::default(),
         &doodad_catalog,
         &NavigationConfig::default(),
         outside_click,

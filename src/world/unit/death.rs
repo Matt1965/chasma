@@ -143,6 +143,12 @@ pub enum UnitRemovalError {
         inventory_id: crate::world::InventoryId,
         error: crate::world::CorpseError,
     },
+    InventoryCleanupFailed {
+        unit_id: UnitId,
+        error: crate::world::inventory::InventoryError,
+    },
+    /// Equipped items could not transition to corpse loot (Slice 6).
+    EquipmentDispositionUnresolved { unit_id: UnitId },
 }
 
 /// Death pipeline: detect → mark dead → queue → target cleanup → remove.
@@ -403,8 +409,7 @@ mod tests {
 
     fn spawn_player(world: &mut WorldData, catalog: &UnitCatalog, x: f32, z: f32) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,
@@ -416,8 +421,7 @@ mod tests {
 
     fn spawn_hostile(world: &mut WorldData, catalog: &UnitCatalog, x: f32, z: f32) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,
@@ -484,6 +488,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &crate::world::DoodadCatalog::default(),
             &crate::world::NavigationConfig::default(),
             player,
@@ -495,6 +500,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &crate::world::NavigationConfig::default(),
             AttackTargetingPolicy::default(),
@@ -505,6 +511,8 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &crate::world::DoodadCatalog::default(),
             &crate::world::NavigationConfig::default(),
             AttackTargetingPolicy::default(),
@@ -542,6 +550,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &crate::world::DoodadCatalog::default(),
             &crate::world::NavigationConfig::default(),
             player,
@@ -575,6 +584,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &crate::world::DoodadCatalog::default(),
             &crate::world::NavigationConfig::default(),
             player,
@@ -639,6 +649,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &crate::world::DoodadCatalog::default(),
             &crate::world::NavigationConfig::default(),
             unit,

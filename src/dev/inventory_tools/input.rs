@@ -400,7 +400,8 @@ mod tests {
         );
         create_unit_with_ownership(
             &unit_catalog,
-            world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        world,
             &UnitDefinitionId::new("wolf"),
             position,
             UnitSource::Dev,

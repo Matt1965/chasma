@@ -4,6 +4,7 @@ use super::{
     InventoryCatalogCtx, InventoryError, InventoryId, InventoryInvariantReport, InventoryOwnerRef,
     resolve_instance_definition, validate_inventory_stores,
 };
+use crate::world::equipment::EquipmentSlot;
 use crate::world::{
     ItemPileInvariantReport, WorldData, validate_item_instance_locations, validate_item_pile_store,
 };
@@ -77,6 +78,35 @@ fn validate_owner_links(world: &WorldData) -> Vec<String> {
                     ));
                 }
             }
+            InventoryOwnerRef::UnitEquipment { unit_id, slot } => {
+                if let Some(unit) = world.get_unit(*unit_id) {
+                    match unit.equipment.as_ref() {
+                        Some(equipment) if equipment.inventory_id(*slot) == inventory_id => {}
+                        _ => {
+                            errors.push(format!(
+                                "unit {unit_id:?} equipment slot {slot:?} does not reference inventory {inventory_id:?}"
+                            ));
+                        }
+                    }
+                } else {
+                    errors.push(format!(
+                        "inventory {inventory_id:?} owned by missing unit equipment {unit_id:?}/{slot:?}"
+                    ));
+                }
+            }
+            InventoryOwnerRef::ItemContainer(instance_id) => {
+                if let Some(instance) = world.item_instance_store().get(*instance_id) {
+                    if instance.contained_inventory_id != Some(inventory_id) {
+                        errors.push(format!(
+                            "container inventory {inventory_id:?} not linked from instance {instance_id:?}"
+                        ));
+                    }
+                } else {
+                    errors.push(format!(
+                        "inventory {inventory_id:?} owned by missing item instance {instance_id:?}"
+                    ));
+                }
+            }
             InventoryOwnerRef::Building(building_id) => {
                 if let Some(building) = world.get_building(*building_id) {
                     if building.inventory_id != Some(inventory_id) {
@@ -103,6 +133,22 @@ fn validate_owner_links(world: &WorldData) -> Vec<String> {
                     ));
                 }
             }
+            InventoryOwnerRef::CorpseEquipment { corpse_id, slot } => {
+                if let Some(corpse) = world.corpse_store().get(*corpse_id) {
+                    match corpse.equipment.as_ref() {
+                        Some(equipment) if equipment.inventory_id(*slot) == inventory_id => {}
+                        _ => {
+                            errors.push(format!(
+                                "corpse {corpse_id:?} equipment slot {slot:?} does not reference inventory {inventory_id:?}"
+                            ));
+                        }
+                    }
+                } else {
+                    errors.push(format!(
+                        "inventory {inventory_id:?} owned by missing corpse equipment {corpse_id:?}/{slot:?}"
+                    ));
+                }
+            }
         }
     }
 
@@ -120,6 +166,50 @@ fn validate_owner_links(world: &WorldData) -> Vec<String> {
                         "unit {unit_id:?} references missing inventory {inventory_id:?}"
                     ));
                 }
+            }
+            if let Some(equipment) = unit.equipment.as_ref() {
+                for slot in EquipmentSlot::ALL {
+                    let inventory_id = equipment.inventory_id(slot);
+                    if let Some(record) = world.inventory_store().get(inventory_id) {
+                        match record.owner() {
+                            InventoryOwnerRef::UnitEquipment {
+                                unit_id: owner_unit,
+                                slot: owner_slot,
+                            } if *owner_unit == unit_id && *owner_slot == slot => {}
+                            _ => {
+                                errors.push(format!(
+                                    "unit {unit_id:?} equipment inventory {inventory_id:?} has mismatched owner"
+                                ));
+                            }
+                        }
+                    } else {
+                        errors.push(format!(
+                            "unit {unit_id:?} references missing equipment inventory {inventory_id:?}"
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    for instance_id in world.item_instance_store().sorted_item_instance_ids() {
+        let Some(instance) = world.item_instance_store().get(instance_id) else {
+            continue;
+        };
+        if let Some(inventory_id) = instance.contained_inventory_id {
+            if let Some(record) = world.inventory_store().get(inventory_id) {
+                if !matches!(
+                    record.owner(),
+                    InventoryOwnerRef::ItemContainer(instance_id)
+                ) {
+                    errors.push(format!(
+                        "instance {instance_id:?} contained inventory {inventory_id:?} has mismatched owner"
+                    ));
+                }
+            } else {
+                errors.push(format!(
+                    "instance {instance_id:?} references missing contained inventory {inventory_id:?}"
+                ));
             }
         }
     }
@@ -155,6 +245,28 @@ fn validate_owner_links(world: &WorldData) -> Vec<String> {
                     errors.push(format!(
                         "corpse {corpse_id:?} references missing inventory {inventory_id:?}"
                     ));
+                }
+            }
+            if let Some(equipment) = corpse.equipment.as_ref() {
+                for slot in EquipmentSlot::ALL {
+                    let inventory_id = equipment.inventory_id(slot);
+                    if let Some(record) = world.inventory_store().get(inventory_id) {
+                        match record.owner() {
+                            InventoryOwnerRef::CorpseEquipment {
+                                corpse_id: owner_corpse,
+                                slot: owner_slot,
+                            } if *owner_corpse == corpse_id && *owner_slot == slot => {}
+                            _ => {
+                                errors.push(format!(
+                                    "corpse {corpse_id:?} equipment inventory {inventory_id:?} has mismatched owner"
+                                ));
+                            }
+                        }
+                    } else {
+                        errors.push(format!(
+                            "corpse {corpse_id:?} references missing equipment inventory {inventory_id:?}"
+                        ));
+                    }
                 }
             }
         }
@@ -225,10 +337,12 @@ mod tests {
     use crate::world::{
         Affiliation, BuildingCatalog, BuildingInteractionProfileCatalog, BuildingOwnership,
         BuildingSource, ChunkCoord, ChunkData, ChunkLayout, Heightfield, InventoryProfileCatalog,
-        ItemCatalog, ItemCategoryCatalog, LocalPosition, SettlementOwnership, UnitCatalog,
-        UnitDefinitionId, UnitOwnership, UnitSource, WorldPosition, create_building,
-        create_settlement_with_treasury, create_unit_with_inventory, physical_gold_item_id,
-        place_stack_first_fit, starter_building_definitions, starter_inventory_profile_definitions,
+        InventoryProfileId, ItemCatalog, ItemCategoryCatalog, ItemCategoryDefinition,
+        ItemCategoryId, ItemDefinition, ItemDefinitionId, LocalPosition, SettlementOwnership,
+        UnitCatalog, UnitDefinitionId, UnitEquipmentInventories, UnitOwnership, UnitSource,
+        WorldPosition, create_building, create_settlement_with_treasury,
+        create_unit_with_inventory, physical_gold_item_id, place_stack_first_fit,
+        starter_building_definitions, starter_inventory_profile_definitions,
         starter_item_category_definitions, starter_item_definitions, starter_unit_definitions,
     };
     use bevy::prelude::{Quat, Vec3};
@@ -254,6 +368,42 @@ mod tests {
         InventoryCatalogCtx::new(items, categories, profiles)
     }
 
+    fn backpack_item_catalog() -> (ItemCategoryCatalog, ItemCatalog, InventoryProfileCatalog) {
+        let categories = ItemCategoryCatalog::from_definitions(vec![ItemCategoryDefinition::new(
+            ItemCategoryId::new("container"),
+            "Container",
+            "",
+            true,
+        )])
+        .unwrap();
+        let items = ItemCatalog::from_definitions(
+            vec![
+                ItemDefinition::new(
+                    ItemDefinitionId::new("test_backpack"),
+                    "Test Backpack",
+                    "",
+                    ItemCategoryId::new("container"),
+                    2,
+                    3,
+                    false,
+                    1,
+                    500,
+                    1,
+                    true,
+                )
+                .with_unique_instance_required(true)
+                .with_equipment_slots(vec![EquipmentSlot::Backpack])
+                .with_backpack_profile_id(InventoryProfileId::new("backpack_basic_internal")),
+            ],
+            &categories,
+        )
+        .unwrap();
+        let profiles =
+            InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
+                .unwrap();
+        (categories, items, profiles)
+    }
+
     #[test]
     fn validate_world_inventory_state_passes_fixture() {
         let categories =
@@ -272,7 +422,8 @@ mod tests {
         let ctx = test_ctx(&items, &categories, &profiles);
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             WorldPosition::new(
                 ChunkCoord::new(0, 0),
@@ -320,5 +471,183 @@ mod tests {
         .unwrap();
         let report = validate_world_inventory_state(&world, &ctx);
         assert!(report.is_ok(), "{report:?}");
+    }
+
+    #[test]
+    fn validate_world_inventory_state_rejects_wrong_equipment_owner_unit() {
+        let categories =
+            ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
+        let items = ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+        let profiles =
+            InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
+                .unwrap();
+        let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+        let mut world = test_world();
+        let ctx = test_ctx(&items, &categories, &profiles);
+        let unit_a = create_unit_with_inventory(
+            &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
+            &UnitDefinitionId::new("bandit"),
+            WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(1.0, 0.0, 1.0)),
+            ),
+            UnitSource::Authored,
+            UnitOwnership::with_affiliation(Affiliation::Player),
+            &ctx,
+        )
+        .unwrap();
+        let unit_b = create_unit_with_inventory(
+            &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
+            &UnitDefinitionId::new("bandit"),
+            WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(3.0, 0.0, 3.0)),
+            ),
+            UnitSource::Authored,
+            UnitOwnership::with_affiliation(Affiliation::Player),
+            &ctx,
+        )
+        .unwrap();
+        let weapon_inventory = unit_a.equipment.unwrap().weapon;
+        world
+            .inventory_store_mut()
+            .get_mut(weapon_inventory)
+            .unwrap()
+            .set_owner(InventoryOwnerRef::UnitEquipment {
+                unit_id: unit_b.id,
+                slot: EquipmentSlot::Weapon,
+            });
+        let report = validate_world_inventory_state(&world, &ctx);
+        assert!(!report.is_ok());
+        assert!(
+            report
+                .link_errors
+                .iter()
+                .any(|error| error.contains("mismatched owner")),
+            "{report:?}"
+        );
+    }
+
+    #[test]
+    fn validate_world_inventory_state_rejects_equipment_slot_id_mismatch() {
+        let categories =
+            ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
+        let items = ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+        let profiles =
+            InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
+                .unwrap();
+        let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+        let mut world = test_world();
+        let ctx = test_ctx(&items, &categories, &profiles);
+        let unit = create_unit_with_inventory(
+            &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
+            &UnitDefinitionId::new("bandit"),
+            WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(1.0, 0.0, 1.0)),
+            ),
+            UnitSource::Authored,
+            UnitOwnership::with_affiliation(Affiliation::Player),
+            &ctx,
+        )
+        .unwrap();
+        let equipment = unit.equipment.unwrap();
+        world.mutate_unit(unit.id, |record| {
+            record.equipment = Some(UnitEquipmentInventories {
+                head: equipment.body,
+                body: equipment.head,
+                arms: equipment.arms,
+                legs: equipment.legs,
+                feet: equipment.feet,
+                weapon: equipment.weapon,
+                offhand: equipment.offhand,
+                backpack: equipment.backpack,
+            });
+        });
+        let report = validate_world_inventory_state(&world, &ctx);
+        assert!(!report.is_ok());
+        assert!(
+            report
+                .link_errors
+                .iter()
+                .any(|error| error.contains("equipment slot Head")),
+            "{report:?}"
+        );
+    }
+
+    #[test]
+    fn validate_world_inventory_state_rejects_container_owner_mismatch() {
+        let (categories, items, profiles) = backpack_item_catalog();
+        let ctx = test_ctx(&items, &categories, &profiles);
+        let mut world = test_world();
+        let backpack_id = {
+            let (inventory_store, instance_store) = world.inventory_runtime_mut();
+            crate::world::create_item_instance(
+                inventory_store,
+                instance_store,
+                &ctx,
+                ItemDefinitionId::new("test_backpack"),
+                Default::default(),
+            )
+            .unwrap()
+        };
+        let internal = world
+            .item_instance_store()
+            .get(backpack_id)
+            .unwrap()
+            .contained_inventory_id
+            .unwrap();
+        world
+            .inventory_store_mut()
+            .get_mut(internal)
+            .unwrap()
+            .set_owner(InventoryOwnerRef::Detached);
+        let report = validate_world_inventory_state(&world, &ctx);
+        assert!(!report.is_ok());
+        assert!(
+            report
+                .link_errors
+                .iter()
+                .any(|error| error.contains("contained inventory") && error.contains("mismatched")),
+            "{report:?}"
+        );
+    }
+
+    #[test]
+    fn validate_world_inventory_state_rejects_missing_container_backlink() {
+        let (categories, items, profiles) = backpack_item_catalog();
+        let ctx = test_ctx(&items, &categories, &profiles);
+        let mut world = test_world();
+        let backpack_id = {
+            let (inventory_store, instance_store) = world.inventory_runtime_mut();
+            crate::world::create_item_instance(
+                inventory_store,
+                instance_store,
+                &ctx,
+                ItemDefinitionId::new("test_backpack"),
+                Default::default(),
+            )
+            .unwrap()
+        };
+        world
+            .item_instance_store_mut()
+            .get_mut(backpack_id)
+            .unwrap()
+            .contained_inventory_id = None;
+        let report = validate_world_inventory_state(&world, &ctx);
+        assert!(!report.is_ok());
+        assert!(
+            report
+                .link_errors
+                .iter()
+                .any(|error| error.contains("not linked from instance")),
+            "{report:?}"
+        );
     }
 }

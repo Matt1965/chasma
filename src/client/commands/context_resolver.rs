@@ -19,6 +19,7 @@ pub struct CommandResolutionContext<'a> {
     pub world: &'a WorldData,
     pub unit_catalog: &'a UnitCatalog,
     pub weapon_catalog: &'a WeaponCatalog,
+    pub item_catalog: &'a crate::world::ItemCatalog,
     pub authored_relationships: &'a crate::world::AuthoredRelationshipCatalog,
     pub targeting_policy: AttackTargetingPolicy,
 }
@@ -105,6 +106,7 @@ pub fn resolve_contextual_command_with_armed(
                 *unit_id,
                 ctx.weapon_catalog,
                 ctx.unit_catalog,
+                ctx.item_catalog,
                 ctx.targeting_policy,
             ) {
                 Some(ContextualCommandIntent {
@@ -129,6 +131,7 @@ fn any_selected_can_explicit_attack(ctx: &CommandResolutionContext<'_>, target: 
             target,
             ctx.weapon_catalog,
             ctx.unit_catalog,
+            ctx.item_catalog,
             ctx.targeting_policy,
         )
     })
@@ -204,6 +207,7 @@ mod tests {
         world: &'a WorldData,
         unit_catalog: &'a UnitCatalog,
         weapon_catalog: &'a WeaponCatalog,
+        item_catalog: &'a crate::world::ItemCatalog,
         authored: &'a crate::world::AuthoredRelationshipCatalog,
     ) -> CommandResolutionContext<'a> {
         CommandResolutionContext {
@@ -212,6 +216,7 @@ mod tests {
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             authored_relationships: authored,
             targeting_policy: AttackTargetingPolicy::default(),
         }
@@ -227,7 +232,8 @@ mod tests {
         });
         let player = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -237,7 +243,8 @@ mod tests {
         .id;
         let neutral = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("deer"),
             pos(5.0, 5.0),
             UnitSource::Authored,
@@ -251,6 +258,7 @@ mod tests {
             &world,
             &unit_catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &authored(),
         ))
         .unwrap();
@@ -267,7 +275,8 @@ mod tests {
         });
         let player = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -277,7 +286,8 @@ mod tests {
         .id;
         let neutral = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("deer"),
             pos(5.0, 5.0),
             UnitSource::Authored,
@@ -292,6 +302,7 @@ mod tests {
                 &world,
                 &unit_catalog,
                 &weapons,
+                &crate::world::ItemCatalog::default(),
                 &authored(),
             ),
             Some(CommandType::Attack),
@@ -317,6 +328,7 @@ mod tests {
             &world,
             &unit_catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &authored(),
         ))
         .unwrap();
@@ -333,7 +345,8 @@ mod tests {
         });
         let player = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -344,7 +357,8 @@ mod tests {
         patch_player_faction(&mut world, player);
         let hostile = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(5.0, 5.0),
             UnitSource::Authored,
@@ -358,6 +372,7 @@ mod tests {
             &world,
             &unit_catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &player_attack_authored(),
         ))
         .unwrap();
@@ -374,7 +389,8 @@ mod tests {
         });
         let a = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -384,7 +400,8 @@ mod tests {
         .id;
         let b = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(5.0, 5.0),
             UnitSource::Authored,
@@ -398,6 +415,7 @@ mod tests {
             &world,
             &unit_catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &authored(),
         ))
         .unwrap();
@@ -421,6 +439,7 @@ mod tests {
                 &world,
                 &unit_catalog,
                 &weapons,
+                &crate::world::ItemCatalog::default(),
                 &authored(),
             ))
             .is_none()
@@ -445,6 +464,7 @@ mod tests {
                 &world,
                 &unit_catalog,
                 &weapons,
+                &crate::world::ItemCatalog::default(),
                 &authored(),
             ),
             Some(CommandType::Attack),

@@ -16,6 +16,7 @@ pub fn starter_definitions() -> Vec<ItemCategoryDefinition> {
         category("trade_good", "Trade Good", 90),
         category("currency", "Currency", 100),
         category("miscellaneous", "Miscellaneous", 110),
+        category("container", "Container", 120),
     ]
 }
 

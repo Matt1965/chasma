@@ -1,10 +1,11 @@
 //! Edge-to-edge weapon range checks (ADR-057 C4).
 
+use crate::world::equipment::effective_weapon_for_unit;
 use crate::world::navigation::xz_distance;
 #[cfg(test)]
 use crate::world::unit::UnitId;
 use crate::world::unit::{UnitCatalog, UnitOrderError, UnitRecord};
-use crate::world::{WeaponCatalog, WeaponDefinition, WorldData, WorldPosition};
+use crate::world::{ItemCatalog, WeaponCatalog, WeaponDefinition, WorldData, WorldPosition};
 
 /// Extra meters before a unit resumes chasing after leaving attack range.
 pub const RANGE_HYSTERESIS_METERS: f32 = 0.5;
@@ -129,21 +130,13 @@ pub fn is_outside_weapon_range_with_hysteresis(
 }
 
 pub fn weapon_for_unit_record<'a>(
+    world: &WorldData,
     attacker: &UnitRecord,
     unit_catalog: &'a UnitCatalog,
+    item_catalog: &'a ItemCatalog,
     weapon_catalog: &'a WeaponCatalog,
 ) -> Result<&'a WeaponDefinition, UnitOrderError> {
-    let definition = unit_catalog
-        .get(&attacker.definition_id)
-        .ok_or(UnitOrderError::DefinitionNotFound)?;
-    let weapon_id = &definition.default_weapon_id;
-    let weapon = weapon_catalog
-        .get(weapon_id)
-        .ok_or(UnitOrderError::MissingWeapon)?;
-    if !weapon.enabled {
-        return Err(UnitOrderError::MissingWeapon);
-    }
-    Ok(weapon)
+    effective_weapon_for_unit(world, attacker, unit_catalog, item_catalog, weapon_catalog)
 }
 
 #[cfg(test)]
@@ -152,6 +145,7 @@ pub(crate) fn range_check_for_units(
     attacker_id: UnitId,
     target_id: UnitId,
     unit_catalog: &UnitCatalog,
+    item_catalog: &ItemCatalog,
     weapon_catalog: &WeaponCatalog,
 ) -> Result<RangeCheck, UnitOrderError> {
     let attacker = world
@@ -160,7 +154,8 @@ pub(crate) fn range_check_for_units(
     let target = world
         .get_unit(target_id)
         .ok_or(UnitOrderError::TargetNotFound)?;
-    let weapon = weapon_for_unit_record(attacker, unit_catalog, weapon_catalog)?;
+    let weapon =
+        weapon_for_unit_record(world, attacker, unit_catalog, item_catalog, weapon_catalog)?;
     Ok(measure_weapon_range(
         world,
         attacker,
@@ -286,7 +281,8 @@ mod tests {
         let mut world = layout_world();
         let player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("big_a"),
             pos(10.0, 10.0),
             crate::world::UnitSource::Authored,
@@ -296,7 +292,8 @@ mod tests {
         .id;
         let hostile = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("big_b"),
             pos(10.0, 10.0),
             crate::world::UnitSource::Authored,
@@ -304,7 +301,15 @@ mod tests {
         )
         .unwrap()
         .id;
-        let check = range_check_for_units(&world, player, hostile, &catalog, &weapons).unwrap();
+        let check = range_check_for_units(
+            &world,
+            player,
+            hostile,
+            &catalog,
+            &crate::world::ItemCatalog::default(),
+            &weapons,
+        )
+        .unwrap();
         assert!(check.center_distance_meters < f32::EPSILON);
         assert!(check.edge_distance_meters <= 0.0);
         assert_eq!(range_status_from_check(&check), RangeStatus::InRange);

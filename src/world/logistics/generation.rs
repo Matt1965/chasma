@@ -243,6 +243,7 @@ fn generate_for_trigger(
         }
         if !destination_can_fit_stack_quantity(
             world.inventory_store(),
+            world.item_instance_store(),
             world.inventory_reservation_store(),
             inventory_ctx,
             destination,
@@ -384,6 +385,7 @@ pub(crate) fn select_generic_storage_destination(
             .resolve_inventory(building_id, &binding_id)?;
         if !destination_can_fit_stack_quantity(
             world.inventory_store(),
+            world.item_instance_store(),
             world.inventory_reservation_store(),
             inventory_ctx,
             inventory_id,

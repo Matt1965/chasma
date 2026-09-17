@@ -7,7 +7,7 @@ use crate::world::combat::{
 };
 use crate::world::coordinates::{ChunkLayout, WorldPosition};
 use crate::world::is_unit_alive;
-use crate::world::{DoodadCatalog, NavigationConfig, UnitCatalog, WeaponCatalog};
+use crate::world::{DoodadCatalog, ItemCatalog, NavigationConfig, UnitCatalog, WeaponCatalog};
 
 use super::id::ProjectileId;
 use super::record::{ProjectileRecord, ProjectileStatus};
@@ -24,6 +24,8 @@ pub fn step_all_projectiles(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
+    armor_catalog: &crate::world::ArmorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -44,6 +46,8 @@ pub fn step_all_projectiles(
             layout,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
+            armor_catalog,
             doodad_catalog,
             nav_config,
             targeting_policy,
@@ -60,6 +64,8 @@ fn step_projectile(
     layout: ChunkLayout,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
+    armor_catalog: &crate::world::ArmorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -114,6 +120,8 @@ fn step_projectile(
             target_position,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
+            armor_catalog,
             doodad_catalog,
             nav_config,
             targeting_policy,
@@ -137,6 +145,8 @@ fn resolve_projectile_impact(
     target_position: WorldPosition,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
+    armor_catalog: &crate::world::ArmorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -167,14 +177,15 @@ fn resolve_projectile_impact(
         .get_unit(record.target_unit_id)
         .map(|unit| unit.vitals.current_hp)
         .unwrap_or(0);
-    let damage = record.damage.max(0.0) as u32;
     let vitals = match apply_attributed_combat_damage(
         world,
         record.target_unit_id,
         record.source_unit_id,
-        damage,
+        record.damage,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
+        armor_catalog,
         doodad_catalog,
         nav_config,
         targeting_policy,
@@ -192,11 +203,12 @@ fn resolve_projectile_impact(
             return;
         }
     };
+    let applied_damage = hp_before.saturating_sub(vitals.current_hp);
     world.record_kill_attribution(record.target_unit_id, record.source_unit_id, hp_before);
 
     report.push(trace(ProjectileEvent::Hit));
     report.push(trace(ProjectileEvent::DamageApplied {
-        damage: record.damage,
+        damage: applied_damage as f32,
         target_hp_before: hp_before,
         target_hp_after: vitals.current_hp,
     }));
@@ -341,8 +353,7 @@ mod tests {
         z: f32,
     ) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,
@@ -359,8 +370,7 @@ mod tests {
         z: f32,
     ) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,
@@ -381,6 +391,8 @@ mod tests {
             world,
             catalog,
             weapons,
+            &ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
@@ -400,6 +412,8 @@ mod tests {
             world,
             catalog,
             weapons,
+            &ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
@@ -435,6 +449,7 @@ mod tests {
             world,
             catalog,
             weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -446,6 +461,7 @@ mod tests {
             world,
             catalog,
             weapons,
+            &ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -496,8 +512,7 @@ mod tests {
         z: f32,
     ) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("deer"),
             pos(x, z),
             UnitSource::Authored,
@@ -520,6 +535,7 @@ mod tests {
             world,
             catalog,
             weapons,
+            &ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -540,6 +556,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -551,6 +568,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -574,6 +592,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -585,6 +604,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -618,6 +638,7 @@ mod tests {
                 world,
                 &catalog,
                 &weapons,
+                &crate::world::ItemCatalog::default(),
                 &DoodadCatalog::default(),
                 &NavigationConfig::default(),
                 player,
@@ -629,6 +650,7 @@ mod tests {
                 world,
                 &catalog,
                 &weapons,
+                &crate::world::ItemCatalog::default(),
                 default_passability(),
                 &NavigationConfig::default(),
                 policy(),
@@ -657,6 +679,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -668,6 +691,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -706,6 +730,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -717,6 +742,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -768,6 +794,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -779,6 +806,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -805,6 +833,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -816,6 +845,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -843,6 +873,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -854,6 +885,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -1062,6 +1094,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -1089,6 +1122,7 @@ mod tests {
                 &InteriorProfileCatalog::default(),
                 None,
                 &crate::world::ItemCatalog::default(),
+                &crate::world::ArmorProfileCatalog::default(),
                 &crate::world::ItemCategoryCatalog::default(),
                 &crate::world::InventoryProfileCatalog::default(),
                 &crate::world::CorpseSettings::default(),

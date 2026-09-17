@@ -537,6 +537,7 @@ fn hud_snapshot_follows_world_selection_state() {
     let catalog = UnitCatalog::default();
     let unit_id = create_unit(
         &catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         pos(1.0, 1.0),
@@ -557,6 +558,7 @@ fn hud_snapshot_follows_world_selection_state() {
         &catalog,
         &BuildingCatalog::default(),
         &WeaponCatalog::from_definitions(starter_weapon_definitions()).unwrap(),
+        &crate::world::ItemCatalog::default(),
     );
     assert_eq!(snapshot.primary_unit, Some(unit_id));
     assert!(snapshot.lines.join("\n").contains("Wolf"));
@@ -568,6 +570,7 @@ fn selected_unit_snapshot_uses_live_hp_values() {
     let catalog = UnitCatalog::default();
     let unit_id = create_unit(
         &catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         pos(1.0, 1.0),
@@ -587,6 +590,7 @@ fn selected_unit_snapshot_uses_live_hp_values() {
         &catalog,
         &BuildingCatalog::default(),
         &WeaponCatalog::from_definitions(starter_weapon_definitions()).unwrap(),
+        &crate::world::ItemCatalog::default(),
     )
     .lines
     .join("\n");
@@ -633,6 +637,7 @@ fn building_selection_snapshot_still_works() {
         &UnitCatalog::default(),
         &BuildingCatalog::default(),
         &WeaponCatalog::from_definitions(starter_weapon_definitions()).unwrap(),
+        &crate::world::ItemCatalog::default(),
     )
     .lines
     .join("\n");
@@ -646,6 +651,7 @@ fn owned_roster_is_dynamic_not_hardcoded() {
     let mut world = flat_world();
     let a = create_unit_with_ownership(
         &catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         pos(1.0, 1.0),
@@ -656,6 +662,7 @@ fn owned_roster_is_dynamic_not_hardcoded() {
     .id;
     let b = create_unit_with_ownership(
         &catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         pos(2.0, 2.0),
@@ -677,7 +684,8 @@ fn roster_has_no_twelve_unit_cap() {
     for i in 0..20 {
         create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(i as f32, 0.0),
             UnitSource::Authored,

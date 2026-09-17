@@ -66,6 +66,7 @@ pub fn reserve_destination_capacity(
     inventory_id: InventoryId,
     quantity: u32,
     inventory_store: &crate::world::InventoryStore,
+    instance_store: &crate::world::ItemInstanceStore,
     inventory_ctx: &InventoryCatalogCtx<'_>,
     item_id: &ItemDefinitionId,
 ) -> Result<(), HaulingBlockingReason> {
@@ -74,6 +75,7 @@ pub fn reserve_destination_capacity(
     }
     if !can_accept_quantity(
         inventory_store,
+        instance_store,
         reservations,
         inventory_ctx,
         inventory_id,
@@ -137,6 +139,7 @@ pub fn release_request_reservations(
 /// Whether a destination inventory can physically fit `quantity` more of `item_id`.
 pub fn destination_can_fit_stack_quantity(
     inventory_store: &crate::world::InventoryStore,
+    instance_store: &crate::world::ItemInstanceStore,
     reservations: &InventoryReservationStore,
     inventory_ctx: &InventoryCatalogCtx<'_>,
     inventory_id: InventoryId,
@@ -145,6 +148,7 @@ pub fn destination_can_fit_stack_quantity(
 ) -> bool {
     can_accept_quantity(
         inventory_store,
+        instance_store,
         reservations,
         inventory_ctx,
         inventory_id,
@@ -155,6 +159,7 @@ pub fn destination_can_fit_stack_quantity(
 
 fn can_accept_quantity(
     inventory_store: &crate::world::InventoryStore,
+    instance_store: &crate::world::ItemInstanceStore,
     reservations: &InventoryReservationStore,
     inventory_ctx: &InventoryCatalogCtx<'_>,
     inventory_id: InventoryId,
@@ -173,5 +178,11 @@ fn can_accept_quantity(
         return false;
     }
     let mut sim = record.clone();
-    simulate_place_stack_merge_then_first_fit(&mut sim, inventory_ctx, item_id, quantity)
+    simulate_place_stack_merge_then_first_fit(
+        &mut sim,
+        instance_store,
+        inventory_ctx,
+        item_id,
+        quantity,
+    )
 }

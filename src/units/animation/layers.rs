@@ -8,13 +8,14 @@ use bevy::prelude::Reflect;
 
 use crate::world::{
     AnimationClipKey, AnimationProfile, AttackPhase, ChunkLayout, UnitDefinition, UnitRecord,
-    UnitState, WeaponDefinition,
+    UnitState, WeaponDefinition, unit_in_active_combat,
 };
 
 use super::components::DeathPresentation;
 use super::locomotion_polish::LocomotionPresentationState;
 use super::settings::UnitAnimationSettings;
 use super::sync_timing::is_attack_animation_phase;
+use super::work_presentation::{WorkPresentationContext, working_locomotion_clip};
 
 /// Mask group ids used in [`AnimationGraph`] mask bitfields (A4).
 pub mod mask_groups {
@@ -93,6 +94,11 @@ pub enum FullBodyOverride {
     HitReaction {
         blend: Duration,
     },
+    /// Engaged weapon combat stance (e.g. Sword_Idle) — not everyday idle.
+    CombatIdle {
+        weapon_id: crate::world::WeaponDefinitionId,
+        blend: Duration,
+    },
 }
 
 /// Composite presentation intent across animation layers (A4).
@@ -128,6 +134,7 @@ pub fn derive_layered_animation_intent(
     delta_seconds: f32,
     hit_reaction_requested: bool,
     hit_reaction_active: bool,
+    work_ctx: Option<&WorkPresentationContext<'_>>,
 ) -> Option<UnitLayeredAnimationIntent> {
     if !profile.enabled {
         return None;
@@ -173,6 +180,26 @@ pub fn derive_layered_animation_intent(
         });
     }
 
+    if !matches!(upper, UpperBodyIntent::Attack { .. })
+        && unit_in_active_combat(&record.combat_state)
+        && weapon
+            .combat_idle_clip
+            .as_ref()
+            .is_some_and(|clip| !clip.is_empty())
+        && matches!(record.state, UnitState::Idle)
+    {
+        return Some(UnitLayeredAnimationIntent {
+            lower: LowerBodyIntent::Suppressed,
+            upper: UpperBodyIntent::None,
+            overlay: OverlayIntent::None,
+            override_mode: FullBodyOverride::CombatIdle {
+                weapon_id: weapon.id.clone(),
+                blend: Duration::from_millis(profile.death_blend_ms as u64),
+            },
+        });
+    }
+
+    let work_clip = working_locomotion_clip(record, profile, work_ctx);
     let lower = super::locomotion_polish::resolve_polished_lower_body(
         record,
         definition,
@@ -181,6 +208,7 @@ pub fn derive_layered_animation_intent(
         layout,
         locomotion,
         delta_seconds,
+        work_clip,
     )?;
 
     Some(UnitLayeredAnimationIntent {
@@ -328,8 +356,10 @@ mod tests {
             reactive_combat_target: None,
             current_space_id: Default::default(),
             inventory_id: None,
+            equipment: None,
             settlement_id: None,
             work_skills: Default::default(),
+            appearance: None,
         }
     }
 
@@ -369,6 +399,7 @@ mod tests {
             0.016,
             hit_requested,
             hit_active,
+            None,
         )
         .unwrap()
     }
@@ -527,6 +558,7 @@ mod tests {
             0.016,
             false,
             false,
+            None,
         );
         assert!(record.attack_cycle.is_some());
     }

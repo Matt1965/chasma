@@ -1530,8 +1530,7 @@ mod tests {
 
     fn spawn_wolf(world: &mut WorldData, catalog: &UnitCatalog, position: WorldPosition) -> UnitId {
         create_unit(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             position,
             UnitSource::Authored,
@@ -1574,6 +1573,7 @@ mod tests {
             world,
             catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             doodad_catalog,
             &nav_config(),
             unit_id,
@@ -2049,7 +2049,8 @@ mod tests {
         );
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("goat"),
             pos(0, 0, 100.0, 0.0, 128.0),
             UnitSource::Authored,
@@ -2462,6 +2463,7 @@ mod tests {
                 &mut world,
                 &catalog,
                 &crate::world::WeaponCatalog::default(),
+                &crate::world::ItemCatalog::default(),
                 &doodad_catalog,
                 &nav,
                 assignment.unit_id,
@@ -2584,6 +2586,7 @@ mod tests {
             &mut world,
             &catalog,
             &crate::world::WeaponCatalog::default(),
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config(),
             unit_id,
@@ -2694,7 +2697,8 @@ mod tests {
         );
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("goat"),
             pos(0, 0, 100.0, 0.0, 128.0),
             UnitSource::Authored,

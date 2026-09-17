@@ -84,6 +84,13 @@ pub fn remove_owned_inventory(
     let mut destroyed_instance_ids = Vec::new();
     for entry in record.placed_entries() {
         if let super::entry::InventoryEntryContents::Unique { item_instance_id } = &entry.contents {
+            if instance_store.get(*item_instance_id).is_some() {
+                crate::world::equipment::release_container_inventory_if_empty(
+                    inventory_store,
+                    instance_store,
+                    *item_instance_id,
+                )?;
+            }
             if instance_store.remove(*item_instance_id).is_some() {
                 destroyed_instance_ids.push(*item_instance_id);
             }

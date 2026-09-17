@@ -10,7 +10,9 @@ use super::self_maintenance::{UnitNutritionState, UnitSelfMaintenanceState};
 use super::source::UnitSource;
 use super::state::UnitState;
 use super::vitals::UnitVitals;
+use super::appearance::UnitAppearance;
 use super::work_skill::UnitWorkSkillState;
+use crate::world::equipment::UnitEquipmentInventories;
 use crate::world::ownership::{Affiliation, OwnerId, TeamId, UnitOwnership};
 use crate::world::relationship::{FactionId, SpeciesId};
 use crate::world::settlement::SettlementId;
@@ -52,10 +54,14 @@ pub struct UnitRecord {
     pub reactive_combat_target: Option<UnitId>,
     /// Centralized inventory reference when unit definition has a profile (ADR-089 I3).
     pub inventory_id: Option<crate::world::InventoryId>,
+    /// Semantic equipment-slot inventories (Slice 1).
+    pub equipment: Option<UnitEquipmentInventories>,
     /// Explicit settlement membership (ADR-133 Phase 2). None = not a member.
     pub settlement_id: Option<SettlementId>,
     /// Individual work skill progression (per-unit overrides).
     pub work_skills: UnitWorkSkillState,
+    /// Persisted visual appearance (CG1). Required when definition has appearance support.
+    pub appearance: Option<UnitAppearance>,
 }
 
 impl UnitRecord {
@@ -89,8 +95,10 @@ impl UnitRecord {
             attack_cycle: None,
             reactive_combat_target: None,
             inventory_id: None,
+            equipment: None,
             settlement_id: None,
             work_skills: UnitWorkSkillState::default(),
+            appearance: None,
         }
     }
 

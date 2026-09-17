@@ -72,8 +72,7 @@ fn spawn_worker(
     at: WorldPosition,
 ) -> crate::world::UnitId {
     create_unit_with_ownership(
-        catalog,
-        world,
+        catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
         &UnitDefinitionId::new("test_worker"),
         at,
         UnitSource::Authored,

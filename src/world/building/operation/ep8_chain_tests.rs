@@ -186,7 +186,8 @@ impl ChainFixture {
     fn worker(&mut self, position: WorldPosition) -> crate::world::UnitId {
         create_unit_with_inventory(
             &self.unit_catalog,
-            &mut self.world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut self.world,
             &UnitDefinitionId::new("bandit"),
             position,
             UnitSource::Authored,
@@ -457,11 +458,10 @@ fn delivered_ore_enables_smelting_after_haul() {
     )
     .unwrap();
     let worker = fixture.worker(pos(64.0, 64.0));
-    let worker_inventory = fixture
-        .world
-        .get_unit(worker)
-        .and_then(|unit| unit.inventory_id)
-        .expect("worker inventory");
+    let worker_cargo = {
+        let unit = fixture.world.get_unit(worker).expect("worker");
+        crate::world::worker_cargo_inventories(&fixture.world, unit).expect("worker cargo")
+    };
     fixture.world.mutate_building(fixture.chest_id, |b| {
         b.placement.position = pos(64.0, 64.0);
     });
@@ -472,7 +472,7 @@ fn delivered_ore_enables_smelting_after_haul() {
     crate::world::pickup_haul_cargo(
         &mut fixture.world,
         request_id,
-        worker_inventory,
+        &worker_cargo,
         4,
         test_inventory_ctx(),
     )
@@ -480,7 +480,7 @@ fn delivered_ore_enables_smelting_after_haul() {
     crate::world::deposit_haul_cargo(
         &mut fixture.world,
         request_id,
-        worker_inventory,
+        &worker_cargo,
         4,
         test_inventory_ctx(),
     )

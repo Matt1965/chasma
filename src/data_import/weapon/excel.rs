@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use super::schema::{REQUIRED_COLUMNS, WeaponImportRow};
 use crate::data_import::error::{DataImportError, RowImportError};
 use crate::data_import::schema::parse_enabled_cell;
-use crate::world::{AttackPlaybackPolicy, DamageType, HitMode, TargetFilter};
+use crate::world::{AttackPlaybackPolicy, DamageType, HitMode, TargetFilter, WeaponAnimationFamily};
 
 pub const WEAPONS_SHEET_NAME: &str = "Weapons";
 
@@ -128,6 +128,12 @@ fn parse_row(
         .map(|v| v.round().max(0.0) as u32)
         .unwrap_or(super::schema::DEFAULT_ATTACK_BLEND_MS);
     let attack_variant = optional_text("Attack Variant");
+    let animation_family = optional_text("Animation Family")
+        .map(|raw| WeaponAnimationFamily::parse(&raw))
+        .transpose()
+        .map_err(|message| format!("Animation Family: {message}"))?
+        .unwrap_or_default();
+    let combat_idle_clip = optional_text("Combat Idle Clip");
     let attack_playback_policy = optional_text("Attack Playback Policy")
         .map(|raw| AttackPlaybackPolicy::parse(&raw))
         .transpose()
@@ -154,6 +160,8 @@ fn parse_row(
         attack_blend_in_ms,
         attack_blend_out_ms,
         attack_variant,
+        animation_family,
+        combat_idle_clip,
         target_filters,
         stat_scaling,
         enabled,

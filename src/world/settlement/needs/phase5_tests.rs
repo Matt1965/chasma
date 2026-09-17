@@ -225,7 +225,8 @@ impl Phase5Fixture {
     ) -> crate::world::UnitId {
         let unit = create_unit_with_inventory(
             &self.unit_catalog,
-            &mut self.world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut self.world,
             &UnitDefinitionId::new("bandit"),
             pos(x, z),
             UnitSource::Authored,
@@ -403,6 +404,7 @@ fn non_member_does_not_increase_food_desired() {
     let mut fx = Phase5Fixture::new();
     let unit = create_unit_with_inventory(
         &fx.unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut fx.world,
         &UnitDefinitionId::new("bandit"),
         pos(5.0, 5.0),

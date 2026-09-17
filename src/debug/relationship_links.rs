@@ -192,8 +192,7 @@ mod tests {
 
     fn wild_unit(world: &mut WorldData, catalog: &UnitCatalog, id_offset: u64) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("scout"),
             pos(id_offset as f32 * 4.0, 0.0),
             UnitSource::Authored,
@@ -205,8 +204,7 @@ mod tests {
 
     fn player_unit(world: &mut WorldData, catalog: &UnitCatalog, x: f32) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("player_scout"),
             pos(x, 0.0),
             UnitSource::Authored,
@@ -443,7 +441,8 @@ mod tests {
         wild_unit(&mut world, &catalog, 0);
         create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("scout"),
             WorldPosition::new(
                 ChunkCoord::new(5, 0),

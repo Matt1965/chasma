@@ -132,6 +132,7 @@ pub fn execute_batch_spawn(
     definition_key: &str,
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
@@ -155,6 +156,7 @@ pub fn execute_batch_spawn(
         let outcome = spawn_at(
             world,
             unit_catalog,
+            appearance_profiles,
             doodad_catalog,
             building_catalog,
             footprint_catalog,
@@ -180,6 +182,7 @@ pub fn execute_batch_spawn(
 fn spawn_at(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
@@ -195,6 +198,7 @@ fn spawn_at(
     match definition {
         DefinitionId::Unit(definition_id) => create_unit_with_inventory(
             unit_catalog,
+            appearance_profiles,
             world,
             definition_id,
             position,
@@ -356,6 +360,7 @@ mod tests {
             "wolf",
             &mut world,
             &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &doodad_catalog,
             &building_catalog,
             &footprint_catalog,
@@ -491,6 +496,7 @@ mod tests {
             "storage_chest",
             &mut world,
             &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
             &doodad_catalog,
             &building_catalog,
             &footprint_catalog,

@@ -412,7 +412,7 @@ fn resolve_eating_source(
                 *inventory_id,
                 unit.placement.position,
                 ctx.world.layout(),
-                super::food::active_haul_cargo_item(ctx.world, unit_id).as_ref(),
+                None,
             )
         }
         FoodSourceRef::SettlementStorage {

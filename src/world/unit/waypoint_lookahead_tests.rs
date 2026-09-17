@@ -88,8 +88,7 @@ fn spawn_moving_unit(
     target: WorldPosition,
 ) -> UnitId {
     let unit_id = create_unit(
-        catalog,
-        world,
+        catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
         &UnitDefinitionId::new("robot"),
         position,
         UnitSource::Authored,

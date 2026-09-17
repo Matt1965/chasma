@@ -43,6 +43,8 @@ mod tests {
 
     fn base_row() -> AnimationProfileImportRow {
         AnimationProfileImportRow {
+            work_animation: String::new(),
+            has_work_animation_column: false,
             row_number: 2,
             profile_id: "humanoid".to_string(),
             idle_animation: "Idle".to_string(),

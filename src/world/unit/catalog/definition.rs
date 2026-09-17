@@ -7,6 +7,7 @@ use crate::world::asset_sizing::AssetSizingDefinition;
 use crate::world::perception::DEFAULT_SIGHT_RANGE_METERS;
 use crate::world::relationship::{FactionId, SpeciesId};
 use crate::world::unit::animation_profile::AnimationProfileId;
+use crate::world::{AppearanceProfileId, BodyVariantId};
 use crate::world::weapon::WeaponDefinitionId;
 
 /// Default presentation yaw rate when the Units sheet omits `Turn Speed Deg/s` (UNIT-TURN-1).
@@ -72,6 +73,10 @@ pub struct UnitDefinition {
     pub render_key: UnitRenderKey,
     /// Optional locomotion animation profile (A1). None = static model.
     pub animation_profile_id: Option<AnimationProfileId>,
+    /// Appearance customization profile (CG1). When set, instances require [`UnitAppearance`].
+    pub appearance_profile_id: Option<AppearanceProfileId>,
+    /// Authored default body variant for canonical appearance resolution (CG1).
+    pub default_body_variant_id: Option<BodyVariantId>,
     /// Worker capability flags (ADR-085 B8).
     pub work_capabilities: super::work::UnitWorkCapabilities,
     /// Optional inventory container profile (ADR-087 I1). None = no inventory.
@@ -144,6 +149,8 @@ impl UnitDefinition {
             enabled,
             render_key,
             animation_profile_id: None,
+            appearance_profile_id: None,
+            default_body_variant_id: None,
             work_capabilities: super::work::UnitWorkCapabilities::default(),
             inventory_profile_id: None,
             corpse_lifetime_ticks: None,

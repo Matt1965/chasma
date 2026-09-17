@@ -8,9 +8,9 @@ use crate::camera::CameraSettings;
 use crate::logging::{DEV_STARTUP_LOG_PATH, append_log_line};
 use crate::terrain::residency::ChunkResidencyTracker;
 use crate::world::{
-    ChunkId, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog,
-    UnitCatalog, UnitDefinition, UnitGroundingError, UnitOwnership, UnitSource, WorldConfig,
-    WorldData, WorldPosition, create_unit_with_inventory, ground_unit_to_terrain,
+    AppearanceProfileCatalog, ChunkId, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog,
+    ItemCategoryCatalog, UnitCatalog, UnitDefinition, UnitGroundingError, UnitOwnership, UnitSource,
+    WorldConfig, WorldData, WorldPosition, create_unit_with_inventory, ground_unit_to_terrain,
 };
 
 const SESSION_HEADER: &str = "# chasma dev startup log";
@@ -50,6 +50,7 @@ pub fn spawn_dev_preview_units(
     camera: Res<CameraSettings>,
     config: Res<WorldConfig>,
     catalog: Res<UnitCatalog>,
+    appearance_profiles: Res<AppearanceProfileCatalog>,
     items: Res<ItemCatalog>,
     categories: Res<ItemCategoryCatalog>,
     profiles: Res<InventoryProfileCatalog>,
@@ -101,6 +102,7 @@ pub fn spawn_dev_preview_units(
 
         let record = match create_unit_with_inventory(
             &catalog,
+            &appearance_profiles,
             &mut world,
             &definition.id,
             position,

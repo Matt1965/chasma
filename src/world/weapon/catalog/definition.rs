@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use super::animation::WeaponAttackAnimation;
 use super::definition_id::WeaponDefinitionId;
+use super::family::WeaponAnimationFamily;
 
 /// Damage classification for future resistance rules (ADR-054 C1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Default)]
@@ -124,6 +125,10 @@ pub struct WeaponDefinition {
     /// glTF clip name for this weapon's attack animation (A2).
     pub animation_key: String,
     pub attack_animation: WeaponAttackAnimation,
+    /// Presentation family for combat-idle / attack clip grouping (Slice 8).
+    pub animation_family: WeaponAnimationFamily,
+    /// Looping combat stance clip while engaged (e.g. Sword_Idle). Not everyday idle.
+    pub combat_idle_clip: Option<String>,
     pub target_filters: Vec<TargetFilter>,
     /// Reserved for future stat scaling — ignored in C1 behavior.
     pub stat_scaling: Option<String>,
@@ -165,6 +170,8 @@ impl WeaponDefinition {
             projectile_speed_mps,
             animation_key: animation_key.into(),
             attack_animation: WeaponAttackAnimation::default(),
+            animation_family: WeaponAnimationFamily::None,
+            combat_idle_clip: None,
             target_filters,
             stat_scaling,
             enabled,
@@ -183,6 +190,16 @@ impl WeaponDefinition {
     /// Override weapon-owned attack animation parameters (A2).
     pub fn with_attack_animation(mut self, attack_animation: WeaponAttackAnimation) -> Self {
         self.attack_animation = attack_animation;
+        self
+    }
+
+    pub fn with_animation_family(mut self, family: WeaponAnimationFamily) -> Self {
+        self.animation_family = family;
+        self
+    }
+
+    pub fn with_combat_idle_clip(mut self, clip: Option<String>) -> Self {
+        self.combat_idle_clip = clip;
         self
     }
 }

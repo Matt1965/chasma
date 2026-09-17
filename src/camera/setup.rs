@@ -1,6 +1,8 @@
 use bevy::core_pipeline::prepass::DepthPrepass;
 use bevy::prelude::*;
 
+use crate::camera::render_layers::WORLD_RENDER_LAYER;
+
 use super::components::{RtsCamera, RtsCameraState};
 use super::control::orbit_transform;
 use super::settings::CameraSettings;
@@ -20,6 +22,7 @@ pub fn spawn_rts_camera(mut commands: Commands, settings: Res<CameraSettings>) {
         RtsCamera,
         state,
         transform,
+        WORLD_RENDER_LAYER,
         // Exposes opaque scene depth to the environment ocean shader (WATER-DEPTH-1).
         DepthPrepass,
     ));

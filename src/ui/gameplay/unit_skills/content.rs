@@ -5,8 +5,8 @@ use crate::ui::gameplay::combat_display::{
 };
 use crate::ui::gameplay::selected_unit_panel::unit_state_label;
 use crate::world::{
-    NutritionProfile, UnitCatalog, UnitId, UnitRecord, WeaponCatalog, WorkSkillCatalog, WorldData,
-    evaluate_hunger_stage, hunger_stage_label, work_skill_value,
+    ItemCatalog, NutritionProfile, UnitCatalog, UnitId, UnitRecord, WeaponCatalog,
+    WorkSkillCatalog, WorldData, evaluate_hunger_stage, hunger_stage_label, work_skill_value,
 };
 
 /// One labeled stat row in the skills panel.
@@ -35,6 +35,7 @@ pub fn build_unit_skills_snapshot(
     unit_id: UnitId,
     world: &WorldData,
     unit_catalog: &UnitCatalog,
+    item_catalog: &ItemCatalog,
     weapon_catalog: &WeaponCatalog,
     work_skill_catalog: &WorkSkillCatalog,
 ) -> Option<UnitSkillsPanelSnapshot> {
@@ -46,6 +47,7 @@ pub fn build_unit_skills_snapshot(
         def,
         world,
         unit_catalog,
+        item_catalog,
         weapon_catalog,
         work_skill_catalog,
     ))
@@ -57,6 +59,7 @@ fn build_snapshot_from_record(
     def: &crate::world::UnitDefinition,
     world: &WorldData,
     unit_catalog: &UnitCatalog,
+    item_catalog: &ItemCatalog,
     weapon_catalog: &WeaponCatalog,
     work_skill_catalog: &WorkSkillCatalog,
 ) -> UnitSkillsPanelSnapshot {
@@ -142,7 +145,9 @@ fn build_snapshot_from_record(
     });
 
     let mut combat_lines = Vec::new();
-    if let Some(weapon) = weapon_display_for_unit(record, unit_catalog, weapon_catalog) {
+    if let Some(weapon) =
+        weapon_display_for_unit(world, record, unit_catalog, item_catalog, weapon_catalog)
+    {
         append_weapon_hud_lines(&mut combat_lines, &weapon);
     } else {
         combat_lines.push("Weapon: -".into());
@@ -270,16 +275,23 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
         )
         .unwrap()
         .id;
-        let snapshot =
-            build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills())
-                .unwrap();
+        let snapshot = build_unit_skills_snapshot(
+            unit_id,
+            &world,
+            &catalog,
+            &crate::world::ItemCatalog::default(),
+            &weapons(),
+            &work_skills(),
+        )
+        .unwrap();
         assert_eq!(snapshot.title, "Wolf");
         let text = format_unit_skills_panel_text(&snapshot);
         assert!(text.contains("Strength: 4"));
@@ -293,16 +305,23 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(1.0, 1.0),
             UnitSource::Authored,
         )
         .unwrap()
         .id;
-        let snapshot =
-            build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills())
-                .unwrap();
+        let snapshot = build_unit_skills_snapshot(
+            unit_id,
+            &world,
+            &catalog,
+            &crate::world::ItemCatalog::default(),
+            &weapons(),
+            &work_skills(),
+        )
+        .unwrap();
         let text = format_unit_skills_panel_text(&snapshot);
         assert!(text.contains("Work capability"));
         assert!(text.contains("Construction: Capable"));
@@ -315,22 +334,35 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
         )
         .unwrap()
         .id;
-        let first =
-            build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills())
-                .unwrap();
+        let first = build_unit_skills_snapshot(
+            unit_id,
+            &world,
+            &catalog,
+            &crate::world::ItemCatalog::default(),
+            &weapons(),
+            &work_skills(),
+        )
+        .unwrap();
         world
             .mutate_unit(unit_id, |record| record.vitals.current_hp = 2)
             .expect("mutate");
-        let second =
-            build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills())
-                .unwrap();
+        let second = build_unit_skills_snapshot(
+            unit_id,
+            &world,
+            &catalog,
+            &crate::world::ItemCatalog::default(),
+            &weapons(),
+            &work_skills(),
+        )
+        .unwrap();
         assert_ne!(first, second);
         assert!(format_unit_skills_panel_text(&second).contains("HP: 2/5"));
     }
@@ -341,7 +373,8 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -350,8 +383,15 @@ mod tests {
         .id;
         world.remove_unit_by_id(unit_id);
         assert!(
-            build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills())
-                .is_none()
+            build_unit_skills_snapshot(
+                unit_id,
+                &world,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                &weapons(),
+                &work_skills(),
+            )
+            .is_none()
         );
     }
 
@@ -361,7 +401,8 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -371,9 +412,15 @@ mod tests {
         world
             .set_unit_state(unit_id, UnitState::Dead)
             .expect("dead");
-        let snapshot =
-            build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills())
-                .unwrap();
+        let snapshot = build_unit_skills_snapshot(
+            unit_id,
+            &world,
+            &catalog,
+            &crate::world::ItemCatalog::default(),
+            &weapons(),
+            &work_skills(),
+        )
+        .unwrap();
         assert!(format_unit_skills_panel_text(&snapshot).contains("State: Dead"));
     }
 
@@ -383,7 +430,8 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -391,8 +439,15 @@ mod tests {
         .unwrap()
         .id;
         let text = format_unit_skills_panel_text(
-            &build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills())
-                .unwrap(),
+            &build_unit_skills_snapshot(
+                unit_id,
+                &world,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                &weapons(),
+                &work_skills(),
+            )
+            .unwrap(),
         );
         assert!(text.contains("Work Skills"));
         assert!(text.contains("Farming: 0"));
@@ -411,7 +466,8 @@ mod tests {
         let mut world = flat_world();
         let bob = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -420,7 +476,8 @@ mod tests {
         .id;
         let larry = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(2.0, 2.0),
             UnitSource::Authored,
@@ -444,10 +501,26 @@ mod tests {
         )
         .unwrap();
         let bob_text = format_unit_skills_panel_text(
-            &build_unit_skills_snapshot(bob, &world, &catalog, &weapons(), &work_skills).unwrap(),
+            &build_unit_skills_snapshot(
+                bob,
+                &world,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                &weapons(),
+                &work_skills,
+            )
+            .unwrap(),
         );
         let larry_text = format_unit_skills_panel_text(
-            &build_unit_skills_snapshot(larry, &world, &catalog, &weapons(), &work_skills).unwrap(),
+            &build_unit_skills_snapshot(
+                larry,
+                &world,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                &weapons(),
+                &work_skills,
+            )
+            .unwrap(),
         );
         assert!(bob_text.contains("Farming: 10"));
         assert!(larry_text.contains("Farming: 40"));
@@ -466,7 +539,8 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -474,8 +548,15 @@ mod tests {
         .unwrap()
         .id;
         let text = format_unit_skills_panel_text(
-            &build_unit_skills_snapshot(unit_id, &world, &catalog, &weapons(), &work_skills)
-                .unwrap(),
+            &build_unit_skills_snapshot(
+                unit_id,
+                &world,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                &weapons(),
+                &work_skills,
+            )
+            .unwrap(),
         );
         assert!(text.contains("Prospecting: 0"));
     }

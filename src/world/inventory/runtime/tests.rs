@@ -114,6 +114,7 @@ fn unique_item_uses_definition_footprint() {
     let inventory_id = harness.create_backpack();
     let ctx = test_ctx();
     let instance_id = create_item_instance(
+        &mut harness.inventory_store,
         &mut harness.instance_store,
         &ctx,
         ItemDefinitionId::new("healing_kit"),
@@ -253,6 +254,7 @@ fn unique_instance_cannot_be_duplicated_in_store() {
     let mut harness = TestHarness::new();
     let ctx = test_ctx();
     let instance_id = create_item_instance(
+        &mut harness.inventory_store,
         &mut harness.instance_store,
         &ctx,
         ItemDefinitionId::new("healing_kit"),
@@ -360,6 +362,7 @@ fn swap_different_footprints_succeeds_when_both_fit() {
     )
     .unwrap();
     let instance_id = create_item_instance(
+        &mut harness.inventory_store,
         &mut harness.instance_store,
         &ctx,
         ItemDefinitionId::new("healing_kit"),
@@ -534,6 +537,7 @@ fn store_invariants_hold_after_operations() {
     let inventory_id = harness.create_backpack();
     let ctx = test_ctx();
     let instance_id = create_item_instance(
+        &mut harness.inventory_store,
         &mut harness.instance_store,
         &ctx,
         ItemDefinitionId::new("healing_kit"),

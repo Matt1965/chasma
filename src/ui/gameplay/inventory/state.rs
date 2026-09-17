@@ -64,6 +64,12 @@ pub struct InventoryUiState {
     pub feedback_message: String,
     pub last_revision_left: u64,
     pub last_revision_right: u64,
+    pub last_revision_equipment: u64,
+    pub last_revision_backpack: u64,
+    pub last_backpack_internal_id: Option<InventoryId>,
+    pub last_revision_corpse_equipment: u64,
+    pub last_revision_corpse_backpack: u64,
+    pub last_corpse_backpack_internal_id: Option<InventoryId>,
 }
 
 impl InventoryUiState {

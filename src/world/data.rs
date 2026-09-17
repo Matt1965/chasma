@@ -581,6 +581,20 @@ impl WorldData {
         (&self.inventory_store, &mut self.inventory_reservations)
     }
 
+    pub fn hauling_reserve_borrow_split_with_instances(
+        &mut self,
+    ) -> (
+        &super::inventory::InventoryStore,
+        &super::inventory::ItemInstanceStore,
+        &mut super::logistics::InventoryReservationStore,
+    ) {
+        (
+            &self.inventory_store,
+            &self.item_instance_store,
+            &mut self.inventory_reservations,
+        )
+    }
+
     pub fn space_registry(&self) -> &super::space::SpaceRegistry {
         &self.space_registry
     }
@@ -2597,7 +2611,7 @@ mod tests {
                 5,
             );
             record.state = UnitState::Idle;
-            record.metadata = UnitMetadata;
+            record.metadata = UnitMetadata::default();
             record
         }
 
@@ -3017,7 +3031,8 @@ mod tests {
 
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(2, 3, Vec3::new(64.0, 0.0, 128.0)),
                 UnitSource::Authored,
@@ -3038,7 +3053,8 @@ mod tests {
             let chunk = ChunkId::new(ChunkCoord::new(0, 0));
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("deer"),
                 pos(0, 0, Vec3::new(10.0, 0.0, 20.0)),
                 UnitSource::Authored,
@@ -3063,7 +3079,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("bandit"),
                 pos(0, 0, Vec3::new(1.0, 0.0, 1.0)),
                 UnitSource::Authored,
@@ -3089,7 +3106,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(4, 5, Vec3::new(64.0, 0.0, 64.0)),
                 UnitSource::Authored,
@@ -3110,7 +3128,8 @@ mod tests {
             let chunk = ChunkId::new(ChunkCoord::new(3, 3));
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("deer"),
                 pos(3, 3, Vec3::new(32.0, 0.0, 32.0)),
                 UnitSource::Authored,
@@ -3130,7 +3149,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(0, 0, Vec3::ZERO),
                 UnitSource::Authored,
@@ -3147,7 +3167,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(0, 0, Vec3::ZERO),
                 UnitSource::Authored,
@@ -3164,7 +3185,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(0, 0, Vec3::ZERO),
                 UnitSource::Authored,
@@ -3181,7 +3203,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(0, 0, Vec3::ZERO),
                 UnitSource::Authored,
@@ -3198,7 +3221,8 @@ mod tests {
             let ownership = crate::world::UnitOwnership::player_default();
             let record = crate::world::create_unit_with_ownership(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(0, 0, Vec3::new(12.0, 0.0, 8.0)),
                 UnitSource::Authored,
@@ -3219,7 +3243,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("deer"),
                 pos(1, 0, Vec3::new(3.0, 0.0, 4.0)),
                 UnitSource::Procedural { seed: 7 },
@@ -3238,7 +3263,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("bandit"),
                 pos(0, 0, Vec3::ZERO),
                 UnitSource::Authored,
@@ -3255,7 +3281,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(0, 0, Vec3::new(10.0, 0.0, 10.0)),
                 UnitSource::Authored,

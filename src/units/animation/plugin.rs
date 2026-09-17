@@ -21,6 +21,10 @@ use super::{
     UnitAnimationGraphInstalled, UnitAnimationLayering, UnitAnimationPlayerLink,
     UnitAnimationRuntime, UnitAnimationStateIndex, UpperAttackWeightFade,
 };
+use crate::units::equipment_presentation::{
+    UnitEquipmentPresentationIndex, finalize_skinned_equipment_overlays,
+    sync_unit_equipment_presentation,
+};
 
 /// Systems that drive derived unit animation presentation (A1).
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -50,6 +54,7 @@ impl Plugin for UnitAnimationPlugin {
             .init_resource::<AnimationPresentationMetrics>()
             .init_resource::<UnitAnimationStateIndex>()
             .init_resource::<UnitHpPresentationCache>()
+            .init_resource::<UnitEquipmentPresentationIndex>()
             .add_systems(Startup, init_unit_animation_assets)
             .configure_sets(Update, UnitAnimationSystems.after(UnitRuntimeSystems))
             .add_systems(
@@ -70,6 +75,15 @@ impl Plugin for UnitAnimationPlugin {
                 )
                     .chain()
                     .in_set(UnitAnimationSystems),
+            )
+            .add_systems(
+                Update,
+                (
+                    sync_unit_equipment_presentation,
+                    finalize_skinned_equipment_overlays,
+                )
+                    .chain()
+                    .in_set(UnitAnimationSystems),
             );
     }
 }
@@ -77,12 +91,14 @@ impl Plugin for UnitAnimationPlugin {
 fn init_unit_animation_assets(
     catalog: Res<crate::world::UnitCatalog>,
     profiles: Res<crate::world::AnimationProfileCatalog>,
+    appearance_profiles: Res<crate::world::AppearanceProfileCatalog>,
     asset_server: Res<AssetServer>,
     mut commands: Commands,
 ) {
     commands.insert_resource(preload_unit_animation_gltfs(
         &catalog,
         &profiles,
+        &appearance_profiles,
         &asset_server,
     ));
 }

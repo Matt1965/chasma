@@ -368,9 +368,11 @@ pub fn can_unit_access_inventory(
             unit_id,
             *building_id,
         ),
-        InventoryOwnerRef::Unit(unit) if unit == &unit_id => InventoryAccessResult::Allowed,
         InventoryOwnerRef::Corpse(_) => {
             InventoryAccessResult::Denied(InventoryAccessDenialReason::PolicyDenied)
+        }
+        _ if crate::world::equipment::unit_owns_inventory(world, unit_id, inventory_id) => {
+            InventoryAccessResult::Allowed
         }
         _ => InventoryAccessResult::Denied(InventoryAccessDenialReason::PolicyDenied),
     }
@@ -743,7 +745,8 @@ mod tests {
         let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(3.0, 3.0),
             UnitSource::Authored,
@@ -852,7 +855,8 @@ mod tests {
         let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(6.0, 6.0),
             UnitSource::Authored,
@@ -894,7 +898,8 @@ mod tests {
         let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -937,7 +942,8 @@ mod tests {
         let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(10.0, 10.0),
             UnitSource::Authored,

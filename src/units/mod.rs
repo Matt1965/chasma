@@ -9,6 +9,9 @@ mod assets;
 mod components;
 #[cfg(feature = "dev")]
 mod dev_spawn;
+mod appearance_presentation;
+mod equipment_presentation;
+pub mod presentation;
 mod health_bars;
 pub mod input;
 #[cfg(any(test, feature = "dev"))]
@@ -28,14 +31,25 @@ pub use input::{
 };
 
 pub use animation::{
-    AnimationPresentationFocus, AnimationPresentationMetrics, UnitAnimationAssets,
-    UnitAnimationIntent, UnitAnimationPlayerLink, UnitAnimationPlugin, UnitAnimationRuntime,
-    UnitAnimationSettings, UnitAnimationStateIndex, UnitAnimationSystems, ValidationSeverity,
-    derive_unit_animation_intent, locomotion_debug_snapshot,
+    AnimationGraphShareKey, AnimationPlaybackClip, AnimationPlaybackPending, AnimationPresentationFocus,
+    AnimationPresentationMetrics, AnimationProfileHandle, UnitAnimationAssets,
+    UnitAnimationGraphInstalled, UnitAnimationIntent, UnitAnimationPlayerLink, UnitAnimationPlugin,
+    UnitAnimationRuntime, UnitAnimationSettings, UnitAnimationStateIndex, UnitAnimationSystems,
+    ValidationSeverity, derive_unit_animation_intent, locomotion_debug_snapshot,
 };
 pub use assets::{UNIT_ASSET_ROOT, UnitSceneAssets, gltf_asset_path, preload_unit_scenes};
 pub use components::{
     UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot, UnitSelectionIndicator, UnitVisualFacing,
+};
+pub use appearance_presentation::{
+    UnitAppearanceMorphFingerprint, sync_unit_appearance_morphs,
+};
+pub use presentation::{
+    UnitEditorPreviewRoot, UnitEditorPreviewUnit, UnitPresentationAppearance,
+    propagate_preview_render_layers, sync_live_unit_presentation_appearance,
+};
+pub use equipment_presentation::{
+    UnitEquipmentPresentationIndex, UnitEquipmentVisual, sync_unit_equipment_presentation,
 };
 pub use health_bars::{
     UnitHealthBar, UnitHealthBarState, billboard_unit_health_bars, health_bar_color,

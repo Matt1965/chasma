@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+pub mod armor;
 pub mod asset_sizing;
 pub mod authoring_transform;
 mod biome;
@@ -11,6 +12,7 @@ mod coordinates;
 mod corpse;
 mod data;
 mod doodad;
+pub mod equipment;
 mod formation;
 mod interaction;
 mod inventory;
@@ -34,11 +36,18 @@ mod terrain_field;
 mod unit;
 mod weapon;
 
+#[cfg(test)]
+pub use armor::starter_definitions as starter_armor_profile_definitions;
+pub use armor::{
+    ARMOR_MITIGATION_K, ArmorProfileCatalog, ArmorProfileCatalogError, ArmorProfileDefinition,
+    ArmorProfileId, damage_multiplier_for_armor, resolve_applied_combat_damage,
+    resolve_damage_after_armor,
+};
 #[cfg(any(test, feature = "dev"))]
 pub use weapon::starter_definitions as starter_weapon_definitions;
 pub use weapon::{
-    AttackPlaybackPolicy, DamageType, HitMode, TargetFilter, WeaponAttackAnimation, WeaponCatalog,
-    WeaponCatalogError, WeaponDefinition, WeaponDefinitionId,
+    AttackPlaybackPolicy, DamageType, HitMode, TargetFilter, WeaponAnimationFamily,
+    WeaponAttackAnimation, WeaponCatalog, WeaponCatalogError, WeaponDefinition, WeaponDefinitionId,
 };
 
 pub use asset_sizing::{
@@ -52,7 +61,8 @@ pub use asset_sizing::{
     doodad_visual_collision_mismatch_warning, doodad_visual_scale, finalize_building_definition,
     finalize_doodad_definition, finalize_unit_definition, normalize_building_sizing_authority,
     quantize_baseline_scale, sort_reports, sync_building_legacy_mirrors_from_sizing,
-    unit_baseline_render_scale, unit_visual_rotation, unit_visual_scale,
+    unit_baseline_render_scale, unit_definition_visual_scale, unit_visual_rotation,
+    unit_visual_scale,
     validate_building_sizing_authority, validate_sizing_migration_state,
 };
 pub use authoring_transform::{
@@ -219,13 +229,14 @@ pub use chunk::{ChunkData, ChunkId};
 #[cfg(feature = "dev")]
 pub(crate) use combat::runtime_trace;
 pub use combat::{
-    AttackTargetingPolicy, CombatAiReport, CombatAiScanState, CombatAiSettings, CombatAiTrace,
-    CombatAiTraceOutcome, CombatEngagementReport, CombatEngagementStatus, CombatEngagementTrace,
-    CombatStrikeEvent, CombatStrikeReport, CombatStrikeTrace, ProjectileImpactRejection,
-    ProjectileLaunchSnapshot, RANGE_HYSTERESIS_METERS, RangeCheck, WeaponTiming,
-    apply_attributed_combat_damage, autonomous_wants_to_attack, classify_unit_target,
-    clear_attack_cycle_for_order_cancel, find_auto_acquire_target, hold_in_attack_range,
-    initial_attack_combat_state, is_in_weapon_range, is_unit_alive, is_valid_active_combat_target,
+    AttackTargetingPolicy, AttributedCombatDamageError, CombatAiReport, CombatAiScanState,
+    CombatAiSettings, CombatAiTrace, CombatAiTraceOutcome, CombatEngagementReport,
+    CombatEngagementStatus, CombatEngagementTrace, CombatStrikeEvent, CombatStrikeReport,
+    CombatStrikeTrace, ProjectileImpactRejection, ProjectileLaunchSnapshot,
+    RANGE_HYSTERESIS_METERS, RangeCheck, WeaponTiming, apply_attributed_combat_damage,
+    autonomous_wants_to_attack, classify_unit_target, clear_attack_cycle_for_order_cancel,
+    find_auto_acquire_target, hold_in_attack_range, initial_attack_combat_state,
+    is_in_weapon_range, is_unit_alive, is_valid_active_combat_target,
     is_valid_autonomous_attack_target, is_valid_explicit_attack_target,
     is_valid_mechanical_attack_target, reset_attack_cycle_for_retarget, step_all_combat_engagement,
     step_all_combat_strikes, step_combat_ai_acquisition, try_reactive_combat_retaliation,
@@ -240,8 +251,9 @@ pub use coordinates::{ChunkCoord, ChunkLayout, LocalPosition, WorldPosition};
 pub use corpse::dev_expire_corpse;
 pub use corpse::{
     CorpseError, CorpseId, CorpseLifecycleReport, CorpseRecord, CorpseSettings, CorpseState,
-    CorpseStore, DEFAULT_CORPSE_LIFETIME_TICKS, create_corpse_from_unit,
-    remove_corpse_with_inventory, step_corpse_lifecycle, transfer_inventory_to_corpse,
+    CorpseStore, DEFAULT_CORPSE_LIFETIME_TICKS, create_corpse_from_unit, is_corpse_loot_inventory,
+    remove_corpse_with_inventory, step_corpse_lifecycle, transfer_equipment_to_corpse,
+    transfer_inventory_to_corpse,
 };
 pub use data::{ChunkExtent, WorldData};
 #[cfg(test)]
@@ -269,6 +281,19 @@ pub use doodad::{
 };
 #[cfg(any(test, feature = "dev"))]
 pub use doodad::{DoodadRestoreError, restore_doodad_record, validate_doodad_for_restore};
+pub use equipment::{
+    ArmorResolveError, EquipmentPresentationMode, EquipmentSlot, EquipmentVisualCatalog,
+    EquipmentVisualMapping, EquippedArmorEntry, UnitEquipmentInventories, WorkerCargoResolveError,
+    attach_equipment_on_unit_create, carried_quantity_in_worker_cargo,
+    cleanup_unit_equipment_on_delete, container_inventory_is_empty, container_inventory_is_loaded,
+    create_container_inventory, effective_weapon_for_unit, effective_weapon_id_for_unit,
+    equipment_slot_profile_definitions, equipped_armor_for_unit,
+    equipped_backpack_internal_inventory, is_container_item, minimal_catalog_ctx,
+    reconcile_legacy_unit_equipment, release_container_inventory_if_empty,
+    resolve_equipped_backpack_internal, total_armor_rating_for_unit, unit_owns_inventory,
+    validate_item_placement, validate_unit_equipment_links, worker_cargo_capacity_for_item,
+    worker_cargo_inventories,
+};
 pub use formation::{
     FormationAssignment, FormationKind, FormationMovePlan, FormationPlanner,
     circle_formation_radius, collision_separation_meters, formation_offsets,
@@ -308,15 +333,16 @@ pub use inventory::{
     validate_inventory, validate_inventory_profile, validate_inventory_stores,
     validate_world_inventory_state,
 };
-#[cfg(any(test, feature = "dev"))]
 pub use item::starter_definitions as starter_item_definitions;
+#[cfg(test)]
+pub use item::test_equipment_fixture_definitions;
 #[cfg(any(test, feature = "dev"))]
 pub use item::starter_item_category_definitions;
 pub use item::{
     ItemCatalog, ItemCatalogError, ItemCategoryCatalog, ItemCategoryCatalogError,
     ItemCategoryDefinition, ItemCategoryId, ItemDefinition, ItemDefinitionId, ItemIconKey,
     ItemRenderKey, ItemValidationError, MAX_ITEM_GRID_DIMENSION, normalize_tags,
-    validate_item_definition,
+    validate_item_armor_profile_reference, validate_item_definition,
 };
 pub use item_pile::{
     ChunkItemPileStore, DropReport, ItemPileError, ItemPileId, ItemPileInvariantReport,
@@ -583,7 +609,16 @@ pub use unit::starter_animation_profile_definitions;
 pub use unit::starter_definitions as starter_unit_definitions;
 pub use unit::{
     AnimationClipKey, AnimationProfile, AnimationProfileCatalog, AnimationProfileCatalogError,
-    AnimationProfileId, AttackCycle, AttackPhase, BatchUnitMovementReport, BlockedMovementReason,
+    AnimationProfileId, AppearanceError, AppearanceParamId, AppearanceParameterDefinition,
+    AppearanceProfile, AppearanceProfileCatalog, AppearanceProfileCatalogError,
+    AppearanceProfileId, AttackCycle, AttackPhase, BatchUnitMovementReport, BlockedMovementReason,
+    BodyVariantDefinition, BodyVariantId, CG2_MORPH_SEMANTIC_PARAMS, HUMAN_MORPH_TARGET_NAMES,
+    MorphMappingSide, MorphResolveError, MorphTargetMapping, UnitAppearance,
+    definition_has_appearance_support, effective_render_key_for_appearance,
+    effective_unit_render_key, effective_unit_render_key_str,
+    resolve_canonical_default_appearance, resolve_equipment_morph_weights, resolve_morph_weights,
+    validate_profile_morph_mappings,
+    validate_unit_appearance,
     ChunkUnitStore, CombatState, DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND,
     DEFAULT_TURN_SPEED_DEGREES_PER_SECOND, EntranceTraversalTrace, HungerStage, InsideMoveTrace,
     InteriorExitClickTrace, MOVEMENT_ARRIVAL_TOLERANCE_METERS,
@@ -744,6 +779,8 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<InventoryAccessType>()
             .register_type::<InventoryProfileDefinition>()
             .register_type::<InventoryProfileCatalog>()
+            .register_type::<crate::world::equipment::EquipmentSlot>()
+            .register_type::<crate::world::equipment::UnitEquipmentInventories>()
             .register_type::<crate::world::inventory::InventoryId>()
             .register_type::<crate::world::inventory::ItemInstanceId>()
             .register_type::<crate::world::inventory::InventoryOwnerRef>()
@@ -770,6 +807,7 @@ impl Plugin for WorldFoundationPlugin {
         {
             app.init_resource::<DoodadCatalog>();
             app.init_resource::<WeaponCatalog>();
+            app.init_resource::<ArmorProfileCatalog>();
             app.init_resource::<UnitCatalog>();
             app.init_resource::<AnimationProfileCatalog>();
             app.init_resource::<BuildingCategoryCatalog>();
@@ -778,6 +816,7 @@ impl Plugin for WorldFoundationPlugin {
             app.init_resource::<FootprintCatalog>();
             app.init_resource::<ItemCategoryCatalog>();
             app.init_resource::<ItemCatalog>();
+            app.init_resource::<crate::world::EquipmentVisualCatalog>();
             app.init_resource::<OperationCatalog>();
             app.init_resource::<NeedCatalog>();
             app.init_resource::<WorkSkillCatalog>();
@@ -802,9 +841,16 @@ impl Plugin for WorldFoundationPlugin {
         #[cfg(feature = "dev")]
         {
             let weapons = crate::data_import::resolve_dev_weapon_catalog();
+            let armor_profiles = crate::data_import::resolve_dev_armor_profile_catalog();
             let animation_profiles = crate::data_import::resolve_dev_animation_profile_catalog();
             let inventory_profiles = crate::data_import::resolve_dev_inventory_profile_catalog();
+            let appearance_profiles =
+                crate::data_import::resolve_dev_appearance_profile_catalog();
             let (item_categories, item_catalog) = crate::data_import::resolve_dev_item_catalog();
+            let equipment_visuals = crate::data_import::resolve_dev_equipment_visual_catalog(
+                &item_catalog,
+                &appearance_profiles,
+            );
             let mut sizing_reports = Vec::new();
             let (building_categories, building_catalog) =
                 crate::data_import::resolve_dev_building_catalog(
@@ -820,13 +866,16 @@ impl Plugin for WorldFoundationPlugin {
                     &species_catalog,
                 );
             app.insert_resource(weapons.clone());
+            app.insert_resource(armor_profiles);
             app.insert_resource(animation_profiles.clone());
             app.insert_resource(inventory_profiles.clone());
+            app.insert_resource(appearance_profiles.clone());
             app.insert_resource(faction_catalog.clone());
             app.insert_resource(species_catalog.clone());
             app.insert_resource(authored_relationships);
             app.insert_resource(item_categories);
             app.insert_resource(item_catalog);
+            app.insert_resource(equipment_visuals);
             app.init_resource::<OperationCatalog>();
             app.init_resource::<NeedCatalog>();
             app.init_resource::<WorkSkillCatalog>();
@@ -849,6 +898,7 @@ impl Plugin for WorldFoundationPlugin {
                 &weapons,
                 &animation_profiles,
                 &inventory_profiles,
+                &appearance_profiles,
                 Some(&mut sizing_reports),
             ));
             app.insert_resource(crate::data_import::resolve_dev_terrain_field_catalog());

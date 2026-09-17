@@ -2,8 +2,8 @@
 
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    AttackCycle, CombatState, DamageType, HitMode, UnitCatalog, UnitId, UnitRecord, WeaponCatalog,
-    WeaponDefinition, WorldData, weapon_for_unit_record,
+    AttackCycle, CombatState, DamageType, HitMode, ItemCatalog, UnitCatalog, UnitId, UnitRecord,
+    WeaponCatalog, WeaponDefinition, WorldData, weapon_for_unit_record,
 };
 
 /// Weapon stats shown on the selected-unit panel (from [`WeaponCatalog`]).
@@ -54,11 +54,14 @@ pub fn weapon_display_from_definition(weapon: &WeaponDefinition) -> CombatWeapon
 }
 
 pub fn weapon_display_for_unit(
+    world: &WorldData,
     record: &UnitRecord,
     unit_catalog: &UnitCatalog,
+    item_catalog: &ItemCatalog,
     weapon_catalog: &WeaponCatalog,
 ) -> Option<CombatWeaponDisplay> {
-    let weapon = weapon_for_unit_record(record, unit_catalog, weapon_catalog).ok()?;
+    let weapon =
+        weapon_for_unit_record(world, record, unit_catalog, item_catalog, weapon_catalog).ok()?;
     Some(weapon_display_from_definition(weapon))
 }
 
@@ -178,7 +181,8 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -186,7 +190,8 @@ mod tests {
         .unwrap()
         .id;
         let record = world.get_unit(unit_id).unwrap();
-        let display = weapon_display_for_unit(record, &catalog, &weapons).unwrap();
+        let items = crate::world::ItemCatalog::default();
+        let display = weapon_display_for_unit(&world, record, &catalog, &items, &weapons).unwrap();
         assert_eq!(display.name, "Wolf Bite");
         assert!((display.damage - 8.0).abs() < f32::EPSILON);
         assert_eq!(display.hit_mode, "Melee");
@@ -198,7 +203,8 @@ mod tests {
         let mut world = flat_world();
         let a = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -207,7 +213,8 @@ mod tests {
         .id;
         let b = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(2.0, 2.0),
             UnitSource::Authored,

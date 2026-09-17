@@ -11,7 +11,7 @@ use crate::ui::gameplay::floating_window::{
     spawn_floating_title_rail_drag_only, spawn_floating_window_inner_frame,
 };
 use crate::ui::gameplay::inventory::{
-    InventoryGridInteraction, InventoryGridPane, InventoryPaneSide, InventoryUiState,
+    InventoryGridInteraction, InventoryGridPane, InventoryPaneKind, InventoryUiState,
     spawn_inventory_grid, spawn_read_only_inventory_grid_shell,
 };
 use crate::units::input::SelectedUnits;
@@ -282,15 +282,15 @@ fn spawn_panel_content(
                     TextColor(super::super::styles::TEXT_PRIMARY),
                 ));
                 if let Some(record) = world.inventory_store().get(section.inventory_id) {
-                    let side = match grid_interaction {
-                        InventoryGridInteraction::Interactive { side } => side,
-                        InventoryGridInteraction::ReadOnly => InventoryPaneSide::Right,
+                    let pane_kind = match grid_interaction {
+                        InventoryGridInteraction::Interactive { pane_kind } => pane_kind,
+                        InventoryGridInteraction::ReadOnly => InventoryPaneKind::Secondary,
                     };
                     binding_section
                         .spawn((
                             InventoryGridPane {
                                 inventory_id: section.inventory_id,
-                                side,
+                                pane_kind,
                             },
                             PlayerHudUi,
                             Node {

@@ -5,13 +5,32 @@
 
 use bevy::prelude::*;
 
+use super::appearance::{
+    definition_has_appearance_support, resolve_canonical_default_appearance,
+    validate_unit_appearance, AppearanceError,
+};
 use super::catalog::UnitCatalog;
 use super::id::UnitId;
 use super::placement::UnitPlacement;
 use super::record::UnitRecord;
 use super::source::UnitSource;
+use std::sync::OnceLock;
+
+use crate::world::equipment::{
+    attach_equipment_on_unit_create, cleanup_unit_equipment_on_delete,
+    equipment_slot_profile_definitions, minimal_catalog_ctx,
+};
 use crate::world::ownership::{UnitOwnership, default_ownership_for_source};
-use crate::world::{UnitDefinitionId, UnitInsertError, WorldData, WorldPosition};
+use crate::world::{
+    InventoryProfileCatalog, UnitDefinitionId, UnitInsertError, WorldData, WorldPosition,
+};
+
+fn default_equipment_profiles() -> &'static InventoryProfileCatalog {
+    static PROFILES: OnceLock<InventoryProfileCatalog> = OnceLock::new();
+    PROFILES.get_or_init(|| {
+        InventoryProfileCatalog::from_definitions(equipment_slot_profile_definitions()).unwrap()
+    })
+}
 
 /// Why an authoring operation failed (ADR-027 U2).
 #[derive(Debug, Clone, PartialEq)]
@@ -21,11 +40,16 @@ pub enum UnitAuthoringError {
     UnitNotFound(UnitId),
     ChunkPlacementMismatch,
     InventoryAllocationFailed(UnitId),
+    AppearanceResolutionFailed {
+        definition_id: UnitDefinitionId,
+        reason: String,
+    },
 }
 
 /// Create a unit with explicit runtime ownership.
 pub fn create_unit_with_ownership(
     catalog: &UnitCatalog,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
     world: &mut WorldData,
     definition_id: &UnitDefinitionId,
     position: WorldPosition,
@@ -34,6 +58,7 @@ pub fn create_unit_with_ownership(
 ) -> Result<UnitRecord, UnitAuthoringError> {
     create_unit_with_ownership_impl(
         catalog,
+        appearance_profiles,
         world,
         definition_id,
         position,
@@ -46,6 +71,7 @@ pub fn create_unit_with_ownership(
 /// Create a unit and attach an authoritative inventory from its definition profile.
 pub fn create_unit_with_inventory(
     catalog: &UnitCatalog,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
     world: &mut WorldData,
     definition_id: &UnitDefinitionId,
     position: WorldPosition,
@@ -55,6 +81,7 @@ pub fn create_unit_with_inventory(
 ) -> Result<UnitRecord, UnitAuthoringError> {
     create_unit_with_ownership_impl(
         catalog,
+        appearance_profiles,
         world,
         definition_id,
         position,
@@ -66,6 +93,7 @@ pub fn create_unit_with_inventory(
 
 fn create_unit_with_ownership_impl(
     catalog: &UnitCatalog,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
     world: &mut WorldData,
     definition_id: &UnitDefinitionId,
     position: WorldPosition,
@@ -95,6 +123,15 @@ fn create_unit_with_ownership_impl(
         definition.species_id.clone(),
     );
 
+    let default_profiles = default_equipment_profiles();
+    let equipment_profiles = inventory_ctx
+        .map(|ctx| ctx.profiles)
+        .unwrap_or(default_profiles);
+    let equipment =
+        attach_equipment_on_unit_create(world.inventory_store_mut(), equipment_profiles, id)
+            .map_err(|_| UnitAuthoringError::InventoryAllocationFailed(id))?;
+    record.equipment = Some(equipment);
+
     if let Some(ctx) = inventory_ctx {
         super::inventory::attach_inventory_on_unit_create(world, ctx, &mut record, definition)
             .map_err(|_| UnitAuthoringError::InventoryAllocationFailed(id))?;
@@ -102,13 +139,17 @@ fn create_unit_with_ownership_impl(
 
     super::self_maintenance::initialize_unit_nutrition(&mut record.nutrition, definition);
     super::work_skill::initialize_unit_work_skills(&mut record.work_skills);
+    attach_appearance_on_unit_create(definition, appearance_profiles, &mut record)?;
 
     let chunk = crate::world::ChunkId::new(position.chunk);
     if let Err(error) = world.insert_unit(chunk, record.clone()) {
         if let Some(ctx) = inventory_ctx {
-            if record.inventory_id.is_some() {
-                let _ = super::inventory::cleanup_unit_inventory_on_delete(world, ctx, &record);
-            }
+            let _ = super::inventory::cleanup_unit_inventory_on_delete(world, ctx, &record);
+            let _ = cleanup_unit_equipment_on_delete(world, ctx, &record);
+        } else if record.equipment.is_some() {
+            let profiles = default_equipment_profiles();
+            let ctx = minimal_catalog_ctx(profiles);
+            let _ = cleanup_unit_equipment_on_delete(world, &ctx, &record);
         }
         return Err(match error {
             UnitInsertError::ChunkPlacementMismatch => UnitAuthoringError::ChunkPlacementMismatch,
@@ -122,11 +163,39 @@ fn create_unit_with_ownership_impl(
     Ok(record)
 }
 
+fn attach_appearance_on_unit_create(
+    definition: &crate::world::UnitDefinition,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
+    record: &mut UnitRecord,
+) -> Result<(), UnitAuthoringError> {
+    if !definition_has_appearance_support(definition) {
+        record.appearance = None;
+        return Ok(());
+    }
+    let appearance = resolve_canonical_default_appearance(definition, appearance_profiles)
+        .map_err(|error| appearance_authoring_error(definition, error))?;
+    validate_unit_appearance(&appearance, definition, appearance_profiles)
+        .map_err(|error| appearance_authoring_error(definition, error))?;
+    record.appearance = Some(appearance);
+    Ok(())
+}
+
+fn appearance_authoring_error(
+    definition: &crate::world::UnitDefinition,
+    error: AppearanceError,
+) -> UnitAuthoringError {
+    UnitAuthoringError::AppearanceResolutionFailed {
+        definition_id: definition.id.clone(),
+        reason: error.to_string(),
+    }
+}
+
 /// Create a unit instance using safe default ownership for [`UnitSource`].
 ///
 /// Does **not** derive ownership from catalog `faction_tag`.
 pub fn create_unit(
     catalog: &UnitCatalog,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
     world: &mut WorldData,
     definition_id: &UnitDefinitionId,
     position: WorldPosition,
@@ -134,6 +203,7 @@ pub fn create_unit(
 ) -> Result<UnitRecord, UnitAuthoringError> {
     create_unit_with_ownership(
         catalog,
+        appearance_profiles,
         world,
         definition_id,
         position,
@@ -185,6 +255,10 @@ mod tests {
         UnitCatalog::default()
     }
 
+    fn appearance_profiles() -> crate::world::AppearanceProfileCatalog {
+        crate::world::AppearanceProfileCatalog::empty()
+    }
+
     fn position(chunk_x: i32, chunk_z: i32, local: Vec3) -> WorldPosition {
         WorldPosition::new(ChunkCoord::new(chunk_x, chunk_z), LocalPosition::new(local))
     }
@@ -198,6 +272,7 @@ mod tests {
 
         let record = create_unit(
             &cat,
+            &appearance_profiles(),
             &mut world,
             &def_id,
             position(0, 0, Vec3::ZERO),
@@ -217,7 +292,15 @@ mod tests {
         let def = UnitDefinitionId::new("wolf");
         let pos = position(1, 2, Vec3::new(64.0, 0.0, 128.0));
 
-        let record = create_unit(&cat, &mut world, &def, pos, UnitSource::Authored).unwrap();
+        let record = create_unit(
+            &cat,
+            &appearance_profiles(),
+            &mut world,
+            &def,
+            pos,
+            UnitSource::Authored,
+        )
+        .unwrap();
 
         assert_eq!(record.definition_id, def);
         assert_eq!(record.placement.position, pos);
@@ -232,6 +315,7 @@ mod tests {
         let ownership = UnitOwnership::player_default();
         let record = create_unit_with_ownership(
             &cat,
+            &appearance_profiles(),
             &mut world,
             &UnitDefinitionId::new("wolf"),
             position(0, 0, Vec3::ZERO),
@@ -254,6 +338,7 @@ mod tests {
         let mut world = layout_world();
         let err = create_unit(
             &cat,
+            &appearance_profiles(),
             &mut world,
             &UnitDefinitionId::new("wolf"),
             position(0, 0, Vec3::ZERO),

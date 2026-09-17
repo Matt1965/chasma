@@ -41,6 +41,14 @@ fn pos(x: f32, z: f32) -> WorldPosition {
     )
 }
 
+fn worker_cargo_inventories_for_unit(
+    world: &WorldData,
+    worker: crate::world::UnitId,
+) -> Vec<crate::world::InventoryId> {
+    let unit = world.get_unit(worker).expect("worker");
+    crate::world::worker_cargo_inventories(world, unit).expect("worker cargo")
+}
+
 fn test_inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
     static CTX: std::sync::OnceLock<InventoryCatalogCtx<'static>> = std::sync::OnceLock::new();
     CTX.get_or_init(|| {
@@ -175,7 +183,8 @@ impl LogisticsFixture {
     fn worker_at(&mut self, position: WorldPosition) -> crate::world::UnitId {
         create_unit_with_inventory(
             &self.unit_catalog,
-            &mut self.world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut self.world,
             &UnitDefinitionId::new("bandit"),
             position,
             UnitSource::Authored,
@@ -422,17 +431,14 @@ fn workers_transport_items_physically() {
     )
     .unwrap();
     let worker = fixture.co_locate_for_haul_execution();
-    let worker_inventory = fixture
-        .world
-        .get_unit(worker)
-        .and_then(|unit| unit.inventory_id)
-        .expect("worker inventory");
+    let worker_cargo = worker_cargo_inventories_for_unit(&fixture.world, worker);
+    let worker_inventory = worker_cargo[0];
     crate::world::reserve_hauling_request(&mut fixture.world, request_id, 3, test_inventory_ctx())
         .unwrap();
     let picked = crate::world::pickup_haul_cargo(
         &mut fixture.world,
         request_id,
-        worker_inventory,
+        &worker_cargo,
         3,
         test_inventory_ctx(),
     )
@@ -442,7 +448,7 @@ fn workers_transport_items_physically() {
     let deposited = crate::world::deposit_haul_cargo(
         &mut fixture.world,
         request_id,
-        worker_inventory,
+        &worker_cargo,
         3,
         test_inventory_ctx(),
     )
@@ -479,17 +485,13 @@ fn partial_delivery_updates_remaining_quantity() {
     )
     .unwrap();
     let worker = fixture.co_locate_for_haul_execution();
-    let worker_inventory = fixture
-        .world
-        .get_unit(worker)
-        .and_then(|unit| unit.inventory_id)
-        .expect("worker inventory");
+    let worker_cargo = worker_cargo_inventories_for_unit(&fixture.world, worker);
     crate::world::reserve_hauling_request(&mut fixture.world, request_id, 2, test_inventory_ctx())
         .unwrap();
     crate::world::pickup_haul_cargo(
         &mut fixture.world,
         request_id,
-        worker_inventory,
+        &worker_cargo,
         2,
         test_inventory_ctx(),
     )
@@ -497,7 +499,7 @@ fn partial_delivery_updates_remaining_quantity() {
     crate::world::deposit_haul_cargo(
         &mut fixture.world,
         request_id,
-        worker_inventory,
+        &worker_cargo,
         2,
         test_inventory_ctx(),
     )
@@ -1249,16 +1251,12 @@ mod storage_autonomous {
             record.placement.position = haul_pos;
         });
         let worker = fixture.co_locate_for_haul_execution();
-        let worker_inventory = fixture
-            .world
-            .get_unit(worker)
-            .and_then(|unit| unit.inventory_id)
-            .expect("worker inventory");
+        let worker_cargo = worker_cargo_inventories_for_unit(&fixture.world, worker);
         reserve_hauling_request(&mut fixture.world, request_id, 1, test_inventory_ctx()).unwrap();
         pickup_haul_cargo(
             &mut fixture.world,
             request_id,
-            worker_inventory,
+            &worker_cargo,
             1,
             test_inventory_ctx(),
         )
@@ -1266,7 +1264,7 @@ mod storage_autonomous {
         deposit_haul_cargo(
             &mut fixture.world,
             request_id,
-            worker_inventory,
+            &worker_cargo,
             1,
             test_inventory_ctx(),
         )
@@ -1407,6 +1405,7 @@ mod storage_autonomous {
         assert!(
             crate::world::destination_can_fit_stack_quantity(
                 fixture.world.inventory_store(),
+                fixture.world.item_instance_store(),
                 reservations,
                 ctx,
                 chest,
@@ -1418,6 +1417,7 @@ mod storage_autonomous {
         assert!(
             !crate::world::destination_can_fit_stack_quantity(
                 fixture.world.inventory_store(),
+                fixture.world.item_instance_store(),
                 reservations,
                 ctx,
                 chest,
@@ -1444,6 +1444,7 @@ mod storage_autonomous {
 
         let can_fit = crate::world::destination_can_fit_stack_quantity(
             fixture.world.inventory_store(),
+            fixture.world.item_instance_store(),
             reservations,
             ctx,
             destination,
@@ -1637,7 +1638,8 @@ mod schedule_proof {
 
             let farmer_id = create_unit_with_inventory(
                 &unit_catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("bandit"),
                 pos(55.0, 55.0),
                 UnitSource::Authored,
@@ -1650,7 +1652,8 @@ mod schedule_proof {
 
             let worker_id = create_unit_with_inventory(
                 &unit_catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("bandit"),
                 pos(52.0, 52.0),
                 UnitSource::Authored,
@@ -1786,6 +1789,7 @@ mod schedule_proof {
                 &self.interior,
                 Some(&self.nav_blueprint),
                 inventory_ctx.items,
+                &crate::world::ArmorProfileCatalog::default(),
                 inventory_ctx.categories,
                 inventory_ctx.profiles,
                 &CorpseSettings::default(),

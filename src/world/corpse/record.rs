@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use super::id::CorpseId;
 use crate::world::SpaceId;
+use crate::world::equipment::UnitEquipmentInventories;
 use crate::world::inventory::InventoryId;
 use crate::world::ownership::{Affiliation, OwnerId, TeamId};
 use crate::world::unit::{UnitDefinitionId, UnitId, UnitPlacement};
@@ -23,6 +24,7 @@ pub struct CorpseRecord {
     pub placement: UnitPlacement,
     pub current_space_id: SpaceId,
     pub inventory_id: Option<InventoryId>,
+    pub equipment: Option<UnitEquipmentInventories>,
     pub owner_id: Option<OwnerId>,
     pub team_id: Option<TeamId>,
     pub affiliation: Affiliation,
@@ -39,6 +41,7 @@ impl CorpseRecord {
         placement: UnitPlacement,
         current_space_id: SpaceId,
         inventory_id: Option<InventoryId>,
+        equipment: Option<UnitEquipmentInventories>,
         owner_id: Option<OwnerId>,
         team_id: Option<TeamId>,
         affiliation: Affiliation,
@@ -52,6 +55,7 @@ impl CorpseRecord {
             placement,
             current_space_id,
             inventory_id,
+            equipment,
             owner_id,
             team_id,
             affiliation,

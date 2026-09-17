@@ -1,10 +1,12 @@
 use super::super::access::InventoryAccessType;
 use super::super::profile::InventoryProfileDefinition;
 use super::super::profile_id::InventoryProfileId;
+use crate::world::equipment::equipment_slot_profile_definitions;
 
 /// Starter inventory profiles for tests and dev fallback (ADR-087 I1).
 pub fn starter_definitions() -> Vec<InventoryProfileDefinition> {
-    vec![
+    let mut profiles = equipment_slot_profile_definitions();
+    profiles.extend([
         profile(
             "unit_backpack_small",
             "Small Backpack",
@@ -54,7 +56,8 @@ pub fn starter_definitions() -> Vec<InventoryProfileDefinition> {
             10_000,
             InventoryAccessType::CorpseLoot,
         ),
-    ]
+    ]);
+    profiles
 }
 
 fn profile(

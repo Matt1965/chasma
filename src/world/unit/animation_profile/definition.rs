@@ -9,6 +9,8 @@ pub enum AnimationClipKey {
     Idle,
     Walk,
     Run,
+    /// Generic workstation / extraction labor (e.g. mining).
+    Work,
     TurnLeft,
     TurnRight,
 }
@@ -19,6 +21,7 @@ impl AnimationClipKey {
             Self::Idle => "Idle",
             Self::Walk => "Walk",
             Self::Run => "Run",
+            Self::Work => "Work",
             Self::TurnLeft => "TurnLeft",
             Self::TurnRight => "TurnRight",
         }
@@ -49,6 +52,8 @@ pub struct AnimationProfile {
     pub turn_right_clip: Option<String>,
     pub turn_left_duration_seconds: Option<f32>,
     pub turn_right_duration_seconds: Option<f32>,
+    /// Optional full-body work clip (e.g. mining). Mapped from profile workbook column.
+    pub work_clip: Option<String>,
     pub enabled: bool,
 }
 
@@ -76,8 +81,14 @@ impl AnimationProfile {
             turn_right_clip: None,
             turn_left_duration_seconds: None,
             turn_right_duration_seconds: None,
+            work_clip: None,
             enabled,
         }
+    }
+
+    pub fn with_work_clip(mut self, work_clip: Option<String>) -> Self {
+        self.work_clip = work_clip;
+        self
     }
 
     pub fn with_presentation_clips(
@@ -133,6 +144,10 @@ impl AnimationProfile {
             .filter(|name| !name.is_empty())
     }
 
+    pub fn resolve_work_clip_name(&self) -> Option<&str> {
+        self.work_clip.as_deref().filter(|name| !name.is_empty())
+    }
+
     /// Resolve a desired clip to a concrete glTF clip name with Run → Walk → Idle fallback.
     pub fn resolve_clip_name(&self, desired: AnimationClipKey) -> Option<(&str, AnimationClipKey)> {
         let chain = match desired {
@@ -148,6 +163,11 @@ impl AnimationProfile {
             ],
             AnimationClipKey::Idle => [
                 AnimationClipKey::Idle,
+                AnimationClipKey::Idle,
+                AnimationClipKey::Idle,
+            ],
+            AnimationClipKey::Work => [
+                AnimationClipKey::Work,
                 AnimationClipKey::Idle,
                 AnimationClipKey::Idle,
             ],
@@ -172,6 +192,7 @@ impl AnimationProfile {
             }
             AnimationClipKey::Walk => self.walk_clip.as_deref().filter(|name| !name.is_empty()),
             AnimationClipKey::Run => self.run_clip.as_deref().filter(|name| !name.is_empty()),
+            AnimationClipKey::Work => self.work_clip.as_deref().filter(|name| !name.is_empty()),
             AnimationClipKey::TurnLeft => self
                 .turn_left_clip
                 .as_deref()

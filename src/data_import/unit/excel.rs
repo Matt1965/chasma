@@ -60,6 +60,14 @@ pub fn read_unit_rows(
         if row_is_empty(cells) {
             continue;
         }
+        let unit_id = columns
+            .get("Unit ID")
+            .and_then(|&index| cells.get(index))
+            .map(cell_to_string)
+            .unwrap_or_default();
+        if !is_unit_definition_row_id(&unit_id) {
+            continue;
+        }
         let row_number = offset + 2;
         parsed.push(
             parse_row(row_number, cells, &columns).map_err(|message| RowImportError {
@@ -76,6 +84,15 @@ fn row_is_empty(cells: &[calamine::Data]) -> bool {
     cells
         .iter()
         .all(|cell| cell_to_string(cell).trim().is_empty())
+}
+
+/// Workbook footers (statistics summaries) reuse the Units sheet but are not unit definitions.
+fn is_unit_definition_row_id(unit_id: &str) -> bool {
+    let trimmed = unit_id.trim();
+    trimmed.len() == 6
+        && trimmed.as_bytes().get(0) == Some(&b'U')
+        && trimmed.as_bytes().get(1) == Some(&b'-')
+        && trimmed[2..].chars().all(|c| c.is_ascii_digit())
 }
 
 fn parse_row(
@@ -248,6 +265,18 @@ fn parse_row(
             &|col| text(col),
         ))
         .unwrap_or_default(),
+        appearance_profile_id: if columns.contains_key("Appearance Profile ID") {
+            text("Appearance Profile ID")
+        } else {
+            String::new()
+        },
+        default_body_variant_id: if columns.contains_key("Default Body Variant ID") {
+            text("Default Body Variant ID")
+        } else {
+            String::new()
+        },
+        has_appearance_profile_column: columns.contains_key("Appearance Profile ID"),
+        has_default_body_variant_column: columns.contains_key("Default Body Variant ID"),
     })
 }
 
@@ -549,6 +578,55 @@ mod tests {
         );
         let _ = std::fs::remove_file(path);
         let _ = std::fs::remove_file(legacy_path);
+    }
+
+    #[test]
+    fn statistics_footer_rows_are_skipped() {
+        let path = std::env::temp_dir().join(format!(
+            "chasma_unit_import_{}_{}.xlsx",
+            std::process::id(),
+            "statistics_footer"
+        ));
+        let headers = workbook_headers_with_locomotion();
+        let unit_row = vec![
+            "U-0001",
+            "Wolf",
+            "wild",
+            "wolf",
+            "2",
+            "5",
+            "5",
+            "4",
+            "6",
+            "3",
+            "7",
+            "2",
+            "3",
+            "25",
+            "26.5",
+            "Elite",
+            "weapon_wolf_bite",
+            r"\units\wolf.glb",
+            "4.5",
+            "0.6",
+            "40",
+            "Y",
+        ];
+        let footer_rows = [
+            vec!["UNIT STATISTICS"],
+            vec!["Total Units:", "5"],
+            vec!["Avg Power Rating:", "12.5"],
+            vec!["Strongest Unit:", "Wolf"],
+            vec!["Wild Units:", "3"],
+            vec!["Bandit Units:", "1"],
+        ];
+        let mut rows: Vec<Vec<&str>> = vec![unit_row];
+        rows.extend(footer_rows.iter().map(|row| row.to_vec()));
+        write_workbook(&path, &headers, &rows);
+        let parsed = read_unit_rows(&path).unwrap();
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].as_ref().unwrap().unit_id, "U-0001");
+        let _ = std::fs::remove_file(path);
     }
 
     #[test]

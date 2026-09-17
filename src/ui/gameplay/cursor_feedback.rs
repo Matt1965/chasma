@@ -9,8 +9,8 @@ use crate::units::input::{
     SelectedUnits, cursor_world_ray, pick_unit_along_ray, terrain_click_to_world_position,
 };
 use crate::world::{
-    AttackTargetingPolicy, AuthoredRelationshipCatalog, UnitCatalog, WeaponCatalog, WorldConfig,
-    WorldData, is_valid_autonomous_attack_target,
+    AttackTargetingPolicy, AuthoredRelationshipCatalog, ItemCatalog, UnitCatalog, WeaponCatalog,
+    WorldConfig, WorldData, is_valid_autonomous_attack_target,
 };
 
 use super::player_hud_state::PlayerHudState;
@@ -37,6 +37,7 @@ pub fn sample_gameplay_cursor_context(
     world: Res<WorldData>,
     config: Res<WorldConfig>,
     unit_catalog: Res<UnitCatalog>,
+    item_catalog: Res<ItemCatalog>,
     weapon_catalog: Res<WeaponCatalog>,
     authored_relationships: Res<AuthoredRelationshipCatalog>,
     units: Query<(&crate::units::UnitRenderEntity, &GlobalTransform)>,
@@ -70,6 +71,7 @@ pub fn sample_gameplay_cursor_context(
                         unit_id,
                         &weapon_catalog,
                         &unit_catalog,
+                        &item_catalog,
                         policy,
                     )
                 });

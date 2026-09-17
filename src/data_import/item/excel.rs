@@ -145,7 +145,13 @@ fn parse_row(
     let (enabled, enabled_was_blank) = parse_enabled_cell(&text("Enabled"))?;
     let stackable = parse_bool_yn(&text("Stackable")).map_err(|err| err.to_string())?;
     let unique_instance_required = if columns.contains_key("Unique Instance Required") {
-        parse_bool_yn(&text("Unique Instance Required")).map_err(|err| err.to_string())?
+        let raw = text("Unique Instance Required");
+        let raw = raw.trim();
+        if raw.is_empty() {
+            false
+        } else {
+            parse_bool_yn(raw).map_err(|err| err.to_string())?
+        }
     } else {
         false
     };
@@ -168,6 +174,18 @@ fn parse_row(
         0
     };
 
+    let equipment_slots = if columns.contains_key("Equipment Slots") {
+        let raw = text("Equipment Slots");
+        crate::world::equipment::EquipmentSlot::parse_list(&raw)
+            .map_err(|error| format!("invalid Equipment Slots: {error}"))?
+    } else {
+        Vec::new()
+    };
+
+    let weapon_definition_id = optional_text("Weapon Definition ID");
+    let armor_profile_id = optional_text("Armor Profile ID");
+    let backpack_profile_id = optional_text("Backpack Profile ID");
+
     Ok(ItemImportRow {
         row_number,
         item_id: text("Item ID"),
@@ -185,6 +203,10 @@ fn parse_row(
         tags: normalize_tags(&text("Tags")),
         unique_instance_required,
         nutrition,
+        equipment_slots,
+        weapon_definition_id,
+        armor_profile_id,
+        backpack_profile_id,
         enabled,
         enabled_was_blank,
     })

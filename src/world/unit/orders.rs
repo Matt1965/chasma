@@ -11,7 +11,7 @@ use crate::world::task::{TaskCancelReason, cancel_unit_task};
 use crate::world::unit::unit_can_execute_actions;
 use crate::world::{
     AttackTargetingPolicy, CommandBufferResolveReport, CommandResolveSuccess, DoodadCatalog,
-    NavigationConfig, PassabilityCatalogs, WeaponCatalog, WorldData, WorldPosition,
+    ItemCatalog, NavigationConfig, PassabilityCatalogs, WeaponCatalog, WorldData, WorldPosition,
     clear_attack_cycle_for_order_cancel, hold_in_attack_range, initial_attack_combat_state,
     reset_attack_cycle_for_retarget, validate_explicit_attack_target,
 };
@@ -97,6 +97,7 @@ pub fn issue_unit_order(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     unit_id: UnitId,
@@ -155,6 +156,7 @@ pub fn issue_unit_order(
                 target,
                 weapon_catalog,
                 unit_catalog,
+                item_catalog,
                 targeting_policy,
             ) {
                 Ok(()) => {
@@ -176,7 +178,15 @@ pub fn issue_unit_order(
                     return Err(reason);
                 }
             }
-            apply_validated_attack_order(world, unit_catalog, weapon_catalog, unit_id, target, None)
+            apply_validated_attack_order(
+                world,
+                unit_catalog,
+                weapon_catalog,
+                item_catalog,
+                unit_id,
+                target,
+                None,
+            )
         }
         UnitOrder::AttackMove { destination } => {
             let mut events = Vec::new();
@@ -262,6 +272,7 @@ pub fn apply_validated_attack_order(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
     unit_id: UnitId,
     target: UnitId,
     reactive_authorization: Option<UnitId>,
@@ -283,8 +294,14 @@ pub fn apply_validated_attack_order(
     }
     world.command_buffer_mut().clear_pending(unit_id);
     world.movement_smoothing_mut().clear_unit(unit_id);
-    let combat_state =
-        initial_attack_combat_state(world, unit_id, target, unit_catalog, weapon_catalog);
+    let combat_state = initial_attack_combat_state(
+        world,
+        unit_id,
+        target,
+        unit_catalog,
+        weapon_catalog,
+        item_catalog,
+    );
     world
         .set_unit_combat_state(unit_id, combat_state.clone())
         .map_err(|_| UnitOrderError::AttackerNotFound)?;
@@ -424,6 +441,7 @@ mod tests {
             world,
             catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             unit_id,
@@ -439,7 +457,8 @@ mod tests {
         insert_flat(&mut world);
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(10.0, 10.0),
             UnitSource::Authored,
@@ -481,7 +500,8 @@ mod tests {
         let mut world = layout_world();
         let player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -491,7 +511,8 @@ mod tests {
         .id;
         let hostile = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(5.0, 5.0),
             UnitSource::Authored,
@@ -519,7 +540,8 @@ mod tests {
         let mut world = layout_world();
         let player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -546,7 +568,8 @@ mod tests {
         let mut world = layout_world();
         let player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -585,7 +608,8 @@ mod tests {
         insert_flat(&mut world);
         let player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(10.0, 10.0),
             UnitSource::Authored,
@@ -595,7 +619,8 @@ mod tests {
         .id;
         let hostile = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(16.2, 10.0),
             UnitSource::Authored,
@@ -652,6 +677,7 @@ mod tests {
             &crate::world::InteriorProfileCatalog::default(),
             None,
             &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &crate::world::ItemCategoryCatalog::default(),
             &crate::world::InventoryProfileCatalog::default(),
             &crate::world::CorpseSettings::default(),
@@ -674,7 +700,8 @@ mod tests {
         let mut world = layout_world();
         let player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(10.0, 10.0),
             UnitSource::Authored,
@@ -684,7 +711,8 @@ mod tests {
         .id;
         let hostile = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(16.2, 10.0),
             UnitSource::Authored,

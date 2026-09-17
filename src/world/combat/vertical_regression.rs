@@ -78,8 +78,7 @@ mod tests {
         position: WorldPosition,
     ) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             position,
             UnitSource::Authored,
@@ -95,8 +94,7 @@ mod tests {
         position: WorldPosition,
     ) -> UnitId {
         let id = create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             position,
             UnitSource::Authored,
@@ -129,8 +127,16 @@ mod tests {
             "player outside sight range must not be a perception candidate"
         );
         assert!(
-            find_auto_acquire_target(&world, wild, &catalog, &weapons, policy(), &authored)
-                .is_none()
+            find_auto_acquire_target(
+                &world,
+                wild,
+                &catalog,
+                &weapons,
+                &crate::world::ItemCatalog::default(),
+                policy(),
+                &authored
+            )
+            .is_none()
         );
 
         world
@@ -191,6 +197,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
@@ -217,16 +224,40 @@ mod tests {
         let wild = spawn_wild_wolf(&mut world, &catalog, pos(8.0, 0.0));
 
         assert!(
-            validate_mechanical_attack_target(&world, player, wild, &weapons, &catalog, policy())
-                .is_ok()
+            validate_mechanical_attack_target(
+                &world,
+                player,
+                wild,
+                &weapons,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                policy()
+            )
+            .is_ok()
         );
         assert!(
-            validate_explicit_attack_target(&world, player, wild, &weapons, &catalog, policy())
-                .is_ok()
+            validate_explicit_attack_target(
+                &world,
+                player,
+                wild,
+                &weapons,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                policy()
+            )
+            .is_ok()
         );
         assert!(
-            scan_attack_move_target(&world, player, &catalog, &weapons, policy(), &authored)
-                .is_none()
+            scan_attack_move_target(
+                &world,
+                player,
+                &catalog,
+                &weapons,
+                &crate::world::ItemCatalog::default(),
+                policy(),
+                &authored
+            )
+            .is_none()
         );
         assert_ne!(
             classify_unit_target(
@@ -236,6 +267,7 @@ mod tests {
                 wild,
                 &weapons,
                 &catalog,
+                &crate::world::ItemCatalog::default(),
                 policy(),
             ),
             InteractionType::AttackableUnit
@@ -262,8 +294,16 @@ mod tests {
         assert_eq!(desire.effective_relationship, -50);
         assert!(!desire.wants_attack);
         assert!(
-            find_auto_acquire_target(&world, wild, &catalog, &weapons, policy(), &authored)
-                .is_none()
+            find_auto_acquire_target(
+                &world,
+                wild,
+                &catalog,
+                &weapons,
+                &crate::world::ItemCatalog::default(),
+                policy(),
+                &authored
+            )
+            .is_none()
         );
     }
 
@@ -275,7 +315,8 @@ mod tests {
         let player = spawn_player_unit(&mut world, &catalog, pos(0.0, 0.0));
         let neutral = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(1.0, 0.0),
             UnitSource::Authored,
@@ -301,9 +342,11 @@ mod tests {
             &mut world,
             neutral,
             player,
-            1,
+            1.0,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
@@ -329,6 +372,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             wild,
@@ -340,6 +384,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             crate::world::default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -363,6 +408,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             crate::world::default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -428,7 +474,8 @@ mod tests {
 
         let hostile = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(2.0, 0.0),
             UnitSource::Authored,

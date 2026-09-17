@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::id::ItemInstanceId;
+use super::id::{InventoryId, ItemInstanceId};
 use crate::world::ItemDefinitionId;
 
 /// Optional metadata on a unique item instance (ADR-088 I2).
@@ -18,6 +18,8 @@ pub struct ItemInstance {
     pub id: ItemInstanceId,
     pub definition_id: ItemDefinitionId,
     pub metadata: ItemInstanceMetadata,
+    /// Persistent internal inventory for container items (e.g. backpacks).
+    pub contained_inventory_id: Option<InventoryId>,
 }
 
 impl ItemInstance {
@@ -26,6 +28,7 @@ impl ItemInstance {
             id,
             definition_id,
             metadata: ItemInstanceMetadata::default(),
+            contained_inventory_id: None,
         }
     }
 

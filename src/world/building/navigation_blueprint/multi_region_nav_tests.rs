@@ -361,6 +361,7 @@ fn two_room_unit_crosses_hall_door_both_ways() {
 
     let unit_id = create_unit(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         start,

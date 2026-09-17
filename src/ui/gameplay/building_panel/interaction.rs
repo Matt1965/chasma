@@ -1,7 +1,7 @@
 //! Building panel inventory interaction eligibility (BP4).
 
 use crate::ui::gameplay::inventory::{
-    InventoryGridInteraction, InventoryPaneSide, InventoryUiState,
+    InventoryGridInteraction, InventoryPaneKind, InventoryUiState,
 };
 use crate::ui::gameplay::player_hud_state::primary_selected_unit;
 use crate::units::input::SelectedUnits;
@@ -50,7 +50,7 @@ pub fn building_inventory_transfer_eligible(
 pub fn building_inventory_grid_interaction(eligible: bool) -> InventoryGridInteraction {
     if eligible {
         InventoryGridInteraction::Interactive {
-            side: InventoryPaneSide::Right,
+            pane_kind: InventoryPaneKind::Secondary,
         }
     } else {
         InventoryGridInteraction::ReadOnly
@@ -61,7 +61,7 @@ pub fn building_inventory_grid_interaction(eligible: bool) -> InventoryGridInter
 mod tests {
     use super::*;
     use crate::ui::gameplay::inventory::{
-        InventoryGridInteraction, InventoryPaneSide, InventoryUiState,
+        InventoryGridInteraction, InventoryPaneKind, InventoryUiState,
     };
     use crate::units::input::SelectedUnits;
     use crate::world::{
@@ -136,7 +136,8 @@ mod tests {
         .unwrap();
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -180,7 +181,8 @@ mod tests {
         .unwrap();
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(10.5, 10.5),
             UnitSource::Authored,
@@ -198,7 +200,7 @@ mod tests {
         assert_eq!(
             building_inventory_grid_interaction(eligible),
             InventoryGridInteraction::Interactive {
-                side: InventoryPaneSide::Right
+                pane_kind: InventoryPaneKind::Secondary
             }
         );
     }
@@ -226,7 +228,8 @@ mod tests {
         .unwrap();
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(20.5, 20.5),
             UnitSource::Authored,
