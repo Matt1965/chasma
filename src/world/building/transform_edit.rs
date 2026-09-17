@@ -180,6 +180,7 @@ pub fn update_building_transform(
             unit_catalog: catalogs.unit,
             config: BuildingPlacementConfig::default(),
             player_authorized: true,
+            terrain_vertical_scale: 1.0,
         };
         let validation = validate_building_transform_placement(
             &ctx,

@@ -81,6 +81,7 @@ pub fn update_build_mode_ghost(
         unit_catalog: &unit_catalog,
         config: BuildingPlacementConfig::default(),
         player_authorized: true,
+        terrain_vertical_scale: vertical_scale,
     };
     let validation = if let Some(pos) = snapped {
         validate_building_placement(&ctx, &definition_id, pos, rotation, ownership)

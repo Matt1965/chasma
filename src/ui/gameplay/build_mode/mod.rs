@@ -8,6 +8,11 @@ mod preview;
 mod state;
 mod terrain_overlay;
 
+#[cfg(feature = "dev")]
+mod placement_gizmos;
+#[cfg(feature = "dev")]
+mod placement_trace;
+
 pub use catalog::{
     BuildCatalogRoot, handle_build_catalog_clicks, handle_build_search_keyboard,
     spawn_build_catalog_panel, sync_build_catalog_contents, sync_build_catalog_visibility,
@@ -19,4 +24,12 @@ pub use preview::{BuildModeCursorAnchor, update_build_mode_ghost};
 pub use state::{BuildModePhase, BuildModeState};
 pub use terrain_overlay::{
     clear_build_mode_terrain_overlay_on_exit, sync_build_mode_terrain_overlay,
+};
+
+#[cfg(feature = "dev")]
+pub use placement_gizmos::draw_build_mode_placement_gizmos;
+#[cfg(feature = "dev")]
+pub use placement_trace::{
+    BuildModePlacementTrace, handle_placement_trace_toggle, maybe_trace_build_mode_preview,
+    trace_build_mode_place_result, trace_build_mode_preview_after_update,
 };

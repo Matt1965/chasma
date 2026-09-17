@@ -48,8 +48,9 @@ fn exclude_occupants_for_command_target(target: &CommandTarget) -> Vec<UnitId> {
     }
 }
 use crate::world::{
-    BuildingOwnership, BuildingPlacementConfig, BuildingPlacementContext, OccupancyCatalogs,
-    SelectionControllabilityPolicy, place_player_building, unit_is_selectable,
+    BuildingOwnership, BuildingPlacementConfig, BuildingPlacementContext, InventoryCatalogCtx,
+    OccupancyCatalogs, SelectionControllabilityPolicy, definition_requires_inventory_allocation,
+    place_player_building, place_player_building_with_inventory, unit_is_selectable,
     validate_building_placement,
 };
 
@@ -67,6 +68,8 @@ pub struct DispatchPlayerParams<'w> {
     pub building_panel: ResMut<'w, BuildingPanelState>,
     pub pending_building_interaction:
         ResMut<'w, crate::client::PendingBuildingPlayerInteractionState>,
+    #[cfg(feature = "dev")]
+    pub placement_trace: Res<'w, crate::ui::gameplay::BuildModePlacementTrace>,
 }
 
 /// Bundled simulation catalogs (keeps dispatch system param count under Bevy limit).
@@ -81,7 +84,9 @@ pub struct DispatchSimulationParams<'w> {
     pub nav_config: Res<'w, NavigationConfig>,
     pub authored_relationships: Res<'w, AuthoredRelationshipCatalog>,
     pub operation_catalog: Res<'w, OperationCatalog>,
+    pub item_catalog: Res<'w, crate::world::ItemCatalog>,
     pub item_category_catalog: Res<'w, crate::world::ItemCategoryCatalog>,
+    pub inventory_profile_catalog: Res<'w, crate::world::InventoryProfileCatalog>,
     pub field_catalog: Res<'w, crate::world::TerrainFieldCatalog>,
     pub profile_catalog: Res<'w, crate::world::FieldResponseProfileCatalog>,
     pub requirement_catalog: Res<'w, crate::world::BuildingFieldRequirementCatalog>,
@@ -209,7 +214,9 @@ pub fn dispatch_client_intents(
         nav_config,
         authored_relationships,
         operation_catalog,
+        item_catalog,
         item_category_catalog,
+        inventory_profile_catalog,
         field_catalog,
         profile_catalog,
         requirement_catalog,
@@ -255,7 +262,9 @@ pub fn dispatch_client_intents(
                 frame_index.0,
                 &mut player_params.inventory_queue,
                 &operation_catalog,
+                &item_catalog,
                 &item_category_catalog,
+                &inventory_profile_catalog,
                 &field_catalog,
                 &profile_catalog,
                 &requirement_catalog,
@@ -263,6 +272,8 @@ pub fn dispatch_client_intents(
                 requirement_revision.0,
                 &mut assessment_store,
                 &pile_settings,
+                #[cfg(feature = "dev")]
+                &player_params.placement_trace,
             );
             if status == IntentDispatchStatus::Applied
                 && matches!(
@@ -484,7 +495,9 @@ fn dispatch_one(
     simulation_tick: u64,
     inventory_queue: &mut crate::client::inventory_intent::InventoryIntentQueue,
     operation_catalog: &OperationCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     item_category_catalog: &crate::world::ItemCategoryCatalog,
+    inventory_profile_catalog: &crate::world::InventoryProfileCatalog,
     field_catalog: &crate::world::TerrainFieldCatalog,
     profile_catalog: &crate::world::FieldResponseProfileCatalog,
     requirement_catalog: &crate::world::BuildingFieldRequirementCatalog,
@@ -492,6 +505,7 @@ fn dispatch_one(
     requirement_revision: u64,
     assessment_store: &mut crate::world::BuildingTerrainAssessmentStore,
     pile_settings: &crate::world::ItemPileSettings,
+    #[cfg(feature = "dev")] placement_trace: &crate::ui::gameplay::BuildModePlacementTrace,
 ) -> IntentDispatchStatus {
     match intent {
         ClientIntent::ContextualCommand { target } => dispatch_contextual_command(
@@ -778,12 +792,18 @@ fn dispatch_one(
             player_ownership,
             build_mode,
             layout,
+            vertical_scale,
             field_catalog,
             profile_catalog,
             requirement_catalog,
             profile_revision,
             requirement_revision,
             assessment_store,
+            &item_catalog,
+            &item_category_catalog,
+            &inventory_profile_catalog,
+            #[cfg(feature = "dev")]
+            placement_trace,
         ),
     }
 }
@@ -800,18 +820,25 @@ fn dispatch_place_building(
     player_ownership: &crate::player::LocalPlayerOwnership,
     build_mode: &mut BuildModeState,
     layout: crate::world::ChunkLayout,
+    vertical_scale: f32,
     field_catalog: &crate::world::TerrainFieldCatalog,
     profile_catalog: &crate::world::FieldResponseProfileCatalog,
     requirement_catalog: &crate::world::BuildingFieldRequirementCatalog,
     profile_revision: u64,
     requirement_revision: u64,
     assessment_store: &mut crate::world::BuildingTerrainAssessmentStore,
+    item_catalog: &crate::world::ItemCatalog,
+    item_category_catalog: &crate::world::ItemCategoryCatalog,
+    inventory_profile_catalog: &crate::world::InventoryProfileCatalog,
+    #[cfg(feature = "dev")] placement_trace: &crate::ui::gameplay::BuildModePlacementTrace,
 ) -> IntentDispatchStatus {
     let ownership = BuildingOwnership {
         owner_id: Some(player_ownership.owner_id),
         team_id: Some(player_ownership.team_id),
         affiliation: crate::world::Affiliation::Player,
     };
+    let candidate_anchor =
+        crate::world::anchor_from_terrain_position(world, anchor).unwrap_or(anchor);
     let ctx = BuildingPlacementContext {
         world,
         building_catalog,
@@ -820,8 +847,11 @@ fn dispatch_place_building(
         unit_catalog,
         config: BuildingPlacementConfig::default(),
         player_authorized: true,
+        terrain_vertical_scale: vertical_scale,
     };
-    let validation = validate_building_placement(&ctx, definition_id, anchor, rotation, ownership);
+    let validation =
+        validate_building_placement(&ctx, definition_id, candidate_anchor, rotation, ownership);
+    let yaw_degrees = rotation.to_euler(EulerRot::YXZ).0.to_degrees();
     if !validation.valid {
         build_mode.last_validation = Some(validation);
         return IntentDispatchStatus::Rejected(CommandUnavailableReason::InvalidPlacement);
@@ -829,20 +859,59 @@ fn dispatch_place_building(
     let Some(grounded) = validation.grounded_anchor else {
         return IntentDispatchStatus::Rejected(CommandUnavailableReason::InvalidPlacement);
     };
+    let resolved_rotation = validation.resolved_rotation.unwrap_or(rotation);
     let occupancy = OccupancyCatalogs {
         doodad: doodad_catalog,
         building: building_catalog,
         footprint: footprint_catalog,
     };
-    match place_player_building(
-        building_catalog,
-        world,
-        definition_id,
-        grounded,
-        rotation,
-        ownership,
-        occupancy,
-    ) {
+    let definition = building_catalog.get(definition_id);
+    let inventory_ctx = InventoryCatalogCtx::new(
+        item_catalog,
+        item_category_catalog,
+        inventory_profile_catalog,
+    );
+    let place_result = if definition
+        .is_some_and(definition_requires_inventory_allocation)
+    {
+        place_player_building_with_inventory(
+            building_catalog,
+            world,
+            definition_id,
+            grounded,
+            resolved_rotation,
+            ownership,
+            occupancy,
+            &inventory_ctx,
+        )
+    } else {
+        place_player_building(
+            building_catalog,
+            world,
+            definition_id,
+            grounded,
+            resolved_rotation,
+            ownership,
+            occupancy,
+        )
+    };
+    #[cfg(feature = "dev")]
+    if let Some(definition) = definition {
+        crate::ui::gameplay::trace_build_mode_place_result(
+            placement_trace,
+            world,
+            footprint_catalog,
+            definition,
+            candidate_anchor,
+            yaw_degrees,
+            layout,
+            vertical_scale,
+            &validation,
+            build_mode.last_plan.as_ref(),
+            &place_result,
+        );
+    }
+    match place_result {
         Ok(record) => {
             let catalogs = crate::world::TerrainAssessmentCatalogs {
                 buildings: building_catalog,
@@ -1590,7 +1659,8 @@ mod tests {
     use crate::world::{
         AuthoredRelationshipCatalog, BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
         CombatState, DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource,
-        FootprintCatalog, Heightfield, ItemCategoryCatalog, LocalPosition, PassabilityCatalogs,
+        FootprintCatalog, Heightfield, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog,
+        LocalPosition, PassabilityCatalogs,
         UnitDefinitionId, UnitOwnership, UnitSource, UnitState, WorldPosition, create_doodad,
         create_unit, create_unit_with_ownership, resolve_all_pending_unit_orders,
         starter_unit_definitions,
@@ -1734,7 +1804,9 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCatalog::default(),
             &ItemCategoryCatalog::default(),
+            &InventoryProfileCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1742,6 +1814,8 @@ mod tests {
             0,
             &mut terrain.assessment_store,
             &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert!(sel.selected_units.contains(unit_id));
@@ -1801,7 +1875,9 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCatalog::default(),
             &ItemCategoryCatalog::default(),
+            &InventoryProfileCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1809,6 +1885,8 @@ mod tests {
             0,
             &mut terrain.assessment_store,
             &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         resolve_all_pending_unit_orders(
@@ -1869,7 +1947,9 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCatalog::default(),
             &ItemCategoryCatalog::default(),
+            &InventoryProfileCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1877,6 +1957,8 @@ mod tests {
             0,
             &mut terrain.assessment_store,
             &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
     }
@@ -1946,7 +2028,9 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCatalog::default(),
             &ItemCategoryCatalog::default(),
+            &InventoryProfileCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -1954,6 +2038,8 @@ mod tests {
             0,
             &mut terrain.assessment_store,
             &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
         assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
@@ -2003,7 +2089,9 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCatalog::default(),
             &ItemCategoryCatalog::default(),
+            &InventoryProfileCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2011,6 +2099,8 @@ mod tests {
             0,
             &mut terrain.assessment_store,
             &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
     }
@@ -2067,7 +2157,9 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCatalog::default(),
             &ItemCategoryCatalog::default(),
+            &InventoryProfileCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2075,6 +2167,8 @@ mod tests {
             0,
             &mut terrain.assessment_store,
             &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
         );
 
         assert_eq!(world.get_unit(unit_id).unwrap().state, state_before);
@@ -2137,7 +2231,9 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCatalog::default(),
             &ItemCategoryCatalog::default(),
+            &InventoryProfileCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2145,6 +2241,8 @@ mod tests {
             0,
             &mut terrain.assessment_store,
             &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert_eq!(pending.resolved_command, Some(CommandType::Move));
@@ -2219,7 +2317,9 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCatalog::default(),
             &ItemCategoryCatalog::default(),
+            &InventoryProfileCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2227,6 +2327,8 @@ mod tests {
             0,
             &mut terrain.assessment_store,
             &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert!(matches!(
@@ -2279,7 +2381,9 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCatalog::default(),
             &ItemCategoryCatalog::default(),
+            &InventoryProfileCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2287,6 +2391,8 @@ mod tests {
             0,
             &mut terrain.assessment_store,
             &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
         );
         assert!(modifiers.shift);
     }
@@ -2427,7 +2533,9 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCatalog::default(),
             &ItemCategoryCatalog::default(),
+            &InventoryProfileCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2435,6 +2543,8 @@ mod tests {
             0,
             &mut terrain.assessment_store,
             &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         assert_eq!(panel.open_building_id, Some(farm.id));
@@ -2445,6 +2555,119 @@ mod tests {
                 if *unit_id == unit.id
         ));
         assert_eq!(world.task_store().sorted_task_ids().len(), tasks_before);
+    }
+
+    #[test]
+    fn dispatcher_place_prispod_farm_creates_one_building_with_inventory() {
+        use crate::world::{
+            BuildingCategoryCatalog, BuildingDefinitionId, InventoryCatalogCtx,
+            InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, rotation_from_quadrants,
+            starter_building_definitions, starter_inventory_profile_definitions,
+            starter_item_category_definitions, starter_item_definitions,
+        };
+
+        fn inventory_ctx() -> &'static InventoryCatalogCtx<'static> {
+            static CTX: std::sync::OnceLock<InventoryCatalogCtx<'static>> =
+                std::sync::OnceLock::new();
+            CTX.get_or_init(|| {
+                let categories =
+                    ItemCategoryCatalog::from_definitions(starter_item_category_definitions())
+                        .unwrap();
+                let items =
+                    ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+                let profiles = InventoryProfileCatalog::from_definitions(
+                    starter_inventory_profile_definitions(),
+                )
+                .unwrap();
+                let items = Box::leak(Box::new(items));
+                let categories = Box::leak(Box::new(categories));
+                let profiles = Box::leak(Box::new(profiles));
+                InventoryCatalogCtx::new(items, categories, profiles)
+            })
+        }
+
+        let mut sel = DispatchSelectionBundle::new();
+        let mut move_feedback = MoveCommandFeedback::default();
+        let mut world = flat_world();
+        let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        let mut terrain = DispatchTerrainBundle::new();
+        let categories = BuildingCategoryCatalog::default();
+        let building_catalog =
+            BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
+        let item_categories =
+            ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
+        let item_catalog =
+            ItemCatalog::from_definitions(starter_item_definitions(), &item_categories).unwrap();
+        let inventory_profile_catalog = InventoryProfileCatalog::from_definitions(
+            starter_inventory_profile_definitions(),
+        )
+        .unwrap();
+        let ctx = inventory_ctx();
+        let mut build_mode = BuildModeState::default();
+        build_mode.arm_definition(BuildingDefinitionId::new("prispod_farm"));
+        assert_eq!(world.sorted_building_ids().len(), 0);
+
+        let status = dispatch_one(
+            &ClientIntent::PlaceBuilding {
+                definition_id: BuildingDefinitionId::new("prispod_farm"),
+                anchor: pos(64.0, 64.0),
+                rotation: rotation_from_quadrants(0),
+            },
+            &mut sel.apply_params(),
+            &mut move_feedback,
+            &mut world,
+            &UnitCatalog::default(),
+            &WeaponCatalog::default(),
+            &DoodadCatalog::default(),
+            &building_catalog,
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
+            &NavigationConfig::default(),
+            &AuthoredRelationshipCatalog::default(),
+            layout(),
+            1.0,
+            &PlayerInteractionSettings::default(),
+            None,
+            None,
+            &mut modifiers,
+            &mut None,
+            &mut PendingDispatchTrace::default(),
+            SelectionControllabilityPolicy::gameplay_default(),
+            None,
+            &mut build_mode,
+            &LocalPlayerOwnership::default(),
+            &mut BuildingPanelState::default(),
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            0,
+            &mut inventory_queue,
+            &OperationCatalog::default(),
+            &item_catalog,
+            &item_categories,
+            &inventory_profile_catalog,
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
+        );
+        assert_eq!(status, IntentDispatchStatus::Applied);
+        assert_eq!(world.sorted_building_ids().len(), 1);
+        let building_id = world.sorted_building_ids()[0];
+        let record = world.get_building(building_id).unwrap();
+        assert!(record.inventory_id.is_some());
+        assert!(
+            world
+                .building_inventory_binding_store()
+                .get(building_id)
+                .is_some()
+        );
+        assert!(!build_mode.is_ghost_placing());
+        let _ = ctx;
     }
 
     #[test]
@@ -2507,7 +2730,9 @@ mod tests {
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
+            &ItemCatalog::default(),
             &ItemCategoryCatalog::default(),
+            &InventoryProfileCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2515,6 +2740,8 @@ mod tests {
             0,
             &mut terrain.assessment_store,
             &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         resolve_all_pending_unit_orders(
@@ -2629,7 +2856,9 @@ mod tests {
             0,
             &mut inventory_queue,
             &operation_catalog,
+            &ItemCatalog::default(),
             &ItemCategoryCatalog::default(),
+            &InventoryProfileCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2637,6 +2866,8 @@ mod tests {
             0,
             &mut terrain.assessment_store,
             &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Applied);
         let policy = world.building_production_store().get_policy(hut).unwrap();
@@ -2742,7 +2973,9 @@ mod tests {
             0,
             &mut inventory_queue,
             &operation_catalog,
+            &ItemCatalog::default(),
             &ItemCategoryCatalog::default(),
+            &InventoryProfileCatalog::default(),
             &terrain.field_catalog,
             &terrain.profile_catalog,
             &terrain.requirement_catalog,
@@ -2750,6 +2983,8 @@ mod tests {
             0,
             &mut terrain.assessment_store,
             &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
         );
         assert_eq!(status, IntentDispatchStatus::Ignored);
         assert_eq!(

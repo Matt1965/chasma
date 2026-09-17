@@ -10,7 +10,7 @@ use bevy::prelude::*;
 
 use crate::world::{Affiliation, BuildingLifecycleState};
 
-use super::components::OriginalBuildingMaterial;
+use super::components::{BuildingFoundationSkirt, OriginalBuildingMaterial};
 use super::placeholder::lifecycle_building_color;
 
 /// Clone and style mesh materials for one scene hierarchy.
@@ -20,10 +20,14 @@ pub fn prepare_scene_materials(
     children: &Query<&Children>,
     mesh_materials: &Query<&MeshMaterial3d<StandardMaterial>>,
     originals: &Query<&OriginalBuildingMaterial>,
+    foundation_skirts: &Query<Entity, With<BuildingFoundationSkirt>>,
     materials: &mut Assets<StandardMaterial>,
     lifecycle: BuildingLifecycleState,
     affiliation: Affiliation,
 ) -> bool {
+    if foundation_skirts.get(entity).is_ok() {
+        return false;
+    }
     let mut touched = false;
     if let Ok(mesh_material) = mesh_materials.get(entity) {
         let original_handle = if let Ok(original) = originals.get(entity) {
@@ -49,6 +53,7 @@ pub fn prepare_scene_materials(
                 children,
                 mesh_materials,
                 originals,
+                foundation_skirts,
                 materials,
                 lifecycle,
                 affiliation,
@@ -173,6 +178,7 @@ mod tests {
                       children: Query<&Children>,
                       mesh_materials: Query<&MeshMaterial3d<StandardMaterial>>,
                       originals: Query<&OriginalBuildingMaterial>,
+                      foundation_skirts: Query<Entity, With<BuildingFoundationSkirt>>,
                       mut materials: ResMut<Assets<StandardMaterial>>| {
                     prepare_scene_materials(
                         &mut commands,
@@ -180,6 +186,7 @@ mod tests {
                         &children,
                         &mesh_materials,
                         &originals,
+                        &foundation_skirts,
                         &mut materials,
                         lifecycle,
                         affiliation,
@@ -215,6 +222,7 @@ mod tests {
                       children: Query<&Children>,
                       mesh_materials: Query<&MeshMaterial3d<StandardMaterial>>,
                       originals: Query<&OriginalBuildingMaterial>,
+                      foundation_skirts: Query<Entity, With<BuildingFoundationSkirt>>,
                       mut materials: ResMut<Assets<StandardMaterial>>| {
                     prepare_scene_materials(
                         &mut commands,
@@ -222,6 +230,7 @@ mod tests {
                         &children,
                         &mesh_materials,
                         &originals,
+                        &foundation_skirts,
                         &mut materials,
                         lifecycle,
                         affiliation,

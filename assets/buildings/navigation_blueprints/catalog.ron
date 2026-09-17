@@ -115,7 +115,7 @@
                 generation_revision: Some(2),
                 tags: [],
                 extensions: {
-                    "nv12_collision_path": "C:\\BevyFiles\\chasma\\assets/buildings\\chest.glb",
+                    "nv12_collision_path": "C:\\BevyFiles\\chasma-agent-b\\assets/buildings\\chest.glb",
                     "nv12_mesh_source": "visible_meshes",
                 },
             ),

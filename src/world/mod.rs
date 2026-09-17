@@ -112,7 +112,8 @@ pub use building::{
     EntranceGenerationDiagnostics, FarmProductionPhase, FieldResponseEvaluationError,
     FieldResponsePoint, FieldResponseProfileCatalog, FieldResponseProfileCatalogRevision,
     FieldResponseProfileDefinition, FieldResponseProfileError, FieldResponseProfileId,
-    FootprintSpec, FootprintType, GeometryGenerationDiagnostics, INTERACTION_WORK_RANGE_METERS,
+    FootprintSpec, FootprintType, FoundationSkirtSpec, GeometryGenerationDiagnostics,
+    INTERACTION_WORK_RANGE_METERS,
     InteractionPointDefinition, InteriorActivationCatalogs, InteriorActivationOutcome,
     InteriorActivationOutcomeStore, InteriorActivationStatus, InteriorError,
     InteriorProfileCatalog, InteriorProfileId, MAX_EFFICIENCY_BASIS_POINTS,
@@ -125,6 +126,8 @@ pub use building::{
     OperationalLimitingFactor, PLACEMENT_QUANTIZE_METERS, PRODUCTION_PROGRESS_ONE_UNIT,
     PRODUCTION_STEPPING_MODEL, ProductionCommandError, ProductionProgress,
     ProductionValidationIssue, RepeatMode, ResolvedBuildingNavigationBlueprint,
+    ResolvedBuildingPlacement, TerrainPlacementMode, presentation_plane_normal,
+    sample_terrain_under_footprint, slope_degrees_from_plane_coefficients,
     RuntimeNavigationFloor, RuntimeNavigationRegion, RuntimeTopologyFingerprint,
     TerrainAssessmentCatalogs, TerrainAssessmentError, activate_building_interior,
     add_building_construction_progress, add_entrance_on_floor, add_region_connection,
@@ -135,7 +138,15 @@ pub use building::{
     apply_player_storage_category_accepted, apply_player_storage_clear_all,
     assess_building_terrain, assess_building_terrain_at_placement, assess_production_execution,
     blueprint_id_for_building, blueprint_topology_fingerprint, build_building_placement_plan,
+    footprint_horizontal_span_meters, FoundationPerimeterVertex,
+    presentation_foundation_depth_meters, FOUNDATION_TERRAIN_PENETRATION_FUDGE_METERS,
+    PRESENTATION_TERRAIN_CLEARANCE_METERS, FOUNDATION_SLOPE_DEGREES, FOUNDATION_TEXTURE_TILE_METERS,
+    MAX_FOUNDATION_VISIBLE_DEPTH_METERS, foundation_slope_run_per_meter_drop,
+    terrain_clearance_sim,
+    resolve_authoritative_building_placement,
+    derive_foundation_skirt_for_placement,
     building_anchor_render_transform, building_container_access_policy, building_has_inventory,
+    building_placement_render_y,
     building_id_for_inventory, building_inventory_bindings, building_inventory_operational,
     building_is_storage_capable, building_model_correction_local_transform,
     building_model_render_transform, building_model_world_transform,
@@ -182,6 +193,7 @@ pub use building::{
     replace_building_instance_definition, reposition_building_navigation_runtime,
     reset_instance_to_asset, reset_production_progress, resolve_building_field_sample_cells,
     resolve_building_inventory_binding, resolve_building_navigation_blueprint,
+    resolve_building_placement,
     resolve_move_goal_space, resolve_navigation_space_at_position, resolve_navigation_start_space,
     resolve_surface_entrance_approach_position, resolve_surface_entrance_escape_position,
     rotation_from_quadrants, runtime_topology_fingerprint, save_instance_blueprint,
@@ -716,6 +728,7 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<BuildingCategoryDefinition>()
             .register_type::<BuildingCategoryCatalog>()
             .register_type::<BuildingDefinition>()
+            .register_type::<TerrainPlacementMode>()
             .register_type::<BuildingCatalog>()
             .register_type::<BuildingId>()
             .register_type::<BuildingPlacement>()

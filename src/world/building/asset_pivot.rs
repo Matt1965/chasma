@@ -11,8 +11,8 @@ use super::catalog::BuildingDefinition;
 /// Pivot offset keyed by render asset stem (`assets/buildings/{key}.glb`).
 pub fn builtin_model_local_offset(render_key: &str) -> Option<Vec3> {
     match render_key {
-        // barn.glb scene roots were exported with Blender world translations (~-7, +19) XZ.
-        "barn" => Some(Vec3::new(7.05, 0.35, -18.65)),
+        // barn.glb meshes export off-origin; offset cancels scaled bounds center (see catalog).
+        "barn" => Some(Vec3::new(14.857, 0.674, -13.446)),
         _ => None,
     }
 }
@@ -61,8 +61,8 @@ mod tests {
     #[test]
     fn barn_builtin_offset_applies_when_catalog_offset_zero() {
         let offset = effective_model_local_offset(&barn_definition());
-        assert!(offset.x > 6.0);
-        assert!(offset.z < -15.0);
+        assert!(offset.x > 14.0);
+        assert!(offset.z < -13.0);
     }
 
     #[test]

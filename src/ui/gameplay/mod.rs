@@ -34,6 +34,11 @@ pub use build_mode::{
     handle_build_search_keyboard, spawn_build_catalog_panel, sync_build_catalog_contents,
     sync_build_catalog_visibility, update_build_mode_ghost,
 };
+#[cfg(feature = "dev")]
+pub use build_mode::{
+    BuildModePlacementTrace, draw_build_mode_placement_gizmos, handle_placement_trace_toggle,
+    trace_build_mode_place_result, trace_build_mode_preview_after_update,
+};
 pub use building_panel::{
     BuildingMenuCloseButton, BuildingMenuPanelRoot, BuildingPanelState, format_building_shell,
     handle_building_menu_close_button, reconcile_building_menu_panel, spawn_building_menu_panel,
