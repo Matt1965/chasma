@@ -498,6 +498,7 @@ fn resolve_layered_context<'a>(
         hit_requested,
         hit_active,
         work_ctx,
+        crate::world::unit_locomotion_surface(world, marker.unit_id),
     )?;
     let built = assets
         .graph_for_unit(record, definition, appearance_profiles)

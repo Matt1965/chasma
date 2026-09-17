@@ -10,7 +10,8 @@ use bevy::prelude::{Quat, Vec2, Vec3};
 
 use crate::world::stabilized_movement_heading;
 use crate::world::{
-    AnimationClipKey, AnimationProfile, ChunkLayout, UnitDefinition, UnitRecord, UnitState,
+    AnimationClipKey, AnimationProfile, ChunkLayout, LocomotionSurface, UnitDefinition, UnitRecord,
+    UnitState,
 };
 
 use super::layers::LowerBodyIntent;
@@ -49,20 +50,36 @@ pub fn resolve_polished_lower_body(
     locomotion: &mut LocomotionPresentationState,
     delta_seconds: f32,
     work_clip: Option<AnimationClipKey>,
+    surface: LocomotionSurface,
 ) -> Option<LowerBodyIntent> {
     tick_turn_timer(locomotion, delta_seconds);
 
-    if let Some(turn_clip) = active_turn_intent(locomotion, profile, settings) {
-        return Some(turn_clip);
+    if !surface.is_water() {
+        if let Some(turn_clip) = active_turn_intent(locomotion, profile, settings) {
+            return Some(turn_clip);
+        }
+
+        let heading_delta = movement_heading_delta(record, layout);
+        if let Some(turn_clip) =
+            try_begin_turn(record, profile, settings, locomotion, heading_delta)
+        {
+            return Some(turn_clip);
+        }
+    } else {
+        locomotion.turn_remaining_seconds = None;
+        locomotion.active_turn_clip = None;
     }
 
     let heading_delta = movement_heading_delta(record, layout);
-    if let Some(turn_clip) = try_begin_turn(record, profile, settings, locomotion, heading_delta) {
-        return Some(turn_clip);
-    }
-
     let desired = work_clip.unwrap_or_else(|| {
-        locomotion_clip_with_hysteresis(record, definition, profile, settings, locomotion)
+        locomotion_clip_with_hysteresis(
+            record,
+            definition,
+            profile,
+            settings,
+            locomotion,
+            surface,
+        )
     });
     let (_clip_name, resolved) = profile.resolve_clip_name(desired)?;
 
@@ -173,7 +190,16 @@ fn locomotion_clip_with_hysteresis(
     profile: &AnimationProfile,
     settings: &UnitAnimationSettings,
     state: &LocomotionPresentationState,
+    surface: LocomotionSurface,
 ) -> AnimationClipKey {
+    if surface.is_water() {
+        return match &record.state {
+            UnitState::Moving { .. } => AnimationClipKey::Swim,
+            UnitState::Idle | UnitState::Working { .. } | UnitState::Dead => {
+                AnimationClipKey::SwimIdle
+            }
+        };
+    }
     match &record.state {
         UnitState::Idle | UnitState::Dead => AnimationClipKey::Idle,
         UnitState::Working { .. } => AnimationClipKey::Idle,
@@ -205,7 +231,13 @@ pub fn locomotion_playback_speed(
     heading_delta: Option<f32>,
 ) -> f32 {
     let reference = profile.locomotion_reference_speed_mps.max(0.01);
-    let base = if matches!(clip, AnimationClipKey::Idle | AnimationClipKey::Work) {
+    let base = if matches!(
+        clip,
+        AnimationClipKey::Idle
+            | AnimationClipKey::Work
+            | AnimationClipKey::SwimIdle
+            | AnimationClipKey::Swim
+    ) {
         settings.locomotion_speed_scale
     } else {
         (definition.move_speed_mps / reference).max(0.05) * settings.locomotion_speed_scale
@@ -451,6 +483,7 @@ mod tests {
             &profile,
             &settings,
             &state,
+            LocomotionSurface::Ground,
         );
         assert_eq!(clip, AnimationClipKey::Run);
         state.last_locomotion_clip = Some(AnimationClipKey::Walk);
@@ -460,6 +493,7 @@ mod tests {
             &profile,
             &settings,
             &state,
+            LocomotionSurface::Ground,
         );
         assert_eq!(clip, AnimationClipKey::Walk);
     }
@@ -483,6 +517,7 @@ mod tests {
             &profile,
             &settings,
             &state,
+            LocomotionSurface::Ground,
         );
         assert_eq!(clip, AnimationClipKey::Run);
     }
@@ -557,5 +592,41 @@ mod tests {
         let record = sample_record(UnitState::Idle);
         let _ = movement_heading_delta(&record, layout());
         assert!(matches!(record.state, UnitState::Idle));
+    }
+
+    #[test]
+    fn water_surface_selects_swim_clips() {
+        let settings = UnitAnimationSettings::default();
+        let profile = sample_profile().with_swim_clips(
+            Some("Swim_Fwd_Loop".to_string()),
+            Some("Swim_Idle_Loop".to_string()),
+        );
+        let state = LocomotionPresentationState::default();
+        let moving = sample_record(UnitState::Moving {
+            target: WorldPosition::new(
+                crate::world::ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::ONE),
+            ),
+            path: NavigationPath::default(),
+            waypoint_index: 0,
+        });
+        let swim = locomotion_clip_with_hysteresis(
+            &moving,
+            &sample_definition(4.0),
+            &profile,
+            &settings,
+            &state,
+            LocomotionSurface::Water,
+        );
+        assert_eq!(swim, AnimationClipKey::Swim);
+        let idle = locomotion_clip_with_hysteresis(
+            &sample_record(UnitState::Idle),
+            &sample_definition(4.0),
+            &profile,
+            &settings,
+            &state,
+            LocomotionSurface::Water,
+        );
+        assert_eq!(idle, AnimationClipKey::SwimIdle);
     }
 }

@@ -80,10 +80,12 @@ fn query_surface_point_legality(
             };
         }
         SlopeWalkability::TooSteep => {
-            return PassabilityResult::Blocked {
-                reason: PassabilityBlockReason::SlopeTooSteep,
-                source: None,
-            };
+            if !crate::world::water_skips_seabed_slope(world, grounded) {
+                return PassabilityResult::Blocked {
+                    reason: PassabilityBlockReason::SlopeTooSteep,
+                    source: None,
+                };
+            }
         }
     }
 

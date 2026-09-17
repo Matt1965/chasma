@@ -31,6 +31,7 @@ pub mod relationship;
 mod settlement;
 mod space;
 mod task;
+mod water;
 mod terrain;
 mod terrain_field;
 mod unit;
@@ -540,9 +541,9 @@ pub use space::starter_space_profile;
 pub use space::{
     PortalId, PortalRecord, PortalTemplate, PortalType, SpaceError, SpaceId, SpaceRecord,
     SpaceRegistry, SpaceTemplate, UnitPortalTransitionState, ground_position_in_space,
-    register_building_space_profile, sample_support_height, space_hidden_by_default,
-    space_vertical_reference_y, space_visible_in_view, try_portal_transition,
-    two_story_hut_profile,
+    ground_position_in_space_with_surface, register_building_space_profile,
+    sample_support_height, space_hidden_by_default, space_vertical_reference_y,
+    space_visible_in_view, try_portal_transition, two_story_hut_profile,
 };
 pub use task::{
     AssignmentDecision, AssignmentScore, AssignmentValidationError, MIN_PREEMPT_PRIORITY_RANKS,
@@ -573,6 +574,16 @@ pub use terrain::{
 pub use terrain::{
     SlopeWalkability, classify_slope_walkability, estimate_slope_degrees, ground_world_position,
     is_position_slope_walkable, slope_at, try_ground_world_position, try_sample_height_at_position,
+};
+pub use water::{
+    DEFAULT_PRESENTATION_WATER_LEVEL, DEFAULT_SWIM_ENTER_VISIBLE_METERS,
+    DEFAULT_SWIM_EXIT_VISIBLE_METERS, DEFAULT_SWIM_ORIGIN_OFFSET_VISIBLE_METERS,
+    DEFAULT_SWIM_SPEED_MULTIPLIER, LocomotionSurface, WorldWaterState,
+    cancel_swimming_incompatible_actions, effective_move_speed_mps, locomotion_surface_at,
+    presentation_to_sim, refresh_all_unit_locomotion, sample_locomotion_support_height,
+    sim_to_presentation, unit_can_perform_normal_actions, unit_is_swimming,
+    unit_locomotion_surface, unit_order_requires_normal_actions, water_depth_at,
+    water_skips_seabed_slope,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use terrain_field::starter_definitions as starter_terrain_field_definitions;
@@ -724,6 +735,7 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<WeaponCatalog>()
             .register_type::<AnimationProfileId>()
             .register_type::<AnimationClipKey>()
+            .register_type::<crate::world::WorldWaterState>()
             .register_type::<AnimationProfile>()
             .register_type::<AnimationProfileCatalog>()
             .register_type::<UnitId>()

@@ -117,7 +117,7 @@ pub fn try_reactive_combat_retaliation(
         super::runtime_trace::retaliation_result(victim_id, attacker_id, false, "victim_missing");
         return false;
     };
-    if !is_unit_alive(&victim) || !unit_can_execute_actions(world, victim_id) {
+    if !is_unit_alive(&victim) || !crate::world::unit_can_perform_normal_actions(world, victim_id) {
         #[cfg(feature = "dev")]
         super::runtime_trace::retaliation_result(
             victim_id,
