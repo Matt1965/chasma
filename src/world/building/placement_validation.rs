@@ -8,12 +8,11 @@ use super::catalog::{BuildingCatalog, BuildingDefinitionId};
 use super::id::BuildingId;
 use super::ownership::BuildingOwnership;
 use super::placement_plan::quantize_placement_anchor_xz;
+use super::terrain_placement::resolve_building_placement;
 use crate::world::{
     ChunkCoord, ChunkId, DoodadCatalog, FootprintCatalog, OccupancySource, OccupancyState,
-    QuantizedRotation, SlopeWalkability, UnitCatalog, WorldData, WorldPosition,
-    agent_overlaps_footprint, chunk_for_occupancy_cell, classify_slope_walkability,
-    conservative_block_radius_for_kind, default_space_id,
-    effective_building_footprint_for_placement, ground_world_position,
+    QuantizedRotation, UnitCatalog, WorldData, WorldPosition, agent_overlaps_footprint,
+    chunk_for_occupancy_cell, default_space_id, effective_building_footprint_for_placement,
     occupied_cells_for_footprint,
 };
 
@@ -42,6 +41,8 @@ pub enum BuildingPlacementRejectReason {
     TerrainUnavailable,
     SlopeTooSteep,
     HeightVariationTooLarge,
+    FoundationTooDeep,
+    TerrainTooRough,
     OccupiedByBuilding,
     OccupiedByDoodad,
     OccupiedByUnit,
@@ -61,6 +62,8 @@ impl BuildingPlacementRejectReason {
             Self::TerrainUnavailable => "Terrain unavailable",
             Self::SlopeTooSteep => "Slope too steep",
             Self::HeightVariationTooLarge => "Terrain too uneven",
+            Self::FoundationTooDeep => "Foundation too deep",
+            Self::TerrainTooRough => "Terrain too irregular",
             Self::OccupiedByBuilding => "Blocked by building",
             Self::OccupiedByDoodad => "Blocked by doodad",
             Self::OccupiedByUnit => "Blocked by unit",
@@ -79,6 +82,8 @@ pub struct BuildingPlacementValidation {
     pub primary_reason: Option<BuildingPlacementRejectReason>,
     pub reasons: Vec<BuildingPlacementRejectReason>,
     pub grounded_anchor: Option<WorldPosition>,
+    pub resolved_rotation: Option<Quat>,
+    pub foundation: Option<super::terrain_placement::FoundationSkirtSpec>,
 }
 
 impl BuildingPlacementValidation {
@@ -88,15 +93,19 @@ impl BuildingPlacementValidation {
             primary_reason: Some(reason),
             reasons: vec![reason],
             grounded_anchor: None,
+            resolved_rotation: None,
+            foundation: None,
         }
     }
 
-    pub fn accepted(anchor: WorldPosition) -> Self {
+    pub fn accepted(anchor: WorldPosition, rotation: Quat, foundation: Option<super::terrain_placement::FoundationSkirtSpec>) -> Self {
         Self {
             valid: true,
             primary_reason: None,
             reasons: Vec::new(),
             grounded_anchor: Some(anchor),
+            resolved_rotation: Some(rotation),
+            foundation,
         }
     }
 
@@ -109,6 +118,15 @@ impl BuildingPlacementValidation {
         }
         self.valid = false;
         self.grounded_anchor = None;
+        self.resolved_rotation = None;
+        self.foundation = None;
+    }
+}
+
+#[cfg(test)]
+impl BuildingPlacementValidation {
+    pub fn accepted_anchor_only(anchor: WorldPosition) -> Self {
+        Self::accepted(anchor, Quat::IDENTITY, None)
     }
 }
 
@@ -121,6 +139,8 @@ pub struct BuildingPlacementContext<'a> {
     pub unit_catalog: &'a UnitCatalog,
     pub config: BuildingPlacementConfig,
     pub player_authorized: bool,
+    /// Terrain mesh vertical exaggeration for conform orientation (ADR-010).
+    pub terrain_vertical_scale: f32,
 }
 
 /// Quantized yaw from 0..4 quadrant steps.
@@ -182,70 +202,37 @@ pub fn validate_building_placement(
         layout,
     );
 
-    let Some(grounded) = ground_world_position(ctx.world, quantized_position) else {
-        return BuildingPlacementValidation::rejected(
-            BuildingPlacementRejectReason::TerrainUnavailable,
-        );
+    let resolved = match resolve_building_placement(
+        ctx.world,
+        layout,
+        definition,
+        ctx.footprint_catalog,
+        quantized_position,
+        rotation,
+        1.0,
+        ctx.terrain_vertical_scale,
+    ) {
+        Ok(value) => value,
+        Err(reason) => return BuildingPlacementValidation::rejected(reason),
     };
 
-    let g = grounded.to_global(layout);
-    let final_xz = quantize_placement_anchor_xz(Vec2::new(g.x, g.z));
-    let grounded = WorldPosition::from_global(Vec3::new(final_xz.x, g.y, final_xz.y), layout);
-
-    let anchor_xz = Vec2::new(final_xz.x, final_xz.y);
-    let cells = occupied_cells_for_footprint(shape.as_ref(), anchor_xz, quantized);
+    let grounded = resolved.anchor;
+    let resolved_rotation = resolved.rotation;
+    let foundation = resolved.foundation.clone();
+    let anchor_xz = Vec2::new(
+        grounded.to_global(layout).x,
+        grounded.to_global(layout).z,
+    );
+    let occupancy_yaw = QuantizedRotation::yaw_for_occupancy(rotation)
+        .unwrap_or(quantized);
+    let cells = occupied_cells_for_footprint(shape.as_ref(), anchor_xz, occupancy_yaw);
     if cells.is_empty() {
         return BuildingPlacementValidation::rejected(
             BuildingPlacementRejectReason::CorruptFootprint,
         );
     }
 
-    let mut validation = BuildingPlacementValidation {
-        valid: true,
-        primary_reason: None,
-        reasons: Vec::new(),
-        grounded_anchor: Some(grounded),
-    };
-
-    let mut support_heights: Vec<f32> = Vec::with_capacity(cells.len());
-    let max_slope = definition.max_slope_degrees;
-
-    for cell in &cells {
-        let center = cell.center_global();
-        let sample = WorldPosition::from_global(Vec3::new(center.x, 0.0, center.y), layout);
-        let Some(cell_grounded) = ground_world_position(ctx.world, sample) else {
-            validation.push_reason(BuildingPlacementRejectReason::TerrainUnavailable);
-            continue;
-        };
-        match classify_slope_walkability(ctx.world, cell_grounded, max_slope) {
-            SlopeWalkability::Walkable => {
-                let h = cell_grounded.to_global(layout).y;
-                if h.is_finite() {
-                    support_heights.push(h);
-                }
-            }
-            SlopeWalkability::TooSteep => {
-                validation.push_reason(BuildingPlacementRejectReason::SlopeTooSteep);
-            }
-            SlopeWalkability::Unavailable => {
-                validation.push_reason(BuildingPlacementRejectReason::TerrainUnavailable);
-            }
-        }
-    }
-
-    if validation.valid && support_heights.len() >= 2 {
-        let min_h = support_heights
-            .iter()
-            .copied()
-            .fold(f32::INFINITY, f32::min);
-        let max_h = support_heights
-            .iter()
-            .copied()
-            .fold(f32::NEG_INFINITY, f32::max);
-        if max_h - min_h > ctx.config.max_height_variation_meters {
-            validation.push_reason(BuildingPlacementRejectReason::HeightVariationTooLarge);
-        }
-    }
+    let mut validation = BuildingPlacementValidation::accepted(grounded, resolved_rotation, foundation);
 
     if let Some(source) = footprint_occupancy_conflict(ctx, &cells, None) {
         match source {
@@ -329,17 +316,27 @@ pub fn validate_building_transform_placement(
         layout,
     );
 
-    let Some(grounded) = ground_world_position(ctx.world, quantized_position) else {
-        return BuildingPlacementValidation::rejected(
-            BuildingPlacementRejectReason::TerrainUnavailable,
-        );
+    let resolved = match resolve_building_placement(
+        ctx.world,
+        layout,
+        definition,
+        ctx.footprint_catalog,
+        quantized_position,
+        placement.rotation,
+        placement.uniform_scale_f32(),
+        ctx.terrain_vertical_scale,
+    ) {
+        Ok(value) => value,
+        Err(reason) => return BuildingPlacementValidation::rejected(reason),
     };
 
-    let g = grounded.to_global(layout);
-    let final_xz = quantize_placement_anchor_xz(Vec2::new(g.x, g.z));
-    let grounded = WorldPosition::from_global(Vec3::new(final_xz.x, g.y, final_xz.y), layout);
-
-    let anchor_xz = Vec2::new(final_xz.x, final_xz.y);
+    let grounded = resolved.anchor;
+    let resolved_rotation = resolved.rotation;
+    let foundation = resolved.foundation.clone();
+    let anchor_xz = Vec2::new(
+        grounded.to_global(layout).x,
+        grounded.to_global(layout).z,
+    );
     let cells = occupied_cells_for_footprint(shape.as_ref(), anchor_xz, quantized);
     if cells.is_empty() {
         return BuildingPlacementValidation::rejected(
@@ -347,12 +344,8 @@ pub fn validate_building_transform_placement(
         );
     }
 
-    let mut validation = BuildingPlacementValidation {
-        valid: true,
-        primary_reason: None,
-        reasons: Vec::new(),
-        grounded_anchor: Some(grounded),
-    };
+    let mut validation =
+        BuildingPlacementValidation::accepted(grounded, resolved_rotation, foundation);
 
     let exclude = Some(OccupancySource::Building(exclude_building_id));
     if let Some(source) = footprint_occupancy_conflict(ctx, &cells, exclude) {
@@ -437,7 +430,7 @@ fn building_record_overlap_excluding(
                 Ok(s) => s,
                 Err(_) => continue,
             };
-            let other_rot = match QuantizedRotation::from_quat(record.placement.rotation) {
+            let other_rot = match QuantizedRotation::yaw_for_occupancy(record.placement.rotation) {
                 Ok(r) => r,
                 Err(_) => continue,
             };
@@ -529,7 +522,7 @@ fn building_record_overlap(
                 Ok(s) => s,
                 Err(_) => continue,
             };
-            let other_rot = match QuantizedRotation::from_quat(record.placement.rotation) {
+            let other_rot = match QuantizedRotation::yaw_for_occupancy(record.placement.rotation) {
                 Ok(r) => r,
                 Err(_) => continue,
             };
@@ -717,6 +710,7 @@ mod tests {
             unit_catalog: unit,
             config: BuildingPlacementConfig::default(),
             player_authorized: true,
+            terrain_vertical_scale: 1.0,
         }
     }
 

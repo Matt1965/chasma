@@ -4,12 +4,14 @@ use bevy::prelude::*;
 
 use crate::world::{
     AppearanceProfileCatalog, BuildingCatalog, BuildingDefinitionId,
-    BuildingNavigationBlueprintCatalog, BuildingOwnership, BuildingSource, DoodadCatalog,
-    DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog,
-    InteriorProfileCatalog, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog,
-    ItemCategoryCatalog, UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource, WorldData,
-    WorldPosition, create_dev_complete_building, create_dev_complete_building_with_inventory,
-    create_doodad, create_unit_with_inventory, starter_inventory_profile_definitions,
+    BuildingNavigationBlueprintCatalog, BuildingOwnership, BuildingPlacementConfig,
+    BuildingPlacementContext, BuildingSource, DoodadCatalog, DoodadDefinitionId,
+    DoodadPlacementOverrides, DoodadSource, FootprintCatalog, InteriorProfileCatalog,
+    InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, UnitCatalog,
+    UnitDefinitionId, UnitOwnership, UnitSource, WorldData, WorldPosition,
+    create_dev_complete_building, create_dev_complete_building_with_inventory, create_doodad,
+    create_unit_with_inventory, definition_requires_inventory_allocation,
+    resolve_authoritative_building_placement, starter_inventory_profile_definitions,
     starter_item_category_definitions, starter_item_definitions, try_activate_interior_if_complete,
 };
 
@@ -48,6 +50,7 @@ pub fn spawn_selected_at_position(
     selected: Option<&DefinitionId>,
     position: WorldPosition,
     spawn_affiliation: crate::world::Affiliation,
+    terrain_vertical_scale: f32,
 ) -> DevSpawnOutcome {
     let Some(definition) = selected else {
         return DevSpawnOutcome::NoDefinitionSelected;
@@ -88,8 +91,34 @@ pub fn spawn_selected_at_position(
         },
         DefinitionId::Building(definition_id) => {
             let ownership = BuildingOwnership::with_affiliation(spawn_affiliation);
-            let position = crate::world::ground_and_quantize_building_anchor(world, position)
-                .unwrap_or(position);
+            let placement_ctx = BuildingPlacementContext {
+                world,
+                building_catalog,
+                footprint_catalog,
+                doodad_catalog,
+                unit_catalog,
+                config: BuildingPlacementConfig::default(),
+                player_authorized: true,
+                terrain_vertical_scale,
+            };
+            let validation = resolve_authoritative_building_placement(
+                &placement_ctx,
+                definition_id,
+                position,
+                Quat::IDENTITY,
+                ownership,
+            );
+            if !validation.valid {
+                return DevSpawnOutcome::AuthoringFailed(format!(
+                    "terrain placement rejected: {}",
+                    validation
+                        .primary_reason
+                        .map(|reason| reason.label())
+                        .unwrap_or("unknown")
+                ));
+            }
+            let grounded = validation.grounded_anchor.unwrap_or(position);
+            let rotation = validation.resolved_rotation.unwrap_or(Quat::IDENTITY);
             let occupancy = crate::world::OccupancyCatalogs {
                 doodad: doodad_catalog,
                 building: building_catalog,
@@ -97,14 +126,14 @@ pub fn spawn_selected_at_position(
             };
             let result = if building_catalog
                 .get(definition_id)
-                .is_some_and(crate::world::definition_requires_inventory_allocation)
+                .is_some_and(definition_requires_inventory_allocation)
             {
                 create_dev_complete_building_with_inventory(
                     building_catalog,
                     world,
                     definition_id,
-                    position,
-                    Quat::IDENTITY,
+                    grounded,
+                    rotation,
                     ownership,
                     Some(occupancy),
                     inventory_ctx,
@@ -114,8 +143,8 @@ pub fn spawn_selected_at_position(
                     building_catalog,
                     world,
                     definition_id,
-                    position,
-                    Quat::IDENTITY,
+                    grounded,
+                    rotation,
                     ownership,
                     Some(occupancy),
                 )
@@ -182,6 +211,7 @@ pub fn spawn_by_mode_at_position(
         Some(&selected),
         position,
         crate::world::Affiliation::Player,
+        1.0,
     )
 }
 
@@ -345,6 +375,7 @@ mod tests {
             ))),
             click,
             Affiliation::Player,
+            1.0,
         );
         assert!(matches!(outcome, DevSpawnOutcome::SpawnedBuilding { .. }));
         let building_id = world.sorted_building_ids()[0];
@@ -416,6 +447,7 @@ mod tests {
             ))),
             pos(25.0, 25.0),
             crate::world::Affiliation::Player,
+            1.0,
         );
         assert!(matches!(outcome, DevSpawnOutcome::SpawnedBuilding { .. }));
         let building_id = world.sorted_building_ids()[0];

@@ -642,6 +642,7 @@ pub fn handle_dev_spawn_click(
         spawn_affiliation: params.dev_state.spawn_affiliation,
         placement_yaw_deg: params.dev_state.placement_yaw_deg,
         placement_uniform_scale: params.dev_state.placement_uniform_scale,
+        terrain_vertical_scale: vertical_scale,
     };
 
     let inventory_ctx = InventoryCatalogCtx::new(

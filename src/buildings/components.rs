@@ -22,6 +22,11 @@ pub struct BuildingRenderEntity {
 #[reflect(Component)]
 pub struct BuildingSceneRoot;
 
+/// Derived foundation skirt mesh (presentation only, not gameplay authority).
+#[derive(Component, Debug, Clone, Copy, Default, Reflect)]
+#[reflect(Component)]
+pub struct BuildingFoundationSkirt;
+
 /// Marker on diagnostic fallback cuboids.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Reflect)]
 #[reflect(Component)]

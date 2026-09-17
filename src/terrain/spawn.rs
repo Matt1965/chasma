@@ -9,7 +9,7 @@ use std::time::Instant;
 
 use bevy::prelude::*;
 
-use crate::world::{ChunkCoord, ChunkId, WorldData, WorldPosition};
+use crate::world::{ChunkCoord, ChunkId, ChunkLayout, WorldData, WorldPosition};
 
 use super::components::TerrainChunkMesh;
 use super::lod_cache::TerrainChunkLodCache;
@@ -42,6 +42,30 @@ pub fn vertical_scale_for_height_span(
 /// Map authoritative world Y to terrain render Y (ADR-010 visualization scale).
 pub fn render_height(authoritative_y: f32, vertical_scale: f32) -> f32 {
     authoritative_y * vertical_scale
+}
+
+/// Sample the visible terrain surface Y at global XZ (presentation/world Y).
+pub fn terrain_surface_render_y_at(
+    global_x: f32,
+    global_z: f32,
+    world: &WorldData,
+    layout: ChunkLayout,
+    vertical_scale: f32,
+) -> Option<f32> {
+    let candidate = WorldPosition::from_global(Vec3::new(global_x, 0.0, global_z), layout);
+    let grounded = crate::world::ground_world_position(world, candidate)?;
+    Some(render_height(grounded.to_global(layout).y, vertical_scale))
+}
+
+/// Authoritative simulation terrain Y at global XZ.
+pub fn terrain_surface_sim_y_at(
+    global_x: f32,
+    global_z: f32,
+    world: &WorldData,
+    layout: ChunkLayout,
+) -> Option<f32> {
+    let candidate = WorldPosition::from_global(Vec3::new(global_x, 0.0, global_z), layout);
+    crate::world::ground_world_position(world, candidate).map(|grounded| grounded.to_global(layout).y)
 }
 
 /// Compose a render-space position from authoritative [`WorldPosition`].

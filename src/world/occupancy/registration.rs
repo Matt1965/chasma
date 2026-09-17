@@ -167,7 +167,7 @@ fn plan_register_shape(
     shape: &FootprintShape,
     occupancy_state: OccupancyState,
 ) -> Result<OccupancyRegistrationPlan, OccupancyError> {
-    let rotation = QuantizedRotation::from_quat(rotation)?;
+    let rotation = QuantizedRotation::yaw_for_occupancy(rotation)?;
     let anchor_xz = Vec2::new(anchor_global.x, anchor_global.z);
     let cells = occupied_cells_for_footprint(shape, anchor_xz, rotation);
     let layout = world.layout();

@@ -69,7 +69,8 @@ pub use residency::{
 };
 pub use spawn::{
     TerrainRenderAssets, despawn_chunk_meshes, render_height, render_height_above_base,
-    world_position_to_render_global, world_position_to_render_global_above_base,
+    terrain_surface_render_y_at, terrain_surface_sim_y_at, world_position_to_render_global,
+    world_position_to_render_global_above_base,
 };
 pub use streaming::TerrainStreamingSettings;
 

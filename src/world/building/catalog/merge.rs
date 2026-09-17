@@ -46,6 +46,9 @@ pub fn apply_starter_gameplay_extension(
     if extension.allow_instance_scale {
         base.allow_instance_scale = extension.allow_instance_scale;
     }
+    if extension.terrain_placement_mode != crate::world::building::terrain_placement::TerrainPlacementMode::default() {
+        base.terrain_placement_mode = extension.terrain_placement_mode;
+    }
     if extension.inventory_profile_id.is_some() && base.inventory_profile_id.is_none() {
         base.inventory_profile_id = extension.inventory_profile_id.clone();
         base.inventory_access_policy = extension.inventory_access_policy;
@@ -208,6 +211,24 @@ mod tests {
         assert_eq!(
             quarry.field_sampling_footprint_id,
             Some(FootprintId::new("quarry_excavation"))
+        );
+    }
+
+    #[test]
+    fn merge_applies_conform_terrain_mode_to_prispod_farm() {
+        use crate::world::building::terrain_placement::TerrainPlacementMode;
+
+        let categories = BuildingCategoryCatalog::default();
+        let mut catalog =
+            BuildingCatalog::from_definitions(vec![excel_prispod_farm_visual()], &categories)
+                .unwrap();
+        merge_starter_extensions_into_catalog(&mut catalog, &categories).unwrap();
+        let farm = catalog
+            .get(&BuildingDefinitionId::new("prispod_farm"))
+            .unwrap();
+        assert_eq!(
+            farm.terrain_placement_mode,
+            TerrainPlacementMode::ConformToTerrain
         );
     }
 

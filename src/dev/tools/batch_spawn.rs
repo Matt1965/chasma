@@ -3,12 +3,13 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    BuildingCatalog, BuildingNavigationBlueprintCatalog, BuildingOwnership, BuildingSource,
-    DoodadCatalog, DoodadPlacementOverrides, DoodadSource, FootprintCatalog,
-    InteriorProfileCatalog, InventoryCatalogCtx, OccupancyCatalogs, UnitCatalog, UnitOwnership,
-    UnitSource, WorldData, WorldPosition, create_dev_complete_building,
-    create_dev_complete_building_with_inventory, create_doodad, create_unit_with_inventory,
-    try_activate_interior_if_complete,
+    BuildingCatalog, BuildingNavigationBlueprintCatalog, BuildingOwnership, BuildingPlacementConfig,
+    BuildingPlacementContext, BuildingSource, DoodadCatalog, DoodadPlacementOverrides,
+    DoodadSource, FootprintCatalog, InteriorProfileCatalog, InventoryCatalogCtx,
+    OccupancyCatalogs, UnitCatalog, UnitOwnership, UnitSource, WorldData, WorldPosition,
+    create_dev_complete_building, create_dev_complete_building_with_inventory, create_doodad,
+    create_unit_with_inventory, definition_requires_inventory_allocation,
+    resolve_authoritative_building_placement, try_activate_interior_if_complete,
 };
 
 use super::super::dev_mode::DefinitionId;
@@ -36,6 +37,8 @@ pub struct BatchSpawnRequest {
     pub placement_yaw_deg: f32,
     /// Initial uniform scale for doodads/buildings when supported (Slice 4).
     pub placement_uniform_scale: f32,
+    /// Terrain mesh vertical exaggeration for building terrain placement.
+    pub terrain_vertical_scale: f32,
 }
 
 /// Summary of a committed batch spawn.
@@ -168,6 +171,7 @@ pub fn execute_batch_spawn(
             request.spawn_affiliation,
             request.placement_yaw_deg,
             request.placement_uniform_scale,
+            request.terrain_vertical_scale,
         );
         if outcome {
             report.spawned += 1;
@@ -194,6 +198,7 @@ fn spawn_at(
     spawn_affiliation: crate::world::Affiliation,
     placement_yaw_deg: f32,
     placement_uniform_scale: f32,
+    terrain_vertical_scale: f32,
 ) -> bool {
     match definition {
         DefinitionId::Unit(definition_id) => create_unit_with_inventory(
@@ -226,22 +231,44 @@ fn spawn_at(
         }
         DefinitionId::Building(definition_id) => {
             let rotation = Quat::from_rotation_y(placement_yaw_deg.to_radians());
+            let ownership = BuildingOwnership::with_affiliation(spawn_affiliation);
+            let placement_ctx = BuildingPlacementContext {
+                world,
+                building_catalog,
+                footprint_catalog,
+                doodad_catalog,
+                unit_catalog,
+                config: BuildingPlacementConfig::default(),
+                player_authorized: true,
+                terrain_vertical_scale,
+            };
+            let validation = resolve_authoritative_building_placement(
+                &placement_ctx,
+                definition_id,
+                position,
+                rotation,
+                ownership,
+            );
+            if !validation.valid {
+                return false;
+            }
+            let grounded = validation.grounded_anchor.unwrap_or(position);
+            let resolved_rotation = validation.resolved_rotation.unwrap_or(rotation);
             let occupancy = OccupancyCatalogs {
                 doodad: doodad_catalog,
                 building: building_catalog,
                 footprint: footprint_catalog,
             };
-            let ownership = BuildingOwnership::with_affiliation(spawn_affiliation);
             let spawned = if building_catalog
                 .get(definition_id)
-                .is_some_and(crate::world::definition_requires_inventory_allocation)
+                .is_some_and(definition_requires_inventory_allocation)
             {
                 create_dev_complete_building_with_inventory(
                     building_catalog,
                     world,
                     definition_id,
-                    position,
-                    rotation,
+                    grounded,
+                    resolved_rotation,
                     ownership,
                     Some(occupancy),
                     inventory_ctx,
@@ -251,8 +278,8 @@ fn spawn_at(
                     building_catalog,
                     world,
                     definition_id,
-                    position,
-                    rotation,
+                    grounded,
+                    resolved_rotation,
                     ownership,
                     Some(occupancy),
                 )
@@ -349,6 +376,7 @@ mod tests {
             spawn_affiliation: crate::world::Affiliation::Player,
             placement_yaw_deg: 0.0,
             placement_uniform_scale: 1.0,
+            terrain_vertical_scale: 1.0,
         };
         let mut scratch = BatchSpawnScratch::default();
         let footprint_catalog = FootprintCatalog::default();
@@ -402,6 +430,7 @@ mod tests {
             spawn_affiliation: crate::world::Affiliation::Player,
             placement_yaw_deg: 0.0,
             placement_uniform_scale: 1.0,
+            terrain_vertical_scale: 1.0,
         };
         let mut scratch = BatchSpawnScratch::default();
         let footprint_catalog = FootprintCatalog::default();
@@ -441,6 +470,7 @@ mod tests {
             spawn_affiliation: crate::world::Affiliation::Player,
             placement_yaw_deg: 0.0,
             placement_uniform_scale: 1.0,
+            terrain_vertical_scale: 1.0,
         };
         let mut scratch = BatchSpawnScratch::default();
         let footprint_catalog = FootprintCatalog::default();
@@ -485,6 +515,7 @@ mod tests {
             spawn_affiliation: crate::world::Affiliation::Player,
             placement_yaw_deg: 0.0,
             placement_uniform_scale: 1.0,
+            terrain_vertical_scale: 1.0,
         };
         let mut scratch = BatchSpawnScratch::default();
         let footprint_catalog = FootprintCatalog::default();
