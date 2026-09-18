@@ -11,6 +11,8 @@ pub enum AppScreen {
     InGame,
     /// Full-screen Unit Editor (CG3). Blocks gameplay input while active.
     UnitEditor,
+    /// Starting-origin selection with multi-actor preview (CG7).
+    OriginSelect,
 }
 
 /// How the current InGame/Loading session was requested.
@@ -26,13 +28,15 @@ pub enum GameSessionKind {
 }
 
 /// Client-local session identity. Not part of [`crate::world::WorldData`].
-#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Resource, Debug, Clone, PartialEq, Eq, Default)]
 pub struct GameSessionState {
     pub kind: GameSessionKind,
+    pub selected_origin_id: Option<crate::world::OriginId>,
 }
 
 impl GameSessionState {
     pub fn clear(&mut self) {
         self.kind = GameSessionKind::None;
+        self.selected_origin_id = None;
     }
 }

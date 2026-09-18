@@ -49,7 +49,7 @@ pub fn handle_menu_escape(
     }
 
     match *screen.get() {
-        AppScreen::Loading | AppScreen::UnitEditor => {}
+        AppScreen::Loading | AppScreen::UnitEditor | AppScreen::OriginSelect => {}
         AppScreen::MainMenu => match nav.page {
             MenuPage::Root => {}
             MenuPage::Settings | MenuPage::Credits => nav.back_to_root(),
@@ -147,7 +147,10 @@ pub fn enforce_simulation_pause_for_screen(
     mut control: ResMut<SimulationControlState>,
 ) {
     match *screen.get() {
-        AppScreen::MainMenu | AppScreen::Loading | AppScreen::UnitEditor => {
+        AppScreen::MainMenu
+        | AppScreen::Loading
+        | AppScreen::UnitEditor
+        | AppScreen::OriginSelect => {
             control.pause();
         }
         AppScreen::InGame if nav.pause_open => {

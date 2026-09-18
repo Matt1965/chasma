@@ -20,7 +20,7 @@ impl MenuInputBlock {
 /// True when Main Menu, Loading, Pause, or a nested menu page owns input.
 pub fn menu_blocks_input(screen: &AppScreen, nav: &MenuNavigation) -> bool {
     match screen {
-        AppScreen::MainMenu | AppScreen::Loading | AppScreen::UnitEditor => true,
+        AppScreen::MainMenu | AppScreen::Loading | AppScreen::UnitEditor | AppScreen::OriginSelect => true,
         AppScreen::InGame => {
             nav.pause_open || !matches!(nav.page, super::navigation::MenuPage::Root)
         }

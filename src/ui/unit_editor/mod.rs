@@ -19,4 +19,8 @@ pub use actions::open_unit_editor_for_live_unit;
 pub use draft::{EquipmentPreviewLoadout, UnitAppearanceDraft};
 pub use events::OpenUnitEditorRequest;
 pub use plugin::{UnitEditorPlugin, UnitEditorSystems};
+pub use preview_studio::{
+    UnitEditorPreviewCamera, UnitEditorPreviewImage, cleanup_unit_editor_preview_studio,
+    setup_unit_editor_preview_studio,
+};
 pub use session::{UnitEditorMode, UnitEditorSession};

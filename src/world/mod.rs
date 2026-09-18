@@ -24,6 +24,7 @@ mod navigation;
 mod obstacle;
 mod occupancy;
 mod operation;
+mod origin;
 mod ownership;
 mod perception;
 mod projectile;
@@ -432,6 +433,10 @@ pub use operation::{
     OperationOutputDefinition, OperationSelectionError,
     starter_definitions as starter_operation_definitions, validate_building_definition_operations,
     validate_building_operation_bindings, validate_operation_selection,
+};
+pub use origin::{
+    OriginCatalog, OriginDefinition, OriginId, OriginRosterMember, starter_origin_catalog,
+    starter_origin_definitions,
 };
 pub use ownership::{
     Affiliation, DEFAULT_PLAYER_OWNER_ID, DEFAULT_PLAYER_TEAM_ID, OwnerId,
@@ -901,6 +906,7 @@ impl Plugin for WorldFoundationPlugin {
             app.insert_resource(item_categories);
             app.insert_resource(item_catalog);
             app.insert_resource(equipment_visuals);
+            app.insert_resource(crate::world::starter_origin_catalog());
             app.init_resource::<OperationCatalog>();
             app.init_resource::<NeedCatalog>();
             app.init_resource::<WorkSkillCatalog>();
