@@ -19,6 +19,7 @@ mod pause_menu;
 mod plugin;
 mod screen;
 mod settings;
+mod starting_squad;
 mod systems;
 mod transition;
 
@@ -38,4 +39,9 @@ pub use navigation::{MenuContext, MenuNavigation, MenuPage, PauseMenuContext, pa
 pub use plugin::{MenuInputSystems, MenuPlugin, MenuUiSystems};
 pub use screen::{AppScreen, GameSessionKind, GameSessionState};
 pub use settings::{SettingsCategory, SettingsHostKind, SettingsMenuState};
+pub use starting_squad::{
+    OriginSquadViewMode, PendingStartingSquadSpawn, SquadMemberDraft, SquadMemberDraftId,
+    StartingSquadDraft, StartingSquadSession, build_starting_squad_draft,
+    spawn_starting_squad_from_draft,
+};
 pub use transition::{SessionTransitionKind, SessionTransitionRequest};

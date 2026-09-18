@@ -65,6 +65,31 @@ pub fn create_unit_with_ownership(
         source,
         ownership,
         None,
+        None,
+    )
+}
+
+/// Create a unit with explicit appearance (CG8 starting squad).
+pub fn create_unit_with_ownership_and_appearance(
+    catalog: &UnitCatalog,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
+    world: &mut WorldData,
+    definition_id: &UnitDefinitionId,
+    position: WorldPosition,
+    source: UnitSource,
+    ownership: UnitOwnership,
+    appearance: crate::world::UnitAppearance,
+) -> Result<UnitRecord, UnitAuthoringError> {
+    create_unit_with_ownership_impl(
+        catalog,
+        appearance_profiles,
+        world,
+        definition_id,
+        position,
+        source,
+        ownership,
+        None,
+        Some(appearance),
     )
 }
 
@@ -88,6 +113,7 @@ pub fn create_unit_with_inventory(
         source,
         ownership,
         Some(inventory_ctx),
+        None,
     )
 }
 
@@ -100,6 +126,7 @@ fn create_unit_with_ownership_impl(
     source: UnitSource,
     ownership: UnitOwnership,
     inventory_ctx: Option<&crate::world::InventoryCatalogCtx<'_>>,
+    appearance_override: Option<crate::world::UnitAppearance>,
 ) -> Result<UnitRecord, UnitAuthoringError> {
     let definition = catalog
         .get(definition_id)
@@ -139,7 +166,12 @@ fn create_unit_with_ownership_impl(
 
     super::self_maintenance::initialize_unit_nutrition(&mut record.nutrition, definition);
     super::work_skill::initialize_unit_work_skills(&mut record.work_skills);
-    attach_appearance_on_unit_create(definition, appearance_profiles, &mut record)?;
+    attach_appearance_on_unit_create(
+        definition,
+        appearance_profiles,
+        &mut record,
+        appearance_override,
+    )?;
 
     let chunk = crate::world::ChunkId::new(position.chunk);
     if let Err(error) = world.insert_unit(chunk, record.clone()) {
@@ -167,13 +199,18 @@ fn attach_appearance_on_unit_create(
     definition: &crate::world::UnitDefinition,
     appearance_profiles: &crate::world::AppearanceProfileCatalog,
     record: &mut UnitRecord,
+    appearance_override: Option<crate::world::UnitAppearance>,
 ) -> Result<(), UnitAuthoringError> {
     if !definition_has_appearance_support(definition) {
         record.appearance = None;
         return Ok(());
     }
-    let appearance = resolve_canonical_default_appearance(definition, appearance_profiles)
-        .map_err(|error| appearance_authoring_error(definition, error))?;
+    let appearance = if let Some(appearance) = appearance_override {
+        appearance
+    } else {
+        resolve_canonical_default_appearance(definition, appearance_profiles)
+            .map_err(|error| appearance_authoring_error(definition, error))?
+    };
     validate_unit_appearance(&appearance, definition, appearance_profiles)
         .map_err(|error| appearance_authoring_error(definition, error))?;
     record.appearance = Some(appearance);

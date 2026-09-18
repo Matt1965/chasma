@@ -1,4 +1,4 @@
-//! Multi-actor origin roster preview spawn (CG7).
+//! Multi-actor origin roster preview spawn (CG7/CG8).
 
 use std::collections::HashSet;
 
@@ -6,76 +6,85 @@ use bevy::asset::LoadState;
 use bevy::prelude::*;
 
 use crate::camera::render_layers::PREVIEW_RENDER_LAYER;
+use crate::menu::StartingSquadSession;
 use crate::units::{
-    UnitRenderMetadata, UnitSceneAssets, UnitSceneRoot,
+    UnitAppearanceMorphFingerprint, UnitRenderMetadata, UnitSceneAssets, UnitSceneRoot,
     presentation::{UnitEditorPreviewRosterMember, UnitEditorPreviewRoot, UnitPresentationAppearance},
 };
 use crate::world::{
     AppearanceProfileCatalog, OriginCatalog, UnitCatalog, effective_render_key_for_appearance,
-    resolve_canonical_default_appearance, unit_visual_scale,
+    unit_visual_scale,
 };
 
-use super::session::OriginSelectSession;
+use super::preview_spawn::appearance_requires_preview_respawn;
 
 pub fn sync_origin_select_preview_roster(
     mut commands: Commands,
-    session: Res<OriginSelectSession>,
+    session: Res<StartingSquadSession>,
     origins: Res<OriginCatalog>,
     unit_catalog: Res<UnitCatalog>,
     appearance_profiles: Res<AppearanceProfileCatalog>,
     asset_server: Res<AssetServer>,
     mut scene_assets: ResMut<UnitSceneAssets>,
     preview_roots: Query<Entity, With<UnitEditorPreviewRoot>>,
-    existing: Query<(Entity, &UnitEditorPreviewRosterMember)>,
-    mut last_index: Local<Option<usize>>,
+    existing: Query<(Entity, &UnitEditorPreviewRosterMember, &UnitPresentationAppearance)>,
+    mut last_origin_index: Local<Option<usize>>,
 ) {
-    let Some(origin) = origins.get_index(session.selected_index) else {
+    let Some(draft) = session.active_draft(&origins) else {
         return;
     };
     let Some(parent) = preview_roots.iter().next() else {
         return;
     };
 
-    if last_index.map(|value| value != session.selected_index).unwrap_or(true) {
-        for (entity, _) in &existing {
+    if last_origin_index
+        .map(|value| value != session.selected_origin_index)
+        .unwrap_or(true)
+    {
+        for (entity, _, _) in &existing {
             commands.entity(entity).despawn();
         }
-        *last_index = Some(session.selected_index);
+        *last_origin_index = Some(session.selected_origin_index);
     }
 
-    let present: HashSet<usize> = existing.iter().map(|(_, member)| member.slot_index).collect();
+    let present: HashSet<usize> = existing
+        .iter()
+        .map(|(_, member, _)| member.slot_index)
+        .collect();
 
-    for (slot_index, member) in origin.roster.iter().enumerate() {
-        if present.contains(&slot_index) {
-            continue;
-        }
+    for (slot_index, member) in draft.members.iter().enumerate() {
         let Some(definition) = unit_catalog.get(&member.definition_id) else {
-            warn!(
-                "origin preview skipped missing definition `{}`",
-                member.definition_id.as_str()
-            );
             continue;
         };
-        let appearance = match resolve_canonical_default_appearance(definition, &appearance_profiles)
-        {
-            Ok(value) => value,
-            Err(error) => {
-                warn!(
-                    "origin preview appearance failed for `{}`: {error}",
-                    member.definition_id.as_str()
-                );
-                continue;
-            }
-        };
-        let render_key = match effective_render_key_for_appearance(&appearance, &appearance_profiles)
-        {
+        let appearance = member.appearance.appearance.clone();
+        let render_key = match effective_render_key_for_appearance(&appearance, &appearance_profiles) {
             Ok(key) => key,
-            Err(error) => {
-                warn!("origin preview render key failed: {error}");
-                continue;
-            }
+            Err(_) => continue,
         };
         let render_key_str = render_key.0.as_deref().unwrap_or("");
+
+        if let Some((entity, _, current)) = existing
+            .iter()
+            .find(|(_, roster, _)| roster.slot_index == slot_index)
+        {
+            if current.appearance == appearance {
+                continue;
+            }
+            if appearance_requires_preview_respawn(&current.appearance, &appearance) {
+                commands.entity(entity).despawn();
+            } else {
+                let visual_scale = unit_visual_scale(definition, appearance.height_scale);
+                commands.entity(entity).insert((
+                    UnitPresentationAppearance { appearance },
+                    Transform::from_translation(member.preview_offset).with_scale(visual_scale),
+                ));
+                commands.entity(entity).remove::<UnitAppearanceMorphFingerprint>();
+                continue;
+            }
+        } else if present.contains(&slot_index) {
+            continue;
+        }
+
         let Some(scene) = scene_assets.scene_for_render_key(render_key_str).cloned() else {
             if !render_key_str.is_empty() {
                 scene_assets.log_missing_once(render_key_str);

@@ -7,7 +7,9 @@ use bevy::ui::RelativeCursorPosition;
 
 use crate::world::{AppearanceParamId, AppearanceProfile, AppearanceProfileCatalog, UnitAppearance};
 
-use super::screen::{UnitEditorSliderBinding, UnitEditorSliderTrack, UnitEditorSliderValue, UnitEditorUiRoot};
+use super::screen::{
+    UnitEditorControlsHost, UnitEditorSliderBinding, UnitEditorSliderTrack, UnitEditorSliderValue,
+};
 use super::session::UnitEditorSession;
 
 const HEIGHT_FIELD_ID: u32 = 1;
@@ -88,7 +90,7 @@ pub fn handle_unit_editor_sliders(
             Without<UnitEditorSliderValue>,
         >,
     )>,
-    roots: Query<(), With<UnitEditorUiRoot>>,
+    roots: Query<(), With<UnitEditorControlsHost>>,
 ) {
     if roots.is_empty() {
         drag.field_id = None;
@@ -161,7 +163,7 @@ pub fn sync_unit_editor_control_values(
     mut tracks: Query<(&UnitEditorSliderTrack, &Children)>,
     mut fills: Query<&mut Node, Without<UnitEditorSliderTrack>>,
     mut values: Query<(&UnitEditorSliderValue, &mut Text)>,
-    roots: Query<(), With<UnitEditorUiRoot>>,
+    roots: Query<(), With<UnitEditorControlsHost>>,
 ) {
     if roots.is_empty() {
         return;

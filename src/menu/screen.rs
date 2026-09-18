@@ -11,7 +11,7 @@ pub enum AppScreen {
     InGame,
     /// Full-screen Unit Editor (CG3). Blocks gameplay input while active.
     UnitEditor,
-    /// Starting-origin selection with multi-actor preview (CG7).
+    /// Continuous origin/squad character generation stage (CG7/CG8).
     OriginSelect,
 }
 

@@ -8,7 +8,7 @@ pub use gameplay::{
     GameplayCommandState, GameplayCursorMode, GameplayUiPlugin, GameplayUiState,
     MoveCommandFeedback,
 };
-pub use origin_select::{OriginSelectPlugin, OriginSelectSession};
+pub use origin_select::{OriginSelectPlugin, StartingSquadSession};
 pub use unit_editor::{
     EquipmentPreviewLoadout, UnitAppearanceDraft, UnitEditorMode, UnitEditorPlugin,
     UnitEditorSession, open_unit_editor_for_live_unit,

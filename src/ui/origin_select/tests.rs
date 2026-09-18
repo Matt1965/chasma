@@ -1,6 +1,6 @@
-use super::session::OriginSelectSession;
+use crate::menu::build_starting_squad_draft;
 use crate::units::presentation::roster_preview_offsets;
-use crate::world::{OriginCatalog, starter_origin_catalog};
+use crate::world::{OriginCatalog, OriginId, starter_origin_catalog};
 
 #[test]
 fn roster_preview_offsets_center_pair() {
@@ -11,22 +11,29 @@ fn roster_preview_offsets_center_pair() {
 }
 
 #[test]
-fn origin_session_resolves_selected_id() {
-    let catalog = starter_origin_catalog();
-    let session = OriginSelectSession {
-        selected_index: 1,
-        preview_yaw_radians: 0.0,
-        preview_zoom: 1.0,
-    };
-    assert_eq!(
-        session
-            .selected_origin_id(&catalog)
-            .map(|id| id.as_str().to_string()),
-        Some("lone_survivor".to_string())
-    );
+fn starter_catalog_is_valid_resource() {
+    let _: OriginCatalog = starter_origin_catalog();
 }
 
 #[test]
-fn starter_catalog_is_valid_resource() {
-    let _: OriginCatalog = starter_origin_catalog();
+fn build_draft_for_lone_survivor_has_one_member() {
+    let origins = starter_origin_catalog();
+    let appearance_profiles = crate::data_import::resolve_dev_appearance_profile_catalog();
+    let units = crate::data_import::resolve_dev_unit_catalog(
+        &crate::data_import::resolve_dev_faction_catalog(),
+        &crate::data_import::resolve_dev_species_catalog(),
+        &crate::data_import::resolve_dev_weapon_catalog(),
+        &crate::data_import::resolve_dev_animation_profile_catalog(),
+        &crate::data_import::resolve_dev_inventory_profile_catalog(),
+        &appearance_profiles,
+        None,
+    );
+    let draft = build_starting_squad_draft(
+        &OriginId::new("lone_survivor"),
+        &origins,
+        &units,
+        &appearance_profiles,
+    )
+    .unwrap();
+    assert_eq!(draft.members.len(), 1);
 }

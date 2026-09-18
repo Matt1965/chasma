@@ -19,8 +19,13 @@ pub use actions::open_unit_editor_for_live_unit;
 pub use draft::{EquipmentPreviewLoadout, UnitAppearanceDraft};
 pub use events::OpenUnitEditorRequest;
 pub use plugin::{UnitEditorPlugin, UnitEditorSystems};
+pub use controls::{handle_unit_editor_sliders, sync_unit_editor_control_values};
 pub use preview_studio::{
     UnitEditorPreviewCamera, UnitEditorPreviewImage, cleanup_unit_editor_preview_studio,
-    setup_unit_editor_preview_studio,
+    setup_unit_editor_preview_studio, update_unit_editor_preview_framing,
+};
+pub use screen::sync_unit_editor_error_text;
+pub use screen::{
+    UnitEditorAction, UnitEditorActionButton, UnitEditorControlsHost, spawn_unit_editor_controls_panel,
 };
 pub use session::{UnitEditorMode, UnitEditorSession};
