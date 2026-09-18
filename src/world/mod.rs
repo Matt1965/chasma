@@ -35,6 +35,7 @@ mod task;
 mod water;
 mod terrain;
 mod terrain_field;
+mod road;
 mod unit;
 mod weapon;
 
@@ -628,6 +629,15 @@ pub use terrain_field::{
     terrain_field_tile_path, tile_path_for_chunk, try_load_terrain_fields_from_manifest,
     validate_terrain_field_id, validate_world_config_for_fields, world_position_to_field_local,
 };
+pub use road::{
+    CornerMode, Junction, JunctionId, JunctionMember, JunctionMemberRole, Road, RoadControlPoint,
+    RoadCrossingKind, RoadCrossingOverride, RoadEndpointAttachment, RoadError, RoadId,
+    RoadLoadError, RoadNetwork, RoadNetworkRon, RoadSplineSample, RoadStyleDefaults, RoadStyleId,
+    RoadStyleOverrides, RoadTeeAttachment, ROAD_NETWORK_SCHEMA_VERSION, DEFAULT_WORLD_PACKAGE_DIR,
+    load_road_network, load_road_network_from_path, load_road_network_from_world_package,
+    parse_road_network_ron, road_network_ron_path, sample_road_polyline,
+    sample_road_spline_at_distance, serialize_road_network_ron, validate_road_network,
+};
 #[cfg(feature = "dev")]
 pub(crate) use unit::inside_move_trace;
 pub(crate) use unit::interior_exit_click_trace;
@@ -831,7 +841,23 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<crate::world::item_pile::WorldPileContents>()
             .register_type::<crate::world::item_pile::ItemPileSettings>()
             .register_type::<crate::world::inventory::ItemInstanceLocation>()
-            .register_type::<WorldData>();
+            .register_type::<WorldData>()
+            .register_type::<crate::world::road::RoadNetwork>()
+            .register_type::<crate::world::road::RoadId>()
+            .register_type::<crate::world::road::JunctionId>()
+            .register_type::<crate::world::road::RoadStyleId>()
+            .register_type::<crate::world::road::RoadStyleDefaults>()
+            .register_type::<crate::world::road::RoadStyleOverrides>()
+            .register_type::<crate::world::road::RoadControlPoint>()
+            .register_type::<crate::world::road::CornerMode>()
+            .register_type::<crate::world::road::Road>()
+            .register_type::<crate::world::road::Junction>()
+            .register_type::<crate::world::road::JunctionMember>()
+            .register_type::<crate::world::road::JunctionMemberRole>()
+            .register_type::<crate::world::road::RoadEndpointAttachment>()
+            .register_type::<crate::world::road::RoadTeeAttachment>()
+            .register_type::<crate::world::road::RoadCrossingKind>()
+            .register_type::<crate::world::road::RoadCrossingOverride>();
 
         app.init_resource::<WorldConfig>();
         #[cfg(not(feature = "dev"))]
@@ -945,6 +971,7 @@ impl Plugin for WorldFoundationPlugin {
             app.init_resource::<crate::world::BuildingTerrainAssessmentStore>();
             crate::data_import::export_dev_asset_sizing_reports(&mut sizing_reports);
         }
+        app.insert_resource(crate::world::road::load_road_network());
         app.init_resource::<WorldData>();
         app.init_resource::<NavigationConfig>();
         app.init_resource::<InteriorProfileCatalog>();
