@@ -71,14 +71,14 @@ impl Plugin for OriginSelectPlugin {
                     respawn_origin_squad_ui_after_focus,
                     sync_origin_squad_origin_text,
                     sync_origin_select_preview_roster,
-                    sync_origin_select_preview_presentation,
                     update_unit_editor_preview_framing,
                     propagate_preview_render_layers,
-                    update_origin_select_preview_camera,
-                    rotate_origin_select_preview_roster,
                     discover_preview_animation_players,
                     install_preview_animation_graph,
                     sync_preview_idle_animation,
+                    sync_origin_select_preview_presentation,
+                    update_origin_select_preview_camera,
+                    rotate_origin_select_preview_roster,
                 )
                     .run_if(in_state(AppScreen::OriginSelect))
                     .in_set(OriginSelectSystems),

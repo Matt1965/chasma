@@ -3,7 +3,10 @@
 use bevy::prelude::*;
 
 use crate::menu::StartingSquadSession;
-use crate::units::presentation::{UnitEditorPreviewRosterMember, UnitPresentationAppearance};
+use crate::units::{
+    AnimationPlaybackPending, UnitAnimationRuntime,
+    presentation::{UnitEditorPreviewRosterMember, UnitPresentationAppearance},
+};
 use crate::world::{OriginCatalog, UnitCatalog, unit_visual_scale};
 
 /// Stage center used for focused member editing.
@@ -24,6 +27,21 @@ impl RosterPresentationMode {
             None => Self::Squad,
         }
     }
+}
+
+/// Whether a roster preview actor has finished animation initialization and may be shown.
+///
+/// Reuses the CG3 preview idle pipeline: [`UnitAnimationRuntime`] present and
+/// [`AnimationPlaybackPending`] absent once an animation profile exists.
+pub fn roster_actor_presentation_ready(
+    has_animation_profile: bool,
+    has_runtime: bool,
+    playback_pending: bool,
+) -> bool {
+    if !has_animation_profile {
+        return true;
+    }
+    has_runtime && !playback_pending
 }
 
 /// Whether a roster member should be visible in the current presentation mode.
@@ -58,6 +76,8 @@ pub fn sync_origin_select_preview_presentation(
         &UnitPresentationAppearance,
         &mut Visibility,
         &mut Transform,
+        Option<&UnitAnimationRuntime>,
+        Option<&AnimationPlaybackPending>,
     )>,
 ) {
     let Some(draft) = session.active_draft(&origins) else {
@@ -65,7 +85,9 @@ pub fn sync_origin_select_preview_presentation(
     };
     let mode = RosterPresentationMode::from_session(&session);
 
-    for (member, appearance, mut visibility, mut transform) in &mut roster {
+    for (member, appearance, mut visibility, mut transform, runtime, playback_pending) in
+        &mut roster
+    {
         let Some(draft_member) = draft.member_by_slot(member.slot_index) else {
             *visibility = Visibility::Hidden;
             continue;
@@ -75,15 +97,21 @@ pub fn sync_origin_select_preview_presentation(
             continue;
         };
 
-        let visible = roster_member_is_visible(member.slot_index, mode);
+        let mode_visible = roster_member_is_visible(member.slot_index, mode);
+        let presentation_ready = roster_actor_presentation_ready(
+            definition.animation_profile_id.is_some(),
+            runtime.is_some(),
+            playback_pending.is_some(),
+        );
+        let visible = mode_visible && presentation_ready;
         *visibility = if visible {
             Visibility::Visible
         } else {
             Visibility::Hidden
         };
 
-        // Transform ownership is mode-exclusive: only write layout for visible actors.
-        if !visible {
+        // Layout is mode-exclusive; position hidden actors so they appear in place once ready.
+        if !mode_visible {
             continue;
         }
 
@@ -111,6 +139,19 @@ mod tests {
         let mode = RosterPresentationMode::Focused { slot_index: 0 };
         assert!(roster_member_is_visible(0, mode));
         assert!(!roster_member_is_visible(1, mode));
+    }
+
+    #[test]
+    fn presentation_ready_without_animation_profile() {
+        assert!(roster_actor_presentation_ready(false, false, false));
+    }
+
+    #[test]
+    fn presentation_ready_requires_idle_runtime_when_profile_exists() {
+        assert!(!roster_actor_presentation_ready(true, false, false));
+        assert!(!roster_actor_presentation_ready(true, false, true));
+        assert!(!roster_actor_presentation_ready(true, true, true));
+        assert!(roster_actor_presentation_ready(true, true, false));
     }
 
     #[test]

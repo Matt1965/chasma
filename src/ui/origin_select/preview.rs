@@ -213,7 +213,7 @@ pub fn sync_origin_select_preview_roster(
                 UnitSceneRoot,
                 SceneRoot(scene),
                 Transform::from_scale(visual_scale),
-                Visibility::default(),
+                Visibility::Hidden,
                 PREVIEW_RENDER_LAYER,
             ));
         });

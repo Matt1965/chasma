@@ -7,7 +7,8 @@ use crate::units::presentation::{UnitEditorPreviewRosterMember, UnitEditorPrevie
 use crate::world::{OriginId, starter_origin_catalog};
 
 use super::presentation::{
-    RosterPresentationMode, roster_member_is_visible, roster_member_stage_translation,
+    RosterPresentationMode, roster_actor_presentation_ready, roster_member_is_visible,
+    roster_member_stage_translation,
 };
 use super::preview_invariants::collect_origin_preview_invariant_report;
 use super::preview_reconcile::duplicate_roster_actor_entities;
@@ -233,6 +234,17 @@ fn draft_member_to_preview_actor_mapping_stays_one_to_one() {
     assert_eq!(mapping.len(), 2);
     assert_eq!(mapping[&SquadMemberDraftId(0)], first);
     assert_eq!(mapping[&SquadMemberDraftId(1)], second);
+}
+
+#[test]
+fn squad_visibility_waits_for_presentation_readiness() {
+    let mode = RosterPresentationMode::Squad;
+    assert!(roster_member_is_visible(0, mode));
+    assert!(!roster_actor_presentation_ready(true, false, true));
+    assert!(
+        roster_member_is_visible(0, mode)
+            && roster_actor_presentation_ready(true, true, false)
+    );
 }
 
 #[test]
