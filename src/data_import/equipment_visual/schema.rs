@@ -3,7 +3,8 @@
 use bevy::prelude::*;
 
 use crate::world::equipment::{
-    EquipmentAttachmentSocket, EquipmentPresentationMode, EquipmentVisualMapping,
+    DEFAULT_EQUIPMENT_FIT_SCALE, EquipmentAttachmentSocket, EquipmentPresentationMode,
+    EquipmentVisualMapping,
 };
 use crate::world::{ItemDefinitionId, ItemRenderKey};
 
@@ -23,6 +24,8 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Stowed Local Translation",
     "Stowed Local Rotation",
     "Stowed Local Scale",
+    "Fit Scale",
+    "Fit Offset",
     "Consumed Morph Params",
 ];
 
@@ -41,6 +44,8 @@ pub struct EquipmentVisualImportRow {
     pub stowed_local_translation: Option<String>,
     pub stowed_local_rotation: Option<String>,
     pub stowed_local_scale: Option<String>,
+    pub fit_scale: Option<String>,
+    pub fit_offset: Option<String>,
     pub consumed_morph_params: Option<String>,
 }
 
@@ -84,11 +89,29 @@ impl EquipmentVisualImportRow {
                 Quat::IDENTITY,
             )?,
             stowed_local_scale: parse_vec3(self.stowed_local_scale.as_deref(), Vec3::ONE)?,
+            fit_scale: parse_fit_scale(self.fit_scale.as_deref())?,
+            fit_offset: parse_vec3(self.fit_offset.as_deref(), Vec3::ZERO)?,
             consumed_morph_params: parse_consumed_morph_params(
                 self.consumed_morph_params.as_deref(),
                 self.row_number,
             )?,
         })
+    }
+}
+
+fn parse_fit_scale(raw: Option<&str>) -> Result<f32, String> {
+    let raw = raw.map(str::trim).filter(|value| !value.is_empty());
+    match raw {
+        None => Ok(DEFAULT_EQUIPMENT_FIT_SCALE),
+        Some(value) => {
+            let scale = value
+                .parse::<f32>()
+                .map_err(|_| format!("invalid Fit Scale `{value}`"))?;
+            if scale <= 0.0 {
+                return Err(format!("Fit Scale must be > 0, got `{value}`"));
+            }
+            Ok(scale)
+        }
     }
 }
 

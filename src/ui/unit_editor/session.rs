@@ -6,10 +6,13 @@ use crate::world::UnitId;
 
 use super::draft::UnitAppearanceDraft;
 
-/// How the editor was opened. CG8 will add `NewGameDraft`.
+/// How the editor was opened.
 #[derive(Debug, Clone, PartialEq, Reflect)]
 pub enum UnitEditorMode {
     LiveUnit(UnitId),
+    NewGameDraft {
+        slot_index: usize,
+    },
 }
 
 /// Active editor session — presentation/UI only; not serialized into [`WorldData`].
@@ -45,6 +48,14 @@ impl UnitEditorSession {
     pub fn live_unit_id(&self) -> Option<UnitId> {
         match self.mode {
             UnitEditorMode::LiveUnit(id) => Some(id),
+            UnitEditorMode::NewGameDraft { .. } => None,
+        }
+    }
+
+    pub fn new_game_draft_slot(&self) -> Option<usize> {
+        match self.mode {
+            UnitEditorMode::NewGameDraft { slot_index } => Some(slot_index),
+            UnitEditorMode::LiveUnit(_) => None,
         }
     }
 }

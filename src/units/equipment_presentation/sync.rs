@@ -169,6 +169,7 @@ pub fn sync_unit_equipment_presentation(
                     state.visuals.insert(key, visual);
                 }
                 EquipmentPresentationMode::SkinnedOverlay => {
+                    // Skinned fit_scale/fit_offset are baked offline; do not scale the overlay root.
                     let consumed_morph_params = visuals
                         .resolve(&entry.item_definition_id, &unit_render_key)
                         .map(|mapping| mapping.consumed_morph_params.clone())

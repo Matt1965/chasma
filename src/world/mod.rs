@@ -25,6 +25,7 @@ mod navigation;
 mod obstacle;
 mod occupancy;
 mod operation;
+mod origin;
 mod ownership;
 mod perception;
 mod projectile;
@@ -450,6 +451,10 @@ pub use operation::{
     starter_definitions as starter_operation_definitions, validate_building_definition_operations,
     validate_building_operation_bindings, validate_operation_selection,
 };
+pub use origin::{
+    OriginCatalog, OriginDefinition, OriginId, OriginRosterMember, starter_origin_catalog,
+    starter_origin_definitions,
+};
 pub use ownership::{
     Affiliation, DEFAULT_PLAYER_OWNER_ID, DEFAULT_PLAYER_TEAM_ID, OwnerId,
     SelectionControllabilityPolicy, TeamId, UnitOwnership, default_ownership_for_source,
@@ -674,7 +679,8 @@ pub use unit::{
     UnitWorkCapabilities, UnitWorkSkillState, WorkSkillCatalog, WorkSkillCatalogError,
     WorkSkillDefinition, WorkSkillError, WorkSkillId, apply_attacking_combat_facing,
     apply_validated_attack_order, create_unit, create_unit_with_inventory,
-    create_unit_with_ownership, evaluate_hunger_stage, facing_rotation_from_direction_xz,
+    create_unit_with_ownership, create_unit_with_ownership_and_appearance,
+    evaluate_hunger_stage, facing_rotation_from_direction_xz,
     facing_rotation_from_travel, ground_unit_position, ground_unit_to_terrain,
     hunger_prevents_work_claim, hunger_stage_label, infer_navigation_membership_at_position,
     initialize_surface_units_navigation_membership, initialize_unit_navigation_membership,
@@ -917,6 +923,7 @@ impl Plugin for WorldFoundationPlugin {
             app.insert_resource(authored_relationships);
             app.insert_resource(item_categories);
             app.insert_resource(equipment_visuals);
+            app.insert_resource(crate::world::starter_origin_catalog());
             app.init_resource::<OperationCatalog>();
             app.init_resource::<NeedCatalog>();
             app.init_resource::<WorkSkillCatalog>();

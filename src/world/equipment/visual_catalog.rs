@@ -24,6 +24,10 @@ pub struct EquipmentVisualMapping {
     pub stowed_local_translation: Vec3,
     pub stowed_local_rotation: Quat,
     pub stowed_local_scale: Vec3,
+    /// Uniform bind-pose inflation baked into skinned GLBs (default 1.0).
+    pub fit_scale: f32,
+    /// Bind-pose translation baked into skinned GLBs (default zero).
+    pub fit_offset: Vec3,
     /// Semantic appearance parameters this visual consumes for morph deformation (CG5).
     pub consumed_morph_params: Vec<AppearanceParamId>,
 }

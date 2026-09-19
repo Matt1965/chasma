@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use crate::world::equipment::{
     EquipmentAttachmentSocket, EquipmentPresentationAuthoring, EquipmentPresentationMode,
     EquipmentSlot, EquipmentVisualCatalog, default_socket_for_slot,
+    effective_rigid_local_scale, effective_rigid_local_translation, skinned_fit_is_baked_offline,
     slot_supports_equipment_presentation,
 };
 use crate::world::{
@@ -84,6 +85,14 @@ pub fn desired_equipment_presentations_for_unit(
                 mapping.local_translation,
                 mapping.local_rotation,
                 mapping.local_scale,
+            )
+        };
+        let (local_translation, local_scale) = if skinned_fit_is_baked_offline(mapping.mode) {
+            (local_translation, local_scale)
+        } else {
+            (
+                effective_rigid_local_translation(local_translation, mapping.fit_offset),
+                effective_rigid_local_scale(local_scale, mapping.fit_scale),
             )
         };
         let presentation = EquipmentPresentationAuthoring {

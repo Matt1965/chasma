@@ -11,6 +11,7 @@ use super::font::{
 };
 use super::navigation::{MenuNavigation, MenuPage};
 use super::settings::{SettingsHostKind, SettingsMenuState, spawn_settings_panel};
+use super::screen::AppScreen;
 use super::transition::{SessionTransitionKind, SessionTransitionRequest};
 use crate::camera::CameraSettings;
 
@@ -233,6 +234,7 @@ pub fn handle_main_menu_buttons(
     mut nav: ResMut<MenuNavigation>,
     mut settings: ResMut<SettingsMenuState>,
     mut transitions: ResMut<SessionTransitionRequest>,
+    mut next_screen: ResMut<NextState<AppScreen>>,
     mut exit: MessageWriter<AppExit>,
 ) {
     for (interaction, action, mut bg) in &mut interaction {
@@ -241,7 +243,7 @@ pub fn handle_main_menu_buttons(
                 *bg = BackgroundColor(Color::srgb(0.28, 0.36, 0.46));
                 match *action {
                     MainMenuAction::NewGame => {
-                        transitions.request(SessionTransitionKind::StartNewGame);
+                        next_screen.set(AppScreen::OriginSelect);
                     }
                     #[cfg(feature = "dev")]
                     MainMenuAction::EditDefaultWorld => {

@@ -8,7 +8,8 @@ use bevy::render::render_resource::TextureFormat;
 
 use crate::camera::render_layers::PREVIEW_RENDER_LAYER;
 use crate::units::presentation::{
-    UnitEditorPreviewFraming, UnitEditorPreviewRoot, UnitEditorPreviewUnit,
+    UnitEditorPreviewFraming, UnitEditorPreviewRoot, UnitEditorPreviewRosterMember,
+    UnitEditorPreviewUnit,
 };
 
 use super::screen::UnitEditorPreviewPane;
@@ -117,7 +118,7 @@ pub fn update_unit_editor_preview_framing(
     preview_units: Query<
         Entity,
         (
-            With<UnitEditorPreviewUnit>,
+            Or<(With<UnitEditorPreviewUnit>, With<UnitEditorPreviewRosterMember>)>,
             Without<UnitEditorPreviewFraming>,
         ),
     >,

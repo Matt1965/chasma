@@ -68,6 +68,7 @@ pub use appearance::{
 pub use attack_cycle::{AttackCycle, AttackPhase};
 pub use authoring::{
     UnitAuthoringError, create_unit, create_unit_with_inventory, create_unit_with_ownership,
+    create_unit_with_ownership_and_appearance,
     lookup_unit, move_unit, remove_unit,
 };
 #[cfg(any(test, feature = "dev"))]
