@@ -9,6 +9,7 @@ use super::*;
 fn sample_two_point_road() -> Road {
     Road {
         id: RoadId::new("road_a"),
+        display_name: String::new(),
         style: RoadStyleId::DirtRoad,
         style_overrides: RoadStyleOverrides::default(),
         control_points: vec![RoadControlPoint::new(0.0, 0.0), RoadControlPoint::new(10.0, 0.0)],
@@ -22,6 +23,7 @@ fn sample_two_point_road() -> Road {
 fn centripetal_catmull_rom_passes_through_control_points() {
     let road = Road {
         id: RoadId::new("curve"),
+        display_name: String::new(),
         style: RoadStyleId::DirtRoad,
         style_overrides: RoadStyleOverrides::default(),
         control_points: vec![
@@ -61,6 +63,7 @@ fn centripetal_sampling_is_deterministic() {
 fn uneven_spacing_does_not_produce_nan_samples() {
     let road = Road {
         id: RoadId::new("uneven"),
+        display_name: String::new(),
         style: RoadStyleId::DirtRoad,
         style_overrides: RoadStyleOverrides::default(),
         control_points: vec![
@@ -100,6 +103,7 @@ fn minimum_valid_road_samples_linearly() {
 fn invalid_point_count_is_rejected() {
     let road = Road {
         id: RoadId::new("too_short"),
+        display_name: String::new(),
         style: RoadStyleId::DirtRoad,
         style_overrides: RoadStyleOverrides::default(),
         control_points: vec![RoadControlPoint::new(0.0, 0.0)],
@@ -119,6 +123,7 @@ fn invalid_point_count_is_rejected() {
 fn nan_coordinates_are_rejected() {
     let road = Road {
         id: RoadId::new("nan"),
+        display_name: String::new(),
         style: RoadStyleId::DirtRoad,
         style_overrides: RoadStyleOverrides::default(),
         control_points: vec![
@@ -202,6 +207,7 @@ fn junction_reference_validation_requires_mirrored_members() {
     let junction_id = JunctionId::new("junction_a");
     let road = Road {
         id: RoadId::new("road_a"),
+        display_name: String::new(),
         style: RoadStyleId::DirtRoad,
         style_overrides: RoadStyleOverrides::default(),
         control_points: vec![RoadControlPoint::new(0.0, 0.0), RoadControlPoint::new(10.0, 0.0)],

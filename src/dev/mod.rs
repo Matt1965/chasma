@@ -19,6 +19,7 @@ mod inspector;
 pub(crate) mod inventory_tools;
 mod items_browser;
 mod navigation_editor;
+mod road_editor;
 mod panel;
 mod pile_harness;
 mod save_window;
@@ -60,6 +61,11 @@ pub use dev_mode::{
     DevModeState, DevTab, DevTextFieldFocus, SpawnMode,
 };
 pub use fields_window::{setup_fields_window_panel, sync_dev_fields_panel_visibility};
+pub use road_editor::{
+    handle_road_editor_buttons, handle_road_editor_keyboard_input, handle_road_editor_world_input,
+    draw_road_editor_overlay, setup_road_editor_state, setup_roads_window_panel,
+    sync_dev_roads_panel_visibility, sync_road_editor_panel, RoadEditorUiState,
+};
 pub use gizmo::{
     DevTool, DevToolState, DevTransformPreview, GizmoCoordinateSpace, SelectedWorldObject,
     TransformEditState,
@@ -225,7 +231,9 @@ impl Plugin for DevModePlugin {
                     setup_world_window_panel,
                     setup_settlement_window_panel,
                     setup_fields_window_panel,
+                    setup_roads_window_panel,
                     setup_dev_tooltip,
+                    setup_road_editor_state,
                     scenes::init_dev_scene_registry,
                     setup_dev_terrain_field_state,
                 )
@@ -450,6 +458,23 @@ impl Plugin for DevModePlugin {
         .add_systems(
             Update,
             (
+                sync_dev_roads_panel_visibility,
+                handle_road_editor_buttons,
+                handle_road_editor_keyboard_input,
+                sync_road_editor_panel,
+            )
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            handle_road_editor_world_input
+                .before(handle_dev_spawn_click)
+                .before(handle_inspector_input)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            (
                 archetype_editor::handle_archetype_save_button,
                 archetype_editor::handle_archetype_edit_button,
                 archetype_editor::handle_archetype_modal_save,
@@ -580,6 +605,7 @@ impl Plugin for DevModePlugin {
                 sync_dev_terrain_field_panel,
                 update_dev_terrain_field_probe,
                 draw_dev_terrain_field_gizmos,
+                draw_road_editor_overlay,
                 settlement_placement::draw_settlement_placement_preview,
                 settlement_placement::billboard_settlement_placement_rejection_labels,
                 inventory_tools::sync_dev_held_item_screen_ghost,

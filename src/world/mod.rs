@@ -652,8 +652,9 @@ pub use road::{
     RoadLoadError, RoadNetwork, RoadNetworkRon, RoadSplineSample, RoadStyleDefaults, RoadStyleId,
     RoadStyleOverrides, RoadTeeAttachment, ROAD_NETWORK_SCHEMA_VERSION, DEFAULT_WORLD_PACKAGE_DIR,
     load_road_network, load_road_network_from_path, load_road_network_from_world_package,
-    parse_road_network_ron, road_network_ron_path, sample_road_polyline,
-    sample_road_spline_at_distance, serialize_road_network_ron, validate_road_network,
+    parse_road_network_ron, road_network_ron_path, save_road_network, save_road_network_to_path,
+    sample_road_polyline, sample_road_spline_at_distance, serialize_road_network_ron,
+    validate_road_network,
 };
 #[cfg(feature = "dev")]
 pub(crate) use unit::inside_move_trace;

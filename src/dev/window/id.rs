@@ -28,6 +28,9 @@ pub enum DevWindowId {
 
     /// Terrain field construction and probe (Slice 8).
     Fields,
+
+    /// Road spline authoring editor.
+    Roads,
 }
 
 impl DevWindowId {
@@ -48,6 +51,8 @@ impl DevWindowId {
             Self::Settlement => "Settlement",
 
             Self::Fields => "Fields",
+
+            Self::Roads => "Road Editor",
         }
     }
 
@@ -66,7 +71,8 @@ impl DevWindowId {
             | Self::Debug
             | Self::World
             | Self::Settlement
-            | Self::Fields => false,
+            | Self::Fields
+            | Self::Roads => false,
         }
     }
 
@@ -79,7 +85,8 @@ impl DevWindowId {
             | Self::Debug
             | Self::World
             | Self::Settlement
-            | Self::Fields => true,
+            | Self::Fields
+            | Self::Roads => true,
         }
     }
 
@@ -95,6 +102,7 @@ impl DevWindowId {
         Self::World,
         Self::Settlement,
         Self::Fields,
+        Self::Roads,
         Self::NavigationEditor,
     ];
 }

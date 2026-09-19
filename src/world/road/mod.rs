@@ -42,7 +42,7 @@ pub use junction::{Junction, JunctionMember, JunctionMemberRole};
 pub use load::{
     DEFAULT_WORLD_PACKAGE_DIR, load_road_network, load_road_network_from_path,
     load_road_network_from_world_package, parse_road_network_ron, road_network_ron_path,
-    serialize_road_network_ron,
+    save_road_network, save_road_network_to_path, serialize_road_network_ron,
 };
 pub use network::{RoadNetwork, RoadNetworkRon, ROAD_NETWORK_SCHEMA_VERSION};
 pub use road::Road;
