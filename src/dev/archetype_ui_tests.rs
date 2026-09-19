@@ -89,6 +89,8 @@ fn building_archetype_invalidated_when_base_changes() {
                 uniform_scale: 1.0,
                 placement_yaw_deg: 0.0,
             },
+            capture_metadata: Default::default(),
+            members: Vec::new(),
             enabled: true,
         },
     ])

@@ -6,18 +6,39 @@ use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::units::input::SelectedUnits;
 use crate::world::{
     build_building_archetype_definition, build_unit_archetype_definition,
-    capture_unit_archetype_template, save_building_archetype_catalog_to_ron,
+    capture_building_archetype_members, capture_unit_archetype_template,
+    default_building_archetype_capture_margin_meters, save_building_archetype_catalog_to_ron,
     save_unit_archetype_catalog_to_ron, unique_building_archetype_id, unique_unit_archetype_id,
-    validate_gold_range, BuildingArchetypeCatalog, BuildingRecord, ItemCatalog,
+    validate_gold_range, BuildingArchetypeCatalog,
+    BuildingCatalog, BuildingRecord, DoodadCatalog, FootprintCatalog, ItemCatalog,
     UnitArchetypeCatalog, UnitArchetypeId, WorldData, BUILDING_ARCHETYPES_RON_PATH,
     UNIT_ARCHETYPES_RON_PATH,
 };
 
+use super::capture_preview::{
+    BuildingArchetypeMemberPreviewEntry, parse_capture_margin_input,
+};
 use super::state::{ArchetypeEditorMode, DevArchetypeEditorState};
 
 #[derive(Resource, Debug, Default)]
 pub struct DevArchetypeEditorScratch {
     pub pending_building: Option<BuildingRecord>,
+    pub capture_margin_input: String,
+    pub preview_region: Option<crate::world::BuildingArchetypeCaptureRegion>,
+    pub preview_members: Vec<BuildingArchetypeMemberPreviewEntry>,
+}
+
+impl DevArchetypeEditorScratch {
+    pub fn clear_capture_preview(&mut self) {
+        self.preview_region = None;
+        self.preview_members.clear();
+    }
+
+    pub fn clear_building_capture_session(&mut self) {
+        self.pending_building = None;
+        self.capture_margin_input.clear();
+        self.clear_capture_preview();
+    }
 }
 
 #[derive(Component, Debug, Clone, Copy)]
@@ -141,7 +162,7 @@ pub fn handle_archetype_modal_cancel(
         return;
     }
     editor.close();
-    scratch.pending_building = None;
+    scratch.clear_building_capture_session();
     dev_state.clear_text_focus();
 }
 
@@ -197,6 +218,9 @@ pub fn handle_archetype_modal_save(
     mut unit_archetypes: ResMut<UnitArchetypeCatalog>,
     mut building_archetypes: ResMut<BuildingArchetypeCatalog>,
     world: Res<WorldData>,
+    building_catalog: Res<BuildingCatalog>,
+    footprint_catalog: Res<FootprintCatalog>,
+    doodad_catalog: Res<DoodadCatalog>,
     item_catalog: Res<ItemCatalog>,
     selected_units: Res<SelectedUnits>,
     world_selection: Res<WorldSelectionState>,
@@ -230,6 +254,10 @@ pub fn handle_archetype_modal_save(
                 &mut scratch,
                 &mut dev_state,
                 &mut building_archetypes,
+                &world,
+                &building_catalog,
+                &footprint_catalog,
+                &doodad_catalog,
             );
         }
         None => {}
@@ -325,6 +353,7 @@ fn begin_building_save_flow(
     world_selection: &WorldSelectionState,
     selected_archetype: Option<crate::world::BuildingArchetypeId>,
 ) {
+    scratch.clear_capture_preview();
     let building_id = match require_single_selected_building(world_selection) {
         Ok(id) => id,
         Err(message) => {
@@ -349,6 +378,10 @@ fn begin_building_save_flow(
             .map(|definition| definition.display_name.clone())
             .unwrap_or_else(|| existing_id.as_str().to_string());
         scratch.pending_building = Some(building);
+        scratch.capture_margin_input = building_archetypes
+            .get(&existing_id)
+            .map(|definition| definition.capture_metadata.capture_margin_meters.to_string())
+            .unwrap_or_else(|| default_capture_margin_input());
         editor.pending_template_update = true;
         editor.status_message =
             "Updating template from selected building. Confirm to save.".to_string();
@@ -360,6 +393,7 @@ fn begin_building_save_flow(
     editor.editing_building_id = None;
     editor.name_input.clear();
     scratch.pending_building = Some(building);
+    scratch.capture_margin_input = default_capture_margin_input();
     editor.pending_template_update = false;
     editor.status_message.clear();
 }
@@ -460,6 +494,10 @@ fn save_building_archetype_from_modal(
     scratch: &mut DevArchetypeEditorScratch,
     dev_state: &mut crate::dev::dev_mode::DevModeState,
     building_archetypes: &mut BuildingArchetypeCatalog,
+    world: &WorldData,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
+    doodad_catalog: &DoodadCatalog,
 ) {
     let name = editor.name_input.trim();
     let id = match &editor.editing_building_id {
@@ -474,15 +512,34 @@ fn save_building_archetype_from_modal(
         return;
     }
 
-    let definition = if editor.pending_template_update {
-        let building = match scratch.pending_building.clone() {
-            Some(record) => record,
-            None => {
-                editor.status_message = "No building template captured.".to_string();
+    let definition = if let Some(building) = scratch.pending_building.clone() {
+        let margin = parse_capture_margin_input(&scratch.capture_margin_input);
+        let (capture_metadata, members) = match capture_building_archetype_members(
+            world,
+            &building,
+            building_catalog,
+            footprint_catalog,
+            doodad_catalog,
+            margin,
+        ) {
+            Ok(result) => result,
+            Err(err) => {
+                editor.status_message = format!("Could not capture building archetype: {err:?}");
                 return;
             }
         };
-        build_building_archetype_definition(id.clone(), name.to_string(), &building)
+        let enabled = building_archetypes
+            .get(&id)
+            .map(|existing| existing.enabled)
+            .unwrap_or(true);
+        build_building_archetype_definition(
+            id.clone(),
+            name.to_string(),
+            &building,
+            capture_metadata,
+            members,
+            enabled,
+        )
     } else if let Some(existing) = building_archetypes.get(&id).cloned() {
         let mut definition = existing;
         definition.display_name = name.to_string();
@@ -504,9 +561,13 @@ fn save_building_archetype_from_modal(
 
     dev_state.selected_building_archetype = Some(id);
     dev_state.last_spawn_message = format!("Saved building archetype `{name}`.");
-    scratch.pending_building = None;
+    scratch.clear_building_capture_session();
     editor.close();
     dev_state.clear_text_focus();
+}
+
+fn default_capture_margin_input() -> String {
+    default_building_archetype_capture_margin_meters().to_string()
 }
 
 fn require_single_selected_unit(

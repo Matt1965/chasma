@@ -464,10 +464,12 @@ impl Plugin for DevModePlugin {
         .add_systems(
             Update,
             (
+                archetype_editor::sync_building_archetype_capture_preview,
                 archetype_editor::sync_archetype_editor_modal,
                 archetype_editor::sync_archetype_species_toggle_marks,
                 archetype_editor::sync_archetype_modal_field_styles,
             )
+                .chain()
                 .in_set(DevModeInputSystems),
         )
         .add_systems(Update, sync_dev_debug_controls.in_set(DevModeInputSystems))
@@ -582,6 +584,7 @@ impl Plugin for DevModePlugin {
                 draw_dev_terrain_field_gizmos,
                 settlement_placement::draw_settlement_placement_preview,
                 settlement_placement::billboard_settlement_placement_rejection_labels,
+                archetype_editor::draw_building_archetype_capture_preview,
                 inventory_tools::sync_dev_held_item_screen_ghost,
                 inventory_tools::sync_dev_held_item_world_ghost,
             )

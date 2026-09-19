@@ -11,9 +11,10 @@ use crate::dev::widgets::{
 use crate::world::SpeciesCatalog;
 
 use super::actions::{
-    DevArchetypeModalCancelButton, DevArchetypeModalDeleteButton, DevArchetypeModalSaveButton,
-    DevArchetypeSpeciesToggle,
+    DevArchetypeEditorScratch, DevArchetypeModalCancelButton, DevArchetypeModalDeleteButton,
+    DevArchetypeModalSaveButton, DevArchetypeSpeciesToggle,
 };
+use super::capture_preview::format_captured_member_lines;
 use super::state::DevArchetypeEditorState;
 
 #[derive(Component, Debug, Clone)]
@@ -48,6 +49,18 @@ pub(crate) struct DevArchetypeModalSpeciesList;
 
 #[derive(Component, Debug, Clone)]
 pub(crate) struct DevArchetypeModalUnitFields;
+
+#[derive(Component, Debug, Clone)]
+pub(crate) struct DevArchetypeModalBuildingFields;
+
+#[derive(Component, Debug, Clone)]
+pub(crate) struct DevArchetypeModalCaptureMarginField;
+
+#[derive(Component, Debug, Clone)]
+pub(crate) struct DevArchetypeModalCaptureMarginText;
+
+#[derive(Component, Debug, Clone)]
+pub(crate) struct DevArchetypeModalCapturedListText;
 
 #[derive(Component, Debug, Clone)]
 pub(crate) struct DevArchetypeModalTitleText;
@@ -141,6 +154,35 @@ pub fn setup_archetype_editor_modal(mut commands: Commands) {
                                 DevArchetypeModalGoldMaxField,
                                 DevArchetypeModalGoldMaxText,
                             );
+                        });
+                    panel
+                        .spawn((
+                            DevArchetypeModalBuildingFields,
+                            DevPanelUi,
+                            Node {
+                                flex_direction: FlexDirection::Column,
+                                row_gap: Val::Px(4.0),
+                                ..default()
+                            },
+                            Visibility::Hidden,
+                        ))
+                        .with_children(|building_fields| {
+                            spawn_text_field(
+                                building_fields,
+                                "Capture Margin (m)",
+                                DevArchetypeModalCaptureMarginField,
+                                DevArchetypeModalCaptureMarginText,
+                            );
+                            building_fields.spawn((
+                                DevArchetypeModalCapturedListText,
+                                DevPanelUi,
+                                Text::new("Captured:\n(none)"),
+                                TextFont {
+                                    font_size: 10.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgba(0.75, 0.85, 0.92, 1.0)),
+                            ));
                         });
                     panel.spawn((
                         DevArchetypeModalStatusText,
@@ -250,19 +292,23 @@ fn spawn_modal_button<M: Component>(parent: &mut ChildSpawnerCommands<'_>, label
 
 pub fn sync_archetype_editor_modal(
     editor: Res<DevArchetypeEditorState>,
+    scratch: Res<DevArchetypeEditorScratch>,
     dev_state: Res<DevModeState>,
     species_catalog: Res<SpeciesCatalog>,
     child_of: Query<&ChildOf>,
     mut visibility: ParamSet<(
         Query<(&mut Node, &mut Visibility), With<DevArchetypeModalRoot>>,
         Query<&mut Visibility, With<DevArchetypeModalUnitFields>>,
+        Query<&mut Visibility, With<DevArchetypeModalBuildingFields>>,
         Query<&mut Visibility, With<DevArchetypeModalDeleteButton>>,
     )>,
     mut title: Query<&mut Text, With<DevArchetypeModalTitleText>>,
-    mut name_text: Query<&mut Text, (With<DevArchetypeModalNameText>, Without<DevArchetypeModalGoldMinText>, Without<DevArchetypeModalGoldMaxText>, Without<DevArchetypeModalStatusText>, Without<DevArchetypeModalTitleText>)>,
-    mut gold_min: Query<&mut Text, (With<DevArchetypeModalGoldMinText>, Without<DevArchetypeModalNameText>, Without<DevArchetypeModalGoldMaxText>, Without<DevArchetypeModalStatusText>, Without<DevArchetypeModalTitleText>)>,
-    mut gold_max: Query<&mut Text, (With<DevArchetypeModalGoldMaxText>, Without<DevArchetypeModalNameText>, Without<DevArchetypeModalGoldMinText>, Without<DevArchetypeModalStatusText>, Without<DevArchetypeModalTitleText>)>,
-    mut status: Query<&mut Text, (With<DevArchetypeModalStatusText>, Without<DevArchetypeModalNameText>, Without<DevArchetypeModalGoldMinText>, Without<DevArchetypeModalGoldMaxText>, Without<DevArchetypeModalTitleText>)>,
+    mut name_text: Query<&mut Text, (With<DevArchetypeModalNameText>, Without<DevArchetypeModalGoldMinText>, Without<DevArchetypeModalGoldMaxText>, Without<DevArchetypeModalStatusText>, Without<DevArchetypeModalTitleText>, Without<DevArchetypeModalCaptureMarginText>, Without<DevArchetypeModalCapturedListText>)>,
+    mut gold_min: Query<&mut Text, (With<DevArchetypeModalGoldMinText>, Without<DevArchetypeModalNameText>, Without<DevArchetypeModalGoldMaxText>, Without<DevArchetypeModalStatusText>, Without<DevArchetypeModalTitleText>, Without<DevArchetypeModalCaptureMarginText>, Without<DevArchetypeModalCapturedListText>)>,
+    mut gold_max: Query<&mut Text, (With<DevArchetypeModalGoldMaxText>, Without<DevArchetypeModalNameText>, Without<DevArchetypeModalGoldMinText>, Without<DevArchetypeModalStatusText>, Without<DevArchetypeModalTitleText>, Without<DevArchetypeModalCaptureMarginText>, Without<DevArchetypeModalCapturedListText>)>,
+    mut margin_text: Query<&mut Text, (With<DevArchetypeModalCaptureMarginText>, Without<DevArchetypeModalNameText>, Without<DevArchetypeModalGoldMinText>, Without<DevArchetypeModalGoldMaxText>, Without<DevArchetypeModalStatusText>, Without<DevArchetypeModalTitleText>, Without<DevArchetypeModalCapturedListText>)>,
+    mut captured_list: Query<&mut Text, (With<DevArchetypeModalCapturedListText>, Without<DevArchetypeModalNameText>, Without<DevArchetypeModalGoldMinText>, Without<DevArchetypeModalGoldMaxText>, Without<DevArchetypeModalStatusText>, Without<DevArchetypeModalTitleText>, Without<DevArchetypeModalCaptureMarginText>)>,
+    mut status: Query<&mut Text, (With<DevArchetypeModalStatusText>, Without<DevArchetypeModalNameText>, Without<DevArchetypeModalGoldMinText>, Without<DevArchetypeModalGoldMaxText>, Without<DevArchetypeModalTitleText>, Without<DevArchetypeModalCaptureMarginText>, Without<DevArchetypeModalCapturedListText>)>,
     species_list: Query<Entity, With<DevArchetypeModalSpeciesList>>,
     species_toggles: Query<(Entity, &DevArchetypeSpeciesToggle)>,
     mut commands: Commands,
@@ -277,8 +323,16 @@ pub fn sync_archetype_editor_modal(
     }
 
     let is_unit = editor.is_unit_modal();
+    let is_building = editor.is_building_modal();
     for mut unit_visibility in visibility.p1().iter_mut() {
         *unit_visibility = if is_unit {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
+    for mut building_visibility in visibility.p2().iter_mut() {
+        *building_visibility = if is_building {
             Visibility::Visible
         } else {
             Visibility::Hidden
@@ -312,6 +366,12 @@ pub fn sync_archetype_editor_modal(
     if let Ok(mut text) = gold_max.single_mut() {
         **text = editor.gold_max_input.clone();
     }
+    if let Ok(mut text) = margin_text.single_mut() {
+        **text = scratch.capture_margin_input.clone();
+    }
+    if let Ok(mut text) = captured_list.single_mut() {
+        **text = format_captured_member_lines(&scratch.preview_members);
+    }
     if let Ok(mut text) = status.single_mut() {
         **text = editor.status_message.clone();
     }
@@ -320,7 +380,7 @@ pub fn sync_archetype_editor_modal(
         editor.mode,
         Some(super::state::ArchetypeEditorMode::UnitEdit | super::state::ArchetypeEditorMode::BuildingEdit)
     );
-    for mut delete_visibility in visibility.p2().iter_mut() {
+    for mut delete_visibility in visibility.p3().iter_mut() {
         *delete_visibility = if show_delete {
             Visibility::Visible
         } else {
@@ -399,15 +459,19 @@ pub fn sync_archetype_modal_field_styles(
     editor: Res<DevArchetypeEditorState>,
     mut name_field: Query<
         (&mut BackgroundColor, &mut BorderColor),
-        (With<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalGoldMaxField>),
+        (With<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalGoldMaxField>, Without<DevArchetypeModalCaptureMarginField>),
     >,
     mut gold_min_field: Query<
         (&mut BackgroundColor, &mut BorderColor),
-        (With<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMaxField>),
+        (With<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMaxField>, Without<DevArchetypeModalCaptureMarginField>),
     >,
     mut gold_max_field: Query<
         (&mut BackgroundColor, &mut BorderColor),
-        (With<DevArchetypeModalGoldMaxField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>),
+        (With<DevArchetypeModalGoldMaxField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalCaptureMarginField>),
+    >,
+    mut margin_field: Query<
+        (&mut BackgroundColor, &mut BorderColor),
+        (With<DevArchetypeModalCaptureMarginField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalGoldMaxField>),
     >,
 ) {
     if !editor.modal_open {
@@ -424,6 +488,10 @@ pub fn sync_archetype_modal_field_styles(
     paint_field(
         &mut gold_max_field,
         dev_state.text_focus == DevTextFieldFocus::ArchetypeGoldMax,
+    );
+    paint_field(
+        &mut margin_field,
+        dev_state.text_focus == DevTextFieldFocus::ArchetypeCaptureMargin,
     );
 }
 
@@ -448,9 +516,10 @@ fn paint_field<Q: bevy::ecs::query::QueryFilter>(
 pub fn handle_archetype_modal_field_clicks(
     mut dev_state: ResMut<DevModeState>,
     editor: Res<DevArchetypeEditorState>,
-    name: Query<&Interaction, (With<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalGoldMaxField>)>,
-    gold_min: Query<&Interaction, (With<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMaxField>)>,
-    gold_max: Query<&Interaction, (With<DevArchetypeModalGoldMaxField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>)>,
+    name: Query<&Interaction, (With<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalGoldMaxField>, Without<DevArchetypeModalCaptureMarginField>)>,
+    gold_min: Query<&Interaction, (With<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMaxField>, Without<DevArchetypeModalCaptureMarginField>)>,
+    gold_max: Query<&Interaction, (With<DevArchetypeModalGoldMaxField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalCaptureMarginField>)>,
+    margin: Query<&Interaction, (With<DevArchetypeModalCaptureMarginField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalGoldMaxField>)>,
 ) {
     if !editor.modal_open {
         return;
@@ -461,6 +530,8 @@ pub fn handle_archetype_modal_field_clicks(
         dev_state.text_focus = DevTextFieldFocus::ArchetypeGoldMin;
     } else if gold_max.iter().any(|i| *i == Interaction::Pressed) {
         dev_state.text_focus = DevTextFieldFocus::ArchetypeGoldMax;
+    } else if margin.iter().any(|i| *i == Interaction::Pressed) {
+        dev_state.text_focus = DevTextFieldFocus::ArchetypeCaptureMargin;
     }
 }
 
@@ -498,6 +569,7 @@ fn species_toggle_row_entities(
 #[cfg(test)]
 mod lifecycle_tests {
     use super::*;
+    use super::super::actions::DevArchetypeEditorScratch;
     use crate::dev::dev_mode::DevModeState;
     use crate::world::relationship::species::{SpeciesCatalog, SpeciesDefinition};
     use crate::world::relationship::SpeciesId;
@@ -506,6 +578,7 @@ mod lifecycle_tests {
     fn test_world() -> World {
         let mut world = World::new();
         world.insert_resource(DevArchetypeEditorState::default());
+        world.insert_resource(DevArchetypeEditorScratch::default());
         let mut dev_state = DevModeState::default();
         dev_state.enabled = true;
         world.insert_resource(dev_state);
