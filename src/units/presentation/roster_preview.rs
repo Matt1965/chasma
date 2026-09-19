@@ -2,9 +2,14 @@
 
 use bevy::prelude::*;
 
-/// Marks one spawned actor inside a multi-actor preview roster (CG7).
+use crate::menu::SquadMemberDraftId;
+
+/// Marks one spawned actor inside a multi-actor preview roster (CG7/CG8).
+///
+/// Each active [`SquadMemberDraftId`] maps to exactly one preview actor entity.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Reflect)]
 pub struct UnitEditorPreviewRosterMember {
+    pub draft_member_id: SquadMemberDraftId,
     pub slot_index: usize,
 }
 

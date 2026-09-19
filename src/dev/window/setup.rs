@@ -296,7 +296,7 @@ pub fn spawn_catalog_window(
 
                 top: Val::Px(position.y),
 
-                width: Val::Px(DEFAULT_PANEL_WIDTH_PX),
+                width: Val::Px(super::math::CATALOG_PANEL_WIDTH_PX),
 
                 flex_direction: FlexDirection::Column,
 

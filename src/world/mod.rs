@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+pub mod archetype;
 pub mod armor;
 pub mod asset_sizing;
 pub mod authoring_transform;
@@ -45,6 +46,22 @@ pub use armor::{
     ARMOR_MITIGATION_K, ArmorProfileCatalog, ArmorProfileCatalogError, ArmorProfileDefinition,
     ArmorProfileId, damage_multiplier_for_armor, resolve_applied_combat_damage,
     resolve_damage_after_armor,
+};
+pub use archetype::{
+    apply_unit_archetype_spawn_overrides, ArchetypeApplyError, ArchetypeCaptureError,
+    ArchetypeEquipmentEntry, ArchetypeInventoryStack, ArchetypePersistenceError,
+    ArchetypeResolveError, BUILDING_ARCHETYPES_RON_PATH, BuildingArchetypeCatalog,
+    BuildingArchetypeCatalogError, BuildingArchetypeDefinition, BuildingArchetypeId,
+    BuildingArchetypeSnapshot, CapturedUnitArchetypeTemplate, ResolvedBuildingSpawnSpec,
+    ResolvedUnitSpawnSpec, UNIT_ARCHETYPES_RON_PATH, UnitArchetypeCatalog,
+    UnitArchetypeCatalogError, UnitArchetypeDefinition, UnitArchetypeId,
+    build_building_archetype_definition, build_unit_archetype_definition,
+    capture_building_archetype_snapshot, capture_unit_archetype_template,
+    load_building_archetype_catalog_from_ron, load_dev_building_archetype_catalog,
+    load_dev_unit_archetype_catalog, load_unit_archetype_catalog_from_ron,
+    resolve_building_spawn_spec, resolve_unit_spawn_spec, save_building_archetype_catalog_to_ron,
+    save_unit_archetype_catalog_to_ron, slugify_archetype_id, unique_building_archetype_id,
+    unique_unit_archetype_id, validate_gold_range,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use weapon::starter_definitions as starter_weapon_definitions;
@@ -931,7 +948,6 @@ impl Plugin for WorldFoundationPlugin {
             app.insert_resource(species_catalog.clone());
             app.insert_resource(authored_relationships);
             app.insert_resource(item_categories);
-            app.insert_resource(item_catalog);
             app.insert_resource(equipment_visuals);
             app.insert_resource(crate::world::starter_origin_catalog());
             app.init_resource::<OperationCatalog>();
@@ -945,12 +961,14 @@ impl Plugin for WorldFoundationPlugin {
             app.insert_resource(building_categories);
             let nav_catalog =
                 crate::data_import::resolve_dev_navigation_blueprint_catalog(&building_catalog);
+            let building_archetype_catalog =
+                crate::world::load_dev_building_archetype_catalog();
             app.insert_resource(building_catalog);
             app.insert_resource(footprint_catalog);
             app.insert_resource(crate::data_import::resolve_dev_doodad_catalog(Some(
                 &mut sizing_reports,
             )));
-            app.insert_resource(crate::data_import::resolve_dev_unit_catalog(
+            let unit_catalog = crate::data_import::resolve_dev_unit_catalog(
                 &faction_catalog,
                 &species_catalog,
                 &weapons,
@@ -958,7 +976,12 @@ impl Plugin for WorldFoundationPlugin {
                 &inventory_profiles,
                 &appearance_profiles,
                 Some(&mut sizing_reports),
-            ));
+            );
+            let unit_archetype_catalog = crate::world::load_dev_unit_archetype_catalog();
+            app.insert_resource(item_catalog);
+            app.insert_resource(unit_catalog);
+            app.insert_resource(unit_archetype_catalog);
+            app.insert_resource(building_archetype_catalog);
             app.insert_resource(crate::data_import::resolve_dev_terrain_field_catalog());
             app.insert_resource(crate::world::load_terrain_field_source_profile_catalog());
             app.insert_resource(crate::world::FieldResponseProfileCatalog::default());

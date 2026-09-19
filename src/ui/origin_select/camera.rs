@@ -6,6 +6,7 @@ use crate::menu::{OriginSquadViewMode, StartingSquadSession};
 use crate::units::presentation::{UnitEditorPreviewFraming, UnitEditorPreviewRosterMember};
 use crate::ui::unit_editor::UnitEditorPreviewCamera;
 
+use super::presentation::FOCUS_STAGE_POSITION;
 use super::screen::OriginSelectPreviewPane;
 
 const PREVIEW_DISTANCE_BASE: f32 = 2.8;
@@ -43,13 +44,13 @@ pub fn update_origin_select_preview_camera(
         OriginSquadViewMode::FocusedMember { slot_index } => roster
             .iter()
             .find(|(_, member, _)| member.slot_index == slot_index)
-            .map(|(transform, _, framing)| {
+            .map(|(_, _, framing)| {
                 let center = framing
                     .map(|value| value.body_center)
-                    .unwrap_or_else(|| transform.translation() + Vec3::Y * PREVIEW_FOCUS_Y);
+                    .unwrap_or(FOCUS_STAGE_POSITION + Vec3::Y * PREVIEW_FOCUS_Y);
                 (center, FOCUS_DISTANCE_SCALE)
             })
-            .unwrap_or((Vec3::new(0.0, PREVIEW_FOCUS_Y, 0.0), FOCUS_DISTANCE_SCALE)),
+            .unwrap_or((FOCUS_STAGE_POSITION + Vec3::Y * PREVIEW_FOCUS_Y, FOCUS_DISTANCE_SCALE)),
     };
     let distance = PREVIEW_DISTANCE_BASE * zoom * distance_scale;
     for mut transform in &mut cameras {
@@ -63,18 +64,23 @@ pub fn rotate_origin_select_preview_roster(
     editor_session: Option<Res<crate::ui::unit_editor::UnitEditorSession>>,
     mut roster: Query<(&UnitEditorPreviewRosterMember, &mut Transform)>,
 ) {
-    let yaw = editor_session
-        .as_ref()
-        .map(|value| value.preview_yaw_radians)
-        .unwrap_or(session.preview_yaw_radians);
     let focused = session.focused_slot_index();
+    let yaw = match focused {
+        Some(_) => editor_session
+            .as_ref()
+            .map(|value| value.preview_yaw_radians)
+            .unwrap_or(session.preview_yaw_radians),
+        None => session.preview_yaw_radians,
+    };
     for (member, mut transform) in &mut roster {
-        if let Some(slot_index) = focused {
-            if member.slot_index == slot_index {
+        match focused {
+            Some(slot_index) if member.slot_index == slot_index => {
                 transform.rotation = Quat::from_rotation_y(yaw);
             }
-        } else {
-            transform.rotation = Quat::from_rotation_y(yaw);
+            None => {
+                transform.rotation = Quat::from_rotation_y(yaw);
+            }
+            _ => {}
         }
     }
 }

@@ -62,6 +62,8 @@ pub struct DevSpawnClickParams<'w> {
     pub item_category_catalog: Res<'w, ItemCategoryCatalog>,
     pub inventory_profile_catalog: Res<'w, InventoryProfileCatalog>,
     pub appearance_profile_catalog: Res<'w, crate::world::AppearanceProfileCatalog>,
+    pub unit_archetype_catalog: Res<'w, crate::world::UnitArchetypeCatalog>,
+    pub building_archetype_catalog: Res<'w, crate::world::BuildingArchetypeCatalog>,
     pub render_assets: Option<Res<'w, TerrainRenderAssets>>,
     pub simulation: Res<'w, SimulationControlState>,
     pub dev_state: ResMut<'w, DevModeState>,
@@ -362,6 +364,11 @@ fn handle_text_field_input(
         DevTextFieldFocus::WorldEnvironmentNumeric => {
             // Handled by world_environment::handle_world_environment_numeric_keyboard
         }
+        DevTextFieldFocus::ArchetypeName
+        | DevTextFieldFocus::ArchetypeGoldMin
+        | DevTextFieldFocus::ArchetypeGoldMax => {
+            // Handled by archetype_editor::handle_archetype_editor_keyboard
+        }
     }
 }
 
@@ -643,6 +650,14 @@ pub fn handle_dev_spawn_click(
         placement_yaw_deg: params.dev_state.placement_yaw_deg,
         placement_uniform_scale: params.dev_state.placement_uniform_scale,
         terrain_vertical_scale: vertical_scale,
+        unit_archetype: params
+            .dev_state
+            .selected_unit_archetype_for_spawn()
+            .cloned(),
+        building_archetype: params
+            .dev_state
+            .selected_building_archetype_for_spawn()
+            .cloned(),
     };
 
     let inventory_ctx = InventoryCatalogCtx::new(
@@ -655,13 +670,16 @@ pub fn handle_dev_spawn_click(
         definition.id_str(),
         &mut params.world,
         &params.unit_catalog,
+        &params.unit_archetype_catalog,
         &params.appearance_profile_catalog,
         &params.doodad_catalog,
         &params.building_catalog,
+        &params.building_archetype_catalog,
         &params.footprint_catalog,
         &params.interior_catalog,
         Some(&params.nav_blueprint_catalog),
         &inventory_ctx,
+        &params.item_catalog,
         &mut batch_scratch,
     );
 

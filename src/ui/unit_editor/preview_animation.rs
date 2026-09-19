@@ -9,7 +9,9 @@ use crate::units::{
     UnitAnimationAssets, UnitAnimationGraphInstalled, UnitAnimationPlayerLink, UnitAnimationRuntime,
     UnitRenderMetadata, UnitSceneRoot,
 };
-use crate::units::presentation::{UnitEditorPreviewUnit, UnitPresentationAppearance};
+use crate::units::presentation::{
+    UnitEditorPreviewRosterMember, UnitEditorPreviewUnit, UnitPresentationAppearance,
+};
 use crate::world::{
     AnimationClipKey, AppearanceProfileCatalog, UnitCatalog, effective_render_key_for_appearance,
 };
@@ -19,7 +21,7 @@ pub fn discover_preview_animation_players(
     roots: Query<
         Entity,
         (
-            With<UnitEditorPreviewUnit>,
+            Or<(With<UnitEditorPreviewUnit>, With<UnitEditorPreviewRosterMember>)>,
             With<UnitSceneRoot>,
             Without<UnitAnimationPlayerLink>,
         ),
@@ -56,7 +58,7 @@ pub fn install_preview_animation_graph(
             &UnitAnimationPlayerLink,
         ),
         (
-            With<UnitEditorPreviewUnit>,
+            Or<(With<UnitEditorPreviewUnit>, With<UnitEditorPreviewRosterMember>)>,
             Without<UnitAnimationGraphInstalled>,
         ),
     >,

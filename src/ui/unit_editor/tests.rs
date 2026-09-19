@@ -4,7 +4,9 @@ use std::collections::BTreeMap;
 
 use super::controls::appearance_control_specs;
 use super::draft::UnitAppearanceDraft;
-use super::preview_spawn::appearance_requires_preview_respawn;
+use super::preview_spawn::{
+    appearance_requires_preview_respawn, unit_editor_session_owns_cg3_preview_actor,
+};
 use super::session::{UnitEditorMode, UnitEditorSession};
 use crate::menu::{AppScreen, MenuNavigation, menu_blocks_input};
 use crate::world::{
@@ -120,6 +122,13 @@ fn height_and_morph_changes_do_not_require_preview_respawn() {
     next.morphs
         .insert(AppearanceParamId::new("build"), 0.9);
     assert!(!appearance_requires_preview_respawn(&current, &next));
+}
+
+#[test]
+fn live_unit_editor_session_owns_cg3_preview_actor() {
+    let draft = test_draft();
+    let session = UnitEditorSession::new(UnitEditorMode::LiveUnit(UnitId::new(1)), draft);
+    assert!(unit_editor_session_owns_cg3_preview_actor(&session));
 }
 
 #[test]

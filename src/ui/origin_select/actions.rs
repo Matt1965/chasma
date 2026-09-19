@@ -118,15 +118,14 @@ pub fn handle_origin_squad_buttons(
 pub fn respawn_origin_squad_ui_after_focus(
     mut commands: Commands,
     session: Res<StartingSquadSession>,
-    squad_roots: Query<Entity, With<super::screen::OriginSelectUiRoot>>,
+    squad_panels: Query<Entity, With<super::screen::OriginSelectSquadPanelRoot>>,
     focus_roots: Query<Entity, With<super::focus::OriginSquadFocusUiRoot>>,
-    preview_image: Res<crate::ui::unit_editor::UnitEditorPreviewImage>,
     origins: Res<OriginCatalog>,
 ) {
-    if session.is_focused() || !focus_roots.is_empty() || !squad_roots.is_empty() {
+    if session.is_focused() || !focus_roots.is_empty() || !squad_panels.is_empty() {
         return;
     }
-    super::screen::spawn_origin_select_ui(commands, origins, session, preview_image);
+    super::screen::spawn_origin_select_squad_panel(commands, origins, session);
 }
 
 pub fn cleanup_origin_select_session(mut commands: Commands) {
