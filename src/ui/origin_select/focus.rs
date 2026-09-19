@@ -54,7 +54,7 @@ pub fn sync_origin_squad_focus_ui(
     mut commands: Commands,
     session: Res<StartingSquadSession>,
     editor_session: Option<Res<UnitEditorSession>>,
-    squad_roots: Query<Entity, With<super::screen::OriginSelectUiRoot>>,
+    squad_panels: Query<Entity, With<super::screen::OriginSelectSquadPanelRoot>>,
     focus_roots: Query<Entity, With<OriginSquadFocusUiRoot>>,
     profiles: Res<AppearanceProfileCatalog>,
 ) {
@@ -62,7 +62,7 @@ pub fn sync_origin_squad_focus_ui(
     let has_focus_ui = !focus_roots.is_empty();
 
     if want_focus && !has_focus_ui {
-        for entity in &squad_roots {
+        for entity in &squad_panels {
             commands.entity(entity).despawn();
         }
         if let Some(editor) = editor_session.as_ref() {
@@ -79,30 +79,6 @@ pub fn sync_origin_squad_focus_ui(
                 ))
                 .with_children(|root| {
                     spawn_unit_editor_controls_panel(root, editor, &profiles);
-                    root.spawn((
-                        UnitEditorActionButton {
-                            action: UnitEditorAction::Done,
-                        },
-                        Button,
-                        Node {
-                            position_type: PositionType::Absolute,
-                            bottom: Val::Px(24.0),
-                            left: Val::Px(24.0),
-                            padding: UiRect::axes(Val::Px(16.0), Val::Px(10.0)),
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgb(0.2, 0.28, 0.36)),
-                    ))
-                    .with_children(|btn| {
-                        btn.spawn((
-                            Text::new("Back to Squad"),
-                            TextFont {
-                                font_size: 14.0,
-                                ..default()
-                            },
-                            TextColor(Color::srgb(0.92, 0.94, 0.96)),
-                        ));
-                    });
                 });
         }
     } else if !want_focus && has_focus_ui {

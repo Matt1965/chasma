@@ -10,8 +10,13 @@ use crate::menu::{
 use crate::ui::unit_editor::UnitEditorPreviewImage;
 use crate::world::OriginCatalog;
 
+/// Persistent preview viewport for the origin/squad stage (survives focus transitions).
 #[derive(Component, Debug)]
-pub struct OriginSelectUiRoot;
+pub struct OriginSelectPreviewUiRoot;
+
+/// Squad controls panel (hidden while a member is in focused edit mode).
+#[derive(Component, Debug)]
+pub struct OriginSelectSquadPanelRoot;
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct OriginSelectPreviewPane;
@@ -35,93 +40,25 @@ pub struct OriginSquadOriginNameText;
 #[derive(Component, Debug)]
 pub struct OriginSquadOriginDescriptionText;
 
-pub fn spawn_origin_select_ui(
+pub fn spawn_origin_select_preview_ui(
     mut commands: Commands,
-    origins: Res<OriginCatalog>,
-    session: Res<StartingSquadSession>,
     preview_image: Res<UnitEditorPreviewImage>,
 ) {
-    let origin = origins.get_index(session.selected_origin_index);
-    let (name, description) = origin
-        .map(|value| (value.display_name.clone(), value.description.clone()))
-        .unwrap_or_else(|| ("Origin".to_string(), String::new()));
-
     commands
         .spawn((
-            OriginSelectUiRoot,
+            OriginSelectPreviewUiRoot,
             Node {
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
                 position_type: PositionType::Absolute,
                 flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.04, 0.05, 0.07, 0.98)),
-            ZIndex(200),
+            ZIndex(190),
         ))
         .with_children(|root| {
-            root.spawn((
-                Node {
-                    width: Val::Px(360.0),
-                    height: Val::Percent(100.0),
-                    flex_direction: FlexDirection::Column,
-                    padding: UiRect::all(Val::Px(20.0)),
-                    row_gap: Val::Px(10.0),
-                    ..default()
-                },
-                BackgroundColor(Color::srgba(0.06, 0.07, 0.09, 1.0)),
-            ))
-            .with_children(|panel| {
-                panel.spawn((
-                    Text::new("Starting Squad"),
-                    menu_text_font(MENU_HEADING_FONT_SIZE),
-                    TextColor(Color::srgb(0.92, 0.94, 0.96)),
-                ));
-                spawn_origin_nav_row(panel);
-                panel.spawn((
-                    OriginSquadOriginNameText,
-                    Text::new(name),
-                    TextFont {
-                        font_size: 16.0,
-                        ..default()
-                    },
-                    TextColor(Color::srgb(0.88, 0.92, 0.96)),
-                ));
-                panel.spawn((
-                    OriginSquadOriginDescriptionText,
-                    Text::new(description),
-                    TextFont {
-                        font_size: 13.0,
-                        ..default()
-                    },
-                    TextColor(Color::srgb(0.68, 0.72, 0.76)),
-                ));
-                panel.spawn((
-                    Text::new("Select a squad member to customize appearance."),
-                    TextFont {
-                        font_size: 12.0,
-                        ..default()
-                    },
-                    TextColor(Color::srgb(0.62, 0.66, 0.7)),
-                ));
-                if let Some(draft) = session.active_draft(&origins) {
-                    for (slot_index, member) in draft.members.iter().enumerate() {
-                        let label = if member.edited {
-                            format!("{} (edited)", member.role_label)
-                        } else {
-                            member.role_label.clone()
-                        };
-                        spawn_member_button(panel, slot_index, &label);
-                    }
-                }
-                panel.spawn((Node {
-                    flex_grow: 1.0,
-                    ..default()
-                },));
-                spawn_action_button(panel, "Back", OriginSquadAction::Back);
-                spawn_action_button(panel, "Begin Game", OriginSquadAction::BeginGame);
-            });
-
             root.spawn((
                 OriginSelectPreviewPane,
                 Node {
@@ -143,6 +80,83 @@ pub fn spawn_origin_select_ui(
                     },
                 ));
             });
+        });
+}
+
+pub fn spawn_origin_select_squad_panel(
+    mut commands: Commands,
+    origins: Res<OriginCatalog>,
+    session: Res<StartingSquadSession>,
+) {
+    let origin = origins.get_index(session.selected_origin_index);
+    let (name, description) = origin
+        .map(|value| (value.display_name.clone(), value.description.clone()))
+        .unwrap_or_else(|| ("Origin".to_string(), String::new()));
+
+    commands
+        .spawn((
+            OriginSelectSquadPanelRoot,
+            Node {
+                width: Val::Px(360.0),
+                height: Val::Percent(100.0),
+                position_type: PositionType::Absolute,
+                flex_direction: FlexDirection::Column,
+                padding: UiRect::all(Val::Px(20.0)),
+                row_gap: Val::Px(10.0),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.06, 0.07, 0.09, 1.0)),
+            ZIndex(200),
+        ))
+        .with_children(|panel| {
+            panel.spawn((
+                Text::new("Starting Squad"),
+                menu_text_font(MENU_HEADING_FONT_SIZE),
+                TextColor(Color::srgb(0.92, 0.94, 0.96)),
+            ));
+            spawn_origin_nav_row(panel);
+            panel.spawn((
+                OriginSquadOriginNameText,
+                Text::new(name),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.88, 0.92, 0.96)),
+            ));
+            panel.spawn((
+                OriginSquadOriginDescriptionText,
+                Text::new(description),
+                TextFont {
+                    font_size: 13.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.68, 0.72, 0.76)),
+            ));
+            panel.spawn((
+                Text::new("Select a squad member to customize appearance."),
+                TextFont {
+                    font_size: 12.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.62, 0.66, 0.7)),
+            ));
+            if let Some(draft) = session.active_draft(&origins) {
+                for (slot_index, member) in draft.members.iter().enumerate() {
+                    let label = if member.edited {
+                        format!("{} (edited)", member.role_label)
+                    } else {
+                        member.role_label.clone()
+                    };
+                    spawn_member_button(panel, slot_index, &label);
+                }
+            }
+            panel.spawn((Node {
+                flex_grow: 1.0,
+                ..default()
+            },));
+            spawn_action_button(panel, "Back", OriginSquadAction::Back);
+            spawn_action_button(panel, "Begin Game", OriginSquadAction::BeginGame);
         });
 }
 
@@ -219,8 +233,30 @@ fn spawn_action_button(parent: &mut ChildSpawnerCommands, label: &str, action: O
         });
 }
 
-pub fn despawn_origin_select_ui(mut commands: Commands, roots: Query<Entity, With<OriginSelectUiRoot>>) {
+pub fn despawn_origin_select_squad_panel(
+    mut commands: Commands,
+    roots: Query<Entity, With<OriginSelectSquadPanelRoot>>,
+) {
     for entity in &roots {
+        commands.entity(entity).despawn();
+    }
+}
+
+pub fn despawn_origin_select_preview_ui(
+    mut commands: Commands,
+    roots: Query<Entity, With<OriginSelectPreviewUiRoot>>,
+) {
+    for entity in &roots {
+        commands.entity(entity).despawn();
+    }
+}
+
+pub fn despawn_origin_select_ui(
+    mut commands: Commands,
+    preview_roots: Query<Entity, With<OriginSelectPreviewUiRoot>>,
+    squad_panels: Query<Entity, With<OriginSelectSquadPanelRoot>>,
+) {
+    for entity in preview_roots.iter().chain(squad_panels.iter()) {
         commands.entity(entity).despawn();
     }
 }

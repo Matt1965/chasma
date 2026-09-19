@@ -16,7 +16,13 @@ use crate::world::{
     unit_visual_scale,
 };
 
-use super::session::UnitEditorSession;
+use super::session::{UnitEditorMode, UnitEditorSession};
+
+/// CG3 single-actor preview spawn is owned by [`AppScreen::UnitEditor`] only.
+/// CG8 origin-squad focused editing binds to existing roster preview actors.
+pub fn unit_editor_session_owns_cg3_preview_actor(session: &UnitEditorSession) -> bool {
+    !matches!(session.mode, UnitEditorMode::NewGameDraft { .. })
+}
 
 /// Whether a preview GLB must be respawned (render identity) vs updated in place.
 pub fn appearance_requires_preview_respawn(current: &UnitAppearance, next: &UnitAppearance) -> bool {
@@ -40,6 +46,9 @@ pub fn sync_unit_editor_preview(
     let Some(session) = session else {
         return;
     };
+    if !unit_editor_session_owns_cg3_preview_actor(&session) {
+        return;
+    }
     let Some(definition) = catalog.get(&session.draft.definition_id) else {
         return;
     };

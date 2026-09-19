@@ -8,7 +8,7 @@ use crate::world::{AppearanceProfileCatalog, AppearanceParamId};
 
 use super::controls::{appearance_control_specs, height_field_id};
 use super::preview_studio::UnitEditorPreviewImage;
-use super::session::UnitEditorSession;
+use super::session::{UnitEditorMode, UnitEditorSession};
 
 #[derive(Component, Debug)]
 pub struct UnitEditorUiRoot;
@@ -127,9 +127,13 @@ pub fn spawn_unit_editor_controls_panel(
                 flex_grow: 1.0,
                 ..default()
             });
-            for (label, action) in [("Done", UnitEditorAction::Done), ("Cancel", UnitEditorAction::Cancel)] {
+            let actions: &[(&str, UnitEditorAction)] = match session.mode {
+                UnitEditorMode::NewGameDraft { .. } => &[("Done", UnitEditorAction::Done)],
+                _ => &[("Done", UnitEditorAction::Done), ("Cancel", UnitEditorAction::Cancel)],
+            };
+            for (label, action) in actions {
                 panel.spawn((
-                    UnitEditorActionButton { action },
+                    UnitEditorActionButton { action: *action },
                     Button,
                     Node {
                         padding: UiRect::axes(Val::Px(12.0), Val::Px(8.0)),
@@ -137,7 +141,7 @@ pub fn spawn_unit_editor_controls_panel(
                         ..default()
                     },
                     BackgroundColor(Color::srgba(0.16, 0.22, 0.30, 0.95)),
-                    Text::new(label),
+                    Text::new(*label),
                     TextFont {
                         font_size: 14.0,
                         ..default()
