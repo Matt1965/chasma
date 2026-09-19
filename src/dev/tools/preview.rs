@@ -104,6 +104,8 @@ pub fn update_dev_placement_preview(
             .as_ref()
             .map(|assets| assets.vertical_scale)
             .unwrap_or(1.0),
+        unit_archetype: dev_state.selected_unit_archetype_for_spawn().cloned(),
+        building_archetype: dev_state.selected_building_archetype_for_spawn().cloned(),
     };
 
     let ctx = PlacementValidateContext {

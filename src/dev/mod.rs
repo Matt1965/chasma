@@ -1,6 +1,7 @@
 //! Dev mode plugin — runtime authoring layer (ADR-043/044).
 
 mod animation_focus;
+mod archetype_editor;
 mod animation_panel;
 mod asset_sizing;
 mod catalog;
@@ -39,6 +40,7 @@ mod world_window;
 mod query_safety_tests;
 
 #[cfg(test)]
+mod archetype_ui_tests;
 mod polish_tests;
 
 #[cfg(test)]
@@ -146,8 +148,8 @@ use inspector::{
 };
 use panel::{
     handle_dev_panel_ui_interaction, setup_dev_panel, sync_dev_catalog_panel_visibility,
-    sync_dev_panel_button_styles, sync_dev_panel_content, sync_dev_search_box_style,
-    sync_dev_simulation_status,
+    sync_catalog_panel_layout, sync_dev_panel_button_styles, sync_dev_panel_content,
+    sync_dev_search_box_style, sync_dev_simulation_status,
 };
 use selected_object::{
     BuildingActionUiCache, SelectedObjectUiState, handle_selected_object_actions,
@@ -208,11 +210,14 @@ impl Plugin for DevModePlugin {
             .init_resource::<settlement_placement::SettlementPlacementPreview>()
             .init_resource::<settlement_placement::SettlementPlacementRejectionFeedbacks>()
             .init_resource::<settlement_placement::SettlementPlacementRejectionLabelIndex>()
+            .init_resource::<archetype_editor::DevArchetypeEditorState>()
+            .init_resource::<archetype_editor::DevArchetypeEditorScratch>()
             .add_systems(
                 Startup,
                 (
                     setup_dev_workspace,
                     setup_dev_panel,
+                    archetype_editor::setup_archetype_editor_modal,
                     setup_save_window_panel,
                     setup_selected_object_panel,
                     setup_navigation_editor_panel,
@@ -287,6 +292,7 @@ impl Plugin for DevModePlugin {
                 )
                     .chain(),
                 (
+                    sync_catalog_panel_layout,
                     sync_dev_catalog_chrome,
                     track_catalog_tab_selection,
                     sync_dev_save_panel_visibility,
@@ -439,6 +445,29 @@ impl Plugin for DevModePlugin {
             Update,
             handle_terrain_field_buttons
                 .after(sync_save_window_content)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                archetype_editor::handle_archetype_save_button,
+                archetype_editor::handle_archetype_edit_button,
+                archetype_editor::handle_archetype_modal_save,
+                archetype_editor::handle_archetype_modal_delete,
+                archetype_editor::handle_archetype_modal_cancel,
+                archetype_editor::handle_archetype_species_toggle,
+                archetype_editor::handle_archetype_modal_field_clicks,
+                archetype_editor::handle_archetype_editor_keyboard,
+            )
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                archetype_editor::sync_archetype_editor_modal,
+                archetype_editor::sync_archetype_species_toggle_marks,
+                archetype_editor::sync_archetype_modal_field_styles,
+            )
                 .in_set(DevModeInputSystems),
         )
         .add_systems(Update, sync_dev_debug_controls.in_set(DevModeInputSystems))

@@ -14,7 +14,8 @@ pub use components::{
 };
 pub use id::DevWindowId;
 pub use math::{
-    DEFAULT_PANEL_WIDTH_PX, MIN_TITLE_GRAB_PX, NAVIGATION_EDITOR_WIDTH_PX, TITLE_BAR_HEIGHT_PX,
+    CATALOG_PANEL_WIDTH_PX, DEFAULT_PANEL_WIDTH_PX, MIN_TITLE_GRAB_PX,
+    NAVIGATION_EDITOR_WIDTH_PX, TITLE_BAR_HEIGHT_PX, catalog_list_max_height,
     clamp_window_position, navigation_editor_body_max_height, navigation_editor_panel_width,
     navigation_editor_uses_two_columns, window_position_from_pointer,
 };
