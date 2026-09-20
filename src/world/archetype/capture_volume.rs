@@ -13,6 +13,7 @@ use crate::world::{
 use super::building::{
     BuildingArchetypeLocalPose, BuildingArchetypeMember, BuildingArchetypeMemberKind,
 };
+use super::durable_capture::capture_building_member_building_state;
 
 /// Oriented capture region derived from a root building footprint plus margin.
 #[derive(Debug, Clone, PartialEq)]
@@ -79,7 +80,12 @@ pub fn query_building_archetype_members(
                     continue;
                 }
                 if pivot_in_capture_region(record.placement.position, layout, region) {
-                    members.push(capture_building_member(root.expect("root exists"), record, layout));
+                    members.push(capture_building_member(
+                        world,
+                        root.expect("root exists"),
+                        record,
+                        layout,
+                    ));
                 }
             }
         }
@@ -116,6 +122,7 @@ fn member_sort_key(
 }
 
 fn capture_building_member(
+    world: &WorldData,
     root: &BuildingRecord,
     member: &BuildingRecord,
     layout: ChunkLayout,
@@ -133,6 +140,7 @@ fn capture_building_member(
         kind: BuildingArchetypeMemberKind::Building,
         definition_id: member.definition_id.as_str().to_string(),
         local_pose,
+        building_state: Some(capture_building_member_building_state(world, member)),
     }
 }
 
@@ -154,6 +162,7 @@ fn capture_doodad_member(
         kind: BuildingArchetypeMemberKind::Doodad,
         definition_id: member.definition_id.as_str().to_string(),
         local_pose,
+        building_state: None,
     }
 }
 

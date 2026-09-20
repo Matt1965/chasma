@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::world::building::operation::BuildingOperationPolicy;
+use crate::world::building::storage_policy::BuildingStoragePolicy;
 use crate::world::building::BuildingLifecycleState;
+use crate::world::inventory::InventorySubgraphSnapshot;
 use crate::world::ownership::{OwnerId, TeamId};
 use crate::world::{Affiliation, BuildingDefinitionId};
 
@@ -24,6 +27,18 @@ impl BuildingArchetypeId {
     }
 }
 
+/// Durable extensions captured for one building template object.
+#[derive(Debug, Clone, PartialEq, Reflect, Serialize, Deserialize, Default)]
+pub struct BuildingArchetypeDurableExtensions {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operation_policy: Option<BuildingOperationPolicy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub storage_policy: Option<BuildingStoragePolicy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[reflect(ignore)]
+    pub inventory: Option<InventorySubgraphSnapshot>,
+}
+
 /// Durable authored building configuration saved from a dev editor instance.
 #[derive(Debug, Clone, PartialEq, Reflect, Serialize, Deserialize)]
 pub struct BuildingArchetypeSnapshot {
@@ -34,6 +49,20 @@ pub struct BuildingArchetypeSnapshot {
     pub container_locked: bool,
     pub uniform_scale: f32,
     pub placement_yaw_deg: f32,
+    #[serde(default)]
+    pub extensions: BuildingArchetypeDurableExtensions,
+}
+
+/// Durable state for a captured building member (not doodads).
+#[derive(Debug, Clone, PartialEq, Reflect, Serialize, Deserialize)]
+pub struct BuildingArchetypeMemberBuildingState {
+    pub affiliation: Affiliation,
+    pub team_id: Option<TeamId>,
+    pub owner_id: Option<OwnerId>,
+    pub lifecycle_state: BuildingLifecycleState,
+    pub container_locked: bool,
+    #[serde(default)]
+    pub extensions: BuildingArchetypeDurableExtensions,
 }
 
 /// Authoring metadata for spatial capture (recapture convenience only).
@@ -79,6 +108,8 @@ pub struct BuildingArchetypeMember {
     pub kind: BuildingArchetypeMemberKind,
     pub definition_id: String,
     pub local_pose: BuildingArchetypeLocalPose,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub building_state: Option<BuildingArchetypeMemberBuildingState>,
 }
 
 /// Editor-authored building template associated with one base building type.

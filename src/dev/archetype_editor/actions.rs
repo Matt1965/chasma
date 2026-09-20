@@ -9,9 +9,9 @@ use crate::world::{
     capture_building_archetype_members, capture_unit_archetype_template,
     default_building_archetype_capture_margin_meters, save_building_archetype_catalog_to_ron,
     save_unit_archetype_catalog_to_ron, unique_building_archetype_id, unique_unit_archetype_id,
-    validate_gold_range, BuildingArchetypeCatalog,
+    validate_building_archetype_definition, validate_gold_range, BuildingArchetypeCatalog,
     BuildingCatalog, BuildingRecord, DoodadCatalog, FootprintCatalog, ItemCatalog,
-    UnitArchetypeCatalog, UnitArchetypeId, WorldData, BUILDING_ARCHETYPES_RON_PATH,
+    OperationCatalog, UnitArchetypeCatalog, UnitArchetypeId, WorldData, BUILDING_ARCHETYPES_RON_PATH,
     UNIT_ARCHETYPES_RON_PATH,
 };
 
@@ -222,6 +222,7 @@ pub fn handle_archetype_modal_save(
     footprint_catalog: Res<FootprintCatalog>,
     doodad_catalog: Res<DoodadCatalog>,
     item_catalog: Res<ItemCatalog>,
+    operation_catalog: Res<OperationCatalog>,
     selected_units: Res<SelectedUnits>,
     world_selection: Res<WorldSelectionState>,
     interaction: Query<&Interaction, With<DevArchetypeModalSaveButton>>,
@@ -258,6 +259,8 @@ pub fn handle_archetype_modal_save(
                 &building_catalog,
                 &footprint_catalog,
                 &doodad_catalog,
+                &item_catalog,
+                &operation_catalog,
             );
         }
         None => {}
@@ -498,6 +501,8 @@ fn save_building_archetype_from_modal(
     building_catalog: &BuildingCatalog,
     footprint_catalog: &FootprintCatalog,
     doodad_catalog: &DoodadCatalog,
+    item_catalog: &ItemCatalog,
+    operation_catalog: &OperationCatalog,
 ) {
     let name = editor.name_input.trim();
     let id = match &editor.editing_building_id {
@@ -536,6 +541,7 @@ fn save_building_archetype_from_modal(
             id.clone(),
             name.to_string(),
             &building,
+            world,
             capture_metadata,
             members,
             enabled,
@@ -548,6 +554,16 @@ fn save_building_archetype_from_modal(
         editor.status_message = "No building archetype to update.".to_string();
         return;
     };
+    if let Err(error) = validate_building_archetype_definition(
+        &definition,
+        item_catalog,
+        building_catalog,
+        doodad_catalog,
+        operation_catalog,
+    ) {
+        editor.status_message = format!("Invalid building archetype snapshot: {error:?}");
+        return;
+    }
     if building_archetypes.upsert(definition).is_err() {
         editor.status_message = "Failed to save building archetype.".to_string();
         return;

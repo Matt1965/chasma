@@ -197,6 +197,7 @@ fn building_archetype_applies_only_to_base_type() {
                 container_locked: false,
                 uniform_scale: 1.0,
                 placement_yaw_deg: 0.0,
+                extensions: Default::default(),
             },
             capture_metadata: Default::default(),
             members: Vec::new(),
@@ -239,6 +240,7 @@ fn building_archetype_ron_roundtrip_with_members() {
                 container_locked: false,
                 uniform_scale: 1.0,
                 placement_yaw_deg: 0.0,
+                extensions: Default::default(),
             },
             capture_metadata: BuildingArchetypeCaptureMetadata {
                 capture_margin_meters: 3.0,
@@ -254,6 +256,7 @@ fn building_archetype_ron_roundtrip_with_members() {
                     scale_y_milli: 0,
                     scale_z_milli: 0,
                 },
+                building_state: None,
             }],
             enabled: true,
         },

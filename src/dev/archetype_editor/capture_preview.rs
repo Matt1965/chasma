@@ -7,7 +7,7 @@ use crate::world::{
     BakedCellMask, BuildingArchetypeCaptureRegion, BuildingArchetypeMemberKind, BuildingCatalog,
     DoodadCatalog, FootprintCatalog, FootprintShape, WorldConfig, WorldData, WorldPosition,
     capture_building_archetype_members, compute_building_archetype_capture_region,
-    default_building_archetype_capture_margin_meters,
+    default_building_archetype_capture_margin_meters, durable_extensions_summary,
 };
 
 use super::actions::DevArchetypeEditorScratch;
@@ -19,6 +19,7 @@ pub struct BuildingArchetypeMemberPreviewEntry {
     pub definition_id: String,
     pub display_name: String,
     pub world_position: Vec3,
+    pub state_hint: Option<String>,
 }
 
 /// Refresh capture preview scratch state while the building modal is open.
@@ -76,11 +77,16 @@ pub fn sync_building_archetype_capture_preview(
                             .unwrap_or_else(|| member.definition_id.clone()),
                     };
                     let world_position = member_world_position(&world, &root, &member.local_pose);
+                    let state_hint = member
+                        .building_state
+                        .as_ref()
+                        .and_then(|state| durable_extensions_summary(&state.extensions));
                     BuildingArchetypeMemberPreviewEntry {
                         kind: member.kind,
                         definition_id: member.definition_id.clone(),
                         display_name,
                         world_position,
+                        state_hint,
                     }
                 })
                 .collect();
@@ -148,11 +154,22 @@ pub fn format_captured_member_lines(
         counts.entry(key).and_modify(|count| *count += 1).or_insert(1);
     }
     let mut lines = vec!["Captured:".to_string()];
-    for ((_, name), count) in counts {
+    let mut seen = std::collections::BTreeSet::new();
+    for member in members {
+        let key = (member.kind, member.display_name.clone());
+        if !seen.insert(key.clone()) {
+            continue;
+        }
+        let count = counts.get(&key).copied().unwrap_or(1);
+        let suffix = member
+            .state_hint
+            .as_ref()
+            .map(|hint| format!(" — {hint}"))
+            .unwrap_or_default();
         if count > 1 {
-            lines.push(format!("- {name} x{count}"));
+            lines.push(format!("- {}{} x{}", member.display_name, suffix, count));
         } else {
-            lines.push(format!("- {name}"));
+            lines.push(format!("- {}{}", member.display_name, suffix));
         }
     }
     lines.join("\n")
@@ -327,12 +344,14 @@ mod tests {
                 definition_id: "crate".into(),
                 display_name: "Crate".into(),
                 world_position: Vec3::ZERO,
+                state_hint: None,
             },
             BuildingArchetypeMemberPreviewEntry {
                 kind: BuildingArchetypeMemberKind::Doodad,
                 definition_id: "crate".into(),
                 display_name: "Crate".into(),
                 world_position: Vec3::ONE,
+                state_hint: None,
             },
         ]);
         assert!(lines.contains("Crate x2"));

@@ -6,6 +6,7 @@ mod profile;
 mod profile_id;
 pub mod runtime;
 mod stack_limit;
+mod subgraph_snapshot;
 #[cfg(test)]
 mod stress;
 mod validation;
@@ -37,6 +38,11 @@ pub use runtime::{
     transfer_stack_quantity, transfer_unique_item, validate_inventory, validate_inventory_stores,
 };
 pub use stack_limit::{category_stack_cap_for, effective_stack_limit};
+pub use subgraph_snapshot::{
+    InventorySubgraphError, InventorySubgraphInventory, InventorySubgraphItemInstance,
+    InventorySubgraphItemInstanceLocation, InventorySubgraphPlacedEntry, InventorySubgraphSnapshot,
+    capture_inventory_subgraph, inventory_subgraph_item_count, validate_inventory_subgraph,
+};
 pub use validation::{
     InventoryProfileValidationError, MAX_INVENTORY_GRID_DIMENSION,
     reference_weight_is_soft_encumbrance, validate_inventory_profile,

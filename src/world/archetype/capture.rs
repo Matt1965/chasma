@@ -12,8 +12,9 @@ use crate::world::{ItemCatalog, ItemDefinitionId, WorldData};
 
 use super::building::{
     BuildingArchetypeCaptureMetadata, BuildingArchetypeDefinition, BuildingArchetypeId,
-    BuildingArchetypeMember, BuildingArchetypeSnapshot,
+    BuildingArchetypeMember,
 };
+use super::durable_capture::capture_building_archetype_snapshot;
 use super::building::DEFAULT_BUILDING_ARCHETYPE_CAPTURE_MARGIN_METERS;
 use super::capture_volume::{
     BuildingArchetypeCaptureError, compute_building_archetype_capture_region,
@@ -116,30 +117,11 @@ pub fn build_unit_archetype_definition(
     }
 }
 
-pub fn capture_building_archetype_snapshot(
-    building: &BuildingRecord,
-) -> BuildingArchetypeSnapshot {
-    let yaw_deg = building
-        .placement
-        .rotation
-        .to_euler(EulerRot::YXZ)
-        .0
-        .to_degrees();
-    BuildingArchetypeSnapshot {
-        affiliation: building.ownership.affiliation,
-        team_id: building.ownership.team_id,
-        owner_id: building.ownership.owner_id,
-        lifecycle_state: building.lifecycle_state,
-        container_locked: building.container_locked,
-        uniform_scale: building.placement.uniform_scale_f32(),
-        placement_yaw_deg: yaw_deg,
-    }
-}
-
 pub fn build_building_archetype_definition(
     id: BuildingArchetypeId,
     display_name: String,
     building: &BuildingRecord,
+    world: &WorldData,
     capture_metadata: BuildingArchetypeCaptureMetadata,
     members: Vec<BuildingArchetypeMember>,
     enabled: bool,
@@ -148,7 +130,7 @@ pub fn build_building_archetype_definition(
         id,
         display_name,
         base_building_id: building.definition_id.clone(),
-        snapshot: capture_building_archetype_snapshot(building),
+        snapshot: capture_building_archetype_snapshot(world, building),
         capture_metadata,
         members,
         enabled,
