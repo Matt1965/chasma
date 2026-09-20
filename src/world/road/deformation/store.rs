@@ -7,7 +7,7 @@ use crate::world::{ChunkCoord, ChunkId, ChunkLayout, WorldData};
 
 use super::tile::RoadHeightDeltaTile;
 
-pub const ROAD_DEFORMATION_BAKE_VERSION: u32 = 1;
+pub const ROAD_DEFORMATION_BAKE_VERSION: u32 = 2;
 
 /// Sparse derived road deformation authority keyed by terrain chunk.
 #[derive(Debug, Clone, Default, Resource, Reflect)]

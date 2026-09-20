@@ -99,10 +99,37 @@ impl BakeTerrainSampler {
         let position = WorldPosition::from_global(Vec3::new(xz.x, 0.0, xz.y), self.layout);
         let chunk_id = ChunkId::new(position.chunk);
         let heightfield = self.resident.get(&chunk_id)?;
-        heightfield
-            .try_sample(position.local.0.x, position.local.0.z)
-            .ok()
+        let local_x = position.local.0.x;
+        let local_z = position.local.0.z;
+        if let Ok(height) = heightfield.try_sample(local_x, local_z) {
+            return Some(height);
+        }
+        // Bake-time fallback: clamp to the heightfield domain so centerline sampling
+        // stays consistent with vertex `height_at_vertex` near chunk edges.
+        let size = heightfield.chunk_size_meters();
+        if local_x < -1e-3 || local_z < -1e-3 || local_x > size + 1e-3 || local_z > size + 1e-3 {
+            return None;
+        }
+        Some(heightfield.sample(local_x.clamp(0.0, size), local_z.clamp(0.0, size)))
     }
+}
+
+fn build_sampler_for_network(
+    world: &WorldData,
+    network: &RoadNetwork,
+    layout: ChunkLayout,
+    catalog: Option<&TerrainWorldCatalog>,
+) -> BakeTerrainSampler {
+    let mut extra_chunks = HashMap::new();
+    for chunk_id in affected_chunk_ids_for_network(network, layout) {
+        if world.get(chunk_id).is_some() {
+            continue;
+        }
+        if let Some(chunk) = load_chunk_data_from_catalog(catalog, chunk_id) {
+            extra_chunks.insert(chunk_id, chunk);
+        }
+    }
+    BakeTerrainSampler::for_rebake(world, layout, &extra_chunks)
 }
 
 pub fn fingerprint_road_network(network: &RoadNetwork) -> u64 {
@@ -217,11 +244,11 @@ pub fn rebake_road_deformation_for_chunks(
             continue;
         }
         if let Some(chunk) = load_chunk_data_from_catalog(catalog, *chunk_id) {
-            extra_chunks.insert(*chunk_id, chunk);
+            extra_chunks.insert(chunk_id, chunk);
         }
     }
 
-    let sampler = BakeTerrainSampler::for_rebake(world, layout, &extra_chunks);
+    let sampler = build_sampler_for_network(world, network, layout, catalog);
     let influences = build_road_influences(&sampler, network, layout);
     let roads = &network.roads;
     let mut warnings = Vec::new();
@@ -348,13 +375,11 @@ fn build_road_influences(
                 &polyline,
                 style.longitudinal_smooth_m,
             );
-            let bed_heights = base_heights
+            // Longitudinal profile: smoothed terrain minus a small depression bias.
+            // Lateral grading toward this bed happens in `compute_delta_at_point`.
+            let bed_heights = smoothed
                 .iter()
-                .zip(smoothed.iter())
-                .map(|(base, smooth)| {
-                    let residual = *base - *smooth;
-                    *base - style.flatten_strength * residual - style.depression_m
-                })
+                .map(|smooth| *smooth - style.depression_m)
                 .collect::<Vec<_>>();
             let samples = polyline
                 .iter()
@@ -404,6 +429,13 @@ fn fill_missing_centerline_base_heights(raw: &[Option<f32>]) -> Option<Vec<f32>>
         (Some(f), Some(l)) => (f, l),
         _ => return None,
     };
+    if first_known == last_known && n > 2 {
+        return None;
+    }
+    let known_count = raw.iter().filter(|value| value.is_some()).count();
+    if known_count < 2 {
+        return None;
+    }
 
     let mut out = vec![0.0; n];
     let first_val = raw[first_known].unwrap();
@@ -571,8 +603,8 @@ fn compute_delta_at_point(
             continue;
         }
         let bed = sample_bed_height(projection.distance_m, influence);
-        let flatten = influence.style.flatten_strength * weight;
-        let target = local_base.lerp(bed, flatten);
+        let grade = influence.style.flatten_strength * weight;
+        let target = local_base.lerp(bed, grade);
         weight_sum += weight;
         target_sum += weight * target;
     }

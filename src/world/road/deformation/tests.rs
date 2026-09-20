@@ -24,6 +24,22 @@ fn flat_chunk(height: f32) -> ChunkData {
     ChunkData::new(heightfield, Vec::new())
 }
 
+fn vertical_road(id: &str, x: f32, z0: f32, z1: f32, style: RoadStyleId) -> Road {
+    Road {
+        id: RoadId::new(id),
+        display_name: String::new(),
+        style,
+        style_overrides: RoadStyleOverrides::default(),
+        control_points: vec![
+            RoadControlPoint::new(x, z0),
+            RoadControlPoint::new(x, z1),
+        ],
+        start_attachment: None,
+        end_attachment: None,
+        tee_attachments: Vec::new(),
+    }
+}
+
 fn horizontal_road(id: &str, x0: f32, z: f32, x1: f32, style: RoadStyleId) -> Road {
     Road {
         id: RoadId::new(id),
@@ -95,6 +111,142 @@ fn tile_delta_range(tile: &crate::world::RoadHeightDeltaTile) -> (f32, f32) {
 }
 
 #[test]
+fn flat_120m_road_centerline_delta_matches_depression() {
+    let base_height = 120.0;
+    let mut world = world_with_chunk(ChunkCoord::new(0, 0), flat_chunk(base_height));
+    let network =
+        network_with_roads(vec![horizontal_road("r1", 64.0, 128.0, 192.0, RoadStyleId::DirtRoad)]);
+    let depression = network
+        .style_defaults(RoadStyleId::DirtRoad)
+        .expect("style")
+        .depression_m;
+    let mut store = RoadDeformationStore::default();
+    let chunk_id = ChunkId::new(ChunkCoord::new(0, 0));
+    rebake_single(&world, &mut store, &network, chunk_id);
+    sync_store(&store, &mut world, chunk_id);
+
+    let center = position(ChunkCoord::new(0, 0), 128.0, 128.0);
+    let base = try_sample_base_height_at_position(&world, center).unwrap();
+    let effective = try_sample_height_at_position(&world, center).unwrap();
+    let tile = store.tiles.get(&chunk_id).expect("tile");
+    let stored_delta = tile.sample_delta(128.0, 128.0).unwrap();
+
+    assert!((base - base_height).abs() < 1e-3);
+    assert!((stored_delta - (effective - base)).abs() < 1e-4);
+    assert!(stored_delta < 0.0);
+    assert!(stored_delta > -depression * 2.0);
+    assert!((effective - (base - depression)).abs() < 0.15);
+}
+
+#[test]
+fn elevation_translation_preserves_road_deltas() {
+    fn run_at_base(base_height: f32) -> (f32, f32) {
+        let mut world = world_with_chunk(ChunkCoord::new(0, 0), flat_chunk(base_height));
+        let network =
+            network_with_roads(vec![horizontal_road("r1", 64.0, 128.0, 192.0, RoadStyleId::DirtRoad)]);
+        let mut store = RoadDeformationStore::default();
+        let chunk_id = ChunkId::new(ChunkCoord::new(0, 0));
+        rebake_single(&world, &mut store, &network, chunk_id);
+        let tile = store.tiles.get(&chunk_id).expect("tile");
+        let delta = tile.sample_delta(128.0, 128.0).unwrap();
+        sync_store(&store, &mut world, chunk_id);
+        let center = position(ChunkCoord::new(0, 0), 128.0, 128.0);
+        let effective = try_sample_height_at_position(&world, center).unwrap();
+        (delta, effective)
+    }
+
+    let (delta_a, effective_a) = run_at_base(10.0);
+    let (delta_b, effective_b) = run_at_base(110.0);
+    assert!((delta_a - delta_b).abs() < 1e-3, "a={} b={}", delta_a, delta_b);
+    assert!((effective_b - effective_a - 100.0).abs() < 1e-2);
+}
+
+#[test]
+fn cross_slope_road_cuts_uphill_and_fills_downhill() {
+    let spe = 129;
+    let spacing = 2.0;
+    let mut heights = Vec::new();
+    for row in 0..spe {
+        for _col in 0..spe {
+            heights.push(120.0 + (row as f32 - 64.0) * 10.0);
+        }
+    }
+    let chunk =
+        ChunkData::new(Heightfield::from_samples(spe, spacing, heights).unwrap(), Vec::new());
+    let mut world = world_with_chunk(ChunkCoord::new(0, 0), chunk);
+    let network =
+        network_with_roads(vec![horizontal_road("r1", 64.0, 128.0, 192.0, RoadStyleId::DirtRoad)]);
+    let mut store = RoadDeformationStore::default();
+    let chunk_id = ChunkId::new(ChunkCoord::new(0, 0));
+    rebake_single(&world, &mut store, &network, chunk_id);
+    sync_store(&store, &mut world, chunk_id);
+
+    // Cross-slope varies with Z; road runs east-west at z=128. Sample perpendicular to the road.
+    let center = position(ChunkCoord::new(0, 0), 128.0, 128.0);
+    let uphill = position(ChunkCoord::new(0, 0), 128.0, 130.0);
+    let downhill = position(ChunkCoord::new(0, 0), 128.0, 126.0);
+
+    let uphill_delta = try_sample_height_at_position(&world, uphill).unwrap()
+        - try_sample_base_height_at_position(&world, uphill).unwrap();
+    let center_delta = try_sample_height_at_position(&world, center).unwrap()
+        - try_sample_base_height_at_position(&world, center).unwrap();
+    let downhill_delta = try_sample_height_at_position(&world, downhill).unwrap()
+        - try_sample_base_height_at_position(&world, downhill).unwrap();
+
+    assert!(uphill_delta < 0.0, "uphill {}", uphill_delta);
+    assert!(center_delta < 0.0, "center {}", center_delta);
+    assert!(downhill_delta > 0.0, "downhill {}", downhill_delta);
+    assert!(uphill_delta < center_delta, "uphill {} center {}", uphill_delta, center_delta);
+    assert!(downhill_delta > center_delta, "downhill {} center {}", downhill_delta, center_delta);
+    assert!(uphill_delta.abs() > center_delta.abs());
+    assert!(downhill_delta.abs() > center_delta.abs());
+}
+
+#[test]
+fn shoulder_delta_fades_between_center_and_outside() {
+    let base_height = 120.0;
+    let mut world = world_with_chunk(ChunkCoord::new(0, 0), flat_chunk(base_height));
+    let network =
+        network_with_roads(vec![horizontal_road("r1", 100.0, 128.0, 156.0, RoadStyleId::DirtRoad)]);
+    let mut store = RoadDeformationStore::default();
+    let chunk_id = ChunkId::new(ChunkCoord::new(0, 0));
+    rebake_single(&world, &mut store, &network, chunk_id);
+    let tile = store.tiles.get(&chunk_id).expect("tile");
+
+    let center = tile.sample_delta(128.0, 128.0).unwrap();
+    let shoulder = tile.sample_delta(140.0, 128.0).unwrap();
+    let outside = tile.sample_delta(8.0, 8.0).unwrap();
+
+    assert!(center.abs() > shoulder.abs());
+    assert!(outside.abs() < 1e-5);
+}
+
+#[test]
+fn stored_tile_values_are_deltas_not_absolute_heights() {
+    let base_height = 120.0;
+    let mut world = world_with_chunk(ChunkCoord::new(0, 0), flat_chunk(base_height));
+    let network =
+        network_with_roads(vec![horizontal_road("r1", 64.0, 128.0, 192.0, RoadStyleId::DirtRoad)]);
+    let mut store = RoadDeformationStore::default();
+    let chunk_id = ChunkId::new(ChunkCoord::new(0, 0));
+    rebake_single(&world, &mut store, &network, chunk_id);
+    sync_store(&store, &mut world, chunk_id);
+    let chunk = world.get(chunk_id).expect("chunk");
+    let tile = chunk.road_height_delta.as_ref().expect("tile");
+
+    for row in 0..tile.samples_per_edge {
+        for col in 0..tile.samples_per_edge {
+            let base = chunk.heightfield.height_at_vertex(col, row);
+            let delta = tile.delta_at_vertex(col, row);
+            if delta.abs() > 1e-5 {
+                assert!(delta.abs() < 5.0, "catastrophic delta {} at {},{}", delta, col, row);
+                assert!((base + delta - chunk.effective_height_at_vertex(col, row)).abs() < 1e-5);
+            }
+        }
+    }
+}
+
+#[test]
 fn missing_centerline_heights_never_default_to_zero() {
     let filled = crate::world::road::deformation::bake::fill_missing_centerline_base_heights_for_test(&[
         None,
@@ -107,6 +259,14 @@ fn missing_centerline_heights_never_default_to_zero() {
     assert!((filled[0] - 120.0).abs() < 1e-4);
     assert!((filled[1] - 120.0).abs() < 1e-4);
     assert!((filled[4] - 130.0).abs() < 1e-4);
+}
+
+#[test]
+fn single_known_centerline_sample_is_rejected() {
+    let filled = crate::world::road::deformation::bake::fill_missing_centerline_base_heights_for_test(
+        &[Some(0.0), None, None, None, None],
+    );
+    assert!(filled.is_none());
 }
 
 #[test]
