@@ -580,7 +580,54 @@ const CG5_TORSO_TARGETS: &[&str] = &[
     "fat_soft",
     "muscle_define",
 ];
+const CG9_BODY_EQUIPMENT_TARGETS: &[&str] = &[
+    "build_broad",
+    "build_narrow",
+    "fat_soft",
+    "muscle_define",
+    "shoulders_broad",
+    "shoulders_narrow",
+    "torso_broad",
+    "torso_narrow",
+    "hips_broad",
+    "hips_narrow",
+];
+const CG9_ARMS_EQUIPMENT_TARGETS: &[&str] = &[
+    "build_broad",
+    "build_narrow",
+    "fat_soft",
+    "muscle_define",
+    "arms_thick",
+    "arms_thin",
+];
+const CG9_LEGS_EQUIPMENT_TARGETS: &[&str] = &[
+    "build_broad",
+    "build_narrow",
+    "fat_soft",
+    "muscle_define",
+    "legs_thick",
+    "legs_thin",
+    "hips_broad",
+    "hips_narrow",
+];
 const CG5_HEAD_TARGETS: &[&str] = &["head_large", "head_small"];
+
+const MORPHABLE_EQUIPMENT_CASES: &[(&str, &str, &[&str])] = &[
+    ("human_male", "peasant_body", CG9_BODY_EQUIPMENT_TARGETS),
+    ("human_male", "peasant_arms", CG9_ARMS_EQUIPMENT_TARGETS),
+    ("human_male", "peasant_legs", CG9_LEGS_EQUIPMENT_TARGETS),
+    ("human_male", "ranger_body", CG9_BODY_EQUIPMENT_TARGETS),
+    ("human_male", "ranger_arms", CG9_ARMS_EQUIPMENT_TARGETS),
+    ("human_male", "ranger_legs", CG9_LEGS_EQUIPMENT_TARGETS),
+    ("human_male", "ranger_hood", CG5_HEAD_TARGETS),
+    ("human_female", "peasant_body", CG9_BODY_EQUIPMENT_TARGETS),
+    ("human_female", "peasant_arms", CG9_ARMS_EQUIPMENT_TARGETS),
+    ("human_female", "peasant_legs", CG9_LEGS_EQUIPMENT_TARGETS),
+    ("human_female", "ranger_body", CG9_BODY_EQUIPMENT_TARGETS),
+    ("human_female", "ranger_arms", CG9_ARMS_EQUIPMENT_TARGETS),
+    ("human_female", "ranger_legs", CG9_LEGS_EQUIPMENT_TARGETS),
+    ("human_female", "ranger_hood", CG5_HEAD_TARGETS),
+];
 
 fn equipment_glb_path(unit_key: &str, asset_name: &str) -> PathBuf {
     PathBuf::from("assets")
@@ -590,16 +637,37 @@ fn equipment_glb_path(unit_key: &str, asset_name: &str) -> PathBuf {
         .join(format!("{asset_name}.glb"))
 }
 
-fn equipment_mesh_extras_target_names(path: &std::path::Path) -> Vec<String> {
-    let (document, _, _) = gltf::import(path).expect("import");
-    let mesh = document
+fn equipment_has_morph_targets(document: &gltf::Document) -> bool {
+    document.meshes().any(|mesh| {
+        mesh.primitives()
+            .any(|primitive| primitive.morph_targets().count() > 0)
+    })
+}
+
+fn equipment_morph_mesh(document: &gltf::Document) -> gltf::Mesh<'_> {
+    document
         .meshes()
         .find(|mesh| {
-            mesh.primitives().next().is_some_and(|primitive| {
-                !primitive.morph_targets().collect::<Vec<_>>().is_empty()
-            })
+            mesh.primitives()
+                .any(|primitive| primitive.morph_targets().count() > 0)
         })
-        .expect("morph mesh");
+        .expect("equipment morph mesh")
+}
+
+fn equipment_morph_primitive(document: &gltf::Document) -> gltf::mesh::Primitive<'_> {
+    for mesh in document.meshes() {
+        for primitive in mesh.primitives() {
+            if primitive.morph_targets().count() > 0 {
+                return primitive;
+            }
+        }
+    }
+    panic!("equipment morph primitive");
+}
+
+fn equipment_mesh_extras_target_names(path: &std::path::Path) -> Vec<String> {
+    let (document, _, _) = gltf::import(path).expect("import");
+    let mesh = equipment_morph_mesh(&document);
     let extras = mesh
         .extras()
         .as_ref()
@@ -630,29 +698,19 @@ fn equipment_mesh_extras_target_names(path: &std::path::Path) -> Vec<String> {
 
 #[test]
 fn cg5_equipment_glbs_expose_authored_morph_targets() {
-    let cases = [
-        ("human_male", "ranger_body", CG5_TORSO_TARGETS),
-        ("human_male", "ranger_arms", CG5_TORSO_TARGETS),
-        ("human_male", "ranger_legs", CG5_TORSO_TARGETS),
-        ("human_male", "ranger_hood", CG5_HEAD_TARGETS),
-        ("human_female", "ranger_body", CG5_TORSO_TARGETS),
-        ("human_female", "ranger_hood", CG5_HEAD_TARGETS),
-    ];
-    for (unit_key, asset_name, expected_targets) in cases {
+    for (unit_key, asset_name, expected_targets) in MORPHABLE_EQUIPMENT_CASES {
         let path = equipment_glb_path(unit_key, asset_name);
         assert!(path.is_file(), "missing {}", path.display());
         let (document, buffers, _) = gltf::import(&path).expect("import");
-        let mesh = document
-            .meshes()
-            .find(|mesh| {
-                mesh.primitives().next().is_some_and(|primitive| {
-                    primitive.morph_targets().count() > 0
-                })
-            })
-            .expect("morph mesh");
-        let primitive = mesh.primitives().next().expect("primitive");
+        let primitive = equipment_morph_primitive(&document);
         assert_eq!(primitive.morph_targets().count(), expected_targets.len());
-        assert_eq!(equipment_mesh_extras_target_names(&path), expected_targets);
+        assert_eq!(
+            equipment_mesh_extras_target_names(&path),
+            expected_targets
+                .iter()
+                .map(|name| name.to_string())
+                .collect::<Vec<_>>(),
+        );
         for (index, name) in expected_targets.iter().enumerate() {
             let stats = morph_target_delta_stats(&primitive, index, &buffers);
             assert!(
@@ -738,7 +796,22 @@ fn cg5_ranger_body_bevy_loaded_mesh_exposes_morph_target_names() {
     let names = armor_mesh
         .morph_target_names()
         .expect("armor morph_target_names");
-    assert_eq!(names, CG5_TORSO_TARGETS);
+    assert_eq!(names, CG9_BODY_EQUIPMENT_TARGETS);
+}
+
+#[test]
+fn cg9_equipment_feet_remain_static() {
+    for (unit_key, asset_name) in [
+        ("human_male", "peasant_feet"),
+        ("human_male", "ranger_feet"),
+        ("human_female", "peasant_feet"),
+        ("human_female", "ranger_feet"),
+    ] {
+        let path = equipment_glb_path(unit_key, asset_name);
+        let (document, _, _) = gltf::import(&path).expect("import");
+        let has_morphs = equipment_has_morph_targets(&document);
+        assert!(!has_morphs, "{unit_key}/{asset_name} should remain static");
+    }
 }
 
 #[test]

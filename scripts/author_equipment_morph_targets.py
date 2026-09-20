@@ -17,26 +17,63 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[1]
 ASSETS = REPO / "assets"
 
-ALL_TARGET_NAMES: tuple[str, ...] = (
+CG2_TORSO_TARGETS: tuple[str, ...] = (
     "build_broad",
     "build_narrow",
     "fat_soft",
     "muscle_define",
+)
+
+REGIONAL_BODY_TARGETS: tuple[str, ...] = (
+    "shoulders_broad",
+    "shoulders_narrow",
+    "torso_broad",
+    "torso_narrow",
+    "hips_broad",
+    "hips_narrow",
+)
+
+REGIONAL_ARMS_TARGETS: tuple[str, ...] = (
+    "arms_thick",
+    "arms_thin",
+)
+
+REGIONAL_LEGS_TARGETS: tuple[str, ...] = (
+    "legs_thick",
+    "legs_thin",
+)
+
+HEAD_TARGETS: tuple[str, ...] = (
     "head_large",
     "head_small",
 )
 
+BODY_EQUIPMENT_TARGETS: tuple[str, ...] = CG2_TORSO_TARGETS + REGIONAL_BODY_TARGETS
+ARMS_EQUIPMENT_TARGETS: tuple[str, ...] = CG2_TORSO_TARGETS + REGIONAL_ARMS_TARGETS
+# Leg meshes include upper-thigh/waist geometry; hips targets follow that coverage.
+LEGS_EQUIPMENT_TARGETS: tuple[str, ...] = (
+    CG2_TORSO_TARGETS + REGIONAL_LEGS_TARGETS + ("hips_broad", "hips_narrow")
+)
+
+ALL_BODY_TARGET_NAMES: tuple[str, ...] = (
+    CG2_TORSO_TARGETS
+    + HEAD_TARGETS
+    + REGIONAL_BODY_TARGETS
+    + REGIONAL_ARMS_TARGETS
+    + REGIONAL_LEGS_TARGETS
+)
+
 # Technical targets authored per equipment asset basename.
 EQUIPMENT_TARGET_CONFIG: dict[str, tuple[str, ...]] = {
-    "peasant_body": ("build_broad", "build_narrow", "fat_soft", "muscle_define"),
-    "peasant_arms": ("build_broad", "build_narrow", "fat_soft", "muscle_define"),
-    "peasant_legs": ("build_broad", "build_narrow", "fat_soft", "muscle_define"),
+    "peasant_body": BODY_EQUIPMENT_TARGETS,
+    "peasant_arms": ARMS_EQUIPMENT_TARGETS,
+    "peasant_legs": LEGS_EQUIPMENT_TARGETS,
     "peasant_feet": (),
-    "ranger_body": ("build_broad", "build_narrow", "fat_soft", "muscle_define"),
-    "ranger_arms": ("build_broad", "build_narrow", "fat_soft", "muscle_define"),
-    "ranger_legs": ("build_broad", "build_narrow", "fat_soft", "muscle_define"),
+    "ranger_body": BODY_EQUIPMENT_TARGETS,
+    "ranger_arms": ARMS_EQUIPMENT_TARGETS,
+    "ranger_legs": LEGS_EQUIPMENT_TARGETS,
     "ranger_feet": (),
-    "ranger_hood": ("head_large", "head_small"),
+    "ranger_hood": HEAD_TARGETS,
 }
 
 
@@ -154,13 +191,87 @@ def read_morph_deltas(
     extras = mesh.get("extras", {})
     if isinstance(extras, str):
         extras = json.loads(extras)
-    names = extras.get("targetNames", ALL_TARGET_NAMES)
+    names = extras.get("targetNames", ALL_BODY_TARGET_NAMES)
     deltas: dict[str, np.ndarray] = {}
     for index, target in enumerate(targets):
         name = names[index] if index < len(names) else f"target_{index}"
         acc = target["POSITION"]
         deltas[name] = read_accessor(js, blob, acc).astype(np.float32)
     return positions, deltas
+
+
+NEAREST_K = 16
+ZERO_DELTA_EPS = 1e-6
+
+
+def read_joints_and_weights(
+    js: dict, blob: bytearray, primitive: dict
+) -> tuple[np.ndarray, np.ndarray]:
+    joints = read_accessor(js, blob, primitive["attributes"]["JOINTS_0"]).astype(np.int32)
+    weights = read_accessor(js, blob, primitive["attributes"]["WEIGHTS_0"]).astype(np.float32)
+    if weights.shape[1] != joints.shape[1]:
+        raise ValueError("joint/weight component mismatch")
+    weight_sums = np.sum(weights, axis=1, keepdims=True)
+    weight_sums = np.where(weight_sums > 0.0, weight_sums, 1.0)
+    weights = weights / weight_sums
+    return joints, weights
+
+
+def dominant_joint_indices(joints: np.ndarray, weights: np.ndarray) -> np.ndarray:
+    best = np.argmax(weights, axis=1)
+    return joints[np.arange(joints.shape[0]), best]
+
+
+def skin_parent_map(js: dict, skin_index: int = 0) -> dict[int, int]:
+    skin = js["skins"][skin_index]
+    joint_nodes = skin["joints"]
+    node_to_joint = {node: index for index, node in enumerate(joint_nodes)}
+    parent: dict[int, int] = {}
+    for joint_index, node_index in enumerate(joint_nodes):
+        for child_node in js["nodes"][node_index].get("children", []):
+            child_joint = node_to_joint.get(child_node)
+            if child_joint is not None:
+                parent[child_joint] = joint_index
+    return parent
+
+
+def joint_influence_delta_fallback(
+    source: np.ndarray,
+    body_joints: np.ndarray,
+    body_weights: np.ndarray,
+    weight_threshold: float = 0.01,
+) -> dict[int, np.ndarray]:
+    norms = np.linalg.norm(source, axis=1)
+    fallback: dict[int, np.ndarray] = {}
+    for joint in np.unique(body_joints):
+        mask = np.any(
+            (body_joints == joint) & (body_weights >= weight_threshold),
+            axis=1,
+        )
+        candidates = np.flatnonzero(mask)
+        if candidates.size == 0:
+            continue
+        best = candidates[np.argmax(norms[candidates])]
+        if norms[best] > ZERO_DELTA_EPS:
+            fallback[int(joint)] = source[best].astype(np.float32)
+    return fallback
+
+
+def resolve_joint_delta(
+    joint: int,
+    joint_fallback: dict[int, np.ndarray],
+    parent_map: dict[int, int],
+) -> np.ndarray | None:
+    current = joint
+    for _ in range(len(parent_map) + 1):
+        delta = joint_fallback.get(current)
+        if delta is not None:
+            return delta
+        parent = parent_map.get(current)
+        if parent is None:
+            return None
+        current = parent
+    return None
 
 
 def nearest_body_indices(armor_positions: np.ndarray, body_positions: np.ndarray) -> np.ndarray:
@@ -171,19 +282,65 @@ def nearest_body_indices(armor_positions: np.ndarray, body_positions: np.ndarray
     return indices
 
 
+def nearest_body_indices_k(
+    armor_positions: np.ndarray, body_positions: np.ndarray, k: int
+) -> np.ndarray:
+    k = min(k, len(body_positions))
+    indices = np.empty((armor_positions.shape[0], k), dtype=np.int32)
+    for i, vertex in enumerate(armor_positions):
+        dists = np.sum((body_positions - vertex) ** 2, axis=1)
+        indices[i] = np.argpartition(dists, k - 1)[:k]
+    return indices
+
+
 def transfer_deltas(
     armor_positions: np.ndarray,
     body_positions: np.ndarray,
     body_deltas: dict[str, np.ndarray],
     target_names: tuple[str, ...],
+    armor_joints: np.ndarray | None = None,
+    armor_weights: np.ndarray | None = None,
+    body_joints: np.ndarray | None = None,
+    body_weights: np.ndarray | None = None,
+    body_parent_map: dict[int, int] | None = None,
 ) -> dict[str, np.ndarray]:
     nearest = nearest_body_indices(armor_positions, body_positions)
+    nearest_k = nearest_body_indices_k(armor_positions, body_positions, NEAREST_K)
     out: dict[str, np.ndarray] = {}
     for name in target_names:
         source = body_deltas.get(name)
         if source is None:
             raise KeyError(f"body missing morph target `{name}`")
-        out[name] = source[nearest].astype(np.float32)
+        transferred = source[nearest].astype(np.float32)
+        norms = np.linalg.norm(transferred, axis=1)
+        needs_fallback = norms <= ZERO_DELTA_EPS
+        if not np.any(needs_fallback):
+            out[name] = transferred
+            continue
+        joint_fallback = (
+            joint_influence_delta_fallback(source, body_joints, body_weights)
+            if body_joints is not None and body_weights is not None
+            else {}
+        )
+        for vertex_index in np.flatnonzero(needs_fallback):
+            candidates = source[nearest_k[vertex_index]]
+            candidate_norms = np.linalg.norm(candidates, axis=1)
+            best = int(np.argmax(candidate_norms))
+            if candidate_norms[best] > ZERO_DELTA_EPS:
+                transferred[vertex_index] = candidates[best]
+                continue
+            if armor_joints is not None and armor_weights is not None and body_parent_map is not None:
+                influence_order = np.argsort(-armor_weights[vertex_index])
+                for slot in influence_order:
+                    weight = armor_weights[vertex_index, slot]
+                    if weight < 0.01:
+                        continue
+                    joint = int(armor_joints[vertex_index, slot])
+                    joint_delta = resolve_joint_delta(joint, joint_fallback, body_parent_map)
+                    if joint_delta is not None:
+                        transferred[vertex_index] = joint_delta
+                        break
+        out[name] = transferred
     return out
 
 
@@ -209,8 +366,20 @@ def author_equipment_file(body_path: Path, armor_path: Path, target_names: tuple
     body_positions, body_deltas = read_morph_deltas(
         body_js, body_blob, body_mesh_idx, body_primitive
     )
+    body_joints, body_weights = read_joints_and_weights(body_js, body_blob, body_primitive)
     armor_positions = read_accessor(armor_js, armor_blob, armor_primitive["attributes"]["POSITION"])
-    transferred = transfer_deltas(armor_positions, body_positions, body_deltas, target_names)
+    armor_joints, armor_weights = read_joints_and_weights(armor_js, armor_blob, armor_primitive)
+    transferred = transfer_deltas(
+        armor_positions,
+        body_positions,
+        body_deltas,
+        target_names,
+        armor_joints=armor_joints,
+        armor_weights=armor_weights,
+        body_joints=body_joints,
+        body_weights=body_weights,
+        body_parent_map=skin_parent_map(body_js),
+    )
 
     targets = []
     for name in target_names:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Add CG5 Consumed Morph Params column to Equipment Visuals workbook rows."""
+"""Update Equipment Visuals consumed morph params (CG5 + CG9 regional)."""
 
 from __future__ import annotations
 
@@ -11,25 +11,26 @@ WORKBOOK = Path(__file__).resolve().parents[1] / "Chasma Design.xlsx"
 SHEET = "Equipment Visuals"
 COLUMN = "Consumed Morph Params"
 
-TORSO_PARAMS = "build,fat,muscle"
+BODY_PARAMS = "build,fat,muscle,shoulders,torso,hips"
+ARMS_PARAMS = "build,fat,muscle,arms"
+LEGS_PARAMS = "build,fat,muscle,legs,hips"
 HEAD_PARAMS = "head_size"
 EMPTY = ""
 
-TORSO_ITEMS = {
-    "peasant_body",
-    "peasant_arms",
-    "peasant_legs",
-    "ranger_body",
-    "ranger_arms",
-    "ranger_legs",
-}
+BODY_ITEMS = {"peasant_body", "ranger_body"}
+ARMS_ITEMS = {"peasant_arms", "ranger_arms"}
+LEGS_ITEMS = {"peasant_legs", "ranger_legs"}
 HEAD_ITEMS = {"ranger_hood"}
 FEET_ITEMS = {"peasant_feet", "ranger_feet"}
 
 
 def consumed_for_item(item_id: str) -> str:
-    if item_id in TORSO_ITEMS:
-        return TORSO_PARAMS
+    if item_id in BODY_ITEMS:
+        return BODY_PARAMS
+    if item_id in ARMS_ITEMS:
+        return ARMS_PARAMS
+    if item_id in LEGS_ITEMS:
+        return LEGS_PARAMS
     if item_id in HEAD_ITEMS:
         return HEAD_PARAMS
     if item_id in FEET_ITEMS:

@@ -45,6 +45,34 @@ mod workbook_tests {
                 AppearanceParamId::new("build"),
                 AppearanceParamId::new("fat"),
                 AppearanceParamId::new("muscle"),
+                AppearanceParamId::new("shoulders"),
+                AppearanceParamId::new("torso"),
+                AppearanceParamId::new("hips"),
+            ]
+        );
+        let arms = visuals
+            .resolve(&ItemDefinitionId::new("ranger_arms"), "human_male")
+            .expect("ranger arms visual");
+        assert_eq!(
+            arms.consumed_morph_params,
+            vec![
+                AppearanceParamId::new("build"),
+                AppearanceParamId::new("fat"),
+                AppearanceParamId::new("muscle"),
+                AppearanceParamId::new("arms"),
+            ]
+        );
+        let legs = visuals
+            .resolve(&ItemDefinitionId::new("peasant_legs"), "human_female")
+            .expect("peasant legs visual");
+        assert_eq!(
+            legs.consumed_morph_params,
+            vec![
+                AppearanceParamId::new("build"),
+                AppearanceParamId::new("fat"),
+                AppearanceParamId::new("muscle"),
+                AppearanceParamId::new("legs"),
+                AppearanceParamId::new("hips"),
             ]
         );
         let hood = visuals

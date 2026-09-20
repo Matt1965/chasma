@@ -422,6 +422,115 @@ fn regional_values_resolve_independently_per_actor() {
 }
 
 #[test]
+fn equipment_body_resolve_activates_regional_shoulders_only() {
+    let profile = full_human_profile();
+    let mut values = default_semantic_values(&profile);
+    values.insert(AppearanceParamId::new("shoulders"), 1.0);
+    let body_targets = vec![
+        "build_broad".to_string(),
+        "build_narrow".to_string(),
+        "fat_soft".to_string(),
+        "muscle_define".to_string(),
+        "shoulders_broad".to_string(),
+        "shoulders_narrow".to_string(),
+        "torso_broad".to_string(),
+        "torso_narrow".to_string(),
+        "hips_broad".to_string(),
+        "hips_narrow".to_string(),
+    ];
+    let consumed = vec![
+        AppearanceParamId::new("build"),
+        AppearanceParamId::new("fat"),
+        AppearanceParamId::new("muscle"),
+        AppearanceParamId::new("shoulders"),
+        AppearanceParamId::new("torso"),
+        AppearanceParamId::new("hips"),
+    ];
+    let weights = resolve_equipment_morph_weights(
+        &profile,
+        &BodyVariantId::new("human_male"),
+        &values,
+        &body_targets,
+        &consumed,
+    )
+    .unwrap();
+    assert!(weights[4] > 0.9);
+    assert!(weights[5] < 0.1);
+    assert!(weights[6] < 0.1);
+    assert!(weights[8] < 0.1);
+}
+
+#[test]
+fn equipment_arms_resolve_ignores_torso_regional_params() {
+    let profile = full_human_profile();
+    let mut values = default_semantic_values(&profile);
+    values.insert(AppearanceParamId::new("torso"), 1.0);
+    values.insert(AppearanceParamId::new("arms"), 1.0);
+    let arm_targets = vec![
+        "build_broad".to_string(),
+        "build_narrow".to_string(),
+        "fat_soft".to_string(),
+        "muscle_define".to_string(),
+        "arms_thick".to_string(),
+        "arms_thin".to_string(),
+    ];
+    let consumed = vec![
+        AppearanceParamId::new("build"),
+        AppearanceParamId::new("fat"),
+        AppearanceParamId::new("muscle"),
+        AppearanceParamId::new("arms"),
+    ];
+    let weights = resolve_equipment_morph_weights(
+        &profile,
+        &BodyVariantId::new("human_male"),
+        &values,
+        &arm_targets,
+        &consumed,
+    )
+    .unwrap();
+    assert!(weights[4] > 0.9);
+    assert!(weights[5] < 0.1);
+}
+
+#[test]
+fn equipment_shoulders_and_muscle_compose_on_body_armor() {
+    let profile = full_human_profile();
+    let mut values = default_semantic_values(&profile);
+    values.insert(AppearanceParamId::new("shoulders"), 1.0);
+    values.insert(AppearanceParamId::new("muscle"), 1.0);
+    let body_targets = vec![
+        "build_broad".to_string(),
+        "build_narrow".to_string(),
+        "fat_soft".to_string(),
+        "muscle_define".to_string(),
+        "shoulders_broad".to_string(),
+        "shoulders_narrow".to_string(),
+        "torso_broad".to_string(),
+        "torso_narrow".to_string(),
+        "hips_broad".to_string(),
+        "hips_narrow".to_string(),
+    ];
+    let consumed = vec![
+        AppearanceParamId::new("build"),
+        AppearanceParamId::new("fat"),
+        AppearanceParamId::new("muscle"),
+        AppearanceParamId::new("shoulders"),
+        AppearanceParamId::new("torso"),
+        AppearanceParamId::new("hips"),
+    ];
+    let weights = resolve_equipment_morph_weights(
+        &profile,
+        &BodyVariantId::new("human_male"),
+        &values,
+        &body_targets,
+        &consumed,
+    )
+    .unwrap();
+    assert!(weights[4] > 0.9);
+    assert!(weights[3] > 0.9);
+}
+
+#[test]
 fn missing_technical_target_fails_loudly() {
     let profile = human_profile();
     let values = BTreeMap::new();
