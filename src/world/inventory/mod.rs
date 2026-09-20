@@ -41,7 +41,9 @@ pub use stack_limit::{category_stack_cap_for, effective_stack_limit};
 pub use subgraph_snapshot::{
     InventorySubgraphError, InventorySubgraphInventory, InventorySubgraphItemInstance,
     InventorySubgraphItemInstanceLocation, InventorySubgraphPlacedEntry, InventorySubgraphSnapshot,
-    capture_inventory_subgraph, inventory_subgraph_item_count, validate_inventory_subgraph,
+    InventorySubgraphRestoreError, RestoredInventorySubgraph, RestoreInventorySubgraphOptions,
+    capture_inventory_subgraph, inventory_subgraph_item_count, restore_inventory_subgraph,
+    validate_inventory_subgraph,
 };
 pub use validation::{
     InventoryProfileValidationError, MAX_INVENTORY_GRID_DIMENSION,

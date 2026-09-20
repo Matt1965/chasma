@@ -61,6 +61,8 @@ pub struct ResolvedBuildingSpawnSpec {
 
     pub snapshot: Option<BuildingArchetypeSnapshot>,
 
+    pub archetype: Option<BuildingArchetypeDefinition>,
+
 }
 
 
@@ -239,6 +241,8 @@ pub fn resolve_building_spawn_spec(
 
                 snapshot: None,
 
+                archetype: None,
+
             });
 
         }
@@ -286,6 +290,8 @@ pub fn resolve_building_spawn_spec(
         lifecycle_state: snapshot.lifecycle_state,
 
         snapshot: Some(snapshot.clone()),
+
+        archetype: Some(archetype.clone()),
 
     })
 

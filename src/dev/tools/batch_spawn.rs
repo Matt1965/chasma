@@ -10,9 +10,11 @@ use crate::world::{
     OccupancyCatalogs, UnitArchetypeCatalog, UnitArchetypeId, UnitCatalog, UnitSource, WorldData,
     WorldPosition, apply_unit_archetype_spawn_overrides, create_dev_complete_building,
     create_dev_complete_building_with_inventory, create_doodad, create_unit_with_inventory,
-    definition_requires_inventory_allocation, place_player_building,
-    place_player_building_with_inventory, resolve_authoritative_building_placement,
-    resolve_building_spawn_spec, resolve_unit_spawn_spec, try_activate_interior_if_complete,
+    apply_building_archetype_placement, definition_requires_inventory_allocation,
+    place_player_building, place_player_building_with_inventory,
+    remove_building, resolve_authoritative_building_placement, resolve_building_spawn_spec,
+    resolve_unit_spawn_spec, try_activate_interior_if_complete, BuildingArchetypeReconstructCtx,
+    OperationCatalog,
 };
 
 use super::super::dev_mode::DefinitionId;
@@ -370,7 +372,39 @@ fn spawn_at(
             };
             match spawned {
                 Ok(record) => {
-                    if let Some(snapshot) = &spec.snapshot {
+                    if let Some(archetype) = &spec.archetype {
+                        let operation_catalog = OperationCatalog::default();
+                        let reconstruct_ctx = BuildingArchetypeReconstructCtx {
+                            building_catalog,
+                            doodad_catalog,
+                            item_catalog,
+                            operation_catalog: &operation_catalog,
+                            interior_catalog,
+                            inventory_ctx,
+                            occupancy,
+                            nav_catalog,
+                            created_tick: 0,
+                        };
+                        if apply_building_archetype_placement(
+                            world,
+                            record.id,
+                            archetype,
+                            &reconstruct_ctx,
+                        )
+                        .is_err()
+                        {
+                            let _ = remove_building(
+                                world,
+                                record.id,
+                                Some(occupancy),
+                                Some(building_catalog),
+                                Some(doodad_catalog),
+                                None,
+                                None,
+                            );
+                            return false;
+                        }
+                    } else if let Some(snapshot) = &spec.snapshot {
                         if snapshot.container_locked {
                             let _ = crate::world::set_building_container_locked(
                                 world,
@@ -387,16 +421,26 @@ fn spawn_at(
                                 });
                             }
                         }
+                        let _ = try_activate_interior_if_complete(
+                            world,
+                            building_catalog,
+                            interior_catalog,
+                            doodad_catalog,
+                            occupancy,
+                            nav_catalog,
+                            record.id,
+                        );
+                    } else {
+                        let _ = try_activate_interior_if_complete(
+                            world,
+                            building_catalog,
+                            interior_catalog,
+                            doodad_catalog,
+                            occupancy,
+                            nav_catalog,
+                            record.id,
+                        );
                     }
-                    let _ = try_activate_interior_if_complete(
-                        world,
-                        building_catalog,
-                        interior_catalog,
-                        doodad_catalog,
-                        occupancy,
-                        nav_catalog,
-                        record.id,
-                    );
                     true
                 }
                 Err(_) => false,

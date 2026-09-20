@@ -9,6 +9,7 @@ mod capture;
 mod capture_volume;
 mod durable_capture;
 mod persistence;
+mod reconstruct;
 mod resolve;
 mod unit;
 
@@ -18,6 +19,8 @@ mod capture_volume_tests;
 mod durable_capture_tests;
 #[cfg(test)]
 mod world_item_capture_tests;
+#[cfg(test)]
+mod reconstruct_tests;
 #[cfg(test)]
 mod tests;
 
@@ -42,8 +45,13 @@ pub use durable_capture::{
 pub use building::DEFAULT_BUILDING_ARCHETYPE_CAPTURE_MARGIN_METERS;
 pub use capture_volume::{
     BuildingArchetypeCaptureError, BuildingArchetypeCaptureRegion,
-    compute_building_archetype_capture_region, compute_local_pose, pivot_in_capture_region,
-    query_building_archetype_members,
+    building_uniform_scale_from_local_pose, compute_building_archetype_capture_region,
+    compute_local_pose, doodad_scale_from_local_pose, pivot_in_capture_region,
+    query_building_archetype_members, world_pose_from_local_pose,
+};
+pub use reconstruct::{
+    BuildingArchetypeReconstructCtx, BuildingArchetypeReconstructError,
+    apply_building_archetype_placement,
 };
 pub use persistence::{
     ArchetypePersistenceError, BUILDING_ARCHETYPES_RON_PATH, UNIT_ARCHETYPES_RON_PATH,

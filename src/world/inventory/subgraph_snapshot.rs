@@ -4,7 +4,9 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
-use super::{InventoryEntryContents, InventoryId, ItemInstanceId, PlacedInventoryEntry};
+use super::{
+    InventoryEntryContents, InventoryId, InventoryRecord, ItemInstanceId, PlacedInventoryEntry,
+};
 use crate::world::WorldData;
 
 /// One placed grid entry inside a template inventory subgraph.
@@ -248,6 +250,232 @@ pub fn validate_inventory_subgraph(
     Ok(())
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum InventorySubgraphRestoreError {
+    Validation(InventorySubgraphError),
+    MissingInventoryLocalId(u32),
+    MissingInstanceLocalId(u32),
+    MissingItemDefinition(String),
+    ProfileNotFound(String),
+    Inventory(crate::world::inventory::InventoryError),
+    OwnerResolutionFailed(u32),
+}
+
+pub struct RestoreInventorySubgraphOptions {
+    pub root_owner: super::InventoryOwnerRef,
+    pub existing_root_inventory_id: Option<InventoryId>,
+}
+
+pub struct RestoredInventorySubgraph {
+    pub root_inventory_id: InventoryId,
+}
+
+/// Reconstruct a template inventory graph with fresh runtime IDs.
+pub fn restore_inventory_subgraph(
+    world: &mut WorldData,
+    ctx: &super::InventoryCatalogCtx<'_>,
+    snapshot: &InventorySubgraphSnapshot,
+    options: RestoreInventorySubgraphOptions,
+) -> Result<RestoredInventorySubgraph, InventorySubgraphRestoreError> {
+    validate_inventory_subgraph(snapshot, |item_id| {
+        ctx.require_item(&crate::world::ItemDefinitionId::new(item_id))
+            .is_ok()
+    })
+    .map_err(InventorySubgraphRestoreError::Validation)?;
+
+    let mut inventory_map: HashMap<u32, InventoryId> = HashMap::new();
+    for inventory in &snapshot.inventories {
+        let runtime_id = if inventory.local_id == snapshot.root_inventory_local_id {
+            if let Some(existing) = options.existing_root_inventory_id {
+                let record = world
+                    .inventory_store()
+                    .get(existing)
+                    .ok_or(InventorySubgraphRestoreError::Inventory(
+                        super::InventoryError::InventoryNotFound(existing),
+                    ))?;
+                if record.profile_id().as_str() != inventory.profile_id {
+                    return Err(InventorySubgraphRestoreError::ProfileNotFound(
+                        inventory.profile_id.clone(),
+                    ));
+                }
+                existing
+            } else {
+                world.inventory_store_mut().allocate_inventory_id()
+            }
+        } else {
+            world.inventory_store_mut().allocate_inventory_id()
+        };
+        inventory_map.insert(inventory.local_id, runtime_id);
+    }
+
+    let mut instance_map: HashMap<u32, ItemInstanceId> = HashMap::new();
+    for instance in &snapshot.item_instances {
+        ctx.require_item(&crate::world::ItemDefinitionId::new(&instance.definition_id))
+            .map_err(|_| {
+                InventorySubgraphRestoreError::MissingItemDefinition(instance.definition_id.clone())
+            })?;
+        let id = world.item_instance_store_mut().allocate_item_instance_id();
+        let metadata = super::ItemInstanceMetadata {
+            quality: instance.quality,
+        };
+        let item = super::ItemInstance::new(
+            id,
+            crate::world::ItemDefinitionId::new(&instance.definition_id),
+        )
+        .with_metadata(metadata);
+        world
+            .item_instance_store_mut()
+            .insert(item)
+            .map_err(InventorySubgraphRestoreError::Inventory)?;
+        instance_map.insert(instance.local_id, id);
+    }
+
+    for inventory in &snapshot.inventories {
+        let runtime_id = inventory_map
+            .get(&inventory.local_id)
+            .copied()
+            .ok_or(InventorySubgraphRestoreError::MissingInventoryLocalId(
+                inventory.local_id,
+            ))?;
+        let owner = if inventory.local_id == snapshot.root_inventory_local_id {
+            options.root_owner.clone()
+        } else {
+            let parent_instance_local = snapshot
+                .item_instances
+                .iter()
+                .find(|instance| instance.contained_inventory_local_id == Some(inventory.local_id))
+                .map(|instance| instance.local_id)
+                .ok_or(InventorySubgraphRestoreError::OwnerResolutionFailed(
+                    inventory.local_id,
+                ))?;
+            let parent_instance = instance_map
+                .get(&parent_instance_local)
+                .copied()
+                .ok_or(InventorySubgraphRestoreError::MissingInstanceLocalId(
+                    parent_instance_local,
+                ))?;
+            super::InventoryOwnerRef::ItemContainer(parent_instance)
+        };
+
+        if options.existing_root_inventory_id == Some(runtime_id) {
+            let record = world
+                .inventory_store_mut()
+                .get_mut(runtime_id)
+                .ok_or(InventorySubgraphRestoreError::Inventory(
+                    super::InventoryError::InventoryNotFound(runtime_id),
+                ))?;
+            record.set_owner(owner);
+            record.placed_entries_mut().clear();
+        } else {
+            let record = InventoryRecord::new(
+                runtime_id,
+                owner,
+                super::InventoryProfileId::new(&inventory.profile_id),
+                inventory.grid_width,
+                inventory.grid_height,
+            );
+            world
+                .inventory_store_mut()
+                .insert(record)
+                .map_err(InventorySubgraphRestoreError::Inventory)?;
+        }
+
+        let mut entries = Vec::new();
+        for entry in &inventory.entries {
+            let placed = match entry.entry_kind.as_str() {
+                "stack" => {
+                    let item_id = entry
+                        .item_definition_id
+                        .as_deref()
+                        .ok_or(InventorySubgraphRestoreError::MissingItemDefinition(
+                            String::new(),
+                        ))?;
+                    PlacedInventoryEntry::stack(
+                        entry.anchor_x,
+                        entry.anchor_y,
+                        crate::world::ItemDefinitionId::new(item_id),
+                        entry.quantity.unwrap_or(0),
+                    )
+                }
+                "unique" => {
+                    let local_id = entry
+                        .item_instance_local_id
+                        .ok_or(InventorySubgraphRestoreError::MissingInstanceLocalId(0))?;
+                    let runtime_instance = instance_map
+                        .get(&local_id)
+                        .copied()
+                        .ok_or(InventorySubgraphRestoreError::MissingInstanceLocalId(local_id))?;
+                    PlacedInventoryEntry::unique(
+                        entry.anchor_x,
+                        entry.anchor_y,
+                        runtime_instance,
+                    )
+                }
+                _ => continue,
+            };
+            entries.push(placed);
+        }
+        world
+            .inventory_store_mut()
+            .get_mut(runtime_id)
+            .ok_or(InventorySubgraphRestoreError::MissingInventoryLocalId(
+                inventory.local_id,
+            ))?
+            .placed_entries_mut()
+            .extend(entries);
+    }
+
+    for instance in &snapshot.item_instances {
+        let runtime_id = instance_map
+            .get(&instance.local_id)
+            .copied()
+            .ok_or(InventorySubgraphRestoreError::MissingInstanceLocalId(instance.local_id))?;
+        if let Some(contained_local) = instance.contained_inventory_local_id {
+            let contained_runtime = inventory_map
+                .get(&contained_local)
+                .copied()
+                .ok_or(InventorySubgraphRestoreError::MissingInventoryLocalId(contained_local))?;
+            world
+                .item_instance_store_mut()
+                .get_mut(runtime_id)
+                .expect("instance")
+                .contained_inventory_id = Some(contained_runtime);
+        }
+    }
+
+    for location in &snapshot.item_instance_locations {
+        let runtime_instance = instance_map
+            .get(&location.instance_local_id)
+            .copied()
+            .ok_or(InventorySubgraphRestoreError::MissingInstanceLocalId(
+                location.instance_local_id,
+            ))?;
+        let runtime_inventory = inventory_map
+            .get(&location.inventory_local_id)
+            .copied()
+            .ok_or(InventorySubgraphRestoreError::MissingInventoryLocalId(
+                location.inventory_local_id,
+            ))?;
+        world
+            .item_instance_store_mut()
+            .set_inventory_location(runtime_instance, runtime_inventory, location.entry_index);
+    }
+
+    let root_inventory_id = inventory_map
+        .get(&snapshot.root_inventory_local_id)
+        .copied()
+        .ok_or(InventorySubgraphRestoreError::MissingInventoryLocalId(
+            snapshot.root_inventory_local_id,
+        ))?;
+
+    crate::world::rebuild_all_inventory_derived(world, ctx)
+        .map_err(InventorySubgraphRestoreError::Inventory)?;
+
+    Ok(RestoredInventorySubgraph {
+        root_inventory_id,
+    })
+}
+
 pub fn inventory_subgraph_item_count(snapshot: &InventorySubgraphSnapshot) -> usize {
     snapshot
         .inventories
@@ -345,8 +573,8 @@ fn placed_entry_to_snapshot(
 mod tests {
     use super::*;
     use crate::world::inventory::{
-        InventoryCatalogCtx, ItemInstanceMetadata, create_item_instance, place_stack_first_fit,
-        place_unique_first_fit,
+        InventoryCatalogCtx, InventoryOwnerRef, ItemInstanceMetadata, create_item_instance,
+        place_stack_first_fit, place_unique_first_fit,
     };
     use crate::world::{
         Affiliation, BuildingCategoryCatalog, BuildingDefinitionId, BuildingLifecycleState,
@@ -475,6 +703,68 @@ mod tests {
         let serialized = ron::ser::to_string(&snapshot).unwrap();
         assert!(!serialized.contains("building_id"));
         assert!(!serialized.contains("InventoryId"));
+    }
+
+    #[test]
+    fn restore_round_trips_nested_container() {
+        let mut world = flat_world();
+        let inventory_id = spawn_chest(&mut world);
+        let ctx = test_inventory_ctx();
+        {
+            let (inventory_store, instance_store) = world.inventory_runtime_mut();
+            place_stack_first_fit(
+                inventory_store,
+                instance_store,
+                ctx,
+                inventory_id,
+                crate::world::ItemDefinitionId::new("iron_ore"),
+                5,
+            )
+            .unwrap();
+            let backpack = create_item_instance(
+                inventory_store,
+                instance_store,
+                ctx,
+                crate::world::ItemDefinitionId::new("leather_backpack"),
+                ItemInstanceMetadata::default(),
+            )
+            .unwrap();
+            place_unique_first_fit(inventory_store, instance_store, ctx, inventory_id, backpack)
+                .unwrap();
+            let internal = instance_store
+                .get(backpack)
+                .unwrap()
+                .contained_inventory_id
+                .expect("internal");
+            place_stack_first_fit(
+                inventory_store,
+                instance_store,
+                ctx,
+                internal,
+                crate::world::ItemDefinitionId::new("prispod"),
+                2,
+            )
+            .unwrap();
+        }
+        let snapshot = capture_inventory_subgraph(&world, inventory_id).expect("snapshot");
+        let restored = restore_inventory_subgraph(
+            &mut world,
+            ctx,
+            &snapshot,
+            RestoreInventorySubgraphOptions {
+                root_owner: InventoryOwnerRef::Detached,
+                existing_root_inventory_id: None,
+            },
+        )
+        .expect("restore");
+        assert_ne!(restored.root_inventory_id, inventory_id);
+        let restored_snapshot =
+            capture_inventory_subgraph(&world, restored.root_inventory_id).expect("recapture");
+        assert_eq!(
+            inventory_subgraph_item_count(&snapshot),
+            inventory_subgraph_item_count(&restored_snapshot)
+        );
+        assert_eq!(snapshot.inventories.len(), restored_snapshot.inventories.len());
     }
 
     #[test]

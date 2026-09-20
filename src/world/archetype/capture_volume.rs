@@ -206,6 +206,42 @@ fn capture_doodad_member(
     }
 }
 
+/// Inverse of [`compute_local_pose`]: member world pose from root + captured local pose.
+pub fn world_pose_from_local_pose(
+    layout: ChunkLayout,
+    root: &BuildingRecord,
+    local: &BuildingArchetypeLocalPose,
+) -> (WorldPosition, Quat) {
+    let root_global = root.placement.position.to_global(layout);
+    let root_rotation = root.placement.rotation;
+    let local_position = Vec3::from_array(local.local_position);
+    let world_global = root_global + root_rotation * local_position;
+    let local_rotation = Quat::from_array(local.local_rotation);
+    let world_rotation = (root_rotation * local_rotation).normalize();
+    (
+        WorldPosition::from_global(world_global, layout),
+        world_rotation,
+    )
+}
+
+pub fn building_uniform_scale_from_local_pose(local: &BuildingArchetypeLocalPose) -> Option<f32> {
+    if local.uniform_scale_milli <= 0 {
+        return None;
+    }
+    Some(local.uniform_scale_milli as f32 / 1000.0)
+}
+
+pub fn doodad_scale_from_local_pose(local: &BuildingArchetypeLocalPose) -> Option<Vec3> {
+    if local.scale_x_milli <= 0 && local.scale_y_milli <= 0 && local.scale_z_milli <= 0 {
+        return None;
+    }
+    Some(Vec3::new(
+        local.scale_x_milli as f32 / 1000.0,
+        local.scale_y_milli as f32 / 1000.0,
+        local.scale_z_milli as f32 / 1000.0,
+    ))
+}
+
 pub fn compute_local_pose(
     layout: ChunkLayout,
     root: &BuildingRecord,
