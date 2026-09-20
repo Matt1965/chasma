@@ -84,6 +84,26 @@ impl Default for BuildingArchetypeCaptureMetadata {
 pub enum BuildingArchetypeMemberKind {
     Building,
     Doodad,
+    WorldItemPile,
+}
+
+/// Durable state for a captured world item pile member.
+#[derive(Debug, Clone, PartialEq, Reflect, Serialize, Deserialize)]
+pub struct BuildingArchetypeMemberWorldItemState {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stack_quantity: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unique_quality: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[reflect(ignore)]
+    pub unique_inventory: Option<InventorySubgraphSnapshot>,
+    pub affiliation: Affiliation,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub team_id: Option<TeamId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owner_id: Option<OwnerId>,
+    #[serde(default)]
+    pub source: String,
 }
 
 /// Pose of a captured member relative to the root building anchor.
@@ -110,6 +130,8 @@ pub struct BuildingArchetypeMember {
     pub local_pose: BuildingArchetypeLocalPose,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub building_state: Option<BuildingArchetypeMemberBuildingState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub world_item_state: Option<BuildingArchetypeMemberWorldItemState>,
 }
 
 /// Editor-authored building template associated with one base building type.

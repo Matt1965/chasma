@@ -257,6 +257,7 @@ fn building_archetype_ron_roundtrip_with_members() {
                     scale_z_milli: 0,
                 },
                 building_state: None,
+                world_item_state: None,
             }],
             enabled: true,
         },

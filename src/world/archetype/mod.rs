@@ -17,6 +17,8 @@ mod capture_volume_tests;
 #[cfg(test)]
 mod durable_capture_tests;
 #[cfg(test)]
+mod world_item_capture_tests;
+#[cfg(test)]
 mod tests;
 
 pub use apply::{apply_unit_archetype_spawn_overrides, ArchetypeApplyError};
@@ -24,7 +26,8 @@ pub use building::{
     BuildingArchetypeCaptureMetadata, BuildingArchetypeCatalog, BuildingArchetypeCatalogError,
     BuildingArchetypeDefinition, BuildingArchetypeDurableExtensions, BuildingArchetypeId,
     BuildingArchetypeLocalPose, BuildingArchetypeMember, BuildingArchetypeMemberBuildingState,
-    BuildingArchetypeMemberKind, BuildingArchetypeSnapshot, unique_building_archetype_id,
+    BuildingArchetypeMemberKind, BuildingArchetypeMemberWorldItemState, BuildingArchetypeSnapshot,
+    unique_building_archetype_id,
 };
 pub use capture::{
     ArchetypeCaptureError, CapturedUnitArchetypeTemplate, build_building_archetype_definition,
@@ -33,8 +36,8 @@ pub use capture::{
 };
 pub use durable_capture::{
     BuildingArchetypeValidationError, capture_building_archetype_snapshot,
-    capture_building_durable_extensions, durable_extensions_summary,
-    validate_building_archetype_definition,
+    capture_building_durable_extensions, capture_world_item_member_state,
+    durable_extensions_summary, validate_building_archetype_definition, world_item_member_summary,
 };
 pub use building::DEFAULT_BUILDING_ARCHETYPE_CAPTURE_MARGIN_METERS;
 pub use capture_volume::{

@@ -63,7 +63,7 @@ pub use archetype::{
     capture_building_archetype_members, capture_building_archetype_snapshot,
     capture_building_durable_extensions, capture_unit_archetype_template,
     compute_building_archetype_capture_region, default_building_archetype_capture_margin_meters,
-    durable_extensions_summary, validate_building_archetype_definition,
+    durable_extensions_summary, validate_building_archetype_definition, world_item_member_summary,
     load_building_archetype_catalog_from_ron, load_dev_building_archetype_catalog,
     load_dev_unit_archetype_catalog, load_unit_archetype_catalog_from_ron,
     resolve_building_spawn_spec, resolve_unit_spawn_spec, save_building_archetype_catalog_to_ron,

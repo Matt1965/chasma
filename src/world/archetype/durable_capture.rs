@@ -7,6 +7,7 @@ use crate::world::inventory::{
     InventorySubgraphSnapshot, capture_inventory_subgraph, inventory_subgraph_item_count,
     validate_inventory_subgraph,
 };
+use crate::world::item_pile::{ItemPileSource, WorldItemPileRecord, WorldPileContents};
 use crate::world::{
     BuildingCatalog, BuildingDefinitionId, DoodadCatalog, DoodadDefinitionId, ItemCatalog,
     OperationCatalog, WorldData,
@@ -15,7 +16,7 @@ use crate::world::{
 use super::building::{
     BuildingArchetypeDefinition, BuildingArchetypeDurableExtensions,
     BuildingArchetypeMember, BuildingArchetypeMemberBuildingState, BuildingArchetypeMemberKind,
-    BuildingArchetypeSnapshot,
+    BuildingArchetypeMemberWorldItemState, BuildingArchetypeSnapshot,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,6 +24,8 @@ pub enum BuildingArchetypeValidationError {
     BaseBuildingNotFound(BuildingDefinitionId),
     MemberDefinitionNotFound(String),
     MissingItemDefinition(String),
+    InvalidWorldItemQuantity(String),
+    InvalidLocalPose(String),
     InvalidOperation(String),
     Inventory(InventorySubgraphValidationError),
 }
@@ -76,6 +79,50 @@ pub fn capture_building_archetype_snapshot(
     }
 }
 
+pub fn capture_world_item_member_state(
+    world: &WorldData,
+    pile: &WorldItemPileRecord,
+) -> (String, BuildingArchetypeMemberWorldItemState) {
+    match &pile.contents {
+        WorldPileContents::Stack {
+            item_definition_id,
+            quantity,
+        } => (
+            item_definition_id.as_str().to_string(),
+            BuildingArchetypeMemberWorldItemState {
+                stack_quantity: Some(*quantity),
+                unique_quality: None,
+                unique_inventory: None,
+                affiliation: pile.affiliation,
+                team_id: pile.team_id,
+                owner_id: pile.owner_id,
+                source: pile_source_label(pile.source),
+            },
+        ),
+        WorldPileContents::Unique { item_instance_id } => {
+            let instance = world
+                .item_instance_store()
+                .get(*item_instance_id)
+                .expect("world pile unique item");
+            let unique_inventory = instance
+                .contained_inventory_id
+                .and_then(|inventory_id| capture_inventory_subgraph(world, inventory_id));
+            (
+                instance.definition_id.as_str().to_string(),
+                BuildingArchetypeMemberWorldItemState {
+                    stack_quantity: None,
+                    unique_quality: instance.metadata.quality,
+                    unique_inventory,
+                    affiliation: pile.affiliation,
+                    team_id: pile.team_id,
+                    owner_id: pile.owner_id,
+                    source: pile_source_label(pile.source),
+                },
+            )
+        }
+    }
+}
+
 pub fn capture_building_member_building_state(
     world: &WorldData,
     building: &BuildingRecord,
@@ -110,24 +157,88 @@ pub fn validate_building_archetype_definition(
     )?;
 
     for member in &definition.members {
-        let definition_exists = match member.kind {
-            BuildingArchetypeMemberKind::Building => building_catalog
-                .get(&BuildingDefinitionId::new(&member.definition_id))
-                .is_some(),
-            BuildingArchetypeMemberKind::Doodad => doodad_catalog
-                .get(&DoodadDefinitionId::new(&member.definition_id))
-                .is_some(),
-        };
-        if !definition_exists {
-            return Err(BuildingArchetypeValidationError::MemberDefinitionNotFound(
-                member.definition_id.clone(),
-            ));
-        }
-        if let Some(state) = &member.building_state {
-            validate_durable_extensions(&state.extensions, item_catalog, operation_catalog)?;
+        validate_member_pose(member)?;
+        match member.kind {
+            BuildingArchetypeMemberKind::Building => {
+                if building_catalog
+                    .get(&BuildingDefinitionId::new(&member.definition_id))
+                    .is_none()
+                {
+                    return Err(BuildingArchetypeValidationError::MemberDefinitionNotFound(
+                        member.definition_id.clone(),
+                    ));
+                }
+                if let Some(state) = &member.building_state {
+                    validate_durable_extensions(&state.extensions, item_catalog, operation_catalog)?;
+                }
+            }
+            BuildingArchetypeMemberKind::Doodad => {
+                if doodad_catalog
+                    .get(&DoodadDefinitionId::new(&member.definition_id))
+                    .is_none()
+                {
+                    return Err(BuildingArchetypeValidationError::MemberDefinitionNotFound(
+                        member.definition_id.clone(),
+                    ));
+                }
+            }
+            BuildingArchetypeMemberKind::WorldItemPile => {
+                validate_world_item_member(member, item_catalog)?;
+            }
         }
     }
 
+    Ok(())
+}
+
+fn validate_member_pose(member: &BuildingArchetypeMember) -> Result<(), BuildingArchetypeValidationError> {
+    if !member.local_pose.local_position.iter().all(|value| value.is_finite()) {
+        return Err(BuildingArchetypeValidationError::InvalidLocalPose(
+            member.definition_id.clone(),
+        ));
+    }
+    if !member.local_pose.local_rotation.iter().all(|value| value.is_finite()) {
+        return Err(BuildingArchetypeValidationError::InvalidLocalPose(
+            member.definition_id.clone(),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_world_item_member(
+    member: &BuildingArchetypeMember,
+    item_catalog: &ItemCatalog,
+) -> Result<(), BuildingArchetypeValidationError> {
+    let item_id = crate::world::ItemDefinitionId::new(&member.definition_id);
+    if item_catalog.get(&item_id).is_none() {
+        return Err(BuildingArchetypeValidationError::MissingItemDefinition(
+            member.definition_id.clone(),
+        ));
+    }
+    let Some(state) = &member.world_item_state else {
+        return Err(BuildingArchetypeValidationError::MemberDefinitionNotFound(
+            member.definition_id.clone(),
+        ));
+    };
+    if let Some(quantity) = state.stack_quantity {
+        if quantity == 0 {
+            return Err(BuildingArchetypeValidationError::InvalidWorldItemQuantity(
+                member.definition_id.clone(),
+            ));
+        }
+    }
+    if let Some(inventory) = &state.unique_inventory {
+        validate_inventory_subgraph(inventory, |item_id| {
+            item_catalog
+                .get(&crate::world::ItemDefinitionId::new(item_id))
+                .is_some()
+        })
+        .map_err(|error| {
+            BuildingArchetypeValidationError::Inventory(InventorySubgraphValidationError::Inner(
+                error,
+            ))
+        })?;
+    }
     Ok(())
 }
 
@@ -156,6 +267,26 @@ fn validate_durable_extensions(
     }
 
     Ok(())
+}
+
+pub fn world_item_member_summary(state: &BuildingArchetypeMemberWorldItemState) -> Option<String> {
+    if let Some(quantity) = state.stack_quantity {
+        if quantity > 1 {
+            return Some(format!("x{quantity}"));
+        }
+    }
+    if state.unique_inventory.is_some() {
+        return Some("container".into());
+    }
+    None
+}
+
+fn pile_source_label(source: ItemPileSource) -> String {
+    match source {
+        ItemPileSource::Dropped => "Dropped".into(),
+        ItemPileSource::Spilled => "Spilled".into(),
+        ItemPileSource::DevSpawned => "DevSpawned".into(),
+    }
 }
 
 pub fn durable_extensions_summary(extensions: &BuildingArchetypeDurableExtensions) -> Option<String> {

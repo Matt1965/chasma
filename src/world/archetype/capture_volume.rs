@@ -13,7 +13,9 @@ use crate::world::{
 use super::building::{
     BuildingArchetypeLocalPose, BuildingArchetypeMember, BuildingArchetypeMemberKind,
 };
-use super::durable_capture::capture_building_member_building_state;
+use super::durable_capture::{
+    capture_building_member_building_state, capture_world_item_member_state,
+};
 
 /// Oriented capture region derived from a root building footprint plus margin.
 #[derive(Debug, Clone, PartialEq)]
@@ -96,6 +98,16 @@ pub fn query_building_archetype_members(
                 }
             }
         }
+        for pile in world.item_pile_store().piles_in_chunk(chunk_id) {
+            if pivot_in_capture_region(pile.placement, layout, region) {
+                members.push(capture_world_item_pile_member(
+                    world,
+                    root.expect("root exists"),
+                    pile,
+                    layout,
+                ));
+            }
+        }
     }
 
     members.sort_by(|a, b| member_sort_key(a, building_catalog, doodad_catalog).cmp(&member_sort_key(b, building_catalog, doodad_catalog)));
@@ -110,6 +122,7 @@ fn member_sort_key(
     let kind_order = match member.kind {
         BuildingArchetypeMemberKind::Building => 0,
         BuildingArchetypeMemberKind::Doodad => 1,
+        BuildingArchetypeMemberKind::WorldItemPile => 2,
     };
     let definition = member.definition_id.clone();
     let position_key = [
@@ -141,6 +154,32 @@ fn capture_building_member(
         definition_id: member.definition_id.as_str().to_string(),
         local_pose,
         building_state: Some(capture_building_member_building_state(world, member)),
+        world_item_state: None,
+    }
+}
+
+fn capture_world_item_pile_member(
+    world: &WorldData,
+    root: &BuildingRecord,
+    pile: &crate::world::WorldItemPileRecord,
+    layout: ChunkLayout,
+) -> BuildingArchetypeMember {
+    let member_global = pile.placement.to_global(layout);
+    let local_pose = compute_local_pose(
+        layout,
+        root,
+        member_global,
+        Quat::IDENTITY,
+        None,
+        None,
+    );
+    let (definition_id, world_item_state) = capture_world_item_member_state(world, pile);
+    BuildingArchetypeMember {
+        kind: BuildingArchetypeMemberKind::WorldItemPile,
+        definition_id,
+        local_pose,
+        building_state: None,
+        world_item_state: Some(world_item_state),
     }
 }
 
@@ -163,6 +202,7 @@ fn capture_doodad_member(
         definition_id: member.definition_id.as_str().to_string(),
         local_pose,
         building_state: None,
+        world_item_state: None,
     }
 }
 

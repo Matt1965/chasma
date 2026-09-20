@@ -5,9 +5,10 @@ use bevy::prelude::*;
 use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
 use crate::world::{
     BakedCellMask, BuildingArchetypeCaptureRegion, BuildingArchetypeMemberKind, BuildingCatalog,
-    DoodadCatalog, FootprintCatalog, FootprintShape, WorldConfig, WorldData, WorldPosition,
-    capture_building_archetype_members, compute_building_archetype_capture_region,
+    DoodadCatalog, FootprintCatalog, FootprintShape, ItemCatalog, WorldConfig, WorldData,
+    WorldPosition, capture_building_archetype_members, compute_building_archetype_capture_region,
     default_building_archetype_capture_margin_meters, durable_extensions_summary,
+    world_item_member_summary,
 };
 
 use super::actions::DevArchetypeEditorScratch;
@@ -20,6 +21,7 @@ pub struct BuildingArchetypeMemberPreviewEntry {
     pub display_name: String,
     pub world_position: Vec3,
     pub state_hint: Option<String>,
+    pub stack_quantity: Option<u32>,
 }
 
 /// Refresh capture preview scratch state while the building modal is open.
@@ -30,6 +32,7 @@ pub fn sync_building_archetype_capture_preview(
     building_catalog: Res<BuildingCatalog>,
     footprint_catalog: Res<FootprintCatalog>,
     doodad_catalog: Res<DoodadCatalog>,
+    item_catalog: Res<ItemCatalog>,
 ) {
     if !editor.modal_open || !editor.is_building_modal() {
         if scratch.preview_region.is_some() || !scratch.preview_members.is_empty() {
@@ -75,18 +78,34 @@ pub fn sync_building_archetype_capture_preview(
                             .get(&crate::world::DoodadDefinitionId::new(&member.definition_id))
                             .map(|def| def.display_name.clone())
                             .unwrap_or_else(|| member.definition_id.clone()),
+                        BuildingArchetypeMemberKind::WorldItemPile => item_catalog
+                            .get(&crate::world::ItemDefinitionId::new(&member.definition_id))
+                            .map(|def| def.display_name.clone())
+                            .unwrap_or_else(|| member.definition_id.clone()),
                     };
                     let world_position = member_world_position(&world, &root, &member.local_pose);
-                    let state_hint = member
-                        .building_state
+                    let state_hint = match member.kind {
+                        BuildingArchetypeMemberKind::Building => member
+                            .building_state
+                            .as_ref()
+                            .and_then(|state| durable_extensions_summary(&state.extensions)),
+                        BuildingArchetypeMemberKind::WorldItemPile => member
+                            .world_item_state
+                            .as_ref()
+                            .and_then(world_item_member_summary),
+                        BuildingArchetypeMemberKind::Doodad => None,
+                    };
+                    let stack_quantity = member
+                        .world_item_state
                         .as_ref()
-                        .and_then(|state| durable_extensions_summary(&state.extensions));
+                        .and_then(|state| state.stack_quantity);
                     BuildingArchetypeMemberPreviewEntry {
                         kind: member.kind,
                         definition_id: member.definition_id.clone(),
                         display_name,
                         world_position,
                         state_hint,
+                        stack_quantity,
                     }
                 })
                 .collect();
@@ -166,6 +185,18 @@ pub fn format_captured_member_lines(
             .as_ref()
             .map(|hint| format!(" — {hint}"))
             .unwrap_or_default();
+        if member.kind == BuildingArchetypeMemberKind::WorldItemPile {
+            if let Some(quantity) = member.stack_quantity {
+                if quantity > 1 {
+                    lines.push(format!("- {} x{}{}", member.display_name, quantity, suffix));
+                } else {
+                    lines.push(format!("- {}{}", member.display_name, suffix));
+                }
+            } else {
+                lines.push(format!("- {}{}", member.display_name, suffix));
+            }
+            continue;
+        }
         if count > 1 {
             lines.push(format!("- {}{} x{}", member.display_name, suffix, count));
         } else {
@@ -345,6 +376,7 @@ mod tests {
                 display_name: "Crate".into(),
                 world_position: Vec3::ZERO,
                 state_hint: None,
+                stack_quantity: None,
             },
             BuildingArchetypeMemberPreviewEntry {
                 kind: BuildingArchetypeMemberKind::Doodad,
@@ -352,6 +384,7 @@ mod tests {
                 display_name: "Crate".into(),
                 world_position: Vec3::ONE,
                 state_hint: None,
+                stack_quantity: None,
             },
         ]);
         assert!(lines.contains("Crate x2"));
