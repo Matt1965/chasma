@@ -27,7 +27,7 @@ pub use footprint::{
     agent_overlaps_footprint_continuous, effective_building_footprint,
     effective_building_footprint_for_placement, inline_building_footprint,
     inline_footprint_from_building, occupied_cells_for_footprint, occupied_cells_for_footprint_yaw,
-    scale_footprint_shape,
+    point_in_oriented_rectangle_continuous, scale_footprint_shape,
 };
 pub use grid::{ChunkOccupancyGrid, OccupancyCellEntry, OccupancyState, default_space_id};
 pub use passability::{

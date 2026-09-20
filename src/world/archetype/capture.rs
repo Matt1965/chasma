@@ -10,7 +10,16 @@ use crate::world::relationship::SpeciesId;
 use crate::world::unit::UnitRecord;
 use crate::world::{ItemCatalog, ItemDefinitionId, WorldData};
 
-use super::building::{BuildingArchetypeSnapshot, BuildingArchetypeDefinition, BuildingArchetypeId};
+use super::building::{
+    BuildingArchetypeCaptureMetadata, BuildingArchetypeDefinition, BuildingArchetypeId,
+    BuildingArchetypeMember,
+};
+use super::durable_capture::capture_building_archetype_snapshot;
+use super::building::DEFAULT_BUILDING_ARCHETYPE_CAPTURE_MARGIN_METERS;
+use super::capture_volume::{
+    BuildingArchetypeCaptureError, compute_building_archetype_capture_region,
+    query_building_archetype_members,
+};
 use super::unit::{
     ArchetypeEquipmentEntry, ArchetypeInventoryStack, UnitArchetypeDefinition, UnitArchetypeId,
 };
@@ -108,38 +117,64 @@ pub fn build_unit_archetype_definition(
     }
 }
 
-pub fn capture_building_archetype_snapshot(
-    building: &BuildingRecord,
-) -> BuildingArchetypeSnapshot {
-    let yaw_deg = building
-        .placement
-        .rotation
-        .to_euler(EulerRot::YXZ)
-        .0
-        .to_degrees();
-    BuildingArchetypeSnapshot {
-        affiliation: building.ownership.affiliation,
-        team_id: building.ownership.team_id,
-        owner_id: building.ownership.owner_id,
-        lifecycle_state: building.lifecycle_state,
-        container_locked: building.container_locked,
-        uniform_scale: building.placement.uniform_scale_f32(),
-        placement_yaw_deg: yaw_deg,
-    }
-}
-
 pub fn build_building_archetype_definition(
     id: BuildingArchetypeId,
     display_name: String,
     building: &BuildingRecord,
+    world: &WorldData,
+    capture_metadata: BuildingArchetypeCaptureMetadata,
+    members: Vec<BuildingArchetypeMember>,
+    enabled: bool,
 ) -> BuildingArchetypeDefinition {
     BuildingArchetypeDefinition {
         id,
         display_name,
         base_building_id: building.definition_id.clone(),
-        snapshot: capture_building_archetype_snapshot(building),
-        enabled: true,
+        snapshot: capture_building_archetype_snapshot(world, building),
+        capture_metadata,
+        members,
+        enabled,
     }
+}
+
+pub fn capture_building_archetype_members(
+    world: &WorldData,
+    root: &BuildingRecord,
+    building_catalog: &crate::world::BuildingCatalog,
+    footprint_catalog: &crate::world::FootprintCatalog,
+    doodad_catalog: &crate::world::DoodadCatalog,
+    capture_margin_meters: f32,
+) -> Result<
+    (
+        BuildingArchetypeCaptureMetadata,
+        Vec<BuildingArchetypeMember>,
+    ),
+    BuildingArchetypeCaptureError,
+> {
+    let region = compute_building_archetype_capture_region(
+        world,
+        root,
+        building_catalog,
+        footprint_catalog,
+        capture_margin_meters,
+    )?;
+    let members = query_building_archetype_members(
+        world,
+        &region,
+        root.id,
+        building_catalog,
+        doodad_catalog,
+    );
+    Ok((
+        BuildingArchetypeCaptureMetadata {
+            capture_margin_meters,
+        },
+        members,
+    ))
+}
+
+pub fn default_building_archetype_capture_margin_meters() -> f32 {
+    DEFAULT_BUILDING_ARCHETYPE_CAPTURE_MARGIN_METERS
 }
 
 fn resolve_entry_item_id(

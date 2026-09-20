@@ -6,22 +6,52 @@
 mod apply;
 mod building;
 mod capture;
+mod capture_volume;
+mod durable_capture;
 mod persistence;
+mod reconstruct;
 mod resolve;
 mod unit;
 
+#[cfg(test)]
+mod capture_volume_tests;
+#[cfg(test)]
+mod durable_capture_tests;
+#[cfg(test)]
+mod world_item_capture_tests;
+#[cfg(test)]
+mod reconstruct_tests;
 #[cfg(test)]
 mod tests;
 
 pub use apply::{apply_unit_archetype_spawn_overrides, ArchetypeApplyError};
 pub use building::{
-    BuildingArchetypeCatalog, BuildingArchetypeCatalogError, BuildingArchetypeDefinition,
-    BuildingArchetypeId, BuildingArchetypeSnapshot, unique_building_archetype_id,
+    BuildingArchetypeCaptureMetadata, BuildingArchetypeCatalog, BuildingArchetypeCatalogError,
+    BuildingArchetypeDefinition, BuildingArchetypeDurableExtensions, BuildingArchetypeId,
+    BuildingArchetypeLocalPose, BuildingArchetypeMember, BuildingArchetypeMemberBuildingState,
+    BuildingArchetypeMemberKind, BuildingArchetypeMemberWorldItemState, BuildingArchetypeSnapshot,
+    unique_building_archetype_id,
 };
 pub use capture::{
     ArchetypeCaptureError, CapturedUnitArchetypeTemplate, build_building_archetype_definition,
-    build_unit_archetype_definition, capture_building_archetype_snapshot,
-    capture_unit_archetype_template,
+    build_unit_archetype_definition, capture_building_archetype_members,
+    capture_unit_archetype_template, default_building_archetype_capture_margin_meters,
+};
+pub use durable_capture::{
+    BuildingArchetypeValidationError, capture_building_archetype_snapshot,
+    capture_building_durable_extensions, capture_world_item_member_state,
+    durable_extensions_summary, validate_building_archetype_definition, world_item_member_summary,
+};
+pub use building::DEFAULT_BUILDING_ARCHETYPE_CAPTURE_MARGIN_METERS;
+pub use capture_volume::{
+    BuildingArchetypeCaptureError, BuildingArchetypeCaptureRegion,
+    building_uniform_scale_from_local_pose, compute_building_archetype_capture_region,
+    compute_local_pose, doodad_scale_from_local_pose, pivot_in_capture_region,
+    query_building_archetype_members, world_pose_from_local_pose,
+};
+pub use reconstruct::{
+    BuildingArchetypeReconstructCtx, BuildingArchetypeReconstructError,
+    apply_building_archetype_placement,
 };
 pub use persistence::{
     ArchetypePersistenceError, BUILDING_ARCHETYPES_RON_PATH, UNIT_ARCHETYPES_RON_PATH,

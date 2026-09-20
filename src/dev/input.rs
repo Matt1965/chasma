@@ -366,7 +366,8 @@ fn handle_text_field_input(
         }
         DevTextFieldFocus::ArchetypeName
         | DevTextFieldFocus::ArchetypeGoldMin
-        | DevTextFieldFocus::ArchetypeGoldMax => {
+        | DevTextFieldFocus::ArchetypeGoldMax
+        | DevTextFieldFocus::ArchetypeCaptureMargin => {
             // Handled by archetype_editor::handle_archetype_editor_keyboard
         }
     }

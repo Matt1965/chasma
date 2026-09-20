@@ -197,7 +197,10 @@ fn building_archetype_applies_only_to_base_type() {
                 container_locked: false,
                 uniform_scale: 1.0,
                 placement_yaw_deg: 0.0,
+                extensions: Default::default(),
             },
+            capture_metadata: Default::default(),
+            members: Vec::new(),
             enabled: true,
         },
     ])
@@ -215,6 +218,89 @@ fn building_archetype_applies_only_to_base_type() {
         .unwrap();
         assert_eq!(spec.ownership.affiliation, Affiliation::Hostile);
     }
+}
+
+#[test]
+fn building_archetype_ron_roundtrip_with_members() {
+    use super::building::{
+        BuildingArchetypeCaptureMetadata, BuildingArchetypeLocalPose, BuildingArchetypeMember,
+        BuildingArchetypeMemberKind,
+    };
+
+    let catalog = BuildingArchetypeCatalog::from_definitions(vec![
+        BuildingArchetypeDefinition {
+            id: BuildingArchetypeId::new("shop"),
+            display_name: "Shop".to_string(),
+            base_building_id: BuildingDefinitionId::new("hut"),
+            snapshot: BuildingArchetypeSnapshot {
+                affiliation: Affiliation::Player,
+                team_id: None,
+                owner_id: None,
+                lifecycle_state: BuildingLifecycleState::Complete,
+                container_locked: false,
+                uniform_scale: 1.0,
+                placement_yaw_deg: 0.0,
+                extensions: Default::default(),
+            },
+            capture_metadata: BuildingArchetypeCaptureMetadata {
+                capture_margin_meters: 3.0,
+            },
+            members: vec![BuildingArchetypeMember {
+                kind: BuildingArchetypeMemberKind::Building,
+                definition_id: "storage_chest".to_string(),
+                local_pose: BuildingArchetypeLocalPose {
+                    local_position: [2.0, 0.0, 0.0],
+                    local_rotation: [0.0, 0.0, 0.0, 1.0],
+                    uniform_scale_milli: 1000,
+                    scale_x_milli: 0,
+                    scale_y_milli: 0,
+                    scale_z_milli: 0,
+                },
+                building_state: None,
+                world_item_state: None,
+            }],
+            enabled: true,
+        },
+    ])
+    .unwrap();
+    let dir = std::env::temp_dir().join("chasma_building_archetype_test");
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("building_archetypes.ron");
+    save_building_archetype_catalog_to_ron(&catalog, &path).unwrap();
+    let loaded = load_building_archetype_catalog_from_ron(&path).unwrap();
+    assert_eq!(loaded.definitions().len(), 1);
+    assert_eq!(loaded.definitions()[0].members.len(), 1);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn building_archetype_legacy_root_only_ron_loads() {
+    let dir = std::env::temp_dir().join("chasma_building_archetype_legacy");
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("building_archetypes.ron");
+    std::fs::write(
+        &path,
+        r#"(definitions: [
+    (
+        id: ("legacy"),
+        display_name: "Legacy",
+        base_building_id: ("hut"),
+        snapshot: (
+            affiliation: Player,
+            lifecycle_state: Complete,
+            container_locked: false,
+            uniform_scale: 1.0,
+            placement_yaw_deg: 0.0,
+        ),
+        enabled: true,
+    ),
+])"#,
+    )
+    .unwrap();
+    let loaded = load_building_archetype_catalog_from_ron(&path).unwrap();
+    assert_eq!(loaded.definitions().len(), 1);
+    assert!(loaded.definitions()[0].members.is_empty());
+    let _ = std::fs::remove_dir_all(dir);
 }
 
 #[test]
