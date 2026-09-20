@@ -126,6 +126,12 @@ pub fn setup_roads_window_panel(mut commands: Commands, bodies: Query<(Entity, &
                     );
                     spawn_action_button(
                         root,
+                        "Detach Junction",
+                        Some("Disconnect the selected attached endpoint from its junction"),
+                        RoadEditorButton::DetachJunction,
+                    );
+                    spawn_action_button(
+                        root,
                         "Save Roads",
                         Some("Write the road network to assets/worlds/main/roads/network.ron"),
                         RoadEditorButton::Save,

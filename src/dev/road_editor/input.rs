@@ -9,13 +9,80 @@ use crate::dev::spawn_tools::dev_spawn_position_from_terrain_click;
 use crate::dev::window::{DevWindowId, DevWindowRegistry};
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::{cursor_world_ray, terrain_click_to_world_position};
-use crate::world::{RoadControlPoint, RoadNetwork, WorldConfig, WorldData};
+use crate::world::{
+    RoadControlPoint, RoadNetwork, WorldConfig, WorldData, find_snap_candidate,
+    finalize_endpoint_drag, is_road_endpoint_index, move_connected_endpoint,
+    refresh_tee_branches_for_host, try_snap_endpoint,
+};
 
 use super::domain::{
-    insert_control_point, move_control_point, pick_control_point_at, pick_road_at,
-    pick_segment_for_insert, extend_road_end, extend_road_start,
+    insert_control_point, pick_control_point_at, pick_road_at, pick_segment_for_insert,
+    extend_road_end, extend_road_start,
 };
 use super::state::{RoadEditMode, RoadEditorUiState, road_editor_owns_world_pointer};
+
+pub fn update_road_editor_snap_preview(
+    registry: Res<DevWindowRegistry>,
+    dev_state: Res<DevModeState>,
+    panel_hovered: Res<DevPanelHoverState>,
+    mut editor: ResMut<RoadEditorUiState>,
+    network: Res<RoadNetwork>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    camera: Query<(&Camera, &GlobalTransform), With<RtsCamera>>,
+    config: Res<WorldConfig>,
+    render_assets: Option<Res<TerrainRenderAssets>>,
+    world: Res<WorldData>,
+) {
+    if !registry.window_active(dev_state.enabled, DevWindowId::Roads) {
+        editor.snap_preview = None;
+        return;
+    }
+    if panel_hovered.hovered {
+        editor.snap_preview = None;
+        return;
+    }
+
+    let Some(xz) = terrain_xz_pick(&windows, &camera, &config, render_assets.as_deref(), &world)
+    else {
+        editor.snap_preview = None;
+        return;
+    };
+
+    editor.snap_preview = match editor.mode {
+        RoadEditMode::Create => {
+            if editor.create_points.is_empty() {
+                None
+            } else {
+                find_snap_candidate(network.as_ref(), &crate::world::RoadId::new("__draft__"), false, xz)
+            }
+        }
+        RoadEditMode::ExtendStart => editor
+            .selected_road_id
+            .as_ref()
+            .and_then(|road_id| find_snap_candidate(network.as_ref(), road_id, true, xz)),
+        RoadEditMode::ExtendEnd => editor
+            .selected_road_id
+            .as_ref()
+            .and_then(|road_id| find_snap_candidate(network.as_ref(), road_id, false, xz)),
+        RoadEditMode::Inactive => {
+            if let Some((road_id, index)) = editor.dragging_point.clone() {
+                if network
+                    .roads
+                    .get(&road_id)
+                    .is_some_and(|road| is_road_endpoint_index(index, road.control_points.len()))
+                {
+                    let is_start = index == 0;
+                    find_snap_candidate(network.as_ref(), &road_id, is_start, xz)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }
+        RoadEditMode::InsertPoint => None,
+    };
+}
 
 pub fn handle_road_editor_world_input(
     registry: Res<DevWindowRegistry>,
@@ -54,8 +121,23 @@ pub fn handle_road_editor_world_input(
     if editor.dragging_point.is_some() {
         gate.block_gameplay_mouse = true;
         if left_released {
+            if let Some((road_id, index)) = editor.dragging_point.clone() {
+                if let Some(xz) = terrain_xz_pick(
+                    &windows,
+                    &camera,
+                    &config,
+                    render_assets.as_deref(),
+                    &world,
+                ) {
+                    if let Err(message) = finalize_endpoint_drag(&mut network, &road_id, index, xz) {
+                        editor.status_message = message;
+                    } else {
+                        editor.mark_dirty("Moved control point");
+                    }
+                }
+            }
             editor.dragging_point = None;
-            editor.mark_dirty("Moved control point");
+            editor.snap_preview = None;
             return;
         }
         if left_held {
@@ -67,8 +149,10 @@ pub fn handle_road_editor_world_input(
                     render_assets.as_deref(),
                     &world,
                 ) {
-                    if let Some(road) = network.roads.get_mut(&road_id) {
-                        let _ = move_control_point(road, index, xz);
+                    if let Err(message) =
+                        move_connected_endpoint(&mut network, &road_id, index, xz)
+                    {
+                        editor.status_message = message;
                     }
                 }
             }
@@ -101,16 +185,34 @@ pub fn handle_road_editor_world_input(
         }
         RoadEditMode::ExtendStart => {
             if let Some(road_id) = editor.selected_road_id.clone() {
-                if let Some(road) = network.roads.get_mut(&road_id) {
-                    extend_road_start(road, RoadControlPoint::new(xz.x, xz.y));
+                extend_road_start(
+                    network
+                        .roads
+                        .get_mut(&road_id)
+                        .expect("selected road"),
+                    RoadControlPoint::new(xz.x, xz.y),
+                );
+                if let Err(message) = try_snap_endpoint(&mut network, &road_id, true, xz) {
+                    editor.status_message = message;
+                } else {
+                    refresh_tee_branches_for_host(&mut network, &road_id);
                     editor.mark_dirty(format!("Extended start of {}", road_id));
                 }
             }
         }
         RoadEditMode::ExtendEnd => {
             if let Some(road_id) = editor.selected_road_id.clone() {
-                if let Some(road) = network.roads.get_mut(&road_id) {
-                    extend_road_end(road, RoadControlPoint::new(xz.x, xz.y));
+                extend_road_end(
+                    network
+                        .roads
+                        .get_mut(&road_id)
+                        .expect("selected road"),
+                    RoadControlPoint::new(xz.x, xz.y),
+                );
+                if let Err(message) = try_snap_endpoint(&mut network, &road_id, false, xz) {
+                    editor.status_message = message;
+                } else {
+                    refresh_tee_branches_for_host(&mut network, &road_id);
                     editor.mark_dirty(format!("Extended end of {}", road_id));
                 }
             }

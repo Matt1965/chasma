@@ -6,7 +6,7 @@ use crate::dev::window::{DevWindowId, DevWindowRegistry};
 use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
 use crate::world::{
     Road, RoadControlPoint, RoadNetwork, WorldConfig, WorldData, WorldPosition,
-    sample_road_polyline,
+    derive_ground_crossings, junction_world_position, sample_road_polyline,
 };
 
 use super::domain::{SPLINE_SAMPLE_SPACING_M, style_debug_color};
@@ -49,6 +49,38 @@ pub fn draw_road_editor_overlay(
             selected,
             editor.selected_point_index,
             &editor.selected_road_id,
+        );
+    }
+
+    for junction_id in network.junctions.keys() {
+        if let Some(position) = junction_world_position(&network, junction_id) {
+            let world_pos = terrain_vec3(&world, layout, vertical_scale, position);
+            gizmos.sphere(
+                Isometry3d::from_translation(world_pos),
+                0.65,
+                Color::srgba(1.0, 0.55, 0.15, 0.95),
+            );
+        }
+    }
+
+    for crossing in derive_ground_crossings(&network) {
+        if !crossing.connected {
+            continue;
+        }
+        let world_pos = terrain_vec3(&world, layout, vertical_scale, crossing.position);
+        gizmos.sphere(
+            Isometry3d::from_translation(world_pos),
+            0.5,
+            Color::srgba(0.95, 0.35, 0.95, 0.9),
+        );
+    }
+
+    if let Some(candidate) = &editor.snap_preview {
+        let world_pos = terrain_vec3(&world, layout, vertical_scale, candidate.position);
+        gizmos.sphere(
+            Isometry3d::from_translation(world_pos),
+            0.55,
+            Color::srgba(0.2, 1.0, 0.45, 0.95),
         );
     }
 

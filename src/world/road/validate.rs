@@ -53,6 +53,7 @@ pub fn validate_road_network(network: &RoadNetwork) -> Result<(), RoadError> {
         }
         junction.validate()?;
         validate_junction_members_unique(&junction.id, &junction.members)?;
+        validate_junction_cardinality(&junction.id, &junction.members)?;
     }
 
     for junction in network.junctions.values() {
@@ -76,6 +77,45 @@ pub fn validate_road_network(network: &RoadNetwork) -> Result<(), RoadError> {
         validate_crossing(network, crossing)?;
     }
 
+    Ok(())
+}
+
+fn validate_junction_cardinality(
+    junction_id: &JunctionId,
+    members: &[super::junction::JunctionMember],
+) -> Result<(), RoadError> {
+    if members.len() < 2 {
+        return Err(RoadError::InvalidJunctionReference(format!(
+            "junction {} must have at least two members",
+            junction_id
+        )));
+    }
+    let tee_hosts = members
+        .iter()
+        .filter(|member| member.role == JunctionMemberRole::TeeHost)
+        .count();
+    let tee_branches = members
+        .iter()
+        .filter(|member| member.role == JunctionMemberRole::TeeBranch)
+        .count();
+    if tee_hosts > 0 && tee_hosts != 1 {
+        return Err(RoadError::InvalidJunctionReference(format!(
+            "junction {} must have exactly one TeeHost member",
+            junction_id
+        )));
+    }
+    if tee_branches > 0 && tee_branches != 1 {
+        return Err(RoadError::InvalidJunctionReference(format!(
+            "junction {} must have exactly one TeeBranch member",
+            junction_id
+        )));
+    }
+    if tee_hosts == 1 && tee_branches != 1 {
+        return Err(RoadError::InvalidJunctionReference(format!(
+            "junction {} tee junction must include one TeeBranch member",
+            junction_id
+        )));
+    }
     Ok(())
 }
 
@@ -200,10 +240,10 @@ fn ensure_endpoint_attachment(
 
 fn validate_road_attachments(network: &RoadNetwork, road: &Road) -> Result<(), RoadError> {
     if let Some(attachment) = &road.start_attachment {
-        ensure_junction_contains_member(network, &attachment.junction_id, &road.id, JunctionMemberRole::EndpointStart, None)?;
+        ensure_junction_contains_endpoint_member(network, &attachment.junction_id, &road.id, true)?;
     }
     if let Some(attachment) = &road.end_attachment {
-        ensure_junction_contains_member(network, &attachment.junction_id, &road.id, JunctionMemberRole::EndpointEnd, None)?;
+        ensure_junction_contains_endpoint_member(network, &attachment.junction_id, &road.id, false)?;
     }
     for tee in &road.tee_attachments {
         validate_tee_attachment(network, road, tee)?;
@@ -242,6 +282,37 @@ fn validate_tee_attachment(
         JunctionMemberRole::TeeHost,
         Some(tee.host_t),
     )?;
+    Ok(())
+}
+
+fn ensure_junction_contains_endpoint_member(
+    network: &RoadNetwork,
+    junction_id: &JunctionId,
+    road_id: &RoadId,
+    is_start: bool,
+) -> Result<(), RoadError> {
+    let junction = network.junctions.get(junction_id).ok_or_else(|| {
+        RoadError::InvalidJunctionReference(format!(
+            "road {} references missing junction {}",
+            road_id,
+            junction_id
+        ))
+    })?;
+    let expected_roles = if is_start {
+        [JunctionMemberRole::EndpointStart, JunctionMemberRole::TeeBranch]
+    } else {
+        [JunctionMemberRole::EndpointEnd, JunctionMemberRole::TeeBranch]
+    };
+    let found = junction.members.iter().any(|member| {
+        member.road_id == *road_id && expected_roles.contains(&member.role)
+    });
+    if !found {
+        return Err(RoadError::AttachmentMismatch(format!(
+            "road {} attachment to junction {} is not mirrored in junction members",
+            road_id,
+            junction_id
+        )));
+    }
     Ok(())
 }
 

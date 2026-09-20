@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    Road, RoadControlPoint, RoadId, RoadNetwork, RoadStyleId, sample_road_polyline,
+    Road, RoadControlPoint, RoadId, RoadNetwork, RoadStyleId, endpoint_has_attachment,
+    refresh_tee_branches_for_host, remove_road_and_cleanup_junctions, sample_road_polyline,
+    try_snap_endpoint,
 };
 
 pub const ROAD_PICK_DISTANCE_M: f32 = 6.0;
@@ -124,6 +126,7 @@ pub fn insert_control_point(
     }
     let insert_index = segment_index + 1;
     road.control_points.insert(insert_index, RoadControlPoint::new(position.x, position.y));
+    refresh_tee_branches_for_host(network, road_id);
     Ok(insert_index)
 }
 
@@ -144,6 +147,11 @@ pub fn delete_control_point(road: &mut Road, index: usize) -> Result<(), String>
     if index >= road.control_points.len() {
         return Err("control point index out of range".into());
     }
+    if endpoint_has_attachment(road, index) {
+        return Err(
+            "cannot delete an endpoint attached to a junction; detach the junction first".into(),
+        );
+    }
     road.control_points.remove(index);
     Ok(())
 }
@@ -157,7 +165,7 @@ pub fn extend_road_end(road: &mut Road, point: RoadControlPoint) {
 }
 
 pub fn delete_road(network: &mut RoadNetwork, road_id: &RoadId) -> bool {
-    network.roads.remove(road_id).is_some()
+    remove_road_and_cleanup_junctions(network, road_id)
 }
 
 pub fn finish_create_road(
@@ -169,9 +177,17 @@ pub fn finish_create_road(
     if points.len() < 2 {
         return Err("roads require at least two control points".into());
     }
+    let start_xz = points.first().map(|point| point.xz());
+    let end_xz = points.last().map(|point| point.xz());
     let id = generate_road_id(network);
     let road = new_authored_road(id.clone(), display_name, style, points);
     network.roads.insert(id.clone(), road);
+    if let Some(xz) = start_xz {
+        try_snap_endpoint(network, &id, true, xz)?;
+    }
+    if let Some(xz) = end_xz {
+        try_snap_endpoint(network, &id, false, xz)?;
+    }
     Ok(id)
 }
 

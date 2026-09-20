@@ -647,14 +647,20 @@ pub use terrain_field::{
     validate_terrain_field_id, validate_world_config_for_fields, world_position_to_field_local,
 };
 pub use road::{
-    CornerMode, Junction, JunctionId, JunctionMember, JunctionMemberRole, Road, RoadControlPoint,
-    RoadCrossingKind, RoadCrossingOverride, RoadEndpointAttachment, RoadError, RoadId,
-    RoadLoadError, RoadNetwork, RoadNetworkRon, RoadSplineSample, RoadStyleDefaults, RoadStyleId,
-    RoadStyleOverrides, RoadTeeAttachment, ROAD_NETWORK_SCHEMA_VERSION, DEFAULT_WORLD_PACKAGE_DIR,
-    load_road_network, load_road_network_from_path, load_road_network_from_world_package,
-    parse_road_network_ron, road_network_ron_path, save_road_network, save_road_network_to_path,
-    sample_road_polyline, sample_road_spline_at_distance, serialize_road_network_ron,
-    validate_road_network,
+    CornerMode, DerivedCrossing, Junction, JunctionId, JunctionMember, JunctionMemberRole, Road,
+    RoadControlPoint, RoadCrossingKind, RoadCrossingOverride, RoadEndpointAttachment, RoadError,
+    RoadId, RoadLoadError, RoadNetwork, RoadNetworkRon, RoadSplineProjection, RoadSplineSample,
+    RoadStyleDefaults, RoadStyleId, RoadStyleOverrides, RoadTeeAttachment, SnapCandidate,
+    SnapCandidateKind, ROAD_NETWORK_SCHEMA_VERSION, DEFAULT_WORLD_PACKAGE_DIR,
+    derive_ground_crossings, detach_junction, endpoint_has_attachment, find_snap_candidate,
+    finalize_endpoint_drag, is_road_endpoint_index, junction_id_for_endpoint,
+    junction_world_position, load_road_network, load_road_network_from_path,
+    load_road_network_from_world_package, move_connected_endpoint, parse_road_network_ron,
+    project_point_onto_road_spline, refresh_tee_branches_for_host, remove_road_and_cleanup_junctions,
+    road_network_ron_path,
+    road_spline_length, sample_road_polyline, sample_road_spline_at_distance,
+    sample_road_spline_at_t, save_road_network, save_road_network_to_path,
+    serialize_road_network_ron, try_snap_endpoint, validate_road_network,
 };
 #[cfg(feature = "dev")]
 pub(crate) use unit::inside_move_trace;

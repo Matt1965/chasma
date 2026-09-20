@@ -4,7 +4,8 @@ use crate::dev::dev_mode::{DevModeInputGate, DevModeState, DevTextFieldFocus};
 use crate::dev::input::DevPanelUi;
 use crate::dev::window::{DevWindowId, DevWindowRegistry};
 use crate::world::{
-    RoadNetwork, load_road_network_from_world_package, save_road_network, validate_road_network,
+    RoadNetwork, detach_junction, junction_id_for_endpoint, load_road_network_from_world_package,
+    save_road_network, validate_road_network,
 };
 
 use super::domain::{
@@ -23,6 +24,7 @@ pub enum RoadEditorButton {
     ExtendEnd,
     DeletePoint,
     DeleteRoad,
+    DetachJunction,
     CycleStyle,
     Save,
     Reload,
@@ -94,6 +96,7 @@ pub fn handle_road_editor_buttons(
                     editor.status_message = "Select a road to delete".into();
                 }
             }
+            RoadEditorButton::DetachJunction => detach_selected_junction(&mut editor, &mut network),
             RoadEditorButton::CycleStyle => cycle_selected_style(&mut editor, &mut network),
             RoadEditorButton::Save => save_network(&mut editor, &network),
             RoadEditorButton::Reload => reload_network(&mut editor, &mut network),
@@ -188,6 +191,37 @@ fn delete_selected_point(editor: &mut RoadEditorUiState, network: &mut RoadNetwo
             editor.selected_point_index = None;
             editor.mark_dirty(format!("Deleted point from {}", road_id));
         }
+        Err(message) => editor.status_message = message,
+    }
+}
+
+fn detach_selected_junction(editor: &mut RoadEditorUiState, network: &mut RoadNetwork) {
+    let Some(road_id) = editor.selected_road_id.clone() else {
+        editor.status_message = "Select a road endpoint attached to a junction".into();
+        return;
+    };
+    let Some(index) = editor.selected_point_index else {
+        editor.status_message = "Select an attached endpoint to detach its junction".into();
+        return;
+    };
+    let road = network.roads.get(&road_id);
+    let Some(road) = road else {
+        editor.status_message = "Selected road no longer exists".into();
+        return;
+    };
+    let is_start = index == 0;
+    let is_end = index + 1 == road.control_points.len();
+    if !is_start && !is_end {
+        editor.status_message = "Only attached endpoints can detach a junction".into();
+        return;
+    }
+    let junction_id = junction_id_for_endpoint(road, is_start);
+    let Some(junction_id) = junction_id else {
+        editor.status_message = "Selected endpoint is not attached to a junction".into();
+        return;
+    };
+    match detach_junction(network, &junction_id) {
+        Ok(()) => editor.mark_dirty(format!("Detached junction {}", junction_id)),
         Err(message) => editor.status_message = message,
     }
 }

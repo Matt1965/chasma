@@ -1,6 +1,9 @@
 use bevy::prelude::Vec2;
 
-use crate::world::{Road, RoadControlPoint, RoadId, RoadNetwork, RoadStyleId};
+use crate::world::{
+    Road, RoadControlPoint, RoadId, RoadNetwork, RoadStyleId, derive_ground_crossings,
+    endpoint_has_attachment, try_snap_endpoint,
+};
 
 use super::domain::{
     delete_control_point, finish_create_road, generate_road_id, insert_control_point,
@@ -130,6 +133,30 @@ fn generated_road_ids_are_unique() {
     );
     let second = generate_road_id(&network);
     assert_ne!(first, second);
+}
+
+#[test]
+fn attached_endpoint_delete_is_blocked() {
+    let mut network = sample_network_with_road();
+    try_snap_endpoint(&mut network, &RoadId::new("road_a"), false, Vec2::new(20.0, 0.0))
+        .ok();
+    let road = network.roads.get_mut(&RoadId::new("road_a")).expect("road");
+    road.end_attachment = Some(crate::world::RoadEndpointAttachment {
+        junction_id: crate::world::JunctionId::new("junction_test"),
+        is_start: false,
+    });
+    assert!(endpoint_has_attachment(road, 2));
+    let err = delete_control_point(road, 2).unwrap_err();
+    assert!(err.contains("detach"));
+}
+
+#[test]
+fn derived_crossing_recompute_does_not_mark_editor_dirty() {
+    let mut editor = RoadEditorUiState::default();
+    let network = sample_network_with_road();
+    editor.sync_baseline_from(&network);
+    let _ = derive_ground_crossings(&network);
+    assert!(!editor.dirty);
 }
 
 #[test]

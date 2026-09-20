@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::world::{RoadControlPoint, RoadId, RoadNetwork, RoadStyleId};
+use crate::world::{RoadControlPoint, RoadId, RoadNetwork, RoadStyleId, SnapCandidate};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RoadEditMode {
@@ -25,6 +25,7 @@ pub struct RoadEditorUiState {
     pub name_input: String,
     pub saved_baseline: RoadNetwork,
     pub pending_delete_confirmation: bool,
+    pub snap_preview: Option<SnapCandidate>,
 }
 
 impl Default for RoadEditorUiState {
@@ -42,6 +43,7 @@ impl Default for RoadEditorUiState {
             name_input: String::new(),
             saved_baseline: RoadNetwork::empty(),
             pending_delete_confirmation: false,
+            snap_preview: None,
         }
     }
 }
@@ -62,6 +64,7 @@ impl RoadEditorUiState {
         self.create_points.clear();
         self.dragging_point = None;
         self.pending_delete_confirmation = false;
+        self.snap_preview = None;
     }
 
     pub fn begin_create(&mut self) {
