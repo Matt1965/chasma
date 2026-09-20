@@ -595,8 +595,15 @@ pub use terrain::{
     validate_heightfield_against_config,
 };
 pub use terrain::{
-    SlopeWalkability, classify_slope_walkability, estimate_slope_degrees, ground_world_position,
-    is_position_slope_walkable, slope_at, try_ground_world_position, try_sample_height_at_position,
+    SlopeWalkability, classify_slope_walkability, estimate_effective_slope_degrees,
+    estimate_slope_degrees, ground_world_position, is_position_slope_walkable, slope_at,
+    try_ground_world_position, try_sample_base_height_at_position, try_sample_height_at_position,
+};
+pub use road::deformation::{
+    RoadDeformationStore, RoadHeightDeltaTile, RoadTerrainRebuildQueue,
+    affected_chunk_ids_for_network, apply_road_terrain_rebuilds, ensure_road_deformation_store,
+    ensure_chunk_road_deformation, queue_road_terrain_rebuilds, rebake_road_deformation_for_chunks,
+    save_road_deformation_bake, sync_store_tiles_to_chunks, sync_store_tiles_to_resident_chunks,
 };
 pub use water::{
     DEFAULT_PRESENTATION_WATER_LEVEL, DEFAULT_SWIM_ENTER_VISIBLE_METERS,
@@ -1013,10 +1020,24 @@ impl Plugin for WorldFoundationPlugin {
             Startup,
             (
                 crate::world::bootstrap_terrain_fields_on_startup,
+                bootstrap_road_deformation_store,
                 crate::world::reconcile_building_navigation_on_startup,
             ),
         );
     }
+}
+
+fn bootstrap_road_deformation_store(
+    mut commands: Commands,
+    network: Res<crate::world::RoadNetwork>,
+) {
+    commands.insert_resource(
+        crate::world::road::deformation::ensure_road_deformation_store(
+            crate::world::road::DEFAULT_WORLD_PACKAGE_DIR,
+            &network,
+        ),
+    );
+    commands.init_resource::<crate::world::road::deformation::RoadTerrainRebuildQueue>();
 }
 
 /// One-shot navigation rehydration after catalogs and world data are available (IN-11f).

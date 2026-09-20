@@ -23,6 +23,7 @@
 mod attachment;
 mod constants;
 mod connectivity;
+pub mod deformation;
 mod control_point;
 mod crossing;
 mod crossing_detect;
