@@ -8,6 +8,7 @@ mod tile;
 
 pub use bake::{
     ROAD_BAKE_INFLUENCE_MARGIN_M, ROAD_DELTA_WARN_ABS_M, RoadBakeReport, RoadBakeWarning,
+    depression_meters_to_heightfield_units,
     affected_chunk_ids_for_network, ensure_chunk_road_deformation, fingerprint_road_network,
     influence_bounds_for_polyline,
     influence_bounds_for_road, rebake_road_deformation_for_chunks,
@@ -18,6 +19,7 @@ pub use persist::{
 };
 pub use refresh::{
     RoadTerrainRebuildQueue, apply_road_terrain_rebuilds, queue_road_terrain_rebuilds,
+    reconcile_road_deformation_on_startup,
 };
 pub use store::{
     ROAD_DEFORMATION_BAKE_VERSION, RoadDeformationBakeDocument, RoadDeformationStore,

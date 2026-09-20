@@ -6,7 +6,7 @@ use crate::world::{
     ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition, Road,
     RoadControlPoint, RoadId, RoadNetwork, RoadStyleId, RoadStyleOverrides, WorldData, WorldPosition,
     road::deformation::{
-        ROAD_DELTA_WARN_ABS_M, RoadDeformationStore, affected_chunk_ids_for_network,
+        RoadDeformationStore, affected_chunk_ids_for_network, depression_meters_to_heightfield_units,
         rebake_road_deformation_for_chunks,
     },
     terrain::{try_sample_base_height_at_position, try_sample_height_at_position},
@@ -116,10 +116,11 @@ fn flat_120m_road_centerline_delta_matches_depression() {
     let mut world = world_with_chunk(ChunkCoord::new(0, 0), flat_chunk(base_height));
     let network =
         network_with_roads(vec![horizontal_road("r1", 64.0, 128.0, 192.0, RoadStyleId::DirtRoad)]);
-    let depression = network
+    let depression_m = network
         .style_defaults(RoadStyleId::DirtRoad)
         .expect("style")
         .depression_m;
+    let depression_hf = depression_meters_to_heightfield_units(depression_m, 60.0);
     let mut store = RoadDeformationStore::default();
     let chunk_id = ChunkId::new(ChunkCoord::new(0, 0));
     rebake_single(&world, &mut store, &network, chunk_id);
@@ -134,8 +135,8 @@ fn flat_120m_road_centerline_delta_matches_depression() {
     assert!((base - base_height).abs() < 1e-3);
     assert!((stored_delta - (effective - base)).abs() < 1e-4);
     assert!(stored_delta < 0.0);
-    assert!(stored_delta > -depression * 2.0);
-    assert!((effective - (base - depression)).abs() < 0.15);
+    assert!(stored_delta > -depression_hf * 2.0);
+    assert!((effective - (base - depression_hf)).abs() < depression_hf * 2.0);
 }
 
 #[test]
@@ -331,7 +332,7 @@ fn multi_chunk_road_deforms_all_intersected_chunks() {
         let tile = store.tiles.get(&chunk_id).expect("tile for resident chunk");
         assert!(tile_nonzero_count(tile) > 0);
         let (min_delta, max_delta) = tile_delta_range(tile);
-        assert!(min_delta > -ROAD_DELTA_WARN_ABS_M);
+        assert!(min_delta > -0.5);
         assert!(max_delta < 0.5);
         assert!(tile.delta_at_vertex(2, 2).abs() > 1e-5 || tile.delta_at_vertex(1, 2).abs() > 1e-5);
     }
@@ -484,6 +485,86 @@ fn moving_road_restores_old_chunk_to_base() {
             .abs()
             < 1e-4
     );
+}
+
+#[test]
+fn real_world_lazy_rebake_deltas_stay_bounded() {
+    use crate::terrain::TerrainWorldCatalog;
+    use crate::world::WorldConfig;
+    use crate::world::road::load_road_network_from_world_package;
+    use std::path::Path;
+
+    let world_dir = Path::new("assets/worlds/main");
+    let network = load_road_network_from_world_package(world_dir).expect("network");
+    let config = WorldConfig::default();
+    let catalog =
+        TerrainWorldCatalog::from_manifest(&world_dir.join("manifest.ron"), &config).expect("catalog");
+    let layout = config.chunk_layout();
+    let affected = affected_chunk_ids_for_network(&network, layout);
+    assert!(!affected.is_empty(), "expected roads in authored network");
+
+    let world = WorldData::new(layout);
+    let mut store = RoadDeformationStore::default();
+    rebake_road_deformation_for_chunks(
+        &world,
+        &mut store,
+        &network,
+        layout,
+        &affected,
+        Some(&catalog),
+    );
+
+    let mut min = f32::INFINITY;
+    let mut max = f32::NEG_INFINITY;
+    let mut baked_chunks = 0usize;
+    for chunk_id in affected {
+        if let Some(tile) = store.tiles.get(&chunk_id) {
+            baked_chunks += 1;
+            for delta in &tile.deltas {
+                if delta.is_finite() && delta.abs() > 1e-5 {
+                    min = min.min(*delta);
+                    max = max.max(*delta);
+                }
+            }
+        }
+    }
+    assert!(baked_chunks > 0, "no catalog-backed chunks baked");
+    assert!(
+        min > -0.01,
+        "catastrophic min delta {} across {} chunks",
+        min,
+        baked_chunks
+    );
+    assert!(
+        max < 0.01,
+        "catastrophic max delta {} across {} chunks",
+        max,
+        baked_chunks
+    );
+}
+
+#[test]
+fn gaea_scale_flat_road_depression_is_subtle() {
+    let base = 0.00238;
+    let heightfield =
+        Heightfield::from_samples(5, 64.0, vec![base; 25]).unwrap();
+    let chunk = ChunkData::new(heightfield, Vec::new());
+    let mut world = world_with_chunk(ChunkCoord::new(0, 0), chunk);
+    let network =
+        network_with_roads(vec![horizontal_road("r1", 64.0, 128.0, 192.0, RoadStyleId::DirtRoad)]);
+    let depression_m = network
+        .style_defaults(RoadStyleId::DirtRoad)
+        .expect("style")
+        .depression_m;
+    let mut store = RoadDeformationStore::default();
+    let chunk_id = ChunkId::new(ChunkCoord::new(0, 0));
+    rebake_single(&world, &mut store, &network, chunk_id);
+    let tile = store.tiles.get(&chunk_id).expect("tile");
+    let delta = tile.sample_delta(128.0, 128.0).unwrap();
+    let depression_hf = depression_meters_to_heightfield_units(depression_m, base);
+    assert!(delta < 0.0);
+    assert!(delta.abs() < depression_hf * 2.0);
+    assert!(delta.abs() < base * 0.05, "delta {} vs base {}", delta, base);
 }
 
 fn sync_store(store: &RoadDeformationStore, world: &mut WorldData, chunk_id: ChunkId) {

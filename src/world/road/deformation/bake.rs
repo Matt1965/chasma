@@ -4,6 +4,9 @@ use bevy::prelude::*;
 
 use crate::terrain::catalog::TerrainWorldCatalog;
 use crate::terrain::decode::decode_chunk;
+use crate::terrain::spawn::{
+    DEFAULT_TARGET_HEIGHT_SPAN_UNITS, vertical_scale_for_height_span,
+};
 use crate::world::{
     ChunkData, ChunkId, ChunkLayout, Road, RoadNetwork, RoadStyleDefaults, WorldData,
     WorldPosition, sample_road_polyline,
@@ -18,8 +21,55 @@ use super::store::{
 use super::tile::RoadHeightDeltaTile;
 
 pub const ROAD_BAKE_INFLUENCE_MARGIN_M: f32 = 1.0;
-/// Warn when a single vertex delta exceeds this (unexpected after correct base sampling).
+/// Warn when a single vertex delta exceeds this many meters of intended deformation.
 pub const ROAD_DELTA_WARN_ABS_M: f32 = 8.0;
+
+/// Convert a real-world meter offset into authoritative heightfield sample units.
+///
+/// Authored Gaea heightfields use compressed sample magnitudes; mesh render applies
+/// [`vertical_scale_for_height_span`] at draw time. Road depression must be baked in
+/// the same units as [`Heightfield`] samples, not raw meters.
+pub fn depression_meters_to_heightfield_units(depression_m: f32, hf_span: f32) -> f32 {
+    if depression_m <= 0.0 {
+        return 0.0;
+    }
+    let span = effective_heightfield_span(hf_span, hf_span);
+    let vertical_scale =
+        vertical_scale_for_height_span(0.0, span, DEFAULT_TARGET_HEIGHT_SPAN_UNITS);
+    depression_m / vertical_scale
+}
+
+fn effective_heightfield_span(measured_span: f32, reference_height: f32) -> f32 {
+    if measured_span > 1e-9 {
+        measured_span
+    } else {
+        reference_height.abs().max(1e-6) * 0.5
+    }
+}
+
+fn sampler_height_span(sampler: &BakeTerrainSampler) -> f32 {
+    let mut min = f32::INFINITY;
+    let mut max = f32::NEG_INFINITY;
+    for heightfield in sampler.resident.values() {
+        for &sample in heightfield.samples() {
+            min = min.min(sample);
+            max = max.max(sample);
+        }
+    }
+    if !min.is_finite() || !max.is_finite() {
+        return 1e-3;
+    }
+    effective_heightfield_span(max - min, min)
+}
+
+fn warn_delta_threshold_for_chunk(chunk: &crate::world::ChunkData) -> f32 {
+    let span = effective_heightfield_span(
+        chunk.metadata.height_max - chunk.metadata.height_min,
+        chunk.metadata.height_min,
+    );
+    depression_meters_to_heightfield_units(ROAD_DELTA_WARN_ABS_M, span)
+        .max(span * 0.25)
+}
 
 #[derive(Debug, Clone)]
 pub struct RoadBakeWarning {
@@ -351,6 +401,7 @@ fn build_road_influences(
     layout: ChunkLayout,
 ) -> Vec<RoadInfluence> {
     let spacing = road_sample_spacing(sampler, layout);
+    let hf_span = sampler_height_span(sampler);
     network
         .roads
         .values()
@@ -377,9 +428,11 @@ fn build_road_influences(
             );
             // Longitudinal profile: smoothed terrain minus a small depression bias.
             // Lateral grading toward this bed happens in `compute_delta_at_point`.
+            let depression_hf =
+                depression_meters_to_heightfield_units(style.depression_m, hf_span);
             let bed_heights = smoothed
                 .iter()
-                .map(|smooth| *smooth - style.depression_m)
+                .map(|smooth| *smooth - depression_hf)
                 .collect::<Vec<_>>();
             let samples = polyline
                 .iter()
@@ -508,6 +561,7 @@ fn bake_chunk_tile(
     warnings: &mut Vec<RoadBakeWarning>,
 ) -> RoadHeightDeltaTile {
     let heightfield = &chunk.heightfield;
+    let warn_delta_threshold = warn_delta_threshold_for_chunk(chunk);
     let mut tile = RoadHeightDeltaTile::zero_for_heightfield(heightfield);
     let spe = heightfield.samples_per_edge();
     let spacing = heightfield.spacing_meters();
@@ -537,11 +591,11 @@ fn bake_chunk_tile(
                         row
                     ),
                 });
-            } else if delta.abs() > ROAD_DELTA_WARN_ABS_M {
+            } else if delta.abs() > warn_delta_threshold {
                 warnings.push(RoadBakeWarning {
                     road_id: crate::world::RoadId::new("chunk"),
                     message: format!(
-                        "large road delta {:.2}m at chunk ({}, {}) col={} row={}",
+                        "large road delta {:.6} at chunk ({}, {}) col={} row={}",
                         delta,
                         chunk_id.coord().x,
                         chunk_id.coord().z,

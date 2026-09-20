@@ -602,6 +602,7 @@ pub use terrain::{
 pub use road::deformation::{
     RoadDeformationStore, RoadHeightDeltaTile, RoadTerrainRebuildQueue,
     affected_chunk_ids_for_network, apply_road_terrain_rebuilds, ensure_road_deformation_store,
+    reconcile_road_deformation_on_startup,
     ensure_chunk_road_deformation, queue_road_terrain_rebuilds, rebake_road_deformation_for_chunks,
     save_road_deformation_bake, sync_store_tiles_to_chunks, sync_store_tiles_to_resident_chunks,
 };

@@ -9,7 +9,13 @@ use crate::terrain::lod_cache::TerrainChunkLodCache;
 use crate::terrain::mesh::{ChunkLod, build_chunk_mesh_scaled_with_delta};
 use crate::terrain::spawn::{TerrainRenderAssets, seam_weld_heights_effective};
 use crate::terrain::TerrainChunkAlbedo;
-use crate::world::{ChunkId, WorldData};
+use crate::terrain::TerrainWorldCatalog;
+use crate::world::{ChunkId, RoadNetwork, WorldConfig, WorldData};
+use crate::world::road::DEFAULT_WORLD_PACKAGE_DIR;
+
+use super::bake::{affected_chunk_ids_for_network, fingerprint_road_network, rebake_road_deformation_for_chunks};
+use super::persist::save_road_deformation_bake;
+use super::store::{ROAD_DEFORMATION_BAKE_VERSION, RoadDeformationStore, sync_store_tiles_to_resident_chunks};
 
 /// Chunks queued for terrain mesh rebuild after road deformation changes.
 #[derive(Resource, Debug, Default)]
@@ -19,6 +25,48 @@ pub struct RoadTerrainRebuildQueue {
 
 pub fn queue_road_terrain_rebuilds(queue: &mut RoadTerrainRebuildQueue, chunk_ids: &HashSet<ChunkId>) {
     queue.chunks.extend(chunk_ids.iter().copied());
+}
+
+/// One-shot startup bake when persisted tiles are missing, stale, or incomplete.
+pub fn reconcile_road_deformation_on_startup(
+    mut reconciled: Local<bool>,
+    catalog: Res<TerrainWorldCatalog>,
+    network: Res<RoadNetwork>,
+    config: Res<WorldConfig>,
+    mut world: ResMut<WorldData>,
+    mut store: ResMut<RoadDeformationStore>,
+    mut rebuild_queue: ResMut<RoadTerrainRebuildQueue>,
+) {
+    if *reconciled || network.roads.is_empty() {
+        *reconciled = true;
+        return;
+    }
+
+    let layout = config.chunk_layout();
+    let affected = affected_chunk_ids_for_network(&network, layout);
+    let fingerprint = fingerprint_road_network(&network);
+    let needs_rebake = store.bake_version != ROAD_DEFORMATION_BAKE_VERSION
+        || store.network_fingerprint != fingerprint
+        || affected.iter().any(|chunk_id| !store.tiles.contains_key(chunk_id));
+
+    if needs_rebake {
+        let report = rebake_road_deformation_for_chunks(
+            &world,
+            &mut store,
+            &network,
+            layout,
+            &affected,
+            Some(catalog.as_ref()),
+        );
+        sync_store_tiles_to_resident_chunks(&store, &mut world);
+        queue_road_terrain_rebuilds(&mut rebuild_queue, &affected);
+        if let Err(error) = save_road_deformation_bake(DEFAULT_WORLD_PACKAGE_DIR, &network, &store) {
+            bevy::log::warn!("road deformation startup reconcile persist failed: {error}");
+        }
+        bevy::log::info!("road deformation startup reconcile: {}", report.summary_line());
+    }
+
+    *reconciled = true;
 }
 
 pub fn apply_road_terrain_rebuilds(
