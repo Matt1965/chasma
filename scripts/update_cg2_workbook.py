@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Author CG2 appearance morph mapping sheet for human male/female variants."""
+"""Author appearance morph mapping sheet for human male/female variants (CG2 + CG9)."""
 
 from __future__ import annotations
 
@@ -27,6 +27,16 @@ HUMAN_MORPH_MAPPINGS = [
     ("muscle", "muscle_define", "Above Default", 1.0),
     ("head_size", "head_large", "Above Default", 1.0),
     ("head_size", "head_small", "Below Default", 1.0),
+    ("shoulders", "shoulders_broad", "Above Default", 1.0),
+    ("shoulders", "shoulders_narrow", "Below Default", 1.0),
+    ("torso", "torso_broad", "Above Default", 1.0),
+    ("torso", "torso_narrow", "Below Default", 1.0),
+    ("arms", "arms_thick", "Above Default", 1.0),
+    ("arms", "arms_thin", "Below Default", 1.0),
+    ("hips", "hips_broad", "Above Default", 1.0),
+    ("hips", "hips_narrow", "Below Default", 1.0),
+    ("legs", "legs_thick", "Above Default", 1.0),
+    ("legs", "legs_thin", "Below Default", 1.0),
 ]
 
 
@@ -53,7 +63,7 @@ def main() -> None:
         for col_idx, value in enumerate(row, start=1):
             ws.cell(row=row_idx, column=col_idx, value=value)
     wb.save(WORKBOOK)
-    print(f"Updated {WORKBOOK} with {len(rows)} CG2 morph mappings")
+    print(f"Updated {WORKBOOK} with {len(rows)} human morph mappings")
 
 
 if __name__ == "__main__":

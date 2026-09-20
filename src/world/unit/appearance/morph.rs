@@ -5,8 +5,21 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use super::definition::{AppearanceProfile, MorphMappingSide, MorphTargetMapping};
 use super::id::{AppearanceParamId, BodyVariantId};
 
-/// CG2 semantic parameters driven by morph targets (not height or regional post-MVP sliders).
-pub const CG2_MORPH_SEMANTIC_PARAMS: &[&str] = &["build", "fat", "muscle", "head_size"];
+/// Semantic parameters driven by morph targets on the human body (not height).
+pub const HUMAN_MORPH_SEMANTIC_PARAMS: &[&str] = &[
+    "build",
+    "fat",
+    "muscle",
+    "head_size",
+    "shoulders",
+    "torso",
+    "arms",
+    "hips",
+    "legs",
+];
+
+/// Deprecated alias — use [`HUMAN_MORPH_SEMANTIC_PARAMS`].
+pub const CG2_MORPH_SEMANTIC_PARAMS: &[&str] = HUMAN_MORPH_SEMANTIC_PARAMS;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum MorphResolveError {
@@ -89,7 +102,7 @@ pub fn resolve_morph_weights(
     }
 
     let mappings = mappings_for_variant(profile, variant_id);
-    validate_cg2_mappings(profile, variant_id, &mappings)?;
+    validate_human_morph_mappings(profile, variant_id, &mappings)?;
 
     let mut weights = vec![0.0f32; target_names.len()];
     let name_to_index: HashMap<&str, usize> = target_names
@@ -251,14 +264,14 @@ fn mappings_for_variant(
         .collect()
 }
 
-fn validate_cg2_mappings(
+fn validate_human_morph_mappings(
     profile: &AppearanceProfile,
     variant_id: &BodyVariantId,
     mappings: &[MorphTargetMapping],
 ) -> Result<(), MorphResolveError> {
     let profile_id = profile.id.as_str();
     let variant = variant_id.as_str();
-    for param_id in CG2_MORPH_SEMANTIC_PARAMS {
+    for param_id in HUMAN_MORPH_SEMANTIC_PARAMS {
         let id = AppearanceParamId::new(*param_id);
         if profile.parameter(&id).is_none() {
             continue;
@@ -329,14 +342,14 @@ pub fn validate_profile_morph_mappings(profile: &AppearanceProfile) -> Result<()
         .filter(|variant| variant.enabled)
     {
         let mappings = mappings_for_variant(profile, &variant.id);
-        if let Err(error) = validate_cg2_mappings(profile, &variant.id, &mappings) {
+        if let Err(error) = validate_human_morph_mappings(profile, &variant.id, &mappings) {
             return Err(error.to_string());
         }
     }
     Ok(())
 }
 
-/// Ordered technical target names expected for human unit GLBs (CG2 contract).
+/// Ordered technical target names expected for human unit GLBs.
 pub const HUMAN_MORPH_TARGET_NAMES: &[&str] = &[
     "build_broad",
     "build_narrow",
@@ -344,4 +357,14 @@ pub const HUMAN_MORPH_TARGET_NAMES: &[&str] = &[
     "muscle_define",
     "head_large",
     "head_small",
+    "shoulders_broad",
+    "shoulders_narrow",
+    "torso_broad",
+    "torso_narrow",
+    "arms_thick",
+    "arms_thin",
+    "hips_broad",
+    "hips_narrow",
+    "legs_thick",
+    "legs_thin",
 ];

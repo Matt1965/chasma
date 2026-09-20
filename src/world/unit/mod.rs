@@ -57,7 +57,8 @@ pub use animation_profile::{
 pub use appearance::{
     AppearanceError, AppearanceParamId, AppearanceParameterDefinition, AppearanceProfile,
     AppearanceProfileCatalog, AppearanceProfileCatalogError, AppearanceProfileId,
-    BodyVariantDefinition, BodyVariantId, CG2_MORPH_SEMANTIC_PARAMS, HUMAN_MORPH_TARGET_NAMES,
+    BodyVariantDefinition, BodyVariantId, CG2_MORPH_SEMANTIC_PARAMS, HUMAN_MORPH_SEMANTIC_PARAMS,
+    HUMAN_MORPH_TARGET_NAMES,
     MorphMappingSide, MorphResolveError, MorphTargetMapping, UnitAppearance,
     definition_has_appearance_support, effective_render_key_for_appearance,
     effective_unit_render_key, effective_unit_render_key_str,

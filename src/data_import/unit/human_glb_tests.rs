@@ -444,6 +444,25 @@ fn human_glbs_have_meaningful_body_morph_deltas() {
                         "{render_key} {name} displacement too small for visible head change",
                     );
                 }
+                "shoulders_broad"
+                | "shoulders_narrow"
+                | "torso_broad"
+                | "torso_narrow"
+                | "hips_broad"
+                | "hips_narrow" => {
+                    assert!(pct >= 5.0, "{render_key} {name} affects too few regional vertices");
+                    assert!(
+                        stats.max_displacement >= 0.008,
+                        "{render_key} {name} displacement too small for visible regional change",
+                    );
+                }
+                "arms_thick" | "arms_thin" | "legs_thick" | "legs_thin" => {
+                    assert!(pct >= 5.0, "{render_key} {name} affects too few limb vertices");
+                    assert!(
+                        stats.max_displacement >= 0.006,
+                        "{render_key} {name} displacement too small for visible limb change",
+                    );
+                }
                 _ => {}
             }
         }
@@ -550,7 +569,7 @@ fn human_morph_owners_share_identical_target_count() {
             counts
                 .windows(2)
                 .all(|pair| pair[0] == pair[1] && pair[0] == HUMAN_MORPH_TARGET_NAMES.len()),
-            "{render_key} morph owners must share the CG2 target count",
+            "{render_key} morph owners must share the human morph target count",
         );
     }
 }

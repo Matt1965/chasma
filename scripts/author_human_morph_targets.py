@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""Author CG2 semantic morph targets on Chasma human unit GLBs.
+"""Author semantic morph targets on Chasma human unit GLBs.
 
-Adds six technical targets shared by male/female variants:
-  build_broad, build_narrow, fat_soft, muscle_define, head_large, head_small
-
-Called from retarget_ual_to_human.py before save so morphs survive regeneration.
+CG2 coarse targets plus CG9 regional body shaping. Called from
+retarget_ual_to_human.py before save so morphs survive regeneration.
 """
 
 from __future__ import annotations
@@ -15,7 +13,7 @@ from pathlib import Path
 
 import numpy as np
 
-MORPH_TARGET_NAMES: tuple[str, ...] = (
+CG2_MORPH_TARGET_NAMES: tuple[str, ...] = (
     "build_broad",
     "build_narrow",
     "fat_soft",
@@ -24,9 +22,34 @@ MORPH_TARGET_NAMES: tuple[str, ...] = (
     "head_small",
 )
 
+REGIONAL_MORPH_TARGET_NAMES: tuple[str, ...] = (
+    "shoulders_broad",
+    "shoulders_narrow",
+    "torso_broad",
+    "torso_narrow",
+    "arms_thick",
+    "arms_thin",
+    "hips_broad",
+    "hips_narrow",
+    "legs_thick",
+    "legs_thin",
+)
+
+MORPH_TARGET_NAMES: tuple[str, ...] = CG2_MORPH_TARGET_NAMES + REGIONAL_MORPH_TARGET_NAMES
+
 HEAD_JOINT_SUFFIXES = ("head", "neck")
 TORSO_JOINT_SUFFIXES = ("spine", "pelvis", "chest")
 LIMB_JOINT_SUFFIXES = ("upperarm", "lowerarm", "thigh", "calf", "shoulder")
+
+SHOULDER_JOINT_SUFFIXES = ("clavicle",)
+ARM_UPPER_JOINT_SUFFIXES = ("upperarm",)
+ARM_LOWER_JOINT_SUFFIXES = ("lowerarm",)
+HAND_JOINT_SUFFIXES = ("hand", "thumb", "index", "middle", "ring", "pinky")
+SPINE_JOINT_SUFFIXES = ("spine_01", "spine_02", "spine_03")
+PELVIS_JOINT_SUFFIXES = ("pelvis",)
+THIGH_JOINT_SUFFIXES = ("thigh",)
+CALF_JOINT_SUFFIXES = ("calf",)
+FOOT_JOINT_SUFFIXES = ("foot", "ball")
 
 
 def load_glb(path: Path) -> tuple[dict, bytearray]:
@@ -113,6 +136,93 @@ def skin_joint_names(js: dict, skin_idx: int) -> list[str]:
     return [nodes[j].get("name", f"joint_{j}") for j in skin["joints"]]
 
 
+def vertex_influence_mask(
+    count: int,
+    joints: np.ndarray,
+    weights: np.ndarray,
+    joint_names: list[str],
+    suffixes: tuple[str, ...],
+) -> np.ndarray:
+    allowed = joint_indices_for_suffixes(joint_names, suffixes)
+    mask = np.zeros(count, dtype=np.float32)
+    for vi in range(count):
+        for ji, w in zip(joints[vi], weights[vi], strict=False):
+            if w <= 0.0 or ji not in allowed:
+                continue
+            mask[vi] = max(mask[vi], w)
+    return mask
+
+
+def smooth_mask(mask: np.ndarray, floor: float = 0.0, power: float = 1.0) -> np.ndarray:
+    if power != 1.0:
+        mask = np.power(np.clip(mask, 0.0, 1.0), power)
+    if floor > 0.0:
+        mask = np.where(mask > floor, mask, 0.0)
+    return mask.astype(np.float32)
+
+
+def lateral_delta(mask: np.ndarray, rel_x: np.ndarray, side: np.ndarray, magnitude: float) -> np.ndarray:
+    count = mask.shape[0]
+    return (mask[:, None] * np.stack([side * rel_x * magnitude, np.zeros(count), np.zeros(count)], axis=1)).astype(
+        np.float32
+    )
+
+
+def normal_delta(mask: np.ndarray, normals: np.ndarray, magnitude: float) -> np.ndarray:
+    return (mask[:, None] * normals * magnitude).astype(np.float32)
+
+
+def compute_regional_masks(
+    positions: np.ndarray,
+    joints: np.ndarray,
+    weights: np.ndarray,
+    joint_names: list[str],
+) -> dict[str, np.ndarray]:
+    head = vertex_influence_mask(positions.shape[0], joints, weights, joint_names, HEAD_JOINT_SUFFIXES)
+    shoulder = vertex_influence_mask(positions.shape[0], joints, weights, joint_names, SHOULDER_JOINT_SUFFIXES)
+    upper_arm = vertex_influence_mask(positions.shape[0], joints, weights, joint_names, ARM_UPPER_JOINT_SUFFIXES)
+    lower_arm = vertex_influence_mask(positions.shape[0], joints, weights, joint_names, ARM_LOWER_JOINT_SUFFIXES)
+    hand = vertex_influence_mask(positions.shape[0], joints, weights, joint_names, HAND_JOINT_SUFFIXES)
+    spine = vertex_influence_mask(positions.shape[0], joints, weights, joint_names, SPINE_JOINT_SUFFIXES)
+    pelvis = vertex_influence_mask(positions.shape[0], joints, weights, joint_names, PELVIS_JOINT_SUFFIXES)
+    thigh = vertex_influence_mask(positions.shape[0], joints, weights, joint_names, THIGH_JOINT_SUFFIXES)
+    calf = vertex_influence_mask(positions.shape[0], joints, weights, joint_names, CALF_JOINT_SUFFIXES)
+    foot = vertex_influence_mask(positions.shape[0], joints, weights, joint_names, FOOT_JOINT_SUFFIXES)
+
+    y = positions[:, 1]
+    y_span = max(float(y.max() - y.min()), 1e-4)
+    y_norm = (y - y.min()) / y_span
+
+    shoulder_band = np.clip((y_norm - 0.62) / 0.12, 0.0, 1.0)
+    torso_band = np.clip(1.0 - np.abs(y_norm - 0.52) / 0.18, 0.0, 1.0)
+    hip_band = np.clip(1.0 - np.abs(y_norm - 0.42) / 0.10, 0.0, 1.0)
+    leg_band = np.clip((0.40 - y_norm) / 0.32, 0.0, 1.0)
+
+    shoulders = smooth_mask(shoulder + upper_arm * 0.35 * shoulder_band, floor=0.05, power=1.2)
+    shoulders *= np.clip(1.0 - head * 0.85, 0.0, 1.0)
+
+    torso = smooth_mask(spine * (0.55 + 0.45 * torso_band), floor=0.04, power=1.0)
+    torso *= np.clip(1.0 - shoulder * 0.40 - pelvis * 0.20, 0.0, 1.0)
+    torso *= np.clip(1.0 - head * 0.45, 0.0, 1.0)
+
+    arms = smooth_mask((upper_arm * 0.85 + lower_arm * 0.95) * (1.0 - hand), floor=0.05, power=1.1)
+    arms *= np.clip(1.0 - shoulders * 0.25, 0.0, 1.0)
+
+    hips = smooth_mask(pelvis * 0.9 + thigh * 0.25 * hip_band, floor=0.05, power=1.15)
+    hips *= np.clip(1.0 - torso * 0.45, 0.0, 1.0)
+
+    legs = smooth_mask((thigh * 0.85 + calf * 0.95) * leg_band * (1.0 - foot), floor=0.05, power=1.1)
+    legs *= np.clip(1.0 - hips * 0.35, 0.0, 1.0)
+
+    return {
+        "shoulders": shoulders,
+        "torso": torso,
+        "arms": arms,
+        "hips": hips,
+        "legs": legs,
+    }
+
+
 def compute_morph_deltas(
     positions: np.ndarray,
     normals: np.ndarray,
@@ -166,6 +276,24 @@ def compute_morph_deltas(
         deltas["fat_soft"] = fat.astype(np.float32)
         deltas["muscle_define"] = muscle.astype(np.float32)
 
+        regional = compute_regional_masks(positions, joints, weights, joint_names)
+        rel_x_norm = np.clip(np.abs(rel_x) / (np.percentile(np.abs(rel_x), 90) + 1e-4), 0.0, 1.0)
+
+        shoulders = regional["shoulders"] * (0.65 + 0.35 * rel_x_norm)
+        torso = regional["torso"] * (0.70 + 0.30 * rel_x_norm)
+        hips = regional["hips"] * (0.65 + 0.35 * rel_x_norm)
+
+        deltas["shoulders_broad"] = lateral_delta(shoulders, np.ones(count), side, 0.030)
+        deltas["shoulders_narrow"] = lateral_delta(shoulders, np.ones(count), side, -0.026)
+        deltas["torso_broad"] = lateral_delta(torso, np.ones(count), side, 0.038)
+        deltas["torso_narrow"] = lateral_delta(torso, np.ones(count), side, -0.034)
+        deltas["arms_thick"] = normal_delta(regional["arms"], normals, 0.020)
+        deltas["arms_thin"] = normal_delta(regional["arms"], normals, -0.016)
+        deltas["hips_broad"] = lateral_delta(hips, np.ones(count), side, 0.026)
+        deltas["hips_narrow"] = lateral_delta(hips, np.ones(count), side, -0.022)
+        deltas["legs_thick"] = normal_delta(regional["legs"], normals, 0.018)
+        deltas["legs_thin"] = normal_delta(regional["legs"], normals, -0.015)
+
     head_center = positions[head_mask > 0.1].mean(axis=0) if np.any(head_mask > 0.1) else positions.mean(axis=0)
     head_vec = positions - head_center
     head_large = head_mask[:, None] * head_vec * 0.12
@@ -178,7 +306,6 @@ def compute_morph_deltas(
 
 def set_bevy_mesh_morph_target_names(mesh: dict) -> None:
     """Bevy 0.18 glTF loader reads names from mesh extras, not per-target `name` fields."""
-    # Must be a JSON object in the glTF root — not a stringified JSON blob.
     mesh["extras"] = {"targetNames": list(MORPH_TARGET_NAMES)}
 
 

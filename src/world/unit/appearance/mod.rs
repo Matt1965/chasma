@@ -15,7 +15,8 @@ pub use definition::{
     MorphTargetMapping,
 };
 pub use morph::{
-    CG2_MORPH_SEMANTIC_PARAMS, HUMAN_MORPH_TARGET_NAMES, MorphResolveError,
+    CG2_MORPH_SEMANTIC_PARAMS, HUMAN_MORPH_SEMANTIC_PARAMS, HUMAN_MORPH_TARGET_NAMES,
+    MorphResolveError,
     resolve_equipment_morph_weights, resolve_morph_weights, validate_profile_morph_mappings,
 };
 pub use id::{AppearanceParamId, AppearanceProfileId, BodyVariantId};
