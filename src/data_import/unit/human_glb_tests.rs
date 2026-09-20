@@ -815,6 +815,47 @@ fn cg9_equipment_feet_remain_static() {
 }
 
 #[test]
+fn cg9_equipment_clearance_validation_passes() {
+    let path = PathBuf::from("assets")
+        .join("items")
+        .join("equipment")
+        .join("clearance_validation.json");
+    let text = std::fs::read_to_string(&path).expect(
+        "missing clearance_validation.json — run scripts/validate_equipment_clearance.py",
+    );
+    assert!(
+        text.contains("\"failures\": []"),
+        "equipment clearance validation reported failures: {}",
+        text.lines().take(40).collect::<Vec<_>>().join("\n"),
+    );
+    assert!(
+        text.contains("\"min_clearance_target_m\": 0.003"),
+        "expected 3mm clearance target in validation report",
+    );
+}
+
+#[test]
+fn cg9_equipment_local_clearance_metadata_present() {
+    for (unit_key, asset_name) in [
+        ("human_male", "peasant_body"),
+        ("human_female", "ranger_hood"),
+    ] {
+        let path = equipment_glb_path(unit_key, asset_name);
+        let (document, _, _) = gltf::import(&path).expect("import");
+        let mesh = equipment_morph_mesh(&document);
+        let extras = mesh
+            .extras()
+            .as_ref()
+            .map(|value| value.get())
+            .unwrap_or("");
+        assert!(
+            extras.contains("cg9LocalClearanceM"),
+            "{unit_key}/{asset_name} missing local clearance metadata",
+        );
+    }
+}
+
+#[test]
 fn human_male_and_female_share_compatible_animation_structure() {
     let male = glb_animation_inventory(&human_glb_path("human_male"));
     let female = glb_animation_inventory(&human_glb_path("human_female"));

@@ -13,6 +13,8 @@ from pathlib import Path
 
 import numpy as np
 
+from glb_geometry import triangle_indices, vertex_neighbors
+
 CG2_MORPH_TARGET_NAMES: tuple[str, ...] = (
     "build_broad",
     "build_narrow",
@@ -36,6 +38,11 @@ REGIONAL_MORPH_TARGET_NAMES: tuple[str, ...] = (
 )
 
 MORPH_TARGET_NAMES: tuple[str, ...] = CG2_MORPH_TARGET_NAMES + REGIONAL_MORPH_TARGET_NAMES
+
+SEAM_VERTEX_EPS = 0.0015
+REGIONAL_MAGNITUDE_SCALE = 0.90
+DELTA_SMOOTH_ITERS = 2
+DELTA_SMOOTH_ALPHA = 0.30
 
 HEAD_JOINT_SUFFIXES = ("head", "neck")
 TORSO_JOINT_SUFFIXES = ("spine", "pelvis", "chest")
@@ -206,13 +213,13 @@ def compute_regional_masks(
     torso *= np.clip(1.0 - head * 0.45, 0.0, 1.0)
 
     arms = smooth_mask((upper_arm * 0.85 + lower_arm * 0.95) * (1.0 - hand), floor=0.05, power=1.1)
-    arms *= np.clip(1.0 - shoulders * 0.25, 0.0, 1.0)
+    arms *= np.clip(1.0 - shoulders * 0.12, 0.0, 1.0)
 
     hips = smooth_mask(pelvis * 0.9 + thigh * 0.25 * hip_band, floor=0.05, power=1.15)
-    hips *= np.clip(1.0 - torso * 0.45, 0.0, 1.0)
+    hips *= np.clip(1.0 - torso * 0.30, 0.0, 1.0)
 
     legs = smooth_mask((thigh * 0.85 + calf * 0.95) * leg_band * (1.0 - foot), floor=0.05, power=1.1)
-    legs *= np.clip(1.0 - hips * 0.35, 0.0, 1.0)
+    legs *= np.clip(1.0 - hips * 0.20, 0.0, 1.0)
 
     return {
         "shoulders": shoulders,
@@ -283,16 +290,17 @@ def compute_morph_deltas(
         torso = regional["torso"] * (0.70 + 0.30 * rel_x_norm)
         hips = regional["hips"] * (0.65 + 0.35 * rel_x_norm)
 
-        deltas["shoulders_broad"] = lateral_delta(shoulders, np.ones(count), side, 0.030)
-        deltas["shoulders_narrow"] = lateral_delta(shoulders, np.ones(count), side, -0.026)
-        deltas["torso_broad"] = lateral_delta(torso, np.ones(count), side, 0.038)
-        deltas["torso_narrow"] = lateral_delta(torso, np.ones(count), side, -0.034)
-        deltas["arms_thick"] = normal_delta(regional["arms"], normals, 0.020)
-        deltas["arms_thin"] = normal_delta(regional["arms"], normals, -0.016)
-        deltas["hips_broad"] = lateral_delta(hips, np.ones(count), side, 0.026)
-        deltas["hips_narrow"] = lateral_delta(hips, np.ones(count), side, -0.022)
-        deltas["legs_thick"] = normal_delta(regional["legs"], normals, 0.018)
-        deltas["legs_thin"] = normal_delta(regional["legs"], normals, -0.015)
+        scale = REGIONAL_MAGNITUDE_SCALE
+        deltas["shoulders_broad"] = lateral_delta(shoulders, np.ones(count), side, 0.030 * scale)
+        deltas["shoulders_narrow"] = lateral_delta(shoulders, np.ones(count), side, -0.026 * scale)
+        deltas["torso_broad"] = lateral_delta(torso, np.ones(count), side, 0.038 * scale)
+        deltas["torso_narrow"] = lateral_delta(torso, np.ones(count), side, -0.034 * scale)
+        deltas["arms_thick"] = normal_delta(regional["arms"], normals, 0.020 * scale)
+        deltas["arms_thin"] = normal_delta(regional["arms"], normals, -0.016 * scale)
+        deltas["hips_broad"] = lateral_delta(hips, np.ones(count), side, 0.026 * scale)
+        deltas["hips_narrow"] = lateral_delta(hips, np.ones(count), side, -0.022 * scale)
+        deltas["legs_thick"] = normal_delta(regional["legs"], normals, 0.018 * scale)
+        deltas["legs_thin"] = normal_delta(regional["legs"], normals, -0.015 * scale)
 
     head_center = positions[head_mask > 0.1].mean(axis=0) if np.any(head_mask > 0.1) else positions.mean(axis=0)
     head_vec = positions - head_center
@@ -304,55 +312,135 @@ def compute_morph_deltas(
     return deltas
 
 
+def smooth_transition_deltas(
+    deltas: dict[str, np.ndarray],
+    regional_masks: dict[str, np.ndarray],
+    neighbors: list[list[int]],
+) -> dict[str, np.ndarray]:
+    """Blend regional deltas toward neighbors in low-mask transition bands."""
+    regional_names = set(REGIONAL_MORPH_TARGET_NAMES)
+    out = {name: arr.copy() for name, arr in deltas.items()}
+    transition = np.zeros_like(next(iter(regional_masks.values())))
+    for mask in regional_masks.values():
+        transition = np.maximum(transition, mask)
+    transition = np.clip(transition, 0.0, 1.0)
+    edge = (transition > 0.05) & (transition < 0.85)
+    for name in regional_names:
+        if name not in out:
+            continue
+        arr = out[name]
+        for _ in range(DELTA_SMOOTH_ITERS):
+            nxt = arr.copy()
+            for vi, nbrs in enumerate(neighbors):
+                if not edge[vi] or not nbrs:
+                    continue
+                nxt[vi] = (1.0 - DELTA_SMOOTH_ALPHA) * arr[vi] + DELTA_SMOOTH_ALPHA * np.mean(
+                    arr[nbrs], axis=0
+                )
+            arr = nxt
+        out[name] = arr
+    return out
+
+
+def find_seam_groups(primitives: list[tuple[np.ndarray, dict[str, np.ndarray]]]) -> list[list[tuple[int, int]]]:
+    groups: list[list[tuple[int, int]]] = []
+    assigned: set[tuple[int, int]] = set()
+    positions = [p[0] for p in primitives]
+    for i in range(len(primitives)):
+        step = max(1, len(positions[i]) // 2500)
+        for vi in range(0, len(positions[i]), step):
+            if (i, vi) in assigned:
+                continue
+            for j in range(i + 1, len(primitives)):
+                d = np.linalg.norm(positions[j] - positions[i][vi], axis=1)
+                jj = int(np.argmin(d))
+                if d[jj] > SEAM_VERTEX_EPS:
+                    continue
+                group = []
+                for key in ((i, vi), (j, jj)):
+                    if key not in assigned:
+                        group.append(key)
+                        assigned.add(key)
+                if len(group) >= 2:
+                    groups.append(group)
+    return groups
+
+
+def synchronize_seam_deltas(
+    primitives: list[tuple[np.ndarray, dict[str, np.ndarray]]],
+    target_names: tuple[str, ...],
+) -> None:
+    groups = find_seam_groups(primitives)
+    for group in groups:
+        for target in target_names:
+            samples = []
+            for prim_idx, vert_idx in group:
+                delta = primitives[prim_idx][1].get(target)
+                if delta is not None:
+                    samples.append(delta[vert_idx])
+            if not samples:
+                continue
+            mean = np.mean(samples, axis=0).astype(np.float32)
+            for prim_idx, vert_idx in group:
+                primitives[prim_idx][1][target][vert_idx] = mean
+
+
 def set_bevy_mesh_morph_target_names(mesh: dict) -> None:
     """Bevy 0.18 glTF loader reads names from mesh extras, not per-target `name` fields."""
     mesh["extras"] = {"targetNames": list(MORPH_TARGET_NAMES)}
 
 
-def add_morph_targets_to_primitive(
-    js: dict,
-    blob: bytearray,
-    primitive: dict,
-    mesh_name: str,
-    skin_idx: int,
-) -> None:
-    attrs = primitive["attributes"]
-    if "JOINTS_0" not in attrs or "POSITION" not in attrs:
-        return
-    positions = read_accessor(js, blob, attrs["POSITION"])
-    normals = read_accessor(js, blob, attrs["NORMAL"])
-    joints = read_accessor(js, blob, attrs["JOINTS_0"])
-    weights = read_accessor(js, blob, attrs["WEIGHTS_0"])
-    if weights.shape[1] > 4:
-        weights = weights[:, :4]
-    if joints.shape[1] > 4:
-        joints = joints[:, :4]
-
-    joint_names = skin_joint_names(js, skin_idx)
-    deltas = compute_morph_deltas(positions, normals, joints, weights, joint_names, mesh_name)
-
-    targets = []
-    for target_name in MORPH_TARGET_NAMES:
-        acc = write_accessor(js, blob, deltas[target_name], "VEC3")
-        targets.append({"POSITION": acc, "name": target_name})
-    primitive["targets"] = targets
-
-
 def author_morph_targets(js: dict, blob: bytearray) -> None:
     """Mutate glTF JSON + BIN in place, adding morph targets to skinned meshes."""
-    meshes_with_morphs: set[int] = set()
+    pending: list[tuple[dict, str, int, np.ndarray, dict[str, np.ndarray]]] = []
+    primitive_records: list[tuple[np.ndarray, dict[str, np.ndarray]]] = []
+
     for mesh_idx, mesh in enumerate(js.get("meshes", [])):
         mesh_name = mesh.get("name", f"mesh_{mesh_idx}")
         for primitive in mesh.get("primitives", []):
-            if "JOINTS_0" not in primitive.get("attributes", {}):
+            attrs = primitive.get("attributes", {})
+            if "JOINTS_0" not in attrs or "POSITION" not in attrs:
                 continue
             skin_idx = 0
             for node in js.get("nodes", []):
                 if node.get("mesh") == mesh_idx and node.get("skin") is not None:
                     skin_idx = node["skin"]
                     break
-            add_morph_targets_to_primitive(js, blob, primitive, mesh_name, skin_idx)
-            meshes_with_morphs.add(mesh_idx)
+            positions = read_accessor(js, blob, attrs["POSITION"])
+            normals = read_accessor(js, blob, attrs["NORMAL"])
+            joints = read_accessor(js, blob, attrs["JOINTS_0"])
+            weights = read_accessor(js, blob, attrs["WEIGHTS_0"])
+            if weights.shape[1] > 4:
+                weights = weights[:, :4]
+            if joints.shape[1] > 4:
+                joints = joints[:, :4]
+            joint_names = skin_joint_names(js, skin_idx)
+            deltas = compute_morph_deltas(
+                positions, normals, joints, weights, joint_names, mesh_name
+            )
+            regional_masks = compute_regional_masks(
+                positions, joints, weights, joint_names
+            )
+            tris = triangle_indices(js, blob, primitive)
+            neighbors = vertex_neighbors(tris, len(positions))
+            deltas = smooth_transition_deltas(deltas, regional_masks, neighbors)
+            pending.append((primitive, mesh_name, skin_idx, positions, deltas))
+            primitive_records.append((positions.astype(np.float32), deltas))
+
+    synchronize_seam_deltas(primitive_records, MORPH_TARGET_NAMES)
+
+    meshes_with_morphs: set[int] = set()
+    for mesh_idx, mesh in enumerate(js.get("meshes", [])):
+        for primitive in mesh.get("primitives", []):
+            for pending_prim, _, _, _, deltas in pending:
+                if pending_prim is not primitive:
+                    continue
+                targets = []
+                for target_name in MORPH_TARGET_NAMES:
+                    acc = write_accessor(js, blob, deltas[target_name], "VEC3")
+                    targets.append({"POSITION": acc, "name": target_name})
+                primitive["targets"] = targets
+                meshes_with_morphs.add(mesh_idx)
 
     for mesh_idx in meshes_with_morphs:
         set_bevy_mesh_morph_target_names(js["meshes"][mesh_idx])
