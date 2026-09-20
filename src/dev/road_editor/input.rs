@@ -12,7 +12,7 @@ use crate::units::input::{cursor_world_ray, terrain_click_to_world_position};
 use crate::world::{
     RoadControlPoint, RoadNetwork, WorldConfig, WorldData, find_snap_candidate,
     finalize_endpoint_drag, is_road_endpoint_index, move_connected_endpoint,
-    refresh_tee_branches_for_host, try_snap_endpoint,
+
 };
 
 use super::domain::{
@@ -114,9 +114,25 @@ pub fn handle_road_editor_world_input(
         return;
     }
 
+    let right_pressed = mouse_buttons.just_pressed(MouseButton::Right);
     let left_pressed = mouse_buttons.just_pressed(MouseButton::Left);
     let left_released = mouse_buttons.just_released(MouseButton::Left);
     let left_held = mouse_buttons.pressed(MouseButton::Left);
+
+    if right_pressed {
+        gate.block_gameplay_mouse = true;
+        if editor.has_modal_tool_active() {
+            editor.cancel_active(&mut network);
+            return;
+        }
+        if editor.selected_road_id.is_some() || editor.selected_point_index.is_some() {
+            editor.selected_road_id = None;
+            editor.selected_point_index = None;
+            editor.pending_delete_confirmation = false;
+            editor.status_message = "Selection cleared".into();
+        }
+        return;
+    }
 
     if editor.dragging_point.is_some() {
         gate.block_gameplay_mouse = true;
@@ -192,12 +208,10 @@ pub fn handle_road_editor_world_input(
                         .expect("selected road"),
                     RoadControlPoint::new(xz.x, xz.y),
                 );
-                if let Err(message) = try_snap_endpoint(&mut network, &road_id, true, xz) {
-                    editor.status_message = message;
-                } else {
-                    refresh_tee_branches_for_host(&mut network, &road_id);
-                    editor.mark_dirty(format!("Extended start of {}", road_id));
-                }
+                editor.status_message = format!(
+                    "Extend start — added point on {}; click Finish to commit",
+                    road_id
+                );
             }
         }
         RoadEditMode::ExtendEnd => {
@@ -209,12 +223,10 @@ pub fn handle_road_editor_world_input(
                         .expect("selected road"),
                     RoadControlPoint::new(xz.x, xz.y),
                 );
-                if let Err(message) = try_snap_endpoint(&mut network, &road_id, false, xz) {
-                    editor.status_message = message;
-                } else {
-                    refresh_tee_branches_for_host(&mut network, &road_id);
-                    editor.mark_dirty(format!("Extended end of {}", road_id));
-                }
+                editor.status_message = format!(
+                    "Extend end — added point on {}; click Finish to commit",
+                    road_id
+                );
             }
         }
         RoadEditMode::InsertPoint => {
@@ -227,7 +239,7 @@ pub fn handle_road_editor_world_input(
                 ) {
                     editor.selected_road_id = Some(hit.road_id);
                     editor.selected_point_index = Some(index);
-                    editor.mode = RoadEditMode::Inactive;
+                    editor.clear_tool_state();
                     editor.mark_dirty("Inserted control point");
                 }
             } else {

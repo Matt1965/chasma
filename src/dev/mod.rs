@@ -64,7 +64,8 @@ pub use fields_window::{setup_fields_window_panel, sync_dev_fields_panel_visibil
 pub use road_editor::{
     handle_road_editor_buttons, handle_road_editor_keyboard_input, handle_road_editor_world_input,
     draw_road_editor_overlay, setup_road_editor_state, setup_roads_window_panel,
-    sync_dev_roads_panel_visibility, sync_road_editor_panel, update_road_editor_snap_preview,
+    cleanup_road_editor_when_hidden, sync_dev_roads_panel_visibility,
+    sync_road_editor_action_buttons, sync_road_editor_panel, update_road_editor_snap_preview,
     RoadEditorUiState,
 };
 pub use gizmo::{
@@ -460,8 +461,10 @@ impl Plugin for DevModePlugin {
             Update,
             (
                 sync_dev_roads_panel_visibility,
+                cleanup_road_editor_when_hidden,
                 handle_road_editor_buttons,
                 handle_road_editor_keyboard_input,
+                sync_road_editor_action_buttons,
                 sync_road_editor_panel,
             )
                 .in_set(DevModeInputSystems),

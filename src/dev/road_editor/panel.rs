@@ -5,7 +5,8 @@ use bevy::prelude::*;
 use crate::dev::dev_mode::DevModeState;
 use crate::dev::input::DevPanelUi;
 use crate::dev::tooltip::DevTooltipTarget;
-use crate::dev::widgets::spawn_action_button;
+use crate::dev::widgets::{DevButtonChrome, spawn_action_button};
+use crate::world::RoadNetwork;
 use crate::dev::window::{DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowUi};
 
 use super::actions::RoadEditorButton;
@@ -184,6 +185,34 @@ pub fn setup_roads_window_panel(mut commands: Commands, bodies: Query<(Entity, &
                 });
         });
         return;
+    }
+}
+
+pub fn sync_road_editor_action_buttons(
+    dev_state: Res<DevModeState>,
+    registry: Res<DevWindowRegistry>,
+    editor: Res<RoadEditorUiState>,
+    mut buttons: Query<(&RoadEditorButton, &mut DevButtonChrome)>,
+) {
+    if !registry.window_active(dev_state.enabled, DevWindowId::Roads) {
+        return;
+    }
+    for (button, mut chrome) in &mut buttons {
+        chrome.active = editor.road_button_active(*button);
+    }
+}
+
+pub fn cleanup_road_editor_when_hidden(
+    dev_state: Res<DevModeState>,
+    registry: Res<DevWindowRegistry>,
+    mut editor: ResMut<RoadEditorUiState>,
+    mut network: ResMut<RoadNetwork>,
+) {
+    if dev_state.enabled && registry.is_visible(DevWindowId::Roads) {
+        return;
+    }
+    if editor.has_modal_tool_active() || editor.transaction.is_some() {
+        editor.cancel_active(&mut network);
     }
 }
 

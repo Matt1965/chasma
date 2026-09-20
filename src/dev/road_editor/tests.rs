@@ -5,9 +5,10 @@ use crate::world::{
     endpoint_has_attachment, try_snap_endpoint,
 };
 
+use super::actions::RoadEditorButton;
 use super::domain::{
-    delete_control_point, finish_create_road, generate_road_id, insert_control_point,
-    move_control_point, pick_control_point_at, pick_road_at,
+    delete_control_point, extend_road_end, finish_create_road, generate_road_id,
+    insert_control_point, move_control_point, pick_control_point_at, pick_road_at,
 };
 use super::state::{RoadEditMode, RoadEditorUiState};
 
@@ -33,17 +34,29 @@ fn sample_network_with_road() -> RoadNetwork {
 
 #[test]
 fn begin_create_mode_starts_empty_draft() {
+    let mut network = RoadNetwork::empty();
     let mut editor = RoadEditorUiState::default();
-    editor.begin_create();
+    editor.begin_create(&mut network);
     assert_eq!(editor.mode, RoadEditMode::Create);
     assert!(editor.create_points.is_empty());
+}
+
+#[test]
+fn active_extend_end_button_state_remains_selected() {
+    let mut network = sample_network_with_road();
+    let mut editor = RoadEditorUiState::default();
+    editor.selected_road_id = Some(RoadId::new("road_a"));
+    editor.begin_extend(&mut network, false).expect("extend");
+    assert_eq!(editor.mode, RoadEditMode::ExtendEnd);
+    assert!(editor.road_button_active(RoadEditorButton::ExtendEnd));
+    assert!(!editor.road_button_active(RoadEditorButton::ExtendStart));
 }
 
 #[test]
 fn finish_create_rejects_single_point() {
     let mut network = RoadNetwork::empty();
     let mut editor = RoadEditorUiState::default();
-    editor.begin_create();
+    editor.begin_create(&mut network);
     editor.create_points.push(RoadControlPoint::new(0.0, 0.0));
     let result = finish_create_road(
         &mut network,
@@ -71,13 +84,145 @@ fn finish_create_adds_valid_road() {
 }
 
 #[test]
-fn cancel_clears_draft_state() {
+fn create_cancel_removes_provisional_road() {
+    let mut network = RoadNetwork::empty();
     let mut editor = RoadEditorUiState::default();
-    editor.begin_create();
+    editor.begin_create(&mut network);
+    editor
+        .create_points
+        .push(RoadControlPoint::new(0.0, 0.0));
+    editor
+        .create_points
+        .push(RoadControlPoint::new(5.0, 0.0));
+    editor.cancel_active(&mut network);
+    assert!(network.roads.is_empty());
+    assert_eq!(editor.mode, RoadEditMode::Inactive);
+    assert!(editor.snap_preview.is_none());
+}
+
+#[test]
+fn create_finish_retains_road() {
+    let mut network = RoadNetwork::empty();
+    let mut editor = RoadEditorUiState::default();
+    editor.begin_create(&mut network);
+    editor.create_points = vec![
+        RoadControlPoint::new(0.0, 0.0),
+        RoadControlPoint::new(5.0, 0.0),
+    ];
+    let road_id = finish_create_road(
+        &mut network,
+        editor.create_display_name.clone(),
+        editor.create_style,
+        editor.create_points.clone(),
+    )
+    .expect("road");
+    assert!(network.roads.contains_key(&road_id));
+}
+
+#[test]
+fn extend_finish_preserves_added_points() {
+    let mut network = sample_network_with_road();
+    let mut editor = RoadEditorUiState::default();
+    editor.selected_road_id = Some(RoadId::new("road_a"));
+    editor.begin_extend(&mut network, false).expect("extend");
+    extend_road_end(
+        network.roads.get_mut(&RoadId::new("road_a")).expect("road"),
+        RoadControlPoint::new(25.0, 0.0),
+    );
+    extend_road_end(
+        network.roads.get_mut(&RoadId::new("road_a")).expect("road"),
+        RoadControlPoint::new(30.0, 0.0),
+    );
+    let (_, original, _) = editor
+        .take_extend_transaction()
+        .expect("extend transaction");
+    assert_eq!(original.control_points.len(), 3);
+    assert_eq!(
+        network.roads.get(&RoadId::new("road_a")).unwrap().control_points.len(),
+        5
+    );
+}
+
+#[test]
+fn extend_cancel_restores_original_points() {
+    let mut network = sample_network_with_road();
+    let mut editor = RoadEditorUiState::default();
+    editor.selected_road_id = Some(RoadId::new("road_a"));
+    editor.begin_extend(&mut network, false).expect("extend");
+    extend_road_end(
+        network.roads.get_mut(&RoadId::new("road_a")).expect("road"),
+        RoadControlPoint::new(25.0, 0.0),
+    );
+    extend_road_end(
+        network.roads.get_mut(&RoadId::new("road_a")).expect("road"),
+        RoadControlPoint::new(30.0, 0.0),
+    );
+    editor.cancel_active(&mut network);
+    assert_eq!(
+        network.roads.get(&RoadId::new("road_a")).unwrap().control_points.len(),
+        3
+    );
+    assert_eq!(editor.mode, RoadEditMode::Inactive);
+    assert!(editor.snap_preview.is_none());
+}
+
+#[test]
+fn cancel_clears_draft_state() {
+    let mut network = RoadNetwork::empty();
+    let mut editor = RoadEditorUiState::default();
+    editor.begin_create(&mut network);
     editor.create_points.push(RoadControlPoint::new(1.0, 2.0));
-    editor.cancel_active();
+    editor.cancel_active(&mut network);
     assert_eq!(editor.mode, RoadEditMode::Inactive);
     assert!(editor.create_points.is_empty());
+}
+
+#[test]
+fn canceled_clean_operation_does_not_dirty_network() {
+    let mut network = sample_network_with_road();
+    let mut editor = RoadEditorUiState::default();
+    editor.sync_baseline_from(&network);
+    editor.selected_road_id = Some(RoadId::new("road_a"));
+    editor.begin_extend(&mut network, false).expect("extend");
+    extend_road_end(
+        network.roads.get_mut(&RoadId::new("road_a")).expect("road"),
+        RoadControlPoint::new(25.0, 0.0),
+    );
+    editor.cancel_active(&mut network);
+    assert!(!editor.dirty);
+}
+
+#[test]
+fn preexisting_dirty_state_remains_after_cancel() {
+    let mut network = sample_network_with_road();
+    let mut editor = RoadEditorUiState::default();
+    editor.sync_baseline_from(&network);
+    editor.mark_dirty("prior edit");
+    editor.selected_road_id = Some(RoadId::new("road_a"));
+    editor.begin_extend(&mut network, false).expect("extend");
+    extend_road_end(
+        network.roads.get_mut(&RoadId::new("road_a")).expect("road"),
+        RoadControlPoint::new(25.0, 0.0),
+    );
+    editor.cancel_active(&mut network);
+    assert!(editor.dirty);
+}
+
+#[test]
+fn right_click_cancel_matches_cancel_active() {
+    let mut network = sample_network_with_road();
+    let mut editor = RoadEditorUiState::default();
+    editor.selected_road_id = Some(RoadId::new("road_a"));
+    editor.begin_extend(&mut network, false).expect("extend");
+    extend_road_end(
+        network.roads.get_mut(&RoadId::new("road_a")).expect("road"),
+        RoadControlPoint::new(25.0, 0.0),
+    );
+    editor.cancel_active(&mut network);
+    assert_eq!(
+        network.roads.get(&RoadId::new("road_a")).unwrap().control_points.len(),
+        3
+    );
 }
 
 #[test]

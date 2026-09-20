@@ -8,6 +8,7 @@ mod input;
 mod overlay;
 mod panel;
 mod state;
+mod transaction;
 
 #[cfg(test)]
 mod tests;
@@ -15,7 +16,10 @@ mod tests;
 pub use actions::{RoadEditorButton, handle_road_editor_buttons, setup_road_editor_state};
 pub use input::{handle_road_editor_world_input, update_road_editor_snap_preview};
 pub use overlay::draw_road_editor_overlay;
-pub use panel::{setup_roads_window_panel, sync_dev_roads_panel_visibility, sync_road_editor_panel};
+pub use panel::{
+    cleanup_road_editor_when_hidden, setup_roads_window_panel, sync_dev_roads_panel_visibility,
+    sync_road_editor_action_buttons, sync_road_editor_panel,
+};
 pub use state::{RoadEditMode, RoadEditorUiState, road_editor_owns_world_pointer};
 
 pub fn handle_road_editor_keyboard_input(
