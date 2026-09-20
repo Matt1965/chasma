@@ -10,6 +10,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, IoTaskPool, Task};
 
+use crate::terrain::catalog::TerrainWorldCatalog;
 use crate::world::{
     ChunkCoord, ChunkData, ChunkId, ChunkLayout, RoadDeformationStore, RoadNetwork, WorldData,
     ensure_chunk_road_deformation,
@@ -326,6 +327,7 @@ impl PendingChunkMaterializations {
         road_store: &mut RoadDeformationStore,
         network: &RoadNetwork,
         layout: ChunkLayout,
+        catalog: Option<&TerrainWorldCatalog>,
         stats: &mut MaterializePollStats,
     ) {
         self.in_flight
@@ -428,6 +430,7 @@ impl PendingChunkMaterializations {
                             road_store,
                             network,
                             layout,
+                            catalog,
                             entry.chunk_id,
                             data,
                             entry.albedo_sidecar.take(),
@@ -566,6 +569,7 @@ impl PendingChunkMaterializations {
                                         road_store,
                                         network,
                                         layout,
+                                        catalog,
                                         entry.chunk_id,
                                         data,
                                         entry.albedo_sidecar.take(),
@@ -870,6 +874,7 @@ fn start_chunk_mesh_build_task(
     road_store: &mut RoadDeformationStore,
     network: &RoadNetwork,
     layout: ChunkLayout,
+    catalog: Option<&TerrainWorldCatalog>,
     chunk_id: ChunkId,
     mut data: ChunkData,
     albedo_sidecar: Option<AlbedoSidecarIo>,
@@ -877,7 +882,15 @@ fn start_chunk_mesh_build_task(
     lod: ChunkLod,
     fallback: AlbedoFallback,
 ) -> ChunkMeshBuildTask {
-    ensure_chunk_road_deformation(world, road_store, network, layout, chunk_id, &mut data);
+    ensure_chunk_road_deformation(
+        world,
+        road_store,
+        network,
+        layout,
+        chunk_id,
+        &mut data,
+        catalog,
+    );
     let seam_weld = seam_weld_heights_effective(world, chunk_id);
     spawn_chunk_mesh_build_task(
         data,
@@ -1178,6 +1191,7 @@ mod tests {
                 &mut road_store,
                 &network,
                 layout,
+                None,
                 &mut stats,
             );
             if pending.materialized_len() > 0 {
@@ -1222,6 +1236,7 @@ mod tests {
                 &mut road_store,
                 &network,
                 layout,
+                None,
                 &mut stats,
             );
             if !residency.is_loading(chunk_id) {
@@ -1376,6 +1391,7 @@ mod tests {
                 &mut road_store,
                 &network,
                 layout,
+                None,
                 &mut stats,
             );
             if pending.mesh_build_in_flight_count() > 0 || pending.materialized_len() > 0 {
@@ -1400,6 +1416,7 @@ mod tests {
                 &mut road_store,
                 &network,
                 layout,
+                None,
                 &mut stats,
             );
             if !pending.has_pipeline_for(chunk_id) || pending.materialized_len() > 0 {

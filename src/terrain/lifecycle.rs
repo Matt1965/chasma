@@ -126,6 +126,7 @@ pub fn poll_chunk_materializations(
         &mut road_store,
         &network,
         layout,
+        Some(catalog.as_ref()),
         &mut poll_stats,
     );
 
@@ -942,6 +943,7 @@ mod apply_tests {
                 &mut road_store,
                 &network,
                 layout,
+                None,
                 &mut poll_stats,
             );
         }

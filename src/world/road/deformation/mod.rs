@@ -7,9 +7,10 @@ mod store;
 mod tile;
 
 pub use bake::{
-    ROAD_BAKE_INFLUENCE_MARGIN_M, RoadBakeReport, RoadBakeWarning, affected_chunk_ids_for_network,
-    ensure_chunk_road_deformation, fingerprint_road_network, influence_bounds_for_road,
-    rebake_road_deformation_for_chunks,
+    ROAD_BAKE_INFLUENCE_MARGIN_M, ROAD_DELTA_WARN_ABS_M, RoadBakeReport, RoadBakeWarning,
+    affected_chunk_ids_for_network, ensure_chunk_road_deformation, fingerprint_road_network,
+    influence_bounds_for_polyline,
+    influence_bounds_for_road, rebake_road_deformation_for_chunks,
 };
 pub use persist::{
     ensure_road_deformation_store, load_road_deformation_bake, road_deformation_bake_dir,

@@ -97,6 +97,8 @@ pub fn handle_road_editor_buttons(
 
     config: Res<WorldConfig>,
 
+    catalog: Option<Res<crate::terrain::TerrainWorldCatalog>>,
+
     buttons: Query<(&Interaction, &RoadEditorButton), (Changed<Interaction>, With<DevPanelUi>)>,
 
     name_fields: Query<&Interaction, (Changed<Interaction>, With<DevRoadNameField>)>,
@@ -226,6 +228,7 @@ pub fn handle_road_editor_buttons(
                 &mut road_store,
                 &mut rebuild_queue,
                 config.chunk_layout(),
+                catalog.as_deref(),
             ),
 
             RoadEditorButton::Reload => reload_network(&mut editor, &mut network),
@@ -646,6 +649,8 @@ fn save_network(
 
     layout: crate::world::ChunkLayout,
 
+    catalog: Option<&crate::terrain::TerrainWorldCatalog>,
+
 ) {
 
     if let Err(error) = validate_road_network(network) {
@@ -680,6 +685,8 @@ fn save_network(
 
                 &dirty,
 
+                catalog,
+
             );
 
             sync_store_tiles_to_chunks(road_store, world, &dirty);
@@ -700,9 +707,9 @@ fn save_network(
 
                 editor.status_message = format!(
 
-                    "Saved road network and rebaked {} chunk(s)",
+                    "Saved road network. {}",
 
-                    report.baked_chunks
+                    report.summary_line()
 
                 );
 
@@ -710,9 +717,9 @@ fn save_network(
 
                 editor.status_message = format!(
 
-                    "Saved road network; rebaked {} chunk(s) with {} warning(s)",
+                    "Saved road network. {} ({} warning(s))",
 
-                    report.baked_chunks,
+                    report.summary_line(),
 
                     report.warnings.len()
 
