@@ -10,7 +10,7 @@ use crate::client::{ClientIntent, ClientIntentQueue};
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::{cursor_world_ray, terrain_click_to_world_position};
 use crate::world::{
-    BuildingDefinitionId, WorldConfig, WorldData, anchor_from_terrain_position,
+    WorldConfig, WorldData, anchor_from_terrain_position,
     rotation_from_quadrants,
 };
 
@@ -26,7 +26,7 @@ pub fn collect_build_mode_intents(
     world: Res<WorldData>,
     config: Res<WorldConfig>,
     render_assets: Option<Res<TerrainRenderAssets>>,
-    mut build_mode: ResMut<BuildModeState>,
+    build_mode: ResMut<BuildModeState>,
     mut queue: ResMut<ClientIntentQueue>,
     hud_hover: Res<PlayerHudHoverState>,
     menu_block: Option<Res<crate::menu::MenuInputBlock>>,

@@ -116,7 +116,7 @@ pub fn handle_origin_squad_buttons(
 }
 
 pub fn respawn_origin_squad_ui_after_focus(
-    mut commands: Commands,
+    commands: Commands,
     session: Res<StartingSquadSession>,
     squad_panels: Query<Entity, With<super::screen::OriginSelectSquadPanelRoot>>,
     focus_roots: Query<Entity, With<super::focus::OriginSquadFocusUiRoot>>,

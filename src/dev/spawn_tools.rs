@@ -5,14 +5,13 @@ use bevy::prelude::*;
 use crate::world::{
     AppearanceProfileCatalog, BuildingCatalog, BuildingDefinitionId,
     BuildingNavigationBlueprintCatalog, BuildingOwnership, BuildingPlacementConfig,
-    BuildingPlacementContext, BuildingSource, DoodadCatalog, DoodadDefinitionId,
+    BuildingPlacementContext, DoodadCatalog, DoodadDefinitionId,
     DoodadPlacementOverrides, DoodadSource, FootprintCatalog, InteriorProfileCatalog,
-    InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, UnitCatalog,
+    InventoryCatalogCtx, UnitCatalog,
     UnitDefinitionId, UnitOwnership, UnitSource, WorldData, WorldPosition,
     create_dev_complete_building, create_dev_complete_building_with_inventory, create_doodad,
     create_unit_with_inventory, definition_requires_inventory_allocation,
-    resolve_authoritative_building_placement, starter_inventory_profile_definitions,
-    starter_item_category_definitions, starter_item_definitions, try_activate_interior_if_complete,
+    resolve_authoritative_building_placement, try_activate_interior_if_complete,
 };
 
 use super::dev_mode::{DefinitionId, SpawnMode};

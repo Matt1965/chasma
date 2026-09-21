@@ -7,8 +7,7 @@
 use crate::world::armor::resolve_applied_combat_damage;
 use crate::world::equipment::{ArmorResolveError, total_armor_rating_for_unit};
 use crate::world::unit::{
-    CombatState, UnitId, UnitInsertError, UnitOrder, apply_validated_attack_order,
-    unit_can_execute_actions,
+    CombatState, UnitId, UnitInsertError, apply_validated_attack_order,
 };
 use crate::world::{
     ArmorProfileCatalog, AttackTargetingPolicy, DoodadCatalog, ItemCatalog, NavigationConfig,

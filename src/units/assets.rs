@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use bevy::gltf::GltfAssetLabel;
 use bevy::prelude::*;
 
-use crate::world::{AppearanceProfileCatalog, UnitCatalog, UnitDefinitionId, UnitRenderKey};
+use crate::world::{AppearanceProfileCatalog, UnitCatalog, UnitRenderKey};
 
 /// Root folder for unit glTF assets (ADR-028).
 ///

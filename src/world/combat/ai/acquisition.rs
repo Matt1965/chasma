@@ -6,7 +6,7 @@ use crate::world::navigation::xz_distance;
 use crate::world::ownership::is_player_controllable;
 use crate::world::perception::perceived_units;
 use crate::world::relationship::AuthoredRelationshipCatalog;
-use crate::world::unit::{CombatState, UnitId, UnitOrder, UnitState, unit_can_execute_actions};
+use crate::world::unit::{CombatState, UnitId, UnitOrder, UnitState};
 use crate::world::{
     AttackTargetingPolicy, DoodadCatalog, ItemCatalog, NavigationConfig, UnitCatalog,
     WeaponCatalog, WorldData, is_unit_alive, is_valid_active_combat_target, issue_unit_order,

@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use crate::terrain::render_height;
 use crate::world::{
-    FoundationPerimeterVertex, FoundationSkirtSpec, FOUNDATION_SLOPE_DEGREES,
+    FoundationPerimeterVertex, FoundationSkirtSpec,
     FOUNDATION_TEXTURE_TILE_METERS, FOUNDATION_TERRAIN_PENETRATION_FUDGE_METERS,
     foundation_slope_run_per_meter_drop,
 };

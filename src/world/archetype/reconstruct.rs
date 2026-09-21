@@ -8,7 +8,7 @@ use crate::world::inventory::{
     InventoryCatalogCtx, InventoryOwnerRef, RestoreInventorySubgraphOptions,
     restore_inventory_subgraph,
 };
-use crate::world::item_pile::{ItemPileSource, WorldItemPileRecord, WorldPileContents};
+use crate::world::item_pile::{ItemPileSource, WorldItemPileRecord};
 use crate::world::{
     BuildingAuthoringError, BuildingCatalog, BuildingDefinitionId, BuildingId, BuildingOwnership,
     BuildingRecord, DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource,

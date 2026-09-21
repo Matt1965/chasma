@@ -20,4 +20,5 @@ pub use player_policy::{
     apply_player_storage_accept_all, apply_player_storage_category_accepted,
     apply_player_storage_clear_all, effective_storage_category_accepted,
 };
+pub use policy::BuildingStoragePolicy;
 pub use store::BuildingStoragePolicyStore;

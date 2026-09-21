@@ -5,7 +5,7 @@ use crate::dev::dev_mode::DevModeState;
 use crate::dev::window::{DevWindowId, DevWindowRegistry};
 use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
 use crate::world::{
-    Road, RoadControlPoint, RoadNetwork, WorldConfig, WorldData, WorldPosition,
+    Road, RoadNetwork, WorldConfig, WorldData, WorldPosition,
     derive_ground_crossings, junction_world_position, sample_road_polyline,
 };
 

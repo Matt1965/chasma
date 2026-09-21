@@ -17,7 +17,6 @@ use super::sample::{
 use crate::world::building::catalog::BuildingDefinition;
 use crate::world::building::placement_plan::quantize_placement_anchor_xz;
 use crate::world::building::placement_validation::BuildingPlacementRejectReason;
-use crate::world::occupancy::FootprintShape;
 use crate::world::terrain::{classify_slope_walkability, SlopeWalkability, TerrainQueryError};
 use crate::world::{
     ChunkLayout, FootprintCatalog, QuantizedRotation, WorldData, WorldPosition,

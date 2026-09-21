@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use crate::world::building::BuildingRecord;
 use crate::world::{
     BakedCellMask, BuildingCatalog, BuildingDefinitionId, BuildingId, ChunkCoord, ChunkId,
-    ChunkLayout, DoodadCatalog, DoodadDefinitionId, DoodadId, DoodadRecord, FootprintCatalog,
+    ChunkLayout, DoodadCatalog, DoodadRecord, FootprintCatalog,
     FootprintShape, OccupancyError, WorldData, WorldPosition,
     effective_building_footprint_for_placement, point_in_oriented_rectangle_continuous,
 };

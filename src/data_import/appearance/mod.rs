@@ -6,17 +6,12 @@ mod dev_load;
 mod excel;
 mod schema;
 
-pub use schema::{
-    AppearanceBodyVariantImportRow, AppearanceMorphMappingImportRow,
-    AppearanceParameterImportRow, AppearanceProfileImportRow, MORPH_MAPPING_REQUIRED_COLUMNS,
-    PARAMETER_REQUIRED_COLUMNS, PROFILE_REQUIRED_COLUMNS, VARIANT_REQUIRED_COLUMNS,
-};
 
 #[cfg(feature = "data-import")]
 pub use dev_load::resolve_dev_appearance_profile_catalog;
 #[cfg(feature = "data-import")]
 pub use excel::{
-    APPEARANCE_BODY_VARIANTS_SHEET_NAME, APPEARANCE_MORPH_MAPPINGS_SHEET_NAME,
+    APPEARANCE_BODY_VARIANTS_SHEET_NAME,
     APPEARANCE_PARAMETERS_SHEET_NAME, APPEARANCE_PROFILES_SHEET_NAME,
 };
 

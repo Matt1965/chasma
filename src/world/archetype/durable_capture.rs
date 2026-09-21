@@ -1,10 +1,8 @@
 //! Durable authored state capture for building archetypes (Chunk 2).
 
-use crate::world::building::operation::BuildingOperationPolicy;
-use crate::world::building::storage_policy::BuildingStoragePolicy;
 use crate::world::building::BuildingRecord;
 use crate::world::inventory::{
-    InventorySubgraphSnapshot, capture_inventory_subgraph, inventory_subgraph_item_count,
+    capture_inventory_subgraph, inventory_subgraph_item_count,
     validate_inventory_subgraph,
 };
 use crate::world::item_pile::{ItemPileSource, WorldItemPileRecord, WorldPileContents};

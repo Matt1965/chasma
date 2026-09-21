@@ -39,8 +39,7 @@ pub use runtime::{
 pub use stack_limit::{category_stack_cap_for, effective_stack_limit};
 pub use subgraph_snapshot::{
     InventorySubgraphError, InventorySubgraphInventory, InventorySubgraphItemInstance,
-    InventorySubgraphItemInstanceLocation, InventorySubgraphPlacedEntry, InventorySubgraphSnapshot,
-    InventorySubgraphRestoreError, RestoredInventorySubgraph, RestoreInventorySubgraphOptions,
+    InventorySubgraphItemInstanceLocation, InventorySubgraphPlacedEntry, InventorySubgraphSnapshot, RestoreInventorySubgraphOptions,
     capture_inventory_subgraph, inventory_subgraph_item_count, restore_inventory_subgraph,
     validate_inventory_subgraph,
 };

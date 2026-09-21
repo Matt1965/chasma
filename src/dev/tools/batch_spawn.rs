@@ -4,8 +4,8 @@ use bevy::prelude::*;
 
 use crate::world::{
     BuildingArchetypeCatalog, BuildingArchetypeId, BuildingCatalog, BuildingLifecycleState,
-    BuildingNavigationBlueprintCatalog, BuildingOwnership, BuildingPlacementConfig,
-    BuildingPlacementContext, BuildingSource, DoodadCatalog, DoodadPlacementOverrides,
+    BuildingNavigationBlueprintCatalog, BuildingPlacementConfig,
+    BuildingPlacementContext, DoodadCatalog, DoodadPlacementOverrides,
     DoodadSource, FootprintCatalog, InteriorProfileCatalog, InventoryCatalogCtx, ItemCatalog,
     OccupancyCatalogs, UnitArchetypeCatalog, UnitArchetypeId, UnitCatalog, UnitSource, WorldData,
     WorldPosition, apply_unit_archetype_spawn_overrides, create_dev_complete_building,

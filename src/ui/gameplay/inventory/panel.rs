@@ -12,7 +12,7 @@ use crate::ui::gameplay::floating_window::{
     spawn_floating_title_rail, spawn_floating_window_body, spawn_floating_window_inner_frame,
 };
 use crate::ui::gameplay::inventory::equipment_ui::{
-    InventoryBackpackSection, InventoryEquipmentSection, backpack_revision, equipment_revision,
+    backpack_revision, equipment_revision,
     resolve_corpse_equipment_ui, resolve_unit_equipment_ui, spawn_backpack_internal_section,
     spawn_equipment_section,
 };

@@ -144,7 +144,7 @@ pub fn update_unit_editor_preview_framing(
 }
 
 pub fn update_unit_editor_preview_camera(
-    mut session: Option<ResMut<UnitEditorSession>>,
+    session: Option<ResMut<UnitEditorSession>>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     mouse_motion: Res<bevy::input::mouse::AccumulatedMouseMotion>,
     mouse_scroll: Res<bevy::input::mouse::AccumulatedMouseScroll>,

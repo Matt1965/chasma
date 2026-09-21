@@ -5,7 +5,7 @@ use super::constants::{
     ROAD_CONNECTIVITY_SAMPLE_SPACING_M,
 };
 use super::connectivity::{endpoint_world_position, persisted_junction_positions};
-use super::crossing::{RoadCrossingKind, RoadCrossingOverride};
+use super::crossing::RoadCrossingKind;
 use super::id::RoadId;
 use super::network::RoadNetwork;
 use super::road::Road;
