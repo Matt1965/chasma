@@ -9,6 +9,7 @@ mod query;
 mod record;
 mod settings;
 mod store;
+mod transform_edit;
 
 #[cfg(test)]
 mod tests;
@@ -32,3 +33,7 @@ pub use query::{
 pub use record::{ItemPileSource, WorldItemPileRecord, WorldPileContents};
 pub use settings::ItemPileSettings;
 pub use store::{ChunkItemPileStore, ItemPileStore};
+pub use transform_edit::{
+    ItemPileTransformCandidate, ItemPileTransformEditError, ItemPileTransformEditReport,
+    update_item_pile_placement, update_item_pile_transform,
+};

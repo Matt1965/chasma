@@ -127,8 +127,12 @@ pub fn format_doodad_diagnostics(
 
 pub fn format_pile_summary(snapshot: &ItemPileInspectorSnapshot) -> String {
     format!(
-        "{}\nQty: {}  Weight: {}g\n{}",
-        snapshot.item_name, snapshot.quantity, snapshot.weight_grams, snapshot.location_summary
+        "{}\nQty: {}  Weight: {}g\nYaw: {:.1}°\n{}",
+        snapshot.item_name,
+        snapshot.quantity,
+        snapshot.weight_grams,
+        snapshot.yaw_degrees,
+        snapshot.location_summary
     )
 }
 

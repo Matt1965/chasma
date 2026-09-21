@@ -29,6 +29,10 @@ fn default_next_item_pile_id() -> u64 {
     1
 }
 
+fn default_yaw_degrees() -> f32 {
+    0.0
+}
+
 /// Serializable placed inventory entry (ADR-094 I8).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ScenePlacedEntryRecord {
@@ -120,6 +124,8 @@ pub struct SceneItemPileRecord {
     pub affiliation: Option<String>,
     pub source: String,
     pub created_tick: u64,
+    #[serde(default = "default_yaw_degrees")]
+    pub yaw_degrees: f32,
 }
 
 /// Inventory persistence bundle for scene files (ADR-094 I8).
@@ -424,6 +430,7 @@ impl SceneItemPileRecord {
             affiliation: Some(record.affiliation.label().to_string()),
             source: pile_source_label(record.source),
             created_tick: record.created_tick,
+            yaw_degrees: record.yaw_degrees,
         }
     }
 
@@ -460,6 +467,7 @@ impl SceneItemPileRecord {
             affiliation,
             source: parse_pile_source(&self.source)?,
             created_tick: self.created_tick,
+            yaw_degrees: self.yaw_degrees,
         })
     }
 }
@@ -582,4 +590,58 @@ fn parse_pile_source(label: &str) -> Result<ItemPileSource, SceneRecordError> {
         "DevSpawned" => ItemPileSource::DevSpawned,
         _ => return Err(SceneRecordError::InvalidPosition),
     })
+}
+
+#[cfg(test)]
+mod pile_yaw_tests {
+    use super::*;
+    use crate::world::{
+        Affiliation, ChunkCoord, ItemDefinitionId, ItemPileId, ItemPileSource, LocalPosition,
+        SpaceId, WorldItemPileRecord, WorldPileContents, WorldPosition,
+    };
+    use bevy::prelude::Vec3;
+
+    #[test]
+    fn scene_pile_record_defaults_missing_yaw() {
+        let text = r#"
+(
+    id: 1,
+    position: (chunk_x: 0, chunk_z: 0, local_x: 0.0, local_y: 0.0, local_z: 0.0),
+    current_space_id: 0,
+    contents_kind: "stack",
+    item_definition_id: Some("gold"),
+    quantity: Some(3),
+    source: "DevSpawned",
+    created_tick: 0,
+)
+"#;
+        let scene: SceneItemPileRecord = ron::from_str(text).unwrap();
+        assert_eq!(scene.yaw_degrees, 0.0);
+    }
+
+    #[test]
+    fn scene_pile_yaw_roundtrip() {
+        let record = WorldItemPileRecord {
+            id: ItemPileId::new(7),
+            placement: WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(1.0, 0.0, 2.0)),
+            ),
+            yaw_degrees: 45.0,
+            current_space_id: SpaceId::SURFACE,
+            contents: WorldPileContents::Stack {
+                item_definition_id: ItemDefinitionId::new("gold"),
+                quantity: 2,
+            },
+            owner_id: None,
+            team_id: None,
+            affiliation: Affiliation::Player,
+            source: ItemPileSource::DevSpawned,
+            created_tick: 0,
+        };
+        let scene = SceneItemPileRecord::from_record(&record);
+        assert_eq!(scene.yaw_degrees, 45.0);
+        let restored = scene.to_record().unwrap();
+        assert_eq!(restored.yaw_degrees, 45.0);
+    }
 }

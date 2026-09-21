@@ -86,6 +86,7 @@ impl TransformCapabilities {
             translate_x: true,
             translate_y: true,
             translate_z: true,
+            rotate_y: true,
             ..Self::NONE
         }
     }
@@ -146,9 +147,10 @@ mod tests {
     }
 
     #[test]
-    fn pile_translation_only() {
+    fn pile_translate_and_yaw() {
         let caps = TransformCapabilities::world_item_pile();
         assert!(caps.translate_x);
-        assert!(!caps.rotate_y);
+        assert!(caps.rotate_y);
+        assert!(!caps.rotate_x);
     }
 }

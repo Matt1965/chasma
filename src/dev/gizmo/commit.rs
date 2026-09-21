@@ -8,8 +8,8 @@ use crate::world::{
     BuildingTerrainAssessmentStore, BuildingTransformCandidate, BuildingTransformCatalogs,
     BuildingTransformEditError, BuildingTransformEditOptions, DoodadCatalog,
     DoodadTransformCandidate, DoodadTransformEditOptions, FootprintCatalog, InteriorProfileCatalog,
-    OccupancyCatalogs, TransformEditError, UnitCatalog, update_building_transform,
-    update_doodad_transform,
+    ItemPileTransformCandidate, ItemPileTransformEditError, OccupancyCatalogs, TransformEditError,
+    UnitCatalog, update_building_transform, update_doodad_transform, update_item_pile_transform,
 };
 
 pub fn commit_doodad_preview(
@@ -74,6 +74,22 @@ pub fn commit_building_preview(
     Ok(())
 }
 
+pub fn commit_pile_preview(
+    world: &mut crate::world::WorldData,
+    pile_id: crate::world::ItemPileId,
+    preview: DoodadPreviewPlacement,
+) -> Result<(), ItemPileTransformEditError> {
+    update_item_pile_transform(
+        world,
+        pile_id,
+        ItemPileTransformCandidate {
+            position: preview.position,
+            yaw_degrees: preview.orientation.yaw_degrees(),
+        },
+    )?;
+    Ok(())
+}
+
 /// Whether the live preview differs from authoritative world placement.
 pub fn preview_differs_from_authoritative(
     world: &crate::world::WorldData,
@@ -106,7 +122,13 @@ pub fn preview_differs_from_authoritative(
                 .abs()
                     > 0.001
         }
-        SelectedWorldObject::ItemPile(_) => false,
+        SelectedWorldObject::ItemPile(id) => {
+            let Some(record) = world.item_pile_store().get(id) else {
+                return false;
+            };
+            preview.position != record.placement
+                || (preview.orientation.yaw_degrees() - record.yaw_degrees).abs() > 0.05
+        }
     }
 }
 
@@ -209,6 +231,19 @@ pub fn try_commit_edit(
                 }
             }
         }
-        SelectedWorldObject::ItemPile(_) => false,
+        SelectedWorldObject::ItemPile(pile_id) => {
+            match commit_pile_preview(world, pile_id, preview) {
+                Ok(()) => {
+                    edit.last_error.clear();
+                    edit.preview_valid = true;
+                    true
+                }
+                Err(err) => {
+                    edit.last_error = format!("{err:?}");
+                    edit.preview_valid = false;
+                    false
+                }
+            }
+        }
     }
 }

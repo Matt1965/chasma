@@ -12,7 +12,7 @@ use crate::world::{
 
 use super::handles::{GizmoHandle, active_handles, policy_for_target};
 use super::math::{GIZMO_HANDLE_LENGTH_FACTOR, apparent_gizmo_scale, oriented_axis};
-use super::state::{DoodadPreviewPlacement, TransformEditState};
+use super::state::{DoodadPreviewPlacement, TransformEditState, pile_preview_from_record};
 use super::tool::{GizmoCoordinateSpace, SelectedWorldObject};
 
 /// Default vertical FOV for apparent-size heuristic when projection is unavailable.
@@ -53,7 +53,9 @@ pub fn draw_transform_gizmo(
         SelectedWorldObject::Building(id) => {
             building_anchor(&world, &config, id, &edit, &render_assets)
         }
-        SelectedWorldObject::ItemPile(_) => return,
+        SelectedWorldObject::ItemPile(id) => {
+            pile_anchor(&world, &config, id, &edit, &render_assets)
+        }
     };
     let Some(anchor) = anchor_render else {
         return;
@@ -149,6 +151,31 @@ fn building_anchor(
         world
             .get_building(id)
             .map(|r| super::state::building_preview_from_placement(r.placement))
+    });
+    let Some(placement) = placement else {
+        return (None, Quat::IDENTITY);
+    };
+    let vertical_scale = render_assets
+        .as_ref()
+        .map(|a| a.vertical_scale)
+        .unwrap_or(1.0);
+    let anchor =
+        world_position_to_render_global(placement.position, config.chunk_layout(), vertical_scale);
+    (Some(anchor), placement.rotation_quat())
+}
+
+fn pile_anchor(
+    world: &WorldData,
+    config: &WorldConfig,
+    id: crate::world::ItemPileId,
+    edit: &TransformEditState,
+    render_assets: &Option<Res<crate::terrain::TerrainRenderAssets>>,
+) -> (Option<Vec3>, Quat) {
+    let placement = edit.preview_placement.or_else(|| {
+        world
+            .item_pile_store()
+            .get(id)
+            .map(pile_preview_from_record)
     });
     let Some(placement) = placement else {
         return (None, Quat::IDENTITY);

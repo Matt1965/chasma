@@ -21,6 +21,7 @@ pub use input::{
 };
 pub use preview::{
     DevTransformPreview, apply_building_transform_preview, apply_doodad_transform_preview,
+    apply_item_pile_transform_preview,
 };
 pub use state::TransformEditState;
 pub use tool::{DevTool, DevToolState, GizmoCoordinateSpace, SelectedWorldObject};

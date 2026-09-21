@@ -31,6 +31,7 @@ pub enum WorldPileContents {
 pub struct WorldItemPileRecord {
     pub id: ItemPileId,
     pub placement: WorldPosition,
+    pub yaw_degrees: f32,
     pub current_space_id: SpaceId,
     pub contents: WorldPileContents,
     pub owner_id: Option<OwnerId>,
@@ -56,6 +57,7 @@ impl WorldItemPileRecord {
         Self {
             id,
             placement,
+            yaw_degrees: 0.0,
             current_space_id,
             contents: WorldPileContents::Stack {
                 item_definition_id,
@@ -83,6 +85,7 @@ impl WorldItemPileRecord {
         Self {
             id,
             placement,
+            yaw_degrees: 0.0,
             current_space_id,
             contents: WorldPileContents::Unique { item_instance_id },
             owner_id,

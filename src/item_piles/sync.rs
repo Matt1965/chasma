@@ -107,13 +107,18 @@ pub fn sync_item_pile_render_entities(
             index.0.remove(&marker.pile_id);
             continue;
         }
+        let rotation = record.rotation_quat();
         let translation = if desired.kind == ItemPileVisualKind::Fallback {
             translation + Vec3::Y * presentation.fallback_sphere_radius
         } else {
             translation
         };
         commands.entity(entity).insert((
-            Transform::from_translation(translation),
+            Transform {
+                translation,
+                rotation,
+                scale: Vec3::ONE,
+            },
             Name::new(pile_entity_name(record, definition)),
         ));
     }
@@ -133,6 +138,7 @@ pub fn sync_item_pile_render_entities(
         let definition = resolve_pile_definition(&world, &items, record);
         let desired = resolve_desired_visual(definition, &mut scene_assets, &asset_server);
         let label = pile_entity_name(record, definition);
+        let rotation = record.rotation_quat();
         let entity = match desired.kind {
             ItemPileVisualKind::Scene => spawn_item_pile_scene_entity(
                 &mut commands,
@@ -140,6 +146,7 @@ pub fn sync_item_pile_render_entities(
                 &label,
                 desired.scene.expect("scene handle required"),
                 translation,
+                rotation,
             ),
             ItemPileVisualKind::Fallback => {
                 let unique = record.stack_quantity().is_none();
@@ -155,6 +162,7 @@ pub fn sync_item_pile_render_entities(
                     pile_id,
                     &label,
                     translation,
+                    rotation,
                     mesh,
                     material,
                     desired.reason,

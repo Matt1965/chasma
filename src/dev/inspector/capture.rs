@@ -210,6 +210,7 @@ pub fn capture_item_pile_inspector_snapshot(
         weight_grams,
         location_summary,
         chunk,
+        yaw_degrees: record.yaw_degrees,
     })
 }
 

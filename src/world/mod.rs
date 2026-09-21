@@ -320,11 +320,13 @@ pub use item::{
 };
 pub use item_pile::{
     ChunkItemPileStore, DropReport, ItemPileError, ItemPileId, ItemPileInvariantReport,
-    ItemPileSettings, ItemPileSource, ItemPileStore, PickupReport, PileOwnership, SpillReport,
-    WorldItemPileRecord, WorldPileContents, drop_stack_from_inventory, drop_unique_from_inventory,
-    drop_unit_inventory_entry, item_piles_near, item_piles_within_radius,
-    nearest_item_pile_at_position, pickup_pile_into_inventory, pile_item_definition_id,
-    spill_inventory_to_world_piles, validate_item_instance_locations, validate_item_pile_store,
+    ItemPileSettings, ItemPileSource, ItemPileStore, ItemPileTransformCandidate,
+    ItemPileTransformEditError, ItemPileTransformEditReport, PickupReport, PileOwnership,
+    SpillReport, WorldItemPileRecord, WorldPileContents, drop_stack_from_inventory,
+    drop_unique_from_inventory, drop_unit_inventory_entry, item_piles_near,
+    item_piles_within_radius, nearest_item_pile_at_position, pickup_pile_into_inventory,
+    pile_item_definition_id, spill_inventory_to_world_piles, update_item_pile_placement,
+    update_item_pile_transform, validate_item_instance_locations, validate_item_pile_store,
 };
 pub use logistics::{
     BuildingLogisticsRouteDefinition, HaulTickReport, HaulingRequest, HaulingRequestId,
