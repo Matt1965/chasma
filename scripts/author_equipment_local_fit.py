@@ -14,7 +14,10 @@ from pathlib import Path
 import numpy as np
 
 from cg9_fit_poses import (
+    DEFAULT_MIN_CLEARANCE_M,
     EQUIPMENT_CONSUMED,
+    HOOD_MIN_CLEARANCE_M,
+    min_clearance_m,
     pose_matrix,
     resolve_morph_weights,
 )
@@ -34,7 +37,6 @@ from glb_geometry import (
 REPO = Path(__file__).resolve().parents[1]
 ASSETS = REPO / "assets"
 
-MIN_CLEARANCE_M = 0.003
 MAX_CORRECTION_M = 0.020
 PENETRATION_TOLERANCE_M = 0.001
 SMOOTH_ITERS = 2
@@ -96,6 +98,7 @@ def clearance_corrections(
     equip_verts: np.ndarray,
     equip_normals: np.ndarray,
     body_grid: BodySampleGrid | None = None,
+    min_clearance: float = DEFAULT_MIN_CLEARANCE_M,
 ) -> np.ndarray:
     """Measure clearance along garment outward normal against nearby body samples."""
     corrections = np.zeros_like(equip_verts)
@@ -111,7 +114,7 @@ def clearance_corrections(
         near = dist < BODY_SAMPLE_RADIUS_M
         masked_dist = np.where(near, dist, np.inf)
         clearance = np.min(masked_dist, axis=1)
-        needed = np.clip(MIN_CLEARANCE_M - clearance, 0.0, MAX_CORRECTION_M)
+        needed = np.clip(min_clearance - clearance, 0.0, MAX_CORRECTION_M)
         for local_index, point in enumerate(points):
             if needed[local_index] <= 0.0 or not np.isfinite(clearance[local_index]):
                 continue
@@ -152,12 +155,18 @@ def pose_correction(
     consumed: tuple[str, ...],
     semantics: dict[str, float],
     body_grid: BodySampleGrid | None = None,
+    min_clearance: float = DEFAULT_MIN_CLEARANCE_M,
 ) -> np.ndarray:
     equip_weights = resolve_morph_weights(semantics, equip.target_names, consumed)
     body_verts, body_normals = body_surface
     equip_verts = apply_morph_weights(equip.positions, equip.target_deltas, equip_weights)
     return clearance_corrections(
-        body_verts, body_normals, equip_verts, equip.normals, body_grid
+        body_verts,
+        body_normals,
+        equip_verts,
+        equip.normals,
+        body_grid,
+        min_clearance,
     )
 
 
@@ -190,13 +199,24 @@ def pose_correction_batch(
     surfaces: dict[tuple, tuple[np.ndarray, np.ndarray]],
     grids: dict[tuple, BodySampleGrid],
     body_prims: list[SkinnedPrimitive],
+    min_clearance: float,
 ) -> list[tuple[dict[str, float], np.ndarray]]:
     pose_corrections: list[tuple[dict[str, float], np.ndarray]] = []
     for semantics in poses.values():
         weights = resolve_morph_weights(semantics, body_prims[0].target_names)
         key = tuple(sorted((k, round(v, 4)) for k, v in weights.items() if v > 0))
         pose_corrections.append(
-            (semantics, pose_correction(surfaces[key], equip, consumed, semantics, grids[key]))
+            (
+                semantics,
+                pose_correction(
+                    surfaces[key],
+                    equip,
+                    consumed,
+                    semantics,
+                    grids[key],
+                    min_clearance,
+                ),
+            )
         )
     return pose_corrections
 
@@ -261,6 +281,7 @@ def apply_local_fit(
     body_path = ASSETS / "units" / f"{unit_key}.glb"
     equip_path = ASSETS / "items" / "equipment" / unit_key / f"{asset_name}.glb"
     consumed = EQUIPMENT_CONSUMED[asset_name]
+    clearance_target = min_clearance_m(asset_name)
 
     body_js, body_blob = load_glb(body_path)
     equip_js, equip_blob = load_glb(equip_path)
@@ -290,7 +311,7 @@ def apply_local_fit(
         surfaces = body_surface_cache(body_prims, poses)
         grids = body_grid_cache(surfaces)
         pose_corrections = pose_correction_batch(
-            equip, consumed, poses, surfaces, grids, body_prims
+            equip, consumed, poses, surfaces, grids, body_prims, clearance_target
         )
         _, final_worst = worst_pose_correction(pose_corrections)
         if final_worst < PENETRATION_TOLERANCE_M:
@@ -313,13 +334,14 @@ def apply_local_fit(
     extras = mesh.get("extras", {})
     if isinstance(extras, str):
         extras = json.loads(extras) if extras else {}
-    extras["cg9LocalClearanceM"] = MIN_CLEARANCE_M
+    extras["cg9LocalClearanceM"] = clearance_target
     extras["cg9MaxCorrectionM"] = MAX_CORRECTION_M
     mesh["extras"] = extras
     write_skinned_primitive(equip_js, equip_blob, equip)
     save_glb(equip_path, equip_js, equip_blob)
 
     report[f"{unit_key}/{asset_name}"] = {
+        "min_clearance_m": clearance_target,
         "max_correction_m": max_applied,
         "penetration_samples_before": penetrations_before,
         "poses_tested": len(poses),
@@ -327,6 +349,7 @@ def apply_local_fit(
     }
     print(
         f"local fit {unit_key}/{asset_name}: "
+        f"target={clearance_target * 1000:.1f}mm "
         f"max_corr={max_applied * 1000:.2f}mm "
         f"poses={len(poses)} final_worst={final_worst * 1000:.2f}mm"
     )
@@ -334,7 +357,8 @@ def apply_local_fit(
 
 def main() -> None:
     report: dict = {
-        "min_clearance_m": MIN_CLEARANCE_M,
+        "min_clearance_target_m": DEFAULT_MIN_CLEARANCE_M,
+        "hood_min_clearance_target_m": HOOD_MIN_CLEARANCE_M,
         "max_correction_m": MAX_CORRECTION_M,
         "method": "nearest-surface distance clearance with body-to-equipment displacement",
         "smoothing": f"{SMOOTH_ITERS} iterations alpha={SMOOTH_ALPHA}",

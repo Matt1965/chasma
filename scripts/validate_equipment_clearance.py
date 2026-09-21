@@ -11,13 +11,19 @@ import numpy as np
 
 from author_equipment_local_fit import (
     EQUIPMENT_PIECES,
-    MIN_CLEARANCE_M,
     PENETRATION_TOLERANCE_M,
     body_primitive_cache,
     clearance_corrections,
     morphed_body_surface_from_cache,
 )
-from cg9_fit_poses import EQUIPMENT_CONSUMED, pose_matrix, resolve_morph_weights
+from cg9_fit_poses import (
+    DEFAULT_MIN_CLEARANCE_M,
+    EQUIPMENT_CONSUMED,
+    HOOD_MIN_CLEARANCE_M,
+    min_clearance_m,
+    pose_matrix,
+    resolve_morph_weights,
+)
 from glb_geometry import (
     BodySampleGrid,
     all_skinned_primitives,
@@ -35,6 +41,7 @@ def measure_clearance_cached(
     equip,
     consumed: tuple[str, ...],
     semantics: dict[str, float],
+    clearance_target: float,
 ) -> dict:
     body_weights = resolve_morph_weights(semantics, body_cache["target_names"])
     equip_weights = resolve_morph_weights(semantics, equip.target_names, consumed)
@@ -54,11 +61,15 @@ def measure_clearance_cached(
         equip_verts,
         equip.normals,
         body_cache["grids"][body_key],
+        clearance_target,
     )
     needed_mag = np.linalg.norm(needed, axis=1)
     penetrating = int(np.sum(needed_mag > PENETRATION_TOLERANCE_M))
-    min_clearance = float(MIN_CLEARANCE_M - np.max(needed_mag)) if len(needed_mag) else MIN_CLEARANCE_M
+    min_clearance = (
+        float(clearance_target - np.max(needed_mag)) if len(needed_mag) else clearance_target
+    )
     return {
+        "clearance_target_m": clearance_target,
         "penetrating_vertices": penetrating,
         "min_clearance_m": min_clearance,
         "max_needed_correction_m": float(np.max(needed_mag)) if len(needed_mag) else 0.0,
@@ -68,7 +79,8 @@ def measure_clearance_cached(
 def main() -> int:
     poses = pose_matrix()
     summary = {
-        "min_clearance_target_m": MIN_CLEARANCE_M,
+        "min_clearance_target_m": DEFAULT_MIN_CLEARANCE_M,
+        "hood_min_clearance_target_m": HOOD_MIN_CLEARANCE_M,
         "penetration_tolerance_m": PENETRATION_TOLERANCE_M,
         "cases": {},
         "failures": [],
@@ -93,12 +105,15 @@ def main() -> int:
             if equip is None:
                 raise ValueError(f"missing equipment primitive: {equip_path}")
             consumed = EQUIPMENT_CONSUMED[asset_name]
+            clearance_target = min_clearance_m(asset_name)
             piece_poses = poses
             if asset_name == "ranger_hood":
                 piece_poses = {k: v for k, v in poses.items() if "head" in k or k == "neutral"}
             for pose_name, semantics in piece_poses.items():
                 key = f"{unit_key}/{asset_name}/{pose_name}"
-                metrics = measure_clearance_cached(body_cache, equip, consumed, semantics)
+                metrics = measure_clearance_cached(
+                    body_cache, equip, consumed, semantics, clearance_target
+                )
                 summary["cases"][key] = metrics
                 if metrics["min_clearance_m"] < worst_min:
                     worst_min = metrics["min_clearance_m"]

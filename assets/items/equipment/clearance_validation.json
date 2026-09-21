@@ -1,1593 +1,1912 @@
 {
-  "min_clearance_target_m": 0.003,
+  "min_clearance_target_m": 0.005,
+  "hood_min_clearance_target_m": 0.003,
   "penetration_tolerance_m": 0.001,
   "cases": {
     "human_male/peasant_body/neutral": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004577346611768007,
+      "max_needed_correction_m": 0.00042265327647328377
     },
     "human_male/peasant_body/build_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004473761655390263,
+      "max_needed_correction_m": 0.0005262382328510284
     },
     "human_male/peasant_body/build_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004437373019754887,
+      "max_needed_correction_m": 0.0005626268684864044
     },
     "human_male/peasant_body/fat_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.00457734614610672,
+      "max_needed_correction_m": 0.0004226537130307406
     },
     "human_male/peasant_body/muscle_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004577346611768007,
+      "max_needed_correction_m": 0.00042265327647328377
     },
     "human_male/peasant_body/shoulders_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0027322371024638414,
-      "max_needed_correction_m": 0.00026776292361319065
+      "min_clearance_m": 0.004198484122753143,
+      "max_needed_correction_m": 0.0008015157654881477
     },
     "human_male/peasant_body/shoulders_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002694643335416913,
-      "max_needed_correction_m": 0.0003053566615562886
+      "min_clearance_m": 0.004140312317758799,
+      "max_needed_correction_m": 0.0008596875704824924
     },
     "human_male/peasant_body/torso_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.0041848234832286835,
+      "max_needed_correction_m": 0.0008151764050126076
     },
     "human_male/peasant_body/torso_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004577346611768007,
+      "max_needed_correction_m": 0.00042265327647328377
     },
     "human_male/peasant_body/arms_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004577346611768007,
+      "max_needed_correction_m": 0.00042265327647328377
     },
     "human_male/peasant_body/arms_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004577346611768007,
+      "max_needed_correction_m": 0.00042265327647328377
     },
     "human_male/peasant_body/hips_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004577346611768007,
+      "max_needed_correction_m": 0.00042265327647328377
     },
     "human_male/peasant_body/hips_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.0044104550033807755,
+      "max_needed_correction_m": 0.0005895448848605156
     },
     "human_male/peasant_body/legs_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004577346611768007,
+      "max_needed_correction_m": 0.00042265327647328377
     },
     "human_male/peasant_body/legs_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004577346611768007,
+      "max_needed_correction_m": 0.00042265327647328377
     },
     "human_male/peasant_body/head_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004577346611768007,
+      "max_needed_correction_m": 0.00042265327647328377
     },
     "human_male/peasant_body/head_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004577346611768007,
+      "max_needed_correction_m": 0.00042265327647328377
     },
     "human_male/peasant_body/shoulders1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0026589895132929087,
-      "max_needed_correction_m": 0.0003410105127841234
+      "min_clearance_m": 0.00416412902995944,
+      "max_needed_correction_m": 0.0008358709164895117
     },
     "human_male/peasant_body/narrow_shoulders_broad_build": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0027322371024638414,
-      "max_needed_correction_m": 0.00026776292361319065
+      "min_clearance_m": 0.004198484122753143,
+      "max_needed_correction_m": 0.0008015157654881477
     },
     "human_male/peasant_body/torso1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.00457734614610672,
+      "max_needed_correction_m": 0.0004226537130307406
     },
     "human_male/peasant_body/arms1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004577346611768007,
+      "max_needed_correction_m": 0.00042265327647328377
     },
     "human_male/peasant_body/hips1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.0044104550033807755,
+      "max_needed_correction_m": 0.0005895448848605156
     },
     "human_male/peasant_body/legs1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004577346611768007,
+      "max_needed_correction_m": 0.00042265327647328377
     },
     "human_male/peasant_body/narrow_build_broad_hips": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021237290930002928,
-      "max_needed_correction_m": 0.0008762708748690784
+      "min_clearance_m": 0.004394349176436663,
+      "max_needed_correction_m": 0.0006056507118046284
     },
     "human_male/peasant_body/shoulders1_torso1_arms1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0026946424040943384,
-      "max_needed_correction_m": 0.00030535762198269367
+      "min_clearance_m": 0.004140312317758799,
+      "max_needed_correction_m": 0.0008596875704824924
     },
     "human_male/peasant_body/hips1_legs1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.0044104550033807755,
+      "max_needed_correction_m": 0.0005895448848605156
     },
     "human_male/peasant_arms/neutral": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002124824794009328,
-      "max_needed_correction_m": 0.0008751752320677042
+      "min_clearance_m": 0.004007893148809671,
+      "max_needed_correction_m": 0.0009921066230162978
     },
     "human_male/peasant_arms/build_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020980853587388992,
-      "max_needed_correction_m": 0.0009019146673381329
+      "min_clearance_m": 0.004034584388136864,
+      "max_needed_correction_m": 0.0009654155583120883
     },
     "human_male/peasant_arms/build_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002094885567203164,
-      "max_needed_correction_m": 0.0009051144006662071
+      "min_clearance_m": 0.00408396078273654,
+      "max_needed_correction_m": 0.0009160391055047512
     },
     "human_male/peasant_arms/fat_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002917845733463764,
-      "max_needed_correction_m": 8.215428533731028e-05
+      "min_clearance_m": 0.004103915765881538,
+      "max_needed_correction_m": 0.0008960841223597527
     },
     "human_male/peasant_arms/muscle_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0022262961138039827,
-      "max_needed_correction_m": 0.0007737039122730494
+      "min_clearance_m": 0.004016443621367216,
+      "max_needed_correction_m": 0.000983556266874075
     },
     "human_male/peasant_arms/shoulders_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002124824794009328,
-      "max_needed_correction_m": 0.0008751752320677042
+      "min_clearance_m": 0.004007893148809671,
+      "max_needed_correction_m": 0.0009921066230162978
     },
     "human_male/peasant_arms/shoulders_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002124824794009328,
-      "max_needed_correction_m": 0.0008751752320677042
+      "min_clearance_m": 0.004007893148809671,
+      "max_needed_correction_m": 0.0009921066230162978
     },
     "human_male/peasant_arms/torso_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002124824794009328,
-      "max_needed_correction_m": 0.0008751752320677042
+      "min_clearance_m": 0.004007893148809671,
+      "max_needed_correction_m": 0.0009921066230162978
     },
     "human_male/peasant_arms/torso_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002124824794009328,
-      "max_needed_correction_m": 0.0008751752320677042
+      "min_clearance_m": 0.004007893148809671,
+      "max_needed_correction_m": 0.0009921066230162978
     },
     "human_male/peasant_arms/arms_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0022285794839262962,
-      "max_needed_correction_m": 0.0007714205421507359
+      "min_clearance_m": 0.0040091765113174915,
+      "max_needed_correction_m": 0.0009908234933391213
     },
     "human_male/peasant_arms/arms_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0029117269441485405,
-      "max_needed_correction_m": 8.827307465253398e-05
+      "min_clearance_m": 0.004015671089291573,
+      "max_needed_correction_m": 0.0009843289153650403
     },
     "human_male/peasant_arms/hips_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002124824794009328,
-      "max_needed_correction_m": 0.0008751752320677042
+      "min_clearance_m": 0.004007893148809671,
+      "max_needed_correction_m": 0.0009921066230162978
     },
     "human_male/peasant_arms/hips_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002124824794009328,
-      "max_needed_correction_m": 0.0008751752320677042
+      "min_clearance_m": 0.004007893148809671,
+      "max_needed_correction_m": 0.0009921066230162978
     },
     "human_male/peasant_arms/legs_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002124824794009328,
-      "max_needed_correction_m": 0.0008751752320677042
+      "min_clearance_m": 0.004007893148809671,
+      "max_needed_correction_m": 0.0009921066230162978
     },
     "human_male/peasant_arms/legs_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002124824794009328,
-      "max_needed_correction_m": 0.0008751752320677042
+      "min_clearance_m": 0.004007893148809671,
+      "max_needed_correction_m": 0.0009921066230162978
     },
     "human_male/peasant_arms/head_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002124824794009328,
-      "max_needed_correction_m": 0.0008751752320677042
+      "min_clearance_m": 0.004007893148809671,
+      "max_needed_correction_m": 0.0009921066230162978
     },
     "human_male/peasant_arms/head_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002124824794009328,
-      "max_needed_correction_m": 0.0008751752320677042
+      "min_clearance_m": 0.004007893148809671,
+      "max_needed_correction_m": 0.0009921066230162978
     },
     "human_male/peasant_arms/shoulders1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0022262961138039827,
-      "max_needed_correction_m": 0.0007737039122730494
+      "min_clearance_m": 0.004016443621367216,
+      "max_needed_correction_m": 0.000983556266874075
     },
     "human_male/peasant_arms/narrow_shoulders_broad_build": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002094885567203164,
-      "max_needed_correction_m": 0.0009051144006662071
+      "min_clearance_m": 0.00408396078273654,
+      "max_needed_correction_m": 0.0009160391055047512
     },
     "human_male/peasant_arms/torso1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002917845733463764,
-      "max_needed_correction_m": 8.215428533731028e-05
+      "min_clearance_m": 0.004103915765881538,
+      "max_needed_correction_m": 0.0008960841223597527
     },
     "human_male/peasant_arms/arms1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0022797291167080402,
-      "max_needed_correction_m": 0.0007202709093689919
+      "min_clearance_m": 0.00411147391423583,
+      "max_needed_correction_m": 0.0008885260322131217
     },
     "human_male/peasant_arms/hips1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002917845733463764,
-      "max_needed_correction_m": 8.215428533731028e-05
+      "min_clearance_m": 0.004103915765881538,
+      "max_needed_correction_m": 0.0008960841223597527
     },
     "human_male/peasant_arms/legs1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0022262961138039827,
-      "max_needed_correction_m": 0.0007737039122730494
+      "min_clearance_m": 0.004016443621367216,
+      "max_needed_correction_m": 0.000983556266874075
     },
     "human_male/peasant_arms/narrow_build_broad_hips": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020980853587388992,
-      "max_needed_correction_m": 0.0009019146673381329
+      "min_clearance_m": 0.004034584388136864,
+      "max_needed_correction_m": 0.0009654155583120883
     },
     "human_male/peasant_arms/shoulders1_torso1_arms1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0029117269441485405,
-      "max_needed_correction_m": 8.827307465253398e-05
+      "min_clearance_m": 0.004015671089291573,
+      "max_needed_correction_m": 0.0009843289153650403
     },
     "human_male/peasant_arms/hips1_legs1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002917845733463764,
-      "max_needed_correction_m": 8.215428533731028e-05
+      "min_clearance_m": 0.004103915765881538,
+      "max_needed_correction_m": 0.0008960841223597527
     },
     "human_male/peasant_legs/neutral": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999976605176926,
+      "max_needed_correction_m": 2.3283066141743802e-08
     },
     "human_male/peasant_legs/build_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999976605176926,
+      "max_needed_correction_m": 2.3283066141743802e-08
     },
     "human_male/peasant_legs/build_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0025314807426184416,
-      "max_needed_correction_m": 0.0004685192834585905
+      "min_clearance_m": 0.004999976605176926,
+      "max_needed_correction_m": 2.3283066141743802e-08
     },
     "human_male/peasant_legs/fat_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.0044358037412166595,
+      "max_needed_correction_m": 0.0005641961470246315
     },
     "human_male/peasant_legs/muscle_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999976605176926,
+      "max_needed_correction_m": 2.3283066141743802e-08
     },
     "human_male/peasant_legs/shoulders_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999976605176926,
+      "max_needed_correction_m": 2.3283066141743802e-08
     },
     "human_male/peasant_legs/shoulders_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999976605176926,
+      "max_needed_correction_m": 2.3283066141743802e-08
     },
     "human_male/peasant_legs/torso_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999997094273567,
+      "max_needed_correction_m": 2.7939677238464355e-09
     },
     "human_male/peasant_legs/torso_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999997094273567,
+      "max_needed_correction_m": 2.7939677238464355e-09
     },
     "human_male/peasant_legs/arms_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999976605176926,
+      "max_needed_correction_m": 2.3283066141743802e-08
     },
     "human_male/peasant_legs/arms_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999976605176926,
+      "max_needed_correction_m": 2.3283066141743802e-08
     },
     "human_male/peasant_legs/hips_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999997094273567,
+      "max_needed_correction_m": 2.7939677238464355e-09
     },
     "human_male/peasant_legs/hips_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/peasant_legs/legs_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0027395449578762054,
-      "max_needed_correction_m": 0.00026045506820082664
+      "min_clearance_m": 0.004999999888241291,
+      "max_needed_correction_m": 0.0
     },
     "human_male/peasant_legs/legs_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/peasant_legs/head_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999976605176926,
+      "max_needed_correction_m": 2.3283066141743802e-08
     },
     "human_male/peasant_legs/head_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999976605176926,
+      "max_needed_correction_m": 2.3283066141743802e-08
     },
     "human_male/peasant_legs/shoulders1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999976605176926,
+      "max_needed_correction_m": 2.3283066141743802e-08
     },
     "human_male/peasant_legs/narrow_shoulders_broad_build": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0025314807426184416,
-      "max_needed_correction_m": 0.0004685192834585905
+      "min_clearance_m": 0.004999976605176926,
+      "max_needed_correction_m": 2.3283066141743802e-08
     },
     "human_male/peasant_legs/torso1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.0044358037412166595,
+      "max_needed_correction_m": 0.0005641961470246315
     },
     "human_male/peasant_legs/arms1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999976605176926,
+      "max_needed_correction_m": 2.3283066141743802e-08
     },
     "human_male/peasant_legs/hips1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0025199418887495995,
-      "max_needed_correction_m": 0.0004800581082236022
+      "min_clearance_m": 0.004999999888241291,
+      "max_needed_correction_m": 0.0
     },
     "human_male/peasant_legs/legs1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/peasant_legs/narrow_build_broad_hips": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/peasant_legs/shoulders1_torso1_arms1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999997094273567,
+      "max_needed_correction_m": 2.7939677238464355e-09
     },
     "human_male/peasant_legs/hips1_legs1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002302922075614333,
-      "max_needed_correction_m": 0.0006970779504626989
+      "min_clearance_m": 0.004038621671497822,
+      "max_needed_correction_m": 0.0009613781585358083
     },
     "human_male/ranger_body/neutral": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004545893985778093,
+      "max_needed_correction_m": 0.0004541059024631977
     },
     "human_male/ranger_body/build_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002726242644712329,
-      "max_needed_correction_m": 0.0002737573522608727
+      "min_clearance_m": 0.004545893985778093,
+      "max_needed_correction_m": 0.0004541059024631977
     },
     "human_male/ranger_body/build_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0024509429931640625,
-      "max_needed_correction_m": 0.0005490570329129696
+      "min_clearance_m": 0.004545893985778093,
+      "max_needed_correction_m": 0.0004541059024631977
     },
     "human_male/ranger_body/fat_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002927054651081562,
-      "max_needed_correction_m": 7.294538227142766e-05
+      "min_clearance_m": 0.004303203895688057,
+      "max_needed_correction_m": 0.0006967959343455732
     },
     "human_male/ranger_body/muscle_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0027905525639653206,
-      "max_needed_correction_m": 0.0002094474621117115
+      "min_clearance_m": 0.00424229446798563,
+      "max_needed_correction_m": 0.000757705420255661
     },
     "human_male/ranger_body/shoulders_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.00455839466303587,
+      "max_needed_correction_m": 0.00044160522520542145
     },
     "human_male/ranger_body/shoulders_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020071202889084816,
-      "max_needed_correction_m": 0.0009928796207532287
+      "min_clearance_m": 0.004046990070492029,
+      "max_needed_correction_m": 0.0009530098759569228
     },
     "human_male/ranger_body/torso_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004537603817880154,
+      "max_needed_correction_m": 0.0004623960703611374
     },
     "human_male/ranger_body/torso_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0027548240032047033,
-      "max_needed_correction_m": 0.00024517602287232876
+      "min_clearance_m": 0.004242822527885437,
+      "max_needed_correction_m": 0.000757177360355854
     },
     "human_male/ranger_body/arms_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004545893985778093,
+      "max_needed_correction_m": 0.0004541059024631977
     },
     "human_male/ranger_body/arms_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004545893985778093,
+      "max_needed_correction_m": 0.0004541059024631977
     },
     "human_male/ranger_body/hips_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004304148256778717,
+      "max_needed_correction_m": 0.000695851631462574
     },
     "human_male/ranger_body/hips_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004035434685647488,
+      "max_needed_correction_m": 0.0009645652025938034
     },
     "human_male/ranger_body/legs_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004545893985778093,
+      "max_needed_correction_m": 0.0004541059024631977
     },
     "human_male/ranger_body/legs_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004545893985778093,
+      "max_needed_correction_m": 0.0004541059024631977
     },
     "human_male/ranger_body/head_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0029545440338552,
-      "max_needed_correction_m": 4.545599585981108e-05
+      "min_clearance_m": 0.004514054395258427,
+      "max_needed_correction_m": 0.0004859454929828644
     },
     "human_male/ranger_body/head_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0022545671090483665,
-      "max_needed_correction_m": 0.0007454329170286655
+      "min_clearance_m": 0.004272618796676397,
+      "max_needed_correction_m": 0.0007273810915648937
     },
     "human_male/ranger_body/shoulders1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004270798992365599,
+      "max_needed_correction_m": 0.0007292009540833533
     },
     "human_male/ranger_body/narrow_shoulders_broad_build": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002195075387135148,
-      "max_needed_correction_m": 0.0008049245807342231
+      "min_clearance_m": 0.004999999888241291,
+      "max_needed_correction_m": 0.0
     },
     "human_male/ranger_body/torso1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0028162768576294184,
-      "max_needed_correction_m": 0.00018372316844761372
+      "min_clearance_m": 0.004210000857710838,
+      "max_needed_correction_m": 0.0007899990305304527
     },
     "human_male/ranger_body/arms1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0027905525639653206,
-      "max_needed_correction_m": 0.0002094474621117115
+      "min_clearance_m": 0.00424229446798563,
+      "max_needed_correction_m": 0.000757705420255661
     },
     "human_male/ranger_body/hips1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0026682650204747915,
-      "max_needed_correction_m": 0.00033173500560224056
+      "min_clearance_m": 0.004035434685647488,
+      "max_needed_correction_m": 0.0009645652025938034
     },
     "human_male/ranger_body/legs1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0027905525639653206,
-      "max_needed_correction_m": 0.0002094474621117115
+      "min_clearance_m": 0.00424229446798563,
+      "max_needed_correction_m": 0.000757705420255661
     },
     "human_male/ranger_body/narrow_build_broad_hips": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0023062366526573896,
-      "max_needed_correction_m": 0.0006937633734196424
+      "min_clearance_m": 0.004035434685647488,
+      "max_needed_correction_m": 0.0009645652025938034
     },
     "human_male/ranger_body/shoulders1_torso1_arms1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0028960302006453276,
-      "max_needed_correction_m": 0.00010396982543170452
+      "min_clearance_m": 0.004508969374001026,
+      "max_needed_correction_m": 0.0004910305142402649
     },
     "human_male/ranger_body/hips1_legs1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0026682650204747915,
-      "max_needed_correction_m": 0.00033173500560224056
+      "min_clearance_m": 0.004035434685647488,
+      "max_needed_correction_m": 0.0009645652025938034
     },
     "human_male/ranger_arms/neutral": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020476009231060743,
-      "max_needed_correction_m": 0.0009523991611786187
+      "min_clearance_m": 0.004020390100777149,
+      "max_needed_correction_m": 0.0009796099038794637
     },
     "human_male/ranger_arms/build_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0023678282741457224,
-      "max_needed_correction_m": 0.0006321717519313097
+      "min_clearance_m": 0.0040078675374388695,
+      "max_needed_correction_m": 0.0009921323508024216
     },
     "human_male/ranger_arms/build_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0022455777507275343,
-      "max_needed_correction_m": 0.0007544222171418369
+      "min_clearance_m": 0.00403207540512085,
+      "max_needed_correction_m": 0.0009679244831204414
     },
     "human_male/ranger_arms/fat_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002427107421681285,
-      "max_needed_correction_m": 0.0005728926043957472
+      "min_clearance_m": 0.004067654721438885,
+      "max_needed_correction_m": 0.0009323451668024063
     },
     "human_male/ranger_arms/muscle_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0022196227218955755,
-      "max_needed_correction_m": 0.0007803772459737957
+      "min_clearance_m": 0.004016184248030186,
+      "max_needed_correction_m": 0.0009838156402111053
     },
     "human_male/ranger_arms/shoulders_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020476009231060743,
-      "max_needed_correction_m": 0.0009523991611786187
+      "min_clearance_m": 0.004020390100777149,
+      "max_needed_correction_m": 0.0009796099038794637
     },
     "human_male/ranger_arms/shoulders_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020476009231060743,
-      "max_needed_correction_m": 0.0009523991611786187
+      "min_clearance_m": 0.004020390100777149,
+      "max_needed_correction_m": 0.0009796099038794637
     },
     "human_male/ranger_arms/torso_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020476009231060743,
-      "max_needed_correction_m": 0.0009523991611786187
+      "min_clearance_m": 0.004020390100777149,
+      "max_needed_correction_m": 0.0009796099038794637
     },
     "human_male/ranger_arms/torso_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020476009231060743,
-      "max_needed_correction_m": 0.0009523991611786187
+      "min_clearance_m": 0.004020390100777149,
+      "max_needed_correction_m": 0.0009796099038794637
     },
     "human_male/ranger_arms/arms_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0025825633201748133,
-      "max_needed_correction_m": 0.0004174367059022188
+      "min_clearance_m": 0.0040154410526156425,
+      "max_needed_correction_m": 0.0009845588356256485
     },
     "human_male/ranger_arms/arms_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002111170906573534,
-      "max_needed_correction_m": 0.0008888291195034981
+      "min_clearance_m": 0.004001922905445099,
+      "max_needed_correction_m": 0.0009980769827961922
     },
     "human_male/ranger_arms/hips_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020476009231060743,
-      "max_needed_correction_m": 0.0009523991611786187
+      "min_clearance_m": 0.004020390100777149,
+      "max_needed_correction_m": 0.0009796099038794637
     },
     "human_male/ranger_arms/hips_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020476009231060743,
-      "max_needed_correction_m": 0.0009523991611786187
+      "min_clearance_m": 0.004020390100777149,
+      "max_needed_correction_m": 0.0009796099038794637
     },
     "human_male/ranger_arms/legs_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020476009231060743,
-      "max_needed_correction_m": 0.0009523991611786187
+      "min_clearance_m": 0.004020390100777149,
+      "max_needed_correction_m": 0.0009796099038794637
     },
     "human_male/ranger_arms/legs_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020476009231060743,
-      "max_needed_correction_m": 0.0009523991611786187
+      "min_clearance_m": 0.004020390100777149,
+      "max_needed_correction_m": 0.0009796099038794637
     },
     "human_male/ranger_arms/head_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020476009231060743,
-      "max_needed_correction_m": 0.0009523991611786187
+      "min_clearance_m": 0.004020390100777149,
+      "max_needed_correction_m": 0.0009796099038794637
     },
     "human_male/ranger_arms/head_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020476009231060743,
-      "max_needed_correction_m": 0.0009523991611786187
+      "min_clearance_m": 0.004020390100777149,
+      "max_needed_correction_m": 0.0009796099038794637
     },
     "human_male/ranger_arms/shoulders1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0022196227218955755,
-      "max_needed_correction_m": 0.0007803772459737957
+      "min_clearance_m": 0.004016184248030186,
+      "max_needed_correction_m": 0.0009838156402111053
     },
     "human_male/ranger_arms/narrow_shoulders_broad_build": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0022455777507275343,
-      "max_needed_correction_m": 0.0007544222171418369
+      "min_clearance_m": 0.00403207540512085,
+      "max_needed_correction_m": 0.0009679244831204414
     },
     "human_male/ranger_arms/torso1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002427107421681285,
-      "max_needed_correction_m": 0.0005728926043957472
+      "min_clearance_m": 0.004067654721438885,
+      "max_needed_correction_m": 0.0009323451668024063
     },
     "human_male/ranger_arms/arms1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020343621727079153,
-      "max_needed_correction_m": 0.0009656379115767777
+      "min_clearance_m": 0.004062312189489603,
+      "max_needed_correction_m": 0.000937687698751688
     },
     "human_male/ranger_arms/hips1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002427107421681285,
-      "max_needed_correction_m": 0.0005728926043957472
+      "min_clearance_m": 0.004067654721438885,
+      "max_needed_correction_m": 0.0009323451668024063
     },
     "human_male/ranger_arms/legs1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0022196227218955755,
-      "max_needed_correction_m": 0.0007803772459737957
+      "min_clearance_m": 0.004016184248030186,
+      "max_needed_correction_m": 0.0009838156402111053
     },
     "human_male/ranger_arms/narrow_build_broad_hips": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0023678282741457224,
-      "max_needed_correction_m": 0.0006321717519313097
+      "min_clearance_m": 0.0040078675374388695,
+      "max_needed_correction_m": 0.0009921323508024216
     },
     "human_male/ranger_arms/shoulders1_torso1_arms1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002111170906573534,
-      "max_needed_correction_m": 0.0008888291195034981
+      "min_clearance_m": 0.004001922905445099,
+      "max_needed_correction_m": 0.0009980769827961922
     },
     "human_male/ranger_arms/hips1_legs1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002427107421681285,
-      "max_needed_correction_m": 0.0005728926043957472
+      "min_clearance_m": 0.004067654721438885,
+      "max_needed_correction_m": 0.0009323451668024063
     },
     "human_male/ranger_legs/neutral": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/build_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004799375310540199,
+      "max_needed_correction_m": 0.000200624592253007
     },
     "human_male/ranger_legs/build_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/fat_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/muscle_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/shoulders_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/shoulders_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/torso_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004059692844748497,
+      "max_needed_correction_m": 0.000940307043492794
     },
     "human_male/ranger_legs/torso_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004975865129381418,
+      "max_needed_correction_m": 2.4134758859872818e-05
     },
     "human_male/ranger_legs/arms_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/arms_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/hips_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/hips_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/legs_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004023538902401924,
+      "max_needed_correction_m": 0.0009764609858393669
     },
     "human_male/ranger_legs/legs_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/head_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/head_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/shoulders1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/narrow_shoulders_broad_build": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/torso1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004975865129381418,
+      "max_needed_correction_m": 2.4134758859872818e-05
     },
     "human_male/ranger_legs/arms1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/hips1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/legs1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/narrow_build_broad_hips": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_legs/shoulders1_torso1_arms1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004975865129381418,
+      "max_needed_correction_m": 2.4134758859872818e-05
     },
     "human_male/ranger_legs/hips1_legs1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004999964963644743,
+      "max_needed_correction_m": 3.4924596548080444e-08
     },
     "human_male/ranger_hood/neutral": {
+      "clearance_target_m": 0.003,
       "penetrating_vertices": 0,
       "min_clearance_m": 0.003000000026077032,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_hood/head_0": {
+      "clearance_target_m": 0.003,
       "penetrating_vertices": 0,
       "min_clearance_m": 0.003000000026077032,
       "max_needed_correction_m": 0.0
     },
     "human_male/ranger_hood/head_1": {
+      "clearance_target_m": 0.003,
       "penetrating_vertices": 0,
       "min_clearance_m": 0.003000000026077032,
       "max_needed_correction_m": 0.0
     },
     "human_female/peasant_body/neutral": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004267502576112747,
+      "max_needed_correction_m": 0.0007324973121285439
     },
     "human_female/peasant_body/build_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0023355213925242424,
-      "max_needed_correction_m": 0.0006644786335527897
+      "min_clearance_m": 0.004267502576112747,
+      "max_needed_correction_m": 0.0007324973121285439
     },
     "human_female/peasant_body/build_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004267502576112747,
+      "max_needed_correction_m": 0.0007324973121285439
     },
     "human_female/peasant_body/fat_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0024285479448735714,
-      "max_needed_correction_m": 0.0005714520812034607
+      "min_clearance_m": 0.004042674321681261,
+      "max_needed_correction_m": 0.00095732556656003
     },
     "human_female/peasant_body/muscle_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004267502576112747,
+      "max_needed_correction_m": 0.0007324973121285439
     },
     "human_female/peasant_body/shoulders_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004267502576112747,
+      "max_needed_correction_m": 0.0007324973121285439
     },
     "human_female/peasant_body/shoulders_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004164696205407381,
+      "max_needed_correction_m": 0.00083530368283391
     },
     "human_female/peasant_body/torso_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004267502576112747,
+      "max_needed_correction_m": 0.0007324973121285439
     },
     "human_female/peasant_body/torso_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004267502576112747,
+      "max_needed_correction_m": 0.0007324973121285439
     },
     "human_female/peasant_body/arms_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004267502576112747,
+      "max_needed_correction_m": 0.0007324973121285439
     },
     "human_female/peasant_body/arms_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004111348185688257,
+      "max_needed_correction_m": 0.0008886517025530338
     },
     "human_female/peasant_body/hips_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0028443315532058477,
-      "max_needed_correction_m": 0.00015566845831926912
+      "min_clearance_m": 0.004034530371427536,
+      "max_needed_correction_m": 0.000965469575021416
     },
     "human_female/peasant_body/hips_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0025067105889320374,
-      "max_needed_correction_m": 0.0004932894371449947
+      "min_clearance_m": 0.004483175463974476,
+      "max_needed_correction_m": 0.0005168244242668152
     },
     "human_female/peasant_body/legs_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004267502576112747,
+      "max_needed_correction_m": 0.0007324973121285439
     },
     "human_female/peasant_body/legs_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004267502576112747,
+      "max_needed_correction_m": 0.0007324973121285439
     },
     "human_female/peasant_body/head_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004267502576112747,
+      "max_needed_correction_m": 0.0007324973121285439
     },
     "human_female/peasant_body/head_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0024941274896264076,
-      "max_needed_correction_m": 0.0005058725946582854
+      "min_clearance_m": 0.004267502576112747,
+      "max_needed_correction_m": 0.0007324973121285439
     },
     "human_female/peasant_body/shoulders1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004192126449197531,
+      "max_needed_correction_m": 0.0008078734390437603
     },
     "human_female/peasant_body/narrow_shoulders_broad_build": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004248412791639566,
+      "max_needed_correction_m": 0.0007515870966017246
     },
     "human_female/peasant_body/torso1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.0042689042165875435,
+      "max_needed_correction_m": 0.0007310956716537476
     },
     "human_female/peasant_body/arms1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004111348185688257,
+      "max_needed_correction_m": 0.0008886517025530338
     },
     "human_female/peasant_body/hips1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0024456072133034468,
-      "max_needed_correction_m": 0.0005543928127735853
+      "min_clearance_m": 0.004077855963259935,
+      "max_needed_correction_m": 0.0009221438667736948
     },
     "human_female/peasant_body/legs1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004267502576112747,
+      "max_needed_correction_m": 0.0007324973121285439
     },
     "human_female/peasant_body/narrow_build_broad_hips": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0024707436095923185,
-      "max_needed_correction_m": 0.0005292563582770526
+      "min_clearance_m": 0.004483175463974476,
+      "max_needed_correction_m": 0.0005168244242668152
     },
     "human_female/peasant_body/shoulders1_torso1_arms1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004111348185688257,
+      "max_needed_correction_m": 0.0008886517025530338
     },
     "human_female/peasant_body/hips1_legs1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0024456072133034468,
-      "max_needed_correction_m": 0.0005543928127735853
+      "min_clearance_m": 0.004077855963259935,
+      "max_needed_correction_m": 0.0009221438667736948
     },
     "human_female/peasant_arms/neutral": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002372028538957238,
-      "max_needed_correction_m": 0.0006279714871197939
+      "min_clearance_m": 0.004002868663519621,
+      "max_needed_correction_m": 0.0009971312247216702
     },
     "human_female/peasant_arms/build_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021360761020332575,
-      "max_needed_correction_m": 0.0008639239240437746
+      "min_clearance_m": 0.004001737106591463,
+      "max_needed_correction_m": 0.000998262781649828
     },
     "human_female/peasant_arms/build_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020235769916325808,
-      "max_needed_correction_m": 0.0009764230344444513
+      "min_clearance_m": 0.004009534604847431,
+      "max_needed_correction_m": 0.0009904652833938599
     },
     "human_female/peasant_arms/fat_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002029289724305272,
-      "max_needed_correction_m": 0.00097071030177176
+      "min_clearance_m": 0.004187011159956455,
+      "max_needed_correction_m": 0.0008129886700771749
     },
     "human_female/peasant_arms/muscle_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002092635491862893,
-      "max_needed_correction_m": 0.0009073645924217999
+      "min_clearance_m": 0.004036897327750921,
+      "max_needed_correction_m": 0.0009631025604903698
     },
     "human_female/peasant_arms/shoulders_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002372028538957238,
-      "max_needed_correction_m": 0.0006279714871197939
+      "min_clearance_m": 0.004002868663519621,
+      "max_needed_correction_m": 0.0009971312247216702
     },
     "human_female/peasant_arms/shoulders_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002372028538957238,
-      "max_needed_correction_m": 0.0006279714871197939
+      "min_clearance_m": 0.004002868663519621,
+      "max_needed_correction_m": 0.0009971312247216702
     },
     "human_female/peasant_arms/torso_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002372028538957238,
-      "max_needed_correction_m": 0.0006279714871197939
+      "min_clearance_m": 0.004002868663519621,
+      "max_needed_correction_m": 0.0009971312247216702
     },
     "human_female/peasant_arms/torso_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002372028538957238,
-      "max_needed_correction_m": 0.0006279714871197939
+      "min_clearance_m": 0.004002868663519621,
+      "max_needed_correction_m": 0.0009971312247216702
     },
     "human_female/peasant_arms/arms_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002184042939916253,
-      "max_needed_correction_m": 0.000815957086160779
+      "min_clearance_m": 0.004009360913187265,
+      "max_needed_correction_m": 0.0009906389750540257
     },
     "human_female/peasant_arms/arms_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020959177054464817,
-      "max_needed_correction_m": 0.0009040822624228895
+      "min_clearance_m": 0.004140933975577354,
+      "max_needed_correction_m": 0.0008590659708715975
     },
     "human_female/peasant_arms/hips_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002372028538957238,
-      "max_needed_correction_m": 0.0006279714871197939
+      "min_clearance_m": 0.004002868663519621,
+      "max_needed_correction_m": 0.0009971312247216702
     },
     "human_female/peasant_arms/hips_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002372028538957238,
-      "max_needed_correction_m": 0.0006279714871197939
+      "min_clearance_m": 0.004002868663519621,
+      "max_needed_correction_m": 0.0009971312247216702
     },
     "human_female/peasant_arms/legs_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002372028538957238,
-      "max_needed_correction_m": 0.0006279714871197939
+      "min_clearance_m": 0.004002868663519621,
+      "max_needed_correction_m": 0.0009971312247216702
     },
     "human_female/peasant_arms/legs_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002372028538957238,
-      "max_needed_correction_m": 0.0006279714871197939
+      "min_clearance_m": 0.004002868663519621,
+      "max_needed_correction_m": 0.0009971312247216702
     },
     "human_female/peasant_arms/head_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002372028538957238,
-      "max_needed_correction_m": 0.0006279714871197939
+      "min_clearance_m": 0.004002868663519621,
+      "max_needed_correction_m": 0.0009971312247216702
     },
     "human_female/peasant_arms/head_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002372028538957238,
-      "max_needed_correction_m": 0.0006279714871197939
+      "min_clearance_m": 0.004002868663519621,
+      "max_needed_correction_m": 0.0009971312247216702
     },
     "human_female/peasant_arms/shoulders1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002092635491862893,
-      "max_needed_correction_m": 0.0009073645924217999
+      "min_clearance_m": 0.004036897327750921,
+      "max_needed_correction_m": 0.0009631025604903698
     },
     "human_female/peasant_arms/narrow_shoulders_broad_build": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020235769916325808,
-      "max_needed_correction_m": 0.0009764230344444513
+      "min_clearance_m": 0.004009534604847431,
+      "max_needed_correction_m": 0.0009904652833938599
     },
     "human_female/peasant_arms/torso1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002029289724305272,
-      "max_needed_correction_m": 0.00097071030177176
+      "min_clearance_m": 0.004187011159956455,
+      "max_needed_correction_m": 0.0008129886700771749
     },
     "human_female/peasant_arms/arms1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002999948337674141,
-      "max_needed_correction_m": 5.1688406443872736e-08
+      "min_clearance_m": 0.004196370020508766,
+      "max_needed_correction_m": 0.0008036298677325249
     },
     "human_female/peasant_arms/hips1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002029289724305272,
-      "max_needed_correction_m": 0.00097071030177176
+      "min_clearance_m": 0.004187011159956455,
+      "max_needed_correction_m": 0.0008129886700771749
     },
     "human_female/peasant_arms/legs1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002092635491862893,
-      "max_needed_correction_m": 0.0009073645924217999
+      "min_clearance_m": 0.004036897327750921,
+      "max_needed_correction_m": 0.0009631025604903698
     },
     "human_female/peasant_arms/narrow_build_broad_hips": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021360761020332575,
-      "max_needed_correction_m": 0.0008639239240437746
+      "min_clearance_m": 0.004001737106591463,
+      "max_needed_correction_m": 0.000998262781649828
     },
     "human_female/peasant_arms/shoulders1_torso1_arms1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020959177054464817,
-      "max_needed_correction_m": 0.0009040822624228895
+      "min_clearance_m": 0.004140933975577354,
+      "max_needed_correction_m": 0.0008590659708715975
     },
     "human_female/peasant_arms/hips1_legs1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002029289724305272,
-      "max_needed_correction_m": 0.00097071030177176
+      "min_clearance_m": 0.004187011159956455,
+      "max_needed_correction_m": 0.0008129886700771749
     },
     "human_female/peasant_legs/neutral": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/build_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.00218784436583519,
-      "max_needed_correction_m": 0.0008121557184495032
+      "min_clearance_m": 0.004135251045227051,
+      "max_needed_correction_m": 0.0008647489012219012
     },
     "human_female/peasant_legs/build_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0025359608698636293,
-      "max_needed_correction_m": 0.00046403915621340275
+      "min_clearance_m": 0.004135251045227051,
+      "max_needed_correction_m": 0.0008647489012219012
     },
     "human_female/peasant_legs/fat_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002012484474107623,
-      "max_needed_correction_m": 0.000987515551969409
+      "min_clearance_m": 0.004004983231425285,
+      "max_needed_correction_m": 0.0009950166568160057
     },
     "human_female/peasant_legs/muscle_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.004052655305713415,
+      "max_needed_correction_m": 0.000947344524320215
     },
     "human_female/peasant_legs/shoulders_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/shoulders_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/torso_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/torso_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/arms_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/arms_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/hips_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/hips_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0023899965453892946,
-      "max_needed_correction_m": 0.0006100034806877375
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/legs_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/legs_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/head_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/head_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/shoulders1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.004052655305713415,
+      "max_needed_correction_m": 0.000947344524320215
     },
     "human_female/peasant_legs/narrow_shoulders_broad_build": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0025359608698636293,
-      "max_needed_correction_m": 0.00046403915621340275
+      "min_clearance_m": 0.004135251045227051,
+      "max_needed_correction_m": 0.0008647489012219012
     },
     "human_female/peasant_legs/torso1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002012484474107623,
-      "max_needed_correction_m": 0.000987515551969409
+      "min_clearance_m": 0.004004983231425285,
+      "max_needed_correction_m": 0.0009950166568160057
     },
     "human_female/peasant_legs/arms1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.004052655305713415,
+      "max_needed_correction_m": 0.000947344524320215
     },
     "human_female/peasant_legs/hips1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0023899965453892946,
-      "max_needed_correction_m": 0.0006100034806877375
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/legs1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0020470228046178818,
-      "max_needed_correction_m": 0.0009529772214591503
+      "min_clearance_m": 0.004045284818857908,
+      "max_needed_correction_m": 0.0009547151275910437
     },
     "human_female/peasant_legs/narrow_build_broad_hips": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0025656947400420904,
-      "max_needed_correction_m": 0.0004343052569311112
+      "min_clearance_m": 0.004272369667887688,
+      "max_needed_correction_m": 0.0007276302785612643
     },
     "human_female/peasant_legs/shoulders1_torso1_arms1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002551394049078226,
-      "max_needed_correction_m": 0.000448605976998806
+      "min_clearance_m": 0.0041033681482076645,
+      "max_needed_correction_m": 0.0008966318564489484
     },
     "human_female/peasant_legs/hips1_legs1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0023899965453892946,
-      "max_needed_correction_m": 0.0006100034806877375
+      "min_clearance_m": 0.004032654222100973,
+      "max_needed_correction_m": 0.0009673457243479788
     },
     "human_female/ranger_body/neutral": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021067766938358545,
-      "max_needed_correction_m": 0.0008932233904488385
+      "min_clearance_m": 0.004648864269256592,
+      "max_needed_correction_m": 0.0003511355898808688
     },
     "human_female/ranger_body/build_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021067766938358545,
-      "max_needed_correction_m": 0.0008932233904488385
+      "min_clearance_m": 0.004111434333026409,
+      "max_needed_correction_m": 0.000888565497007221
     },
     "human_female/ranger_body/build_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021067766938358545,
-      "max_needed_correction_m": 0.0008932233904488385
+      "min_clearance_m": 0.004648864269256592,
+      "max_needed_correction_m": 0.0003511355898808688
     },
     "human_female/ranger_body/fat_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021067766938358545,
-      "max_needed_correction_m": 0.0008932233904488385
+      "min_clearance_m": 0.004548273049294949,
+      "max_needed_correction_m": 0.0004517268680501729
     },
     "human_female/ranger_body/muscle_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021067766938358545,
-      "max_needed_correction_m": 0.0008932233904488385
+      "min_clearance_m": 0.004243059549480677,
+      "max_needed_correction_m": 0.0007569403387606144
     },
     "human_female/ranger_body/shoulders_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0024698092602193356,
-      "max_needed_correction_m": 0.0005301907076500356
+      "min_clearance_m": 0.004546395502984524,
+      "max_needed_correction_m": 0.0004536043852567673
     },
     "human_female/ranger_body/shoulders_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0022754641249775887,
-      "max_needed_correction_m": 0.0007245359593071043
+      "min_clearance_m": 0.004884406924247742,
+      "max_needed_correction_m": 0.00011559296399354935
     },
     "human_female/ranger_body/torso_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021731520537286997,
-      "max_needed_correction_m": 0.0008268479723483324
+      "min_clearance_m": 0.004648864269256592,
+      "max_needed_correction_m": 0.0003511355898808688
     },
     "human_female/ranger_body/torso_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002333809155970812,
-      "max_needed_correction_m": 0.0006661909283138812
+      "min_clearance_m": 0.004648864269256592,
+      "max_needed_correction_m": 0.0003511355898808688
     },
     "human_female/ranger_body/arms_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021067766938358545,
-      "max_needed_correction_m": 0.0008932233904488385
+      "min_clearance_m": 0.004648864269256592,
+      "max_needed_correction_m": 0.0003511355898808688
     },
     "human_female/ranger_body/arms_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021067766938358545,
-      "max_needed_correction_m": 0.0008932233904488385
+      "min_clearance_m": 0.004648864269256592,
+      "max_needed_correction_m": 0.0003511355898808688
     },
     "human_female/ranger_body/hips_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021080472506582737,
-      "max_needed_correction_m": 0.0008919527754187584
+      "min_clearance_m": 0.00470365397632122,
+      "max_needed_correction_m": 0.00029634591192007065
     },
     "human_female/ranger_body/hips_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002069442067295313,
-      "max_needed_correction_m": 0.0009305579005740583
+      "min_clearance_m": 0.00471577700227499,
+      "max_needed_correction_m": 0.00028422288596630096
     },
     "human_female/ranger_body/legs_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021067766938358545,
-      "max_needed_correction_m": 0.0008932233904488385
+      "min_clearance_m": 0.004648864269256592,
+      "max_needed_correction_m": 0.0003511355898808688
     },
     "human_female/ranger_body/legs_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021067766938358545,
-      "max_needed_correction_m": 0.0008932233904488385
+      "min_clearance_m": 0.004648864269256592,
+      "max_needed_correction_m": 0.0003511355898808688
     },
     "human_female/ranger_body/head_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021067766938358545,
-      "max_needed_correction_m": 0.0008932233904488385
+      "min_clearance_m": 0.004055125173181295,
+      "max_needed_correction_m": 0.0009448747732676566
     },
     "human_female/ranger_body/head_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021067766938358545,
-      "max_needed_correction_m": 0.0008932233904488385
+      "min_clearance_m": 0.004300059750676155,
+      "max_needed_correction_m": 0.000699940137565136
     },
     "human_female/ranger_body/shoulders1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0027528959326446056,
-      "max_needed_correction_m": 0.00024710409343242645
+      "min_clearance_m": 0.004221568815410137,
+      "max_needed_correction_m": 0.0007784310728311539
     },
     "human_female/ranger_body/narrow_shoulders_broad_build": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0025101201608777046,
-      "max_needed_correction_m": 0.0004898799234069884
+      "min_clearance_m": 0.004546395502984524,
+      "max_needed_correction_m": 0.0004536043852567673
     },
     "human_female/ranger_body/torso1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002333809155970812,
-      "max_needed_correction_m": 0.0006661909283138812
+      "min_clearance_m": 0.004276424180716276,
+      "max_needed_correction_m": 0.0007235757657326758
     },
     "human_female/ranger_body/arms1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021067766938358545,
-      "max_needed_correction_m": 0.0008932233904488385
+      "min_clearance_m": 0.004243059549480677,
+      "max_needed_correction_m": 0.0007569403387606144
     },
     "human_female/ranger_body/hips1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002069442067295313,
-      "max_needed_correction_m": 0.0009305579005740583
+      "min_clearance_m": 0.004637695383280516,
+      "max_needed_correction_m": 0.0003623044758569449
     },
     "human_female/ranger_body/legs1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021067766938358545,
-      "max_needed_correction_m": 0.0008932233904488385
+      "min_clearance_m": 0.004243059549480677,
+      "max_needed_correction_m": 0.0007569403387606144
     },
     "human_female/ranger_body/narrow_build_broad_hips": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002069442067295313,
-      "max_needed_correction_m": 0.0009305579005740583
+      "min_clearance_m": 0.004051821306347847,
+      "max_needed_correction_m": 0.0009481785818934441
     },
     "human_female/ranger_body/shoulders1_torso1_arms1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002241683891043067,
-      "max_needed_correction_m": 0.0007583161350339651
+      "min_clearance_m": 0.004563110414892435,
+      "max_needed_correction_m": 0.0004368894442450255
     },
     "human_female/ranger_body/hips1_legs1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002069442067295313,
-      "max_needed_correction_m": 0.0009305579005740583
+      "min_clearance_m": 0.004637695383280516,
+      "max_needed_correction_m": 0.0003623044758569449
     },
     "human_female/ranger_arms/neutral": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002056191908195615,
-      "max_needed_correction_m": 0.0009438081178814173
+      "min_clearance_m": 0.004300146363675594,
+      "max_needed_correction_m": 0.0006998535245656967
     },
     "human_female/ranger_arms/build_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0023551208432763815,
-      "max_needed_correction_m": 0.0006448791828006506
+      "min_clearance_m": 0.004186281468719244,
+      "max_needed_correction_m": 0.0008137183613143861
     },
     "human_female/ranger_arms/build_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002669624285772443,
-      "max_needed_correction_m": 0.00033037576940841973
+      "min_clearance_m": 0.004279377870261669,
+      "max_needed_correction_m": 0.000720621959771961
     },
     "human_female/ranger_arms/fat_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004186767619103193,
+      "max_needed_correction_m": 0.0008132323273457587
     },
     "human_female/ranger_arms/muscle_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002941802842542529,
-      "max_needed_correction_m": 5.819718353450298e-05
+      "min_clearance_m": 0.004187334328889847,
+      "max_needed_correction_m": 0.0008126655011437833
     },
     "human_female/ranger_arms/shoulders_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002056191908195615,
-      "max_needed_correction_m": 0.0009438081178814173
+      "min_clearance_m": 0.004300146363675594,
+      "max_needed_correction_m": 0.0006998535245656967
     },
     "human_female/ranger_arms/shoulders_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002056191908195615,
-      "max_needed_correction_m": 0.0009438081178814173
+      "min_clearance_m": 0.004300146363675594,
+      "max_needed_correction_m": 0.0006998535245656967
     },
     "human_female/ranger_arms/torso_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002056191908195615,
-      "max_needed_correction_m": 0.0009438081178814173
+      "min_clearance_m": 0.004300146363675594,
+      "max_needed_correction_m": 0.0006998535245656967
     },
     "human_female/ranger_arms/torso_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002056191908195615,
-      "max_needed_correction_m": 0.0009438081178814173
+      "min_clearance_m": 0.004300146363675594,
+      "max_needed_correction_m": 0.0006998535245656967
     },
     "human_female/ranger_arms/arms_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0021025771275162697,
-      "max_needed_correction_m": 0.0008974229567684233
+      "min_clearance_m": 0.004001880995929241,
+      "max_needed_correction_m": 0.000998118775896728
     },
     "human_female/ranger_arms/arms_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004082273226231337,
+      "max_needed_correction_m": 0.0009177266038022935
     },
     "human_female/ranger_arms/hips_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002056191908195615,
-      "max_needed_correction_m": 0.0009438081178814173
+      "min_clearance_m": 0.004300146363675594,
+      "max_needed_correction_m": 0.0006998535245656967
     },
     "human_female/ranger_arms/hips_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002056191908195615,
-      "max_needed_correction_m": 0.0009438081178814173
+      "min_clearance_m": 0.004300146363675594,
+      "max_needed_correction_m": 0.0006998535245656967
     },
     "human_female/ranger_arms/legs_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002056191908195615,
-      "max_needed_correction_m": 0.0009438081178814173
+      "min_clearance_m": 0.004300146363675594,
+      "max_needed_correction_m": 0.0006998535245656967
     },
     "human_female/ranger_arms/legs_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002056191908195615,
-      "max_needed_correction_m": 0.0009438081178814173
+      "min_clearance_m": 0.004300146363675594,
+      "max_needed_correction_m": 0.0006998535245656967
     },
     "human_female/ranger_arms/head_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002056191908195615,
-      "max_needed_correction_m": 0.0009438081178814173
+      "min_clearance_m": 0.004300146363675594,
+      "max_needed_correction_m": 0.0006998535245656967
     },
     "human_female/ranger_arms/head_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002056191908195615,
-      "max_needed_correction_m": 0.0009438081178814173
+      "min_clearance_m": 0.004300146363675594,
+      "max_needed_correction_m": 0.0006998535245656967
     },
     "human_female/ranger_arms/shoulders1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002941802842542529,
-      "max_needed_correction_m": 5.819718353450298e-05
+      "min_clearance_m": 0.004187334328889847,
+      "max_needed_correction_m": 0.0008126655011437833
     },
     "human_female/ranger_arms/narrow_shoulders_broad_build": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002669624285772443,
-      "max_needed_correction_m": 0.00033037576940841973
+      "min_clearance_m": 0.004279377870261669,
+      "max_needed_correction_m": 0.000720621959771961
     },
     "human_female/ranger_arms/torso1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004186767619103193,
+      "max_needed_correction_m": 0.0008132323273457587
     },
     "human_female/ranger_arms/arms1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0022479621693491936,
-      "max_needed_correction_m": 0.0007520377985201776
+      "min_clearance_m": 0.004025083500891924,
+      "max_needed_correction_m": 0.0009749164455570281
     },
     "human_female/ranger_arms/hips1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004186767619103193,
+      "max_needed_correction_m": 0.0008132323273457587
     },
     "human_female/ranger_arms/legs1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002941802842542529,
-      "max_needed_correction_m": 5.819718353450298e-05
+      "min_clearance_m": 0.004187334328889847,
+      "max_needed_correction_m": 0.0008126655011437833
     },
     "human_female/ranger_arms/narrow_build_broad_hips": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0023551208432763815,
-      "max_needed_correction_m": 0.0006448791828006506
+      "min_clearance_m": 0.004186281468719244,
+      "max_needed_correction_m": 0.0008137183613143861
     },
     "human_female/ranger_arms/shoulders1_torso1_arms1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004082273226231337,
+      "max_needed_correction_m": 0.0009177266038022935
     },
     "human_female/ranger_arms/hips1_legs1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004186767619103193,
+      "max_needed_correction_m": 0.0008132323273457587
     },
     "human_female/ranger_legs/neutral": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/build_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002999988617375493,
-      "max_needed_correction_m": 1.1408701539039612e-08
+      "min_clearance_m": 0.004148569423705339,
+      "max_needed_correction_m": 0.0008514304063282907
     },
     "human_female/ranger_legs/build_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/fat_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/muscle_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004592326935380697,
+      "max_needed_correction_m": 0.00040767298196442425
     },
     "human_female/ranger_legs/shoulders_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/shoulders_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/torso_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/torso_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/arms_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/arms_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/hips_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.0027278782799839973,
-      "max_needed_correction_m": 0.00027212174609303474
+      "min_clearance_m": 0.004722511861473322,
+      "max_needed_correction_m": 0.00027748802676796913
     },
     "human_female/ranger_legs/hips_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.002984961261972785,
-      "max_needed_correction_m": 1.5038765013741795e-05
+      "min_clearance_m": 0.004999999888241291,
+      "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/legs_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/legs_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/head_0": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/head_1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/shoulders1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004592326935380697,
+      "max_needed_correction_m": 0.00040767298196442425
     },
     "human_female/ranger_legs/narrow_shoulders_broad_build": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/torso1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/arms1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004592326935380697,
+      "max_needed_correction_m": 0.00040767298196442425
     },
     "human_female/ranger_legs/hips1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/legs1_muscle1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/narrow_build_broad_hips": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
-      "max_needed_correction_m": 0.0
+      "min_clearance_m": 0.004614625591784716,
+      "max_needed_correction_m": 0.00038537426735274494
     },
     "human_female/ranger_legs/shoulders1_torso1_arms1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_legs/hips1_legs1_fat1": {
+      "clearance_target_m": 0.005,
       "penetrating_vertices": 0,
-      "min_clearance_m": 0.003000000026077032,
+      "min_clearance_m": 0.004999999888241291,
       "max_needed_correction_m": 0.0
     },
     "human_female/ranger_hood/neutral": {
+      "clearance_target_m": 0.003,
       "penetrating_vertices": 0,
       "min_clearance_m": 0.002281059743836522,
       "max_needed_correction_m": 0.00071894028224051
     },
     "human_female/ranger_hood/head_0": {
+      "clearance_target_m": 0.003,
       "penetrating_vertices": 0,
       "min_clearance_m": 0.002281059743836522,
       "max_needed_correction_m": 0.00071894028224051
     },
     "human_female/ranger_hood/head_1": {
+      "clearance_target_m": 0.003,
       "penetrating_vertices": 0,
       "min_clearance_m": 0.002281059743836522,
       "max_needed_correction_m": 0.00071894028224051
@@ -1595,6 +1914,6 @@
   },
   "failures": [],
   "total_penetrating_vertices": 0,
-  "worst_min_clearance_m": 0.0020071202889084816,
-  "worst_case": "human_male/ranger_body/shoulders_1"
+  "worst_min_clearance_m": 0.002281059743836522,
+  "worst_case": "human_female/ranger_hood/neutral"
 }

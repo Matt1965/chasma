@@ -829,8 +829,8 @@ fn cg9_equipment_clearance_validation_passes() {
         text.lines().take(40).collect::<Vec<_>>().join("\n"),
     );
     assert!(
-        text.contains("\"min_clearance_target_m\": 0.003"),
-        "expected 3mm clearance target in validation report",
+        text.contains("\"min_clearance_target_m\": 0.005"),
+        "expected 5mm body clearance target in validation report",
     );
 }
 

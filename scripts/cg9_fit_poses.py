@@ -18,6 +18,17 @@ BODY_SEMANTIC_PARAMS = (
     "legs",
 )
 
+# Offline clearance targets (meters). Body pieces get a modest air gap; hood stays snug.
+DEFAULT_MIN_CLEARANCE_M = 0.005
+HOOD_MIN_CLEARANCE_M = 0.003
+
+
+def min_clearance_m(asset_name: str) -> float:
+    if asset_name == "ranger_hood":
+        return HOOD_MIN_CLEARANCE_M
+    return DEFAULT_MIN_CLEARANCE_M
+
+
 EQUIPMENT_CONSUMED: dict[str, tuple[str, ...]] = {
     "peasant_body": ("build", "fat", "muscle", "shoulders", "torso", "hips"),
     "peasant_arms": ("build", "fat", "muscle", "arms"),
