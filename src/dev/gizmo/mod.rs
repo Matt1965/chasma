@@ -26,6 +26,6 @@ pub use state::TransformEditState;
 pub use tool::{DevTool, DevToolState, GizmoCoordinateSpace, SelectedWorldObject};
 
 pub use commit::{
-    dev_gizmo_building_commit_options, dev_gizmo_doodad_commit_options, try_commit_edit,
+    dev_gizmo_building_commit_options, dev_gizmo_doodad_commit_options,
 };
 pub use draw::draw_transform_gizmo;

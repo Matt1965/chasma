@@ -15,7 +15,7 @@ pub use drag_preview::{
 pub use errors::InventoryUiError;
 pub use grid::{
     InventoryEntryWidget, InventoryGridCell, InventoryGridInteraction, InventoryGridPane,
-    InventoryPaneSide, ReadOnlyInventoryGrid, spawn_inventory_grid,
+    InventoryPaneSide, spawn_inventory_grid,
     spawn_read_only_inventory_grid_shell,
 };
 pub use input::{collect_inventory_keyboard_input, inventory_panel_blocks_world_input};
@@ -25,8 +25,4 @@ pub use panel::{
     reconcile_inventory_ui_from_world, spawn_inventory_panel, sync_inventory_panel_contents,
     sync_inventory_panel_visibility,
 };
-pub use preview::{
-    INVENTORY_CELL_PX, InventoryDropTarget, InventoryPlacementPreview, drag_state_from_entry,
-    evaluate_drop_target, occupied_cells,
-};
-pub use state::{InventoryDragPreviewState, InventoryDragState, InventoryUiState};
+pub use state::{InventoryDragPreviewState, InventoryUiState};

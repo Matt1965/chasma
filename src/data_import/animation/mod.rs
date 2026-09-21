@@ -7,7 +7,6 @@ mod excel;
 mod schema;
 mod validate;
 
-pub use schema::{AnimationProfileImportRow, OPTIONAL_COLUMNS, REQUIRED_COLUMNS};
 
 #[cfg(feature = "data-import")]
 pub use dev_load::resolve_dev_animation_profile_catalog;

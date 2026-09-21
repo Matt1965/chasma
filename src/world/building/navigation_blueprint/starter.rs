@@ -1,7 +1,7 @@
 //! Starter navigation blueprints aligned with B7 interior dev profiles.
 
 use super::definition::{
-    BuildingNavigationBlueprint, NavigationEntranceDefinition, NavigationFloorDefinition,
+    BuildingNavigationBlueprint, NavigationEntranceDefinition,
     NavigationPolygon2d, NavigationVerticalTransitionDefinition, NavigationVerticalTransitionKind,
     single_region_floor,
 };

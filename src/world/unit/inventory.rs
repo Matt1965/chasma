@@ -3,13 +3,13 @@
 use crate::world::WorldData;
 use crate::world::corpse::CorpseId;
 use crate::world::inventory::{
-    InventoryCatalogCtx, InventoryError, InventoryId, InventoryStore, ItemInstanceStore,
-    create_unit_inventory, query_inventory_weight, transfer_inventory_owner,
+    InventoryCatalogCtx, InventoryError, InventoryId,
+    create_unit_inventory, transfer_inventory_owner,
 };
 use crate::world::inventory::{
     InventoryOwnerRef, RemovedInventoryContents, remove_owned_inventory,
 };
-use crate::world::unit::{UnitCatalog, UnitDefinition, UnitId, UnitRecord};
+use crate::world::unit::{UnitDefinition, UnitId, UnitRecord};
 
 pub fn attach_inventory_on_unit_create(
     world: &mut WorldData,

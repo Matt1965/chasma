@@ -5,7 +5,6 @@ use bevy::prelude::*;
 use crate::dev::input::DevPanelUi;
 use crate::dev::tooltip::DevTooltipContent;
 use crate::dev::tooltip::DevTooltipTarget;
-use crate::dev::window::DevWindowUi;
 
 use super::button::spawn_action_button;
 use super::theme::{STATUS_WARNING, small_text_font};

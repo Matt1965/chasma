@@ -6,7 +6,7 @@ use crate::ui::gameplay::inventory::drag_preview::source_entry_drag_color;
 use crate::ui::gameplay::inventory::preview::INVENTORY_CELL_PX;
 use crate::ui::gameplay::inventory::state::InventoryUiState;
 use crate::ui::gameplay::styles::{
-    HUD_RECESSED_CORE, HUD_RECESSED_FACE, HUD_ROSTER_SLOT_BORDER, TEXT_PRIMARY, panel_body_font,
+    HUD_RECESSED_CORE, HUD_RECESSED_FACE, HUD_ROSTER_SLOT_BORDER, TEXT_PRIMARY,
 };
 use crate::world::{
     InventoryEntryContents, InventoryId, InventoryRecord, ItemCatalog, ItemDefinitionId,

@@ -2,17 +2,13 @@
 
 use bevy::prelude::*;
 
-use super::runtime::{
-    interior_position_walkable, resolve_navigation_space_at_position,
-    resolve_navigation_start_space,
-};
-use crate::world::unit::{UnitOrder, UnitSource, UnitState, create_unit, step_unit_movement};
+use crate::world::unit::{UnitOrder, step_unit_movement};
 use crate::world::{
     Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingLifecycleState,
     BuildingNavigationBlueprintCatalog, BuildingOwnership, ChunkCoord, ChunkData, ChunkId,
-    ChunkLayout, DoodadCatalog, DoorState, FootprintCatalog, Heightfield, LocalPosition,
-    NavigationConfig, OccupancyCatalogs, PassabilityCatalogs, SpaceId, UnitDefinitionId, WorldData,
-    WorldPosition, close_door, find_path_with_spaces, open_door, place_player_building,
+    ChunkLayout, DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition,
+    NavigationConfig, OccupancyCatalogs, PassabilityCatalogs, SpaceId, WorldData,
+    WorldPosition, place_player_building,
     resolve_pending_unit_orders, set_building_lifecycle_stage,
 };
 

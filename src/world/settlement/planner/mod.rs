@@ -13,11 +13,9 @@ mod validation;
 #[cfg(test)]
 mod tests;
 
-pub use apply::{apply_production_recommendations_for_tests, disable_unselected_planner_buildings};
-pub use graph::{ProducerRecipe, ProductionGraph, detect_production_cycles, propagate_demand};
 pub use inventory::{
     aggregate_settlement_stock, building_advertises_settlement_supply,
-    collect_settlement_accessible_stock, count_binding_stock, sum_category_count,
+    collect_settlement_accessible_stock, sum_category_count,
     sum_category_nutrition,
 };
 pub use plan::{execute_settlement_replan, replan_settlement_production};

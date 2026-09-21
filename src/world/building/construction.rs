@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use super::catalog::BuildingCatalog;
 use super::id::BuildingId;
 use super::record::BuildingRecord;
-use super::state::{BuildingLifecycleState, ConstructionState};
+use super::state::BuildingLifecycleState;
 use super::vitals::BuildingVitals;
 use crate::world::DoodadCatalog;
 use crate::world::building::interior::InteriorProfileCatalog;

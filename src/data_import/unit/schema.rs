@@ -2,10 +2,8 @@
 
 use crate::world::asset_sizing::AssetSizingDefinition;
 use crate::world::relationship::{FactionCatalog, FactionId, SpeciesCatalog, SpeciesId};
-use crate::world::{AnimationProfile, AnimationProfileId};
-use crate::world::{
-    DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND, DEFAULT_TURN_SPEED_DEGREES_PER_SECOND,
-};
+use crate::world::AnimationProfileId;
+use crate::world::DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND;
 use crate::world::{UnitDefinition, UnitDefinitionId, UnitRenderKey, WeaponDefinitionId};
 
 use super::super::schema::normalize_file_path;

@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use crate::terrain::field_overlay::TerrainOverlayState;
-use crate::world::{BuildingFieldRequirementCatalog, TerrainFieldCatalog, TerrainFieldId};
+use crate::world::{BuildingFieldRequirementCatalog, TerrainFieldCatalog};
 
 use super::state::BuildModeState;
 

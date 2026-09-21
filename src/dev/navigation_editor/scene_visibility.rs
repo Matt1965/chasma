@@ -7,7 +7,7 @@ use bevy::render::alpha::AlphaMode;
 
 use crate::buildings::BuildingRenderIndex;
 use crate::dev::inspector::BlueprintInspectionState;
-use crate::dev::window::{DevWindowId, DevWindowRegistry};
+use crate::dev::window::DevWindowRegistry;
 use crate::world::BuildingId;
 
 use super::state::{NavigationEditorUiState, navigation_editor_owns_session};

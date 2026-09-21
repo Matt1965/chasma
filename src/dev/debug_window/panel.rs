@@ -281,7 +281,7 @@ pub fn sync_debug_panel_content(
 pub fn sync_debug_panel_button_styles(
     dev_state: Res<DevModeState>,
     registry: Res<DevWindowRegistry>,
-    mut buttons: Query<
+    buttons: Query<
         (
             &Interaction,
             &DevWidgetToggle,
@@ -291,7 +291,7 @@ pub fn sync_debug_panel_button_styles(
         ),
         With<Button>,
     >,
-    mut marks: Query<&mut Visibility, With<DevWidgetToggleMark>>,
+    marks: Query<&mut Visibility, With<DevWidgetToggleMark>>,
 ) {
     if !registry.window_active(dev_state.enabled, DevWindowId::Debug) {
         return;

@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 use super::id::UnitId;
 use crate::world::{
-    BuildingNavigationRuntimeStore, ChunkLayout, SpaceId, SpaceRegistry, WorldData, WorldPosition,
+    ChunkLayout, SpaceId, WorldData, WorldPosition,
     ground_position_in_space, interior_position_walkable, resolve_navigation_space_at_position,
 };
 

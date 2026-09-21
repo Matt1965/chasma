@@ -19,7 +19,7 @@ mod validation;
 #[cfg(test)]
 mod tests;
 
-pub use capacity::{CapacityGapEstimate, estimate_capacity_gap, fulfillment_key};
+pub use capacity::{CapacityGapEstimate, estimate_capacity_gap};
 pub use catalog::{
     BuildingConstructionCostCatalog, BuildingConstructionCostDefinition,
     ConstructionCapabilityKind, ConstructionCatalogError, ConstructionResponseCatalog,
@@ -29,13 +29,13 @@ pub use evaluate::{
     ConstructionPlanningContext, approve_construction_plan, cancel_construction_plan,
     create_plan_from_manual_placement, plan_construction_for_settlement,
 };
-pub use placement::{PlacementSearchBudget, PlacementSearchResult, search_placement_candidates};
+pub use placement::{PlacementSearchBudget, PlacementSearchResult};
 pub use plan::{
     ConstructionMaterialRequirement, ConstructionPlacementCandidate, ConstructionPlan,
     ConstructionPlanId, ConstructionPlanSaveState, ConstructionPlanSource, ConstructionPlanStatus,
 };
 pub use report::{BuildingCandidateScore, ConstructionPlanningReport, RejectedSiteDiagnostic};
-pub use select::{best_building_candidate, select_building_candidates};
+pub use select::best_building_candidate;
 pub use starter::{starter_construction_costs, starter_construction_mappings};
 pub use step::{
     CONSTRUCTION_PLANNING_CADENCE_TICKS, mark_construction_planning_dirty_from_intents,

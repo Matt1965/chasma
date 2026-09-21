@@ -11,7 +11,6 @@ mod validate;
 
 pub use schema::{
     BuildingCategoryImportRow, BuildingImportRow,
-    CATEGORY_REQUIRED_COLUMNS as BUILDING_CATEGORY_REQUIRED_COLUMNS,
     OPTIONAL_COLUMNS as BUILDING_OPTIONAL_COLUMNS, REQUIRED_COLUMNS as BUILDING_REQUIRED_COLUMNS,
     normalize_building_file_path_to_render_key,
 };

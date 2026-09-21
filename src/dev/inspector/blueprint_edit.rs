@@ -26,15 +26,15 @@ use crate::world::{
     delete_transition, insert_vertex_on_edge, move_connection_from, move_connection_to,
     move_entrance, move_floor_vertex, move_transition_from, move_transition_to,
     region_interior_point, replace_building_instance_definition, reset_instance_to_asset,
-    save_instance_blueprint, set_connection_radius, set_entrance_radius, set_entrance_region_key,
-    set_transition_radius, suggest_variant_definition_id, validate_blueprint_for_inspection,
+    save_instance_blueprint, set_connection_radius, set_entrance_radius,
+    set_transition_radius, validate_blueprint_for_inspection,
     validate_building_definition_id,
 };
 
 use super::blueprint_inspection::{
     BlueprintEditDrag, BlueprintEditSelection, BlueprintEditTool, BlueprintInspectionState,
-    BlueprintPendingConfirmation, BlueprintVariantDraft, BlueprintVariantDraftField,
-    capture_edit_blueprint_snapshot, enter_blueprint_inspection, frame_building_for_inspection,
+    BlueprintPendingConfirmation, BlueprintVariantDraftField,
+    capture_edit_blueprint_snapshot, enter_blueprint_inspection,
 };
 use super::state::WorldInspectorState;
 

@@ -15,7 +15,7 @@ use crate::world::{
     WorldPosition,
 };
 use crate::world::{
-    register_doodad_occupancy, unregister_source_occupancy, update_doodad_occupancy,
+    register_doodad_occupancy, unregister_source_occupancy,
 };
 
 /// Optional pose overrides when creating a doodad from a catalog definition.

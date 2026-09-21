@@ -11,7 +11,6 @@ use bevy::prelude::*;
 
 use super::catalog::UnitCatalog;
 use super::eligibility::unit_can_execute_actions;
-use super::facing::model_forward_xz;
 use super::id::UnitId;
 use super::movement_authority_trace::MovementBlockedAuthorityRecord;
 use super::state::UnitState;
@@ -22,7 +21,7 @@ use crate::world::movement::feel::{
 };
 use crate::world::movement::steering::SteeringSettings;
 use crate::world::{
-    BuildingCatalog, ChunkLayout, DoodadCatalog, FootprintCatalog, INTERACTION_WORK_RANGE_METERS,
+    ChunkLayout, INTERACTION_WORK_RANGE_METERS,
     NavigationWaypoint, OccupancySource, PassabilityAgent, PassabilityBlockReason,
     PassabilityCatalogs, PassabilityResult, SlopeWalkability, SpaceId, TaskType, WorldData,
     WorldPosition, apply_steering, classify_slope_walkability, ground_position_in_space,

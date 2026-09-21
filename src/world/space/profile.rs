@@ -4,7 +4,7 @@ use super::definition::SpaceRecord;
 use super::id::{PortalId, SpaceId};
 use super::portal::{PortalRecord, PortalType};
 use super::registry::SpaceRegistry;
-use crate::world::{BuildingRecord, ChunkLayout, LocalPosition, WorldPosition};
+use crate::world::{BuildingRecord, ChunkLayout, WorldPosition};
 
 /// Authoring template for a building-local space (ADR-083 B6, ADR-084 B7).
 #[derive(Debug, Clone, PartialEq)]

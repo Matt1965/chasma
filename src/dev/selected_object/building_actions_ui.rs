@@ -7,7 +7,6 @@ use crate::dev::inspector::{BuildingDevAction, DevBuildingActionButton};
 use crate::dev::widgets::{
     DevCollapsibleSectionId, spawn_action_button, spawn_collapsible_section,
 };
-use crate::dev::window::DevWindowUi;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum BuildingDevSectionKind {

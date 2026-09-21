@@ -4,12 +4,11 @@ use super::error::CorpseError;
 use super::id::CorpseId;
 use super::record::CorpseRecord;
 use super::settings::CorpseSettings;
-use super::store::CorpseStore;
 use crate::world::inventory::{
     InventoryCatalogCtx, InventoryId, InventoryOwnerRef, InventoryStore, ItemInstanceStore,
     remove_owned_inventory,
 };
-use crate::world::unit::{UnitCatalog, UnitDefinition, UnitId, UnitRecord};
+use crate::world::unit::{UnitDefinition, UnitId, UnitRecord};
 use crate::world::{ChunkId, WorldData};
 
 pub fn corpse_lifetime_ticks(definition: &UnitDefinition, settings: &CorpseSettings) -> u64 {

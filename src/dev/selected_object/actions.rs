@@ -13,7 +13,7 @@ use super::panel::{
     DevSelectedObjectActionButton, DevSelectedObjectToggleButton, SelectedObjectAction,
     SelectedObjectToggle,
 };
-use super::state::{PendingDeleteTarget, SelectedObjectUiState};
+use super::state::PendingDeleteTarget;
 
 use crate::debug::InspectorOverlayFocus;
 use crate::dev::hotkeys::{

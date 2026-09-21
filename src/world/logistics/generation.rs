@@ -18,7 +18,6 @@ use crate::world::{BuildingId, ItemDefinitionId, WorldData};
 use super::id::HaulingRequestId;
 use super::request::HaulingRequest;
 use super::reservation::release_request_reservations;
-use super::store::HaulingRequestStore;
 use super::types::{
     HaulingGenerationReason, HaulingRequestPriority, HaulingRequestStatus, LogisticsRouteTrigger,
 };

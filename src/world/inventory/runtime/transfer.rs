@@ -12,7 +12,6 @@ use super::instance_location::ItemInstanceLocation;
 use super::ops::{rebuild_inventory, resolve_instance_definition};
 use super::record::InventoryRecord;
 use super::store::{InventoryStore, ItemInstanceStore};
-use crate::world::ItemDefinitionId;
 
 /// Where to place transferred items in the destination inventory.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

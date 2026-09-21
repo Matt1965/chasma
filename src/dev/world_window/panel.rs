@@ -6,7 +6,6 @@ use bevy::prelude::*;
 use crate::dev::dev_mode::DevModeState;
 use crate::dev::input::DevPanelUi;
 use crate::dev::tooltip::DevTooltipTarget;
-use crate::dev::widgets::DevCollapsibleSectionId;
 use crate::dev::window::{DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowUi};
 use crate::dev::world_environment::DevWorldEnvironmentSection;
 

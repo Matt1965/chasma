@@ -49,7 +49,7 @@ pub use bake::{
 };
 pub use basis_points::{BASIS_POINTS_ONE_HUNDRED_PERCENT, BasisPoints, BasisPointsError};
 pub use bootstrap::{
-    TerrainFieldBootstrapOutcome, bootstrap_terrain_fields_on_startup, bootstrap_with_extent,
+    bootstrap_terrain_fields_on_startup, bootstrap_with_extent,
     bootstrap_world_terrain_fields, reload_terrain_fields_with_invalidation,
 };
 pub use catalog::{TerrainFieldCatalog, TerrainFieldCatalogRon, validate_terrain_field_id};
@@ -71,13 +71,10 @@ pub use fixtures::{
     bootstrap_constant_field, bootstrap_dev_synthetic_fields, bootstrap_diagonal_gradient_field,
     bootstrap_x_gradient_field, bootstrap_z_gradient_field,
 };
-pub use generate::{
-    GenerationContext, HeightfieldDependency, compose_field_seed, generate_field_value,
-};
 pub use id::{TerrainFieldId, TerrainFieldSourceProfileId};
 pub use import::{
-    DecodedFieldImage, TerrainFieldWorldRaster, decode_field_png_bytes, expand_u8_to_u16,
-    partition_raster_to_tiles, raster_to_layer, resample_imported_image,
+    expand_u8_to_u16,
+    partition_raster_to_tiles, resample_imported_image,
 };
 pub use interpolate::bilinear_sample_u16;
 pub use layer::TerrainFieldLayer;
@@ -104,15 +101,12 @@ pub use sample::{
 };
 pub use semantics::FieldValueSemantics;
 pub use source::{
-    GeneratedTerrainFieldSource, ImportedTerrainFieldSource, TERRAIN_FIELD_GENERATOR_VERSION,
-    TERRAIN_FIELD_SOURCE_PROFILES_RON_PATH, TerrainFieldGeneratorDependency,
-    TerrainFieldGeneratorKind, TerrainFieldImageChannel, TerrainFieldImageOrientation,
+    TERRAIN_FIELD_SOURCE_PROFILES_RON_PATH, TerrainFieldImageChannel, TerrainFieldImageOrientation,
     TerrainFieldResampling, TerrainFieldSourceKind, TerrainFieldSourceProfileCatalog,
     TerrainFieldSourceProfileCatalogRon, TerrainFieldSourceProfileDefinition,
     TerrainFieldSourceProvenance, TerrainFieldValueRemap, TerrainFieldWorldBounds,
     load_terrain_field_source_profile_catalog, target_sample_dimensions,
 };
-pub use source_error::TerrainFieldSourceError;
 pub use store::TerrainFieldStore;
 pub use tile::TerrainFieldTile;
 

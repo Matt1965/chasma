@@ -2,13 +2,12 @@
 
 use bevy::prelude::*;
 
-use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
+use crate::client::selection::WorldSelectionState;
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    Affiliation, ChunkId, InventoryCatalogCtx, InventoryEntryContents, InventoryProfileCatalog,
-    ItemCatalog, ItemCategoryCatalog, ItemDefinitionId, ItemInstanceMetadata, ItemPileSettings,
+    Affiliation, ChunkId, InventoryCatalogCtx, InventoryEntryContents, ItemDefinitionId, ItemPileSettings,
     ItemPileSource, PileOwnership, SpaceId, TransferPlacementPolicy, WorldData,
-    WorldItemPileRecord, create_item_instance, drop_stack_from_inventory,
+    WorldItemPileRecord, drop_stack_from_inventory,
     drop_unit_inventory_entry, half_stack_quantity, loot_corpse_entry, pickup_pile_into_inventory,
 };
 

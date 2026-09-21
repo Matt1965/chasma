@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::farm::{FarmProductionState, is_prispod_farm_definition};
+use super::farm::FarmProductionState;
 use super::lifecycle::OperationLifecycle;
 use super::operation_id::OperationDefinitionId;
 use super::policy::BuildingOperationPolicy;

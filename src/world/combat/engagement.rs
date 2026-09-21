@@ -18,7 +18,7 @@ use super::range::{
 };
 use super::standoff::{StandoffError, compute_standoff_destination};
 use super::strike::CombatStrikeReport;
-use super::targeting::{is_unit_alive, validate_explicit_attack_target};
+use super::targeting::validate_explicit_attack_target;
 use crate::world::unit::unit_can_execute_actions;
 
 fn combat_pair<'a>(

@@ -21,16 +21,14 @@ pub use panel_sync::{
 };
 
 pub use placement_controls::{
-    PlacementControlField, PlacementControlSet, PlacementUiContext, placement_control_set,
-    placement_control_tooltip, placement_status_line,
+    PlacementControlField,
+    placement_control_tooltip,
 };
 
 pub use state::{
-    CatalogSessionState, is_catalog_tab, is_placement_catalog_tab, next_visible_tab,
-    on_tab_selected, tab_is_visible, visible_tabs,
+    CatalogSessionState, next_visible_tab,
 };
 
-pub use tabs::tab_label;
 
 #[cfg(test)]
 mod tests;

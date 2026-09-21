@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 
-use super::definition::SpaceRecord;
 use super::id::SpaceId;
 use super::registry::SpaceRegistry;
 use crate::world::{WorldData, WorldPosition, ground_world_position};

@@ -8,7 +8,6 @@
 //! Investigation only — not part of normal gameplay.
 
 use bevy::prelude::*;
-use bevy::ui::UiSystems;
 
 use crate::dev::dev_mode::DevModeState;
 use crate::dev::terrain_field::{DevTerrainFieldButton, DevTerrainFieldSection};

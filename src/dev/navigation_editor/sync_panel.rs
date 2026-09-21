@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::debug::{DebugOverlayConfig, NavigationOverlayDiagnostics};
 use crate::dev::inspector::{
-    BlueprintEditSelection, BlueprintEditTool, BlueprintInspectionState, WorldInspectorState,
+    BlueprintEditTool, BlueprintInspectionState, WorldInspectorState,
     format_adopted_draft_status_message,
 };
 use crate::dev::widgets::{
@@ -18,7 +18,7 @@ use super::capabilities::navigation_editor_capabilities;
 use super::commands::authority_tooltip;
 use super::panel::{
     DevNavigationEditorActionButton, DevNavigationEditorColumns, DevNavigationEditorContextDetails,
-    DevNavigationEditorContextTitle, DevNavigationEditorDeleteButton,
+    DevNavigationEditorContextTitle,
     DevNavigationEditorFloorLabel, DevNavigationEditorFloorSelector,
     DevNavigationEditorGenerationDetailsText, DevNavigationEditorGenerationSummaryText,
     DevNavigationEditorLeftColumn, DevNavigationEditorNavRow, DevNavigationEditorOpacityRow,

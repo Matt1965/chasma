@@ -12,9 +12,6 @@ use super::types::{
 use crate::world::BasisPoints;
 use crate::world::TerrainFieldId;
 use crate::world::building::catalog::BuildingDefinitionId;
-use crate::world::building::field_requirement::{
-    BuildingFieldRequirementCatalog, BuildingFieldRequirementKind,
-};
 use crate::world::building::field_response::{
     EfficiencyBasisPoints, evaluate_field_response, field_value_to_percent_display,
 };

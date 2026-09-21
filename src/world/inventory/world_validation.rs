@@ -1,7 +1,7 @@
 //! Unified world inventory validation (ADR-094 I8).
 
 use super::{
-    InventoryCatalogCtx, InventoryError, InventoryId, InventoryInvariantReport, InventoryOwnerRef,
+    InventoryCatalogCtx, InventoryError, InventoryInvariantReport, InventoryOwnerRef,
     resolve_instance_definition, validate_inventory_stores,
 };
 use crate::world::{

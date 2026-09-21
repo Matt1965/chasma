@@ -5,7 +5,6 @@ use super::definition::{
     NavigationEntranceDefinition, NavigationFloorDefinition, NavigationRegionConnectionDefinition,
     NavigationRegionConnectionKind, NavigationVerticalTransitionDefinition, point_inside_polygon,
 };
-use super::id::BuildingNavigationBlueprintId;
 use bevy::prelude::Vec2;
 
 const DUPLICATE_VERTEX_EPSILON: f32 = 0.05;

@@ -26,13 +26,11 @@ mod workforce;
 
 pub use access::{
     TreasuryAccessPolicy, TreasuryAccessResult, building_supports_settlement_treasury,
-    can_unit_deposit_to_treasury, settlement_interaction_position, settlement_interaction_space,
+    can_unit_deposit_to_treasury,
 };
 pub use anchor::{
-    DEFAULT_TOWN_BOUNDARY_RADIUS_METERS, SETTLEMENT_PLACEMENT_MARGIN_METERS, SettlementAnchorId,
+    DEFAULT_TOWN_BOUNDARY_RADIUS_METERS, SettlementAnchorId,
     SettlementAnchorRecord, SettlementAnchorStore, SettlementCreationError,
-    initial_boundary_radius_meters, required_center_separation_meters,
-    settlement_overlaps_existing,
 };
 pub use arbiter::{
     ArbitrationContext, HIGH_PRESSURE_THRESHOLD, INTENT_ARBITRATION_CADENCE_TICKS, IntentId,
@@ -53,24 +51,18 @@ pub use construction::{
     ConstructionResponseMapping, ConstructionValidationError, PlacementSearchBudget,
     PlacementSearchResult, RejectedSiteDiagnostic, approve_construction_plan,
     best_building_candidate, cancel_construction_plan, create_plan_from_manual_placement,
-    estimate_capacity_gap, fulfillment_key, mark_construction_planning_dirty_from_intents,
-    plan_construction_for_settlement, plan_construction_now, search_placement_candidates,
-    select_building_candidates, starter_construction_costs, starter_construction_mappings,
+    estimate_capacity_gap, mark_construction_planning_dirty_from_intents,
+    plan_construction_for_settlement, plan_construction_now, starter_construction_costs, starter_construction_mappings,
     step_settlement_construction_planning, validate_construction_plans,
     validate_world_construction_plans,
 };
 pub use deposit::{DepositGoldReport, deposit_gold};
 pub use emergency::{
-    EMERGENCY_EVAL_CADENCE_TICKS, EmergencyCatalog, EmergencyCatalogError, EmergencyDefinition,
-    EmergencyEvalContext, EmergencyEvaluationReport, EmergencyEvaluationStore,
-    EmergencyEvaluatorKind, EmergencyId, EmergencyInterruptionPolicy, EmergencyPreemptRelaxation,
-    EmergencySignalDiagnostic, EmergencyValidationError, NeedPressureModifier,
-    ResponseScoreModifier, TaskPriorityModifier, active_definitions, emergency_blocks_response,
-    emergency_bump_task_priority, emergency_need_pressure_delta, emergency_only_gate,
-    emergency_preempt_relaxation, emergency_response_score_delta, emergency_unlocks_response,
+    EMERGENCY_EVAL_CADENCE_TICKS, EmergencyCatalog, EmergencyDefinition, EmergencyEvaluationReport, EmergencyEvaluationStore,
+    EmergencyEvaluatorKind, EmergencyId, EmergencyInterruptionPolicy, EmergencyValidationError,
     evaluate_settlement_emergencies, evaluate_settlement_emergencies_now,
     starter_emergency_definitions, step_settlement_emergency_evaluation,
-    validate_emergency_catalog, validate_emergency_definition,
+    validate_emergency_catalog,
 };
 pub use error::TreasuryError;
 pub use id::{SettlementId, TreasuryId};
@@ -101,11 +93,10 @@ pub use needs::{
 };
 pub use planner::{
     BuildingLocalRetention, ItemDemandEntry, PlannerBuildingDecision, PlannerDiagnostics,
-    PlannerShortageKind, PlannerValidationError, ProductionIntentRequest,
+    PlannerShortageKind, PlannerValidationError,
     ProductionPlannerSaveState, ProductionPlannerStore, ProductionPriorityCategory,
-    SettlementProductionPlanner, StockGoal, aggregate_settlement_stock,
-    apply_production_recommendations_for_tests, building_advertises_settlement_supply,
-    collect_settlement_accessible_stock, demand_quantity_from_need_snapshot,
+    SettlementProductionPlanner, StockGoal, aggregate_settlement_stock, building_advertises_settlement_supply,
+    collect_settlement_accessible_stock,
     execute_settlement_replan, mark_settlement_planner_dirty, priority_category_for_need,
     recommend_production_for_intent, replan_settlement_production,
     step_settlement_production_planners, sum_category_count, sum_category_nutrition,

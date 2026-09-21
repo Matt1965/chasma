@@ -8,7 +8,7 @@ use super::id::BuildingId;
 use super::interaction_profile::BuildingInteractionProfileCatalog;
 use super::interaction_profile::INTERACTION_WORK_RANGE_METERS;
 use super::inventory_binding::{
-    BuildingInventoryBinding, BuildingInventoryBindingId, BuildingInventoryBindingSet,
+    BuildingInventoryBinding, BuildingInventoryBindingSet,
     effective_inventory_binding_definitions,
 };
 use super::inventory_error::BuildingInventoryError;

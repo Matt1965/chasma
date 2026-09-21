@@ -40,6 +40,6 @@ pub use record::{StrategicTaskOrigin, TaskRecord};
 pub use store::TaskStore;
 pub use sync::{prune_invalid_building_tasks, sync_construction_tasks};
 pub use types::{
-    BuildingInteractionPointId, TaskCancelReason, TaskPriority, TaskReservation, TaskState,
-    TaskTarget, TaskType, UnitTaskAssignment,
+    TaskCancelReason, TaskPriority, TaskState,
+    TaskTarget, TaskType,
 };

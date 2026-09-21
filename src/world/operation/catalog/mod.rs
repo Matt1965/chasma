@@ -13,9 +13,8 @@ pub use category::OperationCategory;
 pub use definition::OperationDefinition;
 pub use definition_id::{OperationDefinitionId, OperationId};
 pub use io::{
-    OperationEffectKind, OperationInputDefinition, OperationIoValidationError,
-    OperationOutputDefinition, OperationPowerRequirementRef, OperationSkillRequirementRef,
-    OperationTerrainRequirementRef, OperationToolRequirementRef,
+    OperationEffectKind, OperationInputDefinition,
+    OperationOutputDefinition,
 };
 pub use registry::OperationCatalog;
 pub use starter::starter_definitions;

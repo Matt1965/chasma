@@ -26,7 +26,7 @@ use crate::dev::window::{DevWindowId, DevWindowInteractionState, DevWindowRegist
 const FIELD_PACKAGE_DIR: &str = "assets/worlds/main/terrain_fields";
 
 use crate::dev::widgets::theme::{
-    BTN_BG_ACTIVE, BTN_BG_HOVER, BTN_BG_IDLE, BTN_BG_ON, BTN_BG_ON_HOVER, BTN_BG_PRESSED,
+    BTN_BG_HOVER, BTN_BG_IDLE, BTN_BG_ON, BTN_BG_ON_HOVER, BTN_BG_PRESSED,
 };
 
 /// Dev terrain field inspection state (not authoritative).

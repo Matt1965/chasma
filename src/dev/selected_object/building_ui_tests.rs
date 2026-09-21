@@ -1,7 +1,5 @@
 //! Selected Object building UI structure tests.
 
-use super::building_actions_ui::BuildingDevSectionKind;
-use crate::dev::inspector::BuildingDevAction;
 
 #[test]
 fn building_action_sections_exclude_nested_diagnostics_and_inventory() {

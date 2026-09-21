@@ -8,7 +8,6 @@ use crate::debug::DebugOverlayCategory;
 use crate::debug::DebugOverlaySettings;
 use crate::dev::dev_mode::{DevModeInputGate, DevModeState};
 use crate::dev::input::DevPanelHoverState;
-use crate::dev::input::DevPanelUi;
 use crate::dev::spawn_tools::dev_spawn_position_from_terrain_click;
 use crate::player::selection_ring_mesh::{
     SELECTION_RING_SEGMENTS, draw_terrain_ring_gizmos, sample_terrain_ring_render_points,

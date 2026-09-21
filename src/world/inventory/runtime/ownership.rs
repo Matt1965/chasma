@@ -3,11 +3,9 @@
 use super::catalog_ctx::InventoryCatalogCtx;
 use super::error::InventoryError;
 use super::id::{InventoryId, ItemInstanceId};
-use super::instance::ItemInstance;
 use super::owner::InventoryOwnerRef;
 use super::record::InventoryRecord;
 use super::store::{InventoryStore, ItemInstanceStore};
-use crate::world::corpse::CorpseId;
 use crate::world::unit::UnitDefinition;
 use crate::world::{InventoryProfileId, UnitId};
 

@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    CorpseId, EntryIndex, InventoryId, ItemPileId, SettlementId, TreasuryId, UnitId,
+    EntryIndex, InventoryId, ItemPileId, SettlementId, TreasuryId, UnitId,
 };
 
 /// How the inventory panel was opened (client-local presentation).

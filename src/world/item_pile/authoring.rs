@@ -12,7 +12,6 @@ use crate::world::inventory::{
     resolve_instance_definition,
 };
 use crate::world::ownership::{Affiliation, OwnerId, TeamId};
-use crate::world::unit::UnitId;
 use crate::world::{ChunkId, ItemDefinitionId, SpaceId, WorldData, WorldPosition};
 
 /// Report for a drop operation.

@@ -8,7 +8,7 @@ use crate::debug::settings::DebugOverlaySettings;
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    BuildingNavigationRuntime, ChunkLayout, PortalType, SpaceId, WorldConfig, WorldData,
+    BuildingNavigationRuntime, ChunkLayout, PortalType, WorldConfig, WorldData,
 };
 
 const SPECIALIZED_OVERLAY_RADIUS_METERS: f32 = 96.0;

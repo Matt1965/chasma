@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    BuildingCatalog, BuildingNavigationBlueprintCatalog, BuildingOwnership, BuildingSource,
+    BuildingCatalog, BuildingNavigationBlueprintCatalog, BuildingOwnership,
     DoodadCatalog, DoodadPlacementOverrides, DoodadSource, FootprintCatalog,
     InteriorProfileCatalog, InventoryCatalogCtx, OccupancyCatalogs, UnitCatalog, UnitOwnership,
     UnitSource, WorldData, WorldPosition, create_dev_complete_building,

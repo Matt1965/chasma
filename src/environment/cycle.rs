@@ -10,7 +10,7 @@ use super::singleton::{
 use super::time_of_day::TimeOfDaySettings;
 use super::visual_state::{
     EnvironmentVisualState, SkyColorPalette, apply_visual_state_to_environment,
-    evaluate_environment_visual_state, update_environment_visual_state,
+    evaluate_environment_visual_state,
 };
 
 pub use super::visual_state::{daylight_factor, twilight_warmth};

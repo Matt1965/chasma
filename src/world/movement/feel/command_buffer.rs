@@ -4,8 +4,8 @@ use bevy::prelude::*;
 
 use crate::world::unit::{UnitOrder, UnitOrderError};
 use crate::world::{
-    BuildingCatalog, DoodadCatalog, FootprintCatalog, NavigationConfig, NavigationError,
-    PassabilityCatalogs, SpaceId, UnitCatalog, UnitId, UnitState, WorldData, WorldPosition,
+    NavigationConfig, NavigationError,
+    PassabilityCatalogs, UnitCatalog, UnitId, UnitState, WorldData, WorldPosition,
     find_path_with_spaces, resolve_move_goal_space, resolve_navigation_start_space,
     waypoint_space_ids,
 };

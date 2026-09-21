@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use crate::terrain::field_overlay::{
-    PLAYER_FIELD_MENU_IDS, TerrainOverlayState, apply_player_field_overlay_selection,
+    TerrainOverlayState, apply_player_field_overlay_selection,
 };
 use crate::world::{TerrainFieldCatalog, TerrainFieldId};
 
@@ -12,7 +12,6 @@ use super::layout::PlayerHudUi;
 use super::styles::{
     HUD_FIELDS_MENU_WIDTH_PX, HUD_UTILITY_BUTTON_HEIGHT_PX, TEXT_PRIMARY, hud_body_font,
 };
-use super::utility_panel::HudUtilityButton;
 
 /// Whether the compact Fields menu is open.
 #[derive(Resource, Debug, Default, Clone, Copy, PartialEq, Eq)]

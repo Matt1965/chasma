@@ -9,7 +9,7 @@ use crate::world::{FactionCatalog, SpeciesCatalog};
 
 use super::matrix_domain::MatrixDirection;
 use super::matrix_excel::{
-    RELATIONSHIP_MATRIX_SHEET_PREFIX, cell_to_string, discover_relationship_matrix_sheet_names,
+    discover_relationship_matrix_sheet_names,
     range_cell, read_relationship_matrix_range,
 };
 use super::normalize_relationship_key;

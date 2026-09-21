@@ -10,7 +10,7 @@ use super::cell::{
     OCCUPANCY_CELL_SIZE_METERS, QuantizedRotation, circle_intersects_cell,
     occupancy_cell_at_global_xz,
 };
-use crate::world::building::footprint::{FootprintSpec, FootprintType};
+use crate::world::building::footprint::FootprintSpec;
 use crate::world::{BuildingDefinition, FootprintId};
 
 /// Authoritative footprint shape geometry (no render meshes).

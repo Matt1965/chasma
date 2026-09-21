@@ -6,7 +6,7 @@ use crate::ui::gameplay::GameplayBuildingSelection;
 use crate::ui::gameplay::primary_selected_unit;
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    BuildingId, InventoryId, ItemPileId, ItemPileSettings, UnitId, WorldData,
+    BuildingId, ItemPileId, ItemPileSettings, UnitId, WorldData,
     nearest_item_pile_at_position, resolve_navigation_space_at_position,
 };
 

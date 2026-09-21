@@ -176,7 +176,7 @@ fn field_visible(
 
     controls: &super::placement_controls::PlacementControlSet,
 ) -> bool {
-    use super::placement_controls::PlacementControlSet;
+    
 
     match field {
         PlacementControlField::Pattern => controls.pattern,

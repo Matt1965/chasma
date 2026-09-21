@@ -312,7 +312,7 @@ pub fn handle_inspector_input(
     gizmo_edit: Res<TransformEditState>,
     blueprint_inspection: Res<BlueprintInspectionState>,
     pick: InspectorPickParams,
-    mut capture: InspectorCaptureParams,
+    capture: InspectorCaptureParams,
     render_assets: Option<Res<TerrainRenderAssets>>,
     mut selection_params: WorldSelectionWriteParams,
     mut inspector: ResMut<WorldInspectorState>,

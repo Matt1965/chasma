@@ -5,7 +5,7 @@
 //! hostile it may legally attack.
 
 use crate::world::unit::{
-    CombatState, UnitId, UnitOrder, apply_validated_attack_order, unit_can_execute_actions,
+    CombatState, UnitId, apply_validated_attack_order, unit_can_execute_actions,
 };
 use crate::world::{
     AttackTargetingPolicy, DoodadCatalog, NavigationConfig, UnitCatalog, WeaponCatalog, WorldData,

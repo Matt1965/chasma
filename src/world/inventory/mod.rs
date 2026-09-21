@@ -17,7 +17,6 @@ pub use catalog::starter_definitions;
 pub use catalog::{InventoryProfileCatalog, InventoryProfileCatalogError};
 pub use profile::InventoryProfileDefinition;
 pub use profile_id::InventoryProfileId;
-pub(crate) use runtime::rebuild_inventory;
 pub use runtime::{
     EntryIndex, InventoryCatalogCtx, InventoryEntryContents, InventoryError, InventoryId,
     InventoryInvariantReport, InventoryLeftover, InventoryOwnerRef, InventoryRecord,
@@ -27,7 +26,7 @@ pub use runtime::{
     TransferPlacementPolicy, TransferReport, TransferStatus, assert_inventory_stores, auto_sort,
     auto_sort_inventory, can_place_entry, can_place_footprint, consume_stack_item,
     count_physical_gold, count_stack_item, create_inventory, create_item_instance,
-    create_unit_inventory, destroy_item_instance, first_fit_position, half_stack_quantity,
+    create_unit_inventory, destroy_item_instance, half_stack_quantity,
     loot_corpse_entry, max_accept_stack_quantity, merge_stacks, migrate_inventory_profile,
     migrate_inventory_profile_with_leftovers, move_entry, physical_gold_item_id, place_stack,
     place_stack_first_fit, place_unique, place_unique_first_fit, query_inventory_weight,

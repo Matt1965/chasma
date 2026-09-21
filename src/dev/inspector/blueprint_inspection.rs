@@ -6,8 +6,7 @@ use crate::camera::{RtsCamera, RtsCameraState};
 use crate::debug::{DebugOverlayConfig, InspectorOverlayFocus};
 use crate::dev::window::{DevWindowId, DevWindowRegistry};
 use crate::world::{
-    BlueprintInspectionValidation, BuildingCatalog, BuildingId, BuildingNavigationBlueprintCatalog,
-    BuildingNavigationBlueprintCatalogRevision, GeometryGenerationDiagnostics, WorldData,
+    BlueprintInspectionValidation, BuildingCatalog, BuildingId, BuildingNavigationBlueprintCatalog, GeometryGenerationDiagnostics, WorldData,
 };
 
 use super::capture::capture_building_blueprint_inspection_snapshot;

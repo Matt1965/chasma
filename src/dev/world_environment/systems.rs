@@ -6,7 +6,6 @@ use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
 use crate::dev::dev_mode::{DevModeState, DevTextFieldFocus};
-use crate::dev::input::DevPanelUi;
 use crate::dev::widgets::{
     DevSliderDragState, DevWidgetConfirmationBar, DevWidgetConfirmationPrompt,
     DevWidgetSliderTrack, DevWidgetSliderValue, DevWidgetToggle, NumericParseResult,
@@ -25,7 +24,7 @@ use crate::environment::{
 use super::fields::EnvFieldId;
 use super::state::{
     DevWorldCycleToggle, DevWorldEnvironmentAction, DevWorldEnvironmentConfirmationBar,
-    DevWorldEnvironmentDirtyBadge, DevWorldEnvironmentLoadStatusText, DevWorldEnvironmentSection,
+    DevWorldEnvironmentDirtyBadge, DevWorldEnvironmentLoadStatusText,
     DevWorldEnvironmentStatusText, DevWorldEnvironmentValidationText, DevWorldPauseToggle,
     DevWorldTimePresetButton, WorldEnvironmentConfirm, WorldEnvironmentUiState,
 };
@@ -229,7 +228,7 @@ pub fn tick_world_environment_status(mut ui_state: ResMut<WorldEnvironmentUiStat
 pub fn handle_world_environment_actions(
     registry: Res<DevWindowRegistry>,
     mut gate: ResMut<crate::dev::DevModeInputGate>,
-    mut dev_state: ResMut<DevModeState>,
+    dev_state: ResMut<DevModeState>,
     mut ui_state: ResMut<WorldEnvironmentUiState>,
     mut baseline: ResMut<ProjectEnvironmentBaseline>,
     mut time_of_day: ResMut<TimeOfDaySettings>,
@@ -368,7 +367,7 @@ pub fn handle_world_cycle_toggles(
     mut gate: ResMut<crate::dev::DevModeInputGate>,
     mut time_of_day: ResMut<TimeOfDaySettings>,
     mut environment: ResMut<EnvironmentSettings>,
-    mut manual: ResMut<EnvironmentManualLighting>,
+    manual: ResMut<EnvironmentManualLighting>,
     mut ui_state: ResMut<WorldEnvironmentUiState>,
     buttons: Query<
         (

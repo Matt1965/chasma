@@ -9,10 +9,9 @@ use bevy::prelude::*;
 use crate::world::{
     ChunkCoord, Heightfield, LocalPosition, TERRAIN_FIELD_SAMPLE_SPACING_METERS,
     TERRAIN_FIELD_SAMPLES_PER_EDGE, TerrainFieldCatalog, TerrainFieldId, TerrainFieldOverlayStyle,
-    WorldData, WorldPosition, bootstrap_constant_field, sample_terrain_field_at,
+    WorldData, WorldPosition, sample_terrain_field_at,
 };
 
-use super::state::TerrainOverlayState;
 
 const OVERLAY_Y_OFFSET: f32 = 0.2;
 

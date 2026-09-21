@@ -11,7 +11,7 @@ use super::doodad::{
     ProceduralDoodadKey,
 };
 use super::occupancy::{
-    ChunkOccupancyGrid, OccupancyCellCoord, OccupancyCellEntry, default_space_id,
+    ChunkOccupancyGrid, OccupancyCellCoord, OccupancyCellEntry,
 };
 use super::projectile::{ProjectileId, ProjectileRecord};
 use super::terrain_field::{TerrainFieldModifierStore, TerrainFieldStore};

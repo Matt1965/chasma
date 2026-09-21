@@ -5,8 +5,8 @@ use super::eligibility::unit_work_capabilities;
 use super::events::{TaskEvent, TaskTickReport};
 use super::types::{TaskCancelReason, TaskState, TaskType};
 use crate::world::{
-    BuildingCatalog, BuildingDefinition, BuildingNavigationBlueprintCatalog, DoodadCatalog,
-    InteriorProfileCatalog, OccupancyCatalogs, UnitCatalog, UnitId, UnitState, WorldData,
+    BuildingCatalog, BuildingNavigationBlueprintCatalog, DoodadCatalog,
+    InteriorProfileCatalog, OccupancyCatalogs, UnitCatalog, UnitState, WorldData,
     add_building_construction_progress,
 };
 use crate::world::{

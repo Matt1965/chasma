@@ -11,7 +11,7 @@ use super::definition::{
     NavigationRegionConnectionDefinition, NavigationRegionConnectionKind,
     NavigationVerticalTransitionDefinition, NavigationVerticalTransitionKind,
 };
-use super::id::{BuildingNavigationBlueprintId, blueprint_id_for_building};
+use super::id::BuildingNavigationBlueprintId;
 use super::mesh::{BuildingMeshAnalysisInput, LocalTriangle3d, PortalMarker3d};
 use super::region_extract::point_in_polygon as region_point_in_polygon;
 use super::region_extract::{
@@ -825,7 +825,7 @@ pub fn logical_portal_group_key(name: &str) -> String {
 }
 
 fn dedupe_nearby_entrances(
-    mut entrances: Vec<NavigationEntranceDefinition>,
+    entrances: Vec<NavigationEntranceDefinition>,
 ) -> Vec<NavigationEntranceDefinition> {
     if entrances.len() < 2 {
         return entrances;

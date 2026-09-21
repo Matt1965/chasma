@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use crate::world::{
     FieldValueSemantics, TerrainFieldCategory, TerrainFieldDefinition, TerrainFieldId,
-    TerrainFieldOverlayStyle, TerrainFieldSourceProfileId, validate_terrain_field_id,
+    TerrainFieldOverlayStyle, validate_terrain_field_id,
 };
 
 pub const REQUIRED_COLUMNS: &[&str] = &[

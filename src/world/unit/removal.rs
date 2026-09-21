@@ -2,7 +2,6 @@
 
 use super::death::RemovalReason;
 use super::inventory::cleanup_unit_inventory_on_delete;
-use super::record::UnitRecord;
 use crate::world::corpse::{CorpseSettings, create_corpse_from_unit, transfer_inventory_to_corpse};
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::unit::UnitCatalog;

@@ -17,7 +17,6 @@ use crate::world::{
 
 use crate::dev::widgets::theme::{
     BTN_BG_IDLE, FIELD_BG_FOCUSED, FIELD_BG_IDLE, FIELD_BORDER_FOCUSED, FIELD_BORDER_IDLE,
-    TEXT_PRIMARY, label_text_font,
 };
 
 #[derive(Component, Debug)]

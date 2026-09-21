@@ -1,7 +1,6 @@
 //! Heightfield and biome dependencies for offline generation (ADR-102).
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 
 use super::super::source_error::TerrainFieldSourceError;
 use crate::terrain::catalog::TerrainWorldCatalog;

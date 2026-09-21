@@ -10,9 +10,7 @@ use super::ownership::BuildingOwnership;
 use super::placement_plan::quantize_placement_anchor_xz;
 use crate::world::{
     ChunkCoord, ChunkId, DoodadCatalog, FootprintCatalog, OccupancySource, OccupancyState,
-    QuantizedRotation, SlopeWalkability, UnitCatalog, WorldData, WorldPosition,
-    agent_overlaps_footprint, chunk_for_occupancy_cell, classify_slope_walkability,
-    conservative_block_radius_for_kind, default_space_id,
+    QuantizedRotation, SlopeWalkability, UnitCatalog, WorldData, WorldPosition, chunk_for_occupancy_cell, classify_slope_walkability, default_space_id,
     effective_building_footprint_for_placement, ground_world_position,
     occupied_cells_for_footprint,
 };
@@ -594,7 +592,7 @@ fn doodad_footprint_overlap(
     anchor_xz: Vec2,
     rotation: QuantizedRotation,
 ) -> bool {
-    use crate::world::{FootprintShape, agent_overlaps_footprint, default_blocks_movement};
+    
 
     let layout = ctx.world.layout();
     let cells = occupied_cells_for_footprint(shape, anchor_xz, rotation);

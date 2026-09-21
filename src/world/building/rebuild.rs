@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use super::catalog::BuildingCatalog;
 use crate::world::{
-    DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, OccupancyCatalogs, OccupancyError,
+    DoodadCatalog, FootprintCatalog, OccupancyCatalogs, OccupancyError,
     WorldData, prune_invalid_building_tasks, rebuild_occupancy_index, sync_construction_tasks,
 };
 

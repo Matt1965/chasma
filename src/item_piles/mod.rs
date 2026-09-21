@@ -18,6 +18,5 @@ pub use presentation::{
 pub use spawn::{spawn_item_pile_fallback_entity, spawn_item_pile_scene_entity};
 pub use sync::{ItemPileRenderIndex, ItemPileRuntimeSystems, sync_item_pile_render_entities};
 
-use bevy::prelude::*;
 
 pub use plugin::ItemPileRuntimePlugin;

@@ -188,7 +188,7 @@ pub fn update_utility_button_hover(
 pub fn handle_utility_button_clicks(
     selection: Res<SelectedUnits>,
     build_mode: Res<BuildModeState>,
-    mut inventory_ui: ResMut<crate::ui::gameplay::inventory::InventoryUiState>,
+    inventory_ui: ResMut<crate::ui::gameplay::inventory::InventoryUiState>,
     mut inventory_queue: ResMut<InventoryIntentQueue>,
     mut unit_skills: ResMut<UnitSkillsPanelState>,
     mut workforce: ResMut<SettlementWorkforcePanelState>,

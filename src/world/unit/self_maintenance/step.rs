@@ -8,7 +8,7 @@ use crate::world::task::{TaskState, TaskType, release_unit_task_to_marketplace};
 use crate::world::unit::catalog::UnitCatalog;
 use crate::world::unit::{CombatState, UnitId, UnitState, unit_can_execute_actions};
 use crate::world::{
-    BuildingInteractionProfileCatalog, DoodadCatalog, FootprintCatalog, NavigationConfig,
+    BuildingInteractionProfileCatalog, NavigationConfig,
     PassabilityCatalogs, WorldData,
 };
 
@@ -18,7 +18,7 @@ use super::food::{
 use super::nutrition::{
     HungerStage, NutritionProfile, UnitNutritionState, apply_nutrition_decay, evaluate_hunger_stage,
 };
-use super::state::{FoodSourceRef, SelfMaintenanceActivity, UnitSelfMaintenanceState};
+use super::state::{FoodSourceRef, SelfMaintenanceActivity};
 
 /// Whether the unit is in active combat (hunger must not interrupt).
 pub fn unit_in_active_combat(combat_state: &CombatState) -> bool {

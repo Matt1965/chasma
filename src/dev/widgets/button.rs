@@ -8,7 +8,7 @@ use crate::dev::window::DevWindowUi;
 
 use super::interaction::DevButtonChrome;
 use super::theme::{
-    TEXT_PRIMARY, action_button_bg, label_text_font, standard_button_node, stepper_button_bg,
+    TEXT_PRIMARY, label_text_font, standard_button_node, stepper_button_bg,
 };
 
 /// Marker for a standard dev action button.

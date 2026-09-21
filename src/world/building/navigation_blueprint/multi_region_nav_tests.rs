@@ -3,21 +3,13 @@
 use bevy::prelude::*;
 
 use super::adapt::region_space_key;
-use super::fixtures::{
-    corridor_hut_navigation_blueprint, dual_doorway_navigation_blueprint,
-    two_floor_two_room_navigation_blueprint, two_room_hut_navigation_blueprint,
-};
-use super::runtime::{
-    interior_position_walkable, resolve_navigation_space_at_position,
-    resolve_navigation_start_space,
-};
-use crate::world::unit::{UnitOrder, UnitSource, UnitState, create_unit, step_unit_movement};
+use crate::world::unit::{UnitOrder, step_unit_movement};
 use crate::world::{
     Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingLifecycleState,
     BuildingNavigationBlueprint, BuildingNavigationBlueprintCatalog,
     BuildingNavigationBlueprintInstanceOverride, BuildingOwnership, ChunkCoord, ChunkLayout,
     DoodadCatalog, FootprintCatalog, NavigationConfig, OccupancyCatalogs, PassabilityCatalogs,
-    PortalId, SpaceId, UnitDefinitionId, WorldData, WorldPosition, find_path_with_spaces,
+    PortalId, SpaceId, WorldData, WorldPosition,
     place_player_building, resolve_pending_unit_orders, set_building_lifecycle_stage,
 };
 

@@ -10,7 +10,6 @@ use super::region::FieldSampleRegion;
 use super::sample::{
     FieldAreaAvailability, FieldAvailability, TerrainFieldAreaReport, TerrainFieldSample,
 };
-use super::store::TerrainFieldStore;
 use super::{BasisPoints, TerrainFieldId};
 use crate::world::data::ChunkExtent;
 use crate::world::occupancy::OccupancyCellCoord;

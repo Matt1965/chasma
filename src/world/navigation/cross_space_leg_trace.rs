@@ -152,7 +152,7 @@ fn build_leg_trace_lines(
         probe_point_legality(world, catalogs, position, passability_agent, leg_space)
     });
 
-    let mut lines = vec![
+    let lines = vec![
         "[CROSS_SPACE_LEG_TRACE]".to_string(),
         "route_direction=InteriorToSurface".to_string(),
         format!("leg_index={leg_index}"),

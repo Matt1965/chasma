@@ -19,20 +19,15 @@ mod tests;
 
 pub use badge::{DevBadgeKind, DevWidgetBadge, spawn_badge};
 pub use button::{
-    DevWidgetActionButton, spawn_action_button, spawn_labeled_stepper_row, spawn_stepper_button,
+    DevWidgetActionButton, spawn_action_button,
     sync_action_button_styles,
 };
 pub use confirmation::{
     DevWidgetConfirmationBar, DevWidgetConfirmationPrompt, set_confirmation_visible,
     spawn_confirmation_bar,
 };
-pub use enum_selector::{
-    DevWidgetSegmentedControl, DevWidgetSegmentedOption, spawn_segmented_control,
-    sync_segmented_styles,
-};
-pub use glyph_safety::{FORBIDDEN_DEV_UI_GLYPHS, contains_forbidden_dev_ui_glyph};
 pub use interaction::{
-    DevButtonActivationFlash, DevButtonChrome, DevButtonKind, DevButtonVisual, dev_button_visual,
+    DevButtonChrome, DevButtonKind,
     queue_button_activation_flash, sync_dev_button_chrome, tick_dev_button_activation_flashes,
 };
 pub use numeric::{
@@ -53,13 +48,11 @@ pub use slider::{
     slider_normalized_x, spawn_bounded_slider_row, sync_slider_fill, value_to_normalized,
 };
 pub use status::{
-    DevStatusSeverity, DevWidgetStatusLine, spawn_status_line, status_text_color,
+    DevStatusSeverity, DevWidgetStatusLine, spawn_status_line,
     sync_status_line_color,
 };
 pub use theme::{
-    BTN_BG_IDLE, CARD_BG, CARD_BORDER, FONT_SIZE_LABEL, SPACE_CONTROL, SPACE_SECTION, SPACE_TIGHT,
-    SPACE_WINDOW, TEXT_LABEL, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECTION, WINDOW_BG, WINDOW_TITLE_TEXT,
-    action_button_bg, label_text_font, small_text_font, standard_button_node, toggle_button_bg,
+    BTN_BG_IDLE, CARD_BG, CARD_BORDER, SPACE_CONTROL, SPACE_SECTION, TEXT_LABEL, TEXT_MUTED, TEXT_PRIMARY, TEXT_SECTION, label_text_font, small_text_font, standard_button_node, toggle_button_bg,
 };
 pub use toggle::{
     DevWidgetToggle, DevWidgetToggleMark, spawn_toggle_row, sync_toggle_styles_with_marker,

@@ -10,7 +10,7 @@ use crate::dev::hotkeys::{
 use crate::dev::{DevModeInputGate, DevModeState};
 use crate::world::{DoodadCatalog, FootprintCatalog};
 use crate::world::{
-    DoodadTransformCandidate, DoodadTransformEditOptions, OccupancyCatalogs, QuantizedOrientation,
+    DoodadTransformCandidate, OccupancyCatalogs, QuantizedOrientation,
     WorldData, nudge_doodad_position, update_doodad_transform,
 };
 

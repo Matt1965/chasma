@@ -3,28 +3,17 @@
 use bevy::prelude::*;
 
 use super::adapt::region_space_key;
-use super::fixtures::one_region_doorless_navigation_blueprint;
-use super::runtime::{
-    interior_navigation_move_target_at_position, resolve_navigation_space_at_position,
-    resolve_navigation_start_space,
-};
 use crate::units::input::{SelectedUnits, issue_move_orders_to_selection};
-use crate::world::interaction::{
-    InteractionOrderPlan, InteractionQueryContext, InteractionResolveContext, InteractionType,
-    query_world_interaction, resolve_interaction_to_order, resolve_world_click_to_order,
-};
 use crate::world::unit::{
-    UnitOrder, UnitSource, UnitState, create_unit_with_ownership, step_unit_movement,
+    UnitSource, create_unit_with_ownership,
 };
 use crate::world::{
-    Affiliation, AttackTargetingPolicy, BuildingCatalog, BuildingDefinitionId,
-    BuildingInteractionProfileCatalog, BuildingLifecycleState, BuildingNavigationBlueprint,
+    Affiliation, AttackTargetingPolicy, BuildingCatalog, BuildingDefinitionId, BuildingLifecycleState, BuildingNavigationBlueprint,
     BuildingNavigationBlueprintCatalog, BuildingNavigationBlueprintInstanceOverride,
-    BuildingOwnership, ChunkCoord, ChunkLayout, DoodadCatalog, FootprintCatalog,
-    InteriorActivationStatus, ItemPileSettings, NavigationConfig, OccupancyCatalogs,
-    PassabilityCatalogs, PortalType, SpaceId, UnitDefinitionId, WeaponCatalog, WorldData,
-    WorldPosition, find_path_with_spaces, place_player_building, resolve_pending_unit_orders,
-    set_building_lifecycle_stage, validate_blueprint_for_inspection,
+    BuildingOwnership, ChunkCoord, ChunkLayout, DoodadCatalog, FootprintCatalog, NavigationConfig, OccupancyCatalogs,
+    PassabilityCatalogs, SpaceId, UnitDefinitionId, WeaponCatalog, WorldData,
+    WorldPosition, place_player_building, resolve_pending_unit_orders,
+    set_building_lifecycle_stage,
 };
 
 fn layout_world() -> WorldData {

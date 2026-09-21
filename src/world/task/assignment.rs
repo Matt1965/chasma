@@ -14,7 +14,7 @@ use crate::world::{
     UnitId, UnitOrder, WorldData, issue_unit_order, unit_may_autonomously_perform_work,
 };
 use crate::world::{
-    BuildingInteractionProfile, BuildingInteractionProfileCatalog, InteractionPointDefinition,
+    BuildingInteractionProfile, BuildingInteractionProfileCatalog,
     interaction_point_world_position,
 };
 

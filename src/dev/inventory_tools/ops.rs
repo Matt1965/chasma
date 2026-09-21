@@ -3,10 +3,10 @@
 use crate::dev::dev_mode::DevInventoryEndpoint;
 use crate::world::{
     Affiliation, ChunkId, EntryIndex, InventoryCatalogCtx, InventoryEntryContents, InventoryError,
-    InventoryId, InventoryOwnerRef, InventoryProfileId, ItemDefinition, ItemDefinitionId,
-    ItemInstanceMetadata, ItemInstanceStore, ItemPileId, ItemPileSettings, ItemPileSource,
-    PileOwnership, PlacedInventoryEntry, SpaceId, TransferPlacementPolicy, UnitCatalog, UnitId,
-    WorldData, WorldPileContents, WorldPosition, create_inventory, create_item_instance,
+    InventoryId, InventoryProfileId, ItemDefinition, ItemDefinitionId,
+    ItemInstanceMetadata, ItemPileId, ItemPileSettings, ItemPileSource,
+    PileOwnership, SpaceId, TransferPlacementPolicy, UnitCatalog, UnitId,
+    WorldData, WorldPileContents, WorldPosition, create_item_instance,
     create_unit_inventory, drop_stack_from_inventory, pickup_pile_into_inventory, place_stack,
     place_stack_first_fit, place_unique, place_unique_first_fit, remove_entry, transfer_entry_full,
     transfer_stack_quantity,

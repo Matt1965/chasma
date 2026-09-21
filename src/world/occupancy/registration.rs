@@ -8,13 +8,13 @@ use super::footprint::{
     FootprintShape, effective_building_footprint_for_placement, occupied_cells_for_footprint,
 };
 use super::grid::default_space_id;
-use super::grid::{ChunkOccupancyGrid, OccupancyCellEntry, OccupancyState};
+use super::grid::{OccupancyCellEntry, OccupancyState};
 use super::{OccupancyError, OccupancySource, conservative_block_radius_for_kind};
 use crate::world::occupancy::occupied_cells_for_footprint_yaw;
 use crate::world::resolve_doodad_collision;
 use crate::world::{
     BuildingCatalog, BuildingId, BuildingLifecycleState, BuildingRecord, ChunkId, DoodadCatalog,
-    DoodadId, DoodadKind, DoodadRecord, WorldData, default_blocks_movement,
+    DoodadId, DoodadRecord, WorldData, default_blocks_movement,
 };
 
 /// Options for doodad occupancy registration (ADR-098 DT2).

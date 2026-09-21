@@ -61,74 +61,57 @@ mod region_extract;
 
 pub use adapt::{
     BlueprintPortalTemplate, BlueprintSpaceTemplate, blueprint_portal_templates,
-    blueprint_space_templates, floor_key_from_region_space_key, region_space_key,
+    blueprint_space_templates,
 };
 pub use authority::{
     BuildingNavigationMovementAuthority, building_navigation_movement_authority,
     building_uses_blueprint_movement_authority, movement_authority_label,
 };
 pub use cache::{
-    NAVIGATION_BLUEPRINT_CACHE_MANIFEST_PATH, NAVIGATION_BLUEPRINT_GENERATOR_VERSION,
-    NavigationBlueprintCacheEntry, NavigationBlueprintCacheManifest,
+    NAVIGATION_BLUEPRINT_CACHE_MANIFEST_PATH, NAVIGATION_BLUEPRINT_GENERATOR_VERSION, NavigationBlueprintCacheManifest,
 };
 pub use catalog::{
     BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH, BuildingNavigationBlueprintCatalog,
-    BuildingNavigationBlueprintCatalogRevision, BuildingNavigationBlueprintCatalogRon,
+    BuildingNavigationBlueprintCatalogRevision,
     load_building_navigation_blueprint_catalog,
 };
 pub use definition::{
-    BUILDING_NAVIGATION_BLUEPRINT_SCHEMA_VERSION, BuildingNavigationBlueprint,
-    BuildingNavigationBlueprintInstanceOverride, BuildingNavigationBlueprintMetadata,
-    MIN_CONNECTION_RADIUS, MIN_REGION_AREA, NavigationEntranceDefinition,
-    NavigationFloorDefinition, NavigationPolygon2d, NavigationRegionConnectionDefinition,
-    NavigationRegionConnectionKind, NavigationRegionDefinition,
-    NavigationVerticalTransitionDefinition, NavigationVerticalTransitionKind, point_inside_polygon,
-    single_region_floor,
+    BuildingNavigationBlueprint,
+    BuildingNavigationBlueprintInstanceOverride, NavigationEntranceDefinition,
+    NavigationFloorDefinition, NavigationPolygon2d, NavigationRegionDefinition,
+    NavigationVerticalTransitionDefinition, NavigationVerticalTransitionKind,
 };
 pub use edit::{
-    BlueprintEditOutcome, RegionReference, add_entrance_on_floor, add_region_connection,
+    BlueprintEditOutcome, add_entrance_on_floor, add_region_connection,
     add_region_on_floor, add_stair_transition, delete_entrance, delete_floor_vertex, delete_region,
     delete_region_connection, delete_transition, format_region_deletion_error,
     insert_vertex_on_edge, move_connection_from, move_connection_to, move_entrance,
     move_floor_vertex, move_transition_from, move_transition_to, prepare_blueprint_for_save,
-    region_interior_point, region_references, set_connection_bidirectional,
-    set_connection_door_key, set_connection_enabled, set_connection_kind, set_connection_radius,
-    set_entrance_radius, set_entrance_region_key, set_region_display_label, set_region_room_tag,
+    region_interior_point, region_references, set_connection_radius,
+    set_entrance_radius, set_entrance_region_key,
     set_transition_radius,
 };
 pub use entrance_geometry::{
-    BoundaryProjection, DEFAULT_EXTERIOR_STAGING_OFFSET, DEFAULT_INTERIOR_LANDING_OFFSET,
-    ENTRANCE_BOUNDARY_TOLERANCE, ENTRANCE_CORNER_MARGIN, ENTRANCE_EDGE_SNAP_MAX_DISTANCE,
-    ENTRANCE_MIGRATION_SNAP_TOLERANCE, EntranceReanchorOutcome, apply_threshold_geometry,
-    derive_exterior_staging_xz, exterior_staging_for_entrance, migrate_entrances_toward_boundaries,
-    nearest_boundary_projection, point_on_boundary_within_tolerance,
-    reanchor_entrance_to_region_boundary, reanchor_entrances_after_region_edit,
+    DEFAULT_EXTERIOR_STAGING_OFFSET,
+    ENTRANCE_BOUNDARY_TOLERANCE, ENTRANCE_CORNER_MARGIN, exterior_staging_for_entrance, migrate_entrances_toward_boundaries,
+    nearest_boundary_projection,
 };
 pub use error::BuildingNavigationBlueprintError;
-pub use fixtures::{
-    corridor_hut_navigation_blueprint, dual_doorway_navigation_blueprint,
-    one_region_doorless_navigation_blueprint, two_floor_two_room_navigation_blueprint,
-    two_room_hut_navigation_blueprint,
-};
+pub use fixtures::two_room_hut_navigation_blueprint;
 pub use id::{
-    BuildingNavigationBlueprintId, blueprint_id_for_building, validate_navigation_blueprint_id,
+    BuildingNavigationBlueprintId, blueprint_id_for_building,
 };
-pub use migrate::{BlueprintMigrationReport, migrate_blueprint_to_current};
 pub use persistence::{
-    BlueprintPersistenceOutcome, BlueprintPropagationCounts, InteriorActivationCatalogs,
+    BlueprintPersistenceOutcome, InteriorActivationCatalogs,
     apply_blueprint_to_asset, count_inheriting_instances, reset_instance_to_asset,
     save_instance_blueprint,
 };
-#[cfg(feature = "data-import")]
-pub use region_extract::RegionGeneratorConfig;
 pub use report::{
-    EntranceGenerationDiagnostics, GeometryGenerationDiagnostics,
-    NavigationBlueprintGenerationReport, NavigationBlueprintGenerationStatus,
-    export_generation_reports_markdown,
+    EntranceGenerationDiagnostics, GeometryGenerationDiagnostics, NavigationBlueprintGenerationStatus,
 };
 pub use resolve::{ResolvedBuildingNavigationBlueprint, resolve_building_navigation_blueprint};
 pub use runtime::{
-    BuildingNavigationRuntime, BuildingNavigationRuntimeStore, BuildingNavigationTopologySnapshot,
+    BuildingNavigationRuntime, BuildingNavigationRuntimeStore,
     RuntimeNavigationFloor, RuntimeNavigationRegion, RuntimeTopologyFingerprint,
     blueprint_region_count, blueprint_topology_fingerprint, build_navigation_runtime,
     capture_building_navigation_topology_snapshot, interior_agent_fits_region,
@@ -140,35 +123,21 @@ pub use runtime::{
     runtime_topology_fingerprint, surface_segment_respects_blueprint_boundaries,
 };
 pub use source::{BlueprintAuthoritySource, classify_blueprint_authority};
-pub use starter::{
-    barn_navigation_blueprint, starter_navigation_blueprints, two_story_hut_navigation_blueprint,
-};
 pub use surface_support::{
     resolve_surface_entrance_approach_position, resolve_surface_entrance_escape_position,
-    resolve_surface_entrance_terrain_side_corridor_position,
     surface_blueprint_support_blocks_position, surface_entrance_terrain_side_corridor_global_xz,
     surface_entrance_terrain_side_escape_global_xz, surface_position_in_entrance_access_corridor,
 };
 pub use validate_inspection::{
-    BlueprintDiagnosticFocus, BlueprintDiagnosticLevel, BlueprintInspectionValidation,
-    BlueprintValidationDiagnostic, validate_blueprint_for_inspection,
+    BlueprintDiagnosticFocus, BlueprintDiagnosticLevel, BlueprintInspectionValidation, validate_blueprint_for_inspection,
 };
 
 #[cfg(feature = "data-import")]
 pub use generate::{
-    NavigationBlueprintGenerateInput, NavigationBlueprintGenerateOutput, failed_report,
-    generate_navigation_blueprint, hash_asset_path, logical_portal_group_key,
-    navigation_blueprint_generation_rejection, navigation_mesh_source_display,
-    navigation_mesh_source_label, should_generate_navigation_blueprint,
-};
-#[cfg(feature = "data-import")]
-pub use mesh::{
-    BuildingMeshAnalysisInput, LocalTriangle3d, PortalMarker3d, load_building_mesh_for_navigation,
-    load_building_mesh_for_navigation_with_fallback,
+    hash_asset_path, should_generate_navigation_blueprint,
 };
 #[cfg(feature = "data-import")]
 pub use pipeline::{
-    NAVIGATION_BLUEPRINT_REPORT_PATH, export_navigation_blueprint_catalog,
-    generate_navigation_blueprint_draft_for_definition, import_navigation_blueprints_for_catalog,
+    export_navigation_blueprint_catalog, import_navigation_blueprints_for_catalog,
     regenerate_navigation_blueprint_for_building,
 };

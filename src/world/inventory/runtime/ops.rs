@@ -4,7 +4,7 @@ use super::catalog_ctx::InventoryCatalogCtx;
 use super::entry::{EntryIndex, InventoryEntryContents, PlacedInventoryEntry};
 use super::error::InventoryError;
 use super::grid::{
-    can_place_entry, can_place_footprint, can_place_footprint_excluding, first_fit_position,
+    can_place_entry, can_place_footprint_excluding, first_fit_position,
     footprint_for_definition, half_stack_quantity, validate_stack_quantity,
 };
 use super::id::{InventoryId, ItemInstanceId};
@@ -421,7 +421,7 @@ pub fn swap_entries(
                 entry_b,
             });
         }
-        let mut entries = record.placed_entries_mut();
+        let entries = record.placed_entries_mut();
         entries[entry_a].anchor_x = pos_b.0;
         entries[entry_a].anchor_y = pos_b.1;
         entries[entry_b].anchor_x = pos_a.0;

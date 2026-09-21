@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use crate::item_piles::ItemPilePresentationSettings;
 use crate::ui::gameplay::inventory::grid::{
-    InventoryGridCell, InventoryGridPane, InventoryPaneSide,
+    InventoryGridCell, InventoryGridPane,
 };
 use crate::ui::gameplay::inventory::preview::{
     INVENTORY_CELL_PX, InventoryDropTarget, InventoryPlacementPreview,

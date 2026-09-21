@@ -6,7 +6,6 @@
 use bevy::prelude::*;
 
 use crate::world::asset_sizing::DoodadCollisionShape;
-use crate::world::authoring_transform::AuthoringScale;
 use crate::world::occupancy::FootprintShape;
 use crate::world::{DoodadCatalog, DoodadDefinition, DoodadRecord};
 

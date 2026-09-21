@@ -21,9 +21,9 @@
 use bevy::prelude::*;
 use bevy::sprite::{BorderRect, SliceScaleMode, TextureSlicer};
 use bevy::ui::FocusPolicy;
-use bevy::ui::widget::{ImageNode, NodeImageMode};
+use bevy::ui::widget::ImageNode;
 
-use super::super::styles::{HUD_ENDCAP_LEFT_WIDTH_PX, HUD_PLATE_CORNER_PX};
+use super::super::styles::HUD_PLATE_CORNER_PX;
 use super::geometry::{HudEndcapLeft, HudEndcapRight, HudEndcapSpire, HudViewportGeometry};
 
 pub const HUD_PLATE_FRAME_PATH: &str = "images/ui/hud/plate_frame.png";

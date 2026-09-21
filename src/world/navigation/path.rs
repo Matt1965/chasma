@@ -1,7 +1,7 @@
 ﻿use bevy::prelude::*;
 
 use super::waypoint::NavigationWaypoint;
-use crate::world::{SpaceId, WorldPosition};
+use crate::world::WorldPosition;
 
 /// Authoritative navigation waypoints (ADR-032 U7, ADR-083 B6).
 ///

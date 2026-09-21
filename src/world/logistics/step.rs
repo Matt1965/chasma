@@ -5,13 +5,13 @@ use crate::world::inventory::{InventoryCatalogCtx, max_accept_stack_quantity};
 use crate::world::movement::feel::start_unit_move_to;
 use crate::world::task::{TaskCancelReason, TaskState, TaskType, cancel_unit_task};
 use crate::world::{
-    BuildingId, BuildingInteractionProfileCatalog, INTERACTION_WORK_RANGE_METERS, NavigationConfig,
+    BuildingInteractionProfileCatalog, INTERACTION_WORK_RANGE_METERS, NavigationConfig,
     PassabilityCatalogs, UnitCatalog, UnitId, UnitState, WorldData, WorldPosition,
     interaction_point_world_position,
 };
 
 use super::execute::{
-    cancel_hauling_request, deposit_haul_cargo, pickup_haul_cargo, reserve_hauling_request,
+    deposit_haul_cargo, pickup_haul_cargo, reserve_hauling_request,
 };
 use super::id::HaulingRequestId;
 use super::reservation::release_request_reservations;

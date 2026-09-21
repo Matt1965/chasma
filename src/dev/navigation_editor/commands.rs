@@ -14,8 +14,7 @@ use crate::dev::inspector::{
 };
 use crate::dev::window::{DevWindowId, DevWindowRegistry};
 use crate::world::{
-    BuildingCatalog, BuildingId, BuildingNavigationBlueprintCatalog,
-    BuildingNavigationBlueprintCatalogRevision, WorldData,
+    BuildingCatalog, BuildingId, BuildingNavigationBlueprintCatalog, WorldData,
 };
 
 use super::state::NavigationEditorUiState;

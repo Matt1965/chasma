@@ -8,7 +8,7 @@ use super::definition::OperationDefinition;
 use super::definition_id::OperationDefinitionId;
 use super::starter::starter_definitions;
 use super::validation::OperationCatalogError;
-use super::{OperationCategory, OperationInputDefinition, OperationOutputDefinition};
+use super::OperationCategory;
 
 /// Read-only registry of operation definitions (EP3).
 #[derive(Debug, Clone, Resource, Reflect)]

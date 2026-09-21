@@ -3,12 +3,11 @@
 use serde::{Deserialize, Serialize};
 
 use crate::world::{
-    Affiliation, BuildingId, ChunkId, CorpseId, CorpseRecord, CorpseState, InventoryCatalogCtx,
+    Affiliation, BuildingId, ChunkId, CorpseId, CorpseRecord, CorpseState,
     InventoryEntryContents, InventoryId, InventoryOwnerRef, InventoryProfileId, InventoryRecord,
     ItemDefinitionId, ItemInstance, ItemInstanceId, ItemInstanceLocation, ItemInstanceMetadata,
     ItemPileId, ItemPileSource, OwnerId, PlacedInventoryEntry, SpaceId, TeamId, UnitId,
     UnitPlacement, WorldData, WorldItemPileRecord, WorldPileContents,
-    rebuild_all_inventory_derived,
 };
 
 use super::snapshot::{SceneQuat, SceneRecordError, SceneWorldPosition, affiliation_from_label};

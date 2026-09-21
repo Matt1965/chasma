@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::definition::{
-    BuildingNavigationBlueprint, NavigationEntranceDefinition, NavigationFloorDefinition,
+    BuildingNavigationBlueprint, NavigationEntranceDefinition,
     NavigationRegionDefinition,
 };
 

@@ -4,8 +4,7 @@ use crate::world::building::catalog::BuildingCatalog;
 use crate::world::building::field_response::EfficiencyBasisPoints;
 use crate::world::building::state::BuildingLifecycleState;
 use crate::world::building::terrain_assessment::{
-    BuildingFieldRequirementAssessment, BuildingTerrainAssessmentStore, BuildingTerrainWarning,
-    RequirementAssessmentAvailability, TerrainAssessmentCatalogs, assessment_revision_fingerprint,
+    BuildingFieldRequirementAssessment, BuildingTerrainAssessmentStore, BuildingTerrainWarning, TerrainAssessmentCatalogs, assessment_revision_fingerprint,
     ensure_building_terrain_assessment, terrain_efficiency_for_operation,
 };
 use crate::world::operation::OperationDefinition;

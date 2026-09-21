@@ -6,7 +6,6 @@ use crate::simulation::SimulationControlState;
 use crate::units::animation::presentation_advance_seconds;
 use crate::world::{
     UnitCatalog, UnitState, WorldData, step_rotation_yaw_toward, unit_visual_rotation,
-    yaw_radians_from_rotation,
 };
 
 use super::components::{UnitRenderEntity, UnitRenderMetadata, UnitVisualFacing};

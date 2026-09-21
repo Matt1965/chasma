@@ -9,9 +9,9 @@ mod water;
 #[cfg(test)]
 mod tests;
 
-pub use panel::{WORLD_WATER_SECTION_ORDER, spawn_environment_controls};
+pub use panel::spawn_environment_controls;
 pub use state::{
-    DevWorldEnvironmentSection, DevWorldWaterEnabledToggle, DevWorldWaterSection,
+    DevWorldEnvironmentSection,
     WorldEnvironmentUiState,
 };
 pub use systems::{

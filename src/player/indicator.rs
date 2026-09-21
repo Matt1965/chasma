@@ -34,7 +34,7 @@ pub fn sync_unit_selection_indicators(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut fade_query: Query<(&mut SelectionRingFade, &MeshMaterial3d<StandardMaterial>)>,
-    mut rings: Query<(&TerrainSelectionRing, &Mesh3d)>,
+    rings: Query<(&TerrainSelectionRing, &Mesh3d)>,
 ) {
     if world_selection.category != WorldSelectionCategory::Units && selection.is_empty() {
         state.indicators.retain(|_, entity| {

@@ -1,6 +1,5 @@
 //! Environment field definitions for World window controls (Slice 11).
 
-use bevy::prelude::*;
 
 use crate::environment::{
     EnvironmentManualLighting, EnvironmentSettings, TimeOfDaySettings, apply_manual_lighting,

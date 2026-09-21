@@ -33,8 +33,7 @@ pub use grid::{
 };
 pub use interior_clearance::{
     InteriorCellFailureReason, InteriorCellProbe, InteriorRegionClearanceReport,
-    inset_polygon_toward_centroid, measure_interior_region_clearance, min_edge_clearance_meters,
-    polygon_axis_span, signed_distance_to_polygon_edges,
+    inset_polygon_toward_centroid, measure_interior_region_clearance, signed_distance_to_polygon_edges,
 };
 pub use legality::{
     NavigationSegmentBlockReason, NavigationSegmentLegality, query_navigation_point_legality,
@@ -43,7 +42,7 @@ pub use legality::{
 pub use path::{NavigationPath, xz_distance};
 pub use query::{NavigationError, find_path, find_path_with_spaces};
 pub use simplify::{
-    all_consecutive_segments_legal_in_space, is_segment_walkable_in_space,
-    navigation_segment_valid, simplify_navigation_path_in_space,
+    is_segment_walkable_in_space,
+    navigation_segment_valid,
 };
 pub use waypoint::NavigationWaypoint;
