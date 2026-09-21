@@ -29,6 +29,12 @@ pub struct TerrainRenderAssets {
 /// Target visible height span (world units) when auto-scaling subtle source heights.
 pub const DEFAULT_TARGET_HEIGHT_SPAN_UNITS: f32 = 120.0;
 
+/// Relief span used for terrain mesh `vertical_scale` in current dev worlds.
+///
+/// Road depression baking must convert meters into heightfield units with this
+/// same target so authored `depression_m` matches visible mesh displacement.
+pub const TERRAIN_RENDER_TARGET_HEIGHT_SPAN_UNITS: f32 = 3.0;
+
 /// Compute a mesh vertical scale from authored height range in meters/units.
 pub fn vertical_scale_for_height_span(
     height_min: f32,

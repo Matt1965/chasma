@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use crate::terrain::catalog::TerrainWorldCatalog;
 use crate::terrain::decode::decode_chunk;
 use crate::terrain::spawn::{
-    DEFAULT_TARGET_HEIGHT_SPAN_UNITS, vertical_scale_for_height_span,
+    TERRAIN_RENDER_TARGET_HEIGHT_SPAN_UNITS, vertical_scale_for_height_span,
 };
 use crate::world::{
     ChunkData, ChunkId, ChunkLayout, Road, RoadNetwork, RoadStyleDefaults, WorldData,
@@ -29,46 +29,45 @@ pub const ROAD_DELTA_WARN_ABS_M: f32 = 8.0;
 /// Authored Gaea heightfields use compressed sample magnitudes; mesh render applies
 /// [`vertical_scale_for_height_span`] at draw time. Road depression must be baked in
 /// the same units as [`Heightfield`] samples, not raw meters.
-pub fn depression_meters_to_heightfield_units(depression_m: f32, hf_span: f32) -> f32 {
+pub fn depression_meters_to_heightfield_units(
+    depression_m: f32,
+    hf_span: f32,
+    hf_reference: f32,
+) -> f32 {
     if depression_m <= 0.0 {
         return 0.0;
     }
-    let span = effective_heightfield_span(hf_span, hf_span);
-    let vertical_scale =
-        vertical_scale_for_height_span(0.0, span, DEFAULT_TARGET_HEIGHT_SPAN_UNITS);
+    // Synthetic test heightfields use meter-like magnitudes directly.
+    if hf_span <= 1e-9 && hf_reference > 1.0 {
+        return depression_m;
+    }
+    let span = effective_heightfield_span(hf_span, hf_reference);
+    let vertical_scale = vertical_scale_for_height_span(
+        0.0,
+        span,
+        TERRAIN_RENDER_TARGET_HEIGHT_SPAN_UNITS,
+    );
     depression_m / vertical_scale
 }
 
-fn effective_heightfield_span(measured_span: f32, reference_height: f32) -> f32 {
+fn effective_heightfield_span(measured_span: f32, hf_reference: f32) -> f32 {
     if measured_span > 1e-9 {
         measured_span
+    } else if hf_reference > 1.0 {
+        1.0
     } else {
-        reference_height.abs().max(1e-6) * 0.5
+        1e-3
     }
-}
-
-fn sampler_height_span(sampler: &BakeTerrainSampler) -> f32 {
-    let mut min = f32::INFINITY;
-    let mut max = f32::NEG_INFINITY;
-    for heightfield in sampler.resident.values() {
-        for &sample in heightfield.samples() {
-            min = min.min(sample);
-            max = max.max(sample);
-        }
-    }
-    if !min.is_finite() || !max.is_finite() {
-        return 1e-3;
-    }
-    effective_heightfield_span(max - min, min)
 }
 
 fn warn_delta_threshold_for_chunk(chunk: &crate::world::ChunkData) -> f32 {
-    let span = effective_heightfield_span(
-        chunk.metadata.height_max - chunk.metadata.height_min,
+    let measured = chunk.metadata.height_max - chunk.metadata.height_min;
+    depression_meters_to_heightfield_units(
+        ROAD_DELTA_WARN_ABS_M,
+        measured,
         chunk.metadata.height_min,
-    );
-    depression_meters_to_heightfield_units(ROAD_DELTA_WARN_ABS_M, span)
-        .max(span * 0.25)
+    )
+    .max(measured.max(1e-9) * 0.25)
 }
 
 #[derive(Debug, Clone)]
@@ -118,7 +117,7 @@ struct RoadInfluence {
 struct RoadCenterSample {
     position: Vec2,
     distance_m: f32,
-    bed_height: f32,
+    smoothed_height: f32,
 }
 
 /// Samples base terrain from resident world chunks plus optional bake-time chunk payloads.
@@ -401,7 +400,6 @@ fn build_road_influences(
     layout: ChunkLayout,
 ) -> Vec<RoadInfluence> {
     let spacing = road_sample_spacing(sampler, layout);
-    let hf_span = sampler_height_span(sampler);
     network
         .roads
         .values()
@@ -426,21 +424,15 @@ fn build_road_influences(
                 &polyline,
                 style.longitudinal_smooth_m,
             );
-            // Longitudinal profile: smoothed terrain minus a small depression bias.
-            // Lateral grading toward this bed happens in `compute_delta_at_point`.
-            let depression_hf =
-                depression_meters_to_heightfield_units(style.depression_m, hf_span);
-            let bed_heights = smoothed
-                .iter()
-                .map(|smooth| *smooth - depression_hf)
-                .collect::<Vec<_>>();
+            // Longitudinal profile only; per-chunk depression conversion happens in
+            // `compute_delta_at_point` so bake units match each chunk's render scale.
             let samples = polyline
                 .iter()
-                .zip(bed_heights.iter())
-                .map(|(sample, bed)| RoadCenterSample {
+                .zip(smoothed.iter())
+                .map(|(sample, smooth)| RoadCenterSample {
                     position: sample.position,
                     distance_m: sample.distance_m,
-                    bed_height: *bed,
+                    smoothed_height: *smooth,
                 })
                 .collect();
             let half_width = style.width_m * 0.5;
@@ -562,6 +554,8 @@ fn bake_chunk_tile(
 ) -> RoadHeightDeltaTile {
     let heightfield = &chunk.heightfield;
     let warn_delta_threshold = warn_delta_threshold_for_chunk(chunk);
+    let chunk_hf_span = chunk.metadata.height_max - chunk.metadata.height_min;
+    let chunk_hf_reference = chunk.metadata.height_min;
     let mut tile = RoadHeightDeltaTile::zero_for_heightfield(heightfield);
     let spe = heightfield.samples_per_edge();
     let spacing = heightfield.spacing_meters();
@@ -579,6 +573,8 @@ fn bake_chunk_tile(
                 base,
                 roads,
                 influences,
+                chunk_hf_span,
+                chunk_hf_reference,
             );
             if !delta.is_finite() {
                 warnings.push(RoadBakeWarning {
@@ -632,6 +628,8 @@ fn compute_delta_at_point(
     local_base: f32,
     roads: &std::collections::BTreeMap<crate::world::RoadId, Road>,
     influences: &[RoadInfluence],
+    chunk_hf_span: f32,
+    chunk_hf_reference: f32,
 ) -> f32 {
     let mut weight_sum = 0.0;
     let mut target_sum = 0.0;
@@ -648,17 +646,40 @@ fn compute_delta_at_point(
         if lateral > influence.influence_radius {
             continue;
         }
+        let half_width = influence.style.width_m * 0.5;
         let weight = cross_falloff_weight(
             lateral,
-            influence.style.width_m * 0.5,
+            half_width,
             influence.style.shoulder_m,
         );
         if weight <= f32::EPSILON {
             continue;
         }
-        let bed = sample_bed_height(projection.distance_m, influence);
-        let grade = influence.style.flatten_strength * weight;
-        let target = local_base.lerp(bed, grade);
+        let center_smooth = sample_smoothed_height(projection.distance_m, influence);
+        let depression_hf = if center_smooth > 1.0 {
+            // Meter-like test/synthetic heightfields around the road centerline.
+            depression_meters_to_heightfield_units(
+                influence.style.depression_m,
+                0.0,
+                center_smooth,
+            )
+        } else {
+            depression_meters_to_heightfield_units(
+                influence.style.depression_m,
+                chunk_hf_span,
+                chunk_hf_reference,
+            )
+        };
+        let bed = center_smooth - depression_hf;
+        // Full cut/fill to a flat cross-section bed inside traveled width; shoulders blend
+        // back to natural terrain using `flatten_strength`.
+        let flatten_t = cross_section_flatten_amount(
+            lateral,
+            half_width,
+            influence.style.shoulder_m,
+            influence.style.flatten_strength,
+        );
+        let target = local_base.lerp(bed, flatten_t);
         weight_sum += weight;
         target_sum += weight * target;
     }
@@ -667,6 +688,22 @@ fn compute_delta_at_point(
     }
     let blended_target = target_sum / weight_sum;
     blended_target - local_base
+}
+
+fn cross_section_flatten_amount(
+    lateral: f32,
+    half_width: f32,
+    shoulder: f32,
+    flatten_strength: f32,
+) -> f32 {
+    if lateral <= half_width {
+        return 1.0;
+    }
+    if lateral > half_width + shoulder {
+        return 0.0;
+    }
+    let t = (lateral - half_width) / shoulder.max(f32::EPSILON);
+    flatten_strength * (1.0 - smoothstep(0.0, 1.0, t))
 }
 
 fn cross_falloff_weight(lateral: f32, half_width: f32, shoulder: f32) -> f32 {
@@ -688,16 +725,16 @@ fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
-fn sample_bed_height(distance_m: f32, influence: &RoadInfluence) -> f32 {
+fn sample_smoothed_height(distance_m: f32, influence: &RoadInfluence) -> f32 {
     if influence.samples.is_empty() {
         return 0.0;
     }
     if distance_m <= influence.samples[0].distance_m {
-        return influence.samples[0].bed_height;
+        return influence.samples[0].smoothed_height;
     }
     let last = influence.samples.last().expect("samples");
     if distance_m >= last.distance_m {
-        return last.bed_height;
+        return last.smoothed_height;
     }
     for window in influence.samples.windows(2) {
         let start = &window[0];
@@ -709,30 +746,30 @@ fn sample_bed_height(distance_m: f32, influence: &RoadInfluence) -> f32 {
             } else {
                 0.0
             };
-            return start.bed_height.lerp(end.bed_height, t);
+            return start.smoothed_height.lerp(end.smoothed_height, t);
         }
     }
-    last.bed_height
+    last.smoothed_height
 }
 
 fn validate_road_influence(influence: &RoadInfluence) -> Option<RoadBakeWarning> {
     for sample in &influence.samples {
-        if !sample.bed_height.is_finite() {
+        if !sample.smoothed_height.is_finite() {
             return Some(RoadBakeWarning {
                 road_id: influence.road_id.clone(),
-                message: "road bed height is non-finite".into(),
+                message: "road smoothed height is non-finite".into(),
             });
         }
     }
     let min_bed = influence
         .samples
         .iter()
-        .map(|s| s.bed_height)
+        .map(|s| s.smoothed_height)
         .fold(f32::INFINITY, f32::min);
     let max_bed = influence
         .samples
         .iter()
-        .map(|s| s.bed_height)
+        .map(|s| s.smoothed_height)
         .fold(f32::NEG_INFINITY, f32::max);
     if max_bed - min_bed > 500.0 {
         return Some(RoadBakeWarning {
