@@ -19,6 +19,7 @@ mod inspector;
 pub(crate) mod inventory_tools;
 mod items_browser;
 mod navigation_editor;
+mod origin_editor;
 mod road_editor;
 mod panel;
 mod pile_harness;
@@ -61,6 +62,11 @@ pub use dev_mode::{
     DevModeState, DevTab, DevTextFieldFocus, SpawnMode,
 };
 pub use fields_window::{setup_fields_window_panel, sync_dev_fields_panel_visibility};
+pub use origin_editor::{
+    DevOriginEditorState, draw_origin_editor_gizmos, handle_origin_editor_buttons,
+    handle_origin_editor_world_input, setup_origin_editor_panel,
+    sync_dev_origin_editor_panel_visibility, sync_origin_editor_panel,
+};
 pub use road_editor::{
     handle_road_editor_buttons, handle_road_editor_keyboard_input, handle_road_editor_world_input,
     draw_road_editor_overlay, setup_road_editor_state, setup_roads_window_panel,
@@ -220,6 +226,7 @@ impl Plugin for DevModePlugin {
             .init_resource::<settlement_placement::SettlementPlacementRejectionLabelIndex>()
             .init_resource::<archetype_editor::DevArchetypeEditorState>()
             .init_resource::<archetype_editor::DevArchetypeEditorScratch>()
+            .init_resource::<DevOriginEditorState>()
             .add_systems(
                 Startup,
                 (
@@ -234,6 +241,7 @@ impl Plugin for DevModePlugin {
                     setup_settlement_window_panel,
                     setup_fields_window_panel,
                     setup_roads_window_panel,
+                    setup_origin_editor_panel,
                     setup_dev_tooltip,
                     setup_road_editor_state,
                     scenes::init_dev_scene_registry,
@@ -466,6 +474,9 @@ impl Plugin for DevModePlugin {
                 handle_road_editor_keyboard_input,
                 sync_road_editor_action_buttons,
                 sync_road_editor_panel,
+                sync_dev_origin_editor_panel_visibility,
+                handle_origin_editor_buttons,
+                sync_origin_editor_panel,
             )
                 .in_set(DevModeInputSystems),
         )
@@ -474,6 +485,7 @@ impl Plugin for DevModePlugin {
             (
                 update_road_editor_snap_preview,
                 handle_road_editor_world_input,
+                handle_origin_editor_world_input,
             )
                 .chain()
                 .before(handle_dev_spawn_click)
@@ -616,6 +628,7 @@ impl Plugin for DevModePlugin {
                 update_dev_terrain_field_probe,
                 draw_dev_terrain_field_gizmos,
                 draw_road_editor_overlay,
+                draw_origin_editor_gizmos,
                 settlement_placement::draw_settlement_placement_preview,
                 settlement_placement::billboard_settlement_placement_rejection_labels,
                 archetype_editor::draw_building_archetype_capture_preview,

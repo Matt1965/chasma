@@ -1,29 +1,30 @@
-use bevy::prelude::*;
-
-use crate::world::UnitDefinitionId;
+use bevy::prelude::Reflect;
+use serde::{Deserialize, Serialize};
 
 use super::id::OriginId;
+use super::snapshot::OriginSquadMemberSnapshot;
 
-/// One preview/spawn slot in an origin roster (CG7).
-#[derive(Debug, Clone, PartialEq, Reflect)]
-pub struct OriginRosterMember {
-    pub role_label: String,
-    pub definition_id: UnitDefinitionId,
-    /// Local preview-studio placement for multi-actor framing.
-    pub preview_offset: Vec3,
-}
-
-/// Authored starting-origin data (CG7). Appearance defaults resolve from unit definitions.
-#[derive(Debug, Clone, PartialEq, Reflect)]
+#[derive(Debug, Clone, PartialEq, Reflect, Serialize, Deserialize)]
 pub struct OriginDefinition {
     pub id: OriginId,
     pub display_name: String,
     pub description: String,
-    pub roster: Vec<OriginRosterMember>,
+    pub members: Vec<OriginSquadMemberSnapshot>,
+    pub start_x: f32,
+    pub start_z: f32,
+    pub yaw_deg: f32,
 }
 
 impl OriginDefinition {
-    pub fn roster_size(&self) -> usize {
-        self.roster.len()
+    pub fn member_count(&self) -> usize {
+        self.members.len()
+    }
+
+    pub fn spawn_anchor(&self) -> super::spawn::OriginSpawnAnchor {
+        super::spawn::OriginSpawnAnchor {
+            start_x: self.start_x,
+            start_z: self.start_z,
+            yaw_deg: self.yaw_deg,
+        }
     }
 }

@@ -66,6 +66,7 @@ pub fn create_unit_with_ownership(
         ownership,
         None,
         None,
+        Quat::IDENTITY,
     )
 }
 
@@ -79,6 +80,8 @@ pub fn create_unit_with_ownership_and_appearance(
     source: UnitSource,
     ownership: UnitOwnership,
     appearance: crate::world::UnitAppearance,
+    facing: Quat,
+    inventory_ctx: Option<&crate::world::InventoryCatalogCtx<'_>>,
 ) -> Result<UnitRecord, UnitAuthoringError> {
     create_unit_with_ownership_impl(
         catalog,
@@ -88,8 +91,9 @@ pub fn create_unit_with_ownership_and_appearance(
         position,
         source,
         ownership,
-        None,
+        inventory_ctx,
         Some(appearance),
+        facing,
     )
 }
 
@@ -114,6 +118,7 @@ pub fn create_unit_with_inventory(
         ownership,
         Some(inventory_ctx),
         None,
+        Quat::IDENTITY,
     )
 }
 
@@ -127,6 +132,7 @@ fn create_unit_with_ownership_impl(
     ownership: UnitOwnership,
     inventory_ctx: Option<&crate::world::InventoryCatalogCtx<'_>>,
     appearance_override: Option<crate::world::UnitAppearance>,
+    facing: Quat,
 ) -> Result<UnitRecord, UnitAuthoringError> {
     let definition = catalog
         .get(definition_id)
@@ -142,7 +148,7 @@ fn create_unit_with_ownership_impl(
     let mut record = UnitRecord::new(
         id,
         definition.id.clone(),
-        UnitPlacement::new(position, Quat::IDENTITY),
+        UnitPlacement::new(position, facing),
         source,
         ownership,
         definition.max_hp,

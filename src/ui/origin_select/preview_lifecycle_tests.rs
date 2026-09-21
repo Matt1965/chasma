@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use crate::menu::{SquadMemberDraftId, StartingSquadSession};
 use crate::units::presentation::{UnitEditorPreviewRosterMember, UnitEditorPreviewUnit};
-use crate::world::{OriginId, starter_origin_catalog};
+use crate::world::{OriginId, seed_origin_catalog};
 
 use super::presentation::{
     RosterPresentationMode, roster_actor_presentation_ready, roster_member_is_visible,
@@ -65,8 +65,8 @@ fn spawn_mock_roster_actor(
 
 #[test]
 fn new_game_draft_editor_session_does_not_own_cg3_preview_actor() {
-    let origins = starter_origin_catalog();
     let (units, profiles) = dev_catalogs();
+    let origins = seed_origin_catalog(&units, &profiles);
     let session =
         StartingSquadSession::new_for_first_origin(&origins, &units, &profiles).unwrap();
     let member = session.active_draft(&origins).unwrap().members[0].clone();
@@ -135,8 +135,8 @@ fn focused_member_uses_stage_center_without_spawning_cg3_actor() {
 
 #[test]
 fn two_member_draft_expects_two_preview_actor_slots() {
-    let origins = starter_origin_catalog();
     let (units, profiles) = dev_catalogs();
+    let origins = seed_origin_catalog(&units, &profiles);
     let session =
         StartingSquadSession::new_for_first_origin(&origins, &units, &profiles).unwrap();
     let draft = session.active_draft(&origins).unwrap();
@@ -152,8 +152,8 @@ fn focus_transitions_do_not_change_roster_actor_count() {
     spawn_mock_roster_actor(&mut world, SquadMemberDraftId(1), 1);
     assert_eq!(count_roster_preview_actors(&mut world), 2);
 
-    let origins = starter_origin_catalog();
     let (units, profiles) = dev_catalogs();
+    let origins = seed_origin_catalog(&units, &profiles);
     let mut session =
         StartingSquadSession::new_for_first_origin(&origins, &units, &profiles).unwrap();
     session.enter_focus(0).unwrap();
@@ -176,8 +176,8 @@ fn repeated_focus_cycles_keep_roster_actor_count_stable() {
     spawn_mock_roster_actor(&mut world, SquadMemberDraftId(0), 0);
     spawn_mock_roster_actor(&mut world, SquadMemberDraftId(1), 1);
 
-    let origins = starter_origin_catalog();
     let (units, profiles) = dev_catalogs();
+    let origins = seed_origin_catalog(&units, &profiles);
     let mut session =
         StartingSquadSession::new_for_first_origin(&origins, &units, &profiles).unwrap();
 
@@ -249,8 +249,8 @@ fn squad_visibility_waits_for_presentation_readiness() {
 
 #[test]
 fn origin_switch_replaces_active_roster_identity_set() {
-    let origins = starter_origin_catalog();
     let (units, profiles) = dev_catalogs();
+    let origins = seed_origin_catalog(&units, &profiles);
     let mut session =
         StartingSquadSession::new_for_first_origin(&origins, &units, &profiles).unwrap();
     let exile_ids = session

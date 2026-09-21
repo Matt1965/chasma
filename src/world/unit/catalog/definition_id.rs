@@ -1,10 +1,11 @@
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// Stable string identifier for a unit type definition (ADR-027).
 ///
 /// Distinct from future runtime [`UnitId`]: catalog ids come from Excel `Unit ID`
 /// and identify the type, not a world instance.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Reflect)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Reflect, Serialize, Deserialize)]
 pub struct UnitDefinitionId(pub String);
 
 impl UnitDefinitionId {

@@ -2,6 +2,7 @@
 
 use bevy::prelude::Resource;
 
+mod camera;
 mod draft;
 mod session;
 mod spawn;
@@ -11,6 +12,9 @@ mod tests;
 
 pub use draft::{
     SquadMemberDraft, SquadMemberDraftId, StartingSquadDraft, build_starting_squad_draft,
+};
+pub use camera::{
+    PendingNewGameCameraFocus, focus_camera_on_new_game_spawn, pending_camera_focus_for_anchor,
 };
 pub use session::{OriginSquadViewMode, StartingSquadSession};
 pub use spawn::spawn_starting_squad_from_draft;

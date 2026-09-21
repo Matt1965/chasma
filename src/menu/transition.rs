@@ -1,16 +1,18 @@
 //! Centralized session transition requests (client-local).
-//!
-//! Button handlers only set this resource. Apply systems perform screen/session
-//! changes without clearing WorldData or reloading terrain.
 
 use bevy::prelude::*;
 
 use super::navigation::MenuNavigation;
 use super::screen::{AppScreen, GameSessionKind, GameSessionState};
 use crate::simulation::SimulationControlState;
-use crate::world::{AppearanceProfileCatalog, UnitCatalog, WorldData};
+use crate::world::{
+    AppearanceProfileCatalog, InventoryCatalogCtx, ItemCatalog, ItemCategoryCatalog,
+    InventoryProfileCatalog, OriginCatalog, UnitCatalog, WorldData,
+};
 
-use super::starting_squad::{PendingStartingSquadSpawn, spawn_starting_squad_from_draft};
+use super::starting_squad::{
+    PendingStartingSquadSpawn, pending_camera_focus_for_anchor, spawn_starting_squad_from_draft,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SessionTransitionKind {
@@ -19,7 +21,6 @@ pub enum SessionTransitionKind {
     ReturnToMainMenu,
 }
 
-/// Queued session transition. Consumed once per apply.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct SessionTransitionRequest {
     pub pending: Option<SessionTransitionKind>,
@@ -35,7 +36,6 @@ impl SessionTransitionRequest {
     }
 }
 
-/// Apply pending session transitions. Does not clear or reload WorldData.
 pub fn apply_session_transition_requests(
     mut request: ResMut<SessionTransitionRequest>,
     mut next_screen: ResMut<NextState<AppScreen>>,
@@ -46,6 +46,10 @@ pub fn apply_session_transition_requests(
     mut world: ResMut<WorldData>,
     unit_catalog: Res<UnitCatalog>,
     appearance_profiles: Res<AppearanceProfileCatalog>,
+    item_catalog: Res<ItemCatalog>,
+    item_categories: Res<ItemCategoryCatalog>,
+    inventory_profiles: Res<InventoryProfileCatalog>,
+    origins: Res<OriginCatalog>,
     pending_spawn: Option<Res<PendingStartingSquadSpawn>>,
     mut commands: Commands,
 ) {
@@ -56,13 +60,27 @@ pub fn apply_session_transition_requests(
         SessionTransitionKind::StartNewGame => {
             session.kind = GameSessionKind::NewGame;
             if let Some(pending) = pending_spawn {
-                if let Err(error) = spawn_starting_squad_from_draft(
-                    &mut world,
-                    &unit_catalog,
-                    &appearance_profiles,
-                    &pending.draft,
-                ) {
-                    warn!("starting squad spawn failed: {error}");
+                if let Some(origin) = origins.get(&pending.draft.origin_id) {
+                    let inventory_ctx = InventoryCatalogCtx::new(
+                        &item_catalog,
+                        &item_categories,
+                        &inventory_profiles,
+                    );
+                    let anchor = origin.spawn_anchor();
+                    if let Ok(spawned) = spawn_starting_squad_from_draft(
+                        &mut world,
+                        &unit_catalog,
+                        &appearance_profiles,
+                        &inventory_ctx,
+                        &anchor,
+                        &pending.draft,
+                    ) {
+                        if !spawned.is_empty() {
+                            commands.insert_resource(
+                                pending_camera_focus_for_anchor(&anchor, world.layout()),
+                            );
+                        }
+                    }
                 }
                 commands.remove_resource::<PendingStartingSquadSpawn>();
             }
@@ -72,7 +90,6 @@ pub fn apply_session_transition_requests(
             next_screen.set(AppScreen::Loading);
         }
         SessionTransitionKind::StartDefaultWorldAuthoring => {
-            // Temporary bridge: reuse the initialized runtime world as authoring session.
             session.kind = GameSessionKind::DefaultWorldAuthoring;
             loading.begin(GameSessionKind::DefaultWorldAuthoring);
             control.pause();
@@ -80,7 +97,6 @@ pub fn apply_session_transition_requests(
             next_screen.set(AppScreen::Loading);
         }
         SessionTransitionKind::ReturnToMainMenu => {
-            // Preserve WorldData in memory; pause and hide gameplay via screen change.
             control.pause();
             session.clear();
             commands.remove_resource::<PendingStartingSquadSpawn>();

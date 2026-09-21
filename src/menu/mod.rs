@@ -40,8 +40,8 @@ pub use plugin::{MenuInputSystems, MenuPlugin, MenuUiSystems};
 pub use screen::{AppScreen, GameSessionKind, GameSessionState};
 pub use settings::{SettingsCategory, SettingsHostKind, SettingsMenuState};
 pub use starting_squad::{
-    OriginSquadViewMode, PendingStartingSquadSpawn, SquadMemberDraft, SquadMemberDraftId,
-    StartingSquadDraft, StartingSquadSession, build_starting_squad_draft,
-    spawn_starting_squad_from_draft,
+    OriginSquadViewMode, PendingNewGameCameraFocus, PendingStartingSquadSpawn,
+    SquadMemberDraft, SquadMemberDraftId, StartingSquadDraft, StartingSquadSession,
+    build_starting_squad_draft, focus_camera_on_new_game_spawn, spawn_starting_squad_from_draft,
 };
 pub use transition::{SessionTransitionKind, SessionTransitionRequest};

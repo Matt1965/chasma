@@ -146,6 +146,13 @@ pub fn default_roads_position(viewport: Vec2, window_width: f32) -> Vec2 {
     Vec2::new(LAUNCHER_LEFT_PX + window_width + 16.0, top + 180.0)
 }
 
+/// Default top-left for the Origin Editor window.
+pub fn default_origin_editor_position(viewport: Vec2, window_width: f32) -> Vec2 {
+    let _ = viewport;
+    let top = LAUNCHER_TOP_PX + LAUNCHER_HEIGHT_PX + 6.0;
+    Vec2::new(LAUNCHER_LEFT_PX + window_width + 16.0, top + 460.0)
+}
+
 /// Z-index for a window given its focus-stack index.
 pub fn z_index_for_focus_order(focus_index: usize) -> i32 {
     const BASE: i32 = 900;

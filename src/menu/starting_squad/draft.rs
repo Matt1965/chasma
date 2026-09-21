@@ -4,15 +4,14 @@ use bevy::prelude::*;
 
 use crate::ui::unit_editor::UnitAppearanceDraft;
 use crate::world::{
-    AppearanceProfileCatalog, OriginCatalog, OriginDefinition, OriginId, UnitCatalog,
-    UnitDefinitionId, resolve_canonical_default_appearance,
+    AppearanceProfileCatalog, InventorySubgraphSnapshot, OriginCatalog, OriginDefinition,
+    OriginEquipmentSlotSnapshot, OriginId, UnitCatalog, UnitDefinitionId,
+    resolve_canonical_default_appearance,
 };
 
-/// Stable draft-member identity within one origin squad.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
 pub struct SquadMemberDraftId(pub u32);
 
-/// One configurable squad member before gameplay units exist.
 #[derive(Debug, Clone, PartialEq, Reflect)]
 pub struct SquadMemberDraft {
     pub id: SquadMemberDraftId,
@@ -21,9 +20,12 @@ pub struct SquadMemberDraft {
     pub preview_offset: Vec3,
     pub appearance: UnitAppearanceDraft,
     pub edited: bool,
+    #[reflect(ignore)]
+    pub personal_inventory: Option<InventorySubgraphSnapshot>,
+    #[reflect(ignore)]
+    pub equipment_slots: Vec<OriginEquipmentSlotSnapshot>,
 }
 
-/// Configured starting squad for one origin (client-local, not WorldData).
 #[derive(Debug, Clone, PartialEq, Reflect)]
 pub struct StartingSquadDraft {
     pub origin_id: OriginId,
@@ -36,36 +38,9 @@ impl StartingSquadDraft {
         unit_catalog: &UnitCatalog,
         appearance_profiles: &AppearanceProfileCatalog,
     ) -> Result<Self, String> {
-        let mut members = Vec::with_capacity(origin.roster.len());
-        for (index, roster_member) in origin.roster.iter().enumerate() {
-            let definition = unit_catalog
-                .get(&roster_member.definition_id)
-                .ok_or_else(|| {
-                    format!(
-                        "missing unit definition `{}` for origin `{}`",
-                        roster_member.definition_id.as_str(),
-                        origin.id.as_str()
-                    )
-                })?;
-            let appearance = resolve_canonical_default_appearance(definition, appearance_profiles)
-                .map_err(|error| {
-                    format!(
-                        "appearance default failed for `{}`: {error}",
-                        roster_member.definition_id.as_str()
-                    )
-                })?;
-            members.push(SquadMemberDraft {
-                id: SquadMemberDraftId(index as u32),
-                role_label: roster_member.role_label.clone(),
-                definition_id: roster_member.definition_id.clone(),
-                preview_offset: roster_member.preview_offset,
-                appearance: UnitAppearanceDraft::from_live(
-                    roster_member.definition_id.clone(),
-                    Some(definition.display_name.clone()),
-                    appearance,
-                ),
-                edited: false,
-            });
+        let mut members = Vec::with_capacity(origin.members.len());
+        for (index, member) in origin.members.iter().enumerate() {
+            members.push(draft_member(member, index, unit_catalog, appearance_profiles)?);
         }
         Ok(Self {
             origin_id: origin.id.clone(),
@@ -80,6 +55,38 @@ impl StartingSquadDraft {
     pub fn member_by_slot_mut(&mut self, slot_index: usize) -> Option<&mut SquadMemberDraft> {
         self.members.get_mut(slot_index)
     }
+}
+
+fn draft_member(
+    member: &crate::world::OriginSquadMemberSnapshot,
+    index: usize,
+    unit_catalog: &UnitCatalog,
+    appearance_profiles: &AppearanceProfileCatalog,
+) -> Result<SquadMemberDraft, String> {
+    let definition_id = member.definition_id.clone();
+    let definition = unit_catalog
+        .get(&definition_id)
+        .ok_or_else(|| format!("missing unit definition `{}`", definition_id.as_str()))?;
+    let appearance = if member.appearance.profile_id.is_empty() {
+        resolve_canonical_default_appearance(definition, appearance_profiles)
+            .map_err(|error| format!("appearance default failed: {error}"))?
+    } else {
+        member.appearance.to_unit_appearance()
+    };
+    Ok(SquadMemberDraft {
+        id: SquadMemberDraftId(index as u32),
+        role_label: member.role_label.clone(),
+        definition_id,
+        preview_offset: member.preview_offset_vec3(),
+        appearance: UnitAppearanceDraft::from_live(
+            member.definition_id.clone(),
+            Some(definition.display_name.clone()),
+            appearance,
+        ),
+        edited: false,
+        personal_inventory: member.personal_inventory.clone(),
+        equipment_slots: member.equipment_slots.clone(),
+    })
 }
 
 pub fn build_starting_squad_draft(

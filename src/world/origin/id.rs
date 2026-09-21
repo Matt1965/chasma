@@ -1,7 +1,7 @@
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
-/// Stable identifier for a starting-origin definition (CG7).
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Reflect, Serialize, Deserialize)]
 pub struct OriginId(pub String);
 
 impl OriginId {

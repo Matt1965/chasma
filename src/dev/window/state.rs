@@ -7,7 +7,8 @@ use bevy::prelude::*;
 use super::id::DevWindowId;
 use super::math::{
     DEFAULT_PANEL_WIDTH_PX, default_catalog_position, default_debug_position,
-    default_fields_position, default_navigation_editor_position, default_roads_position,
+    default_fields_position, default_navigation_editor_position, default_origin_editor_position,
+    default_roads_position,
     default_save_position,
     default_selected_object_position, default_settlement_position, default_world_position,
     navigation_editor_panel_width, z_index_for_focus_order,
@@ -40,6 +41,7 @@ impl DevWindowSessionState {
             DevWindowId::Settlement => default_settlement_position(viewport, width),
             DevWindowId::Fields => default_fields_position(viewport, width),
             DevWindowId::Roads => default_roads_position(viewport, width),
+            DevWindowId::OriginEditor => default_origin_editor_position(viewport, width),
         };
         Self {
             visible: id.default_visible(),
@@ -112,6 +114,10 @@ impl Default for DevWindowRegistry {
             DevWindowId::Roads,
             DevWindowSessionState::new_default(DevWindowId::Roads, viewport),
         );
+        windows.insert(
+            DevWindowId::OriginEditor,
+            DevWindowSessionState::new_default(DevWindowId::OriginEditor, viewport),
+        );
         Self {
             windows,
             focus_stack: vec![
@@ -124,6 +130,7 @@ impl Default for DevWindowRegistry {
                 DevWindowId::Settlement,
                 DevWindowId::Fields,
                 DevWindowId::Roads,
+                DevWindowId::OriginEditor,
             ],
             drag: None,
             viewport,

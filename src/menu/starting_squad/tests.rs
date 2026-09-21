@@ -1,4 +1,4 @@
-use crate::world::{OriginId, starter_origin_catalog};
+use crate::world::{OriginId, seed_origin_catalog};
 
 use super::draft::StartingSquadDraft;
 use super::session::StartingSquadSession;
@@ -27,8 +27,8 @@ fn dev_catalogs() -> (
 
 #[test]
 fn new_game_session_selects_first_origin_and_builds_draft() {
-    let origins = starter_origin_catalog();
     let (units, profiles) = dev_catalogs();
+    let origins = seed_origin_catalog(&units, &profiles);
     let session =
         StartingSquadSession::new_for_first_origin(&origins, &units, &profiles).unwrap();
     assert_eq!(session.selected_origin_index, 0);
@@ -39,8 +39,8 @@ fn new_game_session_selects_first_origin_and_builds_draft() {
 
 #[test]
 fn origin_cycle_wraps_and_retains_per_origin_drafts() {
-    let origins = starter_origin_catalog();
     let (units, profiles) = dev_catalogs();
+    let origins = seed_origin_catalog(&units, &profiles);
     let mut session =
         StartingSquadSession::new_for_first_origin(&origins, &units, &profiles).unwrap();
     let first = session.active_draft(&origins).unwrap().members[0]
@@ -79,8 +79,8 @@ fn origin_cycle_wraps_and_retains_per_origin_drafts() {
 
 #[test]
 fn draft_members_have_independent_appearance_state() {
-    let origins = starter_origin_catalog();
     let (units, profiles) = dev_catalogs();
+    let origins = seed_origin_catalog(&units, &profiles);
     let origin = origins.get_index(0).unwrap();
     let mut draft =
         StartingSquadDraft::from_origin_definition(origin, &units, &profiles).unwrap();
@@ -93,14 +93,10 @@ fn draft_members_have_independent_appearance_state() {
 
 #[test]
 fn begin_game_spawn_creates_configured_units() {
-    let origins = starter_origin_catalog();
     let (units, profiles) = dev_catalogs();
-    let draft = StartingSquadDraft::from_origin_definition(
-        origins.get_index(0).unwrap(),
-        &units,
-        &profiles,
-    )
-    .unwrap();
+    let origins = seed_origin_catalog(&units, &profiles);
+    let origin = origins.get_index(0).unwrap();
+    let draft = StartingSquadDraft::from_origin_definition(origin, &units, &profiles).unwrap();
     let mut world = crate::world::WorldData::new(crate::world::ChunkLayout {
         chunk_size_meters: 256.0,
         units_per_meter: 1.0,
@@ -111,10 +107,17 @@ fn begin_game_spawn_creates_configured_units() {
         crate::world::ChunkId::new(crate::world::ChunkCoord::new(0, 0)),
         crate::world::ChunkData::new(heightfield, vec![]),
     );
+    let (item_categories, item_catalog) = crate::data_import::resolve_dev_item_catalog();
+    let inventory_profiles = crate::data_import::resolve_dev_inventory_profile_catalog();
+    let inventory_ctx =
+        crate::world::InventoryCatalogCtx::new(&item_catalog, &item_categories, &inventory_profiles);
+    let anchor = origin.spawn_anchor();
     let spawned = super::spawn::spawn_starting_squad_from_draft(
         &mut world,
         &units,
         &profiles,
+        &inventory_ctx,
+        &anchor,
         &draft,
     )
     .unwrap();
@@ -131,8 +134,8 @@ fn begin_game_spawn_creates_configured_units() {
 
 #[test]
 fn origin_change_clears_focus_mode() {
-    let origins = starter_origin_catalog();
     let (units, profiles) = dev_catalogs();
+    let origins = seed_origin_catalog(&units, &profiles);
     let mut session =
         StartingSquadSession::new_for_first_origin(&origins, &units, &profiles).unwrap();
     session.enter_focus(0).unwrap();

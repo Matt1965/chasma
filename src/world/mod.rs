@@ -466,8 +466,13 @@ pub use operation::{
     validate_building_operation_bindings, validate_operation_selection,
 };
 pub use origin::{
-    OriginCatalog, OriginDefinition, OriginId, OriginRosterMember, starter_origin_catalog,
-    starter_origin_definitions,
+    OriginAppearanceSnapshot, OriginCatalog, OriginDefinition, OriginEquipmentSlotSnapshot,
+    OriginId, OriginSpawnAnchor, OriginSquadMemberSnapshot, ORIGINS_RON_PATH,
+    apply_member_inventory_loadout, capture_member_inventory_loadout,
+    capture_origin_member_from_unit, load_dev_origin_catalog, load_origins_from_ron,
+    member_spawn_global_position, origin_member_formation_offsets, save_origins_to_ron,
+    seed_origin_catalog, seed_origin_definitions, validate_origin_definition,
+    world_position_from_global,
 };
 pub use ownership::{
     Affiliation, DEFAULT_PLAYER_OWNER_ID, DEFAULT_PLAYER_TEAM_ID, OwnerId,
@@ -977,9 +982,9 @@ impl Plugin for WorldFoundationPlugin {
             app.insert_resource(faction_catalog.clone());
             app.insert_resource(species_catalog.clone());
             app.insert_resource(authored_relationships);
+            let item_categories_for_ctx = item_categories.clone();
             app.insert_resource(item_categories);
             app.insert_resource(equipment_visuals);
-            app.insert_resource(crate::world::starter_origin_catalog());
             app.init_resource::<OperationCatalog>();
             app.init_resource::<NeedCatalog>();
             app.init_resource::<WorkSkillCatalog>();
@@ -1007,6 +1012,16 @@ impl Plugin for WorldFoundationPlugin {
                 &appearance_profiles,
                 Some(&mut sizing_reports),
             );
+            let inventory_ctx = crate::world::InventoryCatalogCtx::new(
+                &item_catalog,
+                &item_categories_for_ctx,
+                &inventory_profiles,
+            );
+            app.insert_resource(crate::world::load_dev_origin_catalog(
+                &unit_catalog,
+                &appearance_profiles,
+                &inventory_ctx,
+            ));
             let unit_archetype_catalog = crate::world::load_dev_unit_archetype_catalog();
             app.insert_resource(item_catalog);
             app.insert_resource(unit_catalog);
