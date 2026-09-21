@@ -1,5 +1,6 @@
 use bevy::prelude::Vec3;
 
+use crate::units::input::SelectedUnits;
 use crate::world::equipment::EquipmentSlot;
 use crate::world::inventory::capture_inventory_subgraph;
 use crate::world::{UnitId, WorldData};
@@ -70,6 +71,42 @@ pub fn capture_member_inventory_loadout(
         })
         .unwrap_or_default();
     (personal, equipment_slots)
+}
+
+pub fn ordered_selected_unit_ids(selected_units: &SelectedUnits) -> Vec<UnitId> {
+    let mut ids: Vec<UnitId> = selected_units.iter().collect();
+    ids.sort_unstable_by_key(|id| id.raw());
+    ids
+}
+
+pub fn preview_offset_for_index(index: usize, count: usize) -> Vec3 {
+    if count <= 1 {
+        return Vec3::ZERO;
+    }
+    let center = (count.saturating_sub(1) as f32) * 0.5;
+    Vec3::new((index as f32 - center) * 1.5, 0.0, 0.0)
+}
+
+pub fn capture_squad_members_from_selection(
+    world: &WorldData,
+    selected_units: &SelectedUnits,
+) -> Option<Vec<OriginSquadMemberSnapshot>> {
+    let unit_ids = ordered_selected_unit_ids(selected_units);
+    if unit_ids.is_empty() {
+        return None;
+    }
+    let count = unit_ids.len();
+    let mut members = Vec::with_capacity(count);
+    for (index, unit_id) in unit_ids.into_iter().enumerate() {
+        let member = capture_origin_member_from_unit(
+            world,
+            unit_id,
+            format!("Member {}", index + 1),
+            preview_offset_for_index(index, count),
+        )?;
+        members.push(member);
+    }
+    Some(members)
 }
 
 fn has_contents(world: &WorldData, inventory_id: crate::world::InventoryId) -> bool {

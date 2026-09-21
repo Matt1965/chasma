@@ -10,8 +10,9 @@ use crate::dev::window::{DevWindowId, DevWindowRegistry};
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::{SelectedUnits, cursor_world_ray, terrain_click_to_world_position};
 use crate::world::{
-    OriginCatalog, OriginDefinition, OriginId, WorldConfig, WorldData, capture_origin_member_from_unit,
-    load_origins_from_ron, save_origins_to_ron, slugify_archetype_id, ORIGINS_RON_PATH,
+    OriginCatalog, OriginDefinition, OriginId, WorldConfig, WorldData,
+    capture_squad_members_from_selection, load_origins_from_ron, save_origins_to_ron,
+    slugify_archetype_id, ORIGINS_RON_PATH,
 };
 
 use super::state::DevOriginEditorState;
@@ -162,29 +163,41 @@ fn add_from_selection(
     world: &WorldData,
     config: &WorldConfig,
 ) {
-    let Some(unit_id) = selected_units.iter().next() else {
-        editor.status_message = "Select a unit first".into();
-        return;
-    };
-    let Some(member) = capture_origin_member_from_unit(world, unit_id, "Member".into(), Vec3::ZERO)
-    else {
-        editor.status_message = "Failed to capture unit".into();
+    let Some(members) = capture_squad_members_from_selection(world, selected_units) else {
+        editor.status_message = if selected_units.is_empty() {
+            "Select at least one unit".into()
+        } else {
+            "Failed to capture selected units".into()
+        };
         return;
     };
     let layout = config.chunk_layout();
-    let global = world
-        .get_unit(unit_id)
-        .map(|record| record.placement.position.to_global(layout))
-        .unwrap_or(Vec3::ZERO);
-    let base_id = unique_origin_id(origins, &member.definition_id.as_str());
-    let display_name = member.role_label.clone();
+    let unit_ids = crate::world::ordered_selected_unit_ids(selected_units);
+    let mut centroid = Vec3::ZERO;
+    let mut positioned = 0usize;
+    for unit_id in &unit_ids {
+        if let Some(record) = world.get_unit(*unit_id) {
+            centroid += record.placement.position.to_global(layout);
+            positioned += 1;
+        }
+    }
+    if positioned > 0 {
+        centroid /= positioned as f32;
+    }
+    let seed = members[0].definition_id.as_str();
+    let base_id = unique_origin_id(origins, seed);
+    let display_name = if members.len() == 1 {
+        members[0].role_label.clone()
+    } else {
+        format!("Squad ({})", members.len())
+    };
     let definition = OriginDefinition {
         id: OriginId::new(base_id.clone()),
         display_name: display_name.clone(),
         description: String::new(),
-        members: vec![member],
-        start_x: global.x,
-        start_z: global.z,
+        members,
+        start_x: centroid.x,
+        start_z: centroid.z,
         yaw_deg: 0.0,
     };
     if origins.upsert(definition).is_err() {
@@ -207,24 +220,20 @@ fn overwrite_from_selection(
         editor.status_message = "No origin selected".into();
         return;
     }
-    let Some(unit_id) = selected_units.iter().next() else {
-        editor.status_message = "Select a unit first".into();
+    let Some(members) = capture_squad_members_from_selection(world, selected_units) else {
+        editor.status_message = if selected_units.is_empty() {
+            "Select at least one unit".into()
+        } else {
+            "Failed to capture selected units".into()
+        };
         return;
     };
-    let Some(member) = capture_origin_member_from_unit(world, unit_id, "Member".into(), Vec3::ZERO)
-    else {
-        editor.status_message = "Failed to capture unit".into();
-        return;
-    };
-    let display_name = editor.scratch_name.clone();
-    let description = editor.scratch_description.clone();
+    let member_count = members.len();
     mutate_selected_origin(editor, origins, |origin| {
-        origin.display_name = display_name;
-        origin.description = description;
-        origin.members = vec![member];
+        origin.members = members;
     });
     editor.dirty = true;
-    editor.status_message = "Origin overwritten from selection".into();
+    editor.status_message = format!("Origin squad overwritten ({member_count} members)");
 }
 
 fn confirm_delete(editor: &mut DevOriginEditorState, origins: &mut OriginCatalog) {

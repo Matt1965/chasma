@@ -14,7 +14,10 @@ mod validation;
 #[cfg(test)]
 mod tests;
 
-pub use capture::{capture_member_inventory_loadout, capture_origin_member_from_unit};
+pub use capture::{
+    capture_member_inventory_loadout, capture_origin_member_from_unit,
+    capture_squad_members_from_selection, ordered_selected_unit_ids, preview_offset_for_index,
+};
 pub use catalog::OriginCatalog;
 pub use definition::OriginDefinition;
 pub use id::OriginId;
