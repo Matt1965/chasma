@@ -81,6 +81,11 @@ pub struct WorldData {
     /// Per-unit direction smoothing cache (ADR-037 U12).
     #[reflect(ignore)]
     movement_smoothing: super::movement::feel::MovementSmoothingState,
+    /// Gameplay water surface (simulation meters).
+    water: super::water::WorldWaterState,
+    /// Transient Ground/Water hysteresis (not saved).
+    #[reflect(ignore)]
+    locomotion_surfaces: HashMap<UnitId, super::water::LocomotionSurface>,
     /// Deferred unit removal queue (ADR-059 C6).
     #[reflect(ignore)]
     removal_queue: UnitRemovalQueue,
@@ -203,6 +208,8 @@ impl WorldData {
             authored_extent: None,
             command_buffer: super::movement::feel::UnitCommandBuffer::default(),
             movement_smoothing: super::movement::feel::MovementSmoothingState::default(),
+            water: super::water::WorldWaterState::default(),
+            locomotion_surfaces: HashMap::new(),
             removal_queue: UnitRemovalQueue::default(),
             kill_attributions: HashMap::new(),
             projectiles: HashMap::new(),
@@ -581,6 +588,20 @@ impl WorldData {
         (&self.inventory_store, &mut self.inventory_reservations)
     }
 
+    pub fn hauling_reserve_borrow_split_with_instances(
+        &mut self,
+    ) -> (
+        &super::inventory::InventoryStore,
+        &super::inventory::ItemInstanceStore,
+        &mut super::logistics::InventoryReservationStore,
+    ) {
+        (
+            &self.inventory_store,
+            &self.item_instance_store,
+            &mut self.inventory_reservations,
+        )
+    }
+
     pub fn space_registry(&self) -> &super::space::SpaceRegistry {
         &self.space_registry
     }
@@ -640,6 +661,30 @@ impl WorldData {
     /// Mutably borrow per-unit movement smoothing state (ADR-037 U12).
     pub fn movement_smoothing_mut(&mut self) -> &mut super::movement::feel::MovementSmoothingState {
         &mut self.movement_smoothing
+    }
+
+    pub fn water(&self) -> &super::water::WorldWaterState {
+        &self.water
+    }
+
+    pub fn water_mut(&mut self) -> &mut super::water::WorldWaterState {
+        &mut self.water
+    }
+
+    pub fn locomotion_surface(&self, unit_id: UnitId) -> Option<super::water::LocomotionSurface> {
+        self.locomotion_surfaces.get(&unit_id).copied()
+    }
+
+    pub fn set_locomotion_surface(
+        &mut self,
+        unit_id: UnitId,
+        surface: super::water::LocomotionSurface,
+    ) {
+        self.locomotion_surfaces.insert(unit_id, surface);
+    }
+
+    pub fn clear_locomotion_surface(&mut self, unit_id: UnitId) {
+        self.locomotion_surfaces.remove(&unit_id);
     }
 
     /// The spatial layout this world was realized with.
@@ -866,6 +911,7 @@ impl WorldData {
             return false;
         }
         self.unit_locations.remove(&id);
+        self.locomotion_surfaces.remove(&id);
         if self.units.get(&chunk).is_some_and(|store| store.is_empty()) {
             self.units.remove(&chunk);
         }
@@ -874,6 +920,7 @@ impl WorldData {
 
     /// Remove a unit by id alone, returning the removed record (ADR-027 U2).
     pub fn remove_unit_by_id(&mut self, id: UnitId) -> Option<UnitRecord> {
+        self.locomotion_surfaces.remove(&id);
         let chunk = self.unit_locations.remove(&id)?;
         let store = self.units.get_mut(&chunk)?;
         let record = store.take(id)?;
@@ -1111,6 +1158,7 @@ impl WorldData {
         self.interior_activation_outcomes_mut().clear();
         let _ = self.command_buffer_mut().take_pending_sorted();
         self.movement_smoothing_mut().clear_all();
+        self.locomotion_surfaces.clear();
         self.dev_clear_transient_simulation_state();
     }
 
@@ -1728,6 +1776,16 @@ impl WorldData {
     /// Borrow a chunk's data, if resident.
     pub fn get(&self, chunk: ChunkId) -> Option<&ChunkData> {
         self.chunks.get(&chunk)
+    }
+
+    /// Mutably borrow a chunk's data, if resident.
+    pub fn get_mut(&mut self, chunk: ChunkId) -> Option<&mut ChunkData> {
+        self.chunks.get_mut(&chunk)
+    }
+
+    /// Iterate over resident chunks and their data (mutable).
+    pub fn chunks_mut(&mut self) -> impl Iterator<Item = (&ChunkId, &mut ChunkData)> {
+        self.chunks.iter_mut()
     }
 
     /// Iterate over resident chunks and their data.
@@ -2597,7 +2655,7 @@ mod tests {
                 5,
             );
             record.state = UnitState::Idle;
-            record.metadata = UnitMetadata;
+            record.metadata = UnitMetadata::default();
             record
         }
 
@@ -3017,7 +3075,8 @@ mod tests {
 
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(2, 3, Vec3::new(64.0, 0.0, 128.0)),
                 UnitSource::Authored,
@@ -3038,7 +3097,8 @@ mod tests {
             let chunk = ChunkId::new(ChunkCoord::new(0, 0));
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("deer"),
                 pos(0, 0, Vec3::new(10.0, 0.0, 20.0)),
                 UnitSource::Authored,
@@ -3063,7 +3123,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("bandit"),
                 pos(0, 0, Vec3::new(1.0, 0.0, 1.0)),
                 UnitSource::Authored,
@@ -3089,7 +3150,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(4, 5, Vec3::new(64.0, 0.0, 64.0)),
                 UnitSource::Authored,
@@ -3110,7 +3172,8 @@ mod tests {
             let chunk = ChunkId::new(ChunkCoord::new(3, 3));
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("deer"),
                 pos(3, 3, Vec3::new(32.0, 0.0, 32.0)),
                 UnitSource::Authored,
@@ -3130,7 +3193,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(0, 0, Vec3::ZERO),
                 UnitSource::Authored,
@@ -3147,7 +3211,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(0, 0, Vec3::ZERO),
                 UnitSource::Authored,
@@ -3164,7 +3229,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(0, 0, Vec3::ZERO),
                 UnitSource::Authored,
@@ -3181,7 +3247,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(0, 0, Vec3::ZERO),
                 UnitSource::Authored,
@@ -3198,7 +3265,8 @@ mod tests {
             let ownership = crate::world::UnitOwnership::player_default();
             let record = crate::world::create_unit_with_ownership(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(0, 0, Vec3::new(12.0, 0.0, 8.0)),
                 UnitSource::Authored,
@@ -3219,7 +3287,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("deer"),
                 pos(1, 0, Vec3::new(3.0, 0.0, 4.0)),
                 UnitSource::Procedural { seed: 7 },
@@ -3238,7 +3307,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("bandit"),
                 pos(0, 0, Vec3::ZERO),
                 UnitSource::Authored,
@@ -3255,7 +3325,8 @@ mod tests {
             let mut world = WorldData::new(layout());
             let record = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(0, 0, Vec3::new(10.0, 0.0, 10.0)),
                 UnitSource::Authored,

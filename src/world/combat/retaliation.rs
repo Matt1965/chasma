@@ -4,17 +4,38 @@
 //! [`UnitOrder::Attack`] when a unit without a valid combat target is hit by a
 //! hostile it may legally attack.
 
+use crate::world::armor::resolve_applied_combat_damage;
+use crate::world::equipment::{ArmorResolveError, total_armor_rating_for_unit};
 use crate::world::unit::{
-    CombatState, UnitId, UnitOrder, apply_validated_attack_order, unit_can_execute_actions,
+    CombatState, UnitId, UnitInsertError, UnitOrder, apply_validated_attack_order,
+    unit_can_execute_actions,
 };
 use crate::world::{
-    AttackTargetingPolicy, DoodadCatalog, NavigationConfig, UnitCatalog, WeaponCatalog, WorldData,
-    is_unit_alive, validate_reactive_retaliation_target,
+    ArmorProfileCatalog, AttackTargetingPolicy, DoodadCatalog, ItemCatalog, NavigationConfig,
+    UnitCatalog, WeaponCatalog, WorldData, is_unit_alive, validate_reactive_retaliation_target,
 };
 
 use super::ai::unit_needs_auto_acquire_target;
 use super::cycle_lifecycle::combat_engagement_target;
 use crate::world::task::{TaskCancelReason, cancel_unit_task};
+
+/// Why attributed combat damage could not be applied.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AttributedCombatDamageError {
+    UnitNotFound(UnitInsertError),
+    ArmorResolution(ArmorResolveError),
+}
+
+impl std::fmt::Display for AttributedCombatDamageError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UnitNotFound(err) => write!(f, "unit not found: {err:?}"),
+            Self::ArmorResolution(err) => write!(f, "armor resolution failed: {err}"),
+        }
+    }
+}
+
+impl std::error::Error for AttributedCombatDamageError {}
 
 /// Apply attributed combat damage and attempt reactive self-defense.
 ///
@@ -23,20 +44,32 @@ pub fn apply_attributed_combat_damage(
     world: &mut WorldData,
     victim_id: UnitId,
     attacker_id: UnitId,
-    damage: u32,
+    raw_damage: f32,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
+    armor_catalog: &ArmorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
-) -> Result<crate::world::unit::UnitVitals, crate::world::unit::UnitInsertError> {
+) -> Result<crate::world::unit::UnitVitals, AttributedCombatDamageError> {
     let hp_before = world
         .get_unit(victim_id)
         .map(|record| record.vitals.current_hp)
         .unwrap_or(0);
+    let victim = world
+        .get_unit(victim_id)
+        .ok_or(AttributedCombatDamageError::UnitNotFound(
+            UnitInsertError::UnitNotFound,
+        ))?;
+    let armor_rating = total_armor_rating_for_unit(world, victim, item_catalog, armor_catalog)
+        .map_err(AttributedCombatDamageError::ArmorResolution)?;
+    let applied_damage = resolve_applied_combat_damage(raw_damage, armor_rating);
     #[cfg(feature = "dev")]
-    super::runtime_trace::attributed_damage_called(attacker_id, victim_id, damage);
-    let vitals = world.damage_unit(victim_id, damage)?;
+    super::runtime_trace::attributed_damage_called(attacker_id, victim_id, applied_damage);
+    let vitals = world
+        .damage_unit(victim_id, applied_damage)
+        .map_err(AttributedCombatDamageError::UnitNotFound)?;
     #[cfg(feature = "dev")]
     super::runtime_trace::victim_hp_before_after(victim_id, hp_before, vitals.current_hp);
     let retaliation_issued = try_reactive_combat_retaliation(
@@ -45,6 +78,7 @@ pub fn apply_attributed_combat_damage(
         attacker_id,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
         doodad_catalog,
         nav_config,
         targeting_policy,
@@ -62,6 +96,7 @@ pub fn try_reactive_combat_retaliation(
     attacker_id: UnitId,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -82,7 +117,7 @@ pub fn try_reactive_combat_retaliation(
         super::runtime_trace::retaliation_result(victim_id, attacker_id, false, "victim_missing");
         return false;
     };
-    if !is_unit_alive(&victim) || !unit_can_execute_actions(world, victim_id) {
+    if !is_unit_alive(&victim) || !crate::world::unit_can_perform_normal_actions(world, victim_id) {
         #[cfg(feature = "dev")]
         super::runtime_trace::retaliation_result(
             victim_id,
@@ -98,6 +133,7 @@ pub fn try_reactive_combat_retaliation(
         attacker_id,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         targeting_policy,
     )
     .is_err()
@@ -117,6 +153,7 @@ pub fn try_reactive_combat_retaliation(
         &victim,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         targeting_policy,
     ) {
         let kept = combat_engagement_target(&victim.combat_state) == Some(attacker_id);
@@ -140,6 +177,7 @@ pub fn try_reactive_combat_retaliation(
             attacker_id,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
         ) {
             #[cfg(feature = "dev")]
             super::runtime_trace::retaliation_result(
@@ -176,6 +214,7 @@ pub fn try_reactive_combat_retaliation(
         world,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
         victim_id,
         attacker_id,
         Some(attacker_id),
@@ -278,8 +317,7 @@ mod tests {
         z: f32,
     ) -> UnitId {
         let id = create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,
@@ -298,8 +336,7 @@ mod tests {
         z: f32,
     ) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,
@@ -316,8 +353,7 @@ mod tests {
         z: f32,
     ) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("bandit"),
             pos(x, z),
             UnitSource::Authored,
@@ -334,8 +370,7 @@ mod tests {
         z: f32,
     ) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("bandit"),
             pos(x, z),
             UnitSource::Authored,
@@ -352,8 +387,7 @@ mod tests {
         z: f32,
     ) -> UnitId {
         let id = create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("deer"),
             pos(x, z),
             UnitSource::Authored,
@@ -373,8 +407,7 @@ mod tests {
         z: f32,
     ) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,
@@ -395,6 +428,7 @@ mod tests {
             world,
             catalog,
             weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             attacker,
@@ -410,7 +444,7 @@ mod tests {
         weapons: &WeaponCatalog,
         attacker: UnitId,
         victim: UnitId,
-        damage: u32,
+        damage: f32,
     ) {
         apply_attributed_combat_damage(
             world,
@@ -419,6 +453,8 @@ mod tests {
             damage,
             catalog,
             weapons,
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
@@ -478,6 +514,7 @@ mod tests {
             &crate::world::InteriorProfileCatalog::default(),
             None,
             &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &crate::world::ItemCategoryCatalog::default(),
             &crate::world::InventoryProfileCatalog::default(),
             &crate::world::CorpseSettings::default(),
@@ -500,7 +537,7 @@ mod tests {
         let mut world = flat_world();
         let player = spawn_player_bandit(&mut world, &catalog, 10.0, 10.0);
         let wildlife = spawn_wildlife_bandit(&mut world, &catalog, 11.0, 10.0);
-        inflict_attributed_damage(&mut world, &catalog, &weapons, player, wildlife, 1);
+        inflict_attributed_damage(&mut world, &catalog, &weapons, player, wildlife, 1.0);
         assert!(matches!(
             world.get_unit(wildlife).unwrap().combat_state,
             CombatState::Attacking { target } | CombatState::Chasing { target } if target == player
@@ -520,6 +557,7 @@ mod tests {
                 &mut world,
                 &catalog,
                 &weapons,
+                &crate::world::ItemCatalog::default(),
                 &DoodadCatalog::default(),
                 &NavigationConfig::default(),
                 policy(),
@@ -547,6 +585,7 @@ mod tests {
                 &mut world,
                 &catalog,
                 &weapons,
+                &crate::world::ItemCatalog::default(),
                 &DoodadCatalog::default(),
                 &NavigationConfig::default(),
                 wildlife,
@@ -563,7 +602,7 @@ mod tests {
         let mut world = flat_world();
         let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
         let hostile = spawn_hostile(&mut world, &catalog, 11.0, 10.0);
-        inflict_attributed_damage(&mut world, &catalog, &weapons, hostile, player, 1);
+        inflict_attributed_damage(&mut world, &catalog, &weapons, hostile, player, 1.0);
         assert!(matches!(
             world.get_unit(player).unwrap().combat_state,
             CombatState::Attacking { target } | CombatState::Chasing { target } if target == hostile
@@ -580,6 +619,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -616,7 +656,7 @@ mod tests {
             world.get_unit(player).unwrap().state,
             UnitState::Moving { .. }
         ));
-        inflict_attributed_damage(&mut world, &catalog, &weapons, hostile, player, 1);
+        inflict_attributed_damage(&mut world, &catalog, &weapons, hostile, player, 1.0);
         assert!(!matches!(
             world.get_unit(player).unwrap().state,
             UnitState::Moving { .. }
@@ -634,7 +674,7 @@ mod tests {
         let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
         let hostile = spawn_hostile(&mut world, &catalog, 11.0, 10.0);
         let task_id = assign_working_task(&mut world, player);
-        inflict_attributed_damage(&mut world, &catalog, &weapons, hostile, player, 1);
+        inflict_attributed_damage(&mut world, &catalog, &weapons, hostile, player, 1.0);
         assert!(!matches!(
             world.get_unit(player).unwrap().state,
             UnitState::Working { .. }
@@ -657,7 +697,7 @@ mod tests {
         let hostile_a = spawn_hostile_at(&mut world, &catalog, Affiliation::Hostile, 11.0, 10.0);
         let hostile_b = spawn_hostile_at(&mut world, &catalog, Affiliation::Hostile, 10.0, 11.0);
         issue_attack(&mut world, &catalog, &weapons, player, hostile_a);
-        inflict_attributed_damage(&mut world, &catalog, &weapons, hostile_b, player, 1);
+        inflict_attributed_damage(&mut world, &catalog, &weapons, hostile_b, player, 1.0);
         assert!(matches!(
             world.get_unit(player).unwrap().combat_state,
             CombatState::Attacking { target } | CombatState::Chasing { target } if target == hostile_a
@@ -675,7 +715,7 @@ mod tests {
         world
             .set_unit_combat_state(player, CombatState::Attacking { target: hostile_a })
             .unwrap();
-        inflict_attributed_damage(&mut world, &catalog, &weapons, hostile_b, player, 1);
+        inflict_attributed_damage(&mut world, &catalog, &weapons, hostile_b, player, 1.0);
         assert!(matches!(
             world.get_unit(player).unwrap().combat_state,
             CombatState::Attacking { target } | CombatState::Chasing { target } if target == hostile_b
@@ -692,9 +732,11 @@ mod tests {
             &mut world,
             player_a,
             player_b,
-            1,
+            1.0,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
@@ -734,6 +776,7 @@ mod tests {
             hostile,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
@@ -765,6 +808,7 @@ mod tests {
                 &mut world,
                 &catalog,
                 &weapons,
+                &crate::world::ItemCatalog::default(),
                 default_passability(),
                 &NavigationConfig::default(),
                 policy(),
@@ -775,6 +819,8 @@ mod tests {
                 &mut world,
                 &catalog,
                 &weapons,
+                &crate::world::ItemCatalog::default(),
+                &crate::world::ArmorProfileCatalog::default(),
                 &DoodadCatalog::default(),
                 &NavigationConfig::default(),
                 policy(),
@@ -841,6 +887,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
@@ -849,7 +896,7 @@ mod tests {
             &mut scan,
             1.0,
         );
-        inflict_attributed_damage(&mut world, &catalog, &weapons, hostile, player, 1);
+        inflict_attributed_damage(&mut world, &catalog, &weapons, hostile, player, 1.0);
         assert!(matches!(
             world.get_unit(player).unwrap().combat_state,
             CombatState::Attacking { target } | CombatState::Chasing { target } if target == hostile
@@ -878,6 +925,7 @@ mod tests {
             world,
             catalog,
             weapons,
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -888,6 +936,8 @@ mod tests {
             world,
             catalog,
             weapons,
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
@@ -977,7 +1027,7 @@ mod tests {
         let mut world = flat_world();
         let player = spawn_player_bandit(&mut world, &catalog, 10.0, 10.0);
         let wildlife = spawn_wildlife_bandit(&mut world, &catalog, 10.8, 10.0);
-        inflict_attributed_damage(&mut world, &catalog, &weapons, player, wildlife, 1);
+        inflict_attributed_damage(&mut world, &catalog, &weapons, player, wildlife, 1.0);
         assert_eq!(
             world.get_unit(wildlife).unwrap().reactive_combat_target,
             Some(player)
@@ -1002,7 +1052,7 @@ mod tests {
         let mut world = flat_world();
         let player = spawn_player_bandit(&mut world, &catalog, 10.0, 10.0);
         let wildlife = spawn_wildlife_bandit(&mut world, &catalog, 10.8, 10.0);
-        inflict_attributed_damage(&mut world, &catalog, &weapons, player, wildlife, 1);
+        inflict_attributed_damage(&mut world, &catalog, &weapons, player, wildlife, 1.0);
         assert_eq!(
             world.get_unit(wildlife).unwrap().reactive_combat_target,
             Some(player)
@@ -1011,6 +1061,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             wildlife,
@@ -1036,11 +1087,12 @@ mod tests {
         let mut world = flat_world();
         let player = spawn_player_bandit(&mut world, &catalog, 10.0, 10.0);
         let wildlife = spawn_wildlife_bandit(&mut world, &catalog, 10.8, 10.0);
-        inflict_attributed_damage(&mut world, &catalog, &weapons, player, wildlife, 1);
+        inflict_attributed_damage(&mut world, &catalog, &weapons, player, wildlife, 1.0);
         issue_unit_order(
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             wildlife,
@@ -1061,7 +1113,7 @@ mod tests {
         let player = spawn_player_deer(&mut world, &catalog, 10.0, 10.0);
         let hostile_a = spawn_hostile(&mut world, &catalog, 11.0, 10.0);
         let hostile_b = spawn_hostile_at(&mut world, &catalog, Affiliation::Hostile, 12.0, 10.0);
-        inflict_attributed_damage(&mut world, &catalog, &weapons, hostile_a, player, 1);
+        inflict_attributed_damage(&mut world, &catalog, &weapons, hostile_a, player, 1.0);
         assert_eq!(
             world.get_unit(player).unwrap().reactive_combat_target,
             Some(hostile_a)

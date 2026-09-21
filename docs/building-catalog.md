@@ -90,6 +90,22 @@ Optional glTF node names for future interior visibility (presentation only):
 - Footprint cells are rasterized from the continuous anchor.
 - Optional `model_local_offset` and `model_yaw_correction_degrees` correct GLB pivot vs footprint.
 
+### Terrain placement mode (ADR-133)
+
+| Mode | Behavior |
+|------|----------|
+| `LevelFoundation` (default) | Level floor at highest terrain under footprint; derived foundation skirt fills downhill gaps |
+| `ConformToTerrain` | Rigid tilt to best-fit plane; vertical clearance prevents terrain protrusion |
+
+Authored per building as `terrain_placement_mode` (RON / starter extensions). Placement
+geometry uses `effective_building_footprint_for_placement` and authoritative heightfield
+sampling — not occupancy cells. Occupancy remains horizontal and yaw-quantized.
+
+Authoritative anchor Y is simulation height; presentation uses existing render vertical
+scale (`render_height` / `render_height_above_base`) so buildings align with visible terrain.
+
+See [ADR-133](../ADRs/ADR-133-building-terrain-placement.md).
+
 ## Dev export
 
 Successful dev import writes `assets/buildings/catalog.ron` containing both

@@ -1,6 +1,7 @@
 //! Food discovery and consumption for individual self-maintenance (ADR-134).
 
 use crate::world::building::catalog::BuildingCatalog;
+use crate::world::equipment::worker_cargo_inventories;
 use crate::world::inventory::{InventoryCatalogCtx, InventoryEntryContents, consume_stack_item};
 use crate::world::item::{ItemCatalog, ItemCategoryId, ItemDefinitionId};
 use crate::world::settlement::SettlementId;
@@ -73,26 +74,6 @@ pub fn find_edible_in_inventory(
         update_nearest_edible(&mut best, candidate, &unit_global, layout);
     }
     best
-}
-
-pub(crate) fn active_haul_cargo_item(
-    world: &WorldData,
-    unit_id: UnitId,
-) -> Option<ItemDefinitionId> {
-    let task_id = world.task_store().unit_task_id(unit_id)?;
-    let task = world.task_store().get(task_id)?;
-    if task.task_type != crate::world::task::TaskType::Haul {
-        return None;
-    }
-    let request_id = task.hauling_request_id()?;
-    world
-        .hauling_request_store()
-        .get(request_id)
-        .map(|request| request.item_id.clone())
-}
-
-fn is_active_haul_cargo(world: &WorldData, unit_id: UnitId, item_id: &ItemDefinitionId) -> bool {
-    active_haul_cargo_item(world, unit_id).is_some_and(|cargo| cargo == *item_id)
 }
 
 /// Find the nearest edible stack in accessible settlement storage inventories.
@@ -231,9 +212,6 @@ pub fn eat_one_from_inventory(
     item_id: &ItemDefinitionId,
     item_catalog: &ItemCatalog,
 ) -> bool {
-    if is_active_haul_cargo(world, unit_id, item_id) {
-        return false;
-    }
     let (inventory_store, instance_store) = world.inventory_runtime_mut();
     let consumed = consume_stack_item(
         inventory_store,
@@ -282,17 +260,13 @@ pub fn select_food_source(
     let unit = world.get_unit(unit_id)?;
     let layout = world.layout();
     let position = unit.placement.position;
-    if let Some(inventory_id) = unit.inventory_id {
-        let exclude = active_haul_cargo_item(world, unit_id);
-        if let Some(edible) = find_edible_in_inventory(
-            world,
-            item_catalog,
-            inventory_id,
-            position,
-            layout,
-            exclude.as_ref(),
-        ) {
-            return Some(edible);
+    if let Ok(cargo_inventories) = worker_cargo_inventories(world, unit) {
+        for inventory_id in cargo_inventories {
+            if let Some(edible) =
+                find_edible_in_inventory(world, item_catalog, inventory_id, position, layout, None)
+            {
+                return Some(edible);
+            }
         }
     }
     let settlement_id = settlement_id?;

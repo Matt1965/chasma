@@ -252,7 +252,8 @@ mod tests {
             });
             let unit_id = create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 WorldPosition::new(
                     ChunkCoord::new(0, 0),

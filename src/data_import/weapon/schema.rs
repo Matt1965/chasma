@@ -1,8 +1,8 @@
 //! Excel column schema and conversion into [`WeaponDefinition`].
 
 use crate::world::{
-    AttackPlaybackPolicy, DamageType, HitMode, TargetFilter, WeaponAttackAnimation,
-    WeaponDefinition, WeaponDefinitionId,
+    AttackPlaybackPolicy, DamageType, HitMode, TargetFilter, WeaponAnimationFamily,
+    WeaponAttackAnimation, WeaponDefinition, WeaponDefinitionId,
 };
 
 /// Required worksheet column headers from the workbook `Weapons` sheet.
@@ -33,6 +33,8 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Blend In",
     "Blend Out",
     "Attack Variant",
+    "Animation Family",
+    "Combat Idle Clip",
 ];
 
 pub const DEFAULT_NORMALIZED_STRIKE_TIME: f32 = 0.42;
@@ -60,6 +62,8 @@ pub struct WeaponImportRow {
     pub attack_blend_in_ms: u32,
     pub attack_blend_out_ms: u32,
     pub attack_variant: Option<String>,
+    pub animation_family: WeaponAnimationFamily,
+    pub combat_idle_clip: Option<String>,
     pub target_filters: Vec<TargetFilter>,
     pub stat_scaling: Option<String>,
     pub enabled: bool,
@@ -93,6 +97,8 @@ impl WeaponImportRow {
             blend_out_ms: self.attack_blend_out_ms,
             variant: self.attack_variant.clone(),
         })
+        .with_animation_family(self.animation_family)
+        .with_combat_idle_clip(self.combat_idle_clip.clone())
     }
 }
 

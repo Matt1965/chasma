@@ -79,9 +79,8 @@ pub fn sync_build_mode_ghost_scene(
         .as_ref()
         .map(|assets| assets.vertical_scale)
         .unwrap_or(1.0);
-    let anchor_position = build_mode
-        .last_plan
-        .as_ref()
+    let plan = build_mode.last_plan.as_ref();
+    let anchor_position = plan
         .map(|plan| plan.grounded_anchor)
         .or(anchor.position);
     let Some(anchor_position) = anchor_position else {
@@ -90,10 +89,10 @@ pub fn sync_build_mode_ghost_scene(
         }
         return;
     };
-    let placement = BuildingPlacement::new(
-        anchor_position,
-        rotation_from_quadrants(build_mode.ghost_rotation_quadrants()),
-    );
+    let rotation = plan
+        .map(|plan| plan.rotation)
+        .unwrap_or_else(|| rotation_from_quadrants(build_mode.ghost_rotation_quadrants()));
+    let placement = BuildingPlacement::new(anchor_position, rotation);
 
     if let Some((entity, marker)) = existing.iter().next() {
         if marker.definition_id != definition_id || marker.render_key != render_key {
@@ -150,6 +149,7 @@ pub fn tint_build_mode_ghost_scene(
     children: Query<&Children>,
     mesh_materials: Query<&MeshMaterial3d<StandardMaterial>>,
     originals: Query<&crate::buildings::OriginalBuildingMaterial>,
+    foundation_skirts: Query<Entity, With<crate::buildings::BuildingFoundationSkirt>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for (entity, _) in &ghosts {
@@ -159,6 +159,7 @@ pub fn tint_build_mode_ghost_scene(
             &children,
             &mesh_materials,
             &originals,
+            &foundation_skirts,
             &mut materials,
             BuildingLifecycleState::Planned,
             Affiliation::Player,

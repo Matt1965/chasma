@@ -96,8 +96,7 @@ mod tests {
 
     fn spawn_unit(world: &mut WorldData, catalog: &UnitCatalog, x: f32, z: f32) -> UnitId {
         create_unit(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,

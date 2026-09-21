@@ -3,6 +3,7 @@
 use crate::world::ItemCategoryCatalog;
 use crate::world::ItemDefinition;
 use crate::world::ItemDefinitionId;
+use crate::world::equipment::EquipmentSlot;
 
 /// Maximum grid width/height for item footprints (safety bound).
 pub const MAX_ITEM_GRID_DIMENSION: u8 = 64;
@@ -56,6 +57,21 @@ pub enum ItemValidationError {
     EmptyDisplayName {
         row_number: Option<usize>,
         item_id: ItemDefinitionId,
+    },
+    InvalidEquipmentConfiguration {
+        row_number: Option<usize>,
+        item_id: ItemDefinitionId,
+        message: String,
+    },
+    MissingArmorProfile {
+        row_number: Option<usize>,
+        item_id: ItemDefinitionId,
+        armor_profile_id: String,
+    },
+    DisabledArmorProfile {
+        row_number: Option<usize>,
+        item_id: ItemDefinitionId,
+        armor_profile_id: String,
     },
 }
 
@@ -189,6 +205,47 @@ impl std::fmt::Display for ItemValidationError {
                 }
                 Ok(())
             }
+            Self::InvalidEquipmentConfiguration {
+                row_number,
+                item_id,
+                message,
+            } => {
+                write!(f, "item `{}`: {message}", item_id.as_str())?;
+                if let Some(row) = row_number {
+                    write!(f, " (row {row})")?;
+                }
+                Ok(())
+            }
+            Self::MissingArmorProfile {
+                row_number,
+                item_id,
+                armor_profile_id,
+            } => {
+                write!(
+                    f,
+                    "item `{}` references missing armor profile `{armor_profile_id}`",
+                    item_id.as_str()
+                )?;
+                if let Some(row) = row_number {
+                    write!(f, " (row {row})")?;
+                }
+                Ok(())
+            }
+            Self::DisabledArmorProfile {
+                row_number,
+                item_id,
+                armor_profile_id,
+            } => {
+                write!(
+                    f,
+                    "item `{}` references disabled armor profile `{armor_profile_id}`",
+                    item_id.as_str()
+                )?;
+                if let Some(row) = row_number {
+                    write!(f, " (row {row})")?;
+                }
+                Ok(())
+            }
         }
     }
 }
@@ -269,6 +326,74 @@ pub fn validate_item_definition(
         // Physical gold uses base_value_gold = 1 per coin.
     }
 
+    validate_equipment_linkage(item, row_number)?;
+
+    Ok(())
+}
+
+/// Validate armor-profile references for items that declare armor equipment linkage.
+pub fn validate_item_armor_profile_reference(
+    item: &ItemDefinition,
+    armor_catalog: &crate::world::ArmorProfileCatalog,
+    row_number: Option<usize>,
+) -> Result<(), ItemValidationError> {
+    let Some(armor_profile_id) = item.armor_profile_id.as_ref() else {
+        return Ok(());
+    };
+    let item_id = item.id.clone();
+    let profile_id = armor_profile_id.as_str();
+    let Some(profile) = armor_catalog.get(armor_profile_id) else {
+        return Err(ItemValidationError::MissingArmorProfile {
+            row_number,
+            item_id,
+            armor_profile_id: profile_id.to_string(),
+        });
+    };
+    if !profile.enabled {
+        return Err(ItemValidationError::DisabledArmorProfile {
+            row_number,
+            item_id,
+            armor_profile_id: profile_id.to_string(),
+        });
+    }
+    Ok(())
+}
+
+fn validate_equipment_linkage(
+    item: &ItemDefinition,
+    row_number: Option<usize>,
+) -> Result<(), ItemValidationError> {
+    let item_id = item.id.clone();
+    for slot in &item.equipment_slots {
+        let message = match slot {
+            EquipmentSlot::Weapon if item.weapon_definition_id.is_none() => {
+                Some("Weapon-slot item requires weapon_definition_id".to_string())
+            }
+            EquipmentSlot::Head
+            | EquipmentSlot::Body
+            | EquipmentSlot::Arms
+            | EquipmentSlot::Legs
+            | EquipmentSlot::Feet
+                if item.armor_profile_id.is_none() =>
+            {
+                Some(format!(
+                    "{} equipment requires armor_profile_id",
+                    slot.display_name()
+                ))
+            }
+            EquipmentSlot::Backpack if item.backpack_profile_id.is_none() => {
+                Some("Backpack-slot item requires backpack_profile_id".to_string())
+            }
+            _ => None,
+        };
+        if let Some(message) = message {
+            return Err(ItemValidationError::InvalidEquipmentConfiguration {
+                row_number,
+                item_id,
+                message,
+            });
+        }
+    }
     Ok(())
 }
 
@@ -435,5 +560,28 @@ mod tests {
             normalize_tags(" Trade, food ;trade "),
             vec!["food".to_string(), "trade".to_string()]
         );
+    }
+
+    #[test]
+    fn weapon_slot_requires_weapon_definition_id() {
+        let item = ItemDefinition::new(
+            ItemDefinitionId::new("broken_sword"),
+            "Broken Sword",
+            "",
+            ItemCategoryId::new("currency"),
+            1,
+            3,
+            false,
+            1,
+            500,
+            10,
+            true,
+        )
+        .with_unique_instance_required(true)
+        .with_equipment_slots(vec![crate::world::equipment::EquipmentSlot::Weapon]);
+        assert!(matches!(
+            validate_item_definition(&item, &categories(), None),
+            Err(ItemValidationError::InvalidEquipmentConfiguration { .. })
+        ));
     }
 }

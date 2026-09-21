@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use super::ocean_material::EnvironmentOceanMaterial;
 use super::settings::WaterSettings;
+use super::simulation_sync::sync_water_presentation_from_simulation;
 use super::spawn::{
     WaterSpawnState, ensure_environment_water, log_runtime_water_diagnostic_once,
     sync_environment_water_presentation,
@@ -22,6 +23,7 @@ impl Plugin for WaterPlugin {
             .add_systems(
                 Update,
                 (
+                    sync_water_presentation_from_simulation,
                     ensure_environment_water,
                     sync_environment_water_presentation,
                     log_runtime_water_diagnostic_once,

@@ -9,8 +9,12 @@ pub enum AnimationClipKey {
     Idle,
     Walk,
     Run,
+    /// Generic workstation / extraction labor (e.g. mining).
+    Work,
     TurnLeft,
     TurnRight,
+    Swim,
+    SwimIdle,
 }
 
 impl AnimationClipKey {
@@ -19,8 +23,11 @@ impl AnimationClipKey {
             Self::Idle => "Idle",
             Self::Walk => "Walk",
             Self::Run => "Run",
+            Self::Work => "Work",
             Self::TurnLeft => "TurnLeft",
             Self::TurnRight => "TurnRight",
+            Self::Swim => "Swim",
+            Self::SwimIdle => "SwimIdle",
         }
     }
 
@@ -49,6 +56,10 @@ pub struct AnimationProfile {
     pub turn_right_clip: Option<String>,
     pub turn_left_duration_seconds: Option<f32>,
     pub turn_right_duration_seconds: Option<f32>,
+    /// Optional full-body work clip (e.g. mining). Mapped from profile workbook column.
+    pub work_clip: Option<String>,
+    pub swim_clip: Option<String>,
+    pub swim_idle_clip: Option<String>,
     pub enabled: bool,
 }
 
@@ -76,8 +87,16 @@ impl AnimationProfile {
             turn_right_clip: None,
             turn_left_duration_seconds: None,
             turn_right_duration_seconds: None,
+            work_clip: None,
+            swim_clip: None,
+            swim_idle_clip: None,
             enabled,
         }
+    }
+
+    pub fn with_work_clip(mut self, work_clip: Option<String>) -> Self {
+        self.work_clip = work_clip;
+        self
     }
 
     pub fn with_presentation_clips(
@@ -109,6 +128,12 @@ impl AnimationProfile {
         self
     }
 
+    pub fn with_swim_clips(mut self, swim_clip: Option<String>, swim_idle_clip: Option<String>) -> Self {
+        self.swim_clip = swim_clip;
+        self.swim_idle_clip = swim_idle_clip;
+        self
+    }
+
     pub fn turn_duration_seconds(&self, clip: AnimationClipKey) -> Option<f32> {
         match clip {
             AnimationClipKey::TurnLeft => self.turn_left_duration_seconds,
@@ -133,6 +158,10 @@ impl AnimationProfile {
             .filter(|name| !name.is_empty())
     }
 
+    pub fn resolve_work_clip_name(&self) -> Option<&str> {
+        self.work_clip.as_deref().filter(|name| !name.is_empty())
+    }
+
     /// Resolve a desired clip to a concrete glTF clip name with Run → Walk → Idle fallback.
     pub fn resolve_clip_name(&self, desired: AnimationClipKey) -> Option<(&str, AnimationClipKey)> {
         let chain = match desired {
@@ -151,7 +180,22 @@ impl AnimationProfile {
                 AnimationClipKey::Idle,
                 AnimationClipKey::Idle,
             ],
+            AnimationClipKey::Work => [
+                AnimationClipKey::Work,
+                AnimationClipKey::Idle,
+                AnimationClipKey::Idle,
+            ],
             AnimationClipKey::TurnLeft | AnimationClipKey::TurnRight => [desired, desired, desired],
+            AnimationClipKey::Swim => [
+                AnimationClipKey::Swim,
+                AnimationClipKey::SwimIdle,
+                AnimationClipKey::SwimIdle,
+            ],
+            AnimationClipKey::SwimIdle => [
+                AnimationClipKey::SwimIdle,
+                AnimationClipKey::Swim,
+                AnimationClipKey::Swim,
+            ],
         };
         for key in chain {
             if let Some(name) = self.clip_name_for_key(key) {
@@ -172,12 +216,18 @@ impl AnimationProfile {
             }
             AnimationClipKey::Walk => self.walk_clip.as_deref().filter(|name| !name.is_empty()),
             AnimationClipKey::Run => self.run_clip.as_deref().filter(|name| !name.is_empty()),
+            AnimationClipKey::Work => self.work_clip.as_deref().filter(|name| !name.is_empty()),
             AnimationClipKey::TurnLeft => self
                 .turn_left_clip
                 .as_deref()
                 .filter(|name| !name.is_empty()),
             AnimationClipKey::TurnRight => self
                 .turn_right_clip
+                .as_deref()
+                .filter(|name| !name.is_empty()),
+            AnimationClipKey::Swim => self.swim_clip.as_deref().filter(|name| !name.is_empty()),
+            AnimationClipKey::SwimIdle => self
+                .swim_idle_clip
                 .as_deref()
                 .filter(|name| !name.is_empty()),
         }
@@ -235,5 +285,18 @@ mod tests {
         let (name, key) = profile.resolve_clip_name(AnimationClipKey::Run).unwrap();
         assert_eq!(key, AnimationClipKey::Run);
         assert_eq!(name, "Run");
+    }
+
+    #[test]
+    fn swim_does_not_fall_back_to_walk() {
+        let profile = sample_profile();
+        assert!(profile.resolve_clip_name(AnimationClipKey::Swim).is_none());
+        let profile = profile.with_swim_clips(Some("Swim_Fwd_Loop".to_string()), Some("Swim_Idle_Loop".to_string()));
+        let (name, key) = profile.resolve_clip_name(AnimationClipKey::Swim).unwrap();
+        assert_eq!(key, AnimationClipKey::Swim);
+        assert_eq!(name, "Swim_Fwd_Loop");
+        let (idle_name, idle_key) = profile.resolve_clip_name(AnimationClipKey::SwimIdle).unwrap();
+        assert_eq!(idle_key, AnimationClipKey::SwimIdle);
+        assert_eq!(idle_name, "Swim_Idle_Loop");
     }
 }

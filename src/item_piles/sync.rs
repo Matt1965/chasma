@@ -192,9 +192,11 @@ fn resolve_desired_visual(
             reason: ItemPileFallbackReason::MissingDefinition,
         };
     };
-    let Some(scene) =
-        scene_assets.ensure_scene(&definition.id, &definition.render_key, asset_server)
-    else {
+    let Some(scene) = scene_assets.ensure_scene_for_definition(
+        &definition.id,
+        &definition.render_key,
+        asset_server,
+    ) else {
         return DesiredVisual {
             kind: ItemPileVisualKind::Fallback,
             scene: None,

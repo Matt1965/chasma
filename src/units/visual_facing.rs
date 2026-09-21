@@ -150,7 +150,8 @@ mod tests {
             insert_terrain(&mut world, x, z);
             create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 WorldPosition::new(
                     ChunkCoord::new(x, z),

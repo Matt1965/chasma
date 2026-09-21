@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+pub mod archetype;
+pub mod armor;
 pub mod asset_sizing;
 pub mod authoring_transform;
 mod biome;
@@ -11,6 +13,7 @@ mod coordinates;
 mod corpse;
 mod data;
 mod doodad;
+pub mod equipment;
 mod formation;
 mod interaction;
 mod inventory;
@@ -22,6 +25,7 @@ mod navigation;
 mod obstacle;
 mod occupancy;
 mod operation;
+mod origin;
 mod ownership;
 mod perception;
 mod projectile;
@@ -29,16 +33,50 @@ pub mod relationship;
 mod settlement;
 mod space;
 mod task;
+mod water;
 mod terrain;
 mod terrain_field;
+mod road;
 mod unit;
 mod weapon;
 
+#[cfg(test)]
+pub use armor::starter_definitions as starter_armor_profile_definitions;
+pub use armor::{
+    ARMOR_MITIGATION_K, ArmorProfileCatalog, ArmorProfileCatalogError, ArmorProfileDefinition,
+    ArmorProfileId, damage_multiplier_for_armor, resolve_applied_combat_damage,
+    resolve_damage_after_armor,
+};
+pub use archetype::{
+    apply_unit_archetype_spawn_overrides, ArchetypeApplyError, ArchetypeCaptureError,
+    ArchetypeEquipmentEntry, ArchetypeInventoryStack, ArchetypePersistenceError,
+    ArchetypeResolveError, BUILDING_ARCHETYPES_RON_PATH, BuildingArchetypeCaptureMetadata,
+    BuildingArchetypeCaptureRegion, BuildingArchetypeCatalog, BuildingArchetypeCatalogError,
+    BuildingArchetypeDefinition, BuildingArchetypeDurableExtensions, BuildingArchetypeId,
+    BuildingArchetypeLocalPose, BuildingArchetypeMember, BuildingArchetypeMemberBuildingState,
+    BuildingArchetypeMemberKind, BuildingArchetypeSnapshot, BuildingArchetypeValidationError,
+    CapturedUnitArchetypeTemplate, DEFAULT_BUILDING_ARCHETYPE_CAPTURE_MARGIN_METERS,
+    ResolvedBuildingSpawnSpec,
+    ResolvedUnitSpawnSpec, UNIT_ARCHETYPES_RON_PATH, UnitArchetypeCatalog,
+    UnitArchetypeCatalogError, UnitArchetypeDefinition, UnitArchetypeId,
+    apply_building_archetype_placement, build_building_archetype_definition,
+    build_unit_archetype_definition, BuildingArchetypeReconstructCtx,
+    BuildingArchetypeReconstructError, capture_building_archetype_members,
+    capture_building_archetype_snapshot,
+    capture_building_durable_extensions, capture_unit_archetype_template,
+    compute_building_archetype_capture_region, default_building_archetype_capture_margin_meters,
+    durable_extensions_summary, validate_building_archetype_definition, world_item_member_summary,
+    load_building_archetype_catalog_from_ron, load_dev_building_archetype_catalog,
+    load_dev_unit_archetype_catalog, load_unit_archetype_catalog_from_ron,
+    resolve_building_spawn_spec, resolve_unit_spawn_spec, save_building_archetype_catalog_to_ron,
+    save_unit_archetype_catalog_to_ron, slugify_archetype_id, unique_building_archetype_id,
+    unique_unit_archetype_id, validate_gold_range,
+};
 #[cfg(any(test, feature = "dev"))]
 pub use weapon::starter_definitions as starter_weapon_definitions;
 pub use weapon::{
-    AttackPlaybackPolicy, DamageType, HitMode, TargetFilter, WeaponAttackAnimation, WeaponCatalog,
-    WeaponCatalogError, WeaponDefinition, WeaponDefinitionId,
+    AttackPlaybackPolicy, DamageType, HitMode, TargetFilter, WeaponAnimationFamily,
+    WeaponAttackAnimation, WeaponCatalog, WeaponCatalogError, WeaponDefinition, WeaponDefinitionId,
 };
 
 pub use asset_sizing::{
@@ -52,7 +90,8 @@ pub use asset_sizing::{
     doodad_visual_collision_mismatch_warning, doodad_visual_scale, finalize_building_definition,
     finalize_doodad_definition, finalize_unit_definition, normalize_building_sizing_authority,
     quantize_baseline_scale, sort_reports, sync_building_legacy_mirrors_from_sizing,
-    unit_baseline_render_scale, unit_visual_rotation, unit_visual_scale,
+    unit_baseline_render_scale, unit_definition_visual_scale, unit_visual_rotation,
+    unit_visual_scale,
     validate_building_sizing_authority, validate_sizing_migration_state,
 };
 pub use authoring_transform::{
@@ -112,7 +151,8 @@ pub use building::{
     EntranceGenerationDiagnostics, FarmProductionPhase, FieldResponseEvaluationError,
     FieldResponsePoint, FieldResponseProfileCatalog, FieldResponseProfileCatalogRevision,
     FieldResponseProfileDefinition, FieldResponseProfileError, FieldResponseProfileId,
-    FootprintSpec, FootprintType, GeometryGenerationDiagnostics, INTERACTION_WORK_RANGE_METERS,
+    FootprintSpec, FootprintType, FoundationSkirtSpec, GeometryGenerationDiagnostics,
+    INTERACTION_WORK_RANGE_METERS,
     InteractionPointDefinition, InteriorActivationCatalogs, InteriorActivationOutcome,
     InteriorActivationOutcomeStore, InteriorActivationStatus, InteriorError,
     InteriorProfileCatalog, InteriorProfileId, MAX_EFFICIENCY_BASIS_POINTS,
@@ -125,6 +165,8 @@ pub use building::{
     OperationalLimitingFactor, PLACEMENT_QUANTIZE_METERS, PRODUCTION_PROGRESS_ONE_UNIT,
     PRODUCTION_STEPPING_MODEL, ProductionCommandError, ProductionProgress,
     ProductionValidationIssue, RepeatMode, ResolvedBuildingNavigationBlueprint,
+    ResolvedBuildingPlacement, TerrainPlacementMode, presentation_plane_normal,
+    sample_terrain_under_footprint, slope_degrees_from_plane_coefficients,
     RuntimeNavigationFloor, RuntimeNavigationRegion, RuntimeTopologyFingerprint,
     TerrainAssessmentCatalogs, TerrainAssessmentError, activate_building_interior,
     add_building_construction_progress, add_entrance_on_floor, add_region_connection,
@@ -135,7 +177,15 @@ pub use building::{
     apply_player_storage_category_accepted, apply_player_storage_clear_all,
     assess_building_terrain, assess_building_terrain_at_placement, assess_production_execution,
     blueprint_id_for_building, blueprint_topology_fingerprint, build_building_placement_plan,
+    footprint_horizontal_span_meters, FoundationPerimeterVertex,
+    presentation_foundation_depth_meters, FOUNDATION_TERRAIN_PENETRATION_FUDGE_METERS,
+    PRESENTATION_TERRAIN_CLEARANCE_METERS, FOUNDATION_SLOPE_DEGREES, FOUNDATION_TEXTURE_TILE_METERS,
+    MAX_FOUNDATION_VISIBLE_DEPTH_METERS, foundation_slope_run_per_meter_drop,
+    terrain_clearance_sim,
+    resolve_authoritative_building_placement,
+    derive_foundation_skirt_for_placement,
     building_anchor_render_transform, building_container_access_policy, building_has_inventory,
+    building_placement_render_y,
     building_id_for_inventory, building_inventory_bindings, building_inventory_operational,
     building_is_storage_capable, building_model_correction_local_transform,
     building_model_render_transform, building_model_world_transform,
@@ -182,6 +232,7 @@ pub use building::{
     replace_building_instance_definition, reposition_building_navigation_runtime,
     reset_instance_to_asset, reset_production_progress, resolve_building_field_sample_cells,
     resolve_building_inventory_binding, resolve_building_navigation_blueprint,
+    resolve_building_placement,
     resolve_move_goal_space, resolve_navigation_space_at_position, resolve_navigation_start_space,
     resolve_surface_entrance_approach_position, resolve_surface_entrance_escape_position,
     rotation_from_quadrants, runtime_topology_fingerprint, save_instance_blueprint,
@@ -219,13 +270,14 @@ pub use chunk::{ChunkData, ChunkId};
 #[cfg(feature = "dev")]
 pub(crate) use combat::runtime_trace;
 pub use combat::{
-    AttackTargetingPolicy, CombatAiReport, CombatAiScanState, CombatAiSettings, CombatAiTrace,
-    CombatAiTraceOutcome, CombatEngagementReport, CombatEngagementStatus, CombatEngagementTrace,
-    CombatStrikeEvent, CombatStrikeReport, CombatStrikeTrace, ProjectileImpactRejection,
-    ProjectileLaunchSnapshot, RANGE_HYSTERESIS_METERS, RangeCheck, WeaponTiming,
-    apply_attributed_combat_damage, autonomous_wants_to_attack, classify_unit_target,
-    clear_attack_cycle_for_order_cancel, find_auto_acquire_target, hold_in_attack_range,
-    initial_attack_combat_state, is_in_weapon_range, is_unit_alive, is_valid_active_combat_target,
+    AttackTargetingPolicy, AttributedCombatDamageError, CombatAiReport, CombatAiScanState,
+    CombatAiSettings, CombatAiTrace, CombatAiTraceOutcome, CombatEngagementReport,
+    CombatEngagementStatus, CombatEngagementTrace, CombatStrikeEvent, CombatStrikeReport,
+    CombatStrikeTrace, ProjectileImpactRejection, ProjectileLaunchSnapshot,
+    RANGE_HYSTERESIS_METERS, RangeCheck, WeaponTiming, apply_attributed_combat_damage,
+    autonomous_wants_to_attack, classify_unit_target, clear_attack_cycle_for_order_cancel,
+    find_auto_acquire_target, hold_in_attack_range, initial_attack_combat_state,
+    is_in_weapon_range, is_unit_alive, is_valid_active_combat_target,
     is_valid_autonomous_attack_target, is_valid_explicit_attack_target,
     is_valid_mechanical_attack_target, reset_attack_cycle_for_retarget, step_all_combat_engagement,
     step_all_combat_strikes, step_combat_ai_acquisition, try_reactive_combat_retaliation,
@@ -240,8 +292,9 @@ pub use coordinates::{ChunkCoord, ChunkLayout, LocalPosition, WorldPosition};
 pub use corpse::dev_expire_corpse;
 pub use corpse::{
     CorpseError, CorpseId, CorpseLifecycleReport, CorpseRecord, CorpseSettings, CorpseState,
-    CorpseStore, DEFAULT_CORPSE_LIFETIME_TICKS, create_corpse_from_unit,
-    remove_corpse_with_inventory, step_corpse_lifecycle, transfer_inventory_to_corpse,
+    CorpseStore, DEFAULT_CORPSE_LIFETIME_TICKS, create_corpse_from_unit, is_corpse_loot_inventory,
+    remove_corpse_with_inventory, step_corpse_lifecycle, transfer_equipment_to_corpse,
+    transfer_inventory_to_corpse,
 };
 pub use data::{ChunkExtent, WorldData};
 #[cfg(test)]
@@ -269,6 +322,19 @@ pub use doodad::{
 };
 #[cfg(any(test, feature = "dev"))]
 pub use doodad::{DoodadRestoreError, restore_doodad_record, validate_doodad_for_restore};
+pub use equipment::{
+    ArmorResolveError, EquipmentPresentationMode, EquipmentSlot, EquipmentVisualCatalog,
+    EquipmentVisualMapping, EquippedArmorEntry, UnitEquipmentInventories, WorkerCargoResolveError,
+    attach_equipment_on_unit_create, carried_quantity_in_worker_cargo,
+    cleanup_unit_equipment_on_delete, container_inventory_is_empty, container_inventory_is_loaded,
+    create_container_inventory, effective_weapon_for_unit, effective_weapon_id_for_unit,
+    equipment_slot_profile_definitions, equipped_armor_for_unit,
+    equipped_backpack_internal_inventory, is_container_item, minimal_catalog_ctx,
+    reconcile_legacy_unit_equipment, release_container_inventory_if_empty,
+    resolve_equipped_backpack_internal, total_armor_rating_for_unit, unit_owns_inventory,
+    validate_item_placement, validate_unit_equipment_links, worker_cargo_capacity_for_item,
+    worker_cargo_inventories,
+};
 pub use formation::{
     FormationAssignment, FormationKind, FormationMovePlan, FormationPlanner,
     circle_formation_radius, collision_separation_meters, formation_offsets,
@@ -298,7 +364,10 @@ pub use inventory::{
     assert_inventory_stores, auto_sort, auto_sort_inventory, can_place_entry, can_place_footprint,
     category_stack_cap_for, consume_stack_item, count_physical_gold, count_stack_item,
     create_inventory, create_item_instance, create_unit_inventory, destroy_item_instance,
-    effective_stack_limit, half_stack_quantity, loot_corpse_entry, merge_stacks,
+    effective_stack_limit, half_stack_quantity, inventory_subgraph_item_count,
+    capture_inventory_subgraph, InventorySubgraphInventory, InventorySubgraphItemInstance,
+    InventorySubgraphItemInstanceLocation, InventorySubgraphPlacedEntry, InventorySubgraphSnapshot,
+    loot_corpse_entry, merge_stacks,
     migrate_inventory_profile, migrate_inventory_profile_with_leftovers, move_entry,
     physical_gold_item_id, place_stack, place_stack_first_fit, place_unique,
     place_unique_first_fit, query_inventory_weight, rebuild_all_inventory_derived,
@@ -308,15 +377,16 @@ pub use inventory::{
     validate_inventory, validate_inventory_profile, validate_inventory_stores,
     validate_world_inventory_state,
 };
-#[cfg(any(test, feature = "dev"))]
 pub use item::starter_definitions as starter_item_definitions;
+#[cfg(test)]
+pub use item::test_equipment_fixture_definitions;
 #[cfg(any(test, feature = "dev"))]
 pub use item::starter_item_category_definitions;
 pub use item::{
     ItemCatalog, ItemCatalogError, ItemCategoryCatalog, ItemCategoryCatalogError,
     ItemCategoryDefinition, ItemCategoryId, ItemDefinition, ItemDefinitionId, ItemIconKey,
     ItemRenderKey, ItemValidationError, MAX_ITEM_GRID_DIMENSION, normalize_tags,
-    validate_item_definition,
+    validate_item_armor_profile_reference, validate_item_definition,
 };
 pub use item_pile::{
     ChunkItemPileStore, DropReport, ItemPileError, ItemPileId, ItemPileInvariantReport,
@@ -382,6 +452,7 @@ pub use occupancy::{
     effective_building_footprint_for_placement, inline_building_footprint,
     is_position_blocked_by_static_occupancy, is_position_blocked_for_agent, is_position_passable,
     occupancy_cell_at_global_xz, occupied_cells_for_footprint, occupied_cells_for_footprint_yaw,
+    point_in_oriented_rectangle_continuous,
     plan_register_building, plan_register_doodad, query_passability_at, query_passability_in_space,
     query_static_occupancy_at, rebuild_occupancy_index, register_building_occupancy,
     register_doodad_occupancy, unregister_source_occupancy, update_building_occupancy,
@@ -395,6 +466,17 @@ pub use operation::{
     OperationOutputDefinition, OperationSelectionError,
     starter_definitions as starter_operation_definitions, validate_building_definition_operations,
     validate_building_operation_bindings, validate_operation_selection,
+};
+pub use origin::{
+    OriginAppearanceSnapshot, OriginCatalog, OriginDefinition, OriginEquipmentSlotSnapshot,
+    OriginId, OriginSpawnAnchor, OriginSquadMemberSnapshot, ORIGINS_RON_PATH,
+    apply_member_inventory_loadout, capture_member_inventory_loadout,
+    capture_origin_member_from_unit, capture_squad_members_from_selection,
+    load_dev_origin_catalog, load_origins_from_ron, ordered_selected_unit_ids,
+    preview_offset_for_index,
+    member_spawn_global_position, origin_member_formation_offsets, save_origins_to_ron,
+    seed_origin_catalog, seed_origin_definitions, validate_origin_definition,
+    world_position_from_global,
 };
 pub use ownership::{
     Affiliation, DEFAULT_PLAYER_OWNER_ID, DEFAULT_PLAYER_TEAM_ID, OwnerId,
@@ -504,9 +586,9 @@ pub use space::starter_space_profile;
 pub use space::{
     PortalId, PortalRecord, PortalTemplate, PortalType, SpaceError, SpaceId, SpaceRecord,
     SpaceRegistry, SpaceTemplate, UnitPortalTransitionState, ground_position_in_space,
-    register_building_space_profile, sample_support_height, space_hidden_by_default,
-    space_vertical_reference_y, space_visible_in_view, try_portal_transition,
-    two_story_hut_profile,
+    ground_position_in_space_with_surface, register_building_space_profile,
+    sample_support_height, space_hidden_by_default, space_vertical_reference_y,
+    space_visible_in_view, try_portal_transition, two_story_hut_profile,
 };
 pub use task::{
     AssignmentDecision, AssignmentScore, AssignmentValidationError, MIN_PREEMPT_PRIORITY_RANKS,
@@ -535,8 +617,26 @@ pub use terrain::{
     validate_heightfield_against_config,
 };
 pub use terrain::{
-    SlopeWalkability, classify_slope_walkability, estimate_slope_degrees, ground_world_position,
-    is_position_slope_walkable, slope_at, try_ground_world_position, try_sample_height_at_position,
+    SlopeWalkability, classify_slope_walkability, estimate_effective_slope_degrees,
+    estimate_slope_degrees, ground_world_position, is_position_slope_walkable, slope_at,
+    try_ground_world_position, try_sample_base_height_at_position, try_sample_height_at_position,
+};
+pub use road::deformation::{
+    RoadDeformationStore, RoadHeightDeltaTile, RoadTerrainRebuildQueue,
+    affected_chunk_ids_for_network, apply_road_terrain_rebuilds, ensure_road_deformation_store,
+    reconcile_road_deformation_on_startup,
+    ensure_chunk_road_deformation, queue_road_terrain_rebuilds, rebake_road_deformation_for_chunks,
+    save_road_deformation_bake, sync_store_tiles_to_chunks, sync_store_tiles_to_resident_chunks,
+};
+pub use water::{
+    DEFAULT_PRESENTATION_WATER_LEVEL, DEFAULT_SWIM_ENTER_VISIBLE_METERS,
+    DEFAULT_SWIM_EXIT_VISIBLE_METERS, DEFAULT_SWIM_ORIGIN_OFFSET_VISIBLE_METERS,
+    DEFAULT_SWIM_SPEED_MULTIPLIER, LocomotionSurface, WorldWaterState,
+    cancel_swimming_incompatible_actions, effective_move_speed_mps, locomotion_surface_at,
+    presentation_to_sim, refresh_all_unit_locomotion, sample_locomotion_support_height,
+    sim_to_presentation, unit_can_perform_normal_actions, unit_is_swimming,
+    unit_locomotion_surface, unit_order_requires_normal_actions, water_depth_at,
+    water_skips_seabed_slope,
 };
 #[cfg(any(test, feature = "dev"))]
 pub use terrain_field::starter_definitions as starter_terrain_field_definitions;
@@ -576,6 +676,23 @@ pub use terrain_field::{
     terrain_field_tile_path, tile_path_for_chunk, try_load_terrain_fields_from_manifest,
     validate_terrain_field_id, validate_world_config_for_fields, world_position_to_field_local,
 };
+pub use road::{
+    CornerMode, DerivedCrossing, Junction, JunctionId, JunctionMember, JunctionMemberRole, Road,
+    RoadControlPoint, RoadCrossingKind, RoadCrossingOverride, RoadEndpointAttachment, RoadError,
+    RoadId, RoadLoadError, RoadNetwork, RoadNetworkRon, RoadSplineProjection, RoadSplineSample,
+    RoadStyleDefaults, RoadStyleId, RoadStyleOverrides, RoadTeeAttachment, SnapCandidate,
+    SnapCandidateKind, ROAD_NETWORK_SCHEMA_VERSION, DEFAULT_WORLD_PACKAGE_DIR,
+    derive_ground_crossings, detach_junction, endpoint_has_attachment, find_snap_candidate,
+    finalize_endpoint_drag, is_road_endpoint_index, junction_id_for_endpoint,
+    junction_world_position, load_road_network, load_road_network_from_path,
+    load_road_network_from_world_package, move_connected_endpoint, parse_road_network_ron,
+    project_point_onto_road_spline, refresh_all_tee_branches, refresh_tee_branches_for_host,
+    remove_road_and_cleanup_junctions,
+    road_network_ron_path,
+    road_spline_length, sample_road_polyline, sample_road_spline_at_distance,
+    sample_road_spline_at_t, save_road_network, save_road_network_to_path,
+    serialize_road_network_ron, try_snap_endpoint, validate_road_network,
+};
 #[cfg(feature = "dev")]
 pub(crate) use unit::inside_move_trace;
 pub(crate) use unit::interior_exit_click_trace;
@@ -585,7 +702,17 @@ pub use unit::starter_animation_profile_definitions;
 pub use unit::starter_definitions as starter_unit_definitions;
 pub use unit::{
     AnimationClipKey, AnimationProfile, AnimationProfileCatalog, AnimationProfileCatalogError,
-    AnimationProfileId, AttackCycle, AttackPhase, BatchUnitMovementReport, BlockedMovementReason,
+    AnimationProfileId, AppearanceError, AppearanceParamId, AppearanceParameterDefinition,
+    AppearanceProfile, AppearanceProfileCatalog, AppearanceProfileCatalogError,
+    AppearanceProfileId, AttackCycle, AttackPhase, BatchUnitMovementReport, BlockedMovementReason,
+    BodyVariantDefinition, BodyVariantId, CG2_MORPH_SEMANTIC_PARAMS, HUMAN_MORPH_SEMANTIC_PARAMS,
+    HUMAN_MORPH_TARGET_NAMES,
+    MorphMappingSide, MorphResolveError, MorphTargetMapping, UnitAppearance,
+    definition_has_appearance_support, effective_render_key_for_appearance,
+    effective_unit_render_key, effective_unit_render_key_str,
+    resolve_canonical_default_appearance, resolve_equipment_morph_weights, resolve_morph_weights,
+    validate_profile_morph_mappings,
+    validate_unit_appearance,
     ChunkUnitStore, CombatState, DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND,
     DEFAULT_TURN_SPEED_DEGREES_PER_SECOND, EntranceTraversalTrace, HungerStage, InsideMoveTrace,
     InteriorExitClickTrace, MOVEMENT_ARRIVAL_TOLERANCE_METERS,
@@ -601,7 +728,8 @@ pub use unit::{
     UnitWorkCapabilities, UnitWorkSkillState, WorkSkillCatalog, WorkSkillCatalogError,
     WorkSkillDefinition, WorkSkillError, WorkSkillId, apply_attacking_combat_facing,
     apply_validated_attack_order, create_unit, create_unit_with_inventory,
-    create_unit_with_ownership, evaluate_hunger_stage, facing_rotation_from_direction_xz,
+    create_unit_with_ownership, create_unit_with_ownership_and_appearance,
+    evaluate_hunger_stage, facing_rotation_from_direction_xz,
     facing_rotation_from_travel, ground_unit_position, ground_unit_to_terrain,
     hunger_prevents_work_claim, hunger_stage_label, infer_navigation_membership_at_position,
     initialize_surface_units_navigation_membership, initialize_unit_navigation_membership,
@@ -679,6 +807,7 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<WeaponCatalog>()
             .register_type::<AnimationProfileId>()
             .register_type::<AnimationClipKey>()
+            .register_type::<crate::world::WorldWaterState>()
             .register_type::<AnimationProfile>()
             .register_type::<AnimationProfileCatalog>()
             .register_type::<UnitId>()
@@ -718,6 +847,7 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<BuildingCategoryDefinition>()
             .register_type::<BuildingCategoryCatalog>()
             .register_type::<BuildingDefinition>()
+            .register_type::<TerrainPlacementMode>()
             .register_type::<BuildingCatalog>()
             .register_type::<BuildingId>()
             .register_type::<BuildingPlacement>()
@@ -746,6 +876,8 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<InventoryAccessType>()
             .register_type::<InventoryProfileDefinition>()
             .register_type::<InventoryProfileCatalog>()
+            .register_type::<crate::world::equipment::EquipmentSlot>()
+            .register_type::<crate::world::equipment::UnitEquipmentInventories>()
             .register_type::<crate::world::inventory::InventoryId>()
             .register_type::<crate::world::inventory::ItemInstanceId>()
             .register_type::<crate::world::inventory::InventoryOwnerRef>()
@@ -765,13 +897,30 @@ impl Plugin for WorldFoundationPlugin {
             .register_type::<crate::world::item_pile::WorldPileContents>()
             .register_type::<crate::world::item_pile::ItemPileSettings>()
             .register_type::<crate::world::inventory::ItemInstanceLocation>()
-            .register_type::<WorldData>();
+            .register_type::<WorldData>()
+            .register_type::<crate::world::road::RoadNetwork>()
+            .register_type::<crate::world::road::RoadId>()
+            .register_type::<crate::world::road::JunctionId>()
+            .register_type::<crate::world::road::RoadStyleId>()
+            .register_type::<crate::world::road::RoadStyleDefaults>()
+            .register_type::<crate::world::road::RoadStyleOverrides>()
+            .register_type::<crate::world::road::RoadControlPoint>()
+            .register_type::<crate::world::road::CornerMode>()
+            .register_type::<crate::world::road::Road>()
+            .register_type::<crate::world::road::Junction>()
+            .register_type::<crate::world::road::JunctionMember>()
+            .register_type::<crate::world::road::JunctionMemberRole>()
+            .register_type::<crate::world::road::RoadEndpointAttachment>()
+            .register_type::<crate::world::road::RoadTeeAttachment>()
+            .register_type::<crate::world::road::RoadCrossingKind>()
+            .register_type::<crate::world::road::RoadCrossingOverride>();
 
         app.init_resource::<WorldConfig>();
         #[cfg(not(feature = "dev"))]
         {
             app.init_resource::<DoodadCatalog>();
             app.init_resource::<WeaponCatalog>();
+            app.init_resource::<ArmorProfileCatalog>();
             app.init_resource::<UnitCatalog>();
             app.init_resource::<AnimationProfileCatalog>();
             app.init_resource::<BuildingCategoryCatalog>();
@@ -780,6 +929,7 @@ impl Plugin for WorldFoundationPlugin {
             app.init_resource::<FootprintCatalog>();
             app.init_resource::<ItemCategoryCatalog>();
             app.init_resource::<ItemCatalog>();
+            app.init_resource::<crate::world::EquipmentVisualCatalog>();
             app.init_resource::<OperationCatalog>();
             app.init_resource::<NeedCatalog>();
             app.init_resource::<WorkSkillCatalog>();
@@ -804,9 +954,16 @@ impl Plugin for WorldFoundationPlugin {
         #[cfg(feature = "dev")]
         {
             let weapons = crate::data_import::resolve_dev_weapon_catalog();
+            let armor_profiles = crate::data_import::resolve_dev_armor_profile_catalog();
             let animation_profiles = crate::data_import::resolve_dev_animation_profile_catalog();
             let inventory_profiles = crate::data_import::resolve_dev_inventory_profile_catalog();
+            let appearance_profiles =
+                crate::data_import::resolve_dev_appearance_profile_catalog();
             let (item_categories, item_catalog) = crate::data_import::resolve_dev_item_catalog();
+            let equipment_visuals = crate::data_import::resolve_dev_equipment_visual_catalog(
+                &item_catalog,
+                &appearance_profiles,
+            );
             let mut sizing_reports = Vec::new();
             let (building_categories, building_catalog) =
                 crate::data_import::resolve_dev_building_catalog(
@@ -822,13 +979,16 @@ impl Plugin for WorldFoundationPlugin {
                     &species_catalog,
                 );
             app.insert_resource(weapons.clone());
+            app.insert_resource(armor_profiles);
             app.insert_resource(animation_profiles.clone());
             app.insert_resource(inventory_profiles.clone());
+            app.insert_resource(appearance_profiles.clone());
             app.insert_resource(faction_catalog.clone());
             app.insert_resource(species_catalog.clone());
             app.insert_resource(authored_relationships);
+            let item_categories_for_ctx = item_categories.clone();
             app.insert_resource(item_categories);
-            app.insert_resource(item_catalog);
+            app.insert_resource(equipment_visuals);
             app.init_resource::<OperationCatalog>();
             app.init_resource::<NeedCatalog>();
             app.init_resource::<WorkSkillCatalog>();
@@ -840,19 +1000,37 @@ impl Plugin for WorldFoundationPlugin {
             app.insert_resource(building_categories);
             let nav_catalog =
                 crate::data_import::resolve_dev_navigation_blueprint_catalog(&building_catalog);
+            let building_archetype_catalog =
+                crate::world::load_dev_building_archetype_catalog();
             app.insert_resource(building_catalog);
             app.insert_resource(footprint_catalog);
             app.insert_resource(crate::data_import::resolve_dev_doodad_catalog(Some(
                 &mut sizing_reports,
             )));
-            app.insert_resource(crate::data_import::resolve_dev_unit_catalog(
+            let unit_catalog = crate::data_import::resolve_dev_unit_catalog(
                 &faction_catalog,
                 &species_catalog,
                 &weapons,
                 &animation_profiles,
                 &inventory_profiles,
+                &appearance_profiles,
                 Some(&mut sizing_reports),
+            );
+            let inventory_ctx = crate::world::InventoryCatalogCtx::new(
+                &item_catalog,
+                &item_categories_for_ctx,
+                &inventory_profiles,
+            );
+            app.insert_resource(crate::world::load_dev_origin_catalog(
+                &unit_catalog,
+                &appearance_profiles,
+                &inventory_ctx,
             ));
+            let unit_archetype_catalog = crate::world::load_dev_unit_archetype_catalog();
+            app.insert_resource(item_catalog);
+            app.insert_resource(unit_catalog);
+            app.insert_resource(unit_archetype_catalog);
+            app.insert_resource(building_archetype_catalog);
             app.insert_resource(crate::data_import::resolve_dev_terrain_field_catalog());
             app.insert_resource(crate::world::load_terrain_field_source_profile_catalog());
             app.insert_resource(crate::world::FieldResponseProfileCatalog::default());
@@ -865,6 +1043,7 @@ impl Plugin for WorldFoundationPlugin {
             app.init_resource::<crate::world::BuildingTerrainAssessmentStore>();
             crate::data_import::export_dev_asset_sizing_reports(&mut sizing_reports);
         }
+        app.insert_resource(crate::world::road::load_road_network());
         app.init_resource::<WorldData>();
         app.init_resource::<NavigationConfig>();
         app.init_resource::<InteriorProfileCatalog>();
@@ -875,10 +1054,24 @@ impl Plugin for WorldFoundationPlugin {
             Startup,
             (
                 crate::world::bootstrap_terrain_fields_on_startup,
+                bootstrap_road_deformation_store,
                 crate::world::reconcile_building_navigation_on_startup,
             ),
         );
     }
+}
+
+fn bootstrap_road_deformation_store(
+    mut commands: Commands,
+    network: Res<crate::world::RoadNetwork>,
+) {
+    commands.insert_resource(
+        crate::world::road::deformation::ensure_road_deformation_store(
+            crate::world::road::DEFAULT_WORLD_PACKAGE_DIR,
+            &network,
+        ),
+    );
+    commands.init_resource::<crate::world::road::deformation::RoadTerrainRebuildQueue>();
 }
 
 /// One-shot navigation rehydration after catalogs and world data are available (IN-11f).

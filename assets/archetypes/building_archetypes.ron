@@ -1,0 +1,242 @@
+(
+    definitions: [
+        (
+            id: ("test"),
+            display_name: "test",
+            base_building_id: ("hut"),
+            snapshot: (
+                affiliation: Player,
+                team_id: Some((1)),
+                owner_id: Some((1)),
+                lifecycle_state: Complete,
+                container_locked: false,
+                uniform_scale: 1.0,
+                placement_yaw_deg: 0.0,
+                extensions: (),
+            ),
+            capture_metadata: (
+                capture_margin_meters: 6.0,
+            ),
+            members: [
+                (
+                    kind: Doodad,
+                    definition_id: "d_0001",
+                    local_pose: (
+                        local_position: (-5.9907837, -0.000025775284, 0.12335205),
+                        local_rotation: (0.0, 0.0, 0.0, 1.0),
+                        uniform_scale_milli: 0,
+                        scale_x_milli: 1000,
+                        scale_y_milli: 1000,
+                        scale_z_milli: 1000,
+                    ),
+                ),
+                (
+                    kind: Doodad,
+                    definition_id: "d_0001",
+                    local_pose: (
+                        local_position: (4.755127, -0.000007474562, -0.39385986),
+                        local_rotation: (0.0, 0.0, 0.0, 1.0),
+                        uniform_scale_milli: 0,
+                        scale_x_milli: 1000,
+                        scale_y_milli: 1000,
+                        scale_z_milli: 1000,
+                    ),
+                ),
+            ],
+            enabled: true,
+        ),
+        (
+            id: ("test2"),
+            display_name: "test2",
+            base_building_id: ("hut"),
+            snapshot: (
+                affiliation: Player,
+                team_id: Some((1)),
+                owner_id: Some((1)),
+                lifecycle_state: Complete,
+                container_locked: false,
+                uniform_scale: 1.0,
+                placement_yaw_deg: 0.0,
+                extensions: (),
+            ),
+            capture_metadata: (
+                capture_margin_meters: 15.0,
+            ),
+            members: [
+                (
+                    kind: Building,
+                    definition_id: "stone_quarry",
+                    local_pose: (
+                        local_position: (-15.5, -0.00003519794, 1.6000366),
+                        local_rotation: (-0.035149746, -0.00062841293, 0.017864259, 0.99922216),
+                        uniform_scale_milli: 1000,
+                        scale_x_milli: 0,
+                        scale_y_milli: 0,
+                        scale_z_milli: 0,
+                    ),
+                    building_state: Some((
+                        affiliation: Player,
+                        team_id: Some((1)),
+                        owner_id: Some((1)),
+                        lifecycle_state: Complete,
+                        container_locked: false,
+                        extensions: (
+                            inventory: Some((
+                                root_inventory_local_id: 1,
+                                inventories: [
+                                    (
+                                        local_id: 1,
+                                        profile_id: "chest_large",
+                                        grid_width: 8,
+                                        grid_height: 8,
+                                        entries: [],
+                                    ),
+                                ],
+                                item_instances: [],
+                                item_instance_locations: [],
+                            )),
+                        ),
+                    )),
+                ),
+                (
+                    kind: Building,
+                    definition_id: "storage_chest",
+                    local_pose: (
+                        local_position: (5.199951, 0.0000033185352, 0.8000488),
+                        local_rotation: (0.0, 0.0, 0.0, 1.0),
+                        uniform_scale_milli: 1000,
+                        scale_x_milli: 0,
+                        scale_y_milli: 0,
+                        scale_z_milli: 0,
+                    ),
+                    building_state: Some((
+                        affiliation: Player,
+                        team_id: Some((1)),
+                        owner_id: Some((1)),
+                        lifecycle_state: Complete,
+                        container_locked: false,
+                        extensions: (
+                            inventory: Some((
+                                root_inventory_local_id: 1,
+                                inventories: [
+                                    (
+                                        local_id: 1,
+                                        profile_id: "chest_small",
+                                        grid_width: 4,
+                                        grid_height: 4,
+                                        entries: [],
+                                    ),
+                                ],
+                                item_instances: [],
+                                item_instance_locations: [],
+                            )),
+                        ),
+                    )),
+                ),
+            ],
+            enabled: true,
+        ),
+        (
+            id: ("test3"),
+            display_name: "test3",
+            base_building_id: ("hut"),
+            snapshot: (
+                affiliation: Player,
+                team_id: Some((1)),
+                owner_id: Some((1)),
+                lifecycle_state: Complete,
+                container_locked: false,
+                uniform_scale: 1.0,
+                placement_yaw_deg: 0.0,
+                extensions: (),
+            ),
+            capture_metadata: (
+                capture_margin_meters: 10.0,
+            ),
+            members: [
+                (
+                    kind: Building,
+                    definition_id: "storage_chest",
+                    local_pose: (
+                        local_position: (4.0999756, -0.000008382602, -0.8000488),
+                        local_rotation: (0.0, 0.0, 0.0, 1.0),
+                        uniform_scale_milli: 1000,
+                        scale_x_milli: 0,
+                        scale_y_milli: 0,
+                        scale_z_milli: 0,
+                    ),
+                    building_state: Some((
+                        affiliation: Player,
+                        team_id: Some((1)),
+                        owner_id: Some((1)),
+                        lifecycle_state: Complete,
+                        container_locked: false,
+                        extensions: (
+                            inventory: Some((
+                                root_inventory_local_id: 1,
+                                inventories: [
+                                    (
+                                        local_id: 1,
+                                        profile_id: "chest_small",
+                                        grid_width: 4,
+                                        grid_height: 4,
+                                        entries: [],
+                                    ),
+                                ],
+                                item_instances: [],
+                                item_instance_locations: [],
+                            )),
+                        ),
+                    )),
+                ),
+                (
+                    kind: Doodad,
+                    definition_id: "d_0001",
+                    local_pose: (
+                        local_position: (2.0760498, 0.000018455554, 7.3901978),
+                        local_rotation: (0.0, 0.0, 0.0, 1.0),
+                        uniform_scale_milli: 0,
+                        scale_x_milli: 1000,
+                        scale_y_milli: 1000,
+                        scale_z_milli: 1000,
+                    ),
+                ),
+                (
+                    kind: WorldItemPile,
+                    definition_id: "bandage",
+                    local_pose: (
+                        local_position: (2.3757324, -0.000023800414, -3.3546143),
+                        local_rotation: (0.0, 0.0, 0.0, 1.0),
+                        uniform_scale_milli: 1000,
+                        scale_x_milli: 0,
+                        scale_y_milli: 0,
+                        scale_z_milli: 0,
+                    ),
+                    world_item_state: Some((
+                        stack_quantity: Some(10),
+                        affiliation: Player,
+                        source: "DevSpawned",
+                    )),
+                ),
+                (
+                    kind: WorldItemPile,
+                    definition_id: "data_chip",
+                    local_pose: (
+                        local_position: (-2.6749268, -0.000024572713, -3.0552368),
+                        local_rotation: (0.0, 0.0, 0.0, 1.0),
+                        uniform_scale_milli: 1000,
+                        scale_x_milli: 0,
+                        scale_y_milli: 0,
+                        scale_z_milli: 0,
+                    ),
+                    world_item_state: Some((
+                        stack_quantity: Some(10),
+                        affiliation: Player,
+                        source: "DevSpawned",
+                    )),
+                ),
+            ],
+            enabled: true,
+        ),
+    ],
+)

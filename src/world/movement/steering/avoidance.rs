@@ -118,7 +118,13 @@ pub fn gather_steering_neighbors(
             let definition = unit_catalog.get(&record.definition_id)?;
             let global = record.placement.position.to_global(layout);
             let position_xz = Vec2::new(global.x, global.z);
-            let velocity_xz = unit_velocity_xz(record, layout, definition.move_speed_mps);
+            let surface = crate::world::unit_locomotion_surface(world, neighbor_id);
+            let speed = crate::world::effective_move_speed_mps(
+                definition.move_speed_mps,
+                surface,
+                world.water(),
+            );
+            let velocity_xz = unit_velocity_xz(record, layout, speed);
             let formation_target_xz = match record.state {
                 UnitState::Moving { target, .. } => {
                     let target_global = target.to_global(layout);
@@ -265,7 +271,8 @@ mod tests {
         let mut world = flat_world();
         let a = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -274,7 +281,8 @@ mod tests {
         .id;
         let b = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(0.5, 0.0),
             UnitSource::Authored,
@@ -326,7 +334,8 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(0.0, 0.0),
             UnitSource::Authored,

@@ -102,8 +102,7 @@ fn execute_surface_to_interior_movement(
     let layout = world.layout();
 
     let unit_id = create_unit(
-        unit_catalog,
-        world,
+        unit_catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
         &UnitDefinitionId::new("robot"),
         surface_start,
         UnitSource::Authored,

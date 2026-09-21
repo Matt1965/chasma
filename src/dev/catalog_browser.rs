@@ -195,6 +195,50 @@ mod tests {
     }
 
     #[test]
+    fn dev_runtime_catalog_lists_human_player_units() {
+        let path = crate::data_import::dev_design_workbook_path();
+        if !path.is_file() {
+            return;
+        }
+
+        let catalog = {
+            use crate::data_import::{
+                resolve_dev_animation_profile_catalog, resolve_dev_faction_catalog,
+                resolve_dev_inventory_profile_catalog, resolve_dev_species_catalog,
+                resolve_dev_unit_catalog, resolve_dev_weapon_catalog,
+            };
+            let factions = resolve_dev_faction_catalog();
+            let species = resolve_dev_species_catalog();
+            let weapons = resolve_dev_weapon_catalog();
+            let animation_profiles = resolve_dev_animation_profile_catalog();
+            let inventory_profiles = resolve_dev_inventory_profile_catalog();
+            let appearance_profiles = crate::data_import::resolve_dev_appearance_profile_catalog();
+            resolve_dev_unit_catalog(
+                &factions,
+                &species,
+                &weapons,
+                &animation_profiles,
+                &inventory_profiles,
+                &appearance_profiles,
+                None,
+            )
+        };
+
+        let entries = filter_catalog_entries(
+            &catalog,
+            &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            DevTab::Units,
+            SpawnMode::Unit,
+            "",
+            true,
+        );
+        let labels: Vec<_> = entries.iter().map(|entry| entry.label.as_str()).collect();
+        assert!(labels.contains(&"Human Male"));
+        assert!(labels.contains(&"Human Female"));
+    }
+
+    #[test]
     fn doodad_tab_lists_doodad_definitions() {
         let catalog = DoodadCatalog::default();
         let entries = filter_catalog_entries(

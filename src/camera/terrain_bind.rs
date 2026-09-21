@@ -6,8 +6,8 @@
 
 use bevy::prelude::*;
 
-use crate::terrain::render_height;
-use crate::world::{ChunkLayout, WorldConfig, WorldData, WorldPosition, ground_world_position};
+use crate::terrain::terrain_surface_render_y_at;
+use crate::world::{ChunkLayout, WorldConfig, WorldData};
 
 use super::components::RtsCameraState;
 use super::control::orbit_transform;
@@ -21,9 +21,7 @@ pub fn render_terrain_height_at_global_xz(
     layout: ChunkLayout,
     vertical_scale: f32,
 ) -> Option<f32> {
-    let candidate = WorldPosition::from_global(Vec3::new(global_x, 0.0, global_z), layout);
-    let grounded = ground_world_position(world, candidate)?;
-    Some(render_height(grounded.local.0.y, vertical_scale))
+    terrain_surface_render_y_at(global_x, global_z, world, layout, vertical_scale)
 }
 
 /// Glue orbit focus to terrain and clamp the camera eye above the surface.

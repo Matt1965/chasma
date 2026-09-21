@@ -25,7 +25,8 @@ use crate::world::{
     BuildingCatalog, ChunkLayout, DoodadCatalog, FootprintCatalog, INTERACTION_WORK_RANGE_METERS,
     NavigationWaypoint, OccupancySource, PassabilityAgent, PassabilityBlockReason,
     PassabilityCatalogs, PassabilityResult, SlopeWalkability, SpaceId, TaskType, WorldData,
-    WorldPosition, apply_steering, classify_slope_walkability, ground_position_in_space,
+    WorldPosition, apply_steering, classify_slope_walkability, effective_move_speed_mps,
+    ground_position_in_space, ground_position_in_space_with_surface, unit_locomotion_surface,
     is_segment_walkable_in_space, query_navigation_point_legality,
     try_open_door_at_portal_for_unit, try_portal_transition, xz_distance,
 };
@@ -664,7 +665,9 @@ pub fn step_unit_movement(
     let mut to_waypoint = waypoint_global - current_global;
     to_waypoint.y = 0.0;
     let distance = to_waypoint.length();
-    let step_distance = definition.move_speed_mps * delta_seconds;
+    let surface = unit_locomotion_surface(world, unit_id);
+    let step_distance =
+        effective_move_speed_mps(definition.move_speed_mps, surface, world.water()) * delta_seconds;
 
     if heading.is_none() && distance > ARRIVAL_DISTANCE_METERS && distance > 1e-6 {
         heading = Some(StabilizedMovementHeading {
@@ -840,15 +843,22 @@ pub fn step_unit_movement(
         waypoint.space_id,
         active_space,
     );
-    let mut grounded =
-        match ground_position_in_space(world, world.space_registry(), active_space, candidate) {
-            Some(position) => position,
-            None => {
-                return_blocked_movement!(BlockedMovementReason::TerrainUnavailable, candidate);
-            }
-        };
+    let mut grounded = match ground_position_in_space_with_surface(
+        world,
+        world.space_registry(),
+        active_space,
+        candidate,
+        Some(unit_locomotion_surface(world, unit_id)),
+    ) {
+        Some(position) => position,
+        None => {
+            return_blocked_movement!(BlockedMovementReason::TerrainUnavailable, candidate);
+        }
+    };
 
-    if active_space.is_surface() {
+    if active_space.is_surface()
+        && unit_locomotion_surface(world, unit_id) != crate::world::LocomotionSurface::Water
+    {
         match classify_slope_walkability(world, grounded, definition.max_slope_degrees) {
             SlopeWalkability::Walkable => {}
             SlopeWalkability::Unavailable => {
@@ -909,6 +919,11 @@ pub fn step_unit_movement(
             return_blocked_movement!(BlockedMovementReason::TerrainUnavailable, grounded);
         }
         PassabilityResult::Blocked { reason, source } => {
+            if reason == PassabilityBlockReason::SlopeTooSteep
+                && unit_locomotion_surface(world, unit_id).is_water()
+            {
+                // Surface swimming ignores seabed slope; occupancy/doodads still apply.
+            } else {
             let pass_result = PassabilityResult::Blocked { reason, source };
             record_movement_blocked_authority(
                 world,
@@ -956,6 +971,7 @@ pub fn step_unit_movement(
                 Some(format!("point_blocked:{blocked_reason:?}")),
             );
             return_blocked_movement!(blocked_reason, grounded);
+            }
         }
     }
 
@@ -1530,8 +1546,7 @@ mod tests {
 
     fn spawn_wolf(world: &mut WorldData, catalog: &UnitCatalog, position: WorldPosition) -> UnitId {
         create_unit(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             position,
             UnitSource::Authored,
@@ -1574,6 +1589,7 @@ mod tests {
             world,
             catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             doodad_catalog,
             &nav_config(),
             unit_id,
@@ -2049,7 +2065,8 @@ mod tests {
         );
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("goat"),
             pos(0, 0, 100.0, 0.0, 128.0),
             UnitSource::Authored,
@@ -2462,6 +2479,7 @@ mod tests {
                 &mut world,
                 &catalog,
                 &crate::world::WeaponCatalog::default(),
+                &crate::world::ItemCatalog::default(),
                 &doodad_catalog,
                 &nav,
                 assignment.unit_id,
@@ -2584,6 +2602,7 @@ mod tests {
             &mut world,
             &catalog,
             &crate::world::WeaponCatalog::default(),
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config(),
             unit_id,
@@ -2694,7 +2713,8 @@ mod tests {
         );
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("goat"),
             pos(0, 0, 100.0, 0.0, 128.0),
             UnitSource::Authored,

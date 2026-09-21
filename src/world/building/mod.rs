@@ -7,6 +7,7 @@ pub mod operation;
 pub mod operational_efficiency;
 pub mod storage_policy;
 pub mod terrain_assessment;
+pub mod terrain_placement;
 
 mod asset_pivot;
 mod authoring;
@@ -207,6 +208,8 @@ pub use placement::BuildingPlacement;
 pub use placement_plan::{
     BuildingPlacementPlan, PLACEMENT_QUANTIZE_METERS, anchor_from_terrain_position,
     build_building_placement_plan, building_anchor_render_transform, building_has_model_correction,
+    building_placement_render_y,
+    resolve_authoritative_building_placement,
     building_model_correction_local_transform, building_model_render_transform,
     building_model_world_transform, ground_and_quantize_building_anchor,
     quantize_placement_anchor_xz, snap_anchor_global_xz,
@@ -233,6 +236,16 @@ pub use storage_policy::{
     storage_item_is_misfiled, storage_policy_accepts_category,
 };
 pub use store::ChunkBuildingStore;
+pub use terrain_placement::{
+    FOUNDATION_SLOPE_DEGREES, FOUNDATION_TEXTURE_TILE_METERS,
+    FOUNDATION_TERRAIN_PENETRATION_FUDGE_METERS,
+    FoundationPerimeterVertex, FoundationSkirtSpec, MAX_FOUNDATION_VISIBLE_DEPTH_METERS,
+    PRESENTATION_TERRAIN_CLEARANCE_METERS, ResolvedBuildingPlacement, TerrainPlacementMode,
+    derive_foundation_skirt_for_placement, footprint_horizontal_span_meters,
+    foundation_slope_run_per_meter_drop, presentation_foundation_depth_meters,
+    presentation_plane_normal, resolve_building_placement, rotation_from_yaw_and_normal,
+    sample_terrain_under_footprint, slope_degrees_from_plane_coefficients, terrain_clearance_sim,
+};
 pub use terrain_assessment::{
     AssessmentRebuildOutcome, AssessmentRebuildReport, BuildingFieldRequirementAssessment,
     BuildingFieldRequirementEvaluation, BuildingTerrainAssessment, BuildingTerrainAssessmentKey,

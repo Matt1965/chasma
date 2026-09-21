@@ -211,6 +211,7 @@ fn add_selected_units_targets_focused_settlement() {
     .unwrap();
     let unit = create_unit_with_inventory(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world_data,
         &UnitDefinitionId::new("bandit"),
         pos(5.0, 5.0),

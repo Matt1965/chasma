@@ -81,17 +81,27 @@ pub fn doodad_visual_scale(definition: &DoodadDefinition, instance_scale: Vec3) 
     compose_visual_scale_vec3(baseline, instance_scale)
 }
 
-/// Unit visual scale (definition baseline only; no instance scale today).
-pub fn unit_visual_scale(definition: &UnitDefinition) -> Vec3 {
+/// Unit visual scale = definition baseline × appearance height instance scale (CG1).
+pub fn unit_visual_scale(definition: &UnitDefinition, instance_height_scale: f32) -> Vec3 {
     let baseline = definition_presentation_baseline_vec3(&definition.asset_sizing);
+    let instance = if instance_height_scale.is_finite() && instance_height_scale > 0.0 {
+        Vec3::splat(instance_height_scale)
+    } else {
+        Vec3::ONE
+    };
     // Prefer metric baseline; fall back to legacy render_scale when sizing missing.
     if definition.asset_sizing.is_missing_sizing_data()
         && definition.asset_sizing.calculated_baseline_scale.is_none()
         && definition.asset_sizing.explicit_baseline_scale.is_none()
     {
-        return Vec3::splat(definition.render_scale);
+        return Vec3::splat(definition.render_scale) * instance;
     }
-    compose_visual_scale_vec3(baseline, Vec3::ONE)
+    compose_visual_scale_vec3(baseline, instance)
+}
+
+/// Legacy helper — baseline only (instance height = 1.0).
+pub fn unit_definition_visual_scale(definition: &UnitDefinition) -> Vec3 {
+    unit_visual_scale(definition, 1.0)
 }
 
 // ---------------------------------------------------------------------------
@@ -100,7 +110,7 @@ pub fn unit_visual_scale(definition: &UnitDefinition) -> Vec3 {
 
 /// Uniform baseline render scale for units.
 pub fn unit_baseline_render_scale(definition: &UnitDefinition) -> f32 {
-    unit_visual_scale(definition).x
+    unit_definition_visual_scale(definition).x
 }
 
 /// Non-uniform baseline only (definition layer — not final presentation).

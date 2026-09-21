@@ -79,8 +79,7 @@ fn spawn_bandit(
     z: f32,
 ) -> crate::world::UnitId {
     create_unit_with_ownership(
-        catalog,
-        world,
+        catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
         &UnitDefinitionId::new("bandit"),
         pos(x, z),
         UnitSource::Authored,

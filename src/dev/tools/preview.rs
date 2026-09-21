@@ -70,6 +70,7 @@ pub fn update_dev_placement_preview(
     building_catalog: Res<BuildingCatalog>,
     footprint_catalog: Res<FootprintCatalog>,
     runtime: Option<Res<DoodadsRuntimeSettings>>,
+    render_assets: Option<Res<TerrainRenderAssets>>,
     anchor: Option<Res<DevPreviewAnchor>>,
 ) {
     preview.clear();
@@ -99,6 +100,12 @@ pub fn update_dev_placement_preview(
         spawn_affiliation: dev_state.spawn_affiliation,
         placement_yaw_deg: dev_state.placement_yaw_deg,
         placement_uniform_scale: dev_state.placement_uniform_scale,
+        terrain_vertical_scale: render_assets
+            .as_ref()
+            .map(|assets| assets.vertical_scale)
+            .unwrap_or(1.0),
+        unit_archetype: dev_state.selected_unit_archetype_for_spawn().cloned(),
+        building_archetype: dev_state.selected_building_archetype_for_spawn().cloned(),
     };
 
     let ctx = PlacementValidateContext {

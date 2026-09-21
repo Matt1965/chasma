@@ -36,7 +36,9 @@ pub use engagement::{
     initial_attack_combat_state, step_all_combat_engagement,
 };
 pub use range::{RANGE_HYSTERESIS_METERS, RangeCheck, is_in_weapon_range, weapon_for_unit_record};
-pub use retaliation::{apply_attributed_combat_damage, try_reactive_combat_retaliation};
+pub use retaliation::{
+    AttributedCombatDamageError, apply_attributed_combat_damage, try_reactive_combat_retaliation,
+};
 pub use strike::{
     CombatStrikeEvent, CombatStrikeReport, CombatStrikeTrace, step_all_combat_strikes,
 };

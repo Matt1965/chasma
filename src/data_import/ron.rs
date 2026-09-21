@@ -147,6 +147,8 @@ pub struct BuildingDefinitionRon {
     pub interior_profile_id: Option<String>,
     #[serde(default)]
     pub navigation_blueprint_id: Option<String>,
+    #[serde(default)]
+    pub terrain_placement_mode: crate::world::TerrainPlacementMode,
 }
 
 impl From<&BuildingCategoryDefinition> for BuildingCategoryRon {
@@ -205,6 +207,7 @@ impl From<&BuildingDefinition> for BuildingDefinitionRon {
             asset_sizing: definition.asset_sizing.clone(),
             interior_profile_id: definition.interior_profile_id.clone(),
             navigation_blueprint_id: definition.navigation_blueprint_id.clone(),
+            terrain_placement_mode: definition.terrain_placement_mode,
         }
     }
 }

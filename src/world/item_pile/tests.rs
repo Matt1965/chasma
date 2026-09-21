@@ -443,6 +443,7 @@ fn corpse_loot_uses_transfer_pipeline() {
     let ctx = test_ctx();
     let unit = crate::world::create_unit_with_inventory(
         &catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         pos(8.0, 8.0),
@@ -707,6 +708,7 @@ fn unique_item_transfer_preserves_instance() {
     )
     .unwrap();
     let instance_id = create_item_instance(
+        &mut harness_inventory,
         &mut instance_store,
         ctx,
         ItemDefinitionId::new("healing_kit"),

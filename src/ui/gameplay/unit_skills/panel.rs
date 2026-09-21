@@ -118,6 +118,7 @@ pub fn sync_unit_skills_panel(
     panel: Res<UnitSkillsPanelState>,
     world: Res<WorldData>,
     unit_catalog: Res<UnitCatalog>,
+    item_catalog: Res<crate::world::ItemCatalog>,
     weapon_catalog: Res<WeaponCatalog>,
     work_skill_catalog: Res<WorkSkillCatalog>,
     mut cache: Local<Option<String>>,
@@ -141,6 +142,7 @@ pub fn sync_unit_skills_panel(
         unit_id,
         &world,
         &unit_catalog,
+        &item_catalog,
         &weapon_catalog,
         &work_skill_catalog,
     ) else {

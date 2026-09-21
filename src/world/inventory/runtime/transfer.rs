@@ -509,14 +509,26 @@ pub fn transfer_unique_item(
         }
     };
 
+    let new_entry = PlacedInventoryEntry::unique(anchor_x, anchor_y, item_instance_id);
+    {
+        let dest = require_inventory(inventory_store, destination_inventory_id, false)?;
+        crate::world::equipment::validate_item_placement(
+            inventory_store,
+            instance_store,
+            ctx,
+            dest,
+            &new_entry,
+            &definition_id,
+            Some(item_instance_id),
+            None,
+        )
+        .map_err(TransferError::from)?;
+    }
+
     {
         let dest = inventory_store.get_mut(destination_inventory_id).ok_or(
             TransferError::DestinationInventoryNotFound(destination_inventory_id),
         )?;
-        if !can_place_footprint(dest, anchor_x, anchor_y, w, h, None) {
-            return Err(TransferError::DestinationNoFit);
-        }
-        let new_entry = PlacedInventoryEntry::unique(anchor_x, anchor_y, item_instance_id);
         dest.placed_entries_mut().push(new_entry);
         let dest_index = dest.placed_entries().len() - 1;
         if let Err(error) = rebuild_inventory(dest, ctx, instance_store) {

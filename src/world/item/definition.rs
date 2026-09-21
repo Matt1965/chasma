@@ -6,6 +6,8 @@ use super::icon_key::ItemIconKey;
 use super::render_key::ItemRenderKey;
 use crate::world::InventoryProfileId;
 use crate::world::WeaponDefinitionId;
+use crate::world::armor::ArmorProfileId;
+use crate::world::equipment::EquipmentSlot;
 
 /// Authoritative description of a physical item type (ADR-087 I1).
 #[derive(Debug, Clone, PartialEq, Reflect)]
@@ -28,13 +30,15 @@ pub struct ItemDefinition {
     pub enabled: bool,
     /// Future combat/equipment references — unset in I1.
     pub weapon_definition_id: Option<WeaponDefinitionId>,
-    pub armor_profile_id: Option<String>,
+    pub armor_profile_id: Option<ArmorProfileId>,
     pub consumable_profile_id: Option<String>,
     pub backpack_profile_id: Option<InventoryProfileId>,
     pub container_profile_id: Option<InventoryProfileId>,
     pub quality_profile_id: Option<String>,
     /// Hunger restored when eaten (ADR-087). Zero for non-food items.
     pub nutrition: u32,
+    /// Compatible equipment slots when this item may be worn or equipped.
+    pub equipment_slots: Vec<EquipmentSlot>,
 }
 
 impl ItemDefinition {
@@ -75,6 +79,7 @@ impl ItemDefinition {
             container_profile_id: None,
             quality_profile_id: None,
             nutrition: 0,
+            equipment_slots: Vec::new(),
         }
     }
 
@@ -100,6 +105,26 @@ impl ItemDefinition {
 
     pub fn with_nutrition(mut self, nutrition: u32) -> Self {
         self.nutrition = nutrition;
+        self
+    }
+
+    pub fn with_equipment_slots(mut self, slots: Vec<EquipmentSlot>) -> Self {
+        self.equipment_slots = slots;
+        self
+    }
+
+    pub fn with_backpack_profile_id(mut self, profile_id: InventoryProfileId) -> Self {
+        self.backpack_profile_id = Some(profile_id);
+        self
+    }
+
+    pub fn with_weapon_definition_id(mut self, weapon_id: WeaponDefinitionId) -> Self {
+        self.weapon_definition_id = Some(weapon_id);
+        self
+    }
+
+    pub fn with_armor_profile_id(mut self, profile_id: ArmorProfileId) -> Self {
+        self.armor_profile_id = Some(profile_id);
         self
     }
 }

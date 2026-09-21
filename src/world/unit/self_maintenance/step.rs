@@ -6,7 +6,7 @@ use crate::world::item::ItemCatalog;
 use crate::world::movement::feel::start_unit_move_to;
 use crate::world::task::{TaskState, TaskType, release_unit_task_to_marketplace};
 use crate::world::unit::catalog::UnitCatalog;
-use crate::world::unit::{CombatState, UnitId, UnitState, unit_can_execute_actions};
+use crate::world::unit::{CombatState, UnitId, UnitState};
 use crate::world::{
     BuildingInteractionProfileCatalog, DoodadCatalog, FootprintCatalog, NavigationConfig,
     PassabilityCatalogs, WorldData,
@@ -78,7 +78,7 @@ pub fn step_unit_nutrition_decay(ctx: &mut SelfMaintenanceContext<'_>, delta_sec
 pub fn step_unit_self_maintenance_pre_work(ctx: &mut SelfMaintenanceContext<'_>) {
     let unit_ids = ctx.world.sorted_unit_ids();
     for unit_id in unit_ids {
-        if !unit_can_execute_actions(ctx.world, unit_id) {
+        if !crate::world::unit_can_perform_normal_actions(ctx.world, unit_id) {
             continue;
         }
         let snapshot = match ctx.world.get_unit(unit_id) {
@@ -206,7 +206,7 @@ pub fn step_unit_self_maintenance_pre_work(ctx: &mut SelfMaintenanceContext<'_>)
 pub fn step_unit_self_maintenance_post_movement(ctx: &mut SelfMaintenanceContext<'_>) {
     let unit_ids = ctx.world.sorted_unit_ids();
     for unit_id in unit_ids {
-        if !unit_can_execute_actions(ctx.world, unit_id) {
+        if !crate::world::unit_can_perform_normal_actions(ctx.world, unit_id) {
             continue;
         }
         let snapshot = match ctx.world.get_unit(unit_id) {
@@ -412,7 +412,7 @@ fn resolve_eating_source(
                 *inventory_id,
                 unit.placement.position,
                 ctx.world.layout(),
-                super::food::active_haul_cargo_item(ctx.world, unit_id).as_ref(),
+                None,
             )
         }
         FoodSourceRef::SettlementStorage {

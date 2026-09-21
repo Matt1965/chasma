@@ -75,6 +75,7 @@ fn surface_is_default_unit_space() {
     let mut world = world;
     let unit_id = create_unit(
         &catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         pos(1.0, 2.0),

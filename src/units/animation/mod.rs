@@ -21,6 +21,7 @@ mod stress;
 mod sync;
 mod sync_timing;
 mod validation;
+mod work_presentation;
 
 #[allow(unused_imports)]
 pub use assets::{
@@ -79,7 +80,8 @@ pub use sync_timing::{
     AttackPlaybackKey, attack_cycle_playback_seconds, attack_playback_speed,
     should_restart_attack_playback,
 };
-#[allow(unused_imports)]
 pub use validation::{
     AnimationValidationIndex, DefinitionValidationReport, ValidationIssue, ValidationSeverity,
 };
+#[allow(unused_imports)]
+pub use work_presentation::{WorkPresentationContext, working_locomotion_clip};

@@ -135,6 +135,7 @@ fn setup_iron_mine_world(
     let unit_catalog = UnitCatalog::default();
     let worker = create_unit(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         pos(64.0, 63.0),

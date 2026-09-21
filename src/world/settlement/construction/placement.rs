@@ -64,6 +64,7 @@ pub fn search_placement_candidates(
         unit_catalog,
         config: BuildingPlacementConfig::default(),
         player_authorized: true,
+        terrain_vertical_scale: 1.0,
     };
 
     let step = budget.step_meters.max(2.0);

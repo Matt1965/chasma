@@ -18,7 +18,10 @@ use super::systems::{
     pause_simulation_on_enter_main_menu, prepare_main_menu_navigation,
     resume_simulation_on_enter_ingame, sync_gameplay_hud_for_screen, sync_pause_menu_presence,
 };
+use super::starting_squad::focus_camera_on_new_game_spawn;
 use super::transition::{SessionTransitionRequest, apply_session_transition_requests};
+use crate::ui::origin_select::OriginSelectPlugin;
+use crate::ui::unit_editor::UnitEditorPlugin;
 
 /// Menu Escape / input-block sync — runs before gameplay and Dev collectors.
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -33,6 +36,7 @@ pub struct MenuPlugin;
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<AppScreen>()
+            .add_plugins((UnitEditorPlugin, OriginSelectPlugin))
             .init_resource::<GameSessionState>()
             .init_resource::<MenuNavigation>()
             .init_resource::<MenuInputBlock>()
@@ -57,7 +61,7 @@ impl Plugin for MenuPlugin {
             .add_systems(OnExit(AppScreen::Loading), despawn_loading_ui)
             .add_systems(
                 OnEnter(AppScreen::InGame),
-                resume_simulation_on_enter_ingame,
+                (resume_simulation_on_enter_ingame, focus_camera_on_new_game_spawn),
             )
             .add_systems(
                 Update,

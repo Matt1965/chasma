@@ -16,6 +16,8 @@ mod task;
 mod types;
 
 #[cfg(test)]
+mod cargo_tests;
+#[cfg(test)]
 mod tests;
 
 pub use execute::{

@@ -13,6 +13,8 @@ use crate::dev::widgets::{
 };
 use crate::dev::window::{DevWindowId, DevWindowRegistry};
 use crate::environment::WaterSettings;
+use crate::terrain::TerrainRenderAssets;
+use crate::world::WorldData;
 
 use super::state::DevWorldWaterEnabledToggle;
 
@@ -51,9 +53,50 @@ pub fn sync_world_water_level_slider(
     );
 }
 
+pub fn apply_dev_presentation_water_level(
+    world: &mut WorldData,
+    settings: &mut WaterSettings,
+    presentation_y: f32,
+    vertical_scale: f32,
+) {
+    let snapped = snap_world_water_level(presentation_y);
+    world
+        .water_mut()
+        .set_surface_from_presentation(snapped, vertical_scale);
+    settings.water_level = world.water().presentation_surface_y(vertical_scale);
+}
+
+fn current_vertical_scale(render: Option<&TerrainRenderAssets>) -> f32 {
+    render
+        .map(|assets| assets.vertical_scale)
+        .filter(|scale| scale.is_finite() && scale.abs() > 1e-8)
+        .unwrap_or(1.0)
+}
+
+fn write_dev_water_level(
+    world: Option<&mut WorldData>,
+    settings: &mut WaterSettings,
+    presentation_y: f32,
+    render: Option<&TerrainRenderAssets>,
+) {
+    let snapped = snap_world_water_level(presentation_y);
+    if let Some(world) = world {
+        apply_dev_presentation_water_level(
+            world,
+            settings,
+            snapped,
+            current_vertical_scale(render),
+        );
+    } else {
+        settings.water_level = snapped;
+    }
+}
+
 pub fn handle_world_water_level_slider(
     dev_state: Res<DevModeState>,
     registry: Res<DevWindowRegistry>,
+    mut world: Option<ResMut<WorldData>>,
+    render: Option<Res<TerrainRenderAssets>>,
     mut settings: ResMut<WaterSettings>,
     mut drag: ResMut<DevSliderDragState>,
     mouse: Res<ButtonInput<MouseButton>>,
@@ -97,11 +140,12 @@ pub fn handle_world_water_level_slider(
             gate.block_gameplay_mouse = true;
             gate.block_camera_input = true;
             if let Some(norm) = slider_normalized_x(relative) {
-                settings.water_level = snap_world_water_level(normalized_to_value(
-                    norm,
-                    WATER_LEVEL_MIN,
-                    WATER_LEVEL_MAX,
-                ));
+                write_dev_water_level(
+                    world.as_deref_mut(),
+                    settings.as_mut(),
+                    normalized_to_value(norm, WATER_LEVEL_MIN, WATER_LEVEL_MAX),
+                    render.as_deref(),
+                );
             }
         }
     }
@@ -124,8 +168,12 @@ pub fn handle_world_water_level_slider(
         let Some(norm) = slider_normalized_x(relative) else {
             continue;
         };
-        settings.water_level =
-            snap_world_water_level(normalized_to_value(norm, WATER_LEVEL_MIN, WATER_LEVEL_MAX));
+        write_dev_water_level(
+            world.as_deref_mut(),
+            settings.as_mut(),
+            normalized_to_value(norm, WATER_LEVEL_MIN, WATER_LEVEL_MAX),
+            render.as_deref(),
+        );
         gate.block_camera_input = true;
         gate.block_gameplay_mouse = true;
     }
@@ -175,6 +223,7 @@ fn sync_water_toggle_mark(
 pub fn handle_world_water_enabled_toggle(
     dev_state: Res<DevModeState>,
     registry: Res<DevWindowRegistry>,
+    mut world: Option<ResMut<WorldData>>,
     mut gate: ResMut<crate::dev::DevModeInputGate>,
     mut settings: ResMut<WaterSettings>,
     buttons: Query<
@@ -190,7 +239,14 @@ pub fn handle_world_water_enabled_toggle(
             continue;
         }
         gate.block_gameplay_mouse = true;
-        settings.enabled = !settings.enabled;
+        let enabled = if let Some(world) = world.as_deref_mut() {
+            let next = !world.water().enabled;
+            world.water_mut().set_enabled(next);
+            next
+        } else {
+            !settings.enabled
+        };
+        settings.enabled = enabled;
     }
 }
 
@@ -215,8 +271,13 @@ mod tests {
     #[test]
     fn slider_mutates_authoritative_water_settings() {
         let mut settings = WaterSettings::default();
-        settings.water_level = snap_world_water_level(23.7);
+        let mut world = WorldData::new(crate::world::ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        apply_dev_presentation_water_level(&mut world, &mut settings, 23.7, 1.0);
         assert!((settings.water_level - 23.7).abs() < f32::EPSILON);
+        assert!((world.water().surface_y_sim - 23.7).abs() < 1e-4);
     }
 
     #[test]

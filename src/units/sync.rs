@@ -11,7 +11,10 @@ use bevy::prelude::*;
 
 use crate::terrain::TerrainRenderAssets;
 use crate::terrain::residency::ChunkResidencyTracker;
-use crate::world::{UnitCatalog, UnitId, WorldConfig, WorldData};
+use crate::world::{
+    AppearanceProfileCatalog, UnitCatalog, UnitId, WorldConfig, WorldData,
+    effective_unit_render_key,
+};
 
 use super::assets::UnitSceneAssets;
 use super::components::UnitRenderEntity;
@@ -55,6 +58,7 @@ pub fn sync_unit_render_entities(
     mut commands: Commands,
     world: Res<WorldData>,
     catalog: Res<UnitCatalog>,
+    appearance_profiles: Res<AppearanceProfileCatalog>,
     config: Res<WorldConfig>,
     residency: Res<ChunkResidencyTracker>,
     asset_server: Res<AssetServer>,
@@ -95,7 +99,12 @@ pub fn sync_unit_render_entities(
         let Some(definition) = catalog.get(&record.definition_id) else {
             continue;
         };
-        let render_scale = crate::world::unit_visual_scale(definition);
+        let height_scale = record
+            .appearance
+            .as_ref()
+            .map(|appearance| appearance.height_scale)
+            .unwrap_or(1.0);
+        let render_scale = crate::world::unit_visual_scale(definition, height_scale);
         let layout = config.chunk_layout();
         let translation = unit_render_translation(&world, record, layout, vertical_scale);
         commands.entity(entity).insert(Transform {
@@ -121,9 +130,20 @@ pub fn sync_unit_render_entities(
             );
             continue;
         };
-        let Some(scene) = scene_assets.scene_for(&definition.id).cloned() else {
-            if let Some(key) = definition.render_key.0.as_deref() {
-                scene_assets.log_missing_once(key);
+        let render_key = match effective_unit_render_key(record, definition, &appearance_profiles) {
+            Ok(key) => key,
+            Err(error) => {
+                warn!(
+                    "unit {} appearance render key failed: {error}",
+                    record.id.raw()
+                );
+                continue;
+            }
+        };
+        let render_key_str = render_key.0.as_deref().unwrap_or("");
+        let Some(scene) = scene_assets.scene_for_render_key(render_key_str).cloned() else {
+            if !render_key_str.is_empty() {
+                scene_assets.log_missing_once(render_key_str);
             }
             continue;
         };
@@ -131,6 +151,11 @@ pub fn sync_unit_render_entities(
             continue;
         }
 
+        let height_scale = record
+            .appearance
+            .as_ref()
+            .map(|appearance| appearance.height_scale)
+            .unwrap_or(1.0);
         let entity = spawn_unit_render_entity(
             &mut commands,
             &world,
@@ -139,7 +164,7 @@ pub fn sync_unit_render_entities(
             scene,
             &config,
             vertical_scale,
-            crate::world::unit_visual_scale(definition),
+            crate::world::unit_visual_scale(definition, height_scale),
         );
         index.0.insert(id, entity);
     }
@@ -190,8 +215,7 @@ mod tests {
         z: i32,
     ) -> UnitId {
         create_unit(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             WorldPosition::new(
                 ChunkCoord::new(x, z),
@@ -783,7 +807,8 @@ mod tests {
             insert_terrain(&mut world, 1, 1);
             create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("ghost"),
                 WorldPosition::new(ChunkCoord::new(1, 1), LocalPosition::new(Vec3::ZERO)),
                 UnitSource::Authored,

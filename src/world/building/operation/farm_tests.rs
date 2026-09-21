@@ -163,6 +163,7 @@ fn setup_farm(
     let unit_catalog = UnitCatalog::default();
     let worker_id = create_unit(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         pos(64.0, 63.0),

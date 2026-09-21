@@ -20,8 +20,11 @@ Full design narrative: [DESIGN.md](../DESIGN.md#inventory-and-equipment).
 | **Equipment** | Traditional slots (weapon, armor, accessories) | Combat loadout clarity |
 | **Inventory** | Kenshi-style **grid** with item footprints | Logistics, looting, caravan packing |
 
-Physical item size matters. Equipment and grid inventory coexist — worn gear is not
-necessarily stored in the grid.
+Physical item size matters. Equipment and personal grid inventory coexist on the same
+authoritative inventory architecture: each semantic equipment slot is a constrained
+`InventoryRecord` (max one placed entry, slot compatibility, immutable item footprints).
+Equipped items are real `ItemInstance`s moved by the normal transfer APIs — not parallel
+`Option<ItemInstanceId>` fields.
 
 ### Quality-of-life (planned)
 
@@ -41,7 +44,7 @@ Reduce busywork without removing strategy:
 ### Combat integration
 
 - `WeaponDefinition` remains attack authority (ADR-054)
-- Equipped weapon selects `active_weapon_id`; default weapon is fallback
+- Equipped weapon item resolves to `WeaponDefinition` at runtime; unit default weapon is fallback
 - Looting downed units (ADR-069) consumes grid inventory when downed state exists
 
 ## Non-goals (current phase)

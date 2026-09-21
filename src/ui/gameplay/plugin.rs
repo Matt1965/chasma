@@ -18,6 +18,11 @@ use super::build_mode::{
     sync_build_mode_ghost_scene, sync_build_mode_terrain_overlay, tint_build_mode_ghost_scene,
     update_build_mode_ghost,
 };
+#[cfg(feature = "dev")]
+use super::build_mode::{
+    BuildModePlacementTrace, draw_build_mode_placement_gizmos, handle_placement_trace_toggle,
+    trace_build_mode_preview_after_update,
+};
 use super::building_panel::{
     BuildingPanelState, handle_building_menu_close_button, handle_building_production_controls,
     reconcile_building_menu_panel, spawn_building_menu_panel, sync_building_menu_panel,
@@ -115,6 +120,8 @@ impl Plugin for GameplayUiPlugin {
             .init_resource::<GameplayCursorPresentation>()
             .init_resource::<GameplayHoveredUnit>()
             .init_resource::<MoveCommandFeedback>();
+        #[cfg(feature = "dev")]
+        app.init_resource::<BuildModePlacementTrace>();
         app.add_systems(
             Startup,
             (
@@ -209,14 +216,31 @@ impl Plugin for GameplayUiPlugin {
                 clear_build_mode_terrain_overlay_on_exit,
                 sync_build_mode_ghost_scene,
                 tint_build_mode_ghost_scene,
-                sync_build_catalog_visibility,
-                sync_build_catalog_contents,
-                draw_build_mode_ghost,
             )
                 .chain()
                 .in_set(GameplayUiSystems),
         )
         .add_systems(
+            Update,
+            (
+                sync_build_catalog_visibility,
+                sync_build_catalog_contents,
+                draw_build_mode_ghost,
+            )
+                .in_set(GameplayUiSystems),
+        );
+        #[cfg(feature = "dev")]
+        app.add_systems(
+            Update,
+            (
+                handle_placement_trace_toggle,
+                trace_build_mode_preview_after_update,
+                draw_build_mode_placement_gizmos,
+            )
+                .in_set(GameplayUiSystems),
+        );
+        app
+            .add_systems(
             Update,
             (handle_build_catalog_clicks, handle_build_search_keyboard)
                 .chain()

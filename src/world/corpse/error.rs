@@ -25,6 +25,15 @@ pub enum CorpseError {
     ContainedItemCleanupFailed {
         inventory_id: InventoryId,
     },
+    CorpseEquipmentTransferFailed {
+        unit_id: UnitId,
+        inventory_id: InventoryId,
+        message: String,
+    },
+    CorpseExpiryDeferred {
+        corpse_id: CorpseId,
+        reason: String,
+    },
     DeathInventoryInvariantViolation {
         unit_id: UnitId,
         message: String,
@@ -58,6 +67,17 @@ impl std::fmt::Display for CorpseError {
                 f,
                 "contained item cleanup failed for inventory `{inventory_id:?}`"
             ),
+            Self::CorpseEquipmentTransferFailed {
+                unit_id,
+                inventory_id,
+                message,
+            } => write!(
+                f,
+                "corpse equipment transfer failed unit `{unit_id:?}` inventory `{inventory_id:?}`: {message}"
+            ),
+            Self::CorpseExpiryDeferred { corpse_id, reason } => {
+                write!(f, "corpse expiry deferred for `{corpse_id:?}`: {reason}")
+            }
             Self::DeathInventoryInvariantViolation { unit_id, message } => write!(
                 f,
                 "death inventory invariant violation for unit `{unit_id:?}`: {message}"

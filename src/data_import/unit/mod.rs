@@ -4,6 +4,8 @@
 mod dev_load;
 #[cfg(feature = "data-import")]
 mod excel;
+#[cfg(all(test, feature = "data-import"))]
+mod human_glb_tests;
 mod schema;
 mod validate;
 
@@ -26,6 +28,7 @@ pub fn import_units_from_excel(
     weapons: &crate::world::WeaponCatalog,
     animation_profiles: &crate::world::AnimationProfileCatalog,
     inventory_profiles: &crate::world::InventoryProfileCatalog,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
 ) -> Result<
     (
         Vec<crate::world::UnitDefinition>,
@@ -120,6 +123,44 @@ pub fn import_units_from_excel(
                 ));
                 continue;
             }
+        }
+
+        if let Some(profile_id) = &definition.appearance_profile_id {
+            let Some(profile) = appearance_profiles.get(profile_id) else {
+                summary.rows_failed += 1;
+                summary.warnings.push(format!(
+                    "row {}: unknown Appearance Profile `{}`",
+                    row.row_number,
+                    profile_id.as_str()
+                ));
+                continue;
+            };
+            let Some(variant_id) = &definition.default_body_variant_id else {
+                summary.rows_failed += 1;
+                summary.warnings.push(format!(
+                    "row {}: Appearance Profile `{}` requires Default Body Variant ID",
+                    row.row_number,
+                    profile_id.as_str()
+                ));
+                continue;
+            };
+            if profile.body_variant(variant_id).is_none() {
+                summary.rows_failed += 1;
+                summary.warnings.push(format!(
+                    "row {}: unknown Default Body Variant `{}` for Appearance Profile `{}`",
+                    row.row_number,
+                    variant_id.as_str(),
+                    profile_id.as_str()
+                ));
+                continue;
+            }
+        } else if definition.default_body_variant_id.is_some() {
+            summary.rows_failed += 1;
+            summary.warnings.push(format!(
+                "row {}: Default Body Variant ID requires Appearance Profile ID",
+                row.row_number
+            ));
+            continue;
         }
 
         let id = definition.id.clone();
@@ -283,6 +324,7 @@ mod integration_tests {
             &starter_weapons(),
             &starter_animation_profiles(),
             &crate::world::InventoryProfileCatalog::default(),
+            &crate::world::AppearanceProfileCatalog::empty(),
         )
         .unwrap();
         assert_eq!(summary.rows_valid, 1);
@@ -335,6 +377,7 @@ mod integration_tests {
             &starter_weapons(),
             &starter_animation_profiles(),
             &crate::world::InventoryProfileCatalog::default(),
+            &crate::world::AppearanceProfileCatalog::empty(),
         )
         .unwrap();
         assert_eq!(summary.rows_valid, 1);
@@ -380,6 +423,7 @@ mod integration_tests {
             &starter_weapons(),
             &starter_animation_profiles(),
             &profiles,
+        &crate::world::AppearanceProfileCatalog::empty(),
         )
         .unwrap();
         let b = import_units_from_excel(
@@ -389,6 +433,7 @@ mod integration_tests {
             &starter_weapons(),
             &starter_animation_profiles(),
             &profiles,
+        &crate::world::AppearanceProfileCatalog::empty(),
         )
         .unwrap();
         assert_eq!(a, b);
@@ -412,6 +457,7 @@ mod integration_tests {
             &starter_weapons(),
             &starter_animation_profiles(),
             &crate::world::InventoryProfileCatalog::default(),
+            &crate::world::AppearanceProfileCatalog::empty(),
         )
         .unwrap_err();
         assert!(matches!(
@@ -434,6 +480,7 @@ mod integration_tests {
             &starter_weapons(),
             &starter_animation_profiles(),
             &crate::world::InventoryProfileCatalog::default(),
+            &crate::world::AppearanceProfileCatalog::empty(),
         )
         .unwrap();
         let catalog = crate::world::UnitCatalog::from_definitions(definitions).unwrap();
@@ -477,6 +524,7 @@ mod integration_tests {
             &starter_weapons(),
             &starter_animation_profiles(),
             &crate::world::InventoryProfileCatalog::default(),
+            &crate::world::AppearanceProfileCatalog::empty(),
         )
         .unwrap_err();
         assert!(matches!(
@@ -501,6 +549,7 @@ mod integration_tests {
             &weapons,
             &starter_animation_profiles(),
             &crate::world::InventoryProfileCatalog::default(),
+            &crate::world::AppearanceProfileCatalog::empty(),
         )
         .unwrap();
         assert!(
@@ -526,5 +575,92 @@ mod integration_tests {
             "expected positive render scale, got {}",
             robot.render_scale
         );
+    }
+
+    #[test]
+    fn import_human_player_units_from_design() {
+        let path = Path::new("Chasma Design.xlsx");
+        if !path.exists() {
+            return;
+        }
+
+        let (animation_profiles, _) =
+            crate::data_import::import_animation_profiles_from_excel(path).unwrap();
+        let profile_catalog =
+            crate::world::AnimationProfileCatalog::from_definitions(animation_profiles).unwrap();
+
+        let weapons = starter_weapons();
+        let (definitions, summary) = import_units_from_excel(
+            path,
+            &starter_factions(),
+            &starter_species(),
+            &weapons,
+            &profile_catalog,
+            &crate::world::InventoryProfileCatalog::default(),
+            &crate::world::AppearanceProfileCatalog::empty(),
+        )
+        .unwrap();
+        let human_base = profile_catalog
+            .get(&crate::world::AnimationProfileId::new("human_base"))
+            .expect("human_base profile");
+        assert_eq!(human_base.idle_clip, "Idle");
+        assert_eq!(human_base.walk_clip.as_deref(), Some("Walk"));
+        assert_eq!(human_base.run_clip.as_deref(), Some("Run"));
+        assert_eq!(human_base.work_clip.as_deref(), Some("Mine"));
+        assert_eq!(human_base.death_clip.as_deref(), Some("Death"));
+        assert_eq!(human_base.hit_reaction_clip.as_deref(), Some("Hit"));
+        assert_eq!(human_base.upper_body_split_bone.as_deref(), Some("spine_02"));
+
+        for unit_id in ["U-0004", "U-0005"] {
+            let def = definitions
+                .iter()
+                .find(|def| def.id.as_str() == unit_id)
+                .expect(unit_id);
+            assert_eq!(def.faction_id.as_str(), "player");
+            assert_eq!(def.species_id.as_str(), "human");
+            assert_eq!(def.default_weapon_id.as_str(), "weapon_fists");
+            assert_eq!(
+                def.inventory_profile_id.as_ref().map(|id| id.as_str()),
+                Some("unit_backpack_standard"),
+            );
+            assert_eq!(
+                def.animation_profile_id.as_ref().map(|id| id.as_str()),
+                Some("human_base"),
+            );
+            assert!(def.work_capabilities.can_construct);
+            assert!(def.work_capabilities.can_operate_workstation);
+            assert!(def.work_capabilities.can_haul);
+            assert!(def.enabled);
+            assert!(def.render_key.0.is_some());
+            weapons
+                .get(&def.default_weapon_id)
+                .expect("default weapon resolves");
+        }
+
+        let male = definitions
+            .iter()
+            .find(|def| def.id.as_str() == "U-0004")
+            .expect("Human Male");
+        let female = definitions
+            .iter()
+            .find(|def| def.id.as_str() == "U-0005")
+            .expect("Human Female");
+        assert_eq!(male.render_key.0.as_deref(), Some("human_male"));
+        assert_eq!(female.render_key.0.as_deref(), Some("human_female"));
+        assert_eq!(male.display_name, "Human Male");
+        assert_eq!(female.display_name, "Human Female");
+        for def in [male, female] {
+            let source = def
+                .asset_sizing
+                .calculated_source_bounds
+                .expect("asset sizing baked");
+            assert!(
+                source.height_meters > 1.5 && source.height_meters < 2.1,
+                "{} source height {:.3}m",
+                def.display_name,
+                source.height_meters,
+            );
+            assert!(def.render_scale > 0.5 && def.render_scale < 1.5);
+        }
     }
 }

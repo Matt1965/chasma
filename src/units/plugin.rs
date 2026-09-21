@@ -1,3 +1,4 @@
+use bevy::mesh::InheritWeightSystems;
 use bevy::prelude::*;
 
 use crate::world::UnitCatalog;
@@ -26,9 +27,11 @@ impl Plugin for UnitsRuntimePlugin {
             .init_resource::<UnitRenderIndex>();
 
         #[cfg(feature = "dev")]
-        app.init_resource::<crate::units::dev_spawn::DevPreviewUnitSpawnLedger>()
-            .init_resource::<super::portal_report::LatestPortalTransitionReport>()
-            .init_resource::<super::movement_authority_report::LatestMovementAuthorityReport>();
+        {
+            app.init_resource::<crate::units::dev_spawn::DevPreviewUnitSpawnLedger>()
+                .init_resource::<super::portal_report::LatestPortalTransitionReport>()
+                .init_resource::<super::movement_authority_report::LatestMovementAuthorityReport>();
+        }
 
         app.add_plugins(UnitAnimationPlugin)
             .add_systems(Startup, init_unit_scene_assets)
@@ -38,22 +41,38 @@ impl Plugin for UnitsRuntimePlugin {
                     #[cfg(feature = "dev")]
                     crate::units::dev_spawn::spawn_dev_preview_units,
                     sync_unit_render_entities,
+                    super::presentation::sync_live_unit_presentation_appearance,
                     super::visual_facing::update_unit_visual_facing,
                     #[cfg(feature = "dev")]
                     super::portal_report::report_portal_transition_presentation,
                     #[cfg(feature = "dev")]
                     super::movement_authority_report::report_movement_authority_for_selection,
+                    super::presentation::propagate_preview_render_layers,
                 )
                     .chain()
                     .in_set(UnitRuntimeSystems),
+            )
+            .add_systems(
+                PostUpdate,
+                (
+                    super::appearance_presentation::sync_unit_appearance_morphs,
+                    super::equipment_presentation::sync_unit_equipment_morphs,
+                )
+                    .chain()
+                    .after(InheritWeightSystems),
             );
     }
 }
 
 fn init_unit_scene_assets(
     catalog: Res<UnitCatalog>,
+    appearance_profiles: Res<crate::world::AppearanceProfileCatalog>,
     asset_server: Res<AssetServer>,
     mut commands: Commands,
 ) {
-    commands.insert_resource(preload_unit_scenes(&catalog, &asset_server));
+    commands.insert_resource(preload_unit_scenes(
+        &catalog,
+        &appearance_profiles,
+        &asset_server,
+    ));
 }

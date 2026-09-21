@@ -16,8 +16,10 @@ use super::id::DevWindowId;
 use super::math::{
     DEFAULT_PANEL_BODY_PADDING_PX, DEFAULT_PANEL_WIDTH_PX, LAUNCHER_LEFT_PX, LAUNCHER_TOP_PX,
     TITLE_BAR_HEIGHT_PX, default_catalog_position, default_debug_position, default_fields_position,
-    default_navigation_editor_position, default_save_position, default_selected_object_position,
-    default_settlement_position, default_world_position, navigation_editor_body_max_height,
+    default_navigation_editor_position, default_origin_editor_position, default_roads_position,
+    default_save_position,
+    default_selected_object_position, default_settlement_position, default_world_position,
+    navigation_editor_body_max_height,
     navigation_editor_panel_width,
 };
 
@@ -56,6 +58,10 @@ pub fn setup_dev_workspace(mut commands: Commands, registry: Res<DevWindowRegist
     spawn_settlement_window(&mut commands, registry.session(DevWindowId::Settlement));
 
     spawn_fields_window(&mut commands, registry.session(DevWindowId::Fields));
+
+    spawn_roads_window(&mut commands, registry.session(DevWindowId::Roads));
+
+    spawn_origin_editor_window(&mut commands, registry.session(DevWindowId::OriginEditor));
 }
 
 fn spawn_workspace_launcher(commands: &mut Commands) {
@@ -96,8 +102,8 @@ fn spawn_workspace_launcher(commands: &mut Commands) {
                 column,
                 DevLauncherGroup::Advanced,
                 "Advanced",
-                "Show or hide advanced authoring windows: Debug, World, Settlement, Fields, and \
-                 Navigation Editor.",
+                "Show or hide advanced authoring windows: Debug, World, Settlement, Fields, \
+                 Roads, Navigation Editor, and Origin Editor.",
                 DevWindowId::ADVANCED_LAUNCHER,
             );
         });
@@ -185,6 +191,10 @@ fn spawn_launcher_button(parent: &mut ChildSpawnerCommands, window: DevWindowId)
             "Toggle the Settlement window (camera-focused settlement dev tools)."
         }
         DevWindowId::Fields => "Toggle the Fields window (terrain field tools).",
+        DevWindowId::Roads => "Toggle the Road Editor (spline road authoring).",
+        DevWindowId::OriginEditor => {
+            "Toggle the Origin Editor (starting-origin snapshot authoring)."
+        }
     };
     parent.spawn((
         DevWorkspaceLauncherButton { window },
@@ -296,7 +306,7 @@ pub fn spawn_catalog_window(
 
                 top: Val::Px(position.y),
 
-                width: Val::Px(DEFAULT_PANEL_WIDTH_PX),
+                width: Val::Px(super::math::CATALOG_PANEL_WIDTH_PX),
 
                 flex_direction: FlexDirection::Column,
 
@@ -622,6 +632,39 @@ pub fn spawn_fields_window(
         Some(540.0),
         None,
         905,
+    );
+}
+
+/// Spawn the Road Editor window shell.
+pub fn spawn_roads_window(
+    commands: &mut Commands,
+    session: Option<&super::state::DevWindowSessionState>,
+) {
+    spawn_advanced_window_shell(
+        commands,
+        DevWindowId::Roads,
+        session,
+        default_roads_position,
+        DEFAULT_PANEL_WIDTH_PX + 20.0,
+        Some(620.0),
+        None,
+        907,
+    );
+}
+
+pub fn spawn_origin_editor_window(
+    commands: &mut Commands,
+    session: Option<&super::state::DevWindowSessionState>,
+) {
+    spawn_advanced_window_shell(
+        commands,
+        DevWindowId::OriginEditor,
+        session,
+        default_origin_editor_position,
+        DEFAULT_PANEL_WIDTH_PX,
+        Some(520.0),
+        None,
+        908,
     );
 }
 

@@ -162,6 +162,7 @@ fn authoring_request_kind_is_default_world() {
 fn return_to_main_menu_clears_session_kind() {
     let mut session = GameSessionState {
         kind: GameSessionKind::NewGame,
+        selected_origin_id: None,
     };
     session.clear();
     assert_eq!(session.kind, GameSessionKind::None);
@@ -197,6 +198,7 @@ fn menu_input_block_resource_defaults_inactive() {
 fn menu_state_types_are_not_world_data_payload() {
     let session = GameSessionState {
         kind: GameSessionKind::NewGame,
+        selected_origin_id: None,
     };
     let encoded = format!("{session:?}");
     assert!(encoded.contains("NewGame"));

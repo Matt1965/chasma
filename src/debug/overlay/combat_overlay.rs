@@ -10,7 +10,9 @@ use crate::ui::gameplay::combat_display::{
     attack_range_circle_radius_meters, combat_target_id, weapon_display_for_unit,
 };
 use crate::units::input::SelectedUnits;
-use crate::world::{UnitCatalog, WeaponCatalog, WorldConfig, WorldData, weapon_for_unit_record};
+use crate::world::{
+    ItemCatalog, UnitCatalog, WeaponCatalog, WorldConfig, WorldData, weapon_for_unit_record,
+};
 
 use super::helpers::{render_position, xz_to_render_y};
 
@@ -25,6 +27,7 @@ pub fn draw_combat_debug_overlay(
     selection: Res<SelectedUnits>,
     world: Res<WorldData>,
     catalog: Res<UnitCatalog>,
+    items: Res<ItemCatalog>,
     weapons: Res<WeaponCatalog>,
     config: Res<WorldConfig>,
     settings: Res<DebugOverlaySettings>,
@@ -54,7 +57,7 @@ pub fn draw_combat_debug_overlay(
         let Some(definition) = catalog.get(&record.definition_id) else {
             continue;
         };
-        let Ok(weapon) = weapon_for_unit_record(record, &catalog, &weapons) else {
+        let Ok(weapon) = weapon_for_unit_record(&world, record, &catalog, &items, &weapons) else {
             continue;
         };
 
@@ -92,7 +95,7 @@ pub fn draw_combat_debug_overlay(
         }
 
         drawn += 1;
-        let _ = weapon_display_for_unit(record, &catalog, &weapons);
+        let _ = weapon_display_for_unit(&world, record, &catalog, &items, &weapons);
     }
 
     for projectile_id in world.sorted_projectile_ids() {

@@ -14,6 +14,7 @@ mod fixtures {
     use crate::world::building::inventory_binding::{
         BuildingInventoryBindingDefinition, BuildingInventoryBindingId, BuildingInventoryRole,
     };
+    use crate::world::building::terrain_placement::TerrainPlacementMode;
     use crate::world::logistics::BuildingLogisticsRouteDefinition;
     use crate::world::operation::OperationDefinitionId;
 
@@ -234,7 +235,7 @@ mod fixtures {
             .with_interaction_profile_id("storage_chest")
             .with_interior_profile_id("barn_interior")
             .with_navigation_blueprint_id("barn_interior")
-            .with_model_local_offset(Vec3::new(7.05, 0.35, -18.65)),
+            .with_model_local_offset(Vec3::new(14.857, 0.674, -13.446)),
             BuildingDefinition::new(
                 BuildingDefinitionId::new("settlement_core"),
                 "Settlement Core",
@@ -277,6 +278,7 @@ mod fixtures {
         .with_inventory_bindings(vec![primary_output_binding()])
         .with_default_inventory_binding_id(BuildingInventoryBindingId::new("primary_output"))
         .with_logistics_routes([warehouse_route_output("primary_output", "iron_ore")])
+        .with_terrain_placement_mode(TerrainPlacementMode::ConformToTerrain)
     }
 
     fn tf4_copper_mine() -> BuildingDefinition {
@@ -292,6 +294,7 @@ mod fixtures {
             30.0,
             true,
         )
+        .with_terrain_placement_mode(TerrainPlacementMode::ConformToTerrain)
     }
 
     fn tf4_stone_quarry() -> BuildingDefinition {
@@ -316,6 +319,7 @@ mod fixtures {
         .with_inventory_bindings(vec![primary_output_binding()])
         .with_default_inventory_binding_id(BuildingInventoryBindingId::new("primary_output"))
         .with_logistics_routes([warehouse_route_output("primary_output", "stone")])
+        .with_terrain_placement_mode(TerrainPlacementMode::ConformToTerrain)
     }
 
     fn tf4_prispod_farm() -> BuildingDefinition {
@@ -340,6 +344,7 @@ mod fixtures {
         .with_inventory_bindings(vec![farm_output_binding()])
         .with_default_inventory_binding_id(BuildingInventoryBindingId::new("primary_output"))
         .with_logistics_routes([warehouse_route_output("primary_output", "prispod")])
+        .with_terrain_placement_mode(TerrainPlacementMode::ConformToTerrain)
     }
 
     fn tf4_water_well() -> BuildingDefinition {

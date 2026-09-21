@@ -239,6 +239,16 @@ fn validate_optional_clips(
             "TurnRight",
             ValidationSeverity::Warning,
         ),
+        (
+            AnimationClipKey::Swim,
+            "Swim",
+            ValidationSeverity::Warning,
+        ),
+        (
+            AnimationClipKey::SwimIdle,
+            "SwimIdle",
+            ValidationSeverity::Warning,
+        ),
     ] {
         if let Some((name, _)) = profile.resolve_clip_name(key) {
             if !gltf.named_animations.contains_key(name) {

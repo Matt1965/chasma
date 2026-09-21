@@ -49,7 +49,7 @@ pub fn handle_menu_escape(
     }
 
     match *screen.get() {
-        AppScreen::Loading => {}
+        AppScreen::Loading | AppScreen::UnitEditor | AppScreen::OriginSelect => {}
         AppScreen::MainMenu => match nav.page {
             MenuPage::Root => {}
             MenuPage::Settings | MenuPage::Credits => nav.back_to_root(),
@@ -101,10 +101,12 @@ pub fn sync_gameplay_hud_for_screen(
     mut build_mode: ResMut<BuildModeState>,
     mut inventory: ResMut<InventoryUiState>,
 ) {
-    let in_game = *screen.get() == AppScreen::InGame;
+    let in_game = matches!(*screen.get(), AppScreen::InGame | AppScreen::UnitEditor);
     hud_state.visible = in_game && !menu_block.active;
 
-    let visibility = if in_game && !menu_block.active {
+    let visibility = if *screen.get() == AppScreen::UnitEditor {
+        Visibility::Hidden
+    } else if in_game && !menu_block.active {
         Visibility::Visible
     } else if in_game && menu_block.active {
         // Pause: hide HUD interaction by hiding roots (menu owns input).
@@ -145,7 +147,10 @@ pub fn enforce_simulation_pause_for_screen(
     mut control: ResMut<SimulationControlState>,
 ) {
     match *screen.get() {
-        AppScreen::MainMenu | AppScreen::Loading => {
+        AppScreen::MainMenu
+        | AppScreen::Loading
+        | AppScreen::UnitEditor
+        | AppScreen::OriginSelect => {
             control.pause();
         }
         AppScreen::InGame if nav.pause_open => {

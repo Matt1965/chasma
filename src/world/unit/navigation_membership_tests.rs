@@ -210,6 +210,7 @@ fn exterior_spawn_remains_surface() {
     let unit_catalog = UnitCatalog::default();
     let record = create_unit(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         pos(10.0, 10.0),
@@ -275,6 +276,7 @@ fn real_hut_spawn_inside_region_assigns_interior_membership() {
     let unit_catalog = UnitCatalog::default();
     let unit_id = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         spawn_pos,
@@ -343,6 +345,7 @@ fn real_hut_spawn_inside_moves_via_same_space_path() {
 
     let unit_id = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         spawn_pos,
@@ -360,6 +363,7 @@ fn real_hut_spawn_inside_moves_via_same_space_path() {
         &mut world,
         &unit_catalog,
         &weapon_catalog,
+        &crate::world::ItemCatalog::default(),
         &doodad_catalog,
         &nav_config,
         unit_id,
@@ -460,6 +464,7 @@ fn real_hut_spawn_inside_moves_via_player_command_resolution_path() {
 
     let unit_id = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         spawn_pos,
@@ -495,6 +500,7 @@ fn real_hut_spawn_inside_moves_via_player_command_resolution_path() {
         &mut world,
         &unit_catalog,
         &weapon_catalog,
+        &crate::world::ItemCatalog::default(),
         &doodad_catalog,
         &nav_config,
         unit_id,
@@ -585,6 +591,7 @@ fn surface_unit_overlapping_interior_outline_stays_surface_during_simulation() {
     );
     let unit_id = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         spawn_pos,
@@ -702,6 +709,7 @@ fn surface_only_movement_through_entrance_projection_stays_surface() {
     let nav_config = NavigationConfig::default();
     let unit_id = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         spawn_pos,
@@ -721,6 +729,7 @@ fn surface_only_movement_through_entrance_projection_stays_surface() {
         &mut world,
         &unit_catalog,
         &weapon_catalog,
+        &crate::world::ItemCatalog::default(),
         &doodad_catalog,
         &nav_config,
         unit_id,

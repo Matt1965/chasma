@@ -63,6 +63,7 @@ fn treasury_fixture() -> TreasuryFixture {
     let ctx = InventoryCatalogCtx::new(items, categories, profiles);
     let unit = create_unit_with_inventory(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         WorldPosition::new(
@@ -157,6 +158,7 @@ fn anchor_only_settlement_has_no_treasury_deposit_building() {
     let mut world = test_world();
     let unit = create_unit_with_inventory(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         WorldPosition::new(

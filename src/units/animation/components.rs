@@ -37,6 +37,7 @@ pub struct UpperAttackWeightFade {
 pub enum AnimationPlaybackClip {
     Locomotion(AnimationClipKey),
     Attack(WeaponDefinitionId),
+    CombatIdle(WeaponDefinitionId),
     Death,
     HitReaction,
 }
@@ -127,6 +128,8 @@ pub struct UnitAnimationPersistedState {
     pub last_attack_phase: Option<AttackPhase>,
     pub attack_key: Option<AttackPlaybackKey>,
     pub attack_blend_out: Option<Duration>,
+    /// Alternates unarmed Jab/Cross presentation (Slice 8).
+    pub unarmed_strike_parity: u8,
     pub locomotion: LocomotionPresentationState,
     pub lod: AnimationLodPresentationState,
 }

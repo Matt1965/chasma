@@ -3,15 +3,16 @@ use std::collections::{HashMap, HashSet};
 use bevy::prelude::*;
 
 use crate::world::{
-    AnimationClipKey, AnimationProfileCatalog, UnitCatalog, UnitDefinitionId, WeaponCatalog,
-    WeaponDefinitionId,
+    AnimationClipKey, AnimationProfileCatalog, AppearanceProfileCatalog, UnitCatalog,
+    UnitDefinition, UnitDefinitionId, UnitRecord, WeaponCatalog, WeaponDefinitionId,
+    effective_unit_render_key_str,
 };
 
 use super::components::{
     AnimationPlaybackPending, AnimationProfileHandle, UnitAnimationGraphInstalled,
     UnitAnimationPlayerLink,
 };
-use super::layers::{FULL_BODY_CLIP_MASK, LOWER_BODY_CLIP_MASK, UPPER_BODY_CLIP_MASK};
+use super::layers::{FULL_BODY_CLIP_MASK, UPPER_BODY_CLIP_MASK};
 use super::validation::{
     AnimationValidationIndex, DefinitionValidationReport, validate_definition_animation_assets,
 };
@@ -23,7 +24,6 @@ use crate::units::components::{UnitRenderEntity, UnitRenderMetadata};
 pub struct AnimationGraphShareKey {
     pub profile_id: crate::world::AnimationProfileId,
     pub gltf_asset_path: String,
-    pub default_weapon_id: WeaponDefinitionId,
 }
 
 /// Built animation graph assets for one unit definition (A1/A2).
@@ -32,8 +32,12 @@ pub struct DefinitionAnimationGraph {
     pub graph: Handle<AnimationGraph>,
     pub locomotion_nodes: HashMap<AnimationClipKey, AnimationNodeIndex>,
     pub attack_nodes: HashMap<WeaponDefinitionId, AnimationNodeIndex>,
+    pub attack_variant_nodes: HashMap<WeaponDefinitionId, AnimationNodeIndex>,
+    pub combat_idle_nodes: HashMap<WeaponDefinitionId, AnimationNodeIndex>,
     pub locomotion_durations: HashMap<AnimationClipKey, f32>,
     pub attack_durations: HashMap<WeaponDefinitionId, f32>,
+    pub attack_variant_durations: HashMap<WeaponDefinitionId, f32>,
+    pub combat_idle_durations: HashMap<WeaponDefinitionId, f32>,
     pub death_node: Option<AnimationNodeIndex>,
     pub death_duration: Option<f32>,
     pub hit_reaction_node: Option<AnimationNodeIndex>,
@@ -79,6 +83,38 @@ impl UnitAnimationAssets {
 
     pub fn graph_for(&self, definition_id: &UnitDefinitionId) -> Option<&DefinitionAnimationGraph> {
         self.graphs.get(definition_id)
+    }
+
+    pub fn graph_for_share_key(
+        &self,
+        share_key: &AnimationGraphShareKey,
+    ) -> Option<&DefinitionAnimationGraph> {
+        self.shared_graphs.get(share_key)
+    }
+
+    pub fn graph_for_unit(
+        &self,
+        record: &UnitRecord,
+        definition: &UnitDefinition,
+        appearance_profiles: &AppearanceProfileCatalog,
+    ) -> Option<&DefinitionAnimationGraph> {
+        if let Some(graph) = self.graphs.get(&record.definition_id) {
+            let render_key = effective_unit_render_key_str(record, definition, appearance_profiles)
+                .ok()
+                .unwrap_or_default();
+            if let Some(profile_id) = &definition.animation_profile_id {
+                let path = format!("units/{render_key}.glb");
+                let share_key = AnimationGraphShareKey {
+                    profile_id: profile_id.clone(),
+                    gltf_asset_path: path,
+                };
+                if let Some(shared) = self.shared_graphs.get(&share_key) {
+                    return Some(shared);
+                }
+            }
+            return Some(graph);
+        }
+        None
     }
 
     pub fn share_key_for(
@@ -134,10 +170,33 @@ pub(crate) fn gltf_asset_path_for_definition(
 pub fn preload_unit_animation_gltfs(
     catalog: &UnitCatalog,
     profiles: &AnimationProfileCatalog,
+    appearance_profiles: &AppearanceProfileCatalog,
     asset_server: &AssetServer,
 ) -> UnitAnimationAssets {
     let mut gltfs = HashMap::new();
     let mut gltf_by_path = HashMap::new();
+    let mut render_keys = HashSet::new();
+    for definition in catalog.definitions() {
+        if definition.animation_profile_id.is_none() {
+            continue;
+        }
+        if let Some(key) = definition.render_key.0.as_ref() {
+            render_keys.insert(key.clone());
+        }
+    }
+    for profile in appearance_profiles.definitions() {
+        for variant in &profile.body_variants {
+            if let Some(key) = variant.render_key.0.as_ref() {
+                render_keys.insert(key.clone());
+            }
+        }
+    }
+    for render_key in render_keys {
+        let path = format!("units/{render_key}.glb");
+        gltf_by_path
+            .entry(path.clone())
+            .or_insert_with(|| asset_server.load(path));
+    }
     for definition in catalog.definitions() {
         if definition.animation_profile_id.is_none() {
             continue;
@@ -169,7 +228,7 @@ struct GraphBuildContext<'a> {
     profile_id: &'a crate::world::AnimationProfileId,
     definition: &'a crate::world::UnitDefinition,
     gltf: &'a Gltf,
-    weapon: Option<&'a crate::world::WeaponDefinition>,
+    weapons: &'a WeaponCatalog,
     clips: &'a Assets<AnimationClip>,
     assets: &'a mut UnitAnimationAssets,
 }
@@ -179,6 +238,8 @@ struct GraphBuildContext<'a> {
 struct ResolvedClipSet {
     locomotion: Vec<(AnimationClipKey, Handle<AnimationClip>, f32)>,
     attacks: Vec<(WeaponDefinitionId, Handle<AnimationClip>, f32)>,
+    attack_variants: Vec<(WeaponDefinitionId, Handle<AnimationClip>, f32)>,
+    combat_idles: Vec<(WeaponDefinitionId, Handle<AnimationClip>, f32)>,
     death: Option<(Handle<AnimationClip>, f32)>,
     hit: Option<(Handle<AnimationClip>, f32)>,
 }
@@ -190,8 +251,11 @@ fn resolve_clips_for_graph(ctx: &mut GraphBuildContext<'_>) -> ResolvedClipSet {
         AnimationClipKey::Idle,
         AnimationClipKey::Walk,
         AnimationClipKey::Run,
+        AnimationClipKey::Work,
         AnimationClipKey::TurnLeft,
         AnimationClipKey::TurnRight,
+        AnimationClipKey::Swim,
+        AnimationClipKey::SwimIdle,
     ] {
         let Some((clip_name, _resolved)) = ctx.profile.resolve_clip_name(key) else {
             continue;
@@ -212,7 +276,7 @@ fn resolve_clips_for_graph(ctx: &mut GraphBuildContext<'_>) -> ResolvedClipSet {
         resolved.locomotion.push((key, handle.clone(), duration));
     }
 
-    if let Some(weapon) = ctx.weapon {
+    for weapon in ctx.weapons.definitions() {
         let clip_name = weapon.animation_key.trim();
         if !clip_name.is_empty() {
             if let Some(handle) = ctx.gltf.named_animations.get(clip_name) {
@@ -224,19 +288,37 @@ fn resolve_clips_for_graph(ctx: &mut GraphBuildContext<'_>) -> ResolvedClipSet {
                 resolved
                     .attacks
                     .push((weapon.id.clone(), handle.clone(), duration));
-            } else {
-                ctx.assets.log_once(format!(
-                    "unit `{}` weapon `{}` missing attack clip `{clip_name}` in glTF",
-                    ctx.definition.id.as_str(),
-                    weapon.id.as_str()
-                ));
             }
-        } else {
-            ctx.assets.log_once(format!(
-                "unit `{}` weapon `{}` has blank attack animation",
-                ctx.definition.id.as_str(),
-                weapon.id.as_str()
-            ));
+        }
+        if let Some(variant) = weapon.attack_animation.variant.as_deref() {
+            let variant = variant.trim();
+            if !variant.is_empty() {
+                if let Some(handle) = ctx.gltf.named_animations.get(variant) {
+                    let duration = ctx
+                        .clips
+                        .get(handle)
+                        .map(|clip| clip.duration())
+                        .unwrap_or(1.0);
+                    resolved
+                        .attack_variants
+                        .push((weapon.id.clone(), handle.clone(), duration));
+                }
+            }
+        }
+        if let Some(idle) = weapon.combat_idle_clip.as_deref() {
+            let idle = idle.trim();
+            if !idle.is_empty() {
+                if let Some(handle) = ctx.gltf.named_animations.get(idle) {
+                    let duration = ctx
+                        .clips
+                        .get(handle)
+                        .map(|clip| clip.duration())
+                        .unwrap_or(1.0);
+                    resolved
+                        .combat_idles
+                        .push((weapon.id.clone(), handle.clone(), duration));
+                }
+            }
         }
     }
 
@@ -297,7 +379,8 @@ fn assemble_graph_from_clips(
     let mut locomotion_nodes = HashMap::new();
     let mut locomotion_durations = HashMap::new();
     for (key, handle, duration) in &resolved.locomotion {
-        let node = graph.add_clip_with_mask(handle.clone(), LOWER_BODY_CLIP_MASK, 1.0, blend_root);
+        // Locomotion clips are authored full-body (UAL Idle/Walk/Run/Mine).
+        let node = graph.add_clip_with_mask(handle.clone(), FULL_BODY_CLIP_MASK, 1.0, blend_root);
         locomotion_nodes.insert(*key, node);
         locomotion_durations.insert(*key, *duration);
     }
@@ -308,6 +391,22 @@ fn assemble_graph_from_clips(
         let node = graph.add_clip_with_mask(handle.clone(), UPPER_BODY_CLIP_MASK, 1.0, blend_root);
         attack_nodes.insert(weapon_id.clone(), node);
         attack_durations.insert(weapon_id.clone(), *duration);
+    }
+
+    let mut attack_variant_nodes = HashMap::new();
+    let mut attack_variant_durations = HashMap::new();
+    for (weapon_id, handle, duration) in &resolved.attack_variants {
+        let node = graph.add_clip_with_mask(handle.clone(), UPPER_BODY_CLIP_MASK, 1.0, blend_root);
+        attack_variant_nodes.insert(weapon_id.clone(), node);
+        attack_variant_durations.insert(weapon_id.clone(), *duration);
+    }
+
+    let mut combat_idle_nodes = HashMap::new();
+    let mut combat_idle_durations = HashMap::new();
+    for (weapon_id, handle, duration) in &resolved.combat_idles {
+        let node = graph.add_clip_with_mask(handle.clone(), FULL_BODY_CLIP_MASK, 1.0, blend_root);
+        combat_idle_nodes.insert(weapon_id.clone(), node);
+        combat_idle_durations.insert(weapon_id.clone(), *duration);
     }
 
     let death_node = resolved.death.as_ref().map(|(handle, _)| {
@@ -327,8 +426,12 @@ fn assemble_graph_from_clips(
         graph: graph_handle,
         locomotion_nodes,
         attack_nodes,
+        attack_variant_nodes,
+        combat_idle_nodes,
         locomotion_durations,
         attack_durations,
+        attack_variant_durations,
+        combat_idle_durations,
         death_node,
         death_duration,
         hit_reaction_node,
@@ -348,7 +451,6 @@ fn build_graph_from_context(
     let share_key = AnimationGraphShareKey {
         profile_id: ctx.profile_id.clone(),
         gltf_asset_path: path,
-        default_weapon_id: ctx.definition.default_weapon_id.clone(),
     };
 
     if let Some(shared) = ctx.assets.shared_graphs.get(&share_key) {
@@ -398,8 +500,9 @@ pub fn build_unit_animation_graphs(
         let profile = profiles.get(profile_id);
         let gltf_handle = assets.gltfs.get(&definition.id).cloned();
         let gltf = gltf_handle.as_ref().and_then(|handle| gltfs.get(handle));
-        let weapon = weapons.get(&definition.default_weapon_id);
-        let weapon_clip = weapon.map(|value| value.animation_key.as_str());
+        let weapon_clip = weapons
+            .get(&definition.default_weapon_id)
+            .map(|value| value.animation_key.as_str());
         let report = validate_definition_animation_assets(definition, profile, gltf, weapon_clip);
         assets.validation.log_new_issues(&report);
         assets
@@ -430,7 +533,7 @@ pub fn build_unit_animation_graphs(
             profile_id,
             definition,
             gltf,
-            weapon,
+            weapons: &weapons,
             clips: &clips,
             assets: &mut assets,
         };
@@ -509,11 +612,10 @@ mod tests {
     use super::*;
     use crate::world::{AnimationProfile, AnimationProfileId, UnitRenderKey};
 
-    fn share_key(profile: &str, path: &str, weapon: &str) -> AnimationGraphShareKey {
+    fn share_key(profile: &str, path: &str) -> AnimationGraphShareKey {
         AnimationGraphShareKey {
             profile_id: AnimationProfileId::new(profile),
             gltf_asset_path: path.to_string(),
-            default_weapon_id: WeaponDefinitionId::new(weapon),
         }
     }
 
@@ -522,8 +624,12 @@ mod tests {
             graph: Handle::default(),
             locomotion_nodes: Default::default(),
             attack_nodes: Default::default(),
+            attack_variant_nodes: Default::default(),
+            combat_idle_nodes: Default::default(),
             locomotion_durations: Default::default(),
             attack_durations: Default::default(),
+            attack_variant_durations: Default::default(),
+            combat_idle_durations: Default::default(),
             death_node: None,
             death_duration: None,
             hit_reaction_node: None,
@@ -537,7 +643,7 @@ mod tests {
 
     #[test]
     fn identical_share_keys_reuse_one_shared_graph() {
-        let key = share_key("humanoid", "units/wolf.glb", "weapon_wolf_bite");
+        let key = share_key("humanoid", "units/wolf.glb");
         let graph_a = empty_graph(key.clone());
         let mut assets = UnitAnimationAssets::default();
         assets.shared_graphs.insert(key.clone(), graph_a.clone());
@@ -558,9 +664,9 @@ mod tests {
     }
 
     #[test]
-    fn different_weapons_produce_distinct_share_keys() {
-        let key_a = share_key("humanoid", "units/wolf.glb", "weapon_a");
-        let key_b = share_key("humanoid", "units/wolf.glb", "weapon_b");
+    fn different_profiles_produce_distinct_share_keys() {
+        let key_a = share_key("humanoid", "units/wolf.glb");
+        let key_b = share_key("quadruped", "units/wolf.glb");
         assert_ne!(key_a, key_b);
     }
 
@@ -586,6 +692,8 @@ mod tests {
         ResolvedClipSet {
             locomotion: vec![(AnimationClipKey::Idle, clip_handle(), 1.0)],
             attacks: Vec::new(),
+            attack_variants: Vec::new(),
+            combat_idles: Vec::new(),
             death: Some((clip_handle(), 2.0)),
             hit: Some((clip_handle(), 0.5)),
         }
@@ -594,7 +702,7 @@ mod tests {
     #[test]
     fn death_and_hit_graph_nodes_are_distinct() {
         let mut graphs = Assets::<AnimationGraph>::default();
-        let share_key = share_key("humanoid", "units/wolf.glb", "weapon_wolf_bite");
+        let share_key = share_key("humanoid", "units/wolf.glb");
         let built = assemble_graph_from_clips(
             &resolved_both_presentation_clips(),
             &AnimationProfileId::new("humanoid"),
@@ -610,10 +718,12 @@ mod tests {
     #[test]
     fn death_only_graph_maps_death_node() {
         let mut graphs = Assets::<AnimationGraph>::default();
-        let share_key = share_key("humanoid", "units/wolf.glb", "weapon_wolf_bite");
+        let share_key = share_key("humanoid", "units/wolf.glb");
         let resolved = ResolvedClipSet {
             locomotion: vec![(AnimationClipKey::Idle, clip_handle(), 1.0)],
             attacks: Vec::new(),
+            attack_variants: Vec::new(),
+            combat_idles: Vec::new(),
             death: Some((clip_handle(), 2.0)),
             hit: None,
         };
@@ -631,10 +741,12 @@ mod tests {
     #[test]
     fn hit_only_graph_maps_hit_node() {
         let mut graphs = Assets::<AnimationGraph>::default();
-        let share_key = share_key("humanoid", "units/wolf.glb", "weapon_wolf_bite");
+        let share_key = share_key("humanoid", "units/wolf.glb");
         let resolved = ResolvedClipSet {
             locomotion: vec![(AnimationClipKey::Idle, clip_handle(), 1.0)],
             attacks: Vec::new(),
+            attack_variants: Vec::new(),
+            combat_idles: Vec::new(),
             death: None,
             hit: Some((clip_handle(), 0.5)),
         };
@@ -652,7 +764,7 @@ mod tests {
     #[test]
     fn missing_optional_presentation_clips_do_not_shift_attack_mapping() {
         let mut graphs = Assets::<AnimationGraph>::default();
-        let share_key = share_key("humanoid", "units/wolf.glb", "weapon_wolf_bite");
+        let share_key = share_key("humanoid", "units/wolf.glb");
         let resolved = ResolvedClipSet {
             locomotion: vec![(AnimationClipKey::Idle, clip_handle(), 1.0)],
             attacks: vec![(
@@ -660,6 +772,8 @@ mod tests {
                 clip_handle(),
                 1.2,
             )],
+            attack_variants: Vec::new(),
+            combat_idles: Vec::new(),
             death: None,
             hit: None,
         };

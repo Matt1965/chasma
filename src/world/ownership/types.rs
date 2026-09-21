@@ -4,9 +4,10 @@
 //! is design metadata only — never authoritative for control or diplomacy.
 
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// Direct controller of a unit instance (player, AI script, neutral world logic).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect, Serialize, Deserialize)]
 pub struct OwnerId(pub u64);
 
 impl OwnerId {
@@ -20,7 +21,7 @@ impl OwnerId {
 }
 
 /// Ally/enemy grouping hook for future combat and diplomacy.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Reflect, Serialize, Deserialize)]
 pub struct TeamId(pub u64);
 
 impl TeamId {
@@ -34,7 +35,7 @@ impl TeamId {
 }
 
 /// Broad runtime classification for UI filtering and controllability (O1).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Reflect, Serialize, Deserialize)]
 pub enum Affiliation {
     /// Local human player — selectable and commandable when owner matches.
     Player,

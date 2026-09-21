@@ -1,6 +1,7 @@
 use super::entry::EntryIndex;
 use super::id::{InventoryId, ItemInstanceId};
 use super::owner::InventoryOwnerRef;
+use crate::world::equipment::EquipmentSlot;
 use crate::world::{InventoryProfileId, ItemDefinitionId, UnitId};
 
 /// Structured inventory mutation and validation errors (ADR-088 I2).
@@ -91,6 +92,52 @@ pub enum InventoryError {
     },
     NonStackableItem(ItemDefinitionId),
     UniqueItemRequired(ItemDefinitionId),
+    MaxPlacedEntriesExceeded {
+        inventory_id: InventoryId,
+        max_entries: u8,
+    },
+    IncompatibleEquipmentSlot {
+        inventory_id: InventoryId,
+        slot: EquipmentSlot,
+        item_definition_id: ItemDefinitionId,
+    },
+    LoadedContainerInPersonalInventory {
+        unit_id: UnitId,
+        item_definition_id: ItemDefinitionId,
+    },
+    ContainerLoadingForbiddenInPersonalInventory {
+        unit_id: UnitId,
+        container_instance_id: ItemInstanceId,
+        inventory_id: InventoryId,
+    },
+    ContainerRecursionForbidden {
+        item_definition_id: ItemDefinitionId,
+    },
+    DuplicateContainerInventory(ItemInstanceId),
+    ContainerNotEmptyOnRelease {
+        item_instance_id: ItemInstanceId,
+        inventory_id: InventoryId,
+    },
+    UnitEquipmentMissing(UnitId),
+    UnitEquipmentOwnerMismatch {
+        unit_id: UnitId,
+        slot: EquipmentSlot,
+        inventory_id: InventoryId,
+    },
+    UnitEquipmentProfileMismatch {
+        unit_id: UnitId,
+        slot: EquipmentSlot,
+        inventory_id: InventoryId,
+        profile_id: InventoryProfileId,
+    },
+    ContainerOwnerInstanceMissing {
+        item_instance_id: ItemInstanceId,
+        inventory_id: InventoryId,
+    },
+    ContainerInventoryMismatch {
+        item_instance_id: ItemInstanceId,
+        inventory_id: InventoryId,
+    },
 }
 
 impl std::fmt::Display for InventoryError {
@@ -225,6 +272,91 @@ impl std::fmt::Display for InventoryError {
             Self::UniqueItemRequired(id) => {
                 write!(f, "item `{}` requires unique instance", id.as_str())
             }
+            Self::MaxPlacedEntriesExceeded {
+                inventory_id,
+                max_entries,
+            } => write!(
+                f,
+                "inventory `{inventory_id:?}` already has max {max_entries} placed entries"
+            ),
+            Self::IncompatibleEquipmentSlot {
+                inventory_id,
+                slot,
+                item_definition_id,
+            } => write!(
+                f,
+                "item `{}` incompatible with equipment slot `{slot:?}` in inventory `{inventory_id:?}`",
+                item_definition_id.as_str()
+            ),
+            Self::LoadedContainerInPersonalInventory {
+                unit_id,
+                item_definition_id,
+            } => write!(
+                f,
+                "loaded container `{}` cannot enter personal inventory of unit `{unit_id:?}`",
+                item_definition_id.as_str()
+            ),
+            Self::ContainerLoadingForbiddenInPersonalInventory {
+                unit_id,
+                container_instance_id,
+                inventory_id,
+            } => write!(
+                f,
+                "cannot load container instance `{container_instance_id:?}` while it is in personal inventory of unit `{unit_id:?}` (internal inventory `{inventory_id:?}`)"
+            ),
+            Self::ContainerRecursionForbidden { item_definition_id } => write!(
+                f,
+                "container item `{}` cannot be placed inside another container",
+                item_definition_id.as_str()
+            ),
+            Self::DuplicateContainerInventory(id) => {
+                write!(
+                    f,
+                    "item instance `{id:?}` already owns a container inventory"
+                )
+            }
+            Self::ContainerNotEmptyOnRelease {
+                item_instance_id,
+                inventory_id,
+            } => write!(
+                f,
+                "container `{item_instance_id:?}` inventory `{inventory_id:?}` is not empty"
+            ),
+            Self::UnitEquipmentMissing(unit_id) => {
+                write!(f, "unit `{unit_id:?}` has no equipment inventories")
+            }
+            Self::UnitEquipmentOwnerMismatch {
+                unit_id,
+                slot,
+                inventory_id,
+            } => write!(
+                f,
+                "unit `{unit_id:?}` equipment slot `{slot:?}` owner mismatch for inventory `{inventory_id:?}`"
+            ),
+            Self::UnitEquipmentProfileMismatch {
+                unit_id,
+                slot,
+                inventory_id,
+                profile_id,
+            } => write!(
+                f,
+                "unit `{unit_id:?}` slot `{slot:?}` inventory `{inventory_id:?}` profile mismatch (`{}`)",
+                profile_id.as_str()
+            ),
+            Self::ContainerOwnerInstanceMissing {
+                item_instance_id,
+                inventory_id,
+            } => write!(
+                f,
+                "container inventory `{inventory_id:?}` references missing instance `{item_instance_id:?}`"
+            ),
+            Self::ContainerInventoryMismatch {
+                item_instance_id,
+                inventory_id,
+            } => write!(
+                f,
+                "item instance `{item_instance_id:?}` container inventory mismatch (`{inventory_id:?}`)"
+            ),
         }
     }
 }

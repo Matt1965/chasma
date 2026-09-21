@@ -67,6 +67,7 @@ pub fn handle_selected_object_actions(
             continue;
         }
         match button.action {
+            SelectedObjectAction::EditUnit => {}
             SelectedObjectAction::Move => {
                 activate_dev_transform_tool(&mut gizmo, DevTool::Translate);
             }

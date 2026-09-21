@@ -84,7 +84,8 @@ mod tests {
         let catalog = UnitCatalog::default();
         create_unit(
             &catalog,
-            world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        world,
             &UnitDefinitionId::new("wolf"),
             WorldPosition::new(
                 ChunkCoord::new(x, z),

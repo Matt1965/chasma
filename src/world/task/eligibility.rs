@@ -22,6 +22,9 @@ pub fn unit_can_perform_task(
     unit_id: UnitId,
     task_type: TaskType,
 ) -> bool {
+    if !crate::world::unit_can_perform_normal_actions(world, unit_id) {
+        return false;
+    }
     let Some(caps) = unit_work_capabilities(catalog, world, unit_id) else {
         return false;
     };

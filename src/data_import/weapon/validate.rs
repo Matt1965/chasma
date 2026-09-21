@@ -86,7 +86,9 @@ pub fn validate_row(row: &WeaponImportRow) -> Result<(), crate::data_import::Row
 mod tests {
     use super::*;
     use crate::data_import::weapon::schema::WeaponImportRow;
-    use crate::world::{AttackPlaybackPolicy, DamageType, HitMode, TargetFilter};
+    use crate::world::{
+        AttackPlaybackPolicy, DamageType, HitMode, TargetFilter, WeaponAnimationFamily,
+    };
 
     fn sample_row(aps: f32) -> WeaponImportRow {
         WeaponImportRow {
@@ -110,6 +112,8 @@ mod tests {
             attack_blend_in_ms: crate::data_import::weapon::schema::DEFAULT_ATTACK_BLEND_MS,
             attack_blend_out_ms: crate::data_import::weapon::schema::DEFAULT_ATTACK_BLEND_MS,
             attack_variant: None,
+            animation_family: WeaponAnimationFamily::None,
+            combat_idle_clip: None,
             target_filters: vec![TargetFilter::Enemies],
             stat_scaling: None,
             enabled: true,

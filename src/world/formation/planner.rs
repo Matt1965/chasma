@@ -154,8 +154,7 @@ mod tests {
 
     fn spawn(catalog: &UnitCatalog, world: &mut WorldData, x: f32, z: f32) -> UnitId {
         create_unit(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,
@@ -354,6 +353,7 @@ mod tests {
                 &mut world,
                 &catalog,
                 &crate::world::WeaponCatalog::default(),
+                &crate::world::ItemCatalog::default(),
                 &doodad_catalog,
                 &nav_config,
                 assignment.unit_id,

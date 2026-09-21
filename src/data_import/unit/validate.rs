@@ -132,6 +132,10 @@ mod tests {
             nutrition_consumption_per_second: DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND,
             has_nutrition_consumption_column: false,
             asset_sizing: Default::default(),
+            appearance_profile_id: String::new(),
+            default_body_variant_id: String::new(),
+            has_appearance_profile_column: false,
+            has_default_body_variant_column: false,
         }
     }
 

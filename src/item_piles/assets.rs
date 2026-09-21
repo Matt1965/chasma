@@ -14,34 +14,54 @@ pub const ITEM_ASSET_ROOT: &str = "items";
 /// glTF scene index loaded for each definition (Scene 0 until per-definition override exists).
 pub const DEFAULT_GLTF_SCENE_INDEX: usize = 0;
 
-/// Maps catalog definitions to preloaded glTF scene handles.
+/// Maps render keys to preloaded glTF scene handles.
 #[derive(Debug, Resource, Default)]
 pub struct ItemSceneAssets {
-    scenes: HashMap<ItemDefinitionId, Handle<Scene>>,
+    scenes_by_render_key: HashMap<String, Handle<Scene>>,
+    scenes_by_definition: HashMap<ItemDefinitionId, Handle<Scene>>,
     missing_keys: HashSet<String>,
 }
 
 impl ItemSceneAssets {
     pub fn scene_for(&self, definition_id: &ItemDefinitionId) -> Option<&Handle<Scene>> {
-        self.scenes.get(definition_id)
+        self.scenes_by_definition.get(definition_id)
+    }
+
+    /// Return a scene handle for a render key, loading and caching if needed.
+    pub fn ensure_scene(
+        &mut self,
+        render_key: &str,
+        asset_server: &AssetServer,
+    ) -> Option<Handle<Scene>> {
+        if let Some(scene) = self.scenes_by_render_key.get(render_key) {
+            return Some(scene.clone());
+        }
+        let Some(path) = gltf_asset_path(&ItemRenderKey::reserved(render_key)) else {
+            return None;
+        };
+        let scene: Handle<Scene> =
+            asset_server.load(GltfAssetLabel::Scene(DEFAULT_GLTF_SCENE_INDEX).from_asset(path));
+        self.scenes_by_render_key
+            .insert(render_key.to_string(), scene.clone());
+        Some(scene)
     }
 
     /// Return a scene handle for this definition, loading and caching if needed.
-    pub fn ensure_scene(
+    pub fn ensure_scene_for_definition(
         &mut self,
         definition_id: &ItemDefinitionId,
         render_key: &ItemRenderKey,
         asset_server: &AssetServer,
     ) -> Option<Handle<Scene>> {
-        if let Some(scene) = self.scenes.get(definition_id) {
+        if let Some(scene) = self.scenes_by_definition.get(definition_id) {
             return Some(scene.clone());
         }
-        let Some(path) = gltf_asset_path(render_key) else {
+        let Some(render_key_ref) = render_key.0.as_ref() else {
             return None;
         };
-        let scene: Handle<Scene> =
-            asset_server.load(GltfAssetLabel::Scene(DEFAULT_GLTF_SCENE_INDEX).from_asset(path));
-        self.scenes.insert(definition_id.clone(), scene.clone());
+        let scene = self.ensure_scene(render_key_ref, asset_server)?;
+        self.scenes_by_definition
+            .insert(definition_id.clone(), scene.clone());
         Some(scene)
     }
 
@@ -55,7 +75,8 @@ impl ItemSceneAssets {
     #[cfg(test)]
     pub fn from_test_scenes(scenes: HashMap<ItemDefinitionId, Handle<Scene>>) -> Self {
         Self {
-            scenes,
+            scenes_by_definition: scenes,
+            scenes_by_render_key: HashMap::new(),
             missing_keys: HashSet::new(),
         }
     }
@@ -74,17 +95,22 @@ pub fn gltf_asset_path(render_key: &ItemRenderKey) -> Option<String> {
 
 /// Preload scene handles for every catalog definition that has a render key.
 pub fn preload_item_scenes(catalog: &ItemCatalog, asset_server: &AssetServer) -> ItemSceneAssets {
-    let mut scenes = HashMap::new();
+    let mut scenes_by_definition = HashMap::new();
+    let mut scenes_by_render_key = HashMap::new();
     for definition in catalog.definitions() {
         let Some(path) = gltf_asset_path(&definition.render_key) else {
             continue;
         };
         let scene: Handle<Scene> =
             asset_server.load(GltfAssetLabel::Scene(DEFAULT_GLTF_SCENE_INDEX).from_asset(path));
-        scenes.insert(definition.id.clone(), scene);
+        scenes_by_definition.insert(definition.id.clone(), scene.clone());
+        if let Some(key) = definition.render_key.0.as_ref() {
+            scenes_by_render_key.insert(key.clone(), scene);
+        }
     }
     ItemSceneAssets {
-        scenes,
+        scenes_by_render_key,
+        scenes_by_definition,
         missing_keys: HashSet::new(),
     }
 }

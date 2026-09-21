@@ -5,11 +5,12 @@
 //! [`try_ground_world_position`] and handle [`super::TerrainQueryError`] explicitly.
 
 use crate::world::{ChunkId, LocalPosition, WorldData, WorldPosition};
+use bevy::prelude::Vec3;
 
 use super::{Heightfield, TerrainQueryError};
 
-/// Sample resident heightfield height at an authoritative [`WorldPosition`].
-pub fn try_sample_height_at_position(
+/// Sample resident **base** heightfield height (no road deformation).
+pub fn try_sample_base_height_at_position(
     world: &WorldData,
     position: WorldPosition,
 ) -> Result<f32, TerrainQueryError> {
@@ -19,6 +20,24 @@ pub fn try_sample_height_at_position(
         .ok_or(TerrainQueryError::ChunkNotResident)?;
     data.heightfield
         .try_sample(position.local.0.x, position.local.0.z)
+}
+
+/// Sample resident **effective** terrain height (base + road delta).
+pub fn try_sample_height_at_position(
+    world: &WorldData,
+    position: WorldPosition,
+) -> Result<f32, TerrainQueryError> {
+    let base = try_sample_base_height_at_position(world, position)?;
+    let chunk_id = ChunkId::new(position.chunk);
+    let data = world
+        .get(chunk_id)
+        .ok_or(TerrainQueryError::ChunkNotResident)?;
+    let delta = data
+        .road_height_delta
+        .as_ref()
+        .and_then(|tile| tile.sample_delta(position.local.0.x, position.local.0.z).ok())
+        .unwrap_or(0.0);
+    Ok(base + delta)
 }
 
 /// Sample terrain height and return a copy with authoritative Y set.
@@ -42,14 +61,60 @@ pub fn ground_world_position(world: &WorldData, position: WorldPosition) -> Opti
     try_ground_world_position(world, position).ok()
 }
 
-/// Estimate terrain slope in degrees at a chunk-local position (ADR-005).
+/// Estimate effective terrain slope in degrees at a chunk-local position (ADR-005).
 pub fn slope_at(world: &WorldData, position: WorldPosition) -> Result<f32, TerrainQueryError> {
     let chunk_id = ChunkId::new(position.chunk);
-    let data = world
-        .get(chunk_id)
-        .ok_or(TerrainQueryError::ChunkNotResident)?;
-    estimate_slope_degrees(&data.heightfield, position.local.0.x, position.local.0.z)
-        .ok_or(TerrainQueryError::SlopeUnavailable)
+    if world.get(chunk_id).is_none() {
+        return Err(TerrainQueryError::ChunkNotResident);
+    }
+    estimate_effective_slope_degrees(world, position).ok_or(TerrainQueryError::SlopeUnavailable)
+}
+
+/// Estimate effective terrain slope using base height + road deformation.
+pub fn estimate_effective_slope_degrees(
+    world: &WorldData,
+    position: WorldPosition,
+) -> Option<f32> {
+    let chunk_id = ChunkId::new(position.chunk);
+    let data = world.get(chunk_id)?;
+    let spacing = data.heightfield.spacing_meters();
+    let size = data.heightfield.chunk_size_meters();
+    let local_x = position.local.0.x;
+    let local_z = position.local.0.z;
+
+    if !data.heightfield.is_within_domain(local_x, local_z) {
+        return None;
+    }
+
+    let sample = |x: f32, z: f32| -> Option<f32> {
+        let local = LocalPosition::new(Vec3::new(x, 0.0, z));
+        let pos = WorldPosition::new(position.chunk, local);
+        try_sample_height_at_position(world, pos).ok()
+    };
+
+    let h = sample(local_x, local_z)?;
+
+    let dhdx = if local_x + spacing <= size + 1e-4 {
+        let next = sample(local_x + spacing, local_z)?;
+        (next - h) / spacing
+    } else if local_x >= spacing {
+        let prev = sample(local_x - spacing, local_z)?;
+        (h - prev) / spacing
+    } else {
+        return None;
+    };
+
+    let dhdz = if local_z + spacing <= size + 1e-4 {
+        let next = sample(local_x, local_z + spacing)?;
+        (next - h) / spacing
+    } else if local_z >= spacing {
+        let prev = sample(local_x, local_z - spacing)?;
+        (h - prev) / spacing
+    } else {
+        return None;
+    };
+
+    Some(dhdx.hypot(dhdz).atan().to_degrees())
 }
 
 /// Estimate terrain slope in degrees at a chunk-local position.

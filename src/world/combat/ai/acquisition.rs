@@ -8,8 +8,8 @@ use crate::world::perception::perceived_units;
 use crate::world::relationship::AuthoredRelationshipCatalog;
 use crate::world::unit::{CombatState, UnitId, UnitOrder, UnitState, unit_can_execute_actions};
 use crate::world::{
-    AttackTargetingPolicy, DoodadCatalog, NavigationConfig, UnitCatalog, WeaponCatalog, WorldData,
-    is_unit_alive, is_valid_active_combat_target, issue_unit_order,
+    AttackTargetingPolicy, DoodadCatalog, ItemCatalog, NavigationConfig, UnitCatalog,
+    WeaponCatalog, WorldData, is_unit_alive, is_valid_active_combat_target, issue_unit_order,
     validate_mechanical_attack_target, weapon_for_unit_record,
 };
 
@@ -58,6 +58,7 @@ pub fn step_combat_ai_acquisition(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -91,6 +92,7 @@ pub fn step_combat_ai_acquisition(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             doodad_catalog,
             nav_config,
             targeting_policy,
@@ -111,6 +113,7 @@ fn scan_unit_for_acquisition(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -119,7 +122,7 @@ fn scan_unit_for_acquisition(
     unit_id: UnitId,
 ) -> Option<CombatAiTrace> {
     let record = world.get_unit(unit_id)?;
-    if !unit_can_execute_actions(world, unit_id) {
+    if !crate::world::unit_can_perform_normal_actions(world, unit_id) {
         return None;
     }
     if !unit_eligible_for_auto_acquire(record, settings) {
@@ -131,11 +134,12 @@ fn scan_unit_for_acquisition(
         record,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         targeting_policy,
     ) {
         return None;
     }
-    if weapon_for_unit_record(record, unit_catalog, weapon_catalog).is_err() {
+    if weapon_for_unit_record(world, record, unit_catalog, item_catalog, weapon_catalog).is_err() {
         return None;
     }
 
@@ -144,6 +148,7 @@ fn scan_unit_for_acquisition(
         unit_id,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
         targeting_policy,
         authored,
     ) else {
@@ -158,6 +163,7 @@ fn scan_unit_for_acquisition(
         world,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
         doodad_catalog,
         nav_config,
         unit_id,
@@ -201,6 +207,7 @@ pub fn unit_needs_auto_acquire_target(
     record: &crate::world::UnitRecord,
     weapon_catalog: &WeaponCatalog,
     unit_catalog: &UnitCatalog,
+    item_catalog: &ItemCatalog,
     policy: AttackTargetingPolicy,
 ) -> bool {
     match &record.combat_state {
@@ -212,6 +219,7 @@ pub fn unit_needs_auto_acquire_target(
                 target_id,
                 weapon_catalog,
                 unit_catalog,
+                item_catalog,
                 policy,
             )
         }),
@@ -222,6 +230,7 @@ pub fn unit_needs_auto_acquire_target(
                 *target,
                 weapon_catalog,
                 unit_catalog,
+                item_catalog,
                 policy,
             )
         }
@@ -232,6 +241,7 @@ pub fn unit_needs_auto_acquire_target(
                 target_id,
                 weapon_catalog,
                 unit_catalog,
+                item_catalog,
                 policy,
             )
         }),
@@ -244,6 +254,7 @@ pub fn find_auto_acquire_target(
     attacker_id: UnitId,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
     targeting_policy: AttackTargetingPolicy,
     authored: &AuthoredRelationshipCatalog,
 ) -> Option<UnitId> {
@@ -254,6 +265,7 @@ pub fn find_auto_acquire_target(
         &candidates,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
         targeting_policy,
         authored,
     )
@@ -266,6 +278,7 @@ pub fn select_nearest_valid_attack_target(
     candidate_ids: &[UnitId],
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
     targeting_policy: AttackTargetingPolicy,
     authored: &AuthoredRelationshipCatalog,
 ) -> Option<UnitId> {
@@ -281,6 +294,7 @@ pub fn select_nearest_valid_attack_target(
             candidate_id,
             weapon_catalog,
             unit_catalog,
+            item_catalog,
             targeting_policy,
         )
         .is_err()
@@ -375,8 +389,7 @@ mod tests {
         position: WorldPosition,
     ) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             position,
             UnitSource::Authored,
@@ -392,8 +405,7 @@ mod tests {
         position: WorldPosition,
     ) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("bandit"),
             position,
             UnitSource::Authored,
@@ -409,8 +421,7 @@ mod tests {
         position: WorldPosition,
     ) -> UnitId {
         let id = create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("bandit"),
             position,
             UnitSource::Authored,
@@ -437,6 +448,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
@@ -461,7 +473,8 @@ mod tests {
         let _wild = spawn_wild_wolf(&mut world, &catalog, pos(0.0, 0.0));
         let player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(4.0, 0.0),
             UnitSource::Authored,
@@ -474,6 +487,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
@@ -504,6 +518,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
@@ -526,7 +541,8 @@ mod tests {
         let mut world = flat_world();
         let _player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -539,6 +555,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
@@ -562,7 +579,8 @@ mod tests {
         let mut world = flat_world();
         let _player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -578,6 +596,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
@@ -601,6 +620,7 @@ mod tests {
             hostile,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             AttackTargetingPolicy::default(),
             &authored(),
         )
@@ -620,6 +640,7 @@ mod tests {
             hostile,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             AttackTargetingPolicy::default(),
             &authored(),
         )
@@ -644,6 +665,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
@@ -671,6 +693,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
@@ -684,6 +707,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
@@ -708,6 +732,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
@@ -755,7 +780,8 @@ mod tests {
         let mut world = flat_world();
         let _player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -764,7 +790,8 @@ mod tests {
         .unwrap();
         let hostile = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("unarmed_hostile"),
             pos(4.0, 0.0),
             UnitSource::Authored,
@@ -777,6 +804,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
@@ -832,7 +860,8 @@ mod tests {
         let mut world = flat_world();
         let hostile = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("short_sight_hostile"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -847,6 +876,7 @@ mod tests {
                 hostile,
                 &catalog,
                 &weapons,
+                &crate::world::ItemCatalog::default(),
                 AttackTargetingPolicy::default(),
                 &authored(),
             )
@@ -859,6 +889,7 @@ mod tests {
                 hostile,
                 &catalog,
                 &weapons,
+                &crate::world::ItemCatalog::default(),
                 AttackTargetingPolicy::default(),
                 &authored(),
             )
@@ -912,7 +943,8 @@ mod tests {
         let weapons = WeaponCatalog::from_definitions(starter_weapon_definitions()).unwrap();
         let hostile = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("short_sight_hostile"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -922,7 +954,8 @@ mod tests {
         .id;
         let distant = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             WorldPosition::new(
                 ChunkCoord::new(5, 0),
@@ -940,6 +973,7 @@ mod tests {
                 hostile,
                 &catalog,
                 &weapons,
+                &crate::world::ItemCatalog::default(),
                 AttackTargetingPolicy::default(),
                 &authored(),
             )

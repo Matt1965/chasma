@@ -65,6 +65,25 @@ pub fn anchor_from_terrain_position(
     ground_and_quantize_building_anchor(world, click)
 }
 
+/// Shared terrain placement authority for player build mode and dev spawning.
+pub fn resolve_authoritative_building_placement(
+    ctx: &BuildingPlacementContext<'_>,
+    definition_id: &BuildingDefinitionId,
+    candidate_anchor: WorldPosition,
+    rotation: Quat,
+    ownership: BuildingOwnership,
+) -> BuildingPlacementValidation {
+    let grounded_candidate =
+        anchor_from_terrain_position(ctx.world, candidate_anchor).unwrap_or(candidate_anchor);
+    super::placement_validation::validate_building_placement(
+        ctx,
+        definition_id,
+        grounded_candidate,
+        rotation,
+        ownership,
+    )
+}
+
 /// Pure placement preview/commit payload shared by player and dev paths.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BuildingPlacementPlan {
@@ -142,6 +161,10 @@ pub fn build_building_placement_plan(
         };
     };
 
+    let resolved_rotation = validation
+        .resolved_rotation
+        .unwrap_or(rotation);
+
     let (grounded_anchor, anchor_global_xz, occupied_cells) =
         if let Some(anchor) = validation.grounded_anchor {
             let layout = ctx.world.layout();
@@ -155,7 +178,7 @@ pub fn build_building_placement_plan(
 
     BuildingPlacementPlan {
         grounded_anchor,
-        rotation,
+        rotation: resolved_rotation,
         quantized_rotation: quantized,
         anchor_global_xz,
         occupied_cells,
@@ -195,6 +218,14 @@ pub fn building_has_model_correction(definition: &BuildingDefinition) -> bool {
     building_effective_model_offset(definition) != Vec3::ZERO
 }
 
+/// Canonical authoritative simulation Y → presentation Y for building anchors.
+///
+/// Terrain relief uses [`crate::terrain::render_height`]; metric offsets above the anchor
+/// (interior floors, props) must use [`crate::terrain::render_height_above_base`] instead.
+pub fn building_placement_render_y(authoritative_sim_y: f32, vertical_scale: f32) -> f32 {
+    crate::terrain::render_height(authoritative_sim_y, vertical_scale)
+}
+
 /// Anchor transform in render space (terrain vertical scale on ground Y only).
 pub fn building_anchor_render_transform(
     definition: &BuildingDefinition,
@@ -204,7 +235,7 @@ pub fn building_anchor_render_transform(
 ) -> Transform {
     let mut transform = building_anchor_world_transform(definition, placement, layout);
     transform.translation.y =
-        crate::terrain::render_height(transform.translation.y, vertical_scale);
+        building_placement_render_y(transform.translation.y, vertical_scale);
     transform
 }
 
@@ -237,7 +268,7 @@ pub fn building_model_render_transform(
 ) -> Transform {
     let world = building_model_world_transform(definition, placement, layout);
     let mut translation = world.translation;
-    translation.y = crate::terrain::render_height(translation.y, vertical_scale);
+    translation.y = building_placement_render_y(translation.y, vertical_scale);
     Transform {
         translation,
         rotation: world.rotation,
@@ -289,6 +320,7 @@ mod tests {
             unit_catalog: unit,
             config: BuildingPlacementConfig::default(),
             player_authorized: true,
+            terrain_vertical_scale: 1.0,
         }
     }
 
@@ -387,7 +419,38 @@ mod tests {
     }
 
     #[test]
-    fn barn_builtin_offset_shifts_model_to_anchor() {
+    fn building_placement_render_y_matches_terrain_surface_contract() {
+        use crate::terrain::{terrain_surface_render_y_at, terrain_surface_sim_y_at};
+        use crate::world::{terrain_clearance_sim, ChunkCoord, ChunkData, ChunkId, Heightfield};
+
+        let layout = ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        };
+        let mut world = WorldData::new(layout);
+        let heightfield = Heightfield::from_samples(3, 128.0, vec![0.00001; 9]).unwrap();
+        world.insert(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            ChunkData::new(heightfield, Vec::new()),
+        );
+        let vertical_scale = 20_000.0;
+        let terrain_sim = terrain_surface_sim_y_at(64.0, 64.0, &world, layout).unwrap();
+        let floor_sim = terrain_sim + terrain_clearance_sim(vertical_scale);
+        let building_render = building_placement_render_y(floor_sim, vertical_scale);
+        let terrain_render =
+            terrain_surface_render_y_at(64.0, 64.0, &world, layout, vertical_scale).unwrap();
+        assert!(
+            (building_render - terrain_render - crate::world::PRESENTATION_TERRAIN_CLEARANCE_METERS)
+                .abs()
+                < 0.02,
+            "building render y should sit one presentation clearance above terrain render y"
+        );
+    }
+
+    #[test]
+    fn barn_authored_offset_centers_scaled_bounds_on_anchor() {
+        use crate::world::asset_sizing::building_effective_model_offset;
+
         let definition = BuildingDefinition::new(
             BuildingDefinitionId::new("barn"),
             "Barn",
@@ -402,14 +465,16 @@ mod tests {
             },
             35.0,
             true,
-        );
-        let placement = BuildingPlacement::new(pos(10.0, 20.0), Quat::IDENTITY);
-        let layout = ChunkLayout {
-            chunk_size_meters: 256.0,
-            units_per_meter: 1.0,
-        };
-        let transform = building_model_world_transform(&definition, &placement, layout);
-        assert!((transform.translation.x - 17.05).abs() < 0.01);
-        assert!((transform.translation.z - 1.35).abs() < 0.01);
+        )
+        .with_model_local_offset(Vec3::new(14.857, 0.674, -13.446));
+        let offset = building_effective_model_offset(&definition);
+        // Authored from barn.glb combined visible bounds × catalog baseline scale.
+        let scaled_bounds_center = Vec3::new(-14.857, 1.526, 13.446);
+        let scaled_floor_y = -0.674;
+        let residual_center = offset + scaled_bounds_center * Vec3::ONE;
+        let residual_floor = offset.y + scaled_floor_y;
+        assert!(residual_center.x.abs() < 0.02);
+        assert!(residual_center.z.abs() < 0.02);
+        assert!(residual_floor.abs() < 0.02);
     }
 }

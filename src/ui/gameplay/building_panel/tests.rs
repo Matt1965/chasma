@@ -1181,7 +1181,7 @@ fn inventory_ctx() -> &'static crate::world::InventoryCatalogCtx<'static> {
 #[test]
 fn building_panel_viewable_without_unit_actor() {
     use crate::ui::gameplay::building_panel::interaction::building_inventory_grid_interaction;
-    use crate::ui::gameplay::inventory::{InventoryGridInteraction, InventoryPaneSide};
+    use crate::ui::gameplay::inventory::{InventoryGridInteraction, InventoryPaneKind};
 
     assert_eq!(
         building_inventory_grid_interaction(false),
@@ -1196,7 +1196,7 @@ fn building_inventory_transfer_requires_eligible_actor() {
         resolve_building_inventory_actor,
     };
     use crate::ui::gameplay::inventory::InventoryUiState;
-    use crate::ui::gameplay::inventory::{InventoryGridInteraction, InventoryPaneSide};
+    use crate::ui::gameplay::inventory::{InventoryGridInteraction, InventoryPaneKind};
     use crate::world::{
         BuildingCategoryCatalog, BuildingInteractionProfileCatalog, UnitCatalog, UnitDefinitionId,
         UnitOwnership, UnitSource, create_building_with_inventory, create_unit_with_inventory,
@@ -1224,6 +1224,7 @@ fn building_inventory_transfer_requires_eligible_actor() {
     .unwrap();
     let near = create_unit_with_inventory(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         pos(30.5, 30.5),
@@ -1234,6 +1235,7 @@ fn building_inventory_transfer_requires_eligible_actor() {
     .unwrap();
     let far = create_unit_with_inventory(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         pos(1.0, 1.0),
@@ -1262,7 +1264,7 @@ fn building_inventory_transfer_requires_eligible_actor() {
     assert_eq!(
         building_inventory_grid_interaction(true),
         InventoryGridInteraction::Interactive {
-            side: InventoryPaneSide::Right
+            pane_kind: InventoryPaneKind::Secondary
         }
     );
 
@@ -1329,6 +1331,7 @@ fn foreign_building_inventory_access_denied() {
     .unwrap();
     let unit = create_unit_with_inventory(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         pos(40.5, 40.5),

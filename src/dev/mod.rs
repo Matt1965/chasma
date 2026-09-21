@@ -1,6 +1,7 @@
 //! Dev mode plugin — runtime authoring layer (ADR-043/044).
 
 mod animation_focus;
+mod archetype_editor;
 mod animation_panel;
 mod asset_sizing;
 mod catalog;
@@ -18,10 +19,12 @@ mod inspector;
 pub(crate) mod inventory_tools;
 mod items_browser;
 mod navigation_editor;
+mod origin_editor;
+mod road_editor;
 mod panel;
 mod pile_harness;
 mod save_window;
-mod scenes;
+pub mod scenes;
 mod selected_object;
 mod settlement_placement;
 mod settlement_window;
@@ -39,6 +42,7 @@ mod world_window;
 mod query_safety_tests;
 
 #[cfg(test)]
+mod archetype_ui_tests;
 mod polish_tests;
 
 #[cfg(test)]
@@ -58,6 +62,18 @@ pub use dev_mode::{
     DevModeState, DevTab, DevTextFieldFocus, SpawnMode,
 };
 pub use fields_window::{setup_fields_window_panel, sync_dev_fields_panel_visibility};
+pub use origin_editor::{
+    DevOriginEditorState, draw_origin_editor_gizmos, handle_origin_editor_buttons,
+    handle_origin_editor_world_input, setup_origin_editor_panel,
+    sync_dev_origin_editor_panel_visibility, sync_origin_editor_panel,
+};
+pub use road_editor::{
+    handle_road_editor_buttons, handle_road_editor_keyboard_input, handle_road_editor_world_input,
+    draw_road_editor_overlay, setup_road_editor_state, setup_roads_window_panel,
+    cleanup_road_editor_when_hidden, sync_dev_roads_panel_visibility,
+    sync_road_editor_action_buttons, sync_road_editor_panel, update_road_editor_snap_preview,
+    RoadEditorUiState,
+};
 pub use gizmo::{
     DevTool, DevToolState, DevTransformPreview, GizmoCoordinateSpace, SelectedWorldObject,
     TransformEditState,
@@ -99,7 +115,8 @@ pub use save_window::{
 };
 pub use scenes::{
     DEV_SCENES_DIR, SceneApplyReport, SceneCaptureContext, SceneDebugFlagsSnapshot, SceneRegistry,
-    SceneRegistryEntry, apply_scene, capture_scene, clear_world_entities,
+    SceneRegistryEntry, apply_scene, capture_inventory_persistence, capture_scene,
+    clear_world_entities, restore_inventory_persistence,
 };
 pub use settlement_window::{
     handle_settlement_add_units_button, handle_settlement_ai_toggle, setup_settlement_window_panel,
@@ -146,11 +163,12 @@ use inspector::{
 };
 use panel::{
     handle_dev_panel_ui_interaction, setup_dev_panel, sync_dev_catalog_panel_visibility,
-    sync_dev_panel_button_styles, sync_dev_panel_content, sync_dev_search_box_style,
-    sync_dev_simulation_status,
+    sync_catalog_panel_layout, sync_dev_panel_button_styles, sync_dev_panel_content,
+    sync_dev_search_box_style, sync_dev_simulation_status,
 };
 use selected_object::{
     BuildingActionUiCache, SelectedObjectUiState, handle_selected_object_actions,
+    handle_selected_object_edit_unit,
     setup_selected_object_panel, sync_building_dev_action_sections, sync_selected_object_panel,
 };
 use terrain_field::{
@@ -207,11 +225,15 @@ impl Plugin for DevModePlugin {
             .init_resource::<settlement_placement::SettlementPlacementPreview>()
             .init_resource::<settlement_placement::SettlementPlacementRejectionFeedbacks>()
             .init_resource::<settlement_placement::SettlementPlacementRejectionLabelIndex>()
+            .init_resource::<archetype_editor::DevArchetypeEditorState>()
+            .init_resource::<archetype_editor::DevArchetypeEditorScratch>()
+            .init_resource::<DevOriginEditorState>()
             .add_systems(
                 Startup,
                 (
                     setup_dev_workspace,
                     setup_dev_panel,
+                    archetype_editor::setup_archetype_editor_modal,
                     setup_save_window_panel,
                     setup_selected_object_panel,
                     setup_navigation_editor_panel,
@@ -219,7 +241,10 @@ impl Plugin for DevModePlugin {
                     setup_world_window_panel,
                     setup_settlement_window_panel,
                     setup_fields_window_panel,
+                    setup_roads_window_panel,
+                    setup_origin_editor_panel,
                     setup_dev_tooltip,
+                    setup_road_editor_state,
                     scenes::init_dev_scene_registry,
                     setup_dev_terrain_field_state,
                 )
@@ -286,6 +311,7 @@ impl Plugin for DevModePlugin {
                 )
                     .chain(),
                 (
+                    sync_catalog_panel_layout,
                     sync_dev_catalog_chrome,
                     track_catalog_tab_selection,
                     sync_dev_save_panel_visibility,
@@ -395,6 +421,10 @@ impl Plugin for DevModePlugin {
         )
         .add_systems(
             Update,
+            handle_selected_object_edit_unit.in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
             sync_inspector_on_selection_revision.in_set(DevModeInputSystems),
         )
         .add_systems(
@@ -434,6 +464,58 @@ impl Plugin for DevModePlugin {
             Update,
             handle_terrain_field_buttons
                 .after(sync_save_window_content)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                sync_dev_roads_panel_visibility,
+                cleanup_road_editor_when_hidden,
+                handle_road_editor_buttons,
+                handle_road_editor_keyboard_input,
+                sync_road_editor_action_buttons,
+                sync_road_editor_panel,
+                sync_dev_origin_editor_panel_visibility,
+                handle_origin_editor_buttons,
+                sync_origin_editor_panel,
+            )
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                update_road_editor_snap_preview,
+                handle_road_editor_world_input,
+                handle_origin_editor_world_input,
+            )
+                .chain()
+                .before(handle_dev_spawn_click)
+                .before(handle_inspector_input)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                archetype_editor::handle_archetype_save_button,
+                archetype_editor::handle_archetype_edit_button,
+                archetype_editor::handle_archetype_modal_save,
+                archetype_editor::handle_archetype_modal_delete,
+                archetype_editor::handle_archetype_modal_cancel,
+                archetype_editor::handle_archetype_species_toggle,
+                archetype_editor::handle_archetype_modal_field_clicks,
+                archetype_editor::handle_archetype_editor_keyboard,
+            )
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                archetype_editor::sync_building_archetype_capture_preview,
+                archetype_editor::sync_archetype_editor_modal,
+                archetype_editor::sync_archetype_species_toggle_marks,
+                archetype_editor::sync_archetype_modal_field_styles,
+            )
+                .chain()
                 .in_set(DevModeInputSystems),
         )
         .add_systems(Update, sync_dev_debug_controls.in_set(DevModeInputSystems))
@@ -547,8 +629,11 @@ impl Plugin for DevModePlugin {
                 sync_dev_terrain_field_panel,
                 update_dev_terrain_field_probe,
                 draw_dev_terrain_field_gizmos,
+                draw_road_editor_overlay,
+                draw_origin_editor_gizmos,
                 settlement_placement::draw_settlement_placement_preview,
                 settlement_placement::billboard_settlement_placement_rejection_labels,
+                archetype_editor::draw_building_archetype_capture_preview,
                 inventory_tools::sync_dev_held_item_screen_ghost,
                 inventory_tools::sync_dev_held_item_world_ghost,
             )

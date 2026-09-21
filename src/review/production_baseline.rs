@@ -48,6 +48,7 @@ fn create_unit_fails_when_catalog_empty() {
     let mut world = empty_layout_world();
     let err = create_unit(
         &catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         pos(1.0, 1.0),
@@ -114,6 +115,7 @@ fn contextual_resolver_does_not_inject_world_data() {
     let world = empty_layout_world();
     let unit_catalog = crate::world::UnitCatalog::default();
     let weapon_catalog = crate::world::WeaponCatalog::default();
+    let item_catalog = crate::world::ItemCatalog::default();
     let ctx = CommandResolutionContext {
         selected_units: &units,
         target: CommandTarget::Terrain {
@@ -122,6 +124,7 @@ fn contextual_resolver_does_not_inject_world_data() {
         world: &world,
         unit_catalog: &unit_catalog,
         weapon_catalog: &weapon_catalog,
+        item_catalog: &item_catalog,
         authored_relationships: &crate::world::AuthoredRelationshipCatalog::default(),
         targeting_policy: crate::world::AttackTargetingPolicy::default(),
     };
@@ -162,6 +165,7 @@ fn movement_with_empty_catalogs_does_not_panic_on_empty_world() {
         &crate::world::InteriorProfileCatalog::default(),
         None,
         &crate::world::ItemCatalog::default(),
+        &crate::world::ArmorProfileCatalog::default(),
         &crate::world::ItemCategoryCatalog::default(),
         &crate::world::InventoryProfileCatalog::default(),
         &crate::world::CorpseSettings::default(),

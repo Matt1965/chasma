@@ -72,6 +72,7 @@ pub fn load_scene_by_id(
     footprint_catalog: &FootprintCatalog,
     interior_catalog: &InteriorProfileCatalog,
     nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
     registry: &SceneRegistry,
     scene_id: &str,
 ) -> Result<SceneApplyReport, String> {
@@ -86,6 +87,7 @@ pub fn load_scene_by_id(
         footprint_catalog,
         interior_catalog,
         nav_catalog,
+        appearance_profiles,
         &scene,
     )
     .map_err(|err| err.to_string())

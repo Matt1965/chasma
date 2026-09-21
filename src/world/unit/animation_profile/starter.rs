@@ -15,7 +15,11 @@ mod fixtures {
                 true,
             )
             .with_presentation_clips(Some("Death".to_string()), Some("Hit".to_string()))
-            .with_layering(Some("Spine".to_string())),
+            .with_layering(Some("Spine".to_string()))
+            .with_swim_clips(
+                Some("Swim_Fwd_Loop".to_string()),
+                Some("Swim_Idle_Loop".to_string()),
+            ),
             AnimationProfile::new(
                 AnimationProfileId::new("quadruped"),
                 "Idle",
