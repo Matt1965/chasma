@@ -3,18 +3,33 @@
 use bevy::prelude::*;
 
 use crate::menu::{OriginSquadViewMode, StartingSquadSession};
-use crate::units::presentation::{UnitEditorPreviewFraming, UnitEditorPreviewRosterMember};
+use crate::units::presentation::{
+    ROSTER_STAGE_PRESENTATION_YAW, UnitEditorPreviewFraming, UnitEditorPreviewRosterMember,
+};
 use crate::ui::unit_editor::UnitEditorPreviewCamera;
+use crate::world::OriginCatalog;
 
 use super::presentation::FOCUS_STAGE_POSITION;
 use super::screen::OriginSelectPreviewPane;
 
-const PREVIEW_DISTANCE_BASE: f32 = 2.8;
-const PREVIEW_FOCUS_Y: f32 = 0.9;
+const PREVIEW_DISTANCE_BASE: f32 = 2.65;
+const PREVIEW_FOCUS_Y: f32 = 0.82;
 const FOCUS_DISTANCE_SCALE: f32 = 0.72;
+
+fn squad_camera_distance_scale(member_count: usize) -> f32 {
+    match member_count {
+        0 | 1 => 1.0,
+        2 => 1.0,
+        3 => 1.06,
+        4 => 1.12,
+        5 => 1.18,
+        n => 1.0 + (n as f32 - 1.0) * 0.055,
+    }
+}
 
 pub fn update_origin_select_preview_camera(
     mut session: ResMut<StartingSquadSession>,
+    origins: Res<OriginCatalog>,
     editor_session: Option<Res<crate::ui::unit_editor::UnitEditorSession>>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     mouse_motion: Res<bevy::input::mouse::AccumulatedMouseMotion>,
@@ -39,8 +54,15 @@ pub fn update_origin_select_preview_camera(
 
     let yaw = session.preview_yaw_radians;
     let zoom = session.preview_zoom;
+    let squad_member_count = session
+        .active_draft(&origins)
+        .map(|draft| draft.members.len())
+        .unwrap_or(1);
     let (focus, distance_scale) = match session.view_mode {
-        OriginSquadViewMode::FullSquad => (Vec3::new(0.0, PREVIEW_FOCUS_Y, 0.0), 1.0),
+        OriginSquadViewMode::FullSquad => (
+            Vec3::new(0.0, PREVIEW_FOCUS_Y, 0.0),
+            squad_camera_distance_scale(squad_member_count),
+        ),
         OriginSquadViewMode::FocusedMember { slot_index } => roster
             .iter()
             .find(|(_, member, _)| member.slot_index == slot_index)
@@ -54,7 +76,7 @@ pub fn update_origin_select_preview_camera(
     };
     let distance = PREVIEW_DISTANCE_BASE * zoom * distance_scale;
     for mut transform in &mut cameras {
-        let offset = Vec3::new(yaw.sin() * distance, distance * 0.15, yaw.cos() * distance);
+        let offset = Vec3::new(yaw.sin() * distance, distance * 0.18, yaw.cos() * distance);
         *transform = Transform::from_translation(focus + offset).looking_at(focus, Vec3::Y);
     }
 }
@@ -75,10 +97,10 @@ pub fn rotate_origin_select_preview_roster(
     for (member, mut transform) in &mut roster {
         match focused {
             Some(slot_index) if member.slot_index == slot_index => {
-                transform.rotation = Quat::from_rotation_y(yaw);
+                transform.rotation = Quat::from_rotation_y(yaw + ROSTER_STAGE_PRESENTATION_YAW);
             }
             None => {
-                transform.rotation = Quat::from_rotation_y(yaw);
+                transform.rotation = Quat::from_rotation_y(yaw + ROSTER_STAGE_PRESENTATION_YAW);
             }
             _ => {}
         }

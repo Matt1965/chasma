@@ -8,7 +8,8 @@ use bevy::render::render_resource::TextureFormat;
 
 use crate::camera::render_layers::PREVIEW_RENDER_LAYER;
 use crate::units::presentation::{
-    UnitEditorPreviewFraming, UnitEditorPreviewRoot, UnitEditorPreviewRosterMember,
+    UnitEditorPreviewDressingRoot, UnitEditorPreviewEnvironment, UnitEditorPreviewFraming,
+    UnitEditorPreviewGround, UnitEditorPreviewRoot, UnitEditorPreviewRosterMember,
     UnitEditorPreviewUnit,
 };
 
@@ -20,6 +21,8 @@ const PREVIEW_HEIGHT: u32 = 640;
 const PREVIEW_DISTANCE_BASE: f32 = 2.4;
 const PREVIEW_FOCUS_FALLBACK_Y: f32 = 0.9;
 const PREVIEW_FALLBACK_HEIGHT: f32 = 1.75;
+const PREVIEW_STAGE_GROUND_SIZE: f32 = 28.0;
+const PREVIEW_STAGE_CLEAR_COLOR: Color = Color::srgb(0.42, 0.48, 0.54);
 
 #[derive(Resource, Debug, Clone)]
 pub struct UnitEditorPreviewImage {
@@ -47,8 +50,14 @@ pub fn setup_unit_editor_preview_studio(
     let handle = images.add(image);
     commands.insert_resource(UnitEditorPreviewImage { handle: handle.clone() });
 
+    let ground_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.34, 0.33, 0.30),
+        perceptual_roughness: 0.92,
+        metallic: 0.0,
+        ..default()
+    });
     let backdrop_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.12, 0.13, 0.16, 1.0),
+        base_color: Color::srgb(0.50, 0.55, 0.60),
         unlit: true,
         ..default()
     });
@@ -59,30 +68,69 @@ pub fn setup_unit_editor_preview_studio(
         Visibility::default(),
         PREVIEW_RENDER_LAYER,
     )).with_children(|studio| {
-        let backdrop_mesh = meshes.add(Cuboid::new(20.0, 20.0, 0.1));
+        studio
+            .spawn((
+                UnitEditorPreviewEnvironment,
+                Transform::default(),
+                Visibility::default(),
+                PREVIEW_RENDER_LAYER,
+            ))
+            .with_children(|environment| {
+                let ground_mesh = meshes.add(
+                    Plane3d::default()
+                        .mesh()
+                        .size(PREVIEW_STAGE_GROUND_SIZE, PREVIEW_STAGE_GROUND_SIZE),
+                );
+                environment.spawn((
+                    UnitEditorPreviewGround,
+                    Mesh3d(ground_mesh),
+                    MeshMaterial3d(ground_material),
+                    Transform::from_xyz(0.0, 0.0, 0.0),
+                    PREVIEW_RENDER_LAYER,
+                ));
+
+                let backdrop_mesh = meshes.add(Cuboid::new(24.0, 10.0, 0.1));
+                environment.spawn((
+                    UnitEditorPreviewBackdrop,
+                    Mesh3d(backdrop_mesh),
+                    MeshMaterial3d(backdrop_material),
+                    Transform::from_xyz(0.0, 3.2, -6.5),
+                    PREVIEW_RENDER_LAYER,
+                ));
+
+                environment.spawn((
+                    UnitEditorPreviewDressingRoot,
+                    Transform::default(),
+                    Visibility::default(),
+                    PREVIEW_RENDER_LAYER,
+                ));
+            });
+
         studio.spawn((
-            UnitEditorPreviewBackdrop,
-            Mesh3d(backdrop_mesh),
-            MeshMaterial3d(backdrop_material),
-            Transform::from_xyz(0.0, PREVIEW_FOCUS_FALLBACK_Y, -3.0),
+            DirectionalLight {
+                illuminance: 18_000.0,
+                shadows_enabled: true,
+                ..default()
+            },
+            Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -1.05, 0.45, 0.0)),
             PREVIEW_RENDER_LAYER,
         ));
         studio.spawn((
             DirectionalLight {
-                illuminance: 12_000.0,
-                shadows_enabled: true,
+                illuminance: 4_500.0,
+                shadows_enabled: false,
                 ..default()
             },
-            Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.8, 0.6, 0.0)),
+            Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.35, -1.1, 0.0)),
             PREVIEW_RENDER_LAYER,
         ));
         studio.spawn((
             PointLight {
-                intensity: 400_000.0,
-                range: 12.0,
+                intensity: 280_000.0,
+                range: 16.0,
                 ..default()
             },
-            Transform::from_xyz(-1.5, 2.0, 2.0),
+            Transform::from_xyz(1.8, 2.4, 3.2),
             PREVIEW_RENDER_LAYER,
         ));
     });
@@ -92,6 +140,7 @@ pub fn setup_unit_editor_preview_studio(
         Camera3d::default(),
         Camera {
             order: 2,
+            clear_color: ClearColorConfig::Custom(PREVIEW_STAGE_CLEAR_COLOR),
             ..default()
         },
         RenderTarget::Image(handle.into()),

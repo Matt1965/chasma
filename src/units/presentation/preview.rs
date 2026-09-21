@@ -4,10 +4,25 @@ use bevy::prelude::*;
 
 use crate::camera::render_layers::PREVIEW_RENDER_LAYER;
 
-/// Root entity for preview studio resources (camera, lights, backdrop).
+/// Root entity for preview studio resources (camera, lights, stage environment).
 #[derive(Component, Debug, Clone, Copy, Default, PartialEq, Eq, Reflect)]
 #[reflect(Component)]
 pub struct UnitEditorPreviewRoot;
+
+/// Stage-owned environment meshes (ground, backdrop). Not gameplay terrain.
+#[derive(Component, Debug, Clone, Copy, Default, PartialEq, Eq, Reflect)]
+#[reflect(Component)]
+pub struct UnitEditorPreviewEnvironment;
+
+/// Preview-stage ground surface beneath roster actors.
+#[derive(Component, Debug, Clone, Copy, Default, PartialEq, Eq, Reflect)]
+#[reflect(Component)]
+pub struct UnitEditorPreviewGround;
+
+/// Parent for future stage dressing (props, fog, biome decor).
+#[derive(Component, Debug, Clone, Copy, Default, PartialEq, Eq, Reflect)]
+#[reflect(Component)]
+pub struct UnitEditorPreviewDressingRoot;
 
 /// Marker on the preview unit scene root — not a gameplay [`UnitRenderEntity`].
 #[derive(Component, Debug, Clone, Copy, Default, PartialEq, Eq, Reflect)]
