@@ -5,7 +5,9 @@ use bevy::prelude::*;
 use crate::menu::StartingSquadSession;
 use crate::units::{
     AnimationPlaybackPending, UnitAnimationRuntime,
-    presentation::{UnitEditorPreviewRosterMember, UnitPresentationAppearance},
+    presentation::{
+        UnitEditorPreviewRosterMember, UnitPresentationAppearance, roster_stage_layout_position,
+    },
 };
 use crate::world::{OriginCatalog, UnitCatalog, unit_visual_scale};
 
@@ -115,11 +117,10 @@ pub fn sync_origin_select_preview_presentation(
             continue;
         }
 
-        transform.translation = roster_member_stage_translation(
-            member.slot_index,
-            draft_member.preview_offset,
-            mode,
-        );
+        let squad_offset =
+            roster_stage_layout_position(member.slot_index, draft.members.len());
+        transform.translation =
+            roster_member_stage_translation(member.slot_index, squad_offset, mode);
         transform.scale = unit_visual_scale(definition, appearance.appearance.height_scale);
     }
 }
