@@ -14,6 +14,9 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Turn Right Animation",
     "Turn Left Duration",
     "Turn Right Duration",
+    "Work Animation",
+    "Swim Animation",
+    "Swim Idle Animation",
 ];
 
 pub const DEFAULT_LOCOMOTION_REFERENCE_SPEED_MPS: f32 = 4.0;
@@ -45,6 +48,12 @@ pub struct AnimationProfileImportRow {
     pub has_turn_right_column: bool,
     pub has_turn_left_duration_column: bool,
     pub has_turn_right_duration_column: bool,
+    pub work_animation: String,
+    pub has_work_animation_column: bool,
+    pub swim_animation: String,
+    pub swim_idle_animation: String,
+    pub has_swim_column: bool,
+    pub has_swim_idle_column: bool,
 }
 
 impl AnimationProfileImportRow {
@@ -90,6 +99,14 @@ impl AnimationProfileImportRow {
             self.turn_left_duration_seconds,
             self.turn_right_duration_seconds,
         )
+        .with_work_clip(Self::optional_clip(
+            self.has_work_animation_column,
+            &self.work_animation,
+        ))
+        .with_swim_clips(
+            Self::optional_clip(self.has_swim_column, &self.swim_animation),
+            Self::optional_clip(self.has_swim_idle_column, &self.swim_idle_animation),
+        )
     }
 }
 
@@ -124,6 +141,12 @@ mod tests {
             has_turn_right_column: false,
             has_turn_left_duration_column: false,
             has_turn_right_duration_column: false,
+            work_animation: String::new(),
+            has_work_animation_column: false,
+            swim_animation: String::new(),
+            swim_idle_animation: String::new(),
+            has_swim_column: false,
+            has_swim_idle_column: false,
         }
     }
 
@@ -197,5 +220,21 @@ mod tests {
             .unwrap();
         assert_eq!(key, crate::world::AnimationClipKey::Run);
         assert_eq!(name, "Run");
+    }
+
+    #[test]
+    fn work_animation_column_maps_to_profile() {
+        let mut row = base_row();
+        row.profile_id = "human_base".to_string();
+        row.has_work_animation_column = true;
+        row.work_animation = "Mine".to_string();
+
+        let profile = row.to_definition();
+        assert_eq!(profile.work_clip.as_deref(), Some("Mine"));
+        let (name, key) = profile
+            .resolve_clip_name(crate::world::AnimationClipKey::Work)
+            .unwrap();
+        assert_eq!(key, crate::world::AnimationClipKey::Work);
+        assert_eq!(name, "Mine");
     }
 }

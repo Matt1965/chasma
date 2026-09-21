@@ -117,6 +117,7 @@ pub fn tick_unit_movement(
             &catalogs.interior_catalog,
             Some(&catalogs.nav_blueprint_catalog),
             inventory_ctx.items,
+            &catalogs.armor_catalog,
             inventory_ctx.categories,
             inventory_ctx.profiles,
             &catalogs.corpse_settings,
@@ -162,7 +163,8 @@ mod tests {
         );
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             position,
             UnitSource::Authored,
@@ -231,6 +233,7 @@ mod tests {
                     &crate::world::InteriorProfileCatalog::default(),
                     None,
                     &crate::world::ItemCatalog::default(),
+                    &crate::world::ArmorProfileCatalog::default(),
                     &crate::world::ItemCategoryCatalog::default(),
                     &crate::world::InventoryProfileCatalog::default(),
                     &crate::world::CorpseSettings::default(),
@@ -256,6 +259,7 @@ mod tests {
             world,
             catalog,
             weapon_catalog,
+            &crate::world::ItemCatalog::default(),
             doodad_catalog,
             nav_config,
             unit_id,
@@ -315,7 +319,8 @@ mod tests {
         let mut world_a = flat_world();
         let unit_a = create_unit(
             &catalog,
-            &mut world_a,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world_a,
             &UnitDefinitionId::new("wolf"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -335,7 +340,8 @@ mod tests {
         let mut world_b = flat_world();
         let unit_b = create_unit(
             &catalog,
-            &mut world_b,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world_b,
             &UnitDefinitionId::new("wolf"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -405,7 +411,8 @@ mod tests {
         let mut setup = |world: &mut WorldData| -> (crate::world::UnitId, crate::world::UnitId) {
             let player = create_unit_with_ownership(
                 &catalog,
-                world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        world,
                 &UnitDefinitionId::new("wolf"),
                 pos(10.0, 10.0),
                 UnitSource::Authored,
@@ -415,7 +422,8 @@ mod tests {
             .id;
             let hostile = create_unit_with_ownership(
                 &catalog,
-                world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        world,
                 &UnitDefinitionId::new("wolf"),
                 pos(11.0, 10.0),
                 UnitSource::Authored,
@@ -499,7 +507,8 @@ mod tests {
         let mut world_a = flat_world();
         let _ = create_unit_with_ownership(
             &catalog,
-            &mut world_a,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world_a,
             &UnitDefinitionId::new("wolf"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -510,7 +519,8 @@ mod tests {
         let mut world_b = flat_world();
         let _ = create_unit_with_ownership(
             &catalog,
-            &mut world_b,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world_b,
             &UnitDefinitionId::new("wolf"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -617,7 +627,8 @@ mod tests {
         let mut world_a = flat_world();
         let source_a = create_unit(
             &catalog,
-            &mut world_a,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world_a,
             &UnitDefinitionId::new("wolf"),
             start,
             UnitSource::Authored,
@@ -626,7 +637,8 @@ mod tests {
         .id;
         let target_a = create_unit(
             &catalog,
-            &mut world_a,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world_a,
             &UnitDefinitionId::new("wolf"),
             target_pos,
             UnitSource::Authored,
@@ -637,7 +649,8 @@ mod tests {
         let mut world_b = flat_world();
         let source_b = create_unit(
             &catalog,
-            &mut world_b,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world_b,
             &UnitDefinitionId::new("wolf"),
             start,
             UnitSource::Authored,
@@ -646,7 +659,8 @@ mod tests {
         .id;
         let target_b = create_unit(
             &catalog,
-            &mut world_b,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world_b,
             &UnitDefinitionId::new("wolf"),
             target_pos,
             UnitSource::Authored,

@@ -10,7 +10,10 @@ use crate::world::{
     UnitPlacement, WorldData, WorldItemPileRecord, WorldPileContents,
 };
 
-use super::snapshot::{SceneQuat, SceneRecordError, SceneWorldPosition, affiliation_from_label};
+use super::snapshot::{
+    SceneQuat, SceneRecordError, SceneUnitEquipmentRecord, SceneWorldPosition,
+    affiliation_from_label,
+};
 
 fn default_next_inventory_id() -> u32 {
     1
@@ -61,6 +64,8 @@ pub struct SceneItemInstanceRecord {
     pub definition_id: String,
     #[serde(default)]
     pub quality: Option<u32>,
+    #[serde(default)]
+    pub contained_inventory_id: Option<u32>,
 }
 
 /// Serializable instance location (ADR-094 I8).
@@ -87,6 +92,8 @@ pub struct SceneCorpseRecord {
     pub current_space_id: u32,
     #[serde(default)]
     pub inventory_id: Option<u32>,
+    #[serde(default)]
+    pub equipment: Option<SceneUnitEquipmentRecord>,
     #[serde(default)]
     pub owner_id: Option<u64>,
     #[serde(default)]
@@ -282,6 +289,7 @@ impl SceneItemInstanceRecord {
             id: instance.id.raw(),
             definition_id: instance.definition_id.as_str().to_string(),
             quality: instance.metadata.quality,
+            contained_inventory_id: instance.contained_inventory_id.map(|id| id.raw()),
         }
     }
 
@@ -292,6 +300,7 @@ impl SceneItemInstanceRecord {
             metadata: ItemInstanceMetadata {
                 quality: self.quality,
             },
+            contained_inventory_id: self.contained_inventory_id.map(InventoryId::new),
         }
     }
 }
@@ -353,6 +362,16 @@ impl SceneCorpseRecord {
             rotation: SceneQuat::from_quat(record.placement.rotation),
             current_space_id: record.current_space_id.raw(),
             inventory_id: record.inventory_id.map(|id| id.raw()),
+            equipment: record.equipment.map(|equipment| SceneUnitEquipmentRecord {
+                head: equipment.head.raw(),
+                body: equipment.body.raw(),
+                arms: equipment.arms.raw(),
+                legs: equipment.legs.raw(),
+                feet: equipment.feet.raw(),
+                weapon: equipment.weapon.raw(),
+                offhand: equipment.offhand.raw(),
+                backpack: equipment.backpack.raw(),
+            }),
             owner_id: record.owner_id.map(|id| id.raw()),
             team_id: record.team_id.map(|id| id.raw()),
             affiliation: Some(record.affiliation.label().to_string()),
@@ -383,6 +402,18 @@ impl SceneCorpseRecord {
             placement: UnitPlacement::new(self.position.to_world()?, self.rotation.to_quat()),
             current_space_id: SpaceId::new(self.current_space_id),
             inventory_id: self.inventory_id.map(InventoryId::new),
+            equipment: self.equipment.as_ref().map(|equipment| {
+                crate::world::UnitEquipmentInventories {
+                    head: InventoryId::new(equipment.head),
+                    body: InventoryId::new(equipment.body),
+                    arms: InventoryId::new(equipment.arms),
+                    legs: InventoryId::new(equipment.legs),
+                    feet: InventoryId::new(equipment.feet),
+                    weapon: InventoryId::new(equipment.weapon),
+                    offhand: InventoryId::new(equipment.offhand),
+                    backpack: InventoryId::new(equipment.backpack),
+                }
+            }),
             owner_id: self.owner_id.map(OwnerId::new),
             team_id: self.team_id.map(TeamId::new),
             affiliation,
@@ -543,8 +574,30 @@ fn encode_owner(owner: &InventoryOwnerRef) -> String {
     match owner {
         InventoryOwnerRef::Detached => "detached".into(),
         InventoryOwnerRef::Unit(id) => format!("unit:{}", id.raw()),
+        InventoryOwnerRef::UnitEquipment { unit_id, slot } => {
+            format!("unit_equipment:{}:{}", unit_id.raw(), slot_label(*slot))
+        }
+        InventoryOwnerRef::ItemContainer(instance_id) => {
+            format!("item_container:{}", instance_id.raw())
+        }
         InventoryOwnerRef::Building(id) => format!("building:{}", id.raw()),
         InventoryOwnerRef::Corpse(id) => format!("corpse:{}", id.raw()),
+        InventoryOwnerRef::CorpseEquipment { corpse_id, slot } => {
+            format!("corpse_equipment:{}:{}", corpse_id.raw(), slot_label(*slot))
+        }
+    }
+}
+
+fn slot_label(slot: crate::world::EquipmentSlot) -> &'static str {
+    match slot {
+        crate::world::EquipmentSlot::Head => "head",
+        crate::world::EquipmentSlot::Body => "body",
+        crate::world::EquipmentSlot::Arms => "arms",
+        crate::world::EquipmentSlot::Legs => "legs",
+        crate::world::EquipmentSlot::Feet => "feet",
+        crate::world::EquipmentSlot::Weapon => "weapon",
+        crate::world::EquipmentSlot::Offhand => "offhand",
+        crate::world::EquipmentSlot::Backpack => "backpack",
     }
 }
 
@@ -555,13 +608,59 @@ fn decode_owner(label: &str) -> Result<InventoryOwnerRef, SceneRecordError> {
     let (kind, raw) = label
         .split_once(':')
         .ok_or(SceneRecordError::InvalidPosition)?;
-    let id = raw
-        .parse::<u64>()
-        .map_err(|_| SceneRecordError::InvalidPosition)?;
     Ok(match kind {
-        "unit" => InventoryOwnerRef::Unit(UnitId::new(id)),
-        "building" => InventoryOwnerRef::Building(BuildingId::new(id)),
-        "corpse" => InventoryOwnerRef::Corpse(CorpseId::new(id)),
+        "unit" => {
+            let id = raw
+                .parse::<u64>()
+                .map_err(|_| SceneRecordError::InvalidPosition)?;
+            InventoryOwnerRef::Unit(UnitId::new(id))
+        }
+        "unit_equipment" => {
+            let (unit_raw, slot_raw) = raw
+                .split_once(':')
+                .ok_or(SceneRecordError::InvalidPosition)?;
+            let unit_id = unit_raw
+                .parse::<u64>()
+                .map_err(|_| SceneRecordError::InvalidPosition)?;
+            let slot = crate::world::EquipmentSlot::parse(slot_raw)
+                .map_err(|_| SceneRecordError::InvalidPosition)?;
+            InventoryOwnerRef::UnitEquipment {
+                unit_id: UnitId::new(unit_id),
+                slot,
+            }
+        }
+        "item_container" => {
+            let id = raw
+                .parse::<u32>()
+                .map_err(|_| SceneRecordError::InvalidPosition)?;
+            InventoryOwnerRef::ItemContainer(ItemInstanceId::new(id))
+        }
+        "building" => {
+            let id = raw
+                .parse::<u64>()
+                .map_err(|_| SceneRecordError::InvalidPosition)?;
+            InventoryOwnerRef::Building(BuildingId::new(id))
+        }
+        "corpse" => {
+            let id = raw
+                .parse::<u64>()
+                .map_err(|_| SceneRecordError::InvalidPosition)?;
+            InventoryOwnerRef::Corpse(CorpseId::new(id))
+        }
+        "corpse_equipment" => {
+            let (corpse_raw, slot_raw) = raw
+                .split_once(':')
+                .ok_or(SceneRecordError::InvalidPosition)?;
+            let corpse_id = corpse_raw
+                .parse::<u64>()
+                .map_err(|_| SceneRecordError::InvalidPosition)?;
+            let slot = crate::world::EquipmentSlot::parse(slot_raw)
+                .map_err(|_| SceneRecordError::InvalidPosition)?;
+            InventoryOwnerRef::CorpseEquipment {
+                corpse_id: CorpseId::new(corpse_id),
+                slot,
+            }
+        }
         _ => return Err(SceneRecordError::InvalidPosition),
     })
 }

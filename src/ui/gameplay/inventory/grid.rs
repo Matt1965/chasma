@@ -8,6 +8,7 @@ use crate::ui::gameplay::inventory::state::InventoryUiState;
 use crate::ui::gameplay::styles::{
     HUD_RECESSED_CORE, HUD_RECESSED_FACE, HUD_ROSTER_SLOT_BORDER, TEXT_PRIMARY,
 };
+use crate::world::equipment::EquipmentSlot;
 use crate::world::{
     InventoryEntryContents, InventoryId, InventoryRecord, ItemCatalog, ItemDefinitionId,
     ItemInstanceStore, PlacedInventoryEntry,
@@ -51,10 +52,36 @@ pub enum InventoryPaneSide {
     Right,
 }
 
+/// Identifies which inventory region a grid belongs to in the unit inventory window.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InventoryPaneKind {
+    Personal,
+    Secondary,
+    Equipment(EquipmentSlot),
+    BackpackInternal,
+}
+
+impl InventoryPaneKind {
+    pub fn quick_transfer_destination(self, ui: &InventoryUiState) -> Option<InventoryId> {
+        match self {
+            Self::Personal => ui.right_inventory_id,
+            Self::Secondary => ui.left_inventory_id,
+            Self::Equipment(_) | Self::BackpackInternal => ui.left_inventory_id,
+        }
+    }
+
+    pub fn header_side(self) -> InventoryPaneSide {
+        match self {
+            Self::Personal => InventoryPaneSide::Left,
+            _ => InventoryPaneSide::Right,
+        }
+    }
+}
+
 #[derive(Component, Debug, Clone)]
 pub struct InventoryGridPane {
     pub inventory_id: InventoryId,
-    pub side: InventoryPaneSide,
+    pub pane_kind: InventoryPaneKind,
 }
 
 #[derive(Component, Debug, Clone)]
@@ -62,14 +89,14 @@ pub struct InventoryGridCell {
     pub inventory_id: InventoryId,
     pub x: u8,
     pub y: u8,
-    pub side: InventoryPaneSide,
+    pub pane_kind: InventoryPaneKind,
 }
 
 #[derive(Component, Debug, Clone)]
 pub struct InventoryEntryWidget {
     pub inventory_id: InventoryId,
     pub entry_index: usize,
-    pub side: InventoryPaneSide,
+    pub pane_kind: InventoryPaneKind,
 }
 
 /// Whether grid cells and items accept player inventory interaction.
@@ -78,7 +105,7 @@ pub enum InventoryGridInteraction {
     /// BP2 building panel: same visuals, no drag/transfer components.
     ReadOnly,
     /// Unit/container inventory panel (ADR-092 I6).
-    Interactive { side: InventoryPaneSide },
+    Interactive { pane_kind: InventoryPaneKind },
 }
 
 /// Marker on read-only building-panel grids (regression tests / diagnostics).
@@ -96,9 +123,9 @@ pub fn spawn_inventory_grid(
     ui: Option<&InventoryUiState>,
 ) {
     let interactive = matches!(interaction, InventoryGridInteraction::Interactive { .. });
-    let side = match interaction {
-        InventoryGridInteraction::ReadOnly => InventoryPaneSide::Left,
-        InventoryGridInteraction::Interactive { side } => side,
+    let pane_kind = match interaction {
+        InventoryGridInteraction::ReadOnly => InventoryPaneKind::Personal,
+        InventoryGridInteraction::Interactive { pane_kind } => pane_kind,
     };
 
     let (grid_bg, grid_border) = inventory_grid_shell_style();
@@ -129,7 +156,7 @@ pub fn spawn_inventory_grid(
                             inventory_id,
                             x,
                             y,
-                            side,
+                            pane_kind,
                         },
                         Button,
                         cell_node,
@@ -175,7 +202,7 @@ pub fn spawn_inventory_grid(
                     InventoryEntryWidget {
                         inventory_id,
                         entry_index,
-                        side,
+                        pane_kind,
                     },
                     Button,
                     item_node,

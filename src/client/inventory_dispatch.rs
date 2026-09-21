@@ -565,16 +565,14 @@ fn inventory_access_denied_message(
     inventory_id: InventoryId,
     ui: &InventoryUiState,
 ) -> Option<String> {
-    if ui
-        .right_inventory_id
-        .is_some_and(|right| right == inventory_id)
-        && ui.corpse_id.is_some()
-    {
-        return if world.inventory_store().get(inventory_id).is_some() {
-            None
-        } else {
-            Some(InventoryUiError::InventoryClosed.message())
-        };
+    if let Some(corpse_id) = ui.corpse_id {
+        if crate::world::is_corpse_loot_inventory(world, corpse_id, inventory_id) {
+            return if world.inventory_store().get(inventory_id).is_some() {
+                None
+            } else {
+                Some(InventoryUiError::InventoryClosed.message())
+            };
+        }
     }
     match can_unit_access_inventory(
         world,
@@ -661,12 +659,7 @@ fn can_access_pair(
 
 fn find_corpse_for_inventory(world: &WorldData, inventory_id: InventoryId) -> Option<CorpseId> {
     for corpse_id in world.corpse_store().sorted_corpse_ids() {
-        if world
-            .corpse_store()
-            .get(corpse_id)
-            .and_then(|c| c.inventory_id)
-            == Some(inventory_id)
-        {
+        if crate::world::is_corpse_loot_inventory(world, corpse_id, inventory_id) {
             return Some(corpse_id);
         }
     }
@@ -1009,7 +1002,8 @@ mod tests {
         let mut world = test_world();
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             crate::world::WorldPosition::new(
                 ChunkCoord::new(0, 0),
@@ -1065,7 +1059,8 @@ mod tests {
         let mut world = test_world();
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             crate::world::WorldPosition::new(
                 ChunkCoord::new(0, 0),
@@ -1107,7 +1102,8 @@ mod tests {
         let mut world = test_world();
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             crate::world::WorldPosition::new(
                 ChunkCoord::new(0, 0),
@@ -1164,7 +1160,8 @@ mod tests {
         let mut world = test_world();
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             crate::world::WorldPosition::new(
                 ChunkCoord::new(0, 0),
@@ -1256,7 +1253,8 @@ mod tests {
         let mut world = test_world();
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             crate::world::WorldPosition::new(
                 ChunkCoord::new(0, 0),

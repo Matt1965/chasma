@@ -173,6 +173,7 @@ pub fn claim_building_task(
         world,
         unit_catalog,
         weapon_catalog,
+        &crate::world::ItemCatalog::default(),
         doodad_catalog,
         nav_config,
         unit_id,

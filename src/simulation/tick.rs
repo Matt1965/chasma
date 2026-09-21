@@ -10,9 +10,9 @@ use crate::world::{
     BuildingNavigationBlueprintCatalog, CombatAiScanState, CombatAiSettings, CombatStrikeReport,
     DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, NavigationConfig, OccupancyCatalogs,
     PassabilityCatalogs, ProjectileReport, UnitCatalog, WeaponCatalog, WorldData,
-    prune_invalid_building_tasks, resolve_pending_unit_orders, step_all_building_construction,
-    step_all_combat_engagement, step_all_combat_strikes, step_all_projectiles,
-    step_all_unit_movement, step_all_worker_tasks, step_combat_ai_acquisition,
+    prune_invalid_building_tasks, refresh_all_unit_locomotion, resolve_pending_unit_orders,
+    step_all_building_construction, step_all_combat_engagement, step_all_combat_strikes,
+    step_all_projectiles, step_all_unit_movement, step_all_worker_tasks, step_combat_ai_acquisition,
     step_unit_death_pipeline, sync_construction_tasks,
 };
 
@@ -47,6 +47,7 @@ pub fn run_simulation_tick(
     interior_catalog: &InteriorProfileCatalog,
     nav_blueprint_catalog: Option<&BuildingNavigationBlueprintCatalog>,
     item_catalog: &crate::world::ItemCatalog,
+    armor_catalog: &crate::world::ArmorProfileCatalog,
     item_categories: &crate::world::ItemCategoryCatalog,
     inventory_profiles: &crate::world::InventoryProfileCatalog,
     corpse_settings: &crate::world::CorpseSettings,
@@ -65,11 +66,13 @@ pub fn run_simulation_tick(
         footprint: footprint_catalog,
     };
     let command_resolve = resolve_pending_unit_orders(world, unit_catalog, passability, nav_config);
+    refresh_all_unit_locomotion(world, unit_catalog, weapon_catalog);
     let mut combat_strike = CombatStrikeReport::default();
     let combat = step_all_combat_engagement(
         world,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
         passability,
         nav_config,
         targeting_policy,
@@ -81,6 +84,8 @@ pub fn run_simulation_tick(
         world,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
+        armor_catalog,
         doodad_catalog,
         nav_config,
         targeting_policy,
@@ -92,6 +97,8 @@ pub fn run_simulation_tick(
         world,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
+        armor_catalog,
         doodad_catalog,
         nav_config,
         targeting_policy,
@@ -114,6 +121,7 @@ pub fn run_simulation_tick(
         world,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
         doodad_catalog,
         nav_config,
         targeting_policy,
@@ -335,6 +343,7 @@ pub fn run_simulation_tick(
         simulation_tick,
     );
     let movement = step_all_unit_movement(world, unit_catalog, passability, delta_seconds);
+    refresh_all_unit_locomotion(world, unit_catalog, weapon_catalog);
     {
         let passability_hunger = PassabilityCatalogs {
             doodad: doodad_catalog,
@@ -415,7 +424,8 @@ mod tests {
         let mut world = flat_world();
         let player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(10.0, 10.0),
             UnitSource::Authored,
@@ -425,7 +435,8 @@ mod tests {
         .id;
         let hostile = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(11.0, 10.0),
             UnitSource::Authored,
@@ -458,7 +469,8 @@ mod tests {
         let mut world = flat_world();
         let player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(10.0, 10.0),
             UnitSource::Authored,
@@ -468,7 +480,8 @@ mod tests {
         .id;
         let hostile = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(11.0, 10.0),
             UnitSource::Authored,
@@ -502,6 +515,7 @@ mod tests {
             &InteriorProfileCatalog::default(),
             None,
             &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &crate::world::ItemCategoryCatalog::default(),
             &crate::world::InventoryProfileCatalog::default(),
             &crate::world::CorpseSettings::default(),
@@ -521,7 +535,8 @@ mod tests {
         let mut world = flat_world();
         let _ = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -533,6 +548,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             unit_id,
@@ -561,6 +577,7 @@ mod tests {
             &InteriorProfileCatalog::default(),
             None,
             &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &crate::world::ItemCategoryCatalog::default(),
             &crate::world::InventoryProfileCatalog::default(),
             &crate::world::CorpseSettings::default(),
@@ -605,6 +622,7 @@ mod tests {
                 &InteriorProfileCatalog::default(),
                 None,
                 &crate::world::ItemCatalog::default(),
+                &crate::world::ArmorProfileCatalog::default(),
                 &crate::world::ItemCategoryCatalog::default(),
                 &crate::world::InventoryProfileCatalog::default(),
                 &crate::world::CorpseSettings::default(),
@@ -629,6 +647,7 @@ mod tests {
                 &InteriorProfileCatalog::default(),
                 None,
                 &crate::world::ItemCatalog::default(),
+                &crate::world::ArmorProfileCatalog::default(),
                 &crate::world::ItemCategoryCatalog::default(),
                 &crate::world::InventoryProfileCatalog::default(),
                 &crate::world::CorpseSettings::default(),

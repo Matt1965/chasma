@@ -357,6 +357,7 @@ pub(crate) struct SaveWindowCatalogResources<'w> {
     footprint_catalog: Res<'w, FootprintCatalog>,
     interior_catalog: Res<'w, InteriorProfileCatalog>,
     nav_catalog: Res<'w, crate::world::BuildingNavigationBlueprintCatalog>,
+    appearance_catalog: Res<'w, crate::world::AppearanceProfileCatalog>,
 }
 
 pub fn handle_save_window_interaction(
@@ -433,6 +434,7 @@ pub fn handle_save_window_interaction(
                 &catalogs.footprint_catalog,
                 &catalogs.interior_catalog,
                 Some(&catalogs.nav_catalog),
+                &catalogs.appearance_catalog,
                 &scene_registry.registry,
                 &entry.scene_id,
             ) {
@@ -470,6 +472,7 @@ pub fn handle_save_window_interaction(
             &catalogs.footprint_catalog,
             &catalogs.interior_catalog,
             Some(&catalogs.nav_catalog),
+            &catalogs.appearance_catalog,
             &mut scene_registry,
             runtime.as_deref(),
             camera_state.iter().next(),
@@ -491,6 +494,7 @@ fn apply_scene_action(
     footprint_catalog: &FootprintCatalog,
     interior_catalog: &InteriorProfileCatalog,
     nav_catalog: Option<&crate::world::BuildingNavigationBlueprintCatalog>,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
     scene_registry: &mut DevSceneRegistry,
     runtime: Option<&DoodadsRuntimeSettings>,
     camera: Option<&RtsCameraState>,
@@ -536,6 +540,7 @@ fn apply_scene_action(
                 footprint_catalog,
                 interior_catalog,
                 nav_catalog,
+                appearance_profiles,
                 &scene_registry.registry,
                 &scene_id,
             ) {

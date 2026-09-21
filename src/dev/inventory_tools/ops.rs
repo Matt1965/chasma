@@ -127,6 +127,7 @@ pub fn dev_add_item(
             let (inventory_store, instance_store) = world.inventory_runtime_mut();
             if item_uses_unique_inventory_entry(item) {
                 let instance_id = create_item_instance(
+                    inventory_store,
                     instance_store,
                     ctx,
                     item_id,
@@ -219,6 +220,7 @@ pub fn dev_place_item_at_anchor(
     let (inventory_store, instance_store) = world.inventory_runtime_mut();
     if item_uses_unique_inventory_entry(item) {
         let instance_id = create_item_instance(
+            inventory_store,
             instance_store,
             ctx,
             item_id,
@@ -643,7 +645,8 @@ mod tests {
         );
         let unit = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             position,
             UnitSource::Dev,
@@ -687,7 +690,8 @@ mod tests {
         );
         let unit = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             position,
             UnitSource::Dev,

@@ -1,6 +1,6 @@
 //! Weapon strike resolution and damage application (ADR-058 C5).
 
-use crate::world::unit::{AttackCycle, AttackPhase, CombatState, UnitId, unit_can_execute_actions};
+use crate::world::unit::{AttackCycle, AttackPhase, CombatState, UnitId};
 use crate::world::{
     AttackTargetingPolicy, DoodadCatalog, HitMode, NavigationConfig, ProjectileRecord,
     ProjectileReport, UnitCatalog, WeaponCatalog, WorldData, spawn_projectile_from_strike,
@@ -74,6 +74,8 @@ pub fn step_all_combat_strikes(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
+    armor_catalog: &crate::world::ArmorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -88,6 +90,8 @@ pub fn step_all_combat_strikes(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
+            armor_catalog,
             doodad_catalog,
             nav_config,
             targeting_policy,
@@ -104,6 +108,8 @@ fn step_unit_combat_strike(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
+    armor_catalog: &crate::world::ArmorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -119,7 +125,7 @@ fn step_unit_combat_strike(
     let cycle_target = attacker.attack_cycle.as_ref().map(|cycle| cycle.target);
     let combat_target = combat_engagement_target(&attacker.combat_state);
 
-    if !unit_can_execute_actions(world, unit_id) {
+    if !crate::world::unit_can_perform_normal_actions(world, unit_id) {
         if attacker.attack_cycle.is_some() {
             clear_attack_cycle(world, unit_id);
         }
@@ -142,6 +148,7 @@ fn step_unit_combat_strike(
                 cycle_target,
                 combat_target,
                 unit_catalog,
+                item_catalog,
                 weapon_catalog,
             );
             clear_attack_cycle(world, unit_id);
@@ -153,6 +160,7 @@ fn step_unit_combat_strike(
         world,
         unit_id,
         unit_catalog,
+        item_catalog,
         weapon_catalog,
         targeting_policy,
     ) else {
@@ -165,6 +173,7 @@ fn step_unit_combat_strike(
                     cycle_target,
                     combat_target,
                     unit_catalog,
+                    item_catalog,
                     weapon_catalog,
                 );
                 clear_attack_cycle(world, unit_id);
@@ -182,6 +191,7 @@ fn step_unit_combat_strike(
             cycle_target,
             Some(target_id),
             unit_catalog,
+            item_catalog,
             weapon_catalog,
         );
         clear_attack_cycle(world, unit_id);
@@ -193,7 +203,9 @@ fn step_unit_combat_strike(
         return;
     };
 
-    let Ok(weapon) = weapon_for_unit_record(&attacker, unit_catalog, weapon_catalog) else {
+    let Ok(weapon) =
+        weapon_for_unit_record(world, &attacker, unit_catalog, item_catalog, weapon_catalog)
+    else {
         clear_attack_cycle(world, unit_id);
         return;
     };
@@ -259,6 +271,8 @@ fn step_unit_combat_strike(
         world,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
+        armor_catalog,
         doodad_catalog,
         nav_config,
         targeting_policy,
@@ -285,6 +299,8 @@ fn advance_attack_cycle(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
+    armor_catalog: &crate::world::ArmorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -312,6 +328,8 @@ fn advance_attack_cycle(
                     world,
                     unit_catalog,
                     weapon_catalog,
+                    item_catalog,
+                    armor_catalog,
                     doodad_catalog,
                     nav_config,
                     targeting_policy,
@@ -388,6 +406,8 @@ fn resolve_strike(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
+    armor_catalog: &crate::world::ArmorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -414,6 +434,7 @@ fn resolve_strike(
         attacker_id,
         target_id,
         weapon_catalog,
+        item_catalog,
         unit_catalog,
         targeting_policy,
     ) {
@@ -445,26 +466,28 @@ fn resolve_strike(
         .get_unit(target_id)
         .map(|record| record.vitals.current_hp)
         .unwrap_or(0);
-    let damage = weapon.damage.max(0.0) as u32;
     let vitals = apply_attributed_combat_damage(
         world,
         target_id,
         attacker_id,
-        damage,
+        weapon.damage,
         unit_catalog,
         weapon_catalog,
+        item_catalog,
+        armor_catalog,
         doodad_catalog,
         nav_config,
         targeting_policy,
     )
     .expect("target exists");
+    let applied_damage = hp_before.saturating_sub(vitals.current_hp);
     world.record_kill_attribution(target_id, attacker_id, hp_before);
     report.push(CombatStrikeTrace {
         attacker_id,
         target_id,
         weapon_id: weapon.id.clone(),
         event: CombatStrikeEvent::AttackStrikeApplied {
-            damage: weapon.damage,
+            damage: applied_damage as f32,
             target_hp_before: hp_before,
             target_hp_after: vitals.current_hp,
         },
@@ -484,7 +507,7 @@ fn resolve_projectile_strike(
         return;
     }
 
-    if !unit_can_execute_actions(world, attacker_id) {
+    if !crate::world::unit_can_perform_normal_actions(world, attacker_id) {
         return;
     }
 
@@ -528,10 +551,11 @@ fn validate_strike_target(
     attacker_id: UnitId,
     target_id: UnitId,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     unit_catalog: &UnitCatalog,
     targeting_policy: AttackTargetingPolicy,
 ) -> bool {
-    if !unit_can_execute_actions(world, attacker_id) {
+    if !crate::world::unit_can_perform_normal_actions(world, attacker_id) {
         return false;
     }
     if validate_active_combat_target(
@@ -540,6 +564,7 @@ fn validate_strike_target(
         target_id,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         targeting_policy,
     )
     .is_err()
@@ -555,7 +580,9 @@ fn validate_strike_target(
     if !is_unit_alive(attacker) || !is_unit_alive(target) {
         return false;
     }
-    let Ok(weapon) = weapon_for_unit_record(attacker, unit_catalog, weapon_catalog) else {
+    let Ok(weapon) =
+        weapon_for_unit_record(world, attacker, unit_catalog, item_catalog, weapon_catalog)
+    else {
         return false;
     };
     is_in_weapon_range(world, attacker, target, unit_catalog, weapon)
@@ -645,8 +672,7 @@ mod tests {
 
     fn spawn_player(world: &mut WorldData, catalog: &UnitCatalog, x: f32, z: f32) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,
@@ -658,8 +684,7 @@ mod tests {
 
     fn spawn_hostile(world: &mut WorldData, catalog: &UnitCatalog, x: f32, z: f32) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,
@@ -674,6 +699,7 @@ mod tests {
             world,
             catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -689,6 +715,8 @@ mod tests {
             world,
             catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
@@ -699,6 +727,8 @@ mod tests {
             world,
             catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
@@ -709,6 +739,7 @@ mod tests {
             world,
             catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -812,6 +843,8 @@ mod tests {
             world,
             catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
@@ -964,6 +997,7 @@ mod tests {
             &mut world,
             &custom_catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -975,6 +1009,7 @@ mod tests {
             &mut world,
             &custom_catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -986,6 +1021,8 @@ mod tests {
             &mut world,
             &custom_catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
@@ -1045,6 +1082,7 @@ mod tests {
             &mut world,
             &custom_catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -1056,6 +1094,7 @@ mod tests {
             &mut world,
             &custom_catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -1067,6 +1106,8 @@ mod tests {
             &mut world,
             &custom_catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),

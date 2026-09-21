@@ -198,7 +198,8 @@ impl Phase7Fixture {
     ) -> crate::world::UnitId {
         let unit = create_unit_with_inventory(
             &self.unit_catalog,
-            &mut self.world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut self.world,
             &UnitDefinitionId::new("bandit"),
             pos(x, z),
             UnitSource::Authored,
@@ -290,6 +291,7 @@ fn created_unit_with_inventory_starts_non_critical() {
     let mut fx = Phase7Fixture::new();
     let unit_id = create_unit_with_inventory(
         &fx.unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut fx.world,
         &UnitDefinitionId::new("bandit"),
         pos(1.0, 1.0),
@@ -356,6 +358,7 @@ fn hungry_unit_eats_from_own_inventory() {
     let mut fx = Phase7Fixture::new();
     let unit_id = create_unit_with_inventory(
         &fx.unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut fx.world,
         &UnitDefinitionId::new("bandit"),
         pos(1.0, 1.0),
@@ -501,6 +504,7 @@ fn non_member_does_not_select_settlement_storage() {
     fx.stock_chest(chest, "prispod", 3);
     let unit = create_unit_with_inventory(
         &fx.unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut fx.world,
         &UnitDefinitionId::new("bandit"),
         pos(5.0, 5.0),
@@ -783,6 +787,7 @@ fn critical_hunger_does_not_interrupt_active_combat() {
     let mut fx = Phase7Fixture::new();
     let unit_id = create_unit_with_inventory(
         &fx.unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut fx.world,
         &UnitDefinitionId::new("bandit"),
         pos(1.0, 1.0),
@@ -878,6 +883,7 @@ fn eating_multiple_small_items_restores_fullness() {
     let mut fx = Phase7Fixture::new();
     let unit_id = create_unit_with_inventory(
         &fx.unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut fx.world,
         &UnitDefinitionId::new("bandit"),
         pos(1.0, 1.0),
@@ -952,6 +958,7 @@ fn zero_nutrition_does_not_reduce_hp() {
     let mut fx = Phase7Fixture::new();
     let unit_id = create_unit_with_inventory(
         &fx.unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut fx.world,
         &UnitDefinitionId::new("bandit"),
         pos(1.0, 1.0),

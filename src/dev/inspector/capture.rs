@@ -122,7 +122,13 @@ pub fn capture_unit_inspector_snapshot(
             })
     };
 
-    let combat = capture_combat_inspector(&record, unit_catalog, weapon_catalog);
+    let combat = capture_combat_inspector(
+        world,
+        &record,
+        unit_catalog,
+        &crate::world::ItemCatalog::default(),
+        weapon_catalog,
+    );
     let projectiles = capture_projectiles_for_unit(world, unit_id);
 
     let (nutrition_current, nutrition_max, hunger_stage) =
@@ -1616,12 +1622,21 @@ fn state_label(state: &UnitState) -> String {
 }
 
 fn capture_combat_inspector(
+    world: &WorldData,
     record: &crate::world::UnitRecord,
     unit_catalog: &UnitCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     weapon_catalog: &WeaponCatalog,
 ) -> CombatInspectorSnapshot {
     CombatInspectorSnapshot {
-        weapon_name: weapon_display_for_unit(record, unit_catalog, weapon_catalog).map(|w| w.name),
+        weapon_name: weapon_display_for_unit(
+            world,
+            record,
+            unit_catalog,
+            item_catalog,
+            weapon_catalog,
+        )
+        .map(|w| w.name),
         target_unit_id: combat_target_id(&record.combat_state),
         attack_phase: record.attack_cycle.as_ref().map(attack_cycle_summary),
     }
@@ -1957,8 +1972,7 @@ mod tests {
 
     fn spawn_wolf(world: &mut WorldData, catalog: &UnitCatalog, position: WorldPosition) -> UnitId {
         create_unit(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             position,
             UnitSource::Authored,

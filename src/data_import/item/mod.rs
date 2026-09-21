@@ -37,7 +37,14 @@ pub fn import_item_catalog_from_excel(
     crate::data_import::DataImportError,
 > {
     let (categories, category_summary) = import_item_categories_from_excel(path)?;
-    let (items, item_summary) = import_items_from_excel(path, &categories)?;
+    let (armor_definitions, _) = crate::data_import::import_armor_profiles_from_excel(path)?;
+    let armor_catalog = crate::world::ArmorProfileCatalog::from_definitions(armor_definitions)
+        .map_err(|err| {
+            crate::data_import::DataImportError::WorkbookOpen(format!(
+                "armor profile catalog build failed: {err}"
+            ))
+        })?;
+    let (items, item_summary) = import_items_from_excel(path, &categories, &armor_catalog)?;
     let summary = crate::data_import::ImportSummary {
         rows_processed: category_summary.rows_processed + item_summary.rows_processed,
         rows_valid: category_summary.rows_valid + item_summary.rows_valid,
@@ -163,6 +170,7 @@ pub fn import_item_categories_from_excel(
 pub fn import_items_from_excel(
     path: &std::path::Path,
     categories: &crate::world::ItemCategoryCatalog,
+    armor_catalog: &crate::world::ArmorProfileCatalog,
 ) -> Result<
     (
         Vec<crate::world::ItemDefinition>,
@@ -173,7 +181,7 @@ pub fn import_items_from_excel(
     use std::collections::HashMap;
 
     use crate::world::ItemDefinitionId;
-    use crate::world::validate_item_definition;
+    use crate::world::{validate_item_armor_profile_reference, validate_item_definition};
 
     use excel::read_item_rows;
     use validate::validate_row;
@@ -208,6 +216,15 @@ pub fn import_items_from_excel(
 
         let definition = row.to_definition();
         if let Err(err) = validate_item_definition(&definition, categories, Some(row.row_number)) {
+            summary.rows_failed += 1;
+            summary
+                .warnings
+                .push(format!("row {}: {err}", row.row_number));
+            continue;
+        }
+        if let Err(err) =
+            validate_item_armor_profile_reference(&definition, armor_catalog, Some(row.row_number))
+        {
             summary.rows_failed += 1;
             summary
                 .warnings
@@ -296,6 +313,10 @@ mod tests {
             tags: vec![],
             unique_instance_required: false,
             nutrition: 0,
+            equipment_slots: Vec::new(),
+            weapon_definition_id: None,
+            armor_profile_id: None,
+            backpack_profile_id: None,
             enabled: true,
             enabled_was_blank: false,
         };
@@ -424,13 +445,33 @@ mod integration_tests {
             summary.warnings
         );
         assert!(
-            summary.rows_valid >= 35,
-            "expected 9 categories + 27 items; valid={} processed={}",
+            summary.rows_valid >= 34,
+            "expected workbook item/category rows; valid={} processed={}",
             summary.rows_valid,
             summary.rows_processed
         );
-        assert_eq!(items.len(), 27, "expected 27 authored items");
-        assert_eq!(categories.len(), 9, "expected 9 item categories");
+        assert_eq!(items.len(), 43, "expected all workbook items");
+        assert_eq!(categories.len(), 10, "expected all workbook categories");
+        assert!(
+            categories
+                .get(&crate::world::ItemCategoryId::new("container"))
+                .is_some(),
+            "container category required by leather_backpack"
+        );
+        assert!(
+            items
+                .get(&ItemDefinitionId::new("leather_backpack"))
+                .is_some(),
+            "leather_backpack equipment item"
+        );
+        assert!(
+            items.get(&ItemDefinitionId::new("iron_sword")).is_some(),
+            "iron_sword equipment item"
+        );
+        assert!(
+            items.get(&ItemDefinitionId::new("scrap_sword")).is_none(),
+            "placeholder scrap_sword must be removed"
+        );
 
         let gold = items
             .get(&ItemDefinitionId::new("gold"))
@@ -491,10 +532,16 @@ mod integration_tests {
         let path = dev_design_workbook_path();
         assert!(path.exists());
         let (categories, _) = import_item_categories_from_excel(&path).unwrap();
-        let (definitions, summary) = import_items_from_excel(&path, &categories).unwrap();
+        let armor = crate::world::ArmorProfileCatalog::default();
+        let (definitions, summary) = import_items_from_excel(&path, &categories, &armor).unwrap();
         assert_eq!(summary.rows_failed, 0);
-        assert_eq!(definitions.len(), 26);
+        assert_eq!(definitions.len(), 43, "expected all workbook items");
         assert!(definitions.iter().any(|def| def.id.as_str() == "gold"));
+        assert!(
+            definitions
+                .iter()
+                .any(|def| def.id.as_str() == "iron_sword")
+        );
         assert!(definitions.iter().any(|def| def.id.as_str() == "iron_ore"));
         assert!(
             definitions

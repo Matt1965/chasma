@@ -76,6 +76,7 @@
             ),
             interior_profile_id: Some("two_story_hut"),
             navigation_blueprint_id: Some("two_story_hut"),
+            terrain_placement_mode: LevelFoundation,
         ),
         (
             id: "smelter",
@@ -119,6 +120,7 @@
             ),
             interior_profile_id: None,
             navigation_blueprint_id: None,
+            terrain_placement_mode: LevelFoundation,
         ),
         (
             id: "storage_chest",
@@ -170,6 +172,7 @@
             ),
             interior_profile_id: None,
             navigation_blueprint_id: None,
+            terrain_placement_mode: LevelFoundation,
         ),
         (
             id: "barn",
@@ -198,7 +201,7 @@
                 size_reference_axis: Some(Width),
                 source_bounds_node: None,
                 explicit_source_dimensions: None,
-                model_local_offset_meters: (7.05, 0.35, -18.65),
+                model_local_offset_meters: (14.857, 0.674, -13.446),
                 rotation_correction: (
                     yaw_millidegrees: 0,
                     pitch_millidegrees: 0,
@@ -221,6 +224,7 @@
             ),
             interior_profile_id: Some("barn_interior"),
             navigation_blueprint_id: Some("barn_interior"),
+            terrain_placement_mode: LevelFoundation,
         ),
         (
             id: "stone_quarry",
@@ -272,6 +276,7 @@
             ),
             interior_profile_id: None,
             navigation_blueprint_id: None,
+            terrain_placement_mode: ConformToTerrain,
         ),
         (
             id: "prispod_farm",
@@ -323,6 +328,7 @@
             ),
             interior_profile_id: None,
             navigation_blueprint_id: None,
+            terrain_placement_mode: ConformToTerrain,
         ),
     ],
 )

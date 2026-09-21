@@ -72,8 +72,7 @@ fn settlement_with_worker(
     .unwrap()
     .settlement_id;
     let worker = create_unit_with_ownership(
-        unit_catalog,
-        world,
+        unit_catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
         &UnitDefinitionId::new("bandit"),
         pos(60.0, 64.0),
         UnitSource::Authored,
@@ -153,6 +152,7 @@ fn set_permission_validates_settlement_membership() {
     .settlement_id;
     let outsider = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         pos(10.0, 10.0),
@@ -424,6 +424,7 @@ fn capability_does_not_override_disallowed_permission() {
     .settlement_id;
     let worker = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("fast_builder"),
         pos(60.0, 64.0),
@@ -499,6 +500,7 @@ fn reassigned_unit_does_not_inherit_previous_settlement_denials() {
     .settlement_id;
     let worker = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         pos(41.0, 41.0),

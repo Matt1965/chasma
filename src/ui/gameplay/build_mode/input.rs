@@ -9,7 +9,10 @@ use crate::camera::RtsCamera;
 use crate::client::{ClientIntent, ClientIntentQueue};
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::{cursor_world_ray, terrain_click_to_world_position};
-use crate::world::{WorldConfig, WorldData, rotation_from_quadrants};
+use crate::world::{
+    BuildingDefinitionId, WorldConfig, WorldData, anchor_from_terrain_position,
+    rotation_from_quadrants,
+};
 
 use super::state::{BuildModePhase, BuildModeState};
 use crate::ui::gameplay::{PlayerHudHoverState, gameplay_input_blocked_by_hud};
@@ -23,7 +26,7 @@ pub fn collect_build_mode_intents(
     world: Res<WorldData>,
     config: Res<WorldConfig>,
     render_assets: Option<Res<TerrainRenderAssets>>,
-    build_mode: ResMut<BuildModeState>,
+    mut build_mode: ResMut<BuildModeState>,
     mut queue: ResMut<ClientIntentQueue>,
     hud_hover: Res<PlayerHudHoverState>,
     menu_block: Option<Res<crate::menu::MenuInputBlock>>,
@@ -95,9 +98,12 @@ pub fn collect_build_mode_intents(
         return;
     };
 
+    let anchor = anchor_from_terrain_position(&world, click.world_position)
+        .unwrap_or(click.world_position);
+
     queue.push(ClientIntent::PlaceBuilding {
         definition_id,
-        anchor: click.world_position,
+        anchor,
         rotation: rotation_from_quadrants(rotation_quadrants),
     });
 }

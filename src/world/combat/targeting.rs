@@ -117,6 +117,7 @@ pub fn validate_autonomous_attack_target(
     target_id: UnitId,
     weapon_catalog: &WeaponCatalog,
     unit_catalog: &UnitCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     policy: AttackTargetingPolicy,
 ) -> Result<(), UnitOrderError> {
     validate_mechanical_attack_target(
@@ -125,6 +126,7 @@ pub fn validate_autonomous_attack_target(
         target_id,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         policy,
     )?;
 
@@ -151,6 +153,7 @@ pub fn is_valid_autonomous_attack_target(
     target_id: UnitId,
     weapon_catalog: &WeaponCatalog,
     unit_catalog: &UnitCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     policy: AttackTargetingPolicy,
 ) -> bool {
     validate_autonomous_attack_target(
@@ -160,6 +163,7 @@ pub fn is_valid_autonomous_attack_target(
         target_id,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         policy,
     )
     .is_ok()
@@ -170,6 +174,7 @@ pub fn validate_mechanical_attack_target(
     target_id: UnitId,
     weapon_catalog: &WeaponCatalog,
     unit_catalog: &UnitCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     policy: AttackTargetingPolicy,
 ) -> Result<(), UnitOrderError> {
     if attacker_id == target_id {
@@ -203,7 +208,7 @@ pub fn validate_mechanical_attack_target(
         return Err(UnitOrderError::InvalidOwnershipTarget);
     }
 
-    let weapon = weapon_for_unit(attacker, unit_catalog, weapon_catalog)?;
+    let weapon = weapon_for_unit(world, attacker, unit_catalog, item_catalog, weapon_catalog)?;
     if !weapon_allows_target(weapon, target) {
         return Err(UnitOrderError::WeaponCannotTarget);
     }
@@ -217,6 +222,7 @@ pub fn is_valid_mechanical_attack_target(
     target_id: UnitId,
     weapon_catalog: &WeaponCatalog,
     unit_catalog: &UnitCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     policy: AttackTargetingPolicy,
 ) -> bool {
     validate_mechanical_attack_target(
@@ -225,6 +231,7 @@ pub fn is_valid_mechanical_attack_target(
         target_id,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         policy,
     )
     .is_ok()
@@ -237,6 +244,7 @@ pub fn validate_explicit_attack_target(
     target_id: UnitId,
     weapon_catalog: &WeaponCatalog,
     unit_catalog: &UnitCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     policy: AttackTargetingPolicy,
 ) -> Result<(), UnitOrderError> {
     validate_mechanical_attack_target(
@@ -245,6 +253,7 @@ pub fn validate_explicit_attack_target(
         target_id,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         policy,
     )
 }
@@ -255,6 +264,7 @@ pub fn is_valid_explicit_attack_target(
     target_id: UnitId,
     weapon_catalog: &WeaponCatalog,
     unit_catalog: &UnitCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     policy: AttackTargetingPolicy,
 ) -> bool {
     validate_explicit_attack_target(
@@ -263,6 +273,7 @@ pub fn is_valid_explicit_attack_target(
         target_id,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         policy,
     )
     .is_ok()
@@ -275,6 +286,7 @@ pub fn validate_reactive_retaliation_target(
     attacker_id: UnitId,
     weapon_catalog: &WeaponCatalog,
     unit_catalog: &UnitCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     policy: AttackTargetingPolicy,
 ) -> Result<(), UnitOrderError> {
     if victim_id == attacker_id {
@@ -299,7 +311,7 @@ pub fn validate_reactive_retaliation_target(
         return Err(UnitOrderError::InvalidOwnershipTarget);
     }
 
-    let weapon = weapon_for_unit(victim, unit_catalog, weapon_catalog)?;
+    let weapon = weapon_for_unit(world, victim, unit_catalog, item_catalog, weapon_catalog)?;
     if !weapon_allows_target(weapon, aggressor) {
         return Err(UnitOrderError::WeaponCannotTarget);
     }
@@ -314,6 +326,7 @@ pub fn validate_active_combat_target(
     target_id: UnitId,
     weapon_catalog: &WeaponCatalog,
     unit_catalog: &UnitCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     policy: AttackTargetingPolicy,
 ) -> Result<(), UnitOrderError> {
     if validate_explicit_attack_target(
@@ -322,6 +335,7 @@ pub fn validate_active_combat_target(
         target_id,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         policy,
     )
     .is_ok()
@@ -342,6 +356,7 @@ pub fn validate_active_combat_target(
         target_id,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         policy,
     )
 }
@@ -352,6 +367,7 @@ pub fn is_valid_active_combat_target(
     target_id: UnitId,
     weapon_catalog: &WeaponCatalog,
     unit_catalog: &UnitCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     policy: AttackTargetingPolicy,
 ) -> bool {
     validate_active_combat_target(
@@ -360,6 +376,7 @@ pub fn is_valid_active_combat_target(
         target_id,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         policy,
     )
     .is_ok()
@@ -373,6 +390,7 @@ pub fn classify_unit_target(
     target_id: UnitId,
     weapon_catalog: &WeaponCatalog,
     unit_catalog: &UnitCatalog,
+    item_catalog: &crate::world::ItemCatalog,
     policy: AttackTargetingPolicy,
 ) -> InteractionType {
     if is_valid_autonomous_attack_target(
@@ -382,6 +400,7 @@ pub fn classify_unit_target(
         target_id,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         policy,
     ) {
         return InteractionType::AttackableUnit;
@@ -463,21 +482,19 @@ pub fn weapon_allows_target_filters(filters: &[TargetFilter], target: &UnitRecor
 }
 
 fn weapon_for_unit<'a>(
+    world: &WorldData,
     attacker: &UnitRecord,
     unit_catalog: &'a UnitCatalog,
+    item_catalog: &'a crate::world::ItemCatalog,
     weapon_catalog: &'a WeaponCatalog,
 ) -> Result<&'a WeaponDefinition, UnitOrderError> {
-    let definition = unit_catalog
-        .get(&attacker.definition_id)
-        .ok_or(UnitOrderError::MissingWeapon)?;
-    let weapon_id = &definition.default_weapon_id;
-    let weapon = weapon_catalog
-        .get(weapon_id)
-        .ok_or(UnitOrderError::MissingWeapon)?;
-    if !weapon.enabled {
-        return Err(UnitOrderError::MissingWeapon);
-    }
-    Ok(weapon)
+    crate::world::equipment::effective_weapon_for_unit(
+        world,
+        attacker,
+        unit_catalog,
+        item_catalog,
+        weapon_catalog,
+    )
 }
 
 fn snapshot_ownership_unavailable(attacker: &UnitRecord, policy: AttackTargetingPolicy) -> bool {
@@ -545,8 +562,7 @@ mod tests {
         position: WorldPosition,
     ) -> UnitId {
         let id = create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new(id_key),
             position,
             UnitSource::Authored,
@@ -563,8 +579,7 @@ mod tests {
 
     fn spawn_hostile(world: &mut WorldData, catalog: &UnitCatalog) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("bandit"),
             pos(5.0, 5.0),
             UnitSource::Authored,
@@ -576,8 +591,7 @@ mod tests {
 
     fn spawn_neutral(world: &mut WorldData, catalog: &UnitCatalog) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("deer"),
             pos(6.0, 6.0),
             UnitSource::Authored,
@@ -589,8 +603,7 @@ mod tests {
 
     fn spawn_wildlife(world: &mut WorldData, catalog: &UnitCatalog) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("bandit"),
             pos(6.0, 6.0),
             UnitSource::Authored,
@@ -602,8 +615,7 @@ mod tests {
 
     fn spawn_wild_wolf(world: &mut WorldData, catalog: &UnitCatalog) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(5.0, 5.0),
             UnitSource::Authored,
@@ -621,8 +633,16 @@ mod tests {
         let player = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
         let neutral = spawn_neutral(&mut world, &catalog);
         assert!(
-            validate_explicit_attack_target(&world, player, neutral, &weapons, &catalog, policy(),)
-                .is_ok()
+            validate_explicit_attack_target(
+                &world,
+                player,
+                neutral,
+                &weapons,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                policy(),
+            )
+            .is_ok()
         );
         assert_eq!(
             validate_autonomous_attack_target(
@@ -632,6 +652,7 @@ mod tests {
                 neutral,
                 &weapons,
                 &catalog,
+                &crate::world::ItemCatalog::default(),
                 policy(),
             ),
             Err(UnitOrderError::InvalidOwnershipTarget)
@@ -652,6 +673,7 @@ mod tests {
             wild,
             &weapons,
             &catalog,
+            &crate::world::ItemCatalog::default(),
             policy(),
         ));
     }
@@ -670,6 +692,7 @@ mod tests {
             player,
             &weapons,
             &catalog,
+            &crate::world::ItemCatalog::default(),
             policy(),
         ));
     }
@@ -682,7 +705,15 @@ mod tests {
         let a = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
         let b = spawn_player(&mut world, &catalog, "bandit", pos(2.0, 2.0));
         assert_eq!(
-            validate_explicit_attack_target(&world, a, b, &weapons, &catalog, policy()),
+            validate_explicit_attack_target(
+                &world,
+                a,
+                b,
+                &weapons,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                policy()
+            ),
             Err(UnitOrderError::InvalidOwnershipTarget)
         );
         assert_eq!(
@@ -693,6 +724,7 @@ mod tests {
                 b,
                 &weapons,
                 &catalog,
+                &crate::world::ItemCatalog::default(),
                 policy()
             ),
             Err(UnitOrderError::InvalidOwnershipTarget)
@@ -714,6 +746,7 @@ mod tests {
                 neutral,
                 &weapons,
                 &catalog,
+                &crate::world::ItemCatalog::default(),
                 policy(),
             ),
             InteractionType::NeutralUnit
@@ -735,6 +768,7 @@ mod tests {
                 wild,
                 &weapons,
                 &catalog,
+                &crate::world::ItemCatalog::default(),
                 policy(),
             ),
             InteractionType::FriendlyUnit
@@ -747,6 +781,7 @@ mod tests {
                 player,
                 &weapons,
                 &catalog,
+                &crate::world::ItemCatalog::default(),
                 policy(),
             ),
             InteractionType::AttackableUnit
@@ -760,7 +795,15 @@ mod tests {
         let mut world = layout_world();
         let player = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
         assert_eq!(
-            validate_explicit_attack_target(&world, player, player, &weapons, &catalog, policy()),
+            validate_explicit_attack_target(
+                &world,
+                player,
+                player,
+                &weapons,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                policy()
+            ),
             Err(UnitOrderError::SelfTarget)
         );
     }
@@ -774,7 +817,15 @@ mod tests {
         let hostile = spawn_hostile(&mut world, &catalog);
         world.damage_unit(player, 999).unwrap();
         assert_eq!(
-            validate_explicit_attack_target(&world, player, hostile, &weapons, &catalog, policy()),
+            validate_explicit_attack_target(
+                &world,
+                player,
+                hostile,
+                &weapons,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                policy()
+            ),
             Err(UnitOrderError::AttackerDead)
         );
     }
@@ -788,7 +839,15 @@ mod tests {
         let hostile = spawn_hostile(&mut world, &catalog);
         world.damage_unit(hostile, 999).unwrap();
         assert_eq!(
-            validate_explicit_attack_target(&world, player, hostile, &weapons, &catalog, policy()),
+            validate_explicit_attack_target(
+                &world,
+                player,
+                hostile,
+                &weapons,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                policy()
+            ),
             Err(UnitOrderError::TargetDead)
         );
     }
@@ -824,6 +883,7 @@ mod tests {
                 hostile,
                 &weapon_catalog,
                 &unit_catalog,
+                &crate::world::ItemCatalog::default(),
                 policy(),
             ),
             Err(UnitOrderError::WeaponCannotTarget)
@@ -870,6 +930,7 @@ mod tests {
                 player,
                 &weapons,
                 &catalog,
+                &crate::world::ItemCatalog::default(),
                 policy()
             ),
             Err(UnitOrderError::InvalidOwnershipTarget)
@@ -890,6 +951,7 @@ mod tests {
                 player,
                 &weapons,
                 &catalog,
+                &crate::world::ItemCatalog::default(),
                 policy(),
             )
             .is_ok()
@@ -917,13 +979,22 @@ mod tests {
                 player,
                 &weapons,
                 &catalog,
+                &crate::world::ItemCatalog::default(),
                 policy()
             ),
             Err(UnitOrderError::InvalidOwnershipTarget)
         );
         assert!(
-            validate_active_combat_target(&world, wildlife, player, &weapons, &catalog, policy(),)
-                .is_ok()
+            validate_active_combat_target(
+                &world,
+                wildlife,
+                player,
+                &weapons,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                policy(),
+            )
+            .is_ok()
         );
     }
 
@@ -935,12 +1006,28 @@ mod tests {
         let player = spawn_player(&mut world, &catalog, "wolf", pos(1.0, 1.0));
         let neutral = spawn_neutral(&mut world, &catalog);
         assert!(
-            validate_explicit_attack_target(&world, player, neutral, &weapons, &catalog, policy(),)
-                .is_ok()
+            validate_explicit_attack_target(
+                &world,
+                player,
+                neutral,
+                &weapons,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                policy(),
+            )
+            .is_ok()
         );
         assert!(
-            validate_active_combat_target(&world, player, neutral, &weapons, &catalog, policy(),)
-                .is_ok()
+            validate_active_combat_target(
+                &world,
+                player,
+                neutral,
+                &weapons,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                policy(),
+            )
+            .is_ok()
         );
     }
 
@@ -958,6 +1045,7 @@ mod tests {
                 player_b,
                 &weapons,
                 &catalog,
+                &crate::world::ItemCatalog::default(),
                 policy(),
             ),
             Err(UnitOrderError::InvalidOwnershipTarget)
@@ -1029,7 +1117,16 @@ mod tests {
             dev_allow_all_targets: true,
         };
         assert!(
-            validate_explicit_attack_target(&world, a, b, &weapons, &catalog, dev_policy).is_ok()
+            validate_explicit_attack_target(
+                &world,
+                a,
+                b,
+                &weapons,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                dev_policy
+            )
+            .is_ok()
         );
         assert!(super::super::autonomous_wants_to_attack(
             &world,

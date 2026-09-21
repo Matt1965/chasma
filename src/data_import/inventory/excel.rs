@@ -107,6 +107,34 @@ fn parse_row(
         InventoryAccessType::default()
     };
 
+    let equipment_slot = if columns.contains_key("Equipment Slot") {
+        let raw = text("Equipment Slot");
+        if raw.trim().is_empty() {
+            None
+        } else {
+            Some(
+                crate::world::equipment::EquipmentSlot::parse(&raw)
+                    .map_err(|error| format!("invalid Equipment Slot: {error}"))?,
+            )
+        }
+    } else {
+        None
+    };
+
+    let max_placed_entries = if columns.contains_key("Max Placed Entries") {
+        let raw = text("Max Placed Entries");
+        if raw.trim().is_empty() {
+            None
+        } else {
+            Some(
+                raw.parse::<u8>()
+                    .map_err(|_| format!("invalid Max Placed Entries `{raw}`"))?,
+            )
+        }
+    } else {
+        None
+    };
+
     Ok(InventoryProfileImportRow {
         row_number,
         profile_id: text("Inventory Profile ID"),
@@ -116,6 +144,8 @@ fn parse_row(
         reference_weight_grams: parse_optional_u32("Reference Weight Grams")?,
         global_stack_cap: parse_optional_u32("Global Stack Cap")?,
         access_type,
+        equipment_slot,
+        max_placed_entries,
         enabled,
         enabled_was_blank,
     })

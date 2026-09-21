@@ -19,13 +19,15 @@ pub mod bake;
 pub use catalog::{FootprintCatalog, FootprintCatalogError, FootprintId};
 pub use cell::{
     OCCUPANCY_CELL_SIZE_METERS, OccupancyCellCoord, QuantizedRotation, SURFACE_SPACE_ID,
-    chunk_for_occupancy_cell, occupancy_cell_at_global_xz,
+    chunk_for_occupancy_cell, circle_overlap_blocked, occupancy_cell_at_global_xz,
 };
 pub use error::{OccupancyError, OccupancySource, conservative_block_radius_for_kind};
 pub use footprint::{
     BakedCellMask, FootprintDefinition, FootprintShape, agent_overlaps_footprint,
     agent_overlaps_footprint_continuous, effective_building_footprint,
-    effective_building_footprint_for_placement, inline_building_footprint, occupied_cells_for_footprint, occupied_cells_for_footprint_yaw,
+    effective_building_footprint_for_placement, inline_building_footprint,
+    inline_footprint_from_building, occupied_cells_for_footprint, occupied_cells_for_footprint_yaw,
+    point_in_oriented_rectangle_continuous, scale_footprint_shape,
 };
 pub use grid::{ChunkOccupancyGrid, OccupancyCellEntry, OccupancyState, default_space_id};
 pub use passability::{
@@ -43,4 +45,8 @@ pub use registration::{
     unregister_source_occupancy, update_building_occupancy, update_doodad_occupancy,
 };
 
+#[cfg(any(test, feature = "dev"))]
+pub use catalog::starter_footprint_definitions;
 
+#[cfg(feature = "dev")]
+pub use crate::data_import::resolve_dev_footprint_catalog;

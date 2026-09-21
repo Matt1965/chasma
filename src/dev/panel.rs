@@ -3,7 +3,10 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use crate::world::{BuildingCatalog, BuildingCatalogRevision, DoodadCatalog, UnitCatalog};
+use crate::world::{
+    BuildingArchetypeCatalog, BuildingCatalog, BuildingCatalogRevision, DoodadCatalog,
+    UnitArchetypeCatalog, UnitCatalog,
+};
 
 use super::catalog::{
     DevCatalogStatusText, DevContextualPlacementAction, DevContextualPlacementButton,
@@ -17,7 +20,10 @@ use super::catalog_cache::{
 use super::dev_mode::{DevModeState, DevTab};
 use super::input::{DevPanelRoot, DevPanelUi};
 use super::tools::MAX_BRUSH_SPAWN_COUNT;
-use super::window::{DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowUi};
+use super::window::{
+    DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowRoot, DevWindowUi,
+    catalog_list_max_height,
+};
 use crate::dev::tooltip::DevTooltipTarget;
 use crate::dev::widgets::{
     CATALOG_SEARCH_PLACEHOLDER, CATALOG_SEARCH_TOOLTIP, FIELD_BG_FOCUSED, FIELD_BG_IDLE,
@@ -26,9 +32,10 @@ use crate::dev::widgets::{
 
 use crate::simulation::{SimulationControlRequests, SimulationControlState};
 
-const MAX_VISIBLE_ROWS: usize = 12;
-const ROW_HEIGHT_PX: f32 = 22.0;
-const PANEL_WIDTH_PX: f32 = 368.0;
+const MAX_VISIBLE_ROWS: usize = 10;
+const MAX_ARCHETYPE_ROWS: usize = 10;
+const ROW_HEIGHT_PX: f32 = 20.0;
+const CATALOG_ROW_GAP_PX: f32 = 2.0;
 const MENU_BTN_WIDTH_PX: f32 = 100.0;
 const MENU_BTN_HEIGHT_PX: f32 = 24.0;
 const TAB_BTN_WIDTH_PX: f32 = 50.0;
@@ -53,6 +60,8 @@ pub(crate) struct DevPanelCatalogResources<'w> {
     item_categories: Res<'w, crate::world::ItemCategoryCatalog>,
     inventory_profiles: Res<'w, crate::world::InventoryProfileCatalog>,
     browse_index: Res<'w, CatalogBrowseIndex>,
+    unit_archetype_catalog: Res<'w, UnitArchetypeCatalog>,
+    building_archetype_catalog: Res<'w, BuildingArchetypeCatalog>,
 }
 
 fn menu_button_bg(interaction: &Interaction, selected: bool) -> BackgroundColor {
@@ -114,6 +123,29 @@ pub(crate) struct DevTabButton {
 
 #[derive(Component, Debug)]
 pub(crate) struct DevListRow {
+    index: usize,
+}
+
+#[derive(Component, Debug)]
+pub(crate) struct DevCatalogBrowserColumns;
+
+#[derive(Component, Debug)]
+pub(crate) struct DevCatalogListColumn;
+
+#[derive(Component, Debug)]
+pub(crate) struct DevCatalogListScroll;
+
+#[derive(Component, Debug)]
+pub(crate) struct DevArchetypePane;
+
+#[derive(Component, Debug)]
+pub(crate) struct DevArchetypeHeaderText;
+
+#[derive(Component, Debug)]
+pub(crate) struct DevArchetypeListScroll;
+
+#[derive(Component, Debug)]
+pub(crate) struct DevArchetypeRow {
     index: usize,
 }
 
@@ -239,7 +271,9 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
                 Node {
                     width: Val::Percent(100.0),
                     flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(6.0),
+                    row_gap: Val::Px(4.0),
+                    min_height: Val::Px(0.0),
+                    overflow: Overflow::clip(),
                     ..default()
                 },
             ))
@@ -366,7 +400,10 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
                     DevPanelUi,
                     Node {
                         flex_direction: FlexDirection::Column,
-                        row_gap: Val::Px(6.0),
+                        row_gap: Val::Px(4.0),
+                        flex_grow: 1.0,
+                        flex_shrink: 1.0,
+                        min_height: Val::Px(0.0),
                         ..default()
                     },
                 ))
@@ -429,51 +466,208 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
                             ));
                         });
 
-                    catalog.spawn((
-                        DevListText,
-                        DevPanelUi,
-                        Text::new(""),
-                        TextFont {
-                            font_size: 12.0,
-                            ..default()
-                        },
-                        TextColor(Color::srgba(0.9, 0.93, 0.96, 1.0)),
-                    ));
-
                     catalog
                         .spawn((
+                            DevCatalogBrowserColumns,
                             DevPanelUi,
                             Node {
-                                flex_direction: FlexDirection::Column,
-                                row_gap: Val::Px(2.0),
-                                max_height: Val::Px(ROW_HEIGHT_PX * MAX_VISIBLE_ROWS as f32),
-                                overflow: Overflow::scroll_y(),
+                                width: Val::Percent(100.0),
+                                flex_direction: FlexDirection::Row,
+                                column_gap: Val::Px(6.0),
+                                flex_grow: 1.0,
+                                flex_shrink: 1.0,
+                                min_height: Val::Px(0.0),
+                                align_items: AlignItems::Stretch,
                                 ..default()
                             },
                         ))
-                        .with_children(|list| {
-                            for index in 0..MAX_VISIBLE_ROWS {
-                                list.spawn((
-                                    DevListRow { index },
+                        .with_children(|columns| {
+                            columns
+                                .spawn((
+                                    DevCatalogListColumn,
                                     DevPanelUi,
-                                    Button,
                                     Node {
-                                        width: Val::Percent(100.0),
-                                        height: Val::Px(ROW_HEIGHT_PX),
-                                        padding: UiRect::horizontal(Val::Px(4.0)),
-                                        align_items: AlignItems::Center,
-                                        overflow: Overflow::clip(),
+                                        flex_direction: FlexDirection::Column,
+                                        row_gap: Val::Px(CATALOG_ROW_GAP_PX),
+                                        flex_grow: 1.0,
+                                        flex_shrink: 1.0,
+                                        flex_basis: Val::Percent(55.0),
+                                        min_width: Val::Px(0.0),
+                                        min_height: Val::Px(0.0),
                                         ..default()
                                     },
-                                    BackgroundColor(Color::srgba(0.1, 0.14, 0.18, 0.85)),
-                                    Text::new(""),
-                                    TextFont {
-                                        font_size: 11.0,
+                                ))
+                                .with_children(|left| {
+                                    left.spawn((
+                                        DevListText,
+                                        DevPanelUi,
+                                        Text::new(""),
+                                        TextFont {
+                                            font_size: 11.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::srgba(0.9, 0.93, 0.96, 1.0)),
+                                    ));
+                                    left.spawn((
+                                        DevCatalogListScroll,
+                                        DevPanelUi,
+                                        Node {
+                                            flex_direction: FlexDirection::Column,
+                                            row_gap: Val::Px(CATALOG_ROW_GAP_PX),
+                                            flex_grow: 1.0,
+                                            flex_shrink: 1.0,
+                                            min_height: Val::Px(ROW_HEIGHT_PX * 4.0),
+                                            overflow: Overflow::scroll_y(),
+                                            ..default()
+                                        },
+                                    ))
+                                    .with_children(|list| {
+                                        for index in 0..MAX_VISIBLE_ROWS {
+                                            list.spawn((
+                                                DevListRow { index },
+                                                DevPanelUi,
+                                                Button,
+                                                Node {
+                                                    width: Val::Percent(100.0),
+                                                    height: Val::Px(ROW_HEIGHT_PX),
+                                                    padding: UiRect::horizontal(Val::Px(4.0)),
+                                                    align_items: AlignItems::Center,
+                                                    overflow: Overflow::clip(),
+                                                    ..default()
+                                                },
+                                                BackgroundColor(Color::srgba(
+                                                    0.1, 0.14, 0.18, 0.85,
+                                                )),
+                                                Text::new(""),
+                                                TextFont {
+                                                    font_size: 11.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::srgba(0.88, 0.92, 0.96, 1.0)),
+                                            ));
+                                        }
+                                    });
+                                });
+
+                            columns
+                                .spawn((
+                                    DevArchetypePane,
+                                    DevPanelUi,
+                                    Node {
+                                        flex_direction: FlexDirection::Column,
+                                        row_gap: Val::Px(CATALOG_ROW_GAP_PX),
+                                        flex_grow: 1.0,
+                                        flex_shrink: 1.0,
+                                        flex_basis: Val::Percent(45.0),
+                                        min_width: Val::Px(0.0),
+                                        min_height: Val::Px(0.0),
                                         ..default()
                                     },
-                                    TextColor(Color::srgba(0.88, 0.92, 0.96, 1.0)),
-                                ));
-                            }
+                                ))
+                                .with_children(|right| {
+                                    right.spawn((
+                                        DevArchetypeHeaderText,
+                                        DevPanelUi,
+                                        Text::new("Archetypes"),
+                                        TextFont {
+                                            font_size: 11.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::srgba(0.75, 0.85, 0.92, 1.0)),
+                                    ));
+                                    right
+                                        .spawn((
+                                            DevPanelUi,
+                                            Node {
+                                                flex_direction: FlexDirection::Row,
+                                                column_gap: Val::Px(4.0),
+                                                ..default()
+                                            },
+                                        ))
+                                        .with_children(|actions| {
+                                            actions.spawn((
+                                                crate::dev::archetype_editor::DevArchetypeSaveButton,
+                                                DevPanelUi,
+                                                Button,
+                                                Node {
+                                                    padding: UiRect::axes(Val::Px(6.0), Val::Px(2.0)),
+                                                    ..default()
+                                                },
+                                                BackgroundColor(Color::srgba(0.12, 0.2, 0.28, 0.95)),
+                                            ))
+                                            .with_children(|btn| {
+                                                btn.spawn((
+                                                    DevPanelUi,
+                                                    Text::new("Save"),
+                                                    TextFont {
+                                                        font_size: 10.0,
+                                                        ..default()
+                                                    },
+                                                    TextColor(Color::srgba(0.88, 0.92, 0.96, 1.0)),
+                                                ));
+                                            });
+                                            actions.spawn((
+                                                crate::dev::archetype_editor::DevArchetypeEditButton,
+                                                DevPanelUi,
+                                                Button,
+                                                Node {
+                                                    padding: UiRect::axes(Val::Px(6.0), Val::Px(2.0)),
+                                                    ..default()
+                                                },
+                                                BackgroundColor(Color::srgba(0.12, 0.2, 0.28, 0.95)),
+                                            ))
+                                            .with_children(|btn| {
+                                                btn.spawn((
+                                                    DevPanelUi,
+                                                    Text::new("Edit"),
+                                                    TextFont {
+                                                        font_size: 10.0,
+                                                        ..default()
+                                                    },
+                                                    TextColor(Color::srgba(0.88, 0.92, 0.96, 1.0)),
+                                                ));
+                                            });
+                                        });
+                                    right.spawn((
+                                        DevArchetypeListScroll,
+                                        DevPanelUi,
+                                        Node {
+                                            flex_direction: FlexDirection::Column,
+                                            row_gap: Val::Px(CATALOG_ROW_GAP_PX),
+                                            flex_grow: 1.0,
+                                            flex_shrink: 1.0,
+                                            min_height: Val::Px(ROW_HEIGHT_PX * 4.0),
+                                            overflow: Overflow::scroll_y(),
+                                            ..default()
+                                        },
+                                    ))
+                                    .with_children(|list| {
+                                        for index in 0..MAX_ARCHETYPE_ROWS {
+                                            list.spawn((
+                                                DevArchetypeRow { index },
+                                                DevPanelUi,
+                                                Button,
+                                                Node {
+                                                    width: Val::Percent(100.0),
+                                                    height: Val::Px(ROW_HEIGHT_PX),
+                                                    padding: UiRect::horizontal(Val::Px(4.0)),
+                                                    align_items: AlignItems::Center,
+                                                    overflow: Overflow::clip(),
+                                                    ..default()
+                                                },
+                                                BackgroundColor(Color::srgba(
+                                                    0.1, 0.14, 0.18, 0.85,
+                                                )),
+                                                Text::new(""),
+                                                TextFont {
+                                                    font_size: 11.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::srgba(0.88, 0.92, 0.96, 1.0)),
+                                            ));
+                                        }
+                                    });
+                                });
                         });
 
                     catalog.spawn((
@@ -568,16 +762,10 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
 pub(crate) fn sync_dev_panel_content(
     dev_state: Res<DevModeState>,
     registry: Res<DevWindowRegistry>,
-    unit_catalog: Res<UnitCatalog>,
-    doodad_catalog: Res<DoodadCatalog>,
-    building_catalog: Res<BuildingCatalog>,
-    building_revision: Res<BuildingCatalogRevision>,
-    item_catalog: Res<crate::world::ItemCatalog>,
-    item_categories: Res<crate::world::ItemCategoryCatalog>,
-    inventory_profiles: Res<crate::world::InventoryProfileCatalog>,
-    browse_index: Res<CatalogBrowseIndex>,
+    catalogs: DevPanelCatalogResources,
     mut filter_cache: ResMut<CatalogFilterCache>,
     debounce: Res<DevSearchDebounce>,
+    mut archetype_pane: Query<(&mut Visibility, &mut Node), With<DevArchetypePane>>,
     mut texts: ParamSet<(
         Query<&mut Text, (With<DevSearchText>, Without<DevListText>)>,
         Query<
@@ -620,6 +808,15 @@ pub(crate) fn sync_dev_panel_content(
                 With<DevListRow>,
                 Without<DevSearchText>,
                 Without<DevListText>,
+                Without<DevArchetypeRow>,
+            ),
+        >,
+        Query<
+            (&DevArchetypeRow, &Interaction, &mut Text, &mut BackgroundColor),
+            (
+                With<DevArchetypeRow>,
+                Without<DevSearchText>,
+                Without<DevListRow>,
             ),
         >,
     )>,
@@ -628,25 +825,39 @@ pub(crate) fn sync_dev_panel_content(
         return;
     }
 
+    let show_archetypes = dev_state.shows_archetype_pane();
+    for (mut visibility, mut node) in archetype_pane.iter_mut() {
+        *visibility = if show_archetypes {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+        node.display = if show_archetypes {
+            Display::Flex
+        } else {
+            Display::None
+        };
+    }
+
     if let Ok(mut text) = texts.p0().single_mut() {
         **text = format_search_field_display(&dev_state);
     }
 
     let catalog_entries: Vec<CatalogBrowserEntry> = if dev_state.active_tab == DevTab::Items {
         super::items_browser::items_catalog_browser_entries(
-            &item_catalog,
-            &item_categories,
+            &catalogs.item_catalog,
+            &catalogs.item_categories,
             &debounce.filtered_query,
             dev_state.enabled_only,
         )
     } else {
         browse_catalog_entries(
-            &browse_index,
+            &catalogs.browse_index,
             &mut filter_cache,
-            &unit_catalog,
-            &doodad_catalog,
-            &building_catalog,
-            building_revision.0,
+            &catalogs.unit_catalog,
+            &catalogs.doodad_catalog,
+            &catalogs.building_catalog,
+            catalogs.building_revision.0,
             dev_state.active_tab,
             dev_state.spawn_mode,
             &debounce.filtered_query,
@@ -688,6 +899,39 @@ pub(crate) fn sync_dev_panel_content(
                 .selected_definition
                 .as_ref()
                 .is_some_and(|sel| sel == &entry.definition);
+            *bg = if selected {
+                BackgroundColor(BTN_BG_ACTIVE)
+            } else {
+                menu_button_bg(interaction, false)
+            };
+        } else {
+            **text = String::new();
+            *bg = BackgroundColor(Color::srgba(0.08, 0.1, 0.12, 0.5));
+        }
+    }
+
+    let archetype_entries = archetype_pane_entries(
+        &dev_state,
+        &catalogs.unit_catalog,
+        &catalogs.unit_archetype_catalog,
+        &catalogs.building_archetype_catalog,
+    );
+    let visible_archetypes: Vec<_> = archetype_entries
+        .into_iter()
+        .skip(dev_state.archetype_list_scroll)
+        .take(MAX_ARCHETYPE_ROWS)
+        .collect();
+
+    for (row, interaction, mut text, mut bg) in texts.p6().iter_mut() {
+        if !show_archetypes {
+            **text = String::new();
+            *bg = BackgroundColor(Color::srgba(0.08, 0.1, 0.12, 0.5));
+            continue;
+        }
+        if row.index < visible_archetypes.len() {
+            let entry = &visible_archetypes[row.index];
+            **text = truncate_label(entry.label(), MAX_LIST_LABEL_CHARS);
+            let selected = archetype_row_selected(&dev_state, entry);
             *bg = if selected {
                 BackgroundColor(BTN_BG_ACTIVE)
             } else {
@@ -847,6 +1091,75 @@ pub(crate) fn sync_dev_panel_button_styles(
     }
 }
 
+#[derive(Debug, Clone)]
+enum ArchetypePaneEntry {
+    Default,
+    Unit(crate::world::UnitArchetypeId, String),
+    Building(crate::world::BuildingArchetypeId, String),
+}
+
+impl ArchetypePaneEntry {
+    fn label(&self) -> &str {
+        match self {
+            Self::Default => "Default",
+            Self::Unit(_, label) | Self::Building(_, label) => label,
+        }
+    }
+}
+
+fn archetype_pane_entries(
+    dev_state: &DevModeState,
+    unit_catalog: &UnitCatalog,
+    unit_archetypes: &UnitArchetypeCatalog,
+    building_archetypes: &BuildingArchetypeCatalog,
+) -> Vec<ArchetypePaneEntry> {
+    if !dev_state.shows_archetype_pane() {
+        return Vec::new();
+    }
+
+    let mut entries = vec![ArchetypePaneEntry::Default];
+    match &dev_state.selected_definition {
+        Some(super::dev_mode::DefinitionId::Unit(unit_id)) => {
+            for archetype in unit_archetypes.archetypes_for_unit(
+                unit_id,
+                unit_catalog,
+                dev_state.enabled_only,
+            ) {
+                entries.push(ArchetypePaneEntry::Unit(
+                    archetype.id.clone(),
+                    archetype.display_name.clone(),
+                ));
+            }
+        }
+        Some(super::dev_mode::DefinitionId::Building(building_id)) => {
+            for archetype in building_archetypes.archetypes_for_building(
+                building_id,
+                dev_state.enabled_only,
+            ) {
+                entries.push(ArchetypePaneEntry::Building(
+                    archetype.id.clone(),
+                    archetype.display_name.clone(),
+                ));
+            }
+        }
+        _ => {}
+    }
+    entries
+}
+
+fn archetype_row_selected(dev_state: &DevModeState, entry: &ArchetypePaneEntry) -> bool {
+    match entry {
+        ArchetypePaneEntry::Default => {
+            dev_state.selected_unit_archetype.is_none()
+                && dev_state.selected_building_archetype.is_none()
+        }
+        ArchetypePaneEntry::Unit(id, _) => dev_state.selected_unit_archetype.as_ref() == Some(id),
+        ArchetypePaneEntry::Building(id, _) => {
+            dev_state.selected_building_archetype.as_ref() == Some(id)
+        }
+    }
+}
+
 fn format_list_row(entry: &CatalogBrowserEntry, favorite: bool) -> String {
     let star = if favorite { "[*] " } else { "    " };
     let label = truncate_label(&entry.label, MAX_LIST_LABEL_CHARS.saturating_sub(12));
@@ -945,6 +1258,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
         Query<(&Interaction, &DevSimulationButton), Changed<Interaction>>,
         Query<&Interaction, (With<DevSearchBox>, Changed<Interaction>)>,
         Query<&Interaction, (With<DevSearchClearButton>, Changed<Interaction>)>,
+        Query<(&Interaction, &DevArchetypeRow), Changed<Interaction>>,
     )>,
 ) {
     if !dev_state.enabled || !registry.is_visible(DevWindowId::Catalog) {
@@ -988,6 +1302,10 @@ pub(crate) fn handle_dev_panel_ui_interaction(
             panel_click_without_search = true;
             dev_state.active_tab = button.tab;
             dev_state.list_scroll = 0;
+            dev_state.archetype_list_scroll = 0;
+            if !dev_state.shows_archetype_pane() {
+                dev_state.clear_archetype_selection();
+            }
         }
     }
 
@@ -1029,8 +1347,41 @@ pub(crate) fn handle_dev_panel_ui_interaction(
         panel_click_without_search = true;
         let index = list_scroll + row.index;
         if let Some(entry) = entries.get(index) {
-            let _previous = dev_state.selected_definition.clone();
             dev_state.select_definition(entry.definition.clone());
+            dev_state.invalidate_archetype_if_inapplicable(
+                &catalogs.unit_catalog,
+                &catalogs.unit_archetype_catalog,
+                &catalogs.building_archetype_catalog,
+            );
+        }
+    }
+
+    let archetype_entries = archetype_pane_entries(
+        &dev_state,
+        &catalogs.unit_catalog,
+        &catalogs.unit_archetype_catalog,
+        &catalogs.building_archetype_catalog,
+    );
+    let archetype_scroll = dev_state.archetype_list_scroll;
+    for (interaction, row) in buttons.p6().iter() {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        gate.block_gameplay_mouse = true;
+        panel_click_without_search = true;
+        let index = archetype_scroll + row.index;
+        if let Some(entry) = archetype_entries.get(index) {
+            match entry {
+                ArchetypePaneEntry::Default => dev_state.clear_archetype_selection(),
+                ArchetypePaneEntry::Unit(id, _) => {
+                    dev_state.selected_unit_archetype = Some(id.clone());
+                    dev_state.selected_building_archetype = None;
+                }
+                ArchetypePaneEntry::Building(id, _) => {
+                    dev_state.selected_building_archetype = Some(id.clone());
+                    dev_state.selected_unit_archetype = None;
+                }
+            }
         }
     }
 
@@ -1113,5 +1464,38 @@ fn apply_contextual_placement_action(
             super::input::cancel_dev_placement(state, preview);
             state.catalog.set_status("Placement cancelled", 180);
         }
+    }
+}
+
+/// Keep catalog list areas within the current viewport.
+pub(crate) fn sync_catalog_panel_layout(
+    registry: Res<DevWindowRegistry>,
+    mut nodes: ParamSet<(
+        Query<(&DevWindowRoot, &mut Node)>,
+        Query<&mut Node, With<DevCatalogListScroll>>,
+        Query<&mut Node, With<DevArchetypeListScroll>>,
+    )>,
+) {
+    let viewport = registry.viewport;
+    let list_height = registry
+        .session(DevWindowId::Catalog)
+        .map(|session| catalog_list_max_height(viewport, session.position.y))
+        .unwrap_or_else(|| catalog_list_max_height(viewport, 0.0));
+
+    for (root, mut node) in nodes.p0().iter_mut() {
+        if root.id != DevWindowId::Catalog {
+            continue;
+        }
+        node.width = Val::Px(super::window::CATALOG_PANEL_WIDTH_PX);
+    }
+
+    for mut node in nodes.p1().iter_mut() {
+        node.max_height = Val::Px(list_height);
+        node.min_height = Val::Px(ROW_HEIGHT_PX * 4.0);
+    }
+
+    for mut node in nodes.p2().iter_mut() {
+        node.max_height = Val::Px(list_height);
+        node.min_height = Val::Px(ROW_HEIGHT_PX * 4.0);
     }
 }

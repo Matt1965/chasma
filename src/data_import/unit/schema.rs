@@ -61,6 +61,8 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Construction Speed",
     "Nutrition Consumption Per Second",
     "Nutrition Consumption Per Tick",
+    "Appearance Profile ID",
+    "Default Body Variant ID",
 ];
 
 /// Computed workbook column — never imported as authoritative data.
@@ -127,6 +129,10 @@ pub struct UnitImportRow {
     pub nutrition_consumption_per_second: f32,
     pub has_nutrition_consumption_column: bool,
     pub asset_sizing: AssetSizingDefinition,
+    pub appearance_profile_id: String,
+    pub default_body_variant_id: String,
+    pub has_appearance_profile_column: bool,
+    pub has_default_body_variant_column: bool,
 }
 
 /// Normalize a workbook file-path cell into a [`UnitRenderKey`] path segment (`wolf`).
@@ -210,7 +216,7 @@ impl UnitImportRow {
             definition = definition.with_inventory_profile_id(
                 crate::world::InventoryProfileId::new(self.inventory_profile_id.trim()),
             );
-        } else if self.is_robot_row() {
+        } else if self.is_player_settler_row() {
             definition = definition.with_inventory_profile_id(
                 crate::world::InventoryProfileId::new("unit_backpack_standard"),
             );
@@ -221,6 +227,28 @@ impl UnitImportRow {
         definition.work_capabilities = self.resolved_work_capabilities();
         definition.nutrition_consumption_per_second =
             self.resolved_nutrition_consumption_per_second();
+        if self.has_appearance_profile_column && !self.appearance_profile_id.trim().is_empty() {
+            definition.appearance_profile_id = Some(
+                crate::world::AppearanceProfileId::new(
+                    self.appearance_profile_id.trim(),
+                ),
+            );
+        }
+        if self.has_default_body_variant_column && !self.default_body_variant_id.trim().is_empty()
+        {
+            definition.default_body_variant_id = Some(
+                crate::world::BodyVariantId::new(
+                    self.default_body_variant_id.trim(),
+                ),
+            );
+        }
+        if definition.appearance_profile_id.is_some() ^ definition.default_body_variant_id.is_some()
+        {
+            return Err(
+                "Appearance Profile ID and Default Body Variant ID must both be set or both absent"
+                    .to_string(),
+            );
+        }
         Ok(definition)
     }
 
@@ -228,7 +256,7 @@ impl UnitImportRow {
         if self.has_nutrition_consumption_column {
             return self.nutrition_consumption_per_second;
         }
-        if self.is_robot_row() {
+        if self.is_player_settler_row() {
             return DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND;
         }
         DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND
@@ -243,7 +271,7 @@ impl UnitImportRow {
 
     fn resolved_work_capabilities(&self) -> crate::world::UnitWorkCapabilities {
         use crate::world::UnitWorkCapabilities;
-        if self.is_robot_row() && !self.has_any_work_capability_column() {
+        if self.is_player_settler_row() && !self.has_any_work_capability_column() {
             return UnitWorkCapabilities::settler_default();
         }
         UnitWorkCapabilities {
@@ -254,14 +282,14 @@ impl UnitImportRow {
         }
     }
 
-    fn is_robot_row(&self) -> bool {
+    fn is_player_settler_row(&self) -> bool {
         if self.file_path.trim().is_empty() {
             return false;
         }
         normalize_file_path_to_render_key(&self.file_path)
             .ok()
             .as_deref()
-            == Some("robot")
+            .is_some_and(|key| matches!(key, "robot" | "human_male" | "human_female"))
     }
 
     fn resolved_animation_profile_id(&self) -> Option<AnimationProfileId> {
@@ -351,7 +379,31 @@ mod tests {
             nutrition_consumption_per_second: DEFAULT_NUTRITION_CONSUMPTION_PER_SECOND,
             has_nutrition_consumption_column: false,
             asset_sizing: AssetSizingDefinition::default(),
+            appearance_profile_id: String::new(),
+            default_body_variant_id: String::new(),
+            has_appearance_profile_column: false,
+            has_default_body_variant_column: false,
         }
+    }
+
+    #[test]
+    fn human_without_work_capability_columns_gets_settler_defaults() {
+        let factions = crate::world::FactionCatalog::default();
+        let species = crate::world::SpeciesCatalog::default();
+        let mut row = sample_row();
+        row.unit_id = "U-0004".to_string();
+        row.name = "Human Male".to_string();
+        row.file_path = r"\units\human_male.glb".to_string();
+        row.faction_key = "player".to_string();
+        row.species_key = "human".to_string();
+        let def = row.to_definition(&factions, &species).unwrap();
+        assert!(def.work_capabilities.can_construct);
+        assert!(def.work_capabilities.can_operate_workstation);
+        assert!(def.work_capabilities.can_haul);
+        assert_eq!(
+            def.inventory_profile_id.as_ref().map(|id| id.as_str()),
+            Some("unit_backpack_standard"),
+        );
     }
 
     #[test]

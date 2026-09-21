@@ -1,7 +1,11 @@
 //! Excel column schema and conversion into item definitions (ADR-087 I1).
 
+use crate::world::equipment::EquipmentSlot;
 use crate::world::normalize_tags;
-use crate::world::{ItemCategoryId, ItemDefinition, ItemDefinitionId, ItemIconKey, ItemRenderKey};
+use crate::world::{
+    ArmorProfileId, InventoryProfileId, ItemCategoryId, ItemDefinition, ItemDefinitionId,
+    ItemIconKey, ItemRenderKey, WeaponDefinitionId,
+};
 
 pub const REQUIRED_COLUMNS: &[&str] = &[
     "Item ID",
@@ -23,6 +27,10 @@ pub const OPTIONAL_COLUMNS: &[&str] = &[
     "Tags",
     "Unique Instance Required",
     "Nutrition",
+    "Equipment Slots",
+    "Weapon Definition ID",
+    "Armor Profile ID",
+    "Backpack Profile ID",
 ];
 
 #[derive(Debug, Clone, PartialEq)]
@@ -43,6 +51,10 @@ pub struct ItemImportRow {
     pub tags: Vec<String>,
     pub unique_instance_required: bool,
     pub nutrition: u32,
+    pub equipment_slots: Vec<EquipmentSlot>,
+    pub weapon_definition_id: Option<String>,
+    pub armor_profile_id: Option<String>,
+    pub backpack_profile_id: Option<String>,
     pub enabled: bool,
     pub enabled_was_blank: bool,
 }
@@ -76,7 +88,31 @@ impl ItemImportRow {
             definition = definition.with_icon_key(ItemIconKey::reserved(key.trim()));
         }
 
-        definition.with_nutrition(self.nutrition)
+        if let Some(weapon_id) = self
+            .weapon_definition_id
+            .as_ref()
+            .filter(|id| !id.trim().is_empty())
+        {
+            definition = definition.with_weapon_definition_id(WeaponDefinitionId::new(weapon_id));
+        }
+        if let Some(armor_id) = self
+            .armor_profile_id
+            .as_ref()
+            .filter(|id| !id.trim().is_empty())
+        {
+            definition = definition.with_armor_profile_id(ArmorProfileId::new(armor_id));
+        }
+        if let Some(profile_id) = self
+            .backpack_profile_id
+            .as_ref()
+            .filter(|id| !id.trim().is_empty())
+        {
+            definition = definition.with_backpack_profile_id(InventoryProfileId::new(profile_id));
+        }
+
+        definition
+            .with_nutrition(self.nutrition)
+            .with_equipment_slots(self.equipment_slots.clone())
     }
 }
 

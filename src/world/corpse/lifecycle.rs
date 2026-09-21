@@ -34,11 +34,14 @@ pub fn step_corpse_lifecycle(
             }
         };
         if should_expire {
-            if let Some(record) = world.corpse_store_mut().get_mut(corpse_id) {
-                record.state = CorpseState::Expired;
-            }
-            if remove_corpse_with_inventory(world, ctx, corpse_id).is_ok() {
-                report.expired_corpse_ids.push(corpse_id);
+            match remove_corpse_with_inventory(world, ctx, corpse_id) {
+                Ok(_) => report.expired_corpse_ids.push(corpse_id),
+                Err(super::error::CorpseError::CorpseExpiryDeferred { .. }) => {
+                    if let Some(record) = world.corpse_store_mut().get_mut(corpse_id) {
+                        record.remaining_lifetime_ticks = 60;
+                    }
+                }
+                Err(_) => {}
             }
         }
     }

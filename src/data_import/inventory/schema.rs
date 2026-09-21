@@ -1,5 +1,6 @@
 //! Excel column schema for inventory profiles (ADR-087 I1).
 
+use crate::world::equipment::EquipmentSlot;
 use crate::world::{InventoryAccessType, InventoryProfileDefinition, InventoryProfileId};
 
 pub const REQUIRED_COLUMNS: &[&str] = &[
@@ -10,8 +11,13 @@ pub const REQUIRED_COLUMNS: &[&str] = &[
     "Enabled",
 ];
 
-pub const OPTIONAL_COLUMNS: &[&str] =
-    &["Reference Weight Grams", "Global Stack Cap", "Access Type"];
+pub const OPTIONAL_COLUMNS: &[&str] = &[
+    "Reference Weight Grams",
+    "Global Stack Cap",
+    "Access Type",
+    "Equipment Slot",
+    "Max Placed Entries",
+];
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct InventoryProfileImportRow {
@@ -23,6 +29,8 @@ pub struct InventoryProfileImportRow {
     pub reference_weight_grams: Option<u32>,
     pub global_stack_cap: Option<u32>,
     pub access_type: InventoryAccessType,
+    pub equipment_slot: Option<EquipmentSlot>,
+    pub max_placed_entries: Option<u8>,
     pub enabled: bool,
     pub enabled_was_blank: bool,
 }
@@ -43,6 +51,12 @@ impl InventoryProfileImportRow {
         }
         if let Some(cap) = self.global_stack_cap {
             definition = definition.with_global_stack_cap(cap);
+        }
+        if let Some(slot) = self.equipment_slot {
+            definition = definition.with_equipment_slot(slot);
+        }
+        if let Some(max) = self.max_placed_entries {
+            definition = definition.with_max_placed_entries(max);
         }
 
         definition

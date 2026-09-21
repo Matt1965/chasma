@@ -565,6 +565,63 @@ mod tests {
     }
 
     #[test]
+    fn place_prispod_farm_without_inventory_ctx_fails_without_world_record() {
+        let cat = catalog();
+        let footprint = FootprintCatalog::default();
+        let doodad = DoodadCatalog::default();
+        let mut world = layout_world();
+        let occ = OccupancyCatalogs {
+            doodad: &doodad,
+            building: &cat,
+            footprint: &footprint,
+        };
+        let err = place_player_building(
+            &cat,
+            &mut world,
+            &BuildingDefinitionId::new("prispod_farm"),
+            position(0, 0, Vec3::new(64.0, 0.0, 64.0)),
+            Quat::IDENTITY,
+            BuildingOwnership::with_affiliation(crate::world::Affiliation::Player),
+            occ,
+        )
+        .unwrap_err();
+        assert!(matches!(
+            err,
+            BuildingAuthoringError::InventoryAllocationFailed(_)
+        ));
+        assert!(world.sorted_building_ids().is_empty());
+    }
+
+    #[test]
+    fn place_prispod_farm_with_inventory_ctx_succeeds() {
+        let cat = catalog();
+        let footprint = FootprintCatalog::default();
+        let doodad = DoodadCatalog::default();
+        let mut world = layout_world();
+        let occ = OccupancyCatalogs {
+            doodad: &doodad,
+            building: &cat,
+            footprint: &footprint,
+        };
+        let ctx = inventory_ctx();
+        let record = place_player_building_with_inventory(
+            &cat,
+            &mut world,
+            &BuildingDefinitionId::new("prispod_farm"),
+            position(0, 0, Vec3::new(64.0, 0.0, 64.0)),
+            Quat::IDENTITY,
+            BuildingOwnership::with_affiliation(crate::world::Affiliation::Player),
+            occ,
+            &ctx,
+        )
+        .unwrap();
+        assert!(record.inventory_id.is_some());
+        assert_eq!(world.sorted_building_ids(), vec![record.id]);
+        assert!(world.get_building(record.id).is_some());
+        assert!(world.occupancy_cell_count() > 0);
+    }
+
+    #[test]
     fn place_player_building_is_planned_with_occupancy() {
         let cat = catalog();
         let footprint = FootprintCatalog::default();

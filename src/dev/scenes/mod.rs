@@ -17,10 +17,15 @@ pub use actions::{
     DevSceneRegistry, clear_dev_world, delete_scene, init_dev_scene_registry, load_scene_by_id,
     save_current_world,
 };
+pub use inventory_snapshot::{capture_inventory_persistence, restore_inventory_persistence};
 pub use load::{SceneApplyReport, apply_scene, clear_world_entities};
 pub use registry::{SceneCaptureContext, SceneRegistry, SceneRegistryEntry};
 pub use save::DEV_SCENES_DIR;
-pub use snapshot::{SceneDebugFlagsSnapshot, capture_scene};
+pub use snapshot::{
+    SceneAppearanceMorphEntry, SceneDebugFlagsSnapshot, SceneQuat, SceneUnitAppearanceRecord,
+    SceneUnitRecord, SceneUnitSource, SceneUnitState, SceneWorldPosition, SCENE_VERSION,
+    capture_scene,
+};
 
 #[cfg(test)]
 mod tests {
@@ -59,7 +64,8 @@ mod tests {
         let catalog = UnitCatalog::default();
         create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(10.0, 10.0),
             UnitSource::Dev,
@@ -67,7 +73,8 @@ mod tests {
         .unwrap();
         create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("deer"),
             pos(20.0, 20.0),
             UnitSource::Dev,
@@ -96,7 +103,8 @@ mod tests {
         let doodad_catalog = DoodadCatalog::default();
         create_unit(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Dev,

@@ -472,7 +472,8 @@ mod tests {
         for index in 0..40 {
             create_unit(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(10.0 + index as f32 * 0.5, 10.0),
                 UnitSource::Authored,
@@ -527,7 +528,8 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(10.0, 10.0),
             UnitSource::Authored,

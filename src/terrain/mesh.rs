@@ -11,7 +11,7 @@ use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
-use crate::world::Heightfield;
+use crate::world::{Heightfield, RoadHeightDeltaTile};
 
 use super::albedo::{AlbedoFallback, ChunkAlbedoGrid, fallback_vertex_color};
 
@@ -249,14 +249,13 @@ fn height_range_welded(samples: &[f32], spe: usize, seam_weld: &ChunkMeshSeamWel
 
 /// Build LOD height/color grids by direct stride sampling (no full-resolution buffers).
 fn build_coarse_lod_grids(
-    heightfield: &Heightfield,
+    samples: &[f32],
     full_spe: usize,
     stride: usize,
     seam_weld: &ChunkMeshSeamWeld,
     albedo: Option<&ChunkAlbedoGrid>,
     fallback: AlbedoFallback,
 ) -> (Vec<f32>, Vec<[f32; 3]>, usize) {
-    let samples = heightfield.samples();
     let (height_min, height_max) = if albedo.is_some() {
         (0.0, 0.0)
     } else {
@@ -615,15 +614,61 @@ pub fn build_chunk_mesh_scaled(
     albedo: Option<&ChunkAlbedoGrid>,
     fallback: AlbedoFallback,
 ) -> Mesh {
+    build_chunk_mesh_scaled_with_delta(
+        heightfield,
+        None,
+        lod,
+        vertical_scale,
+        seam_weld,
+        albedo,
+        fallback,
+    )
+}
+
+/// Like [`build_chunk_mesh_scaled`], but applies optional per-chunk road height deltas.
+pub fn build_chunk_mesh_scaled_with_delta(
+    heightfield: &Heightfield,
+    road_delta: Option<&RoadHeightDeltaTile>,
+    lod: ChunkLod,
+    vertical_scale: f32,
+    seam_weld: &ChunkMeshSeamWeld,
+    albedo: Option<&ChunkAlbedoGrid>,
+    fallback: AlbedoFallback,
+) -> Mesh {
+    let samples = road_delta
+        .map(|delta| delta.effective_samples(heightfield))
+        .unwrap_or_else(|| heightfield.samples().to_vec());
+    build_chunk_mesh_scaled_from_samples(
+        &samples,
+        heightfield.samples_per_edge(),
+        heightfield.spacing_meters(),
+        lod,
+        vertical_scale,
+        seam_weld,
+        albedo,
+        fallback,
+    )
+}
+
+fn build_chunk_mesh_scaled_from_samples(
+    samples: &[f32],
+    samples_per_edge: u32,
+    spacing_meters: f32,
+    lod: ChunkLod,
+    vertical_scale: f32,
+    seam_weld: &ChunkMeshSeamWeld,
+    albedo: Option<&ChunkAlbedoGrid>,
+    fallback: AlbedoFallback,
+) -> Mesh {
     #[cfg(test)]
     BUILD_MESH_CALLS.with(|count| *count.borrow_mut() += 1);
 
-    let full_spe = heightfield.samples_per_edge() as usize;
-    let base_spacing = heightfield.spacing_meters();
+    let full_spe = samples_per_edge as usize;
+    let base_spacing = spacing_meters;
     let stride = lod.stride();
 
     let (heights, colors, spe, spacing) = if stride == 1 {
-        let full_heights = build_mesh_height_grid(heightfield.samples(), full_spe, seam_weld);
+        let full_heights = build_mesh_height_grid(samples, full_spe, seam_weld);
         let (height_min, height_max) = height_range(&full_heights);
         let full_colors = build_full_vertex_colors(
             &full_heights,
@@ -636,7 +681,7 @@ pub fn build_chunk_mesh_scaled(
         (full_heights, full_colors, full_spe, base_spacing)
     } else {
         let (lod_heights, lod_colors, lod_spe) =
-            build_coarse_lod_grids(heightfield, full_spe, stride, seam_weld, albedo, fallback);
+            build_coarse_lod_grids(samples, full_spe, stride, seam_weld, albedo, fallback);
         (
             lod_heights,
             lod_colors,

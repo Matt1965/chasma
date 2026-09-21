@@ -5,8 +5,8 @@ use bevy::prelude::*;
 use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    BuildingCatalog, UnitCatalog, UnitDefinition, UnitId, UnitRecord, UnitState, WeaponCatalog,
-    WorldData,
+    BuildingCatalog, ItemCatalog, UnitCatalog, UnitDefinition, UnitId, UnitRecord, UnitState,
+    WeaponCatalog, WorldData,
 };
 
 use super::building_panel::format_building_shell;
@@ -70,6 +70,7 @@ pub fn build_selected_panel_snapshot(
     unit_catalog: &UnitCatalog,
     building_catalog: &BuildingCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
 ) -> SelectedUnitPanelSnapshot {
     match world_selection.category {
         WorldSelectionCategory::Building => {
@@ -95,9 +96,13 @@ pub fn build_selected_panel_snapshot(
                 lines: body.lines().map(str::to_string).collect(),
             }
         }
-        WorldSelectionCategory::Units => {
-            build_selected_unit_snapshot(selected_units, world, unit_catalog, weapon_catalog)
-        }
+        WorldSelectionCategory::Units => build_selected_unit_snapshot(
+            selected_units,
+            world,
+            unit_catalog,
+            item_catalog,
+            weapon_catalog,
+        ),
         _ => no_selection_snapshot(),
     }
 }
@@ -114,6 +119,7 @@ pub fn build_selected_unit_snapshot(
     selection: &SelectedUnits,
     world: &WorldData,
     catalog: &UnitCatalog,
+    item_catalog: &ItemCatalog,
     weapon_catalog: &WeaponCatalog,
 ) -> SelectedUnitPanelSnapshot {
     let count = selection.0.len() as u32;
@@ -130,7 +136,9 @@ pub fn build_selected_unit_snapshot(
         }
         if let Some(id) = primary {
             lines.push(format!("Primary: Unit #{}", id.raw()));
-            if let Some(summary) = primary_unit_summary(id, world, catalog, weapon_catalog) {
+            if let Some(summary) =
+                primary_unit_summary(id, world, catalog, item_catalog, weapon_catalog)
+            {
                 lines.push(summary);
             }
         }
@@ -145,7 +153,7 @@ pub fn build_selected_unit_snapshot(
     SelectedUnitPanelSnapshot {
         selection_count: 1,
         primary_unit: Some(unit_id),
-        lines: format_single_unit_lines(unit_id, world, catalog, weapon_catalog),
+        lines: format_single_unit_lines(unit_id, world, catalog, item_catalog, weapon_catalog),
     }
 }
 
@@ -153,11 +161,12 @@ fn primary_unit_summary(
     unit_id: UnitId,
     world: &WorldData,
     catalog: &UnitCatalog,
+    item_catalog: &ItemCatalog,
     weapon_catalog: &WeaponCatalog,
 ) -> Option<String> {
     let record = world.get_unit(unit_id)?;
     let def = catalog.get(&record.definition_id)?;
-    let weapon = weapon_display_for_unit(record, catalog, weapon_catalog)
+    let weapon = weapon_display_for_unit(world, record, catalog, item_catalog, weapon_catalog)
         .map(|w| w.name)
         .unwrap_or_else(|| "unknown".to_string());
     Some(format!(
@@ -172,6 +181,7 @@ pub fn format_single_unit_lines(
     unit_id: UnitId,
     world: &WorldData,
     catalog: &UnitCatalog,
+    item_catalog: &ItemCatalog,
     weapon_catalog: &WeaponCatalog,
 ) -> Vec<String> {
     let Some(record) = world.get_unit(unit_id) else {
@@ -186,14 +196,24 @@ pub fn format_single_unit_lines(
             ),
         ];
     };
-    format_unit_detail_lines(unit_id, record, def, catalog, weapon_catalog)
+    format_unit_detail_lines(
+        unit_id,
+        world,
+        record,
+        def,
+        catalog,
+        item_catalog,
+        weapon_catalog,
+    )
 }
 
 pub fn format_unit_detail_lines(
     unit_id: UnitId,
+    world: &WorldData,
     record: &UnitRecord,
     def: &UnitDefinition,
     unit_catalog: &UnitCatalog,
+    item_catalog: &ItemCatalog,
     weapon_catalog: &WeaponCatalog,
 ) -> Vec<String> {
     let mut lines = vec![
@@ -217,7 +237,9 @@ pub fn format_unit_detail_lines(
         format!("State: {}", unit_state_label(&record.state)),
         format!("Combat: {}", record.combat_state.label()),
     ];
-    if let Some(weapon) = weapon_display_for_unit(record, unit_catalog, weapon_catalog) {
+    if let Some(weapon) =
+        weapon_display_for_unit(world, record, unit_catalog, item_catalog, weapon_catalog)
+    {
         append_weapon_hud_lines(&mut lines, &weapon);
     }
     append_combat_state_lines(&mut lines, record, combat_target_id(&record.combat_state));
@@ -354,6 +376,7 @@ pub fn sync_selected_unit_panel(
     world: Res<WorldData>,
     unit_catalog: Res<UnitCatalog>,
     building_catalog: Res<BuildingCatalog>,
+    item_catalog: Res<ItemCatalog>,
     weapon_catalog: Res<WeaponCatalog>,
     mut cache: Local<Option<SelectedUnitPanelSnapshot>>,
     mut text_set: ParamSet<(
@@ -375,6 +398,7 @@ pub fn sync_selected_unit_panel(
         &unit_catalog,
         &building_catalog,
         &weapon_catalog,
+        &item_catalog,
     );
     if cache.as_ref() == Some(&snapshot) {
         return;
@@ -574,6 +598,7 @@ mod tests {
             &wolf_catalog(),
             &building_catalog(),
             &default_weapons(),
+            &crate::world::ItemCatalog::default(),
         )
     }
 
@@ -626,7 +651,8 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
@@ -715,7 +741,8 @@ mod tests {
         );
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -819,7 +846,8 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
@@ -849,7 +877,8 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -873,7 +902,8 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,

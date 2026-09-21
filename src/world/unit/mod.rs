@@ -8,6 +8,7 @@
 //! `world/obstacle/` — not under this module.
 
 pub mod animation_profile;
+pub mod appearance;
 mod attack_cycle;
 mod authoring;
 mod catalog;
@@ -34,6 +35,8 @@ pub(crate) mod post_exit_jitter_trace;
 mod query;
 mod record;
 mod removal;
+#[cfg(test)]
+mod removal_tests;
 #[cfg(any(test, feature = "dev"))]
 mod restore;
 mod self_maintenance;
@@ -51,9 +54,22 @@ pub use animation_profile::{
     AnimationClipKey, AnimationProfile, AnimationProfileCatalog, AnimationProfileCatalogError,
     AnimationProfileId,
 };
+pub use appearance::{
+    AppearanceError, AppearanceParamId, AppearanceParameterDefinition, AppearanceProfile,
+    AppearanceProfileCatalog, AppearanceProfileCatalogError, AppearanceProfileId,
+    BodyVariantDefinition, BodyVariantId, CG2_MORPH_SEMANTIC_PARAMS, HUMAN_MORPH_SEMANTIC_PARAMS,
+    HUMAN_MORPH_TARGET_NAMES,
+    MorphMappingSide, MorphResolveError, MorphTargetMapping, UnitAppearance,
+    definition_has_appearance_support, effective_render_key_for_appearance,
+    effective_unit_render_key, effective_unit_render_key_str,
+    resolve_canonical_default_appearance, resolve_equipment_morph_weights, resolve_morph_weights,
+    validate_profile_morph_mappings,
+    validate_unit_appearance,
+};
 pub use attack_cycle::{AttackCycle, AttackPhase};
 pub use authoring::{
     UnitAuthoringError, create_unit, create_unit_with_inventory, create_unit_with_ownership,
+    create_unit_with_ownership_and_appearance,
     lookup_unit, move_unit, remove_unit,
 };
 #[cfg(any(test, feature = "dev"))]
@@ -81,9 +97,10 @@ pub use entrance_traversal_trace::{
     record_transition_probe as record_entrance_transition_probe,
 };
 pub use facing::{
-    apply_attacking_combat_facing,
+    MOVEMENT_FACING_EPSILON_METERS, apply_attacking_combat_facing,
     facing_rotation_from_direction_xz, facing_rotation_from_travel,
-    facing_rotation_toward_position, model_forward_xz, rotation_from_yaw_radians, step_rotation_yaw_toward, step_yaw_toward,
+    facing_rotation_toward_position, model_forward_xz, rotation_from_yaw_radians,
+    shortest_yaw_delta_radians, step_rotation_yaw_toward, step_yaw_toward, xz_displacement_meters,
     yaw_radians_from_rotation,
 };
 pub use grounding::{UnitGroundingError, ground_unit_position, ground_unit_to_terrain};
@@ -94,6 +111,11 @@ pub use inside_move_trace::{
     finish_command_resolution_failure, maybe_begin_session, record_order_issuance,
 };
 pub use interior_exit_click_trace::InteriorExitClickTrace;
+pub use inventory::{
+    attach_inventory_on_unit_create, cleanup_unit_inventory_on_delete,
+    transfer_unit_inventory_to_corpse, unit_encumbrance_ratio, unit_inventory_weight_grams,
+    unit_over_reference_weight_grams, unit_reference_weight_grams, validate_unit_inventory_owner,
+};
 pub use metadata::UnitMetadata;
 pub use movement::{
     BatchUnitMovementReport, BlockedMovementReason, MOVEMENT_ARRIVAL_TOLERANCE_METERS,
@@ -103,7 +125,7 @@ pub use movement::{
 };
 pub use movement_authority_trace::{
     MovementAuthorityTrace, MovementAuthorityViolation, MovementBlockedAuthorityRecord,
-    MovementCommandAuthorityRecord, waypoint_space_ids,
+    MovementCommandAuthorityRecord, format_waypoint_spaces, waypoint_space_ids,
 };
 pub use navigation_membership::{
     infer_navigation_membership_at_position, initialize_surface_units_navigation_membership,
@@ -117,23 +139,25 @@ pub use placement::UnitPlacement;
 pub use portal_trace::{PortalTransitionEvent, PortalTransitionTrace};
 pub use post_exit_jitter_trace::PostExitJitterTrace;
 pub use record::UnitRecord;
+pub use removal::{UnitRemovalOutcome, finalize_unit_removal};
 #[cfg(any(test, feature = "dev"))]
 pub use restore::{
     UnitRestoreError, normalize_restored_unit, restore_unit_record, validate_unit_for_restore,
 };
 pub use self_maintenance::{
     HungerStage, NutritionProfile, SelfMaintenanceActivity, SelfMaintenanceContext,
-    UnitNutritionState, UnitSelfMaintenanceState, evaluate_hunger_stage,
-    hunger_prevents_work_claim, hunger_stage_label, initialize_unit_nutrition,
-    step_unit_nutrition_decay, step_unit_self_maintenance_post_movement,
-    step_unit_self_maintenance_pre_work, unit_in_active_combat,
+    UnitNutritionState, UnitSelfMaintenanceState, apply_nutrition_decay, eat_one_from_inventory,
+    evaluate_hunger_stage, hunger_prevents_work_claim, hunger_stage_label,
+    initialize_unit_nutrition, select_food_source, step_unit_nutrition_decay,
+    step_unit_self_maintenance_post_movement, step_unit_self_maintenance_pre_work,
+    unit_in_active_combat,
 };
 pub use source::UnitSource;
 pub use state::UnitState;
 pub use store::ChunkUnitStore;
 pub use vitals::UnitVitals;
 pub use work_skill::{
-    UnitWorkSkillState, WorkSkillCatalog, WorkSkillCatalogError,
+    DEFAULT_WORK_SKILL_VALUE, UnitWorkSkillState, WorkSkillCatalog, WorkSkillCatalogError,
     WorkSkillDefinition, WorkSkillError, WorkSkillId, initialize_unit_work_skills,
     set_work_skill_value, starter_work_skill_definitions, work_skill_for_permission_domain,
     work_skill_for_task, work_skill_value,

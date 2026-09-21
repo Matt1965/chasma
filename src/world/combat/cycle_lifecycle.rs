@@ -2,7 +2,8 @@
 
 use crate::world::unit::{CombatState, UnitId};
 use crate::world::{
-    AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldData, validate_active_combat_target,
+    AttackTargetingPolicy, ItemCatalog, UnitCatalog, WeaponCatalog, WorldData,
+    validate_active_combat_target,
 };
 
 use super::range::weapon_for_unit_record;
@@ -51,11 +52,14 @@ fn weapon_id_for_attacker(
     world: &WorldData,
     attacker_id: UnitId,
     unit_catalog: &UnitCatalog,
+    item_catalog: &ItemCatalog,
     weapon_catalog: &WeaponCatalog,
 ) -> WeaponDefinitionId {
     world
         .get_unit(attacker_id)
-        .and_then(|record| weapon_for_unit_record(record, unit_catalog, weapon_catalog).ok())
+        .and_then(|record| {
+            weapon_for_unit_record(world, record, unit_catalog, item_catalog, weapon_catalog).ok()
+        })
         .map(|weapon| weapon.id.clone())
         .unwrap_or_else(|| WeaponDefinitionId::new("unknown"))
 }
@@ -66,6 +70,7 @@ fn push_cycle_trace(
     attacker_id: UnitId,
     target_id: UnitId,
     unit_catalog: &UnitCatalog,
+    item_catalog: &ItemCatalog,
     weapon_catalog: &WeaponCatalog,
     event: CombatStrikeEvent,
 ) {
@@ -75,7 +80,13 @@ fn push_cycle_trace(
     report.push(CombatStrikeTrace {
         attacker_id,
         target_id,
-        weapon_id: weapon_id_for_attacker(world, attacker_id, unit_catalog, weapon_catalog),
+        weapon_id: weapon_id_for_attacker(
+            world,
+            attacker_id,
+            unit_catalog,
+            item_catalog,
+            weapon_catalog,
+        ),
         event,
     });
 }
@@ -107,6 +118,7 @@ pub fn clear_attack_cycle_for_order_cancel(
         unit_id,
         trace_target,
         unit_catalog,
+        &ItemCatalog::default(),
         weapon_catalog,
         CombatStrikeEvent::AttackCycleClearedOrderCancelled,
     );
@@ -135,6 +147,7 @@ pub fn clear_attack_cycle_for_invalid_target(
         unit_id,
         target,
         unit_catalog,
+        &ItemCatalog::default(),
         weapon_catalog,
         CombatStrikeEvent::AttackCycleClearedInvalidTarget { target },
     );
@@ -164,6 +177,7 @@ pub fn reset_attack_cycle_for_retarget(
         unit_id,
         new_target,
         unit_catalog,
+        &ItemCatalog::default(),
         weapon_catalog,
         CombatStrikeEvent::AttackCycleResetRetarget {
             old_target,
@@ -177,6 +191,7 @@ pub fn validate_attack_cycle_for_strike(
     world: &WorldData,
     unit_id: UnitId,
     unit_catalog: &UnitCatalog,
+    item_catalog: &ItemCatalog,
     weapon_catalog: &WeaponCatalog,
     targeting_policy: AttackTargetingPolicy,
 ) -> Option<UnitId> {
@@ -194,6 +209,7 @@ pub fn validate_attack_cycle_for_strike(
         target,
         weapon_catalog,
         unit_catalog,
+        item_catalog,
         targeting_policy,
     )
     .ok()?;
@@ -207,6 +223,7 @@ pub fn record_strike_state_mismatch(
     cycle_target: Option<UnitId>,
     combat_target: Option<UnitId>,
     unit_catalog: &UnitCatalog,
+    item_catalog: &ItemCatalog,
     weapon_catalog: &WeaponCatalog,
 ) {
     let trace_target = combat_target.or(cycle_target).unwrap_or(attacker_id);
@@ -216,6 +233,7 @@ pub fn record_strike_state_mismatch(
         attacker_id,
         trace_target,
         unit_catalog,
+        item_catalog,
         weapon_catalog,
         CombatStrikeEvent::AttackStrikeSkippedStateMismatch {
             cycle_target,
@@ -281,8 +299,7 @@ mod tests {
         z: f32,
     ) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,
@@ -299,8 +316,7 @@ mod tests {
         z: f32,
     ) -> UnitId {
         create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("wolf"),
             pos(x, z),
             UnitSource::Authored,
@@ -355,8 +371,15 @@ mod tests {
             .set_unit_attack_cycle(player, Some(AttackCycle::start_windup(hostile, 0.2)))
             .unwrap();
         assert!(
-            validate_attack_cycle_for_strike(&world, player, &catalog, &weapons, policy(),)
-                .is_none()
+            validate_attack_cycle_for_strike(
+                &world,
+                player,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                &weapons,
+                policy(),
+            )
+            .is_none()
         );
     }
 
@@ -368,7 +391,8 @@ mod tests {
         let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
         let friendly = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(11.0, 10.0),
             UnitSource::Authored,
@@ -380,8 +404,15 @@ mod tests {
             .set_unit_combat_state(player, CombatState::Attacking { target: friendly })
             .unwrap();
         assert!(
-            validate_attack_cycle_for_strike(&world, player, &catalog, &weapons, policy(),)
-                .is_none()
+            validate_attack_cycle_for_strike(
+                &world,
+                player,
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                &weapons,
+                policy(),
+            )
+            .is_none()
         );
     }
 
@@ -395,6 +426,8 @@ mod tests {
             world,
             catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             policy(),
@@ -405,6 +438,7 @@ mod tests {
             world,
             catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -424,6 +458,7 @@ mod tests {
             world,
             catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -497,7 +532,14 @@ mod tests {
         issue_attack(&mut world, &catalog, player, hostile_a);
         let _ = step_combat(&mut world, &catalog, 0.1);
         let timing = super::super::attack_cycle::WeaponTiming::from_weapon(
-            weapon_for_unit_record(world.get_unit(player).unwrap(), &catalog, &weapons).unwrap(),
+            weapon_for_unit_record(
+                &world,
+                world.get_unit(player).unwrap(),
+                &catalog,
+                &crate::world::ItemCatalog::default(),
+                &weapons,
+            )
+            .unwrap(),
         );
         world
             .set_unit_attack_cycle(
@@ -541,6 +583,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -567,6 +610,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons(),
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -636,6 +680,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),
@@ -661,7 +706,8 @@ mod tests {
         let player = spawn_player(&mut world, &catalog, 10.0, 10.0);
         let neutral = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(11.0, 10.0),
             UnitSource::Authored,
@@ -680,6 +726,8 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
+            &crate::world::ArmorProfileCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             AttackTargetingPolicy::default(),
@@ -771,6 +819,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &DoodadCatalog::default(),
             &NavigationConfig::default(),
             player,
@@ -796,6 +845,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             default_passability(),
             &NavigationConfig::default(),
             policy(),

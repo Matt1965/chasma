@@ -6,8 +6,8 @@ use bevy::prelude::*;
 
 use crate::debug::DebugOverlayConfig;
 use crate::world::{
-    BuildingDefinitionId, DoodadDefinitionId, InventoryId, InventoryProfileId, ItemDefinitionId,
-    ItemPileId, UnitDefinitionId, WorldPosition,
+    BuildingArchetypeId, BuildingDefinitionId, DoodadDefinitionId, InventoryId, InventoryProfileId,
+    ItemDefinitionId, ItemPileId, UnitArchetypeId, UnitDefinitionId, WorldPosition,
 };
 
 use super::catalog::CatalogSessionState;
@@ -30,6 +30,11 @@ pub enum DevTextFieldFocus {
     SceneName,
     ItemQuantity,
     WorldEnvironmentNumeric,
+    ArchetypeName,
+    ArchetypeGoldMin,
+    ArchetypeGoldMax,
+    ArchetypeCaptureMargin,
+    RoadName,
 }
 
 /// Client-local dev inventory tool state (DV0).
@@ -128,6 +133,9 @@ pub struct DevModeState {
     pub placement_uniform_scale: f32,
     pub last_line_direction: Vec2,
     pub list_scroll: usize,
+    pub archetype_list_scroll: usize,
+    pub selected_unit_archetype: Option<UnitArchetypeId>,
+    pub selected_building_archetype: Option<BuildingArchetypeId>,
     pub last_spawn_message: String,
     /// Item / inventory dev tools (DV0).
     pub inventory: DevInventoryToolState,
@@ -175,6 +183,9 @@ impl Default for DevModeState {
             placement_uniform_scale: 1.0,
             last_line_direction: Vec2::X,
             list_scroll: 0,
+            archetype_list_scroll: 0,
+            selected_unit_archetype: None,
+            selected_building_archetype: None,
             last_spawn_message: String::new(),
             pile_harness_message: String::new(),
             treasury_harness_message: String::new(),
@@ -207,6 +218,33 @@ impl DevModeState {
 
     pub fn clear_selection(&mut self) {
         self.selected_definition = None;
+        self.clear_archetype_selection();
+    }
+
+    pub fn clear_archetype_selection(&mut self) {
+        self.selected_unit_archetype = None;
+        self.selected_building_archetype = None;
+        self.archetype_list_scroll = 0;
+    }
+
+    pub fn shows_archetype_pane(&self) -> bool {
+        matches!(self.active_tab, DevTab::Units | DevTab::Buildings)
+    }
+
+    pub fn selected_unit_archetype_for_spawn(&self) -> Option<&UnitArchetypeId> {
+        if self.active_tab == DevTab::Units {
+            self.selected_unit_archetype.as_ref()
+        } else {
+            None
+        }
+    }
+
+    pub fn selected_building_archetype_for_spawn(&self) -> Option<&BuildingArchetypeId> {
+        if self.active_tab == DevTab::Buildings {
+            self.selected_building_archetype.as_ref()
+        } else {
+            None
+        }
     }
 
     pub fn has_text_focus(&self) -> bool {
@@ -301,6 +339,7 @@ impl DevModeState {
     }
 
     pub fn select_definition(&mut self, id: DefinitionId) {
+        let previous = self.selected_definition.clone();
         match &id {
             DefinitionId::Unit(_) => self.spawn_mode = SpawnMode::Unit,
             DefinitionId::Doodad(_) => self.spawn_mode = SpawnMode::Doodad,
@@ -313,7 +352,43 @@ impl DevModeState {
         ) {
             self.clear_world_selection_for_place = true;
         }
+        if previous.as_ref() != Some(&id) {
+            self.clear_archetype_selection();
+        }
         self.selected_definition = Some(id);
+    }
+
+    pub fn invalidate_archetype_if_inapplicable(
+        &mut self,
+        unit_catalog: &crate::world::UnitCatalog,
+        unit_archetypes: &crate::world::UnitArchetypeCatalog,
+        building_archetypes: &crate::world::BuildingArchetypeCatalog,
+    ) {
+        match &self.selected_definition {
+            Some(DefinitionId::Unit(unit_id)) => {
+                if let Some(archetype_id) = self.selected_unit_archetype.clone() {
+                    let still_valid = unit_archetypes
+                        .get(&archetype_id)
+                        .is_some_and(|archetype| archetype.applies_to_unit(unit_id, unit_catalog));
+                    if !still_valid {
+                        self.selected_unit_archetype = None;
+                        self.archetype_list_scroll = 0;
+                    }
+                }
+            }
+            Some(DefinitionId::Building(building_id)) => {
+                if let Some(archetype_id) = self.selected_building_archetype.clone() {
+                    let still_valid = building_archetypes
+                        .get(&archetype_id)
+                        .is_some_and(|archetype| archetype.applies_to(building_id));
+                    if !still_valid {
+                        self.selected_building_archetype = None;
+                        self.archetype_list_scroll = 0;
+                    }
+                }
+            }
+            _ => self.clear_archetype_selection(),
+        }
     }
 
     /// Dev held-item cursor: Items catalog item selection with quantity (not authoritative).

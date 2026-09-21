@@ -118,6 +118,7 @@ fn setup_workbench_world() -> (
     let unit_catalog = UnitCatalog::default();
     let worker = create_unit(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         pos(64.0, 64.0),
@@ -181,6 +182,7 @@ fn second_worker(world: &mut WorldData) -> UnitId {
     let unit_catalog = UnitCatalog::default();
     create_unit(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         world,
         &UnitDefinitionId::new("wolf"),
         pos(64.0, 64.0),

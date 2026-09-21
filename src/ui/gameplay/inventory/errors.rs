@@ -76,6 +76,18 @@ impl InventoryUiError {
             }
             InventoryError::InvalidSwap { .. } => Self::CannotSwap,
             InventoryError::StackLimitExceeded { .. } => Self::StackFull,
+            InventoryError::IncompatibleEquipmentSlot { .. } => {
+                Self::Other("Item cannot be equipped in that slot.".into())
+            }
+            InventoryError::LoadedContainerInPersonalInventory { .. } => {
+                Self::Other("Loaded backpack cannot be placed in personal inventory.".into())
+            }
+            InventoryError::ContainerLoadingForbiddenInPersonalInventory { .. } => {
+                Self::Other("Cannot load a backpack while it is in personal inventory.".into())
+            }
+            InventoryError::MaxPlacedEntriesExceeded { .. } => {
+                Self::Other("That equipment slot is already occupied.".into())
+            }
             other => Self::Other(other.to_string()),
         }
     }

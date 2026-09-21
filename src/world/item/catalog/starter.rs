@@ -4,7 +4,7 @@ use crate::world::{ItemCategoryId, ItemDefinition, ItemDefinitionId, ItemIconKey
 ///
 /// Dev startup loads `Chasma Design.xlsx` via [`crate::data_import::resolve_dev_item_catalog`].
 pub fn starter_definitions() -> Vec<ItemDefinition> {
-    vec![
+    let mut items = vec![
         ItemDefinition::new(
             ItemDefinitionId::new("gold"),
             "Gold",
@@ -165,5 +165,6 @@ pub fn starter_definitions() -> Vec<ItemDefinition> {
             true,
         )
         .with_unique_instance_required(true),
-    ]
+    ];
+    items
 }

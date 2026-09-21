@@ -3,9 +3,9 @@
 use bevy::prelude::*;
 
 use crate::world::{
-    AttackTargetingPolicy, DoodadCatalog, FormationKind, FormationPlanner, NavigationConfig,
-    UnitCatalog, UnitOrder, UnitOrderError, WeaponCatalog, WorldData, WorldPosition,
-    filter_commandable_unit_ids, issue_unit_order,
+    AttackTargetingPolicy, DoodadCatalog, FormationKind, FormationPlanner, ItemCatalog,
+    NavigationConfig, UnitCatalog, UnitOrder, UnitOrderError, WeaponCatalog, WorldData,
+    WorldPosition, filter_commandable_unit_ids, issue_unit_order,
 };
 
 use super::selection::SelectedUnits;
@@ -55,6 +55,7 @@ pub fn issue_move_orders_to_selection(
     selection: &SelectedUnits,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     target: WorldPosition,
@@ -77,6 +78,7 @@ pub fn issue_move_orders_to_selection(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             doodad_catalog,
             nav_config,
             assignment.unit_id,
@@ -141,6 +143,7 @@ pub fn issue_idle_orders_to_selection(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     selection: &SelectedUnits,
@@ -158,6 +161,7 @@ pub fn issue_idle_orders_to_selection(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             doodad_catalog,
             nav_config,
             unit_id,
@@ -191,6 +195,7 @@ pub fn issue_attack_orders_to_selection(
     selection: &SelectedUnits,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     target: crate::world::UnitId,
@@ -210,6 +215,7 @@ pub fn issue_attack_orders_to_selection(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             doodad_catalog,
             nav_config,
             unit_id,
@@ -244,6 +250,7 @@ pub fn issue_attack_move_orders_to_selection(
     selection: &SelectedUnits,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     destination: WorldPosition,
@@ -272,6 +279,7 @@ pub fn issue_attack_move_orders_to_selection(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             doodad_catalog,
             nav_config,
             assignment.unit_id,
@@ -306,6 +314,7 @@ pub fn issue_hold_orders_to_selection(
     selection: &SelectedUnits,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
+    item_catalog: &ItemCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_config: &NavigationConfig,
     targeting_policy: AttackTargetingPolicy,
@@ -327,6 +336,7 @@ pub fn issue_hold_orders_to_selection(
             world,
             unit_catalog,
             weapon_catalog,
+            item_catalog,
             doodad_catalog,
             nav_config,
             unit_id,
@@ -444,7 +454,8 @@ mod tests {
 
         let a = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
@@ -454,7 +465,8 @@ mod tests {
         .id;
         let b = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(8.0, 8.0),
             UnitSource::Authored,
@@ -474,6 +486,7 @@ mod tests {
             &selection,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config,
             target,
@@ -512,7 +525,8 @@ mod tests {
 
         let a = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
@@ -522,7 +536,8 @@ mod tests {
         .id;
         let b = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(8.0, 8.0),
             UnitSource::Authored,
@@ -541,6 +556,7 @@ mod tests {
             &selection,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config,
             click,
@@ -576,7 +592,8 @@ mod tests {
 
         let idle = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(20.0, 20.0),
             UnitSource::Authored,
@@ -586,7 +603,8 @@ mod tests {
         .id;
         let mover = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
@@ -605,6 +623,7 @@ mod tests {
             &selection,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config,
             click,
@@ -646,7 +665,8 @@ mod tests {
 
         let a = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
@@ -656,7 +676,8 @@ mod tests {
         .id;
         let b = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(8.0, 8.0),
             UnitSource::Authored,
@@ -674,6 +695,7 @@ mod tests {
             &selection,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config,
             pos(40.0, 40.0),
@@ -712,7 +734,8 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -741,7 +764,8 @@ mod tests {
 
         let player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -751,7 +775,8 @@ mod tests {
         .id;
         let hostile = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(5.0, 5.0),
             UnitSource::Authored,
@@ -767,6 +792,7 @@ mod tests {
             &selection,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config,
             hostile,
@@ -792,7 +818,8 @@ mod tests {
 
         let player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -809,6 +836,7 @@ mod tests {
             &selection,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config,
             player,
@@ -834,7 +862,8 @@ mod tests {
 
         let player = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -851,6 +880,7 @@ mod tests {
             &selection,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config,
             destination,
@@ -879,7 +909,8 @@ mod tests {
         for index in 0..10 {
             let id = create_unit_with_ownership(
                 &catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("wolf"),
                 pos(2.0 + index as f32, 2.0),
                 UnitSource::Authored,
@@ -900,6 +931,7 @@ mod tests {
             &selection,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config,
             click,
@@ -953,7 +985,8 @@ mod tests {
 
         let a = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
@@ -963,7 +996,8 @@ mod tests {
         .id;
         let b = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(8.0, 8.0),
             UnitSource::Authored,
@@ -982,6 +1016,7 @@ mod tests {
             &selection,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config,
             destination,
@@ -1011,7 +1046,8 @@ mod tests {
 
         let target = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(20.0, 20.0),
             UnitSource::Authored,
@@ -1021,7 +1057,8 @@ mod tests {
         .id;
         let a = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
@@ -1031,7 +1068,8 @@ mod tests {
         .id;
         let b = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(8.0, 8.0),
             UnitSource::Authored,
@@ -1050,6 +1088,7 @@ mod tests {
             &selection,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config,
             anchor,
@@ -1082,7 +1121,8 @@ mod tests {
             .map(|index| {
                 create_unit_with_ownership(
                     &catalog,
-                    &mut world,
+                    &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                     &UnitDefinitionId::new("wolf"),
                     pos(2.0 + index as f32, 2.0),
                     UnitSource::Authored,
@@ -1106,7 +1146,8 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
@@ -1125,6 +1166,7 @@ mod tests {
             &selection,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config,
             click,
@@ -1155,7 +1197,8 @@ mod tests {
         let mut world = flat_world();
         let unit_id = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(4.0, 4.0),
             UnitSource::Authored,
@@ -1171,6 +1214,7 @@ mod tests {
             &selection,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config,
             policy,
@@ -1184,6 +1228,7 @@ mod tests {
             &mut world,
             &catalog,
             &weapons,
+            &crate::world::ItemCatalog::default(),
             &doodad_catalog,
             &nav_config,
             &selection,

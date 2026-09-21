@@ -4,6 +4,7 @@ use super::catalog_ctx::InventoryCatalogCtx;
 use super::entry::{EntryIndex, InventoryEntryContents, PlacedInventoryEntry};
 use super::error::InventoryError;
 use super::record::{InventoryRecord, cell_index};
+use super::store::ItemInstanceStore;
 use crate::world::ItemDefinitionId;
 
 pub fn footprint_for_definition(item: &crate::world::ItemDefinition) -> (u8, u8) {
@@ -378,6 +379,7 @@ pub fn max_accept_stack_quantity(
 /// Whether `quantity` of `item_id` can be placed into `record` using merge-then-first-fit.
 pub fn simulate_place_stack_merge_then_first_fit(
     record: &mut InventoryRecord,
+    instance_store: &ItemInstanceStore,
     ctx: &InventoryCatalogCtx<'_>,
     item_id: &ItemDefinitionId,
     quantity: u32,
@@ -439,7 +441,9 @@ pub fn simulate_place_stack_merge_then_first_fit(
         }
         record.placed_entries_mut().push(entry);
         if record
-            .rebuild_derived(ctx, |id| Err(InventoryError::ItemInstanceNotFound(id)))
+            .rebuild_derived(ctx, |id| {
+                super::ops::resolve_instance_definition(instance_store, id)
+            })
             .is_err()
         {
             return false;

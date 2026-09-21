@@ -45,14 +45,17 @@ mod tests {
         let share_key = AnimationGraphShareKey {
             profile_id: AnimationProfileId::new("humanoid"),
             gltf_asset_path: "units/wolf.glb".to_string(),
-            default_weapon_id: WeaponDefinitionId::new("weapon_wolf_bite"),
         };
         let graph = DefinitionAnimationGraph {
             graph: bevy::prelude::Handle::default(),
             locomotion_nodes: Default::default(),
             attack_nodes: Default::default(),
+            attack_variant_nodes: Default::default(),
+            combat_idle_nodes: Default::default(),
             locomotion_durations: Default::default(),
             attack_durations: Default::default(),
+            attack_variant_durations: Default::default(),
+            combat_idle_durations: Default::default(),
             death_node: None,
             death_duration: None,
             hit_reaction_node: None,

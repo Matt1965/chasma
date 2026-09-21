@@ -69,8 +69,7 @@ fn weapons() -> WeaponCatalog {
 
 fn spawn_unit(world: &mut WorldData, catalog: &UnitCatalog) -> UnitId {
     create_unit(
-        catalog,
-        world,
+        catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
         &UnitDefinitionId::new("wolf"),
         pos(1.0, 1.0),
         UnitSource::Authored,
@@ -166,6 +165,7 @@ fn selection_change_updates_displayed_unit() {
     let first = spawn_unit(&mut world, &catalog);
     let second = create_unit(
         &catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         pos(2.0, 2.0),
@@ -259,6 +259,7 @@ fn sync_updates_body_text_for_open_panel() {
         unit_id,
         app.world().resource::<WorldData>(),
         &catalog,
+        &crate::world::ItemCatalog::default(),
         &weapons(),
         app.world().resource::<crate::world::WorkSkillCatalog>(),
     )

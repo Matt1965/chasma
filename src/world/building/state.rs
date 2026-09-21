@@ -1,7 +1,8 @@
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// Authoritative lifecycle marker for a building instance (ADR-082 B5).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Reflect, Serialize, Deserialize)]
 pub enum BuildingLifecycleState {
     #[default]
     Complete,

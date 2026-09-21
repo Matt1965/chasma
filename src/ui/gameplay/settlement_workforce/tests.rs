@@ -235,8 +235,7 @@ fn settlement_with_members_at(
     let mut members = Vec::new();
     for index in 0..count {
         let unit_id = create_unit_with_ownership(
-            catalog,
-            world,
+            catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
             &UnitDefinitionId::new("bandit"),
             WorldPosition::new(
                 settlement_pos.chunk,
@@ -326,6 +325,7 @@ fn rows_contain_only_authoritative_settlement_members() {
     let (settlement_id, members) = settlement_with_members(&mut world, &catalog, 2);
     let outsider = create_unit_with_ownership(
         &catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         pos(10.0, 10.0),
@@ -781,6 +781,7 @@ fn u_screen_does_not_gain_workforce_permission_controls() {
         members[0],
         &world,
         &catalog,
+        &crate::world::ItemCatalog::default(),
         &crate::world::WeaponCatalog::default(),
         &crate::world::WorkSkillCatalog::default(),
     )
@@ -1090,7 +1091,8 @@ fn membership_change_while_open_rebuilds_row_count() {
         let mut world = app.world_mut().resource_mut::<WorldData>();
         let extra = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(62.0, 64.0),
             UnitSource::Authored,

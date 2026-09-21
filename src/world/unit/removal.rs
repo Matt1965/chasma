@@ -2,7 +2,11 @@
 
 use super::death::RemovalReason;
 use super::inventory::cleanup_unit_inventory_on_delete;
-use crate::world::corpse::{CorpseSettings, create_corpse_from_unit, transfer_inventory_to_corpse};
+use super::record::UnitRecord;
+use crate::world::corpse::{
+    CorpseSettings, create_corpse_from_unit, transfer_equipment_to_corpse,
+    transfer_inventory_to_corpse,
+};
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::unit::UnitCatalog;
 use crate::world::{UnitId, WorldData};
@@ -61,6 +65,24 @@ pub fn finalize_unit_removal(
                     }
                 })?;
             }
+            if let Some(equipment) = unit.equipment.as_ref() {
+                let (inventory_store, instance_store) = world.inventory_runtime_mut();
+                transfer_equipment_to_corpse(
+                    inventory_store,
+                    instance_store,
+                    equipment,
+                    unit_id,
+                    corpse.id,
+                )
+                .map_err(|error| {
+                    let inventory_id = equipment.head;
+                    super::death::UnitRemovalError::InventoryTransferFailed {
+                        unit_id,
+                        inventory_id,
+                        error,
+                    }
+                })?;
+            }
             UnitRemovalOutcome {
                 unit_id,
                 reason,
@@ -68,7 +90,9 @@ pub fn finalize_unit_removal(
             }
         }
         RemovalReason::DevDeleted | RemovalReason::Cleanup | RemovalReason::Unknown => {
-            let _ = cleanup_unit_inventory_on_delete(world, ctx, &unit);
+            cleanup_unit_inventory_on_delete(world, ctx, &unit).map_err(|error| {
+                super::death::UnitRemovalError::InventoryCleanupFailed { unit_id, error }
+            })?;
             UnitRemovalOutcome {
                 unit_id,
                 reason,

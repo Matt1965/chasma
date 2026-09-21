@@ -30,7 +30,9 @@ impl BuildGhostStatus {
             | BuildingPlacementRejectReason::OccupiedByDoodad => Self::StaticBlocked,
             BuildingPlacementRejectReason::TerrainUnavailable
             | BuildingPlacementRejectReason::SlopeTooSteep
-            | BuildingPlacementRejectReason::HeightVariationTooLarge => Self::TerrainInvalid,
+            | BuildingPlacementRejectReason::HeightVariationTooLarge
+            | BuildingPlacementRejectReason::FoundationTooDeep
+            | BuildingPlacementRejectReason::TerrainTooRough => Self::TerrainInvalid,
             _ => Self::Unavailable,
         }
     }

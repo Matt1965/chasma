@@ -11,10 +11,15 @@ use crate::ui::gameplay::floating_window::{
     floating_window_shell_node, spawn_floating_raised_button, spawn_floating_section_well,
     spawn_floating_title_rail, spawn_floating_window_body, spawn_floating_window_inner_frame,
 };
+use crate::ui::gameplay::inventory::equipment_ui::{
+    InventoryBackpackSection, InventoryEquipmentSection, backpack_revision, equipment_revision,
+    resolve_corpse_equipment_ui, resolve_unit_equipment_ui, spawn_backpack_internal_section,
+    spawn_equipment_section,
+};
 use crate::ui::gameplay::inventory::grid::entry_label;
 use crate::ui::gameplay::inventory::grid::{
-    InventoryEntryWidget, InventoryGridInteraction, InventoryGridPane, InventoryPaneSide,
-    spawn_inventory_grid,
+    InventoryEntryWidget, InventoryGridInteraction, InventoryGridPane, InventoryPaneKind,
+    InventoryPaneSide, spawn_inventory_grid,
 };
 use crate::ui::gameplay::inventory::preview::{INVENTORY_CELL_PX, drag_state_from_entry};
 use crate::ui::gameplay::inventory::state::{
@@ -63,13 +68,18 @@ pub struct InventoryFeedbackText;
 pub struct InventoryDetailsText;
 
 #[derive(Component, Debug)]
-pub struct InventoryEquipmentPlaceholder;
+pub struct InventoryScrollContent;
+
+#[derive(Component, Debug)]
+pub struct InventoryDetailsPanel;
 
 pub fn spawn_inventory_panel(mut commands: Commands) {
     let (shell_bg, shell_border) = floating_window_shell_colors();
     let mut shell_node = floating_window_shell_node();
-    shell_node.width = Val::Px(420.0);
-    shell_node.max_height = Val::Percent(72.0);
+    shell_node.width = Val::Auto;
+    shell_node.min_width = Val::Px(520.0);
+    shell_node.max_width = Val::Px(920.0);
+    shell_node.max_height = Val::Percent(82.0);
 
     commands
         .spawn((
@@ -110,26 +120,15 @@ pub fn spawn_inventory_panel(mut commands: Commands) {
                     body.spawn((
                         Node {
                             width: Val::Percent(100.0),
-                            flex_grow: 1.0,
-                            column_gap: Val::Px(12.0),
+                            flex_direction: FlexDirection::Row,
+                            column_gap: Val::Px(10.0),
+                            align_items: AlignItems::FlexStart,
+                            overflow: Overflow::scroll(),
                             ..default()
                         },
-                        InventoryDualPaneRow,
-                    ));
-                    spawn_floating_section_well(body, |details| {
-                        details.spawn((
-                            InventoryDetailsText,
-                            Text::new("Select an item for details."),
-                            panel_body_font(),
-                            TextColor(TEXT_MUTED),
-                        ));
-                    });
-                    body.spawn((
-                        InventoryEquipmentPlaceholder,
-                        Text::new("Equipment slots (Head, Body, Weapon, Offhand, Backpack) | not implemented in I6."),
-                        panel_body_font(),
-                        TextColor(TEXT_MUTED),
-                    ));
+                        InventoryScrollContent,
+                    ))
+                    .with_children(|_scroll| {});
                 });
             });
         });
@@ -180,8 +179,7 @@ pub fn sync_inventory_panel_contents(
     categories: Res<ItemCategoryCatalog>,
     profiles: Res<InventoryProfileCatalog>,
     mut commands: Commands,
-    row_query: Query<Entity, With<InventoryDualPaneRow>>,
-    pane_query: Query<(Entity, &InventoryPaneContainer)>,
+    scroll_query: Query<Entity, With<InventoryScrollContent>>,
     mut texts: bevy::ecs::system::ParamSet<(
         Query<&mut Text, (With<InventoryFeedbackText>, Without<InventoryDetailsText>)>,
         Query<&mut Text, (With<InventoryDetailsText>, Without<InventoryFeedbackText>)>,
@@ -201,19 +199,29 @@ pub fn sync_inventory_panel_contents(
         };
     }
 
-    if let Some(selection) = ui.selected {
+    let details_line = ui.selected.map(|selection| {
+        format_item_details(
+            &world,
+            &ctx,
+            &items,
+            &instance_store,
+            selection.inventory_id,
+            selection.entry_index,
+        )
+    });
+
+    if let Some(details) = details_line.as_ref() {
         if let Ok(mut text) = texts.p1().single_mut() {
-            **text = format_item_details(
-                &world,
-                &ctx,
-                &items,
-                &instance_store,
-                selection.inventory_id,
-                selection.entry_index,
-            );
+            **text = details.clone();
         }
     }
 
+    let equipment_snapshot = ui
+        .actor_unit_id
+        .and_then(|unit_id| resolve_unit_equipment_ui(&world, unit_id));
+    let corpse_equipment_snapshot = ui
+        .corpse_id
+        .and_then(|corpse_id| resolve_corpse_equipment_ui(&world, corpse_id));
     let left_rev = ui
         .left_inventory_id
         .map(|id| inventory_revision(&world, id))
@@ -222,8 +230,26 @@ pub fn sync_inventory_panel_contents(
         .right_inventory_id
         .map(|id| inventory_revision(&world, id))
         .unwrap_or(0);
+    let equipment_rev = equipment_snapshot
+        .as_ref()
+        .map(|snapshot| equipment_revision(&world, snapshot))
+        .unwrap_or(0);
+    let corpse_equipment_rev = corpse_equipment_snapshot
+        .as_ref()
+        .map(|snapshot| equipment_revision(&world, snapshot))
+        .unwrap_or(0);
+    let backpack_internal = equipment_snapshot.and_then(|s| s.backpack_internal);
+    let corpse_backpack_internal = corpse_equipment_snapshot.and_then(|s| s.backpack_internal);
+    let backpack_rev = backpack_revision(&world, backpack_internal);
+    let corpse_backpack_rev = backpack_revision(&world, corpse_backpack_internal);
     if left_rev == ui.last_revision_left
         && right_rev == ui.last_revision_right
+        && equipment_rev == ui.last_revision_equipment
+        && corpse_equipment_rev == ui.last_revision_corpse_equipment
+        && backpack_rev == ui.last_revision_backpack
+        && corpse_backpack_rev == ui.last_revision_corpse_backpack
+        && backpack_internal == ui.last_backpack_internal_id
+        && corpse_backpack_internal == ui.last_corpse_backpack_internal_id
         && !ui.is_changed()
         && !world.is_changed()
     {
@@ -232,81 +258,189 @@ pub fn sync_inventory_panel_contents(
 
     ui.last_revision_left = left_rev;
     ui.last_revision_right = right_rev;
+    ui.last_revision_equipment = equipment_rev;
+    ui.last_revision_corpse_equipment = corpse_equipment_rev;
+    ui.last_revision_backpack = backpack_rev;
+    ui.last_revision_corpse_backpack = corpse_backpack_rev;
+    ui.last_backpack_internal_id = backpack_internal;
+    ui.last_corpse_backpack_internal_id = corpse_backpack_internal;
 
-    let Ok(row) = row_query.single() else {
+    let Ok(scroll) = scroll_query.single() else {
         return;
     };
-    for (entity, pane) in &pane_query {
-        commands.entity(entity).despawn();
-        let _ = pane;
-    }
-    commands.entity(row).with_children(|parent| {
-        if let Some(left_id) = ui.left_inventory_id {
-            spawn_pane(
-                parent,
+    commands.entity(scroll).despawn_children();
+    commands.entity(scroll).with_children(|main_row| {
+        if let Some(snapshot) = equipment_snapshot.as_ref() {
+            spawn_equipment_section(
+                main_row,
                 &world,
                 &ctx,
                 &items,
                 &instance_store,
-                left_id,
-                "Unit Inventory",
-                InventoryPaneSide::Left,
-                ui.treasury_deposit_open(),
+                snapshot,
                 &ui,
+                "Equipment",
             );
         }
-        if let Some(treasury_id) = ui.treasury_id {
-            spawn_treasury_pane(
-                parent,
-                &world,
-                treasury_id,
-                ui.secondary_label.as_deref().unwrap_or("Treasury"),
-            );
-        } else if let Some(right_id) = ui.right_inventory_id {
-            let label = ui.secondary_label.as_deref().unwrap_or("Container");
-            spawn_pane(
-                parent,
-                &world,
-                &ctx,
-                &items,
-                &instance_store,
-                right_id,
-                label,
-                InventoryPaneSide::Right,
-                false,
-                &ui,
-            );
-        } else if ui.pile_id.is_some() {
-            parent
+        main_row
+            .spawn((
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(8.0),
+                    flex_shrink: 0.0,
+                    align_items: AlignItems::FlexStart,
+                    ..default()
+                },
+                InventoryDualPaneRow,
+            ))
+            .with_children(|unit_column| {
+                if let Some(internal_id) = backpack_internal {
+                    spawn_backpack_internal_section(
+                        unit_column,
+                        &world,
+                        &ctx,
+                        &items,
+                        &instance_store,
+                        internal_id,
+                        &ui,
+                        "Equipped Backpack",
+                    );
+                }
+                if let Some(left_id) = ui.left_inventory_id {
+                    spawn_pane(
+                        unit_column,
+                        &world,
+                        &ctx,
+                        &items,
+                        &instance_store,
+                        left_id,
+                        "Unit Inventory",
+                        InventoryPaneKind::Personal,
+                        ui.treasury_deposit_open(),
+                        &ui,
+                    );
+                }
+                spawn_compact_details_panel(
+                    unit_column,
+                    details_line
+                        .as_deref()
+                        .unwrap_or("Select an item for details."),
+                );
+            });
+        if ui.treasury_id.is_some() || ui.right_inventory_id.is_some() || ui.pile_id.is_some() {
+            main_row
                 .spawn((
                     Node {
                         flex_direction: FlexDirection::Column,
-                        row_gap: Val::Px(6.0),
+                        row_gap: Val::Px(8.0),
+                        flex_shrink: 0.0,
+                        align_items: AlignItems::FlexStart,
                         ..default()
                     },
                     InventoryPaneContainer {
                         side: InventoryPaneSide::Right,
                     },
                 ))
-                .with_children(|pile| {
-                    pile.spawn((
-                        Text::new("World Pile"),
-                        panel_body_font(),
-                        TextColor(TEXT_PRIMARY),
-                    ));
-                    spawn_floating_raised_button(
-                        pile,
-                        InventoryPickupFullButton,
-                        "Pick Up Full",
-                        Node {
-                            padding: UiRect::all(Val::Px(6.0)),
-                            align_self: AlignSelf::FlexStart,
-                            ..default()
-                        },
-                    );
+                .with_children(|secondary_column| {
+                    if let Some(treasury_id) = ui.treasury_id {
+                        spawn_treasury_pane(
+                            secondary_column,
+                            &world,
+                            treasury_id,
+                            ui.secondary_label.as_deref().unwrap_or("Treasury"),
+                        );
+                    } else if let Some(right_id) = ui.right_inventory_id {
+                        if let Some(snapshot) = corpse_equipment_snapshot.as_ref() {
+                            spawn_equipment_section(
+                                secondary_column,
+                                &world,
+                                &ctx,
+                                &items,
+                                &instance_store,
+                                snapshot,
+                                &ui,
+                                "Corpse Equipment",
+                            );
+                        }
+                        if let Some(internal_id) = corpse_backpack_internal {
+                            spawn_backpack_internal_section(
+                                secondary_column,
+                                &world,
+                                &ctx,
+                                &items,
+                                &instance_store,
+                                internal_id,
+                                &ui,
+                                "Corpse Backpack",
+                            );
+                        }
+                        let label = ui.secondary_label.as_deref().unwrap_or("Container");
+                        spawn_pane(
+                            secondary_column,
+                            &world,
+                            &ctx,
+                            &items,
+                            &instance_store,
+                            right_id,
+                            label,
+                            InventoryPaneKind::Secondary,
+                            false,
+                            &ui,
+                        );
+                    } else if ui.pile_id.is_some() {
+                        secondary_column
+                            .spawn(Node {
+                                flex_direction: FlexDirection::Column,
+                                row_gap: Val::Px(6.0),
+                                ..default()
+                            })
+                            .with_children(|pile| {
+                                pile.spawn((
+                                    Text::new("World Pile"),
+                                    panel_body_font(),
+                                    TextColor(TEXT_PRIMARY),
+                                ));
+                                spawn_floating_raised_button(
+                                    pile,
+                                    InventoryPickupFullButton,
+                                    "Pick Up Full",
+                                    Node {
+                                        padding: UiRect::all(Val::Px(6.0)),
+                                        align_self: AlignSelf::FlexStart,
+                                        ..default()
+                                    },
+                                );
+                            });
+                    }
                 });
         }
     });
+}
+
+fn spawn_compact_details_panel(parent: &mut ChildSpawnerCommands<'_>, details: &str) {
+    parent
+        .spawn((
+            InventoryDetailsPanel,
+            Node {
+                flex_direction: FlexDirection::Column,
+                max_width: Val::Px(280.0),
+                max_height: Val::Px(72.0),
+                overflow: Overflow::scroll_y(),
+                margin: UiRect::top(Val::Px(4.0)),
+                ..default()
+            },
+        ))
+        .with_children(|panel| {
+            panel.spawn((
+                InventoryDetailsText,
+                Text::new(details),
+                TextFont {
+                    font_size: 10.0,
+                    ..default()
+                },
+                TextColor(TEXT_MUTED),
+            ));
+        });
 }
 
 fn spawn_pane(
@@ -317,7 +451,7 @@ fn spawn_pane(
     instance_store: &ItemInstanceStore,
     inventory_id: InventoryId,
     title: &str,
-    side: InventoryPaneSide,
+    pane_kind: InventoryPaneKind,
     treasury_mode: bool,
     ui: &InventoryUiState,
 ) {
@@ -328,7 +462,7 @@ fn spawn_pane(
         .map(|w| format_weight_line(&w))
         .unwrap_or_else(|_| "Weight unavailable".into());
     let gold = count_gold(record, items);
-    let gold_line = if treasury_mode && side == InventoryPaneSide::Left {
+    let gold_line = if treasury_mode && pane_kind == InventoryPaneKind::Personal {
         format!("Physical Gold: {gold}")
     } else {
         format!("Carried Gold: {gold}")
@@ -342,11 +476,15 @@ fn spawn_pane(
                 min_width: Val::Px(180.0),
                 ..default()
             },
-            InventoryPaneContainer { side },
+            InventoryPaneContainer {
+                side: pane_kind.header_side(),
+            },
         ))
         .with_children(|pane| {
             pane.spawn((
-                InventoryHeaderText { side },
+                InventoryHeaderText {
+                    side: pane_kind.header_side(),
+                },
                 Text::new(format!("{title}\n{weight}\n{gold_line}")),
                 panel_body_font(),
                 TextColor(TEXT_PRIMARY),
@@ -361,7 +499,7 @@ fn spawn_pane(
                     ..default()
                 },
             );
-            if side == InventoryPaneSide::Right {
+            if pane_kind == InventoryPaneKind::Secondary {
                 spawn_floating_raised_button(
                     pane,
                     InventoryLootAllButton,
@@ -375,7 +513,10 @@ fn spawn_pane(
             }
             spawn_floating_section_well(pane, |well| {
                 well.spawn((
-                    InventoryGridPane { inventory_id, side },
+                    InventoryGridPane {
+                        inventory_id,
+                        pane_kind,
+                    },
                     PlayerHudUi,
                     Button,
                     Interaction::None,
@@ -391,7 +532,7 @@ fn spawn_pane(
                         inventory_id,
                         items,
                         instance_store,
-                        InventoryGridInteraction::Interactive { side },
+                        InventoryGridInteraction::Interactive { pane_kind },
                         Some(ui),
                     );
                 });
@@ -619,11 +760,7 @@ pub fn handle_inventory_entry_clicks(
             entry_index: widget.entry_index,
         });
 
-        let other_inventory = if widget.side == InventoryPaneSide::Left {
-            ui.right_inventory_id
-        } else {
-            ui.left_inventory_id
-        };
+        let other_inventory = widget.pane_kind.quick_transfer_destination(&ui);
 
         if mouse.just_pressed(MouseButton::Right) {
             let _ = interaction;
@@ -758,11 +895,7 @@ pub fn collect_inventory_mouse_transfers(
     };
     let revision =
         entry_revision_for_inventory(world.as_ref(), widget.inventory_id, widget.entry_index);
-    let other = if widget.side == InventoryPaneSide::Left {
-        ui.right_inventory_id
-    } else {
-        ui.left_inventory_id
-    };
+    let other = widget.pane_kind.quick_transfer_destination(&ui);
     let Some(dest) = other else {
         return;
     };

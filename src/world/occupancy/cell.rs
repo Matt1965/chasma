@@ -114,6 +114,15 @@ impl QuantizedRotation {
         let yaw = 2.0 * rotation.y.atan2(rotation.w);
         Self::from_degrees_snapped(yaw.to_degrees())
     }
+
+    /// Quantized yaw for occupancy when placement rotation includes conform pitch/roll.
+    ///
+    /// Full tilt remains on [`crate::world::building::placement::BuildingPlacement`]; only the
+    /// horizontal footprint registration uses yaw.
+    pub fn yaw_for_occupancy(rotation: Quat) -> Result<Self, super::OccupancyError> {
+        let (yaw, _, _) = rotation.to_euler(EulerRot::YXZ);
+        Self::from_degrees_snapped(yaw.to_degrees())
+    }
 }
 
 /// Whether a circle intersects an axis-aligned cell (conservative for registration).
@@ -165,6 +174,17 @@ mod tests {
         assert!(QuantizedRotation::from_degrees_snapped(45.0).is_err());
         assert_eq!(
             QuantizedRotation::from_degrees_snapped(90.0).unwrap(),
+            QuantizedRotation::Deg90
+        );
+    }
+
+    #[test]
+    fn yaw_for_occupancy_extracts_yaw_from_tilted_conform_rotation() {
+        let yaw_only = Quat::from_rotation_y(std::f32::consts::FRAC_PI_2);
+        let tilted = yaw_only * Quat::from_rotation_x(0.2);
+        assert!(QuantizedRotation::from_quat(tilted).is_err());
+        assert_eq!(
+            QuantizedRotation::yaw_for_occupancy(tilted).unwrap(),
             QuantizedRotation::Deg90
         );
     }

@@ -224,7 +224,8 @@ mod tests {
         let mut world = flat_world();
         let target_unit = create_unit(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(12.0, 14.0),
             UnitSource::Authored,

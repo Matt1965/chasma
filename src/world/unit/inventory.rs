@@ -2,6 +2,7 @@
 
 use crate::world::WorldData;
 use crate::world::corpse::CorpseId;
+use crate::world::equipment::cleanup_unit_equipment_on_delete;
 use crate::world::inventory::{
     InventoryCatalogCtx, InventoryError, InventoryId,
     create_unit_inventory, transfer_inventory_owner,
@@ -114,11 +115,62 @@ pub fn transfer_unit_inventory_to_corpse(
     )
 }
 
+fn inventory_contents_removable(
+    inventory_store: &crate::world::inventory::InventoryStore,
+    instance_store: &crate::world::inventory::ItemInstanceStore,
+    inventory_id: InventoryId,
+) -> Result<(), InventoryError> {
+    let record = inventory_store
+        .get(inventory_id)
+        .ok_or(InventoryError::InventoryNotFound(inventory_id))?;
+    for entry in record.placed_entries() {
+        if let crate::world::inventory::InventoryEntryContents::Unique { item_instance_id } =
+            &entry.contents
+        {
+            if crate::world::equipment::container_inventory_is_loaded(
+                inventory_store,
+                instance_store,
+                *item_instance_id,
+            )? {
+                let internal = instance_store
+                    .get(*item_instance_id)
+                    .and_then(|instance| instance.contained_inventory_id)
+                    .ok_or(InventoryError::ItemInstanceNotFound(*item_instance_id))?;
+                return Err(InventoryError::ContainerNotEmptyOnRelease {
+                    item_instance_id: *item_instance_id,
+                    inventory_id: internal,
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Preflight check that destructive unit inventory cleanup can complete without partial mutation.
+pub fn validate_unit_inventory_removable(
+    world: &WorldData,
+    unit: &UnitRecord,
+) -> Result<(), InventoryError> {
+    let inventory_store = world.inventory_store();
+    let instance_store = world.item_instance_store();
+    if let Some(equipment) = unit.equipment.as_ref() {
+        for inventory_id in equipment.all_inventory_ids() {
+            inventory_contents_removable(inventory_store, instance_store, inventory_id)?;
+        }
+    }
+    if let Some(inventory_id) = unit.inventory_id {
+        inventory_contents_removable(inventory_store, instance_store, inventory_id)?;
+    }
+    Ok(())
+}
+
 pub fn cleanup_unit_inventory_on_delete(
     world: &mut WorldData,
     ctx: &InventoryCatalogCtx<'_>,
     unit: &UnitRecord,
 ) -> Result<RemovedInventoryContents, InventoryError> {
+    validate_unit_inventory_removable(world, unit)?;
+    cleanup_unit_equipment_on_delete(world, ctx, unit)?;
     let Some(inventory_id) = unit.inventory_id else {
         return Ok(RemovedInventoryContents {
             inventory_id: None,
@@ -193,7 +245,8 @@ mod i3_tests {
         let mut world = flat_world();
         let unit = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -210,7 +263,8 @@ mod i3_tests {
         let ctx = test_ctx();
         let unit = create_unit_with_inventory(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -232,7 +286,8 @@ mod i3_tests {
         let ctx = test_ctx();
         let unit = create_unit_with_inventory(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(2.0, 2.0),
             UnitSource::Authored,
@@ -276,7 +331,8 @@ mod i3_tests {
         let ctx = test_ctx();
         let unit = create_unit_with_inventory(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(3.0, 3.0),
             UnitSource::Authored,
@@ -312,7 +368,8 @@ mod i3_tests {
         let ctx = test_ctx();
         let unit = create_unit_with_inventory(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(4.0, 4.0),
             UnitSource::Authored,

@@ -1,6 +1,8 @@
 //! Kenshi-style inventory UI (ADR-092 I6).
 
 mod drag_preview;
+mod equipment_interaction_tests;
+mod equipment_ui;
 mod errors;
 mod grid;
 mod input;
@@ -8,14 +10,16 @@ mod panel;
 mod preview;
 mod state;
 
+pub use crate::world::equipment::resolve_equipped_backpack_internal;
 pub use drag_preview::{
     cleanup_inventory_drag_previews, sync_inventory_drag_ghost, sync_inventory_ground_preview,
     update_inventory_drag_preview,
 };
+pub use equipment_ui::{UnitEquipmentUiSnapshot, resolve_unit_equipment_ui};
 pub use errors::InventoryUiError;
 pub use grid::{
     InventoryEntryWidget, InventoryGridCell, InventoryGridInteraction, InventoryGridPane,
-    InventoryPaneSide, spawn_inventory_grid,
+    InventoryPaneKind, InventoryPaneSide, ReadOnlyInventoryGrid, spawn_inventory_grid,
     spawn_read_only_inventory_grid_shell,
 };
 pub use input::{collect_inventory_keyboard_input, inventory_panel_blocks_world_input};
@@ -25,4 +29,8 @@ pub use panel::{
     reconcile_inventory_ui_from_world, spawn_inventory_panel, sync_inventory_panel_contents,
     sync_inventory_panel_visibility,
 };
-pub use state::{InventoryDragPreviewState, InventoryUiState};
+pub use preview::{
+    INVENTORY_CELL_PX, InventoryDropTarget, InventoryPlacementPreview, drag_state_from_entry,
+    evaluate_drop_target, occupied_cells,
+};
+pub use state::{InventoryDragPreviewState, InventoryDragState, InventoryUiState};

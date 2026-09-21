@@ -381,12 +381,27 @@ fn commit_site(
         footprint: ctx.footprint_catalog,
     };
     let rotation = rotation_from_quadrants(site.yaw_quadrants);
+    let definition = ctx
+        .building_catalog
+        .get(&plan.building_definition_id)
+        .ok_or_else(|| "missing building definition".to_string())?;
+    let resolved = crate::world::resolve_building_placement(
+        ctx.world,
+        ctx.world.layout(),
+        definition,
+        ctx.footprint_catalog,
+        site.position(),
+        rotation,
+        1.0,
+        1.0,
+    )
+    .map_err(|reason| format!("placement resolve failed: {}", reason.label()))?;
     let record = place_player_building_with_inventory(
         ctx.building_catalog,
         ctx.world,
         &plan.building_definition_id,
-        site.position(),
-        rotation,
+        resolved.anchor,
+        resolved.rotation,
         ownership,
         occupancy,
         ctx.inventory_ctx,
@@ -760,6 +775,7 @@ pub fn create_plan_from_manual_placement(
             unit_catalog: ctx.unit_catalog,
             config: Default::default(),
             player_authorized: true,
+            terrain_vertical_scale: 1.0,
         },
         &building_definition_id,
         position,

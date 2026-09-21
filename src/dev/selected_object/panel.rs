@@ -14,7 +14,7 @@ use crate::dev::inspector::{
 use crate::dev::window::{DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowUi};
 use crate::ui::gameplay::primary_selected_unit;
 use crate::units::input::SelectedUnits;
-use crate::world::{BuildingCatalog, BuildingFieldRequirementCatalog, WorldData};
+use crate::world::{BuildingCatalog, BuildingFieldRequirementCatalog, UnitCatalog, WorldData};
 
 use crate::dev::navigation_editor::{
     navigation_editor_owns_session, spawn_open_navigation_editor_button,
@@ -61,6 +61,9 @@ fn action_tooltip(action: SelectedObjectAction) -> &'static str {
             "Cancel the pending destructive navigation action."
         }
         SelectedObjectAction::CancelVariantDraft => "Discard the Save As Variant draft.",
+        SelectedObjectAction::EditUnit => {
+            "Open the full-screen Unit Editor for the selected unit's appearance."
+        }
     }
 }
 
@@ -92,6 +95,7 @@ pub enum SelectedObjectAction {
     Rotate,
     Scale,
     Delete,
+    EditUnit,
     ConfirmDelete,
     CancelDelete,
     ExitBlueprintInspection,
@@ -133,6 +137,7 @@ pub fn setup_selected_object_panel(
                         ("Rotate (.)", SelectedObjectAction::Rotate),
                         ("Scale (/)", SelectedObjectAction::Scale),
                         ("Delete", SelectedObjectAction::Delete),
+                        ("Edit Unit", SelectedObjectAction::EditUnit),
                         ("Confirm delete", SelectedObjectAction::ConfirmDelete),
                         ("Cancel", SelectedObjectAction::CancelDelete),
                         (
@@ -286,6 +291,7 @@ pub fn sync_selected_object_panel(
     selected_units: Res<SelectedUnits>,
     world: Res<WorldData>,
     building_catalog: Res<BuildingCatalog>,
+    unit_catalog: Res<UnitCatalog>,
     requirement_catalog: Res<BuildingFieldRequirementCatalog>,
     inspector: Res<WorldInspectorState>,
     ui_state: Res<SelectedObjectUiState>,
@@ -355,6 +361,17 @@ pub fn sync_selected_object_panel(
                 | WorldSelectionCategory::Building
                 | WorldSelectionCategory::ItemPile
         );
+    let show_edit_unit = visible
+        && world_selection.category == WorldSelectionCategory::Units
+        && selected_units.0.len() == 1
+        && inspector
+            .unit_snapshot
+            .as_ref()
+            .is_some_and(|snapshot| {
+                unit_catalog
+                    .get(&snapshot.definition_id)
+                    .is_some_and(|definition| definition.appearance_profile_id.is_some())
+            });
     let pending = ui_state.pending_delete.is_some();
     let show_building = visible && world_selection.category == WorldSelectionCategory::Building;
     let blueprint = inspector.blueprint_snapshot.as_ref();
@@ -372,6 +389,7 @@ pub fn sync_selected_object_panel(
             | SelectedObjectAction::Rotate
             | SelectedObjectAction::Scale => show_transform && !pending && !nav_editor_active,
             SelectedObjectAction::Delete => show_delete && !pending,
+            SelectedObjectAction::EditUnit => show_edit_unit && !pending && !nav_editor_active,
             SelectedObjectAction::ConfirmDelete | SelectedObjectAction::CancelDelete => pending,
             SelectedObjectAction::ExitBlueprintInspection => {
                 show_building && inspection_active && !edit_active

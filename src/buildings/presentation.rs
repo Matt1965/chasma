@@ -5,8 +5,8 @@ use bevy::prelude::*;
 use crate::world::WorldData;
 
 use super::components::{
-    BuildingDiagnosticFallback, BuildingLifecycleTintApplied, BuildingRenderEntity,
-    BuildingSceneRoot, BuildingSceneTags,
+    BuildingDiagnosticFallback, BuildingFoundationSkirt, BuildingLifecycleTintApplied,
+    BuildingRenderEntity, BuildingSceneRoot, BuildingSceneTags,
 };
 use super::fallback::BuildingFallbackAssets;
 use super::placeholder::diagnostic_fallback_color;
@@ -68,6 +68,7 @@ pub fn apply_building_lifecycle_tints(
     children: Query<&Children>,
     mesh_materials: Query<&MeshMaterial3d<StandardMaterial>>,
     originals: Query<&super::components::OriginalBuildingMaterial>,
+    foundation_skirts: Query<Entity, With<BuildingFoundationSkirt>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for (root, marker, applied) in &roots {
@@ -83,6 +84,7 @@ pub fn apply_building_lifecycle_tints(
             &children,
             &mesh_materials,
             &originals,
+            &foundation_skirts,
             &mut materials,
             marker.lifecycle_state,
             record.ownership.affiliation,

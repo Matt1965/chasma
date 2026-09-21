@@ -486,6 +486,7 @@ fn real_hut_entry_keeps_the_robot_present_on_the_interior_floor() {
 
     let unit_id = crate::world::create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &crate::world::UnitDefinitionId::new("robot"),
         start,
@@ -698,6 +699,7 @@ fn real_hut_bidirectional_entrance_traversal_via_movement() {
 
     let unit_id = crate::world::create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &crate::world::UnitDefinitionId::new("robot"),
         surface_start,
@@ -844,6 +846,7 @@ fn real_hut_same_entrance_repeated_surface_interior_cycles() {
 
     let unit_id = crate::world::create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &crate::world::UnitDefinitionId::new("robot"),
         surface_start,

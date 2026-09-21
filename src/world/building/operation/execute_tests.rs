@@ -189,6 +189,7 @@ fn worker(world: &mut WorldData) -> UnitId {
     let unit_catalog = UnitCatalog::default();
     create_unit(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         world,
         &UnitDefinitionId::new("wolf"),
         pos(64.0, 63.0),

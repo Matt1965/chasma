@@ -72,6 +72,7 @@ fn spawn_unit(
 ) -> crate::world::UnitId {
     create_unit_with_inventory(
         &unit_catalog(),
+        &crate::world::AppearanceProfileCatalog::empty(),
         world,
         &UnitDefinitionId::new("bandit"),
         pos(x, z),

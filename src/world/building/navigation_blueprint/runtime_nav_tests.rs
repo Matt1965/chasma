@@ -347,6 +347,7 @@ fn unit_enters_hut_interior_through_entrance() {
 
     let unit_id = create_unit(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         start,
@@ -464,6 +465,7 @@ fn unit_exits_hut_interior_through_entrance() {
 
     let unit_id = create_unit(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         interior_start,
@@ -526,6 +528,7 @@ fn unit_round_trips_hut_entrance() {
 
     let unit_id = create_unit(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         start,
@@ -843,6 +846,7 @@ fn unit_traverses_stairs_up_and_down() {
 
     let unit_id = create_unit(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         interior_start,
@@ -989,6 +993,7 @@ fn unit_full_multi_floor_surface_round_trip() {
 
     let unit_id = create_unit(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         start,

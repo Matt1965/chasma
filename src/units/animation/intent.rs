@@ -1,7 +1,8 @@
 use std::time::Duration;
 
 use crate::world::{
-    AnimationClipKey, AnimationProfile, AttackPhase, UnitDefinition, UnitRecord, WeaponDefinition,
+    AnimationClipKey, AnimationProfile, AttackPhase, LocomotionSurface, UnitDefinition, UnitRecord,
+    WeaponDefinition,
 };
 
 use super::layers::{
@@ -9,6 +10,7 @@ use super::layers::{
     derive_layered_animation_intent, derive_layered_death_presentation_intent,
 };
 use super::settings::UnitAnimationSettings;
+use super::work_presentation::WorkPresentationContext;
 
 /// Derived presentation intent from authoritative simulation state (A1/A2).
 #[derive(Debug, Clone, PartialEq)]
@@ -32,13 +34,20 @@ pub enum UnitAnimationIntent {
     HitReaction {
         blend: Duration,
     },
+    CombatIdle {
+        weapon_id: crate::world::WeaponDefinitionId,
+        blend: Duration,
+    },
 }
 
 impl UnitAnimationIntent {
     pub fn looping(&self) -> bool {
         match self {
             Self::Locomotion { looping, .. } => *looping,
-            Self::Attack { .. } | Self::Death { .. } | Self::HitReaction { .. } => false,
+            Self::Attack { .. }
+            | Self::Death { .. }
+            | Self::HitReaction { .. }
+            | Self::CombatIdle { .. } => false,
         }
     }
 }
@@ -67,6 +76,8 @@ pub fn derive_unit_animation_intent(
     delta_seconds: f32,
     hit_reaction_requested: bool,
     hit_reaction_active: bool,
+    work_ctx: Option<&WorkPresentationContext<'_>>,
+    surface: LocomotionSurface,
 ) -> Option<UnitAnimationIntent> {
     let layered = derive_layered_animation_intent(
         record,
@@ -79,6 +90,8 @@ pub fn derive_unit_animation_intent(
         delta_seconds,
         hit_reaction_requested,
         hit_reaction_active,
+        work_ctx,
+        surface,
     )?;
     Some(flatten_layered_intent(&layered))
 }
@@ -91,6 +104,12 @@ fn flatten_layered_intent(layered: &UnitLayeredAnimationIntent) -> UnitAnimation
         },
         FullBodyOverride::HitReaction { blend } => {
             UnitAnimationIntent::HitReaction { blend: *blend }
+        }
+        FullBodyOverride::CombatIdle { weapon_id, blend } => {
+            UnitAnimationIntent::CombatIdle {
+                weapon_id: weapon_id.clone(),
+                blend: *blend,
+            }
         }
         FullBodyOverride::None => match &layered.upper {
             UpperBodyIntent::Attack {
@@ -133,8 +152,18 @@ fn flatten_layered_intent(layered: &UnitLayeredAnimationIntent) -> UnitAnimation
     }
 }
 
-/// Resolve attack clip name with Idle fallback (A2).
-pub fn resolve_attack_clip_name(weapon: &WeaponDefinition) -> Option<&str> {
+/// Resolve attack clip name with Idle fallback (A2 / Slice 8 unarmed variant).
+pub fn resolve_attack_clip_name(
+    weapon: &WeaponDefinition,
+    use_alternate_variant: bool,
+) -> Option<&str> {
+    if use_alternate_variant {
+        if let Some(variant) = weapon.attack_animation.variant.as_deref() {
+            if !variant.trim().is_empty() {
+                return Some(variant);
+            }
+        }
+    }
     let key = weapon.animation_key.trim();
     if key.is_empty() { None } else { Some(key) }
 }
@@ -206,8 +235,10 @@ mod tests {
             reactive_combat_target: None,
             current_space_id: Default::default(),
             inventory_id: None,
+            equipment: None,
             settlement_id: None,
             work_skills: Default::default(),
+            appearance: None,
         }
     }
 
@@ -284,6 +315,8 @@ mod tests {
             0.016,
             hit_requested,
             hit_active,
+            None,
+            LocomotionSurface::Ground,
         )
         .unwrap()
     }
@@ -359,6 +392,8 @@ mod tests {
             0.016,
             false,
             false,
+            None,
+            LocomotionSurface::Ground,
         )
         .unwrap();
         assert!(matches!(
@@ -466,7 +501,7 @@ mod tests {
     fn missing_attack_clip_name_is_none() {
         let mut weapon = sample_weapon();
         weapon.animation_key = "   ".to_string();
-        assert!(resolve_attack_clip_name(&weapon).is_none());
+        assert!(resolve_attack_clip_name(&weapon, false).is_none());
     }
 
     #[test]
@@ -507,6 +542,8 @@ mod tests {
             0.016,
             false,
             false,
+            None,
+            LocomotionSurface::Ground,
         );
         assert!(record.attack_cycle.is_some());
     }

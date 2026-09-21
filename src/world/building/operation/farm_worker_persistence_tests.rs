@@ -251,7 +251,8 @@ impl FarmHarness {
         let unit_catalog = UnitCatalog::default();
         let worker_id = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(60.0, 64.0),
             UnitSource::Authored,
@@ -261,7 +262,8 @@ impl FarmHarness {
         .id;
         let second_worker_id = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(58.0, 64.0),
             UnitSource::Authored,
@@ -815,7 +817,8 @@ mod schedule_level {
             let unit_catalog = UnitCatalog::default();
             let worker_id = create_unit_with_ownership(
                 &unit_catalog,
-                &mut world,
+                &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
                 &UnitDefinitionId::new("bandit"),
                 worker_spawn,
                 UnitSource::Authored,
@@ -895,6 +898,7 @@ mod schedule_level {
                 &self.interior,
                 Some(&self.nav_blueprint),
                 inventory_ctx.items,
+                &crate::world::ArmorProfileCatalog::default(),
                 inventory_ctx.categories,
                 inventory_ctx.profiles,
                 &CorpseSettings::default(),
@@ -1226,7 +1230,8 @@ mod schedule_level {
 
         let worker_a = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(64.0, 62.0),
             UnitSource::Authored,
@@ -1236,7 +1241,8 @@ mod schedule_level {
         .id;
         let worker_b = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(64.0, 66.0),
             UnitSource::Authored,
@@ -1341,6 +1347,7 @@ mod schedule_level {
                 &interior,
                 Some(&nav_blueprint),
                 inventory_ctx.items,
+                &crate::world::ArmorProfileCatalog::default(),
                 inventory_ctx.categories,
                 inventory_ctx.profiles,
                 &CorpseSettings::default(),

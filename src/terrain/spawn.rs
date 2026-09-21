@@ -9,7 +9,7 @@ use std::time::Instant;
 
 use bevy::prelude::*;
 
-use crate::world::{ChunkCoord, ChunkId, WorldData, WorldPosition};
+use crate::world::{ChunkCoord, ChunkId, ChunkLayout, WorldData, WorldPosition};
 
 use super::components::TerrainChunkMesh;
 use super::lod_cache::TerrainChunkLodCache;
@@ -29,6 +29,12 @@ pub struct TerrainRenderAssets {
 /// Target visible height span (world units) when auto-scaling subtle source heights.
 pub const DEFAULT_TARGET_HEIGHT_SPAN_UNITS: f32 = 120.0;
 
+/// Relief span used for terrain mesh `vertical_scale` in current dev worlds.
+///
+/// Road depression baking must convert meters into heightfield units with this
+/// same target so authored `depression_m` matches visible mesh displacement.
+pub const TERRAIN_RENDER_TARGET_HEIGHT_SPAN_UNITS: f32 = 3.0;
+
 /// Compute a mesh vertical scale from authored height range in meters/units.
 pub fn vertical_scale_for_height_span(
     height_min: f32,
@@ -42,6 +48,30 @@ pub fn vertical_scale_for_height_span(
 /// Map authoritative world Y to terrain render Y (ADR-010 visualization scale).
 pub fn render_height(authoritative_y: f32, vertical_scale: f32) -> f32 {
     authoritative_y * vertical_scale
+}
+
+/// Sample the visible terrain surface Y at global XZ (presentation/world Y).
+pub fn terrain_surface_render_y_at(
+    global_x: f32,
+    global_z: f32,
+    world: &WorldData,
+    layout: ChunkLayout,
+    vertical_scale: f32,
+) -> Option<f32> {
+    let candidate = WorldPosition::from_global(Vec3::new(global_x, 0.0, global_z), layout);
+    let grounded = crate::world::ground_world_position(world, candidate)?;
+    Some(render_height(grounded.to_global(layout).y, vertical_scale))
+}
+
+/// Authoritative simulation terrain Y at global XZ.
+pub fn terrain_surface_sim_y_at(
+    global_x: f32,
+    global_z: f32,
+    world: &WorldData,
+    layout: ChunkLayout,
+) -> Option<f32> {
+    let candidate = WorldPosition::from_global(Vec3::new(global_x, 0.0, global_z), layout);
+    crate::world::ground_world_position(world, candidate).map(|grounded| grounded.to_global(layout).y)
 }
 
 /// Compose a render-space position from authoritative [`WorldPosition`].
@@ -90,29 +120,59 @@ pub fn world_position_to_render_global_above_base(
 }
 
 pub(crate) fn seam_weld_heights(world: &WorldData, chunk_id: ChunkId) -> ChunkMeshSeamWeld {
+    seam_weld_heights_with_sampler(world, chunk_id, |data, col, row| {
+        data.heightfield.height_at_vertex(col, row)
+    })
+}
+
+/// Seam weld strips using effective terrain height (base + road delta).
+pub(crate) fn seam_weld_heights_effective(world: &WorldData, chunk_id: ChunkId) -> ChunkMeshSeamWeld {
+    seam_weld_heights_with_sampler(world, chunk_id, |data, col, row| {
+        data.effective_height_at_vertex(col, row)
+    })
+}
+
+fn seam_weld_heights_with_sampler(
+    world: &WorldData,
+    chunk_id: ChunkId,
+    sample: impl Fn(&crate::world::ChunkData, u32, u32) -> f32,
+) -> ChunkMeshSeamWeld {
     let coord = chunk_id.coord();
     let edge = |data: &crate::world::ChunkData| data.heightfield.samples_per_edge() - 1;
     let penultimate =
         |data: &crate::world::ChunkData| data.heightfield.samples_per_edge().saturating_sub(2);
 
+    let column = |data: &crate::world::ChunkData, col: u32| {
+        let spe = data.heightfield.samples_per_edge();
+        (0..spe)
+            .map(|row| sample(data, col, row))
+            .collect::<Vec<_>>()
+    };
+    let row = |data: &crate::world::ChunkData, row: u32| {
+        let spe = data.heightfield.samples_per_edge();
+        (0..spe)
+            .map(|col| sample(data, col, row))
+            .collect::<Vec<_>>()
+    };
+
     let west = world
         .get(ChunkId::new(ChunkCoord::new(coord.x - 1, coord.z)))
-        .map(|data| data.heightfield.column_heights(edge(data)));
+        .map(|data| column(data, edge(data)));
     let south = world
         .get(ChunkId::new(ChunkCoord::new(coord.x, coord.z - 1)))
-        .map(|data| data.heightfield.row_heights(edge(data)));
+        .map(|data| row(data, edge(data)));
     let east_interior = world
         .get(ChunkId::new(ChunkCoord::new(coord.x + 1, coord.z)))
-        .map(|data| data.heightfield.column_heights(1));
+        .map(|data| column(data, 1));
     let north_interior = world
         .get(ChunkId::new(ChunkCoord::new(coord.x, coord.z + 1)))
-        .map(|data| data.heightfield.row_heights(1));
+        .map(|data| row(data, 1));
     let west_interior = world
         .get(ChunkId::new(ChunkCoord::new(coord.x - 1, coord.z)))
-        .map(|data| data.heightfield.column_heights(penultimate(data)));
+        .map(|data| column(data, penultimate(data)));
     let south_interior = world
         .get(ChunkId::new(ChunkCoord::new(coord.x, coord.z - 1)))
-        .map(|data| data.heightfield.row_heights(penultimate(data)));
+        .map(|data| row(data, penultimate(data)));
 
     ChunkMeshSeamWeld {
         west_edge: west,

@@ -96,8 +96,7 @@ fn builder_unit(
     at: WorldPosition,
 ) -> crate::world::UnitId {
     create_unit_with_ownership(
-        catalog,
-        world,
+        catalog, &crate::world::AppearanceProfileCatalog::empty(), world,
         &UnitDefinitionId::new("bandit"),
         at,
         UnitSource::Authored,

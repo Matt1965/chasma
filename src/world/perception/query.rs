@@ -107,7 +107,8 @@ mod tests {
         let mut world = flat_world();
         let observer = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("scout"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -117,7 +118,8 @@ mod tests {
         .id;
         let near = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("scout"),
             pos(8.0, 0.0),
             UnitSource::Authored,
@@ -135,7 +137,8 @@ mod tests {
         let mut world = flat_world();
         let observer = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("scout"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -145,7 +148,8 @@ mod tests {
         .id;
         create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("scout"),
             pos(15.0, 0.0),
             UnitSource::Authored,
@@ -161,7 +165,8 @@ mod tests {
         let mut world = flat_world();
         let observer = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("scout"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -178,7 +183,8 @@ mod tests {
         let mut world = flat_world();
         let observer = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("scout"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -188,7 +194,8 @@ mod tests {
         .id;
         let b = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("scout"),
             pos(5.0, 0.0),
             UnitSource::Authored,
@@ -198,7 +205,8 @@ mod tests {
         .id;
         let a = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("scout"),
             pos(0.0, 5.0),
             UnitSource::Authored,
@@ -229,7 +237,8 @@ mod tests {
         let catalog = catalog_with_sight(10.0);
         let observer = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("scout"),
             pos(0.0, 0.0),
             UnitSource::Authored,
@@ -239,7 +248,8 @@ mod tests {
         .id;
         let distant = create_unit_with_ownership(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("scout"),
             pos_chunk(5, 0, 0.0, 0.0),
             UnitSource::Authored,

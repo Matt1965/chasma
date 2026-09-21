@@ -271,6 +271,7 @@ fn issue_approach_to_building_interaction(
         &actor_only,
         unit_catalog,
         weapon_catalog,
+        &crate::world::ItemCatalog::default(),
         doodad_catalog,
         nav_config,
         target,
@@ -424,7 +425,8 @@ mod tests {
         .unwrap();
         let unit = create_unit_with_inventory(
             &unit_catalog,
-            world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        world,
             &UnitDefinitionId::new("bandit"),
             unit_pos,
             UnitSource::Authored,

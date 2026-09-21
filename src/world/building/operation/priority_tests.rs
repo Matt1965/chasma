@@ -326,6 +326,7 @@ fn high_priority_construction_wins_over_normal() {
     let unit_catalog = UnitCatalog::default();
     let worker = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         pos(65.0, 64.0),
@@ -366,6 +367,7 @@ fn workforce_permission_still_blocks_high_priority_building() {
     .settlement_id;
     let worker = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         pos(65.0, 64.0),
@@ -530,6 +532,7 @@ fn low_priority_construction_loses_to_normal() {
     let unit_catalog = UnitCatalog::default();
     let worker = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         pos(65.0, 64.0),
@@ -558,6 +561,7 @@ fn physical_capability_still_blocks_high_priority_building() {
     let occ = occ(&building, &doodad, &footprint);
     let worker = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("wolf"),
         pos(65.0, 64.0),
@@ -617,6 +621,7 @@ fn priority_change_does_not_alter_work_skills() {
     let unit_catalog = UnitCatalog::default();
     let worker = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         pos(65.0, 64.0),
@@ -757,6 +762,7 @@ fn active_worker_not_released_when_other_building_priority_changes() {
     let unit_catalog = UnitCatalog::default();
     let worker = create_unit_with_ownership(
         &unit_catalog,
+        &crate::world::AppearanceProfileCatalog::empty(),
         &mut world,
         &UnitDefinitionId::new("bandit"),
         pos(65.0, 64.0),

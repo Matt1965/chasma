@@ -142,15 +142,26 @@ pub fn remove_inventory(
 }
 
 pub fn create_item_instance(
+    inventory_store: &mut InventoryStore,
     instance_store: &mut ItemInstanceStore,
     ctx: &InventoryCatalogCtx<'_>,
     definition_id: ItemDefinitionId,
     metadata: ItemInstanceMetadata,
 ) -> Result<ItemInstanceId, InventoryError> {
     validate_unique_item(ctx, &definition_id)?;
+    let item = ctx.require_item(&definition_id)?;
     let id = instance_store.allocate_item_instance_id();
-    let instance = ItemInstance::new(id, definition_id).with_metadata(metadata);
+    let instance = ItemInstance::new(id, definition_id.clone()).with_metadata(metadata);
     instance_store.insert(instance)?;
+    if crate::world::equipment::is_container_item(item) {
+        crate::world::equipment::create_container_inventory(
+            inventory_store,
+            instance_store,
+            ctx,
+            id,
+            item,
+        )?;
+    }
     Ok(id)
 }
 
@@ -185,8 +196,22 @@ pub fn place_stack(
     let entry =
         PlacedInventoryEntry::stack(anchor_x, anchor_y, item_definition_id.clone(), quantity);
     {
+        let record = inventory_store
+            .get(inventory_id)
+            .ok_or(InventoryError::InventoryNotFound(inventory_id))?;
+        crate::world::equipment::validate_item_placement(
+            inventory_store,
+            instance_store,
+            ctx,
+            record,
+            &entry,
+            &item_definition_id,
+            None,
+            None,
+        )?;
+    }
+    {
         let record = require_inventory_mut(inventory_store, inventory_id)?;
-        can_place_entry(record, &entry, &item_definition_id, None, ctx)?;
         record.placed_entries_mut().push(entry);
         let entry_index = record.placed_entries().len() - 1;
         rebuild_inventory(record, ctx, instance_store)?;
@@ -210,6 +235,7 @@ pub fn place_stack_first_fit(
     let mut record = record.clone();
     if !super::grid::simulate_place_stack_merge_then_first_fit(
         &mut record,
+        instance_store,
         ctx,
         &item_definition_id,
         quantity,
@@ -261,8 +287,22 @@ pub fn place_unique(
     validate_unique_item(ctx, &definition_id)?;
     let entry = PlacedInventoryEntry::unique(anchor_x, anchor_y, item_instance_id);
     {
+        let record = inventory_store
+            .get(inventory_id)
+            .ok_or(InventoryError::InventoryNotFound(inventory_id))?;
+        crate::world::equipment::validate_item_placement(
+            inventory_store,
+            instance_store,
+            ctx,
+            record,
+            &entry,
+            &definition_id,
+            Some(item_instance_id),
+            None,
+        )?;
+    }
+    {
         let record = require_inventory_mut(inventory_store, inventory_id)?;
-        can_place_entry(record, &entry, &definition_id, None, ctx)?;
         record.placed_entries_mut().push(entry);
         let entry_index = record.placed_entries().len() - 1;
         instance_store.set_inventory_location(item_instance_id, inventory_id, entry_index);
@@ -350,13 +390,37 @@ pub fn move_entry(
         let entry = require_entry(record, entry_index)?;
         definition_for_entry(entry, instance_store)?
     };
-    {
-        let record = require_inventory_mut(inventory_store, inventory_id)?;
+    let (moved, item_instance_id) = {
+        let record = inventory_store
+            .get(inventory_id)
+            .ok_or(InventoryError::InventoryNotFound(inventory_id))?;
         let entry = require_entry(record, entry_index)?;
         let mut moved = entry.clone();
         moved.anchor_x = anchor_x;
         moved.anchor_y = anchor_y;
-        can_place_entry(record, &moved, &definition_id, Some(entry_index), ctx)?;
+        let item_instance_id = match &entry.contents {
+            InventoryEntryContents::Unique { item_instance_id } => Some(*item_instance_id),
+            InventoryEntryContents::Stack { .. } => None,
+        };
+        (moved, item_instance_id)
+    };
+    {
+        let record = inventory_store
+            .get(inventory_id)
+            .ok_or(InventoryError::InventoryNotFound(inventory_id))?;
+        crate::world::equipment::validate_item_placement(
+            inventory_store,
+            instance_store,
+            ctx,
+            record,
+            &moved,
+            &definition_id,
+            item_instance_id,
+            Some(entry_index),
+        )?;
+    }
+    {
+        let record = require_inventory_mut(inventory_store, inventory_id)?;
         record.placed_entries_mut()[entry_index] = moved;
         if let Err(error) = rebuild_inventory(record, ctx, instance_store) {
             *record = backup;

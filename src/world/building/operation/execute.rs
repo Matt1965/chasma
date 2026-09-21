@@ -405,17 +405,28 @@ fn simulate_output_placement(
             .expect("inventory validated during planning")
             .clone()
     });
-    place_stack_quantity_on_record(sim, inventory_ctx, &output.item_id, output.quantity)
+    place_stack_quantity_on_record(
+        sim,
+        world.item_instance_store(),
+        inventory_ctx,
+        &output.item_id,
+        output.quantity,
+    )
 }
 
 fn place_stack_quantity_on_record(
     record: &mut InventoryRecord,
+    instance_store: &crate::world::ItemInstanceStore,
     ctx: &InventoryCatalogCtx<'_>,
     item_id: &ItemDefinitionId,
     quantity: u32,
 ) -> bool {
     crate::world::inventory::simulate_place_stack_merge_then_first_fit(
-        record, ctx, item_id, quantity,
+        record,
+        instance_store,
+        ctx,
+        item_id,
+        quantity,
     )
 }
 

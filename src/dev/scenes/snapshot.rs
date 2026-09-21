@@ -14,13 +14,13 @@ use crate::world::{
 use super::SceneCaptureContext;
 
 /// On-disk scene format version.
-pub const SCENE_VERSION: u32 = 18;
+pub const SCENE_VERSION: u32 = 19;
 
 /// Whether a scene file version can be loaded by the current runtime.
 pub fn scene_version_supported(version: u32) -> bool {
     matches!(
         version,
-        1 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17
+        1 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19
     )
 }
 
@@ -203,6 +203,19 @@ pub struct SceneTaskRecord {
     pub strategic_template_id: Option<String>,
 }
 
+/// Serializable unit equipment inventory links.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SceneUnitEquipmentRecord {
+    pub head: u32,
+    pub body: u32,
+    pub arms: u32,
+    pub legs: u32,
+    pub feet: u32,
+    pub weapon: u32,
+    pub offhand: u32,
+    pub backpack: u32,
+}
+
 /// Serializable unit instance for dev scenes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SceneUnitRecord {
@@ -224,6 +237,9 @@ pub struct SceneUnitRecord {
     /// Unit inventory link (ADR-094 I8).
     #[serde(default)]
     pub inventory_id: Option<u32>,
+    /// Unit equipment-slot inventory links.
+    #[serde(default)]
+    pub equipment: Option<SceneUnitEquipmentRecord>,
     /// Runtime faction relationship identity (ADR-132 Phase 1).
     #[serde(default)]
     pub faction_id: Option<String>,
@@ -239,6 +255,27 @@ pub struct SceneUnitRecord {
     /// Per-unit work skill overrides. Absent in legacy scenes.
     #[serde(default)]
     pub work_skill_overrides: Vec<SceneWorkSkillOverride>,
+    /// Persisted unit appearance (CG1). Absent in v18 and earlier.
+    #[serde(default)]
+    pub appearance: Option<SceneUnitAppearanceRecord>,
+}
+
+/// Serializable appearance state for dev scenes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SceneUnitAppearanceRecord {
+    pub profile_id: String,
+    pub body_variant_id: String,
+    pub height_scale: f32,
+    #[serde(default)]
+    pub morphs: Vec<SceneAppearanceMorphEntry>,
+    #[serde(default)]
+    pub generation_seed: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SceneAppearanceMorphEntry {
+    pub param_id: String,
+    pub value: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -623,6 +660,16 @@ impl SceneUnitRecord {
             affiliation: Some(record.affiliation.label().to_string()),
             current_space_id: record.current_space_id.raw(),
             inventory_id: record.inventory_id.map(|id| id.raw()),
+            equipment: record.equipment.map(|equipment| SceneUnitEquipmentRecord {
+                head: equipment.head.raw(),
+                body: equipment.body.raw(),
+                arms: equipment.arms.raw(),
+                legs: equipment.legs.raw(),
+                feet: equipment.feet.raw(),
+                weapon: equipment.weapon.raw(),
+                offhand: equipment.offhand.raw(),
+                backpack: equipment.backpack.raw(),
+            }),
             faction_id: Some(record.faction_id.as_str().to_string()),
             species_id: Some(record.species_id.as_str().to_string()),
             settlement_id: record.settlement_id.map(|id| id.raw()),
@@ -636,12 +683,14 @@ impl SceneUnitRecord {
                     value: *value,
                 })
                 .collect(),
+            appearance: record.appearance.as_ref().map(SceneUnitAppearanceRecord::from_unit),
         }
     }
 
     pub fn to_record(
         &self,
         catalog: &crate::world::UnitCatalog,
+        appearance_profiles: &crate::world::AppearanceProfileCatalog,
     ) -> Result<UnitRecord, SceneRecordError> {
         let source = self.source.to_source();
         let mut ownership = default_ownership_for_source(source);
@@ -683,6 +732,19 @@ impl SceneUnitRecord {
         record.current_space_id = crate::world::SpaceId::new(self.current_space_id);
         record.state = self.state.to_state()?;
         record.inventory_id = self.inventory_id.map(crate::world::InventoryId::new);
+        record.equipment =
+            self.equipment
+                .as_ref()
+                .map(|equipment| crate::world::UnitEquipmentInventories {
+                    head: crate::world::InventoryId::new(equipment.head),
+                    body: crate::world::InventoryId::new(equipment.body),
+                    arms: crate::world::InventoryId::new(equipment.arms),
+                    legs: crate::world::InventoryId::new(equipment.legs),
+                    feet: crate::world::InventoryId::new(equipment.feet),
+                    weapon: crate::world::InventoryId::new(equipment.weapon),
+                    offhand: crate::world::InventoryId::new(equipment.offhand),
+                    backpack: crate::world::InventoryId::new(equipment.backpack),
+                });
         record.settlement_id = self.settlement_id.map(crate::world::SettlementId::new);
         crate::world::initialize_unit_nutrition(&mut record.nutrition, definition);
         if let Some(current) = self.current_nutrition {
@@ -695,6 +757,26 @@ impl SceneUnitRecord {
                 crate::world::WorkSkillId::new(override_entry.skill_id.clone()),
                 override_entry.value,
             );
+        }
+        record.appearance = if let Some(scene_appearance) = &self.appearance {
+            Some(scene_appearance.to_unit(appearance_profiles)?)
+        } else if definition.appearance_profile_id.is_some() {
+            Some(
+                crate::world::resolve_canonical_default_appearance(definition, appearance_profiles)
+                    .map_err(|error| SceneRecordError::InvalidAppearance {
+                        unit_id: self.id,
+                        reason: error.to_string(),
+                    })?,
+            )
+        } else {
+            None
+        };
+        if let Some(appearance) = &record.appearance {
+            crate::world::validate_unit_appearance(appearance, definition, appearance_profiles)
+                .map_err(|error| SceneRecordError::InvalidAppearance {
+                    unit_id: self.id,
+                    reason: error.to_string(),
+                })?;
         }
         Ok(record)
     }
@@ -1346,6 +1428,112 @@ impl SceneTreasuryRecord {
     }
 }
 
+impl SceneUnitAppearanceRecord {
+    pub fn from_unit(appearance: &crate::world::UnitAppearance) -> Self {
+        Self {
+            profile_id: appearance.profile_id.as_str().to_string(),
+            body_variant_id: appearance.body_variant_id.as_str().to_string(),
+            height_scale: appearance.height_scale,
+            morphs: appearance
+                .morphs
+                .iter()
+                .map(|(param_id, value)| SceneAppearanceMorphEntry {
+                    param_id: param_id.as_str().to_string(),
+                    value: *value,
+                })
+                .collect(),
+            generation_seed: appearance.generation_seed,
+        }
+    }
+
+    pub fn to_unit(
+        &self,
+        profiles: &crate::world::AppearanceProfileCatalog,
+    ) -> Result<crate::world::UnitAppearance, SceneRecordError> {
+        use std::collections::BTreeMap;
+
+        use crate::world::{
+            AppearanceError, AppearanceParamId, AppearanceProfileId, BodyVariantId, UnitAppearance,
+        };
+
+        let profile_id = AppearanceProfileId::new(self.profile_id.trim());
+        let profile = profiles.get(&profile_id).ok_or_else(|| {
+            SceneRecordError::InvalidAppearance {
+                unit_id: 0,
+                reason: format!("unknown appearance profile `{}`", profile_id.as_str()),
+            }
+        })?;
+        let body_variant_id = BodyVariantId::new(self.body_variant_id.trim());
+        if profile.body_variant(&body_variant_id).is_none() {
+            return Err(SceneRecordError::InvalidAppearance {
+                unit_id: 0,
+                reason: format!(
+                    "unknown body variant `{}` for profile `{}`",
+                    body_variant_id.as_str(),
+                    profile_id.as_str()
+                ),
+            });
+        }
+        if !self.height_scale.is_finite()
+            || self.height_scale < profile.height_scale_min
+            || self.height_scale > profile.height_scale_max
+        {
+            return Err(SceneRecordError::InvalidAppearance {
+                unit_id: 0,
+                reason: AppearanceError::InvalidHeightScale {
+                    profile_id: profile_id.as_str().to_string(),
+                    value: self.height_scale,
+                    min: profile.height_scale_min,
+                    max: profile.height_scale_max,
+                }
+                .to_string(),
+            });
+        }
+        let mut morphs = BTreeMap::new();
+        for entry in &self.morphs {
+            if !entry.value.is_finite() {
+                return Err(SceneRecordError::InvalidAppearance {
+                    unit_id: 0,
+                    reason: "semantic parameter value must be finite".to_string(),
+                });
+            }
+            morphs.insert(AppearanceParamId::new(entry.param_id.trim()), entry.value);
+        }
+        for parameter in profile.enabled_parameters() {
+            let value = morphs.get(&parameter.id).ok_or_else(|| {
+                SceneRecordError::InvalidAppearance {
+                    unit_id: 0,
+                    reason: format!(
+                        "missing semantic parameter `{}` for profile `{}`",
+                        parameter.id.as_str(),
+                        profile_id.as_str()
+                    ),
+                }
+            })?;
+            if *value < parameter.min || *value > parameter.max {
+                return Err(SceneRecordError::InvalidAppearance {
+                    unit_id: 0,
+                    reason: AppearanceError::ParameterOutOfRange {
+                        profile_id: profile_id.as_str().to_string(),
+                        param_id: parameter.id.as_str().to_string(),
+                        value: *value,
+                        min: parameter.min,
+                        max: parameter.max,
+                    }
+                    .to_string(),
+                });
+            }
+        }
+        Ok(UnitAppearance {
+            profile_id,
+            body_variant_id,
+            height_scale: self.height_scale,
+            morphs,
+            generation_seed: self.generation_seed,
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SceneRecordError {
     InvalidPosition,
@@ -1357,6 +1545,10 @@ pub enum SceneRecordError {
     InvalidTaskType,
     InvalidTaskState,
     InvalidTaskPriority,
+    InvalidAppearance {
+        unit_id: u64,
+        reason: String,
+    },
 }
 
 #[cfg(test)]
@@ -1406,7 +1598,8 @@ mod nutrition_scene_tests {
         let ctx = test_inventory_ctx();
         let unit = create_unit_with_inventory(
             &catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -1418,7 +1611,9 @@ mod nutrition_scene_tests {
             .mutate_unit(unit.id, |record| record.nutrition.current = 42.0)
             .unwrap();
         let scene_unit = SceneUnitRecord::from_record(world.get_unit(unit.id).unwrap());
-        let restored = scene_unit.to_record(&catalog).unwrap();
+        let restored = scene_unit
+            .to_record(&catalog, &crate::world::AppearanceProfileCatalog::empty())
+            .unwrap();
         assert!((restored.nutrition.current - 42.0).abs() < 0.001);
     }
 
@@ -1437,13 +1632,17 @@ mod nutrition_scene_tests {
             affiliation: None,
             current_space_id: 0,
             inventory_id: None,
+            equipment: None,
             faction_id: None,
             species_id: None,
             settlement_id: None,
             current_nutrition: None,
             work_skill_overrides: Vec::new(),
+            appearance: None,
         };
-        let record = scene_unit.to_record(&catalog).unwrap();
+        let record = scene_unit
+            .to_record(&catalog, &crate::world::AppearanceProfileCatalog::empty())
+            .unwrap();
         let profile = NutritionProfile::from_definition(
             catalog.get(&UnitDefinitionId::new("bandit")).unwrap(),
         )

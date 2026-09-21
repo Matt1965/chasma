@@ -1,7 +1,10 @@
 //! Worker hauling task stepping (EP7).
 
 use crate::world::building::catalog::BuildingCatalog;
-use crate::world::inventory::{InventoryCatalogCtx, max_accept_stack_quantity};
+use crate::world::equipment::{
+    carried_quantity_in_worker_cargo, worker_cargo_capacity_for_item, worker_cargo_inventories,
+};
+use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::movement::feel::start_unit_move_to;
 use crate::world::task::{TaskCancelReason, TaskState, TaskType, cancel_unit_task};
 use crate::world::{
@@ -119,8 +122,27 @@ fn step_one_haul(
         return;
     }
 
-    let worker_inventory = match world.get_unit(unit_id).and_then(|unit| unit.inventory_id) {
-        Some(id) => id,
+    let worker_cargo = match world.get_unit(unit_id) {
+        Some(unit) => match worker_cargo_inventories(world, unit) {
+            Ok(inventories) if !inventories.is_empty() => inventories,
+            _ => {
+                block_request(
+                    world,
+                    request_id,
+                    &request_snapshot.item_id,
+                    HaulingBlockingReason::WorkerUnavailable,
+                    simulation_tick,
+                );
+                cancel_unit_task(
+                    world,
+                    unit_id,
+                    TaskCancelReason::Invalidated,
+                    &mut Vec::new(),
+                );
+                report.cancellations += 1;
+                return;
+            }
+        },
         None => {
             block_request(
                 world,
@@ -175,7 +197,7 @@ fn step_one_haul(
                 }
                 return;
             }
-            let haul_qty = haul_batch_quantity(world, request_id, worker_inventory, inventory_ctx);
+            let haul_qty = haul_batch_quantity(world, request_id, &worker_cargo, inventory_ctx);
             if haul_qty == 0 {
                 block_request(
                     world,
@@ -215,7 +237,7 @@ fn step_one_haul(
             if let Some(request) = world.hauling_request_store_mut().get_mut(request_id) {
                 request.execution_phase = HaulExecutionPhase::PickingUp;
             }
-            match pickup_haul_cargo(world, request_id, worker_inventory, haul_qty, inventory_ctx) {
+            match pickup_haul_cargo(world, request_id, &worker_cargo, haul_qty, inventory_ctx) {
                 Ok(moved) => {
                     report.pickups += moved;
                 }
@@ -253,7 +275,8 @@ fn step_one_haul(
                 }
                 return;
             }
-            let carried = carried_quantity(world, worker_inventory, &request_snapshot.item_id);
+            let carried =
+                carried_quantity_in_worker_cargo(world, &worker_cargo, &request_snapshot.item_id);
             if carried == 0 {
                 if let Some(request) = world.hauling_request_store_mut().get_mut(request_id) {
                     request.execution_phase = HaulExecutionPhase::TravelingToSource;
@@ -263,7 +286,7 @@ fn step_one_haul(
             if let Some(request) = world.hauling_request_store_mut().get_mut(request_id) {
                 request.execution_phase = HaulExecutionPhase::Depositing;
             }
-            match deposit_haul_cargo(world, request_id, worker_inventory, carried, inventory_ctx) {
+            match deposit_haul_cargo(world, request_id, &worker_cargo, carried, inventory_ctx) {
                 Ok(moved) => {
                     report.deposits += moved;
                 }
@@ -287,10 +310,11 @@ fn step_one_haul(
             }
         }
         HaulExecutionPhase::Depositing => {
-            let carried = carried_quantity(world, worker_inventory, &request_snapshot.item_id);
+            let carried =
+                carried_quantity_in_worker_cargo(world, &worker_cargo, &request_snapshot.item_id);
             if carried > 0 {
                 let _ =
-                    deposit_haul_cargo(world, request_id, worker_inventory, carried, inventory_ctx);
+                    deposit_haul_cargo(world, request_id, &worker_cargo, carried, inventory_ctx);
             }
         }
         HaulExecutionPhase::Completed | HaulExecutionPhase::Failed => {}
@@ -313,7 +337,7 @@ fn step_one_haul(
 fn haul_batch_quantity(
     world: &WorldData,
     request_id: HaulingRequestId,
-    worker_inventory: crate::world::InventoryId,
+    worker_cargo: &[crate::world::InventoryId],
     inventory_ctx: &InventoryCatalogCtx<'_>,
 ) -> u32 {
     let Some(request) = world.hauling_request_store().get(request_id) else {
@@ -334,11 +358,8 @@ fn haul_batch_quantity(
     if available == 0 {
         return 0;
     }
-    let worker_capacity = world
-        .inventory_store()
-        .get(worker_inventory)
-        .map(|record| max_accept_stack_quantity(record, inventory_ctx, &request.item_id))
-        .unwrap_or(0);
+    let worker_capacity =
+        worker_cargo_capacity_for_item(world, worker_cargo, &request.item_id, inventory_ctx);
     if worker_capacity == 0 {
         return 0;
     }
@@ -346,18 +367,6 @@ fn haul_batch_quantity(
         .min(request.remaining_quantity)
         .min(worker_capacity)
         .max(1)
-}
-
-fn carried_quantity(
-    world: &WorldData,
-    inventory_id: crate::world::InventoryId,
-    item_id: &crate::world::ItemDefinitionId,
-) -> u32 {
-    world
-        .inventory_store()
-        .get(inventory_id)
-        .map(|record| crate::world::inventory::count_stack_item(record, item_id))
-        .unwrap_or(0)
 }
 
 fn block_request(

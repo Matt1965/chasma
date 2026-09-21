@@ -12,6 +12,7 @@ use crate::world::building::footprint::{FootprintSpec, FootprintType};
 use crate::world::building::inventory_binding::{
     BuildingInventoryBindingDefinition, BuildingInventoryBindingId,
 };
+use crate::world::building::terrain_placement::TerrainPlacementMode;
 use crate::world::operation::OperationDefinitionId;
 
 /// Authoritative description of a building type (ADR-078 B1).
@@ -56,6 +57,8 @@ pub struct BuildingDefinition {
     /// Navigation blueprint reference (NV1.1). Gameplay interior navigation metadata.
     pub navigation_blueprint_id: Option<String>,
     pub max_slope_degrees: f32,
+    /// How placement pose relates to terrain under the footprint.
+    pub terrain_placement_mode: TerrainPlacementMode,
     pub enabled: bool,
     /// Optional inventory container profile (ADR-087 I1). None = no inventory.
     pub inventory_profile_id: Option<InventoryProfileId>,
@@ -122,6 +125,7 @@ impl BuildingDefinition {
             interior_profile_id: None,
             navigation_blueprint_id: None,
             max_slope_degrees,
+            terrain_placement_mode: TerrainPlacementMode::default(),
             enabled,
             inventory_profile_id: None,
             inventory_access_policy: ContainerAccessPolicy::OwnerOnly,
@@ -142,6 +146,11 @@ impl BuildingDefinition {
 
     pub fn model_yaw_correction_radians(&self) -> f32 {
         self.model_yaw_correction_degrees.to_radians()
+    }
+
+    pub fn with_terrain_placement_mode(mut self, mode: TerrainPlacementMode) -> Self {
+        self.terrain_placement_mode = mode;
+        self
     }
 
     pub fn with_model_local_offset(mut self, offset: Vec3) -> Self {

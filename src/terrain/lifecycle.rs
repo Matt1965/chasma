@@ -101,6 +101,8 @@ pub fn poll_chunk_materializations(
     mut residency: ResMut<ChunkResidencyTracker>,
     mut pending: ResMut<PendingChunkMaterializations>,
     world: Res<WorldData>,
+    mut road_store: ResMut<crate::world::RoadDeformationStore>,
+    network: Res<crate::world::RoadNetwork>,
     #[cfg(feature = "dev")] perf_settings: Res<TerrainStreamingPerfSettings>,
     #[cfg(feature = "dev")] mut perf_state: ResMut<super::perf::TerrainStreamingPerfState>,
 ) {
@@ -121,6 +123,10 @@ pub fn poll_chunk_materializations(
         focus_coord,
         &lod_settings,
         &world,
+        &mut road_store,
+        &network,
+        layout,
+        Some(catalog.as_ref()),
         &mut poll_stats,
     );
 
@@ -917,6 +923,9 @@ mod apply_tests {
         assert_eq!(pending.unique_pipeline_chunk_count(), 8);
 
         let world_snapshot = world.resource::<WorldData>().clone();
+        let mut road_store = crate::world::RoadDeformationStore::default();
+        let network = crate::world::RoadNetwork::empty();
+        let layout = world.resource::<WorldConfig>().chunk_layout();
 
         for _ in 0..16 {
             let mut residency = world.resource_mut::<ChunkResidencyTracker>();
@@ -931,6 +940,10 @@ mod apply_tests {
                 focus,
                 &lod_settings,
                 &world_snapshot,
+                &mut road_store,
+                &network,
+                layout,
+                None,
                 &mut poll_stats,
             );
         }

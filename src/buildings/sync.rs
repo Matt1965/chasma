@@ -8,11 +8,15 @@ use bevy::prelude::*;
 use crate::terrain::TerrainRenderAssets;
 use crate::terrain::residency::ChunkResidencyTracker;
 use crate::world::{
-    BuildingCatalog, BuildingId, WorldConfig, WorldData, building_anchor_render_transform,
+    BuildingCatalog, BuildingId, FootprintCatalog, WorldConfig, WorldData,
+    building_anchor_render_transform, derive_foundation_skirt_for_placement,
 };
 
 use super::assets::{BuildingSceneAssets, lifecycle_render_key};
-use super::components::BuildingRenderEntity;
+use super::components::{BuildingFoundationSkirt, BuildingRenderEntity};
+use super::foundation::build_foundation_skirt_mesh;
+use super::foundation_assets::{foundation_uv_mode_for_stage, FoundationPresentationAssets};
+use super::foundation_diagnostic::FoundationRuntimeTrace;
 use super::fallback::{BuildingFallbackAssets, BuildingFallbackReason};
 use super::spawn::{
     BuildingRenderIndex, building_render_translation, despawn_building_render_entities,
@@ -279,6 +283,85 @@ pub fn sync_building_render_entities(
     }
 }
 
+/// Spawn or refresh derived foundation skirts for level buildings.
+pub fn sync_building_foundation_skirts(
+    mut commands: Commands,
+    world: Res<WorldData>,
+    catalog: Res<BuildingCatalog>,
+    config: Res<WorldConfig>,
+    footprint_catalog: Res<FootprintCatalog>,
+    render_terrain: Option<Res<TerrainRenderAssets>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    foundation_assets: Res<FoundationPresentationAssets>,
+    roots: Query<(Entity, &BuildingRenderEntity), With<super::components::BuildingSceneRoot>>,
+    skirts: Query<Entity, With<BuildingFoundationSkirt>>,
+    children: Query<&Children>,
+) {
+    let Some(render_terrain) = render_terrain.as_ref() else {
+        // Mesh vertices are scaled by presentation vertical_scale; do not build with the
+        // default 1.0 fallback or geometry will be wrong until terrain assets load.
+        return;
+    };
+    let vertical_scale = render_terrain.vertical_scale;
+    let layout = config.chunk_layout();
+    let material_handle = foundation_assets.material.clone();
+    let uv_mode = foundation_uv_mode_for_stage(foundation_assets.stage);
+
+    for (root, marker) in &roots {
+        if marker.uses_diagnostic_fallback {
+            continue;
+        }
+        let Some(record) = world.get_building(marker.building_id) else {
+            continue;
+        };
+        let Some(definition) = catalog.get(&record.definition_id) else {
+            continue;
+        };
+        let spec = derive_foundation_skirt_for_placement(
+            &world,
+            layout,
+            definition,
+            &footprint_catalog,
+            &record.placement,
+            vertical_scale,
+        );
+        let existing_skirt = children.get(root).ok().and_then(|kids| {
+            kids.iter().find(|child| skirts.get(*child).is_ok())
+        });
+        if spec.is_none() {
+            if let Some(skirt_entity) = existing_skirt {
+                commands.entity(skirt_entity).despawn();
+            }
+            continue;
+        }
+        let spec = spec.unwrap();
+        let anchor_y = record.placement.position.to_global(layout).y;
+        let mesh = build_foundation_skirt_mesh(&spec, anchor_y, vertical_scale, uv_mode);
+        let mesh_handle = meshes.add(mesh);
+        if let Some(skirt_entity) = existing_skirt {
+            commands.entity(skirt_entity).insert((
+                Mesh3d(mesh_handle),
+                MeshMaterial3d(material_handle.clone()),
+                Transform::default(),
+                Visibility::Visible,
+            ));
+        } else {
+            commands.entity(root).with_children(|parent| {
+                parent.spawn((
+                    BuildingFoundationSkirt,
+                    FoundationRuntimeTrace {
+                        building_id: marker.building_id,
+                    },
+                    Mesh3d(mesh_handle),
+                    MeshMaterial3d(material_handle.clone()),
+                    Transform::default(),
+                    Visibility::Visible,
+                ));
+            });
+        }
+    }
+}
+
 use super::components::BuildingLifecycleTintApplied;
 
 fn missing_definition_placeholder(
@@ -440,6 +523,131 @@ mod tests {
                 .get::<BuildingDiagnosticFallback>()
                 .is_none()
         );
+    }
+
+    #[test]
+    fn foundation_skirt_spawns_on_sloped_hut() {
+        use crate::buildings::components::BuildingFoundationSkirt;
+        use crate::world::{
+            BuildingLifecycleState, BuildingOwnership, ChunkCoord, ChunkData, ChunkId,
+            FootprintCatalog, Heightfield, LocalPosition, OccupancyCatalogs,
+            place_player_building, resolve_building_placement,
+        };
+
+        fn sloped_world() -> WorldData {
+            let mut samples = Vec::with_capacity(25);
+            for _row in 0..5u32 {
+                for col in 0..5u32 {
+                    samples.push(col as f32 * 2.0);
+                }
+            }
+            let layout = ChunkLayout {
+                chunk_size_meters: 128.0,
+                units_per_meter: 1.0,
+            };
+            let mut world = WorldData::new(layout);
+            let heightfield = Heightfield::from_samples(5, 32.0, samples).unwrap();
+            world.insert(
+                ChunkId::new(ChunkCoord::new(0, 0)),
+                ChunkData::new(heightfield, Vec::new()),
+            );
+            world
+        }
+
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()));
+        app.init_resource::<WorldConfig>();
+        app.init_resource::<ChunkResidencyTracker>();
+        app.init_resource::<BuildingRenderIndex>();
+        app.init_resource::<BuildingFallbackAssets>();
+        app.init_resource::<Assets<Mesh>>();
+        app.init_resource::<Assets<StandardMaterial>>();
+        app.init_resource::<Assets<Scene>>();
+        app.insert_resource(BuildingSyncOverrides {
+            treat_scenes_loaded: true,
+        });
+        {
+            let material = app
+                .world_mut()
+                .resource_mut::<Assets<StandardMaterial>>()
+                .add(StandardMaterial::default());
+            app.insert_resource(FoundationPresentationAssets::debug_stub(material));
+        }
+        app.add_systems(
+            Update,
+            (sync_building_render_entities, sync_building_foundation_skirts).chain(),
+        );
+
+        let categories = BuildingCategoryCatalog::from_definitions(
+            crate::world::starter_building_category_definitions(),
+        )
+        .unwrap();
+        let catalog =
+            BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
+        let footprint = FootprintCatalog::default();
+        let doodad = crate::world::DoodadCatalog::default();
+        let mut world = sloped_world();
+        let layout = world.layout();
+        let hut = catalog.get(&BuildingDefinitionId::new("hut")).unwrap();
+        let resolved = resolve_building_placement(
+            &world,
+            layout,
+            hut,
+            &footprint,
+            WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(64.0, 0.0, 64.0)),
+            ),
+            Quat::IDENTITY,
+            1.0,
+            1.0,
+        )
+        .unwrap();
+        let occ = OccupancyCatalogs {
+            doodad: &doodad,
+            building: &catalog,
+            footprint: &footprint,
+        };
+        let record = place_player_building(
+            &catalog,
+            &mut world,
+            &BuildingDefinitionId::new("hut"),
+            resolved.anchor,
+            resolved.rotation,
+            BuildingOwnership::with_affiliation(crate::world::Affiliation::Player),
+            occ,
+        )
+        .unwrap();
+        assert_eq!(record.lifecycle_state, BuildingLifecycleState::Planned);
+
+        let scene = {
+            let mut scenes = Assets::<Scene>::default();
+            scenes.add(Scene::new(World::new()))
+        };
+        app.insert_resource(BuildingSceneAssets::from_test_scenes(HashMap::from([(
+            "hut".to_string(),
+            scene,
+        )])));
+        app.insert_resource(catalog);
+        app.insert_resource(footprint);
+        app.insert_resource(world);
+        app.world_mut()
+            .resource_mut::<ChunkResidencyTracker>()
+            .mark_resident(ChunkId::new(ChunkCoord::new(0, 0)));
+        app.update();
+
+        let index = app.world().resource::<BuildingRenderIndex>();
+        let root = index.0[&record.id];
+        let has_skirt = app
+            .world()
+            .entity(root)
+            .get::<Children>()
+            .is_some_and(|children| {
+                children
+                    .iter()
+                    .any(|child| app.world().entity(child).contains::<BuildingFoundationSkirt>())
+            });
+        assert!(has_skirt, "expected foundation skirt child on building root");
     }
 
     #[test]

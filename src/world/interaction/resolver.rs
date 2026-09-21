@@ -365,6 +365,7 @@ pub fn resolve_unit_click_to_order(
         target_unit,
         ctx.query.weapon_catalog,
         ctx.query.unit_catalog,
+        &crate::world::ItemCatalog::default(),
         ctx.targeting_policy,
     );
     let interaction = InteractionResult {
@@ -619,7 +620,8 @@ mod tests {
         let mut world = flat_world();
         let player = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -633,7 +635,8 @@ mod tests {
         world.insert_unit(chunk, record).unwrap();
         let wildlife = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(15.0, 15.0),
             UnitSource::Authored,
@@ -667,7 +670,8 @@ mod tests {
         let mut world = flat_world();
         let player = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -681,7 +685,8 @@ mod tests {
         world.insert_unit(chunk, record).unwrap();
         let wildlife = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(15.0, 15.0),
             UnitSource::Authored,
@@ -719,7 +724,8 @@ mod tests {
         let mut world = flat_world();
         let player = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -729,7 +735,8 @@ mod tests {
         .id;
         let hostile = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(15.0, 15.0),
             UnitSource::Authored,
@@ -752,7 +759,8 @@ mod tests {
         let mut world = flat_world();
         let player = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("wolf"),
             pos(1.0, 1.0),
             UnitSource::Authored,
@@ -762,7 +770,8 @@ mod tests {
         .id;
         let friendly = create_unit_with_ownership(
             &unit_catalog,
-            &mut world,
+            &crate::world::AppearanceProfileCatalog::empty(),
+        &mut world,
             &UnitDefinitionId::new("bandit"),
             pos(15.0, 15.0),
             UnitSource::Authored,

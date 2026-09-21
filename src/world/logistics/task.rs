@@ -138,6 +138,7 @@ pub fn assign_hauling_task_with_priority(
         world,
         unit_catalog,
         weapon_catalog,
+        inventory_ctx.items,
         doodad_catalog,
         nav_config,
         unit_id,

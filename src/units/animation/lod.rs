@@ -271,8 +271,10 @@ mod tests {
             reactive_combat_target: None,
             current_space_id: Default::default(),
             inventory_id: None,
+            equipment: None,
             settlement_id: None,
             work_skills: Default::default(),
+            appearance: None,
         }
     }
 

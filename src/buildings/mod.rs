@@ -8,6 +8,9 @@ use bevy::prelude::*;
 
 pub mod assets;
 pub mod components;
+pub mod foundation;
+pub mod foundation_assets;
+pub mod foundation_diagnostic;
 pub mod fallback;
 pub mod picking;
 pub mod placeholder;
@@ -21,8 +24,8 @@ pub use assets::{
     gltf_asset_path, lifecycle_render_key, preload_building_scenes,
 };
 pub use components::{
-    BuildingDiagnosticFallback, BuildingRenderEntity, BuildingSceneRoot, BuildingSceneTags,
-    OriginalBuildingMaterial,
+    BuildingDiagnosticFallback, BuildingFoundationSkirt, BuildingRenderEntity, BuildingSceneRoot,
+    BuildingSceneTags, OriginalBuildingMaterial,
 };
 pub use fallback::{BuildingFallbackAssets, BuildingFallbackReason};
 pub use picking::pick_building_along_ray;
@@ -45,7 +48,13 @@ impl Plugin for BuildingsRuntimePlugin {
             .register_type::<BuildingFallbackReason>()
             .init_resource::<BuildingRenderIndex>()
             .init_resource::<BuildingFallbackAssets>()
-            .add_systems(Startup, init_building_scene_assets)
+            .add_systems(
+                Startup,
+                (
+                    init_building_scene_assets,
+                    foundation_assets::init_foundation_presentation_assets,
+                ),
+            )
             .add_systems(
                 Update,
                 (
@@ -53,6 +62,9 @@ impl Plugin for BuildingsRuntimePlugin {
                     presentation::discover_building_scene_tags,
                     presentation::apply_building_lifecycle_tints,
                     presentation::sync_building_fallback_materials,
+                    sync::sync_building_foundation_skirts,
+                    foundation_assets::sync_foundation_texture_binding,
+                    foundation_diagnostic::log_foundation_runtime_once,
                 )
                     .chain()
                     .in_set(BuildingRuntimeSystems),

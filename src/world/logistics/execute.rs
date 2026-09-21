@@ -2,7 +2,7 @@
 
 use crate::world::inventory::{
     InventoryCatalogCtx, InventoryEntryContents, TransferPlacementPolicy, count_stack_item,
-    transfer_stack_quantity,
+    max_accept_stack_quantity, transfer_stack_quantity,
 };
 use crate::world::{InventoryId, ItemDefinitionId, WorldData};
 
@@ -37,13 +37,15 @@ pub fn reserve_hauling_request(
         return Err(HaulingBlockingReason::SourceEqualsDestination);
     }
     {
-        let (inventory_store, reservations) = world.hauling_reserve_borrow_split();
+        let (inventory_store, instance_store, reservations) =
+            world.hauling_reserve_borrow_split_with_instances();
         reserve_destination_capacity(
             reservations,
             request_id,
             destination,
             quantity,
             inventory_store,
+            instance_store,
             inventory_ctx,
             &item_id,
         )?;
@@ -65,14 +67,17 @@ pub fn reserve_hauling_request(
     Ok(())
 }
 
-/// Pick up items from source into worker inventory (EP7).
+/// Pick up items from source into worker cargo inventories (EP7 / Slice 5).
 pub fn pickup_haul_cargo(
     world: &mut WorldData,
     request_id: HaulingRequestId,
-    worker_inventory_id: InventoryId,
+    worker_cargo_inventories: &[InventoryId],
     quantity: u32,
     inventory_ctx: &InventoryCatalogCtx<'_>,
 ) -> Result<u32, HaulingBlockingReason> {
+    if worker_cargo_inventories.is_empty() {
+        return Err(HaulingBlockingReason::WorkerUnavailable);
+    }
     let (source, item_id) = {
         let request = world
             .hauling_request_store()
@@ -80,38 +85,62 @@ pub fn pickup_haul_cargo(
             .ok_or(HaulingBlockingReason::MissingSource)?;
         (request.source_inventory_id, request.item_id.clone())
     };
-    let source_entry = find_transferable_stack(world, source, &item_id, quantity)?;
-    let (inventory_store, instance_store) = world.inventory_runtime_mut();
-    let report = transfer_stack_quantity(
-        inventory_store,
-        instance_store,
-        inventory_ctx,
-        source,
-        source_entry,
-        worker_inventory_id,
-        quantity,
-        TransferPlacementPolicy::MergeThenFirstFit,
-        false,
-    )
-    .map_err(|_| HaulingBlockingReason::NoAvailableItems)?;
-    if report.moved == 0 {
+    let mut remaining = quantity;
+    let mut total_moved = 0u32;
+    for destination in worker_cargo_inventories {
+        if remaining == 0 {
+            break;
+        }
+        let capacity = world
+            .inventory_store()
+            .get(*destination)
+            .map(|record| max_accept_stack_quantity(record, inventory_ctx, &item_id))
+            .unwrap_or(0);
+        if capacity == 0 {
+            continue;
+        }
+        let batch = remaining.min(capacity);
+        let source_entry = find_transferable_stack(world, source, &item_id, batch)?;
+        let (inventory_store, instance_store) = world.inventory_runtime_mut();
+        let report = transfer_stack_quantity(
+            inventory_store,
+            instance_store,
+            inventory_ctx,
+            source,
+            source_entry,
+            *destination,
+            batch,
+            TransferPlacementPolicy::MergeThenFirstFit,
+            false,
+        )
+        .map_err(|_| HaulingBlockingReason::NoAvailableItems)?;
+        if report.moved == 0 {
+            continue;
+        }
+        total_moved = total_moved.saturating_add(report.moved);
+        remaining = remaining.saturating_sub(report.moved);
+    }
+    if total_moved == 0 {
         return Err(HaulingBlockingReason::NoAvailableItems);
     }
     if let Some(request) = world.hauling_request_store_mut().get_mut(request_id) {
-        request.picked_up_quantity = request.picked_up_quantity.saturating_add(report.moved);
+        request.picked_up_quantity = request.picked_up_quantity.saturating_add(total_moved);
         request.execution_phase = HaulExecutionPhase::TravelingToDestination;
     }
-    Ok(report.moved)
+    Ok(total_moved)
 }
 
-/// Deposit worker cargo into destination inventory (EP7).
+/// Deposit worker cargo into destination inventory (EP7 / Slice 5).
 pub fn deposit_haul_cargo(
     world: &mut WorldData,
     request_id: HaulingRequestId,
-    worker_inventory_id: InventoryId,
+    worker_cargo_inventories: &[InventoryId],
     quantity: u32,
     inventory_ctx: &InventoryCatalogCtx<'_>,
 ) -> Result<u32, HaulingBlockingReason> {
+    if worker_cargo_inventories.is_empty() {
+        return Err(HaulingBlockingReason::WorkerUnavailable);
+    }
     let (destination, item_id) = {
         let request = world
             .hauling_request_store()
@@ -119,26 +148,47 @@ pub fn deposit_haul_cargo(
             .ok_or(HaulingBlockingReason::DestinationFull)?;
         (request.destination_inventory_id, request.item_id.clone())
     };
-    let worker_entry = find_transferable_stack(world, worker_inventory_id, &item_id, quantity)?;
-    let (inventory_store, instance_store) = world.inventory_runtime_mut();
-    let report = transfer_stack_quantity(
-        inventory_store,
-        instance_store,
-        inventory_ctx,
-        worker_inventory_id,
-        worker_entry,
-        destination,
-        quantity,
-        TransferPlacementPolicy::MergeThenFirstFit,
-        false,
-    )
-    .map_err(|_| HaulingBlockingReason::DestinationFull)?;
-    if report.moved == 0 {
+    let mut remaining = quantity;
+    let mut total_moved = 0u32;
+    for source in worker_cargo_inventories {
+        if remaining == 0 {
+            break;
+        }
+        let available = world
+            .inventory_store()
+            .get(*source)
+            .map(|record| count_stack_item(record, &item_id))
+            .unwrap_or(0);
+        if available == 0 {
+            continue;
+        }
+        let batch = remaining.min(available);
+        let source_entry = find_transferable_stack(world, *source, &item_id, batch)?;
+        let (inventory_store, instance_store) = world.inventory_runtime_mut();
+        let report = transfer_stack_quantity(
+            inventory_store,
+            instance_store,
+            inventory_ctx,
+            *source,
+            source_entry,
+            destination,
+            batch,
+            TransferPlacementPolicy::MergeThenFirstFit,
+            false,
+        )
+        .map_err(|_| HaulingBlockingReason::DestinationFull)?;
+        if report.moved == 0 {
+            continue;
+        }
+        total_moved = total_moved.saturating_add(report.moved);
+        remaining = remaining.saturating_sub(report.moved);
+    }
+    if total_moved == 0 {
         return Err(HaulingBlockingReason::DestinationFull);
     }
     if let Some(request) = world.hauling_request_store_mut().get_mut(request_id) {
-        request.remaining_quantity = request.remaining_quantity.saturating_sub(report.moved);
-        request.picked_up_quantity = request.picked_up_quantity.saturating_sub(report.moved);
+        request.remaining_quantity = request.remaining_quantity.saturating_sub(total_moved);
+        request.picked_up_quantity = request.picked_up_quantity.saturating_sub(total_moved);
         if request.remaining_quantity == 0 {
             request.status = HaulingRequestStatus::Completed;
             request.execution_phase = HaulExecutionPhase::Completed;
@@ -155,7 +205,7 @@ pub fn deposit_haul_cargo(
     if let Some(request) = world.hauling_request_store_mut().get_mut(request_id) {
         request.reservation_state = HaulingReservationState::None;
     }
-    Ok(report.moved)
+    Ok(total_moved)
 }
 
 /// Dev-only: force-complete a hauling request by transferring remaining cargo (EP7).
