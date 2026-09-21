@@ -120,7 +120,7 @@ fn flat_120m_road_centerline_delta_matches_depression() {
         .style_defaults(RoadStyleId::DirtRoad)
         .expect("style")
         .depression_m;
-    let depression_hf = depression_meters_to_heightfield_units(depression_m, 60.0);
+    let depression_hf = depression_meters_to_heightfield_units(depression_m, 0.0, base_height);
     let mut store = RoadDeformationStore::default();
     let chunk_id = ChunkId::new(ChunkCoord::new(0, 0));
     rebake_single(&world, &mut store, &network, chunk_id);
@@ -199,8 +199,14 @@ fn cross_slope_road_cuts_uphill_and_fills_downhill() {
     assert!(downhill_delta > 0.0, "downhill {}", downhill_delta);
     assert!(uphill_delta < center_delta, "uphill {} center {}", uphill_delta, center_delta);
     assert!(downhill_delta > center_delta, "downhill {} center {}", downhill_delta, center_delta);
-    assert!(uphill_delta.abs() > center_delta.abs());
-    assert!(downhill_delta.abs() > center_delta.abs());
+    assert!(uphill_delta.abs() > center_delta.abs() * 3.0);
+    assert!(downhill_delta.abs() > center_delta.abs() * 3.0);
+    assert!(
+        uphill_delta.abs() > downhill_delta.abs() * 0.5,
+        "uphill cut {} downhill fill {}",
+        uphill_delta,
+        downhill_delta
+    );
 }
 
 #[test]
@@ -545,6 +551,10 @@ fn real_world_lazy_rebake_deltas_stay_bounded() {
 
 #[test]
 fn gaea_scale_flat_road_depression_is_subtle() {
+    use crate::terrain::spawn::{
+        TERRAIN_RENDER_TARGET_HEIGHT_SPAN_UNITS, vertical_scale_for_height_span,
+    };
+
     let base = 0.00238;
     let heightfield =
         Heightfield::from_samples(5, 64.0, vec![base; 25]).unwrap();
@@ -559,12 +569,33 @@ fn gaea_scale_flat_road_depression_is_subtle() {
     let mut store = RoadDeformationStore::default();
     let chunk_id = ChunkId::new(ChunkCoord::new(0, 0));
     rebake_single(&world, &mut store, &network, chunk_id);
-    let tile = store.tiles.get(&chunk_id).expect("tile");
-    let delta = tile.sample_delta(128.0, 128.0).unwrap();
-    let depression_hf = depression_meters_to_heightfield_units(depression_m, base);
-    assert!(delta < 0.0);
+    let depression_hf = depression_meters_to_heightfield_units(depression_m, 0.0, base);
+    let delta = store
+        .tiles
+        .get(&chunk_id)
+        .and_then(|tile| tile.sample_delta(128.0, 128.0).ok())
+        .unwrap_or(0.0);
+    assert!(delta <= 0.0);
     assert!(delta.abs() < depression_hf * 2.0);
     assert!(delta.abs() < base * 0.05, "delta {} vs base {}", delta, base);
+    let vertical_scale = vertical_scale_for_height_span(
+        0.0,
+        1e-3,
+        TERRAIN_RENDER_TARGET_HEIGHT_SPAN_UNITS,
+    );
+    let render_depression_m = delta.abs() * vertical_scale;
+    assert!(
+        render_depression_m > depression_m * 0.5,
+        "render depression {} m vs authored {} m",
+        render_depression_m,
+        depression_m
+    );
+    assert!(
+        render_depression_m < depression_m * 1.5,
+        "render depression {} m vs authored {} m",
+        render_depression_m,
+        depression_m
+    );
 }
 
 fn sync_store(store: &RoadDeformationStore, world: &mut WorldData, chunk_id: ChunkId) {

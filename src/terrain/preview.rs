@@ -24,7 +24,9 @@ use super::catalog::TerrainWorldCatalog;
 use super::decode::decode_chunk;
 use super::lod::TerrainLodSettings;
 use super::perf::TerrainStreamingPerfSettings;
-use super::spawn::{TerrainRenderAssets, vertical_scale_for_height_span};
+use super::spawn::{
+    TerrainRenderAssets, TERRAIN_RENDER_TARGET_HEIGHT_SPAN_UNITS, vertical_scale_for_height_span,
+};
 use super::streaming::TerrainStreamingSettings;
 
 /// Default path for dev preview terrain perf logs (see [`TerrainStreamingPerfSettings`]).
@@ -32,9 +34,6 @@ pub const PREVIEW_PERF_LOG_PATH: &str = "logs/terrain_streaming_perf.log";
 
 /// Fallback when chunk metadata cannot be sampled at preview startup.
 const DEV_PREVIEW_VERTICAL_SCALE_FALLBACK: f32 = 3.0;
-
-/// Dev preview relief target: visible relief without over-exaggerating stitch artifacts.
-const PREVIEW_TARGET_HEIGHT_SPAN_UNITS: f32 = 3.0;
 
 /// Chebyshev radius (chunks) within which the preview **requests** new loads.
 ///
@@ -184,6 +183,6 @@ fn preview_vertical_scale(catalog: &TerrainWorldCatalog) -> f32 {
     vertical_scale_for_height_span(
         data.metadata.height_min,
         data.metadata.height_max,
-        PREVIEW_TARGET_HEIGHT_SPAN_UNITS,
+        TERRAIN_RENDER_TARGET_HEIGHT_SPAN_UNITS,
     )
 }
