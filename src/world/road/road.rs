@@ -11,6 +11,9 @@ use super::style::{RoadStyleId, RoadStyleOverrides};
 #[derive(Debug, Clone, PartialEq, Reflect, Serialize, Deserialize)]
 pub struct Road {
     pub id: RoadId,
+    /// Author-facing label; does not replace [`RoadId`].
+    #[serde(default)]
+    pub display_name: String,
     pub style: RoadStyleId,
     pub style_overrides: RoadStyleOverrides,
     pub control_points: Vec<RoadControlPoint>,

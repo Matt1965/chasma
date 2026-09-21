@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use super::coordinates::ChunkCoord;
+use super::road::deformation::RoadHeightDeltaTile;
 use super::terrain::{Heightfield, TerrainMask, TerrainMetadata};
 
 /// The authoritative identity of a chunk.
@@ -52,6 +53,8 @@ pub struct ChunkData {
     pub heightfield: Heightfield,
     pub metadata: TerrainMetadata,
     pub masks: Vec<TerrainMask>,
+    /// Derived road height delta aligned to `heightfield` (not persisted in terrain assets).
+    pub road_height_delta: Option<RoadHeightDeltaTile>,
 }
 
 impl ChunkData {
@@ -63,6 +66,24 @@ impl ChunkData {
             heightfield,
             metadata,
             masks,
+            road_height_delta: None,
         }
+    }
+
+    pub fn effective_height_at_vertex(&self, col: u32, row: u32) -> f32 {
+        let base = self.heightfield.height_at_vertex(col, row);
+        let delta = self
+            .road_height_delta
+            .as_ref()
+            .map(|tile| tile.delta_at_vertex(col, row))
+            .unwrap_or(0.0);
+        base + delta
+    }
+
+    pub fn effective_samples(&self) -> Vec<f32> {
+        self.road_height_delta
+            .as_ref()
+            .map(|tile| tile.effective_samples(&self.heightfield))
+            .unwrap_or_else(|| self.heightfield.samples().to_vec())
     }
 }

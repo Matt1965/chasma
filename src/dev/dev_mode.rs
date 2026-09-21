@@ -34,6 +34,7 @@ pub enum DevTextFieldFocus {
     ArchetypeGoldMin,
     ArchetypeGoldMax,
     ArchetypeCaptureMargin,
+    RoadName,
 }
 
 /// Client-local dev inventory tool state (DV0).

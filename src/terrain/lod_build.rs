@@ -20,8 +20,8 @@ use super::lod::{LodPriority, TerrainLodSettings, desired_lod, predicted_lod_tar
 use super::lod_cache::TerrainChunkLodCache;
 #[cfg(feature = "dev")]
 use super::mesh::chunk_mesh_geometry;
-use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled};
-use super::spawn::{TerrainRenderAssets, seam_weld_heights};
+use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled_with_delta};
+use super::spawn::{TerrainRenderAssets, seam_weld_heights_effective};
 use super::streaming::{TerrainStreamingSettings, stable_focus_chunk};
 
 /// Completed async LOD mesh build ready for main-thread cache registration.
@@ -203,8 +203,9 @@ pub fn spawn_chunk_lod_build_task(
 ) -> ChunkLodBuildTask {
     AsyncComputeTaskPool::get().spawn(async move {
         let start = std::time::Instant::now();
-        let mesh = build_chunk_mesh_scaled(
+        let mesh = build_chunk_mesh_scaled_with_delta(
             &data.heightfield,
+            data.road_height_delta.as_ref(),
             lod,
             vertical_scale,
             &seam_weld,
@@ -326,7 +327,7 @@ pub(crate) fn request_missing_lod_builds_inner(
         let Some(data) = world.get(marker.chunk).cloned() else {
             continue;
         };
-        let seam_weld = seam_weld_heights(world, marker.chunk);
+        let seam_weld = seam_weld_heights_effective(world, marker.chunk);
         let albedo = chunk_albedo.get(marker.chunk).cloned();
         if pending_builds.try_enqueue_immediate(
             marker.chunk,
@@ -373,7 +374,7 @@ pub(crate) fn request_missing_lod_builds_inner(
         let Some(data) = world.get(chunk_id).cloned() else {
             continue;
         };
-        let seam_weld = seam_weld_heights(world, chunk_id);
+        let seam_weld = seam_weld_heights_effective(world, chunk_id);
         let albedo = chunk_albedo.get(chunk_id).cloned();
         if pending_builds.try_enqueue_prefetch(
             chunk_id,

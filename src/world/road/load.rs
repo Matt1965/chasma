@@ -64,3 +64,22 @@ pub fn serialize_road_network_ron(network: &RoadNetwork) -> Result<String, RoadL
     ron::ser::to_string_pretty(&document, ron::ser::PrettyConfig::new().new_line("\n".to_string()))
         .map_err(|error| RoadLoadError::Parse(error.to_string()))
 }
+
+pub fn save_road_network_to_path(
+    path: &Path,
+    network: &RoadNetwork,
+) -> Result<(), RoadLoadError> {
+    let serialized = serialize_road_network_ron(network)?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(path, serialized)?;
+    Ok(())
+}
+
+pub fn save_road_network(network: &RoadNetwork) -> Result<(), RoadLoadError> {
+    save_road_network_to_path(
+        &road_network_ron_path(DEFAULT_WORLD_PACKAGE_DIR),
+        network,
+    )
+}

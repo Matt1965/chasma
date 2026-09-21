@@ -114,29 +114,59 @@ pub fn world_position_to_render_global_above_base(
 }
 
 pub(crate) fn seam_weld_heights(world: &WorldData, chunk_id: ChunkId) -> ChunkMeshSeamWeld {
+    seam_weld_heights_with_sampler(world, chunk_id, |data, col, row| {
+        data.heightfield.height_at_vertex(col, row)
+    })
+}
+
+/// Seam weld strips using effective terrain height (base + road delta).
+pub(crate) fn seam_weld_heights_effective(world: &WorldData, chunk_id: ChunkId) -> ChunkMeshSeamWeld {
+    seam_weld_heights_with_sampler(world, chunk_id, |data, col, row| {
+        data.effective_height_at_vertex(col, row)
+    })
+}
+
+fn seam_weld_heights_with_sampler(
+    world: &WorldData,
+    chunk_id: ChunkId,
+    sample: impl Fn(&crate::world::ChunkData, u32, u32) -> f32,
+) -> ChunkMeshSeamWeld {
     let coord = chunk_id.coord();
     let edge = |data: &crate::world::ChunkData| data.heightfield.samples_per_edge() - 1;
     let penultimate =
         |data: &crate::world::ChunkData| data.heightfield.samples_per_edge().saturating_sub(2);
 
+    let column = |data: &crate::world::ChunkData, col: u32| {
+        let spe = data.heightfield.samples_per_edge();
+        (0..spe)
+            .map(|row| sample(data, col, row))
+            .collect::<Vec<_>>()
+    };
+    let row = |data: &crate::world::ChunkData, row: u32| {
+        let spe = data.heightfield.samples_per_edge();
+        (0..spe)
+            .map(|col| sample(data, col, row))
+            .collect::<Vec<_>>()
+    };
+
     let west = world
         .get(ChunkId::new(ChunkCoord::new(coord.x - 1, coord.z)))
-        .map(|data| data.heightfield.column_heights(edge(data)));
+        .map(|data| column(data, edge(data)));
     let south = world
         .get(ChunkId::new(ChunkCoord::new(coord.x, coord.z - 1)))
-        .map(|data| data.heightfield.row_heights(edge(data)));
+        .map(|data| row(data, edge(data)));
     let east_interior = world
         .get(ChunkId::new(ChunkCoord::new(coord.x + 1, coord.z)))
-        .map(|data| data.heightfield.column_heights(1));
+        .map(|data| column(data, 1));
     let north_interior = world
         .get(ChunkId::new(ChunkCoord::new(coord.x, coord.z + 1)))
-        .map(|data| data.heightfield.row_heights(1));
+        .map(|data| row(data, 1));
     let west_interior = world
         .get(ChunkId::new(ChunkCoord::new(coord.x - 1, coord.z)))
-        .map(|data| data.heightfield.column_heights(penultimate(data)));
+        .map(|data| column(data, penultimate(data)));
     let south_interior = world
         .get(ChunkId::new(ChunkCoord::new(coord.x, coord.z - 1)))
-        .map(|data| data.heightfield.row_heights(penultimate(data)));
+        .map(|data| row(data, penultimate(data)));
 
     ChunkMeshSeamWeld {
         west_edge: west,

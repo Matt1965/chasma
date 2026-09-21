@@ -370,6 +370,9 @@ fn handle_text_field_input(
         | DevTextFieldFocus::ArchetypeCaptureMargin => {
             // Handled by archetype_editor::handle_archetype_editor_keyboard
         }
+        DevTextFieldFocus::RoadName => {
+            // Handled by road_editor::handle_road_editor_keyboard_input
+        }
     }
 }
 

@@ -129,6 +129,8 @@ impl Plugin for TerrainRuntimePlugin {
                 lod_build::request_missing_lod_builds,
                 lod_build::poll_lod_builds,
                 lifecycle::apply_chunk_materializations,
+                crate::world::reconcile_road_deformation_on_startup,
+                crate::world::apply_road_terrain_rebuilds,
                 lifecycle::unload_terrain_chunks,
                 #[cfg(feature = "dev")]
                 perf::report_terrain_streaming_perf,

@@ -10,16 +10,22 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, IoTaskPool, Task};
 
-use crate::world::{ChunkCoord, ChunkData, ChunkId, WorldData};
+use crate::terrain::catalog::TerrainWorldCatalog;
+use crate::world::{
+    ChunkCoord, ChunkData, ChunkId, ChunkLayout, RoadDeformationStore, RoadNetwork, WorldData,
+    ensure_chunk_road_deformation,
+};
 
 use super::albedo::{AlbedoFallback, ChunkAlbedoGrid, production_albedo_fallback};
 use super::albedo_decode::{AlbedoSidecarIo, decode_albedo_sidecar_io, read_albedo_sidecar_bytes};
 use super::asset::TerrainAssetError;
 use super::decode::decode_chunk;
 use super::lod::{TerrainLodSettings, desired_lod};
-use super::mesh::{ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled, chunk_mesh_geometry};
+use super::mesh::{
+    ChunkLod, ChunkMeshSeamWeld, build_chunk_mesh_scaled_with_delta, chunk_mesh_geometry,
+};
 use super::residency::{ChunkDiscardKind, ChunkResidencyTracker, discard_chunk_residency};
-use super::spawn::seam_weld_heights;
+use super::spawn::seam_weld_heights_effective;
 use super::streaming::{TerrainStreamingSettings, chunk_outside_residency_sets};
 
 /// Per-poll caps for materialization pipeline stage transitions (ADR-012).
@@ -318,6 +324,10 @@ impl PendingChunkMaterializations {
         focus_chunk: ChunkCoord,
         lod_settings: &TerrainLodSettings,
         world: &WorldData,
+        road_store: &mut RoadDeformationStore,
+        network: &RoadNetwork,
+        layout: ChunkLayout,
+        catalog: Option<&TerrainWorldCatalog>,
         stats: &mut MaterializePollStats,
     ) {
         self.in_flight
@@ -415,13 +425,17 @@ impl PendingChunkMaterializations {
                         mesh_starts += 1;
                         let lod = desired_lod(focus_chunk, entry.chunk_id.coord(), lod_settings);
                         entry.mesh_lod = Some(lod);
-                        let seam_weld = seam_weld_heights(world, entry.chunk_id);
-                        entry.stage = MaterializeStage::MeshBuild(spawn_chunk_mesh_build_task(
+                        entry.stage = MaterializeStage::MeshBuild(start_chunk_mesh_build_task(
+                            world,
+                            road_store,
+                            network,
+                            layout,
+                            catalog,
+                            entry.chunk_id,
                             data,
                             entry.albedo_sidecar.take(),
                             vertical_scale,
                             lod,
-                            seam_weld,
                             production_albedo_fallback(),
                         ));
                         next.push(entry);
@@ -549,16 +563,21 @@ impl PendingChunkMaterializations {
                                 let lod =
                                     desired_lod(focus_chunk, entry.chunk_id.coord(), lod_settings);
                                 entry.mesh_lod = Some(lod);
-                                let seam_weld = seam_weld_heights(world, entry.chunk_id);
-                                entry.stage =
-                                    MaterializeStage::MeshBuild(spawn_chunk_mesh_build_task(
+                                entry.stage = MaterializeStage::MeshBuild(
+                                    start_chunk_mesh_build_task(
+                                        world,
+                                        road_store,
+                                        network,
+                                        layout,
+                                        catalog,
+                                        entry.chunk_id,
                                         data,
                                         entry.albedo_sidecar.take(),
                                         vertical_scale,
                                         lod,
-                                        seam_weld,
                                         production_albedo_fallback(),
-                                    ));
+                                    ),
+                                );
                                 next.push(entry);
                             } else {
                                 entry.stage = MaterializeStage::DecodeReady { data };
@@ -850,6 +869,39 @@ pub fn spawn_chunk_decode_task(raw: String) -> ChunkDecodeTask {
     AsyncComputeTaskPool::get().spawn(async move { decode_chunk_text(&raw) })
 }
 
+fn start_chunk_mesh_build_task(
+    world: &WorldData,
+    road_store: &mut RoadDeformationStore,
+    network: &RoadNetwork,
+    layout: ChunkLayout,
+    catalog: Option<&TerrainWorldCatalog>,
+    chunk_id: ChunkId,
+    mut data: ChunkData,
+    albedo_sidecar: Option<AlbedoSidecarIo>,
+    vertical_scale: f32,
+    lod: ChunkLod,
+    fallback: AlbedoFallback,
+) -> ChunkMeshBuildTask {
+    ensure_chunk_road_deformation(
+        world,
+        road_store,
+        network,
+        layout,
+        chunk_id,
+        &mut data,
+        catalog,
+    );
+    let seam_weld = seam_weld_heights_effective(world, chunk_id);
+    spawn_chunk_mesh_build_task(
+        data,
+        albedo_sidecar,
+        vertical_scale,
+        lod,
+        seam_weld,
+        fallback,
+    )
+}
+
 /// Mesh-build stage: decode albedo from IO bytes and build mesh on [`AsyncComputeTaskPool`].
 pub fn spawn_chunk_mesh_build_task(
     data: ChunkData,
@@ -903,8 +955,9 @@ fn build_materialized_mesh(
     lod: ChunkLod,
     seam_weld: &ChunkMeshSeamWeld,
 ) -> Mesh {
-    build_chunk_mesh_scaled(
+    build_chunk_mesh_scaled_with_delta(
         &data.heightfield,
+        data.road_height_delta.as_ref(),
         lod,
         vertical_scale,
         seam_weld,
@@ -1120,9 +1173,26 @@ mod tests {
         let settings = TerrainLodSettings::default();
         let mut stats = MaterializePollStats::default();
         let budgets = MaterializePollBudgets::uniform(16);
+        let mut road_store = RoadDeformationStore::default();
+        let network = RoadNetwork::empty();
+        let layout = ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        };
         for _ in 0..64 {
             pending.poll_in_flight(
-                residency, keep, budgets, 1.0, focus, &settings, world, &mut stats,
+                residency,
+                keep,
+                budgets,
+                1.0,
+                focus,
+                &settings,
+                world,
+                &mut road_store,
+                &network,
+                layout,
+                None,
+                &mut stats,
             );
             if pending.materialized_len() > 0 {
                 break;
@@ -1149,6 +1219,12 @@ mod tests {
         for _ in 0..32 {
             let mut stats = MaterializePollStats::default();
             let settings = TerrainLodSettings::default();
+            let mut road_store = RoadDeformationStore::default();
+            let network = RoadNetwork::empty();
+            let layout = ChunkLayout {
+                chunk_size_meters: 256.0,
+                units_per_meter: 1.0,
+            };
             pending.poll_in_flight(
                 &mut residency,
                 &keep,
@@ -1156,10 +1232,11 @@ mod tests {
                 1.0,
                 chunk_id.coord(),
                 &settings,
-                &crate::world::WorldData::new(crate::world::ChunkLayout {
-                    chunk_size_meters: 256.0,
-                    units_per_meter: 1.0,
-                }),
+                &crate::world::WorldData::new(layout),
+                &mut road_store,
+                &network,
+                layout,
+                None,
                 &mut stats,
             );
             if !residency.is_loading(chunk_id) {
@@ -1293,6 +1370,13 @@ mod tests {
         keep.insert(chunk_id.coord());
         let focus = chunk_id.coord();
         let settings = TerrainLodSettings::default();
+        let mut road_store = RoadDeformationStore::default();
+        let network = RoadNetwork::empty();
+        let layout = ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        };
+        let empty_world = crate::world::WorldData::new(layout);
 
         for _ in 0..32 {
             let mut stats = MaterializePollStats::default();
@@ -1303,10 +1387,11 @@ mod tests {
                 1.0,
                 focus,
                 &settings,
-                &crate::world::WorldData::new(crate::world::ChunkLayout {
-                    chunk_size_meters: 256.0,
-                    units_per_meter: 1.0,
-                }),
+                &empty_world,
+                &mut road_store,
+                &network,
+                layout,
+                None,
                 &mut stats,
             );
             if pending.mesh_build_in_flight_count() > 0 || pending.materialized_len() > 0 {
@@ -1327,10 +1412,11 @@ mod tests {
                 1.0,
                 focus,
                 &settings,
-                &crate::world::WorldData::new(crate::world::ChunkLayout {
-                    chunk_size_meters: 256.0,
-                    units_per_meter: 1.0,
-                }),
+                &empty_world,
+                &mut road_store,
+                &network,
+                layout,
+                None,
                 &mut stats,
             );
             if !pending.has_pipeline_for(chunk_id) || pending.materialized_len() > 0 {

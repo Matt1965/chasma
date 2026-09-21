@@ -14,6 +14,25 @@ pub struct RoadSplineSample {
     pub distance_m: f32,
 }
 
+/// Projection of a world XZ point onto a road spline.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RoadSplineProjection {
+    pub position: Vec2,
+    /// Normalized arc-length parameter in `[0, 1]` along the full road spline.
+    pub normalized_t: f32,
+    pub distance_m: f32,
+    pub distance_to_point: f32,
+}
+
+/// Total arc length of a road spline in meters.
+pub fn road_spline_length(road: &Road) -> f32 {
+    if road.control_points.len() < 2 {
+        return 0.0;
+    }
+    let points = road.control_points.iter().map(|p| p.xz()).collect::<Vec<_>>();
+    approximate_road_length(&points)
+}
+
 /// Sample a road spline at a normalized parameter in `[0, 1]`.
 pub fn sample_road_spline_at_t(road: &Road, t: f32) -> Option<RoadSplineSample> {
     if road.control_points.len() < 2 {
@@ -76,6 +95,65 @@ pub fn sample_road_spline_at_distance(road: &Road, distance_m: f32) -> Option<Ro
         tangent: (last - points[points.len() - 2]).normalize_or_zero(),
         distance_m: total_length,
     })
+}
+
+/// Project a world XZ point onto the nearest point on a road's derived spline.
+///
+/// `normalized_t` is the normalized arc-length parameter in `[0, 1]` along the full spline.
+pub fn project_point_onto_road_spline(
+    road: &Road,
+    point: Vec2,
+    spacing_m: f32,
+) -> Option<RoadSplineProjection> {
+    let samples = sample_road_polyline(road, spacing_m);
+    if samples.is_empty() {
+        return None;
+    }
+    let total_length = samples.last().map(|s| s.distance_m).unwrap_or(0.0);
+    let mut best: Option<RoadSplineProjection> = None;
+    for window in samples.windows(2) {
+        let start = window[0];
+        let end = window[1];
+        let (projection, distance) =
+            project_point_to_segment(point, start.position, end.position);
+        let segment_length = end.distance_m - start.distance_m;
+        let local_t = if segment_length > f32::EPSILON {
+            projection.distance(start.position) / segment_length
+        } else {
+            0.0
+        };
+        let distance_m = start.distance_m + local_t * segment_length;
+        let normalized_t = if total_length > f32::EPSILON {
+            distance_m / total_length
+        } else {
+            0.0
+        };
+        let candidate = RoadSplineProjection {
+            position: projection,
+            normalized_t: normalized_t.clamp(0.0, 1.0),
+            distance_m,
+            distance_to_point: distance,
+        };
+        if best
+            .as_ref()
+            .map(|current| distance < current.distance_to_point)
+            .unwrap_or(true)
+        {
+            best = Some(candidate);
+        }
+    }
+    best
+}
+
+fn project_point_to_segment(point: Vec2, start: Vec2, end: Vec2) -> (Vec2, f32) {
+    let segment = end - start;
+    let length_sq = segment.length_squared();
+    if length_sq <= f32::EPSILON {
+        return (start, point.distance(start));
+    }
+    let t = ((point - start).dot(segment) / length_sq).clamp(0.0, 1.0);
+    let projection = start + segment * t;
+    (projection, point.distance(projection))
 }
 
 /// Derive a deterministic polyline along the road at a fixed spacing.

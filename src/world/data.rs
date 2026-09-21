@@ -1778,6 +1778,16 @@ impl WorldData {
         self.chunks.get(&chunk)
     }
 
+    /// Mutably borrow a chunk's data, if resident.
+    pub fn get_mut(&mut self, chunk: ChunkId) -> Option<&mut ChunkData> {
+        self.chunks.get_mut(&chunk)
+    }
+
+    /// Iterate over resident chunks and their data (mutable).
+    pub fn chunks_mut(&mut self) -> impl Iterator<Item = (&ChunkId, &mut ChunkData)> {
+        self.chunks.iter_mut()
+    }
+
     /// Iterate over resident chunks and their data.
     ///
     /// Iteration order is unspecified; callers that need determinism (e.g. the
