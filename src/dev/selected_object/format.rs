@@ -127,18 +127,22 @@ pub fn format_doodad_diagnostics(
 
 pub fn format_pile_summary(snapshot: &ItemPileInspectorSnapshot) -> String {
     format!(
-        "{}\nQty: {}  Weight: {}g\nYaw: {:.1}°\n{}",
+        "{}\nQty: {}  Weight: {}g\nRotation (deg): pitch={:.1} yaw={:.1} roll={:.1}\n{}",
         snapshot.item_name,
         snapshot.quantity,
         snapshot.weight_grams,
-        snapshot.yaw_degrees,
+        snapshot.rotation_deg.x,
+        snapshot.rotation_deg.y,
+        snapshot.rotation_deg.z,
         snapshot.location_summary
     )
 }
 
 pub fn format_pile_diagnostics(snapshot: &ItemPileInspectorSnapshot) -> String {
     format!(
-        "Pile {:?}\nItem def: {}\nChunk ({}, {})",
+        "Pile {:?}\nItem def: {}\nChunk ({}, {})\n\
+         Hotkeys: [ ] yaw  ; ' pitch  - = roll\n\
+         Use Align to Surface to re-conform to terrain.",
         snapshot.pile_id,
         snapshot.item_definition_id.as_str(),
         snapshot.chunk.x,

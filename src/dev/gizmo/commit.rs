@@ -84,7 +84,7 @@ pub fn commit_pile_preview(
         pile_id,
         ItemPileTransformCandidate {
             position: preview.position,
-            yaw_degrees: preview.orientation.yaw_degrees(),
+            orientation: preview.orientation,
         },
     )?;
     Ok(())
@@ -126,8 +126,7 @@ pub fn preview_differs_from_authoritative(
             let Some(record) = world.item_pile_store().get(id) else {
                 return false;
             };
-            preview.position != record.placement
-                || (preview.orientation.yaw_degrees() - record.yaw_degrees).abs() > 0.05
+            preview.position != record.placement || preview.orientation != record.orientation
         }
     }
 }

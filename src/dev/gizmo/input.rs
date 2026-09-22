@@ -13,9 +13,7 @@ use crate::client::selection::{
 };
 use crate::dev::hotkeys::DEV_GIZMO_COORDINATE_SPACE;
 use crate::dev::{DevModeInputGate, DevModeState, DevPanelHoverState, cancel_dev_placement};
-use crate::doodads::DoodadRenderIndex;
 use crate::terrain::world_position_to_render_global;
-use crate::ui::gameplay::GameplayBuildingSelection;
 use crate::units::input::cursor_world_ray;
 use crate::world::authoring_transform::{
     AUTHORING_INSTANCE_SCALE_MAX, AUTHORING_INSTANCE_SCALE_MIN,
@@ -46,6 +44,10 @@ use crate::dev::selected_object::SelectedObjectUiState;
 const GIZMO_CAMERA_FOV_Y: f32 = std::f32::consts::FRAC_PI_4;
 const PILE_YAW_STEP_DEG: f32 = 15.0;
 const PILE_YAW_FINE_STEP_DEG: f32 = 5.0;
+const PILE_PITCH_STEP_DEG: f32 = 5.0;
+const PILE_PITCH_FINE_STEP_DEG: f32 = 1.0;
+const PILE_ROLL_STEP_DEG: f32 = 5.0;
+const PILE_ROLL_FINE_STEP_DEG: f32 = 1.0;
 
 #[derive(SystemParam)]
 pub struct GizmoInputParams<'w, 's> {
@@ -67,10 +69,8 @@ pub struct GizmoInputParams<'w, 's> {
     pub interior_catalog: Res<'w, InteriorProfileCatalog>,
     pub unit_catalog: Res<'w, UnitCatalog>,
     pub nav_catalog: Res<'w, crate::world::BuildingNavigationBlueprintCatalog>,
-    pub render_index: Res<'w, DoodadRenderIndex>,
     pub render_assets: Option<Res<'w, crate::terrain::TerrainRenderAssets>>,
     pub preview: ResMut<'w, crate::dev::tools::DevPlacementPreview>,
-    pub building_selection: ResMut<'w, GameplayBuildingSelection>,
     pub selected_units: ResMut<'w, crate::units::input::SelectedUnits>,
     pub selection_revision: ResMut<'w, WorldSelectionRevision>,
     pub inspector: ResMut<'w, crate::dev::inspector::WorldInspectorState>,
@@ -272,6 +272,9 @@ pub fn handle_gizmo_keyboard(
         }
 
         if let Some(pile_id) = params.world_selection.transform_item_pile() {
+            let finer = params.keyboard.pressed(KeyCode::ShiftLeft)
+                || params.keyboard.pressed(KeyCode::ShiftRight);
+            let mut axis: Option<(&str, f32, f32, fn(QuantizedOrientation, f32) -> QuantizedOrientation)> = None;
             if params.keyboard.just_pressed(KeyCode::BracketLeft)
                 || params.keyboard.just_pressed(KeyCode::BracketRight)
             {
@@ -280,13 +283,64 @@ pub fn handle_gizmo_keyboard(
                 } else {
                     -1.0
                 };
-                let finer = params.keyboard.pressed(KeyCode::ShiftLeft)
-                    || params.keyboard.pressed(KeyCode::ShiftRight);
                 let step = if finer {
                     PILE_YAW_FINE_STEP_DEG
                 } else {
                     PILE_YAW_STEP_DEG
                 };
+                axis = Some(("yaw", sign, step, |orientation, delta| {
+                    QuantizedOrientation::from_degrees(
+                        orientation.yaw_degrees() + delta,
+                        orientation.pitch_degrees(),
+                        orientation.roll_degrees(),
+                    )
+                    .unwrap_or(orientation)
+                }));
+            } else if params.keyboard.just_pressed(KeyCode::Semicolon)
+                || params.keyboard.just_pressed(KeyCode::Quote)
+            {
+                let sign = if params.keyboard.just_pressed(KeyCode::Quote) {
+                    1.0
+                } else {
+                    -1.0
+                };
+                let step = if finer {
+                    PILE_PITCH_FINE_STEP_DEG
+                } else {
+                    PILE_PITCH_STEP_DEG
+                };
+                axis = Some(("pitch", sign, step, |orientation, delta| {
+                    QuantizedOrientation::from_degrees(
+                        orientation.yaw_degrees(),
+                        orientation.pitch_degrees() + delta,
+                        orientation.roll_degrees(),
+                    )
+                    .unwrap_or(orientation)
+                }));
+            } else if params.keyboard.just_pressed(KeyCode::Minus)
+                || params.keyboard.just_pressed(KeyCode::Equal)
+            {
+                let sign = if params.keyboard.just_pressed(KeyCode::Equal) {
+                    1.0
+                } else {
+                    -1.0
+                };
+                let step = if finer {
+                    PILE_ROLL_FINE_STEP_DEG
+                } else {
+                    PILE_ROLL_STEP_DEG
+                };
+                axis = Some(("roll", sign, step, |orientation, delta| {
+                    QuantizedOrientation::from_degrees(
+                        orientation.yaw_degrees(),
+                        orientation.pitch_degrees(),
+                        orientation.roll_degrees() + delta,
+                    )
+                    .unwrap_or(orientation)
+                }));
+            }
+
+            if let Some((axis_label, sign, step, adjust)) = axis {
                 let Some(record) = params.world.item_pile_store().get(pile_id).cloned() else {
                     params.inspector.last_message =
                         format!("Item pile #{} no longer exists", pile_id.raw());
@@ -296,9 +350,7 @@ pub fn handle_gizmo_keyboard(
                     .edit
                     .preview_placement
                     .unwrap_or_else(|| pile_preview_from_record(&record));
-                let yaw = preview.orientation.yaw_degrees() + sign * step;
-                let orientation = QuantizedOrientation::from_degrees(yaw, 0.0, 0.0)
-                    .unwrap_or(preview.orientation);
+                let orientation = adjust(preview.orientation, sign * step);
                 let preview = DoodadPreviewPlacement {
                     orientation,
                     ..preview
@@ -309,13 +361,15 @@ pub fn handle_gizmo_keyboard(
                     pile_id,
                     ItemPileTransformCandidate {
                         position: preview.position,
-                        yaw_degrees: preview.orientation.yaw_degrees(),
+                        orientation: preview.orientation,
                     },
                 ) {
                     Ok(_) => {
                         params.edit.preview_placement = Some(preview);
-                        params.inspector.last_message =
-                            format!("Gizmo commit: pile #{} yaw adjusted", pile_id.raw());
+                        params.inspector.last_message = format!(
+                            "Gizmo commit: pile #{} {axis_label} adjusted",
+                            pile_id.raw()
+                        );
                     }
                     Err(err) => {
                         params.inspector.last_message = format!("Rotate failed: {err:?}");
@@ -711,17 +765,21 @@ fn pile_drag_context(
     render_assets: &Option<Res<crate::terrain::TerrainRenderAssets>>,
 ) -> (Option<Vec3>, Quat, f32, f32) {
     let Some(record) = world.item_pile_store().get(id) else {
-        return (None, Quat::IDENTITY, 1.0, 1.0);
+        return (None, Quat::IDENTITY, 0.05, 20.0);
     };
-    let placement =
-        drag_anchor_placement(edit).unwrap_or_else(|| pile_preview_from_record(record));
+    let placement = drag_anchor_placement(edit).unwrap_or_else(|| pile_preview_from_record(record));
     let vertical_scale = render_assets
         .as_ref()
         .map(|a| a.vertical_scale)
         .unwrap_or(1.0);
     let anchor =
         world_position_to_render_global(placement.position, config.chunk_layout(), vertical_scale);
-    (Some(anchor), placement.rotation_quat(), 1.0, 1.0)
+    (
+        Some(anchor),
+        placement.rotation_quat(),
+        AUTHORING_INSTANCE_SCALE_MIN,
+        AUTHORING_INSTANCE_SCALE_MAX,
+    )
 }
 
 #[cfg(test)]

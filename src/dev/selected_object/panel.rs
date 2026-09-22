@@ -64,6 +64,9 @@ fn action_tooltip(action: SelectedObjectAction) -> &'static str {
         SelectedObjectAction::EditUnit => {
             "Open the full-screen Unit Editor for the selected unit's appearance."
         }
+        SelectedObjectAction::AlignPileToSurface => {
+            "Re-conform the selected item pile to terrain while preserving yaw."
+        }
     }
 }
 
@@ -102,6 +105,7 @@ pub enum SelectedObjectAction {
     ExitBlueprintEdit,
     CancelBlueprintPending,
     CancelVariantDraft,
+    AlignPileToSurface,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -155,6 +159,10 @@ pub fn setup_selected_object_panel(
                         (
                             "Cancel variant draft",
                             SelectedObjectAction::CancelVariantDraft,
+                        ),
+                        (
+                            "Align to Surface",
+                            SelectedObjectAction::AlignPileToSurface,
                         ),
                     ] {
                         root.spawn((
@@ -352,7 +360,9 @@ pub fn sync_selected_object_panel(
     let show_transform = visible
         && matches!(
             world_selection.category,
-            WorldSelectionCategory::Doodad | WorldSelectionCategory::Building
+            WorldSelectionCategory::Doodad
+                | WorldSelectionCategory::Building
+                | WorldSelectionCategory::ItemPile
         );
     let show_delete = visible
         && matches!(
@@ -383,6 +393,8 @@ pub fn sync_selected_object_panel(
     let nav_editor_active =
         navigation_editor_owns_session(dev_state.enabled, &registry, &blueprint_inspection);
 
+    let show_pile = visible && world_selection.category == WorldSelectionCategory::ItemPile;
+
     for (button, mut node) in nodes.p2().iter_mut() {
         let show = match button.action {
             SelectedObjectAction::Move
@@ -397,6 +409,9 @@ pub fn sync_selected_object_panel(
             SelectedObjectAction::ExitBlueprintEdit => show_building && edit_active,
             SelectedObjectAction::CancelBlueprintPending => show_building && blueprint_pending,
             SelectedObjectAction::CancelVariantDraft => show_building && variant_draft,
+            SelectedObjectAction::AlignPileToSurface => {
+                show_pile && !pending && !nav_editor_active
+            }
         };
         node.display = if show { Display::Flex } else { Display::None };
     }

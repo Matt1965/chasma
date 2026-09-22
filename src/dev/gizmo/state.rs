@@ -3,9 +3,7 @@
 use bevy::prelude::*;
 
 use crate::world::authoring_transform::{AuthoringScale, QuantizedOrientation};
-use crate::world::{
-    BuildingPlacement, DoodadPlacement, FixedScale, WorldItemPileRecord, WorldPosition,
-};
+use crate::world::{BuildingPlacement, DoodadPlacement, FixedScale, WorldItemPileRecord, WorldPosition};
 
 use super::handles::GizmoHandle;
 use super::snap::TransformSnapSettings;
@@ -41,12 +39,11 @@ impl DoodadPreviewPlacement {
     }
 }
 
-/// Convert authoritative item pile record to gizmo preview (yaw only).
+/// Convert authoritative item pile record to gizmo preview.
 pub fn pile_preview_from_record(record: &WorldItemPileRecord) -> DoodadPreviewPlacement {
     DoodadPreviewPlacement {
         position: record.placement,
-        orientation: QuantizedOrientation::from_degrees(record.yaw_degrees, 0.0, 0.0)
-            .unwrap_or(QuantizedOrientation::IDENTITY),
+        orientation: record.orientation,
         scale: AuthoringScale::Uniform(FixedScale::ONE),
     }
 }

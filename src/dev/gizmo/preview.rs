@@ -173,6 +173,7 @@ pub fn apply_building_transform_preview(
     }
 }
 
+
 /// Apply preview transforms to item pile render entities after authoritative sync.
 pub fn apply_item_pile_transform_preview(
     edit: Res<super::state::TransformEditState>,

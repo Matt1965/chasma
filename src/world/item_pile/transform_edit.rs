@@ -1,16 +1,17 @@
-//! Authoritative world item pile placement editing (yaw + position).
+//! Authoritative world item pile placement editing (orientation + position).
 
 use bevy::prelude::*;
 
 use super::id::ItemPileId;
 use super::record::WorldItemPileRecord;
 use super::store::ItemPileStore;
+use crate::world::authoring_transform::QuantizedOrientation;
 use crate::world::{ChunkId, WorldData, WorldPosition};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ItemPileTransformCandidate {
     pub position: WorldPosition,
-    pub yaw_degrees: f32,
+    pub orientation: QuantizedOrientation,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -23,7 +24,7 @@ pub struct ItemPileTransformEditReport {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ItemPileTransformEditError {
     PileNotFound(ItemPileId),
-    InvalidYaw,
+    InvalidOrientation,
     Store(super::error::ItemPileError),
 }
 
@@ -38,8 +39,8 @@ pub fn update_item_pile_transform(
     pile_id: ItemPileId,
     candidate: ItemPileTransformCandidate,
 ) -> Result<ItemPileTransformEditReport, ItemPileTransformEditError> {
-    if !candidate.yaw_degrees.is_finite() {
-        return Err(ItemPileTransformEditError::InvalidYaw);
+    if QuantizedOrientation::from_quat(candidate.orientation.to_quat()).is_err() {
+        return Err(ItemPileTransformEditError::InvalidOrientation);
     }
     let previous_record = world
         .item_pile_store()
@@ -48,13 +49,13 @@ pub fn update_item_pile_transform(
         .ok_or(ItemPileTransformEditError::PileNotFound(pile_id))?;
     let previous = ItemPileTransformCandidate {
         position: previous_record.placement,
-        yaw_degrees: previous_record.yaw_degrees,
+        orientation: previous_record.orientation,
     };
     update_item_pile_placement(
         world.item_pile_store_mut(),
         pile_id,
         candidate.position,
-        candidate.yaw_degrees,
+        candidate.orientation,
     )?;
     Ok(ItemPileTransformEditReport {
         pile_id,
@@ -67,7 +68,7 @@ pub fn update_item_pile_placement(
     store: &mut ItemPileStore,
     pile_id: ItemPileId,
     placement: WorldPosition,
-    yaw_degrees: f32,
+    orientation: QuantizedOrientation,
 ) -> Result<(), super::error::ItemPileError> {
     let old_chunk = store
         .pile_chunk(pile_id)
@@ -78,12 +79,12 @@ pub fn update_item_pile_placement(
         .ok_or(super::error::ItemPileError::ItemPileNotFound(pile_id))?;
     let mut updated = record;
     updated.placement = placement;
-    updated.yaw_degrees = yaw_degrees;
+    updated.orientation = orientation;
     let new_chunk = ChunkId::new(placement.chunk);
     if old_chunk == new_chunk {
         let entry = store.get_mut(pile_id).expect("chunk unchanged");
         entry.placement = placement;
-        entry.yaw_degrees = yaw_degrees;
+        entry.orientation = orientation;
     } else {
         store.remove(pile_id);
         store.insert(new_chunk, updated)?;
@@ -93,7 +94,7 @@ pub fn update_item_pile_placement(
 
 impl WorldItemPileRecord {
     pub fn rotation_quat(&self) -> Quat {
-        Quat::from_rotation_y(self.yaw_degrees.to_radians())
+        self.orientation.to_quat()
     }
 }
 
@@ -141,28 +142,32 @@ mod tests {
     }
 
     #[test]
-    fn default_yaw_is_zero() {
+    fn default_orientation_is_identity() {
         let mut world = flat_world();
         let pile_id = spawn_pile(&mut world);
         let record = world.item_pile_store().get(pile_id).unwrap();
-        assert_eq!(record.yaw_degrees, 0.0);
+        assert_eq!(record.orientation, QuantizedOrientation::IDENTITY);
         assert_eq!(record.rotation_quat(), Quat::IDENTITY);
     }
 
     #[test]
-    fn update_yaw_persists() {
+    fn update_orientation_persists() {
         let mut world = flat_world();
         let pile_id = spawn_pile(&mut world);
         let placement = world.item_pile_store().get(pile_id).unwrap().placement;
+        let orientation = QuantizedOrientation::from_degrees(90.0, 0.0, 0.0).unwrap();
         update_item_pile_transform(
             &mut world,
             pile_id,
             ItemPileTransformCandidate {
                 position: placement,
-                yaw_degrees: 90.0,
+                orientation,
             },
         )
         .unwrap();
-        assert_eq!(world.item_pile_store().get(pile_id).unwrap().yaw_degrees, 90.0);
+        assert_eq!(
+            world.item_pile_store().get(pile_id).unwrap().orientation,
+            orientation
+        );
     }
 }

@@ -11,6 +11,7 @@ use crate::world::item_pile::{
     DropReport, ItemPileSettings, ItemPileTransformCandidate, PileOwnership,
     drop_stack_from_inventory, update_item_pile_transform,
 };
+use crate::world::authoring_transform::QuantizedOrientation;
 use crate::world::{
     Affiliation, BuildingArchetypeId, BuildingArchetypeReconstructCtx, BuildingCategoryCatalog,
     BuildingDefinitionId, BuildingLifecycleState, BuildingOwnership, BuildingSource, ChunkCoord,
@@ -23,9 +24,7 @@ use crate::world::{
     DoodadPlacementOverrides,
 };
 
-use super::building::{
-    BuildingArchetypeLocalPose, BuildingArchetypeMember, BuildingArchetypeMemberKind,
-};
+use super::building::BuildingArchetypeMemberKind;
 
 fn layout_world() -> WorldData {
     let layout = crate::world::WorldConfig::default().chunk_layout();
@@ -271,7 +270,7 @@ fn reconstructs_world_item_yaw_relative_to_root() {
         pile_id,
         ItemPileTransformCandidate {
             position: placement,
-            yaw_degrees: 30.0,
+            orientation: QuantizedOrientation::from_degrees(30.0, 0.0, 0.0).unwrap(),
         },
     )
     .unwrap();
@@ -286,9 +285,9 @@ fn reconstructs_world_item_yaw_relative_to_root() {
         .next()
         .expect("reconstructed pile");
     assert!(
-        (pile.yaw_degrees - 120.0).abs() < 0.5,
+        (pile.orientation.yaw_degrees() - 120.0).abs() < 0.5,
         "expected ~120° world yaw, got {}",
-        pile.yaw_degrees
+        pile.orientation.yaw_degrees()
     );
 }
 
@@ -303,10 +302,10 @@ fn legacy_world_item_member_without_local_yaw_defaults_relative_zero() {
         .iter()
         .find(|member| member.kind == BuildingArchetypeMemberKind::WorldItemPile)
         .expect("pile member");
-    let legacy = BuildingArchetypeMember {
+    let legacy = crate::world::BuildingArchetypeMember {
         kind: member.kind,
         definition_id: member.definition_id.clone(),
-        local_pose: BuildingArchetypeLocalPose {
+        local_pose: crate::world::BuildingArchetypeLocalPose {
             local_position: member.local_pose.local_position,
             local_rotation: [0.0, 0.0, 0.0, 1.0],
             uniform_scale_milli: member.local_pose.uniform_scale_milli,
@@ -336,9 +335,62 @@ fn legacy_world_item_member_without_local_yaw_defaults_relative_zero() {
         .next()
         .expect("reconstructed pile");
     assert!(
-        (pile.yaw_degrees - 45.0).abs() < 0.5,
+        (pile.orientation.yaw_degrees() - 45.0).abs() < 0.5,
         "legacy relative yaw 0 should match root yaw, got {}",
-        pile.yaw_degrees
+        pile.orientation.yaw_degrees()
+    );
+}
+
+#[test]
+fn reconstructs_world_item_full_rotation_relative_to_root() {
+    let mut world = layout_world();
+    let root = spawn_root(&mut world, 50.0, 50.0);
+    let report = drop_stack_at(&mut world, 53.0, 50.0, 1);
+    let pile_id = report.created_pile_ids[0];
+    let placement = world.item_pile_store().get(pile_id).unwrap().placement;
+    update_item_pile_transform(
+        &mut world,
+        pile_id,
+        ItemPileTransformCandidate {
+            position: placement,
+            orientation: QuantizedOrientation::from_degrees(30.0, 15.0, -10.0).unwrap(),
+        },
+    )
+    .unwrap();
+    let archetype = capture_shop(&world, &root);
+
+    let mut placed = layout_world();
+    let _placed_root = place_archetype(&mut placed, &archetype, 120.0, 120.0, 90.0);
+    let pile = placed
+        .item_pile_store()
+        .piles_in_chunk(ChunkId::new(ChunkCoord::new(0, 0)))
+        .into_iter()
+        .next()
+        .expect("reconstructed pile");
+    let expected = QuantizedOrientation::from_quat(
+        Quat::from_rotation_y(90.0f32.to_radians())
+            * QuantizedOrientation::from_degrees(30.0, 15.0, -10.0)
+                .unwrap()
+                .to_quat(),
+    )
+    .unwrap();
+    assert!(
+        (pile.orientation.yaw_degrees() - expected.yaw_degrees()).abs() < 1.0,
+        "expected yaw ~{}, got {}",
+        expected.yaw_degrees(),
+        pile.orientation.yaw_degrees()
+    );
+    assert!(
+        (pile.orientation.pitch_degrees() - expected.pitch_degrees()).abs() < 1.0,
+        "expected pitch ~{}, got {}",
+        expected.pitch_degrees(),
+        pile.orientation.pitch_degrees()
+    );
+    assert!(
+        (pile.orientation.roll_degrees() - expected.roll_degrees()).abs() < 1.0,
+        "expected roll ~{}, got {}",
+        expected.roll_degrees(),
+        pile.orientation.roll_degrees()
     );
 }
 

@@ -222,7 +222,7 @@ pub struct ItemPileInspectorSnapshot {
     pub weight_grams: u64,
     pub location_summary: String,
     pub chunk: ChunkCoord,
-    pub yaw_degrees: f32,
+    pub rotation_deg: Vec3,
 }
 
 #[derive(Debug, Clone, PartialEq)]

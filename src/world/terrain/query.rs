@@ -117,6 +117,53 @@ pub fn estimate_effective_slope_degrees(
     Some(dhdx.hypot(dhdz).atan().to_degrees())
 }
 
+/// Estimate effective terrain surface normal using base height + road deformation.
+pub fn estimate_effective_terrain_normal(
+    world: &WorldData,
+    position: WorldPosition,
+) -> Option<Vec3> {
+    let chunk_id = ChunkId::new(position.chunk);
+    let data = world.get(chunk_id)?;
+    let spacing = data.heightfield.spacing_meters();
+    let size = data.heightfield.chunk_size_meters();
+    let local_x = position.local.0.x;
+    let local_z = position.local.0.z;
+
+    if !data.heightfield.is_within_domain(local_x, local_z) {
+        return None;
+    }
+
+    let sample = |x: f32, z: f32| -> Option<f32> {
+        let local = LocalPosition::new(Vec3::new(x, 0.0, z));
+        let pos = WorldPosition::new(position.chunk, local);
+        try_sample_height_at_position(world, pos).ok()
+    };
+
+    let h = sample(local_x, local_z)?;
+
+    let dhdx = if local_x + spacing <= size + 1e-4 {
+        let next = sample(local_x + spacing, local_z)?;
+        (next - h) / spacing
+    } else if local_x >= spacing {
+        let prev = sample(local_x - spacing, local_z)?;
+        (h - prev) / spacing
+    } else {
+        return None;
+    };
+
+    let dhdz = if local_z + spacing <= size + 1e-4 {
+        let next = sample(local_x, local_z + spacing)?;
+        (next - h) / spacing
+    } else if local_z >= spacing {
+        let prev = sample(local_x, local_z - spacing)?;
+        (h - prev) / spacing
+    } else {
+        return None;
+    };
+
+    Some(Vec3::new(-dhdx, 1.0, -dhdz).normalize_or_zero())
+}
+
 /// Estimate terrain slope in degrees at a chunk-local position.
 ///
 /// Uses forward finite differences over one heightfield sample spacing.

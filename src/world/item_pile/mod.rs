@@ -9,6 +9,7 @@ mod query;
 mod record;
 mod settings;
 mod store;
+mod surface_align;
 mod transform_edit;
 
 #[cfg(test)]
@@ -33,6 +34,10 @@ pub use query::{
 pub use record::{ItemPileSource, WorldItemPileRecord, WorldPileContents};
 pub use settings::ItemPileSettings;
 pub use store::{ChunkItemPileStore, ItemPileStore};
+pub use surface_align::{
+    align_item_pile_to_surface, align_orientation_to_surface, align_orientation_yaw_to_surface,
+    default_placement_orientation,
+};
 pub use transform_edit::{
     ItemPileTransformCandidate, ItemPileTransformEditError, ItemPileTransformEditReport,
     update_item_pile_placement, update_item_pile_transform,
