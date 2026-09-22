@@ -13,6 +13,6 @@ pub use preview::{
     propagate_preview_render_layers,
 };
 pub use roster_preview::{
-    ROSTER_STAGE_PRESENTATION_YAW, UnitEditorPreviewRosterMember, roster_preview_offsets,
-    roster_stage_layout_offsets, roster_stage_layout_position,
+    UnitEditorPreviewRosterMember, roster_preview_offsets, roster_stage_layout_offsets,
+    roster_stage_layout_position,
 };

@@ -16,9 +16,6 @@ pub struct UnitEditorPreviewRosterMember {
 /// Horizontal spacing for origin-select stage layout (not gameplay formation).
 pub const ROSTER_STAGE_HORIZONTAL_SPACING: f32 = 1.25;
 
-/// Default yaw applied so squad actors face the preview camera at rest.
-pub const ROSTER_STAGE_PRESENTATION_YAW: f32 = std::f32::consts::PI;
-
 /// Compute evenly spaced preview offsets for `count` actors.
 pub fn roster_preview_offsets(count: usize, spacing: f32) -> Vec<Vec3> {
     if count == 0 {

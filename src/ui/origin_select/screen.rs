@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
 use bevy::ui::RelativeCursorPosition;
+use bevy::window::PrimaryWindow;
 
 use crate::menu::{
     MENU_BUTTON_FONT_SIZE, MENU_HEADING_FONT_SIZE, StartingSquadSession, menu_text_font,
@@ -20,6 +21,14 @@ pub struct OriginSelectSquadPanelRoot;
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct OriginSelectPreviewPane;
+
+#[derive(Component, Debug, Clone, Copy)]
+pub struct OriginSelectPreviewImage;
+
+const PREVIEW_VIEWPORT_INTRINSIC: Vec2 = Vec2::new(
+    UnitEditorPreviewImage::WIDTH as f32,
+    UnitEditorPreviewImage::HEIGHT as f32,
+);
 
 #[derive(Component, Debug, Clone, Copy)]
 pub enum OriginSquadAction {
@@ -56,6 +65,7 @@ pub fn spawn_origin_select_preview_ui(
                 overflow: Overflow::clip(),
                 ..default()
             },
+            BackgroundColor(Color::BLACK),
             ZIndex(190),
         ))
         .with_children(|root| {
@@ -74,15 +84,44 @@ pub fn spawn_origin_select_preview_ui(
             ))
             .with_children(|pane| {
                 pane.spawn((
+                    OriginSelectPreviewImage,
                     ImageNode::new(preview_image.handle.clone()),
                     Node {
-                        width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
+                        position_type: PositionType::Absolute,
+                        width: Val::Px(PREVIEW_VIEWPORT_INTRINSIC.x),
+                        height: Val::Px(PREVIEW_VIEWPORT_INTRINSIC.y),
                         ..default()
                     },
                 ));
             });
         });
+}
+
+/// Fit the preview render target inside the window with pillar/letterboxing (no stretch).
+pub fn sync_origin_select_preview_viewport(
+    windows: Query<&Window, With<PrimaryWindow>>,
+    mut preview_images: Query<&mut Node, With<OriginSelectPreviewImage>>,
+) {
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    let viewport = Vec2::new(window.width(), window.height());
+    if viewport.x <= 1.0 || viewport.y <= 1.0 {
+        return;
+    }
+
+    let scale = (viewport.x / PREVIEW_VIEWPORT_INTRINSIC.x)
+        .min(viewport.y / PREVIEW_VIEWPORT_INTRINSIC.y);
+    let size = PREVIEW_VIEWPORT_INTRINSIC * scale;
+    let offset = (viewport - size) * 0.5;
+
+    for mut node in &mut preview_images {
+        node.width = Val::Px(size.x);
+        node.height = Val::Px(size.y);
+        node.left = Val::Px(offset.x);
+        node.top = Val::Px(offset.y);
+        node.position_type = PositionType::Absolute;
+    }
 }
 
 pub fn spawn_origin_select_squad_panel(

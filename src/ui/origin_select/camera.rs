@@ -3,9 +3,7 @@
 use bevy::prelude::*;
 
 use crate::menu::{OriginSquadViewMode, StartingSquadSession};
-use crate::units::presentation::{
-    ROSTER_STAGE_PRESENTATION_YAW, UnitEditorPreviewFraming, UnitEditorPreviewRosterMember,
-};
+use crate::units::presentation::{UnitEditorPreviewFraming, UnitEditorPreviewRosterMember};
 use crate::ui::unit_editor::UnitEditorPreviewCamera;
 use crate::world::OriginCatalog;
 
@@ -101,10 +99,10 @@ pub fn rotate_origin_select_preview_roster(
     for (member, mut transform) in &mut roster {
         match focused {
             Some(slot_index) if member.slot_index == slot_index => {
-                transform.rotation = Quat::from_rotation_y(yaw + ROSTER_STAGE_PRESENTATION_YAW);
+                transform.rotation = Quat::from_rotation_y(yaw);
             }
             None => {
-                transform.rotation = Quat::from_rotation_y(yaw + ROSTER_STAGE_PRESENTATION_YAW);
+                transform.rotation = Quat::from_rotation_y(yaw);
             }
             _ => {}
         }

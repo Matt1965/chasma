@@ -25,7 +25,7 @@ use super::preview::{
 };
 use super::screen::{
     despawn_origin_select_ui, spawn_origin_select_preview_ui, spawn_origin_select_squad_panel,
-    sync_origin_squad_origin_text,
+    sync_origin_select_preview_viewport, sync_origin_squad_origin_text,
 };
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -70,6 +70,7 @@ impl Plugin for OriginSelectPlugin {
                     sync_origin_squad_focus_ui,
                     respawn_origin_squad_ui_after_focus,
                     sync_origin_squad_origin_text,
+                    sync_origin_select_preview_viewport,
                     sync_origin_select_preview_roster,
                     update_unit_editor_preview_framing,
                     propagate_preview_render_layers,
