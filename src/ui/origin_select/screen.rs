@@ -51,9 +51,9 @@ pub fn spawn_origin_select_preview_ui(
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
                 position_type: PositionType::Absolute,
-                flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
+                left: Val::Px(0.0),
+                top: Val::Px(0.0),
+                overflow: Overflow::clip(),
                 ..default()
             },
             ZIndex(190),
@@ -64,8 +64,10 @@ pub fn spawn_origin_select_preview_ui(
                 Node {
                     width: Val::Percent(100.0),
                     height: Val::Percent(100.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
+                    position_type: PositionType::Absolute,
+                    left: Val::Px(0.0),
+                    top: Val::Px(0.0),
+                    overflow: Overflow::clip(),
                     ..default()
                 },
                 RelativeCursorPosition::default(),
@@ -74,8 +76,8 @@ pub fn spawn_origin_select_preview_ui(
                 pane.spawn((
                     ImageNode::new(preview_image.handle.clone()),
                     Node {
-                        width: Val::Px(UnitEditorPreviewImage::WIDTH as f32),
-                        height: Val::Px(UnitEditorPreviewImage::HEIGHT as f32),
+                        width: Val::Percent(100.0),
+                        height: Val::Percent(100.0),
                         ..default()
                     },
                 ));
