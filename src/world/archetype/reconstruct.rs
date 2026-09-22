@@ -260,7 +260,7 @@ fn spawn_member(
             rollback.doodads.push(record.id);
         }
         BuildingArchetypeMemberKind::WorldItemPile => {
-            let pile_id = spawn_world_item_pile(world, member, position, ctx)?;
+            let pile_id = spawn_world_item_pile(world, member, position, rotation, ctx)?;
             rollback.piles.push(pile_id);
         }
     }
@@ -375,10 +375,15 @@ fn member_building_ownership(
     }
 }
 
+fn world_item_yaw_degrees(rotation: Quat) -> f32 {
+    rotation.to_euler(EulerRot::YXZ).0.to_degrees()
+}
+
 fn spawn_world_item_pile(
     world: &mut WorldData,
     member: &BuildingArchetypeMember,
     position: WorldPosition,
+    rotation: Quat,
     ctx: &BuildingArchetypeReconstructCtx<'_>,
 ) -> Result<crate::world::ItemPileId, BuildingArchetypeReconstructError> {
     let state = member
@@ -389,6 +394,7 @@ fn spawn_world_item_pile(
         })?;
     let pile_id = world.item_pile_store_mut().allocate_item_pile_id();
     let source = parse_pile_source(&state.source);
+    let yaw_degrees = world_item_yaw_degrees(rotation);
     let record = if let Some(quantity) = state.stack_quantity {
         WorldItemPileRecord::new_stack(
             pile_id,
@@ -419,6 +425,8 @@ fn spawn_world_item_pile(
             ctx.created_tick,
         )
     };
+    let mut record = record;
+    record.yaw_degrees = yaw_degrees;
     let chunk = crate::world::ChunkId::new(position.chunk);
     world
         .item_pile_store_mut()

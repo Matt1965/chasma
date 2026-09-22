@@ -7,7 +7,10 @@ use crate::world::inventory::{
     create_inventory, create_item_instance, inventory_subgraph_item_count, place_stack_first_fit,
     place_unique_first_fit,
 };
-use crate::world::item_pile::{DropReport, ItemPileSettings, PileOwnership, drop_stack_from_inventory};
+use crate::world::item_pile::{
+    DropReport, ItemPileSettings, ItemPileTransformCandidate, PileOwnership,
+    drop_stack_from_inventory, update_item_pile_transform,
+};
 use crate::world::{
     Affiliation, BuildingArchetypeId, BuildingArchetypeReconstructCtx, BuildingCategoryCatalog,
     BuildingDefinitionId, BuildingLifecycleState, BuildingOwnership, BuildingSource, ChunkCoord,
@@ -20,7 +23,9 @@ use crate::world::{
     DoodadPlacementOverrides,
 };
 
-use super::building::BuildingArchetypeMemberKind;
+use super::building::{
+    BuildingArchetypeLocalPose, BuildingArchetypeMember, BuildingArchetypeMemberKind,
+};
 
 fn layout_world() -> WorldData {
     let layout = crate::world::WorldConfig::default().chunk_layout();
@@ -252,6 +257,89 @@ fn reconstructs_building_member_and_world_item() {
         .piles_in_chunk(ChunkId::new(ChunkCoord::new(0, 0)));
     assert_eq!(piles.len(), 1);
     assert_eq!(piles[0].stack_quantity(), Some(3));
+}
+
+#[test]
+fn reconstructs_world_item_yaw_relative_to_root() {
+    let mut world = layout_world();
+    let root = spawn_root(&mut world, 50.0, 50.0);
+    let report = drop_stack_at(&mut world, 53.0, 50.0, 1);
+    let pile_id = report.created_pile_ids[0];
+    let placement = world.item_pile_store().get(pile_id).unwrap().placement;
+    update_item_pile_transform(
+        &mut world,
+        pile_id,
+        ItemPileTransformCandidate {
+            position: placement,
+            yaw_degrees: 30.0,
+        },
+    )
+    .unwrap();
+    let archetype = capture_shop(&world, &root);
+
+    let mut placed = layout_world();
+    let _placed_root = place_archetype(&mut placed, &archetype, 120.0, 120.0, 90.0);
+    let pile = placed
+        .item_pile_store()
+        .piles_in_chunk(ChunkId::new(ChunkCoord::new(0, 0)))
+        .into_iter()
+        .next()
+        .expect("reconstructed pile");
+    assert!(
+        (pile.yaw_degrees - 120.0).abs() < 0.5,
+        "expected ~120° world yaw, got {}",
+        pile.yaw_degrees
+    );
+}
+
+#[test]
+fn legacy_world_item_member_without_local_yaw_defaults_relative_zero() {
+    let mut world = layout_world();
+    let root = spawn_root(&mut world, 50.0, 50.0);
+    drop_stack_at(&mut world, 53.0, 50.0, 1);
+    let archetype = capture_shop(&world, &root);
+    let member = archetype
+        .members
+        .iter()
+        .find(|member| member.kind == BuildingArchetypeMemberKind::WorldItemPile)
+        .expect("pile member");
+    let legacy = BuildingArchetypeMember {
+        kind: member.kind,
+        definition_id: member.definition_id.clone(),
+        local_pose: BuildingArchetypeLocalPose {
+            local_position: member.local_pose.local_position,
+            local_rotation: [0.0, 0.0, 0.0, 1.0],
+            uniform_scale_milli: member.local_pose.uniform_scale_milli,
+            scale_x_milli: member.local_pose.scale_x_milli,
+            scale_y_milli: member.local_pose.scale_y_milli,
+            scale_z_milli: member.local_pose.scale_z_milli,
+        },
+        building_state: member.building_state.clone(),
+        world_item_state: member.world_item_state.clone(),
+    };
+    let legacy_archetype = crate::world::BuildingArchetypeDefinition {
+        id: archetype.id.clone(),
+        display_name: archetype.display_name.clone(),
+        base_building_id: archetype.base_building_id.clone(),
+        snapshot: archetype.snapshot.clone(),
+        capture_metadata: archetype.capture_metadata.clone(),
+        members: vec![legacy],
+        enabled: archetype.enabled,
+    };
+
+    let mut placed = layout_world();
+    let _placed_root = place_archetype(&mut placed, &legacy_archetype, 120.0, 120.0, 45.0);
+    let pile = placed
+        .item_pile_store()
+        .piles_in_chunk(ChunkId::new(ChunkCoord::new(0, 0)))
+        .into_iter()
+        .next()
+        .expect("reconstructed pile");
+    assert!(
+        (pile.yaw_degrees - 45.0).abs() < 0.5,
+        "legacy relative yaw 0 should match root yaw, got {}",
+        pile.yaw_degrees
+    );
 }
 
 #[test]
