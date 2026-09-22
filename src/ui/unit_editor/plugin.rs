@@ -18,7 +18,7 @@ use super::preview_animation::{
     discover_preview_animation_players, ensure_preview_animation_playback,
     install_preview_animation_graph, sync_preview_idle_animation,
 };
-use crate::units::animation::playback::sync_unit_animation_playback;
+use crate::units::UnitAnimationSystems;
 use super::preview_studio::{
     cleanup_unit_editor_preview_studio, rotate_unit_editor_preview_unit,
     setup_unit_editor_preview_studio, update_unit_editor_preview_camera,
@@ -70,7 +70,7 @@ impl Plugin for UnitEditorPlugin {
                     discover_preview_animation_players,
                     install_preview_animation_graph,
                     sync_preview_idle_animation,
-                    ensure_preview_animation_playback.after(sync_unit_animation_playback),
+                    ensure_preview_animation_playback.after(UnitAnimationSystems),
                     rotate_unit_editor_preview_unit,
                     update_unit_editor_preview_camera,
                 )

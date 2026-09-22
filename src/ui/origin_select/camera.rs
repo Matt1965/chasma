@@ -27,12 +27,8 @@ fn squad_camera_distance_scale(member_count: usize) -> f32 {
 
 pub fn update_origin_select_preview_camera(
     mut session: ResMut<StartingSquadSession>,
-<<<<<<< HEAD
-    _editor_session: Option<Res<crate::ui::unit_editor::UnitEditorSession>>,
-=======
     origins: Res<OriginCatalog>,
-    editor_session: Option<Res<crate::ui::unit_editor::UnitEditorSession>>,
->>>>>>> dd826d0b (Polish Origin squad preview stage)
+    _editor_session: Option<Res<crate::ui::unit_editor::UnitEditorSession>>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     mouse_motion: Res<bevy::input::mouse::AccumulatedMouseMotion>,
     mouse_scroll: Res<bevy::input::mouse::AccumulatedMouseScroll>,
