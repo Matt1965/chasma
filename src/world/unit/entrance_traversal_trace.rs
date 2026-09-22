@@ -23,7 +23,6 @@ pub struct EntranceTraversalSession {
     pub tracked_space: SpaceId,
     pub positional_space: SpaceId,
     pub collision_radius_meters: f32,
-    pub click_raw: Option<WorldPosition>,
     pub goal_position: Option<WorldPosition>,
     pub goal_space: Option<SpaceId>,
     pub goal_inside_region: Option<bool>,
@@ -100,7 +99,7 @@ impl EntranceTraversalTrace {
 pub fn maybe_begin_session(
     world: &mut WorldData,
     unit_id: UnitId,
-    raw_click: WorldPosition,
+    _raw_click: WorldPosition,
     resolved_goal: WorldPosition,
     unit_catalog: &UnitCatalog,
 ) {
@@ -133,7 +132,6 @@ pub fn maybe_begin_session(
         tracked_space: record.current_space_id,
         positional_space,
         collision_radius_meters,
-        click_raw: Some(raw_click),
         goal_position: Some(resolved_goal),
         goal_space: Some(goal_space),
         goal_inside_region: Some(goal_probe.inside),

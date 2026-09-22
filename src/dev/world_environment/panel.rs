@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::fields::{EnvSection, fields_for_section};
+use super::fields::{EnvFieldId, EnvSection, fields_for_section};
 use super::state::{
     DevWorldCycleToggle, DevWorldEnvironmentAction, DevWorldEnvironmentConfirmationBar,
     DevWorldEnvironmentDirtyBadge, DevWorldEnvironmentLoadStatusText, DevWorldEnvironmentSection,
@@ -12,12 +12,10 @@ use super::state::{
 use crate::dev::input::DevPanelUi;
 use crate::dev::tooltip::DevTooltipContent;
 use crate::dev::widgets::{
-    DevBadgeKind, DevCollapsibleSectionId, DevStatusSeverity, spawn_action_button, spawn_badge, spawn_bounded_slider_row,
+    DevBadgeKind, DevCollapsibleSectionId, DevStatusSeverity, DevWidgetConfirmationBar,
+    DevWidgetConfirmationPrompt, spawn_action_button, spawn_badge, spawn_bounded_slider_row,
     spawn_collapsible_section, spawn_confirmation_bar, spawn_status_line, spawn_toggle_row,
 };
-
-/// Spawn order: Water follows the time/cycle block and precedes lighting sections.
-pub const WORLD_WATER_SECTION_ORDER: usize = 1;
 
 pub fn spawn_environment_controls(parent: &mut ChildSpawnerCommands<'_>) {
     parent

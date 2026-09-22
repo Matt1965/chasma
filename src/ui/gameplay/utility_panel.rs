@@ -50,6 +50,7 @@ impl HudUtilityButton {
         }
     }
 
+    #[cfg(test)]
     fn is_settlement(self) -> bool {
         matches!(self, Self::SettlementWorkforce | Self::Fields)
     }
@@ -65,6 +66,7 @@ const SETTLEMENT_UTILITY_BUTTONS: [HudUtilityButton; 2] = [
 
 /// Permanent HUD utility buttons (Inv, Skills, Work, Fields). Field overlay
 /// options live only in the compact Fields popup.
+#[cfg(test)]
 pub const PERMANENT_UTILITY_BUTTONS: [HudUtilityButton; 4] = [
     HudUtilityButton::Inventory,
     HudUtilityButton::UnitSkills,
@@ -188,7 +190,7 @@ pub fn update_utility_button_hover(
 pub fn handle_utility_button_clicks(
     selection: Res<SelectedUnits>,
     build_mode: Res<BuildModeState>,
-    inventory_ui: ResMut<crate::ui::gameplay::inventory::InventoryUiState>,
+    mut inventory_ui: ResMut<crate::ui::gameplay::inventory::InventoryUiState>,
     mut inventory_queue: ResMut<InventoryIntentQueue>,
     mut unit_skills: ResMut<UnitSkillsPanelState>,
     mut workforce: ResMut<SettlementWorkforcePanelState>,

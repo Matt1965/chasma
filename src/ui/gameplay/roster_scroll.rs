@@ -43,6 +43,10 @@ impl SquadRosterScrollState {
         self.max_scroll_x() > 0.0
     }
 
+    pub fn visible_card_count(&self) -> u32 {
+        visible_roster_card_count(self.viewport_width, self.card_width, self.card_gap)
+    }
+
     pub fn page_step_px(&self) -> f32 {
         roster_page_step_px(self.viewport_width, self.card_width, self.card_gap)
     }
@@ -235,6 +239,7 @@ impl Plugin for SquadRosterScrollPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::hud::roster_content_width;
 
     const CARD_WIDTH: f32 = 84.0;
     const CARD_GAP: f32 = 6.0;

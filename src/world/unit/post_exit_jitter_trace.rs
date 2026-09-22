@@ -7,10 +7,11 @@ use bevy::prelude::*;
 
 use super::id::UnitId;
 use super::movement::BlockedMovementReason;
+use super::state::UnitState;
 use crate::world::{
     ChunkLayout, NavigationAgent, NavigationConfig, NavigationPath, NavigationWaypoint,
     PassabilityAgent, PassabilityCatalogs, PassabilityResult, PortalId, PortalType, SpaceId,
-    WorldData, WorldPosition, is_segment_walkable_in_space,
+    WorldData, WorldPosition, ground_position_in_space, is_segment_walkable_in_space,
     query_navigation_point_legality, resolve_surface_entrance_escape_position,
     surface_blueprint_support_blocks_position, surface_position_in_entrance_access_corridor,
     xz_distance,
@@ -48,6 +49,7 @@ struct PostExitJitterSession {
     post_exit_waypoints: Vec<WaypointSummary>,
     tick_lines: Vec<String>,
     tick_count: u32,
+    loop_position_anchor: Option<WorldPosition>,
     loop_detector: JitterLoopDetector,
     emitted: bool,
 }
@@ -141,7 +143,6 @@ pub struct PostExitStepCapture {
     waypoint_index: usize,
     effective_index: usize,
     path: NavigationPath,
-    target: WorldPosition,
     state_waypoint: NavigationWaypoint,
     effective_waypoint: NavigationWaypoint,
     next_waypoint: Option<NavigationWaypoint>,
@@ -183,7 +184,7 @@ impl PostExitStepCapture {
         waypoint_index: usize,
         effective_index: usize,
         effective_waypoint: NavigationWaypoint,
-        target: WorldPosition,
+        _target: WorldPosition,
     ) -> Option<Self> {
         if !current_space.is_surface() || !world.post_exit_jitter_trace().is_active_for(unit_id) {
             return None;
@@ -204,7 +205,6 @@ impl PostExitStepCapture {
             waypoint_index,
             effective_index,
             path: path.clone(),
-            target,
             state_waypoint,
             effective_waypoint,
             next_waypoint,
@@ -490,6 +490,7 @@ pub fn arm_session_after_interior_surface_exit(
         post_exit_waypoints,
         tick_lines: Vec::new(),
         tick_count: 0,
+        loop_position_anchor: Some(position_after_transition),
         loop_detector: JitterLoopDetector::default(),
         emitted: false,
     });
@@ -769,7 +770,7 @@ fn emit_session(world: &mut WorldData, unit_id: UnitId) {
 }
 
 #[cfg(feature = "dev")]
-fn emit_and_clear(world: &mut WorldData, _unit_id: UnitId, body_lines: Vec<String>) {
+fn emit_and_clear(world: &mut WorldData, unit_id: UnitId, body_lines: Vec<String>) {
     let mut lines = body_lines;
     if !lines.first().is_some_and(|line| line.starts_with('[')) {
         lines.insert(0, TRACE_MARKER.to_string());
@@ -1028,6 +1029,7 @@ mod tests {
             post_exit_waypoints: Vec::new(),
             tick_lines: Vec::new(),
             tick_count: 0,
+            loop_position_anchor: Some(start),
             loop_detector: JitterLoopDetector::default(),
             emitted: false,
         });

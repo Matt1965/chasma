@@ -46,9 +46,7 @@ pub struct SquadRosterGhostSlot;
 pub struct SquadRosterViewport;
 
 #[derive(Component, Debug)]
-struct SquadEntryHpFill {
-    unit_id: UnitId,
-}
+struct SquadEntryHpFill;
 
 /// Ordered player-owned unit ids for the roster strip.
 pub fn owned_roster_unit_ids(world: &WorldData) -> Vec<UnitId> {
@@ -246,7 +244,7 @@ pub fn sync_squad_panel(
 
     let primary = primary_selected_unit(&selection);
     let card_width = geometry.card_width;
-    let _card_gap = geometry.card_gap;
+    let card_gap = geometry.card_gap;
 
     commands.entity(list_entity).with_children(|row| {
         for unit_id in ids {
@@ -337,7 +335,7 @@ pub fn sync_squad_panel(
                 ))
                 .with_children(|track| {
                     track.spawn((
-                        SquadEntryHpFill { unit_id },
+                        SquadEntryHpFill,
                         Node {
                             width: Val::Percent(hp_percent.clamp(0.0, 100.0)),
                             height: Val::Percent(100.0),

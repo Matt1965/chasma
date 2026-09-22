@@ -8,7 +8,7 @@ use bevy::prelude::*;
 
 #[cfg(feature = "dev")]
 use crate::world::{
-    ChunkId, ChunkLayout, OccupancySource, PassabilityAgent,
+    ChunkId, ChunkLayout, NavigationError, OccupancySource, PassabilityAgent,
     PassabilityBlockReason, PassabilityCatalogs, PassabilityResult, PassabilityUnavailableReason,
     SlopeWalkability, SpaceId, UnitOwnership, WorldData, WorldPosition, classify_slope_walkability,
     ground_world_position, position_in_surface_entrance_portal, query_navigation_point_legality,
@@ -18,7 +18,6 @@ use crate::world::{
 #[cfg(feature = "dev")]
 #[derive(Debug, Clone)]
 pub struct SurfacePointLegalityProbe {
-    pub position: WorldPosition,
     pub global: Vec3,
     pub chunk_label: String,
     pub terrain_chunk_loaded: bool,
@@ -374,7 +373,6 @@ fn finish_probe(
 ) -> SurfacePointLegalityProbe {
     let authority_regression = building_overlap_blocks;
     SurfacePointLegalityProbe {
-        position,
         global,
         chunk_label,
         terrain_chunk_loaded,
@@ -582,6 +580,17 @@ pub fn format_local_sample_line(sample: &SurfaceLocalSample) -> String {
             .as_deref()
             .unwrap_or("none")
     )
+}
+
+#[cfg(feature = "dev")]
+pub fn should_probe_surface_goal_passability(
+    path_result: Result<&crate::world::NavigationPath, NavigationError>,
+    start_space: SpaceId,
+    goal_space: SpaceId,
+) -> bool {
+    matches!(path_result, Err(NavigationError::GoalBlocked))
+        && !start_space.is_surface()
+        && goal_space.is_surface()
 }
 
 #[cfg(all(test, feature = "dev"))]

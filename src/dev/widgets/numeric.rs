@@ -71,6 +71,7 @@ impl NumericDraft {
         }
     }
 
+    #[cfg(test)]
     pub fn begin_edit(&mut self, current: f32, precision: usize) {
         self.focused = true;
         self.text = format_numeric_display(current, precision);

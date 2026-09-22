@@ -72,7 +72,7 @@ pub use playback::sync_unit_animation_playback;
 pub use plugin::{UnitAnimationPlugin, UnitAnimationSystems};
 pub use presentation_time::presentation_advance_seconds;
 #[allow(unused_imports)]
-pub use settings::{DOCUMENTED_RUN_SPEED_RATIO, UnitAnimationSettings};
+pub use settings::UnitAnimationSettings;
 #[allow(unused_imports)]
 pub use skeleton::configure_unit_animation_layering;
 #[allow(unused_imports)]
@@ -80,6 +80,8 @@ pub use sync_timing::{
     AttackPlaybackKey, attack_cycle_playback_seconds, attack_playback_speed,
     should_restart_attack_playback,
 };
-pub use validation::ValidationSeverity;
+pub use validation::{
+    AnimationValidationIndex, DefinitionValidationReport, ValidationIssue, ValidationSeverity,
+};
 #[allow(unused_imports)]
 pub use work_presentation::{WorkPresentationContext, working_locomotion_clip};

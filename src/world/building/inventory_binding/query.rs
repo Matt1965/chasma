@@ -30,6 +30,7 @@ pub fn building_inventory_bindings(
 }
 
 /// Find all bindings with a broad role — returns all matches, never picks one (EP4).
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn building_inventories_with_role<'a>(
     store: &'a BuildingInventoryBindingStore,
     building_id: BuildingId,

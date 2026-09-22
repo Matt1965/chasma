@@ -6,7 +6,7 @@ use bevy::window::PrimaryWindow;
 
 use crate::camera::RtsCamera;
 use crate::debug::MovementBlockObservability;
-use crate::simulation::SimulationControlState;
+use crate::simulation::{BuildingSimulationParams, SimulationControlState};
 use crate::world::{
     BuildingCatalog, BuildingFieldRequirementCatalog, BuildingFieldRequirementCatalogRevision,
     BuildingInteractionProfileCatalog, BuildingTerrainAssessmentStore, DoodadCatalog,
@@ -25,7 +25,6 @@ pub struct InspectorCaptureParams<'w> {
     pub weapon_catalog: Res<'w, WeaponCatalog>,
     pub doodad_catalog: Res<'w, DoodadCatalog>,
     pub building_catalog: Res<'w, BuildingCatalog>,
-    pub interior_catalog: Res<'w, InteriorProfileCatalog>,
     pub footprint_catalog: Res<'w, FootprintCatalog>,
     pub operation_catalog: Res<'w, OperationCatalog>,
     pub items: Res<'w, ItemCatalog>,

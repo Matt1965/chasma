@@ -18,6 +18,7 @@ pub const HUD_REFERENCE_VIEWPORT_HEIGHT: f32 = 1080.0;
 
 /// Visual share targets from the mockup (not hard mandates).
 pub const HUD_SECTION_SELECTED_SHARE: f32 = 0.23;
+pub const HUD_SECTION_ROSTER_SHARE: f32 = 0.39;
 pub const HUD_SECTION_COMMANDS_SHARE: f32 = 0.22;
 pub const HUD_SECTION_UTILITY_SHARE: f32 = 0.13;
 
@@ -116,7 +117,7 @@ const ENDCAP_RIGHT_SOURCE_WIDTH: f32 =
     HUD_ENDCAP_RIGHT_WIDTH_PX / (HUD_HEIGHT_PX / HUD_SOURCE_BAND_HEIGHT_PX);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SectionWidths {
+struct SectionWidths {
     selected: f32,
     roster: f32,
     command: f32,
@@ -194,6 +195,7 @@ pub fn visible_roster_card_count(viewport_width: f32, card_width: f32, card_gap:
     ((viewport_width + card_gap) / stride).floor().max(0.0) as u32
 }
 
+#[cfg(test)]
 pub fn roster_content_width(card_count: usize, card_width: f32, card_gap: f32) -> f32 {
     if card_count == 0 {
         return 0.0;
@@ -474,12 +476,13 @@ mod tests {
             HUD_ROSTER_HEADER_HEIGHT_PX,
         };
         use super::super::super::styles::{
-            HUD_COMMAND_BUTTON_HEIGHT_PERCENT, HUD_CONTENT_HEIGHT_PX,
+            BOTTOM_BAR_HEIGHT_PX, HUD_COMMAND_BUTTON_HEIGHT_PERCENT, HUD_CONTENT_HEIGHT_PX,
             HUD_FRAME_BOTTOM_PX, HUD_FRAME_TOP_PX, HUD_HEIGHT_PX, HUD_UTILITY_BUTTON_HEIGHT_PX,
         };
         use super::super::section::{hud_flex_section_node, hud_section_node};
 
         assert_eq!(HUD_HEIGHT_PX, 196.0);
+        assert_eq!(BOTTOM_BAR_HEIGHT_PX, HUD_HEIGHT_PX);
         assert_eq!(
             HUD_CONTENT_HEIGHT_PX,
             HUD_HEIGHT_PX - HUD_FRAME_TOP_PX - HUD_FRAME_BOTTOM_PX

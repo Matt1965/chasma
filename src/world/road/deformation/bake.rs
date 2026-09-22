@@ -115,7 +115,6 @@ struct RoadInfluence {
 
 #[derive(Debug, Clone)]
 struct RoadCenterSample {
-    position: Vec2,
     distance_m: f32,
     smoothed_height: f32,
 }
@@ -430,7 +429,6 @@ fn build_road_influences(
                 .iter()
                 .zip(smoothed.iter())
                 .map(|(sample, smooth)| RoadCenterSample {
-                    position: sample.position,
                     distance_m: sample.distance_m,
                     smoothed_height: *smooth,
                 })

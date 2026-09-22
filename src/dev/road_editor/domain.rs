@@ -130,6 +130,7 @@ pub fn insert_control_point(
     Ok(insert_index)
 }
 
+#[cfg(test)]
 pub fn move_control_point(road: &mut Road, index: usize, xz: Vec2) -> Result<(), String> {
     let point = road
         .control_points

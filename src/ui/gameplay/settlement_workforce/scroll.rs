@@ -63,6 +63,7 @@ impl SettlementWorkforceScrollState {
         self.clamp_offset();
     }
 
+    #[cfg(test)]
     pub fn thumb_metrics(&self) -> (f32, f32) {
         scrollbar_thumb_metrics(
             self.viewport_height,
