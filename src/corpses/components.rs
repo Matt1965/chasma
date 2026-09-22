@@ -1,6 +1,14 @@
 use bevy::prelude::*;
 
-use crate::world::CorpseId;
+use crate::world::{CorpseId, UnitId};
+
+/// Transitional ownership while an existing unit root plays death animation.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Reflect)]
+#[reflect(Component)]
+pub struct CorpsePresentationClaim {
+    pub corpse_id: CorpseId,
+    pub origin_unit_id: UnitId,
+}
 
 /// Marker on a derived corpse render root.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Reflect)]

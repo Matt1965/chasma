@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use bevy::asset::LoadState;
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use crate::terrain::residency::ChunkResidencyTracker;
@@ -10,7 +11,29 @@ use crate::world::{
     AppearanceProfileCatalog, CorpseId, CorpseState, UnitCatalog, WorldConfig, WorldData,
 };
 
-use super::components::CorpseRenderEntity;
+use crate::units::{DeathPresentation, UnitRenderEntity};
+
+use super::components::{CorpsePresentationClaim, CorpseRenderEntity};
+
+#[derive(SystemParam)]
+pub(crate) struct CorpseSyncQueries<'w, 's> {
+    existing: Query<'w, 's, (Entity, &'static CorpseRenderEntity, &'static Transform)>,
+    entities: Query<'w, 's, Entity>,
+    claims: Query<'w, 's, &'static CorpsePresentationClaim>,
+    death_presentations: Query<'w, 's, &'static DeathPresentation>,
+    corpse_render_entities: Query<'w, 's, &'static CorpseRenderEntity>,
+    unit_render_roots: Query<'w, 's, &'static UnitRenderEntity>,
+}
+
+#[derive(SystemParam)]
+pub(crate) struct CorpseSyncRenderContext<'w> {
+    render_assets: Option<Res<'w, TerrainRenderAssets>>,
+    overrides: Option<Res<'w, UnitSyncOverrides>>,
+}
+use super::ownership::{
+    corpse_origin_has_pending_death_root, release_stale_corpse_presentation_owners,
+    should_spawn_corpse_presentation,
+};
 use super::spawn::{despawn_corpse_render_entities, spawn_corpse_render_entity};
 
 /// Index of corpse render entities.
@@ -54,15 +77,24 @@ pub fn sync_corpse_render_entities(
     asset_server: Res<AssetServer>,
     mut scene_assets: ResMut<UnitSceneAssets>,
     mut index: ResMut<CorpseRenderIndex>,
-    existing: Query<(Entity, &CorpseRenderEntity, &Transform)>,
-    render_assets: Option<Res<TerrainRenderAssets>>,
-    overrides: Option<Res<UnitSyncOverrides>>,
+    queries: CorpseSyncQueries,
+    render: CorpseSyncRenderContext,
 ) {
-    let vertical_scale = render_assets
+    release_stale_corpse_presentation_owners(
+        &mut index,
+        &queries.entities,
+        &queries.claims,
+        &queries.death_presentations,
+        &queries.corpse_render_entities,
+    );
+
+    let vertical_scale = render
+        .render_assets
         .as_ref()
         .map(|assets| assets.vertical_scale)
         .unwrap_or(1.0);
-    let force_scenes_loaded = overrides
+    let force_scenes_loaded = render
+        .overrides
         .as_ref()
         .is_some_and(|value| value.treat_scenes_loaded);
     let should_render = visible_corpse_ids(&world, &residency);
@@ -75,7 +107,7 @@ pub fn sync_corpse_render_entities(
         .collect();
     despawn_corpse_render_entities(&mut commands, &mut index, stale);
 
-    for (entity, marker, transform) in &existing {
+    for (entity, marker, transform) in &queries.existing {
         if !should_render.contains(&marker.corpse_id) {
             continue;
         }
@@ -116,12 +148,18 @@ pub fn sync_corpse_render_entities(
     }
 
     for corpse_id in should_render {
-        if index.0.contains_key(&corpse_id) {
-            continue;
-        }
         let Some(record) = world.corpse_store().get(corpse_id) else {
             continue;
         };
+        let origin_pending = corpse_origin_has_pending_death_root(
+            &world,
+            record.origin_unit_id,
+            &queries.unit_render_roots,
+            &queries.death_presentations,
+        );
+        if !should_spawn_corpse_presentation(&world, corpse_id, &index, origin_pending) {
+            continue;
+        }
         let Some(definition) = catalog.get(&record.unit_definition_id) else {
             warn!(
                 "corpse {} references missing definition `{}`",

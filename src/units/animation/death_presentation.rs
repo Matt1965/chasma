@@ -2,7 +2,9 @@
 
 use bevy::prelude::*;
 
-use crate::corpses::{CorpseRenderIndex, handoff_unit_render_to_corpse};
+use crate::corpses::{
+    CorpseRenderIndex, claim_corpse_presentation_for_death, handoff_unit_render_to_corpse,
+};
 use crate::units::components::{UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot};
 use crate::units::spawn::UnitRenderIndex;
 use crate::world::{AnimationProfileCatalog, CorpseState, UnitCatalog};
@@ -21,6 +23,7 @@ pub fn begin_death_presentations(
     profiles: Res<AnimationProfileCatalog>,
     settings: Res<UnitAnimationSettings>,
     mut index: ResMut<UnitRenderIndex>,
+    mut corpse_index: ResMut<CorpseRenderIndex>,
     roots: Query<
         (Entity, &UnitRenderEntity, &UnitRenderMetadata),
         (With<UnitSceneRoot>, Without<DeathPresentation>),
@@ -59,6 +62,22 @@ pub fn begin_death_presentations(
         };
 
         index.0.remove(&marker.unit_id);
+
+        if let Some(corpse_id) = world.corpse_store().corpse_by_origin_unit(marker.unit_id) {
+            let present = world
+                .corpse_store()
+                .get(corpse_id)
+                .is_some_and(|record| record.state == CorpseState::Present);
+            if present {
+                claim_corpse_presentation_for_death(
+                    &mut corpse_index,
+                    &mut commands,
+                    entity,
+                    corpse_id,
+                    marker.unit_id,
+                );
+            }
+        }
 
         commands.entity(entity).insert((
             DeathPresentation {

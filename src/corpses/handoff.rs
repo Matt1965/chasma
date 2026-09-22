@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use crate::units::{DeathPresentation, UnitRenderEntity, UnitRenderIndex, UnitSceneRoot};
 use crate::world::{CorpseId, UnitId};
 
-use super::components::{CorpseRenderEntity, CorpseSceneRoot};
+use super::components::{CorpsePresentationClaim, CorpseRenderEntity, CorpseSceneRoot};
 use super::sync::CorpseRenderIndex;
 
 /// Retarget an existing unit render entity into corpse presentation ownership.
@@ -25,5 +25,6 @@ pub fn handoff_unit_render_to_corpse(
         .remove::<UnitRenderEntity>()
         .remove::<UnitSceneRoot>()
         .remove::<DeathPresentation>()
+        .remove::<CorpsePresentationClaim>()
         .insert(CorpseSceneRoot);
 }
