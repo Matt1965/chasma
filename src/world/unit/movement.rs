@@ -32,8 +32,6 @@ use crate::world::{
 /// Distance below which a unit snaps to its move target (meters).
 pub const MOVEMENT_ARRIVAL_TOLERANCE_METERS: f32 = 0.05;
 const ARRIVAL_DISTANCE_METERS: f32 = MOVEMENT_ARRIVAL_TOLERANCE_METERS;
-/// When blocked, treat as having reached a waypoint if within this distance (meters).
-const WAYPOINT_SKIP_DISTANCE_METERS: f32 = 2.0;
 /// When blocked near a non-portal waypoint, allow skipping slightly further than normal.
 const BLOCKED_WAYPOINT_SKIP_DISTANCE_METERS: f32 = 3.5;
 /// When blocked near the final target, stop moving instead of freezing (meters).

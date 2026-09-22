@@ -3,7 +3,6 @@
 //! Presentation-only: heading-aware turns, walk/run hysteresis, speed smoothing,
 //! and blend selection. Simulation and [`WorldData`] are never mutated.
 
-use std::f32::consts::PI;
 use std::time::Duration;
 
 use bevy::prelude::{Quat, Vec2, Vec3};
@@ -340,16 +339,6 @@ pub fn signed_angle_xz(from: Vec2, to: Vec2) -> Option<f32> {
     let sin = from.x * to.y - from.y * to.x;
     let cos = from.dot(to).clamp(-1.0, 1.0);
     Some(sin.atan2(cos))
-}
-
-fn normalize_angle(angle: f32) -> f32 {
-    let mut a = angle % (2.0 * PI);
-    if a > PI {
-        a -= 2.0 * PI;
-    } else if a < -PI {
-        a += 2.0 * PI;
-    }
-    a
 }
 
 pub fn locomotion_debug_snapshot(

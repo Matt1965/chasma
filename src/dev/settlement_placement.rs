@@ -54,10 +54,6 @@ pub struct SettlementPlacementRejectionLabelIndex {
     pub entities: Vec<Entity>,
 }
 
-pub fn spawn_settlement_section(_parent: &mut ChildSpawnerCommands<'_>) {
-    // Settlement Dev controls live in the Settlement window (settlement_window module).
-}
-
 pub fn cancel_settlement_placement(dev_state: &mut DevModeState) {
     dev_state.settlement_placement_armed = false;
     dev_state.settlement_placement_message = "Settlement placement cancelled".into();
@@ -391,16 +387,6 @@ fn apply_dev_placement_policy_guard(world: &mut WorldData, settlement_id: Settle
         state.policies.auto_emergency_response = false;
         state.policies.auto_production_reprioritize = false;
         state.policies.auto_task_interruption = false;
-    }
-}
-
-pub fn settlement_placement_status(dev_state: &DevModeState) -> String {
-    if dev_state.settlement_placement_armed {
-        "Settlement anchor armed — left-click terrain".to_string()
-    } else if !dev_state.settlement_placement_message.is_empty() {
-        dev_state.settlement_placement_message.clone()
-    } else {
-        String::new()
     }
 }
 

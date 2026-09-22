@@ -24,36 +24,6 @@ pub fn quantized_distance_squared_cm(a: WorldPosition, b: WorldPosition) -> i64 
     dx.saturating_mul(dx).saturating_add(dz.saturating_mul(dz))
 }
 
-pub fn piles_can_merge(
-    a: &WorldItemPileRecord,
-    b: &WorldItemPileRecord,
-    item_definition_id: &ItemDefinitionId,
-) -> bool {
-    if a.current_space_id != b.current_space_id {
-        return false;
-    }
-    if !ownership_compatible(a, b) {
-        return false;
-    }
-    match (&a.contents, &b.contents) {
-        (
-            WorldPileContents::Stack {
-                item_definition_id: id_a,
-                ..
-            },
-            WorldPileContents::Stack {
-                item_definition_id: id_b,
-                ..
-            },
-        ) => id_a == id_b && id_a == item_definition_id,
-        _ => false,
-    }
-}
-
-pub fn ownership_compatible(a: &WorldItemPileRecord, b: &WorldItemPileRecord) -> bool {
-    a.owner_id == b.owner_id && a.team_id == b.team_id && a.affiliation == b.affiliation
-}
-
 pub fn merge_candidate_order(
     drop_position: WorldPosition,
     space_id: SpaceId,

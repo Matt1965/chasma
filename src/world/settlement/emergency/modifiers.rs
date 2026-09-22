@@ -4,9 +4,8 @@
 //! Do not re-apply the same bonus at SA4.
 
 use super::catalog::EmergencyCatalog;
-use super::definition::EmergencyDefinition;
 use crate::world::settlement::response::{ResponseDefinition, ResponseId};
-use crate::world::settlement::state::{ActiveEmergencyInstance, SettlementState};
+use crate::world::settlement::state::SettlementState;
 use crate::world::task::TaskPriority;
 
 /// Additive need-pressure bump from active emergencies (severity-scaled).
@@ -232,17 +231,3 @@ fn has_manual_force(state: &SettlementState) -> bool {
     state.emergencies.instances.iter().any(|i| i.manual_force)
 }
 
-/// Active definitions paired with instances (sorted by emergency id).
-pub fn active_definitions<'a>(
-    state: &'a SettlementState,
-    catalog: &'a EmergencyCatalog,
-) -> Vec<(&'a ActiveEmergencyInstance, &'a EmergencyDefinition)> {
-    let mut out = Vec::new();
-    for instance in &state.emergencies.instances {
-        if let Some(def) = catalog.get_str(&instance.emergency_id) {
-            out.push((instance, def));
-        }
-    }
-    out.sort_by(|a, b| a.0.emergency_id.cmp(&b.0.emergency_id));
-    out
-}

@@ -3,14 +3,12 @@
 use bevy::prelude::*;
 
 use crate::camera::{CameraSettings, RtsCameraState};
-use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::debug::{DebugOverlayConfig, InspectorOverlayFocus};
 use crate::dev::inspector::{
     BlueprintEditTool, BlueprintInspectionState, BlueprintPendingConfirmation,
     BlueprintVariantDraft, BlueprintVariantDraftField, WorldInspectorState,
     capture_building_blueprint_inspection_snapshot, capture_edit_blueprint_snapshot,
-    enter_blueprint_edit, enter_blueprint_inspection, exit_blueprint_edit_to_inspect,
-    exit_blueprint_inspection, frame_building_for_inspection,
+    enter_blueprint_edit, enter_blueprint_inspection, exit_blueprint_edit_to_inspect, frame_building_for_inspection,
 };
 use crate::dev::window::{DevWindowId, DevWindowRegistry};
 use crate::world::{
@@ -18,10 +16,6 @@ use crate::world::{
 };
 
 use super::state::NavigationEditorUiState;
-
-pub fn navigation_editor_visible(registry: &DevWindowRegistry) -> bool {
-    registry.is_visible(DevWindowId::NavigationEditor)
-}
 
 pub fn open_navigation_editor(registry: &mut DevWindowRegistry) {
     registry.show(DevWindowId::NavigationEditor);
@@ -254,35 +248,6 @@ pub fn refresh_editor_snapshot(
     );
 }
 
-pub fn sync_session_with_selection(
-    world_selection: &WorldSelectionState,
-    world: &WorldData,
-    inspection: &mut BlueprintInspectionState,
-    inspector: &mut WorldInspectorState,
-    overlay_focus: &mut InspectorOverlayFocus,
-    camera: &mut RtsCameraState,
-) {
-    let building_id = match world_selection.category {
-        WorldSelectionCategory::Building => world_selection.building_id,
-        _ => None,
-    };
-
-    if building_id != inspection.building_id {
-        if inspection.active {
-            exit_blueprint_inspection(inspection, overlay_focus, camera);
-            inspector.blueprint_snapshot = None;
-        }
-    }
-
-    if let Some(id) = building_id {
-        if world.get_building(id).is_none() {
-            exit_blueprint_inspection(inspection, overlay_focus, camera);
-            inspector.last_message = format!("Building #{} no longer exists", id.raw());
-            inspector.blueprint_snapshot = None;
-        }
-    }
-}
-
 pub fn start_variant_draft(
     inspection: &mut BlueprintInspectionState,
     inspector: &mut WorldInspectorState,
@@ -311,20 +276,6 @@ pub fn start_variant_draft(
         active_field: BlueprintVariantDraftField::DisplayName,
     });
     inspector.last_message = "Save As Variant - fill fields and confirm".into();
-}
-
-pub fn exit_inspection_session(
-    inspection: &mut BlueprintInspectionState,
-    inspector: &mut WorldInspectorState,
-    overlay_focus: &mut InspectorOverlayFocus,
-    camera: &mut RtsCameraState,
-) {
-    exit_blueprint_inspection(inspection, overlay_focus, camera);
-    if let Some(snap) = inspector.blueprint_snapshot.as_mut() {
-        snap.inspection_active = false;
-        snap.edit_active = false;
-    }
-    inspector.last_message = "Exited blueprint inspection".into();
 }
 
 pub fn exit_edit_session(

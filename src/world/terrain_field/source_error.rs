@@ -116,4 +116,3 @@ impl std::fmt::Display for TerrainFieldSourceError {
     }
 }
 
-pub type TerrainFieldBuildResult<T> = Result<T, TerrainFieldSourceError>;

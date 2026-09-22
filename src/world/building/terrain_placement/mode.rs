@@ -63,9 +63,6 @@ impl TerrainPlacementDefaults {
 /// Clearance above the rendered terrain surface (presentation meters).
 pub const PRESENTATION_TERRAIN_CLEARANCE_METERS: f32 = 0.05;
 
-/// Legacy name retained for callers; prefer [`terrain_clearance_sim`].
-pub const TERRAIN_CLEARANCE_EPSILON: f32 = PRESENTATION_TERRAIN_CLEARANCE_METERS;
-
 /// Convert presentation clearance into authoritative simulation meters for a terrain scale.
 pub fn terrain_clearance_sim(terrain_vertical_scale: f32) -> f32 {
     PRESENTATION_TERRAIN_CLEARANCE_METERS / terrain_vertical_scale.max(1.0)

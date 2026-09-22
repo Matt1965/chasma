@@ -3,7 +3,7 @@
 use crate::world::combat::AttackTargetingPolicy;
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::logistics::{
-    HaulingRequestPriority, HaulingRequestStatus, assign_hauling_task_with_priority,
+    HaulingRequestStatus, assign_hauling_task_with_priority,
 };
 use crate::world::task::assignment::{
     cancel_unit_task, claim_building_task, release_unit_task_to_marketplace,
@@ -477,14 +477,6 @@ fn haul_listing_priority(
         world,
         request.owning_building_id,
     )
-}
-
-fn haul_priority_to_task(priority: HaulingRequestPriority) -> TaskPriority {
-    match priority {
-        HaulingRequestPriority::Critical | HaulingRequestPriority::High => TaskPriority::High,
-        HaulingRequestPriority::Normal => TaskPriority::Normal,
-        HaulingRequestPriority::Low => TaskPriority::Low,
-    }
 }
 
 fn eligible_worker_ids(world: &WorldData) -> Vec<UnitId> {

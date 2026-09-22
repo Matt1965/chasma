@@ -7,11 +7,6 @@ use crate::world::task::{
 };
 use crate::world::{BuildingCatalog, WorldData};
 
-/// Map building operation policy priority (0..=255) into TaskPriority.
-pub fn policy_priority_to_task_priority(policy_priority: u8) -> TaskPriority {
-    crate::world::building::operation::building_work_priority_to_task_priority(policy_priority)
-}
-
 /// Create/refresh Available OperateWorkstation tasks for buildings that want labor.
 ///
 /// Does not assign workers. Skips constructible / incomplete buildings.

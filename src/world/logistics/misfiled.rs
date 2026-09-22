@@ -132,30 +132,6 @@ pub fn mark_all_settlement_buildings_logistics_dirty(
     }
 }
 
-/// Mark every storage building in a settlement for misfiled reevaluation.
-pub fn mark_settlement_storage_logistics_dirty(
-    world: &mut WorldData,
-    building_catalog: &BuildingCatalog,
-    settlement_id: SettlementId,
-) {
-    for building_id in world
-        .settlement_store()
-        .buildings_for_settlement(settlement_id)
-    {
-        let Some(record) = world.get_building(building_id) else {
-            continue;
-        };
-        let Some(definition) = building_catalog.get(&record.definition_id) else {
-            continue;
-        };
-        if building_is_storage_capable(definition) {
-            world
-                .building_storage_policy_store_mut()
-                .mark_logistics_dirty(building_id);
-        }
-    }
-}
-
 fn cancel_obsolete_misfiled_requests(
     world: &mut WorldData,
     building_catalog: &BuildingCatalog,

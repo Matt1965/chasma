@@ -3,8 +3,7 @@
 use super::definition::{
     BuildingNavigationBlueprint, NavigationEntranceDefinition, NavigationFloorDefinition,
     NavigationPolygon2d, NavigationRegionConnectionDefinition, NavigationRegionConnectionKind,
-    NavigationRegionDefinition, NavigationVerticalTransitionDefinition,
-    NavigationVerticalTransitionKind,
+    NavigationRegionDefinition,
 };
 
 fn region(
@@ -47,6 +46,7 @@ fn doorway(
 }
 
 /// IN-11: one floor, one region, one doorless exterior entrance.
+#[cfg(test)]
 pub fn one_region_doorless_navigation_blueprint() -> BuildingNavigationBlueprint {
     BuildingNavigationBlueprint::new("one_region_hut", "One Region Hut")
         .with_floors(vec![NavigationFloorDefinition {
@@ -121,6 +121,7 @@ pub fn two_room_hut_navigation_blueprint() -> BuildingNavigationBlueprint {
 }
 
 /// Fixture 2: room–corridor–room chain.
+#[cfg(test)]
 pub fn corridor_hut_navigation_blueprint() -> BuildingNavigationBlueprint {
     BuildingNavigationBlueprint::new("corridor_hut", "Corridor Hut")
         .with_floors(vec![NavigationFloorDefinition {
@@ -182,6 +183,7 @@ pub fn corridor_hut_navigation_blueprint() -> BuildingNavigationBlueprint {
 }
 
 /// Fixture 3: two-floor building with targeted regions and same-floor halls.
+#[cfg(test)]
 pub fn two_floor_two_room_navigation_blueprint() -> BuildingNavigationBlueprint {
     BuildingNavigationBlueprint::new("two_floor_two_room", "Two Floor Two Room")
         .with_floors(vec![
@@ -273,6 +275,7 @@ pub fn two_floor_two_room_navigation_blueprint() -> BuildingNavigationBlueprint 
 }
 
 /// Two doorway connections between the same region pair at different endpoints.
+#[cfg(test)]
 pub fn dual_doorway_navigation_blueprint() -> BuildingNavigationBlueprint {
     BuildingNavigationBlueprint::new("dual_doorway", "Dual Doorway")
         .with_floors(vec![NavigationFloorDefinition {

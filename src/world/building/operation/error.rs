@@ -51,6 +51,7 @@ pub struct OperationStepReport {
 }
 
 /// Completion summary for one operation threshold crossing (ADR-105 TF5).
+#[cfg(test)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct OperationCompletionReport {
     pub building_id: crate::world::BuildingId,

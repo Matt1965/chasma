@@ -7,7 +7,7 @@ use crate::dev::catalog_cache::DevSearchDebounce;
 use crate::dev::dev_mode::{DevDebugFlags, DevModeState};
 use crate::dev::input::DevPanelUi;
 use crate::dev::widgets::{
-    DevCollapsibleSectionId, DevWidgetToggle, DevWidgetToggleMark, spawn_toggle_row,
+    DevWidgetToggle, DevWidgetToggleMark, spawn_toggle_row,
     sync_toggle_styles_with_marker,
     theme::{TEXT_SECTION, small_text_font},
 };
@@ -57,17 +57,13 @@ struct ToggleDef {
     tooltip: &'static str,
 }
 
-const GROUP_TEXT: Color = Color::srgba(0.65, 0.78, 0.88, 1.0);
-
 struct ToggleGroup {
-    section: DevCollapsibleSectionId,
     title: &'static str,
     toggles: &'static [ToggleDef],
 }
 
 const TOGGLE_GROUPS: &[ToggleGroup] = &[
     ToggleGroup {
-        section: DevCollapsibleSectionId::DebugMaster,
         title: "Master and general overlays",
         toggles: &[
             ToggleDef {
@@ -96,7 +92,6 @@ const TOGGLE_GROUPS: &[ToggleGroup] = &[
         ],
     },
     ToggleGroup {
-        section: DevCollapsibleSectionId::DebugSelection,
         title: "Selection and inspector focus",
         toggles: &[
             ToggleDef {
@@ -137,7 +132,6 @@ const TOGGLE_GROUPS: &[ToggleGroup] = &[
         ],
     },
     ToggleGroup {
-        section: DevCollapsibleSectionId::DebugNavigation,
         title: "Navigation (NV0)",
         toggles: &[
             ToggleDef {
@@ -182,7 +176,6 @@ const TOGGLE_GROUPS: &[ToggleGroup] = &[
         ],
     },
     ToggleGroup {
-        section: DevCollapsibleSectionId::DebugSession,
         title: "Session utilities",
         toggles: &[ToggleDef {
             label: "Reset dev state",

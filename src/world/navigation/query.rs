@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use super::cross_space::find_path_in_spaces;
 use super::grid::NavigationConfig;
-use super::path::{NavigationPath, xz_distance};
+use super::path::NavigationPath;
 use crate::world::{PassabilityCatalogs, SpaceId, UnitOwnership, WorldData, WorldPosition};
 
 /// Why [`find_path`] failed.
@@ -66,37 +66,6 @@ pub fn find_path_with_spaces(
         goal_space,
         unit_ownership,
     )
-}
-
-fn trim_waypoints_at_start(
-    waypoints: &mut Vec<WorldPosition>,
-    start: WorldPosition,
-    layout: crate::world::ChunkLayout,
-) {
-    const EPSILON: f32 = 0.25;
-    while let Some(first) = waypoints.first().copied() {
-        if xz_distance(start, first, layout) <= EPSILON {
-            waypoints.remove(0);
-        } else {
-            break;
-        }
-    }
-}
-
-/// Remove duplicate consecutive waypoints after simplification.
-fn dedupe_consecutive_waypoints(
-    waypoints: &mut Vec<WorldPosition>,
-    layout: crate::world::ChunkLayout,
-) {
-    const EPSILON: f32 = 0.05;
-    let mut index = 0;
-    while index + 1 < waypoints.len() {
-        if xz_distance(waypoints[index], waypoints[index + 1], layout) <= EPSILON {
-            waypoints.remove(index + 1);
-        } else {
-            index += 1;
-        }
-    }
 }
 
 #[cfg(test)]

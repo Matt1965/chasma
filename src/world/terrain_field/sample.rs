@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::id::TerrainFieldId;
-use crate::world::{ChunkCoord, ChunkId};
+use crate::world::ChunkCoord;
 
 /// Why a terrain field sample is or is not available.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
@@ -129,5 +129,3 @@ impl TerrainFieldAreaReport {
     }
 }
 
-/// Chunk context attached to samples when useful for dev diagnostics.
-pub type FieldChunkContext = (ChunkId, u64);

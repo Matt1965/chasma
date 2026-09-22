@@ -4,8 +4,8 @@ use crate::world::building::catalog::BuildingDefinition;
 use crate::world::building::field_requirement::BuildingFieldRequirementDefinition;
 use crate::world::building::placement::BuildingPlacement;
 use crate::world::occupancy::{
-    FootprintShape, OccupancyCellCoord, OccupancyError, QuantizedRotation,
-    effective_building_footprint_for_placement, occupied_cells_for_footprint_yaw,
+    FootprintShape, OccupancyCellCoord, OccupancyError, effective_building_footprint_for_placement,
+    occupied_cells_for_footprint_yaw,
 };
 use crate::world::{ChunkLayout, FootprintCatalog, WorldPosition};
 
@@ -88,32 +88,6 @@ fn footprint_shape_from_catalog(
 
 fn map_footprint_error(error: OccupancyError) -> super::error::TerrainAssessmentError {
     super::error::TerrainAssessmentError::OperationalFootprintUnavailable(format!("{error:?}"))
-}
-
-/// Convenience for placement-plan occupied cells when no custom sampling footprint applies.
-pub fn resolve_default_building_field_sample_cells(
-    building_definition: &BuildingDefinition,
-    candidate_placement: &BuildingPlacement,
-    footprint_catalog: &FootprintCatalog,
-    layout: ChunkLayout,
-) -> Result<Vec<OccupancyCellCoord>, super::error::TerrainAssessmentError> {
-    let shape = effective_building_footprint_for_placement(
-        building_definition,
-        footprint_catalog,
-        candidate_placement.uniform_scale_f32(),
-    )
-    .map_err(|err| map_footprint_error(err))?;
-    let anchor_global = candidate_placement.position.to_global(layout);
-    let anchor_xz = Vec2::new(anchor_global.x, anchor_global.z);
-    let rotation = QuantizedRotation::yaw_for_occupancy(candidate_placement.rotation)
-        .unwrap_or(QuantizedRotation::Deg0);
-    let mut cells = crate::world::occupied_cells_for_footprint(shape.as_ref(), anchor_xz, rotation);
-    cells.sort_by_key(|cell| (cell.z, cell.x));
-    cells.dedup_by_key(|cell| (cell.z, cell.x));
-    if cells.is_empty() {
-        return Err(super::error::TerrainAssessmentError::SamplingRegionEmpty);
-    }
-    Ok(cells)
 }
 
 #[allow(dead_code)]

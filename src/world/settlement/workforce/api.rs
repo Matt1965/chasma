@@ -8,7 +8,6 @@ use crate::world::{settlement_for_building_work, unit_is_settlement_member};
 
 use super::domain::WorkPermissionDomain;
 use super::mapping::work_permission_domain_for_task;
-use super::store::WorkforcePermissionStore;
 use crate::world::task::TaskType;
 use crate::world::{BuildingCatalog, BuildingId, OperationCatalog};
 
@@ -39,14 +38,6 @@ impl fmt::Display for WorkforcePermissionError {
 }
 
 impl std::error::Error for WorkforcePermissionError {}
-
-pub fn workforce_permission_store(world: &WorldData) -> &WorkforcePermissionStore {
-    world.settlement_store().workforce_permissions()
-}
-
-pub fn workforce_permission_store_mut(world: &mut WorldData) -> &mut WorkforcePermissionStore {
-    world.settlement_store_mut().workforce_permissions_mut()
-}
 
 /// Whether `unit_id` may be considered for autonomous `domain` work in `settlement_id`.
 ///

@@ -8,9 +8,6 @@ pub const FACTION_REQUIRED_COLUMNS: &[&str] = &["Faction Key", "Name", "Enabled"
 
 pub const FACTION_OPTIONAL_COLUMNS: &[&str] = &["Faction ID", "Description"];
 
-/// Retired one-dimensional relationship authority — ignored when present.
-pub const FACTION_RETIRED_COLUMNS: &[&str] = &["Disposition"];
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct FactionImportRow {
     pub row_number: usize,

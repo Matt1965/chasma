@@ -2,7 +2,6 @@
 
 use bevy::prelude::*;
 
-use crate::debug::{DebugOverlayCategory, DebugOverlaySettings};
 use crate::doodads::DoodadsRuntimeSettings;
 use crate::terrain::TerrainRenderAssets;
 use crate::world::{
@@ -176,36 +175,3 @@ fn generate_preview_points(
     }
 }
 
-/// Draw preview markers via gizmos (U-UI3 interaction overlay category).
-pub fn draw_dev_placement_preview(
-    mut gizmos: Gizmos,
-    dev_state: Res<DevModeState>,
-    preview: Res<DevPlacementPreview>,
-    settings: Res<DebugOverlaySettings>,
-    config: Res<WorldConfig>,
-    render_assets: Option<Res<TerrainRenderAssets>>,
-) {
-    if !dev_state.enabled || !preview.active || !settings.enabled {
-        return;
-    }
-    if !settings.category_enabled(DebugOverlayCategory::Interaction) {
-        return;
-    }
-
-    let layout = config.chunk_layout();
-    let vertical_scale = render_assets
-        .as_ref()
-        .map(|a| a.vertical_scale)
-        .unwrap_or(1.0);
-
-    for point in &preview.points {
-        let global = point.position.to_global(layout);
-        let render = Vec3::new(global.x, global.y * vertical_scale, global.z);
-        let color = if point.valid {
-            Color::srgba(0.2, 0.95, 0.45, 0.85)
-        } else {
-            Color::srgba(0.95, 0.25, 0.2, 0.85)
-        };
-        gizmos.sphere(render + Vec3::Y * 0.3, 0.35, color);
-    }
-}

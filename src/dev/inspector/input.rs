@@ -442,10 +442,6 @@ pub fn handle_inspector_input(
     }
 }
 
-/// Marker for inspector UI nodes.
-#[derive(Component, Debug)]
-pub struct DevInspectorUi;
-
 /// Marker for production repeat-mode control in Selected Object.
 #[derive(Component, Debug)]
 pub struct BuildingProductionRepeatModeButton;

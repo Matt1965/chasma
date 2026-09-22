@@ -13,9 +13,12 @@ use super::catalog::{
 };
 use super::definition::BuildingNavigationBlueprint;
 use super::generate::{
-    NavigationBlueprintGenerateInput, NavigationBlueprintGenerateOutput, failed_report,
-    generate_navigation_blueprint, hash_asset_path, navigation_blueprint_generation_rejection,
-    navigation_mesh_source_label, should_generate_navigation_blueprint,
+    NavigationBlueprintGenerateInput, failed_report, generate_navigation_blueprint,
+    hash_asset_path, navigation_mesh_source_label, should_generate_navigation_blueprint,
+};
+#[cfg(test)]
+use super::generate::{
+    NavigationBlueprintGenerateOutput, navigation_blueprint_generation_rejection,
 };
 use super::id::{BuildingNavigationBlueprintId, blueprint_id_for_building};
 use super::mesh::load_building_mesh_for_navigation_with_fallback;
@@ -199,7 +202,7 @@ pub fn import_navigation_blueprints_for_catalog(
 }
 
 /// Mesh-slice a navigation blueprint from a building definition without persisting.
-#[cfg(feature = "data-import")]
+#[cfg(all(test, feature = "data-import"))]
 pub fn generate_navigation_blueprint_draft_for_definition(
     definition: &BuildingDefinition,
 ) -> Result<NavigationBlueprintGenerateOutput, String> {

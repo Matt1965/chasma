@@ -497,10 +497,6 @@ fn plane_residuals(samples: &[TerrainFootprintSample], a: f32, b: f32, c: f32) -
     (rms, peak)
 }
 
-pub fn plane_height_at(a: f32, b: f32, c: f32, xz: Vec2) -> f32 {
-    a * xz.x + b * xz.y + c
-}
-
 pub fn base_height_on_plane_at(
     anchor_xz: Vec2,
     anchor_y: f32,

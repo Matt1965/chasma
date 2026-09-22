@@ -1290,7 +1290,7 @@ impl WorldData {
         self.occupancy.clear();
     }
 
-    #[cfg(any(test, feature = "dev"))]
+    #[cfg(test)]
     pub(crate) fn assert_building_index_consistent(&self) {
         self.verify_instance_indexes()
             .expect("building index consistent");

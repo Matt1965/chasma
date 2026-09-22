@@ -19,6 +19,7 @@ mod section_visibility_tests;
 
 pub use actions::{
     handle_navigation_editor_actions,
+    handle_navigation_editor_close_guard,
     handle_open_navigation_editor_buttons,
 };
 pub use commands::open_navigation_editor;

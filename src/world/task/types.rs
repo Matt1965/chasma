@@ -135,22 +135,6 @@ impl TaskCancelReason {
     }
 }
 
-/// Interaction point identity (ADR-085 B8).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BuildingInteractionPointId {
-    pub building_id: BuildingId,
-    pub point_key: String,
-}
-
-impl BuildingInteractionPointId {
-    pub fn new(building_id: BuildingId, point_key: impl Into<String>) -> Self {
-        Self {
-            building_id,
-            point_key: point_key.into(),
-        }
-    }
-}
-
 /// Per-unit task assignment mirror for quick lookup.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect, Default)]
 pub struct UnitTaskAssignment {

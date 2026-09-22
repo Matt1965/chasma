@@ -213,10 +213,6 @@ pub fn building_model_correction_local_transform(definition: &BuildingDefinition
     }
 }
 
-pub fn building_has_model_correction(definition: &BuildingDefinition) -> bool {
-    building_effective_model_offset(definition) != Vec3::ZERO
-}
-
 /// Canonical authoritative simulation Y → presentation Y for building anchors.
 ///
 /// Terrain relief uses [`crate::terrain::render_height`]; metric offsets above the anchor

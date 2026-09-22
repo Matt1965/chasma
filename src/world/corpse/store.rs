@@ -11,10 +11,6 @@ pub struct ChunkCorpseStore {
 }
 
 impl ChunkCorpseStore {
-    pub fn records(&self) -> &[CorpseRecord] {
-        &self.records
-    }
-
     pub fn get(&self, id: CorpseId) -> Option<&CorpseRecord> {
         self.records
             .binary_search_by_key(&id, |record| record.id)

@@ -48,7 +48,6 @@ struct PostExitJitterSession {
     post_exit_waypoints: Vec<WaypointSummary>,
     tick_lines: Vec<String>,
     tick_count: u32,
-    loop_position_anchor: Option<WorldPosition>,
     loop_detector: JitterLoopDetector,
     emitted: bool,
 }
@@ -491,7 +490,6 @@ pub fn arm_session_after_interior_surface_exit(
         post_exit_waypoints,
         tick_lines: Vec::new(),
         tick_count: 0,
-        loop_position_anchor: Some(position_after_transition),
         loop_detector: JitterLoopDetector::default(),
         emitted: false,
     });
@@ -1030,7 +1028,6 @@ mod tests {
             post_exit_waypoints: Vec::new(),
             tick_lines: Vec::new(),
             tick_count: 0,
-            loop_position_anchor: Some(start),
             loop_detector: JitterLoopDetector::default(),
             emitted: false,
         });

@@ -5,8 +5,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 
 use crate::world::{
-    AnimationClipKey, AnimationProfile, AnimationProfileCatalog, UnitCatalog, UnitDefinition,
-    UnitDefinitionId, WeaponCatalog,
+    AnimationClipKey, AnimationProfile, UnitDefinition, UnitDefinitionId,
 };
 
 use super::locomotion_polish::MODEL_FORWARD_AXIS;
@@ -325,33 +324,6 @@ fn validate_forward_axis_convention(report: &mut DefinitionValidationReport) {
              columns when visual facing differs (see docs/animation-authoring.md)"
         ),
     );
-}
-
-/// Validate catalog entries at graph-build time (A6).
-pub fn validate_catalog_animation_assets(
-    catalog: &UnitCatalog,
-    profiles: &AnimationProfileCatalog,
-    weapons: &WeaponCatalog,
-    gltfs: &Assets<Gltf>,
-    gltf_handles: &HashMap<UnitDefinitionId, Handle<Gltf>>,
-) -> AnimationValidationIndex {
-    let mut index = AnimationValidationIndex::default();
-    for definition in catalog.definitions() {
-        let profile = definition
-            .animation_profile_id
-            .as_ref()
-            .and_then(|id| profiles.get(id));
-        let gltf = gltf_handles
-            .get(&definition.id)
-            .and_then(|handle| gltfs.get(handle));
-        let weapon_clip = weapons
-            .get(&definition.default_weapon_id)
-            .map(|weapon| weapon.animation_key.as_str());
-        let report = validate_definition_animation_assets(definition, profile, gltf, weapon_clip);
-        index.log_new_issues(&report);
-        index.reports.insert(definition.id.clone(), report);
-    }
-    index
 }
 
 #[cfg(test)]

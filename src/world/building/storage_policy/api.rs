@@ -5,7 +5,6 @@ use crate::world::building::inventory_binding::{
     BuildingInventoryBindingId, BuildingInventoryRole, effective_inventory_binding_definitions,
 };
 use crate::world::inventory::InventoryCatalogCtx;
-use crate::world::item::{ItemCategoryCatalog, ItemCategoryDefinition};
 use crate::world::{BuildingId, ItemDefinitionId, WorldData};
 
 use super::policy::BuildingStoragePolicy;
@@ -169,17 +168,4 @@ pub fn mark_storage_logistics_dirty_for_inventory(
     if let Some(building_id) = building_id {
         mark_settlement_storage_logistics_wakeup(world, building_catalog, building_id);
     }
-}
-
-pub fn all_storage_filter_categories(
-    category_catalog: &ItemCategoryCatalog,
-) -> Vec<ItemCategoryDefinition> {
-    let mut categories: Vec<_> = category_catalog.enabled_definitions().cloned().collect();
-    categories.sort_by(|left, right| {
-        left.sort_priority
-            .unwrap_or(0)
-            .cmp(&right.sort_priority.unwrap_or(0))
-            .then_with(|| left.id.as_str().cmp(right.id.as_str()))
-    });
-    categories
 }

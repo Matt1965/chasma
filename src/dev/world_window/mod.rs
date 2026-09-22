@@ -1,6 +1,5 @@
 //! World environment authoring window (Slice 8).
 
-mod harness;
 mod panel;
 
 #[cfg(test)]

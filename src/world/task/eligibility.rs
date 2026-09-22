@@ -99,9 +99,5 @@ pub fn building_accepts_workstation_use(record: &BuildingRecord) -> bool {
     record.lifecycle_state == BuildingLifecycleState::Complete && record.vitals.current_hp > 0
 }
 
-pub fn building_id_from_record_id(id: BuildingId) -> BuildingId {
-    id
-}
-
 #[cfg(test)]
 mod tests;

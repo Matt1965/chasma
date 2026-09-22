@@ -7,7 +7,6 @@ use crate::world::inventory::{
 use crate::world::{ItemDefinition, ItemDefinitionId};
 
 use super::container::is_container_item;
-use super::slot::EquipmentSlot;
 
 /// Authoritative placement validation for inventory mutations and transfers.
 pub fn validate_item_placement(
@@ -144,7 +143,3 @@ fn container_instance_is_loaded(
     Ok(!container.placed_entries().is_empty())
 }
 
-/// Whether an item definition is compatible with a semantic equipment slot.
-pub fn item_compatible_with_slot(item: &ItemDefinition, slot: EquipmentSlot) -> bool {
-    item.equipment_slots.contains(&slot)
-}

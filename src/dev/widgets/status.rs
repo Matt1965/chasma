@@ -44,11 +44,6 @@ pub fn sync_status_line_color(mut lines: Query<(&DevWidgetStatusLine, &mut TextC
     }
 }
 
-/// Helper for catalog-style TTL status (re-export pattern).
-pub fn status_text_color(severity: DevStatusSeverity) -> TextColor {
-    TextColor(severity.color())
-}
-
 pub fn spawn_status_line(
     parent: &mut ChildSpawnerCommands<'_>,
     severity: DevStatusSeverity,

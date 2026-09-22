@@ -1,16 +1,15 @@
 //! Unit inventory attachment and weight queries (ADR-089 I3).
 
 use crate::world::WorldData;
-use crate::world::corpse::CorpseId;
 use crate::world::equipment::cleanup_unit_equipment_on_delete;
 use crate::world::inventory::{
     InventoryCatalogCtx, InventoryError, InventoryId,
-    create_unit_inventory, transfer_inventory_owner,
+    create_unit_inventory,
 };
 use crate::world::inventory::{
     InventoryOwnerRef, RemovedInventoryContents, remove_owned_inventory,
 };
-use crate::world::unit::{UnitDefinition, UnitId, UnitRecord};
+use crate::world::unit::{UnitDefinition, UnitRecord};
 
 pub fn attach_inventory_on_unit_create(
     world: &mut WorldData,
@@ -28,6 +27,7 @@ pub fn attach_inventory_on_unit_create(
     Ok(())
 }
 
+#[cfg(test)]
 pub fn unit_inventory_weight_grams(world: &WorldData, unit_id: UnitId) -> u64 {
     let Some(record) = world.get_unit(unit_id) else {
         return 0;
@@ -42,6 +42,7 @@ pub fn unit_inventory_weight_grams(world: &WorldData, unit_id: UnitId) -> u64 {
         .unwrap_or(0)
 }
 
+#[cfg(test)]
 pub fn unit_reference_weight_grams(
     world: &WorldData,
     ctx: &InventoryCatalogCtx<'_>,
@@ -54,6 +55,7 @@ pub fn unit_reference_weight_grams(
     profile.reference_weight_grams
 }
 
+#[cfg(test)]
 pub fn unit_over_reference_weight_grams(
     world: &WorldData,
     ctx: &InventoryCatalogCtx<'_>,
@@ -66,6 +68,7 @@ pub fn unit_over_reference_weight_grams(
     total.saturating_sub(reference)
 }
 
+#[cfg(test)]
 pub fn unit_encumbrance_ratio(
     world: &WorldData,
     ctx: &InventoryCatalogCtx<'_>,
@@ -78,6 +81,7 @@ pub fn unit_encumbrance_ratio(
     Some(unit_inventory_weight_grams(world, unit_id) as f64 / f64::from(reference))
 }
 
+#[cfg(test)]
 pub fn validate_unit_inventory_owner(
     world: &WorldData,
     unit_id: UnitId,
@@ -99,20 +103,6 @@ pub fn validate_unit_inventory_owner(
             inventory_id,
         }),
     }
-}
-
-pub fn transfer_unit_inventory_to_corpse(
-    world: &mut WorldData,
-    unit_id: UnitId,
-    corpse_id: CorpseId,
-    inventory_id: InventoryId,
-) -> Result<(), InventoryError> {
-    transfer_inventory_owner(
-        world.inventory_store_mut(),
-        inventory_id,
-        InventoryOwnerRef::Unit(unit_id),
-        InventoryOwnerRef::Corpse(corpse_id),
-    )
 }
 
 fn inventory_contents_removable(

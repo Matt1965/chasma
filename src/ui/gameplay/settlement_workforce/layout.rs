@@ -38,6 +38,7 @@ pub fn permission_checkbox_label(allowed: bool) -> &'static str {
     if allowed { "[X]" } else { "[ ]" }
 }
 
+#[cfg(test)]
 pub fn forbidden_workforce_ui_characters() -> &'static [char] {
     crate::ui::gameplay::text::FORBIDDEN_UI_GLYPHS
 }

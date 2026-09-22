@@ -12,9 +12,6 @@ use crate::dev::world_environment::DevWorldEnvironmentSection;
 #[derive(Component, Debug)]
 pub struct DevWorldWindowUi;
 
-#[derive(Component, Debug)]
-pub(crate) struct DevWorldHarnessText;
-
 /// Hide world-window chrome when dev mode is off or the window is closed.
 pub fn sync_dev_world_panel_visibility(
     dev_state: Res<DevModeState>,

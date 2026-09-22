@@ -133,22 +133,6 @@ pub fn resolve_desired(ctx: &NeedEvalContext<'_>, definition: &NeedDefinition) -
     }
 }
 
-/// Backward-compatible helper for callers that only have SettlementState.
-pub fn resolve_desired_from_state(state: &SettlementState, definition: &NeedDefinition) -> f32 {
-    match definition.target_source {
-        NeedTargetSource::MemberNutritionConsumptionPlusReserve => {
-            food_reserve_nutrition(state, definition)
-        }
-        NeedTargetSource::SettlementNeedTarget => state
-            .need_targets
-            .iter()
-            .find(|t| t.category == definition.target_category)
-            .map(|t| t.target_value as f32)
-            .unwrap_or(definition.default_desired as f32),
-        NeedTargetSource::DefinitionDefault => definition.default_desired as f32,
-    }
-}
-
 fn food_reserve_nutrition(state: &SettlementState, definition: &NeedDefinition) -> f32 {
     state
         .need_targets

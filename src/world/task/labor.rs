@@ -46,7 +46,7 @@ pub fn step_all_worker_tasks(
         if task.task_type == TaskType::Haul {
             continue;
         }
-        let building_id = task.target_building_id();
+        let building_id = task_target_building_id(&task);
         let Some(building) = world.get_building(building_id).cloned() else {
             cancel_unit_task(
                 world,
@@ -227,7 +227,7 @@ pub fn step_all_worker_tasks(
                 let Some(operation) = operation.as_mut() else {
                     continue;
                 };
-                let building_id = task.target_building_id();
+                let building_id = task_target_building_id(&task);
                 match step_workstation_operation(
                     world,
                     operation,
@@ -320,19 +320,13 @@ pub fn step_all_worker_tasks(
     report
 }
 
-trait TaskLaborExt {
-    fn target_building_id(&self) -> crate::world::BuildingId;
-}
-
-impl TaskLaborExt for super::record::TaskRecord {
-    fn target_building_id(&self) -> crate::world::BuildingId {
-        match &self.target {
-            super::types::TaskTarget::Building(id) => *id,
-            super::types::TaskTarget::InteractionPoint { building_id, .. } => *building_id,
-            super::types::TaskTarget::HaulRequest {
-                owning_building_id, ..
-            } => *owning_building_id,
-        }
+fn task_target_building_id(task: &super::record::TaskRecord) -> crate::world::BuildingId {
+    match &task.target {
+        super::types::TaskTarget::Building(id) => *id,
+        super::types::TaskTarget::InteractionPoint { building_id, .. } => *building_id,
+        super::types::TaskTarget::HaulRequest {
+            owning_building_id, ..
+        } => *owning_building_id,
     }
 }
 

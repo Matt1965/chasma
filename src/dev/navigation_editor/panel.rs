@@ -101,9 +101,6 @@ pub(crate) struct DevNavigationEditorFloorColumn;
 pub(crate) struct DevNavigationEditorRegionColumn;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorFeedbackText;
-
-#[derive(Component, Debug)]
 pub(crate) struct DevNavigationEditorPersistenceBar;
 
 #[derive(Component, Debug)]

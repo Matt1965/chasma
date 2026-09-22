@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 
 use bevy::prelude::*;
 
@@ -284,32 +284,4 @@ pub fn space_route_for_unit(
         }
     }
     None
-}
-
-/// Collect portals from a space including door portals that are disabled but openable.
-pub fn traversable_portals_from_space(
-    world: &WorldData,
-    space: SpaceId,
-    building_ownership: BuildingOwnership,
-    unit_ownership: Option<UnitOwnership>,
-) -> Vec<PortalId> {
-    let mut seen = HashSet::new();
-    let mut out = Vec::new();
-    for portal_id in world.space_registry().portals_from_space(space) {
-        let portal_id = *portal_id;
-        let portal_building_ownership = world
-            .space_registry()
-            .get_portal(portal_id)
-            .and_then(|portal| portal.owning_building_id)
-            .and_then(|id| world.get_building(id))
-            .map(|record| record.ownership)
-            .unwrap_or(building_ownership);
-        if seen.insert(portal_id)
-            && portal_traversable(world, portal_id, portal_building_ownership, unit_ownership)
-        {
-            out.push(portal_id);
-        }
-    }
-    out.sort();
-    out
 }

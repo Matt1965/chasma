@@ -166,11 +166,29 @@ pub fn sync_foundation_texture_binding(
         None => "unknown",
     };
     if load_reported.as_deref() != Some(state_label) {
-        warn!(
-            "FOUNDATION texture `{}` load state: {}",
-            foundation_assets.texture_path,
-            state_label
-        );
+        match load_state {
+            Some(LoadState::Failed(_)) => {
+                warn!(
+                    "FOUNDATION texture `{}` load state: {}",
+                    foundation_assets.texture_path,
+                    state_label
+                );
+            }
+            Some(LoadState::Loaded) => {
+                info!(
+                    "FOUNDATION texture `{}` load state: {}",
+                    foundation_assets.texture_path,
+                    state_label
+                );
+            }
+            _ => {
+                debug!(
+                    "FOUNDATION texture `{}` load state: {}",
+                    foundation_assets.texture_path,
+                    state_label
+                );
+            }
+        }
         *load_reported = Some(state_label.to_string());
     }
 

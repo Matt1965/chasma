@@ -11,7 +11,9 @@ use crate::world::building::operational_efficiency::{
 };
 use crate::world::{BuildingCatalog, BuildingId, WorldData};
 
-use super::error::{OperationCompletionReport, OperationError, OperationStepReport};
+use super::error::{OperationError, OperationStepReport};
+#[cfg(test)]
+use super::error::OperationCompletionReport;
 use super::execute::assess_production_execution;
 use super::execute::execute_production_cycle;
 use super::farm::{is_prispod_farm_definition, step_farm_harvest_operation};
@@ -404,6 +406,7 @@ fn blocked_step_report(
 }
 
 /// Dev/test helper: apply N fixed ticks without worker validation.
+#[cfg(test)]
 pub fn apply_operation_ticks(
     world: &mut WorldData,
     operation: &mut BuildingOperationParams<'_>,
@@ -442,6 +445,7 @@ pub fn apply_operation_ticks(
 }
 
 /// Expected ticks to complete one unit at a given efficiency (deterministic ceiling).
+#[cfg(test)]
 pub fn expected_ticks_to_complete(efficiency_basis_points: u32) -> u64 {
     if efficiency_basis_points == 0 {
         return u64::MAX;

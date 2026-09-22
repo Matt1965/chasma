@@ -1,5 +1,6 @@
 //! Settlement production planner module (EP9).
 
+#[cfg(test)]
 mod apply;
 mod graph;
 mod inventory;

@@ -56,3 +56,6 @@ pub use theme::{
 pub use toggle::{
     DevWidgetToggle, DevWidgetToggleMark, spawn_toggle_row, sync_toggle_styles_with_marker,
 };
+
+#[cfg(test)]
+pub use glyph_safety::contains_forbidden_dev_ui_glyph;

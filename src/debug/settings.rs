@@ -230,16 +230,9 @@ debug_overlay_run_if!(
     debug_relationship_links_overlay_enabled
 );
 
+#[cfg(not(feature = "dev"))]
 pub fn debug_blueprint_overlay_enabled(settings: &DebugOverlaySettings) -> bool {
     settings.blueprint_overlay_active()
-}
-
-#[cfg(feature = "dev")]
-pub fn debug_blueprint_overlay_or_inspection(
-    settings: &DebugOverlaySettings,
-    inspection_active: bool,
-) -> bool {
-    settings.blueprint_overlay_active() || inspection_active
 }
 
 #[cfg(feature = "dev")]

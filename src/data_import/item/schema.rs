@@ -1,7 +1,6 @@
 //! Excel column schema and conversion into item definitions (ADR-087 I1).
 
 use crate::world::equipment::EquipmentSlot;
-use crate::world::normalize_tags;
 use crate::world::{
     ArmorProfileId, InventoryProfileId, ItemCategoryId, ItemDefinition, ItemDefinitionId,
     ItemIconKey, ItemRenderKey, WeaponDefinitionId,
@@ -114,8 +113,4 @@ impl ItemImportRow {
             .with_nutrition(self.nutrition)
             .with_equipment_slots(self.equipment_slots.clone())
     }
-}
-
-pub fn parse_tags_cell(value: &str) -> Vec<String> {
-    normalize_tags(value)
 }

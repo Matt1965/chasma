@@ -12,7 +12,8 @@ use crate::world::{BuildingId, WorldData};
 
 use super::types::PlannerBuildingDecision;
 
-/// Apply planner recommendations through the SA5 policy writer (tests/dev only).
+/// Apply planner recommendations through the SA5 policy writer (tests only).
+#[cfg(test)]
 pub fn apply_production_recommendations_for_tests(
     world: &mut WorldData,
     building_catalog: &BuildingCatalog,
@@ -32,6 +33,7 @@ pub fn apply_production_recommendations_for_tests(
 }
 
 /// Disable AI-controlled buildings not in the active decision set (test helper).
+#[cfg(test)]
 pub fn disable_unselected_planner_buildings(
     world: &mut WorldData,
     settlement_building_ids: &[BuildingId],

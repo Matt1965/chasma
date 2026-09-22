@@ -6,9 +6,6 @@ pub const UI_TITLE_SEPARATOR: &str = " | ";
 /// Status/progress separator (e.g. `Growing | 42%`).
 pub const UI_STATUS_SEPARATOR: &str = " | ";
 
-/// Inline list / field separator for HUD summaries.
-pub const UI_INLINE_SEPARATOR: &str = " | ";
-
 pub fn format_ui_title(primary: &str, detail: &str) -> String {
     format!("{primary}{UI_TITLE_SEPARATOR}{detail}")
 }
@@ -18,10 +15,12 @@ pub fn format_ui_status(label: &str, value: &str) -> String {
 }
 
 /// Non-ASCII UI chrome characters that the HUD font does not reliably render.
+#[cfg(test)]
 pub const FORBIDDEN_UI_GLYPHS: &[char] = &[
     '×', '✓', '☑', '☐', '•', '·', '→', '←', '↔', '—', '–', '│', '◀', '▶', '✗', '✔',
 ];
 
+#[cfg(test)]
 pub fn ui_chrome_contains_forbidden_glyph(text: &str) -> bool {
     text.chars().any(|ch| FORBIDDEN_UI_GLYPHS.contains(&ch))
 }

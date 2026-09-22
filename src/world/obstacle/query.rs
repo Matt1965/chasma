@@ -2,7 +2,7 @@
 
 use crate::world::{
     BuildingCatalog, DoodadCatalog, DoodadId, FootprintCatalog, OccupancyCatalogs, OccupancySource,
-    PassabilityAgent, PassabilityBlockReason, PassabilityCatalogs, PassabilityResult, WorldData,
+    PassabilityAgent, PassabilityCatalogs, PassabilityResult, WorldData,
     WorldPosition, query_passability_at, query_static_occupancy_at,
 };
 
@@ -122,25 +122,6 @@ pub fn blocking_doodad_at_position(
         result.blocking_doodad
     } else {
         None
-    }
-}
-
-/// Map passability block reason to legacy movement semantics.
-pub fn passability_blocks_movement(result: &PassabilityResult) -> bool {
-    match result {
-        PassabilityResult::Passable { .. } => false,
-        PassabilityResult::Unavailable { .. } => true,
-        PassabilityResult::Blocked { reason, .. } => {
-            matches!(
-                reason,
-                PassabilityBlockReason::DoodadOccupied
-                    | PassabilityBlockReason::BuildingOccupied
-                    | PassabilityBlockReason::AgentClearanceInsufficient
-                    | PassabilityBlockReason::MissingDefinition
-                    | PassabilityBlockReason::CorruptFootprint
-                    | PassabilityBlockReason::InvalidCell
-            )
-        }
     }
 }
 

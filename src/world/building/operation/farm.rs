@@ -27,6 +27,7 @@ use super::query::workstation_workers_for_building;
 use super::store::BuildingProductionStore;
 
 pub const PRISPOD_FARM_DEFINITION_ID: &str = "prispod_farm";
+#[cfg(test)]
 pub const GROW_PRISPODS_OPERATION_ID: &str = "grow_prispods";
 
 /// Farm crop lifecycle phases (Prispod Farm only).
@@ -50,6 +51,7 @@ pub fn is_prispod_farm_definition(definition: &BuildingDefinition) -> bool {
     definition.id.as_str() == PRISPOD_FARM_DEFINITION_ID
 }
 
+#[cfg(test)]
 pub fn grow_prispods_operation_id() -> OperationDefinitionId {
     OperationDefinitionId::new(GROW_PRISPODS_OPERATION_ID)
 }

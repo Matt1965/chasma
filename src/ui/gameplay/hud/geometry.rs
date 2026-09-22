@@ -18,7 +18,6 @@ pub const HUD_REFERENCE_VIEWPORT_HEIGHT: f32 = 1080.0;
 
 /// Visual share targets from the mockup (not hard mandates).
 pub const HUD_SECTION_SELECTED_SHARE: f32 = 0.23;
-pub const HUD_SECTION_ROSTER_SHARE: f32 = 0.39;
 pub const HUD_SECTION_COMMANDS_SHARE: f32 = 0.22;
 pub const HUD_SECTION_UTILITY_SHARE: f32 = 0.13;
 

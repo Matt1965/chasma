@@ -43,10 +43,6 @@ impl SquadRosterScrollState {
         self.max_scroll_x() > 0.0
     }
 
-    pub fn visible_card_count(&self) -> u32 {
-        visible_roster_card_count(self.viewport_width, self.card_width, self.card_gap)
-    }
-
     pub fn page_step_px(&self) -> f32 {
         roster_page_step_px(self.viewport_width, self.card_width, self.card_gap)
     }

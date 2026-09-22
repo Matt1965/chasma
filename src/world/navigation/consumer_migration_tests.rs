@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::astar::{astar_path, astar_path_in_space};
+use super::astar::astar_path_in_space;
 use super::grid::{
     GridCoord, NavigationAgent, NavigationConfig, grid_coord_at_position,
     grid_neighbor_transition_legal_in_space,
@@ -11,10 +11,7 @@ use super::legality::{
     NavigationSegmentBlockReason, NavigationSegmentLegality, query_navigation_point_legality,
     query_navigation_segment_legality,
 };
-use super::simplify::{
-    all_consecutive_segments_legal_in_space, has_walkable_line_of_sight_surface,
-    simplify_navigation_path_in_space,
-};
+use super::simplify::{navigation_segment_valid, simplify_navigation_path_in_space};
 use crate::units::input::{SelectedUnits, issue_move_orders_to_selection};
 use crate::world::unit::{
     UnitDefinitionId, UnitSource, UnitState, create_unit_with_ownership, step_unit_movement,
@@ -100,16 +97,19 @@ fn assert_consecutive_waypoints_legal(
 ) {
     let layout = world.layout();
     assert!(
-        all_consecutive_segments_legal_in_space(
-            world,
-            world.space_registry(),
-            catalogs.pass(),
-            config,
-            space_id,
-            agent(),
-            positions,
-            layout,
-        ),
+        positions.windows(2).all(|pair| {
+            navigation_segment_valid(
+                world,
+                world.space_registry(),
+                catalogs.pass(),
+                config,
+                space_id,
+                agent(),
+                pair[0],
+                pair[1],
+                layout,
+            )
+        }),
         "planner/simplifier produced an illegally simplified segment in space {}",
         space_id.raw()
     );
@@ -437,13 +437,15 @@ fn open_surface_astar_finds_route() {
     let goal = pos(40.0, 40.0);
     let start_cell = grounded_cell_in_space(&world, SpaceId::SURFACE, start, config);
     let goal_cell = grounded_cell_in_space(&world, SpaceId::SURFACE, goal, config);
-    let path = astar_path(
+    let path = astar_path_in_space(
         &world,
+        world.space_registry(),
         catalogs.pass(),
         config,
         agent(),
         start_cell,
         goal_cell,
+        SpaceId::SURFACE,
     )
     .expect("open surface route");
     assert!(path.len() >= 2);
@@ -585,10 +587,12 @@ fn simplifier_blocks_shortcut_across_closed_interior_boundary() {
         2,
         "illegal shortcut must not simplify away"
     );
-    assert!(!has_walkable_line_of_sight_surface(
+    assert!(!navigation_segment_valid(
         &world,
+        world.space_registry(),
         catalogs.pass(),
         config,
+        SpaceId::SURFACE,
         agent(),
         from,
         to,

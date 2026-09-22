@@ -9,7 +9,7 @@ use super::footprint::{
 };
 use super::grid::default_space_id;
 use super::grid::{OccupancyCellEntry, OccupancyState};
-use super::{OccupancyError, OccupancySource, conservative_block_radius_for_kind};
+use super::{OccupancyError, OccupancySource};
 use crate::world::occupancy::occupied_cells_for_footprint_yaw;
 use crate::world::resolve_doodad_collision;
 use crate::world::{
@@ -136,27 +136,6 @@ pub fn plan_register_doodad(
         plan.register.push((chunk, cell, entry));
     }
     Ok(plan)
-}
-
-fn doodad_blocking_params(
-    record: &DoodadRecord,
-    catalog: &DoodadCatalog,
-) -> Result<(bool, f32), OccupancyError> {
-    if let Some(definition) = catalog.get(&record.definition_id) {
-        return Ok((definition.blocks_movement, definition.block_radius_meters));
-    }
-    if !default_blocks_movement(record.kind) {
-        return Ok((false, 0.0));
-    }
-    let radius = conservative_block_radius_for_kind(record.kind);
-    if !(radius > 0.0) || !radius.is_finite() {
-        return Err(OccupancyError::InvalidBlockingRadius {
-            radius_meters: radius,
-        });
-    }
-    Err(OccupancyError::MissingDoodadDefinition {
-        definition_id: record.definition_id.clone(),
-    })
 }
 
 fn plan_register_shape(

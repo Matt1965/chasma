@@ -54,7 +54,6 @@ pub struct DefinitionAnimationGraph {
 #[derive(Resource, Debug)]
 pub struct UnitAnimationAssets {
     gltfs: HashMap<UnitDefinitionId, Handle<Gltf>>,
-    gltf_by_path: HashMap<String, Handle<Gltf>>,
     graphs: HashMap<UnitDefinitionId, DefinitionAnimationGraph>,
     shared_graphs: HashMap<AnimationGraphShareKey, DefinitionAnimationGraph>,
     share_keys: HashMap<UnitDefinitionId, AnimationGraphShareKey>,
@@ -66,7 +65,6 @@ impl Default for UnitAnimationAssets {
     fn default() -> Self {
         Self {
             gltfs: HashMap::new(),
-            gltf_by_path: HashMap::new(),
             graphs: HashMap::new(),
             shared_graphs: HashMap::new(),
             share_keys: HashMap::new(),
@@ -218,7 +216,6 @@ pub fn preload_unit_animation_gltfs(
     }
     UnitAnimationAssets {
         gltfs,
-        gltf_by_path,
         ..Default::default()
     }
 }
@@ -668,20 +665,6 @@ mod tests {
         let key_a = share_key("humanoid", "units/wolf.glb");
         let key_b = share_key("quadruped", "units/wolf.glb");
         assert_ne!(key_a, key_b);
-    }
-
-    #[test]
-    fn gltf_path_dedupes_handles() {
-        let mut assets = UnitAnimationAssets::default();
-        let handle: Handle<Gltf> = Handle::default();
-        assets
-            .gltf_by_path
-            .insert("units/wolf.glb".to_string(), handle.clone());
-        assets
-            .gltfs
-            .insert(UnitDefinitionId::new("wolf_a"), handle.clone());
-        assets.gltfs.insert(UnitDefinitionId::new("wolf_b"), handle);
-        assert_eq!(assets.gltf_by_path.len(), 1);
     }
 
     fn clip_handle() -> Handle<AnimationClip> {

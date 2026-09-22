@@ -2,14 +2,12 @@
 
 use crate::dev::dev_mode::DevInventoryEndpoint;
 use crate::world::{
-    Affiliation, ChunkId, EntryIndex, InventoryCatalogCtx, InventoryEntryContents, InventoryError,
+    Affiliation, ChunkId, EntryIndex, InventoryCatalogCtx, InventoryError,
     InventoryId, InventoryProfileId, ItemDefinition, ItemDefinitionId,
-    ItemInstanceMetadata, ItemPileId, ItemPileSettings, ItemPileSource,
-    PileOwnership, SpaceId, TransferPlacementPolicy, UnitCatalog, UnitId,
+    ItemInstanceMetadata, ItemPileId, ItemPileSettings, ItemPileSource, SpaceId, UnitCatalog, UnitId,
     WorldData, WorldPileContents, WorldPosition, create_item_instance,
-    create_unit_inventory, drop_stack_from_inventory, pickup_pile_into_inventory, place_stack,
-    place_stack_first_fit, place_unique, place_unique_first_fit, remove_entry, transfer_entry_full,
-    transfer_stack_quantity,
+    create_unit_inventory, place_stack,
+    place_stack_first_fit, place_unique, place_unique_first_fit, remove_entry,
 };
 
 /// Non-stackable items and `unique_instance_required` items occupy inventory as unique entries.
@@ -31,7 +29,6 @@ pub enum DevInventoryOpError {
     NoEndpoint,
     NoItemSelected,
     NoEntrySelected,
-    NoTransferEndpoints,
     NoUnitSelected,
     NoContainerSelected,
     ContainerHasNoInventory,
@@ -46,9 +43,6 @@ impl std::fmt::Display for DevInventoryOpError {
             }
             Self::NoItemSelected => write!(f, "select an item in the catalog list first"),
             Self::NoEntrySelected => write!(f, "select an inventory entry first"),
-            Self::NoTransferEndpoints => {
-                write!(f, "set both transfer source and destination endpoints")
-            }
             Self::NoUnitSelected => write!(f, "no unit selected — select a unit first"),
             Self::NoContainerSelected => {
                 write!(f, "no container selected — select a building with storage")
@@ -310,93 +304,7 @@ pub fn dev_remove_entry(
     }
 }
 
-pub fn dev_set_stack_quantity(
-    world: &mut WorldData,
-    ctx: &InventoryCatalogCtx<'_>,
-    endpoint: DevInventoryEndpoint,
-    entry_index: EntryIndex,
-    new_quantity: u32,
-) -> Result<String, DevInventoryOpError> {
-    if new_quantity == 0 {
-        return dev_remove_entry(world, ctx, endpoint, entry_index);
-    }
-    match endpoint {
-        DevInventoryEndpoint::Grid(inventory_id) => {
-            let (item_definition_id, anchor_x, anchor_y) = {
-                let record = world
-                    .inventory_store()
-                    .get(inventory_id)
-                    .ok_or(InventoryError::InventoryNotFound(inventory_id))?;
-                let entry = record.placed_entries().get(entry_index).ok_or(
-                    InventoryError::EntryNotFound {
-                        inventory_id,
-                        entry_index,
-                    },
-                )?;
-                match &entry.contents {
-                    InventoryEntryContents::Stack {
-                        item_definition_id, ..
-                    } => (item_definition_id.clone(), entry.anchor_x, entry.anchor_y),
-                    _ => {
-                        return Err(DevInventoryOpError::Message(
-                            "cannot set quantity on unique entry".into(),
-                        ));
-                    }
-                }
-            };
-            let item = ctx.require_item(&item_definition_id)?;
-            let limit = {
-                let record = world
-                    .inventory_store()
-                    .get(inventory_id)
-                    .ok_or(InventoryError::InventoryNotFound(inventory_id))?;
-                ctx.stack_limit_for(item, record.profile_id())?
-            };
-            if new_quantity > limit {
-                return Err(DevInventoryOpError::Message(format!(
-                    "quantity {new_quantity} exceeds stack limit {limit}"
-                )));
-            }
-            let (inventory_store, instance_store) = world.inventory_runtime_mut();
-            remove_entry(
-                inventory_store,
-                instance_store,
-                ctx,
-                inventory_id,
-                entry_index,
-            )?;
-            place_stack(
-                inventory_store,
-                instance_store,
-                ctx,
-                inventory_id,
-                item_definition_id,
-                new_quantity,
-                anchor_x,
-                anchor_y,
-            )?;
-            Ok(format!(
-                "Set entry {entry_index} quantity to {new_quantity}"
-            ))
-        }
-        DevInventoryEndpoint::Pile(pile_id) => {
-            let pile = world
-                .item_pile_store_mut()
-                .get_mut(pile_id)
-                .ok_or_else(|| DevInventoryOpError::Message("pile not found".into()))?;
-            match &mut pile.contents {
-                WorldPileContents::Stack { quantity, .. } => {
-                    *quantity = new_quantity;
-                    Ok(format!("Set pile #{pile_id:?} quantity to {new_quantity}"))
-                }
-                WorldPileContents::Unique { .. } => Err(DevInventoryOpError::Message(
-                    "cannot set quantity on unique pile".into(),
-                )),
-            }
-        }
-    }
-}
-
+#[cfg(test)]
 pub fn dev_clear_inventory(
     world: &mut WorldData,
     ctx: &InventoryCatalogCtx<'_>,
@@ -418,156 +326,6 @@ pub fn dev_clear_inventory(
             ))
         }
         DevInventoryEndpoint::Pile(_pile_id) => dev_remove_entry(world, ctx, endpoint, 0),
-    }
-}
-
-pub fn dev_fill_inventory(
-    world: &mut WorldData,
-    ctx: &InventoryCatalogCtx<'_>,
-    endpoint: DevInventoryEndpoint,
-    item_id: ItemDefinitionId,
-    quantity_per_stack: u32,
-) -> Result<String, DevInventoryOpError> {
-    let item = ctx.require_item(&item_id)?;
-    if item_uses_unique_inventory_entry(item) {
-        return Err(DevInventoryOpError::Message(
-            "fill is for stackable items only".into(),
-        ));
-    }
-    let DevInventoryEndpoint::Grid(inventory_id) = endpoint else {
-        return Err(DevInventoryOpError::Message(
-            "fill only applies to grid inventories".into(),
-        ));
-    };
-    let mut placed = 0u32;
-    loop {
-        let (inventory_store, instance_store) = world.inventory_runtime_mut();
-        match place_stack_first_fit(
-            inventory_store,
-            instance_store,
-            ctx,
-            inventory_id,
-            item_id.clone(),
-            quantity_per_stack,
-        ) {
-            Ok(_) => placed += 1,
-            Err(_) => break,
-        }
-    }
-    if placed == 0 {
-        return Err(DevInventoryOpError::Message(
-            "inventory full or item invalid".into(),
-        ));
-    }
-    Ok(format!(
-        "Filled {placed} stacks of `{}` x{quantity_per_stack}",
-        item_id.as_str()
-    ))
-}
-
-pub fn dev_transfer(
-    world: &mut WorldData,
-    ctx: &InventoryCatalogCtx<'_>,
-    pile_settings: &ItemPileSettings,
-    source: DevInventoryEndpoint,
-    destination: DevInventoryEndpoint,
-    entry_index: EntryIndex,
-    quantity: Option<u32>,
-    tick: u64,
-) -> Result<String, DevInventoryOpError> {
-    match (source, destination) {
-        (DevInventoryEndpoint::Grid(src), DevInventoryEndpoint::Grid(dst)) => {
-            let (inventory_store, instance_store) = world.inventory_runtime_mut();
-            let report = if let Some(qty) = quantity {
-                transfer_stack_quantity(
-                    inventory_store,
-                    instance_store,
-                    ctx,
-                    src,
-                    entry_index,
-                    dst,
-                    qty,
-                    TransferPlacementPolicy::MergeThenFirstFit,
-                    false,
-                )
-                .map_err(|err| DevInventoryOpError::Message(err.to_string()))?
-            } else {
-                transfer_entry_full(
-                    inventory_store,
-                    instance_store,
-                    ctx,
-                    src,
-                    entry_index,
-                    dst,
-                    TransferPlacementPolicy::MergeThenFirstFit,
-                )
-                .map_err(|err| DevInventoryOpError::Message(err.to_string()))?
-            };
-            Ok(format!(
-                "Transferred {} (status {:?})",
-                report.moved, report.status
-            ))
-        }
-        (DevInventoryEndpoint::Grid(src), DevInventoryEndpoint::Pile(dst)) => {
-            let drop_qty = quantity.unwrap_or_else(|| {
-                world
-                    .inventory_store()
-                    .get(src)
-                    .and_then(|record| record.placed_entries().get(entry_index))
-                    .and_then(|entry| match &entry.contents {
-                        InventoryEntryContents::Stack { quantity, .. } => Some(*quantity),
-                        _ => None,
-                    })
-                    .unwrap_or(1)
-            });
-            let pile =
-                world.item_pile_store().get(dst).cloned().ok_or_else(|| {
-                    DevInventoryOpError::Message("destination pile missing".into())
-                })?;
-            let report = drop_stack_from_inventory(
-                world,
-                ctx,
-                pile_settings,
-                src,
-                entry_index,
-                drop_qty,
-                pile.placement,
-                pile.current_space_id,
-                PileOwnership {
-                    owner_id: pile.owner_id,
-                    team_id: pile.team_id,
-                    affiliation: pile.affiliation,
-                },
-                tick,
-            )
-            .map_err(|err| DevInventoryOpError::Message(err.to_string()))?;
-            Ok(format!(
-                "Dropped {} to ground (merged {}, new piles {:?})",
-                report.removed_from_inventory,
-                report.merged_into_existing_piles,
-                report.created_pile_ids
-            ))
-        }
-        (DevInventoryEndpoint::Pile(src), DevInventoryEndpoint::Grid(dst)) => {
-            let report = pickup_pile_into_inventory(
-                world,
-                ctx,
-                src,
-                dst,
-                quantity,
-                None,
-                None,
-                Affiliation::Player,
-            )
-            .map_err(|err| DevInventoryOpError::Message(err.to_string()))?;
-            Ok(format!(
-                "Picked up {} (pile removed={})",
-                report.transfer.moved, report.pile_removed
-            ))
-        }
-        (DevInventoryEndpoint::Pile(_), DevInventoryEndpoint::Pile(_)) => Err(
-            DevInventoryOpError::Message("pile-to-pile transfer: pick up then drop".into()),
-        ),
     }
 }
 

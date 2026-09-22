@@ -6,7 +6,6 @@ use super::id::{InventoryId, ItemInstanceId};
 use super::owner::InventoryOwnerRef;
 use super::record::InventoryRecord;
 use super::store::{InventoryStore, ItemInstanceStore};
-use crate::world::unit::UnitDefinition;
 use crate::world::{InventoryProfileId, UnitId};
 
 /// Removed inventory contents summary for explicit deletion policies.
@@ -104,6 +103,3 @@ pub fn remove_owned_inventory(
     })
 }
 
-pub fn profile_for_unit_definition(definition: &UnitDefinition) -> Option<InventoryProfileId> {
-    definition.inventory_profile_id.clone()
-}

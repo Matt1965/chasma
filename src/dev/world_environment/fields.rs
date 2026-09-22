@@ -25,7 +25,6 @@ pub enum EnvFieldId {
 
 #[derive(Debug, Clone, Copy)]
 pub struct EnvFieldSpec {
-    pub id: EnvFieldId,
     pub label: &'static str,
     pub min: f32,
     pub max: f32,
@@ -54,7 +53,6 @@ impl EnvFieldId {
     pub fn spec(self) -> EnvFieldSpec {
         match self {
             Self::TimeHours => EnvFieldSpec {
-                id: self,
                 label: "Current time",
                 min: 0.0,
                 max: 24.0,
@@ -64,7 +62,6 @@ impl EnvFieldId {
                           Changes apply immediately; does not pause the cycle.",
             },
             Self::DayLengthSeconds => EnvFieldSpec {
-                id: self,
                 label: "Day length",
                 min: 30.0,
                 max: 3600.0,
@@ -74,7 +71,6 @@ impl EnvFieldId {
                           Defaults. Lower values speed up dawn/dusk transitions.",
             },
             Self::NoonDirectional => EnvFieldSpec {
-                id: self,
                 label: "Noon directional",
                 min: 0.0,
                 max: 50_000.0,
@@ -84,7 +80,6 @@ impl EnvFieldId {
                           through twilight. Saved in Project Defaults.",
             },
             Self::NightDirectional => EnvFieldSpec {
-                id: self,
                 label: "Night directional",
                 min: 0.0,
                 max: 5_000.0,
@@ -93,7 +88,6 @@ impl EnvFieldId {
                 tooltip: "Directional illuminance at deep night (lux). Saved in Project Defaults.",
             },
             Self::NoonAmbient => EnvFieldSpec {
-                id: self,
                 label: "Noon ambient",
                 min: 0.0,
                 max: 2_000.0,
@@ -103,7 +97,6 @@ impl EnvFieldId {
                           multiplied by Night ambient ×. Saved in Project Defaults.",
             },
             Self::NightAmbientMult => EnvFieldSpec {
-                id: self,
                 label: "Night ambient ×",
                 min: 0.0,
                 max: 2.0,
@@ -113,7 +106,6 @@ impl EnvFieldId {
                           ambient; values above 1 brighten night fill. Saved in Project Defaults.",
             },
             Self::TwilightBlend => EnvFieldSpec {
-                id: self,
                 label: "Twilight blend",
                 min: 0.0,
                 max: 1.0,
@@ -124,7 +116,6 @@ impl EnvFieldId {
                           Project Defaults.",
             },
             Self::SunPitchMin => EnvFieldSpec {
-                id: self,
                 label: "Sun pitch min",
                 min: -90.0,
                 max: 90.0,
@@ -134,7 +125,6 @@ impl EnvFieldId {
                           Defaults.",
             },
             Self::SunPitchMax => EnvFieldSpec {
-                id: self,
                 label: "Sun pitch max",
                 min: -90.0,
                 max: 90.0,
@@ -144,7 +134,6 @@ impl EnvFieldId {
                           Defaults.",
             },
             Self::SunriseHour => EnvFieldSpec {
-                id: self,
                 label: "Sunrise hour",
                 min: 0.0,
                 max: 23.0,
@@ -154,7 +143,6 @@ impl EnvFieldId {
                           Saved in Project Defaults.",
             },
             Self::SunsetHour => EnvFieldSpec {
-                id: self,
                 label: "Sunset hour",
                 min: 0.0,
                 max: 24.0,
@@ -164,7 +152,6 @@ impl EnvFieldId {
                           Saved in Project Defaults.",
             },
             Self::ManualDirectional => EnvFieldSpec {
-                id: self,
                 label: "Manual directional",
                 min: 0.0,
                 max: 50_000.0,
@@ -174,7 +161,6 @@ impl EnvFieldId {
                           Project Defaults. Ignored while cycle is enabled.",
             },
             Self::ManualAmbient => EnvFieldSpec {
-                id: self,
                 label: "Manual ambient",
                 min: 0.0,
                 max: 2_000.0,
@@ -259,13 +245,6 @@ impl EnvFieldId {
         }
     }
 
-    pub fn is_manual_only(self) -> bool {
-        matches!(self, Self::ManualDirectional | Self::ManualAmbient)
-    }
-
-    pub fn is_runtime_only(self) -> bool {
-        matches!(self, Self::TimeHours)
-    }
 }
 
 pub fn fields_for_section(section: EnvSection) -> &'static [EnvFieldId] {

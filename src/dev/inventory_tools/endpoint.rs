@@ -134,10 +134,6 @@ pub fn unit_inventory_endpoint(world: &WorldData, unit_id: UnitId) -> Option<Dev
         .map(DevInventoryEndpoint::Grid)
 }
 
-pub fn pile_endpoint(_world: &WorldData, pile_id: ItemPileId) -> DevInventoryEndpoint {
-    DevInventoryEndpoint::Pile(pile_id)
-}
-
 /// Nearest pile at a world position (dev inspector pick).
 pub fn nearest_pile_at_position(
     world: &WorldData,

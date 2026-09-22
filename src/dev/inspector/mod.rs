@@ -6,7 +6,6 @@ mod building_actions;
 mod building_capabilities;
 mod building_dev_action;
 mod capture;
-mod doodad_actions;
 mod doodad_snapshot;
 mod input;
 mod panel;

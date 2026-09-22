@@ -301,6 +301,7 @@ fn spawn_confirm(
 }
 
 /// Absolute font sizes used by Pause Menu text (for regression tests).
+#[cfg(test)]
 pub fn pause_menu_font_sizes() -> [f32; 4] {
     [
         MENU_BANNER_FONT_SIZE,

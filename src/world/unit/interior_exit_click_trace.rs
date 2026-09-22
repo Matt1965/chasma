@@ -206,20 +206,6 @@ pub fn record_terrain_pick_success(
 }
 
 #[cfg(feature = "dev")]
-pub fn record_intent_blocked(world: &mut WorldData, unit_id: UnitId, reason: &str) {
-    let session = active_session_mut(world, unit_id);
-    if session.is_none() {
-        return;
-    }
-    let session = session.unwrap();
-    session.intent_queue_blocked_reason = Some(reason.to_string());
-    if session.first_failure.is_none() {
-        session.first_failure = Some(format!("INTENT_BLOCKED:{reason}"));
-    }
-    emit_session(world, unit_id);
-}
-
-#[cfg(feature = "dev")]
 pub fn record_unit_target_click(world: &mut WorldData, unit_id: UnitId) {
     let session = active_session_mut(world, unit_id);
     if session.is_none() {
@@ -810,9 +796,6 @@ pub fn record_terrain_pick_failure(_: &mut WorldData, _: UnitId) {}
 
 #[cfg(not(feature = "dev"))]
 pub fn record_terrain_pick_success(_: &mut WorldData, _: UnitId, _: WorldPosition, _: bool) {}
-
-#[cfg(not(feature = "dev"))]
-pub fn record_intent_blocked(_: &mut WorldData, _: UnitId, _: &str) {}
 
 #[cfg(not(feature = "dev"))]
 pub fn record_unit_target_click(_: &mut WorldData, _: UnitId) {}

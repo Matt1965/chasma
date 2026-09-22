@@ -35,9 +35,6 @@ pub const EQUIPMENT_LAYOUT: [(EquipmentSlot, u8, u8); 8] = [
     (EquipmentSlot::Feet, 1, 3),
 ];
 
-pub const EQUIPMENT_GRID_COLUMNS: u8 = 3;
-pub const EQUIPMENT_GRID_ROWS: u8 = 4;
-
 #[derive(Component, Debug)]
 pub struct InventoryEquipmentSection;
 
@@ -365,13 +362,13 @@ mod tests {
     #[test]
     fn equipment_layout_places_all_slots_in_compact_grid() {
         assert_eq!(EQUIPMENT_LAYOUT.len(), 8);
-        assert_eq!(EQUIPMENT_GRID_COLUMNS, 3);
-        assert_eq!(EQUIPMENT_GRID_ROWS, 4);
+        const GRID_COLUMNS: u8 = 3;
+        const GRID_ROWS: u8 = 4;
         let positions = EQUIPMENT_LAYOUT
             .iter()
             .map(|(slot, col, row)| {
-                assert!(*col < EQUIPMENT_GRID_COLUMNS);
-                assert!(*row < EQUIPMENT_GRID_ROWS);
+                assert!(*col < GRID_COLUMNS);
+                assert!(*row < GRID_ROWS);
                 (col, row, slot)
             })
             .collect::<Vec<_>>();

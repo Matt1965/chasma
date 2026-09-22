@@ -10,7 +10,7 @@ use crate::world::{
     AssessmentRebuildOutcome, BuildingInventoryContext, BuildingLifecycleState, ItemDefinitionId,
     LogisticsRouteTrigger, OccupancyCatalogs, PRODUCTION_PROGRESS_ONE_UNIT, ProductionProgress,
     TerrainAssessmentCatalogs, TransferPlacementPolicy, add_building_construction_progress,
-    cycle_production_selected_operation, damage_building, destroy_building,
+    cycle_production_selected_operation, damage_building,
     execute_production_cycle, heal_building, place_stack_first_fit,
     rebuild_building_terrain_assessment, remove_entry, reset_production_progress,
     set_building_container_locked, set_building_lifecycle_stage, set_production_enabled,
@@ -27,7 +27,6 @@ use super::state::WorldInspectorState;
 pub enum BuildingDevAction {
     Damage50,
     Heal50,
-    Destroy,
     SetRuins,
     Complete,
     AddConstructionProgress,
@@ -73,7 +72,6 @@ impl BuildingDevAction {
         match self {
             Self::Damage50 => "Damage +50",
             Self::Heal50 => "Heal +50",
-            Self::Destroy => "Destroy (dev)",
             Self::SetRuins => "Set ruins",
             Self::Complete => "Complete",
             Self::AddConstructionProgress => "+10% progress",
@@ -107,10 +105,6 @@ impl BuildingDevAction {
                 "Apply 50 damage through the building damage API. Dev-only; affects runtime HP."
             }
             Self::Heal50 => "Heal 50 HP through the building heal API. Dev-only.",
-            Self::Destroy => {
-                "Destroy the building through the authoritative destroy path (inventory cleanup). \
-                 Dev-only — not the same as gameplay demolition."
-            }
             Self::SetRuins => "Set lifecycle to Ruins via domain API.",
             Self::Complete => "Set lifecycle to Complete (skip remaining construction).",
             Self::AddConstructionProgress => "Add 10% construction progress.",
@@ -206,19 +200,6 @@ pub fn apply_building_dev_action(
             } else {
                 false
             }
-        }
-        BuildingDevAction::Destroy => {
-            let _ = destroy_building(
-                world,
-                &params.building_catalog,
-                &params.doodad_catalog,
-                occ,
-                building_id,
-                "dev_destroy",
-                Some(&inventory_cleanup),
-            );
-            inspector.last_message = format!("Destroyed building #{}", building_id.raw());
-            true
         }
         BuildingDevAction::SetRuins => {
             let _ = set_building_lifecycle_stage(
@@ -1006,7 +987,6 @@ mod tests {
     fn removed_controls_are_not_exposed_in_primary_sections() {
         let exposed = exposed_action_sections();
         let removed = [
-            BuildingDevAction::Destroy,
             BuildingDevAction::ToggleProductionPaused,
             BuildingDevAction::ToggleProductionAdvanced,
             BuildingDevAction::ValidateProduction,
@@ -1043,8 +1023,4 @@ mod tests {
         );
     }
 
-    #[test]
-    fn lifecycle_section_excludes_destroy_dev_action() {
-        assert!(!BuildingDevAction::LIFECYCLE.contains(&BuildingDevAction::Destroy));
-    }
 }

@@ -269,18 +269,6 @@ pub fn resolve_path_endpoint_cell(
     Some(preferred)
 }
 
-/// Whether terrain heightfield is resident for this cell.
-pub fn cell_terrain_available(
-    world: &WorldData,
-    coord: GridCoord,
-    config: NavigationConfig,
-) -> bool {
-    let layout = world.layout();
-    let global = grid_cell_center_global(coord, config);
-    let position = WorldPosition::from_global(global, layout);
-    ground_world_position(world, position).is_some()
-}
-
 /// Deterministic 8-neighbor offsets: N, NE, E, SE, S, SW, W, NW.
 pub const NEIGHBOR_OFFSETS: [(i32, i32); 8] = [
     (0, 1),
@@ -300,25 +288,6 @@ pub fn neighbor_step_cost(dx: i32, dz: i32, cell_spacing_meters: f32) -> f32 {
         std::f32::consts::SQRT_2
     };
     unit * cell_spacing_meters
-}
-
-/// Grid-search diagonal corner clearance: both cardinal neighbor cells must be usable.
-pub fn diagonal_corner_clear(
-    world: &WorldData,
-    catalogs: PassabilityCatalogs<'_>,
-    config: NavigationConfig,
-    agent: NavigationAgent,
-    from: GridCoord,
-    dx: i32,
-    dz: i32,
-) -> bool {
-    if dx == 0 || dz == 0 {
-        return true;
-    }
-    let cardinal_a = GridCoord::new(from.x + dx, from.z);
-    let cardinal_b = GridCoord::new(from.x, from.z + dz);
-    is_cell_walkable(world, catalogs, config, agent, cardinal_a)
-        && is_cell_walkable(world, catalogs, config, agent, cardinal_b)
 }
 
 /// Diagonal corner clearance within a navigation space (IN-11gG).
