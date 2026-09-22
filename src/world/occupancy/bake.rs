@@ -13,6 +13,8 @@ use crate::world::{
 /// Stable collision node name for occupancy rasterization.
 pub const OCCUPANCY_COLLISION_NODE: &str = "occupancy_collision";
 
+// Offline rasterization pipeline below is exercised by bake unit tests and import tooling.
+#[cfg_attr(not(test), allow(dead_code))]
 /// Bake configuration recorded in exported footprint data.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BakeConfig {

@@ -15,7 +15,7 @@ pub struct UnitSelectionIndicatorState {
 }
 
 #[derive(Component, Debug)]
-pub(crate) struct TerrainSelectionRing {
+pub struct TerrainSelectionRing {
     unit_id: UnitId,
 }
 
@@ -129,7 +129,7 @@ pub fn sync_unit_selection_indicators(
 }
 
 #[derive(Component, Debug)]
-pub(crate) struct SelectionRingFade {
+pub struct SelectionRingFade {
     elapsed_secs: f32,
 }
 

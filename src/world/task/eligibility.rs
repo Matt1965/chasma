@@ -76,7 +76,7 @@ pub fn unit_may_autonomously_work_building(
     unit_is_settlement_member(world, unit_id, settlement_id)
 }
 
-pub fn unit_may_work_on_building(building: &BuildingRecord, unit_ownership: UnitOwnership) -> bool {
+pub fn unit_may_work_on_building(_building: &BuildingRecord, unit_ownership: UnitOwnership) -> bool {
     let building_ownership = BuildingOwnership::from_unit_ownership(unit_ownership);
     match (building_ownership.affiliation, unit_ownership.affiliation) {
         (crate::world::Affiliation::Hostile, _) | (_, crate::world::Affiliation::Hostile) => false,

@@ -8,9 +8,7 @@
 use bevy::prelude::*;
 use bevy::ui::FocusPolicy;
 
-use super::super::styles::{
-    HUD_DIVIDER_COLOR, HUD_PLATE_BG, HUD_PLATE_TRIM, HUD_UTILITY_GROUP_DIVIDER_PX,
-};
+use super::super::styles::{HUD_DIVIDER_COLOR, HUD_UTILITY_GROUP_DIVIDER_PX};
 
 /// Node for a fixed-width HUD section, stretched to the content row's height.
 pub fn hud_section_node(width: f32) -> Node {
@@ -72,13 +70,3 @@ pub fn spawn_hud_utility_group_divider(parent: &mut ChildSpawnerCommands<'_>) {
     ));
 }
 
-/// Fill and trim for the dark inner plates behind portraits, cards, and buttons.
-///
-/// Corner rounding lives on `Node::border_radius` in Bevy 0.18, so callers set
-/// it alongside their own sizing rather than receiving it here.
-pub fn hud_plate_colors() -> (BackgroundColor, BorderColor) {
-    (
-        BackgroundColor(HUD_PLATE_BG),
-        BorderColor::all(HUD_PLATE_TRIM),
-    )
-}

@@ -26,7 +26,7 @@ const LABEL_SCREEN_OFFSET: Vec2 = Vec2::new(16.0, 8.0);
 pub struct RelationshipLinkLabelsRoot;
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct RelationshipLinkLabelKey {
+pub struct RelationshipLinkLabelKey {
     unit_a: crate::world::UnitId,
     unit_b: crate::world::UnitId,
     /// `false` = A→B label on the A-side half; `true` = B→A label on the B-side half.
@@ -196,7 +196,7 @@ pub fn project_relationship_link_label_positions(
     }
 }
 
-pub(crate) fn relationship_link_label_world_anchor(
+pub fn relationship_link_label_world_anchor(
     pos_a: Vec3,
     pos_b: Vec3,
     b_side: bool,
@@ -206,7 +206,7 @@ pub(crate) fn relationship_link_label_world_anchor(
     xz_to_render_y(pos_a.lerp(pos_b, t), y_offset)
 }
 
-pub(crate) fn sync_label_screen_node(
+pub fn sync_label_screen_node(
     projection: Option<Vec2>,
     offset: Vec2,
     node: &mut Node,

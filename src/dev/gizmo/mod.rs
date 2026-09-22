@@ -13,6 +13,7 @@ mod state;
 mod tool;
 
 #[cfg(all(test, feature = "dev"))]
+#[cfg(test)]
 mod tests;
 
 pub use input::{

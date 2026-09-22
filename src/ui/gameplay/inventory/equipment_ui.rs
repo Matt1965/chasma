@@ -118,7 +118,7 @@ pub fn slot_label(slot: EquipmentSlot) -> &'static str {
 pub fn spawn_equipment_section(
     parent: &mut ChildSpawnerCommands<'_>,
     world: &WorldData,
-    ctx: &InventoryCatalogCtx<'_>,
+    _ctx: &InventoryCatalogCtx<'_>,
     items: &ItemCatalog,
     instance_store: &ItemInstanceStore,
     snapshot: &UnitEquipmentUiSnapshot,

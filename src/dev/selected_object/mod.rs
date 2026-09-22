@@ -5,6 +5,7 @@ mod edit_unit;
 mod building_actions_sync;
 mod building_actions_ui;
 mod building_diagnostics;
+#[cfg(test)]
 mod building_ui_tests;
 mod format;
 mod panel;

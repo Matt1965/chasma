@@ -600,7 +600,7 @@ fn inventory_revision(world: &WorldData, inventory_id: InventoryId) -> u64 {
         .unwrap_or(0)
 }
 
-fn count_gold(record: &crate::world::InventoryRecord, items: &ItemCatalog) -> u32 {
+fn count_gold(record: &crate::world::InventoryRecord, _items: &ItemCatalog) -> u32 {
     let gold_id = ItemDefinitionId::new("gold");
     record
         .placed_entries()

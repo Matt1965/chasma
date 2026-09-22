@@ -317,7 +317,7 @@ pub fn validate_inventory_caches(
 }
 
 pub fn validate_stack_quantity(
-    item: &crate::world::ItemDefinition,
+    _item: &crate::world::ItemDefinition,
     quantity: u32,
     limit: u32,
 ) -> Result<(), InventoryError> {

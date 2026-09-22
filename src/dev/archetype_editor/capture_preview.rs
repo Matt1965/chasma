@@ -120,7 +120,7 @@ pub fn sync_building_archetype_capture_preview(
 pub fn draw_building_archetype_capture_preview(
     editor: Res<DevArchetypeEditorState>,
     scratch: Res<DevArchetypeEditorScratch>,
-    world: Res<WorldData>,
+    _world: Res<WorldData>,
     config: Res<WorldConfig>,
     render_assets: Option<Res<TerrainRenderAssets>>,
     mut gizmos: Gizmos,

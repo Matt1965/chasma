@@ -12,13 +12,13 @@ use super::actions::OriginEditorButton;
 use super::state::DevOriginEditorState;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevOriginEditorWindowUi;
+pub struct DevOriginEditorWindowUi;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevOriginEditorSummaryText;
+pub struct DevOriginEditorSummaryText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevOriginEditorStatusText;
+pub struct DevOriginEditorStatusText;
 
 pub fn sync_dev_origin_editor_panel_visibility(
     dev_state: Res<DevModeState>,

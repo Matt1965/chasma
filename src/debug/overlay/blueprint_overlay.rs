@@ -680,8 +680,8 @@ fn draw_entrance(
 fn entrance_glyph_axes(
     blueprint: &BuildingNavigationBlueprint,
     entrance: &NavigationEntranceDefinition,
-    elevation: f32,
-    transform: &Transform,
+    _elevation: f32,
+    _transform: &Transform,
     threshold: Vec2,
 ) -> (Vec2, Vec2, Vec2, Vec2) {
     let floor = blueprint.floor_by_key(&entrance.floor_key);

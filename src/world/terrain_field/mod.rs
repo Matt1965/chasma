@@ -18,10 +18,12 @@ mod import;
 mod interpolate;
 mod layer;
 mod load;
+#[cfg(test)]
 mod load_tests;
 mod mapping;
 mod modifier;
 mod overlay;
+#[cfg(test)]
 mod package_incremental_tests;
 mod query;
 mod region;
@@ -35,6 +37,7 @@ mod stress_tests;
 #[cfg(test)]
 mod tf2_tests;
 mod tile;
+#[cfg(test)]
 mod water_distribution_tests;
 
 pub use asset::{

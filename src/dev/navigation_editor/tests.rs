@@ -9,7 +9,7 @@ use super::state::{
 };
 use crate::dev::gizmo::{DevTool, TransformEditState};
 use crate::dev::inspector::BlueprintInspectionState;
-use crate::dev::widgets::contains_forbidden_dev_ui_glyph;
+use crate::dev::widgets::glyph_safety::contains_forbidden_dev_ui_glyph;
 use crate::dev::window::{DevWindowId, DevWindowRegistry};
 
 #[test]

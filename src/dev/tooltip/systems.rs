@@ -17,10 +17,10 @@ const TOOLTIP_OFFSET: Vec2 = Vec2::new(12.0, 16.0);
 const TOOLTIP_MARGIN_PX: f32 = 8.0;
 
 #[derive(Component)]
-pub(crate) struct DevTooltipPopup;
+pub struct DevTooltipPopup;
 
 #[derive(Component)]
-pub(crate) struct DevTooltipPopupText;
+pub struct DevTooltipPopupText;
 
 /// Spawn the floating tooltip root once at startup.
 pub fn setup_dev_tooltip(mut commands: Commands) {

@@ -325,7 +325,7 @@ fn footprint_corners(shape: &FootprintShape, anchor: Vec2, yaw: f32) -> Vec<Vec2
 
 fn footprint_aabb(shape: &FootprintShape, anchor: Vec2, yaw: f32) -> (Vec2, Vec2) {
     let corners = match shape {
-        FootprintShape::Rectangle { width_meters, depth_meters } => {
+        FootprintShape::Rectangle { .. } => {
             footprint_corners(shape, anchor, yaw)
         }
         FootprintShape::Circle { radius_meters } => circle_perimeter(anchor, *radius_meters, 16),

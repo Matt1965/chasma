@@ -43,6 +43,7 @@ mod query_safety_tests;
 
 #[cfg(test)]
 mod archetype_ui_tests;
+#[cfg(test)]
 mod polish_tests;
 
 #[cfg(test)]

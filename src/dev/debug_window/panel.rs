@@ -19,13 +19,13 @@ use crate::dev::tooltip::DevTooltipContent;
 pub(crate) struct DevDebugWindowUi;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevDebugSummaryText;
+pub struct DevDebugSummaryText;
 
 #[derive(Component, Debug)]
 pub struct DevAnimationText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevDebugToggleButton {
+pub struct DevDebugToggleButton {
     pub flag: DevDebugToggleFlag,
 }
 
@@ -396,7 +396,7 @@ fn toggle_debug_flag(
     }
 }
 
-pub(crate) fn format_debug_summary(
+pub fn format_debug_summary(
     flags: &DevDebugFlags,
     mask_stats: crate::debug::NavigationMaskDrawStats,
 ) -> String {

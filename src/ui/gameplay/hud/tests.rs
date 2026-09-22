@@ -27,7 +27,7 @@ use crate::ui::gameplay::squad_panel::{
     SquadPanelRoot, SquadRosterViewport, owned_roster_unit_ids,
 };
 use crate::ui::gameplay::styles::{
-    BOTTOM_BAR_HEIGHT_PX, HUD_COMMAND_BUTTON_HEIGHT_PERCENT, HUD_CONTENT_HEIGHT_PX,
+    HUD_COMMAND_BUTTON_HEIGHT_PERCENT, HUD_CONTENT_HEIGHT_PX,
     HUD_ENDCAP_SEAT_PX, HUD_FRAME_BOTTOM_PX, HUD_FRAME_TOP_PX, HUD_HEIGHT_PX, HUD_PLATE_CHAMFER_PX,
     HUD_PLATE_JOIN_CHAMFER_PX, HUD_PLATE_JOIN_OVERLAP_PX, HUD_SECTION_GAP_PX,
     HUD_SOURCE_BAND_HEIGHT_PX, HUD_UTILITY_BUTTON_HEIGHT_PX, HUD_UTILITY_GROUP_DIVIDER_PX,
@@ -173,7 +173,6 @@ fn bottom_hud_is_anchored_to_viewport_bottom() {
         viewport,
         geom.hud_height,
     ));
-    assert_eq!(BOTTOM_BAR_HEIGHT_PX, HUD_HEIGHT_PX);
 }
 
 /// B. The band grew to the intended target rather than staying at 112px.
@@ -767,7 +766,6 @@ fn permanent_hud_exposes_one_fields_button_and_popup_options() {
 #[test]
 fn hud_height_baseline_unchanged_after_polish_pass() {
     assert_eq!(HUD_HEIGHT_PX, 196.0);
-    assert_eq!(BOTTOM_BAR_HEIGHT_PX, HUD_HEIGHT_PX);
     let geom = compute_hud_viewport_geometry(REFERENCE_VIEWPORT);
     use crate::ui::gameplay::hud::geometry::{HUD_HEIGHT_MAX_PX, HUD_HEIGHT_MIN_PX};
     assert!(geom.hud_height >= HUD_HEIGHT_MIN_PX);

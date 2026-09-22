@@ -61,7 +61,7 @@ pub fn draw_transform_gizmo(
     let Ok(window) = windows.single() else {
         return;
     };
-    let Ok((camera, camera_transform)) = camera.single() else {
+    let Ok((_camera, camera_transform)) = camera.single() else {
         return;
     };
     let fov = GIZMO_CAMERA_FOV_Y;

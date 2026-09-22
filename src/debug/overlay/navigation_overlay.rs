@@ -13,12 +13,12 @@ use crate::units::input::SelectedUnits;
 use crate::world::{
     BuildingCatalog, ChunkExtent, ChunkId, ChunkLayout, DoodadCatalog, FootprintCatalog, GridCoord,
     NavigationAgent, NavigationConfig, OccupancyState, PassabilityAgent, PassabilityBlockReason,
-    PassabilityCatalogs, PassabilityResult, PortalType, SpaceId, WorldConfig, WorldData,
+    PassabilityCatalogs, PassabilityResult, SpaceId, WorldConfig, WorldData,
     effective_building_footprint_for_placement, grid_cell_center_global, grid_coord_at_global_xz,
     is_cell_walkable, occupied_cells_for_footprint_yaw, query_passability_at,
 };
 
-use super::helpers::{closed_polygon_boundary_segments, render_position, xz_to_render_y};
+use super::helpers::{closed_polygon_boundary_segments, render_position};
 use super::nav_cells::draw_xz_quad;
 
 /// Specialized overlays (footprints / portals / occupancy) keep a local focus radius.
@@ -433,72 +433,6 @@ fn draw_building_footprints(
                 color,
             );
         }
-    }
-}
-
-fn draw_portal_markers(
-    gizmos: &mut Gizmos,
-    world: &WorldData,
-    layout: ChunkLayout,
-    vertical_scale: f32,
-    focus: Vec3,
-    selected_building: Option<crate::world::BuildingId>,
-) {
-    let radius_sq = SPECIALIZED_OVERLAY_RADIUS_METERS * SPECIALIZED_OVERLAY_RADIUS_METERS;
-    for (_id, portal) in world.space_registry().portals() {
-        if !portal.enabled {
-            continue;
-        }
-        let center_xz = portal.from_center_global_xz;
-        let dx = center_xz.x - focus.x;
-        let dz = center_xz.y - focus.z;
-        if dx * dx + dz * dz > radius_sq {
-            continue;
-        }
-        let highlight = selected_building.is_some_and(|id| portal.owning_building_id == Some(id));
-        let (ring_color, fill_color) = portal_colors(portal.portal_type, highlight);
-        let y = super::nav_cells::sample_terrain_y(world, center_xz, layout, vertical_scale) + 0.12;
-        let center = Vec3::new(center_xz.x, y, center_xz.y);
-        gizmos.circle(
-            Isometry3d::new(center, Quat::IDENTITY),
-            portal.from_radius_meters,
-            ring_color,
-        );
-        gizmos.sphere(center, portal.from_radius_meters * 0.15, fill_color);
-
-        let dest = render_position(portal.to_position, layout, vertical_scale);
-        gizmos.line(
-            xz_to_render_y(center, 0.1),
-            xz_to_render_y(dest, 0.15),
-            Color::srgba(0.4, 0.9, 1.0, 0.6),
-        );
-    }
-}
-
-fn portal_colors(portal_type: PortalType, highlight: bool) -> (Color, Color) {
-    if highlight {
-        return (
-            Color::srgba(0.2, 1.0, 1.0, 0.95),
-            Color::srgba(0.2, 1.0, 1.0, 0.5),
-        );
-    }
-    match portal_type {
-        PortalType::ExteriorEntrance => (
-            Color::srgba(0.2, 0.9, 0.95, 0.85),
-            Color::srgba(0.2, 0.9, 0.95, 0.4),
-        ),
-        PortalType::Doorway => (
-            Color::srgba(0.55, 0.75, 1.0, 0.8),
-            Color::srgba(0.55, 0.75, 1.0, 0.35),
-        ),
-        PortalType::Stair | PortalType::Ramp => (
-            Color::srgba(0.7, 0.55, 0.95, 0.8),
-            Color::srgba(0.7, 0.55, 0.95, 0.35),
-        ),
-        PortalType::CaveEntrance => (
-            Color::srgba(0.55, 0.4, 0.3, 0.8),
-            Color::srgba(0.55, 0.4, 0.3, 0.35),
-        ),
     }
 }
 

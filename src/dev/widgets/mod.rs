@@ -3,7 +3,6 @@
 mod badge;
 mod button;
 mod confirmation;
-mod enum_selector;
 mod glyph_safety;
 mod interaction;
 mod numeric;

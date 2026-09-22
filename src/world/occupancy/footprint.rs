@@ -232,7 +232,7 @@ pub fn resolve_building_footprint<'a>(
     }
 
     match &definition.footprint {
-        FootprintSpec::Circle { radius_meters } => {
+        FootprintSpec::Circle { .. } => {
             // Inline footprints are synthesized at query time via catalog helper.
             Err(OccupancyError::MissingFootprint(FootprintId::new(format!(
                 "inline:{}",

@@ -117,7 +117,7 @@ const ENDCAP_RIGHT_SOURCE_WIDTH: f32 =
     HUD_ENDCAP_RIGHT_WIDTH_PX / (HUD_HEIGHT_PX / HUD_SOURCE_BAND_HEIGHT_PX);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct SectionWidths {
+pub struct SectionWidths {
     selected: f32,
     roster: f32,
     command: f32,
@@ -475,13 +475,12 @@ mod tests {
             HUD_ROSTER_HEADER_HEIGHT_PX,
         };
         use super::super::super::styles::{
-            BOTTOM_BAR_HEIGHT_PX, HUD_COMMAND_BUTTON_HEIGHT_PERCENT, HUD_CONTENT_HEIGHT_PX,
+            HUD_COMMAND_BUTTON_HEIGHT_PERCENT, HUD_CONTENT_HEIGHT_PX,
             HUD_FRAME_BOTTOM_PX, HUD_FRAME_TOP_PX, HUD_HEIGHT_PX, HUD_UTILITY_BUTTON_HEIGHT_PX,
         };
         use super::super::section::{hud_flex_section_node, hud_section_node};
 
         assert_eq!(HUD_HEIGHT_PX, 196.0);
-        assert_eq!(BOTTOM_BAR_HEIGHT_PX, HUD_HEIGHT_PX);
         assert_eq!(
             HUD_CONTENT_HEIGHT_PX,
             HUD_HEIGHT_PX - HUD_FRAME_TOP_PX - HUD_FRAME_BOTTOM_PX

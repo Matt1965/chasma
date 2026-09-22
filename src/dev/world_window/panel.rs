@@ -10,7 +10,7 @@ use crate::dev::window::{DevWindowBody, DevWindowId, DevWindowRegistry, DevWindo
 use crate::dev::world_environment::DevWorldEnvironmentSection;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevWorldWindowUi;
+pub struct DevWorldWindowUi;
 
 #[derive(Component, Debug)]
 pub(crate) struct DevWorldHarnessText;

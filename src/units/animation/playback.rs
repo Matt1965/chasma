@@ -790,8 +790,8 @@ fn update_persisted_state(
     let Some(mut state) = persisted else {
         return;
     };
-    let previous_phase = state.last_attack_phase;
-    let previous_attack_key = state.attack_key.clone();
+    let _previous_phase = state.last_attack_phase;
+    let _previous_attack_key = state.attack_key.clone();
     state.last_attack_phase = match &intent.upper {
         super::layers::UpperBodyIntent::Attack { phase, .. } => Some(*phase),
         super::layers::UpperBodyIntent::None => state.last_attack_phase,

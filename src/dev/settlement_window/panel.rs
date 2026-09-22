@@ -20,22 +20,22 @@ use super::model::{
 };
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSettlementWindowUi;
+pub struct DevSettlementWindowUi;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSettlementFocusedText;
+pub struct DevSettlementFocusedText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSettlementUnitsText;
+pub struct DevSettlementUnitsText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSettlementBuildingsText;
+pub struct DevSettlementBuildingsText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSettlementAiText;
+pub struct DevSettlementAiText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSettlementStatusText;
+pub struct DevSettlementStatusText;
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct DevSettlementAddUnitsButton;

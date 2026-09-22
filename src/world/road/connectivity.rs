@@ -84,7 +84,7 @@ pub fn junction_id_for_endpoint(road: &Road, is_start: bool) -> Option<JunctionI
 pub fn find_snap_candidate(
     network: &RoadNetwork,
     active_road_id: &RoadId,
-    active_is_start: bool,
+    _active_is_start: bool,
     xz: Vec2,
 ) -> Option<SnapCandidate> {
     let mut endpoint_best: Option<SnapCandidate> = None;

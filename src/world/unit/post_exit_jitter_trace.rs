@@ -771,7 +771,7 @@ fn emit_session(world: &mut WorldData, unit_id: UnitId) {
 }
 
 #[cfg(feature = "dev")]
-fn emit_and_clear(world: &mut WorldData, unit_id: UnitId, body_lines: Vec<String>) {
+fn emit_and_clear(world: &mut WorldData, _unit_id: UnitId, body_lines: Vec<String>) {
     let mut lines = body_lines;
     if !lines.first().is_some_and(|line| line.starts_with('[')) {
         lines.insert(0, TRACE_MARKER.to_string());

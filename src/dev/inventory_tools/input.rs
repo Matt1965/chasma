@@ -85,7 +85,7 @@ pub fn handle_dev_items_ground_click(
     panel_hovered: Res<DevPanelHoverState>,
     mut world_selection: ResMut<WorldSelectionState>,
     mut selected_units: ResMut<SelectedUnits>,
-    building_selection: ResMut<crate::ui::gameplay::GameplayBuildingSelection>,
+    _building_selection: ResMut<crate::ui::gameplay::GameplayBuildingSelection>,
     mut selection_revision: ResMut<WorldSelectionRevision>,
     mut inspector: ResMut<WorldInspectorState>,
     windows: Query<&Window, With<PrimaryWindow>>,

@@ -5,6 +5,7 @@ mod dev_load;
 #[cfg(feature = "data-import")]
 mod excel;
 #[cfg(all(test, feature = "data-import"))]
+#[cfg(test)]
 mod human_glb_tests;
 mod schema;
 mod validate;

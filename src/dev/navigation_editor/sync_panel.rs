@@ -524,7 +524,7 @@ pub fn sync_navigation_editor_panel(
         .as_ref()
         .is_some_and(|draft| !draft.validation.valid());
     let _ = draft_invalid;
-    let working_copy_valid = bp.is_some_and(|snap| snap.validation.valid());
+    let _working_copy_valid = bp.is_some_and(|snap| snap.validation.valid());
 
     let floor_state = bp.and_then(|snap| {
         floor_selector_state(

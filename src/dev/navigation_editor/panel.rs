@@ -17,25 +17,25 @@ use super::layout::spawn_navigation_editor_layout;
 pub(crate) struct DevNavigationEditorUi;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorContextTitle;
+pub struct DevNavigationEditorContextTitle;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorContextDetails;
+pub struct DevNavigationEditorContextDetails;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorStatusCard;
+pub struct DevNavigationEditorStatusCard;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorStatusHeadline;
+pub struct DevNavigationEditorStatusHeadline;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorStatusCounts;
+pub struct DevNavigationEditorStatusCounts;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorFloorSelector;
+pub struct DevNavigationEditorFloorSelector;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorFloorLabel;
+pub struct DevNavigationEditorFloorLabel;
 
 #[derive(Component, Debug)]
 pub(crate) struct DevNavigationEditorFloorUpButton;
@@ -44,13 +44,13 @@ pub(crate) struct DevNavigationEditorFloorUpButton;
 pub(crate) struct DevNavigationEditorFloorDownButton;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorRegionSelector;
+pub struct DevNavigationEditorRegionSelector;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorRegionLabel;
+pub struct DevNavigationEditorRegionLabel;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorRegionIndexText;
+pub struct DevNavigationEditorRegionIndexText;
 
 #[derive(Component, Debug)]
 pub(crate) struct DevNavigationEditorRegionUpButton;
@@ -62,37 +62,37 @@ pub(crate) struct DevNavigationEditorRegionDownButton;
 pub(crate) struct DevNavigationEditorToolPalette;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorSelectedItemPanel;
+pub struct DevNavigationEditorSelectedItemPanel;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorSelectedItemText;
+pub struct DevNavigationEditorSelectedItemText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorColumns;
+pub struct DevNavigationEditorColumns;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorLeftColumn;
+pub struct DevNavigationEditorLeftColumn;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorRightColumn;
+pub struct DevNavigationEditorRightColumn;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorNavRow;
+pub struct DevNavigationEditorNavRow;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorToastBanner;
+pub struct DevNavigationEditorToastBanner;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorToastText;
+pub struct DevNavigationEditorToastText;
 
 #[derive(Component, Debug)]
 pub(crate) struct DevNavigationEditorDeleteButton;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorRadiusRow;
+pub struct DevNavigationEditorRadiusRow;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorRadiusValueText;
+pub struct DevNavigationEditorRadiusValueText;
 
 #[derive(Component, Debug)]
 pub(crate) struct DevNavigationEditorFloorColumn;
@@ -113,31 +113,31 @@ pub(crate) struct DevNavigationEditorSummaryText;
 pub(crate) struct DevNavigationEditorDraftSummaryText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorGenerationSummaryText;
+pub struct DevNavigationEditorGenerationSummaryText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorGenerationDetailsText;
+pub struct DevNavigationEditorGenerationDetailsText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorValidationText;
+pub struct DevNavigationEditorValidationText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorOpacityRow;
+pub struct DevNavigationEditorOpacityRow;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorOverlayStatusText;
+pub struct DevNavigationEditorOverlayStatusText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorActionButton {
+pub struct DevNavigationEditorActionButton {
     pub action: NavigationEditorAction,
     pub disabled: bool,
 }
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorOpenButton;
+pub struct DevNavigationEditorOpenButton;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevNavigationEditorSectionHeader;
+pub struct DevNavigationEditorSectionHeader;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NavigationEditorAction {

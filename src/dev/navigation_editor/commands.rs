@@ -140,7 +140,7 @@ pub fn begin_edit_for_building(
 }
 
 pub fn frame_selected_building(
-    inspection: &BlueprintInspectionState,
+    _inspection: &BlueprintInspectionState,
     inspector: &WorldInspectorState,
     camera: &mut RtsCameraState,
     camera_settings: &CameraSettings,

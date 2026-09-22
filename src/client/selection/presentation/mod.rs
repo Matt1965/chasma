@@ -172,4 +172,5 @@ fn outline_transform(footprint: &ResolvedSelectionFootprint) -> Transform {
     }
 }
 
+#[cfg(test)]
 mod tests;

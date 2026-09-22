@@ -13,19 +13,19 @@ use super::actions::RoadEditorButton;
 use super::state::RoadEditorUiState;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevRoadsWindowUi;
+pub struct DevRoadsWindowUi;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevRoadEditorTitleText;
+pub struct DevRoadEditorTitleText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevRoadEditorStatusText;
+pub struct DevRoadEditorStatusText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevRoadNameField;
+pub struct DevRoadNameField;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevRoadSelectionText;
+pub struct DevRoadSelectionText;
 
 pub fn sync_dev_roads_panel_visibility(
     dev_state: Res<DevModeState>,

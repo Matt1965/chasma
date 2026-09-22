@@ -114,8 +114,8 @@ pub fn dev_add_item(
     endpoint: DevInventoryEndpoint,
     item_id: ItemDefinitionId,
     quantity: u32,
-    pile_settings: &ItemPileSettings,
-    position: WorldPosition,
+    _pile_settings: &ItemPileSettings,
+    _position: WorldPosition,
     tick: u64,
 ) -> Result<String, DevInventoryOpError> {
     if quantity == 0 {
@@ -417,7 +417,7 @@ pub fn dev_clear_inventory(
                 "Cleared {entry_count} entries from {inventory_id:?}"
             ))
         }
-        DevInventoryEndpoint::Pile(pile_id) => dev_remove_entry(world, ctx, endpoint, 0),
+        DevInventoryEndpoint::Pile(_pile_id) => dev_remove_entry(world, ctx, endpoint, 0),
     }
 }
 

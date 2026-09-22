@@ -231,7 +231,7 @@ pub(crate) fn log_fields_launcher_snapshot(world: &mut World, checkpoint: u8, la
         eprintln!("  VISIBLE ROOT: <missing>");
     }
 
-    for (button_entity, button) in world
+    for (button_entity, _button) in world
         .query::<(Entity, &DevWindowCollapseButton)>()
         .iter(world)
         .filter(|(_, btn)| btn.id == DevWindowId::Fields)

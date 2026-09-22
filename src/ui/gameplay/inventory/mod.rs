@@ -1,6 +1,7 @@
 //! Kenshi-style inventory UI (ADR-092 I6).
 
 mod drag_preview;
+#[cfg(test)]
 mod equipment_interaction_tests;
 mod equipment_ui;
 mod errors;

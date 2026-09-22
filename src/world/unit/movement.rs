@@ -1393,7 +1393,7 @@ fn apply_blocked_movement(
     target: WorldPosition,
     path: crate::world::NavigationPath,
     waypoint_index: usize,
-    effective_index: usize,
+    _effective_index: usize,
     current_position: WorldPosition,
     layout: ChunkLayout,
 ) -> UnitMovementStepOutcome {

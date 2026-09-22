@@ -246,7 +246,7 @@ pub fn sync_squad_panel(
 
     let primary = primary_selected_unit(&selection);
     let card_width = geometry.card_width;
-    let card_gap = geometry.card_gap;
+    let _card_gap = geometry.card_gap;
 
     commands.entity(list_entity).with_children(|row| {
         for unit_id in ids {

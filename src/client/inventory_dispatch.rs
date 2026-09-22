@@ -617,46 +617,6 @@ fn inventory_access_pair_denied_message(
     })
 }
 
-fn can_access_inventory(
-    world: &WorldData,
-    building_catalog: &BuildingCatalog,
-    interaction_catalog: &BuildingInteractionProfileCatalog,
-    unit_id: UnitId,
-    inventory_id: InventoryId,
-    ui: &InventoryUiState,
-) -> bool {
-    inventory_access_denied_message(
-        world,
-        building_catalog,
-        interaction_catalog,
-        unit_id,
-        inventory_id,
-        ui,
-    )
-    .is_none()
-}
-
-fn can_access_pair(
-    world: &WorldData,
-    building_catalog: &BuildingCatalog,
-    interaction_catalog: &BuildingInteractionProfileCatalog,
-    unit_id: UnitId,
-    source: InventoryId,
-    destination: InventoryId,
-    ui: &InventoryUiState,
-) -> bool {
-    inventory_access_pair_denied_message(
-        world,
-        building_catalog,
-        interaction_catalog,
-        unit_id,
-        source,
-        destination,
-        ui,
-    )
-    .is_none()
-}
-
 fn find_corpse_for_inventory(world: &WorldData, inventory_id: InventoryId) -> Option<CorpseId> {
     for corpse_id in world.corpse_store().sorted_corpse_ids() {
         if crate::world::is_corpse_loot_inventory(world, corpse_id, inventory_id) {

@@ -198,7 +198,7 @@ fn grid_cell_world_position_in_space(
 
 fn run_astar(
     config: NavigationConfig,
-    agent: NavigationAgent,
+    _agent: NavigationAgent,
     start: GridCoord,
     goal: GridCoord,
     mut is_walkable: impl FnMut(GridCoord) -> bool,

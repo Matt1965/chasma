@@ -34,7 +34,7 @@ pub fn sync_world_environment_panel(
     registry: Res<DevWindowRegistry>,
     baseline: Res<ProjectEnvironmentBaseline>,
     time_of_day: Res<TimeOfDaySettings>,
-    environment: Res<EnvironmentSettings>,
+    _environment: Res<EnvironmentSettings>,
     manual: Res<EnvironmentManualLighting>,
     ui_state: Res<WorldEnvironmentUiState>,
     mut texts: ParamSet<(
@@ -302,7 +302,7 @@ pub fn handle_world_environment_actions(
 fn perform_save(
     baseline: &mut ProjectEnvironmentBaseline,
     time_of_day: &TimeOfDaySettings,
-    environment: &EnvironmentSettings,
+    _environment: &EnvironmentSettings,
     manual: &EnvironmentManualLighting,
     ui_state: &mut WorldEnvironmentUiState,
 ) {

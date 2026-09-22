@@ -306,7 +306,7 @@ pub fn handle_building_production_controls(
         return;
     };
 
-    for (interaction, button) in &storage_accept_all_buttons {
+    for (interaction, _button) in &storage_accept_all_buttons {
         if *interaction != Interaction::Pressed {
             continue;
         }
@@ -314,7 +314,7 @@ pub fn handle_building_production_controls(
         return;
     }
 
-    for (interaction, button) in &storage_clear_all_buttons {
+    for (interaction, _button) in &storage_clear_all_buttons {
         if *interaction != Interaction::Pressed {
             continue;
         }

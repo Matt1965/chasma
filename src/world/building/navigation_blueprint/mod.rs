@@ -13,11 +13,14 @@ mod entrance_geometry;
 mod error;
 mod fixtures;
 mod id;
+#[cfg(test)]
 mod interior_entry_tests;
 mod migrate;
+#[cfg(test)]
 mod multi_region_nav_tests;
 #[cfg(test)]
 mod opening_aperture_tests;
+#[cfg(test)]
 mod opening_clearance_tests;
 mod opening_geometry;
 #[cfg(test)]
@@ -32,6 +35,7 @@ mod runtime;
 pub use runtime::probe_segment_crosses_entrance_opening;
 #[cfg(test)]
 mod door_binding_tests;
+#[cfg(test)]
 mod runtime_nav_tests;
 mod source;
 mod starter;

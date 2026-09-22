@@ -485,7 +485,7 @@ pub fn transfer_unique_item(
         Some(_) => {
             return Err(TransferError::ItemInstanceLocationMismatch { item_instance_id });
         }
-        None | Some(ItemInstanceLocation::Detached) | Some(ItemInstanceLocation::WorldPile(_)) => {
+        None => {
             return Err(TransferError::ItemInstanceLocationMismatch { item_instance_id });
         }
     }
@@ -591,7 +591,7 @@ pub fn loot_corpse_entry(
     )?;
 
     match (&entry.contents, quantity) {
-        (InventoryEntryContents::Stack { quantity: qty, .. }, Some(requested)) => {
+        (InventoryEntryContents::Stack { quantity: _qty, .. }, Some(requested)) => {
             transfer_stack_quantity(
                 inventory_store,
                 instance_store,

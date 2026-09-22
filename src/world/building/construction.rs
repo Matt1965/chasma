@@ -615,7 +615,7 @@ pub fn add_building_construction_progress(
         return Ok(Vec::new());
     }
 
-    let definition = definition_for_record(building_catalog, &record)?;
+    let _definition = definition_for_record(building_catalog, &record)?;
     let mut events = Vec::new();
 
     if record.lifecycle_state == BuildingLifecycleState::Planned {

@@ -39,13 +39,13 @@ use super::state::BuildingPanelState;
 pub struct BuildingMenuPanelRoot;
 
 #[derive(Component, Debug)]
-pub(crate) struct BuildingMenuHeaderText;
+pub struct BuildingMenuHeaderText;
 
 #[derive(Component, Debug)]
 pub(crate) struct BuildingMenuScrollBody;
 
 #[derive(Component, Debug)]
-pub(crate) struct BuildingMenuContentHost;
+pub struct BuildingMenuContentHost;
 
 #[derive(Component, Debug)]
 pub struct BuildingMenuCloseButton;

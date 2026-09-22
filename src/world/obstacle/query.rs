@@ -1,7 +1,5 @@
 //! Doodad obstacle queries — delegates to generalized occupancy (ADR-031, ADR-080 B3).
 
-use bevy::prelude::*;
-
 use crate::world::{
     BuildingCatalog, DoodadCatalog, DoodadId, FootprintCatalog, OccupancyCatalogs, OccupancySource,
     PassabilityAgent, PassabilityBlockReason, PassabilityCatalogs, PassabilityResult, WorldData,

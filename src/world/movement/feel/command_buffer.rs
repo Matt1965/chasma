@@ -186,7 +186,7 @@ pub fn start_unit_move_to(
     #[cfg(feature = "dev")]
     if world.inside_move_trace().is_active_for(unit_id) {
         let result_label = match &path_result {
-            Ok(path) => "success",
+            Ok(_path) => "success",
             Err(error) => navigation_error_label(error),
         };
         let waypoint_count = path_result.as_ref().ok().map(|path| path.len() as u32);
@@ -222,7 +222,7 @@ pub fn start_unit_move_to(
             );
         }
         let result_label = match &path_result {
-            Ok(path) => "success",
+            Ok(_path) => "success",
             Err(error) => navigation_error_label(error),
         };
         let waypoint_count = path_result.as_ref().ok().map(|path| path.len() as u32);
