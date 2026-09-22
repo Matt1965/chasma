@@ -6,10 +6,11 @@ use crate::menu::AppScreen;
 use crate::units::presentation::propagate_preview_render_layers;
 use crate::ui::unit_editor::{
     cleanup_unit_editor_preview_studio, discover_preview_animation_players,
-    handle_unit_editor_sliders, install_preview_animation_graph, setup_unit_editor_preview_studio,
-    sync_preview_idle_animation, sync_unit_editor_control_values, sync_unit_editor_error_text,
-    update_unit_editor_preview_framing,
+    ensure_preview_animation_playback, handle_unit_editor_sliders,
+    install_preview_animation_graph, setup_unit_editor_preview_studio, sync_preview_idle_animation,
+    sync_unit_editor_control_values, sync_unit_editor_error_text, update_unit_editor_preview_framing,
 };
+use crate::units::animation::playback::sync_unit_animation_playback;
 
 use super::actions::{
     cleanup_origin_select_session, handle_origin_squad_buttons, init_starting_squad_session_on_enter,
@@ -77,6 +78,7 @@ impl Plugin for OriginSelectPlugin {
                     discover_preview_animation_players,
                     install_preview_animation_graph,
                     sync_preview_idle_animation,
+                    ensure_preview_animation_playback.after(sync_unit_animation_playback),
                     sync_origin_select_preview_presentation,
                     update_origin_select_preview_camera,
                     rotate_origin_select_preview_roster,

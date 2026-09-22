@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::units::components::{UnitRenderEntity, UnitRenderMetadata};
+use crate::units::presentation::{UnitEditorPreviewRosterMember, UnitEditorPreviewUnit};
 use crate::world::equipment::effective_weapon_for_unit;
 use crate::world::{
     AnimationProfileCatalog, AppearanceProfileCatalog, AttackPhase, ItemCatalog, UnitCatalog,
@@ -53,7 +54,11 @@ pub fn sync_unit_animation_playback(
             Option<&UnitAnimationLayering>,
             Option<&mut UpperAttackWeightFade>,
         ),
-        With<UnitAnimationGraphInstalled>,
+        (
+            With<UnitAnimationGraphInstalled>,
+            Without<UnitEditorPreviewUnit>,
+            Without<UnitEditorPreviewRosterMember>,
+        ),
     >,
     mut players: Query<(Entity, &mut AnimationPlayer, &mut AnimationTransitions)>,
 ) {

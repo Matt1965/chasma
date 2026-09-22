@@ -112,6 +112,24 @@ pub fn install_preview_animation_graph(
     }
 }
 
+/// Gameplay playback pauses all [`AnimationPlayer`]s while simulation is frozen; preview actors
+/// must keep advancing their looping idle clips in menu screens.
+pub fn ensure_preview_animation_playback(
+    links: Query<
+        &UnitAnimationPlayerLink,
+        Or<(With<UnitEditorPreviewUnit>, With<UnitEditorPreviewRosterMember>)>,
+    >,
+    mut players: Query<&mut AnimationPlayer>,
+) {
+    for link in &links {
+        if let Ok(mut player) = players.get_mut(link.player_entity) {
+            if player.all_paused() {
+                player.resume_all();
+            }
+        }
+    }
+}
+
 pub fn sync_preview_idle_animation(
     mut commands: Commands,
     catalog: Res<UnitCatalog>,

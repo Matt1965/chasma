@@ -21,7 +21,8 @@ pub use events::OpenUnitEditorRequest;
 pub use plugin::{UnitEditorPlugin, UnitEditorSystems};
 pub use controls::{handle_unit_editor_sliders, sync_unit_editor_control_values};
 pub use preview_animation::{
-    discover_preview_animation_players, install_preview_animation_graph, sync_preview_idle_animation,
+    discover_preview_animation_players, ensure_preview_animation_playback,
+    install_preview_animation_graph, sync_preview_idle_animation,
 };
 pub use preview_spawn::unit_editor_session_owns_cg3_preview_actor;
 pub use preview_studio::{
