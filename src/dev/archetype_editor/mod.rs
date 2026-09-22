@@ -20,4 +20,4 @@ pub use modal::{
     sync_archetype_editor_modal, sync_archetype_modal_field_styles,
     sync_archetype_species_toggle_marks,
 };
-pub use state::{ArchetypeEditorMode, DevArchetypeEditorState};
+pub use state::DevArchetypeEditorState;

@@ -3,7 +3,7 @@
 use super::super::dev_mode::{DefinitionId, DevModeState, DevTab};
 use super::super::tools::{BrushMode, PlacementRejectReason};
 use super::state::is_placement_catalog_tab;
-use crate::world::{BuildingCatalog, BuildingDefinition, DoodadCatalog, DoodadDefinition};
+use crate::world::{BuildingDefinition, DoodadDefinition};
 
 /// Which catalog placement fields apply for the current selection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -178,25 +178,6 @@ pub fn reject_reason_label(reason: PlacementRejectReason) -> &'static str {
         PlacementRejectReason::BlockedByDoodad => "blocked",
         PlacementRejectReason::TooCloseToPeer => "too close to peer",
     }
-}
-
-pub fn building_supports_scale(building_catalog: &BuildingCatalog, id: &DefinitionId) -> bool {
-    let DefinitionId::Building(building_id) = id else {
-        return false;
-    };
-    building_catalog
-        .get(building_id)
-        .is_some_and(|def| def.allow_instance_scale)
-}
-
-pub fn doodad_supports_scale(doodad_catalog: &DoodadCatalog, id: &DefinitionId) -> bool {
-    let DefinitionId::Doodad(doodad_id) = id else {
-        return false;
-    };
-    doodad_catalog
-        .get(doodad_id)
-        .map(|def| (def.min_scale - def.max_scale).abs() > f32::EPSILON || def.max_scale > 1.0)
-        .unwrap_or(false)
 }
 
 /// Hover help for contextual placement controls (Slice 9).

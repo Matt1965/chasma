@@ -11,7 +11,7 @@ use super::definition::{
     NavigationRegionConnectionDefinition, NavigationRegionConnectionKind,
     NavigationVerticalTransitionDefinition, NavigationVerticalTransitionKind,
 };
-use super::id::{BuildingNavigationBlueprintId, blueprint_id_for_building};
+use super::id::BuildingNavigationBlueprintId;
 use super::mesh::{BuildingMeshAnalysisInput, LocalTriangle3d, PortalMarker3d};
 use super::region_extract::point_in_polygon as region_point_in_polygon;
 use super::region_extract::{
@@ -56,18 +56,12 @@ pub struct NavigationBlueprintGenerateOutput {
     pub validation: BlueprintInspectionValidation,
 }
 
-/// Generation result with blueprint draft and diagnostics report (IN-09).
-#[derive(Debug, Clone)]
-pub struct NavigationBlueprintGenerationResult {
-    pub blueprint: BuildingNavigationBlueprint,
-    pub report: NavigationBlueprintGenerationReport,
-}
-
 pub fn should_generate_navigation_blueprint(definition: &BuildingDefinition) -> bool {
     definition.transform_safety_class == BuildingTransformSafetyClass::Navigable
 }
 
 /// Human-readable rejection when [`should_generate_navigation_blueprint`] is false.
+#[cfg(test)]
 pub fn navigation_blueprint_generation_rejection(
     definition: &BuildingDefinition,
 ) -> Option<&'static str> {
@@ -84,13 +78,6 @@ pub fn navigation_mesh_source_label(mesh: &BuildingMeshAnalysisInput) -> &'stati
     } else {
         "visible GLB geometry fallback"
     }
-}
-
-pub fn navigation_mesh_source_display(mesh: &BuildingMeshAnalysisInput) -> String {
-    format!(
-        "Regeneration source: {}",
-        navigation_mesh_source_label(mesh)
-    )
 }
 
 pub fn generate_navigation_blueprint(
@@ -825,7 +812,7 @@ pub fn logical_portal_group_key(name: &str) -> String {
 }
 
 fn dedupe_nearby_entrances(
-    mut entrances: Vec<NavigationEntranceDefinition>,
+    entrances: Vec<NavigationEntranceDefinition>,
 ) -> Vec<NavigationEntranceDefinition> {
     if entrances.len() < 2 {
         return entrances;
@@ -1078,62 +1065,6 @@ fn portal_key_suffix(name: &str) -> Option<String> {
     name.split_once("__").map(|(_, suffix)| suffix.to_string())
 }
 
-fn convex_hull(points: &[Vec2]) -> Vec<Vec2> {
-    if points.len() < 3 {
-        return points.to_vec();
-    }
-    let mut pts: Vec<Vec2> = points.to_vec();
-    pts.sort_by(|a, b| {
-        a.x.partial_cmp(&b.x)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal))
-    });
-    pts.dedup_by(|a, b| a.distance(*b) < 0.01);
-
-    if pts.len() < 3 {
-        return pts;
-    }
-
-    let cross = |o: Vec2, a: Vec2, b: Vec2| (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-
-    let mut lower = Vec::new();
-    for p in &pts {
-        while lower.len() >= 2 && cross(lower[lower.len() - 2], lower[lower.len() - 1], *p) <= 0.0 {
-            lower.pop();
-        }
-        lower.push(*p);
-    }
-    let mut upper = Vec::new();
-    for p in pts.iter().rev() {
-        while upper.len() >= 2 && cross(upper[upper.len() - 2], upper[upper.len() - 1], *p) <= 0.0 {
-            upper.pop();
-        }
-        upper.push(*p);
-    }
-    lower.pop();
-    upper.pop();
-    lower.extend(upper);
-    lower
-}
-
-fn simplify_collinear(points: &[Vec2], epsilon: f32) -> Vec<Vec2> {
-    if points.len() < 3 {
-        return points.to_vec();
-    }
-    let mut out = Vec::new();
-    for i in 0..points.len() {
-        let prev = points[(i + points.len() - 1) % points.len()];
-        let curr = points[i];
-        let next = points[(i + 1) % points.len()];
-        let v1 = (curr - prev).normalize_or_zero();
-        let v2 = (next - curr).normalize_or_zero();
-        if v1.distance(v2) > epsilon {
-            out.push(curr);
-        }
-    }
-    if out.len() < 3 { points.to_vec() } else { out }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1214,6 +1145,7 @@ mod tests {
 
     #[test]
     fn convex_hull_rectangle() {
+        use crate::world::building::navigation_blueprint::region_extract::convex_hull;
         let points = vec![
             Vec2::new(0.0, 0.0),
             Vec2::new(4.0, 0.0),

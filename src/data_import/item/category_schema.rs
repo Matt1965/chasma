@@ -4,8 +4,6 @@ use crate::world::{ItemCategoryDefinition, ItemCategoryId};
 
 pub const REQUIRED_COLUMNS: &[&str] = &["Category ID", "Name", "Enabled"];
 
-pub const OPTIONAL_COLUMNS: &[&str] = &["Description", "Sort Priority"];
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct ItemCategoryImportRow {
     pub row_number: usize,

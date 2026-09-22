@@ -11,8 +11,6 @@ use crate::world::{
     WorldPosition, resolve_navigation_space_at_position,
 };
 
-const FLOOR_ELEVATION_TOLERANCE_METERS: f32 = 1.5;
-
 /// One bounded inside-move diagnostic session.
 #[derive(Debug, Clone, Default)]
 pub struct InsideMoveTrace {

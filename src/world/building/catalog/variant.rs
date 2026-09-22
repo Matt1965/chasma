@@ -1,6 +1,5 @@
 //! Building asset variant creation from edited navigation blueprints (NV1.6).
 
-use super::definition::BuildingDefinition;
 use super::definition_id::BuildingDefinitionId;
 use super::registry::BuildingCatalog;
 use crate::data_import::{DEV_BUILDING_CATALOG_RON_PATH, export_buildings_to_ron};

@@ -1,6 +1,4 @@
-use crate::world::BuildingId;
 use crate::world::UnitId;
-use crate::world::building::field_response::EfficiencyBasisPoints;
 use crate::world::building::operational_efficiency::OperationalLimitingFactor;
 
 /// Operation stepping failures (ADR-105 TF5).
@@ -53,6 +51,7 @@ pub struct OperationStepReport {
 }
 
 /// Completion summary for one operation threshold crossing (ADR-105 TF5).
+#[cfg(test)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct OperationCompletionReport {
     pub building_id: crate::world::BuildingId,

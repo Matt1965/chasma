@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::assets::{ItemSceneAssets, preload_item_scenes};
+use super::assets::preload_item_scenes;
 use super::components::ItemPileRenderEntity;
 use super::presentation::{ItemPileFallbackAssets, ItemPilePresentationSettings};
 use super::sync::{ItemPileRenderIndex, ItemPileRuntimeSystems, sync_item_pile_render_entities};

@@ -71,12 +71,11 @@ impl Default for UnitAnimationSettings {
     }
 }
 
-/// Documented locomotion threshold: Run when unit speed >= reference * this ratio (A1).
-pub const DOCUMENTED_RUN_SPEED_RATIO: f32 = 0.75;
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const DOCUMENTED_RUN_SPEED_RATIO: f32 = 0.75;
 
     #[test]
     fn default_run_ratio_matches_documented_threshold() {

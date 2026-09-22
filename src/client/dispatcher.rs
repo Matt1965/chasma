@@ -25,7 +25,7 @@ use crate::units::input::{
 use crate::world::{
     AttackTargetingPolicy, AuthoredRelationshipCatalog, BuildingCatalog, DoodadCatalog,
     FootprintCatalog, InteractionOrderPlan, InteractionResolveContext, NavigationConfig,
-    NavigationPath, OperationCatalog, PassabilityCatalogs, UnitCatalog, UnitId, WeaponCatalog,
+    NavigationPath, OperationCatalog, UnitCatalog, UnitId, WeaponCatalog,
     WorldConfig, WorldData, WorldPosition, apply_player_building_work_priority,
     apply_player_production_enabled, apply_player_production_selected_operation,
     apply_player_storage_accept_all, apply_player_storage_category_accepted,

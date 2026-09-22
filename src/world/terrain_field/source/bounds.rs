@@ -4,7 +4,6 @@
 //! - origin is southwest (minimum X, minimum Z)
 //! - row 0 / minimum sample index is minimum Z (south)
 
-use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::world::biome::BiomeMaskBounds;

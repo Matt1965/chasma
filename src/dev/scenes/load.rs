@@ -17,8 +17,7 @@ use crate::world::{
 
 use super::inventory_snapshot::SceneInventoryPersistence;
 use super::snapshot::{
-    SCENE_VERSION, SceneBuildingRecord, SceneDefinition, SceneDoodadRecord, SceneRecordError,
-    SceneSettlementAnchorRecord, SceneSettlementRecord, SceneTaskRecord, SceneTreasuryRecord,
+    SCENE_VERSION, SceneBuildingRecord, SceneDefinition, SceneDoodadRecord, SceneRecordError, SceneSettlementRecord, SceneTaskRecord, SceneTreasuryRecord,
     SceneUnitRecord, parse_doodad_kind, scene_version_supported,
 };
 

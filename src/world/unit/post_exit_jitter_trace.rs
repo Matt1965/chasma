@@ -143,7 +143,6 @@ pub struct PostExitStepCapture {
     waypoint_index: usize,
     effective_index: usize,
     path: NavigationPath,
-    target: WorldPosition,
     state_waypoint: NavigationWaypoint,
     effective_waypoint: NavigationWaypoint,
     next_waypoint: Option<NavigationWaypoint>,
@@ -185,7 +184,7 @@ impl PostExitStepCapture {
         waypoint_index: usize,
         effective_index: usize,
         effective_waypoint: NavigationWaypoint,
-        target: WorldPosition,
+        _target: WorldPosition,
     ) -> Option<Self> {
         if !current_space.is_surface() || !world.post_exit_jitter_trace().is_active_for(unit_id) {
             return None;
@@ -206,7 +205,6 @@ impl PostExitStepCapture {
             waypoint_index,
             effective_index,
             path: path.clone(),
-            target,
             state_waypoint,
             effective_waypoint,
             next_waypoint,

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::world::ItemPileId;
-use crate::world::inventory::{EntryIndex, InventoryId, ItemInstanceId};
+use crate::world::inventory::{EntryIndex, InventoryId};
 
 /// Authoritative location of a unique item instance (ADR-090 I4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Default)]

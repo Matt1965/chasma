@@ -6,7 +6,7 @@ use bevy::ui::FocusPolicy;
 use bevy::window::PrimaryWindow;
 
 use super::components::{DevTooltipHoverZone, DevTooltipTarget};
-use super::state::{DevTooltipState, TOOLTIP_HIDE_GRACE_SECS, TOOLTIP_HOVER_DELAY_SECS};
+use super::state::DevTooltipState;
 
 use crate::dev::widgets::theme::{
     TOOLTIP_BG, TOOLTIP_MAX_WIDTH_PX, TOOLTIP_PADDING_X, TOOLTIP_PADDING_Y, TOOLTIP_TEXT,
@@ -17,10 +17,10 @@ const TOOLTIP_OFFSET: Vec2 = Vec2::new(12.0, 16.0);
 const TOOLTIP_MARGIN_PX: f32 = 8.0;
 
 #[derive(Component)]
-pub(crate) struct DevTooltipPopup;
+pub struct DevTooltipPopup;
 
 #[derive(Component)]
-pub(crate) struct DevTooltipPopupText;
+pub struct DevTooltipPopupText;
 
 /// Spawn the floating tooltip root once at startup.
 pub fn setup_dev_tooltip(mut commands: Commands) {

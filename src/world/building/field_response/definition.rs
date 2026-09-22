@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::efficiency::{EfficiencyBasisPoints, MAX_EFFICIENCY_BASIS_POINTS};
+use super::efficiency::MAX_EFFICIENCY_BASIS_POINTS;
 use super::error::FieldResponseProfileError;
 use super::id::{FieldResponseProfileId, validate_field_response_profile_id};
 

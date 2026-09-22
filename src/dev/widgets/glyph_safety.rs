@@ -4,6 +4,7 @@
 ///
 /// Includes decorative icons and common punctuation substitutes (Unicode minus,
 /// ellipsis, em dash, bullets) that the default Bevy UI font does not cover.
+#[cfg(test)]
 pub const FORBIDDEN_DEV_UI_GLYPHS: &[char] = &[
     '▸', '▾', '▶', '▼', '☑', '☐', '✓', '□', '★', //
     '−', // U+2212 MINUS SIGN
@@ -14,6 +15,7 @@ pub const FORBIDDEN_DEV_UI_GLYPHS: &[char] = &[
 ];
 
 /// Returns true when `text` contains a forbidden dev UI glyph.
+#[cfg(test)]
 pub fn contains_forbidden_dev_ui_glyph(text: &str) -> bool {
     text.chars().any(|ch| FORBIDDEN_DEV_UI_GLYPHS.contains(&ch))
 }

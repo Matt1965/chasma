@@ -5,6 +5,7 @@ mod edit_unit;
 mod building_actions_sync;
 mod building_actions_ui;
 mod building_diagnostics;
+#[cfg(test)]
 mod building_ui_tests;
 mod format;
 mod panel;
@@ -20,5 +21,5 @@ pub(crate) use actions::handle_selected_object_actions;
 pub(crate) use edit_unit::handle_selected_object_edit_unit;
 pub(crate) use building_actions_sync::{BuildingActionUiCache, sync_building_dev_action_sections};
 pub(crate) use panel::{
-    DevSelectedObjectActionButton, DevSelectedObjectToggleButton, DevSelectedObjectUi,
+    DevSelectedObjectActionButton, DevSelectedObjectToggleButton,
 };

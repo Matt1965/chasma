@@ -268,56 +268,8 @@ fn inventory_access_error(
     }
 }
 
-fn can_access_inventory(
-    world: &WorldData,
-    building_catalog: &BuildingCatalog,
-    interaction_catalog: &BuildingInteractionProfileCatalog,
-    unit_id: crate::world::UnitId,
-    inventory_id: InventoryId,
-    ui: &InventoryUiState,
-) -> bool {
-    inventory_access_error(
-        world,
-        building_catalog,
-        interaction_catalog,
-        unit_id,
-        inventory_id,
-        ui,
-    )
-    .is_none()
-}
-
-fn can_access_pair(
-    world: &WorldData,
-    building_catalog: &BuildingCatalog,
-    interaction_catalog: &BuildingInteractionProfileCatalog,
-    unit_id: crate::world::UnitId,
-    source: InventoryId,
-    destination: InventoryId,
-    ui: &InventoryUiState,
-) -> bool {
-    inventory_access_error(
-        world,
-        building_catalog,
-        interaction_catalog,
-        unit_id,
-        source,
-        ui,
-    )
-    .or_else(|| {
-        inventory_access_error(
-            world,
-            building_catalog,
-            interaction_catalog,
-            unit_id,
-            destination,
-            ui,
-        )
-    })
-    .is_none()
-}
-
 /// Cells occupied by an item footprint at the given anchor.
+#[cfg(test)]
 pub fn occupied_cells(anchor_x: u8, anchor_y: u8, width: u8, height: u8) -> Vec<(u8, u8)> {
     let mut cells = Vec::new();
     for dy in 0..height {

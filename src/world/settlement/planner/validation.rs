@@ -7,7 +7,7 @@ use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::operation::OperationCatalog;
 
 use super::graph::{ProductionGraph, detect_production_cycles};
-use super::types::{SettlementProductionPlanner, StockGoal};
+use super::types::SettlementProductionPlanner;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlannerValidationError {

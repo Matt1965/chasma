@@ -25,11 +25,6 @@ pub use intent::{
     IntentId, IntentPersistence, IntentRejectionReason, RejectedIntentCandidate, SettlementIntent,
     SettlementIntentPlan,
 };
-pub use scoring::{
-    ArbitrationScoreBreakdown, MAX_WORKLOAD_PENALTY, WORKLOAD_PENALTY_FACTOR,
-    authored_weight_for_need, compute_arbitration_score, compute_urgency, policy_component,
-    workload_penalty,
-};
 pub use step::{
     INTENT_ARBITRATION_CADENCE_TICKS, arbitrate_settlement_intent_now,
     step_settlement_response_arbitration,

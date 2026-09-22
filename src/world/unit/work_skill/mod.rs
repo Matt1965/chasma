@@ -19,4 +19,4 @@ pub use definition::WorkSkillDefinition;
 pub use id::WorkSkillId;
 pub use mapping::{work_skill_for_permission_domain, work_skill_for_task};
 pub use starter::starter_work_skill_definitions;
-pub use state::{DEFAULT_WORK_SKILL_VALUE, UnitWorkSkillState};
+pub use state::UnitWorkSkillState;

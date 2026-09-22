@@ -19,9 +19,9 @@ pub use assess::{
     format_efficiency_display, format_field_average_display,
 };
 pub use ensure::{assessment_revision_fingerprint, ensure_building_terrain_assessment};
-pub use error::{TerrainAssessmentCatalogs, TerrainAssessmentError, TerrainAssessmentUiError};
+pub use error::{TerrainAssessmentCatalogs, TerrainAssessmentError};
 pub use evaluation::{
-    BuildingFieldRequirementEvaluation, FieldRequirementFailureReason, evaluate_field_requirement,
+    FieldRequirementFailureReason, evaluate_field_requirement,
     evaluate_field_requirement_assessment, format_field_requirement_diagnostic,
     primary_failure_for_assessment,
 };
@@ -35,5 +35,4 @@ pub use sample_cells::resolve_building_field_sample_cells;
 pub use store::BuildingTerrainAssessmentStore;
 pub use types::{
     BuildingFieldRequirementAssessment, BuildingTerrainAssessment, BuildingTerrainWarning,
-    FieldTileRevisionEntry, RequirementAssessmentAvailability,
 };

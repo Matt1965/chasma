@@ -312,7 +312,7 @@ pub fn handle_inspector_input(
     gizmo_edit: Res<TransformEditState>,
     blueprint_inspection: Res<BlueprintInspectionState>,
     pick: InspectorPickParams,
-    mut capture: InspectorCaptureParams,
+    capture: InspectorCaptureParams,
     render_assets: Option<Res<TerrainRenderAssets>>,
     mut selection_params: WorldSelectionWriteParams,
     mut inspector: ResMut<WorldInspectorState>,
@@ -441,10 +441,6 @@ pub fn handle_inspector_input(
         inspector.last_message = "Interaction probe at terrain click".into();
     }
 }
-
-/// Marker for inspector UI nodes.
-#[derive(Component, Debug)]
-pub struct DevInspectorUi;
 
 /// Marker for production repeat-mode control in Selected Object.
 #[derive(Component, Debug)]

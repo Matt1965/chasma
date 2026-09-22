@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use crate::world::{BuildingLifecycleState, WorldData};
+use crate::world::WorldData;
 
 use super::components::{
     BuildingDiagnosticFallback, BuildingFoundationSkirt, BuildingLifecycleTintApplied,

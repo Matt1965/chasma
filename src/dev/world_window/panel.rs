@@ -6,15 +6,11 @@ use bevy::prelude::*;
 use crate::dev::dev_mode::DevModeState;
 use crate::dev::input::DevPanelUi;
 use crate::dev::tooltip::DevTooltipTarget;
-use crate::dev::widgets::DevCollapsibleSectionId;
 use crate::dev::window::{DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowUi};
 use crate::dev::world_environment::DevWorldEnvironmentSection;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevWorldWindowUi;
-
-#[derive(Component, Debug)]
-pub(crate) struct DevWorldHarnessText;
+pub struct DevWorldWindowUi;
 
 /// Hide world-window chrome when dev mode is off or the window is closed.
 pub fn sync_dev_world_panel_visibility(

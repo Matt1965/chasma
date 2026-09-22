@@ -13,7 +13,6 @@ use crate::world::{
     building_accepts_workstation_use, building_is_constructible, classify_slope_walkability,
     ground_world_position, interior_navigation_move_target_at_position,
     nearest_item_pile_at_position, query_passability_at, resolve_navigation_space_at_position,
-    unit_may_work_on_building,
 };
 
 use super::types::{InteractionMetadata, InteractionResult, InteractionTargetRef, InteractionType};

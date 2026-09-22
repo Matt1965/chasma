@@ -105,7 +105,7 @@ pub fn default_navigation_editor_position(viewport: Vec2, window_width: f32) -> 
 }
 
 /// Default top-left for the Selected Object window (left side, below launcher).
-pub fn default_selected_object_position(viewport: Vec2, window_width: f32) -> Vec2 {
+pub fn default_selected_object_position(viewport: Vec2, _window_width: f32) -> Vec2 {
     let _ = viewport;
     let top = LAUNCHER_TOP_PX + LAUNCHER_HEIGHT_PX + 6.0;
     Vec2::new(LAUNCHER_LEFT_PX, top)
@@ -119,14 +119,14 @@ pub fn default_debug_position(viewport: Vec2, window_width: f32) -> Vec2 {
 }
 
 /// Default top-left for the World window (left side, below Selected Object).
-pub fn default_world_position(viewport: Vec2, window_width: f32) -> Vec2 {
+pub fn default_world_position(_viewport: Vec2, window_width: f32) -> Vec2 {
     let _ = window_width;
     let top = LAUNCHER_TOP_PX + LAUNCHER_HEIGHT_PX + 6.0;
     Vec2::new(LAUNCHER_LEFT_PX, top + 200.0)
 }
 
 /// Default top-left for the Settlement window (left side, below World).
-pub fn default_settlement_position(viewport: Vec2, window_width: f32) -> Vec2 {
+pub fn default_settlement_position(viewport: Vec2, _window_width: f32) -> Vec2 {
     let _ = viewport;
     let top = LAUNCHER_TOP_PX + LAUNCHER_HEIGHT_PX + 6.0;
     Vec2::new(LAUNCHER_LEFT_PX, top + 320.0)

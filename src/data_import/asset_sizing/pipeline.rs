@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::world::asset_sizing::{
     AssetSizingDefinition, AssetSizingError, AssetSizingReport, BaselineScaleResult,
-    SizeReferenceAxis, SizingMigrationState, SizingPolicy, SourceBoundsOrigin, SourceDimensions,
+    SizeReferenceAxis, SizingMigrationState, SizingPolicy, SourceDimensions,
     calculate_baseline_scale, check_suspected_unit_mismatch,
     normalize_source_dimensions_to_desired, quantize_baseline_scale,
 };

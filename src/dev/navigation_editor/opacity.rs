@@ -13,7 +13,7 @@ use crate::dev::widgets::{
 use crate::dev::window::DevWindowRegistry;
 
 use super::state::{
-    DEFAULT_NAV_EDITOR_BUILDING_OPACITY, NavigationEditorUiState, navigation_editor_owns_session,
+    NavigationEditorUiState, navigation_editor_owns_session,
 };
 use crate::dev::inspector::BlueprintInspectionState;
 

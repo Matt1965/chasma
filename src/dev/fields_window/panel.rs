@@ -9,7 +9,7 @@ use crate::dev::widgets::{DevCollapsibleSectionId, spawn_collapsible_section};
 use crate::dev::window::{DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowUi};
 
 #[derive(Component, Debug)]
-pub(crate) struct DevFieldsWindowUi;
+pub struct DevFieldsWindowUi;
 
 /// Hide Fields-window chrome when dev mode is off or the window is closed.
 pub fn sync_dev_fields_panel_visibility(

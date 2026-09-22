@@ -2,7 +2,7 @@ use super::assignment::ensure_building_task;
 use super::eligibility::building_is_constructible;
 use super::types::{TaskPriority, TaskState, TaskType};
 use crate::world::building::operation::building_work_priority_to_task_priority_for_building;
-use crate::world::{BuildingCatalog, BuildingId, WorldData};
+use crate::world::{BuildingCatalog, WorldData};
 
 /// Ensure construction tasks exist for incomplete buildings (ADR-085 B8).
 pub fn sync_construction_tasks(

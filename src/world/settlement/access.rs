@@ -11,7 +11,7 @@ use crate::world::building::{
     interaction_point_world_position, is_building_operational,
 };
 use crate::world::unit::UnitRecord;
-use crate::world::{BuildingId, SpaceId, UnitId, WorldData, xz_distance};
+use crate::world::{BuildingId, UnitId, WorldData, xz_distance};
 
 /// Who may deposit physical gold into a settlement treasury.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Reflect)]
@@ -69,13 +69,6 @@ pub fn building_supports_settlement_treasury(
     interaction_catalog
         .profile_for_definition(definition)
         .is_some_and(|profile| profile.capabilities.settlement_treasury)
-}
-
-pub fn settlement_interaction_space(building: &crate::world::BuildingRecord) -> SpaceId {
-    building
-        .interior
-        .interior_space_id
-        .unwrap_or(SpaceId::SURFACE)
 }
 
 /// Whether a unit is in any space owned by the building (region-per-space aware).

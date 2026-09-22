@@ -8,7 +8,6 @@
 //! Investigation only — not part of normal gameplay.
 
 use bevy::prelude::*;
-use bevy::ui::UiSystems;
 
 use crate::dev::dev_mode::DevModeState;
 use crate::dev::terrain_field::{DevTerrainFieldButton, DevTerrainFieldSection};
@@ -52,7 +51,6 @@ pub fn fields_forensics_enabled() -> bool {
 #[derive(Resource, Default)]
 struct FieldsForensicsState {
     frames: u32,
-    baseline_logged: bool,
 }
 
 #[derive(Resource, Default)]
@@ -232,7 +230,7 @@ pub(crate) fn log_fields_launcher_snapshot(world: &mut World, checkpoint: u8, la
         eprintln!("  VISIBLE ROOT: <missing>");
     }
 
-    for (button_entity, button) in world
+    for (button_entity, _button) in world
         .query::<(Entity, &DevWindowCollapseButton)>()
         .iter(world)
         .filter(|(_, btn)| btn.id == DevWindowId::Fields)
@@ -523,17 +521,6 @@ pub fn fields_forensics_post_startup(world: &mut World) {
             log_fields_launcher_snapshot(world, 0, "PostStartup before any open");
         }
     }
-}
-
-pub fn fields_forensics_tick_frames(world: &mut World) {
-    let Some(mode) = fields_forensics_mode() else {
-        return;
-    };
-    if mode == FieldsForensicsMode::Baseline {
-        return;
-    }
-    let mut frames = world.resource_mut::<FieldsForensicsState>();
-    frames.frames += 1;
 }
 
 pub fn fields_forensics_update(world: &mut World) {

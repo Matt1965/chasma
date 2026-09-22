@@ -28,8 +28,6 @@ pub mod mask_groups {
     pub const OVERLAY: u32 = 2;
 }
 
-/// Clip-node mask: disable upper-body bones so only lower body plays.
-pub const LOWER_BODY_CLIP_MASK: u64 = 1 << mask_groups::UPPER_BODY;
 /// Clip-node mask: disable lower-body bones so only upper body plays.
 pub const UPPER_BODY_CLIP_MASK: u64 = 1 << mask_groups::LOWER_BODY;
 /// Full-body clip — no mask groups disabled.

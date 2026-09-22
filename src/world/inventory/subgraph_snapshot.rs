@@ -529,7 +529,7 @@ fn collect_referenced_instance_ids(
 }
 
 fn assign_local_ids(runtime_ids: impl IntoIterator<Item = u32>) -> HashMap<u32, u32> {
-    let mut sorted = runtime_ids.into_iter().collect::<BTreeSet<_>>();
+    let sorted = runtime_ids.into_iter().collect::<BTreeSet<_>>();
     sorted
         .into_iter()
         .enumerate()

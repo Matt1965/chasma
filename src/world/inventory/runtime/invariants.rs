@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use super::catalog_ctx::InventoryCatalogCtx;
 use super::entry::InventoryEntryContents;
 use super::error::InventoryError;
-use super::id::{InventoryId, ItemInstanceId};
+use super::id::ItemInstanceId;
 use super::ops::resolve_instance_definition;
 use super::store::{InventoryStore, ItemInstanceStore};
 

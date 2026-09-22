@@ -1,6 +1,5 @@
 //! World item pile invariant validation (ADR-090 I4).
 
-use super::id::ItemPileId;
 use super::record::WorldPileContents;
 use super::store::ItemPileStore;
 use crate::world::inventory::{ItemInstanceLocation, ItemInstanceStore};

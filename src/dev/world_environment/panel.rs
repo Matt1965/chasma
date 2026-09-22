@@ -17,9 +17,6 @@ use crate::dev::widgets::{
     spawn_collapsible_section, spawn_confirmation_bar, spawn_status_line, spawn_toggle_row,
 };
 
-/// Spawn order: Water follows the time/cycle block and precedes lighting sections.
-pub const WORLD_WATER_SECTION_ORDER: usize = 1;
-
 pub fn spawn_environment_controls(parent: &mut ChildSpawnerCommands<'_>) {
     parent
         .spawn((

@@ -6,7 +6,7 @@ use bevy::window::PrimaryWindow;
 
 use crate::camera::RtsCamera;
 use crate::client::selection::{
-    ApplyWorldSelectionParams, WorldSelectionCategory, WorldSelectionChange,
+    ApplyWorldSelectionParams, WorldSelectionChange,
     WorldSelectionRevision, WorldSelectionState, apply_world_selection,
 };
 use crate::dev::dev_mode::DevInventoryEndpoint;
@@ -25,7 +25,7 @@ use crate::ui::gameplay::GameplayBuildingSelection;
 use crate::units::input::{SelectedUnits, cursor_world_ray, terrain_click_to_world_position};
 use crate::world::{
     InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog,
-    ItemDefinitionId, ItemPileSettings, UnitCatalog, WorldConfig, WorldData,
+    ItemDefinitionId, ItemPileSettings, UnitCatalog, WorldData,
 };
 
 use super::panel::DevItemsAction;
@@ -85,7 +85,7 @@ pub fn handle_dev_items_ground_click(
     panel_hovered: Res<DevPanelHoverState>,
     mut world_selection: ResMut<WorldSelectionState>,
     mut selected_units: ResMut<SelectedUnits>,
-    mut building_selection: ResMut<crate::ui::gameplay::GameplayBuildingSelection>,
+    _building_selection: ResMut<crate::ui::gameplay::GameplayBuildingSelection>,
     mut selection_revision: ResMut<WorldSelectionRevision>,
     mut inspector: ResMut<WorldInspectorState>,
     windows: Query<&Window, With<PrimaryWindow>>,

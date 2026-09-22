@@ -22,11 +22,11 @@ mod phase5_tests;
 
 pub use catalog::NeedCatalog;
 pub use definition::{
-    DEFAULT_FOOD_PLANNING_HORIZON_TICKS, NeedDefinition, NeedEvaluationMethod, NeedMeasurementType,
+    NeedDefinition, NeedEvaluationMethod, NeedMeasurementType,
     NeedResponseCategory, NeedTargetSource,
 };
 pub use evaluate::{
-    NeedEvalContext, evaluate_settlement_needs, resolve_desired, resolve_desired_from_state,
+    NeedEvalContext, evaluate_settlement_needs,
 };
 pub use id::NeedId;
 pub use pressure::{apply_pressure_modifiers, normalize_pressure};

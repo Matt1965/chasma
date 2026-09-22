@@ -14,12 +14,10 @@ mod matrix_import;
 mod species_excel;
 mod species_schema;
 
-pub use matrix_domain::{MatrixDirection, RelationshipMatrixDomain};
 #[cfg(feature = "data-import")]
 pub use matrix_import::{
-    ImportedRelationshipEdge, RELATIONSHIP_MATRIX_REPORT_PATH, RelationshipMatrixImportSummary,
-    RelationshipMatrixSheetSummary, export_relationship_matrix_report_markdown,
-    import_authored_relationship_matrices_from_excel, parse_relationship_cell,
+    RELATIONSHIP_MATRIX_REPORT_PATH, RelationshipMatrixImportSummary,
+    import_authored_relationship_matrices_from_excel,
 };
 
 pub use faction_schema::{FACTION_OPTIONAL_COLUMNS, FACTION_REQUIRED_COLUMNS, FactionImportRow};

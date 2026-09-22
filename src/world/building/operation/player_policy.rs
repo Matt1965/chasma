@@ -11,7 +11,7 @@ use super::lifecycle::OperationLifecycle;
 use super::operation_id::OperationDefinitionId;
 use super::policy::ControlSource;
 use super::priority::{
-    BuildingWorkPriorityLevel, building_work_priority_u8_for_level,
+    building_work_priority_u8_for_level,
     step_building_work_priority_level,
 };
 

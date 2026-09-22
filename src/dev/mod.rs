@@ -3,7 +3,6 @@
 mod animation_focus;
 mod archetype_editor;
 mod animation_panel;
-mod asset_sizing;
 mod catalog;
 mod catalog_browser;
 mod catalog_cache;
@@ -22,7 +21,6 @@ mod navigation_editor;
 mod origin_editor;
 mod road_editor;
 mod panel;
-mod pile_harness;
 mod save_window;
 pub mod scenes;
 mod selected_object;
@@ -32,7 +30,6 @@ mod spawn_tools;
 mod terrain_field;
 mod tools;
 mod tooltip;
-mod treasury_harness;
 mod widgets;
 mod window;
 mod world_environment;
@@ -43,6 +40,7 @@ mod query_safety_tests;
 
 #[cfg(test)]
 mod archetype_ui_tests;
+#[cfg(test)]
 mod polish_tests;
 
 #[cfg(test)]
@@ -99,7 +97,8 @@ pub use navigation_editor::{
     BlueprintInspectionScenePresentation, NavigationEditorBlockedAction, NavigationEditorUiState,
     NavigationGenerationDiagnostics, apply_navigation_editor_disclosure_hints,
     guard_dirty_navigation_selection, handle_navigation_editor_actions,
-    handle_navigation_editor_opacity_slider, handle_open_navigation_editor_buttons,
+    handle_navigation_editor_close_guard, handle_navigation_editor_opacity_slider,
+    handle_open_navigation_editor_buttons,
     navigation_editor_owns_session, open_navigation_editor, setup_navigation_editor_panel,
     spawn_open_navigation_editor_button, sync_blueprint_inspection_scene_visibility,
     sync_navigation_editor_action_buttons, sync_navigation_editor_disclosure_state,
@@ -394,7 +393,11 @@ impl Plugin for DevModePlugin {
         )
         .add_systems(
             Update,
-            handle_navigation_editor_actions.in_set(DevModeInputSystems),
+            (
+                handle_navigation_editor_actions,
+                handle_navigation_editor_close_guard,
+            )
+                .in_set(DevModeInputSystems),
         )
         .add_systems(
             Update,

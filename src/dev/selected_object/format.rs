@@ -1,12 +1,10 @@
 //! Selected Object summary and diagnostics formatting (Slice 5).
 
-use crate::client::selection::WorldSelectionCategory;
 use crate::dev::gizmo::{DevToolState, TransformEditState};
 use crate::dev::inspector::{
-    BuildingBlueprintInspectorSnapshot, BuildingInspectorSnapshot, DoodadInspectorSnapshot,
+    BuildingInspectorSnapshot, DoodadInspectorSnapshot,
     ItemPileInspectorSnapshot, UnitInspectorSnapshot,
 };
-use crate::world::Affiliation;
 
 pub const EMPTY_STATE: &str = "Select a unit, building, doodad, or item pile to inspect it.";
 
@@ -42,6 +40,7 @@ pub fn format_unit_summary(snapshot: &UnitInspectorSnapshot, selected_count: usi
     )
 }
 
+#[cfg(test)]
 pub fn unit_is_player_commandable(snapshot: &UnitInspectorSnapshot) -> bool {
     snapshot.affiliation == Affiliation::Player.label()
 }
@@ -54,36 +53,6 @@ pub fn format_building_summary(snapshot: &BuildingInspectorSnapshot) -> String {
     format!(
         "{}\n{} | HP {}/{}",
         snapshot.display_name, snapshot.lifecycle_state, snapshot.current_hp, snapshot.max_hp,
-    )
-}
-
-pub fn format_building_navigation_strip(
-    blueprint: Option<&BuildingBlueprintInspectorSnapshot>,
-) -> String {
-    let Some(bp) = blueprint else {
-        return "Navigation: None resolved".into();
-    };
-    format!(
-        "Blueprint: {}\nSource: {}  Status: {}\nFloors: {:?}  Validation: {} err / {} warn",
-        bp.blueprint_id.as_deref().unwrap_or("—"),
-        bp.blueprint_source,
-        bp.generation_status,
-        bp.floor_ids,
-        bp.validation.error_count,
-        bp.validation.warning_count,
-    )
-}
-
-pub fn format_building_navigation_authoring(
-    blueprint: Option<&BuildingBlueprintInspectorSnapshot>,
-) -> String {
-    let Some(bp) = blueprint else {
-        return "No blueprint — open the Navigation Editor from Selected Object.".into();
-    };
-    format!(
-        "Blueprint: {}  Source: {}\nOpen Navigation Editor to inspect or edit.",
-        bp.blueprint_id.as_deref().unwrap_or("—"),
-        bp.blueprint_source,
     )
 }
 
@@ -142,12 +111,3 @@ pub fn format_pile_diagnostics(snapshot: &ItemPileInspectorSnapshot) -> String {
     )
 }
 
-pub fn category_label(category: WorldSelectionCategory) -> &'static str {
-    match category {
-        WorldSelectionCategory::None => "None",
-        WorldSelectionCategory::Units => "Unit",
-        WorldSelectionCategory::Building => "Building",
-        WorldSelectionCategory::Doodad => "Doodad",
-        WorldSelectionCategory::ItemPile => "Item pile",
-    }
-}

@@ -2,23 +2,6 @@ use crate::world::{AnimationProfile, AnimationProfileId};
 
 pub const REQUIRED_COLUMNS: &[&str] = &["Profile ID", "Idle Animation"];
 
-pub const OPTIONAL_COLUMNS: &[&str] = &[
-    "Walk Animation",
-    "Run Animation",
-    "Locomotion Reference Speed",
-    "Enabled",
-    "Death Animation",
-    "Hit Reaction Animation",
-    "Upper Body Split Bone",
-    "Turn Left Animation",
-    "Turn Right Animation",
-    "Turn Left Duration",
-    "Turn Right Duration",
-    "Work Animation",
-    "Swim Animation",
-    "Swim Idle Animation",
-];
-
 pub const DEFAULT_LOCOMOTION_REFERENCE_SPEED_MPS: f32 = 4.0;
 
 #[derive(Debug, Clone, PartialEq)]

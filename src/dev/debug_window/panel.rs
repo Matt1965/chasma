@@ -7,7 +7,7 @@ use crate::dev::catalog_cache::DevSearchDebounce;
 use crate::dev::dev_mode::{DevDebugFlags, DevModeState};
 use crate::dev::input::DevPanelUi;
 use crate::dev::widgets::{
-    DevCollapsibleSectionId, DevWidgetToggle, DevWidgetToggleMark, spawn_toggle_row,
+    DevWidgetToggle, DevWidgetToggleMark, spawn_toggle_row,
     sync_toggle_styles_with_marker,
     theme::{TEXT_SECTION, small_text_font},
 };
@@ -19,13 +19,13 @@ use crate::dev::tooltip::DevTooltipContent;
 pub(crate) struct DevDebugWindowUi;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevDebugSummaryText;
+pub struct DevDebugSummaryText;
 
 #[derive(Component, Debug)]
 pub struct DevAnimationText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevDebugToggleButton {
+pub struct DevDebugToggleButton {
     pub flag: DevDebugToggleFlag,
 }
 
@@ -57,17 +57,13 @@ struct ToggleDef {
     tooltip: &'static str,
 }
 
-const GROUP_TEXT: Color = Color::srgba(0.65, 0.78, 0.88, 1.0);
-
 struct ToggleGroup {
-    section: DevCollapsibleSectionId,
     title: &'static str,
     toggles: &'static [ToggleDef],
 }
 
 const TOGGLE_GROUPS: &[ToggleGroup] = &[
     ToggleGroup {
-        section: DevCollapsibleSectionId::DebugMaster,
         title: "Master and general overlays",
         toggles: &[
             ToggleDef {
@@ -96,7 +92,6 @@ const TOGGLE_GROUPS: &[ToggleGroup] = &[
         ],
     },
     ToggleGroup {
-        section: DevCollapsibleSectionId::DebugSelection,
         title: "Selection and inspector focus",
         toggles: &[
             ToggleDef {
@@ -137,7 +132,6 @@ const TOGGLE_GROUPS: &[ToggleGroup] = &[
         ],
     },
     ToggleGroup {
-        section: DevCollapsibleSectionId::DebugNavigation,
         title: "Navigation (NV0)",
         toggles: &[
             ToggleDef {
@@ -182,7 +176,6 @@ const TOGGLE_GROUPS: &[ToggleGroup] = &[
         ],
     },
     ToggleGroup {
-        section: DevCollapsibleSectionId::DebugSession,
         title: "Session utilities",
         toggles: &[ToggleDef {
             label: "Reset dev state",
@@ -281,7 +274,7 @@ pub fn sync_debug_panel_content(
 pub fn sync_debug_panel_button_styles(
     dev_state: Res<DevModeState>,
     registry: Res<DevWindowRegistry>,
-    mut buttons: Query<
+    buttons: Query<
         (
             &Interaction,
             &DevWidgetToggle,
@@ -291,7 +284,7 @@ pub fn sync_debug_panel_button_styles(
         ),
         With<Button>,
     >,
-    mut marks: Query<&mut Visibility, With<DevWidgetToggleMark>>,
+    marks: Query<&mut Visibility, With<DevWidgetToggleMark>>,
 ) {
     if !registry.window_active(dev_state.enabled, DevWindowId::Debug) {
         return;
@@ -396,7 +389,7 @@ fn toggle_debug_flag(
     }
 }
 
-pub(crate) fn format_debug_summary(
+pub fn format_debug_summary(
     flags: &DevDebugFlags,
     mask_stats: crate::debug::NavigationMaskDrawStats,
 ) -> String {

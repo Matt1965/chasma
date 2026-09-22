@@ -1,13 +1,12 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use super::attachment::{RoadEndpointAttachment, RoadTeeAttachment};
 use super::crossing::RoadCrossingOverride;
 use super::error::RoadError;
 use super::id::{JunctionId, RoadId};
-use super::junction::{Junction, JunctionMemberRole};
+use super::junction::JunctionMemberRole;
 use super::network::{RoadNetwork, ROAD_NETWORK_SCHEMA_VERSION};
 use super::road::Road;
-use super::style::{RoadStyleDefaults, RoadStyleId};
 
 pub fn validate_road_network(network: &RoadNetwork) -> Result<(), RoadError> {
     if network.version != ROAD_NETWORK_SCHEMA_VERSION {

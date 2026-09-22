@@ -5,7 +5,7 @@ use crate::world::inventory::{
     remove_owned_inventory,
 };
 use crate::world::unit::{UnitId, UnitRecord};
-use crate::world::{InventoryCatalogCtx, InventoryProfileId, WorldData};
+use crate::world::{InventoryCatalogCtx, WorldData};
 
 use super::inventories::UnitEquipmentInventories;
 use super::slot::EquipmentSlot;

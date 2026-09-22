@@ -7,8 +7,8 @@ mod id;
 mod starter;
 
 pub use catalog::{
-    FIELD_RESPONSE_PROFILE_CATALOG_RON_PATH, FieldResponseProfileCatalog,
-    FieldResponseProfileCatalogRevision, FieldResponseProfileCatalogRon,
+    FieldResponseProfileCatalog,
+    FieldResponseProfileCatalogRevision,
     load_field_response_profile_catalog,
 };
 pub use definition::{
@@ -20,7 +20,5 @@ pub use efficiency::{
 };
 pub use error::{FieldResponseEvaluationError, FieldResponseProfileError};
 pub use evaluate::evaluate_field_response;
-pub use id::{FieldResponseProfileId, validate_field_response_profile_id};
+pub use id::FieldResponseProfileId;
 
-#[cfg(any(test, feature = "dev"))]
-pub use starter::starter_profiles;

@@ -5,7 +5,6 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use super::components::{FloatingGameplayWindowRoot, FloatingWindowTitleBarDragRegion};
-use super::id::FloatingGameplayWindowId;
 use super::math::{clamp_window_position, window_position_from_pointer};
 use super::state::FloatingGameplayWindowRegistry;
 use crate::ui::gameplay::inventory::InventoryUiState;

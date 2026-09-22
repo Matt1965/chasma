@@ -4,8 +4,8 @@ use crate::world::BuildingId;
 use crate::world::WorldData;
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::building::operation::{
-    BuildingOperationPolicy, BuildingWorkPriorityLevel, OperationDefinitionId, OperationLifecycle,
-    RepeatMode, building_work_priority_u8_for_level,
+    BuildingWorkPriorityLevel, OperationDefinitionId, OperationLifecycle, RepeatMode,
+    building_work_priority_u8_for_level,
 };
 use crate::world::operation::{
     OperationCatalog, OperationSelectionError, validate_operation_selection,
@@ -136,16 +136,6 @@ pub fn reset_production_progress(
         .building_production_store_mut()
         .reset_progress(building_id);
     Ok(())
-}
-
-pub fn production_policy(
-    world: &WorldData,
-    building_id: BuildingId,
-) -> Option<BuildingOperationPolicy> {
-    world
-        .building_production_store()
-        .get_policy(building_id)
-        .cloned()
 }
 
 pub fn set_building_work_priority(

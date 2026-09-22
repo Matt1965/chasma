@@ -11,18 +11,12 @@ use super::definition::{
     BuildingNavigationBlueprint, NavigationEntranceDefinition, NavigationFloorDefinition,
     NavigationPolygon2d, NavigationRegionDefinition,
 };
-use super::opening_geometry::{
-    authored_opening_interval_on_edge, min_interior_closed_boundary_clearance_meters,
-    usable_center_opening_interval_on_edge,
-};
-use super::runtime::{interior_agent_fits_region, min_edge_clearance_meters};
 use crate::world::{
     Affiliation, BuildingCatalog, BuildingCategoryCatalog, BuildingDefinition,
     BuildingDefinitionId, BuildingLifecycleState, BuildingNavigationBlueprintInstanceOverride,
     BuildingOwnership, BuildingRenderKey, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
-    DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, LocalPosition, PassabilityAgent,
-    PassabilityBlockReason, PassabilityCatalogs, PassabilityResult, WorldData, WorldPosition,
-    place_player_building, query_navigation_point_legality, set_building_lifecycle_stage,
+    DoodadCatalog, FootprintCatalog, InteriorProfileCatalog, LocalPosition, WorldData, WorldPosition,
+    place_player_building, set_building_lifecycle_stage,
 };
 
 fn layout_world() -> WorldData {

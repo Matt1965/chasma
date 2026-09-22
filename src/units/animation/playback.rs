@@ -790,8 +790,8 @@ fn update_persisted_state(
     let Some(mut state) = persisted else {
         return;
     };
-    let previous_phase = state.last_attack_phase;
-    let previous_attack_key = state.attack_key.clone();
+    let _previous_phase = state.last_attack_phase;
+    let _previous_attack_key = state.attack_key.clone();
     state.last_attack_phase = match &intent.upper {
         super::layers::UpperBodyIntent::Attack { phase, .. } => Some(*phase),
         super::layers::UpperBodyIntent::None => state.last_attack_phase,
@@ -823,136 +823,9 @@ fn prune_state_index(world: &WorldData, state_index: &mut UnitAnimationStateInde
         .retain(|unit_id, _| world.get_unit(*unit_id).is_some());
 }
 
-/// Returns whether playback would restart for the given intent change (A1/A2 tests).
-pub(crate) fn should_restart_playback(
-    persisted: Option<UnitAnimationPersistedState>,
-    _intent: &super::intent::UnitAnimationIntent,
-    playback_clip: &AnimationPlaybackClip,
-) -> bool {
-    let Some(persisted) = persisted else {
-        return true;
-    };
-    persisted.clip != *playback_clip
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::units::animation::components::AnimationPlaybackClip;
-    use crate::units::animation::intent::UnitAnimationIntent;
-    use crate::world::AnimationClipKey;
-
-    fn empty_layers() -> LayeredPlaybackState {
-        LayeredPlaybackState::default()
-    }
-
-    #[test]
-    fn same_locomotion_does_not_restart() {
-        let persisted = UnitAnimationPersistedState {
-            clip: AnimationPlaybackClip::Locomotion(AnimationClipKey::Walk),
-            layers: empty_layers(),
-            profile_id: crate::world::AnimationProfileId::new("humanoid"),
-            last_attack_phase: None,
-            attack_key: None,
-            attack_blend_out: None,
-            unarmed_strike_parity: 0,
-            locomotion: LocomotionPresentationState::default(),
-            lod: AnimationLodPresentationState::default(),
-        };
-        let intent = UnitAnimationIntent::Locomotion {
-            clip: AnimationClipKey::Walk,
-            speed: 1.0,
-            looping: true,
-            blend: std::time::Duration::ZERO,
-        };
-        assert!(!should_restart_playback(
-            Some(persisted),
-            &intent,
-            &AnimationPlaybackClip::Locomotion(AnimationClipKey::Walk)
-        ));
-    }
-
-    #[test]
-    fn locomotion_clip_change_restarts() {
-        let persisted = UnitAnimationPersistedState {
-            clip: AnimationPlaybackClip::Locomotion(AnimationClipKey::Idle),
-            layers: empty_layers(),
-            profile_id: crate::world::AnimationProfileId::new("humanoid"),
-            last_attack_phase: None,
-            attack_key: None,
-            attack_blend_out: None,
-            unarmed_strike_parity: 0,
-            locomotion: LocomotionPresentationState::default(),
-            lod: AnimationLodPresentationState::default(),
-        };
-        let intent = UnitAnimationIntent::Locomotion {
-            clip: AnimationClipKey::Walk,
-            speed: 1.0,
-            looping: true,
-            blend: std::time::Duration::ZERO,
-        };
-        assert!(should_restart_playback(
-            Some(persisted),
-            &intent,
-            &AnimationPlaybackClip::Locomotion(AnimationClipKey::Walk)
-        ));
-    }
-
-    #[test]
-    fn walk_to_attack_transition_restarts() {
-        let persisted = UnitAnimationPersistedState {
-            clip: AnimationPlaybackClip::Locomotion(AnimationClipKey::Walk),
-            layers: empty_layers(),
-            profile_id: crate::world::AnimationProfileId::new("humanoid"),
-            last_attack_phase: None,
-            attack_key: None,
-            attack_blend_out: None,
-            unarmed_strike_parity: 0,
-            locomotion: LocomotionPresentationState::default(),
-            lod: AnimationLodPresentationState::default(),
-        };
-        let intent = UnitAnimationIntent::Attack {
-            weapon_id: crate::world::WeaponDefinitionId::new("weapon_wolf_bite"),
-            phase: AttackPhase::Windup,
-            blend: std::time::Duration::from_millis(150),
-            blend_out: std::time::Duration::from_millis(150),
-        };
-        assert!(should_restart_playback(
-            Some(persisted),
-            &intent,
-            &AnimationPlaybackClip::Attack(crate::world::WeaponDefinitionId::new(
-                "weapon_wolf_bite"
-            ))
-        ));
-    }
-
-    #[test]
-    fn attack_to_walk_transition_restarts() {
-        let persisted = UnitAnimationPersistedState {
-            clip: AnimationPlaybackClip::Attack(crate::world::WeaponDefinitionId::new(
-                "weapon_wolf_bite",
-            )),
-            layers: empty_layers(),
-            profile_id: crate::world::AnimationProfileId::new("humanoid"),
-            last_attack_phase: Some(AttackPhase::Recovery),
-            attack_key: None,
-            attack_blend_out: None,
-            unarmed_strike_parity: 0,
-            locomotion: LocomotionPresentationState::default(),
-            lod: AnimationLodPresentationState::default(),
-        };
-        let intent = UnitAnimationIntent::Locomotion {
-            clip: AnimationClipKey::Walk,
-            speed: 1.0,
-            looping: true,
-            blend: std::time::Duration::ZERO,
-        };
-        assert!(should_restart_playback(
-            Some(persisted),
-            &intent,
-            &AnimationPlaybackClip::Locomotion(AnimationClipKey::Walk)
-        ));
-    }
 
     #[test]
     fn locomotion_state_persists_in_index() {

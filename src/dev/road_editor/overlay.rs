@@ -5,7 +5,7 @@ use crate::dev::dev_mode::DevModeState;
 use crate::dev::window::{DevWindowId, DevWindowRegistry};
 use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
 use crate::world::{
-    Road, RoadControlPoint, RoadNetwork, WorldConfig, WorldData, WorldPosition,
+    Road, RoadNetwork, WorldConfig, WorldData, WorldPosition,
     derive_ground_crossings, junction_world_position, sample_road_polyline,
 };
 
@@ -166,7 +166,7 @@ fn draw_width_corridor(
     layout: crate::world::ChunkLayout,
     vertical_scale: f32,
     width_m: f32,
-    color: Color,
+    _color: Color,
 ) {
     let half = width_m * 0.5;
     let edge_color = Color::srgba(0.75, 0.75, 0.8, 0.35);

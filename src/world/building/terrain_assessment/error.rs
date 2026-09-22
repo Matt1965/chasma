@@ -40,24 +40,6 @@ impl std::fmt::Display for TerrainAssessmentError {
     }
 }
 
-/// UI-facing overlay/assessment presentation errors.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TerrainAssessmentUiError {
-    TemporaryOverlayFieldMissing(crate::world::TerrainFieldId),
-    BuildAssessmentUnavailable,
-}
-
-impl std::fmt::Display for TerrainAssessmentUiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::TemporaryOverlayFieldMissing(id) => {
-                write!(f, "temporary overlay field `{id}` missing")
-            }
-            Self::BuildAssessmentUnavailable => write!(f, "build assessment unavailable"),
-        }
-    }
-}
-
 /// Bundle of catalogs needed for assessment.
 pub struct TerrainAssessmentCatalogs<'a> {
     pub buildings: &'a crate::world::building::catalog::BuildingCatalog,

@@ -5,7 +5,7 @@ use std::cmp::Reverse;
 use super::catalog_ctx::InventoryCatalogCtx;
 use super::entry::{InventoryEntryContents, PlacedInventoryEntry};
 use super::error::InventoryError;
-use super::grid::{can_place_footprint, first_fit_position, footprint_for_definition};
+use super::grid::{first_fit_position, footprint_for_definition};
 use super::id::ItemInstanceId;
 use super::ops::{rebuild_inventory, resolve_instance_definition};
 use super::record::InventoryRecord;

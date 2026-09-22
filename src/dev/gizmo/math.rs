@@ -40,29 +40,6 @@ pub fn ray_axis_closest_param(ray: &Ray3d, line_point: Vec3, line_dir: Vec3) -> 
     Some((b * e - d) / denom)
 }
 
-/// Perpendicular distance from `point` to the (forward) ray.
-pub fn point_ray_distance(ray: &Ray3d, point: Vec3) -> f32 {
-    let dir = Vec3::from(ray.direction);
-    let oc = point - ray.origin;
-    let proj = oc.dot(dir).max(0.0);
-    let closest = ray.origin + dir * proj;
-    point.distance(closest)
-}
-
-/// Closest distance between ray and a finite line segment.
-pub fn ray_segment_distance(ray: &Ray3d, a: Vec3, b: Vec3) -> f32 {
-    let ab = b - a;
-    let len_sq = ab.length_squared();
-    if len_sq < 1e-8 {
-        return ray.origin.distance(a);
-    }
-    let t = ((ray.origin - a).dot(ab) / len_sq).clamp(0.0, 1.0);
-    let closest = a + ab * t;
-    let oc = ray.origin - closest;
-    let cross = ray.direction.cross(oc);
-    cross.length() / ray.direction.length().max(1e-6)
-}
-
 /// Signed angle from `from` to `to` around `axis` (radians).
 pub fn signed_angle_about_axis(from: Vec3, to: Vec3, axis: Vec3) -> f32 {
     let from_n = from.reject_from(axis).normalize_or_zero();
@@ -101,11 +78,6 @@ pub fn oriented_axis(
         super::tool::GizmoCoordinateSpace::World => axis,
         super::tool::GizmoCoordinateSpace::Local => object_rotation * axis,
     }
-}
-
-/// Pick threshold scales with gizmo presentation size.
-pub fn pick_threshold(gizmo_scale: f32) -> f32 {
-    gizmo_scale * 0.16
 }
 
 #[cfg(test)]

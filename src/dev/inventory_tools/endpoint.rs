@@ -6,7 +6,7 @@ use crate::ui::gameplay::GameplayBuildingSelection;
 use crate::ui::gameplay::primary_selected_unit;
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    BuildingId, InventoryId, ItemPileId, ItemPileSettings, UnitId, WorldData,
+    BuildingId, ItemPileId, ItemPileSettings, UnitId, WorldData,
     nearest_item_pile_at_position, resolve_navigation_space_at_position,
 };
 
@@ -132,10 +132,6 @@ pub fn unit_inventory_endpoint(world: &WorldData, unit_id: UnitId) -> Option<Dev
         .get_unit(unit_id)
         .and_then(|u| u.inventory_id)
         .map(DevInventoryEndpoint::Grid)
-}
-
-pub fn pile_endpoint(_world: &WorldData, pile_id: ItemPileId) -> DevInventoryEndpoint {
-    DevInventoryEndpoint::Pile(pile_id)
 }
 
 /// Nearest pile at a world position (dev inspector pick).

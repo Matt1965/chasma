@@ -335,6 +335,7 @@ fn spawn_placeholder_page(parent: &mut ChildSpawnerCommands, title: &str, body: 
 }
 
 /// Cover size that fills `window` while preserving `intrinsic` aspect (crop excess).
+#[cfg(test)]
 pub fn cover_size_for_window(window: Vec2, intrinsic: Vec2) -> Vec2 {
     let scale = (window.x / intrinsic.x).max(window.y / intrinsic.y);
     intrinsic * scale

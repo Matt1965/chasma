@@ -6,6 +6,7 @@ mod focus;
 mod plugin;
 mod presentation;
 mod preview;
+#[cfg(test)]
 mod preview_invariants;
 mod preview_reconcile;
 mod preview_spawn;

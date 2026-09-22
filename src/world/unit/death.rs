@@ -147,8 +147,6 @@ pub enum UnitRemovalError {
         unit_id: UnitId,
         error: crate::world::inventory::InventoryError,
     },
-    /// Equipped items could not transition to corpse loot (Slice 6).
-    EquipmentDispositionUnresolved { unit_id: UnitId },
 }
 
 /// Death pipeline: detect → mark dead → queue → target cleanup → remove.

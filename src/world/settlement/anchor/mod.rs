@@ -8,7 +8,7 @@ mod record;
 mod store;
 
 pub use constants::{
-    DEFAULT_TOWN_BOUNDARY_RADIUS_METERS, SETTLEMENT_PLACEMENT_MARGIN_METERS,
+    DEFAULT_TOWN_BOUNDARY_RADIUS_METERS,
     initial_boundary_radius_meters,
 };
 pub use error::SettlementCreationError;

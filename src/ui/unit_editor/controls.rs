@@ -79,7 +79,7 @@ pub struct UnitEditorSliderDragState {
 }
 
 pub fn handle_unit_editor_sliders(
-    mut session: Option<ResMut<UnitEditorSession>>,
+    session: Option<ResMut<UnitEditorSession>>,
     profiles: Res<AppearanceProfileCatalog>,
     mut drag: ResMut<UnitEditorSliderDragState>,
     mouse: Res<ButtonInput<MouseButton>>,

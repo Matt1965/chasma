@@ -12,10 +12,10 @@ use crate::simulation::{
 use crate::ui::gameplay::PlayerHudState;
 use crate::units::input::SelectedUnits;
 use crate::world::{
-    AttackTargetingPolicy, BuildingCatalog, BuildingConstructionSettings, CombatAiReport,
-    CombatAiScanState, CombatAiSettings, CombatEngagementReport, CombatStrikeReport,
-    CommandBufferResolveReport, DoodadCatalog, FootprintCatalog, NavigationConfig,
-    ProjectileReport, UnitCatalog, UnitDeathReport, WeaponCatalog, WorldData,
+    AttackTargetingPolicy, BuildingConstructionSettings, CombatAiReport,
+    CombatAiScanState, CombatEngagementReport, CombatStrikeReport,
+    CommandBufferResolveReport,
+    ProjectileReport, UnitDeathReport, WorldData,
 };
 
 fn merge_step_trace(pending: &mut PendingSimulationTrace, step_report: &SimulationTickReport) {

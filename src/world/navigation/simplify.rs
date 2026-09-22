@@ -8,27 +8,6 @@ use crate::world::{
     ChunkLayout, PassabilityCatalogs, SpaceId, SpaceRegistry, WorldData, WorldPosition,
 };
 
-/// Remove collinear grid waypoints and apply greedy line-of-sight shortcuts (surface).
-pub fn simplify_navigation_path(
-    waypoints: &mut Vec<WorldPosition>,
-    world: &WorldData,
-    catalogs: PassabilityCatalogs<'_>,
-    config: super::grid::NavigationConfig,
-    agent: NavigationAgent,
-    layout: ChunkLayout,
-) {
-    simplify_navigation_path_in_space(
-        waypoints,
-        world,
-        world.space_registry(),
-        catalogs,
-        config,
-        SpaceId::SURFACE,
-        agent,
-        layout,
-    );
-}
-
 /// Space-aware path simplification (IN-03).
 pub fn simplify_navigation_path_in_space(
     waypoints: &mut Vec<WorldPosition>,
@@ -124,56 +103,6 @@ pub fn navigation_segment_valid(
         layout,
     )
     .is_legal()
-}
-
-/// Whether every consecutive waypoint pair is universally legal in `space_id`.
-pub fn all_consecutive_segments_legal_in_space(
-    world: &WorldData,
-    space_registry: &SpaceRegistry,
-    catalogs: PassabilityCatalogs<'_>,
-    config: super::grid::NavigationConfig,
-    space_id: SpaceId,
-    agent: NavigationAgent,
-    waypoints: &[WorldPosition],
-    layout: ChunkLayout,
-) -> bool {
-    waypoints.windows(2).all(|pair| {
-        query_navigation_segment_legality(
-            world,
-            space_registry,
-            catalogs,
-            config,
-            space_id,
-            agent,
-            pair[0],
-            pair[1],
-            layout,
-        )
-        .is_legal()
-    })
-}
-
-/// Thin adapter: surface line-of-sight uses universal segment legality (IN-11gG).
-pub fn has_walkable_line_of_sight_surface(
-    world: &WorldData,
-    catalogs: PassabilityCatalogs<'_>,
-    config: super::grid::NavigationConfig,
-    agent: NavigationAgent,
-    from: WorldPosition,
-    to: WorldPosition,
-    layout: ChunkLayout,
-) -> bool {
-    navigation_segment_valid(
-        world,
-        world.space_registry(),
-        catalogs,
-        config,
-        SpaceId::SURFACE,
-        agent,
-        from,
-        to,
-        layout,
-    )
 }
 
 fn remove_collinear_waypoints(waypoints: &mut Vec<WorldPosition>, layout: ChunkLayout) {

@@ -17,7 +17,6 @@ use super::state::DevArchetypeEditorState;
 #[derive(Debug, Clone)]
 pub struct BuildingArchetypeMemberPreviewEntry {
     pub kind: BuildingArchetypeMemberKind,
-    pub definition_id: String,
     pub display_name: String,
     pub world_position: Vec3,
     pub state_hint: Option<String>,
@@ -101,7 +100,6 @@ pub fn sync_building_archetype_capture_preview(
                         .and_then(|state| state.stack_quantity);
                     BuildingArchetypeMemberPreviewEntry {
                         kind: member.kind,
-                        definition_id: member.definition_id.clone(),
                         display_name,
                         world_position,
                         state_hint,
@@ -372,7 +370,6 @@ mod tests {
         let lines = format_captured_member_lines(&[
             BuildingArchetypeMemberPreviewEntry {
                 kind: BuildingArchetypeMemberKind::Doodad,
-                definition_id: "crate".into(),
                 display_name: "Crate".into(),
                 world_position: Vec3::ZERO,
                 state_hint: None,
@@ -380,7 +377,6 @@ mod tests {
             },
             BuildingArchetypeMemberPreviewEntry {
                 kind: BuildingArchetypeMemberKind::Doodad,
-                definition_id: "crate".into(),
                 display_name: "Crate".into(),
                 world_position: Vec3::ONE,
                 state_hint: None,

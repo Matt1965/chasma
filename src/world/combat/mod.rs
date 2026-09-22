@@ -26,10 +26,7 @@ pub use ai::{
 pub use attack_cycle::WeaponTiming;
 #[cfg(test)]
 pub use autonomous_desire::test_support;
-pub use autonomous_desire::{
-    AutonomousDesireDecision, HOSTILE_RELATIONSHIP_THRESHOLD, autonomous_wants_to_attack,
-    evaluate_autonomous_desire,
-};
+pub use autonomous_desire::autonomous_wants_to_attack;
 pub use cycle_lifecycle::{clear_attack_cycle_for_order_cancel, reset_attack_cycle_for_retarget};
 pub use engagement::{
     CombatEngagementReport, CombatEngagementStatus, CombatEngagementTrace, hold_in_attack_range,

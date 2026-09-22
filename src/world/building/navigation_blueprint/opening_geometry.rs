@@ -88,6 +88,7 @@ pub fn usable_center_opening_interval_on_edge(
 }
 
 /// Whether `point` lies within the agent-usable center opening interval on edge `a→b`.
+#[cfg(test)]
 pub fn point_within_usable_center_opening_on_edge(
     point: Vec2,
     a: Vec2,
@@ -118,6 +119,7 @@ pub fn point_within_merged_usable_intervals_on_edge(
 }
 
 /// Whether `point` lies within the authored opening interval on edge `a→b`.
+#[cfg(test)]
 pub fn point_within_authored_opening_on_edge(
     point: Vec2,
     a: Vec2,

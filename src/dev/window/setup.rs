@@ -33,8 +33,6 @@ use crate::dev::widgets::theme::{
 
 const TITLE_BTN: Color = crate::dev::widgets::theme::TITLE_BTN_IDLE;
 
-const TITLE_BTN_HOVER: Color = crate::dev::widgets::theme::TITLE_BTN_HOVER;
-
 /// Spawn workspace launcher + dev window shells; bodies filled by panel setup systems.
 
 pub fn setup_dev_workspace(mut commands: Commands, registry: Res<DevWindowRegistry>) {

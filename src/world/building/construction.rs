@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use super::catalog::BuildingCatalog;
 use super::id::BuildingId;
 use super::record::BuildingRecord;
-use super::state::{BuildingLifecycleState, ConstructionState};
+use super::state::BuildingLifecycleState;
 use super::vitals::BuildingVitals;
 use crate::world::DoodadCatalog;
 use crate::world::building::interior::InteriorProfileCatalog;
@@ -615,7 +615,7 @@ pub fn add_building_construction_progress(
         return Ok(Vec::new());
     }
 
-    let definition = definition_for_record(building_catalog, &record)?;
+    let _definition = definition_for_record(building_catalog, &record)?;
     let mut events = Vec::new();
 
     if record.lifecycle_state == BuildingLifecycleState::Planned {

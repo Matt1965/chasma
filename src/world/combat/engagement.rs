@@ -18,8 +18,7 @@ use super::range::{
 };
 use super::standoff::{StandoffError, compute_standoff_destination};
 use super::strike::CombatStrikeReport;
-use super::targeting::{is_unit_alive, validate_explicit_attack_target};
-use crate::world::unit::unit_can_execute_actions;
+use super::targeting::validate_explicit_attack_target;
 
 fn combat_pair<'a>(
     world: &'a WorldData,
@@ -793,7 +792,7 @@ fn begin_chase_to_target(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
-    item_catalog: &crate::world::ItemCatalog,
+    _item_catalog: &crate::world::ItemCatalog,
     catalogs: PassabilityCatalogs<'_>,
     nav_config: &NavigationConfig,
     unit_id: UnitId,
@@ -864,7 +863,7 @@ fn apply_invalid_target_state(
     strike_trace: &mut CombatStrikeReport,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
-    item_catalog: &crate::world::ItemCatalog,
+    _item_catalog: &crate::world::ItemCatalog,
 ) {
     hold_in_attack_range(world, unit_id);
     clear_attack_cycle_for_invalid_target(

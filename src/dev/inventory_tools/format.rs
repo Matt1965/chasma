@@ -121,7 +121,7 @@ pub fn format_inventory_tool_panel(
 fn format_endpoint_contents(
     world: &WorldData,
     items: &ItemCatalog,
-    categories: &ItemCategoryCatalog,
+    _categories: &ItemCategoryCatalog,
     ctx: &InventoryCatalogCtx<'_>,
     instance_store: &ItemInstanceStore,
     endpoint: &DevInventoryEndpointInfo,
@@ -183,7 +183,7 @@ fn format_endpoint_contents(
 fn format_entry_label(
     entry: &PlacedInventoryEntry,
     items: &ItemCatalog,
-    ctx: &InventoryCatalogCtx<'_>,
+    _ctx: &InventoryCatalogCtx<'_>,
     instance_store: &ItemInstanceStore,
 ) -> String {
     match &entry.contents {

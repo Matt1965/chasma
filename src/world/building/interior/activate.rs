@@ -321,7 +321,7 @@ fn resolve_navigation_for_activation<'a>(
 /// `Some(key)` binds only when it matches the profile door key.
 fn profile_door_controls_portal(
     blueprint: Option<&BuildingNavigationBlueprint>,
-    profile: &InteriorProfile,
+    _profile: &InteriorProfile,
     door_key: &str,
     portal_key: &str,
 ) -> bool {

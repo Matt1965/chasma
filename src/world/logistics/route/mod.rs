@@ -4,4 +4,4 @@ mod definition;
 mod index;
 
 pub use definition::BuildingLogisticsRouteDefinition;
-pub use index::{LogisticsEndpointIndex, LogisticsEndpointKey};
+pub use index::LogisticsEndpointIndex;

@@ -63,12 +63,6 @@ impl Material for EnvironmentOceanMaterial {
 /// Open / max-depth ocean absorption color (`#061A29`, WATER-COLOR-1).
 pub const DEEP_OCEAN_ABSORPTION_COLOR: Color = Color::srgb(6.0 / 255.0, 26.0 / 255.0, 41.0 / 255.0);
 
-/// Smooth monotonic depth response shared with the WGSL shader.
-pub fn evaluate_depth_response_factor(column_depth: f32, absorption_depth: f32) -> f32 {
-    let scale = absorption_depth.max(0.001);
-    (1.0 - (-column_depth.max(0.0) / scale).exp()).clamp(0.0, 1.0)
-}
-
 pub fn deep_ocean_color_from_shallow(_shallow: Color) -> Color {
     DEEP_OCEAN_ABSORPTION_COLOR
 }
@@ -110,18 +104,6 @@ mod tests {
         assert!(presentation.shallow_alpha > 0.0);
         assert!(presentation.deep_alpha <= 1.0);
         assert!(presentation.absorption_depth > 0.0);
-    }
-
-    #[test]
-    fn depth_response_is_monotonic_and_saturating() {
-        let scale = WaterDepthPresentation::default().absorption_depth;
-        let shallow = evaluate_depth_response_factor(0.0, scale);
-        let mid = evaluate_depth_response_factor(scale, scale);
-        let deep = evaluate_depth_response_factor(scale * 8.0, scale);
-        assert!(shallow < mid);
-        assert!(mid < deep);
-        assert!(deep <= 1.0);
-        assert!((deep - 1.0).abs() < 0.01);
     }
 
     #[test]

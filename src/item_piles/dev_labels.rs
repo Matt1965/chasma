@@ -10,9 +10,7 @@ use super::presentation::{ItemPilePresentationSettings, pile_display_metadata};
 use super::sync::ItemPileRenderIndex;
 
 #[derive(Component, Debug)]
-pub struct ItemPileDevLabel {
-    pub pile_id: ItemPileId,
-}
+pub struct ItemPileDevLabel;
 
 #[derive(Resource, Default, Debug)]
 pub struct ItemPileDevLabelIndex(pub std::collections::HashMap<ItemPileId, Entity>);
@@ -92,7 +90,7 @@ pub fn sync_item_pile_dev_labels(
 
         let entity = commands
             .spawn((
-                ItemPileDevLabel { pile_id },
+                ItemPileDevLabel,
                 Text2d::new(label),
                 TextFont {
                     font_size: 14.0,

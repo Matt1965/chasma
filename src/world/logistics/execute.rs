@@ -8,7 +8,7 @@ use crate::world::{InventoryId, ItemDefinitionId, WorldData};
 
 use super::id::HaulingRequestId;
 use super::reservation::{
-    available_stack_quantity, release_request_reservations, reserve_destination_capacity,
+    release_request_reservations, reserve_destination_capacity,
     reserve_source_items,
 };
 use super::types::{

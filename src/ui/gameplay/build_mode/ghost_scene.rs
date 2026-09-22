@@ -35,7 +35,7 @@ pub fn sync_build_mode_ghost_scene(
     asset_server: Res<AssetServer>,
     mut scene_assets: ResMut<BuildingSceneAssets>,
     render_assets: Option<Res<TerrainRenderAssets>>,
-    mut existing: Query<(Entity, &BuildModeGhostScene)>,
+    existing: Query<(Entity, &BuildModeGhostScene)>,
 ) {
     let has_anchor = build_mode.last_plan.as_ref().is_some() || anchor.position.is_some();
     let should_show =

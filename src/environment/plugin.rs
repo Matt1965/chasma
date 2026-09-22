@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use super::cloud_material::EnvironmentCloudMaterial;
 use super::cloud_settings::CloudSettings;
 use super::cycle::{
-    advance_time_of_day, sync_environment_presentation, update_environment_from_time_of_day,
+    advance_time_of_day, sync_environment_presentation,
 };
 #[cfg(feature = "dev")]
 use super::debug::{
@@ -18,14 +18,14 @@ use super::procedural_sky::{
     ProceduralSkySpawnState, setup_procedural_sky, sync_procedural_sky_presentation,
 };
 use super::project_defaults::{
-    EnvironmentManualLighting, PROJECT_DEFAULTS_PATH, ProjectEnvironmentBaseline,
+    EnvironmentManualLighting, PROJECT_DEFAULTS_PATH,
     initialize_runtime_from_baseline, load_project_environment_baseline,
 };
 use super::settings::EnvironmentSettings;
 use super::sky_material::EnvironmentSkyMaterial;
 use super::time_of_day::TimeOfDaySettings;
 use super::visual_state::{
-    EnvironmentVisualState, SkyColorPalette, apply_visual_state_to_environment,
+    SkyColorPalette, apply_visual_state_to_environment,
     evaluate_environment_visual_state, update_environment_visual_state,
 };
 use super::water::WaterPlugin;

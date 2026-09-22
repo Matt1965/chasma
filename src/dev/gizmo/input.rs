@@ -13,9 +13,7 @@ use crate::client::selection::{
 };
 use crate::dev::hotkeys::DEV_GIZMO_COORDINATE_SPACE;
 use crate::dev::{DevModeInputGate, DevModeState, DevPanelHoverState, cancel_dev_placement};
-use crate::doodads::DoodadRenderIndex;
 use crate::terrain::world_position_to_render_global;
-use crate::ui::gameplay::GameplayBuildingSelection;
 use crate::units::input::cursor_world_ray;
 use crate::world::authoring_transform::{
     AUTHORING_INSTANCE_SCALE_MAX, AUTHORING_INSTANCE_SCALE_MIN,
@@ -64,10 +62,8 @@ pub struct GizmoInputParams<'w, 's> {
     pub interior_catalog: Res<'w, InteriorProfileCatalog>,
     pub unit_catalog: Res<'w, UnitCatalog>,
     pub nav_catalog: Res<'w, crate::world::BuildingNavigationBlueprintCatalog>,
-    pub render_index: Res<'w, DoodadRenderIndex>,
     pub render_assets: Option<Res<'w, crate::terrain::TerrainRenderAssets>>,
     pub preview: ResMut<'w, crate::dev::tools::DevPlacementPreview>,
-    pub building_selection: ResMut<'w, GameplayBuildingSelection>,
     pub selected_units: ResMut<'w, crate::units::input::SelectedUnits>,
     pub selection_revision: ResMut<'w, WorldSelectionRevision>,
     pub inspector: ResMut<'w, crate::dev::inspector::WorldInspectorState>,

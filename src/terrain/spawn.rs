@@ -119,12 +119,6 @@ pub fn world_position_to_render_global_above_base(
     global
 }
 
-pub(crate) fn seam_weld_heights(world: &WorldData, chunk_id: ChunkId) -> ChunkMeshSeamWeld {
-    seam_weld_heights_with_sampler(world, chunk_id, |data, col, row| {
-        data.heightfield.height_at_vertex(col, row)
-    })
-}
-
 /// Seam weld strips using effective terrain height (base + road delta).
 pub(crate) fn seam_weld_heights_effective(world: &WorldData, chunk_id: ChunkId) -> ChunkMeshSeamWeld {
     seam_weld_heights_with_sampler(world, chunk_id, |data, col, row| {
@@ -350,7 +344,7 @@ mod tests {
         );
 
         let center = world.get(center_id).unwrap();
-        let seam_weld = seam_weld_heights(&world, center_id);
+        let seam_weld = seam_weld_heights_effective(&world, center_id);
         let mesh = build_chunk_mesh_scaled(
             &center.heightfield,
             ChunkLod::Full,

@@ -10,7 +10,7 @@ use super::resolve::resolve_building_navigation_blueprint;
 use super::source::{BlueprintAuthoritySource, classify_blueprint_authority};
 use crate::world::building::catalog::{BuildingCatalog, BuildingDefinitionId};
 use crate::world::building::interior::{
-    InteriorProfileCatalog, InteriorProfileId, NavigationReconcileOutcome,
+    InteriorProfileCatalog, NavigationReconcileOutcome,
     reconcile_building_navigation_runtime,
 };
 use crate::world::{BuildingId, DoodadCatalog, FootprintCatalog, OccupancyCatalogs, WorldData};

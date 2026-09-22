@@ -177,8 +177,8 @@ fn parse_row(
 }
 
 fn default_instance_scale_from_columns(
-    columns: &HashMap<String, usize>,
-    cells: &[calamine::Data],
+    _columns: &HashMap<String, usize>,
+    _cells: &[calamine::Data],
     text: &dyn Fn(&str) -> String,
 ) -> Result<AuthoringScale, String> {
     let x = parse_optional_f32(&text("Default Instance Scale X"));

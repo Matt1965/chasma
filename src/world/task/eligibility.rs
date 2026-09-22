@@ -1,4 +1,3 @@
-use bevy::prelude::*;
 
 use super::types::TaskType;
 use crate::world::{
@@ -77,7 +76,7 @@ pub fn unit_may_autonomously_work_building(
     unit_is_settlement_member(world, unit_id, settlement_id)
 }
 
-pub fn unit_may_work_on_building(building: &BuildingRecord, unit_ownership: UnitOwnership) -> bool {
+pub fn unit_may_work_on_building(_building: &BuildingRecord, unit_ownership: UnitOwnership) -> bool {
     let building_ownership = BuildingOwnership::from_unit_ownership(unit_ownership);
     match (building_ownership.affiliation, unit_ownership.affiliation) {
         (crate::world::Affiliation::Hostile, _) | (_, crate::world::Affiliation::Hostile) => false,
@@ -98,10 +97,6 @@ pub fn building_is_constructible(record: &BuildingRecord) -> bool {
 
 pub fn building_accepts_workstation_use(record: &BuildingRecord) -> bool {
     record.lifecycle_state == BuildingLifecycleState::Complete && record.vitals.current_hp > 0
-}
-
-pub fn building_id_from_record_id(id: BuildingId) -> BuildingId {
-    id
 }
 
 #[cfg(test)]

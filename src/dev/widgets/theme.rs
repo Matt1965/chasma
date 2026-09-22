@@ -5,17 +5,17 @@ use bevy::prelude::*;
 // --- Typography ---
 
 pub const FONT_SIZE_WINDOW_TITLE: f32 = 12.0;
-pub const FONT_SIZE_TITLE: f32 = 11.0;
 pub const FONT_SIZE_LABEL: f32 = 11.0;
 pub const FONT_SIZE_SMALL: f32 = 10.0;
 pub const FONT_SIZE_SECTION: f32 = 10.0;
-pub const FONT_SIZE_BADGE: f32 = 9.0;
 
 // --- Spacing scale (px) ---
 
+#[cfg_attr(not(test), allow(dead_code))]
 pub const SPACE_TIGHT: f32 = 4.0;
 pub const SPACE_CONTROL: f32 = 6.0;
 pub const SPACE_SECTION: f32 = 8.0;
+#[cfg_attr(not(test), allow(dead_code))]
 pub const SPACE_WINDOW: f32 = 8.0;
 pub const SPACE_BUTTON_PAD_X: f32 = 8.0;
 pub const SPACE_BUTTON_PAD_Y: f32 = 4.0;
@@ -23,7 +23,6 @@ pub const SPACE_BUTTON_PAD_Y: f32 = 4.0;
 // --- Window chrome ---
 
 pub const WINDOW_BG: Color = Color::srgba(0.04, 0.06, 0.08, 0.92);
-pub const WINDOW_BORDER: Color = Color::srgba(0.18, 0.26, 0.32, 0.9);
 pub const WINDOW_TITLE_TEXT: Color = Color::srgba(0.35, 0.95, 0.55, 1.0);
 pub const LAUNCHER_BG: Color = Color::srgba(0.06, 0.09, 0.12, 0.94);
 pub const LAUNCHER_LABEL_TEXT: Color = Color::srgba(0.7, 0.85, 0.92, 1.0);
@@ -81,10 +80,6 @@ pub const STATUS_ERROR: Color = Color::srgba(0.95, 0.45, 0.4, 1.0);
 
 pub const BADGE_BG: Color = Color::srgba(0.12, 0.18, 0.24, 0.95);
 pub const BADGE_TEXT: Color = Color::srgba(0.75, 0.85, 0.92, 1.0);
-pub const BADGE_DIRTY: Color = Color::srgba(0.85, 0.65, 0.25, 1.0);
-pub const BADGE_VALID: Color = Color::srgba(0.45, 0.85, 0.55, 1.0);
-pub const BADGE_INVALID: Color = Color::srgba(0.95, 0.45, 0.4, 1.0);
-
 // --- Tooltip ---
 
 pub const TOOLTIP_BG: Color = Color::srgba(0.05, 0.08, 0.11, 0.96);
@@ -121,24 +116,6 @@ pub fn toggle_button_bg(interaction: &Interaction, on: bool, disabled: bool) -> 
     }
 }
 
-/// Compact stepper (+/-) button styling.
-pub fn stepper_button_bg(interaction: &Interaction, active: bool) -> BackgroundColor {
-    if active {
-        toggle_button_bg(interaction, true, false)
-    } else {
-        action_button_bg(interaction, false)
-    }
-}
-
-/// Title-bar control (close/collapse) styling.
-pub fn title_button_bg(interaction: &Interaction) -> BackgroundColor {
-    BackgroundColor(match interaction {
-        Interaction::Pressed => BTN_BG_PRESSED,
-        Interaction::Hovered => TITLE_BTN_HOVER,
-        Interaction::None => TITLE_BTN_IDLE,
-    })
-}
-
 pub fn window_title_font() -> TextFont {
     TextFont {
         font_size: FONT_SIZE_WINDOW_TITLE,
@@ -160,22 +137,11 @@ pub fn small_text_font() -> TextFont {
     }
 }
 
-pub fn section_text_font() -> TextFont {
-    TextFont {
-        font_size: FONT_SIZE_SECTION,
-        ..default()
-    }
-}
-
 pub fn standard_button_node(padding_x: f32, padding_y: f32) -> Node {
     Node {
         padding: UiRect::axes(Val::Px(padding_x), Val::Px(padding_y)),
         ..default()
     }
-}
-
-pub fn standard_action_button_node() -> Node {
-    standard_button_node(SPACE_BUTTON_PAD_X, SPACE_BUTTON_PAD_Y)
 }
 
 #[cfg(test)]

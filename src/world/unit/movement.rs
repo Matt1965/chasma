@@ -11,7 +11,6 @@ use bevy::prelude::*;
 
 use super::catalog::UnitCatalog;
 use super::eligibility::unit_can_execute_actions;
-use super::facing::model_forward_xz;
 use super::id::UnitId;
 use super::movement_authority_trace::MovementBlockedAuthorityRecord;
 use super::state::UnitState;
@@ -22,7 +21,7 @@ use crate::world::movement::feel::{
 };
 use crate::world::movement::steering::SteeringSettings;
 use crate::world::{
-    BuildingCatalog, ChunkLayout, DoodadCatalog, FootprintCatalog, INTERACTION_WORK_RANGE_METERS,
+    ChunkLayout, INTERACTION_WORK_RANGE_METERS,
     NavigationWaypoint, OccupancySource, PassabilityAgent, PassabilityBlockReason,
     PassabilityCatalogs, PassabilityResult, SlopeWalkability, SpaceId, TaskType, WorldData,
     WorldPosition, apply_steering, classify_slope_walkability, effective_move_speed_mps,
@@ -33,8 +32,6 @@ use crate::world::{
 /// Distance below which a unit snaps to its move target (meters).
 pub const MOVEMENT_ARRIVAL_TOLERANCE_METERS: f32 = 0.05;
 const ARRIVAL_DISTANCE_METERS: f32 = MOVEMENT_ARRIVAL_TOLERANCE_METERS;
-/// When blocked, treat as having reached a waypoint if within this distance (meters).
-const WAYPOINT_SKIP_DISTANCE_METERS: f32 = 2.0;
 /// When blocked near a non-portal waypoint, allow skipping slightly further than normal.
 const BLOCKED_WAYPOINT_SKIP_DISTANCE_METERS: f32 = 3.5;
 /// When blocked near the final target, stop moving instead of freezing (meters).
@@ -1394,7 +1391,7 @@ fn apply_blocked_movement(
     target: WorldPosition,
     path: crate::world::NavigationPath,
     waypoint_index: usize,
-    effective_index: usize,
+    _effective_index: usize,
     current_position: WorldPosition,
     layout: ChunkLayout,
 ) -> UnitMovementStepOutcome {

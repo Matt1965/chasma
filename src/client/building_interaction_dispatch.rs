@@ -13,7 +13,7 @@ use crate::units::input::{MoveOrdersReport, SelectedUnits, issue_move_orders_to_
 use crate::world::{
     AttackTargetingPolicy, BuildingCatalog, BuildingId, BuildingInteractionProfileCatalog,
     DoodadCatalog, FootprintCatalog, ItemPileSettings, NavigationConfig, UnitCatalog, UnitId,
-    WeaponCatalog, WorldData, WorldPosition, building_has_inventory, is_unit_alive,
+    WeaponCatalog, WorldData, building_has_inventory, is_unit_alive,
     spill_position_for_building, unit_within_building_inventory_range,
 };
 use crate::world::{

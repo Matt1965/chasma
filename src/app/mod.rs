@@ -8,7 +8,7 @@ use crate::item_piles::{ItemPileRuntimePlugin, ItemPileRuntimeSystems};
 use crate::menu::{MenuInputSystems, MenuPlugin};
 use crate::player::{PlayerControlSystems, PlayerPlugin, RuntimeSyncSystems};
 use crate::projectiles::{ProjectileRuntimeSystems, ProjectilesRuntimePlugin};
-use crate::settlement_anchors::{SettlementAnchorRuntimePlugin, SettlementAnchorRuntimeSystems};
+use crate::settlement_anchors::SettlementAnchorRuntimePlugin;
 use crate::simulation::{SimulationControlSystems, SimulationSystems};
 use crate::terrain::{TerrainRuntimePlugin, TerrainStreamingSystems};
 use crate::units::{UnitAnimationSystems, UnitRuntimeSystems, UnitsRuntimePlugin};

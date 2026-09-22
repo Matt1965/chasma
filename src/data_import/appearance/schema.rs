@@ -221,7 +221,7 @@ pub fn assemble_profiles(
     parameter_rows: Vec<AppearanceParameterImportRow>,
     mapping_rows: Vec<AppearanceMorphMappingImportRow>,
 ) -> Result<Vec<AppearanceProfile>, String> {
-    use std::collections::{BTreeMap, HashMap, HashSet};
+    use std::collections::{BTreeMap, HashSet};
 
     let mut profiles: BTreeMap<String, AppearanceProfile> = BTreeMap::new();
 

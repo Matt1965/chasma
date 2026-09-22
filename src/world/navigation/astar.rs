@@ -4,9 +4,9 @@ use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
 use super::grid::{
-    GridCoord, NEIGHBOR_OFFSETS, NavigationAgent, NavigationConfig, diagonal_corner_clear,
-    diagonal_corner_clear_in_space, grid_cell_world_position,
-    grid_neighbor_transition_legal_in_space, is_cell_walkable, is_cell_walkable_in_space,
+    GridCoord, NEIGHBOR_OFFSETS, NavigationAgent, NavigationConfig,
+    diagonal_corner_clear_in_space,
+    grid_neighbor_transition_legal_in_space, is_cell_walkable_in_space,
     neighbor_step_cost,
 };
 use crate::world::{
@@ -53,42 +53,6 @@ fn octile_heuristic(a: GridCoord, b: GridCoord, cell_spacing_meters: f32) -> f32
 struct AstarOutcome {
     path: Vec<WorldPosition>,
     expanded: usize,
-}
-
-/// Run A* between grid cells and return grounded world waypoints (goal inclusive).
-pub fn astar_path(
-    world: &WorldData,
-    catalogs: PassabilityCatalogs<'_>,
-    config: NavigationConfig,
-    agent: NavigationAgent,
-    start: GridCoord,
-    goal: GridCoord,
-) -> Option<Vec<WorldPosition>> {
-    let space_config = config.config_for_space(SpaceId::SURFACE);
-    let layout = world.layout();
-    run_astar(
-        space_config,
-        agent,
-        start,
-        goal,
-        |coord| is_cell_walkable(world, catalogs, space_config, agent, coord),
-        |from, dx, dz| diagonal_corner_clear(world, catalogs, space_config, agent, from, dx, dz),
-        |from, to| {
-            grid_neighbor_transition_legal_in_space(
-                world,
-                world.space_registry(),
-                catalogs,
-                config,
-                agent,
-                from,
-                to,
-                SpaceId::SURFACE,
-                layout,
-            )
-        },
-        |coord| grid_cell_world_position(world, coord, space_config),
-    )
-    .map(|outcome| outcome.path)
 }
 
 /// Space-aware A* (NV1.3).
@@ -198,7 +162,7 @@ fn grid_cell_world_position_in_space(
 
 fn run_astar(
     config: NavigationConfig,
-    agent: NavigationAgent,
+    _agent: NavigationAgent,
     start: GridCoord,
     goal: GridCoord,
     mut is_walkable: impl FnMut(GridCoord) -> bool,

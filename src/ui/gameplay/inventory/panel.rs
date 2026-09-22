@@ -12,16 +12,16 @@ use crate::ui::gameplay::floating_window::{
     spawn_floating_title_rail, spawn_floating_window_body, spawn_floating_window_inner_frame,
 };
 use crate::ui::gameplay::inventory::equipment_ui::{
-    InventoryBackpackSection, InventoryEquipmentSection, backpack_revision, equipment_revision,
+    backpack_revision, equipment_revision,
     resolve_corpse_equipment_ui, resolve_unit_equipment_ui, spawn_backpack_internal_section,
     spawn_equipment_section,
 };
 use crate::ui::gameplay::inventory::grid::entry_label;
 use crate::ui::gameplay::inventory::grid::{
     InventoryEntryWidget, InventoryGridInteraction, InventoryGridPane, InventoryPaneKind,
-    InventoryPaneSide, spawn_inventory_grid,
+    spawn_inventory_grid,
 };
-use crate::ui::gameplay::inventory::preview::{INVENTORY_CELL_PX, drag_state_from_entry};
+use crate::ui::gameplay::inventory::preview::drag_state_from_entry;
 use crate::ui::gameplay::inventory::state::{
     InventoryDragPreviewState, InventorySelection, InventoryUiState,
 };
@@ -31,8 +31,6 @@ use crate::world::{
     InventoryCatalogCtx, InventoryEntryContents, InventoryId, InventoryProfileCatalog, ItemCatalog,
     ItemCategoryCatalog, ItemDefinitionId, ItemInstanceStore, WorldData, query_inventory_weight,
 };
-
-const CELL_PX: f32 = INVENTORY_CELL_PX;
 
 #[derive(Component, Debug)]
 pub struct InventoryPanelRoot;
@@ -57,9 +55,7 @@ pub struct InventoryDepositGoldButton {
 }
 
 #[derive(Component, Debug)]
-pub struct InventoryHeaderText {
-    pub side: InventoryPaneSide,
-}
+pub struct InventoryHeaderText;
 
 #[derive(Component, Debug)]
 pub struct InventoryFeedbackText;
@@ -138,9 +134,7 @@ pub fn spawn_inventory_panel(mut commands: Commands) {
 pub(crate) struct InventoryDualPaneRow;
 
 #[derive(Component, Debug)]
-pub(crate) struct InventoryPaneContainer {
-    side: InventoryPaneSide,
-}
+pub(crate) struct InventoryPaneContainer;
 
 pub fn sync_inventory_panel_visibility(
     ui: Res<InventoryUiState>,
@@ -337,9 +331,7 @@ pub fn sync_inventory_panel_contents(
                         align_items: AlignItems::FlexStart,
                         ..default()
                     },
-                    InventoryPaneContainer {
-                        side: InventoryPaneSide::Right,
-                    },
+                    InventoryPaneContainer,
                 ))
                 .with_children(|secondary_column| {
                     if let Some(treasury_id) = ui.treasury_id {
@@ -476,15 +468,11 @@ fn spawn_pane(
                 min_width: Val::Px(180.0),
                 ..default()
             },
-            InventoryPaneContainer {
-                side: pane_kind.header_side(),
-            },
+            InventoryPaneContainer,
         ))
         .with_children(|pane| {
             pane.spawn((
-                InventoryHeaderText {
-                    side: pane_kind.header_side(),
-                },
+                InventoryHeaderText,
                 Text::new(format!("{title}\n{weight}\n{gold_line}")),
                 panel_body_font(),
                 TextColor(TEXT_PRIMARY),
@@ -560,15 +548,11 @@ fn spawn_treasury_pane(
                 min_width: Val::Px(180.0),
                 ..default()
             },
-            InventoryPaneContainer {
-                side: InventoryPaneSide::Right,
-            },
+            InventoryPaneContainer,
         ))
         .with_children(|pane| {
             pane.spawn((
-                InventoryHeaderText {
-                    side: InventoryPaneSide::Right,
-                },
+                InventoryHeaderText,
                 Text::new(format!("{title}\nTreasury Gold: {balance}")),
                 panel_body_font(),
                 TextColor(TEXT_PRIMARY),
@@ -600,7 +584,7 @@ fn inventory_revision(world: &WorldData, inventory_id: InventoryId) -> u64 {
         .unwrap_or(0)
 }
 
-fn count_gold(record: &crate::world::InventoryRecord, items: &ItemCatalog) -> u32 {
+fn count_gold(record: &crate::world::InventoryRecord, _items: &ItemCatalog) -> u32 {
     let gold_id = ItemDefinitionId::new("gold");
     record
         .placed_entries()

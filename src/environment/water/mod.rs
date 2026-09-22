@@ -9,17 +9,13 @@ mod settings;
 mod simulation_sync;
 mod spawn;
 
-pub use material::{
-    EnvironmentOceanMaterial, WaterDepthPresentation, build_ocean_material, build_water_material,
-    evaluate_depth_response_factor,
-};
+pub use material::build_water_material;
 pub use plugin::WaterPlugin;
 pub use settings::{
     DEFAULT_WATER_EXTENT_PADDING_METERS, DEFAULT_WATER_PLANE_SIZE_METERS, WaterSettings,
 };
-pub use simulation_sync::sync_water_presentation_from_simulation;
 pub use spawn::{
     AuthoredTerrainMeters, EnvironmentWaterPlane, WaterPlaneLayout, WaterSpawnState,
-    WaterWorldBounds, ensure_environment_water, log_runtime_water_diagnostic_once,
+    WaterWorldBounds, ensure_environment_water,
     rectangle_mesh_xy_size, sync_environment_water_presentation, water_plane_layout,
 };

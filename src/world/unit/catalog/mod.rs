@@ -14,9 +14,6 @@ pub use definition::{
     DEFAULT_TURN_SPEED_DEGREES_PER_SECOND, UnitDefinition,
 };
 pub use definition_id::UnitDefinitionId;
-pub use inventory_profile::{
-    UnitInventoryProfileValidationError, validate_unit_inventory_profile_reference,
-};
 pub use registry::{UnitCatalog, UnitCatalogError};
 pub use render_key::UnitRenderKey;
 #[cfg(any(test, feature = "dev"))]

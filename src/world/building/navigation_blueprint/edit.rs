@@ -556,6 +556,8 @@ pub fn delete_region(
     BlueprintEditOutcome::ok()
 }
 
+// Navigation Editor property-panel mutations (IN-07c; deferred).
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn set_region_display_label(
     blueprint: &mut BuildingNavigationBlueprint,
     floor_id: i32,
@@ -579,6 +581,7 @@ pub fn set_region_display_label(
     BlueprintEditOutcome::ok()
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn set_region_room_tag(
     blueprint: &mut BuildingNavigationBlueprint,
     floor_id: i32,
@@ -757,6 +760,7 @@ pub fn set_connection_radius(
     BlueprintEditOutcome::ok()
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn set_connection_kind(
     blueprint: &mut BuildingNavigationBlueprint,
     connection_key: &str,
@@ -776,6 +780,7 @@ pub fn set_connection_kind(
     BlueprintEditOutcome::ok()
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn set_connection_door_key(
     blueprint: &mut BuildingNavigationBlueprint,
     connection_key: &str,
@@ -795,6 +800,7 @@ pub fn set_connection_door_key(
     BlueprintEditOutcome::ok()
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn set_connection_bidirectional(
     blueprint: &mut BuildingNavigationBlueprint,
     connection_key: &str,
@@ -811,6 +817,7 @@ pub fn set_connection_bidirectional(
     BlueprintEditOutcome::ok()
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn set_connection_enabled(
     blueprint: &mut BuildingNavigationBlueprint,
     connection_key: &str,
@@ -941,32 +948,6 @@ fn region_polygon_edit_error(
         return Some("floor polygon is degenerate".into());
     }
     None
-}
-
-fn polygon_edit_error(floor: &super::definition::NavigationFloorDefinition) -> Option<String> {
-    let region_key = floor.single_region_key()?;
-    region_polygon_edit_error(floor, region_key)
-}
-
-fn point_in_polygon_local(polygon: &NavigationPolygon2d, point: [f32; 2]) -> bool {
-    let verts = &polygon.vertices_xz;
-    if verts.len() < 3 {
-        return false;
-    }
-    let point = Vec2::new(point[0], point[1]);
-    let mut inside = false;
-    let mut j = verts.len() - 1;
-    for (index, vertex) in verts.iter().enumerate() {
-        let vi = Vec2::new(vertex[0], vertex[1]);
-        let vj = Vec2::new(verts[j][0], verts[j][1]);
-        if ((vi.y > point.y) != (vj.y > point.y))
-            && (point.x < (vj.x - vi.x) * (point.y - vi.y) / (vj.y - vi.y + f32::EPSILON) + vi.x)
-        {
-            inside = !inside;
-        }
-        j = index;
-    }
-    inside
 }
 
 fn next_feature_key<'a>(existing: impl Iterator<Item = &'a str>, prefix: &str) -> String {

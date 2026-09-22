@@ -5,18 +5,17 @@
 
 use bevy::prelude::*;
 
-use super::catalog::{BuildingCatalog, BuildingDefinition, BuildingDefinitionId};
+use super::catalog::{BuildingDefinition, BuildingDefinitionId};
 use super::ownership::BuildingOwnership;
 use super::placement::BuildingPlacement;
 use super::placement_validation::{
-    BuildingPlacementConfig, BuildingPlacementContext, BuildingPlacementValidation,
-    rotation_from_quadrants,
+    BuildingPlacementContext, BuildingPlacementValidation,
 };
 use crate::world::asset_sizing::{
     building_effective_model_offset, building_visual_scale, sizing_rotation_correction,
 };
 use crate::world::{
-    FootprintCatalog, QuantizedRotation, WorldData, WorldPosition,
+    QuantizedRotation, WorldData, WorldPosition,
     effective_building_footprint_for_placement, ground_world_position,
     occupied_cells_for_footprint,
 };
@@ -212,10 +211,6 @@ pub fn building_model_correction_local_transform(definition: &BuildingDefinition
         rotation: Quat::IDENTITY,
         scale: Vec3::ONE,
     }
-}
-
-pub fn building_has_model_correction(definition: &BuildingDefinition) -> bool {
-    building_effective_model_offset(definition) != Vec3::ZERO
 }
 
 /// Canonical authoritative simulation Y → presentation Y for building anchors.

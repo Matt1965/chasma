@@ -10,7 +10,7 @@ mod offsets;
 mod planner;
 
 pub use destination_validation::{
-    collision_separation_meters, resolve_move_destination, unit_collision_radius,
+    collision_separation_meters, resolve_move_destination,
 };
 
 pub use distribution::{circle_formation_radius, formation_offsets};

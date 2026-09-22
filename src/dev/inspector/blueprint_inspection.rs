@@ -6,8 +6,7 @@ use crate::camera::{RtsCamera, RtsCameraState};
 use crate::debug::{DebugOverlayConfig, InspectorOverlayFocus};
 use crate::dev::window::{DevWindowId, DevWindowRegistry};
 use crate::world::{
-    BlueprintInspectionValidation, BuildingCatalog, BuildingId, BuildingNavigationBlueprintCatalog,
-    BuildingNavigationBlueprintCatalogRevision, GeometryGenerationDiagnostics, WorldData,
+    BlueprintInspectionValidation, BuildingCatalog, BuildingId, BuildingNavigationBlueprintCatalog, GeometryGenerationDiagnostics, WorldData,
 };
 
 use super::capture::capture_building_blueprint_inspection_snapshot;
@@ -474,6 +473,7 @@ pub fn adopt_generated_blueprint_draft_for_editing(
 }
 
 /// Restore the working copy from before draft adoption (reset / discard adoption edits).
+#[cfg(test)]
 pub fn restore_pre_adoption_working_copy(inspection: &mut BlueprintInspectionState) {
     inspection.working_copy = inspection.pre_adoption_working_copy.take();
     inspection.generated_draft = None;

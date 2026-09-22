@@ -27,6 +27,7 @@ use super::super::styles::{HUD_ENDCAP_LEFT_WIDTH_PX, HUD_PLATE_CORNER_PX};
 use super::geometry::{HudEndcapLeft, HudEndcapRight, HudEndcapSpire, HudViewportGeometry};
 
 pub const HUD_PLATE_FRAME_PATH: &str = "images/ui/hud/plate_frame.png";
+#[cfg(test)]
 pub const HUD_PLATE_BACKING_PATH: &str = "images/ui/hud/plate_backing.png";
 pub const HUD_ENDCAP_LEFT_PATH: &str = "images/ui/hud/endcap_left.png";
 pub const HUD_ENDCAP_RIGHT_PATH: &str = "images/ui/hud/endcap_right.png";
@@ -40,7 +41,6 @@ pub struct HudFrameBackground;
 #[derive(Resource, Clone)]
 pub struct HudUiAssets {
     pub plate_frame: Handle<Image>,
-    pub plate_backing: Handle<Image>,
     pub endcap_left: Handle<Image>,
     pub endcap_right: Handle<Image>,
     pub endcap_spire: Handle<Image>,
@@ -50,7 +50,6 @@ impl HudUiAssets {
     pub fn load(asset_server: &AssetServer) -> Self {
         Self {
             plate_frame: asset_server.load(HUD_PLATE_FRAME_PATH),
-            plate_backing: asset_server.load(HUD_PLATE_BACKING_PATH),
             endcap_left: asset_server.load(HUD_ENDCAP_LEFT_PATH),
             endcap_right: asset_server.load(HUD_ENDCAP_RIGHT_PATH),
             endcap_spire: asset_server.load(HUD_ENDCAP_SPIRE_PATH),

@@ -5,7 +5,7 @@ use super::bake::fingerprint_road_network;
 use super::store::{
     ROAD_DEFORMATION_BAKE_VERSION, RoadDeformationBakeDocument, RoadDeformationStore,
 };
-use crate::world::{ChunkCoord, ChunkId, RoadNetwork};
+use crate::world::{ChunkId, RoadNetwork};
 
 const BAKED_DIR: &str = "roads/baked";
 const BAKE_MANIFEST: &str = "manifest.ron";

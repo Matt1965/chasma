@@ -102,7 +102,7 @@ pub fn handle_origin_squad_focus_done(
         if *interaction != Interaction::Pressed || button.action != UnitEditorAction::Done {
             continue;
         }
-        let Some(mut editor) = editor_session else {
+        let Some(editor) = editor_session else {
             squad_session.exit_focus();
             return;
         };

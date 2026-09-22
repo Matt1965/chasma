@@ -325,7 +325,7 @@ fn footprint_corners(shape: &FootprintShape, anchor: Vec2, yaw: f32) -> Vec<Vec2
 
 fn footprint_aabb(shape: &FootprintShape, anchor: Vec2, yaw: f32) -> (Vec2, Vec2) {
     let corners = match shape {
-        FootprintShape::Rectangle { width_meters, depth_meters } => {
+        FootprintShape::Rectangle { .. } => {
             footprint_corners(shape, anchor, yaw)
         }
         FootprintShape::Circle { radius_meters } => circle_perimeter(anchor, *radius_meters, 16),
@@ -495,10 +495,6 @@ fn plane_residuals(samples: &[TerrainFootprintSample], a: f32, b: f32, c: f32) -
     }
     let rms = (sum_sq / samples.len() as f32).sqrt();
     (rms, peak)
-}
-
-pub fn plane_height_at(a: f32, b: f32, c: f32, xz: Vec2) -> f32 {
-    a * xz.x + b * xz.y + c
 }
 
 pub fn base_height_on_plane_at(

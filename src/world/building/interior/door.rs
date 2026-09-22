@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use super::id::DoorId;
-use crate::world::{BuildingId, BuildingOwnership, OwnerId, PortalId, TeamId, UnitOwnership};
+use crate::world::{BuildingId, BuildingOwnership, PortalId, UnitOwnership};
 
 /// Authoritative door state (ADR-084 B7). Presentation follows this; not animation timing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Default)]

@@ -7,8 +7,7 @@ use crate::world::building::inventory_binding::BuildingInventoryBindingId;
 use crate::world::building::operational_efficiency::OperationalLimitingFactor;
 use crate::world::inventory::{
     InventoryCatalogCtx, InventoryError, InventoryId, InventoryRecord, InventoryStore,
-    ItemInstanceStore, PlacedInventoryEntry, can_place_entry, consume_stack_item, count_stack_item,
-    first_fit_position, place_stack_first_fit,
+    ItemInstanceStore, consume_stack_item, count_stack_item, place_stack_first_fit,
 };
 use crate::world::logistics::available_stack_quantity;
 use crate::world::operation::{OperationDefinition, OperationOutputDefinition};

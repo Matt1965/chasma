@@ -30,7 +30,6 @@ pub use generation::{
 };
 pub use id::HaulingRequestId;
 pub use misfiled::{
-    mark_all_settlement_buildings_logistics_dirty, mark_settlement_storage_logistics_dirty,
     sync_dirty_storage_logistics, sync_misfiled_storage_for_building,
 };
 pub use recovery::retry_blocked_hauling_requests;
@@ -40,19 +39,18 @@ pub use register::{
 };
 pub use request::HaulingRequest;
 pub use reservation::{
-    InventoryReservationSaveState, InventoryReservationStore, available_stack_quantity,
-    destination_can_fit_stack_quantity, release_request_reservations, reserve_destination_capacity,
-    reserve_source_items,
+    InventoryReservationStore, available_stack_quantity,
+    destination_can_fit_stack_quantity,
 };
-pub use route::{BuildingLogisticsRouteDefinition, LogisticsEndpointIndex, LogisticsEndpointKey};
+pub use route::{BuildingLogisticsRouteDefinition, LogisticsEndpointIndex};
 pub use save::{
-    HaulingRequestSaveState, LogisticsSaveState, export_logistics_save_state,
+    LogisticsSaveState, export_logistics_save_state,
     import_logistics_save_state,
 };
 pub use step::{HaulTickReport, step_haul_worker_tasks};
 pub use store::HaulingRequestStore;
 pub use task::{assign_hauling_task, assign_hauling_task_with_priority};
 pub use types::{
-    HaulExecutionPhase, HaulingBlockingReason, HaulingGenerationReason, HaulingRequestPriority,
-    HaulingRequestStatus, HaulingReservationState, LogisticsRouteTrigger,
+    HaulingRequestPriority,
+    HaulingRequestStatus, LogisticsRouteTrigger,
 };

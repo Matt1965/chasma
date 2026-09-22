@@ -233,24 +233,6 @@ fn spawn_action_button(parent: &mut ChildSpawnerCommands, label: &str, action: O
         });
 }
 
-pub fn despawn_origin_select_squad_panel(
-    mut commands: Commands,
-    roots: Query<Entity, With<OriginSelectSquadPanelRoot>>,
-) {
-    for entity in &roots {
-        commands.entity(entity).despawn();
-    }
-}
-
-pub fn despawn_origin_select_preview_ui(
-    mut commands: Commands,
-    roots: Query<Entity, With<OriginSelectPreviewUiRoot>>,
-) {
-    for entity in &roots {
-        commands.entity(entity).despawn();
-    }
-}
-
 pub fn despawn_origin_select_ui(
     mut commands: Commands,
     preview_roots: Query<Entity, With<OriginSelectPreviewUiRoot>>,

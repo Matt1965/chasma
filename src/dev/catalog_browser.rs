@@ -1,7 +1,7 @@
 //! In-memory catalog filtering for dev browser (ADR-043).
 
 use crate::world::{
-    BuildingCatalog, BuildingDefinition, BuildingDefinitionId, DoodadCatalog, DoodadDefinition,
+    BuildingCatalog, BuildingDefinition, DoodadCatalog, DoodadDefinition,
     DoodadKind, UnitCatalog, UnitDefinition,
 };
 

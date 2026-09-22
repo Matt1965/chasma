@@ -10,7 +10,7 @@ use crate::terrain::{
 use crate::world::{
     TerrainFieldCatalog, TerrainFieldId, TerrainFieldSample, sample_terrain_field_at,
 };
-use crate::world::{WorldConfig, WorldData};
+use crate::world::WorldData;
 
 use crate::ui::gameplay::layout::PlayerHudUi;
 use crate::ui::gameplay::styles::{BAR_BG, PANEL_BG, TEXT_MUTED, TEXT_PRIMARY};

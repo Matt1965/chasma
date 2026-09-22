@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::units::input::ray_sphere_hit_distance;
-use crate::world::{BuildingCatalog, BuildingId, BuildingRecord, WorldData};
+use crate::world::{BuildingCatalog, BuildingId, WorldData};
 
 use super::components::BuildingRenderEntity;
 use super::placeholder::building_pick_radius;

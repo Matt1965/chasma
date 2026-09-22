@@ -14,7 +14,7 @@ use crate::world::{
     resolve_building_navigation_blueprint, signed_distance_to_polygon_edges,
 };
 
-use super::helpers::{closed_polygon_boundary_segments, xz_to_render_y};
+use super::helpers::closed_polygon_boundary_segments;
 use super::nav_cells::draw_xz_quad;
 
 const Y_LIFT: f32 = 0.12;

@@ -1,7 +1,6 @@
 //! Selected Object building UI structure tests.
 
 use super::building_actions_ui::BuildingDevSectionKind;
-use crate::dev::inspector::BuildingDevAction;
 
 #[test]
 fn building_action_sections_exclude_nested_diagnostics_and_inventory() {
@@ -13,16 +12,6 @@ fn building_action_sections_exclude_nested_diagnostics_and_inventory() {
         BuildingDevSectionKind::Terrain,
     ];
     assert_eq!(kinds.len(), 5);
-}
-
-#[test]
-fn production_actions_exclude_validation_buttons() {
-    for action in BuildingDevAction::PRODUCTION_ACTIONS {
-        assert!(!matches!(
-            action,
-            BuildingDevAction::ValidateProduction | BuildingDevAction::ValidateInventoryLinks
-        ));
-    }
 }
 
 #[test]

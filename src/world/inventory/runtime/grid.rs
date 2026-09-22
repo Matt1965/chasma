@@ -39,50 +39,6 @@ pub fn footprint_in_bounds(
     ax.saturating_add(w) <= gw && ay.saturating_add(h) <= gh
 }
 
-pub fn cells_for_entry(
-    record: &InventoryRecord,
-    entry: &PlacedInventoryEntry,
-    ctx: &InventoryCatalogCtx<'_>,
-) -> Result<Vec<(u8, u8)>, InventoryError> {
-    let (width, height) = footprint_for_entry(entry, ctx)?;
-    if !footprint_in_bounds(
-        record.grid_width(),
-        record.grid_height(),
-        entry.anchor_x,
-        entry.anchor_y,
-        width,
-        height,
-    ) {
-        return Err(InventoryError::GridOutOfBounds {
-            inventory_id: record.id(),
-            x: entry.anchor_x,
-            y: entry.anchor_y,
-        });
-    }
-    Ok(cells_for_footprint(entry.anchor_x, entry.anchor_y, width, height).collect())
-}
-
-pub fn footprint_for_entry(
-    entry: &PlacedInventoryEntry,
-    ctx: &InventoryCatalogCtx<'_>,
-) -> Result<(u8, u8), InventoryError> {
-    match &entry.contents {
-        InventoryEntryContents::Stack {
-            item_definition_id, ..
-        } => {
-            let def = ctx.require_item(item_definition_id)?;
-            Ok(footprint_for_definition(def))
-        }
-        InventoryEntryContents::Unique {
-            item_instance_id, ..
-        } => {
-            let _ = item_instance_id;
-            // Caller must resolve instance definition via store in ops layer.
-            Err(InventoryError::ItemInstanceNotFound(*item_instance_id))
-        }
-    }
-}
-
 pub fn footprint_for_entry_with_instance(
     entry: &PlacedInventoryEntry,
     ctx: &InventoryCatalogCtx<'_>,
@@ -317,7 +273,7 @@ pub fn validate_inventory_caches(
 }
 
 pub fn validate_stack_quantity(
-    item: &crate::world::ItemDefinition,
+    _item: &crate::world::ItemDefinition,
     quantity: u32,
     limit: u32,
 ) -> Result<(), InventoryError> {

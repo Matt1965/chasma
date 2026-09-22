@@ -13,6 +13,8 @@ use crate::world::{
 /// Stable collision node name for occupancy rasterization.
 pub const OCCUPANCY_COLLISION_NODE: &str = "occupancy_collision";
 
+// Offline rasterization pipeline below is exercised by bake unit tests and import tooling.
+#[cfg_attr(not(test), allow(dead_code))]
 /// Bake configuration recorded in exported footprint data.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BakeConfig {
@@ -30,6 +32,7 @@ impl Default for BakeConfig {
 }
 
 /// Metadata for stale-bake detection.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct BakeSourceMetadata {
     pub asset_path: String,
@@ -37,6 +40,7 @@ pub struct BakeSourceMetadata {
 }
 
 /// Triangle in building-local XZ space for rasterization tests and offline bake.
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LocalTriangle2d {
     pub a: Vec2,
@@ -45,6 +49,7 @@ pub struct LocalTriangle2d {
 }
 
 /// Rasterize local triangles into a baked cell mask.
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn rasterize_triangles(
     triangles: &[LocalTriangle2d],
     config: &BakeConfig,
@@ -120,6 +125,7 @@ fn point_in_triangle(point: Vec2, tri: &LocalTriangle2d) -> bool {
 }
 
 /// Build a footprint definition from rasterized triangles.
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn bake_footprint_from_triangles(
     footprint_id: FootprintId,
     triangles: &[LocalTriangle2d],
@@ -136,102 +142,6 @@ pub fn bake_footprint_from_triangles(
         source_hash: metadata.source_hash,
         bake_cell_size_meters: Some(config.cell_size_meters),
     })
-}
-
-/// Dev-only GLB bake entry point. Fails clearly when collision node is absent.
-#[cfg(feature = "data-import")]
-pub fn bake_footprint_from_glb(
-    footprint_id: FootprintId,
-    asset_path: &Path,
-    config: &BakeConfig,
-) -> Result<FootprintDefinition, OccupancyError> {
-    let triangles = load_collision_triangles_from_glb(asset_path, &config.collision_node)?;
-    let metadata = BakeSourceMetadata {
-        asset_path: asset_path.display().to_string(),
-        source_hash: file_hash_hex(asset_path).ok(),
-    };
-    bake_footprint_from_triangles(footprint_id, &triangles, metadata, config)
-}
-
-#[cfg(feature = "data-import")]
-fn load_collision_triangles_from_glb(
-    path: &Path,
-    node_name: &str,
-) -> Result<Vec<LocalTriangle2d>, OccupancyError> {
-    let (document, _buffers, _images) = gltf::import(path)
-        .map_err(|error| OccupancyError::BakeFailed(format!("glb import failed: {error}")))?;
-
-    let mut triangles = Vec::new();
-    let mut found_node = false;
-    for scene in document.scenes() {
-        for node in scene.nodes() {
-            collect_node_triangles(node, node_name, &mut found_node, &mut triangles)?;
-        }
-    }
-    if !found_node {
-        return Err(OccupancyError::CollisionNodeMissing {
-            asset: path.display().to_string(),
-        });
-    }
-    Ok(triangles)
-}
-
-#[cfg(feature = "data-import")]
-fn collect_node_triangles(
-    node: gltf::Node,
-    target_name: &str,
-    found: &mut bool,
-    out: &mut Vec<LocalTriangle2d>,
-) -> Result<(), OccupancyError> {
-    if node.name().is_some_and(|name| name == target_name) {
-        *found = true;
-        let mesh = node
-            .mesh()
-            .ok_or_else(|| OccupancyError::BakeFailed("collision node has no mesh".into()))?;
-        let world = node.transform().matrix();
-        for primitive in mesh.primitives() {
-            let reader = primitive.reader(|_| None);
-            let positions = reader
-                .read_positions()
-                .ok_or_else(|| OccupancyError::BakeFailed("mesh has no positions".into()))?;
-            let indices: Vec<u32> = reader
-                .read_indices()
-                .map(|indices| indices.into_u32().collect())
-                .unwrap_or_else(|| {
-                    (0..positions.len() as u32 / 3)
-                        .flat_map(|i| [i * 3, i * 3 + 1, i * 3 + 2])
-                        .collect()
-                });
-            let world_matrix = Mat4::from_cols_array_2d(&world);
-            let verts: Vec<Vec3> = positions
-                .map(|p| {
-                    let v = world_matrix.transform_point3(Vec3::from_array(p));
-                    if !v.is_finite() {
-                        Err(OccupancyError::NonFiniteGeometry)
-                    } else {
-                        Ok(v)
-                    }
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            for chunk in indices.chunks(3) {
-                if chunk.len() < 3 {
-                    continue;
-                }
-                let a = verts[chunk[0] as usize];
-                let b = verts[chunk[1] as usize];
-                let c = verts[chunk[2] as usize];
-                out.push(LocalTriangle2d {
-                    a: Vec2::new(a.x, a.z),
-                    b: Vec2::new(b.x, b.z),
-                    c: Vec2::new(c.x, c.z),
-                });
-            }
-        }
-    }
-    for child in node.children() {
-        collect_node_triangles(child, target_name, found, out)?;
-    }
-    Ok(())
 }
 
 #[cfg(feature = "data-import")]

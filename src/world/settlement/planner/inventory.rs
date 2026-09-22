@@ -5,10 +5,10 @@ use std::collections::HashMap;
 use crate::world::ItemDefinitionId;
 use crate::world::building::catalog::{BuildingCatalog, BuildingDefinitionId};
 use crate::world::building::inventory_binding::BuildingInventoryBindingId;
-use crate::world::inventory::{InventoryCatalogCtx, InventoryEntryContents, count_stack_item};
+use crate::world::inventory::{InventoryCatalogCtx, InventoryEntryContents};
 use crate::world::item::{ItemCatalog, ItemCategoryId};
 use crate::world::settlement::SettlementId;
-use crate::world::{BuildingId, WorldData};
+use crate::world::WorldData;
 
 use super::types::BuildingLocalRetention;
 
@@ -149,27 +149,3 @@ fn retention_for_binding(
         .unwrap_or(0)
 }
 
-/// Count items held in a specific building binding (for local demand reporting).
-pub fn count_binding_stock(
-    world: &WorldData,
-    building_id: BuildingId,
-    binding_id: &BuildingInventoryBindingId,
-    item_id: &ItemDefinitionId,
-) -> u32 {
-    let binding_store = world.building_inventory_binding_store();
-    let Some(bindings) = binding_store.get(building_id) else {
-        return 0;
-    };
-    let Some(binding) = bindings
-        .bindings()
-        .iter()
-        .find(|binding| binding.binding_id == *binding_id)
-    else {
-        return 0;
-    };
-    world
-        .inventory_store()
-        .get(binding.inventory_id)
-        .map(|inventory| count_stack_item(inventory, item_id))
-        .unwrap_or(0)
-}

@@ -8,7 +8,6 @@ use crate::debug::DebugOverlayCategory;
 use crate::debug::DebugOverlaySettings;
 use crate::dev::dev_mode::{DevModeInputGate, DevModeState};
 use crate::dev::input::DevPanelHoverState;
-use crate::dev::input::DevPanelUi;
 use crate::dev::spawn_tools::dev_spawn_position_from_terrain_click;
 use crate::player::selection_ring_mesh::{
     SELECTION_RING_SEGMENTS, draw_terrain_ring_gizmos, sample_terrain_ring_render_points,
@@ -53,10 +52,6 @@ pub struct SettlementPlacementPreview {
 #[derive(Resource, Default, Debug)]
 pub struct SettlementPlacementRejectionLabelIndex {
     pub entities: Vec<Entity>,
-}
-
-pub fn spawn_settlement_section(_parent: &mut ChildSpawnerCommands<'_>) {
-    // Settlement Dev controls live in the Settlement window (settlement_window module).
 }
 
 pub fn cancel_settlement_placement(dev_state: &mut DevModeState) {
@@ -392,16 +387,6 @@ fn apply_dev_placement_policy_guard(world: &mut WorldData, settlement_id: Settle
         state.policies.auto_emergency_response = false;
         state.policies.auto_production_reprioritize = false;
         state.policies.auto_task_interruption = false;
-    }
-}
-
-pub fn settlement_placement_status(dev_state: &DevModeState) -> String {
-    if dev_state.settlement_placement_armed {
-        "Settlement anchor armed — left-click terrain".to_string()
-    } else if !dev_state.settlement_placement_message.is_empty() {
-        dev_state.settlement_placement_message.clone()
-    } else {
-        String::new()
     }
 }
 

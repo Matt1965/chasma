@@ -30,24 +30,24 @@ const BTN_BG: Color = Color::srgba(0.12, 0.2, 0.28, 0.95);
 pub struct DevSaveWindowUi;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSaveScenesText;
+pub struct DevSaveScenesText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSaveSceneNameField;
+pub struct DevSaveSceneNameField;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSaveSceneNameText;
+pub struct DevSaveSceneNameText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSaveSceneClearButton;
+pub struct DevSaveSceneClearButton;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSaveSceneListRow {
+pub struct DevSaveSceneListRow {
     pub index: usize,
 }
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSaveSceneButton {
+pub struct DevSaveSceneButton {
     action: DevSaveSceneAction,
 }
 
@@ -350,7 +350,7 @@ pub fn sync_save_window_name_field_style(
 }
 
 #[derive(SystemParam)]
-pub(crate) struct SaveWindowCatalogResources<'w> {
+pub struct SaveWindowCatalogResources<'w> {
     unit_catalog: Res<'w, UnitCatalog>,
     doodad_catalog: Res<'w, crate::world::DoodadCatalog>,
     building_catalog: Res<'w, BuildingCatalog>,

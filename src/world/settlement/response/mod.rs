@@ -25,9 +25,7 @@ pub use candidate::{
 pub use catalog::ResponseCatalog;
 pub use definition::{CapabilityRequirement, ExpectedEffect, ResponseDefinition, ResponseType};
 pub use discover::{ResponseDiscoveryContext, discover_settlement_responses};
-pub use execution::check_execution_path_available;
 pub use id::ResponseId;
-pub use quality::{RELIEF_SCORE_SCALE, ResponseQualityScore, compute_response_quality};
 pub use score::score_candidate;
 pub use starter::starter_response_definitions;
 pub use step::{

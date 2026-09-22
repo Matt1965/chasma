@@ -13,6 +13,7 @@ mod validation;
 
 #[cfg(test)]
 mod phase8_tests;
+#[cfg(test)]
 mod tests;
 
 pub use discover::{CapableBuilding, discover_capable_buildings, primary_operation_requirement};

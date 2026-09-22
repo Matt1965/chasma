@@ -82,10 +82,6 @@ pub fn chunk_ids_from_coords(coords: &HashSet<ChunkCoord>) -> HashSet<ChunkId> {
     coords.iter().map(|coord| ChunkId::new(*coord)).collect()
 }
 
-pub fn chunk_coords_from_ids(ids: &HashSet<ChunkId>) -> HashSet<ChunkCoord> {
-    ids.iter().map(|id| id.coord()).collect()
-}
-
 pub fn sync_store_tiles_to_resident_chunks(store: &RoadDeformationStore, world: &mut WorldData) {
     for (chunk_id, chunk) in world.chunks_mut() {
         store.apply_tile_to_chunk(*chunk_id, chunk);

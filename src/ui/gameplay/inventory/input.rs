@@ -11,7 +11,7 @@ use crate::units::input::SelectedUnits;
 pub fn collect_inventory_keyboard_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     selection: Res<SelectedUnits>,
-    mut ui: ResMut<InventoryUiState>,
+    ui: ResMut<InventoryUiState>,
     mut queue: ResMut<InventoryIntentQueue>,
     menu_block: Option<Res<crate::menu::MenuInputBlock>>,
 ) {

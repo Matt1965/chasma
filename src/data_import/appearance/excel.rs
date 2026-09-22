@@ -55,34 +55,6 @@ fn cell_to_string(cell: &calamine::Data) -> String {
     }
 }
 
-fn read_sheet_rows(
-    path: &std::path::Path,
-    sheet_name: &str,
-    required_columns: &[&str],
-) -> Result<Vec<Vec<calamine::Data>>, DataImportError> {
-    use calamine::{Reader, Xlsx, XlsxError, open_workbook};
-
-    let mut workbook: Xlsx<_> = open_workbook(path)
-        .map_err(|err: XlsxError| DataImportError::WorkbookOpen(err.to_string()))?;
-    let range = workbook
-        .worksheet_range(sheet_name)
-        .map_err(|_| DataImportError::SheetNotFound {
-            sheet: sheet_name.to_string(),
-        })?;
-    let mut rows = range.rows();
-    let header_cells = rows.next().ok_or(DataImportError::NoValidRows)?;
-    let headers: Vec<String> = header_cells.iter().map(cell_to_string).collect();
-    let _columns = column_map_from_headers(&headers, required_columns)?;
-    let mut data_rows = Vec::new();
-    for cells in rows {
-        if row_is_empty(cells) {
-            continue;
-        }
-        data_rows.push(cells.to_vec());
-    }
-    Ok(data_rows)
-}
-
 pub fn read_appearance_profile_rows(
     path: &std::path::Path,
 ) -> Result<Vec<Result<AppearanceProfileImportRow, RowImportError>>, DataImportError> {

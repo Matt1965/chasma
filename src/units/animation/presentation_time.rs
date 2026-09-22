@@ -22,11 +22,6 @@ pub fn presentation_advance_seconds(
     }
 }
 
-/// Whether presentation timers should advance this frame.
-pub fn presentation_timers_advance(control: &SimulationControlState) -> bool {
-    presentation_advance_seconds(control, 0.0) > 0.0 || control.step_once
-}
-
 /// Default attack blend-out when weapon metadata is absent (A1).
 pub fn default_attack_blend_out() -> Duration {
     Duration::from_millis(150)
@@ -55,7 +50,6 @@ mod tests {
     #[test]
     fn paused_presentation_delta_is_zero() {
         assert_eq!(presentation_advance_seconds(&paused(), 0.016), 0.0);
-        assert!(!presentation_timers_advance(&paused()));
     }
 
     #[test]
@@ -64,7 +58,6 @@ mod tests {
             presentation_advance_seconds(&stepping(), 0.05),
             SIMULATION_TICK_SECONDS
         );
-        assert!(presentation_timers_advance(&stepping()));
     }
 
     #[test]

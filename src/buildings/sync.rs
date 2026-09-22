@@ -368,7 +368,7 @@ fn missing_definition_placeholder(
     record: &crate::world::BuildingRecord,
 ) -> crate::world::BuildingDefinition {
     use crate::world::{
-        BuildingCategoryId, BuildingDefinition, BuildingDefinitionId, BuildingRenderKey,
+        BuildingCategoryId, BuildingDefinition, BuildingRenderKey,
         FootprintSpec,
     };
     BuildingDefinition::new(

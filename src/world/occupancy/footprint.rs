@@ -10,7 +10,7 @@ use super::cell::{
     OCCUPANCY_CELL_SIZE_METERS, QuantizedRotation, circle_intersects_cell,
     occupancy_cell_at_global_xz,
 };
-use crate::world::building::footprint::{FootprintSpec, FootprintType};
+use crate::world::building::footprint::FootprintSpec;
 use crate::world::{BuildingDefinition, FootprintId};
 
 /// Authoritative footprint shape geometry (no render meshes).
@@ -213,36 +213,6 @@ impl BakedCellMask {
             self.blocked_cells.remove(index);
         }
         self
-    }
-}
-
-/// Resolve a building definition to its footprint shape.
-pub fn resolve_building_footprint<'a>(
-    definition: &BuildingDefinition,
-    catalog: &'a super::catalog::FootprintCatalog,
-) -> Result<&'a FootprintShape, OccupancyError> {
-    if let Some(footprint_id) = &definition.footprint_id {
-        let footprint = catalog
-            .get(footprint_id)
-            .ok_or_else(|| OccupancyError::MissingFootprint(footprint_id.clone()))?;
-        if !footprint.enabled {
-            return Err(OccupancyError::DisabledFootprint(footprint_id.clone()));
-        }
-        return Ok(&footprint.shape);
-    }
-
-    match &definition.footprint {
-        FootprintSpec::Circle { radius_meters } => {
-            // Inline footprints are synthesized at query time via catalog helper.
-            Err(OccupancyError::MissingFootprint(FootprintId::new(format!(
-                "inline:{}",
-                definition.id.as_str()
-            ))))
-        }
-        FootprintSpec::Rectangle { .. } => Err(OccupancyError::MissingFootprint(FootprintId::new(
-            format!("inline:{}", definition.id.as_str()),
-        ))),
-        FootprintSpec::MeshDerived => Err(OccupancyError::MeshDerivedRequiresFootprintId),
     }
 }
 
@@ -487,80 +457,6 @@ pub fn point_in_oriented_rectangle_continuous(
     local.x.abs() <= width * 0.5 && local.y.abs() <= depth * 0.5
 }
 
-fn cells_for_rectangle(
-    anchor: Vec2,
-    width: f32,
-    depth: f32,
-    rotation: QuantizedRotation,
-) -> Vec<super::cell::OccupancyCellCoord> {
-    let half = Vec2::new(width * 0.5, depth * 0.5);
-    let corners = [
-        Vec2::new(-half.x, -half.y),
-        Vec2::new(half.x, -half.y),
-        Vec2::new(half.x, half.y),
-        Vec2::new(-half.x, half.y),
-    ];
-    let yaw = rotation.radians();
-    let (sin, cos) = yaw.sin_cos();
-    let mut min = Vec2::splat(f32::INFINITY);
-    let mut max = Vec2::splat(f32::NEG_INFINITY);
-    for corner in corners {
-        let rotated = Vec2::new(
-            corner.x * cos - corner.y * sin,
-            corner.x * sin + corner.y * cos,
-        ) + anchor;
-        min = min.min(rotated);
-        max = max.max(rotated);
-    }
-    let size = OCCUPANCY_CELL_SIZE_METERS;
-    let min_x = (min.x / size).floor() as i32;
-    let max_x = (max.x / size).floor() as i32;
-    let min_z = (min.y / size).floor() as i32;
-    let max_z = (max.y / size).floor() as i32;
-    let mut cells = Vec::new();
-    for z in min_z..=max_z {
-        for x in min_x..=max_x {
-            let cell = super::cell::OccupancyCellCoord::new(x, z);
-            let center = cell.center_global();
-            if point_in_oriented_rectangle(center, anchor, width, depth, rotation) {
-                cells.push(cell);
-            }
-        }
-    }
-    cells.sort_unstable();
-    cells.dedup();
-    cells
-}
-
-fn cells_for_baked_mask(
-    anchor: Vec2,
-    mask: &BakedCellMask,
-    rotation: QuantizedRotation,
-) -> Vec<super::cell::OccupancyCellCoord> {
-    let mut cells = Vec::new();
-    let cell_size = mask.cell_size_meters;
-    for z in 0..mask.depth_cells {
-        for x in 0..mask.width_cells {
-            if !mask.is_blocked_local(x as i32, z as i32) {
-                continue;
-            }
-            let local = mask.local_origin
-                + Vec2::new((x as f32 + 0.5) * cell_size, (z as f32 + 0.5) * cell_size);
-            let global = rotate_local_xz(local, rotation) + anchor;
-            cells.push(occupancy_cell_at_global_xz(global));
-        }
-    }
-    cells.sort_unstable();
-    cells.dedup();
-    cells
-}
-
-pub fn rotate_local_xz(local: Vec2, rotation: QuantizedRotation) -> Vec2 {
-    let yaw = rotation.radians();
-    let (sin, cos) = yaw.sin_cos();
-    Vec2::new(local.x * cos - local.y * sin, local.x * sin + local.y * cos)
-}
-
 pub fn world_to_footprint_local(world_xz: Vec2, anchor: Vec2, rotation: QuantizedRotation) -> Vec2 {
     let delta = world_xz - anchor;
     let yaw = rotation.radians();
@@ -569,17 +465,6 @@ pub fn world_to_footprint_local(world_xz: Vec2, anchor: Vec2, rotation: Quantize
         delta.x * cos + delta.y * sin,
         -delta.x * sin + delta.y * cos,
     )
-}
-
-pub fn point_in_oriented_rectangle(
-    point: Vec2,
-    anchor: Vec2,
-    width: f32,
-    depth: f32,
-    rotation: QuantizedRotation,
-) -> bool {
-    let local = world_to_footprint_local(point, anchor, rotation);
-    local.x.abs() <= width * 0.5 && local.y.abs() <= depth * 0.5
 }
 
 /// Whether an agent circle overlaps a footprint at continuous yaw.

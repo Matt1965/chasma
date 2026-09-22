@@ -38,7 +38,6 @@ const ROW_HEIGHT_PX: f32 = 20.0;
 const CATALOG_ROW_GAP_PX: f32 = 2.0;
 const MENU_BTN_WIDTH_PX: f32 = 100.0;
 const MENU_BTN_HEIGHT_PX: f32 = 24.0;
-const TAB_BTN_WIDTH_PX: f32 = 50.0;
 const MAX_LIST_LABEL_CHARS: usize = 44;
 
 const BTN_BG_IDLE: Color = Color::srgba(0.14, 0.22, 0.28, 0.95);
@@ -58,7 +57,6 @@ pub(crate) struct DevPanelCatalogResources<'w> {
     building_revision: Res<'w, BuildingCatalogRevision>,
     item_catalog: Res<'w, crate::world::ItemCatalog>,
     item_categories: Res<'w, crate::world::ItemCategoryCatalog>,
-    inventory_profiles: Res<'w, crate::world::InventoryProfileCatalog>,
     browse_index: Res<'w, CatalogBrowseIndex>,
     unit_archetype_catalog: Res<'w, UnitArchetypeCatalog>,
     building_archetype_catalog: Res<'w, BuildingArchetypeCatalog>,

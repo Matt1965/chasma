@@ -20,22 +20,22 @@ use super::model::{
 };
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSettlementWindowUi;
+pub struct DevSettlementWindowUi;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSettlementFocusedText;
+pub struct DevSettlementFocusedText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSettlementUnitsText;
+pub struct DevSettlementUnitsText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSettlementBuildingsText;
+pub struct DevSettlementBuildingsText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSettlementAiText;
+pub struct DevSettlementAiText;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSettlementStatusText;
+pub struct DevSettlementStatusText;
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct DevSettlementAddUnitsButton;
@@ -308,7 +308,7 @@ pub fn sync_settlement_dev_action_availability(
 }
 
 pub fn sync_settlement_dev_button_styles(
-    mut add_buttons: Query<
+    add_buttons: Query<
         (
             &DevWidgetActionButton,
             &mut crate::dev::widgets::DevButtonChrome,
@@ -322,7 +322,7 @@ pub fn sync_settlement_dev_button_styles(
 pub fn sync_settlement_ai_toggle_styles(
     world: Res<WorldData>,
     context: Res<CameraSettlementContext>,
-    mut toggles: Query<
+    toggles: Query<
         (
             &Interaction,
             &DevWidgetToggle,
@@ -332,7 +332,7 @@ pub fn sync_settlement_ai_toggle_styles(
         ),
         Without<DevSettlementAddUnitsButton>,
     >,
-    mut marks: Query<&mut Visibility, With<crate::dev::widgets::DevWidgetToggleMark>>,
+    marks: Query<&mut Visibility, With<crate::dev::widgets::DevWidgetToggleMark>>,
 ) {
     let enabled = context
         .focused_settlement_id

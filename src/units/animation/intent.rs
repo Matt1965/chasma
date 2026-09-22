@@ -7,7 +7,7 @@ use crate::world::{
 
 use super::layers::{
     FullBodyOverride, LowerBodyIntent, UnitLayeredAnimationIntent, UpperBodyIntent,
-    derive_layered_animation_intent, derive_layered_death_presentation_intent,
+    derive_layered_animation_intent,
 };
 use super::settings::UnitAnimationSettings;
 use super::work_presentation::WorkPresentationContext;
@@ -50,16 +50,6 @@ impl UnitAnimationIntent {
             | Self::CombatIdle { .. } => false,
         }
     }
-}
-
-/// Presentation intent for corpse entities after world removal (A3).
-pub(crate) fn derive_death_presentation_intent(
-    profile: &AnimationProfile,
-    presentation: &super::components::DeathPresentation,
-    settings: &UnitAnimationSettings,
-) -> Option<UnitAnimationIntent> {
-    let layered = derive_layered_death_presentation_intent(profile, presentation, settings)?;
-    Some(flatten_layered_intent(&layered))
 }
 
 /// Pure mapping: authoritative record + catalogs → presentation intent.

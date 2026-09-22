@@ -195,6 +195,7 @@ pub fn visible_roster_card_count(viewport_width: f32, card_width: f32, card_gap:
     ((viewport_width + card_gap) / stride).floor().max(0.0) as u32
 }
 
+#[cfg(test)]
 pub fn roster_content_width(card_count: usize, card_width: f32, card_gap: f32) -> f32 {
     if card_count == 0 {
         return 0.0;

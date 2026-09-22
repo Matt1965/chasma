@@ -25,7 +25,6 @@ use super::preview_studio::{
 use super::screen::{
     despawn_unit_editor_ui, spawn_unit_editor_ui, sync_unit_editor_error_text,
 };
-use super::session::UnitEditorSession;
 
 /// Unit Editor systems (screen-local presentation and input).
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]

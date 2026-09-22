@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use super::definition::{
-    BuildingNavigationBlueprint, NavigationEntranceDefinition, NavigationFloorDefinition,
+    BuildingNavigationBlueprint, NavigationEntranceDefinition,
     NavigationRegionDefinition,
 };
 
@@ -18,9 +18,6 @@ pub const DEFAULT_INTERIOR_LANDING_OFFSET: f32 = 1.0;
 /// Outward offset from threshold to exterior staging (blueprint-local units).
 /// Must clear typical centered building footprints south/north of the nav boundary edge.
 pub const DEFAULT_EXTERIOR_STAGING_OFFSET: f32 = 2.5;
-/// Migration snap tolerance for legacy floating thresholds.
-pub const ENTRANCE_MIGRATION_SNAP_TOLERANCE: f32 = 1.0;
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BoundaryProjection {
     pub edge_index: usize,
@@ -38,16 +35,6 @@ pub enum EntranceReanchorOutcome {
     AlreadyAnchored,
     Snapped { distance: f32 },
     TooFar { distance: f32 },
-}
-
-pub fn distance_point_to_segment(point: Vec2, a: Vec2, b: Vec2) -> f32 {
-    let ab = b - a;
-    let len_sq = ab.length_squared();
-    if len_sq <= f32::EPSILON {
-        return point.distance(a);
-    }
-    let t = ((point - a).dot(ab) / len_sq).clamp(0.0, 1.0);
-    point.distance(a + ab * t)
 }
 
 pub fn project_point_to_boundary(

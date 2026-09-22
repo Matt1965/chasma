@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use super::grid::{
     GridCoord, NavigationAgent, NavigationConfig, cell_walkability_sample_globals,
-    grid_cell_center_global, grid_coord_at_global_xz, grid_coord_at_position,
+    grid_cell_center_global, grid_coord_at_position,
     is_cell_walkable_in_space, is_position_walkable_in_space,
 };
 use super::simplify::is_segment_walkable_in_space;
@@ -67,7 +67,7 @@ pub fn signed_distance_to_polygon_edges(point: Vec2, polygon: &[Vec2]) -> f32 {
     }
     let inside = point_in_polygon_xz(polygon, point);
     let mut min_dist = f32::INFINITY;
-    let mut count = polygon.len();
+    let count = polygon.len();
     for index in 0..count {
         let a = polygon[index];
         let b = polygon[(index + 1) % count];

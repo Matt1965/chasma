@@ -12,7 +12,6 @@ use crate::world::inventory::{
     resolve_instance_definition,
 };
 use crate::world::ownership::{Affiliation, OwnerId, TeamId};
-use crate::world::unit::UnitId;
 use crate::world::{ChunkId, ItemDefinitionId, SpaceId, WorldData, WorldPosition};
 
 /// Report for a drop operation.
@@ -407,7 +406,7 @@ pub fn pickup_pile_into_inventory(
         }
         WorldPileContents::Unique { item_instance_id } => {
             world.item_pile_store_mut().remove(pile_id);
-            let (inventory_store, instance_store) = world.inventory_runtime_mut();
+            let (_inventory_store, instance_store) = world.inventory_runtime_mut();
             if let Some(entry_index) = transfer.new_destination_entry {
                 instance_store.set_inventory_location(
                     *item_instance_id,
@@ -484,7 +483,7 @@ fn add_unique_from_pile_to_inventory(
     let definition_id = resolve_instance_definition(instance_store, item_instance_id)
         .map_err(|_| ItemPileError::ItemInstanceLocationMismatch { item_instance_id })?;
     let _ = definition_id;
-    let backup = inventory_store
+    let _backup = inventory_store
         .get(destination_inventory_id)
         .ok_or(ItemPileError::PickupRollbackFailed)?
         .clone();

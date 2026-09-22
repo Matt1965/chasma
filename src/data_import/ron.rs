@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::world::asset_sizing::AssetSizingDefinition;
 use crate::world::{BiomeId, DoodadDefinition, DoodadKind};
-use crate::world::{BuildingCategoryDefinition, BuildingDefinition, FootprintSpec, FootprintType};
+use crate::world::{BuildingCategoryDefinition, BuildingDefinition, FootprintSpec};
 
 use super::error::DataImportError;
 

@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 use bevy::ui::{ComputedNode, ScrollPosition};
 
-use super::hud::{HudViewportGeometry, roster_content_width, visible_roster_card_count};
+use super::hud::{HudViewportGeometry, visible_roster_card_count};
 use super::layout::PlayerHudUi;
 use super::plugin::GameplayCommandInputSystems;
 use super::squad_panel::{SquadEntryList, SquadRosterViewport};
@@ -239,6 +239,7 @@ impl Plugin for SquadRosterScrollPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::hud::roster_content_width;
 
     const CARD_WIDTH: f32 = 84.0;
     const CARD_GAP: f32 = 6.0;

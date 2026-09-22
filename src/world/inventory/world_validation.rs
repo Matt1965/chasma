@@ -1,7 +1,7 @@
 //! Unified world inventory validation (ADR-094 I8).
 
 use super::{
-    InventoryCatalogCtx, InventoryError, InventoryId, InventoryInvariantReport, InventoryOwnerRef,
+    InventoryCatalogCtx, InventoryError, InventoryInvariantReport, InventoryOwnerRef,
     resolve_instance_definition, validate_inventory_stores,
 };
 use crate::world::equipment::EquipmentSlot;
@@ -156,7 +156,7 @@ fn validate_owner_links(world: &WorldData) -> Vec<String> {
         if let Some(unit) = world.get_unit(unit_id) {
             if let Some(inventory_id) = unit.inventory_id {
                 if let Some(record) = world.inventory_store().get(inventory_id) {
-                    if !matches!(record.owner(), InventoryOwnerRef::Unit(unit_id)) {
+                    if !matches!(record.owner(), InventoryOwnerRef::Unit(_unit_id)) {
                         errors.push(format!(
                             "unit {unit_id:?} references inventory {inventory_id:?} with mismatched owner"
                         ));
@@ -200,7 +200,7 @@ fn validate_owner_links(world: &WorldData) -> Vec<String> {
             if let Some(record) = world.inventory_store().get(inventory_id) {
                 if !matches!(
                     record.owner(),
-                    InventoryOwnerRef::ItemContainer(instance_id)
+                    InventoryOwnerRef::ItemContainer(_instance_id)
                 ) {
                     errors.push(format!(
                         "instance {instance_id:?} contained inventory {inventory_id:?} has mismatched owner"
@@ -218,7 +218,7 @@ fn validate_owner_links(world: &WorldData) -> Vec<String> {
         if let Some(building) = world.get_building(building_id) {
             if let Some(inventory_id) = building.inventory_id {
                 if let Some(record) = world.inventory_store().get(inventory_id) {
-                    if !matches!(record.owner(), InventoryOwnerRef::Building(building_id)) {
+                    if !matches!(record.owner(), InventoryOwnerRef::Building(_building_id)) {
                         errors.push(format!(
                             "building {building_id:?} references inventory {inventory_id:?} with mismatched owner"
                         ));
@@ -236,7 +236,7 @@ fn validate_owner_links(world: &WorldData) -> Vec<String> {
         if let Some(corpse) = world.corpse_store().get(corpse_id) {
             if let Some(inventory_id) = corpse.inventory_id {
                 if let Some(record) = world.inventory_store().get(inventory_id) {
-                    if !matches!(record.owner(), InventoryOwnerRef::Corpse(corpse_id)) {
+                    if !matches!(record.owner(), InventoryOwnerRef::Corpse(_corpse_id)) {
                         errors.push(format!(
                             "corpse {corpse_id:?} references inventory {inventory_id:?} with mismatched owner"
                         ));

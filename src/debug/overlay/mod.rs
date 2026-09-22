@@ -18,7 +18,7 @@ mod selection_overlay;
 mod settlement_boundary_overlay;
 mod steering_overlay;
 
-pub use authored_overlay_trace::{AuthoredBlueprintOverlayTrace, blueprint_topology_counts};
+pub use authored_overlay_trace::AuthoredBlueprintOverlayTrace;
 pub use blueprint_overlay::draw_blueprint_debug_overlay;
 pub use combat_overlay::draw_combat_debug_overlay;
 pub use formation_overlay::draw_formation_debug_overlay;

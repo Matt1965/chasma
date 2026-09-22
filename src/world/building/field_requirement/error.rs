@@ -60,37 +60,6 @@ impl std::fmt::Display for BuildingFieldRequirementError {
     }
 }
 
-/// Assessment-time requirement errors.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum BuildingFieldRequirementAssessmentError {
-    BuildingDefinitionMissing(BuildingDefinitionId),
-    RequirementMissing {
-        building_id: BuildingDefinitionId,
-        field_id: TerrainFieldId,
-    },
-    OperationalFootprintUnavailable(String),
-    SamplingRegionEmpty,
-}
-
-impl std::fmt::Display for BuildingFieldRequirementAssessmentError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::BuildingDefinitionMissing(id) => write!(f, "building definition `{id}` missing"),
-            Self::RequirementMissing {
-                building_id,
-                field_id,
-            } => write!(
-                f,
-                "requirement missing for building `{building_id}` field `{field_id}`"
-            ),
-            Self::OperationalFootprintUnavailable(msg) => {
-                write!(f, "operational footprint unavailable: {msg}")
-            }
-            Self::SamplingRegionEmpty => write!(f, "sampling region empty"),
-        }
-    }
-}
-
 /// Validate one requirement against referenced catalogs.
 pub fn validate_requirement(
     requirement: &BuildingFieldRequirementDefinition,
