@@ -16,8 +16,8 @@ use crate::units::presentation::{
 use super::screen::UnitEditorPreviewPane;
 use super::session::UnitEditorSession;
 
-const PREVIEW_WIDTH: u32 = 640;
-const PREVIEW_HEIGHT: u32 = 640;
+const PREVIEW_WIDTH: u32 = 1280;
+const PREVIEW_HEIGHT: u32 = 720;
 const PREVIEW_DISTANCE_BASE: f32 = 2.4;
 const PREVIEW_FOCUS_FALLBACK_Y: f32 = 0.9;
 const PREVIEW_FALLBACK_HEIGHT: f32 = 1.75;
@@ -32,6 +32,10 @@ pub struct UnitEditorPreviewImage {
 impl UnitEditorPreviewImage {
     pub const WIDTH: u32 = PREVIEW_WIDTH;
     pub const HEIGHT: u32 = PREVIEW_HEIGHT;
+
+    pub fn intrinsic_size() -> Vec2 {
+        Vec2::new(Self::WIDTH as f32, Self::HEIGHT as f32)
+    }
 }
 
 #[derive(Component, Debug)]
@@ -89,7 +93,7 @@ pub fn setup_unit_editor_preview_studio(
                     PREVIEW_RENDER_LAYER,
                 ));
 
-                let backdrop_mesh = meshes.add(Cuboid::new(24.0, 10.0, 0.1));
+                let backdrop_mesh = meshes.add(Cuboid::new(42.0, 10.0, 0.1));
                 environment.spawn((
                     UnitEditorPreviewBackdrop,
                     Mesh3d(backdrop_mesh),

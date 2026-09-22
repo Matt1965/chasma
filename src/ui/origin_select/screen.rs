@@ -25,10 +25,9 @@ pub struct OriginSelectPreviewPane;
 #[derive(Component, Debug, Clone, Copy)]
 pub struct OriginSelectPreviewImage;
 
-const PREVIEW_VIEWPORT_INTRINSIC: Vec2 = Vec2::new(
-    UnitEditorPreviewImage::WIDTH as f32,
-    UnitEditorPreviewImage::HEIGHT as f32,
-);
+fn preview_viewport_intrinsic() -> Vec2 {
+    UnitEditorPreviewImage::intrinsic_size()
+}
 
 #[derive(Component, Debug, Clone, Copy)]
 pub enum OriginSquadAction {
@@ -88,8 +87,8 @@ pub fn spawn_origin_select_preview_ui(
                     ImageNode::new(preview_image.handle.clone()),
                     Node {
                         position_type: PositionType::Absolute,
-                        width: Val::Px(PREVIEW_VIEWPORT_INTRINSIC.x),
-                        height: Val::Px(PREVIEW_VIEWPORT_INTRINSIC.y),
+                        width: Val::Px(preview_viewport_intrinsic().x),
+                        height: Val::Px(preview_viewport_intrinsic().y),
                         ..default()
                     },
                 ));
@@ -110,9 +109,9 @@ pub fn sync_origin_select_preview_viewport(
         return;
     }
 
-    let scale = (viewport.x / PREVIEW_VIEWPORT_INTRINSIC.x)
-        .min(viewport.y / PREVIEW_VIEWPORT_INTRINSIC.y);
-    let size = PREVIEW_VIEWPORT_INTRINSIC * scale;
+    let intrinsic = preview_viewport_intrinsic();
+    let scale = (viewport.x / intrinsic.x).min(viewport.y / intrinsic.y);
+    let size = intrinsic * scale;
     let offset = (viewport - size) * 0.5;
 
     for mut node in &mut preview_images {
