@@ -116,6 +116,7 @@ pub fn desired_equipment_presentations_for_unit(
 }
 
 /// Resolve all desired presentations for currently rendered units.
+#[cfg_attr(not(test), allow(dead_code))] // batch resolver seam for future presentation pass
 pub fn desired_equipment_presentations(
     world: &WorldData,
     unit_catalog: &UnitCatalog,
@@ -150,6 +151,7 @@ pub fn desired_equipment_presentations(
 }
 
 /// Presentation key for reconciliation -- instance identity, not definition id.
+#[cfg_attr(not(test), allow(dead_code))] // reconciliation key for future presentation pass
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EquipmentPresentationKey {
     pub unit_id: UnitId,
@@ -159,6 +161,7 @@ pub struct EquipmentPresentationKey {
 }
 
 impl EquipmentPresentationKey {
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn from_desired(value: &DesiredEquipmentPresentation) -> Self {
         Self {
             unit_id: value.unit_id,

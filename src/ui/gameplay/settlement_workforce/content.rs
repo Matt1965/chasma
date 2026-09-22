@@ -148,6 +148,7 @@ pub fn permission_column_labels(snapshot: &SettlementWorkforceSnapshot) -> Vec<&
         .collect()
 }
 
+#[cfg(test)]
 pub fn snapshot_contains_permission_column(
     snapshot: &SettlementWorkforceSnapshot,
     domain: WorkPermissionDomain,

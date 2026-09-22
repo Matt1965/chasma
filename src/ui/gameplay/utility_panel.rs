@@ -50,6 +50,7 @@ impl HudUtilityButton {
         }
     }
 
+    #[cfg(test)]
     fn is_settlement(self) -> bool {
         matches!(self, Self::SettlementWorkforce | Self::Fields)
     }
@@ -65,6 +66,7 @@ const SETTLEMENT_UTILITY_BUTTONS: [HudUtilityButton; 2] = [
 
 /// Permanent HUD utility buttons (Inv, Skills, Work, Fields). Field overlay
 /// options live only in the compact Fields popup.
+#[cfg(test)]
 pub const PERMANENT_UTILITY_BUTTONS: [HudUtilityButton; 4] = [
     HudUtilityButton::Inventory,
     HudUtilityButton::UnitSkills,

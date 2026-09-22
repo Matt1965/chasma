@@ -27,6 +27,7 @@ pub const HUD_FRAME_TOP_PX: f32 = 12.0;
 pub const HUD_FRAME_BOTTOM_PX: f32 = 14.0;
 
 /// Vertical space available to section content between the frame bevels.
+#[cfg(test)]
 pub const HUD_CONTENT_HEIGHT_PX: f32 = HUD_HEIGHT_PX - HUD_FRAME_TOP_PX - HUD_FRAME_BOTTOM_PX;
 
 /// Ornamental endcap source sizes (px in `chasma_ui.png`), scaled to band height.
@@ -40,6 +41,7 @@ pub const HUD_ART_SCALE: f32 = HUD_HEIGHT_PX / HUD_SOURCE_BAND_HEIGHT_PX;
 pub const HUD_ENDCAP_LEFT_WIDTH_PX: f32 = ENDCAP_LEFT_SOURCE.x * HUD_ART_SCALE;
 pub const HUD_ENDCAP_RIGHT_WIDTH_PX: f32 = ENDCAP_RIGHT_SOURCE.x * HUD_ART_SCALE;
 pub const HUD_SPIRE_WIDTH_PX: f32 = ENDCAP_SPIRE_SOURCE.x * HUD_ART_SCALE;
+#[cfg(test)]
 pub const HUD_SPIRE_HEIGHT_PX: f32 = ENDCAP_SPIRE_SOURCE.y * HUD_ART_SCALE;
 
 /// Nine-slice corner block of `plate_frame.png`, holding the chamfer and trim.
@@ -115,6 +117,7 @@ pub const HUD_UTILITY_GROUP_DIVIDER_PX: f32 = 6.0;
 pub const HUD_FIELDS_MENU_WIDTH_PX: f32 = HUD_UTILITY_WIDTH_PX - 8.0;
 
 /// Legacy alias retained for the build-catalog anchor and pointer-capture rect.
+#[cfg(test)]
 pub const BOTTOM_BAR_HEIGHT_PX: f32 = HUD_HEIGHT_PX;
 
 /// Horizontal padding inside floating panels (not the bottom HUD).

@@ -72,7 +72,7 @@ pub use playback::sync_unit_animation_playback;
 pub use plugin::{UnitAnimationPlugin, UnitAnimationSystems};
 pub use presentation_time::presentation_advance_seconds;
 #[allow(unused_imports)]
-pub use settings::{DOCUMENTED_RUN_SPEED_RATIO, UnitAnimationSettings};
+pub use settings::UnitAnimationSettings;
 #[allow(unused_imports)]
 pub use skeleton::configure_unit_animation_layering;
 #[allow(unused_imports)]

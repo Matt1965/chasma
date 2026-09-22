@@ -18,7 +18,6 @@ use crate::world::{
 #[cfg(feature = "dev")]
 #[derive(Debug, Clone)]
 pub struct SurfacePointLegalityProbe {
-    pub position: WorldPosition,
     pub global: Vec3,
     pub chunk_label: String,
     pub terrain_chunk_loaded: bool,
@@ -374,7 +373,6 @@ fn finish_probe(
 ) -> SurfacePointLegalityProbe {
     let authority_regression = building_overlap_blocks;
     SurfacePointLegalityProbe {
-        position,
         global,
         chunk_label,
         terrain_chunk_loaded,

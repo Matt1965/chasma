@@ -60,6 +60,7 @@ pub struct SelectedUnitPanelSnapshot {
 
 const NO_SELECTION_LABEL: &str = "No selection";
 
+#[cfg(test)]
 pub const HUD_NO_SELECTION_LABEL: &str = NO_SELECTION_LABEL;
 
 /// Bottom-bar content from [`WorldSelectionState`] (units, buildings, or none).

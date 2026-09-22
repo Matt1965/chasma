@@ -291,11 +291,9 @@ mod tests {
 
     #[test]
     fn world_water_ui_spawn_contract() {
-        use super::super::panel::WORLD_WATER_SECTION_ORDER;
         use super::super::state::{DevWorldWaterEnabledToggle, DevWorldWaterSection};
 
         assert_eq!(WORLD_WATER_LEVEL_FIELD_ID, 800);
-        assert_eq!(WORLD_WATER_SECTION_ORDER, 1);
         assert!(
             std::any::type_name::<DevWorldWaterSection>().contains("DevWorldWaterSection"),
             "water section marker must exist"

@@ -59,6 +59,7 @@ impl HudPlateSection {
         }
     }
 
+    #[cfg(test)]
     pub fn height_px(self, hud_height: f32) -> f32 {
         let (top, bottom) = self.insets_px();
         hud_height - top - bottom

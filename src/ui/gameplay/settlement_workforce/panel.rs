@@ -84,9 +84,7 @@ pub struct SettlementWorkforceMatrixHeaderRow;
 
 /// Marker on each worker data row (not the header row).
 #[derive(Component, Debug, Clone, Copy)]
-pub struct SettlementWorkforceMatrixDataRow {
-    pub unit_id: UnitId,
-}
+pub struct SettlementWorkforceMatrixDataRow;
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct WorkforcePermissionCheckbox {
@@ -471,9 +469,7 @@ fn spawn_matrix_data_row(
     let (_, separator_bg, separator_border) = floating_row_separator_border();
     parent
         .spawn((
-            SettlementWorkforceMatrixDataRow {
-                unit_id: row.unit_id,
-            },
+            SettlementWorkforceMatrixDataRow,
             separator_bg,
             separator_border,
             Node {

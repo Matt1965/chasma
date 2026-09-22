@@ -4,18 +4,12 @@ use bevy::prelude::*;
 
 use crate::client::selection::WorldSelectionCategory;
 use crate::simulation::{BuildingSimulationParams, SimulationControlState};
-use crate::ui::gameplay::primary_selected_unit;
-use crate::units::input::SelectedUnits;
 use crate::world::{
-    AssessmentRebuildOutcome, BuildingInventoryContext, BuildingLifecycleState, ItemDefinitionId,
-    LogisticsRouteTrigger, OccupancyCatalogs, PRODUCTION_PROGRESS_ONE_UNIT, ProductionProgress,
-    TerrainAssessmentCatalogs, TransferPlacementPolicy, add_building_construction_progress,
-    cycle_production_selected_operation, damage_building, destroy_building,
-    execute_production_cycle, heal_building, place_stack_first_fit,
-    rebuild_building_terrain_assessment, remove_entry, reset_production_progress,
-    set_building_container_locked, set_building_lifecycle_stage, set_production_enabled,
-    set_production_paused, transfer_one, validate_building_inventory_links,
-    validate_production_runtime_with_catalogs,
+    AssessmentRebuildOutcome, BuildingInventoryContext, BuildingLifecycleState, OccupancyCatalogs,
+    PRODUCTION_PROGRESS_ONE_UNIT, ProductionProgress, TerrainAssessmentCatalogs,
+    add_building_construction_progress, damage_building, execute_production_cycle, heal_building,
+    rebuild_building_terrain_assessment, reset_production_progress, set_building_lifecycle_stage,
+    set_production_enabled,
 };
 
 use super::capture::{capture_building_inspector_snapshot, probe_building_operation};
@@ -27,31 +21,15 @@ use super::state::WorldInspectorState;
 pub enum BuildingDevAction {
     Damage50,
     Heal50,
-    Destroy,
     SetRuins,
     Complete,
     AddConstructionProgress,
     OpenDoor,
     LockDoor,
-    LogInventory,
-    AddGold,
-    TransferWithUnit,
-    ToggleContainerLock,
-    ValidateInventoryLinks,
     ToggleProductionEnabled,
-    ToggleProductionPaused,
     ResetProductionProgress,
-    ToggleProductionAdvanced,
-    ValidateProduction,
-    CycleOperationForward,
-    CycleOperationBackward,
     ForceProductionCycle,
-    ClearBindingInventories,
     RebuildTerrainAssessment,
-    ForceSettlementReplan,
-    SpawnManualHaul,
-    CancelOpenHauls,
-    ForceCompleteHaul,
 }
 
 impl BuildingDevAction {
@@ -73,31 +51,15 @@ impl BuildingDevAction {
         match self {
             Self::Damage50 => "Damage +50",
             Self::Heal50 => "Heal +50",
-            Self::Destroy => "Destroy (dev)",
             Self::SetRuins => "Set ruins",
             Self::Complete => "Complete",
             Self::AddConstructionProgress => "+10% progress",
             Self::OpenDoor => "Open door",
             Self::LockDoor => "Lock door",
-            Self::LogInventory => "Log inventory",
-            Self::AddGold => "Add 5 gold",
-            Self::TransferWithUnit => "Transfer w/ unit",
-            Self::ToggleContainerLock => "Toggle lock",
-            Self::ValidateInventoryLinks => "Validate links",
             Self::ToggleProductionEnabled => "Enable / disable production",
-            Self::ToggleProductionPaused => "Toggle pause",
             Self::ResetProductionProgress => "Reset progress",
-            Self::ToggleProductionAdvanced => "Adv. panel",
-            Self::ValidateProduction => "Validate production",
-            Self::CycleOperationForward => "Next operation",
-            Self::CycleOperationBackward => "Prev operation",
             Self::ForceProductionCycle => "Force cycle",
-            Self::ClearBindingInventories => "Clear bindings",
             Self::RebuildTerrainAssessment => "Rebuild terrain",
-            Self::ForceSettlementReplan => "Force replan",
-            Self::SpawnManualHaul => "Spawn haul",
-            Self::CancelOpenHauls => "Cancel hauls",
-            Self::ForceCompleteHaul => "Force complete haul",
         }
     }
 
@@ -107,44 +69,17 @@ impl BuildingDevAction {
                 "Apply 50 damage through the building damage API. Dev-only; affects runtime HP."
             }
             Self::Heal50 => "Heal 50 HP through the building heal API. Dev-only.",
-            Self::Destroy => {
-                "Destroy the building through the authoritative destroy path (inventory cleanup). \
-                 Dev-only — not the same as gameplay demolition."
-            }
             Self::SetRuins => "Set lifecycle to Ruins via domain API.",
             Self::Complete => "Set lifecycle to Complete (skip remaining construction).",
             Self::AddConstructionProgress => "Add 10% construction progress.",
             Self::OpenDoor => "Open the first door registered to this building.",
             Self::LockDoor => "Lock the first door registered to this building.",
-            Self::LogInventory => "Print building inventory summary to the status line.",
-            Self::AddGold => "Place 5 gold into the building inventory (first fit).",
-            Self::TransferWithUnit => {
-                "Transfer one item between the primary selected unit and building inventories."
-            }
-            Self::ToggleContainerLock => "Toggle building container lock flag.",
-            Self::ValidateInventoryLinks => "Validate all building inventory binding links.",
             Self::ToggleProductionEnabled => "Toggle production enabled policy.",
-            Self::ToggleProductionPaused => "Toggle production paused policy.",
             Self::ResetProductionProgress => "Reset in-progress production progress to zero.",
-            Self::ToggleProductionAdvanced => "Expand/collapse production advanced diagnostics.",
-            Self::ValidateProduction => "Run production runtime validation against catalogs.",
-            Self::CycleOperationForward => "Cycle selected production operation forward.",
-            Self::CycleOperationBackward => "Cycle selected production operation backward.",
             Self::ForceProductionCycle => {
                 "Force-execute one production cycle (dev bypass). May fail if inputs missing."
             }
-            Self::ClearBindingInventories => {
-                "Clear all binding inventories for this building. Destructive — removes items."
-            }
             Self::RebuildTerrainAssessment => "Rebuild terrain field assessment for this building.",
-            Self::ForceSettlementReplan => {
-                "Force settlement production replan for the building's settlement."
-            }
-            Self::SpawnManualHaul => {
-                "Spawn a manual hauling request from the first logistics route."
-            }
-            Self::CancelOpenHauls => "Cancel all open hauling requests for this building.",
-            Self::ForceCompleteHaul => "Force-complete the first open hauling request.",
         }
     }
 }
@@ -167,7 +102,6 @@ pub fn apply_building_dev_action(
     params: &DevBuildingActionParams,
     building_sim: &mut BuildingSimulationParams,
     simulation: &SimulationControlState,
-    selected_units: &SelectedUnits,
     inspection_active: bool,
     inspector: &mut WorldInspectorState,
 ) -> bool {
@@ -206,19 +140,6 @@ pub fn apply_building_dev_action(
             } else {
                 false
             }
-        }
-        BuildingDevAction::Destroy => {
-            let _ = destroy_building(
-                world,
-                &params.building_catalog,
-                &params.doodad_catalog,
-                occ,
-                building_id,
-                "dev_destroy",
-                Some(&inventory_cleanup),
-            );
-            inspector.last_message = format!("Destroyed building #{}", building_id.raw());
-            true
         }
         BuildingDevAction::SetRuins => {
             let _ = set_building_lifecycle_stage(
@@ -285,144 +206,6 @@ pub fn apply_building_dev_action(
                 false
             }
         }
-        BuildingDevAction::LogInventory => {
-            if let Some(record) = world.get_building(building_id) {
-                if let Some(inventory_id) = record.inventory_id {
-                    let entries = world
-                        .inventory_store()
-                        .get(inventory_id)
-                        .map(|inv| inv.placed_entries().len())
-                        .unwrap_or(0);
-                    inspector.last_message = format!(
-                        "Building #{:?} inventory {inventory_id:?}: {entries} entries, locked={}",
-                        building_id, record.container_locked
-                    );
-                } else {
-                    inspector.last_message =
-                        format!("Building #{:?} has no inventory", building_id);
-                }
-                true
-            } else {
-                false
-            }
-        }
-        BuildingDevAction::AddGold => {
-            if let Some(inventory_id) = world.get_building(building_id).and_then(|r| r.inventory_id)
-            {
-                let (inventory_store, instance_store) = world.inventory_runtime_mut();
-                match place_stack_first_fit(
-                    inventory_store,
-                    instance_store,
-                    &inventory_ctx,
-                    inventory_id,
-                    ItemDefinitionId::new("gold"),
-                    5,
-                ) {
-                    Ok(_) => {
-                        inspector.last_message =
-                            format!("Added 5 gold to building #{:?} inventory", building_id);
-                        true
-                    }
-                    Err(error) => {
-                        inspector.last_message = format!("Add gold failed: {error}");
-                        false
-                    }
-                }
-            } else {
-                inspector.last_message = "Building has no inventory".into();
-                false
-            }
-        }
-        BuildingDevAction::TransferWithUnit => {
-            if let (Some(unit_id), Some(building_inventory)) = (
-                primary_selected_unit(selected_units),
-                world.get_building(building_id).and_then(|r| r.inventory_id),
-            ) {
-                let unit_inventory = world.get_unit(unit_id).and_then(|u| u.inventory_id);
-                if let (Some(from), Some(to)) = (unit_inventory, Some(building_inventory)) {
-                    let (inventory_store, instance_store) = world.inventory_runtime_mut();
-                    match transfer_one(
-                        inventory_store,
-                        instance_store,
-                        &inventory_ctx,
-                        from,
-                        0,
-                        to,
-                        TransferPlacementPolicy::MergeThenFirstFit,
-                    ) {
-                        Ok(report) => {
-                            inspector.last_message =
-                                format!("Transferred to building: {:?}", report.status);
-                            true
-                        }
-                        Err(error) => {
-                            inspector.last_message = format!("Transfer failed: {error}");
-                            false
-                        }
-                    }
-                } else if let (Some(from), Some(to)) = (Some(building_inventory), unit_inventory) {
-                    let (inventory_store, instance_store) = world.inventory_runtime_mut();
-                    match transfer_one(
-                        inventory_store,
-                        instance_store,
-                        &inventory_ctx,
-                        from,
-                        0,
-                        to,
-                        TransferPlacementPolicy::MergeThenFirstFit,
-                    ) {
-                        Ok(report) => {
-                            inspector.last_message =
-                                format!("Transferred from building: {:?}", report.status);
-                            true
-                        }
-                        Err(error) => {
-                            inspector.last_message = format!("Transfer failed: {error}");
-                            false
-                        }
-                    }
-                } else {
-                    inspector.last_message =
-                        "Select unit with inventory for unit↔building transfer".into();
-                    false
-                }
-            } else {
-                inspector.last_message =
-                    "Select unit and building with inventories for transfer".into();
-                false
-            }
-        }
-        BuildingDevAction::ToggleContainerLock => {
-            if let Some(record) = world.get_building(building_id) {
-                if record.inventory_id.is_some() {
-                    let locked = !record.container_locked;
-                    if set_building_container_locked(world, building_id, locked).is_ok() {
-                        inspector.last_message = format!(
-                            "Building #{:?} container {}",
-                            building_id,
-                            if locked { "locked" } else { "unlocked" }
-                        );
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    inspector.last_message = "Building has no inventory".into();
-                    false
-                }
-            } else {
-                false
-            }
-        }
-        BuildingDevAction::ValidateInventoryLinks => {
-            let errors = validate_building_inventory_links(world);
-            inspector.last_message = if errors.is_empty() {
-                "Building inventory links OK".to_string()
-            } else {
-                format!("Building inventory errors: {errors:?}")
-            };
-            true
-        }
         BuildingDevAction::ToggleProductionEnabled => {
             let enabled = world
                 .building_production_store()
@@ -444,27 +227,6 @@ pub fn apply_building_dev_action(
                 }
             }
         }
-        BuildingDevAction::ToggleProductionPaused => {
-            let paused = world
-                .building_production_store()
-                .get_policy(building_id)
-                .map(|policy| !policy.paused)
-                .unwrap_or(true);
-            match set_production_paused(world, building_id, paused) {
-                Ok(()) => {
-                    inspector.last_message = format!(
-                        "Production {} for building #{}",
-                        if paused { "paused" } else { "resumed" },
-                        building_id.raw()
-                    );
-                    true
-                }
-                Err(error) => {
-                    inspector.last_message = format!("Production pause failed: {error}");
-                    false
-                }
-            }
-        }
         BuildingDevAction::ResetProductionProgress => {
             if inspection_active {
                 inspector.last_message =
@@ -481,87 +243,6 @@ pub fn apply_building_dev_action(
                 }
                 Err(error) => {
                     inspector.last_message = format!("Production reset failed: {error}");
-                    false
-                }
-            }
-        }
-        BuildingDevAction::ToggleProductionAdvanced => {
-            inspector.production_advanced_expanded = !inspector.production_advanced_expanded;
-            inspector.last_message = if inspector.production_advanced_expanded {
-                "Production advanced panel expanded".to_string()
-            } else {
-                "Production advanced panel collapsed".to_string()
-            };
-            true
-        }
-        BuildingDevAction::ValidateProduction => {
-            let issues = validate_production_runtime_with_catalogs(
-                world,
-                Some(&params.building_catalog),
-                Some(&building_sim.operation_catalog),
-            );
-            inspector.last_message = if issues.is_empty() {
-                "Production runtime validation OK".to_string()
-            } else {
-                format!(
-                    "Production validation: {}",
-                    issues
-                        .iter()
-                        .map(|issue| issue.message())
-                        .collect::<Vec<_>>()
-                        .join("; ")
-                )
-            };
-            true
-        }
-        BuildingDevAction::CycleOperationForward => {
-            match cycle_production_selected_operation(
-                world,
-                &params.building_catalog,
-                &building_sim.operation_catalog,
-                building_id,
-                true,
-            ) {
-                Ok(Some(operation)) => {
-                    inspector.last_message = format!(
-                        "Selected operation {} for building #{}",
-                        operation,
-                        building_id.raw()
-                    );
-                    true
-                }
-                Ok(None) => {
-                    inspector.last_message = "Building has no supported operations".into();
-                    false
-                }
-                Err(error) => {
-                    inspector.last_message = format!("Operation select failed: {error}");
-                    false
-                }
-            }
-        }
-        BuildingDevAction::CycleOperationBackward => {
-            match cycle_production_selected_operation(
-                world,
-                &params.building_catalog,
-                &building_sim.operation_catalog,
-                building_id,
-                false,
-            ) {
-                Ok(Some(operation)) => {
-                    inspector.last_message = format!(
-                        "Selected operation {} for building #{}",
-                        operation,
-                        building_id.raw()
-                    );
-                    true
-                }
-                Ok(None) => {
-                    inspector.last_message = "Building has no supported operations".into();
-                    false
-                }
-                Err(error) => {
-                    inspector.last_message = format!("Operation select failed: {error}");
                     false
                 }
             }
@@ -627,37 +308,6 @@ pub fn apply_building_dev_action(
                 false
             }
         }
-        BuildingDevAction::ClearBindingInventories => {
-            if let Some(set) = world
-                .building_inventory_binding_store()
-                .get(building_id)
-                .cloned()
-            {
-                let (inventory_store, instance_store) = world.inventory_runtime_mut();
-                for binding in set.bindings() {
-                    while let Some(record) = inventory_store.get(binding.inventory_id) {
-                        if record.placed_entries().is_empty() {
-                            break;
-                        }
-                        let _ = remove_entry(
-                            inventory_store,
-                            instance_store,
-                            &inventory_ctx,
-                            binding.inventory_id,
-                            record.placed_entries().len() - 1,
-                        );
-                    }
-                }
-                inspector.last_message = format!(
-                    "Cleared binding inventories for building #{}",
-                    building_id.raw()
-                );
-                true
-            } else {
-                inspector.last_message = "No binding inventories".into();
-                false
-            }
-        }
         BuildingDevAction::RebuildTerrainAssessment => {
             let catalogs = TerrainAssessmentCatalogs {
                 buildings: &params.building_catalog,
@@ -685,145 +335,6 @@ pub fn apply_building_dev_action(
                     inspector.last_message = format!("Terrain assessment refresh: {outcome:?}");
                     false
                 }
-            }
-        }
-        BuildingDevAction::ForceSettlementReplan => {
-            if let Some(settlement_id) = world
-                .settlement_store()
-                .settlement_for_building(building_id)
-            {
-                world
-                    .building_intent_propagation_store_mut()
-                    .mark_dirty(settlement_id);
-                let response_catalog = crate::world::ResponseCatalog::default();
-                crate::world::propagate_building_intent_now(
-                    world,
-                    &response_catalog,
-                    &params.building_catalog,
-                    &building_sim.operation_catalog,
-                    &inventory_ctx,
-                    settlement_id,
-                    simulation.current_tick,
-                );
-                inspector.last_message = format!(
-                    "Force propagated SA5 policy for settlement #{}",
-                    settlement_id.raw()
-                );
-                true
-            } else {
-                inspector.last_message = "Building is not linked to a settlement".into();
-                false
-            }
-        }
-        BuildingDevAction::SpawnManualHaul => {
-            if let Some(definition) = world
-                .get_building(building_id)
-                .and_then(|record| params.building_catalog.get(&record.definition_id))
-            {
-                if let Some(route) = definition.logistics_routes.first() {
-                    let local = world
-                        .building_inventory_binding_store()
-                        .resolve_inventory(building_id, &route.local_binding_id);
-                    let remote = world
-                        .logistics_endpoint_index()
-                        .resolve(
-                            &route.remote_building_definition_id,
-                            &route.remote_binding_id,
-                        )
-                        .and_then(|candidates| candidates.first().copied())
-                        .and_then(|remote_building| {
-                            world
-                                .building_inventory_binding_store()
-                                .resolve_inventory(remote_building, &route.remote_binding_id)
-                        });
-                    if let (Some(local_inventory), Some(remote_inventory)) = (local, remote) {
-                        let (source, destination) = match route.trigger {
-                            LogisticsRouteTrigger::OutputSurplus => {
-                                (local_inventory, remote_inventory)
-                            }
-                            LogisticsRouteTrigger::InputDeficit => {
-                                (remote_inventory, local_inventory)
-                            }
-                        };
-                        if let Some(request_id) = crate::world::spawn_manual_hauling_request(
-                            world,
-                            route.priority,
-                            route.item_id.clone(),
-                            1,
-                            source,
-                            destination,
-                            building_id,
-                            simulation.current_tick,
-                            &inventory_ctx,
-                        ) {
-                            inspector.last_message =
-                                format!("Spawned manual haul request #{request_id}");
-                            true
-                        } else {
-                            inspector.last_message = "Failed to spawn hauling request".into();
-                            false
-                        }
-                    } else {
-                        inspector.last_message =
-                            "Could not resolve logistics route inventories".into();
-                        false
-                    }
-                } else {
-                    inspector.last_message = "Building has no logistics routes".into();
-                    false
-                }
-            } else {
-                false
-            }
-        }
-        BuildingDevAction::CancelOpenHauls => {
-            let cancelled: Vec<_> = world
-                .hauling_request_store()
-                .requests_for_building(building_id)
-                .iter()
-                .copied()
-                .filter(|request_id| {
-                    world
-                        .hauling_request_store()
-                        .get(*request_id)
-                        .is_some_and(|request| request.status.is_open())
-                })
-                .collect();
-            for request_id in cancelled {
-                crate::world::cancel_hauling_request(world, request_id);
-            }
-            inspector.last_message = format!(
-                "Cancelled open hauling requests for building #{}",
-                building_id.raw()
-            );
-            true
-        }
-        BuildingDevAction::ForceCompleteHaul => {
-            if let Some(request_id) = world
-                .hauling_request_store()
-                .requests_for_building(building_id)
-                .first()
-                .copied()
-            {
-                match crate::world::force_complete_hauling_request(
-                    world,
-                    request_id,
-                    &inventory_ctx,
-                ) {
-                    Ok(moved) => {
-                        inspector.last_message =
-                            format!("Force-completed haul #{}, moved {moved}", request_id.raw());
-                        true
-                    }
-                    Err(reason) => {
-                        inspector.last_message =
-                            format!("Force-complete failed: {}", reason.label());
-                        false
-                    }
-                }
-            } else {
-                inspector.last_message = "No hauling requests to complete".into();
-                false
             }
         }
     }
@@ -897,7 +408,6 @@ pub fn handle_building_dev_action_buttons(
     world_selection: Res<crate::client::selection::WorldSelectionState>,
     simulation: Res<SimulationControlState>,
     inspection: Res<super::BlueprintInspectionState>,
-    selected_units: Res<SelectedUnits>,
     mut building_sim: BuildingSimulationParams,
     mut params: DevBuildingActionParams,
     mut world: ResMut<crate::world::WorldData>,
@@ -927,7 +437,6 @@ pub fn handle_building_dev_action_buttons(
             &params,
             &mut building_sim,
             &simulation,
-            &selected_units,
             inspection.active,
             &mut inspector,
         );
@@ -1003,48 +512,49 @@ mod tests {
     }
 
     #[test]
-    fn removed_controls_are_not_exposed_in_primary_sections() {
+    fn all_variants_are_exposed_in_primary_sections() {
         let exposed = exposed_action_sections();
-        let removed = [
-            BuildingDevAction::Destroy,
-            BuildingDevAction::ToggleProductionPaused,
-            BuildingDevAction::ToggleProductionAdvanced,
-            BuildingDevAction::ValidateProduction,
-            BuildingDevAction::ValidateInventoryLinks,
-            BuildingDevAction::CycleOperationForward,
-            BuildingDevAction::CycleOperationBackward,
-            BuildingDevAction::LogInventory,
-            BuildingDevAction::AddGold,
-            BuildingDevAction::TransferWithUnit,
-            BuildingDevAction::ToggleContainerLock,
-            BuildingDevAction::ClearBindingInventories,
-            BuildingDevAction::ForceSettlementReplan,
-            BuildingDevAction::SpawnManualHaul,
-            BuildingDevAction::CancelOpenHauls,
-            BuildingDevAction::ForceCompleteHaul,
-        ];
-        for action in removed {
+        for action in [
+            BuildingDevAction::Damage50,
+            BuildingDevAction::Heal50,
+            BuildingDevAction::SetRuins,
+            BuildingDevAction::Complete,
+            BuildingDevAction::AddConstructionProgress,
+            BuildingDevAction::OpenDoor,
+            BuildingDevAction::LockDoor,
+            BuildingDevAction::ToggleProductionEnabled,
+            BuildingDevAction::ResetProductionProgress,
+            BuildingDevAction::ForceProductionCycle,
+            BuildingDevAction::RebuildTerrainAssessment,
+        ] {
             assert!(
-                !exposed.contains(&action),
-                "{action:?} should not appear in primary UI sections"
+                exposed.contains(&action),
+                "{action:?} should appear in a primary UI section"
             );
         }
     }
 
     #[test]
     fn production_section_contains_actions_only() {
-        assert_eq!(BuildingDevAction::PRODUCTION_ACTIONS.len(), 3);
-        assert!(
-            !BuildingDevAction::PRODUCTION_ACTIONS.contains(&BuildingDevAction::ValidateProduction)
-        );
-        assert!(
-            !BuildingDevAction::PRODUCTION_ACTIONS
-                .contains(&BuildingDevAction::ValidateInventoryLinks)
+        assert_eq!(
+            BuildingDevAction::PRODUCTION_ACTIONS,
+            &[
+                BuildingDevAction::ToggleProductionEnabled,
+                BuildingDevAction::ResetProductionProgress,
+                BuildingDevAction::ForceProductionCycle,
+            ]
         );
     }
 
     #[test]
-    fn lifecycle_section_excludes_destroy_dev_action() {
-        assert!(!BuildingDevAction::LIFECYCLE.contains(&BuildingDevAction::Destroy));
+    fn lifecycle_section_excludes_destroy() {
+        assert_eq!(
+            BuildingDevAction::LIFECYCLE,
+            &[
+                BuildingDevAction::Damage50,
+                BuildingDevAction::Heal50,
+                BuildingDevAction::SetRuins,
+            ]
+        );
     }
 }
