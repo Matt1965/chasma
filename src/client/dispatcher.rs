@@ -68,6 +68,8 @@ pub struct DispatchPlayerParams<'w> {
     pub building_panel: ResMut<'w, BuildingPanelState>,
     pub pending_building_interaction:
         ResMut<'w, crate::client::PendingBuildingPlayerInteractionState>,
+    pub pending_dialogue_interaction: ResMut<'w, crate::client::PendingDialogueInteractionState>,
+    pub dialogue_session: ResMut<'w, crate::ui::gameplay::dialogue::DialogueSessionState>,
     #[cfg(feature = "dev")]
     pub placement_trace: Res<'w, crate::ui::gameplay::BuildModePlacementTrace>,
 }
@@ -260,6 +262,8 @@ pub fn dispatch_client_intents(
                 &player_params.player_ownership,
                 &mut player_params.building_panel,
                 &mut player_params.pending_building_interaction,
+                &mut player_params.pending_dialogue_interaction,
+                &mut player_params.dialogue_session,
                 frame_index.0,
                 &mut player_params.inventory_queue,
                 &operation_catalog,
@@ -493,6 +497,8 @@ fn dispatch_one(
     player_ownership: &crate::player::LocalPlayerOwnership,
     building_panel: &mut BuildingPanelState,
     pending_building_interaction: &mut crate::client::PendingBuildingPlayerInteractionState,
+    pending_dialogue_interaction: &mut crate::client::PendingDialogueInteractionState,
+    dialogue_session: &mut crate::ui::gameplay::dialogue::DialogueSessionState,
     simulation_tick: u64,
     inventory_queue: &mut crate::client::inventory_intent::InventoryIntentQueue,
     operation_catalog: &OperationCatalog,
@@ -534,6 +540,8 @@ fn dispatch_one(
             player_ownership,
             building_panel,
             pending_building_interaction,
+            pending_dialogue_interaction,
+            dialogue_session,
         ),
         ClientIntent::MoveCommand { target } => dispatch_contextual_command(
             CommandTarget::Terrain { position: *target },
@@ -561,6 +569,8 @@ fn dispatch_one(
             player_ownership,
             building_panel,
             pending_building_interaction,
+            pending_dialogue_interaction,
+            dialogue_session,
         ),
         ClientIntent::SelectUnit { unit_id } => {
             if world
@@ -1135,6 +1145,8 @@ fn dispatch_contextual_command(
     player_ownership: &crate::player::LocalPlayerOwnership,
     building_panel: &mut BuildingPanelState,
     pending_building_interaction: &mut crate::client::PendingBuildingPlayerInteractionState,
+    pending_dialogue_interaction: &mut crate::client::PendingDialogueInteractionState,
+    dialogue_session: &mut crate::ui::gameplay::dialogue::DialogueSessionState,
 ) -> IntentDispatchStatus {
     if selection.is_empty() {
         return IntentDispatchStatus::Ignored;
@@ -1258,9 +1270,41 @@ fn dispatch_contextual_command(
     ));
 
     match plan {
+        BuiltCommandPlan::BeginDialogue { target } => {
+            crate::client::supersede_pending_building_interaction_for_selection(
+                pending_building_interaction,
+                selection,
+            );
+            let actor = match crate::ui::gameplay::primary_selected_unit(selection) {
+                Some(id) => id,
+                None => return IntentDispatchStatus::Ignored,
+            };
+            match crate::client::try_dispatch_dialogue_interaction(
+                world,
+                dialogue_session,
+                pending_dialogue_interaction,
+                authored_relationships,
+                unit_catalog,
+                weapon_catalog,
+                doodad_catalog,
+                nav_config,
+                actor,
+                target,
+            ) {
+                crate::client::DialogueDispatchOutcome::Ignored => IntentDispatchStatus::Ignored,
+                crate::client::DialogueDispatchOutcome::Opened
+                | crate::client::DialogueDispatchOutcome::Deferred { .. } => {
+                    IntentDispatchStatus::Applied
+                }
+            }
+        }
         BuiltCommandPlan::MoveTo { .. } => {
             crate::client::supersede_pending_building_interaction_for_selection(
                 pending_building_interaction,
+                selection,
+            );
+            crate::client::supersede_pending_dialogue_for_selection(
+                pending_dialogue_interaction,
                 selection,
             );
             if let CommandTarget::Terrain { position } = contextual.target {
@@ -1407,6 +1451,10 @@ fn dispatch_contextual_command(
         BuiltCommandPlan::Attack { target } => {
             crate::client::supersede_pending_building_interaction_for_selection(
                 pending_building_interaction,
+                selection,
+            );
+            crate::client::supersede_pending_dialogue_for_selection(
+                pending_dialogue_interaction,
                 selection,
             );
             *move_report = Some(issue_attack_orders_to_selection(
@@ -1593,6 +1641,7 @@ fn dispatch_palette_command(
             ));
             IntentDispatchStatus::Applied
         }
+        BuiltCommandPlan::BeginDialogue { .. } => IntentDispatchStatus::Ignored,
         BuiltCommandPlan::NoOp => IntentDispatchStatus::Ignored,
     }
 }
@@ -1817,6 +1866,8 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -1889,6 +1940,8 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -1961,6 +2014,8 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2043,6 +2098,8 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2104,6 +2161,8 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2172,6 +2231,8 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2247,6 +2308,8 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2334,6 +2397,8 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2398,6 +2463,8 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2551,6 +2618,8 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut panel,
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2660,6 +2729,8 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2749,6 +2820,8 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2875,6 +2948,8 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut panel,
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
             0,
             &mut inventory_queue,
             &operation_catalog,
@@ -2992,6 +3067,8 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut panel,
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
             0,
             &mut inventory_queue,
             &operation_catalog,

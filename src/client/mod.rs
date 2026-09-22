@@ -3,6 +3,7 @@
 //! Input → Intent → Command → Simulation → Presentation
 
 mod building_interaction_dispatch;
+mod dialogue_dispatch;
 pub mod commands;
 mod dispatcher;
 mod intent;
@@ -12,6 +13,11 @@ pub mod pipeline;
 pub mod selection;
 pub mod settlement_context;
 
+pub use dialogue_dispatch::{
+    DialogueDispatchOutcome, PendingDialogueInteraction, PendingDialogueInteractionState,
+    supersede_pending_dialogue_for_selection, tick_pending_dialogue_interactions,
+    try_complete_pending_dialogue_interaction, try_dispatch_dialogue_interaction,
+};
 pub use building_interaction_dispatch::{
     OwnedBuildingInteractionOutcome, PendingBuildingPlayerInteraction,
     PendingBuildingPlayerInteractionState, complete_building_player_interaction,

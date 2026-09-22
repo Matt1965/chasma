@@ -6,6 +6,7 @@ pub mod building_selection;
 pub mod combat_display;
 mod command_feedback;
 mod command_panel;
+pub mod dialogue;
 mod cursor_feedback;
 mod fields_menu;
 mod floating_window;

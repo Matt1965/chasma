@@ -1309,8 +1309,8 @@ mod tests {
             settlement_id: None,
             current_nutrition: None,
             work_skill_overrides: Vec::new(),
-        
             appearance: None,
+            dialogue: None,
         });
         let err = apply_scene(
             &mut world,
@@ -2010,9 +2010,9 @@ mod tests {
                 settlement_id: None,
                 current_nutrition: None,
                 work_skill_overrides: Vec::new(),
-            
-            appearance: None,
-        }],
+                appearance: None,
+                dialogue: None,
+            }],
             doodad_records: Vec::new(),
             building_records: vec![SceneBuildingRecord {
                 id: 2,
@@ -2128,9 +2128,9 @@ mod tests {
                 settlement_id: None,
                 current_nutrition: None,
                 work_skill_overrides: Vec::new(),
-            
-            appearance: None,
-        }],
+                appearance: None,
+                dialogue: None,
+            }],
             doodad_records: Vec::new(),
             building_records: Vec::new(),
             camera_state: None,

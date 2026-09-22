@@ -22,6 +22,8 @@ use super::resolve::ResolvedUnitSpawnSpec;
 
 use super::unit::ArchetypeEquipmentEntry;
 
+use crate::world::UnitId;
+
 
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,6 +43,19 @@ pub enum ArchetypeApplyError {
 }
 
 
+
+/// Bake archetype dialogue configuration onto the spawned unit record.
+pub fn apply_unit_archetype_dialogue_config(
+    world: &mut WorldData,
+    unit_id: UnitId,
+    spec: &ResolvedUnitSpawnSpec,
+) {
+    if spec.dialogue.is_none() {
+        return;
+    }
+    let dialogue = spec.dialogue.clone();
+    let _ = world.mutate_unit(unit_id, |record| record.dialogue = dialogue);
+}
 
 /// Apply archetype-authored equipment and inventory items after unit creation.
 

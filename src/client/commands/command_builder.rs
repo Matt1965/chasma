@@ -14,6 +14,7 @@ pub enum BuiltCommandPlan {
     AttackMove { destination: WorldPosition },
     StopAll,
     HoldAll,
+    BeginDialogue { target: UnitId },
     NoOp,
 }
 
@@ -52,7 +53,10 @@ pub fn build_command_plan(
         }
         CommandType::Stop => Ok(BuiltCommandPlan::StopAll),
         CommandType::HoldPosition => Ok(BuiltCommandPlan::HoldAll),
-        CommandType::Interact => Ok(BuiltCommandPlan::NoOp),
+        CommandType::Interact => match &intent.target {
+            CommandTarget::Unit { unit_id } => Ok(BuiltCommandPlan::BeginDialogue { target: *unit_id }),
+            _ => Ok(BuiltCommandPlan::NoOp),
+        },
     }
 }
 

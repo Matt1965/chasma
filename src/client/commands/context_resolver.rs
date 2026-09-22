@@ -4,7 +4,7 @@ use bevy::prelude::Vec3;
 
 use crate::world::{
     AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldData,
-    is_valid_autonomous_attack_target, is_valid_explicit_attack_target,
+    is_valid_autonomous_attack_target, is_valid_explicit_attack_target, unit_supports_dialogue,
 };
 
 use crate::world::{UnitId, WorldPosition};
@@ -111,6 +111,15 @@ pub fn resolve_contextual_command_with_armed(
             ) {
                 Some(ContextualCommandIntent {
                     command_type: CommandType::Attack,
+                    target: CommandTarget::Unit { unit_id: *unit_id },
+                })
+            } else if ctx
+                .world
+                .get_unit(*unit_id)
+                .is_some_and(unit_supports_dialogue)
+            {
+                Some(ContextualCommandIntent {
+                    command_type: CommandType::Interact,
                     target: CommandTarget::Unit { unit_id: *unit_id },
                 })
             } else {

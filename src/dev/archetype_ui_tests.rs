@@ -55,6 +55,7 @@ fn invalidate_archetype_resets_incompatible_species() {
             affiliation_override: None,
             equipment: Vec::new(),
             inventory_stacks: Vec::new(),
+            dialogue: None,
             enabled: true,
         },
     ])

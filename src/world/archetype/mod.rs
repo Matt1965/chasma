@@ -24,7 +24,9 @@ mod reconstruct_tests;
 #[cfg(test)]
 mod tests;
 
-pub use apply::{apply_unit_archetype_spawn_overrides, ArchetypeApplyError};
+pub use apply::{
+    apply_unit_archetype_dialogue_config, apply_unit_archetype_spawn_overrides, ArchetypeApplyError,
+};
 pub use building::{
     BuildingArchetypeCaptureMetadata, BuildingArchetypeCatalog, BuildingArchetypeCatalogError,
     BuildingArchetypeDefinition, BuildingArchetypeDurableExtensions, BuildingArchetypeId,

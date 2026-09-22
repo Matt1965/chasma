@@ -129,6 +129,7 @@ pub fn handle_archetype_edit_button(
             editor.gold_min_input = definition.gold_min.to_string();
             editor.gold_max_input = definition.gold_max.to_string();
             editor.selected_species = definition.applicable_species.iter().cloned().collect();
+            editor.load_dialogue_from_definition(definition.dialogue.as_ref());
             editor.captured_unit_template = None;
             editor.pending_template_update = false;
             editor.status_message.clear();
@@ -264,6 +265,31 @@ pub fn handle_archetype_modal_save(
             );
         }
         None => {}
+    }
+}
+
+pub fn handle_archetype_dialogue_toggle(
+    mut editor: ResMut<DevArchetypeEditorState>,
+    interaction: Query<(&Interaction, &super::modal::DevArchetypeDialogueToggle), Changed<Interaction>>,
+) {
+    if !editor.modal_open || !editor.is_unit_modal() {
+        return;
+    }
+    for (state, toggle) in &interaction {
+        if *state != Interaction::Pressed {
+            continue;
+        }
+        match toggle {
+            super::modal::DevArchetypeDialogueToggle::Talk => {
+                editor.dialogue_talk_enabled = !editor.dialogue_talk_enabled;
+            }
+            super::modal::DevArchetypeDialogueToggle::Trade => {
+                editor.dialogue_trade_enabled = !editor.dialogue_trade_enabled;
+            }
+            super::modal::DevArchetypeDialogueToggle::Recruit => {
+                editor.dialogue_recruit_enabled = !editor.dialogue_recruit_enabled;
+            }
+        }
     }
 }
 
@@ -474,6 +500,7 @@ fn save_unit_archetype_from_modal(
         gold_min,
         gold_max,
         &template,
+        editor.build_dialogue_config(),
     );
 
     if unit_archetypes.upsert(definition).is_err() {

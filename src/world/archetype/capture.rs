@@ -103,6 +103,7 @@ pub fn build_unit_archetype_definition(
     gold_min: u32,
     gold_max: u32,
     template: &CapturedUnitArchetypeTemplate,
+    dialogue: Option<crate::world::dialogue::UnitDialogueConfig>,
 ) -> UnitArchetypeDefinition {
     UnitArchetypeDefinition {
         id,
@@ -113,6 +114,7 @@ pub fn build_unit_archetype_definition(
         affiliation_override: template.affiliation_override,
         equipment: template.equipment.clone(),
         inventory_stacks: template.inventory_stacks.clone(),
+        dialogue,
         enabled: true,
     }
 }

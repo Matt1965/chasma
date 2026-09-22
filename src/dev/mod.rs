@@ -504,6 +504,7 @@ impl Plugin for DevModePlugin {
                 archetype_editor::handle_archetype_modal_delete,
                 archetype_editor::handle_archetype_modal_cancel,
                 archetype_editor::handle_archetype_species_toggle,
+                archetype_editor::handle_archetype_dialogue_toggle,
                 archetype_editor::handle_archetype_modal_field_clicks,
                 archetype_editor::handle_archetype_editor_keyboard,
             )
@@ -515,6 +516,8 @@ impl Plugin for DevModePlugin {
                 archetype_editor::sync_building_archetype_capture_preview,
                 archetype_editor::sync_archetype_editor_modal,
                 archetype_editor::sync_archetype_species_toggle_marks,
+                archetype_editor::sync_archetype_dialogue_toggle_marks,
+                archetype_editor::sync_archetype_dialogue_min_texts,
                 archetype_editor::sync_archetype_modal_field_styles,
             )
                 .chain()

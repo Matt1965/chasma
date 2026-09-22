@@ -229,6 +229,7 @@ mod tests {
             settlement_id: None,
             work_skills: Default::default(),
             appearance: None,
+            dialogue: None,
         }
     }
 
