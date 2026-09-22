@@ -691,6 +691,7 @@ fn apply_restore_plan(
             world,
             &plan.inventory_persistence,
             &ctx,
+            &crate::world::AppearanceProfileCatalog::empty(),
         )
         .map_err(|reason| SceneApplyError::InventoryRestore { reason })?;
     }
@@ -1709,6 +1710,7 @@ mod tests {
             &mut restored,
             &scene.inventory_persistence,
             &ctx,
+            &crate::world::AppearanceProfileCatalog::empty(),
         )
         .unwrap();
 

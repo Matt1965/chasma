@@ -12,7 +12,8 @@ use crate::world::{
     SlopeWalkability, UnitCatalog, WorldData, WorldItemPileRecord, WorldPosition,
     building_accepts_workstation_use, building_is_constructible, classify_slope_walkability,
     ground_world_position, interior_navigation_move_target_at_position,
-    nearest_item_pile_at_position, query_passability_at, resolve_navigation_space_at_position,
+    nearest_corpse_at_position, nearest_item_pile_at_position, query_passability_at,
+    resolve_navigation_space_at_position, CorpseRecord, CorpseSettings,
 };
 
 use super::types::{InteractionMetadata, InteractionResult, InteractionTargetRef, InteractionType};
@@ -37,6 +38,7 @@ pub struct InteractionQueryContext<'a> {
     pub unit_catalog: &'a UnitCatalog,
     pub weapon_catalog: &'a crate::world::WeaponCatalog,
     pub pile_settings: &'a ItemPileSettings,
+    pub corpse_settings: &'a CorpseSettings,
     pub query_radius_meters: f32,
     pub agent_radius_meters: f32,
     pub max_slope_degrees: f32,
@@ -52,6 +54,7 @@ impl<'a> InteractionQueryContext<'a> {
         unit_catalog: &'a UnitCatalog,
         weapon_catalog: &'a crate::world::WeaponCatalog,
         pile_settings: &'a ItemPileSettings,
+        corpse_settings: &'a CorpseSettings,
     ) -> Self {
         Self {
             world,
@@ -62,6 +65,7 @@ impl<'a> InteractionQueryContext<'a> {
             unit_catalog,
             weapon_catalog,
             pile_settings,
+            corpse_settings,
             query_radius_meters: DEFAULT_INTERACTION_QUERY_RADIUS_METERS,
             agent_radius_meters: DEFAULT_INTERACTION_AGENT_RADIUS_METERS,
             max_slope_degrees: DEFAULT_INTERACTION_MAX_SLOPE_DEGREES,
@@ -79,6 +83,39 @@ pub fn query_world_interaction(
     let Some(grounded) = ground_world_position(ctx.world, position) else {
         return None;
     };
+
+    let space_id = resolve_navigation_space_at_position(
+        ctx.world.building_navigation_runtime(),
+        ctx.world.space_registry(),
+        ctx.world.layout(),
+        grounded,
+    );
+
+    // Candidate cascade (ADR-042 / ADR-090): corpse → building → item pile → interior → doodad → terrain.
+
+    if let Some(corpse) =
+        nearest_corpse_at_position(ctx.world, grounded, space_id, ctx.corpse_settings)
+    {
+        return Some(classify_corpse_hit(grounded, corpse));
+    }
+
+    if let Some((building_id, record, definition)) =
+        nearest_building_in_radius(ctx, grounded, ctx.query_radius_meters)
+    {
+        return Some(classify_building_hit(
+            ctx,
+            grounded,
+            building_id,
+            record,
+            definition,
+        ));
+    }
+
+    if let Some(pile) =
+        nearest_item_pile_at_position(ctx.world, grounded, space_id, ctx.pile_settings)
+    {
+        return Some(classify_pile_hit(grounded, pile));
+    }
 
     if interior_navigation_move_target_at_position(
         ctx.world.building_navigation_runtime(),
@@ -99,32 +136,6 @@ pub fn query_world_interaction(
             valid: true,
             target: InteractionTargetRef::Terrain(grounded),
         });
-    }
-
-    // Candidate cascade (ADR-042 / ADR-090): interior → building → item pile → doodad → terrain.
-
-    if let Some((building_id, record, definition)) =
-        nearest_building_in_radius(ctx, grounded, ctx.query_radius_meters)
-    {
-        return Some(classify_building_hit(
-            ctx,
-            grounded,
-            building_id,
-            record,
-            definition,
-        ));
-    }
-
-    let space_id = resolve_navigation_space_at_position(
-        ctx.world.building_navigation_runtime(),
-        ctx.world.space_registry(),
-        ctx.world.layout(),
-        grounded,
-    );
-    if let Some(pile) =
-        nearest_item_pile_at_position(ctx.world, grounded, space_id, ctx.pile_settings)
-    {
-        return Some(classify_pile_hit(grounded, pile));
     }
 
     if let Some((record, definition)) =
@@ -203,6 +214,20 @@ pub fn query_world_interaction(
         valid: true,
         target: InteractionTargetRef::Terrain(grounded),
     })
+}
+
+fn classify_corpse_hit(grounded: WorldPosition, corpse: &CorpseRecord) -> InteractionResult {
+    InteractionResult {
+        interaction_type: InteractionType::Corpse,
+        position: grounded,
+        metadata: InteractionMetadata {
+            label: "Corpse".to_string(),
+            doodad_kind: None,
+            blocks_movement: false,
+        },
+        valid: true,
+        target: InteractionTargetRef::Corpse(corpse.id),
+    }
 }
 
 fn classify_pile_hit(grounded: WorldPosition, pile: &WorldItemPileRecord) -> InteractionResult {
@@ -449,11 +474,13 @@ fn classify_building_hit(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bevy::prelude::Quat;
     use crate::world::{
         Affiliation, BuildingCatalog, BuildingSource, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
-        DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog, Heightfield,
-        ItemPileId, ItemPileSettings, LocalPosition, SpaceId, create_building, create_doodad,
-        default_building_catalog, default_footprint_catalog,
+        CorpseRecord, CorpseSettings, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource,
+        FootprintCatalog, Heightfield, ItemPileId, ItemPileSettings, LocalPosition, SpaceId,
+        UnitDefinitionId, UnitPlacement, create_building, create_doodad, default_building_catalog,
+        default_footprint_catalog,
     };
 
     fn layout() -> ChunkLayout {
@@ -487,6 +514,7 @@ mod tests {
         weapon_catalog: &'a crate::world::WeaponCatalog,
         interaction_catalog: &'a BuildingInteractionProfileCatalog,
         pile_settings: &'a ItemPileSettings,
+        corpse_settings: &'a CorpseSettings,
     ) -> InteractionQueryContext<'a> {
         InteractionQueryContext::new(
             world,
@@ -497,6 +525,7 @@ mod tests {
             unit_catalog,
             weapon_catalog,
             pile_settings,
+            corpse_settings,
         )
     }
 
@@ -504,6 +533,12 @@ mod tests {
         use std::sync::OnceLock;
         static SETTINGS: OnceLock<ItemPileSettings> = OnceLock::new();
         SETTINGS.get_or_init(ItemPileSettings::default)
+    }
+
+    fn test_corpse_settings() -> &'static CorpseSettings {
+        use std::sync::OnceLock;
+        static SETTINGS: OnceLock<CorpseSettings> = OnceLock::new();
+        SETTINGS.get_or_init(CorpseSettings::default)
     }
 
     fn weapons() -> crate::world::WeaponCatalog {
@@ -531,6 +566,7 @@ mod tests {
                 &weapons,
                 &interaction_catalog,
                 test_pile_settings(),
+                test_corpse_settings(),
             ),
             pos(64.0, 64.0),
         )
@@ -565,6 +601,7 @@ mod tests {
                 &weapons,
                 &interaction_catalog,
                 test_pile_settings(),
+                test_corpse_settings(),
             ),
             pos(50.0, 50.0),
         )
@@ -599,6 +636,7 @@ mod tests {
                 &weapons,
                 &interaction_catalog,
                 test_pile_settings(),
+                test_corpse_settings(),
             ),
             pos(30.0, 30.0),
         )
@@ -632,6 +670,7 @@ mod tests {
                 &weapons,
                 &interaction_catalog,
                 test_pile_settings(),
+                test_corpse_settings(),
             ),
             pos(70.0, 70.0),
         )
@@ -654,6 +693,7 @@ mod tests {
                     &weapons,
                     interaction_catalog(),
                     test_pile_settings(),
+                    test_corpse_settings(),
                 ),
                 pos(1.0, 1.0)
             )
@@ -677,6 +717,7 @@ mod tests {
                 &unit_catalog,
                 &crate::world::WeaponCatalog::default(),
                 test_pile_settings(),
+                test_corpse_settings(),
             ),
             pos(10.0, 10.0),
         );
@@ -697,6 +738,7 @@ mod tests {
                 &weapons,
                 interaction_catalog(),
                 test_pile_settings(),
+                test_corpse_settings(),
             ),
             pos(12.0, 14.0),
         );
@@ -708,6 +750,7 @@ mod tests {
                 &weapons,
                 interaction_catalog(),
                 test_pile_settings(),
+                test_corpse_settings(),
             ),
             pos(12.0, 14.0),
         );
@@ -735,6 +778,7 @@ mod tests {
                 &weapons,
                 interaction_catalog(),
                 test_pile_settings(),
+                test_corpse_settings(),
             ),
             position,
         );
@@ -791,6 +835,7 @@ mod tests {
                 &weapons,
                 &interaction_catalog,
                 test_pile_settings(),
+                test_corpse_settings(),
             ),
             pos(20.0, 20.0),
         )
@@ -817,6 +862,7 @@ mod tests {
                 &weapons,
                 &interaction_catalog,
                 test_pile_settings(),
+                test_corpse_settings(),
             ),
             pos(22.0, 22.0),
         )
@@ -855,6 +901,7 @@ mod tests {
                 &weapons,
                 &interaction_catalog,
                 test_pile_settings(),
+                test_corpse_settings(),
             ),
             click,
         )
@@ -891,6 +938,7 @@ mod tests {
                 &weapons,
                 &BuildingInteractionProfileCatalog::default(),
                 test_pile_settings(),
+                test_corpse_settings(),
             ),
             click,
         )
@@ -921,6 +969,7 @@ mod tests {
                 unit_catalog: &unit_catalog,
                 weapon_catalog: &weapons,
                 pile_settings: &settings,
+                corpse_settings: test_corpse_settings(),
                 query_radius_meters: DEFAULT_INTERACTION_QUERY_RADIUS_METERS,
                 agent_radius_meters: DEFAULT_INTERACTION_AGENT_RADIUS_METERS,
                 max_slope_degrees: DEFAULT_INTERACTION_MAX_SLOPE_DEGREES,
@@ -950,11 +999,58 @@ mod tests {
                 &weapons,
                 &interaction_catalog,
                 test_pile_settings(),
+                test_corpse_settings(),
             ),
             click,
         )
         .unwrap();
         assert_ne!(result.interaction_type, InteractionType::ItemPile);
+    }
+
+    #[test]
+    fn corpse_near_click_classifies_as_corpse() {
+        let mut world = flat_world();
+        let catalog = DoodadCatalog::default();
+        let unit_catalog = UnitCatalog::default();
+        let weapons = weapons();
+        let interaction_catalog = BuildingInteractionProfileCatalog::default();
+        let corpse_id = crate::world::CorpseId::new(7);
+        let click = pos(25.0, 25.0);
+        let record = CorpseRecord::new(
+            corpse_id,
+            crate::world::UnitId::new(1),
+            UnitDefinitionId::new("bandit"),
+            UnitPlacement::new(click, Quat::IDENTITY),
+            SpaceId::SURFACE,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Affiliation::Unknown,
+            0,
+            100,
+        );
+        world
+            .corpse_store_mut()
+            .insert(ChunkId::new(click.chunk), record)
+            .unwrap();
+
+        let result = query_world_interaction(
+            &ctx(
+                &world,
+                &catalog,
+                &unit_catalog,
+                &weapons,
+                &interaction_catalog,
+                test_pile_settings(),
+                test_corpse_settings(),
+            ),
+            click,
+        )
+        .unwrap();
+        assert_eq!(result.interaction_type, InteractionType::Corpse);
+        assert_eq!(result.target, InteractionTargetRef::Corpse(corpse_id));
     }
 
     #[test]
@@ -977,6 +1073,7 @@ mod tests {
                 &weapons,
                 &interaction_catalog,
                 test_pile_settings(),
+                test_corpse_settings(),
             ),
             pos(40.0, 40.0),
         )

@@ -11,8 +11,8 @@ use crate::world::{
 };
 
 use super::snapshot::{
-    SceneQuat, SceneRecordError, SceneUnitEquipmentRecord, SceneWorldPosition,
-    affiliation_from_label,
+    SceneQuat, SceneRecordError, SceneUnitAppearanceRecord, SceneUnitEquipmentRecord,
+    SceneWorldPosition, affiliation_from_label,
 };
 
 fn default_next_inventory_id() -> u32 {
@@ -94,6 +94,8 @@ pub struct SceneCorpseRecord {
     pub inventory_id: Option<u32>,
     #[serde(default)]
     pub equipment: Option<SceneUnitEquipmentRecord>,
+    #[serde(default)]
+    pub appearance: Option<SceneUnitAppearanceRecord>,
     #[serde(default)]
     pub owner_id: Option<u64>,
     #[serde(default)]
@@ -372,6 +374,10 @@ impl SceneCorpseRecord {
                 offhand: equipment.offhand.raw(),
                 backpack: equipment.backpack.raw(),
             }),
+            appearance: record
+                .appearance
+                .as_ref()
+                .map(SceneUnitAppearanceRecord::from_unit),
             owner_id: record.owner_id.map(|id| id.raw()),
             team_id: record.team_id.map(|id| id.raw()),
             affiliation: Some(record.affiliation.label().to_string()),
@@ -384,7 +390,10 @@ impl SceneCorpseRecord {
         }
     }
 
-    pub fn to_record(&self) -> Result<CorpseRecord, SceneRecordError> {
+    pub fn to_record(
+        &self,
+        appearance_profiles: &crate::world::AppearanceProfileCatalog,
+    ) -> Result<CorpseRecord, SceneRecordError> {
         let affiliation = self
             .affiliation
             .as_deref()
@@ -394,6 +403,10 @@ impl SceneCorpseRecord {
             "Present" => CorpseState::Present,
             "Expired" => CorpseState::Expired,
             _ => return Err(SceneRecordError::InvalidPosition),
+        };
+        let appearance = match self.appearance.as_ref() {
+            Some(record) => Some(record.to_unit(appearance_profiles)?),
+            None => None,
         };
         Ok(CorpseRecord {
             id: CorpseId::new(self.id),
@@ -414,6 +427,7 @@ impl SceneCorpseRecord {
                     backpack: InventoryId::new(equipment.backpack),
                 }
             }),
+            appearance,
             owner_id: self.owner_id.map(OwnerId::new),
             team_id: self.team_id.map(TeamId::new),
             affiliation,
@@ -498,6 +512,7 @@ pub fn restore_inventory_persistence(
     world: &mut WorldData,
     persistence: &SceneInventoryPersistence,
     ctx: &crate::world::InventoryCatalogCtx<'_>,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
 ) -> Result<(), String> {
     let inventory_records = persistence
         .inventory_records
@@ -540,7 +555,7 @@ pub fn restore_inventory_persistence(
         .iter()
         .map(|scene| {
             let record = scene
-                .to_record()
+                .to_record(appearance_profiles)
                 .map_err(|err| format!("corpse {}: {err:?}", scene.id))?;
             let chunk = ChunkId::new(record.placement.position.chunk);
             Ok((chunk, record))

@@ -480,6 +480,7 @@ fn real_hut_spawn_inside_moves_via_player_command_resolution_path() {
 
     let selected = [unit_id];
     let pile_settings = ItemPileSettings::default();
+    let corpse_settings = crate::world::CorpseSettings::default();
     let authored_relationships = crate::world::AuthoredRelationshipCatalog::default();
     let ctx = InteractionResolveContext::new(
         &world,
@@ -490,6 +491,7 @@ fn real_hut_spawn_inside_moves_via_player_command_resolution_path() {
         &unit_catalog,
         &weapon_catalog,
         &pile_settings,
+        &corpse_settings,
         &authored_relationships,
         &selected,
     );

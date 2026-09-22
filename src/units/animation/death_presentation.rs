@@ -2,9 +2,10 @@
 
 use bevy::prelude::*;
 
+use crate::corpses::{CorpseRenderIndex, handoff_unit_render_to_corpse};
 use crate::units::components::{UnitRenderEntity, UnitRenderMetadata, UnitSceneRoot};
 use crate::units::spawn::UnitRenderIndex;
-use crate::world::{AnimationProfileCatalog, UnitCatalog};
+use crate::world::{AnimationProfileCatalog, CorpseState, UnitCatalog};
 
 use super::components::{AnimationPlaybackPending, DeathPresentation, UnitAnimationLayering};
 use super::off_screen_death::may_begin_death_presentation_on_existing_root;
@@ -61,6 +62,7 @@ pub fn begin_death_presentations(
 
         commands.entity(entity).insert((
             DeathPresentation {
+                origin_unit_id: Some(marker.unit_id),
                 definition_id: metadata.definition_id.clone(),
                 profile_id: profile_id.clone(),
                 remaining_seconds: hold_seconds,
@@ -87,10 +89,23 @@ pub fn tick_death_presentations(
     mut commands: Commands,
     time: Res<Time>,
     control: Res<SimulationControlState>,
+    world: Res<crate::world::WorldData>,
+    mut unit_index: ResMut<UnitRenderIndex>,
+    mut corpse_index: ResMut<CorpseRenderIndex>,
     mut presentations: Query<(Entity, &mut DeathPresentation)>,
 ) {
     for (entity, mut presentation) in &mut presentations {
         if presentation.remaining_seconds <= 0.0 {
+            if try_handoff_or_despawn(
+                &mut commands,
+                &world,
+                &mut unit_index,
+                &mut corpse_index,
+                entity,
+                &presentation,
+            ) {
+                continue;
+            }
             commands.entity(entity).despawn();
             continue;
         }
@@ -100,9 +115,51 @@ pub fn tick_death_presentations(
         }
         presentation.remaining_seconds -= delta;
         if presentation.remaining_seconds <= 0.0 {
+            if try_handoff_or_despawn(
+                &mut commands,
+                &world,
+                &mut unit_index,
+                &mut corpse_index,
+                entity,
+                &presentation,
+            ) {
+                continue;
+            }
             commands.entity(entity).despawn();
         }
     }
+}
+
+fn try_handoff_or_despawn(
+    commands: &mut Commands,
+    world: &crate::world::WorldData,
+    unit_index: &mut UnitRenderIndex,
+    corpse_index: &mut CorpseRenderIndex,
+    entity: Entity,
+    presentation: &DeathPresentation,
+) -> bool {
+    let Some(origin_unit_id) = presentation.origin_unit_id else {
+        return false;
+    };
+    let Some(corpse_id) = world.corpse_store().corpse_by_origin_unit(origin_unit_id) else {
+        return false;
+    };
+    let present = world
+        .corpse_store()
+        .get(corpse_id)
+        .is_some_and(|record| record.state == CorpseState::Present);
+    if !present {
+        return false;
+    }
+    handoff_unit_render_to_corpse(
+        commands,
+        unit_index,
+        corpse_index,
+        entity,
+        origin_unit_id,
+        corpse_id,
+    );
+    true
 }
 
 #[cfg(test)]
@@ -122,6 +179,7 @@ mod tests {
         let entity = app
             .world_mut()
             .spawn(DeathPresentation {
+                origin_unit_id: None,
                 definition_id: UnitDefinitionId::new("wolf"),
                 profile_id: AnimationProfileId::new("humanoid"),
                 remaining_seconds: 0.05,
@@ -152,6 +210,7 @@ mod tests {
         let entity = app
             .world_mut()
             .spawn(DeathPresentation {
+                origin_unit_id: None,
                 definition_id: UnitDefinitionId::new("wolf"),
                 profile_id: AnimationProfileId::new("humanoid"),
                 remaining_seconds: 2.0,
@@ -184,6 +243,7 @@ mod tests {
         let entity = app
             .world_mut()
             .spawn(DeathPresentation {
+                origin_unit_id: None,
                 definition_id: UnitDefinitionId::new("wolf"),
                 profile_id: AnimationProfileId::new("humanoid"),
                 remaining_seconds: 2.0,

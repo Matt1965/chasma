@@ -4,6 +4,7 @@ use crate::client::{
     ClientIntentCollectSystems, ClientIntentDispatchSystems, ClientIntentFlushSystems,
     ClientPipelinePlugin, SettlementContextPlugin, collect_unit_input_intents,
     dispatch_client_intents, tick_pending_building_player_interactions,
+    tick_pending_corpse_player_interactions,
 };
 use crate::debug::DebugOverlayPlugin;
 use crate::simulation::{SimulationPlugin, SimulationSystems};
@@ -147,7 +148,10 @@ impl Plugin for PlayerPlugin {
             )
             .add_systems(
                 Update,
-                tick_pending_building_player_interactions
+                (
+                    tick_pending_building_player_interactions,
+                    tick_pending_corpse_player_interactions,
+                )
                     .after(tick_unit_movement)
                     .before(collect_unit_input_intents)
                     .in_set(PlayerControlSystems),

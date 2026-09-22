@@ -6,6 +6,7 @@ use std::hash::{Hash, Hasher};
 use bevy::mesh::morph::{MeshMorphWeights, MorphWeights};
 use bevy::prelude::*;
 
+use crate::corpses::CorpseSceneRoot;
 use crate::units::components::UnitSceneRoot;
 use crate::units::presentation::UnitPresentationAppearance;
 use crate::units::sync::UnitSyncOverrides;
@@ -28,16 +29,18 @@ pub fn sync_unit_appearance_morphs(
     mut mesh_morph: Query<&mut MeshMorphWeights>,
     mesh3d: Query<&Mesh3d>,
     child_of: Query<&ChildOf>,
-    unit_roots: Query<(
-        Entity,
-        &UnitPresentationAppearance,
-        &UnitSceneRoot,
-        Option<&UnitAppearanceMorphFingerprint>,
-    )>,
+    unit_roots: Query<
+        (
+            Entity,
+            &UnitPresentationAppearance,
+            Option<&UnitAppearanceMorphFingerprint>,
+        ),
+        Or<(With<UnitSceneRoot>, With<CorpseSceneRoot>)>,
+    >,
     children: Query<&Children>,
 ) {
     let _ = overrides;
-    for (render_entity, presentation, _, fingerprint) in &unit_roots {
+    for (render_entity, presentation, fingerprint) in &unit_roots {
         let appearance = &presentation.appearance;
         let Some(profile) = appearance_profiles.get(&appearance.profile_id) else {
             continue;

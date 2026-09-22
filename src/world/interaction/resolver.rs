@@ -58,6 +58,7 @@ impl<'a> InteractionResolveContext<'a> {
         unit_catalog: &'a crate::world::UnitCatalog,
         weapon_catalog: &'a crate::world::WeaponCatalog,
         pile_settings: &'a crate::world::ItemPileSettings,
+        corpse_settings: &'a crate::world::CorpseSettings,
         authored_relationships: &'a AuthoredRelationshipCatalog,
         selected_units: &'a [UnitId],
     ) -> Self {
@@ -71,6 +72,7 @@ impl<'a> InteractionResolveContext<'a> {
                 unit_catalog,
                 weapon_catalog,
                 pile_settings,
+                corpse_settings,
             ),
             selected_units,
             targeting_policy: AttackTargetingPolicy::default(),
@@ -190,6 +192,7 @@ pub fn trace_and_resolve_world_click_to_order(
     unit_catalog: &crate::world::UnitCatalog,
     weapon_catalog: &crate::world::WeaponCatalog,
     pile_settings: &crate::world::ItemPileSettings,
+    corpse_settings: &crate::world::CorpseSettings,
     authored_relationships: &AuthoredRelationshipCatalog,
     selected_units: &[UnitId],
     position: WorldPosition,
@@ -235,6 +238,7 @@ pub fn trace_and_resolve_world_click_to_order(
                     unit_catalog,
                     weapon_catalog,
                     pile_settings,
+                    corpse_settings,
                     authored_relationships,
                     selected_units,
                 );
@@ -280,6 +284,7 @@ pub fn trace_and_resolve_world_click_to_order(
             unit_catalog,
             weapon_catalog,
             pile_settings,
+            corpse_settings,
             authored_relationships,
             selected_units,
         );
@@ -499,6 +504,7 @@ mod tests {
             unit_catalog,
             weapon_catalog,
             pile_settings(),
+            &crate::world::CorpseSettings::default(),
             authored,
             selected,
         )

@@ -317,6 +317,7 @@ fn real_hut_interior_click_resolves_to_runtime_region() {
         &unit_catalog,
         &weapon_catalog,
         &pile_settings,
+        &crate::world::CorpseSettings::default(),
     );
     let interaction = query_world_interaction(&ctx, interior_click).expect("interaction");
     assert_eq!(
