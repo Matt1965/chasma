@@ -201,6 +201,7 @@ impl Plugin for DevModePlugin {
             .init_resource::<DevModeInputGate>()
             .init_resource::<CatalogBrowseIndex>()
             .init_resource::<CatalogFilterCache>()
+            .init_resource::<catalog::CatalogScrollMetrics>()
             .init_resource::<DevSearchDebounce>()
             .init_resource::<DevWindowRegistry>()
             .init_resource::<DevWindowInteractionState>()
@@ -312,6 +313,9 @@ impl Plugin for DevModePlugin {
                 (
                     sync_catalog_panel_layout,
                     sync_dev_catalog_chrome,
+                    catalog::sync_catalog_placement_button_labels,
+                    catalog::scroll::sync_catalog_list_row_visibility,
+                    catalog::scroll::sync_catalog_list_scrollbars,
                     track_catalog_tab_selection,
                     sync_dev_save_panel_visibility,
                     sync_save_window_content,
@@ -443,6 +447,18 @@ impl Plugin for DevModePlugin {
                 .after(sync_inspector_on_selection_revision)
                 .after(handle_inspector_input)
                 .after(sync_gizmo_target)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            PostUpdate,
+            catalog::scroll::measure_catalog_list_viewports.after(UiSystems::Layout),
+        )
+        .add_systems(
+            Update,
+            (
+                catalog::scroll::handle_catalog_list_scroll_wheel,
+                catalog::scroll::handle_catalog_list_scrollbar_track_click,
+            )
                 .in_set(DevModeInputSystems),
         )
         .add_systems(
