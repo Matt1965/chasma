@@ -169,7 +169,7 @@ fn capture_world_item_pile_member(
         layout,
         root,
         member_global,
-        Quat::IDENTITY,
+        pile.rotation_quat(),
         None,
         None,
     );

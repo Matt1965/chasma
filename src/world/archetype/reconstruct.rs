@@ -8,7 +8,8 @@ use crate::world::inventory::{
     InventoryCatalogCtx, InventoryOwnerRef, RestoreInventorySubgraphOptions,
     restore_inventory_subgraph,
 };
-use crate::world::item_pile::{ItemPileSource, WorldItemPileRecord};
+use crate::world::authoring_transform::QuantizedOrientation;
+use crate::world::item_pile::{ItemPileSource, WorldItemPileRecord, WorldPileContents};
 use crate::world::{
     BuildingAuthoringError, BuildingCatalog, BuildingDefinitionId, BuildingId, BuildingOwnership,
     BuildingRecord, DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource,
@@ -260,7 +261,7 @@ fn spawn_member(
             rollback.doodads.push(record.id);
         }
         BuildingArchetypeMemberKind::WorldItemPile => {
-            let pile_id = spawn_world_item_pile(world, member, position, ctx)?;
+            let pile_id = spawn_world_item_pile(world, member, position, rotation, ctx)?;
             rollback.piles.push(pile_id);
         }
     }
@@ -379,6 +380,7 @@ fn spawn_world_item_pile(
     world: &mut WorldData,
     member: &BuildingArchetypeMember,
     position: WorldPosition,
+    rotation: Quat,
     ctx: &BuildingArchetypeReconstructCtx<'_>,
 ) -> Result<crate::world::ItemPileId, BuildingArchetypeReconstructError> {
     let state = member
@@ -389,6 +391,8 @@ fn spawn_world_item_pile(
         })?;
     let pile_id = world.item_pile_store_mut().allocate_item_pile_id();
     let source = parse_pile_source(&state.source);
+    let orientation = QuantizedOrientation::from_quat(rotation)
+        .unwrap_or(QuantizedOrientation::IDENTITY);
     let record = if let Some(quantity) = state.stack_quantity {
         WorldItemPileRecord::new_stack(
             pile_id,
@@ -419,6 +423,8 @@ fn spawn_world_item_pile(
             ctx.created_tick,
         )
     };
+    let mut record = record;
+    record.orientation = orientation;
     let chunk = crate::world::ChunkId::new(position.chunk);
     world
         .item_pile_store_mut()

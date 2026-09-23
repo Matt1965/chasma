@@ -16,6 +16,7 @@ pub fn spawn_item_pile_scene_entity(
     label: &str,
     scene: Handle<Scene>,
     translation: Vec3,
+    rotation: Quat,
 ) -> Entity {
     commands
         .spawn((
@@ -23,7 +24,11 @@ pub fn spawn_item_pile_scene_entity(
             ItemPileSceneRoot,
             Name::new(label.to_string()),
             SceneRoot(scene),
-            Transform::from_translation(translation),
+            Transform {
+                translation,
+                rotation,
+                scale: Vec3::ONE,
+            },
             GlobalTransform::default(),
             Visibility::default(),
         ))
@@ -36,6 +41,7 @@ pub fn spawn_item_pile_fallback_entity(
     pile_id: ItemPileId,
     label: &str,
     translation: Vec3,
+    rotation: Quat,
     mesh: Handle<Mesh>,
     material: Handle<StandardMaterial>,
     reason: ItemPileFallbackReason,
@@ -49,7 +55,11 @@ pub fn spawn_item_pile_fallback_entity(
             Name::new(label.to_string()),
             Mesh3d(mesh),
             MeshMaterial3d(material),
-            Transform::from_translation(translation + Vec3::Y * y_offset),
+            Transform {
+                translation: translation + Vec3::Y * y_offset,
+                rotation,
+                scale: Vec3::ONE,
+            },
             GlobalTransform::default(),
             Visibility::default(),
         ))

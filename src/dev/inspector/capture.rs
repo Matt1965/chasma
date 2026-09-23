@@ -216,6 +216,11 @@ pub fn capture_item_pile_inspector_snapshot(
         weight_grams,
         location_summary,
         chunk,
+        rotation_deg: Vec3::new(
+            record.orientation.pitch_degrees(),
+            record.orientation.yaw_degrees(),
+            record.orientation.roll_degrees(),
+        ),
     })
 }
 

@@ -5,6 +5,7 @@ use super::id::ItemPileId;
 use super::merge::{merge_candidate_order, offset_position, unit_may_access_pile};
 use super::record::{ItemPileSource, WorldItemPileRecord, WorldPileContents};
 use super::settings::ItemPileSettings;
+use super::surface_align::default_placement_orientation;
 use crate::world::inventory::runtime::rebuild_inventory;
 use crate::world::inventory::{
     EntryIndex, InventoryCatalogCtx, InventoryEntryContents, InventoryId, InventoryStore,
@@ -58,6 +59,11 @@ impl PileOwnership {
 
 fn world_pile_stack_limit(item: &crate::world::ItemDefinition) -> u32 {
     item.max_stack
+}
+
+fn oriented_new_pile(world: &WorldData, mut record: WorldItemPileRecord) -> WorldItemPileRecord {
+    record.orientation = default_placement_orientation(world, record.placement, 0.0);
+    record
 }
 
 /// Drop a stack quantity from an inventory onto the world.
@@ -175,17 +181,20 @@ pub fn drop_stack_from_inventory(
         let pile_position = offset_position(position, overflow_index);
         overflow_index += 1;
         let pile_id = world.item_pile_store_mut().allocate_item_pile_id();
-        let record = WorldItemPileRecord::new_stack(
-            pile_id,
-            pile_position,
-            space_id,
-            item_definition_id.clone(),
-            place_qty,
-            ownership.owner_id,
-            ownership.team_id,
-            ownership.affiliation,
-            ItemPileSource::Dropped,
-            tick,
+        let record = oriented_new_pile(
+            world,
+            WorldItemPileRecord::new_stack(
+                pile_id,
+                pile_position,
+                space_id,
+                item_definition_id.clone(),
+                place_qty,
+                ownership.owner_id,
+                ownership.team_id,
+                ownership.affiliation,
+                ItemPileSource::Dropped,
+                tick,
+            ),
         );
         world
             .item_pile_store_mut()
@@ -283,16 +292,19 @@ pub fn drop_unique_from_inventory(
 
     let chunk = ChunkId::new(position.chunk);
     let pile_id = world.item_pile_store_mut().allocate_item_pile_id();
-    let record = WorldItemPileRecord::new_unique(
-        pile_id,
-        position,
-        space_id,
-        item_instance_id,
-        ownership.owner_id,
-        ownership.team_id,
-        ownership.affiliation,
-        ItemPileSource::Dropped,
-        tick,
+    let record = oriented_new_pile(
+        world,
+        WorldItemPileRecord::new_unique(
+            pile_id,
+            position,
+            space_id,
+            item_instance_id,
+            ownership.owner_id,
+            ownership.team_id,
+            ownership.affiliation,
+            ItemPileSource::Dropped,
+            tick,
+        ),
     );
     world
         .item_pile_store_mut()
@@ -606,17 +618,20 @@ pub fn spill_inventory_to_world_piles(
                     let pile_position = offset_position(position, overflow_index);
                     overflow_index += 1;
                     let pile_id = world.item_pile_store_mut().allocate_item_pile_id();
-                    let record = WorldItemPileRecord::new_stack(
-                        pile_id,
-                        pile_position,
-                        space_id,
-                        item_definition_id.clone(),
-                        place_qty,
-                        ownership.owner_id,
-                        ownership.team_id,
-                        ownership.affiliation,
-                        ItemPileSource::Spilled,
-                        tick,
+                    let record = oriented_new_pile(
+                        world,
+                        WorldItemPileRecord::new_stack(
+                            pile_id,
+                            pile_position,
+                            space_id,
+                            item_definition_id.clone(),
+                            place_qty,
+                            ownership.owner_id,
+                            ownership.team_id,
+                            ownership.affiliation,
+                            ItemPileSource::Spilled,
+                            tick,
+                        ),
                     );
                     world
                         .item_pile_store_mut()
@@ -631,16 +646,19 @@ pub fn spill_inventory_to_world_piles(
                 let pile_position = offset_position(position, overflow_index);
                 overflow_index += 1;
                 let pile_id = world.item_pile_store_mut().allocate_item_pile_id();
-                let record = WorldItemPileRecord::new_unique(
-                    pile_id,
-                    pile_position,
-                    space_id,
-                    item_instance_id,
-                    ownership.owner_id,
-                    ownership.team_id,
-                    ownership.affiliation,
-                    ItemPileSource::Spilled,
-                    tick,
+                let record = oriented_new_pile(
+                    world,
+                    WorldItemPileRecord::new_unique(
+                        pile_id,
+                        pile_position,
+                        space_id,
+                        item_instance_id,
+                        ownership.owner_id,
+                        ownership.team_id,
+                        ownership.affiliation,
+                        ItemPileSource::Spilled,
+                        tick,
+                    ),
                 );
                 world
                     .item_pile_store_mut()

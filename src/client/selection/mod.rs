@@ -39,7 +39,9 @@ impl WorldSelectionState {
     pub fn has_transform_target(&self) -> bool {
         matches!(
             self.category,
-            WorldSelectionCategory::Building | WorldSelectionCategory::Doodad
+            WorldSelectionCategory::Building
+                | WorldSelectionCategory::Doodad
+                | WorldSelectionCategory::ItemPile
         )
     }
 
@@ -53,6 +55,13 @@ impl WorldSelectionState {
     pub fn transform_building(&self) -> Option<BuildingId> {
         match self.category {
             WorldSelectionCategory::Building => self.building_id,
+            _ => None,
+        }
+    }
+
+    pub fn transform_item_pile(&self) -> Option<ItemPileId> {
+        match self.category {
+            WorldSelectionCategory::ItemPile => self.pile_id,
             _ => None,
         }
     }

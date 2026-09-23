@@ -119,7 +119,7 @@ pub fn resolve_item_pile_selection_footprint(
     let radius = authored.max(ITEM_PILE_SELECTION_MIN_RADIUS_METERS);
     ResolvedSelectionFootprint {
         anchor_render,
-        yaw_radians: 0.0,
+        yaw_radians: record.orientation.yaw_degrees().to_radians(),
         shape: FootprintShape::Circle {
             radius_meters: radius,
         },

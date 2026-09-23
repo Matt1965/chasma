@@ -140,4 +140,68 @@ mod tests {
     fn unset_render_key_has_no_path() {
         assert_eq!(gltf_asset_path(&ItemRenderKey::unset()), None);
     }
+
+    #[test]
+    fn wired_world_item_glbs_exist_and_resolve_paths() {
+        const WIRED: [&str; 8] = [
+            "iron_sword",
+            "iron_dagger",
+            "iron_hand_axe",
+            "iron_greatsword",
+            "iron_greataxe",
+            "iron_warhammer",
+            "wooden_bow",
+            "leather_backpack",
+        ];
+        for key in WIRED {
+            assert_eq!(
+                gltf_asset_path(&ItemRenderKey::reserved(key.to_string())),
+                Some(format!("items/{key}.glb"))
+            );
+            assert!(
+                std::path::Path::new("assets")
+                    .join("items")
+                    .join(format!("{key}.glb"))
+                    .exists(),
+                "missing asset for {key}"
+            );
+        }
+    }
+
+    #[test]
+    fn committed_catalog_wires_render_keys_for_world_item_glbs() {
+        #[derive(serde::Deserialize)]
+        struct CatalogRon {
+            definitions: Vec<ItemRon>,
+        }
+        #[derive(serde::Deserialize)]
+        struct ItemRon {
+            id: String,
+            render_key: Option<String>,
+        }
+
+        let text = std::fs::read_to_string("assets/items/catalog.ron").expect("catalog.ron");
+        let catalog: CatalogRon = ron::from_str(&text).expect("parse catalog");
+        for item_id in [
+            "iron_sword",
+            "iron_dagger",
+            "iron_hand_axe",
+            "iron_greatsword",
+            "iron_greataxe",
+            "iron_warhammer",
+            "wooden_bow",
+            "leather_backpack",
+        ] {
+            let definition = catalog
+                .definitions
+                .iter()
+                .find(|def| def.id == item_id)
+                .unwrap_or_else(|| panic!("missing catalog item {item_id}"));
+            assert_eq!(
+                definition.render_key.as_deref(),
+                Some(item_id),
+                "render_key for {item_id}"
+            );
+        }
+    }
 }

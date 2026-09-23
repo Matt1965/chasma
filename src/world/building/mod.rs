@@ -223,7 +223,7 @@ pub use terrain_placement::{
     PRESENTATION_TERRAIN_CLEARANCE_METERS, ResolvedBuildingPlacement, TerrainPlacementMode,
     derive_foundation_skirt_for_placement, footprint_horizontal_span_meters,
     foundation_slope_run_per_meter_drop, presentation_foundation_depth_meters,
-    presentation_plane_normal, resolve_building_placement,
+    presentation_plane_normal, resolve_building_placement, rotation_from_yaw_and_normal,
     sample_terrain_under_footprint, slope_degrees_from_plane_coefficients, terrain_clearance_sim,
 };
 pub use terrain_assessment::{

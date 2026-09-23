@@ -13,7 +13,7 @@ pub use assets::{ITEM_ASSET_ROOT, ItemSceneAssets, gltf_asset_path, preload_item
 pub use components::ItemPileRenderEntity;
 pub use presentation::{
     ItemPileFallbackMesh, ItemPileFallbackReason, ItemPilePresentationSettings, ItemPileSceneRoot,
-    format_pile_dev_label, pile_display_metadata,
+    format_pile_dev_label, item_pile_visual_rotation, pile_display_metadata,
 };
 pub use spawn::{spawn_item_pile_fallback_entity, spawn_item_pile_scene_entity};
 pub use sync::{ItemPileRenderIndex, ItemPileRuntimeSystems, sync_item_pile_render_entities};

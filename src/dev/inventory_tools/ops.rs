@@ -256,7 +256,7 @@ pub fn dev_spawn_ground_pile(
         return Err(DevInventoryOpError::Message("quantity must be > 0".into()));
     }
     let pile_id = world.item_pile_store_mut().allocate_item_pile_id();
-    let record = crate::world::WorldItemPileRecord::new_stack(
+    let mut record = crate::world::WorldItemPileRecord::new_stack(
         pile_id,
         position,
         SpaceId::SURFACE,
@@ -268,6 +268,7 @@ pub fn dev_spawn_ground_pile(
         ItemPileSource::DevSpawned,
         tick,
     );
+    record.orientation = crate::world::default_placement_orientation(world, position, 0.0);
     let chunk = ChunkId::new(position.chunk);
     world
         .item_pile_store_mut()

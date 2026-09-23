@@ -150,8 +150,9 @@ use fields_window::forensics::{
     fields_launcher_trace_scripted,
 };
 use gizmo::{
-    apply_building_transform_preview, apply_doodad_transform_preview, draw_transform_gizmo,
-    handle_gizmo_keyboard, handle_gizmo_mouse, sync_gizmo_target,
+    apply_building_transform_preview, apply_doodad_transform_preview,
+    apply_item_pile_transform_preview, draw_transform_gizmo, handle_gizmo_keyboard,
+    handle_gizmo_mouse, sync_gizmo_target,
 };
 use inspector::{
     handle_blueprint_edit_input, handle_blueprint_inspection_input,
@@ -626,6 +627,7 @@ impl Plugin for DevModePlugin {
             (
                 apply_doodad_transform_preview,
                 apply_building_transform_preview,
+                apply_item_pile_transform_preview,
                 draw_transform_gizmo,
                 sync_dev_terrain_field_panel,
                 update_dev_terrain_field_probe,

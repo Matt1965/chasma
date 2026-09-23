@@ -7,7 +7,7 @@ use crate::client::selection::{WorldSelectionChange, apply_world_selection};
 use crate::dev::gizmo::{DevTool, GizmoInputParams, activate_dev_transform_tool, selected_object};
 use crate::dev::inspector::DevBuildingActionParams;
 use crate::simulation::SimulationControlState;
-use crate::world::{BuildingInventoryContext, OccupancyCatalogs, destroy_building, remove_doodad};
+use crate::world::{BuildingInventoryContext, OccupancyCatalogs, align_item_pile_to_surface, destroy_building, remove_doodad};
 
 use super::panel::{
     DevSelectedObjectActionButton, DevSelectedObjectToggleButton, SelectedObjectAction,
@@ -115,6 +115,24 @@ pub fn handle_selected_object_actions(
                     &mut gizmo.blueprint_inspection,
                     &mut gizmo.inspector,
                 );
+            }
+            SelectedObjectAction::AlignPileToSurface => {
+                let Some(pile_id) = gizmo.world_selection.transform_item_pile() else {
+                    continue;
+                };
+                match align_item_pile_to_surface(&mut gizmo.world, pile_id) {
+                    Ok(_) => {
+                        if let Some(record) = gizmo.world.item_pile_store().get(pile_id) {
+                            gizmo.edit.preview_placement =
+                                Some(crate::dev::gizmo::pile_preview_from_record(record));
+                        }
+                        gizmo.inspector.last_message =
+                            format!("Aligned pile #{} to surface", pile_id.raw());
+                    }
+                    Err(err) => {
+                        gizmo.inspector.last_message = format!("Align failed: {err:?}");
+                    }
+                }
             }
         }
     }
