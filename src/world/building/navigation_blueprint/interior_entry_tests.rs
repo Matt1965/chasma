@@ -514,6 +514,7 @@ fn level3_interior_click_resolves_to_move_target_not_blocked_area() {
         &unit_catalog,
         &weapon_catalog,
         &pile_settings,
+        &crate::world::CorpseSettings::default(),
     );
     let interaction = query_world_interaction(&ctx, interior_click).expect("interaction");
     assert_eq!(interaction.interaction_type, InteractionType::MoveTarget);
@@ -686,6 +687,7 @@ fn level6_player_command_path_issues_interior_move_order() {
         &unit_catalog,
         &weapon_catalog,
         &pile_settings,
+        &crate::world::CorpseSettings::default(),
         &authored_relationships,
         &selected_units,
     );
@@ -863,6 +865,7 @@ fn interior_click_before_fix_would_have_been_blocked_or_interactable() {
         &unit_catalog,
         &weapon_catalog,
         &pile_settings,
+        &crate::world::CorpseSettings::default(),
     );
     let interaction = query_world_interaction(&ctx, interior_click).unwrap();
     let plan = resolve_interaction_to_order(&interaction);
@@ -1053,6 +1056,7 @@ fn player_command_interior_footprint_cross_and_boundary_enforcement() {
         &unit_catalog,
         &weapon_catalog,
         &pile_settings,
+        &crate::world::CorpseSettings::default(),
         &authored_relationships,
         &selected_units,
     );

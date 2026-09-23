@@ -68,6 +68,8 @@ pub struct DispatchPlayerParams<'w> {
     pub building_panel: ResMut<'w, BuildingPanelState>,
     pub pending_building_interaction:
         ResMut<'w, crate::client::PendingBuildingPlayerInteractionState>,
+    pub pending_corpse_interaction:
+        ResMut<'w, crate::client::PendingCorpsePlayerInteractionState>,
     #[cfg(feature = "dev")]
     pub placement_trace: Res<'w, crate::ui::gameplay::BuildModePlacementTrace>,
 }
@@ -94,6 +96,7 @@ pub struct DispatchSimulationParams<'w> {
     pub requirement_revision: Res<'w, crate::world::BuildingFieldRequirementCatalogRevision>,
     pub assessment_store: ResMut<'w, crate::world::BuildingTerrainAssessmentStore>,
     pub pile_settings: Res<'w, crate::world::ItemPileSettings>,
+    pub corpse_settings: Res<'w, crate::world::CorpseSettings>,
 }
 
 /// Outcome of dispatching one intent.
@@ -224,6 +227,7 @@ pub fn dispatch_client_intents(
         requirement_revision,
         mut assessment_store,
         pile_settings,
+        corpse_settings,
     } = catalogs;
 
     let mut apply_params = selection_params.apply(None);
@@ -260,8 +264,10 @@ pub fn dispatch_client_intents(
                 &player_params.player_ownership,
                 &mut player_params.building_panel,
                 &mut player_params.pending_building_interaction,
+                &mut player_params.pending_corpse_interaction,
                 frame_index.0,
                 &mut player_params.inventory_queue,
+                &corpse_settings,
                 &operation_catalog,
                 &item_category_catalog,
                 &inventory_profile_catalog,
@@ -493,8 +499,10 @@ fn dispatch_one(
     player_ownership: &crate::player::LocalPlayerOwnership,
     building_panel: &mut BuildingPanelState,
     pending_building_interaction: &mut crate::client::PendingBuildingPlayerInteractionState,
+    pending_corpse_interaction: &mut crate::client::PendingCorpsePlayerInteractionState,
     simulation_tick: u64,
     inventory_queue: &mut crate::client::inventory_intent::InventoryIntentQueue,
+    corpse_settings: &crate::world::CorpseSettings,
     operation_catalog: &OperationCatalog,
     item_category_catalog: &crate::world::ItemCategoryCatalog,
     inventory_profile_catalog: &crate::world::InventoryProfileCatalog,
@@ -534,6 +542,8 @@ fn dispatch_one(
             player_ownership,
             building_panel,
             pending_building_interaction,
+            pending_corpse_interaction,
+            corpse_settings,
         ),
         ClientIntent::MoveCommand { target } => dispatch_contextual_command(
             CommandTarget::Terrain { position: *target },
@@ -561,6 +571,8 @@ fn dispatch_one(
             player_ownership,
             building_panel,
             pending_building_interaction,
+            pending_corpse_interaction,
+            corpse_settings,
         ),
         ClientIntent::SelectUnit { unit_id } => {
             if world
@@ -741,6 +753,7 @@ fn dispatch_one(
             move_report,
             pending_trace,
             pending_building_interaction,
+            pending_corpse_interaction,
         ),
         ClientIntent::EnterBuildMode => {
             build_mode.enter_catalog();
@@ -948,6 +961,7 @@ fn resolve_move_target_from_interaction(
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
     pile_settings: &crate::world::ItemPileSettings,
+    corpse_settings: &crate::world::CorpseSettings,
     authored_relationships: &AuthoredRelationshipCatalog,
     selected: &[UnitId],
     target: CommandTarget,
@@ -965,6 +979,7 @@ fn resolve_move_target_from_interaction(
                     unit_catalog,
                     weapon_catalog,
                     pile_settings,
+                    corpse_settings,
                     authored_relationships,
                     selected,
                     position,
@@ -981,6 +996,7 @@ fn resolve_move_target_from_interaction(
                     unit_catalog,
                     weapon_catalog,
                     pile_settings,
+                    corpse_settings,
                     authored_relationships,
                     selected,
                 );
@@ -997,6 +1013,7 @@ fn resolve_move_target_from_interaction(
                 unit_catalog,
                 weapon_catalog,
                 pile_settings,
+                corpse_settings,
                 authored_relationships,
                 selected,
             );
@@ -1034,6 +1051,7 @@ fn try_issue_building_work_orders(
     position: WorldPosition,
     simulation_tick: u64,
     pile_settings: &crate::world::ItemPileSettings,
+    corpse_settings: &crate::world::CorpseSettings,
     player_ownership: &crate::player::LocalPlayerOwnership,
 ) -> Option<MoveOrdersReport> {
     let selected: Vec<_> = selection.iter().collect();
@@ -1046,6 +1064,7 @@ fn try_issue_building_work_orders(
         unit_catalog,
         weapon_catalog,
         pile_settings,
+        corpse_settings,
         authored_relationships,
         &selected,
     );
@@ -1135,6 +1154,8 @@ fn dispatch_contextual_command(
     player_ownership: &crate::player::LocalPlayerOwnership,
     building_panel: &mut BuildingPanelState,
     pending_building_interaction: &mut crate::client::PendingBuildingPlayerInteractionState,
+    pending_corpse_interaction: &mut crate::client::PendingCorpsePlayerInteractionState,
+    corpse_settings: &crate::world::CorpseSettings,
 ) -> IntentDispatchStatus {
     if selection.is_empty() {
         return IntentDispatchStatus::Ignored;
@@ -1155,6 +1176,7 @@ fn dispatch_contextual_command(
             unit_catalog,
             weapon_catalog,
             pile_settings,
+            corpse_settings,
             player_ownership,
             target,
         ) && crate::client::try_dispatch_owned_building_player_interaction(
@@ -1196,6 +1218,35 @@ fn dispatch_contextual_command(
 
     if armed_command == Some(CommandType::Interact) {
         if let Some(actor) = selection.iter().next() {
+            if let Some(corpse_id) = crate::client::resolve_corpse_interact_target(
+                world,
+                building_catalog,
+                doodad_catalog,
+                footprint_catalog,
+                interaction_catalog,
+                unit_catalog,
+                weapon_catalog,
+                pile_settings,
+                corpse_settings,
+                contextual_target,
+            ) && crate::client::try_dispatch_corpse_player_interaction(
+                world,
+                inventory_queue,
+                pending_corpse_interaction,
+                corpse_settings,
+                unit_catalog,
+                weapon_catalog,
+                doodad_catalog,
+                nav_config,
+                actor,
+                corpse_id,
+            )
+            .is_some()
+            {
+                pending_building_interaction.clear_for_unit(actor);
+                pending_trace.resolved_command = Some(CommandType::Interact);
+                return IntentDispatchStatus::Applied;
+            }
             if crate::client::inventory_dispatch::try_queue_inventory_open_from_interact(
                 world,
                 building_catalog,
@@ -1205,10 +1256,12 @@ fn dispatch_contextual_command(
                 unit_catalog,
                 weapon_catalog,
                 pile_settings,
+                corpse_settings,
                 actor,
                 contextual_target,
                 inventory_queue,
             ) {
+                pending_corpse_interaction.clear_for_unit(actor);
                 pending_building_interaction.clear_for_unit(actor);
                 pending_trace.resolved_command = Some(CommandType::Interact);
                 return IntentDispatchStatus::Applied;
@@ -1263,6 +1316,10 @@ fn dispatch_contextual_command(
                 pending_building_interaction,
                 selection,
             );
+            crate::client::supersede_pending_corpse_interaction_for_selection(
+                pending_corpse_interaction,
+                selection,
+            );
             if let CommandTarget::Terrain { position } = contextual.target {
                 if let Some(work_report) = try_issue_building_work_orders(
                     world,
@@ -1278,6 +1335,7 @@ fn dispatch_contextual_command(
                     position,
                     simulation_tick,
                     pile_settings,
+                    corpse_settings,
                     player_ownership,
                 ) {
                     *move_report = Some(work_report);
@@ -1305,6 +1363,7 @@ fn dispatch_contextual_command(
                 unit_catalog,
                 weapon_catalog,
                 pile_settings,
+                corpse_settings,
                 authored_relationships,
                 &selected_ids,
                 contextual.target,
@@ -1409,6 +1468,10 @@ fn dispatch_contextual_command(
                 pending_building_interaction,
                 selection,
             );
+            crate::client::supersede_pending_corpse_interaction_for_selection(
+                pending_corpse_interaction,
+                selection,
+            );
             *move_report = Some(issue_attack_orders_to_selection(
                 world,
                 selection,
@@ -1425,6 +1488,10 @@ fn dispatch_contextual_command(
         BuiltCommandPlan::AttackMove { destination } => {
             crate::client::supersede_pending_building_interaction_for_selection(
                 pending_building_interaction,
+                selection,
+            );
+            crate::client::supersede_pending_corpse_interaction_for_selection(
+                pending_corpse_interaction,
                 selection,
             );
             let exclude = exclude_occupants_for_command_target(&contextual.target);
@@ -1447,6 +1514,10 @@ fn dispatch_contextual_command(
                 pending_building_interaction,
                 selection,
             );
+            crate::client::supersede_pending_corpse_interaction_for_selection(
+                pending_corpse_interaction,
+                selection,
+            );
             *move_report = Some(issue_hold_orders_to_selection(
                 world,
                 selection,
@@ -1462,6 +1533,10 @@ fn dispatch_contextual_command(
         BuiltCommandPlan::StopAll => {
             crate::client::supersede_pending_building_interaction_for_selection(
                 pending_building_interaction,
+                selection,
+            );
+            crate::client::supersede_pending_corpse_interaction_for_selection(
+                pending_corpse_interaction,
                 selection,
             );
             *move_report = Some(issue_idle_orders_to_selection(
@@ -1496,6 +1571,7 @@ fn dispatch_palette_command(
     move_report: &mut Option<MoveOrdersReport>,
     pending_trace: &mut PendingDispatchTrace,
     pending_building_interaction: &mut crate::client::PendingBuildingPlayerInteractionState,
+    pending_corpse_interaction: &mut crate::client::PendingCorpsePlayerInteractionState,
 ) -> IntentDispatchStatus {
     if selection.is_empty() {
         return IntentDispatchStatus::Ignored;
@@ -1544,6 +1620,10 @@ fn dispatch_palette_command(
                 pending_building_interaction,
                 selection,
             );
+            crate::client::supersede_pending_corpse_interaction_for_selection(
+                pending_corpse_interaction,
+                selection,
+            );
             *move_report = Some(issue_attack_move_orders_to_selection(
                 world,
                 selection,
@@ -1564,6 +1644,10 @@ fn dispatch_palette_command(
                 pending_building_interaction,
                 selection,
             );
+            crate::client::supersede_pending_corpse_interaction_for_selection(
+                pending_corpse_interaction,
+                selection,
+            );
             *move_report = Some(issue_hold_orders_to_selection(
                 world,
                 selection,
@@ -1579,6 +1663,10 @@ fn dispatch_palette_command(
         BuiltCommandPlan::StopAll => {
             crate::client::supersede_pending_building_interaction_for_selection(
                 pending_building_interaction,
+                selection,
+            );
+            crate::client::supersede_pending_corpse_interaction_for_selection(
+                pending_corpse_interaction,
                 selection,
             );
             *move_report = Some(issue_idle_orders_to_selection(
@@ -1817,8 +1905,10 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingCorpsePlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &crate::world::CorpseSettings::default(),
             &OperationCatalog::default(),
             &ItemCategoryCatalog::default(),
             &InventoryProfileCatalog::default(),
@@ -1889,8 +1979,10 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingCorpsePlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &crate::world::CorpseSettings::default(),
             &OperationCatalog::default(),
             &ItemCategoryCatalog::default(),
             &InventoryProfileCatalog::default(),
@@ -1961,8 +2053,10 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingCorpsePlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &crate::world::CorpseSettings::default(),
             &OperationCatalog::default(),
             &ItemCategoryCatalog::default(),
             &InventoryProfileCatalog::default(),
@@ -2043,8 +2137,10 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingCorpsePlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &crate::world::CorpseSettings::default(),
             &OperationCatalog::default(),
             &ItemCategoryCatalog::default(),
             &InventoryProfileCatalog::default(),
@@ -2104,8 +2200,10 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingCorpsePlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &crate::world::CorpseSettings::default(),
             &OperationCatalog::default(),
             &ItemCategoryCatalog::default(),
             &InventoryProfileCatalog::default(),
@@ -2172,8 +2270,10 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingCorpsePlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &crate::world::CorpseSettings::default(),
             &OperationCatalog::default(),
             &ItemCategoryCatalog::default(),
             &InventoryProfileCatalog::default(),
@@ -2247,8 +2347,10 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingCorpsePlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &crate::world::CorpseSettings::default(),
             &OperationCatalog::default(),
             &ItemCategoryCatalog::default(),
             &InventoryProfileCatalog::default(),
@@ -2334,8 +2436,10 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingCorpsePlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &crate::world::CorpseSettings::default(),
             &OperationCatalog::default(),
             &ItemCategoryCatalog::default(),
             &InventoryProfileCatalog::default(),
@@ -2398,8 +2502,10 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingCorpsePlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &crate::world::CorpseSettings::default(),
             &OperationCatalog::default(),
             &ItemCategoryCatalog::default(),
             &InventoryProfileCatalog::default(),
@@ -2551,8 +2657,10 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut panel,
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingCorpsePlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &crate::world::CorpseSettings::default(),
             &OperationCatalog::default(),
             &ItemCategoryCatalog::default(),
             &InventoryProfileCatalog::default(),
@@ -2660,8 +2768,10 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingCorpsePlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &crate::world::CorpseSettings::default(),
             &OperationCatalog::default(),
             &item_categories,
             &inventory_profile_catalog,
@@ -2749,8 +2859,10 @@ mod tests {
             &LocalPlayerOwnership::default(),
             &mut BuildingPanelState::default(),
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingCorpsePlayerInteractionState::default(),
             0,
             &mut inventory_queue,
+            &crate::world::CorpseSettings::default(),
             &OperationCatalog::default(),
             &ItemCategoryCatalog::default(),
             &InventoryProfileCatalog::default(),

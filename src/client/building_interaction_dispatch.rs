@@ -88,6 +88,7 @@ pub fn resolve_player_owned_building_target(
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
     pile_settings: &ItemPileSettings,
+    corpse_settings: &crate::world::CorpseSettings,
     player: &LocalPlayerOwnership,
     target: CommandTarget,
 ) -> Option<BuildingId> {
@@ -105,6 +106,7 @@ pub fn resolve_player_owned_building_target(
                 unit_catalog,
                 weapon_catalog,
                 pile_settings,
+                corpse_settings,
             );
             let interaction = query_world_interaction(&ctx, position)?;
             match interaction.target {
@@ -350,7 +352,7 @@ mod tests {
     use super::*;
     use crate::world::{
         Affiliation, BuildingCategoryCatalog, BuildingDefinitionId, BuildingOwnership,
-        BuildingSource, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield,
+        BuildingSource, ChunkCoord, ChunkData, ChunkId, ChunkLayout, CorpseSettings, Heightfield,
         InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog,
         ItemDefinitionId, LocalPosition, OperationCatalog, UnitDefinitionId, UnitOwnership,
         UnitSource, create_building_with_inventory, create_unit_with_inventory,
@@ -470,6 +472,7 @@ mod tests {
             &unit_catalog,
             &weapon_catalog,
             &pile_settings,
+            &CorpseSettings::default(),
             &player(),
             CommandTarget::Building {
                 building_id: farm.id,
@@ -512,6 +515,7 @@ mod tests {
                 &unit_catalog,
                 &weapon_catalog,
                 &pile_settings,
+                &CorpseSettings::default(),
                 &player(),
                 CommandTarget::Building {
                     building_id: farm.id,

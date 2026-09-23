@@ -53,6 +53,7 @@ impl Plugin for ClientPipelinePlugin {
             .init_resource::<crate::client::selection::WorldSelectionRevision>()
             .init_resource::<crate::client::inventory_intent::InventoryIntentQueue>()
             .init_resource::<crate::client::PendingBuildingPlayerInteractionState>()
+            .init_resource::<crate::client::PendingCorpsePlayerInteractionState>()
             .init_resource::<crate::client::commands::ResolvedCommandFeedback>();
     }
 }

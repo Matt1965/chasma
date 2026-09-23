@@ -3,6 +3,7 @@
 //! Input → Intent → Command → Simulation → Presentation
 
 mod building_interaction_dispatch;
+mod corpse_interaction_dispatch;
 pub mod commands;
 mod dispatcher;
 mod intent;
@@ -12,6 +13,12 @@ pub mod pipeline;
 pub mod selection;
 pub mod settlement_context;
 
+pub use corpse_interaction_dispatch::{
+    CorpsePlayerInteractionOutcome, PendingCorpsePlayerInteraction,
+    PendingCorpsePlayerInteractionState, resolve_corpse_interact_target,
+    supersede_pending_corpse_interaction_for_selection, tick_pending_corpse_player_interactions,
+    try_dispatch_corpse_player_interaction,
+};
 pub use building_interaction_dispatch::{
     OwnedBuildingInteractionOutcome, PendingBuildingPlayerInteraction,
     PendingBuildingPlayerInteractionState, complete_building_player_interaction,

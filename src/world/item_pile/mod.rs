@@ -29,5 +29,6 @@ pub use query::{
     pile_item_definition_id,
 };
 pub use record::{ItemPileSource, WorldItemPileRecord, WorldPileContents};
+pub use merge::quantized_distance_squared_cm;
 pub use settings::ItemPileSettings;
 pub use store::{ChunkItemPileStore, ItemPileStore};

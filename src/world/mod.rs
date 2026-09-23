@@ -293,8 +293,8 @@ pub use corpse::dev_expire_corpse;
 pub use corpse::{
     CorpseError, CorpseId, CorpseLifecycleReport, CorpseRecord, CorpseSettings, CorpseState,
     CorpseStore, DEFAULT_CORPSE_LIFETIME_TICKS, create_corpse_from_unit, is_corpse_loot_inventory,
-    remove_corpse_with_inventory, step_corpse_lifecycle, transfer_equipment_to_corpse,
-    transfer_inventory_to_corpse,
+    nearest_corpse_at_position, remove_corpse_with_inventory, step_corpse_lifecycle,
+    transfer_equipment_to_corpse, transfer_inventory_to_corpse,
 };
 pub use data::{ChunkExtent, WorldData};
 #[cfg(test)]
@@ -394,6 +394,7 @@ pub use item_pile::{
     WorldItemPileRecord, WorldPileContents, drop_stack_from_inventory, drop_unique_from_inventory,
     drop_unit_inventory_entry, item_piles_near, item_piles_within_radius,
     nearest_item_pile_at_position, pickup_pile_into_inventory, pile_item_definition_id,
+    quantized_distance_squared_cm,
     spill_inventory_to_world_piles, validate_item_instance_locations, validate_item_pile_store,
 };
 pub use logistics::{

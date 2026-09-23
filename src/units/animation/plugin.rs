@@ -22,7 +22,8 @@ use super::{
     UnitAnimationRuntime, UnitAnimationStateIndex, UpperAttackWeightFade,
 };
 use crate::units::equipment_presentation::{
-    UnitEquipmentPresentationIndex, finalize_skinned_equipment_overlays,
+    CorpseEquipmentPresentationIndex, UnitEquipmentPresentationIndex,
+    finalize_skinned_equipment_overlays, sync_corpse_equipment_presentation,
     sync_unit_equipment_presentation,
 };
 
@@ -55,6 +56,7 @@ impl Plugin for UnitAnimationPlugin {
             .init_resource::<UnitAnimationStateIndex>()
             .init_resource::<UnitHpPresentationCache>()
             .init_resource::<UnitEquipmentPresentationIndex>()
+            .init_resource::<CorpseEquipmentPresentationIndex>()
             .add_systems(Startup, init_unit_animation_assets)
             .configure_sets(Update, UnitAnimationSystems.after(UnitRuntimeSystems))
             .add_systems(
@@ -80,6 +82,7 @@ impl Plugin for UnitAnimationPlugin {
                 Update,
                 (
                     sync_unit_equipment_presentation,
+                    sync_corpse_equipment_presentation,
                     finalize_skinned_equipment_overlays,
                 )
                     .chain()

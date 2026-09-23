@@ -41,6 +41,7 @@ pub fn create_corpse_from_unit(
         unit.current_space_id,
         unit.inventory_id,
         unit.equipment.clone(),
+        unit.appearance.clone(),
         unit.owner_id,
         unit.team_id,
         unit.affiliation,

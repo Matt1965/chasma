@@ -26,6 +26,7 @@ pub fn capture_interaction_debug_snapshot(
     unit_catalog: Res<UnitCatalog>,
     weapon_catalog: Res<WeaponCatalog>,
     pile_settings: Res<crate::world::ItemPileSettings>,
+    corpse_settings: Res<crate::world::CorpseSettings>,
     mut snapshot: ResMut<InteractionDebugSnapshot>,
 ) {
     if !settings.category_enabled(DebugOverlayCategory::Interaction) {
@@ -48,6 +49,7 @@ pub fn capture_interaction_debug_snapshot(
         &unit_catalog,
         &weapon_catalog,
         &pile_settings,
+        &corpse_settings,
     );
     capture_interaction_at_position(&mut snapshot, &ctx, position);
 }
@@ -135,6 +137,7 @@ mod tests {
             &units,
             &weapons,
             &pile_settings,
+            &crate::world::CorpseSettings::default(),
         );
         let mut snapshot = InteractionDebugSnapshot::default();
         capture_interaction_at_position(&mut snapshot, &ctx, pos(1.0, 2.0));

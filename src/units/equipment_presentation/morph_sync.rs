@@ -9,6 +9,7 @@ use bevy::prelude::*;
 use crate::units::appearance_presentation::sync::{
     apply_mesh_morph_weights, collect_morph_primitives,
 };
+use crate::corpses::CorpseSceneRoot;
 use crate::units::components::UnitSceneRoot;
 use crate::units::presentation::UnitPresentationAppearance;
 use crate::units::sync::UnitSyncOverrides;
@@ -28,7 +29,7 @@ pub fn sync_unit_equipment_morphs(
     mut mesh_morph: Query<&mut MeshMorphWeights>,
     mesh3d: Query<&Mesh3d>,
     child_of: Query<&ChildOf>,
-    unit_roots: Query<&UnitPresentationAppearance, With<UnitSceneRoot>>,
+    unit_roots: Query<&UnitPresentationAppearance, Or<(With<UnitSceneRoot>, With<CorpseSceneRoot>)>>,
     equipment: Query<
         (
             Entity,

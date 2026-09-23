@@ -399,6 +399,7 @@ mod tests {
             &unit_catalog,
             &weapon_catalog,
             &pile_settings,
+            &crate::world::CorpseSettings::default(),
         );
         let interaction = query_world_interaction(&query_ctx, click).expect("building hit");
         assert_eq!(interaction.interaction_type, InteractionType::Container);
@@ -417,6 +418,7 @@ mod tests {
             &unit_catalog,
             &weapon_catalog,
             &pile_settings,
+            &crate::world::CorpseSettings::default(),
             unit.id,
             CommandTarget::Terrain { position: click },
             &mut queue,

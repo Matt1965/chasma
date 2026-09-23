@@ -179,4 +179,11 @@ impl CorpseStore {
     pub fn len(&self) -> usize {
         self.corpse_locations.len()
     }
+
+    pub fn corpses_in_chunk(&self, chunk: crate::world::ChunkId) -> &[CorpseRecord] {
+        self.corpses
+            .get(&chunk)
+            .map(|store| store.records())
+            .unwrap_or(&[])
+    }
 }

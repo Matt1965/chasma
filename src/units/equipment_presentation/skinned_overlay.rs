@@ -10,7 +10,13 @@ use super::components::{UnitEquipmentSceneRoot, UnitEquipmentSkinnedPending, Uni
 /// Rebind imported armor skinned meshes to the live unit skeleton.
 pub fn finalize_skinned_equipment_overlays(
     mut commands: Commands,
-    unit_roots: Query<Entity, With<crate::units::components::UnitSceneRoot>>,
+    unit_roots: Query<
+        Entity,
+        Or<(
+            With<crate::units::components::UnitSceneRoot>,
+            With<crate::corpses::CorpseSceneRoot>,
+        )>,
+    >,
     pending: Query<
         (Entity, &UnitEquipmentVisual, &ChildOf),
         (
