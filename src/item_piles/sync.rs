@@ -11,7 +11,7 @@ use super::assets::ItemSceneAssets;
 use super::components::ItemPileRenderEntity;
 use super::presentation::{
     ItemPileFallbackAssets, ItemPileFallbackMesh, ItemPileFallbackReason,
-    ItemPilePresentationSettings, ItemPileSceneRoot,
+    ItemPilePresentationSettings, ItemPileSceneRoot, item_pile_visual_rotation,
 };
 use super::spawn::{
     despawn_item_pile_render_entities, pile_entity_name, spawn_item_pile_fallback_entity,
@@ -107,7 +107,12 @@ pub fn sync_item_pile_render_entities(
             index.0.remove(&marker.pile_id);
             continue;
         }
-        let rotation = record.rotation_quat();
+        let authored = record.rotation_quat();
+        let rotation = if desired.kind == ItemPileVisualKind::Scene {
+            item_pile_visual_rotation(authored, definition)
+        } else {
+            authored
+        };
         let translation = if desired.kind == ItemPileVisualKind::Fallback {
             translation + Vec3::Y * presentation.fallback_sphere_radius
         } else {
@@ -138,7 +143,12 @@ pub fn sync_item_pile_render_entities(
         let definition = resolve_pile_definition(&world, &items, record);
         let desired = resolve_desired_visual(definition, &mut scene_assets, &asset_server);
         let label = pile_entity_name(record, definition);
-        let rotation = record.rotation_quat();
+        let authored = record.rotation_quat();
+        let rotation = if desired.kind == ItemPileVisualKind::Scene {
+            item_pile_visual_rotation(authored, definition)
+        } else {
+            authored
+        };
         let entity = match desired.kind {
             ItemPileVisualKind::Scene => spawn_item_pile_scene_entity(
                 &mut commands,

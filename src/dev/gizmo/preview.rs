@@ -180,6 +180,7 @@ pub fn apply_item_pile_transform_preview(
     render_index: Res<crate::item_piles::ItemPileRenderIndex>,
     config: Res<crate::world::WorldConfig>,
     world: Res<crate::world::WorldData>,
+    items: Res<crate::world::ItemCatalog>,
     presentation: Res<crate::item_piles::ItemPilePresentationSettings>,
     render_assets: Option<Res<crate::terrain::TerrainRenderAssets>>,
     mut transforms: Query<&mut Transform>,
@@ -220,10 +221,28 @@ pub fn apply_item_pile_transform_preview(
         layout,
         vertical_scale,
     );
-    if fallback_meshes.get(entity).is_ok() {
+    let is_fallback = fallback_meshes.get(entity).is_ok();
+    if is_fallback {
         translation.y += presentation.fallback_sphere_radius;
     }
-    let rotation = preview_placement.rotation_quat();
+    let authored = preview_placement.rotation_quat();
+    let rotation = if is_fallback {
+        authored
+    } else {
+        let definition = world
+            .item_pile_store()
+            .get(pile_id)
+            .and_then(|record| {
+                crate::world::pile_item_definition_id(record, |instance_id| {
+                    world
+                        .item_instance_store()
+                        .get(instance_id)
+                        .map(|instance| instance.definition_id.clone())
+                })
+            })
+            .and_then(|id| items.get(&id));
+        crate::item_piles::item_pile_visual_rotation(authored, definition)
+    };
     let scale = Vec3::ONE;
 
     if let Ok(mut transform) = transforms.get_mut(entity) {

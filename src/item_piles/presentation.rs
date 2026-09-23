@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::world::authoring_transform::QuantizedOrientation;
 use crate::world::{ItemCategoryId, ItemDefinition, ItemDefinitionId};
 
 /// Configurable presentation for world item piles (IA0).
@@ -160,6 +161,31 @@ pub fn format_pile_dev_label(
     }
 }
 
+/// Model-local correction for authored GLB items (not stored on [`WorldItemPileRecord`]).
+///
+/// Weapon meshes are imported blade-up (+Y). World placement aligns +Y to the surface normal,
+/// which leaves them standing on the hilt; a +90° pitch lays the long axis into the ground plane.
+fn item_pile_model_local_correction(definition: Option<&ItemDefinition>) -> Quat {
+    if !item_definition_lies_flat_on_ground(definition) {
+        return Quat::IDENTITY;
+    }
+    QuantizedOrientation::from_degrees(0.0, 90.0, 0.0)
+        .unwrap_or(QuantizedOrientation::IDENTITY)
+        .to_quat()
+}
+
+fn item_definition_lies_flat_on_ground(definition: Option<&ItemDefinition>) -> bool {
+    let Some(definition) = definition else {
+        return false;
+    };
+    definition.render_key.0.is_some() && definition.category_id.as_str() == "weapon"
+}
+
+/// Compose authored pile rotation with per-definition model correction for scene GLBs.
+pub fn item_pile_visual_rotation(authored: Quat, definition: Option<&ItemDefinition>) -> Quat {
+    (authored * item_pile_model_local_correction(definition)).normalize()
+}
+
 /// Resolve display metadata for a pile from catalog + instance store.
 pub fn pile_display_metadata(
     definition_id: Option<&ItemDefinitionId>,
@@ -187,6 +213,53 @@ pub fn pile_display_metadata(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn weapon_scene_correction_lays_model_flat() {
+        let definition = ItemDefinition::new(
+            ItemDefinitionId::new("iron_sword"),
+            "Iron Sword",
+            "",
+            ItemCategoryId::new("weapon"),
+            1,
+            3,
+            false,
+            1,
+            1000,
+            1,
+            true,
+        )
+        .with_render_key(crate::world::ItemRenderKey::reserved("iron_sword"));
+        let authored = Quat::IDENTITY;
+        let visual = item_pile_visual_rotation(authored, Some(&definition));
+        let up = visual * Vec3::Y;
+        assert!(up.y.abs() < 0.1, "weapon rest pose should lie in XZ plane");
+        assert!(up.length_squared() > 0.9);
+    }
+
+    #[test]
+    fn container_scene_correction_is_identity() {
+        let definition = ItemDefinition::new(
+            ItemDefinitionId::new("leather_backpack"),
+            "Backpack",
+            "",
+            ItemCategoryId::new("container"),
+            2,
+            3,
+            false,
+            1,
+            500,
+            1,
+            true,
+        )
+        .with_render_key(crate::world::ItemRenderKey::reserved("leather_backpack"));
+        let authored = Quat::IDENTITY;
+        let visual = item_pile_visual_rotation(authored, Some(&definition));
+        assert!((visual.x - authored.x).abs() < 1e-4);
+        assert!((visual.y - authored.y).abs() < 1e-4);
+        assert!((visual.z - authored.z).abs() < 1e-4);
+        assert!((visual.w - authored.w).abs() < 1e-4);
+    }
 
     #[test]
     fn dev_label_formats_stack_and_unknown() {
