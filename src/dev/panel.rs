@@ -922,8 +922,10 @@ pub(crate) fn sync_dev_panel_content(
     mut filter_cache: ResMut<CatalogFilterCache>,
     debounce: Res<DevSearchDebounce>,
     mut metrics: ResMut<CatalogScrollMetrics>,
-    mut archetype_pane: Query<(&mut Visibility, &mut Node), With<DevArchetypePane>>,
-    mut spawn_hint: Query<&mut Node, With<DevSpawnHintText>>,
+    mut catalog_layout_nodes: ParamSet<(
+        Query<(&mut Visibility, &mut Node), With<DevArchetypePane>>,
+        Query<&mut Node, With<DevSpawnHintText>>,
+    )>,
     mut texts: ParamSet<(
         Query<&mut Text, (With<DevSearchText>, Without<DevListText>)>,
         Query<
@@ -984,7 +986,7 @@ pub(crate) fn sync_dev_panel_content(
     }
 
     let show_archetypes = dev_state.shows_archetype_pane();
-    for (mut visibility, mut node) in archetype_pane.iter_mut() {
+    for (mut visibility, mut node) in catalog_layout_nodes.p0().iter_mut() {
         *visibility = if show_archetypes {
             Visibility::Visible
         } else {
@@ -1141,7 +1143,7 @@ pub(crate) fn sync_dev_panel_content(
         };
     }
 
-    if let Ok(mut node) = spawn_hint.single_mut() {
+    if let Ok(mut node) = catalog_layout_nodes.p1().single_mut() {
         node.display = if dev_state.placement_tool_active() {
             Display::Flex
         } else {
