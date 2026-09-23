@@ -49,6 +49,7 @@ mod tests {
         let graph = DefinitionAnimationGraph {
             graph: bevy::prelude::Handle::default(),
             locomotion_nodes: Default::default(),
+            layered_locomotion_nodes: Default::default(),
             attack_nodes: Default::default(),
             attack_variant_nodes: Default::default(),
             combat_idle_nodes: Default::default(),

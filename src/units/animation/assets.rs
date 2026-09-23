@@ -12,7 +12,7 @@ use super::components::{
     AnimationPlaybackPending, AnimationProfileHandle, UnitAnimationGraphInstalled,
     UnitAnimationPlayerLink,
 };
-use super::layers::{FULL_BODY_CLIP_MASK, UPPER_BODY_CLIP_MASK};
+use super::layers::{FULL_BODY_CLIP_MASK, LOWER_BODY_CLIP_MASK, UPPER_BODY_CLIP_MASK};
 use super::validation::{
     AnimationValidationIndex, DefinitionValidationReport, validate_definition_animation_assets,
 };
@@ -31,6 +31,8 @@ pub struct AnimationGraphShareKey {
 pub struct DefinitionAnimationGraph {
     pub graph: Handle<AnimationGraph>,
     pub locomotion_nodes: HashMap<AnimationClipKey, AnimationNodeIndex>,
+    /// Lower-body-masked locomotion nodes for simultaneous attack layering (A4).
+    pub layered_locomotion_nodes: HashMap<AnimationClipKey, AnimationNodeIndex>,
     pub attack_nodes: HashMap<WeaponDefinitionId, AnimationNodeIndex>,
     pub attack_variant_nodes: HashMap<WeaponDefinitionId, AnimationNodeIndex>,
     pub combat_idle_nodes: HashMap<WeaponDefinitionId, AnimationNodeIndex>,
@@ -374,11 +376,17 @@ fn assemble_graph_from_clips(
     let blend_root = graph.add_additive_blend(1.0, graph.root);
 
     let mut locomotion_nodes = HashMap::new();
+    let mut layered_locomotion_nodes = HashMap::new();
     let mut locomotion_durations = HashMap::new();
     for (key, handle, duration) in &resolved.locomotion {
         // Locomotion clips are authored full-body (UAL Idle/Walk/Run/Mine).
-        let node = graph.add_clip_with_mask(handle.clone(), FULL_BODY_CLIP_MASK, 1.0, blend_root);
-        locomotion_nodes.insert(*key, node);
+        let full_body_node =
+            graph.add_clip_with_mask(handle.clone(), FULL_BODY_CLIP_MASK, 1.0, blend_root);
+        locomotion_nodes.insert(*key, full_body_node);
+        // Masked attack layering uses a lower-body-only copy of the same clip.
+        let layered_node =
+            graph.add_clip_with_mask(handle.clone(), LOWER_BODY_CLIP_MASK, 1.0, blend_root);
+        layered_locomotion_nodes.insert(*key, layered_node);
         locomotion_durations.insert(*key, *duration);
     }
 
@@ -422,6 +430,7 @@ fn assemble_graph_from_clips(
     Some(DefinitionAnimationGraph {
         graph: graph_handle,
         locomotion_nodes,
+        layered_locomotion_nodes,
         attack_nodes,
         attack_variant_nodes,
         combat_idle_nodes,
@@ -620,6 +629,7 @@ mod tests {
         DefinitionAnimationGraph {
             graph: Handle::default(),
             locomotion_nodes: Default::default(),
+            layered_locomotion_nodes: Default::default(),
             attack_nodes: Default::default(),
             attack_variant_nodes: Default::default(),
             combat_idle_nodes: Default::default(),
@@ -742,6 +752,37 @@ mod tests {
         .unwrap();
         assert!(built.death_node.is_none());
         assert!(built.hit_reaction_node.is_some());
+    }
+
+    #[test]
+    fn locomotion_graph_builds_distinct_full_body_and_layered_nodes() {
+        let mut graphs = Assets::<AnimationGraph>::default();
+        let share_key = share_key("humanoid", "units/wolf.glb");
+        let resolved = ResolvedClipSet {
+            locomotion: vec![
+                (AnimationClipKey::Idle, clip_handle(), 1.0),
+                (AnimationClipKey::Walk, clip_handle(), 1.0),
+            ],
+            attacks: Vec::new(),
+            attack_variants: Vec::new(),
+            combat_idles: Vec::new(),
+            death: None,
+            hit: None,
+        };
+        let built = assemble_graph_from_clips(
+            &resolved,
+            &AnimationProfileId::new("humanoid"),
+            share_key,
+            &mut graphs,
+        )
+        .unwrap();
+        for clip in [AnimationClipKey::Idle, AnimationClipKey::Walk] {
+            let full_body = built.locomotion_nodes.get(&clip).copied();
+            let layered = built.layered_locomotion_nodes.get(&clip).copied();
+            assert_ne!(full_body, layered);
+            assert!(full_body.is_some());
+            assert!(layered.is_some());
+        }
     }
 
     #[test]
