@@ -145,12 +145,16 @@ fn catalog_row_pool_supports_long_lists() {
     assert!(pool > 10, "row pool should exceed legacy 10-row cap");
     let visible = visible_row_count(CATALOG_MAX_LIST_HEIGHT_PX);
     assert!(visible > 10);
-    assert_eq!(super::max_scroll_offset(pool + 5, visible), pool + 5 - visible);
+    assert_eq!(
+        super::scroll::max_scroll_offset(pool + 5, visible),
+        pool + 5 - visible
+    );
 }
 
 #[test]
 fn definition_and_archetype_scroll_offsets_stay_independent() {
-    use super::{clamp_scroll_offset, max_scroll_offset};
+    use super::scroll::max_scroll_offset;
+    use super::clamp_scroll_offset;
 
     let def_max = max_scroll_offset(40, 12);
     let arch_max = max_scroll_offset(18, 8);
