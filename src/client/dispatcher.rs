@@ -70,6 +70,9 @@ pub struct DispatchPlayerParams<'w> {
         ResMut<'w, crate::client::PendingBuildingPlayerInteractionState>,
     pub pending_dialogue_interaction: ResMut<'w, crate::client::PendingDialogueInteractionState>,
     pub dialogue_session: ResMut<'w, crate::ui::gameplay::dialogue::DialogueSessionState>,
+    pub unit_interaction_menu:
+        ResMut<'w, crate::ui::gameplay::UnitInteractionMenuState>,
+    pub context_menu_anchor: ResMut<'w, crate::client::ContextMenuScreenAnchor>,
     #[cfg(feature = "dev")]
     pub placement_trace: Res<'w, crate::ui::gameplay::BuildModePlacementTrace>,
 }
@@ -264,6 +267,8 @@ pub fn dispatch_client_intents(
                 &mut player_params.pending_building_interaction,
                 &mut player_params.pending_dialogue_interaction,
                 &mut player_params.dialogue_session,
+                &mut player_params.unit_interaction_menu,
+                &mut player_params.context_menu_anchor,
                 frame_index.0,
                 &mut player_params.inventory_queue,
                 &operation_catalog,
@@ -499,6 +504,8 @@ fn dispatch_one(
     pending_building_interaction: &mut crate::client::PendingBuildingPlayerInteractionState,
     pending_dialogue_interaction: &mut crate::client::PendingDialogueInteractionState,
     dialogue_session: &mut crate::ui::gameplay::dialogue::DialogueSessionState,
+    unit_interaction_menu: &mut crate::ui::gameplay::UnitInteractionMenuState,
+    context_menu_anchor: &mut crate::client::ContextMenuScreenAnchor,
     simulation_tick: u64,
     inventory_queue: &mut crate::client::inventory_intent::InventoryIntentQueue,
     operation_catalog: &OperationCatalog,
@@ -542,6 +549,8 @@ fn dispatch_one(
             pending_building_interaction,
             pending_dialogue_interaction,
             dialogue_session,
+            unit_interaction_menu,
+            context_menu_anchor,
         ),
         ClientIntent::MoveCommand { target } => dispatch_contextual_command(
             CommandTarget::Terrain { position: *target },
@@ -571,6 +580,8 @@ fn dispatch_one(
             pending_building_interaction,
             pending_dialogue_interaction,
             dialogue_session,
+            unit_interaction_menu,
+            context_menu_anchor,
         ),
         ClientIntent::SelectUnit { unit_id } => {
             if world
@@ -1147,6 +1158,8 @@ fn dispatch_contextual_command(
     pending_building_interaction: &mut crate::client::PendingBuildingPlayerInteractionState,
     pending_dialogue_interaction: &mut crate::client::PendingDialogueInteractionState,
     dialogue_session: &mut crate::ui::gameplay::dialogue::DialogueSessionState,
+    unit_interaction_menu: &mut crate::ui::gameplay::UnitInteractionMenuState,
+    context_menu_anchor: &mut crate::client::ContextMenuScreenAnchor,
 ) -> IntentDispatchStatus {
     if selection.is_empty() {
         return IntentDispatchStatus::Ignored;
@@ -1270,7 +1283,7 @@ fn dispatch_contextual_command(
     ));
 
     match plan {
-        BuiltCommandPlan::BeginDialogue { target } => {
+        BuiltCommandPlan::OpenUnitInteractionMenu { target } => {
             crate::client::supersede_pending_building_interaction_for_selection(
                 pending_building_interaction,
                 selection,
@@ -1279,26 +1292,26 @@ fn dispatch_contextual_command(
                 Some(id) => id,
                 None => return IntentDispatchStatus::Ignored,
             };
-            match crate::client::try_dispatch_dialogue_interaction(
-                world,
+            let screen_position = context_menu_anchor
+                .take()
+                .unwrap_or(Vec2::new(120.0, 120.0));
+            if crate::client::try_open_unit_interaction_menu(
+                unit_interaction_menu,
                 dialogue_session,
                 pending_dialogue_interaction,
+                world,
                 authored_relationships,
-                unit_catalog,
-                weapon_catalog,
-                doodad_catalog,
-                nav_config,
                 actor,
                 target,
+                screen_position,
             ) {
-                crate::client::DialogueDispatchOutcome::Ignored => IntentDispatchStatus::Ignored,
-                crate::client::DialogueDispatchOutcome::Opened
-                | crate::client::DialogueDispatchOutcome::Deferred { .. } => {
-                    IntentDispatchStatus::Applied
-                }
+                IntentDispatchStatus::Applied
+            } else {
+                IntentDispatchStatus::Ignored
             }
         }
         BuiltCommandPlan::MoveTo { .. } => {
+            unit_interaction_menu.close();
             crate::client::supersede_pending_building_interaction_for_selection(
                 pending_building_interaction,
                 selection,
@@ -1449,6 +1462,7 @@ fn dispatch_contextual_command(
             IntentDispatchStatus::Applied
         }
         BuiltCommandPlan::Attack { target } => {
+            unit_interaction_menu.close();
             crate::client::supersede_pending_building_interaction_for_selection(
                 pending_building_interaction,
                 selection,
@@ -1641,7 +1655,7 @@ fn dispatch_palette_command(
             ));
             IntentDispatchStatus::Applied
         }
-        BuiltCommandPlan::BeginDialogue { .. } => IntentDispatchStatus::Ignored,
+        BuiltCommandPlan::OpenUnitInteractionMenu { .. } => IntentDispatchStatus::Ignored,
         BuiltCommandPlan::NoOp => IntentDispatchStatus::Ignored,
     }
 }
@@ -1868,6 +1882,8 @@ mod tests {
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             &mut crate::client::PendingDialogueInteractionState::default(),
             &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut crate::ui::gameplay::UnitInteractionMenuState::default(),
+            &mut crate::client::ContextMenuScreenAnchor::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -1942,6 +1958,8 @@ mod tests {
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             &mut crate::client::PendingDialogueInteractionState::default(),
             &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut crate::ui::gameplay::UnitInteractionMenuState::default(),
+            &mut crate::client::ContextMenuScreenAnchor::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2016,6 +2034,8 @@ mod tests {
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             &mut crate::client::PendingDialogueInteractionState::default(),
             &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut crate::ui::gameplay::UnitInteractionMenuState::default(),
+            &mut crate::client::ContextMenuScreenAnchor::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2100,6 +2120,8 @@ mod tests {
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             &mut crate::client::PendingDialogueInteractionState::default(),
             &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut crate::ui::gameplay::UnitInteractionMenuState::default(),
+            &mut crate::client::ContextMenuScreenAnchor::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2163,6 +2185,8 @@ mod tests {
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             &mut crate::client::PendingDialogueInteractionState::default(),
             &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut crate::ui::gameplay::UnitInteractionMenuState::default(),
+            &mut crate::client::ContextMenuScreenAnchor::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2233,6 +2257,8 @@ mod tests {
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             &mut crate::client::PendingDialogueInteractionState::default(),
             &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut crate::ui::gameplay::UnitInteractionMenuState::default(),
+            &mut crate::client::ContextMenuScreenAnchor::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2310,6 +2336,8 @@ mod tests {
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             &mut crate::client::PendingDialogueInteractionState::default(),
             &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut crate::ui::gameplay::UnitInteractionMenuState::default(),
+            &mut crate::client::ContextMenuScreenAnchor::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2399,6 +2427,8 @@ mod tests {
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             &mut crate::client::PendingDialogueInteractionState::default(),
             &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut crate::ui::gameplay::UnitInteractionMenuState::default(),
+            &mut crate::client::ContextMenuScreenAnchor::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2465,6 +2495,8 @@ mod tests {
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             &mut crate::client::PendingDialogueInteractionState::default(),
             &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut crate::ui::gameplay::UnitInteractionMenuState::default(),
+            &mut crate::client::ContextMenuScreenAnchor::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2620,6 +2652,8 @@ mod tests {
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             &mut crate::client::PendingDialogueInteractionState::default(),
             &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut crate::ui::gameplay::UnitInteractionMenuState::default(),
+            &mut crate::client::ContextMenuScreenAnchor::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2731,6 +2765,8 @@ mod tests {
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             &mut crate::client::PendingDialogueInteractionState::default(),
             &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut crate::ui::gameplay::UnitInteractionMenuState::default(),
+            &mut crate::client::ContextMenuScreenAnchor::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2822,6 +2858,8 @@ mod tests {
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             &mut crate::client::PendingDialogueInteractionState::default(),
             &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut crate::ui::gameplay::UnitInteractionMenuState::default(),
+            &mut crate::client::ContextMenuScreenAnchor::default(),
             0,
             &mut inventory_queue,
             &OperationCatalog::default(),
@@ -2950,6 +2988,8 @@ mod tests {
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             &mut crate::client::PendingDialogueInteractionState::default(),
             &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut crate::ui::gameplay::UnitInteractionMenuState::default(),
+            &mut crate::client::ContextMenuScreenAnchor::default(),
             0,
             &mut inventory_queue,
             &operation_catalog,
@@ -3069,6 +3109,8 @@ mod tests {
             &mut crate::client::PendingBuildingPlayerInteractionState::default(),
             &mut crate::client::PendingDialogueInteractionState::default(),
             &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut crate::ui::gameplay::UnitInteractionMenuState::default(),
+            &mut crate::client::ContextMenuScreenAnchor::default(),
             0,
             &mut inventory_queue,
             &operation_catalog,

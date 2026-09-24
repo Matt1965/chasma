@@ -3,6 +3,7 @@
 //! Input → Intent → Command → Simulation → Presentation
 
 mod building_interaction_dispatch;
+mod context_menu_anchor;
 mod dialogue_dispatch;
 pub mod commands;
 mod dispatcher;
@@ -13,10 +14,12 @@ pub mod pipeline;
 pub mod selection;
 pub mod settlement_context;
 
+pub use context_menu_anchor::ContextMenuScreenAnchor;
 pub use dialogue_dispatch::{
     DialogueDispatchOutcome, PendingDialogueInteraction, PendingDialogueInteractionState,
-    supersede_pending_dialogue_for_selection, tick_pending_dialogue_interactions,
-    try_complete_pending_dialogue_interaction, try_dispatch_dialogue_interaction,
+    dispatch_dialogue_action, supersede_pending_dialogue_for_selection,
+    tick_pending_dialogue_interactions, try_complete_pending_dialogue_interaction,
+    try_open_unit_interaction_menu,
 };
 pub use building_interaction_dispatch::{
     OwnedBuildingInteractionOutcome, PendingBuildingPlayerInteraction,

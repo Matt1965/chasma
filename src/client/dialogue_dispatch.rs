@@ -4,19 +4,21 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use crate::ui::gameplay::dialogue::DialogueSessionState;
+use crate::ui::gameplay::{UnitInteractionMenuState, build_interaction_menu_rows};
 use crate::units::input::{MoveOrdersReport, SelectedUnits, issue_move_orders_to_selection};
-use crate::world::{AttackTargetingPolicy, is_unit_alive};
+use crate::world::{AttackTargetingPolicy, DialogueActionKind, is_unit_alive};
 use crate::world::relationship::AuthoredRelationshipCatalog;
 use crate::world::{
     DoodadCatalog, NavigationConfig, UnitCatalog, UnitId, WeaponCatalog, WorldData,
-    unit_supports_dialogue, units_within_dialogue_range,
+    is_player_controllable, unit_supports_dialogue, units_within_dialogue_range,
 };
 
-/// A unit approaching an NPC to open dialogue.
+/// A unit approaching an NPC to perform a selected social action.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PendingDialogueInteraction {
     pub actor_unit_id: UnitId,
     pub target_unit_id: UnitId,
+    pub action: DialogueActionKind,
 }
 
 #[derive(Resource, Default, Debug)]
@@ -29,10 +31,16 @@ impl PendingDialogueInteractionState {
         self.pending
     }
 
-    pub fn set(&mut self, actor_unit_id: UnitId, target_unit_id: UnitId) {
+    pub fn set(
+        &mut self,
+        actor_unit_id: UnitId,
+        target_unit_id: UnitId,
+        action: DialogueActionKind,
+    ) {
         self.pending = Some(PendingDialogueInteraction {
             actor_unit_id,
             target_unit_id,
+            action,
         });
     }
 
@@ -88,21 +96,56 @@ fn pending_still_valid(
         standing,
         pending.actor_unit_id,
         pending.target_unit_id,
-        crate::world::DialogueActionKind::Talk,
+        pending.action,
     )
     .is_available()
-        || crate::world::present_dialogue_options(
-            world,
-            authored_relationships,
-            standing,
-            pending.actor_unit_id,
-            pending.target_unit_id,
-        )
-        .iter()
-        .any(|(_, availability)| availability.is_available())
 }
 
-pub fn try_dispatch_dialogue_interaction(
+fn apply_dialogue_action(
+    dialogue: &mut DialogueSessionState,
+    actor_unit_id: UnitId,
+    target_unit_id: UnitId,
+    action: DialogueActionKind,
+) {
+    dialogue.open_session(actor_unit_id, target_unit_id);
+    dialogue.select_option(action, actor_unit_id, target_unit_id);
+}
+
+pub fn try_open_unit_interaction_menu(
+    menu: &mut UnitInteractionMenuState,
+    dialogue: &mut DialogueSessionState,
+    pending: &mut PendingDialogueInteractionState,
+    world: &WorldData,
+    authored_relationships: &AuthoredRelationshipCatalog,
+    actor_unit_id: UnitId,
+    target_unit_id: UnitId,
+    screen_position: Vec2,
+) -> bool {
+    let target = world.get_unit(target_unit_id);
+    if !target.is_some_and(|record| {
+        unit_supports_dialogue(record) && !is_player_controllable(record)
+    }) {
+        return false;
+    }
+
+    let rows = build_interaction_menu_rows(
+        world,
+        authored_relationships,
+        world.relationship_standing_store(),
+        actor_unit_id,
+        target_unit_id,
+    );
+    if rows.is_empty() {
+        return false;
+    }
+
+    pending.clear_for_unit(actor_unit_id);
+    dialogue.close();
+    menu.open_at(actor_unit_id, target_unit_id, screen_position);
+    true
+}
+
+pub fn dispatch_dialogue_action(
     world: &mut WorldData,
     dialogue: &mut DialogueSessionState,
     pending: &mut PendingDialogueInteractionState,
@@ -113,19 +156,34 @@ pub fn try_dispatch_dialogue_interaction(
     nav_config: &NavigationConfig,
     actor_unit_id: UnitId,
     target_unit_id: UnitId,
+    action: DialogueActionKind,
 ) -> DialogueDispatchOutcome {
     let target = world.get_unit(target_unit_id);
     if !target.is_some_and(unit_supports_dialogue) {
         return DialogueDispatchOutcome::Ignored;
     }
 
+    let standing = world.relationship_standing_store();
+    if !crate::world::evaluate_dialogue_option(
+        world,
+        authored_relationships,
+        standing,
+        actor_unit_id,
+        target_unit_id,
+        action,
+    )
+    .is_available()
+    {
+        return DialogueDispatchOutcome::Ignored;
+    }
+
     if units_within_dialogue_range(world, actor_unit_id, target_unit_id) {
         pending.clear_for_unit(actor_unit_id);
-        dialogue.open_session(actor_unit_id, target_unit_id);
+        apply_dialogue_action(dialogue, actor_unit_id, target_unit_id, action);
         return DialogueDispatchOutcome::Opened;
     }
 
-    pending.set(actor_unit_id, target_unit_id);
+    pending.set(actor_unit_id, target_unit_id, action);
     let issued_approach = issue_approach_to_dialogue(
         world,
         unit_catalog,
@@ -200,9 +258,11 @@ pub fn try_complete_pending_dialogue_interaction(
         return false;
     }
 
-    dialogue.open_session(
+    apply_dialogue_action(
+        dialogue,
         pending_interaction.actor_unit_id,
         pending_interaction.target_unit_id,
+        pending_interaction.action,
     );
     pending.clear();
     true
