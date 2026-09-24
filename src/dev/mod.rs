@@ -2,6 +2,7 @@
 
 mod animation_focus;
 mod archetype_editor;
+mod build_identity;
 mod animation_panel;
 mod catalog;
 mod catalog_browser;
@@ -50,6 +51,7 @@ pub use catalog_browser::{CatalogBrowserEntry, filter_catalog_entries};
 pub use catalog_cache::{
     CatalogBrowseIndex, CatalogFilterCache, DevSearchDebounce, browse_catalog_entries,
 };
+pub use build_identity::DevBuildIdentity;
 pub use debug_controls::{apply_dev_debug_flags, dev_flags_from_overlay, sync_dev_debug_controls};
 pub use debug_window::{
     handle_debug_toggle_buttons, setup_debug_window_panel, sync_debug_panel_button_styles,
@@ -197,7 +199,8 @@ pub struct DevModePlugin;
 
 impl Plugin for DevModePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<DevModeState>()
+        app.insert_resource(build_identity::DevBuildIdentity::resolve())
+            .init_resource::<DevModeState>()
             .init_resource::<DevModeInputGate>()
             .init_resource::<CatalogBrowseIndex>()
             .init_resource::<CatalogFilterCache>()
@@ -230,6 +233,8 @@ impl Plugin for DevModePlugin {
             .add_systems(
                 Startup,
                 (
+                    build_identity::apply_dev_build_identity_window_title,
+                    build_identity::setup_dev_build_identity_overlay,
                     setup_dev_workspace,
                     setup_dev_panel,
                     archetype_editor::setup_archetype_editor_modal,
