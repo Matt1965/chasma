@@ -216,12 +216,21 @@ impl Plugin for GameplayUiPlugin {
                 handle_dialogue_close_button,
                 handle_dialogue_back_button,
                 handle_dialogue_option_buttons,
+            )
+                .chain()
+                .after(sync_gameplay_ui_state)
+                .in_set(GameplayUiSystems),
+        )
+        .add_systems(
+            Update,
+            (
                 reconcile_unit_interaction_menu,
                 sync_unit_interaction_menu_visibility,
                 sync_unit_interaction_menu_layout,
                 sync_unit_interaction_menu,
             )
-                .after(sync_gameplay_ui_state)
+                .chain()
+                .after(sync_dialogue_panel)
                 .in_set(GameplayUiSystems),
         )
         .add_systems(

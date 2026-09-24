@@ -30,6 +30,9 @@ pub struct UnitInteractionMenuTitle;
 #[derive(Component, Debug, Clone, Copy)]
 pub struct UnitInteractionMenuOptionButton(pub DialogueActionKind);
 
+#[derive(Component, Debug)]
+pub struct UnitInteractionMenuOptionText;
+
 pub fn spawn_unit_interaction_menu(mut commands: Commands) {
     commands.spawn((
         UnitInteractionMenuBackdrop,
@@ -101,6 +104,7 @@ fn spawn_menu_option_button(parent: &mut ChildSpawnerCommands<'_>, kind: Dialogu
         ))
         .with_children(|row| {
             row.spawn((
+                UnitInteractionMenuOptionText,
                 Text::new(kind.label()),
                 hud_body_font(),
                 TextColor(TEXT_PRIMARY),
@@ -155,16 +159,20 @@ pub fn sync_unit_interaction_menu(
     mut title: Query<&mut Text, With<UnitInteractionMenuTitle>>,
     mut options: Query<
         (
+            Entity,
             &UnitInteractionMenuOptionButton,
             &Interaction,
             &mut Node,
             &mut BackgroundColor,
             &mut BorderColor,
-            &Children,
         ),
-        Without<UnitInteractionMenuTitle>,
+        (Without<UnitInteractionMenuTitle>, Without<UnitInteractionMenuOptionText>),
     >,
-    mut option_text: Query<(&mut Text, &mut TextColor)>,
+    mut option_text: Query<
+        (&mut Text, &mut TextColor),
+        (With<UnitInteractionMenuOptionText>, Without<UnitInteractionMenuTitle>),
+    >,
+    children: Query<&Children>,
 ) {
     if !menu.open {
         return;
@@ -190,7 +198,7 @@ pub fn sync_unit_interaction_menu(
         target,
     );
 
-    for (button, interaction, mut node, mut bg, mut border, children) in &mut options {
+    for (entity, button, interaction, mut node, mut bg, mut border) in &mut options {
         let row = rows.iter().find(|row| row.kind == button.0);
         let visible = row.is_some();
         let enabled = row.is_some_and(|row| row.enabled);
@@ -203,14 +211,16 @@ pub fn sync_unit_interaction_menu(
         *bg = next_bg;
         *border = next_border;
         if let Some(row) = row {
-            if let Some(child) = children.first() {
-                if let Ok((mut text, mut color)) = option_text.get_mut(*child) {
-                    **text = row.label.clone();
-                    *color = TextColor(if enabled {
-                        TEXT_PRIMARY
-                    } else {
-                        TEXT_MUTED
-                    });
+            if let Ok(kids) = children.get(entity) {
+                if let Some(child) = kids.first() {
+                    if let Ok((mut text, mut color)) = option_text.get_mut(*child) {
+                        **text = row.label.clone();
+                        *color = TextColor(if enabled {
+                            TEXT_PRIMARY
+                        } else {
+                            TEXT_MUTED
+                        });
+                    }
                 }
             }
         }
