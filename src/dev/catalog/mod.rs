@@ -29,8 +29,8 @@ pub use placement_controls::{
 };
 
 pub use scroll::{
-    CatalogScrollMetrics, ROW_HEIGHT_PX, catalog_row_pool_capacity, clamp_scroll_offset,
-    visible_row_count,
+    CatalogScrollMetrics, ROW_HEIGHT_PX, catalog_list_viewport_height, catalog_row_pool_capacity,
+    clamp_scroll_offset, visible_row_count,
 };
 pub use state::{
     CatalogSessionState, next_visible_tab,

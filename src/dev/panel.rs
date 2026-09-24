@@ -13,7 +13,8 @@ use super::catalog::{
     CatalogScrollMetrics, DevCatalogStatusText, DevContextualPlacementAction,
     DevContextualPlacementButton, DevContextualPlacementSection, DevContextualPlacementTitle,
     DevPlacementActiveBanner, DevTabChrome, ROW_HEIGHT_PX, all_catalog_tabs,
-    catalog_row_pool_capacity, clamp_scroll_offset, spawn_tab_label, visible_row_count,
+    catalog_list_viewport_height, catalog_row_pool_capacity, clamp_scroll_offset,
+    spawn_tab_label, visible_row_count,
 };
 use super::catalog::scroll::{
     CATALOG_ROW_GAP_PX, CATALOG_SCROLLBAR_MIN_THUMB_PX, CATALOG_SCROLLBAR_WIDTH_PX,
@@ -29,7 +30,7 @@ use super::input::{DevPanelRoot, DevPanelUi};
 use super::tools::MAX_BRUSH_SPAWN_COUNT;
 use super::window::{
     DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowRoot, DevWindowUi,
-    CATALOG_MAX_LIST_HEIGHT_PX, catalog_list_max_height,
+    CATALOG_MAX_LIST_HEIGHT_PX,
 };
 use crate::dev::tooltip::DevTooltipTarget;
 use crate::dev::widgets::{
@@ -344,11 +345,8 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
                 DevWindowUi,
                 Node {
                     width: Val::Percent(100.0),
-                    height: Val::Percent(100.0),
                     flex_direction: FlexDirection::Column,
                     row_gap: Val::Px(4.0),
-                    flex_grow: 1.0,
-                    flex_shrink: 1.0,
                     min_height: Val::Px(0.0),
                     overflow: Overflow::clip(),
                     ..default()
@@ -478,8 +476,6 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
                     Node {
                         flex_direction: FlexDirection::Column,
                         row_gap: Val::Px(4.0),
-                        flex_grow: 1.0,
-                        flex_shrink: 1.0,
                         min_height: Val::Px(0.0),
                         ..default()
                     },
@@ -551,8 +547,6 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
                                 width: Val::Percent(100.0),
                                 flex_direction: FlexDirection::Row,
                                 column_gap: Val::Px(6.0),
-                                flex_grow: 1.0,
-                                flex_shrink: 1.0,
                                 min_height: Val::Px(0.0),
                                 align_items: AlignItems::Stretch,
                                 ..default()
@@ -1665,17 +1659,21 @@ fn apply_contextual_placement_action(
 /// Keep catalog list areas within the current viewport.
 pub(crate) fn sync_catalog_panel_layout(
     registry: Res<DevWindowRegistry>,
+    metrics: Res<CatalogScrollMetrics>,
     mut nodes: ParamSet<(
         Query<(&DevWindowRoot, &mut Node)>,
         Query<&mut Node, With<DevCatalogListViewport>>,
         Query<&mut Node, With<DevArchetypeListViewport>>,
     )>,
 ) {
-    let viewport = registry.viewport;
-    let list_height = registry
-        .session(DevWindowId::Catalog)
-        .map(|session| catalog_list_max_height(viewport, session.position.y))
-        .unwrap_or_else(|| catalog_list_max_height(viewport, 0.0));
+    let definition_height = catalog_list_viewport_height(
+        metrics.definition_entry_count,
+        CATALOG_MAX_LIST_HEIGHT_PX,
+    );
+    let archetype_height = catalog_list_viewport_height(
+        metrics.archetype_entry_count,
+        CATALOG_MAX_LIST_HEIGHT_PX,
+    );
 
     for (root, mut node) in nodes.p0().iter_mut() {
         if root.id != DevWindowId::Catalog {
@@ -1685,18 +1683,18 @@ pub(crate) fn sync_catalog_panel_layout(
     }
 
     for mut node in nodes.p1().iter_mut() {
-        node.height = Val::Px(list_height);
-        node.max_height = Val::Px(list_height);
-        node.min_height = Val::Px(ROW_HEIGHT_PX * 4.0);
-        node.flex_grow = 1.0;
-        node.flex_shrink = 1.0;
+        node.height = Val::Px(definition_height);
+        node.max_height = Val::Px(CATALOG_MAX_LIST_HEIGHT_PX);
+        node.min_height = Val::Px(definition_height);
+        node.flex_grow = 0.0;
+        node.flex_shrink = 0.0;
     }
 
     for mut node in nodes.p2().iter_mut() {
-        node.height = Val::Px(list_height);
-        node.max_height = Val::Px(list_height);
-        node.min_height = Val::Px(ROW_HEIGHT_PX * 4.0);
-        node.flex_grow = 1.0;
-        node.flex_shrink = 1.0;
+        node.height = Val::Px(archetype_height);
+        node.max_height = Val::Px(CATALOG_MAX_LIST_HEIGHT_PX);
+        node.min_height = Val::Px(archetype_height);
+        node.flex_grow = 0.0;
+        node.flex_shrink = 0.0;
     }
 }

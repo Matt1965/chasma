@@ -75,7 +75,9 @@ pub fn default_catalog_position(viewport: Vec2, window_width: f32) -> Vec2 {
 pub fn catalog_list_max_height(viewport: Vec2, window_top: f32) -> f32 {
     let chrome = TITLE_BAR_HEIGHT_PX + 150.0;
     let available = viewport.y - window_top - chrome - CATALOG_VIEWPORT_MARGIN_PX;
-    available.max(CATALOG_MIN_LIST_HEIGHT_PX)
+    available
+        .max(CATALOG_MIN_LIST_HEIGHT_PX)
+        .min(CATALOG_MAX_LIST_HEIGHT_PX)
 }
 
 /// Resolve Navigation Editor panel width for the current viewport.

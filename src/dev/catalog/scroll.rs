@@ -52,6 +52,17 @@ pub fn catalog_row_pool_capacity(max_list_height_px: f32) -> usize {
     ((max_list_height_px / stride).ceil() as usize).max(1)
 }
 
+/// List viewport height from entry count — grows with content up to `max_height_px`.
+pub fn catalog_list_viewport_height(entry_count: usize, max_height_px: f32) -> f32 {
+    let stride = catalog_row_stride_px();
+    let min_height = ROW_HEIGHT_PX * 4.0;
+    if entry_count == 0 {
+        return min_height;
+    }
+    let content = entry_count as f32 * stride;
+    content.min(max_height_px).max(min_height)
+}
+
 pub fn visible_row_count(viewport_height: f32) -> usize {
     let stride = catalog_row_stride_px();
     if viewport_height <= 0.0 || stride <= 0.0 {
@@ -408,6 +419,20 @@ pub fn sync_catalog_list_row_visibility(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn list_viewport_height_tracks_entry_count_until_cap() {
+        let cap = catalog_row_stride_px() * 12.0;
+        assert_eq!(
+            catalog_list_viewport_height(5, cap),
+            catalog_row_stride_px() * 5.0
+        );
+        assert_eq!(catalog_list_viewport_height(40, cap), cap);
+        assert_eq!(
+            catalog_list_viewport_height(0, cap),
+            ROW_HEIGHT_PX * 4.0
+        );
+    }
 
     #[test]
     fn visible_row_count_grows_with_viewport() {
