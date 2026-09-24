@@ -4,9 +4,8 @@ use bevy::prelude::*;
 
 use crate::corpses::{
     CorpsePresentationClaim, CorpseRenderEntity, CorpseRenderIndex, CorpseSceneRoot,
-    claim_corpse_presentation_for_death, corpse_origin_has_pending_death_root,
-    corpse_presentation_entity_count, handoff_unit_render_to_corpse,
-    release_stale_corpse_presentation_owners, should_spawn_corpse_presentation,
+    claim_corpse_presentation_for_death, corpse_presentation_entity_count,
+    handoff_unit_render_to_corpse, should_spawn_corpse_presentation,
 };
 use crate::units::DeathPresentation;
 use crate::units::{UnitRenderEntity, UnitRenderIndex, UnitSceneRoot};
@@ -35,6 +34,59 @@ fn pos(x: f32, z: f32) -> WorldPosition {
         ChunkCoord::new(0, 0),
         LocalPosition::new(Vec3::new(x, 0.0, z)),
     )
+}
+
+fn test_corpse_origin_has_pending_death_root(
+    bevy_world: &mut World,
+    world_data: &WorldData,
+    origin_unit_id: UnitId,
+) -> bool {
+    if world_data.get_unit(origin_unit_id).is_some() {
+        return false;
+    }
+    let mut unit_render_roots = bevy_world.query::<&UnitRenderEntity>();
+    for marker in unit_render_roots.iter(bevy_world) {
+        if marker.unit_id == origin_unit_id {
+            return true;
+        }
+    }
+    let mut death_presentations = bevy_world.query::<&DeathPresentation>();
+    for presentation in death_presentations.iter(bevy_world) {
+        if presentation.origin_unit_id == Some(origin_unit_id) {
+            return true;
+        }
+    }
+    false
+}
+
+fn test_release_stale_corpse_presentation_owners(
+    bevy_world: &mut World,
+    corpse_index: &mut CorpseRenderIndex,
+) -> Vec<CorpseId> {
+    let mut entities = bevy_world.query::<Entity>();
+    let mut claims = bevy_world.query::<&CorpsePresentationClaim>();
+    let mut death_presentations = bevy_world.query::<&DeathPresentation>();
+    let mut corpse_render_entities = bevy_world.query::<&CorpseRenderEntity>();
+    let stale_ids: Vec<CorpseId> = corpse_index
+        .0
+        .iter()
+        .filter_map(|(corpse_id, entity)| {
+            if entities.get(bevy_world, *entity).is_err() {
+                return Some(*corpse_id);
+            }
+            if claims.get(bevy_world, *entity).is_ok()
+                && death_presentations.get(bevy_world, *entity).is_err()
+                && corpse_render_entities.get(bevy_world, *entity).is_err()
+            {
+                return Some(*corpse_id);
+            }
+            None
+        })
+        .collect();
+    for corpse_id in &stale_ids {
+        corpse_index.0.remove(corpse_id);
+    }
+    stale_ids
 }
 
 #[test]
@@ -172,31 +224,24 @@ fn claimed_death_presentation_blocks_corpse_reconstruction_spawn() {
         ))
         .id();
 
-    {
-        let mut corpse_index = bevy_world.resource_mut::<CorpseRenderIndex>();
+    bevy_world.resource_scope(|world, mut corpse_index: Mut<CorpseRenderIndex>| {
         claim_corpse_presentation_for_death(
             &mut corpse_index,
-            &mut bevy_world.commands(),
+            &mut world.commands(),
             entity,
             corpse_id,
             unit_id,
         );
-    }
+    });
     bevy_world.flush();
+
+    let origin_pending =
+        test_corpse_origin_has_pending_death_root(&mut bevy_world, &world_data, unit_id);
+    assert!(origin_pending);
 
     let corpse_index = bevy_world.resource::<CorpseRenderIndex>();
     assert_eq!(corpse_presentation_entity_count(corpse_index, corpse_id), 1);
     assert!(bevy_world.get::<CorpsePresentationClaim>(entity).is_some());
-
-    let unit_render_roots = bevy_world.query::<&UnitRenderEntity>();
-    let death_presentations = bevy_world.query::<&DeathPresentation>();
-    let origin_pending = corpse_origin_has_pending_death_root(
-        &world_data,
-        unit_id,
-        &unit_render_roots,
-        &death_presentations,
-    );
-    assert!(origin_pending);
     assert!(!should_spawn_corpse_presentation(
         &world_data,
         corpse_id,
@@ -290,31 +335,16 @@ fn stale_claim_release_allows_corpse_reconstruction() {
         .0
         .insert(corpse_id, missing_entity);
 
-    let mut corpse_index = bevy_world.resource_mut::<CorpseRenderIndex>();
-    let entities = bevy_world.query::<Entity>();
-    let claims = bevy_world.query::<&CorpsePresentationClaim>();
-    let death_presentations = bevy_world.query::<&DeathPresentation>();
-    let corpse_render_entities = bevy_world.query::<&CorpseRenderEntity>();
-    let released = release_stale_corpse_presentation_owners(
-        &mut corpse_index,
-        &entities,
-        &claims,
-        &death_presentations,
-        &corpse_render_entities,
-    );
+    let released = bevy_world.resource_scope(|world, mut corpse_index: Mut<CorpseRenderIndex>| {
+        test_release_stale_corpse_presentation_owners(world, &mut corpse_index)
+    });
     assert_eq!(released, vec![corpse_id]);
+
+    let origin_pending =
+        test_corpse_origin_has_pending_death_root(&mut bevy_world, &world_data, unit_id);
 
     let corpse_index = bevy_world.resource::<CorpseRenderIndex>();
     assert_eq!(corpse_presentation_entity_count(corpse_index, corpse_id), 0);
-
-    let unit_render_roots = bevy_world.query::<&UnitRenderEntity>();
-    let death_presentations = bevy_world.query::<&DeathPresentation>();
-    let origin_pending = corpse_origin_has_pending_death_root(
-        &world_data,
-        unit_id,
-        &unit_render_roots,
-        &death_presentations,
-    );
     assert!(should_spawn_corpse_presentation(
         &world_data,
         corpse_id,

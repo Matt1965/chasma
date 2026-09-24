@@ -118,10 +118,10 @@ pub use scenes::{
     clear_world_entities, restore_inventory_persistence,
 };
 pub use settlement_window::{
-    handle_settlement_add_units_button, handle_settlement_ai_toggle, setup_settlement_window_panel,
-    sync_dev_settlement_panel_visibility, sync_settlement_ai_toggle_styles,
-    sync_settlement_dev_action_availability, sync_settlement_dev_button_styles,
-    sync_settlement_dev_panel,
+    build_settlement_dev_summary, format_focused_line, handle_settlement_add_units_button,
+    handle_settlement_ai_toggle, setup_settlement_window_panel, sync_dev_settlement_panel_visibility,
+    sync_settlement_ai_toggle_styles, sync_settlement_dev_action_availability,
+    sync_settlement_dev_button_styles, sync_settlement_dev_panel,
 };
 pub use spawn_tools::{
     DevSpawnOutcome, dev_spawn_position_from_terrain_click, spawn_by_mode_at_position,
@@ -137,7 +137,10 @@ pub use tooltip::{
     TOOLTIP_HOVER_DELAY_SECS, dismiss_dev_tooltip, setup_dev_tooltip,
     sync_dev_tooltip_presentation,
 };
-pub use window::{DevWindowId, DevWindowInteractionState, DevWindowRegistry, setup_dev_workspace};
+pub use window::{
+    DevWindowId, DevWindowInteractionState, DevWindowRegistry, NAVIGATION_EDITOR_WIDTH_PX,
+    setup_dev_workspace,
+};
 pub use world_window::{setup_world_window_panel, sync_dev_world_panel_visibility};
 
 use catalog::{sync_dev_catalog_chrome, track_catalog_tab_selection};

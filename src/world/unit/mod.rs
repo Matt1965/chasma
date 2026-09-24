@@ -138,12 +138,16 @@ pub use restore::{
     UnitRestoreError, normalize_restored_unit, restore_unit_record, validate_unit_for_restore,
 };
 pub use self_maintenance::{
-    HungerStage, NutritionProfile, SelfMaintenanceActivity, SelfMaintenanceContext,
-    UnitNutritionState, UnitSelfMaintenanceState,
-    evaluate_hunger_stage, hunger_prevents_work_claim, hunger_stage_label,
-    initialize_unit_nutrition, step_unit_nutrition_decay,
+    FoodSourceRef, HungerStage, NutritionProfile, SelfMaintenanceActivity, SelfMaintenanceContext,
+    UnitNutritionState, UnitSelfMaintenanceState, evaluate_hunger_stage, hunger_prevents_work_claim,
+    hunger_stage_label, initialize_unit_nutrition, step_unit_nutrition_decay,
     step_unit_self_maintenance_post_movement, step_unit_self_maintenance_pre_work,
     unit_in_active_combat,
+};
+#[cfg(test)]
+pub use self_maintenance::{
+    apply_nutrition_decay, eat_one_from_inventory, find_nearest_settlement_edible, is_edible_food,
+    restore_nutrition, select_food_source,
 };
 pub use source::UnitSource;
 pub use state::UnitState;

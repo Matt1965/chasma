@@ -83,13 +83,13 @@ pub use membership::{
     seed_unit_settlement_at_creation, settlement_containing_position, settlement_member_unit_ids,
 };
 pub use needs::{
-    NEED_EVAL_CADENCE_TICKS, NeedBlockingReason, NeedCatalog, NeedCatalogError, NeedDefinition,
-    NeedEvalContext, NeedEvaluationMethod, NeedEvaluationStore, NeedEvaluationValidationError,
-    NeedId, NeedMeasurementType, NeedResponseCategory, NeedSnapshot, NeedTargetSource, NeedTrend,
-    SettlementNeedEvaluation, apply_pressure_modifiers, evaluate_settlement_needs,
-    evaluate_settlement_needs_now, normalize_pressure, starter_need_definitions,
-    step_settlement_need_evaluation, validate_need_catalog, validate_need_snapshot,
-    validate_settlement_need_evaluation,
+    DEFAULT_FOOD_PLANNING_HORIZON_TICKS, NEED_EVAL_CADENCE_TICKS, NeedBlockingReason, NeedCatalog,
+    NeedCatalogError, NeedDefinition, NeedEvalContext, NeedEvaluationMethod, NeedEvaluationStore,
+    NeedEvaluationValidationError, NeedId, NeedMeasurementType, NeedResponseCategory, NeedSnapshot,
+    NeedTargetSource, NeedTrend, SettlementNeedEvaluation, apply_pressure_modifiers,
+    evaluate_settlement_needs, evaluate_settlement_needs_now, normalize_pressure,
+    starter_need_definitions, step_settlement_need_evaluation, validate_need_catalog,
+    validate_need_snapshot, validate_settlement_need_evaluation,
 };
 pub use planner::{
     BuildingLocalRetention, ItemDemandEntry, PlannerBuildingDecision, PlannerDiagnostics,
@@ -102,6 +102,8 @@ pub use planner::{
     step_settlement_production_planners, sum_category_count, sum_category_nutrition,
     validate_planner_config,
 };
+#[cfg(test)]
+pub use planner::apply_production_recommendations_for_tests;
 pub use record::{
     SettlementOwnership, SettlementRecord, SettlementTreasuryRecord, TreasuryTransactionRecord,
 };
@@ -109,12 +111,15 @@ pub use response::{
     CandidateResponse, CapabilityRequirement, ExpectedEffect, RESPONSE_DISCOVERY_CADENCE_TICKS,
     ResponseAvailability, ResponseBlockingReason, ResponseCandidateStore,
     ResponseCandidateValidationError, ResponseCatalog, ResponseCatalogError, ResponseDefinition,
-    ResponseDiscoveryContext, ResponseId, ResponseType, SettlementResponseCandidates,
-    discover_settlement_responses, discover_settlement_responses_now, score_candidate,
-    starter_response_definitions, step_settlement_response_discovery, validate_candidate,
-    validate_response_catalog_against_needs, validate_response_catalog_definitions,
-    validate_response_catalog_definitions_with_needs, validate_settlement_response_candidates,
+    ResponseDiscoveryContext, ResponseId, ResponseQualityScore, ResponseType,
+    SettlementResponseCandidates, discover_settlement_responses, discover_settlement_responses_now,
+    score_candidate, starter_response_definitions, step_settlement_response_discovery,
+    validate_candidate, validate_response_catalog_against_needs,
+    validate_response_catalog_definitions, validate_response_catalog_definitions_with_needs,
+    validate_settlement_response_candidates,
 };
+#[cfg(test)]
+pub use response::check_execution_path_available;
 pub use state::{
     ActiveEmergencyInstance, NeedCategory, NeedTarget, SettlementEmergencyState, SettlementKind,
     SettlementModifier, SettlementModifierSource, SettlementPlannerLifecycle, SettlementPolicies,

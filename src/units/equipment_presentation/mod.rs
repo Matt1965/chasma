@@ -14,7 +14,10 @@ mod morph_sync_tests;
 #[cfg(test)]
 mod tests;
 
-pub use components::{CorpseEquipmentVisual, UnitEquipmentVisual};
+pub use components::{
+    CorpseEquipmentVisual, UnitEquipmentMorphConfig, UnitEquipmentMorphFingerprint,
+    UnitEquipmentSceneRoot, UnitEquipmentVisual,
+};
 pub use corpse_sync::{
     CorpseEquipmentPresentationIndex, sync_corpse_equipment_presentation,
 };

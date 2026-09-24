@@ -29,6 +29,10 @@ pub use blueprint_inspection::{
     format_adopted_draft_status_message, frame_building_for_inspection,
     handle_blueprint_inspection_input,
 };
+#[cfg(test)]
+pub use blueprint_inspection::{
+    GeneratedBlueprintDraft, format_generated_draft_status_message, restore_pre_adoption_working_copy,
+};
 pub use building_actions::handle_building_production_repeat_button;
 pub use building_capabilities::BuildingDevCapabilities;
 pub use building_dev_action::{
@@ -50,4 +54,6 @@ pub use snapshot::{
     BuildingBlueprintInspectorSnapshot, BuildingInspectorSnapshot,
     DoodadInspectorSnapshot, ItemPileInspectorSnapshot, UnitInspectorSnapshot,
 };
+#[cfg(test)]
+pub use snapshot::ChunkResidencySnapshot;
 pub use state::WorldInspectorState;

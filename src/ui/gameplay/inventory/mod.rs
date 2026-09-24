@@ -28,4 +28,4 @@ pub use panel::{
     reconcile_inventory_ui_from_world, spawn_inventory_panel, sync_inventory_panel_contents,
     sync_inventory_panel_visibility,
 };
-pub use state::{InventoryDragPreviewState, InventoryUiState};
+pub use state::{InventoryDragPreviewState, InventoryDragState, InventoryUiState};

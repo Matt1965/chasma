@@ -308,6 +308,7 @@ fn real_hut_interior_click_resolves_to_runtime_region() {
     let unit_catalog = crate::world::UnitCatalog::default();
     let weapon_catalog = WeaponCatalog::default();
     let pile_settings = ItemPileSettings::default();
+    let corpse_settings = crate::world::CorpseSettings::default();
     let ctx = InteractionQueryContext::new(
         &world,
         &doodad_catalog,
@@ -317,7 +318,7 @@ fn real_hut_interior_click_resolves_to_runtime_region() {
         &unit_catalog,
         &weapon_catalog,
         &pile_settings,
-        &crate::world::CorpseSettings::default(),
+        &corpse_settings,
     );
     let interaction = query_world_interaction(&ctx, interior_click).expect("interaction");
     assert_eq!(

@@ -2,13 +2,15 @@
 
 use bevy::prelude::Vec3;
 
+use crate::ui::gameplay::inventory::equipment_ui::resolve_unit_equipment_ui;
 use crate::world::{
-    ChunkCoord, ChunkData, ChunkId,
-    ChunkLayout, Heightfield, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog,
+    BuildingCatalog, BuildingInteractionProfileCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout,
+    Heightfield, InventoryAccessResult, InventoryCatalogCtx, InventoryProfileCatalog, ItemCatalog,
     ItemCategoryCatalog, LocalPosition, TransferPlacementPolicy, UnitCatalog, UnitDefinitionId,
-    UnitOwnership, UnitSource, WorldData, WorldPosition, create_unit_with_inventory,
+    UnitOwnership, UnitSource, WorldData, WorldPosition, can_unit_access_inventory,
+    create_item_instance, create_unit_with_inventory, place_unique, place_unique_first_fit,
     starter_inventory_profile_definitions, starter_item_category_definitions,
-    starter_item_definitions, starter_unit_definitions, transfer_entry_full,
+    starter_item_definitions, starter_unit_definitions, transfer_entry_full, transfer_unique_item,
 };
 
 fn flat_world() -> WorldData {

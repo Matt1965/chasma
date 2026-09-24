@@ -3,7 +3,8 @@
 use super::definition::{
     BuildingNavigationBlueprint, NavigationEntranceDefinition, NavigationFloorDefinition,
     NavigationPolygon2d, NavigationRegionConnectionDefinition, NavigationRegionConnectionKind,
-    NavigationRegionDefinition,
+    NavigationRegionDefinition, NavigationVerticalTransitionDefinition,
+    NavigationVerticalTransitionKind,
 };
 
 fn region(

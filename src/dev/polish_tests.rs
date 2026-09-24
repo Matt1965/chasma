@@ -1,7 +1,13 @@
 //! U-DEV1 integration tests for dev mode polish (ADR-047).
 
+use std::collections::HashSet;
 
-
+use crate::debug::DebugOverlayConfig;
+use crate::dev::{
+    browse_catalog_entries, CatalogBrowseIndex, CatalogFilterCache, DefinitionId, DevModeState,
+    DevSearchDebounce, DevTab, SpawnMode,
+};
+use crate::world::{BuildingCatalog, DoodadCatalog, UnitCatalog};
 
 #[test]
 fn favorites_persist_during_session() {

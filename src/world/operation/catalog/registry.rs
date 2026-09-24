@@ -130,6 +130,7 @@ fn validate_definition(definition: &OperationDefinition) -> Result<(), Operation
 mod tests {
     use super::*;
     use crate::world::operation::catalog::starter::test_workbench_operation;
+    use crate::world::operation::{OperationInputDefinition, OperationOutputDefinition};
 
     #[test]
     fn starter_operations_resolve() {

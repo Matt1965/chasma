@@ -2,7 +2,8 @@
 
 use bevy::prelude::*;
 
-use crate::world::unit::{UnitOrder, step_unit_movement};
+use super::test_imports::*;
+use crate::world::unit::step_unit_movement;
 use crate::world::{
     Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingLifecycleState,
     BuildingNavigationBlueprintCatalog, BuildingOwnership, ChunkCoord, ChunkData, ChunkId,

@@ -48,7 +48,7 @@ pub struct PlayerPlugin;
 /// [`crate::app::configure_update_pipeline_sets`] places after runtime sync.
 /// Ordering any of them relative to sets that run earlier in the frame
 /// (camera, view focus, terrain streaming) produces a schedule cycle.
-pub(crate) fn configure_player_control_sets(app: &mut App) {
+pub fn configure_player_control_sets(app: &mut App) {
     #[cfg(feature = "dev")]
     {
         use crate::dev::{DevModeInputSystems, DevModePresentationSystems};

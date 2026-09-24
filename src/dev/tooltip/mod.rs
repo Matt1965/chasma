@@ -5,5 +5,5 @@ mod state;
 mod systems;
 
 pub use components::{DevTooltipContent, DevTooltipHoverZone, DevTooltipTarget};
-pub use state::{DevTooltipState, TOOLTIP_HOVER_DELAY_SECS};
+pub use state::{DevTooltipState, TOOLTIP_HIDE_GRACE_SECS, TOOLTIP_HOVER_DELAY_SECS};
 pub use systems::{dismiss_dev_tooltip, setup_dev_tooltip, sync_dev_tooltip_presentation};

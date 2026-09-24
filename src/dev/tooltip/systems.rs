@@ -139,6 +139,7 @@ pub fn sync_dev_tooltip_presentation(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dev::tooltip::{TOOLTIP_HIDE_GRACE_SECS, TOOLTIP_HOVER_DELAY_SECS};
 
     #[test]
     fn hide_grace_prevents_immediate_dismiss() {

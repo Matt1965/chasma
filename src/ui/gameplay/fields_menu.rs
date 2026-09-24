@@ -179,7 +179,8 @@ pub fn dismiss_fields_menu_on_outside_click(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::terrain::field_overlay::TerrainOverlayState;
+    use crate::terrain::field_overlay::{TerrainOverlayState, PLAYER_FIELD_MENU_IDS};
+    use crate::ui::gameplay::utility_panel::HudUtilityButton;
     use crate::world::TerrainFieldCatalog;
 
     #[test]

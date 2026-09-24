@@ -51,7 +51,8 @@ pub fn clear_build_mode_terrain_overlay_on_exit(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::BuildingDefinitionId;
+    use crate::terrain::field_overlay::TerrainOverlayState;
+    use crate::world::{BuildingDefinitionId, TerrainFieldId};
 
     #[test]
     fn temporary_override_preserves_manual_field() {

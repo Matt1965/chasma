@@ -4,6 +4,7 @@ use std::path::Path;
 
 use bevy::prelude::*;
 
+use super::test_imports::*;
 use super::catalog::{
     BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH, BuildingNavigationBlueprintCatalog,
 };

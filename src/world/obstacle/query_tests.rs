@@ -1,3 +1,5 @@
+use bevy::prelude::{Quat, Vec3};
+
 use super::*;
 use crate::world::{
     ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, DoodadPlacementOverrides,

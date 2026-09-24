@@ -69,6 +69,10 @@ pub use progress::{
     scale_progress,
 };
 pub use query::workstation_workers_for_building;
+#[cfg(test)]
+pub use farm::grow_prispods_operation_id;
+#[cfg(test)]
+pub use step::{apply_operation_ticks, expected_ticks_to_complete};
 pub use step::step_workstation_operation;
 pub use store::{
     BuildingOperationSaveState, BuildingOperationState, BuildingOperationStore,

@@ -358,7 +358,7 @@ mod tests {
         UnitSource, create_building_with_inventory, create_unit_with_inventory,
         starter_building_definitions, starter_inventory_profile_definitions,
         starter_item_category_definitions, starter_item_definitions, starter_unit_definitions,
-        transfer_one,
+        transfer_one, WorldPosition,
     };
     use bevy::prelude::{Quat, Vec3};
 

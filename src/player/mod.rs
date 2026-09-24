@@ -14,7 +14,7 @@ pub use move_feedback::MoveCommandFeedback;
 pub use ownership::{LocalPlayerOwnership, selection_policy_for_frame};
 pub use plugin::{
     DebugPresentationSystems, GameplayPresentationSystems, PlayerControlSystems, PlayerPlugin,
-    RuntimeSyncSystems,
+    RuntimeSyncSystems, configure_player_control_sets,
 };
 pub use selection_policy::SelectionPolicyState;
 pub use selection_ring_mesh::selection_ring_radius;

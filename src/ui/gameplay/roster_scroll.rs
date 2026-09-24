@@ -239,7 +239,7 @@ impl Plugin for SquadRosterScrollPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::hud::roster_content_width;
+    use crate::ui::gameplay::hud::roster_content_width;
 
     const CARD_WIDTH: f32 = 84.0;
     const CARD_GAP: f32 = 6.0;

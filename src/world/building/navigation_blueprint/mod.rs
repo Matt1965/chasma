@@ -14,6 +14,13 @@ mod error;
 mod fixtures;
 mod id;
 #[cfg(test)]
+mod test_imports;
+#[cfg(test)]
+pub use fixtures::{
+    corridor_hut_navigation_blueprint, dual_doorway_navigation_blueprint,
+    one_region_doorless_navigation_blueprint, two_floor_two_room_navigation_blueprint,
+};
+#[cfg(test)]
 mod interior_entry_tests;
 mod migrate;
 #[cfg(test)]

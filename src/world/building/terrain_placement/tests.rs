@@ -4,6 +4,7 @@ use super::{
     TerrainPlacementMode, resolve_building_placement, rotation_from_yaw_and_normal,
     sample_terrain_under_footprint, terrain_clearance_sim,
 };
+use super::sample::base_height_on_plane_at;
 use crate::world::building::catalog::{BuildingCatalog, BuildingDefinitionId};
 use crate::world::building::placement_validation::{
     BuildingPlacementContext, BuildingPlacementRejectReason, validate_building_placement,
@@ -256,7 +257,7 @@ fn conform_preserves_yaw_and_clears_terrain() {
     let anchor_xz = Vec2::new(64.0, 64.0);
     let anchor_y = resolved.anchor.to_global(layout()).y;
     for sample in &report.samples {
-        let base = super::base_height_on_plane_at(
+        let base = base_height_on_plane_at(
             anchor_xz,
             anchor_y,
             up,

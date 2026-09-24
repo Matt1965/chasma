@@ -4,13 +4,14 @@ use bevy::prelude::{Quat, Vec3};
 
 use super::*;
 use crate::world::building::catalog::BuildingCatalog;
+use crate::world::building::operation::{ControlSource, OperationLifecycle};
 use crate::world::inventory::InventoryCatalogCtx;
 use crate::world::operation::OperationCatalog;
 use crate::world::settlement::arbiter::arbitrate_settlement_intent_now;
 use crate::world::settlement::emergency::EmergencyCatalog;
 use crate::world::settlement::needs::{NeedCatalog, evaluate_settlement_needs_now};
 use crate::world::settlement::response::{ResponseCatalog, discover_settlement_responses_now};
-use crate::world::settlement::state::{NeedCategory, NeedTarget, SettlementKind};
+use crate::world::settlement::state::{NeedCategory, NeedTarget, SettlementKind, SettlementState};
 use crate::world::settlement::{
     SettlementOwnership, assign_building_settlement, create_settlement_with_treasury,
 };

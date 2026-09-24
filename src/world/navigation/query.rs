@@ -71,6 +71,7 @@ pub fn find_path_with_spaces(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::xz_distance;
     use crate::world::{
         BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadCatalog,
         DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource, FootprintCatalog, Heightfield,

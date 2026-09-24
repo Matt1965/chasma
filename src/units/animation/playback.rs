@@ -831,6 +831,8 @@ fn prune_state_index(world: &WorldData, state_index: &mut UnitAnimationStateInde
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::units::animation::components::LayeredPlaybackState;
+    use crate::world::AnimationClipKey;
 
     #[test]
     fn locomotion_state_persists_in_index() {
@@ -844,7 +846,7 @@ mod tests {
             UnitId::new(7),
             UnitAnimationPersistedState {
                 clip: AnimationPlaybackClip::Locomotion(AnimationClipKey::Run),
-                layers: empty_layers(),
+                layers: LayeredPlaybackState::default(),
                 profile_id: crate::world::AnimationProfileId::new("humanoid"),
                 last_attack_phase: None,
                 attack_key: None,

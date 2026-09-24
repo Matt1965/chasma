@@ -1,10 +1,12 @@
 //! Presentation lifecycle and unit-ring target tests.
 
+use crate::client::selection::presentation::WorldObjectPresentationTarget;
 use crate::client::selection::{
-    ApplyWorldSelectionParams,
-    WorldSelectionRevision, WorldSelectionState,
+    ApplyWorldSelectionParams, WorldSelectionCategory, WorldSelectionChange,
+    WorldSelectionRevision, WorldSelectionState, apply_world_selection,
 };
 use crate::units::input::SelectedUnits;
+use crate::world::{BuildingId, DoodadId, ItemPileId, UnitId};
 
 fn apply_params<'a>(
     world_selection: &'a mut WorldSelectionState,
