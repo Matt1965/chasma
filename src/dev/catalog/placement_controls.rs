@@ -15,11 +15,8 @@ pub struct PlacementControlSet {
     pub grid_columns: bool,
     pub grid_rows: bool,
     pub affiliation: bool,
-    pub terrain_snap: bool,
-    pub preview: bool,
     pub rotation: bool,
     pub scale: bool,
-    pub cancel: bool,
     pub footprint_status: bool,
 }
 
@@ -32,11 +29,8 @@ pub enum PlacementControlField {
     GridColumns,
     GridRows,
     Affiliation,
-    TerrainSnap,
-    Preview,
     Rotation,
     Scale,
-    Cancel,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -93,9 +87,6 @@ fn unit_controls(mode: BrushMode) -> PlacementControlSet {
     let mut set = PlacementControlSet {
         pattern: true,
         affiliation: true,
-        terrain_snap: true,
-        preview: true,
-        cancel: true,
         ..Default::default()
     };
     match mode {
@@ -130,11 +121,8 @@ fn doodad_controls(mode: BrushMode, doodad: Option<&DoodadDefinition>) -> Placem
 fn building_controls(building: Option<&BuildingDefinition>) -> PlacementControlSet {
     let scale_supported = building.is_some_and(|def| def.allow_instance_scale);
     PlacementControlSet {
-        preview: true,
         rotation: true,
         scale: scale_supported,
-        terrain_snap: true,
-        cancel: true,
         footprint_status: true,
         ..Default::default()
     }
@@ -196,20 +184,11 @@ pub fn placement_control_tooltip(field: PlacementControlField) -> &'static str {
             "Grid dimensions for grid brush placement."
         }
         PlacementControlField::Affiliation => {
-            "Cycle spawn team (Player ↔ Wilds). Units only; does not change placed doodads/buildings."
-        }
-        PlacementControlField::TerrainSnap => {
-            "Snap placement to terrain height. Does not bypass slope or overlap validation."
-        }
-        PlacementControlField::Preview => {
-            "Show placement preview ghosts before click. Diagnostic presentation only."
+            "Cycle spawn team (Player <-> Wilds). Units only; does not change placed doodads/buildings."
         }
         PlacementControlField::Rotation => "Initial yaw in degrees for the next placement.",
         PlacementControlField::Scale => {
             "Uniform instance scale for the next placement. Hidden when the definition disallows scaling."
-        }
-        PlacementControlField::Cancel => {
-            "Cancel armed placement and clear preview ghosts. Right-click also cancels when no UI is focused."
         }
     }
 }

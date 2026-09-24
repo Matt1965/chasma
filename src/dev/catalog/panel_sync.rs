@@ -202,15 +202,9 @@ fn field_visible(
 
         PlacementControlField::Affiliation => controls.affiliation,
 
-        PlacementControlField::TerrainSnap => controls.terrain_snap,
-
-        PlacementControlField::Preview => controls.preview,
-
         PlacementControlField::Rotation => controls.rotation,
 
         PlacementControlField::Scale => controls.scale,
-
-        PlacementControlField::Cancel => controls.cancel,
     }
 }
 

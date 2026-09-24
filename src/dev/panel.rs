@@ -175,7 +175,7 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::Count,
         ),
         (
-            "Count −",
+            "Count -",
             DevContextualPlacementAction::CountDown,
             PlacementControlField::Count,
         ),
@@ -185,7 +185,7 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::Spacing,
         ),
         (
-            "Spacing −",
+            "Spacing -",
             DevContextualPlacementAction::SpacingDown,
             PlacementControlField::Spacing,
         ),
@@ -195,7 +195,7 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::Radius,
         ),
         (
-            "Radius −",
+            "Radius -",
             DevContextualPlacementAction::RadiusDown,
             PlacementControlField::Radius,
         ),
@@ -205,7 +205,7 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::GridColumns,
         ),
         (
-            "Cols −",
+            "Cols -",
             DevContextualPlacementAction::GridColsDown,
             PlacementControlField::GridColumns,
         ),
@@ -215,7 +215,7 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::GridRows,
         ),
         (
-            "Rows −",
+            "Rows -",
             DevContextualPlacementAction::GridRowsDown,
             PlacementControlField::GridRows,
         ),
@@ -225,22 +225,12 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::Affiliation,
         ),
         (
-            "Terrain snap",
-            DevContextualPlacementAction::ToggleTerrainSnap,
-            PlacementControlField::TerrainSnap,
-        ),
-        (
-            "Preview",
-            DevContextualPlacementAction::TogglePreview,
-            PlacementControlField::Preview,
-        ),
-        (
             "Yaw +",
             DevContextualPlacementAction::RotationUp,
             PlacementControlField::Rotation,
         ),
         (
-            "Yaw −",
+            "Yaw -",
             DevContextualPlacementAction::RotationDown,
             PlacementControlField::Rotation,
         ),
@@ -250,14 +240,9 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::Scale,
         ),
         (
-            "Scale −",
+            "Scale -",
             DevContextualPlacementAction::ScaleDown,
             PlacementControlField::Scale,
-        ),
-        (
-            "Cancel placement",
-            DevContextualPlacementAction::CancelPlacement,
-            PlacementControlField::Cancel,
         ),
     ]
 }
@@ -1028,13 +1013,13 @@ pub(crate) fn sync_dev_panel_content(
         **text = match dev_state.active_tab {
             DevTab::Units | DevTab::Doodads | DevTab::Buildings => {
                 format!(
-                    "Definitions ({}) — enabled-only: {} — E toggles",
+                    "Definitions ({}) - enabled-only: {} - E toggles",
                     catalog_entries.len(),
                     dev_state.enabled_only,
                 )
             }
             DevTab::Items => format!(
-                "Item catalog ({}) — enabled-only: {}",
+                "Item catalog ({}) - enabled-only: {}",
                 catalog_entries.len(),
                 dev_state.enabled_only,
             ),
@@ -1233,7 +1218,7 @@ pub(crate) fn sync_dev_simulation_status(
         "running"
     };
     **label = format!(
-        "Sim: {state:<8} tick {tick:>6}  Space pause · Shift+Space step",
+        "Sim: {state:<8} tick {tick:>6}   Space pause   Shift+Space step",
         state = state,
         tick = control.current_tick,
     );
@@ -1439,7 +1424,6 @@ pub(crate) fn handle_dev_panel_ui_interaction(
     registry: Res<DevWindowRegistry>,
     mut gate: ResMut<crate::dev::DevModeInputGate>,
     mut sim_requests: ResMut<SimulationControlRequests>,
-    mut preview: ResMut<crate::dev::tools::DevPlacementPreview>,
     mut buttons: ParamSet<(
         Query<(&Interaction, &DevTabButton), Changed<Interaction>>,
         Query<(&Interaction, &DevListRow), Changed<Interaction>>,
@@ -1580,7 +1564,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
         }
         gate.block_gameplay_mouse = true;
         panel_click_without_search = true;
-        apply_contextual_placement_action(&mut dev_state, button.action, &mut preview);
+        apply_contextual_placement_action(&mut dev_state, button.action);
     }
 
     if panel_click_without_search {
@@ -1591,7 +1575,6 @@ pub(crate) fn handle_dev_panel_ui_interaction(
 fn apply_contextual_placement_action(
     state: &mut DevModeState,
     action: DevContextualPlacementAction,
-    preview: &mut crate::dev::tools::DevPlacementPreview,
 ) {
     match action {
         DevContextualPlacementAction::CycleBrush => {
@@ -1627,13 +1610,6 @@ fn apply_contextual_placement_action(
         DevContextualPlacementAction::GridRowsDown => {
             state.brush.grid_rows = state.brush.grid_rows.saturating_sub(1).max(1);
         }
-        DevContextualPlacementAction::ToggleTerrainSnap => {
-            state.placement_rules.snap_to_terrain = !state.placement_rules.snap_to_terrain;
-            state.terrain_conforming = state.placement_rules.snap_to_terrain;
-        }
-        DevContextualPlacementAction::TogglePreview => {
-            state.show_preview = !state.show_preview;
-        }
         DevContextualPlacementAction::CycleSpawnTeam => {
             state.cycle_spawn_affiliation();
         }
@@ -1648,10 +1624,6 @@ fn apply_contextual_placement_action(
         }
         DevContextualPlacementAction::ScaleDown => {
             state.placement_uniform_scale = (state.placement_uniform_scale - 0.05).max(0.1);
-        }
-        DevContextualPlacementAction::CancelPlacement => {
-            super::input::cancel_dev_placement(state, preview);
-            state.catalog.set_status("Placement cancelled", 180);
         }
     }
 }

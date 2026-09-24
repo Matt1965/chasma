@@ -113,12 +113,34 @@ fn windows_launcher_excludes_advanced_entries() {
 }
 
 #[test]
+#[test]
+fn catalog_placement_labels_avoid_unsupported_glyphs() {
+    use crate::dev::widgets::glyph_safety::contains_forbidden_dev_ui_glyph;
+
+    for label in [
+        "Count -",
+        "Spacing -",
+        "Radius -",
+        "Cols -",
+        "Rows -",
+        "Yaw -",
+        "Scale -",
+        "Definitions (5) - enabled-only: true - E toggles",
+        "Sim: running   tick      0   Space pause   Shift+Space step",
+    ] {
+        assert!(
+            !contains_forbidden_dev_ui_glyph(label),
+            "unsupported glyph in `{label}`"
+        );
+    }
+}
+
+#[test]
 fn catalog_placement_actions_exclude_deselect() {
     use super::components::DevContextualPlacementAction;
 
     for action in [
         DevContextualPlacementAction::CycleSpawnTeam,
-        DevContextualPlacementAction::CancelPlacement,
         DevContextualPlacementAction::CycleBrush,
     ] {
         let name = format!("{action:?}");
