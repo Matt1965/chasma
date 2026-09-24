@@ -35,7 +35,10 @@ pub fn sync_dev_catalog_chrome(
     mut chrome: ParamSet<(
         Query<(&DevTabChrome, &mut Visibility, &mut Node), With<DevPanelUi>>,
         Query<&mut Node, (With<DevContextualPlacementSection>, Without<DevTabChrome>)>,
-        Query<(&DevContextualPlacementButton, &mut Visibility), Without<DevTabChrome>>,
+        Query<
+            (&DevContextualPlacementButton, &mut Visibility, &mut Node),
+            Without<DevTabChrome>,
+        >,
     )>,
 
     mut texts: ParamSet<(
@@ -69,8 +72,9 @@ pub fn sync_dev_catalog_chrome(
             node.display = Display::None;
         }
 
-        for (_button, mut visibility) in chrome.p2().iter_mut() {
+        for (_button, mut visibility, mut node) in chrome.p2().iter_mut() {
             *visibility = Visibility::Hidden;
+            node.display = Display::None;
         }
 
         return;
@@ -129,13 +133,19 @@ pub fn sync_dev_catalog_chrome(
         };
     }
 
-    for (button, mut visibility) in chrome.p2().iter_mut() {
+    for (button, mut visibility, mut node) in chrome.p2().iter_mut() {
         let show = field_visible(button.field, &controls);
 
         *visibility = if show {
             Visibility::Visible
         } else {
             Visibility::Hidden
+        };
+        // Visibility::Hidden still reserves flex space; collapse inactive controls.
+        node.display = if show {
+            Display::Flex
+        } else {
+            Display::None
         };
     }
 

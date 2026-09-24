@@ -344,8 +344,11 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
                 DevWindowUi,
                 Node {
                     width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
                     flex_direction: FlexDirection::Column,
                     row_gap: Val::Px(4.0),
+                    flex_grow: 1.0,
+                    flex_shrink: 1.0,
                     min_height: Val::Px(0.0),
                     overflow: Overflow::clip(),
                     ..default()
@@ -1682,12 +1685,18 @@ pub(crate) fn sync_catalog_panel_layout(
     }
 
     for mut node in nodes.p1().iter_mut() {
+        node.height = Val::Px(list_height);
         node.max_height = Val::Px(list_height);
         node.min_height = Val::Px(ROW_HEIGHT_PX * 4.0);
+        node.flex_grow = 1.0;
+        node.flex_shrink = 1.0;
     }
 
     for mut node in nodes.p2().iter_mut() {
+        node.height = Val::Px(list_height);
         node.max_height = Val::Px(list_height);
         node.min_height = Val::Px(ROW_HEIGHT_PX * 4.0);
+        node.flex_grow = 1.0;
+        node.flex_shrink = 1.0;
     }
 }
