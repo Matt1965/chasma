@@ -1,10 +1,10 @@
 //! Unit interaction menu row rules.
 
 use super::content::{build_interaction_menu_rows, should_omit_interaction_menu_option};
-use crate::world::dialogue::config::{DialogueActionKind, DialogueOptionRule, UnitDialogueConfig};
 use crate::world::relationship::AuthoredRelationshipCatalog;
 use crate::world::{
-    Affiliation, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DialogueUnavailableReason,
+    Affiliation, ChunkCoord, ChunkData, ChunkId, ChunkLayout, DialogueActionKind,
+    DialogueOptionRule, DialogueUnavailableReason, UnitDialogueConfig,
     Heightfield, LocalPosition, UnitDefinitionId, UnitId, UnitOwnership, UnitPlacement, UnitRecord,
     UnitSource, WorldData, WorldPosition,
 };
