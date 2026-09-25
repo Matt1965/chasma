@@ -46,7 +46,7 @@ pub struct DefinitionAnimationGraph {
     pub hit_reaction_duration: Option<f32>,
     /// Idle fallback node for missing attack clips (A2).
     pub idle_fallback_node: Option<AnimationNodeIndex>,
-    /// Additive blend root for masked layering (A4).
+    /// Additive overlay root for upper-body attack clips (A4).
     pub blend_root: AnimationNodeIndex,
     pub profile_id: crate::world::AnimationProfileId,
     pub share_key: AnimationGraphShareKey,
@@ -373,7 +373,9 @@ fn assemble_graph_from_clips(
     }
 
     let mut graph = AnimationGraph::new();
-    let blend_root = graph.add_additive_blend(1.0, graph.root);
+    // Masked locomotion + attack clips are absolute poses on the blend root; clip masks
+    // partition bones so layers do not overlap. Additive overlay node reserved for A4+.
+    let overlay_additive_root = graph.add_additive_blend(1.0, graph.root);
 
     let mut locomotion_nodes = HashMap::new();
     let mut layered_locomotion_nodes = HashMap::new();
@@ -381,11 +383,11 @@ fn assemble_graph_from_clips(
     for (key, handle, duration) in &resolved.locomotion {
         // Locomotion clips are authored full-body (UAL Idle/Walk/Run/Mine).
         let full_body_node =
-            graph.add_clip_with_mask(handle.clone(), FULL_BODY_CLIP_MASK, 1.0, blend_root);
+            graph.add_clip_with_mask(handle.clone(), FULL_BODY_CLIP_MASK, 1.0, graph.root);
         locomotion_nodes.insert(*key, full_body_node);
         // Masked attack layering uses a lower-body-only copy of the same clip.
         let layered_node =
-            graph.add_clip_with_mask(handle.clone(), LOWER_BODY_CLIP_MASK, 1.0, blend_root);
+            graph.add_clip_with_mask(handle.clone(), LOWER_BODY_CLIP_MASK, 1.0, graph.root);
         layered_locomotion_nodes.insert(*key, layered_node);
         locomotion_durations.insert(*key, *duration);
     }
@@ -393,7 +395,8 @@ fn assemble_graph_from_clips(
     let mut attack_nodes = HashMap::new();
     let mut attack_durations = HashMap::new();
     for (weapon_id, handle, duration) in &resolved.attacks {
-        let node = graph.add_clip_with_mask(handle.clone(), UPPER_BODY_CLIP_MASK, 1.0, blend_root);
+        let node =
+            graph.add_clip_with_mask(handle.clone(), UPPER_BODY_CLIP_MASK, 1.0, graph.root);
         attack_nodes.insert(weapon_id.clone(), node);
         attack_durations.insert(weapon_id.clone(), *duration);
     }
@@ -401,7 +404,8 @@ fn assemble_graph_from_clips(
     let mut attack_variant_nodes = HashMap::new();
     let mut attack_variant_durations = HashMap::new();
     for (weapon_id, handle, duration) in &resolved.attack_variants {
-        let node = graph.add_clip_with_mask(handle.clone(), UPPER_BODY_CLIP_MASK, 1.0, blend_root);
+        let node =
+            graph.add_clip_with_mask(handle.clone(), UPPER_BODY_CLIP_MASK, 1.0, graph.root);
         attack_variant_nodes.insert(weapon_id.clone(), node);
         attack_variant_durations.insert(weapon_id.clone(), *duration);
     }
@@ -409,18 +413,19 @@ fn assemble_graph_from_clips(
     let mut combat_idle_nodes = HashMap::new();
     let mut combat_idle_durations = HashMap::new();
     for (weapon_id, handle, duration) in &resolved.combat_idles {
-        let node = graph.add_clip_with_mask(handle.clone(), FULL_BODY_CLIP_MASK, 1.0, blend_root);
+        let node =
+            graph.add_clip_with_mask(handle.clone(), FULL_BODY_CLIP_MASK, 1.0, graph.root);
         combat_idle_nodes.insert(weapon_id.clone(), node);
         combat_idle_durations.insert(weapon_id.clone(), *duration);
     }
 
     let death_node = resolved.death.as_ref().map(|(handle, _)| {
-        graph.add_clip_with_mask(handle.clone(), FULL_BODY_CLIP_MASK, 1.0, blend_root)
+        graph.add_clip_with_mask(handle.clone(), FULL_BODY_CLIP_MASK, 1.0, graph.root)
     });
     let death_duration = resolved.death.as_ref().map(|(_, duration)| *duration);
 
     let hit_reaction_node = resolved.hit.as_ref().map(|(handle, _)| {
-        graph.add_clip_with_mask(handle.clone(), FULL_BODY_CLIP_MASK, 1.0, blend_root)
+        graph.add_clip_with_mask(handle.clone(), FULL_BODY_CLIP_MASK, 1.0, graph.root)
     });
     let hit_reaction_duration = resolved.hit.as_ref().map(|(_, duration)| *duration);
 
@@ -443,7 +448,7 @@ fn assemble_graph_from_clips(
         hit_reaction_node,
         hit_reaction_duration,
         idle_fallback_node,
-        blend_root,
+        blend_root: overlay_additive_root,
         profile_id: profile_id.clone(),
         share_key,
     })
