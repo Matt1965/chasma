@@ -166,6 +166,7 @@ fn activate_imported_hut(
         building_id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .expect("complete hut");
     building_id
@@ -954,6 +955,7 @@ fn instance_override_activates_without_profile() {
         building_id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .expect("complete hut");
 
@@ -1019,6 +1021,7 @@ fn cold_load_reconcile_activates_persisted_hut_without_editor() {
         &doodad_catalog,
         occupancy,
         &nav_catalog,
+        None,
         building_id,
         false,
     )
@@ -1074,6 +1077,7 @@ fn construction_labor_completion_activates_with_nav_catalog() {
         Some(&nav_catalog),
         building_id,
         1.0,
+        None,
     )
     .expect("complete via labor");
 
@@ -1133,6 +1137,7 @@ fn noop_save_apply_preserves_runtime_topology() {
             interior: &interior,
             doodad: &doodad_catalog,
             footprint: &footprint,
+            inventory_ctx: None,
         },
         &mut nav_catalog,
         &mut nav_revision,
@@ -1206,6 +1211,7 @@ fn activated_flag_with_empty_runtime_rehydrates_on_cold_load() {
         &doodad_catalog,
         occupancy,
         &nav_catalog,
+        None,
         building_id,
         false,
     )
@@ -1275,6 +1281,7 @@ fn cold_load_matches_noop_save_apply_topology() {
         &doodad_catalog,
         occupancy,
         &nav_catalog,
+        None,
         building_id_cold,
         false,
     )
@@ -1314,6 +1321,7 @@ fn cold_load_matches_noop_save_apply_topology() {
             interior: &interior,
             doodad: &doodad_catalog,
             footprint: &footprint,
+            inventory_ctx: None,
         },
         &mut nav_catalog.clone(),
         &mut nav_revision,
@@ -1360,6 +1368,7 @@ fn reconcile_is_idempotent_when_topology_hydrated() {
         &doodad_catalog,
         occupancy,
         &nav_catalog,
+        None,
         building_id,
         false,
     )
@@ -1416,6 +1425,7 @@ fn missing_resolved_blueprint_clears_stale_runtime() {
         &doodad_catalog,
         occupancy,
         &empty_nav,
+        None,
         building_id,
         false,
     )

@@ -162,6 +162,7 @@ pub fn spawn_selected_at_position(
                         doodad_catalog,
                         occupancy,
                         nav_catalog,
+                        Some(inventory_ctx),
                         record.id,
                     );
                     DevSpawnOutcome::SpawnedBuilding {

@@ -179,6 +179,7 @@ fn step_farm_labor(
         doodad,
         occupancy,
         None,
+        Some(test_inventory_ctx()),
         delta_seconds,
         Some(&mut params),
     );

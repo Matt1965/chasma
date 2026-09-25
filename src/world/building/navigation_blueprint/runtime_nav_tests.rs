@@ -76,6 +76,7 @@ fn activate_hut(world: &mut WorldData) -> crate::world::BuildingId {
         id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .unwrap();
     id

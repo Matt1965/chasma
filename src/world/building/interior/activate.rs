@@ -18,11 +18,13 @@ use crate::world::building::navigation_blueprint::{
 use crate::world::building::record::BuildingRecord;
 use crate::world::building::state::BuildingInteriorState;
 use crate::world::building::state::BuildingLifecycleState;
+use crate::world::building::authoring::BuildingAuthoringError;
+use crate::world::building::inventory_binding::definition_requires_inventory_allocation;
 use crate::world::{
     BuildingId, BuildingSource, DoodadCatalog, DoodadPlacementOverrides, DoodadSource,
-    OccupancyCatalogs, PortalId, PortalRecord, SpaceId, WorldData, WorldPosition,
-    building_model_world_transform, create_building, create_doodad,
-    register_building_space_profile,
+    InventoryCatalogCtx, OccupancyCatalogs, PortalId, PortalRecord, SpaceId, WorldData,
+    WorldPosition, building_model_world_transform, create_building, create_building_with_inventory,
+    create_doodad, register_building_space_profile,
 };
 
 /// Activate interior navigation and, when present, interior presentation.
@@ -38,6 +40,7 @@ pub fn activate_building_interior(
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
     nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
+    inventory_ctx: Option<&InventoryCatalogCtx<'_>>,
     building_id: BuildingId,
     profile_id: Option<&InteriorProfileId>,
 ) -> Result<InteriorActivationOutcome, InteriorError> {
@@ -211,6 +214,7 @@ pub fn activate_building_interior(
                 building_catalog,
                 doodad_catalog,
                 occupancy,
+                inventory_ctx,
                 &record,
                 profile,
                 &space_keys,
@@ -384,6 +388,7 @@ pub fn try_activate_interior_if_complete(
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
     nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
+    inventory_ctx: Option<&InventoryCatalogCtx<'_>>,
     building_id: BuildingId,
 ) -> Result<(), InteriorError> {
     let record = world
@@ -400,6 +405,7 @@ pub fn try_activate_interior_if_complete(
             doodad_catalog,
             occupancy,
             nav_catalog,
+            inventory_ctx,
             building_id,
             false,
         )?;
@@ -421,6 +427,7 @@ pub fn try_activate_interior_if_complete(
         doodad_catalog,
         occupancy,
         None,
+        inventory_ctx,
         building_id,
         definition,
     )
@@ -487,6 +494,7 @@ pub fn reconcile_building_navigation_runtime(
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
     nav_catalog: &BuildingNavigationBlueprintCatalog,
+    inventory_ctx: Option<&InventoryCatalogCtx<'_>>,
     building_id: BuildingId,
     force_rebuild: bool,
 ) -> Result<NavigationReconcileOutcome, InteriorError> {
@@ -558,6 +566,7 @@ pub fn reconcile_building_navigation_runtime(
         doodad_catalog,
         occupancy,
         Some(nav_catalog),
+        inventory_ctx,
         building_id,
         profile_id.as_ref(),
     )?;
@@ -577,6 +586,7 @@ pub fn reconcile_all_building_navigation_runtimes(
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
     nav_catalog: &BuildingNavigationBlueprintCatalog,
+    inventory_ctx: Option<&InventoryCatalogCtx<'_>>,
 ) {
     for building_id in world.sorted_building_ids() {
         let _ = reconcile_building_navigation_runtime(
@@ -586,6 +596,7 @@ pub fn reconcile_all_building_navigation_runtimes(
             doodad_catalog,
             occupancy,
             nav_catalog,
+            inventory_ctx,
             building_id,
             false,
         );
@@ -599,6 +610,7 @@ fn activate_interior_for_definition(
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
     nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
+    inventory_ctx: Option<&InventoryCatalogCtx<'_>>,
     building_id: BuildingId,
     definition: &BuildingDefinition,
 ) -> Result<InteriorActivationOutcome, InteriorError> {
@@ -615,6 +627,7 @@ fn activate_interior_for_definition(
         doodad_catalog,
         occupancy,
         nav_catalog,
+        inventory_ctx,
         building_id,
         profile_id.as_ref(),
     )
@@ -703,6 +716,7 @@ fn spawn_interior_children(
     building_catalog: &BuildingCatalog,
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
+    inventory_ctx: Option<&InventoryCatalogCtx<'_>>,
     parent: &BuildingRecord,
     profile: &InteriorProfile,
     space_keys: &std::collections::BTreeMap<String, SpaceId>,
@@ -750,22 +764,45 @@ fn spawn_interior_children(
                 child_doodad_ids.push(created.id);
             }
             InteriorChildKind::Building(definition_id) => {
-                if building_catalog.get(definition_id).is_none() {
+                let Some(definition) = building_catalog.get(definition_id) else {
                     return Err(InteriorError::MissingChildDefinition {
                         key: placement.key.to_string(),
                         definition: definition_id.as_str().to_string(),
                     });
+                };
+                let created = if definition_requires_inventory_allocation(definition) {
+                    let Some(ctx) = inventory_ctx else {
+                        return Err(InteriorError::InteriorSpawnFailed {
+                            building_id: parent.id,
+                            reason: format!(
+                                "{:?}",
+                                BuildingAuthoringError::InventoryAllocationFailed(parent.id)
+                            ),
+                        });
+                    };
+                    create_building_with_inventory(
+                        building_catalog,
+                        world,
+                        definition_id,
+                        position,
+                        rotation * placement.local_rotation,
+                        BuildingSource::Authored,
+                        parent.ownership,
+                        Some(occupancy),
+                        ctx,
+                    )
+                } else {
+                    create_building(
+                        building_catalog,
+                        world,
+                        definition_id,
+                        position,
+                        rotation * placement.local_rotation,
+                        BuildingSource::Authored,
+                        parent.ownership,
+                        Some(occupancy),
+                    )
                 }
-                let created = create_building(
-                    building_catalog,
-                    world,
-                    definition_id,
-                    position,
-                    rotation * placement.local_rotation,
-                    BuildingSource::Authored,
-                    parent.ownership,
-                    Some(occupancy),
-                )
                 .map_err(|err| InteriorError::InteriorSpawnFailed {
                     building_id: parent.id,
                     reason: format!("{err:?}"),

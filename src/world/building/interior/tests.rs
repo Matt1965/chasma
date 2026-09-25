@@ -112,6 +112,7 @@ fn exterior_entrance_door_associates_with_portal() {
         id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .unwrap();
 
@@ -181,6 +182,7 @@ fn try_activate_interior_if_complete_on_dev_spawned_hut() {
         &doodad_catalog,
         occupancy,
         None,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
         record.id,
     )
     .unwrap();
@@ -226,6 +228,7 @@ fn completion_spawns_interior_children_and_doors_once() {
         id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .unwrap();
 
@@ -254,6 +257,7 @@ fn completion_spawns_interior_children_and_doors_once() {
         &doodad_catalog,
         occupancy,
         None,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
         id,
         Some(&InteriorProfileId::new("two_story_hut")),
     );
@@ -289,6 +293,7 @@ fn door_open_close_updates_portal_passability() {
         &doodad_catalog,
         occupancy,
         None,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
         id,
         Some(&InteriorProfileId::new("two_story_hut")),
     )
@@ -352,6 +357,7 @@ fn authorized_unit_can_open_closed_door() {
         &doodad_catalog,
         occupancy,
         None,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
         id,
         Some(&InteriorProfileId::new("two_story_hut")),
     )
@@ -403,6 +409,7 @@ fn locked_door_blocks_unauthorized_open() {
         &doodad_catalog,
         occupancy,
         None,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
         id,
         Some(&InteriorProfileId::new("two_story_hut")),
     )
@@ -452,6 +459,7 @@ fn ruins_transition_cleans_interior_state() {
         &doodad_catalog,
         occupancy,
         None,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
         id,
         Some(&InteriorProfileId::new("two_story_hut")),
     )
@@ -547,6 +555,7 @@ fn blueprint_runtime_registers_floors_and_paths_to_upper_level() {
         id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .unwrap();
 
@@ -641,6 +650,7 @@ fn closed_exterior_door_preserves_surface_approach_exemption() {
         id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .unwrap();
 
@@ -721,6 +731,7 @@ fn unauthorized_unit_cannot_open_exterior_entrance_door() {
         &doodad_catalog,
         occupancy,
         None,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
         id,
         Some(&InteriorProfileId::new("two_story_hut")),
     )

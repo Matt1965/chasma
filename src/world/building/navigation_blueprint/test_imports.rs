@@ -19,6 +19,7 @@ pub use super::runtime::{
 pub use super::validate_inspection::validate_blueprint_for_inspection;
 pub use crate::world::{PassabilityAgent, PassabilityResult};
 pub use crate::world::unit::{UnitOrder, UnitSource, UnitState, create_unit, step_unit_movement};
+pub use crate::world::building::test_inventory_catalog_ctx;
 pub use crate::world::{
     DoorState, PassabilityCatalogs, UnitDefinitionId, close_door, find_path_with_spaces,
     open_door, query_navigation_point_legality, resolve_interaction_to_order,

@@ -1085,12 +1085,17 @@ fn reconcile_building_navigation_on_startup(
     doodad_catalog: Res<DoodadCatalog>,
     footprint_catalog: Res<FootprintCatalog>,
     nav_catalog: Res<BuildingNavigationBlueprintCatalog>,
+    items: Res<ItemCatalog>,
+    item_categories: Res<ItemCategoryCatalog>,
+    inventory_profiles: Res<InventoryProfileCatalog>,
 ) {
     let occupancy = OccupancyCatalogs {
         doodad: &doodad_catalog,
         building: &building_catalog,
         footprint: &footprint_catalog,
     };
+    let inventory_ctx =
+        InventoryCatalogCtx::new(&items, &item_categories, &inventory_profiles);
     reconcile_all_building_navigation_runtimes(
         &mut world,
         &building_catalog,
@@ -1098,6 +1103,7 @@ fn reconcile_building_navigation_on_startup(
         &doodad_catalog,
         occupancy,
         &nav_catalog,
+        Some(&inventory_ctx),
     );
     crate::world::initialize_surface_units_navigation_membership(&mut world);
 }

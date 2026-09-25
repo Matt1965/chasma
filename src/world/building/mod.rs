@@ -62,6 +62,8 @@ pub use construction::{
     heal_building, is_building_operational, set_building_lifecycle_stage,
     step_all_building_construction, transition_to_ruins,
 };
+#[cfg(test)]
+pub use construction::test_inventory_catalog_ctx;
 pub use container_access::{
     ContainerAccessPolicy, InventoryAccessDenialReason, InventoryAccessResult,
 };

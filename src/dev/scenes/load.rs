@@ -773,6 +773,7 @@ fn reconcile_building_interiors_after_scene_load(
     for scene in scene_buildings {
         let building_id = BuildingId::new(scene.id);
         if let Some(nav_catalog) = nav_catalog {
+            let inventory_ctx = dev_inventory_catalog_ctx();
             let _ = reconcile_building_navigation_runtime(
                 world,
                 building_catalog,
@@ -780,6 +781,7 @@ fn reconcile_building_interiors_after_scene_load(
                 doodad_catalog,
                 occupancy,
                 nav_catalog,
+                Some(inventory_ctx),
                 building_id,
                 false,
             );

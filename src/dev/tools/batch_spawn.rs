@@ -428,6 +428,7 @@ fn spawn_at(
                             doodad_catalog,
                             occupancy,
                             nav_catalog,
+                            Some(inventory_ctx),
                             record.id,
                         );
                     } else {
@@ -438,6 +439,7 @@ fn spawn_at(
                             doodad_catalog,
                             occupancy,
                             nav_catalog,
+                            Some(inventory_ctx),
                             record.id,
                         );
                     }
