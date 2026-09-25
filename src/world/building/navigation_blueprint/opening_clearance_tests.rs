@@ -4,6 +4,7 @@ use std::path::Path;
 
 use bevy::prelude::*;
 
+use super::test_imports::*;
 use super::catalog::{
     BUILDING_NAVIGATION_BLUEPRINT_CATALOG_RON_PATH, BuildingNavigationBlueprintCatalog,
 };
@@ -103,6 +104,7 @@ fn activate_hut(
         building_id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .expect("complete hut");
     building_id
@@ -151,6 +153,7 @@ fn activate_fixture(
         id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .unwrap();
     id

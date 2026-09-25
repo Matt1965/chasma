@@ -153,6 +153,11 @@ pub fn run_simulation_tick(
         };
         crate::world::step_unit_nutrition_decay(&mut hunger_ctx, delta_seconds);
     }
+    let inventory_ctx_construction = crate::world::InventoryCatalogCtx::new(
+        item_catalog,
+        item_categories,
+        inventory_profiles,
+    );
     let building_construction = step_all_building_construction(
         world,
         building_catalog,
@@ -160,6 +165,7 @@ pub fn run_simulation_tick(
         doodad_catalog,
         occupancy,
         nav_blueprint_catalog,
+        Some(&inventory_ctx_construction),
         building_construction_settings,
         delta_seconds,
     );
@@ -315,11 +321,10 @@ pub fn run_simulation_tick(
         doodad_catalog,
         occupancy,
         nav_blueprint_catalog,
+        Some(&inventory_ctx),
         delta_seconds,
         operation.as_deref_mut(),
     );
-    let inventory_ctx =
-        crate::world::InventoryCatalogCtx::new(item_catalog, item_categories, inventory_profiles);
     crate::world::sync_dirty_storage_logistics(
         world,
         building_catalog,

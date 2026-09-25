@@ -17,8 +17,10 @@ pub use mode::{
 };
 pub use resolve::{
     ResolvedBuildingPlacement, derive_foundation_skirt_for_placement, resolve_building_placement,
+    rotation_from_yaw_and_normal,
 };
 pub use sample::{
-    presentation_plane_normal,
-    sample_terrain_under_footprint, slope_degrees_from_plane_coefficients,
+    TerrainFootprintReport, TerrainFootprintSample, plane_normal_from_coefficients,
+    presentation_plane_normal, sample_terrain_under_footprint,
+    slope_degrees_from_plane_coefficients,
 };

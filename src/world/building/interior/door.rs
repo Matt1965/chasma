@@ -114,7 +114,7 @@ fn same_team(building: BuildingOwnership, unit: UnitOwnership) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::Affiliation;
+    use crate::world::{Affiliation, OwnerId};
 
     fn door(access: DoorAccessPolicy, state: DoorState) -> DoorRecord {
         DoorRecord {

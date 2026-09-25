@@ -274,9 +274,11 @@ pub fn building_model_render_transform(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::building::placement_validation::BuildingPlacementConfig;
     use crate::world::{
         BuildingCatalog, BuildingDefinition, BuildingOwnership, ChunkCoord, ChunkData, ChunkId,
         ChunkLayout, DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition, UnitCatalog,
+        rotation_from_quadrants,
     };
 
     fn flat_world() -> WorldData {

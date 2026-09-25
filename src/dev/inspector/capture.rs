@@ -216,6 +216,11 @@ pub fn capture_item_pile_inspector_snapshot(
         weight_grams,
         location_summary,
         chunk,
+        rotation_deg: Vec3::new(
+            record.orientation.pitch_degrees(),
+            record.orientation.yaw_degrees(),
+            record.orientation.roll_degrees(),
+        ),
     })
 }
 
@@ -1580,6 +1585,7 @@ pub fn capture_interaction_inspector_snapshot(
     click_position: WorldPosition,
 ) -> Option<InteractionInspectorSnapshot> {
     let interaction_catalog = crate::world::BuildingInteractionProfileCatalog::default();
+    let corpse_settings = crate::world::CorpseSettings::default();
     let ctx = InteractionQueryContext::new(
         world,
         doodad_catalog,
@@ -1589,6 +1595,7 @@ pub fn capture_interaction_inspector_snapshot(
         unit_catalog,
         weapon_catalog,
         pile_settings,
+        &corpse_settings,
     );
     let terrain_hit = ground_world_position(world, click_position).is_some();
     let interaction = query_world_interaction(&ctx, click_position)?;

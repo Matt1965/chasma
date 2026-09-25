@@ -160,8 +160,8 @@ pub fn policy_for_target(
         }
         SelectedWorldObject::ItemPile(_) => GizmoTargetPolicy {
             capabilities: TransformCapabilities::world_item_pile(),
-            can_commit: false,
-            commit_blocked_reason: Some("Item pile transform commit not implemented"),
+            can_commit: true,
+            commit_blocked_reason: None,
         },
     }
 }

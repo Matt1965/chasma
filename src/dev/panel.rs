@@ -2,6 +2,7 @@
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
+use bevy::ui::RelativeCursorPosition;
 
 use crate::world::{
     BuildingArchetypeCatalog, BuildingCatalog, BuildingCatalogRevision, DoodadCatalog,
@@ -9,9 +10,16 @@ use crate::world::{
 };
 
 use super::catalog::{
-    DevCatalogStatusText, DevContextualPlacementAction, DevContextualPlacementButton,
-    DevContextualPlacementSection, DevContextualPlacementTitle, DevPlacementActiveBanner,
-    DevTabChrome, all_catalog_tabs, spawn_tab_label,
+    CatalogScrollMetrics, DevCatalogStatusText, DevContextualPlacementAction,
+    DevContextualPlacementButton, DevContextualPlacementSection, DevContextualPlacementTitle,
+    DevPlacementActiveBanner, DevTabChrome, ROW_HEIGHT_PX, all_catalog_tabs,
+    catalog_list_viewport_height, catalog_row_pool_capacity, clamp_scroll_offset,
+    spawn_tab_label, visible_row_count,
+};
+use super::catalog::scroll::{
+    CATALOG_ROW_GAP_PX, CATALOG_SCROLLBAR_MIN_THUMB_PX, CATALOG_SCROLLBAR_WIDTH_PX,
+    DevArchetypeListScrollbar, DevArchetypeListScrollbarThumb, DevCatalogListScrollbar,
+    DevCatalogListScrollbarThumb,
 };
 use super::catalog_browser::CatalogBrowserEntry;
 use super::catalog_cache::{
@@ -22,7 +30,7 @@ use super::input::{DevPanelRoot, DevPanelUi};
 use super::tools::MAX_BRUSH_SPAWN_COUNT;
 use super::window::{
     DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowRoot, DevWindowUi,
-    catalog_list_max_height,
+    CATALOG_MAX_LIST_HEIGHT_PX,
 };
 use crate::dev::tooltip::DevTooltipTarget;
 use crate::dev::widgets::{
@@ -32,10 +40,6 @@ use crate::dev::widgets::{
 
 use crate::simulation::{SimulationControlRequests, SimulationControlState};
 
-const MAX_VISIBLE_ROWS: usize = 10;
-const MAX_ARCHETYPE_ROWS: usize = 10;
-const ROW_HEIGHT_PX: f32 = 20.0;
-const CATALOG_ROW_GAP_PX: f32 = 2.0;
 const MENU_BTN_WIDTH_PX: f32 = 100.0;
 const MENU_BTN_HEIGHT_PX: f32 = 24.0;
 const MAX_LIST_LABEL_CHARS: usize = 44;
@@ -121,7 +125,7 @@ pub(crate) struct DevTabButton {
 
 #[derive(Component, Debug)]
 pub(crate) struct DevListRow {
-    index: usize,
+    pub(crate) index: usize,
 }
 
 #[derive(Component, Debug)]
@@ -131,10 +135,16 @@ pub(crate) struct DevCatalogBrowserColumns;
 pub(crate) struct DevCatalogListColumn;
 
 #[derive(Component, Debug)]
+pub(crate) struct DevCatalogListViewport;
+
+#[derive(Component, Debug)]
 pub(crate) struct DevCatalogListScroll;
 
 #[derive(Component, Debug)]
 pub(crate) struct DevArchetypePane;
+
+#[derive(Component, Debug)]
+pub(crate) struct DevArchetypeListViewport;
 
 #[derive(Component, Debug)]
 pub(crate) struct DevArchetypeHeaderText;
@@ -144,7 +154,7 @@ pub(crate) struct DevArchetypeListScroll;
 
 #[derive(Component, Debug)]
 pub(crate) struct DevArchetypeRow {
-    index: usize,
+    pub(crate) index: usize,
 }
 
 fn contextual_placement_buttons() -> Vec<(
@@ -165,7 +175,7 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::Count,
         ),
         (
-            "Count −",
+            "Count -",
             DevContextualPlacementAction::CountDown,
             PlacementControlField::Count,
         ),
@@ -175,7 +185,7 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::Spacing,
         ),
         (
-            "Spacing −",
+            "Spacing -",
             DevContextualPlacementAction::SpacingDown,
             PlacementControlField::Spacing,
         ),
@@ -185,7 +195,7 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::Radius,
         ),
         (
-            "Radius −",
+            "Radius -",
             DevContextualPlacementAction::RadiusDown,
             PlacementControlField::Radius,
         ),
@@ -195,7 +205,7 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::GridColumns,
         ),
         (
-            "Cols −",
+            "Cols -",
             DevContextualPlacementAction::GridColsDown,
             PlacementControlField::GridColumns,
         ),
@@ -205,24 +215,14 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::GridRows,
         ),
         (
-            "Rows −",
+            "Rows -",
             DevContextualPlacementAction::GridRowsDown,
             PlacementControlField::GridRows,
         ),
         (
-            "Team",
+            "Team: Player",
             DevContextualPlacementAction::CycleSpawnTeam,
             PlacementControlField::Affiliation,
-        ),
-        (
-            "Terrain snap",
-            DevContextualPlacementAction::ToggleTerrainSnap,
-            PlacementControlField::TerrainSnap,
-        ),
-        (
-            "Preview",
-            DevContextualPlacementAction::TogglePreview,
-            PlacementControlField::Preview,
         ),
         (
             "Yaw +",
@@ -230,7 +230,7 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::Rotation,
         ),
         (
-            "Yaw −",
+            "Yaw -",
             DevContextualPlacementAction::RotationDown,
             PlacementControlField::Rotation,
         ),
@@ -240,16 +240,77 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::Scale,
         ),
         (
-            "Scale −",
+            "Scale -",
             DevContextualPlacementAction::ScaleDown,
             PlacementControlField::Scale,
         ),
-        (
-            "Cancel placement",
-            DevContextualPlacementAction::CancelPlacement,
-            PlacementControlField::Cancel,
-        ),
     ]
+}
+
+fn spawn_definitions_scrollbar_track(parent: &mut ChildSpawnerCommands<'_>) {
+    parent
+        .spawn((
+            DevCatalogListScrollbar,
+            DevPanelUi,
+            Button,
+            Node {
+                width: Val::Px(CATALOG_SCROLLBAR_WIDTH_PX),
+                flex_shrink: 0.0,
+                height: Val::Percent(100.0),
+                overflow: Overflow::clip(),
+                ..default()
+            },
+            Visibility::Hidden,
+            BackgroundColor(Color::srgba(0.08, 0.10, 0.12, 0.95)),
+        ))
+        .with_children(|track| {
+            track.spawn((
+                DevCatalogListScrollbarThumb,
+                DevPanelUi,
+                Node {
+                    position_type: PositionType::Absolute,
+                    top: Val::Px(0.0),
+                    left: Val::Px(0.0),
+                    width: Val::Percent(100.0),
+                    height: Val::Px(CATALOG_SCROLLBAR_MIN_THUMB_PX),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba(0.28, 0.42, 0.52, 0.95)),
+            ));
+        });
+}
+
+fn spawn_archetype_scrollbar_track(parent: &mut ChildSpawnerCommands<'_>) {
+    parent
+        .spawn((
+            DevArchetypeListScrollbar,
+            DevPanelUi,
+            Button,
+            Node {
+                width: Val::Px(CATALOG_SCROLLBAR_WIDTH_PX),
+                flex_shrink: 0.0,
+                height: Val::Percent(100.0),
+                overflow: Overflow::clip(),
+                ..default()
+            },
+            Visibility::Hidden,
+            BackgroundColor(Color::srgba(0.08, 0.10, 0.12, 0.95)),
+        ))
+        .with_children(|track| {
+            track.spawn((
+                DevArchetypeListScrollbarThumb,
+                DevPanelUi,
+                Node {
+                    position_type: PositionType::Absolute,
+                    top: Val::Px(0.0),
+                    left: Val::Px(0.0),
+                    width: Val::Percent(100.0),
+                    height: Val::Px(CATALOG_SCROLLBAR_MIN_THUMB_PX),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba(0.28, 0.42, 0.52, 0.95)),
+            ));
+        });
 }
 
 /// Spawn legacy panel content inside the catalog dev window body (Slice 3).
@@ -260,6 +321,7 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
     else {
         return;
     };
+    let row_pool = catalog_row_pool_capacity(CATALOG_MAX_LIST_HEIGHT_PX);
     commands.entity(body).with_children(|panel| {
         panel
             .spawn((
@@ -399,8 +461,6 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
                     Node {
                         flex_direction: FlexDirection::Column,
                         row_gap: Val::Px(4.0),
-                        flex_grow: 1.0,
-                        flex_shrink: 1.0,
                         min_height: Val::Px(0.0),
                         ..default()
                     },
@@ -472,8 +532,6 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
                                 width: Val::Percent(100.0),
                                 flex_direction: FlexDirection::Row,
                                 column_gap: Val::Px(6.0),
-                                flex_grow: 1.0,
-                                flex_shrink: 1.0,
                                 min_height: Val::Px(0.0),
                                 align_items: AlignItems::Stretch,
                                 ..default()
@@ -506,45 +564,84 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
                                         },
                                         TextColor(Color::srgba(0.9, 0.93, 0.96, 1.0)),
                                     ));
-                                    left.spawn((
-                                        DevCatalogListScroll,
-                                        DevPanelUi,
-                                        Node {
-                                            flex_direction: FlexDirection::Column,
-                                            row_gap: Val::Px(CATALOG_ROW_GAP_PX),
-                                            flex_grow: 1.0,
-                                            flex_shrink: 1.0,
-                                            min_height: Val::Px(ROW_HEIGHT_PX * 4.0),
-                                            overflow: Overflow::scroll_y(),
-                                            ..default()
-                                        },
-                                    ))
-                                    .with_children(|list| {
-                                        for index in 0..MAX_VISIBLE_ROWS {
-                                            list.spawn((
-                                                DevListRow { index },
-                                                DevPanelUi,
-                                                Button,
-                                                Node {
-                                                    width: Val::Percent(100.0),
-                                                    height: Val::Px(ROW_HEIGHT_PX),
-                                                    padding: UiRect::horizontal(Val::Px(4.0)),
-                                                    align_items: AlignItems::Center,
-                                                    overflow: Overflow::clip(),
-                                                    ..default()
-                                                },
-                                                BackgroundColor(Color::srgba(
-                                                    0.1, 0.14, 0.18, 0.85,
-                                                )),
-                                                Text::new(""),
-                                                TextFont {
-                                                    font_size: 11.0,
-                                                    ..default()
-                                                },
-                                                TextColor(Color::srgba(0.88, 0.92, 0.96, 1.0)),
-                                            ));
-                                        }
-                                    });
+                                    left
+                                        .spawn((
+                                            DevPanelUi,
+                                            Node {
+                                                flex_direction: FlexDirection::Row,
+                                                column_gap: Val::Px(2.0),
+                                                flex_grow: 1.0,
+                                                flex_shrink: 1.0,
+                                                min_height: Val::Px(0.0),
+                                                align_items: AlignItems::Stretch,
+                                                ..default()
+                                            },
+                                        ))
+                                        .with_children(|list_row| {
+                                            list_row
+                                                .spawn((
+                                                    DevCatalogListViewport,
+                                                    DevPanelUi,
+                                                    RelativeCursorPosition::default(),
+                                                    Node {
+                                                        flex_grow: 1.0,
+                                                        flex_shrink: 1.0,
+                                                        min_height: Val::Px(0.0),
+                                                        overflow: Overflow::clip(),
+                                                        ..default()
+                                                    },
+                                                ))
+                                                .with_children(|viewport| {
+                                                    viewport
+                                                        .spawn((
+                                                            DevCatalogListScroll,
+                                                            DevPanelUi,
+                                                            Node {
+                                                                flex_direction:
+                                                                    FlexDirection::Column,
+                                                                row_gap: Val::Px(
+                                                                    CATALOG_ROW_GAP_PX,
+                                                                ),
+                                                                width: Val::Percent(100.0),
+                                                                ..default()
+                                                            },
+                                                        ))
+                                                        .with_children(|list| {
+                                                            for index in 0..row_pool {
+                                                                list.spawn((
+                                                                    DevListRow { index },
+                                                                    DevPanelUi,
+                                                                    Button,
+                                                                    Node {
+                                                                        width: Val::Percent(100.0),
+                                                                        height: Val::Px(
+                                                                            ROW_HEIGHT_PX,
+                                                                        ),
+                                                                        padding: UiRect::horizontal(
+                                                                            Val::Px(4.0),
+                                                                        ),
+                                                                        align_items:
+                                                                            AlignItems::Center,
+                                                                        overflow: Overflow::clip(),
+                                                                        ..default()
+                                                                    },
+                                                                    BackgroundColor(Color::srgba(
+                                                                        0.1, 0.14, 0.18, 0.85,
+                                                                    )),
+                                                                    Text::new(""),
+                                                                    TextFont {
+                                                                        font_size: 11.0,
+                                                                        ..default()
+                                                                    },
+                                                                    TextColor(Color::srgba(
+                                                                        0.88, 0.92, 0.96, 1.0,
+                                                                    )),
+                                                                ));
+                                                            }
+                                                        });
+                                                });
+                                            spawn_definitions_scrollbar_track(list_row);
+                                        });
                                 });
 
                             columns
@@ -626,45 +723,84 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
                                                 ));
                                             });
                                         });
-                                    right.spawn((
-                                        DevArchetypeListScroll,
-                                        DevPanelUi,
-                                        Node {
-                                            flex_direction: FlexDirection::Column,
-                                            row_gap: Val::Px(CATALOG_ROW_GAP_PX),
-                                            flex_grow: 1.0,
-                                            flex_shrink: 1.0,
-                                            min_height: Val::Px(ROW_HEIGHT_PX * 4.0),
-                                            overflow: Overflow::scroll_y(),
-                                            ..default()
-                                        },
-                                    ))
-                                    .with_children(|list| {
-                                        for index in 0..MAX_ARCHETYPE_ROWS {
-                                            list.spawn((
-                                                DevArchetypeRow { index },
-                                                DevPanelUi,
-                                                Button,
-                                                Node {
-                                                    width: Val::Percent(100.0),
-                                                    height: Val::Px(ROW_HEIGHT_PX),
-                                                    padding: UiRect::horizontal(Val::Px(4.0)),
-                                                    align_items: AlignItems::Center,
-                                                    overflow: Overflow::clip(),
-                                                    ..default()
-                                                },
-                                                BackgroundColor(Color::srgba(
-                                                    0.1, 0.14, 0.18, 0.85,
-                                                )),
-                                                Text::new(""),
-                                                TextFont {
-                                                    font_size: 11.0,
-                                                    ..default()
-                                                },
-                                                TextColor(Color::srgba(0.88, 0.92, 0.96, 1.0)),
-                                            ));
-                                        }
-                                    });
+                                    right
+                                        .spawn((
+                                            DevPanelUi,
+                                            Node {
+                                                flex_direction: FlexDirection::Row,
+                                                column_gap: Val::Px(2.0),
+                                                flex_grow: 1.0,
+                                                flex_shrink: 1.0,
+                                                min_height: Val::Px(0.0),
+                                                align_items: AlignItems::Stretch,
+                                                ..default()
+                                            },
+                                        ))
+                                        .with_children(|list_row| {
+                                            list_row
+                                                .spawn((
+                                                    DevArchetypeListViewport,
+                                                    DevPanelUi,
+                                                    RelativeCursorPosition::default(),
+                                                    Node {
+                                                        flex_grow: 1.0,
+                                                        flex_shrink: 1.0,
+                                                        min_height: Val::Px(0.0),
+                                                        overflow: Overflow::clip(),
+                                                        ..default()
+                                                    },
+                                                ))
+                                                .with_children(|viewport| {
+                                                    viewport
+                                                        .spawn((
+                                                            DevArchetypeListScroll,
+                                                            DevPanelUi,
+                                                            Node {
+                                                                flex_direction:
+                                                                    FlexDirection::Column,
+                                                                row_gap: Val::Px(
+                                                                    CATALOG_ROW_GAP_PX,
+                                                                ),
+                                                                width: Val::Percent(100.0),
+                                                                ..default()
+                                                            },
+                                                        ))
+                                                        .with_children(|list| {
+                                                            for index in 0..row_pool {
+                                                                list.spawn((
+                                                                    DevArchetypeRow { index },
+                                                                    DevPanelUi,
+                                                                    Button,
+                                                                    Node {
+                                                                        width: Val::Percent(100.0),
+                                                                        height: Val::Px(
+                                                                            ROW_HEIGHT_PX,
+                                                                        ),
+                                                                        padding: UiRect::horizontal(
+                                                                            Val::Px(4.0),
+                                                                        ),
+                                                                        align_items:
+                                                                            AlignItems::Center,
+                                                                        overflow: Overflow::clip(),
+                                                                        ..default()
+                                                                    },
+                                                                    BackgroundColor(Color::srgba(
+                                                                        0.1, 0.14, 0.18, 0.85,
+                                                                    )),
+                                                                    Text::new(""),
+                                                                    TextFont {
+                                                                        font_size: 11.0,
+                                                                        ..default()
+                                                                    },
+                                                                    TextColor(Color::srgba(
+                                                                        0.88, 0.92, 0.96, 1.0,
+                                                                    )),
+                                                                ));
+                                                            }
+                                                        });
+                                                });
+                                            spawn_archetype_scrollbar_track(list_row);
+                                        });
                                 });
                         });
 
@@ -743,6 +879,10 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
                 root.spawn((
                     DevSpawnHintText,
                     DevPanelUi,
+                    Node {
+                        display: Display::None,
+                        ..default()
+                    },
                     Text::new("Click terrain to spawn (Shift+select still works)"),
                     TextFont {
                         font_size: 11.0,
@@ -758,12 +898,16 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
 
 /// Refresh list/search/selection text from catalogs.
 pub(crate) fn sync_dev_panel_content(
-    dev_state: Res<DevModeState>,
+    mut dev_state: ResMut<DevModeState>,
     registry: Res<DevWindowRegistry>,
     catalogs: DevPanelCatalogResources,
     mut filter_cache: ResMut<CatalogFilterCache>,
     debounce: Res<DevSearchDebounce>,
-    mut archetype_pane: Query<(&mut Visibility, &mut Node), With<DevArchetypePane>>,
+    mut metrics: ResMut<CatalogScrollMetrics>,
+    mut catalog_layout_nodes: ParamSet<(
+        Query<(&mut Visibility, &mut Node), With<DevArchetypePane>>,
+        Query<&mut Node, With<DevSpawnHintText>>,
+    )>,
     mut texts: ParamSet<(
         Query<&mut Text, (With<DevSearchText>, Without<DevListText>)>,
         Query<
@@ -824,7 +968,7 @@ pub(crate) fn sync_dev_panel_content(
     }
 
     let show_archetypes = dev_state.shows_archetype_pane();
-    for (mut visibility, mut node) in archetype_pane.iter_mut() {
+    for (mut visibility, mut node) in catalog_layout_nodes.p0().iter_mut() {
         *visibility = if show_archetypes {
             Visibility::Visible
         } else {
@@ -869,13 +1013,13 @@ pub(crate) fn sync_dev_panel_content(
         **text = match dev_state.active_tab {
             DevTab::Units | DevTab::Doodads | DevTab::Buildings => {
                 format!(
-                    "Definitions ({}) — enabled-only: {} — E toggles",
+                    "Definitions ({}) - enabled-only: {} - E toggles",
                     catalog_entries.len(),
                     dev_state.enabled_only,
                 )
             }
             DevTab::Items => format!(
-                "Item catalog ({}) — enabled-only: {}",
+                "Item catalog ({}) - enabled-only: {}",
                 catalog_entries.len(),
                 dev_state.enabled_only,
             ),
@@ -883,10 +1027,22 @@ pub(crate) fn sync_dev_panel_content(
         };
     }
 
+    let definition_visible_rows = visible_row_count(
+        metrics
+            .definition_viewport_height
+            .max(super::catalog::scroll::catalog_row_stride_px()),
+    );
+    dev_state.list_scroll = clamp_scroll_offset(
+        dev_state.list_scroll,
+        catalog_entries.len(),
+        definition_visible_rows,
+    );
+    metrics.definition_entry_count = catalog_entries.len();
+
     let visible_catalog: Vec<_> = catalog_entries
         .into_iter()
         .skip(dev_state.list_scroll)
-        .take(MAX_VISIBLE_ROWS)
+        .take(definition_visible_rows)
         .collect();
 
     for (row, interaction, mut text, mut bg) in texts.p5().iter_mut() {
@@ -914,10 +1070,22 @@ pub(crate) fn sync_dev_panel_content(
         &catalogs.unit_archetype_catalog,
         &catalogs.building_archetype_catalog,
     );
+    let archetype_visible_rows = visible_row_count(
+        metrics
+            .archetype_viewport_height
+            .max(super::catalog::scroll::catalog_row_stride_px()),
+    );
+    dev_state.archetype_list_scroll = clamp_scroll_offset(
+        dev_state.archetype_list_scroll,
+        archetype_entries.len(),
+        archetype_visible_rows,
+    );
+    metrics.archetype_entry_count = archetype_entries.len();
+
     let visible_archetypes: Vec<_> = archetype_entries
         .into_iter()
         .skip(dev_state.archetype_list_scroll)
-        .take(MAX_ARCHETYPE_ROWS)
+        .take(archetype_visible_rows)
         .collect();
 
     for (row, interaction, mut text, mut bg) in texts.p6().iter_mut() {
@@ -954,6 +1122,14 @@ pub(crate) fn sync_dev_panel_content(
             String::new()
         } else {
             dev_state.last_spawn_message.clone()
+        };
+    }
+
+    if let Ok(mut node) = catalog_layout_nodes.p1().single_mut() {
+        node.display = if dev_state.placement_tool_active() {
+            Display::Flex
+        } else {
+            Display::None
         };
     }
 }
@@ -1042,7 +1218,7 @@ pub(crate) fn sync_dev_simulation_status(
         "running"
     };
     **label = format!(
-        "Sim: {state:<8} tick {tick:>6}  Space pause · Shift+Space step",
+        "Sim: {state:<8} tick {tick:>6}   Space pause   Shift+Space step",
         state = state,
         tick = control.current_tick,
     );
@@ -1248,7 +1424,6 @@ pub(crate) fn handle_dev_panel_ui_interaction(
     registry: Res<DevWindowRegistry>,
     mut gate: ResMut<crate::dev::DevModeInputGate>,
     mut sim_requests: ResMut<SimulationControlRequests>,
-    mut preview: ResMut<crate::dev::tools::DevPlacementPreview>,
     mut buttons: ParamSet<(
         Query<(&Interaction, &DevTabButton), Changed<Interaction>>,
         Query<(&Interaction, &DevListRow), Changed<Interaction>>,
@@ -1389,7 +1564,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
         }
         gate.block_gameplay_mouse = true;
         panel_click_without_search = true;
-        apply_contextual_placement_action(&mut dev_state, button.action, &mut preview);
+        apply_contextual_placement_action(&mut dev_state, button.action);
     }
 
     if panel_click_without_search {
@@ -1400,7 +1575,6 @@ pub(crate) fn handle_dev_panel_ui_interaction(
 fn apply_contextual_placement_action(
     state: &mut DevModeState,
     action: DevContextualPlacementAction,
-    preview: &mut crate::dev::tools::DevPlacementPreview,
 ) {
     match action {
         DevContextualPlacementAction::CycleBrush => {
@@ -1436,13 +1610,6 @@ fn apply_contextual_placement_action(
         DevContextualPlacementAction::GridRowsDown => {
             state.brush.grid_rows = state.brush.grid_rows.saturating_sub(1).max(1);
         }
-        DevContextualPlacementAction::ToggleTerrainSnap => {
-            state.placement_rules.snap_to_terrain = !state.placement_rules.snap_to_terrain;
-            state.terrain_conforming = state.placement_rules.snap_to_terrain;
-        }
-        DevContextualPlacementAction::TogglePreview => {
-            state.show_preview = !state.show_preview;
-        }
         DevContextualPlacementAction::CycleSpawnTeam => {
             state.cycle_spawn_affiliation();
         }
@@ -1458,27 +1625,27 @@ fn apply_contextual_placement_action(
         DevContextualPlacementAction::ScaleDown => {
             state.placement_uniform_scale = (state.placement_uniform_scale - 0.05).max(0.1);
         }
-        DevContextualPlacementAction::CancelPlacement => {
-            super::input::cancel_dev_placement(state, preview);
-            state.catalog.set_status("Placement cancelled", 180);
-        }
     }
 }
 
 /// Keep catalog list areas within the current viewport.
 pub(crate) fn sync_catalog_panel_layout(
     registry: Res<DevWindowRegistry>,
+    metrics: Res<CatalogScrollMetrics>,
     mut nodes: ParamSet<(
         Query<(&DevWindowRoot, &mut Node)>,
-        Query<&mut Node, With<DevCatalogListScroll>>,
-        Query<&mut Node, With<DevArchetypeListScroll>>,
+        Query<&mut Node, With<DevCatalogListViewport>>,
+        Query<&mut Node, With<DevArchetypeListViewport>>,
     )>,
 ) {
-    let viewport = registry.viewport;
-    let list_height = registry
-        .session(DevWindowId::Catalog)
-        .map(|session| catalog_list_max_height(viewport, session.position.y))
-        .unwrap_or_else(|| catalog_list_max_height(viewport, 0.0));
+    let definition_height = catalog_list_viewport_height(
+        metrics.definition_entry_count,
+        CATALOG_MAX_LIST_HEIGHT_PX,
+    );
+    let archetype_height = catalog_list_viewport_height(
+        metrics.archetype_entry_count,
+        CATALOG_MAX_LIST_HEIGHT_PX,
+    );
 
     for (root, mut node) in nodes.p0().iter_mut() {
         if root.id != DevWindowId::Catalog {
@@ -1488,12 +1655,18 @@ pub(crate) fn sync_catalog_panel_layout(
     }
 
     for mut node in nodes.p1().iter_mut() {
-        node.max_height = Val::Px(list_height);
-        node.min_height = Val::Px(ROW_HEIGHT_PX * 4.0);
+        node.height = Val::Px(definition_height);
+        node.max_height = Val::Px(CATALOG_MAX_LIST_HEIGHT_PX);
+        node.min_height = Val::Px(definition_height);
+        node.flex_grow = 0.0;
+        node.flex_shrink = 0.0;
     }
 
     for mut node in nodes.p2().iter_mut() {
-        node.max_height = Val::Px(list_height);
-        node.min_height = Val::Px(ROW_HEIGHT_PX * 4.0);
+        node.height = Val::Px(archetype_height);
+        node.max_height = Val::Px(CATALOG_MAX_LIST_HEIGHT_PX);
+        node.min_height = Val::Px(archetype_height);
+        node.flex_grow = 0.0;
+        node.flex_shrink = 0.0;
     }
 }

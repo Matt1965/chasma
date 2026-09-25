@@ -32,10 +32,11 @@ pub use input::{
 
 pub use animation::{
     AnimationGraphShareKey, AnimationPlaybackClip, AnimationPlaybackPending, AnimationPresentationFocus,
-    AnimationPresentationMetrics, AnimationProfileHandle, UnitAnimationAssets,
-    UnitAnimationGraphInstalled, UnitAnimationIntent, UnitAnimationPlayerLink, UnitAnimationPlugin,
-    UnitAnimationRuntime, UnitAnimationSettings, UnitAnimationStateIndex, UnitAnimationSystems,
-    ValidationSeverity, derive_unit_animation_intent, locomotion_debug_snapshot,
+    AnimationPresentationMetrics, AnimationProfileHandle, DeathPresentation, UnitAnimationAssets,
+    UnitAnimationGraphInstalled, UnitAnimationIntent, UnitAnimationLayering,
+    UnitAnimationPlayerLink, UnitAnimationPlugin, UnitAnimationRuntime, UnitAnimationSettings,
+    UnitAnimationStateIndex, UnitAnimationSystems, ValidationSeverity, derive_unit_animation_intent,
+    locomotion_debug_snapshot, sync_unit_animation_playback,
 };
 pub use assets::{UNIT_ASSET_ROOT, UnitSceneAssets, gltf_asset_path, preload_unit_scenes};
 pub use components::{

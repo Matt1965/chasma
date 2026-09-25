@@ -20,7 +20,8 @@ use crate::world::authoring_transform::{
 };
 use crate::world::{
     BuildingTransformSafetyClass, DoodadCatalog, FootprintCatalog, InteriorProfileCatalog,
-    UnitCatalog, WorldConfig, WorldData,
+    ItemPileTransformCandidate, QuantizedOrientation, UnitCatalog, WorldConfig, WorldData,
+    update_item_pile_transform,
 };
 
 use super::commit::{
@@ -33,7 +34,7 @@ use super::math::apparent_gizmo_scale;
 use super::pick::{gizmo_has_priority, pick_gizmo_handle};
 use super::state::{
     DoodadPreviewPlacement, GizmoAxisConstraint, TransformEditState,
-    building_preview_from_placement, building_uniform_scale_from_preview,
+    building_preview_from_placement, building_uniform_scale_from_preview, pile_preview_from_record,
 };
 use super::tool::{DevTool, DevToolState, SelectedWorldObject};
 use crate::dev::hotkeys::{DevShortcutSuppressionCtx, dev_shortcuts_suppressed};
@@ -41,6 +42,12 @@ use crate::dev::navigation_editor::navigation_editor_owns_session;
 use crate::dev::selected_object::SelectedObjectUiState;
 
 const GIZMO_CAMERA_FOV_Y: f32 = std::f32::consts::FRAC_PI_4;
+const PILE_YAW_STEP_DEG: f32 = 15.0;
+const PILE_YAW_FINE_STEP_DEG: f32 = 5.0;
+const PILE_PITCH_STEP_DEG: f32 = 5.0;
+const PILE_PITCH_FINE_STEP_DEG: f32 = 1.0;
+const PILE_ROLL_STEP_DEG: f32 = 5.0;
+const PILE_ROLL_FINE_STEP_DEG: f32 = 1.0;
 
 #[derive(SystemParam)]
 pub struct GizmoInputParams<'w, 's> {
@@ -80,6 +87,9 @@ pub fn selected_object(world_selection: &WorldSelectionState) -> Option<Selected
         .or(world_selection
             .transform_building()
             .map(SelectedWorldObject::Building))
+        .or(world_selection
+            .transform_item_pile()
+            .map(SelectedWorldObject::ItemPile))
 }
 
 /// Tear down transform gizmo session when dev mode is off.
@@ -179,7 +189,11 @@ pub fn sync_gizmo_target(mut params: GizmoInputParams) {
             .world
             .get_building(id)
             .map(|r| building_preview_from_placement(r.placement)),
-        _ => None,
+        SelectedWorldObject::ItemPile(id) => params
+            .world
+            .item_pile_store()
+            .get(id)
+            .map(pile_preview_from_record),
     });
 
     let tool = if params.tool_state.active_tool == DevTool::Place {
@@ -256,6 +270,114 @@ pub fn handle_gizmo_keyboard(
             enter_transform_tool(&mut params, DevTool::Scale);
             return;
         }
+
+        if let Some(pile_id) = params.world_selection.transform_item_pile() {
+            let finer = params.keyboard.pressed(KeyCode::ShiftLeft)
+                || params.keyboard.pressed(KeyCode::ShiftRight);
+            let mut axis: Option<(&str, f32, f32, fn(QuantizedOrientation, f32) -> QuantizedOrientation)> = None;
+            if params.keyboard.just_pressed(KeyCode::BracketLeft)
+                || params.keyboard.just_pressed(KeyCode::BracketRight)
+            {
+                let sign = if params.keyboard.just_pressed(KeyCode::BracketRight) {
+                    1.0
+                } else {
+                    -1.0
+                };
+                let step = if finer {
+                    PILE_YAW_FINE_STEP_DEG
+                } else {
+                    PILE_YAW_STEP_DEG
+                };
+                axis = Some(("yaw", sign, step, |orientation, delta| {
+                    QuantizedOrientation::from_degrees(
+                        orientation.yaw_degrees() + delta,
+                        orientation.pitch_degrees(),
+                        orientation.roll_degrees(),
+                    )
+                    .unwrap_or(orientation)
+                }));
+            } else if params.keyboard.just_pressed(KeyCode::Semicolon)
+                || params.keyboard.just_pressed(KeyCode::Quote)
+            {
+                let sign = if params.keyboard.just_pressed(KeyCode::Quote) {
+                    1.0
+                } else {
+                    -1.0
+                };
+                let step = if finer {
+                    PILE_PITCH_FINE_STEP_DEG
+                } else {
+                    PILE_PITCH_STEP_DEG
+                };
+                axis = Some(("pitch", sign, step, |orientation, delta| {
+                    QuantizedOrientation::from_degrees(
+                        orientation.yaw_degrees(),
+                        orientation.pitch_degrees() + delta,
+                        orientation.roll_degrees(),
+                    )
+                    .unwrap_or(orientation)
+                }));
+            } else if params.keyboard.just_pressed(KeyCode::Minus)
+                || params.keyboard.just_pressed(KeyCode::Equal)
+            {
+                let sign = if params.keyboard.just_pressed(KeyCode::Equal) {
+                    1.0
+                } else {
+                    -1.0
+                };
+                let step = if finer {
+                    PILE_ROLL_FINE_STEP_DEG
+                } else {
+                    PILE_ROLL_STEP_DEG
+                };
+                axis = Some(("roll", sign, step, |orientation, delta| {
+                    QuantizedOrientation::from_degrees(
+                        orientation.yaw_degrees(),
+                        orientation.pitch_degrees(),
+                        orientation.roll_degrees() + delta,
+                    )
+                    .unwrap_or(orientation)
+                }));
+            }
+
+            if let Some((axis_label, sign, step, adjust)) = axis {
+                let Some(record) = params.world.item_pile_store().get(pile_id).cloned() else {
+                    params.inspector.last_message =
+                        format!("Item pile #{} no longer exists", pile_id.raw());
+                    return;
+                };
+                let preview = params
+                    .edit
+                    .preview_placement
+                    .unwrap_or_else(|| pile_preview_from_record(&record));
+                let orientation = adjust(preview.orientation, sign * step);
+                let preview = DoodadPreviewPlacement {
+                    orientation,
+                    ..preview
+                };
+                params.gate.block_gameplay_mouse = true;
+                match update_item_pile_transform(
+                    &mut params.world,
+                    pile_id,
+                    ItemPileTransformCandidate {
+                        position: preview.position,
+                        orientation: preview.orientation,
+                    },
+                ) {
+                    Ok(_) => {
+                        params.edit.preview_placement = Some(preview);
+                        params.inspector.last_message = format!(
+                            "Gizmo commit: pile #{} {axis_label} adjusted",
+                            pile_id.raw()
+                        );
+                    }
+                    Err(err) => {
+                        params.inspector.last_message = format!("Rotate failed: {err:?}");
+                    }
+                }
+                return;
+            }
+        }
     }
 
     if !params.edit.dragging {
@@ -306,6 +428,11 @@ fn enter_transform_tool(params: &mut GizmoInputParams, tool: DevTool) {
     if let SelectedWorldObject::Building(id) = target {
         if let Some(record) = params.world.get_building(id) {
             params.edit.preview_placement = Some(building_preview_from_placement(record.placement));
+        }
+    }
+    if let SelectedWorldObject::ItemPile(id) = target {
+        if let Some(record) = params.world.item_pile_store().get(id) {
+            params.edit.preview_placement = Some(pile_preview_from_record(record));
         }
     }
 }
@@ -368,7 +495,13 @@ pub fn handle_gizmo_mouse(
             id,
             &params.render_assets,
         ),
-        SelectedWorldObject::ItemPile(_) => return,
+        SelectedWorldObject::ItemPile(id) => pile_drag_context(
+            &params.world,
+            &params.config,
+            &params.edit,
+            id,
+            &params.render_assets,
+        ),
     };
     let Some(anchor) = anchor else {
         if params.edit.dragging {
@@ -490,7 +623,13 @@ pub fn handle_gizmo_mouse(
                         params.inspector.last_message =
                             format!("Gizmo commit: building #{}", id.raw());
                     }
-                    SelectedWorldObject::ItemPile(_) => {}
+                    SelectedWorldObject::ItemPile(id) => {
+                        if let Some(record) = params.world.item_pile_store().get(id) {
+                            params.edit.preview_placement = Some(pile_preview_from_record(record));
+                        }
+                        params.inspector.last_message =
+                            format!("Gizmo commit: pile #{}", id.raw());
+                    }
                 }
             } else if !params.edit.last_error.is_empty() {
                 params.inspector.last_message = params.edit.last_error.clone();
@@ -616,6 +755,31 @@ fn building_drag_context(
     let anchor =
         world_position_to_render_global(placement.0, config.chunk_layout(), vertical_scale);
     (Some(anchor), placement.1, min_scale, max_scale)
+}
+
+fn pile_drag_context(
+    world: &WorldData,
+    config: &WorldConfig,
+    edit: &TransformEditState,
+    id: crate::world::ItemPileId,
+    render_assets: &Option<Res<crate::terrain::TerrainRenderAssets>>,
+) -> (Option<Vec3>, Quat, f32, f32) {
+    let Some(record) = world.item_pile_store().get(id) else {
+        return (None, Quat::IDENTITY, 0.05, 20.0);
+    };
+    let placement = drag_anchor_placement(edit).unwrap_or_else(|| pile_preview_from_record(record));
+    let vertical_scale = render_assets
+        .as_ref()
+        .map(|a| a.vertical_scale)
+        .unwrap_or(1.0);
+    let anchor =
+        world_position_to_render_global(placement.position, config.chunk_layout(), vertical_scale);
+    (
+        Some(anchor),
+        placement.rotation_quat(),
+        AUTHORING_INSTANCE_SCALE_MIN,
+        AUTHORING_INSTANCE_SCALE_MAX,
+    )
 }
 
 #[cfg(test)]

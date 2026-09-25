@@ -111,3 +111,76 @@ fn windows_launcher_excludes_advanced_entries() {
         assert!(!DevWindowId::ADVANCED_LAUNCHER.contains(&window));
     }
 }
+
+#[test]
+#[test]
+fn catalog_placement_labels_avoid_unsupported_glyphs() {
+    use crate::dev::widgets::glyph_safety::contains_forbidden_dev_ui_glyph;
+
+    for label in [
+        "Count -",
+        "Spacing -",
+        "Radius -",
+        "Cols -",
+        "Rows -",
+        "Yaw -",
+        "Scale -",
+        "Definitions (5) - enabled-only: true - E toggles",
+        "Sim: running   tick      0   Space pause   Shift+Space step",
+    ] {
+        assert!(
+            !contains_forbidden_dev_ui_glyph(label),
+            "unsupported glyph in `{label}`"
+        );
+    }
+}
+
+#[test]
+fn catalog_placement_actions_exclude_deselect() {
+    use super::components::DevContextualPlacementAction;
+
+    for action in [
+        DevContextualPlacementAction::CycleSpawnTeam,
+        DevContextualPlacementAction::CycleBrush,
+    ] {
+        let name = format!("{action:?}");
+        assert!(!name.contains("Deselect"));
+    }
+}
+
+#[test]
+fn spawn_team_button_label_reflects_current_affiliation() {
+    let mut state = DevModeState::default();
+    assert_eq!(state.spawn_team_button_label(), "Team: Player");
+    state.cycle_spawn_affiliation();
+    assert_eq!(state.spawn_team_button_label(), "Team: Wilds");
+    state.cycle_spawn_affiliation();
+    assert_eq!(state.spawn_team_button_label(), "Team: Player");
+}
+
+#[test]
+fn catalog_row_pool_supports_long_lists() {
+    use super::{catalog_row_pool_capacity, visible_row_count};
+    use crate::dev::window::CATALOG_MAX_LIST_HEIGHT_PX;
+
+    let pool = catalog_row_pool_capacity(CATALOG_MAX_LIST_HEIGHT_PX);
+    assert!(pool > 10, "row pool should exceed legacy 10-row cap");
+    let visible = visible_row_count(CATALOG_MAX_LIST_HEIGHT_PX);
+    assert!(visible > 10);
+    assert_eq!(
+        super::scroll::max_scroll_offset(pool + 5, visible),
+        pool + 5 - visible
+    );
+}
+
+#[test]
+fn definition_and_archetype_scroll_offsets_stay_independent() {
+    use super::scroll::max_scroll_offset;
+    use super::clamp_scroll_offset;
+
+    let def_max = max_scroll_offset(40, 12);
+    let arch_max = max_scroll_offset(18, 8);
+    assert_eq!(clamp_scroll_offset(5, 40, 12), 5);
+    assert_eq!(clamp_scroll_offset(99, 18, 8), arch_max);
+    assert_ne!(def_max, arch_max);
+}

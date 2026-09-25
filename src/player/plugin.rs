@@ -4,6 +4,7 @@ use crate::client::{
     ClientIntentCollectSystems, ClientIntentDispatchSystems, ClientIntentFlushSystems,
     ClientPipelinePlugin, SettlementContextPlugin, collect_unit_input_intents,
     dispatch_client_intents, tick_pending_building_player_interactions,
+    tick_pending_corpse_player_interactions,
     tick_pending_dialogue_interactions,
 };
 use crate::debug::DebugOverlayPlugin;
@@ -48,7 +49,7 @@ pub struct PlayerPlugin;
 /// [`crate::app::configure_update_pipeline_sets`] places after runtime sync.
 /// Ordering any of them relative to sets that run earlier in the frame
 /// (camera, view focus, terrain streaming) produces a schedule cycle.
-pub(crate) fn configure_player_control_sets(app: &mut App) {
+pub fn configure_player_control_sets(app: &mut App) {
     #[cfg(feature = "dev")]
     {
         use crate::dev::{DevModeInputSystems, DevModePresentationSystems};
@@ -150,6 +151,7 @@ impl Plugin for PlayerPlugin {
                 Update,
                 (
                     tick_pending_building_player_interactions,
+                    tick_pending_corpse_player_interactions,
                     tick_pending_dialogue_interactions,
                 )
                     .after(tick_unit_movement)

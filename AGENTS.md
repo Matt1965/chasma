@@ -314,6 +314,11 @@ cargo test --features dev --lib <filter>
 cargo run --features dev
 ```
 
+Lib tests compile only with `--features dev`. After module moves, update test `use` paths to
+current public or `pub(crate)` APIs (or a local `test_imports` prelude); do not widen production
+exports or change gameplay behavior solely to satisfy stale tests. Dev UI labels must use ASCII
+glyphs supported by the default font (`-` not `−`, no em dash).
+
 ---
 
 # Dev UI (graphical)

@@ -30,8 +30,9 @@ pub use mask::TerrainMask;
 pub use metadata::TerrainMetadata;
 pub use query::{
     SlopeWalkability, classify_slope_walkability, estimate_effective_slope_degrees,
-    estimate_slope_degrees, ground_world_position, is_position_slope_walkable, slope_at,
-    try_ground_world_position, try_sample_base_height_at_position, try_sample_height_at_position,
+    estimate_effective_terrain_normal, estimate_slope_degrees, ground_world_position,
+    is_position_slope_walkable, slope_at, try_ground_world_position,
+    try_sample_base_height_at_position, try_sample_height_at_position,
 };
 
 /// Errors produced when constructing authoritative terrain data from raw

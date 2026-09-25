@@ -152,11 +152,13 @@ pub fn apply_building_dev_action(
                 building_id,
                 BuildingLifecycleState::Ruins,
                 1.0,
+                None,
             );
             inspector.last_message = format!("Set building #{} to ruins", building_id.raw());
             true
         }
         BuildingDevAction::Complete => {
+            let inventory_ctx = params.inventory_ctx();
             let _ = set_building_lifecycle_stage(
                 world,
                 &params.building_catalog,
@@ -167,11 +169,13 @@ pub fn apply_building_dev_action(
                 building_id,
                 BuildingLifecycleState::Complete,
                 1.0,
+                Some(&inventory_ctx),
             );
             inspector.last_message = format!("Completed building #{}", building_id.raw());
             true
         }
         BuildingDevAction::AddConstructionProgress => {
+            let inventory_ctx = params.inventory_ctx();
             let _ = add_building_construction_progress(
                 world,
                 &params.building_catalog,
@@ -181,6 +185,7 @@ pub fn apply_building_dev_action(
                 Some(&params.nav_blueprint_catalog),
                 building_id,
                 0.1,
+                Some(&inventory_ctx),
             );
             inspector.last_message =
                 format!("Added 10% progress to building #{}", building_id.raw());

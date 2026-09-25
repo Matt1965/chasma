@@ -3,7 +3,7 @@
 mod badge;
 mod button;
 mod confirmation;
-mod glyph_safety;
+pub(crate) mod glyph_safety;
 mod interaction;
 mod numeric;
 mod search;

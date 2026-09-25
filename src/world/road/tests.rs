@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use bevy::prelude::Vec2;
 
+use super::connectivity::move_endpoint_junction_group;
 use super::style::default_style_table;
 use super::spline::sample_road_spline_at_t;
 use super::*;

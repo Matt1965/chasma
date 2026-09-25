@@ -162,6 +162,7 @@ pub fn spawn_selected_at_position(
                         doodad_catalog,
                         occupancy,
                         nav_catalog,
+                        Some(inventory_ctx),
                         record.id,
                     );
                     DevSpawnOutcome::SpawnedBuilding {
@@ -218,7 +219,9 @@ pub fn spawn_by_mode_at_position(
 mod tests {
     use super::*;
     use crate::world::{
-        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, LocalPosition,
+        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, InventoryProfileCatalog,
+        ItemCatalog, ItemCategoryCatalog, LocalPosition, starter_inventory_profile_definitions,
+        starter_item_category_definitions, starter_item_definitions,
     };
     use bevy::prelude::Vec3;
 
@@ -389,6 +392,7 @@ mod tests {
         );
 
         let pile_settings = crate::world::ItemPileSettings::default();
+        let corpse_settings = crate::world::CorpseSettings::default();
         let weapon_catalog = WeaponCatalog::default();
         let query_ctx = InteractionQueryContext::new(
             &world,
@@ -399,6 +403,7 @@ mod tests {
             &unit_catalog,
             &weapon_catalog,
             &pile_settings,
+            &corpse_settings,
         );
         let interaction = query_world_interaction(&query_ctx, click).expect("building hit");
         assert_eq!(interaction.interaction_type, InteractionType::Container);
@@ -417,6 +422,7 @@ mod tests {
             &unit_catalog,
             &weapon_catalog,
             &pile_settings,
+            &crate::world::CorpseSettings::default(),
             unit.id,
             CommandTarget::Terrain { position: click },
             &mut queue,

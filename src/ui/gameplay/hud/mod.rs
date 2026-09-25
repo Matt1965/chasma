@@ -8,7 +8,8 @@ mod geometry;
 mod section;
 
 pub use assets::{
-    HudUiAssets, spawn_hud_ornaments,
+    HUD_ENDCAP_LEFT_PATH, HUD_ENDCAP_RIGHT_PATH, HUD_ENDCAP_SPIRE_PATH, HUD_PLATE_FRAME_PATH,
+    HudFrameBackground, HudUiAssets, spawn_hud_ornaments,
 };
 pub use bars::{
     HudStatBarFill, HudStatBarId, HudStatBarValueText, hp_bar_color, nutrition_bar_color,
@@ -21,10 +22,11 @@ pub use depth::{
     hud_roster_card_style, hud_roster_ghost_slot_style, hud_stat_track_style,
     spawn_hud_button_top_highlight,
 };
-pub use frames::{spawn_hud_plate_frames, sync_hud_plate_frames};
+pub use frames::{HudPlateFrame, HudPlateSection, spawn_hud_plate_frames, sync_hud_plate_frames};
 pub use geometry::{
-    HudViewportGeometry,
-    apply_hud_viewport_geometry, measure_hud_viewport_geometry, visible_roster_card_count,
+    HudEndcapLeft, HudEndcapRight, HudEndcapSpire, HudViewportGeometry,
+    apply_hud_viewport_geometry, compute_hud_viewport_geometry, measure_hud_viewport_geometry,
+    roster_content_width, visible_roster_card_count,
 };
 pub use section::{
     hud_flex_section_node, hud_section_node,

@@ -573,7 +573,13 @@ fn corpse_equipment_save_load_round_trip() {
     let corpse_id = kill_unit(&mut world, ctx, unit.id);
     let snapshot = capture_inventory_persistence(&world);
     let mut restored = flat_world();
-    restore_inventory_persistence(&mut restored, &snapshot, &ctx).unwrap();
+    restore_inventory_persistence(
+        &mut restored,
+        &snapshot,
+        &ctx,
+        &crate::world::AppearanceProfileCatalog::empty(),
+    )
+    .unwrap();
     let corpse = restored.corpse_store().get(corpse_id).unwrap();
     assert!(corpse.equipment.is_some());
     assert!(validate_world_inventory_state(&restored, ctx).is_ok());

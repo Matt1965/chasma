@@ -172,3 +172,87 @@ pub fn apply_building_transform_preview(
         }
     }
 }
+
+
+/// Apply preview transforms to item pile render entities after authoritative sync.
+pub fn apply_item_pile_transform_preview(
+    edit: Res<super::state::TransformEditState>,
+    render_index: Res<crate::item_piles::ItemPileRenderIndex>,
+    config: Res<crate::world::WorldConfig>,
+    world: Res<crate::world::WorldData>,
+    items: Res<crate::world::ItemCatalog>,
+    presentation: Res<crate::item_piles::ItemPilePresentationSettings>,
+    render_assets: Option<Res<crate::terrain::TerrainRenderAssets>>,
+    mut transforms: Query<&mut Transform>,
+    mut commands: Commands,
+    preview: Query<Entity, With<DevTransformPreview>>,
+    fallback_meshes: Query<&crate::item_piles::ItemPileFallbackMesh>,
+) {
+    for entity in &preview {
+        commands.entity(entity).remove::<DevTransformPreview>();
+    }
+
+    let Some(target) = edit.target else {
+        return;
+    };
+    let super::tool::SelectedWorldObject::ItemPile(pile_id) = target else {
+        return;
+    };
+    if !edit.mode.is_transform() {
+        return;
+    }
+    let Some(preview_placement) = edit.preview_placement else {
+        return;
+    };
+    let Some(entity) = render_index.0.get(&pile_id).copied() else {
+        return;
+    };
+    if world.item_pile_store().get(pile_id).is_none() {
+        return;
+    }
+
+    let vertical_scale = render_assets
+        .as_ref()
+        .map(|a| a.vertical_scale)
+        .unwrap_or(1.0);
+    let layout = config.chunk_layout();
+    let mut translation = crate::terrain::world_position_to_render_global(
+        preview_placement.position,
+        layout,
+        vertical_scale,
+    );
+    let is_fallback = fallback_meshes.get(entity).is_ok();
+    if is_fallback {
+        translation.y += presentation.fallback_sphere_radius;
+    }
+    let authored = preview_placement.rotation_quat();
+    let rotation = if is_fallback {
+        authored
+    } else {
+        let definition = world
+            .item_pile_store()
+            .get(pile_id)
+            .and_then(|record| {
+                crate::world::pile_item_definition_id(record, |instance_id| {
+                    world
+                        .item_instance_store()
+                        .get(instance_id)
+                        .map(|instance| instance.definition_id.clone())
+                })
+            })
+            .and_then(|id| items.get(&id));
+        crate::item_piles::item_pile_visual_rotation(authored, definition)
+    };
+    let scale = Vec3::ONE;
+
+    if let Ok(mut transform) = transforms.get_mut(entity) {
+        transform.translation = translation;
+        transform.rotation = rotation;
+        transform.scale = scale;
+    }
+    commands.entity(entity).insert(DevTransformPreview {
+        translation,
+        rotation,
+        scale,
+    });
+}

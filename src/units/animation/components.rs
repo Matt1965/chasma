@@ -46,6 +46,8 @@ pub enum AnimationPlaybackClip {
 #[derive(Component, Debug, Clone, PartialEq, Reflect)]
 #[reflect(Component)]
 pub struct DeathPresentation {
+    /// Origin unit when presentation began from a live render root (A3 handoff).
+    pub origin_unit_id: Option<UnitId>,
     pub definition_id: crate::world::UnitDefinitionId,
     pub profile_id: AnimationProfileId,
     pub remaining_seconds: f32,

@@ -794,7 +794,13 @@ fn equipment_and_backpack_state_survives_save_load_roundtrip() {
     restored
         .insert_unit(chunk, unit_record)
         .expect("restore unit record");
-    restore_inventory_persistence(&mut restored, &persistence, &ctx).unwrap();
+    restore_inventory_persistence(
+        &mut restored,
+        &persistence,
+        &ctx,
+        &crate::world::AppearanceProfileCatalog::empty(),
+    )
+    .unwrap();
     let report = validate_world_inventory_state(&restored, &ctx);
     assert!(
         report.is_ok(),

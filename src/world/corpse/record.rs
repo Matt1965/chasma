@@ -5,6 +5,7 @@ use crate::world::SpaceId;
 use crate::world::equipment::UnitEquipmentInventories;
 use crate::world::inventory::InventoryId;
 use crate::world::ownership::{Affiliation, OwnerId, TeamId};
+use crate::world::unit::appearance::UnitAppearance;
 use crate::world::unit::{UnitDefinitionId, UnitId, UnitPlacement};
 
 /// Authoritative corpse lifecycle state (ADR-089 I3).
@@ -25,6 +26,7 @@ pub struct CorpseRecord {
     pub current_space_id: SpaceId,
     pub inventory_id: Option<InventoryId>,
     pub equipment: Option<UnitEquipmentInventories>,
+    pub appearance: Option<UnitAppearance>,
     pub owner_id: Option<OwnerId>,
     pub team_id: Option<TeamId>,
     pub affiliation: Affiliation,
@@ -42,6 +44,7 @@ impl CorpseRecord {
         current_space_id: SpaceId,
         inventory_id: Option<InventoryId>,
         equipment: Option<UnitEquipmentInventories>,
+        appearance: Option<UnitAppearance>,
         owner_id: Option<OwnerId>,
         team_id: Option<TeamId>,
         affiliation: Affiliation,
@@ -56,6 +59,7 @@ impl CorpseRecord {
             current_space_id,
             inventory_id,
             equipment,
+            appearance,
             owner_id,
             team_id,
             affiliation,

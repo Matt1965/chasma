@@ -14,6 +14,14 @@ pub struct UnitEquipmentVisual {
     pub item_instance_id: ItemInstanceId,
 }
 
+/// Marker on a spawned equipment visual root for a corpse render entity.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CorpseEquipmentVisual {
+    pub corpse_id: crate::world::CorpseId,
+    pub slot: EquipmentSlot,
+    pub item_instance_id: ItemInstanceId,
+}
+
 /// glTF scene root for one equipment visual.
 #[derive(Component, Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct UnitEquipmentSceneRoot;

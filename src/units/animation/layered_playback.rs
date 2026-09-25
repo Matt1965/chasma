@@ -51,7 +51,9 @@ pub fn resolve_layered_playback_targets(
         };
     }
 
-    let lower = resolve_lower_target(&intent.lower, built);
+    let use_layered_locomotion =
+        mode == UnitAnimationLayeringMode::Masked && intent.uses_masked_layers();
+    let lower = resolve_lower_target(&intent.lower, built, use_layered_locomotion);
     let upper = resolve_upper_target(
         &intent.upper,
         built,
@@ -60,7 +62,7 @@ pub fn resolve_layered_playback_targets(
         use_alternate_attack_variant,
     );
 
-    if mode == UnitAnimationLayeringMode::Masked && intent.uses_masked_layers() {
+    if use_layered_locomotion {
         return LayeredPlaybackTargets {
             lower,
             upper,
@@ -167,7 +169,13 @@ fn resolve_full_body_override(
 fn resolve_lower_target(
     intent: &LowerBodyIntent,
     built: &DefinitionAnimationGraph,
+    use_layered_locomotion: bool,
 ) -> Option<LayerClipTarget> {
+    let locomotion_nodes = if use_layered_locomotion {
+        &built.layered_locomotion_nodes
+    } else {
+        &built.locomotion_nodes
+    };
     match intent {
         LowerBodyIntent::Locomotion {
             clip,
@@ -175,7 +183,7 @@ fn resolve_lower_target(
             looping,
             blend,
         } => {
-            let node = *built.locomotion_nodes.get(clip)?;
+            let node = *locomotion_nodes.get(clip)?;
             let duration = built.locomotion_durations.get(clip).copied().unwrap_or(1.0);
             Some(LayerClipTarget {
                 clip: AnimationPlaybackClip::Locomotion(*clip),
@@ -188,7 +196,7 @@ fn resolve_lower_target(
             })
         }
         LowerBodyIntent::Turn { clip, speed, blend } => {
-            let node = *built.locomotion_nodes.get(clip)?;
+            let node = *locomotion_nodes.get(clip)?;
             let duration = built.locomotion_durations.get(clip).copied().unwrap_or(0.6);
             Some(LayerClipTarget {
                 clip: AnimationPlaybackClip::Locomotion(*clip),
@@ -313,7 +321,7 @@ mod tests {
     use crate::units::animation::layers::{
         OverlayIntent, UnitAnimationLayeringMode, UnitLayeredAnimationIntent,
     };
-    use crate::world::{AnimationProfileId, WeaponDefinitionId};
+    use crate::world::{AnimationProfileId, DamageType, HitMode, TargetFilter, WeaponDefinitionId};
 
     fn empty_built() -> DefinitionAnimationGraph {
         let share_key = crate::units::animation::AnimationGraphShareKey {
@@ -323,6 +331,7 @@ mod tests {
         DefinitionAnimationGraph {
             graph: Handle::default(),
             locomotion_nodes: Default::default(),
+            layered_locomotion_nodes: Default::default(),
             attack_nodes: Default::default(),
             attack_variant_nodes: Default::default(),
             combat_idle_nodes: Default::default(),
@@ -341,37 +350,85 @@ mod tests {
         }
     }
 
-    #[test]
-    fn missing_upper_clip_continues_lower_in_masked_mode() {
-        let weapon = crate::world::WeaponDefinition::new(
-            WeaponDefinitionId::new("weapon_test"),
+    fn sample_weapon(weapon_id: &str, animation_key: &str) -> crate::world::WeaponDefinition {
+        crate::world::WeaponDefinition::new(
+            WeaponDefinitionId::new(weapon_id),
             "T",
             "T",
             5.0,
-            crate::world::DamageType::Blunt,
+            DamageType::Blunt,
             1.5,
             1.0,
             0.2,
             0.1,
-            crate::world::HitMode::Melee,
+            HitMode::Melee,
             None,
             0.0,
-            "missing_attack",
-            vec![crate::world::TargetFilter::Enemies],
+            animation_key,
+            vec![TargetFilter::Enemies],
             None,
             true,
-        );
+        )
+    }
+
+    fn sample_profile() -> AnimationProfile {
+        AnimationProfile::new(
+            AnimationProfileId::new("humanoid"),
+            "Idle",
+            None,
+            None,
+            4.0,
+            true,
+        )
+    }
+
+    struct TestGraphNodes {
+        full_body: AnimationNodeIndex,
+        layered: AnimationNodeIndex,
+        attack: AnimationNodeIndex,
+    }
+
+    fn built_with_locomotion_and_attack(
+        clip: AnimationClipKey,
+        weapon: &crate::world::WeaponDefinition,
+    ) -> (DefinitionAnimationGraph, TestGraphNodes) {
         let mut built = empty_built();
-        let walk_node = AnimationNodeIndex::new(2);
+        let nodes = TestGraphNodes {
+            full_body: AnimationNodeIndex::new(1),
+            layered: AnimationNodeIndex::new(2),
+            attack: AnimationNodeIndex::new(3),
+        };
+        built.locomotion_nodes.insert(clip, nodes.full_body);
+        built.layered_locomotion_nodes.insert(clip, nodes.layered);
+        built.locomotion_durations.insert(clip, 1.0);
         built
-            .locomotion_nodes
-            .insert(AnimationClipKey::Walk, walk_node);
-        built
-            .locomotion_durations
-            .insert(AnimationClipKey::Walk, 1.0);
-        let intent = UnitLayeredAnimationIntent {
+            .attack_nodes
+            .insert(weapon.id.clone(), nodes.attack);
+        built.attack_durations.insert(weapon.id.clone(), 0.8);
+        (built, nodes)
+    }
+
+    fn locomotion_intent(clip: AnimationClipKey) -> UnitLayeredAnimationIntent {
+        UnitLayeredAnimationIntent {
             lower: LowerBodyIntent::Locomotion {
-                clip: AnimationClipKey::Walk,
+                clip,
+                speed: 1.0,
+                looping: true,
+                blend: Duration::ZERO,
+            },
+            upper: UpperBodyIntent::None,
+            overlay: OverlayIntent::None,
+            override_mode: FullBodyOverride::None,
+        }
+    }
+
+    fn attack_intent(
+        clip: AnimationClipKey,
+        weapon: &crate::world::WeaponDefinition,
+    ) -> UnitLayeredAnimationIntent {
+        UnitLayeredAnimationIntent {
+            lower: LowerBodyIntent::Locomotion {
+                clip,
                 speed: 1.0,
                 looping: true,
                 blend: Duration::ZERO,
@@ -384,24 +441,178 @@ mod tests {
             },
             overlay: OverlayIntent::None,
             override_mode: FullBodyOverride::None,
+        }
+    }
+
+    fn resolve(
+        intent: &UnitLayeredAnimationIntent,
+        mode: UnitAnimationLayeringMode,
+        built: &DefinitionAnimationGraph,
+        weapon: Option<&crate::world::WeaponDefinition>,
+    ) -> LayeredPlaybackTargets {
+        resolve_layered_playback_targets(
+            intent,
+            mode,
+            built,
+            weapon,
+            &sample_profile(),
+            &UnitAnimationSettings::default(),
+            false,
+        )
+    }
+
+    #[test]
+    fn ordinary_locomotion_uses_full_body_nodes() {
+        for clip in [AnimationClipKey::Idle, AnimationClipKey::Walk, AnimationClipKey::Run] {
+            let weapon = sample_weapon("weapon_fists", "Punch_Jab");
+            let (built, nodes) = built_with_locomotion_and_attack(clip, &weapon);
+            let targets = resolve(
+                &locomotion_intent(clip),
+                UnitAnimationLayeringMode::Masked,
+                &built,
+                None,
+            );
+            assert_eq!(targets.full_body.as_ref().map(|t| t.node), Some(nodes.full_body));
+            assert!(targets.lower.is_none());
+            assert!(targets.upper.is_none());
+        }
+    }
+
+    #[test]
+    fn masked_idle_attack_uses_layered_locomotion_and_upper_attack() {
+        let weapon = sample_weapon("weapon_fists", "Punch_Jab");
+        let (built, nodes) = built_with_locomotion_and_attack(AnimationClipKey::Idle, &weapon);
+        let targets = resolve(
+            &attack_intent(AnimationClipKey::Idle, &weapon),
+            UnitAnimationLayeringMode::Masked,
+            &built,
+            Some(&weapon),
+        );
+        assert_eq!(targets.lower.as_ref().map(|t| t.node), Some(nodes.layered));
+        assert_eq!(targets.upper.as_ref().map(|t| t.node), Some(nodes.attack));
+        assert_ne!(targets.lower.as_ref().map(|t| t.node), Some(nodes.full_body));
+        assert!(targets.full_body.is_none());
+    }
+
+    #[test]
+    fn masked_walk_attack_uses_layered_locomotion_and_upper_attack() {
+        let weapon = sample_weapon("weapon_fists", "Punch_Jab");
+        let (built, nodes) = built_with_locomotion_and_attack(AnimationClipKey::Walk, &weapon);
+        let targets = resolve(
+            &attack_intent(AnimationClipKey::Walk, &weapon),
+            UnitAnimationLayeringMode::Masked,
+            &built,
+            Some(&weapon),
+        );
+        assert_eq!(targets.lower.as_ref().map(|t| t.node), Some(nodes.layered));
+        assert_eq!(targets.upper.as_ref().map(|t| t.node), Some(nodes.attack));
+        assert_ne!(targets.lower.as_ref().map(|t| t.node), Some(nodes.full_body));
+        assert!(targets.full_body.is_none());
+    }
+
+    #[test]
+    fn masked_run_attack_uses_layered_locomotion_and_upper_attack() {
+        let weapon = sample_weapon("weapon_sword", "Sword_Attack");
+        let (built, nodes) = built_with_locomotion_and_attack(AnimationClipKey::Run, &weapon);
+        let targets = resolve(
+            &attack_intent(AnimationClipKey::Run, &weapon),
+            UnitAnimationLayeringMode::Masked,
+            &built,
+            Some(&weapon),
+        );
+        assert_eq!(targets.lower.as_ref().map(|t| t.node), Some(nodes.layered));
+        assert_eq!(targets.upper.as_ref().map(|t| t.node), Some(nodes.attack));
+        assert_ne!(targets.lower.as_ref().map(|t| t.node), Some(nodes.full_body));
+        assert!(targets.full_body.is_none());
+    }
+
+    #[test]
+    fn full_body_exclusive_attack_does_not_dual_play() {
+        let weapon = sample_weapon("weapon_fists", "Punch_Jab");
+        let (built, nodes) = built_with_locomotion_and_attack(AnimationClipKey::Walk, &weapon);
+        let targets = resolve(
+            &attack_intent(AnimationClipKey::Walk, &weapon),
+            UnitAnimationLayeringMode::FullBodyExclusive,
+            &built,
+            Some(&weapon),
+        );
+        assert_eq!(targets.full_body.as_ref().map(|t| t.node), Some(nodes.attack));
+        assert!(targets.lower.is_none());
+        assert!(targets.upper.is_none());
+    }
+
+    #[test]
+    fn death_remains_full_body_override() {
+        let weapon = sample_weapon("weapon_fists", "Punch_Jab");
+        let (mut built, _) = built_with_locomotion_and_attack(AnimationClipKey::Idle, &weapon);
+        let death_node = AnimationNodeIndex::new(9);
+        built.death_node = Some(death_node);
+        built.death_duration = Some(2.0);
+        let intent = UnitLayeredAnimationIntent {
+            lower: LowerBodyIntent::Suppressed,
+            upper: UpperBodyIntent::None,
+            overlay: OverlayIntent::None,
+            override_mode: FullBodyOverride::Death {
+                blend: Duration::ZERO,
+                freeze_pose: false,
+            },
         };
-        let targets = resolve_layered_playback_targets(
+        let targets = resolve(&intent, UnitAnimationLayeringMode::Masked, &built, Some(&weapon));
+        assert_eq!(targets.full_body.as_ref().map(|t| t.node), Some(death_node));
+        assert!(targets.lower.is_none());
+        assert!(targets.upper.is_none());
+    }
+
+    #[test]
+    fn hit_reaction_remains_full_body_override() {
+        let weapon = sample_weapon("weapon_fists", "Punch_Jab");
+        let (mut built, _) = built_with_locomotion_and_attack(AnimationClipKey::Idle, &weapon);
+        let hit_node = AnimationNodeIndex::new(10);
+        built.hit_reaction_node = Some(hit_node);
+        built.hit_reaction_duration = Some(0.5);
+        let intent = UnitLayeredAnimationIntent {
+            lower: LowerBodyIntent::Locomotion {
+                clip: AnimationClipKey::Idle,
+                speed: 1.0,
+                looping: true,
+                blend: Duration::ZERO,
+            },
+            upper: UpperBodyIntent::None,
+            overlay: OverlayIntent::None,
+            override_mode: FullBodyOverride::HitReaction {
+                blend: Duration::ZERO,
+            },
+        };
+        let targets = resolve(&intent, UnitAnimationLayeringMode::Masked, &built, Some(&weapon));
+        assert_eq!(targets.full_body.as_ref().map(|t| t.node), Some(hit_node));
+        assert!(targets.lower.is_none());
+        assert!(targets.upper.is_none());
+    }
+
+    #[test]
+    fn missing_upper_clip_continues_lower_in_masked_mode() {
+        let weapon = sample_weapon("weapon_test", "missing_attack");
+        let mut built = empty_built();
+        let full_body_walk = AnimationNodeIndex::new(1);
+        let layered_walk = AnimationNodeIndex::new(2);
+        built
+            .locomotion_nodes
+            .insert(AnimationClipKey::Walk, full_body_walk);
+        built
+            .layered_locomotion_nodes
+            .insert(AnimationClipKey::Walk, layered_walk);
+        built
+            .locomotion_durations
+            .insert(AnimationClipKey::Walk, 1.0);
+        let intent = attack_intent(AnimationClipKey::Walk, &weapon);
+        let targets = resolve(
             &intent,
             UnitAnimationLayeringMode::Masked,
             &built,
             Some(&weapon),
-            &AnimationProfile::new(
-                AnimationProfileId::new("humanoid"),
-                "Idle",
-                None,
-                None,
-                4.0,
-                true,
-            ),
-            &UnitAnimationSettings::default(),
-            false,
         );
-        assert_eq!(targets.lower.as_ref().map(|t| t.node), Some(walk_node));
+        assert_eq!(targets.lower.as_ref().map(|t| t.node), Some(layered_walk));
+        assert_ne!(targets.lower.as_ref().map(|t| t.node), Some(full_body_walk));
         assert!(targets.upper.is_none());
         assert!(targets.full_body.is_none());
     }

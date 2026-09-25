@@ -47,10 +47,6 @@ pub(crate) enum DevContextualPlacementAction {
 
     GridRowsDown,
 
-    ToggleTerrainSnap,
-
-    TogglePreview,
-
     CycleSpawnTeam,
 
     RotationUp,
@@ -60,8 +56,6 @@ pub(crate) enum DevContextualPlacementAction {
     ScaleUp,
 
     ScaleDown,
-
-    CancelPlacement,
 }
 
 #[derive(Component, Debug)]

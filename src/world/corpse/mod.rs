@@ -7,6 +7,7 @@ mod equipment_tests;
 mod error;
 mod id;
 mod lifecycle;
+mod query;
 mod record;
 mod settings;
 mod store;
@@ -21,6 +22,7 @@ pub use id::CorpseId;
 #[cfg(feature = "dev")]
 pub use lifecycle::dev_expire_corpse;
 pub use lifecycle::{CorpseLifecycleReport, step_corpse_lifecycle};
+pub use query::nearest_corpse_at_position;
 pub use record::{CorpseRecord, CorpseState};
 pub use settings::{CorpseSettings, DEFAULT_CORPSE_LIFETIME_TICKS};
 pub use store::CorpseStore;

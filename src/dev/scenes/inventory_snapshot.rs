@@ -9,10 +9,11 @@ use crate::world::{
     ItemPileId, ItemPileSource, OwnerId, PlacedInventoryEntry, SpaceId, TeamId, UnitId,
     UnitPlacement, WorldData, WorldItemPileRecord, WorldPileContents,
 };
+use crate::world::authoring_transform::QuantizedOrientation;
 
 use super::snapshot::{
-    SceneQuat, SceneRecordError, SceneUnitEquipmentRecord, SceneWorldPosition,
-    affiliation_from_label,
+    SceneQuat, SceneRecordError, SceneUnitAppearanceRecord, SceneUnitEquipmentRecord,
+    SceneWorldPosition, affiliation_from_label,
 };
 
 fn default_next_inventory_id() -> u32 {
@@ -29,6 +30,10 @@ fn default_next_corpse_id() -> u64 {
 
 fn default_next_item_pile_id() -> u64 {
     1
+}
+
+fn default_yaw_degrees() -> f32 {
+    0.0
 }
 
 /// Serializable placed inventory entry (ADR-094 I8).
@@ -95,6 +100,8 @@ pub struct SceneCorpseRecord {
     #[serde(default)]
     pub equipment: Option<SceneUnitEquipmentRecord>,
     #[serde(default)]
+    pub appearance: Option<SceneUnitAppearanceRecord>,
+    #[serde(default)]
     pub owner_id: Option<u64>,
     #[serde(default)]
     pub team_id: Option<u64>,
@@ -126,6 +133,14 @@ pub struct SceneItemPileRecord {
     pub affiliation: Option<String>,
     pub source: String,
     pub created_tick: u64,
+    #[serde(default)]
+    pub orientation_yaw_mdeg: i32,
+    #[serde(default)]
+    pub orientation_pitch_mdeg: i32,
+    #[serde(default)]
+    pub orientation_roll_mdeg: i32,
+    #[serde(default = "default_yaw_degrees")]
+    pub yaw_degrees: f32,
 }
 
 /// Inventory persistence bundle for scene files (ADR-094 I8).
@@ -372,6 +387,10 @@ impl SceneCorpseRecord {
                 offhand: equipment.offhand.raw(),
                 backpack: equipment.backpack.raw(),
             }),
+            appearance: record
+                .appearance
+                .as_ref()
+                .map(SceneUnitAppearanceRecord::from_unit),
             owner_id: record.owner_id.map(|id| id.raw()),
             team_id: record.team_id.map(|id| id.raw()),
             affiliation: Some(record.affiliation.label().to_string()),
@@ -384,7 +403,10 @@ impl SceneCorpseRecord {
         }
     }
 
-    pub fn to_record(&self) -> Result<CorpseRecord, SceneRecordError> {
+    pub fn to_record(
+        &self,
+        appearance_profiles: &crate::world::AppearanceProfileCatalog,
+    ) -> Result<CorpseRecord, SceneRecordError> {
         let affiliation = self
             .affiliation
             .as_deref()
@@ -394,6 +416,10 @@ impl SceneCorpseRecord {
             "Present" => CorpseState::Present,
             "Expired" => CorpseState::Expired,
             _ => return Err(SceneRecordError::InvalidPosition),
+        };
+        let appearance = match self.appearance.as_ref() {
+            Some(record) => Some(record.to_unit(appearance_profiles)?),
+            None => None,
         };
         Ok(CorpseRecord {
             id: CorpseId::new(self.id),
@@ -414,6 +440,7 @@ impl SceneCorpseRecord {
                     backpack: InventoryId::new(equipment.backpack),
                 }
             }),
+            appearance,
             owner_id: self.owner_id.map(OwnerId::new),
             team_id: self.team_id.map(TeamId::new),
             affiliation,
@@ -454,6 +481,29 @@ impl SceneItemPileRecord {
             affiliation: Some(record.affiliation.label().to_string()),
             source: pile_source_label(record.source),
             created_tick: record.created_tick,
+            orientation_yaw_mdeg: record.orientation.yaw_millidegrees,
+            orientation_pitch_mdeg: record.orientation.pitch_millidegrees,
+            orientation_roll_mdeg: record.orientation.roll_millidegrees,
+            yaw_degrees: record.orientation.yaw_degrees(),
+        }
+    }
+
+    fn scene_orientation(&self) -> Result<QuantizedOrientation, SceneRecordError> {
+        if self.orientation_yaw_mdeg != 0
+            || self.orientation_pitch_mdeg != 0
+            || self.orientation_roll_mdeg != 0
+        {
+            QuantizedOrientation::from_millidegrees(
+                self.orientation_yaw_mdeg,
+                self.orientation_pitch_mdeg,
+                self.orientation_roll_mdeg,
+            )
+            .map_err(|_| SceneRecordError::InvalidPosition)
+        } else if self.yaw_degrees.abs() > f32::EPSILON {
+            QuantizedOrientation::from_degrees(self.yaw_degrees, 0.0, 0.0)
+                .map_err(|_| SceneRecordError::InvalidPosition)
+        } else {
+            Ok(QuantizedOrientation::IDENTITY)
         }
     }
 
@@ -480,9 +530,11 @@ impl SceneItemPileRecord {
             },
             _ => return Err(SceneRecordError::InvalidPosition),
         };
+        let orientation = self.scene_orientation()?;
         Ok(WorldItemPileRecord {
             id: ItemPileId::new(self.id),
             placement: self.position.to_world()?,
+            orientation,
             current_space_id: SpaceId::new(self.current_space_id),
             contents,
             owner_id: self.owner_id.map(OwnerId::new),
@@ -498,6 +550,7 @@ pub fn restore_inventory_persistence(
     world: &mut WorldData,
     persistence: &SceneInventoryPersistence,
     ctx: &crate::world::InventoryCatalogCtx<'_>,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
 ) -> Result<(), String> {
     let inventory_records = persistence
         .inventory_records
@@ -540,7 +593,7 @@ pub fn restore_inventory_persistence(
         .iter()
         .map(|scene| {
             let record = scene
-                .to_record()
+                .to_record(appearance_profiles)
                 .map_err(|err| format!("corpse {}: {err:?}", scene.id))?;
             let chunk = ChunkId::new(record.placement.position.chunk);
             Ok((chunk, record))
@@ -680,4 +733,82 @@ fn parse_pile_source(label: &str) -> Result<ItemPileSource, SceneRecordError> {
         "DevSpawned" => ItemPileSource::DevSpawned,
         _ => return Err(SceneRecordError::InvalidPosition),
     })
+}
+
+#[cfg(test)]
+mod pile_orientation_tests {
+    use super::*;
+    use crate::world::{
+        Affiliation, ChunkCoord, ItemDefinitionId, ItemPileId, ItemPileSource, LocalPosition,
+        SpaceId, WorldItemPileRecord, WorldPileContents, WorldPosition,
+    };
+    use bevy::prelude::Vec3;
+
+    #[test]
+    fn scene_pile_record_defaults_missing_orientation() {
+        let text = r#"
+(
+    id: 1,
+    position: (chunk_x: 0, chunk_z: 0, local_x: 0.0, local_y: 0.0, local_z: 0.0),
+    current_space_id: 0,
+    contents_kind: "stack",
+    item_definition_id: Some("gold"),
+    quantity: Some(3),
+    source: "DevSpawned",
+    created_tick: 0,
+)
+"#;
+        let scene: SceneItemPileRecord = ron::from_str(text).unwrap();
+        assert_eq!(scene.yaw_degrees, 0.0);
+        let restored = scene.to_record().unwrap();
+        assert_eq!(restored.orientation, QuantizedOrientation::IDENTITY);
+    }
+
+    #[test]
+    fn scene_pile_legacy_yaw_compat() {
+        let text = r#"
+(
+    id: 2,
+    position: (chunk_x: 0, chunk_z: 0, local_x: 0.0, local_y: 0.0, local_z: 0.0),
+    current_space_id: 0,
+    contents_kind: "stack",
+    item_definition_id: Some("gold"),
+    quantity: Some(1),
+    source: "DevSpawned",
+    created_tick: 0,
+    yaw_degrees: 45.0,
+)
+"#;
+        let scene: SceneItemPileRecord = ron::from_str(text).unwrap();
+        let restored = scene.to_record().unwrap();
+        assert!((restored.orientation.yaw_degrees() - 45.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn scene_pile_orientation_roundtrip() {
+        let record = WorldItemPileRecord {
+            id: ItemPileId::new(7),
+            placement: WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(1.0, 0.0, 2.0)),
+            ),
+            orientation: QuantizedOrientation::from_degrees(45.0, 12.0, -8.0).unwrap(),
+            current_space_id: SpaceId::SURFACE,
+            contents: WorldPileContents::Stack {
+                item_definition_id: ItemDefinitionId::new("gold"),
+                quantity: 2,
+            },
+            owner_id: None,
+            team_id: None,
+            affiliation: Affiliation::Player,
+            source: ItemPileSource::DevSpawned,
+            created_tick: 0,
+        };
+        let scene = SceneItemPileRecord::from_record(&record);
+        assert_eq!(scene.orientation_yaw_mdeg, 45_000);
+        assert_eq!(scene.orientation_pitch_mdeg, 12_000);
+        assert_eq!(scene.orientation_roll_mdeg, -8_000);
+        let restored = scene.to_record().unwrap();
+        assert_eq!(restored.orientation, record.orientation);
+    }
 }

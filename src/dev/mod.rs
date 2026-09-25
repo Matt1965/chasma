@@ -2,6 +2,7 @@
 
 mod animation_focus;
 mod archetype_editor;
+mod build_identity;
 mod animation_panel;
 mod catalog;
 mod catalog_browser;
@@ -50,6 +51,7 @@ pub use catalog_browser::{CatalogBrowserEntry, filter_catalog_entries};
 pub use catalog_cache::{
     CatalogBrowseIndex, CatalogFilterCache, DevSearchDebounce, browse_catalog_entries,
 };
+pub use build_identity::DevBuildIdentity;
 pub use debug_controls::{apply_dev_debug_flags, dev_flags_from_overlay, sync_dev_debug_controls};
 pub use debug_window::{
     handle_debug_toggle_buttons, setup_debug_window_panel, sync_debug_panel_button_styles,
@@ -118,10 +120,10 @@ pub use scenes::{
     clear_world_entities, restore_inventory_persistence,
 };
 pub use settlement_window::{
-    handle_settlement_add_units_button, handle_settlement_ai_toggle, setup_settlement_window_panel,
-    sync_dev_settlement_panel_visibility, sync_settlement_ai_toggle_styles,
-    sync_settlement_dev_action_availability, sync_settlement_dev_button_styles,
-    sync_settlement_dev_panel,
+    build_settlement_dev_summary, format_focused_line, handle_settlement_add_units_button,
+    handle_settlement_ai_toggle, setup_settlement_window_panel, sync_dev_settlement_panel_visibility,
+    sync_settlement_ai_toggle_styles, sync_settlement_dev_action_availability,
+    sync_settlement_dev_button_styles, sync_settlement_dev_panel,
 };
 pub use spawn_tools::{
     DevSpawnOutcome, dev_spawn_position_from_terrain_click, spawn_by_mode_at_position,
@@ -137,7 +139,10 @@ pub use tooltip::{
     TOOLTIP_HOVER_DELAY_SECS, dismiss_dev_tooltip, setup_dev_tooltip,
     sync_dev_tooltip_presentation,
 };
-pub use window::{DevWindowId, DevWindowInteractionState, DevWindowRegistry, setup_dev_workspace};
+pub use window::{
+    DevWindowId, DevWindowInteractionState, DevWindowRegistry, NAVIGATION_EDITOR_WIDTH_PX,
+    setup_dev_workspace,
+};
 pub use world_window::{setup_world_window_panel, sync_dev_world_panel_visibility};
 
 use catalog::{sync_dev_catalog_chrome, track_catalog_tab_selection};
@@ -150,8 +155,9 @@ use fields_window::forensics::{
     fields_launcher_trace_scripted,
 };
 use gizmo::{
-    apply_building_transform_preview, apply_doodad_transform_preview, draw_transform_gizmo,
-    handle_gizmo_keyboard, handle_gizmo_mouse, sync_gizmo_target,
+    apply_building_transform_preview, apply_doodad_transform_preview,
+    apply_item_pile_transform_preview, draw_transform_gizmo, handle_gizmo_keyboard,
+    handle_gizmo_mouse, sync_gizmo_target,
 };
 use inspector::{
     handle_blueprint_edit_input, handle_blueprint_inspection_input,
@@ -196,10 +202,12 @@ pub struct DevModePlugin;
 
 impl Plugin for DevModePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<DevModeState>()
+        app.insert_resource(build_identity::DevBuildIdentity::resolve())
+            .init_resource::<DevModeState>()
             .init_resource::<DevModeInputGate>()
             .init_resource::<CatalogBrowseIndex>()
             .init_resource::<CatalogFilterCache>()
+            .init_resource::<catalog::CatalogScrollMetrics>()
             .init_resource::<DevSearchDebounce>()
             .init_resource::<DevWindowRegistry>()
             .init_resource::<DevWindowInteractionState>()
@@ -229,6 +237,8 @@ impl Plugin for DevModePlugin {
             .add_systems(
                 Startup,
                 (
+                    build_identity::apply_dev_build_identity_window_title,
+                    build_identity::setup_dev_build_identity_overlay,
                     setup_dev_workspace,
                     setup_dev_panel,
                     archetype_editor::setup_archetype_editor_modal,
@@ -311,6 +321,9 @@ impl Plugin for DevModePlugin {
                 (
                     sync_catalog_panel_layout,
                     sync_dev_catalog_chrome,
+                    catalog::sync_catalog_placement_button_labels,
+                    catalog::scroll::sync_catalog_list_row_visibility,
+                    catalog::scroll::sync_catalog_list_scrollbars,
                     track_catalog_tab_selection,
                     sync_dev_save_panel_visibility,
                     sync_save_window_content,
@@ -442,6 +455,18 @@ impl Plugin for DevModePlugin {
                 .after(sync_inspector_on_selection_revision)
                 .after(handle_inspector_input)
                 .after(sync_gizmo_target)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            PostUpdate,
+            catalog::scroll::measure_catalog_list_viewports.after(UiSystems::Layout),
+        )
+        .add_systems(
+            Update,
+            (
+                catalog::scroll::handle_catalog_list_scroll_wheel,
+                catalog::scroll::handle_catalog_list_scrollbar_track_click,
+            )
                 .in_set(DevModeInputSystems),
         )
         .add_systems(
@@ -629,6 +654,7 @@ impl Plugin for DevModePlugin {
             (
                 apply_doodad_transform_preview,
                 apply_building_transform_preview,
+                apply_item_pile_transform_preview,
                 draw_transform_gizmo,
                 sync_dev_terrain_field_panel,
                 update_dev_terrain_field_probe,

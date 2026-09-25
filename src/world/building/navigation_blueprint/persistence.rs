@@ -13,7 +13,9 @@ use crate::world::building::interior::{
     InteriorProfileCatalog, NavigationReconcileOutcome,
     reconcile_building_navigation_runtime,
 };
-use crate::world::{BuildingId, DoodadCatalog, FootprintCatalog, OccupancyCatalogs, WorldData};
+use crate::world::{
+    BuildingId, DoodadCatalog, FootprintCatalog, InventoryCatalogCtx, OccupancyCatalogs, WorldData,
+};
 
 use super::id::blueprint_id_for_building;
 
@@ -26,6 +28,7 @@ pub struct InteriorActivationCatalogs<'a> {
     pub interior: &'a InteriorProfileCatalog,
     pub doodad: &'a DoodadCatalog,
     pub footprint: &'a FootprintCatalog,
+    pub inventory_ctx: Option<&'a InventoryCatalogCtx<'a>>,
 }
 
 /// Per-instance results of propagating a blueprint change.
@@ -210,6 +213,7 @@ fn propagate_to_instance(
         activation.doodad,
         occupancy,
         nav_catalog,
+        activation.inventory_ctx,
         building_id,
         true,
     ) {
@@ -363,6 +367,7 @@ mod tests {
             building_id,
             BuildingLifecycleState::Complete,
             1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
         )
         .expect("complete");
         assert!(
@@ -377,6 +382,7 @@ mod tests {
                 interior: &interior,
                 doodad: &doodad_catalog,
                 footprint: &footprint,
+                inventory_ctx: None,
             },
             &nav_catalog,
             building_id,
@@ -459,6 +465,7 @@ mod tests {
             building_id,
             BuildingLifecycleState::Complete,
             1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
         )
         .expect("complete");
         assert!(world.get_building(building_id).unwrap().interior.activated);
@@ -470,6 +477,7 @@ mod tests {
                 interior: &interior,
                 doodad: &doodad_catalog,
                 footprint: &footprint,
+                inventory_ctx: None,
             },
             &nav_catalog,
             building_id,

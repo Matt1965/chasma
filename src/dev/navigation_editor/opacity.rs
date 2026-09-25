@@ -129,6 +129,7 @@ pub fn handle_navigation_editor_opacity_slider(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::state::DEFAULT_NAV_EDITOR_BUILDING_OPACITY;
 
     #[test]
     fn default_opacity_is_editor_readable() {

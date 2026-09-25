@@ -422,6 +422,10 @@ impl DevModeState {
         }
     }
 
+    pub fn spawn_team_button_label(&self) -> String {
+        format!("Team: {}", self.spawn_team_label())
+    }
+
     pub fn toggle_favorite(&mut self, id: DefinitionId) {
         if self.favorites.contains(&id) {
             self.favorites.remove(&id);

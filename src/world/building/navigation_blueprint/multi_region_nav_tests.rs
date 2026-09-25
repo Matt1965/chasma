@@ -2,8 +2,9 @@
 
 use bevy::prelude::*;
 
+use super::test_imports::*;
 use super::adapt::region_space_key;
-use crate::world::unit::{UnitOrder, step_unit_movement};
+use crate::world::unit::step_unit_movement;
 use crate::world::{
     Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingLifecycleState,
     BuildingNavigationBlueprint, BuildingNavigationBlueprintCatalog,
@@ -89,6 +90,7 @@ fn activate_fixture(
         id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .unwrap();
     id

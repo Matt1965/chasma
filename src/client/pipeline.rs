@@ -55,6 +55,7 @@ impl Plugin for ClientPipelinePlugin {
             .init_resource::<crate::client::PendingBuildingPlayerInteractionState>()
             .init_resource::<crate::client::PendingDialogueInteractionState>()
             .init_resource::<crate::client::ContextMenuScreenAnchor>()
+            .init_resource::<crate::client::PendingCorpsePlayerInteractionState>()
             .init_resource::<crate::client::commands::ResolvedCommandFeedback>();
     }
 }

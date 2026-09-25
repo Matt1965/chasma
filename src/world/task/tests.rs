@@ -261,6 +261,7 @@ fn worker_labor_advances_construction_deterministically() {
             &doodad,
             occ,
             None,
+            None,
             delta,
             None,
         );
@@ -283,6 +284,7 @@ fn auto_progress_disabled_only_worker_labor_completes() {
         &interior,
         &doodad,
         occ,
+        None,
         None,
         BuildingConstructionSettings::default(),
         1.0,

@@ -140,11 +140,11 @@ mod tests {
         SIMULATION_TICK_SECONDS, SimulationClock, SimulationControlState, run_simulation_tick,
     };
     use crate::world::{
-        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, FootprintCatalog,
-        Heightfield, LocalPosition, UnitCatalog, UnitDefinitionId, UnitOrder, UnitOwnership,
-        UnitSource, WeaponCatalog, WorldData, WorldPosition, create_unit,
-        create_unit_with_ownership, issue_unit_order, resolve_all_pending_unit_orders,
-        starter_unit_definitions, starter_weapon_definitions,
+        BuildingCatalog, ChunkCoord, ChunkData, ChunkId, ChunkLayout, CombatAiSettings,
+        DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition, NavigationConfig,
+        UnitCatalog, UnitDefinitionId, UnitOrder, UnitOwnership, UnitSource, WeaponCatalog,
+        WorldData, WorldPosition, create_unit, create_unit_with_ownership, issue_unit_order,
+        resolve_all_pending_unit_orders, starter_unit_definitions, starter_weapon_definitions,
     };
 
     fn test_world_with_unit() -> (WorldData, UnitCatalog, crate::world::UnitId) {

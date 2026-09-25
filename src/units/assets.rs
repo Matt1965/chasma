@@ -4,6 +4,8 @@ use bevy::gltf::GltfAssetLabel;
 use bevy::prelude::*;
 
 use crate::world::{AppearanceProfileCatalog, UnitCatalog, UnitRenderKey};
+#[cfg(test)]
+use crate::world::UnitDefinitionId;
 
 /// Root folder for unit glTF assets (ADR-028).
 ///

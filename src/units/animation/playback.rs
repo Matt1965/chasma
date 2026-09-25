@@ -577,6 +577,15 @@ fn advance_upper_attack_weight_fade(
     false
 }
 
+fn stop_masked_layer_nodes(player: &mut AnimationPlayer, previous: &LayeredPlaybackState) {
+    if let Some(node) = previous.lower_node {
+        player.stop(node);
+    }
+    if let Some(node) = previous.upper_node {
+        player.stop(node);
+    }
+}
+
 fn apply_layered_playback(
     player: &mut AnimationPlayer,
     transitions: &mut AnimationTransitions,
@@ -597,11 +606,20 @@ fn apply_layered_playback(
     if let Some(full_body) = &targets.full_body {
         result.clear_upper_fade = true;
         let previous_node = previous.and_then(|state| state.full_body_node);
+        if let Some(previous) = previous {
+            stop_masked_layer_nodes(player, previous);
+        }
         if full_body.freeze_pose {
-            player.pause_all();
+            player.stop_all();
+            let mut active = player.play(full_body.node);
+            active.set_seek_time(0.0);
+            active.pause();
             result.full_body_node = Some(full_body.node);
             return result;
         }
+        let from_masked_layers = previous
+            .map(|state| state.lower_node.is_some() || state.upper_node.is_some())
+            .unwrap_or(false);
         player.resume_all();
         let same_node = previous_node == Some(full_body.node);
         if same_node {
@@ -611,7 +629,9 @@ fn apply_layered_playback(
             result.full_body_node = Some(full_body.node);
             return result;
         }
-        if let Some(node) = previous_node {
+        if from_masked_layers {
+            player.stop_all();
+        } else if let Some(node) = previous_node {
             player.stop(node);
         }
         let mut active = transitions.play(player, full_body.node, full_body.blend);
@@ -831,6 +851,8 @@ fn prune_state_index(world: &WorldData, state_index: &mut UnitAnimationStateInde
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::units::animation::components::LayeredPlaybackState;
+    use crate::world::AnimationClipKey;
 
     #[test]
     fn locomotion_state_persists_in_index() {
@@ -844,7 +866,7 @@ mod tests {
             UnitId::new(7),
             UnitAnimationPersistedState {
                 clip: AnimationPlaybackClip::Locomotion(AnimationClipKey::Run),
-                layers: empty_layers(),
+                layers: LayeredPlaybackState::default(),
                 profile_id: crate::world::AnimationProfileId::new("humanoid"),
                 last_attack_phase: None,
                 attack_key: None,

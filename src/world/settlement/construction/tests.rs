@@ -2,6 +2,8 @@
 
 use bevy::prelude::{Quat, Vec3};
 
+use super::placement::search_placement_candidates;
+use super::select::select_building_candidates;
 use super::*;
 use crate::world::building::catalog::BuildingCatalog;
 use crate::world::inventory::InventoryCatalogCtx;

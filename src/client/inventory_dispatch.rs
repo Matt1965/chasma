@@ -705,6 +705,7 @@ pub fn try_queue_inventory_open_from_interact(
     unit_catalog: &crate::world::UnitCatalog,
     weapon_catalog: &crate::world::WeaponCatalog,
     pile_settings: &crate::world::ItemPileSettings,
+    corpse_settings: &crate::world::CorpseSettings,
     actor_unit_id: UnitId,
     target: crate::client::commands::CommandTarget,
     queue: &mut InventoryIntentQueue,
@@ -743,6 +744,7 @@ pub fn try_queue_inventory_open_from_interact(
         unit_catalog,
         weapon_catalog,
         pile_settings,
+        corpse_settings,
     );
     let Some(interaction) = query_world_interaction(&ctx, position) else {
         return false;
@@ -771,14 +773,6 @@ pub fn try_queue_inventory_open_from_interact(
                     actor_unit_id,
                     building_id,
                 ) {
-                    queue.push(InventoryIntent::Open(mode));
-                    return true;
-                }
-            }
-        }
-        InteractionType::Corpse => {
-            if let InteractionTargetRef::Corpse(corpse_id) = interaction.target {
-                if let Ok(mode) = try_open_corpse_inventory(world, actor_unit_id, corpse_id) {
                     queue.push(InventoryIntent::Open(mode));
                     return true;
                 }
@@ -1260,6 +1254,7 @@ mod tests {
             &unit_catalog,
             &WeaponCatalog::default(),
             &pile_settings,
+            &crate::world::CorpseSettings::default(),
             unit.id,
             crate::client::commands::CommandTarget::Terrain { position: click },
             &mut queue,

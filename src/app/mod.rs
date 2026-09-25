@@ -4,6 +4,7 @@ use crate::buildings::{BuildingRuntimeSystems, BuildingsRuntimePlugin};
 use crate::camera::{CameraControlSystems, CameraPlugin};
 use crate::doodads::{DoodadRuntimeSystems, DoodadsRuntimePlugin};
 use crate::environment::EnvironmentPlugin;
+use crate::corpses::{CorpseRuntimePlugin, CorpseRuntimeSystems};
 use crate::item_piles::{ItemPileRuntimePlugin, ItemPileRuntimeSystems};
 use crate::menu::{MenuInputSystems, MenuPlugin};
 use crate::player::{PlayerControlSystems, PlayerPlugin, RuntimeSyncSystems};
@@ -45,6 +46,7 @@ impl Plugin for AppPlugin {
             .add_plugins(TerrainRuntimePlugin)
             .add_plugins(DoodadsRuntimePlugin)
             .add_plugins(ItemPileRuntimePlugin)
+            .add_plugins(CorpseRuntimePlugin)
             .add_plugins(SettlementAnchorRuntimePlugin)
             .add_plugins(BuildingsRuntimePlugin)
             .add_plugins(UnitsRuntimePlugin)
@@ -95,8 +97,14 @@ pub(crate) fn configure_update_pipeline_sets(app: &mut App) {
         )
         .configure_sets(
             Update,
-            BuildingRuntimeSystems
+            CorpseRuntimeSystems
                 .after(ItemPileRuntimeSystems)
+                .in_set(RuntimeSyncSystems),
+        )
+        .configure_sets(
+            Update,
+            BuildingRuntimeSystems
+                .after(CorpseRuntimeSystems)
                 .in_set(RuntimeSyncSystems),
         )
         .configure_sets(

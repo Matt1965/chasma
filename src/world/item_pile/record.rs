@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use super::id::ItemPileId;
+use crate::world::authoring_transform::QuantizedOrientation;
 use crate::world::inventory::ItemInstanceId;
 use crate::world::ownership::{Affiliation, OwnerId, TeamId};
 use crate::world::{ItemDefinitionId, SpaceId, WorldPosition};
@@ -31,6 +32,7 @@ pub enum WorldPileContents {
 pub struct WorldItemPileRecord {
     pub id: ItemPileId,
     pub placement: WorldPosition,
+    pub orientation: QuantizedOrientation,
     pub current_space_id: SpaceId,
     pub contents: WorldPileContents,
     pub owner_id: Option<OwnerId>,
@@ -56,6 +58,7 @@ impl WorldItemPileRecord {
         Self {
             id,
             placement,
+            orientation: QuantizedOrientation::IDENTITY,
             current_space_id,
             contents: WorldPileContents::Stack {
                 item_definition_id,
@@ -83,6 +86,7 @@ impl WorldItemPileRecord {
         Self {
             id,
             placement,
+            orientation: QuantizedOrientation::IDENTITY,
             current_space_id,
             contents: WorldPileContents::Unique { item_instance_id },
             owner_id,

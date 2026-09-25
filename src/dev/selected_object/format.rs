@@ -42,6 +42,7 @@ pub fn format_unit_summary(snapshot: &UnitInspectorSnapshot, selected_count: usi
 
 #[cfg(test)]
 pub fn unit_is_player_commandable(snapshot: &UnitInspectorSnapshot) -> bool {
+    use crate::world::Affiliation;
     snapshot.affiliation == Affiliation::Player.label()
 }
 
@@ -96,14 +97,22 @@ pub fn format_doodad_diagnostics(
 
 pub fn format_pile_summary(snapshot: &ItemPileInspectorSnapshot) -> String {
     format!(
-        "{}\nQty: {}  Weight: {}g\n{}",
-        snapshot.item_name, snapshot.quantity, snapshot.weight_grams, snapshot.location_summary
+        "{}\nQty: {}  Weight: {}g\nRotation (deg): pitch={:.1} yaw={:.1} roll={:.1}\n{}",
+        snapshot.item_name,
+        snapshot.quantity,
+        snapshot.weight_grams,
+        snapshot.rotation_deg.x,
+        snapshot.rotation_deg.y,
+        snapshot.rotation_deg.z,
+        snapshot.location_summary
     )
 }
 
 pub fn format_pile_diagnostics(snapshot: &ItemPileInspectorSnapshot) -> String {
     format!(
-        "Pile {:?}\nItem def: {}\nChunk ({}, {})",
+        "Pile {:?}\nItem def: {}\nChunk ({}, {})\n\
+         Hotkeys: [ ] yaw  ; ' pitch  - = roll\n\
+         Use Align to Surface to re-conform to terrain.",
         snapshot.pile_id,
         snapshot.item_definition_id.as_str(),
         snapshot.chunk.x,

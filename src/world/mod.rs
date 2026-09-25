@@ -301,8 +301,8 @@ pub use dialogue::{
 pub use corpse::{
     CorpseError, CorpseId, CorpseLifecycleReport, CorpseRecord, CorpseSettings, CorpseState,
     CorpseStore, DEFAULT_CORPSE_LIFETIME_TICKS, create_corpse_from_unit, is_corpse_loot_inventory,
-    remove_corpse_with_inventory, step_corpse_lifecycle, transfer_equipment_to_corpse,
-    transfer_inventory_to_corpse,
+    nearest_corpse_at_position, remove_corpse_with_inventory, step_corpse_lifecycle,
+    transfer_equipment_to_corpse, transfer_inventory_to_corpse,
 };
 pub use data::{ChunkExtent, WorldData};
 #[cfg(test)]
@@ -398,11 +398,15 @@ pub use item::{
 };
 pub use item_pile::{
     ChunkItemPileStore, DropReport, ItemPileError, ItemPileId, ItemPileInvariantReport,
-    ItemPileSettings, ItemPileSource, ItemPileStore, PickupReport, PileOwnership, SpillReport,
-    WorldItemPileRecord, WorldPileContents, drop_stack_from_inventory, drop_unique_from_inventory,
-    drop_unit_inventory_entry, item_piles_near, item_piles_within_radius,
-    nearest_item_pile_at_position, pickup_pile_into_inventory, pile_item_definition_id,
-    spill_inventory_to_world_piles, validate_item_instance_locations, validate_item_pile_store,
+    ItemPileSettings, ItemPileSource, ItemPileStore, ItemPileTransformCandidate,
+    ItemPileTransformEditError, ItemPileTransformEditReport, PickupReport, PileOwnership,
+    SpillReport, WorldItemPileRecord, WorldPileContents, align_item_pile_to_surface,
+    align_orientation_to_surface, align_orientation_yaw_to_surface, default_placement_orientation,
+    drop_stack_from_inventory, drop_unique_from_inventory, drop_unit_inventory_entry,
+    item_piles_near, item_piles_within_radius, nearest_item_pile_at_position,
+    pickup_pile_into_inventory, pile_item_definition_id, quantized_distance_squared_cm,
+    spill_inventory_to_world_piles, update_item_pile_placement, update_item_pile_transform,
+    validate_item_instance_locations, validate_item_pile_store,
 };
 pub use logistics::{
     BuildingLogisticsRouteDefinition, HaulTickReport, HaulingRequest, HaulingRequestId,
@@ -624,8 +628,9 @@ pub use terrain::{
 };
 pub use terrain::{
     SlopeWalkability, classify_slope_walkability, estimate_effective_slope_degrees,
-    estimate_slope_degrees, ground_world_position, is_position_slope_walkable, slope_at,
-    try_ground_world_position, try_sample_base_height_at_position, try_sample_height_at_position,
+    estimate_effective_terrain_normal, estimate_slope_degrees, ground_world_position,
+    is_position_slope_walkable, slope_at, try_ground_world_position,
+    try_sample_base_height_at_position, try_sample_height_at_position,
 };
 pub use road::deformation::{
     RoadDeformationStore, RoadHeightDeltaTile, RoadTerrainRebuildQueue,
@@ -1088,12 +1093,17 @@ fn reconcile_building_navigation_on_startup(
     doodad_catalog: Res<DoodadCatalog>,
     footprint_catalog: Res<FootprintCatalog>,
     nav_catalog: Res<BuildingNavigationBlueprintCatalog>,
+    items: Res<ItemCatalog>,
+    item_categories: Res<ItemCategoryCatalog>,
+    inventory_profiles: Res<InventoryProfileCatalog>,
 ) {
     let occupancy = OccupancyCatalogs {
         doodad: &doodad_catalog,
         building: &building_catalog,
         footprint: &footprint_catalog,
     };
+    let inventory_ctx =
+        InventoryCatalogCtx::new(&items, &item_categories, &inventory_profiles);
     reconcile_all_building_navigation_runtimes(
         &mut world,
         &building_catalog,
@@ -1101,6 +1111,7 @@ fn reconcile_building_navigation_on_startup(
         &doodad_catalog,
         occupancy,
         &nav_catalog,
+        Some(&inventory_ctx),
     );
     crate::world::initialize_surface_units_navigation_membership(&mut world);
 }

@@ -53,7 +53,8 @@ without ctx use direct `remove_unit_by_id` (tests only).
 - `inventory_id: Option<InventoryId>`
 - ownership metadata (`owner_id`, `team_id`, `affiliation`) for future loot legality
 - `remaining_lifetime_ticks`, `CorpseState::{Present, Expired}`
-- No render entities, animation timers, or ECS truth
+- `appearance: Option<UnitAppearance>` copied from the dying unit for presentation
+- Authoritative simulation remains on `WorldData`; derived corpse render entities live in `src/corpses/`
 
 ### Death transfer sequence
 
@@ -61,7 +62,7 @@ without ctx use direct `remove_unit_by_id` (tests only).
 2. `create_corpse_from_unit` at unit placement/space
 3. If `inventory_id` present: `transfer_inventory_to_corpse` — same `InventoryId`, owner retarget only
 4. `remove_unit_by_id` — no item copy
-5. Presentation derives from existing death animation + future corpse sync (no duplicate bodies policy)
+5. Presentation: death animation on the existing unit render root, then handoff to `CorpseRenderEntity` when the corpse record is present (no duplicate bodies). Scene-loaded corpses sync via chunk residency like item piles.
 
 ### Corpse lifetime
 

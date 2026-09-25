@@ -46,3 +46,5 @@ pub use sync_panel::{
     sync_navigation_editor_panel_content, sync_navigation_editor_responsive_layout,
     sync_navigation_editor_section_visibility, sync_navigation_editor_toast,
 };
+#[cfg(test)]
+pub use sync_panel::infer_message_severity;

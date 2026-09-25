@@ -122,8 +122,8 @@ mod tests {
     use bevy::asset::AssetPlugin;
 
     use crate::environment::{
-        EnvironmentManualLighting, TimeOfDaySettings, initialize_runtime_from_baseline,
-        load_project_environment_baseline,
+        EnvironmentManualLighting, EnvironmentVisualState, ProjectEnvironmentBaseline,
+        TimeOfDaySettings, initialize_runtime_from_baseline, load_project_environment_baseline,
     };
 
     #[test]

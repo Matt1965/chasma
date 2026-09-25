@@ -147,6 +147,7 @@ fn measured_height(node: &Node, viewport_height: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ui::gameplay::floating_window::FloatingGameplayWindowId;
 
     #[test]
     fn header_drag_changes_window_position() {

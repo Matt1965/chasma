@@ -178,6 +178,7 @@ fn activate_imported_hut_at(
         building_id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .expect("complete hut");
     building_id
@@ -480,6 +481,7 @@ fn real_hut_spawn_inside_moves_via_player_command_resolution_path() {
 
     let selected = [unit_id];
     let pile_settings = ItemPileSettings::default();
+    let corpse_settings = crate::world::CorpseSettings::default();
     let authored_relationships = crate::world::AuthoredRelationshipCatalog::default();
     let ctx = InteractionResolveContext::new(
         &world,
@@ -490,6 +492,7 @@ fn real_hut_spawn_inside_moves_via_player_command_resolution_path() {
         &unit_catalog,
         &weapon_catalog,
         &pile_settings,
+        &corpse_settings,
         &authored_relationships,
         &selected,
     );

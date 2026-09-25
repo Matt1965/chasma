@@ -2,7 +2,8 @@
 
 use bevy::prelude::*;
 
-use crate::world::unit::{UnitOrder, step_unit_movement};
+use super::test_imports::*;
+use crate::world::unit::step_unit_movement;
 use crate::world::{
     Affiliation, BuildingCatalog, BuildingDefinitionId, BuildingLifecycleState,
     BuildingNavigationBlueprintCatalog, BuildingOwnership, ChunkCoord, ChunkData, ChunkId,
@@ -75,6 +76,7 @@ fn activate_hut(world: &mut WorldData) -> crate::world::BuildingId {
         id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .unwrap();
     id

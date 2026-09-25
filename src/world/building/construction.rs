@@ -15,7 +15,8 @@ use crate::world::building::interior::{
     InteriorProfileId, activate_building_interior, deactivate_building_interior,
 };
 use crate::world::{
-    BuildingDefinition, OccupancyCatalogs, OccupancyError, WorldData, update_building_occupancy,
+    BuildingDefinition, InventoryCatalogCtx, OccupancyCatalogs, OccupancyError, WorldData,
+    update_building_occupancy,
 };
 
 /// Temporary B5 construction policy until worker-delivered labor (B8).
@@ -165,6 +166,7 @@ pub fn step_all_building_construction(
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
     nav_catalog: Option<&super::navigation_blueprint::BuildingNavigationBlueprintCatalog>,
+    inventory_ctx: Option<&InventoryCatalogCtx<'_>>,
     settings: BuildingConstructionSettings,
     delta_seconds: f32,
 ) -> BuildingConstructionReport {
@@ -192,6 +194,7 @@ pub fn step_all_building_construction(
             doodad_catalog,
             occupancy,
             nav_catalog,
+            inventory_ctx,
             id,
             definition,
             delta_seconds,
@@ -222,6 +225,7 @@ fn advance_one_building_construction(
     doodad_catalog: &DoodadCatalog,
     occupancy: OccupancyCatalogs<'_>,
     nav_catalog: Option<&super::navigation_blueprint::BuildingNavigationBlueprintCatalog>,
+    inventory_ctx: Option<&InventoryCatalogCtx<'_>>,
     id: BuildingId,
     definition: &BuildingDefinition,
     delta_seconds: f32,
@@ -282,6 +286,7 @@ fn advance_one_building_construction(
                     interior_catalog,
                     doodad_catalog,
                     nav_catalog,
+                    inventory_ctx,
                     id,
                 )?);
                 completed = true;
@@ -304,6 +309,7 @@ fn complete_building(
     interior_catalog: &InteriorProfileCatalog,
     doodad_catalog: &DoodadCatalog,
     nav_catalog: Option<&super::navigation_blueprint::BuildingNavigationBlueprintCatalog>,
+    inventory_ctx: Option<&InventoryCatalogCtx<'_>>,
     id: BuildingId,
 ) -> Result<Vec<BuildingLifecycleEvent>, BuildingLifecycleError> {
     let record = world
@@ -340,6 +346,7 @@ fn complete_building(
         doodad_catalog,
         occupancy,
         nav_catalog,
+        inventory_ctx,
         id,
         profile_id.as_ref(),
     )
@@ -536,6 +543,7 @@ pub fn set_building_lifecycle_stage(
     id: BuildingId,
     new_state: BuildingLifecycleState,
     progress_0_1: f32,
+    inventory_ctx: Option<&InventoryCatalogCtx<'_>>,
 ) -> Result<Vec<BuildingLifecycleEvent>, BuildingLifecycleError> {
     let record = world
         .get_building(id)
@@ -573,6 +581,7 @@ pub fn set_building_lifecycle_stage(
             doodad_catalog,
             occupancy,
             nav_catalog,
+            inventory_ctx,
             id,
             profile_id.as_ref(),
         )
@@ -604,6 +613,7 @@ pub fn add_building_construction_progress(
     nav_catalog: Option<&super::navigation_blueprint::BuildingNavigationBlueprintCatalog>,
     id: BuildingId,
     delta_progress: f32,
+    inventory_ctx: Option<&InventoryCatalogCtx<'_>>,
 ) -> Result<Vec<BuildingLifecycleEvent>, BuildingLifecycleError> {
     let record = world
         .get_building(id)
@@ -629,6 +639,7 @@ pub fn add_building_construction_progress(
             id,
             BuildingLifecycleState::InProgress,
             0.0,
+            inventory_ctx,
         )?);
     }
 
@@ -651,10 +662,37 @@ pub fn add_building_construction_progress(
             interior_catalog,
             doodad_catalog,
             nav_catalog,
+            inventory_ctx,
             id,
         )?);
     }
     Ok(events)
+}
+
+/// Shared starter inventory catalogs for tests that complete buildings with interior profile children.
+#[cfg(test)]
+pub fn test_inventory_catalog_ctx() -> &'static InventoryCatalogCtx<'static> {
+    use std::sync::OnceLock;
+
+    use crate::world::{
+        InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog,
+        starter_inventory_profile_definitions, starter_item_category_definitions,
+        starter_item_definitions,
+    };
+
+    static CTX: OnceLock<InventoryCatalogCtx<'static>> = OnceLock::new();
+    CTX.get_or_init(|| {
+        let categories =
+            ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
+        let items = ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+        let profiles =
+            InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
+                .unwrap();
+        let items = Box::leak(Box::new(items));
+        let categories = Box::leak(Box::new(categories));
+        let profiles = Box::leak(Box::new(profiles));
+        InventoryCatalogCtx::new(items, categories, profiles)
+    })
 }
 
 fn apply_stage_transition(
@@ -800,6 +838,7 @@ mod tests {
                 &doodad,
                 occ,
                 None,
+                Some(crate::world::building::test_inventory_catalog_ctx()),
                 settings,
                 delta,
             );
@@ -823,6 +862,7 @@ mod tests {
             &doodad,
             occ,
             None,
+            Some(crate::world::building::test_inventory_catalog_ctx()),
             BuildingConstructionSettings {
                 auto_timed_progress: false,
             },
@@ -848,6 +888,7 @@ mod tests {
             &doodad,
             occ,
             None,
+            Some(crate::world::building::test_inventory_catalog_ctx()),
             BuildingConstructionSettings::dev_auto_timed(),
             1.0 / 60.0,
         );
@@ -900,6 +941,7 @@ mod tests {
             &interior_catalog(),
             &doodad,
             occ,
+            None,
             None,
             BuildingConstructionSettings::default(),
             10.0,
