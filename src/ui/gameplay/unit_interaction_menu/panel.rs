@@ -1,5 +1,6 @@
 //! Cursor-anchored unit interaction menu.
 
+use bevy::ecs::system::ParamSet;
 use bevy::prelude::*;
 use bevy::ui::FocusPolicy;
 use bevy::window::PrimaryWindow;
@@ -156,7 +157,13 @@ pub fn sync_unit_interaction_menu(
     world: Res<WorldData>,
     unit_catalog: Res<UnitCatalog>,
     authored_relationships: Res<AuthoredRelationshipCatalog>,
-    mut title: Query<&mut Text, With<UnitInteractionMenuTitle>>,
+    mut texts: ParamSet<(
+        Query<&mut Text, With<UnitInteractionMenuTitle>>,
+        Query<
+            (&mut Text, &mut TextColor),
+            (With<UnitInteractionMenuOptionText>, Without<UnitInteractionMenuTitle>),
+        >,
+    )>,
     mut options: Query<
         (
             Entity,
@@ -167,10 +174,6 @@ pub fn sync_unit_interaction_menu(
             &mut BorderColor,
         ),
         (Without<UnitInteractionMenuTitle>, Without<UnitInteractionMenuOptionText>),
-    >,
-    mut option_text: Query<
-        (&mut Text, &mut TextColor),
-        (With<UnitInteractionMenuOptionText>, Without<UnitInteractionMenuTitle>),
     >,
     children: Query<&Children>,
 ) {
@@ -186,7 +189,7 @@ pub fn sync_unit_interaction_menu(
         None => return,
     };
 
-    if let Ok(mut text) = title.single_mut() {
+    if let Ok(mut text) = texts.p0().single_mut() {
         **text = interaction_menu_title(&world, &unit_catalog, target);
     }
 
@@ -213,7 +216,7 @@ pub fn sync_unit_interaction_menu(
         if let Some(row) = row {
             if let Ok(kids) = children.get(entity) {
                 if let Some(child) = kids.first() {
-                    if let Ok((mut text, mut color)) = option_text.get_mut(*child) {
+                    if let Ok((mut text, mut color)) = texts.p1().get_mut(*child) {
                         **text = row.label.clone();
                         *color = TextColor(if enabled {
                             TEXT_PRIMARY

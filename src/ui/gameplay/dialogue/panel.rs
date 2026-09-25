@@ -1,5 +1,6 @@
 //! Dialogue floating panel.
 
+use bevy::ecs::system::ParamSet;
 use bevy::prelude::*;
 use bevy::ui::FocusPolicy;
 
@@ -154,9 +155,11 @@ pub fn sync_dialogue_panel(
     world: Res<WorldData>,
     unit_catalog: Res<UnitCatalog>,
     authored_relationships: Res<AuthoredRelationshipCatalog>,
-    mut title: Query<&mut Text, With<DialoguePanelTitleText>>,
-    mut body: Query<&mut Text, (With<DialoguePanelBodyText>, Without<DialoguePanelFeedbackText>)>,
-    mut feedback: Query<&mut Text, (With<DialoguePanelFeedbackText>, Without<DialoguePanelBodyText>)>,
+    mut texts: ParamSet<(
+        Query<&mut Text, With<DialoguePanelTitleText>>,
+        Query<&mut Text, (With<DialoguePanelBodyText>, Without<DialoguePanelFeedbackText>)>,
+        Query<&mut Text, (With<DialoguePanelFeedbackText>, Without<DialoguePanelBodyText>)>,
+    )>,
     mut option_buttons: Query<
         (
             &DialogueOptionButton,
@@ -181,11 +184,11 @@ pub fn sync_dialogue_panel(
         None => return,
     };
 
-    if let Ok(mut text) = title.single_mut() {
+    if let Ok(mut text) = texts.p0().single_mut() {
         **text = target_display_name(&world, &unit_catalog, target);
     }
 
-    if let Ok(mut text) = body.single_mut() {
+    if let Ok(mut text) = texts.p1().single_mut() {
         **text = match &dialogue.view {
             DialogueView::Options => String::new(),
             DialogueView::TalkResponse(content) => content.lines.join("\n"),
@@ -193,7 +196,7 @@ pub fn sync_dialogue_panel(
         };
     }
 
-    if let Ok(mut text) = feedback.single_mut() {
+    if let Ok(mut text) = texts.p2().single_mut() {
         **text = dialogue.feedback.clone();
     }
 
