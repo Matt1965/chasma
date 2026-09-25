@@ -132,6 +132,7 @@ pub fn apply_building_archetype_placement(
             ctx.doodad_catalog,
             ctx.occupancy,
             ctx.nav_catalog,
+            Some(ctx.inventory_ctx),
             building_id,
         );
     }

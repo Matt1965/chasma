@@ -334,7 +334,8 @@ pub fn dev_clear_inventory(
 mod tests {
     use super::*;
     use crate::world::{
-        InventoryOwnerRef, InventoryProfileCatalog, InventoryProfileId, create_inventory,
+        InventoryEntryContents, InventoryOwnerRef, InventoryProfileCatalog, InventoryProfileId,
+        create_inventory,
     };
 
     #[test]

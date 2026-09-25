@@ -105,6 +105,7 @@ pub fn build_field_overlay_mesh(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::terrain::field_overlay::TerrainOverlayState;
     use crate::world::Heightfield;
 
     #[test]

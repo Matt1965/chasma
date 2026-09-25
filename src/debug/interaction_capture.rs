@@ -128,6 +128,7 @@ mod tests {
         let weapons = WeaponCatalog::default();
         let interaction = crate::world::BuildingInteractionProfileCatalog::default();
         let pile_settings = crate::world::ItemPileSettings::default();
+        let corpse_settings = crate::world::CorpseSettings::default();
         let ctx = InteractionQueryContext::new(
             &world,
             &doodads,
@@ -137,7 +138,7 @@ mod tests {
             &units,
             &weapons,
             &pile_settings,
-            &crate::world::CorpseSettings::default(),
+            &corpse_settings,
         );
         let mut snapshot = InteractionDebugSnapshot::default();
         capture_interaction_at_position(&mut snapshot, &ctx, pos(1.0, 2.0));

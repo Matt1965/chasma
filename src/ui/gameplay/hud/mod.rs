@@ -22,7 +22,7 @@ pub use depth::{
     hud_roster_card_style, hud_roster_ghost_slot_style, hud_stat_track_style,
     spawn_hud_button_top_highlight,
 };
-pub use frames::{spawn_hud_plate_frames, sync_hud_plate_frames};
+pub use frames::{HudPlateFrame, HudPlateSection, spawn_hud_plate_frames, sync_hud_plate_frames};
 pub use geometry::{
     HudEndcapLeft, HudEndcapRight, HudEndcapSpire, HudViewportGeometry,
     apply_hud_viewport_geometry, compute_hud_viewport_geometry, measure_hud_viewport_geometry,

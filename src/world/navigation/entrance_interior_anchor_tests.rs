@@ -132,6 +132,7 @@ fn activate_hut(world: &mut WorldData, placement: WorldPosition) -> crate::world
         building_id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .expect("complete hut");
     building_id

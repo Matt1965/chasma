@@ -464,6 +464,12 @@ mod tests {
         SETTINGS.get_or_init(crate::world::ItemPileSettings::default)
     }
 
+    fn corpse_settings() -> &'static crate::world::CorpseSettings {
+        use std::sync::OnceLock;
+        static SETTINGS: OnceLock<crate::world::CorpseSettings> = OnceLock::new();
+        SETTINGS.get_or_init(crate::world::CorpseSettings::default)
+    }
+
     fn authored_relationships() -> &'static AuthoredRelationshipCatalog {
         use std::sync::OnceLock;
         static CATALOG: OnceLock<AuthoredRelationshipCatalog> = OnceLock::new();
@@ -504,7 +510,7 @@ mod tests {
             unit_catalog,
             weapon_catalog,
             pile_settings(),
-            &crate::world::CorpseSettings::default(),
+            corpse_settings(),
             authored,
             selected,
         )

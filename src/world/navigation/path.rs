@@ -57,7 +57,7 @@ pub fn xz_distance(a: WorldPosition, b: WorldPosition, layout: crate::world::Chu
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::{ChunkCoord, LocalPosition};
+    use crate::world::{ChunkCoord, LocalPosition, SpaceId, WorldPosition};
 
     fn pos(x: f32, z: f32) -> WorldPosition {
         WorldPosition::new(

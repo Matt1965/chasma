@@ -7,6 +7,7 @@ mod systems;
 #[cfg(test)]
 mod tests;
 
+pub use model::{build_settlement_dev_summary, format_focused_line};
 pub use panel::{
     setup_settlement_window_panel, sync_dev_settlement_panel_visibility,
     sync_settlement_ai_toggle_styles, sync_settlement_dev_action_availability,

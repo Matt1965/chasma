@@ -12,7 +12,8 @@ pub const DEFAULT_PANEL_WIDTH_PX: f32 = 368.0;
 pub const CATALOG_PANEL_WIDTH_PX: f32 = 560.0;
 pub const CATALOG_VIEWPORT_MARGIN_PX: f32 = 12.0;
 pub const CATALOG_MIN_LIST_HEIGHT_PX: f32 = 140.0;
-pub const CATALOG_MAX_LIST_HEIGHT_PX: f32 = 360.0;
+/// Soft upper cap for catalog row-pool sizing at startup (viewport may grow further).
+pub const CATALOG_MAX_LIST_HEIGHT_PX: f32 = 480.0;
 /// Default Navigation Editor width (roughly 2x legacy dev panels).
 pub const NAVIGATION_EDITOR_WIDTH_PX: f32 = 760.0;
 /// Minimum usable Navigation Editor width before single-column fallback.
@@ -72,9 +73,11 @@ pub fn default_catalog_position(viewport: Vec2, window_width: f32) -> Vec2 {
 
 /// Scrollable catalog list height for the current viewport and window top.
 pub fn catalog_list_max_height(viewport: Vec2, window_top: f32) -> f32 {
-    let chrome = TITLE_BAR_HEIGHT_PX + 210.0;
+    let chrome = TITLE_BAR_HEIGHT_PX + 150.0;
     let available = viewport.y - window_top - chrome - CATALOG_VIEWPORT_MARGIN_PX;
-    available.clamp(CATALOG_MIN_LIST_HEIGHT_PX, CATALOG_MAX_LIST_HEIGHT_PX)
+    available
+        .max(CATALOG_MIN_LIST_HEIGHT_PX)
+        .min(CATALOG_MAX_LIST_HEIGHT_PX)
 }
 
 /// Resolve Navigation Editor panel width for the current viewport.

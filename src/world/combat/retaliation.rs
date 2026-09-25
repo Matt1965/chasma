@@ -243,7 +243,7 @@ mod tests {
         step_combat_ai_acquisition,
     };
     use crate::world::task::{TaskPriority, TaskRecord, TaskState, TaskTarget, TaskType};
-    use crate::world::unit::{CombatState, UnitState, resolve_all_pending_unit_orders};
+    use crate::world::unit::{CombatState, UnitOrder, UnitState, resolve_all_pending_unit_orders};
     use crate::world::{
         Affiliation, AuthoredRelationshipCatalog, BuildingId, ChunkCoord, ChunkData, ChunkId,
         ChunkLayout, DoodadCatalog, FootprintCatalog, Heightfield, LocalPosition, NavigationConfig,

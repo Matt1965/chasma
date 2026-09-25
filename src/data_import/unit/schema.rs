@@ -330,6 +330,7 @@ impl UnitImportRow {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::DEFAULT_TURN_SPEED_DEGREES_PER_SECOND;
 
     fn sample_row() -> UnitImportRow {
         UnitImportRow {

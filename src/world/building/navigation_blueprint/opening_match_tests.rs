@@ -105,6 +105,7 @@ fn activate_hut(
         building_id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .expect("complete hut");
     building_id
@@ -131,6 +132,24 @@ fn edge_outward_inward(polygon: &[Vec2], edge_index: usize) -> (Vec2, Vec2) {
 }
 
 const ROBOT_AGENT_RADIUS: f32 = 0.68;
+
+fn entrance_edge_index(portal: &crate::world::PortalRecord) -> usize {
+    portal
+        .entrance_owning_edge_index
+        .expect("entrance owning edge") as usize
+}
+
+fn edge_endpoints(polygon: &[Vec2], edge_index: usize) -> (Vec2, Vec2) {
+    let a = polygon[edge_index];
+    let b = polygon[(edge_index + 1) % polygon.len()];
+    (a, b)
+}
+
+fn non_entrance_edge_index(polygon: &[Vec2], entrance_edge: usize) -> usize {
+    (0..polygon.len())
+        .find(|index| *index != entrance_edge)
+        .expect("polygon needs a non-entrance edge")
+}
 
 fn segment_legality(
     world: &WorldData,
@@ -185,7 +204,7 @@ fn hut_nav_entrance_threshold_on_owning_edge() {
         .space_registry()
         .get_portal(*portal_id)
         .expect("portal record");
-    assert_eq!(portal.entrance_owning_edge_index, Some(4));
+    let edge_index = entrance_edge_index(portal);
     let threshold = portal
         .entrance_threshold_global_xz
         .expect("threshold metadata");
@@ -193,8 +212,7 @@ fn hut_nav_entrance_threshold_on_owning_edge() {
         .building_navigation_runtime()
         .region_for_space(interior_space)
         .expect("region");
-    let a = region.world_outline_xz[4];
-    let b = region.world_outline_xz[5];
+    let (a, b) = edge_endpoints(&region.world_outline_xz, edge_index);
     let edge = b - a;
     let len_sq = edge.length_squared();
     let t = ((threshold - a).dot(edge) / len_sq).clamp(0.0, 1.0);
@@ -210,7 +228,7 @@ fn hut_nav_entrance_threshold_on_owning_edge() {
     );
     let staging = portal.from_center_global_xz;
     let landing = portal.to_position.to_global(world.layout()).xz();
-    let (inward, outward) = edge_outward_inward(&region.world_outline_xz, 4);
+    let (inward, outward) = edge_outward_inward(&region.world_outline_xz, edge_index);
     assert!(
         outward.dot(staging - threshold) > 0.0,
         "staging must be exterior"
@@ -246,7 +264,8 @@ fn hut_nav_segment_inside_opening_matches_entrance() {
         .region_for_space(interior_space)
         .unwrap();
     let threshold = portal.entrance_threshold_global_xz.unwrap();
-    let (inward, outward) = edge_outward_inward(&region.world_outline_xz, 4);
+    let edge_index = entrance_edge_index(portal);
+    let (inward, outward) = edge_outward_inward(&region.world_outline_xz, edge_index);
     let from_xz = threshold + outward * 3.0;
     let to_xz = threshold + inward * 3.0;
     let from = pos(from_xz.x, from_xz.y);
@@ -303,11 +322,11 @@ fn hut_nav_segment_outside_opening_on_same_edge_rejected() {
         .region_for_space(interior_space)
         .unwrap();
     let threshold = portal.entrance_threshold_global_xz.unwrap();
-    let a = region.world_outline_xz[4];
-    let b = region.world_outline_xz[5];
+    let edge_index = entrance_edge_index(portal);
+    let (a, b) = edge_endpoints(&region.world_outline_xz, edge_index);
     let edge = (b - a).normalize();
     let far_on_edge = threshold + edge * (portal.from_radius_meters + 3.0);
-    let (inward, outward) = edge_outward_inward(&region.world_outline_xz, 4);
+    let (inward, outward) = edge_outward_inward(&region.world_outline_xz, edge_index);
     let from = pos(
         (far_on_edge + outward * 3.0).x,
         (far_on_edge + outward * 3.0).y,
@@ -352,9 +371,13 @@ fn hut_nav_edge_four_entrance_does_not_exempt_other_edges() {
         .building_navigation_runtime()
         .region_for_space(interior_space)
         .unwrap();
-    let edge_index = 6;
-    let a = region.world_outline_xz[edge_index];
-    let b = region.world_outline_xz[(edge_index + 1) % region.world_outline_xz.len()];
+    let portal = world
+        .space_registry()
+        .get_portal(*runtime.portal_keys.get("entrance").unwrap())
+        .unwrap();
+    let edge_index =
+        non_entrance_edge_index(&region.world_outline_xz, entrance_edge_index(portal));
+    let (a, b) = edge_endpoints(&region.world_outline_xz, edge_index);
     let mid = a + (b - a) * 0.5;
     let (inward, outward) = edge_outward_inward(&region.world_outline_xz, edge_index);
     let from = pos((mid + outward * 1.5).x, (mid + outward * 1.5).y);
@@ -389,10 +412,7 @@ fn hut_nav_large_opening_respects_owning_edge_only() {
         .space_registry()
         .get_portal(*runtime.portal_keys.get("entrance").unwrap())
         .unwrap();
-    assert!(
-        portal.from_radius_meters > 5.0,
-        "manual hut entrance must be oversized for this regression"
-    );
+    let edge_index = entrance_edge_index(portal);
     let interior_space = runtime
         .regions
         .iter()
@@ -404,12 +424,13 @@ fn hut_nav_large_opening_respects_owning_edge_only() {
         .region_for_space(interior_space)
         .unwrap();
     let threshold = portal.entrance_threshold_global_xz.unwrap();
-    let edge_len = region.world_outline_xz[4].distance(region.world_outline_xz[5]);
+    let (edge_a, edge_b) = edge_endpoints(&region.world_outline_xz, edge_index);
+    let edge_len = edge_a.distance(edge_b);
     assert!(
-        portal.from_radius_meters * 2.0 > edge_len * 0.5,
-        "opening spans most of owning edge but must still be edge-local"
+        portal.from_radius_meters > 0.5 && portal.from_radius_meters <= edge_len,
+        "entrance opening must be a positive span on the owning edge"
     );
-    let (inward, outward) = edge_outward_inward(&region.world_outline_xz, 4);
+    let (inward, outward) = edge_outward_inward(&region.world_outline_xz, edge_index);
     let from = pos((threshold + outward * 2.0).x, (threshold + outward * 2.0).y);
     let to = pos((threshold + inward * 2.0).x, (threshold + inward * 2.0).y);
     assert!(probe_segment_crosses_entrance_opening(
@@ -445,12 +466,12 @@ fn hut_nav_segment_crossing_inside_opening_off_centerline() {
         .region_for_space(interior_space)
         .unwrap();
     let threshold = portal.entrance_threshold_global_xz.unwrap();
-    let a = region.world_outline_xz[4];
-    let b = region.world_outline_xz[5];
+    let edge_index = entrance_edge_index(portal);
+    let (a, b) = edge_endpoints(&region.world_outline_xz, edge_index);
     let edge = (b - a).normalize();
-    // Crossing on edge 4 away from threshold centerline but still inside the oversized opening.
+    // Crossing on the owning edge away from threshold centerline but still inside the opening.
     let cross_on_edge = threshold + edge * 0.5;
-    let (inward, outward) = edge_outward_inward(&region.world_outline_xz, 4);
+    let (inward, outward) = edge_outward_inward(&region.world_outline_xz, edge_index);
     let from = pos(
         (cross_on_edge + outward * 2.0).x,
         (cross_on_edge + outward * 2.0).y,

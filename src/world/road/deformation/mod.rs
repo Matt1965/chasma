@@ -7,7 +7,8 @@ mod store;
 mod tile;
 
 pub use bake::{
-    affected_chunk_ids_for_network, ensure_chunk_road_deformation, rebake_road_deformation_for_chunks,
+    affected_chunk_ids_for_network, depression_meters_to_heightfield_units,
+    ensure_chunk_road_deformation, rebake_road_deformation_for_chunks,
 };
 pub use persist::{
     ensure_road_deformation_store, save_road_deformation_bake,

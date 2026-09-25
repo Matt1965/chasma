@@ -428,6 +428,7 @@ fn spawn_at(
                             doodad_catalog,
                             occupancy,
                             nav_catalog,
+                            Some(inventory_ctx),
                             record.id,
                         );
                     } else {
@@ -438,6 +439,7 @@ fn spawn_at(
                             doodad_catalog,
                             occupancy,
                             nav_catalog,
+                            Some(inventory_ctx),
                             record.id,
                         );
                     }
@@ -457,7 +459,7 @@ mod tests {
     use crate::world::{
         ChunkCoord, ChunkData, ChunkId, ChunkLayout, DoodadDefinitionId, Heightfield,
         InteriorProfileCatalog, InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog,
-        LocalPosition, UnitDefinitionId, starter_inventory_profile_definitions,
+        BuildingOwnership, LocalPosition, UnitDefinitionId, starter_inventory_profile_definitions,
         starter_item_category_definitions, starter_item_definitions,
     };
 

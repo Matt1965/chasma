@@ -236,7 +236,7 @@ pub fn replace_building_instance_definition(
 mod tests {
     use super::*;
     use crate::world::BuildingCategoryCatalog;
-    use crate::world::building::navigation_blueprint::two_story_hut_navigation_blueprint;
+    use crate::world::building::navigation_blueprint::two_room_hut_navigation_blueprint;
 
     #[test]
     fn suggest_variant_id_from_display_name() {
@@ -261,7 +261,7 @@ mod tests {
         let mut nav_revision = crate::world::BuildingNavigationBlueprintCatalogRevision::default();
 
         let source_id = BuildingDefinitionId::new("hut");
-        let blueprint = two_story_hut_navigation_blueprint();
+        let blueprint = two_room_hut_navigation_blueprint();
         // Must not be `create_building_variant`: that writes the shipped asset RON.
         let outcome = fork_building_variant(
             &mut building_catalog,

@@ -42,6 +42,7 @@ pub fn format_unit_summary(snapshot: &UnitInspectorSnapshot, selected_count: usi
 
 #[cfg(test)]
 pub fn unit_is_player_commandable(snapshot: &UnitInspectorSnapshot) -> bool {
+    use crate::world::Affiliation;
     snapshot.affiliation == Affiliation::Player.label()
 }
 

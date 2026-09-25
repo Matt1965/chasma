@@ -5,8 +5,8 @@
             blueprint_id: "storage_chest_nav",
             building_definition_id: "storage_chest",
             collision_render_key: "chest",
-            collision_source_hash: "6d07caf2778265c0",
-            render_source_hash: Some("6d07caf2778265c0"),
+            collision_source_hash: "849a4c43ec0e0cfe",
+            render_source_hash: Some("849a4c43ec0e0cfe"),
             baseline_scale_milli: Some(833),
         ),
         (

@@ -25,7 +25,10 @@ pub use candidate::{
 pub use catalog::ResponseCatalog;
 pub use definition::{CapabilityRequirement, ExpectedEffect, ResponseDefinition, ResponseType};
 pub use discover::{ResponseDiscoveryContext, discover_settlement_responses};
+#[cfg(test)]
+pub use execution::check_execution_path_available;
 pub use id::ResponseId;
+pub use quality::ResponseQualityScore;
 pub use score::score_candidate;
 pub use starter::starter_response_definitions;
 pub use step::{

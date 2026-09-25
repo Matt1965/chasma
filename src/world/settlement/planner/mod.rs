@@ -14,6 +14,9 @@ mod validation;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+pub use apply::apply_production_recommendations_for_tests;
+
 pub use inventory::{
     aggregate_settlement_stock, building_advertises_settlement_supply,
     collect_settlement_accessible_stock, sum_category_count,

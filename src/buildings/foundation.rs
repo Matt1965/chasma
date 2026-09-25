@@ -353,6 +353,7 @@ fn empty_mesh() -> Mesh {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::FOUNDATION_SLOPE_DEGREES;
 
     #[test]
     fn outward_slope_expansion_matches_drop_at_forty_five_degrees() {

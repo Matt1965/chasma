@@ -922,11 +922,14 @@ fn open_panel_spawns_matrix_row_entities_for_two_members() {
     let mut world = app.world_mut();
     assert_eq!(count_matrix_data_rows(&mut world), 2);
     assert_eq!(count_permission_checkboxes(&mut world), 12);
-    let row_ids = world
-        .query::<&SettlementWorkforceMatrixDataRow>()
+    let mut row_ids: Vec<_> = world
+        .query::<&WorkforcePermissionCheckbox>()
         .iter(&mut world)
-        .map(|row| row.unit_id)
-        .collect::<Vec<_>>();
+        .map(|checkbox| checkbox.unit_id)
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .collect();
+    row_ids.sort();
     assert_eq!(row_ids, members);
 }
 
@@ -1188,11 +1191,14 @@ fn twenty_five_workers_all_exist_without_unbounded_panel_height() {
     let mut world = app.world_mut();
     assert_eq!(count_matrix_data_rows(&mut world), 25);
     assert_eq!(count_permission_checkboxes(&mut world), 25 * 6);
-    let row_ids = world
-        .query::<&SettlementWorkforceMatrixDataRow>()
+    let mut row_ids: Vec<_> = world
+        .query::<&WorkforcePermissionCheckbox>()
         .iter(&mut world)
-        .map(|row| row.unit_id)
-        .collect::<Vec<_>>();
+        .map(|checkbox| checkbox.unit_id)
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .collect();
+    row_ids.sort();
     assert_eq!(row_ids, members);
     assert!(rows_scroll_uses_vertical_overflow(&mut world));
     assert_eq!(vertical_scrollbar_count(&mut world), 1);

@@ -178,6 +178,7 @@ fn activate_imported_hut_at(
         building_id,
         BuildingLifecycleState::Complete,
         1.0,
+        Some(crate::world::building::test_inventory_catalog_ctx()),
     )
     .expect("complete hut");
     building_id

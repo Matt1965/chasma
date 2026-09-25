@@ -10,6 +10,8 @@ use crate::world::inventory::{
     InventoryOwnerRef, RemovedInventoryContents, remove_owned_inventory,
 };
 use crate::world::unit::{UnitDefinition, UnitRecord};
+#[cfg(test)]
+use crate::world::UnitId;
 
 pub fn attach_inventory_on_unit_create(
     world: &mut WorldData,

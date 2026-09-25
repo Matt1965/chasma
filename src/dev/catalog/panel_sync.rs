@@ -5,13 +5,13 @@ use bevy::ecs::system::ParamSet;
 use bevy::prelude::*;
 
 use super::components::{
-    DevCatalogStatusText, DevContextualPlacementButton, DevContextualPlacementSection,
-    DevPlacementActiveBanner, DevTabChrome,
+    DevCatalogStatusText, DevContextualPlacementAction, DevContextualPlacementButton,
+    DevContextualPlacementSection, DevPlacementActiveBanner, DevTabChrome,
 };
+use super::placement_controls::PlacementControlField;
 
 use super::placement_controls::{
-    PlacementControlField, PlacementUiContext, placement_control_set, placement_status_line,
-    placement_ui_context,
+    PlacementUiContext, placement_control_set, placement_status_line, placement_ui_context,
 };
 
 use super::state::{on_tab_selected, tab_is_visible};
@@ -19,7 +19,6 @@ use super::state::{on_tab_selected, tab_is_visible};
 use super::tabs::tab_label;
 
 use crate::dev::dev_mode::DevTab;
-
 use crate::dev::input::DevPanelUi;
 
 /// Sync tab visibility and contextual placement controls.
@@ -36,7 +35,10 @@ pub fn sync_dev_catalog_chrome(
     mut chrome: ParamSet<(
         Query<(&DevTabChrome, &mut Visibility, &mut Node), With<DevPanelUi>>,
         Query<&mut Node, (With<DevContextualPlacementSection>, Without<DevTabChrome>)>,
-        Query<(&DevContextualPlacementButton, &mut Visibility), Without<DevTabChrome>>,
+        Query<
+            (&DevContextualPlacementButton, &mut Visibility, &mut Node),
+            Without<DevTabChrome>,
+        >,
     )>,
 
     mut texts: ParamSet<(
@@ -70,8 +72,9 @@ pub fn sync_dev_catalog_chrome(
             node.display = Display::None;
         }
 
-        for (_button, mut visibility) in chrome.p2().iter_mut() {
+        for (_button, mut visibility, mut node) in chrome.p2().iter_mut() {
             *visibility = Visibility::Hidden;
+            node.display = Display::None;
         }
 
         return;
@@ -130,13 +133,19 @@ pub fn sync_dev_catalog_chrome(
         };
     }
 
-    for (button, mut visibility) in chrome.p2().iter_mut() {
+    for (button, mut visibility, mut node) in chrome.p2().iter_mut() {
         let show = field_visible(button.field, &controls);
 
         *visibility = if show {
             Visibility::Visible
         } else {
             Visibility::Hidden
+        };
+        // Visibility::Hidden still reserves flex space; collapse inactive controls.
+        node.display = if show {
+            Display::Flex
+        } else {
+            Display::None
         };
     }
 
@@ -193,19 +202,31 @@ fn field_visible(
 
         PlacementControlField::Affiliation => controls.affiliation,
 
-        PlacementControlField::TerrainSnap => controls.terrain_snap,
-
-        PlacementControlField::Preview => controls.preview,
-
         PlacementControlField::Rotation => controls.rotation,
 
         PlacementControlField::Scale => controls.scale,
-
-        PlacementControlField::Cancel => controls.cancel,
     }
 }
 
 /// Record tab selection for session memory.
+
+/// Keep placement control labels in sync (team affiliation display).
+pub fn sync_catalog_placement_button_labels(
+    dev_state: Res<crate::dev::dev_mode::DevModeState>,
+    registry: Res<crate::dev::window::DevWindowRegistry>,
+    mut buttons: Query<(&DevContextualPlacementButton, &mut Text), With<DevPanelUi>>,
+) {
+    if !dev_state.enabled || !registry.is_visible(crate::dev::window::DevWindowId::Catalog) {
+        return;
+    }
+    for (button, mut text) in &mut buttons {
+        if button.action == DevContextualPlacementAction::CycleSpawnTeam
+            && button.field == PlacementControlField::Affiliation
+        {
+            **text = dev_state.spawn_team_button_label();
+        }
+    }
+}
 
 pub fn track_catalog_tab_selection(
     mut dev_state: ResMut<crate::dev::dev_mode::DevModeState>,
