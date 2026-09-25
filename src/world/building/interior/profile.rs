@@ -87,7 +87,7 @@ pub fn two_story_hut_interior_profile() -> InteriorProfile {
             key: "ground_workbench",
             kind: InteriorChildKind::Building(BuildingDefinitionId::new("workbench")),
             space_key: "ground_interior",
-            local_position: Vec3::new(2.5, 0.0, 2.5),
+            local_position: Vec3::new(0.5, 0.0, 3.5),
             local_rotation: Quat::IDENTITY,
             enabled: true,
         },
