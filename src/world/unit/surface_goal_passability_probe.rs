@@ -3,6 +3,10 @@
 //! Read-only probes mirroring `query_surface_point_legality` stages without
 //! mutating navigation behavior.
 
+// Optional dev diagnostic hooks are intentionally retained even when
+// no runtime consumer is active during a normal build.
+#![allow(dead_code)]
+
 #[cfg(feature = "dev")]
 use bevy::prelude::*;
 

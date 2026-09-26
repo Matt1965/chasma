@@ -3,6 +3,10 @@
 //! Arms after Interior→Surface portal completion; records a short bounded Surface tick
 //! sequence to `logs/navigation_trace.log`. Does not mutate navigation behavior.
 
+// Optional dev diagnostic hooks are intentionally retained even when
+// no runtime consumer is active during a normal build.
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 use super::id::UnitId;

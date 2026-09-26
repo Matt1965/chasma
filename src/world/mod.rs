@@ -116,6 +116,10 @@ pub use building::merge_starter_extensions_into_catalog;
 pub use building::starter_building_category_definitions;
 #[cfg(any(test, feature = "dev"))]
 pub use building::starter_definitions as starter_building_definitions;
+#[cfg(test)]
+pub use building::catalog::{
+    smelter_building_definition_for_tests, starter_building_catalog_with_smelter,
+};
 #[cfg(any(test, feature = "dev"))]
 pub use building::two_room_hut_navigation_blueprint;
 pub use building::{

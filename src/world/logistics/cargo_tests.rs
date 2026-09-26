@@ -71,9 +71,7 @@ struct BackpackHaulFixture {
 impl BackpackHaulFixture {
     fn new() -> Self {
         let mut world = flat_world();
-        let categories = crate::world::BuildingCategoryCatalog::default();
-        let building_catalog =
-            BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
+        let building_catalog = crate::world::starter_building_catalog_with_smelter();
         let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
         let ctx = test_inventory_ctx();
         let ownership = BuildingOwnership::with_affiliation(Affiliation::Player);

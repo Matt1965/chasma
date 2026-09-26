@@ -1,5 +1,8 @@
 //! Numeric parsing, clamping, and draft commit helpers (Slice 9).
 
+// Focus helpers are part of the planned numeric widget interaction surface.
+#![allow(dead_code)]
+
 /// Result of parsing user numeric input.
 #[derive(Debug, Clone, PartialEq)]
 pub enum NumericParseResult {

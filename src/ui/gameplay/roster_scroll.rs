@@ -1,5 +1,8 @@
 //! Squad roster horizontal paging — bounded viewport with arrow navigation.
 
+// Roster viewport helpers are retained for the active bottom-HUD direction.
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 use bevy::ui::{ComputedNode, ScrollPosition};
 

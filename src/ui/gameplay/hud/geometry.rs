@@ -3,6 +3,9 @@
 //! Slice 1 frame art and Slice 2 palette read these numbers; they do not
 //! invent their own width/height rules.
 
+// Section layout helpers remain while HUD panels finish wiring.
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 use super::super::roster_scroll::ROSTER_NAV_BUTTON_WIDTH_PX;
