@@ -15,7 +15,13 @@ import re
 import sys
 from pathlib import Path
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
 import bpy
+
+from unity_materials import apply_textures_to_meshes
 
 # Unity FBX centimeters -> glTF meters (matches Cavecrawler conversion notes).
 FBX_SCALE = 0.01
@@ -128,14 +134,48 @@ def limit_skin_weights(max_influences: int = 4) -> None:
                 g.weight = g.weight / total
 
 
+def collect_armature_meshes(armature: bpy.types.Object) -> list[bpy.types.Object]:
+    meshes: list[bpy.types.Object] = []
+    stack = list(armature.children)
+    while stack:
+        obj = stack.pop()
+        if obj.type == "MESH":
+            meshes.append(obj)
+        stack.extend(obj.children)
+    return meshes
+
+
+def rescale_if_microscopic(armature: bpy.types.Object, target_height_m: float = 3.0) -> None:
+    """Some SK FBX files import at ~1/100 size even with global_scale=0.01."""
+    meshes = collect_armature_meshes(armature)
+    if not meshes:
+        return
+    max_dim = max(max(mesh.dimensions) for mesh in meshes)
+    if max_dim >= 0.5:
+        return
+    factor = target_height_m / max(max_dim, 1e-6)
+    armature.scale = tuple(component * factor for component in armature.scale)
+    bpy.context.view_layer.update()
+    bake_object_scales(armature)
+
+
+def bake_object_scales(armature: bpy.types.Object) -> None:
+    """FBX import often leaves 0.01 armature scale; baking avoids 1e-4 glTF root scale."""
+    targets = [armature, *collect_armature_meshes(armature)]
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in targets:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = armature
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+
 def export_glb(output: Path, armature: bpy.types.Object) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.object.select_all(action="DESELECT")
     armature.select_set(True)
     bpy.context.view_layer.objects.active = armature
-    for child in armature.children:
-        if child.type == "MESH":
-            child.select_set(True)
+    for mesh in collect_armature_meshes(armature):
+        mesh.select_set(True)
     bpy.ops.export_scene.gltf(
         filepath=str(output),
         export_format="GLB",
@@ -208,6 +248,11 @@ def main() -> None:
         merge_action_onto_armature(armature, action, clip)
         delete_objects(imported)
 
+    rescale_if_microscopic(armature)
+    if max(armature.scale) < 0.99 or min(armature.scale) > 1.01:
+        bake_object_scales(armature)
+    mat_name = f"M_{args.monster_name.replace(' ', '')}"
+    apply_textures_to_meshes(args.source_dir, mat_name)
     limit_skin_weights(4)
     downscale_textures(1024)
     bpy.context.scene.render.fps = FPS
