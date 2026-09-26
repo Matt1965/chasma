@@ -59,7 +59,6 @@ pub fn handle_unit_interaction_menu_option_clicks(
     mut dialogue: ResMut<DialogueSessionState>,
     mut pending: ResMut<PendingDialogueInteractionState>,
     mut world: ResMut<WorldData>,
-    world_ref: Res<WorldData>,
     authored_relationships: Res<AuthoredRelationshipCatalog>,
     unit_catalog: Res<UnitCatalog>,
     weapon_catalog: Res<WeaponCatalog>,
@@ -81,14 +80,14 @@ pub fn handle_unit_interaction_menu_option_clicks(
         Some(id) => id,
         None => return,
     };
-    let standing = world_ref.relationship_standing_store();
+    let standing = world.relationship_standing_store();
 
     for (interaction, button) in &buttons {
         if *interaction != Interaction::Pressed {
             continue;
         }
         if !evaluate_dialogue_option(
-            &world_ref,
+            &world,
             &authored_relationships,
             standing,
             actor,
