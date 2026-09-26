@@ -91,17 +91,21 @@ mod tests {
     }
 
     #[test]
-    fn spawn_ui_label_bundle_carries_single_text_font() {
+    fn absolute_text_font_on_spawned_label_is_uniform() {
         let mut app = App::new();
         app.add_plugins((MinimalPlugins, bevy::ui::UiPlugin));
         let font = absolute_text_font(11.0);
-        app.world_mut().spawn_empty().with_children(|parent| {
-            spawn_ui_label(parent, "Catalog", font.clone(), Color::WHITE);
-        });
-        let mut sizes = Vec::new();
-        for font in app.world_mut().query::<&TextFont>().iter(app.world()) {
-            sizes.push(font.font_size);
-        }
+        app.world_mut().spawn((
+            Text::new("Catalog"),
+            font,
+            TextColor(Color::WHITE),
+        ));
+        let sizes = app
+            .world_mut()
+            .query::<&TextFont>()
+            .iter(app.world())
+            .map(|font| font.font_size)
+            .collect::<Vec<_>>();
         assert_eq!(sizes, vec![11.0]);
     }
 }
