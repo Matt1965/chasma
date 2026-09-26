@@ -20,7 +20,7 @@ pub use corpse_interaction_dispatch::{
     CorpsePlayerInteractionOutcome, PendingCorpsePlayerInteraction,
     PendingCorpsePlayerInteractionState, resolve_corpse_interact_target,
     supersede_pending_corpse_interaction_for_selection, tick_pending_corpse_player_interactions,
-    try_dispatch_corpse_player_interaction,
+    try_dispatch_corpse_from_contextual_target, try_dispatch_corpse_player_interaction,
 };
 pub use dialogue_dispatch::{
     DialogueDispatchOutcome, PendingDialogueInteraction, PendingDialogueInteractionState,

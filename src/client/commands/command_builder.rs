@@ -208,6 +208,25 @@ mod tests {
     }
 
     #[test]
+    fn interact_unit_builds_interaction_menu_plan() {
+        let world = flat_world();
+        let mut selection = SelectedUnits::default();
+        selection.set_single(crate::world::UnitId::new(1));
+        let intent = ContextualCommandIntent {
+            command_type: CommandType::Interact,
+            target: CommandTarget::Unit {
+                unit_id: crate::world::UnitId::new(2),
+            },
+        };
+        assert_eq!(
+            build_command_plan(&intent, &selection, &world).unwrap(),
+            BuiltCommandPlan::OpenUnitInteractionMenu {
+                target: crate::world::UnitId::new(2),
+            }
+        );
+    }
+
+    #[test]
     fn interact_builds_no_op_plan() {
         let world = flat_world();
         let mut selection = SelectedUnits::default();

@@ -112,6 +112,17 @@ fn shows_relationship_gate_as_disabled_reason() {
 }
 
 #[test]
+fn menu_close_clears_open_state() {
+    let mut menu = super::state::UnitInteractionMenuState::default();
+    menu.open_at(UnitId::new(1), UnitId::new(2), bevy::prelude::Vec2::new(10.0, 20.0));
+    assert!(menu.open);
+    menu.close();
+    assert!(!menu.open);
+    assert!(menu.actor_unit_id.is_none());
+    assert!(menu.target_unit_id.is_none());
+}
+
+#[test]
 fn omit_helper_covers_capability_reasons() {
     assert!(should_omit_interaction_menu_option(DialogueUnavailableReason::TargetCannotTrade));
     assert!(!should_omit_interaction_menu_option(DialogueUnavailableReason::RelationshipTooLow));
