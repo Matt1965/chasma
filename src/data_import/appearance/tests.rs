@@ -219,6 +219,7 @@ mod workbook_tests {
             current_nutrition: None,
             work_skill_overrides: Vec::new(),
             appearance: None,
+            dialogue: None,
         };
         let record = scene_unit.to_record(&catalog, &appearance).unwrap();
         let migrated = record.appearance.expect("legacy migration appearance");

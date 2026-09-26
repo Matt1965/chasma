@@ -5,6 +5,7 @@ use crate::client::{
     ClientPipelinePlugin, SettlementContextPlugin, collect_unit_input_intents,
     dispatch_client_intents, tick_pending_building_player_interactions,
     tick_pending_corpse_player_interactions,
+    tick_pending_dialogue_interactions,
 };
 use crate::debug::DebugOverlayPlugin;
 use crate::simulation::{SimulationPlugin, SimulationSystems};
@@ -151,6 +152,7 @@ impl Plugin for PlayerPlugin {
                 (
                     tick_pending_building_player_interactions,
                     tick_pending_corpse_player_interactions,
+                    tick_pending_dialogue_interactions,
                 )
                     .after(tick_unit_movement)
                     .before(collect_unit_input_intents)

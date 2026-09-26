@@ -258,6 +258,9 @@ pub struct SceneUnitRecord {
     /// Persisted unit appearance (CG1). Absent in v18 and earlier.
     #[serde(default)]
     pub appearance: Option<SceneUnitAppearanceRecord>,
+    /// Baked social interaction configuration. Absent in legacy scenes.
+    #[serde(default)]
+    pub dialogue: Option<crate::world::dialogue::UnitDialogueConfig>,
 }
 
 /// Serializable appearance state for dev scenes.
@@ -684,6 +687,7 @@ impl SceneUnitRecord {
                 })
                 .collect(),
             appearance: record.appearance.as_ref().map(SceneUnitAppearanceRecord::from_unit),
+            dialogue: record.dialogue.clone(),
         }
     }
 
@@ -778,6 +782,7 @@ impl SceneUnitRecord {
                     reason: error.to_string(),
                 })?;
         }
+        record.dialogue = self.dialogue.clone();
         Ok(record)
     }
 }
@@ -1639,6 +1644,7 @@ mod nutrition_scene_tests {
             current_nutrition: None,
             work_skill_overrides: Vec::new(),
             appearance: None,
+            dialogue: None,
         };
         let record = scene_unit
             .to_record(&catalog, &crate::world::AppearanceProfileCatalog::empty())

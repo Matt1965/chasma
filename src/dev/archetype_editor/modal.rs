@@ -41,6 +41,29 @@ pub(crate) struct DevArchetypeModalGoldMaxField;
 #[derive(Component, Debug, Clone)]
 pub(crate) struct DevArchetypeModalGoldMaxText;
 
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DevArchetypeDialogueToggle {
+    Talk,
+    Trade,
+    Recruit,
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DevArchetypeDialogueMinField {
+    Talk,
+    Trade,
+    Recruit,
+}
+
+#[derive(Component, Debug, Clone)]
+pub(crate) struct DevArchetypeDialogueTalkMinText;
+
+#[derive(Component, Debug, Clone)]
+pub(crate) struct DevArchetypeDialogueTradeMinText;
+
+#[derive(Component, Debug, Clone)]
+pub(crate) struct DevArchetypeDialogueRecruitMinText;
+
 #[derive(Component, Debug, Clone)]
 pub(crate) struct DevArchetypeModalStatusText;
 
@@ -154,6 +177,36 @@ pub fn setup_archetype_editor_modal(mut commands: Commands) {
                                 DevArchetypeModalGoldMaxField,
                                 DevArchetypeModalGoldMaxText,
                             );
+                            unit_fields.spawn((
+                                DevPanelUi,
+                                Text::new("Social Options"),
+                                TextFont {
+                                    font_size: 11.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgba(0.75, 0.85, 0.92, 1.0)),
+                            ));
+                            spawn_dialogue_option_row(
+                                unit_fields,
+                                "Talk",
+                                DevArchetypeDialogueToggle::Talk,
+                                DevArchetypeDialogueMinField::Talk,
+                                DevArchetypeDialogueTalkMinText,
+                            );
+                            spawn_dialogue_option_row(
+                                unit_fields,
+                                "Trade",
+                                DevArchetypeDialogueToggle::Trade,
+                                DevArchetypeDialogueMinField::Trade,
+                                DevArchetypeDialogueTradeMinText,
+                            );
+                            spawn_dialogue_option_row(
+                                unit_fields,
+                                "Recruit",
+                                DevArchetypeDialogueToggle::Recruit,
+                                DevArchetypeDialogueMinField::Recruit,
+                                DevArchetypeDialogueRecruitMinText,
+                            );
                         });
                     panel
                         .spawn((
@@ -209,6 +262,38 @@ pub fn setup_archetype_editor_modal(mut commands: Commands) {
                             spawn_modal_button(row, "Cancel", DevArchetypeModalCancelButton);
                         });
                 });
+        });
+}
+
+fn spawn_dialogue_option_row(
+    parent: &mut ChildSpawnerCommands<'_>,
+    label: &str,
+    toggle: DevArchetypeDialogueToggle,
+    field: DevArchetypeDialogueMinField,
+    text: impl Component + Clone,
+) {
+    parent
+        .spawn((
+            DevPanelUi,
+            Node {
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(2.0),
+                ..default()
+            },
+        ))
+        .with_children(|col| {
+            spawn_toggle_row(
+                col,
+                label,
+                DevTooltipContent::new(format!("Enable {label}")),
+                toggle,
+            );
+            spawn_text_field(
+                col,
+                "Minimum Relationship",
+                field,
+                text,
+            );
         });
 }
 
@@ -423,6 +508,62 @@ pub fn sync_archetype_editor_modal(
     }
 }
 
+pub fn sync_archetype_dialogue_min_texts(
+    editor: Res<DevArchetypeEditorState>,
+    mut texts: bevy::ecs::system::ParamSet<(
+        Query<&mut Text, With<DevArchetypeDialogueTalkMinText>>,
+        Query<&mut Text, With<DevArchetypeDialogueTradeMinText>>,
+        Query<&mut Text, With<DevArchetypeDialogueRecruitMinText>>,
+    )>,
+) {
+    if !editor.modal_open {
+        return;
+    }
+    if let Ok(mut text) = texts.p0().single_mut() {
+        **text = editor.dialogue_talk_min.clone();
+    }
+    if let Ok(mut text) = texts.p1().single_mut() {
+        **text = editor.dialogue_trade_min.clone();
+    }
+    if let Ok(mut text) = texts.p2().single_mut() {
+        **text = editor.dialogue_recruit_min.clone();
+    }
+}
+
+pub fn sync_archetype_dialogue_toggle_marks(
+    editor: Res<DevArchetypeEditorState>,
+    mut query: Query<
+        (
+            &DevArchetypeDialogueToggle,
+            &Children,
+            &mut crate::dev::widgets::DevWidgetToggle,
+        ),
+        Without<DevArchetypeModalRoot>,
+    >,
+    mut marks: Query<&mut Visibility, With<crate::dev::widgets::DevWidgetToggleMark>>,
+) {
+    if !editor.modal_open {
+        return;
+    }
+    for (toggle, children, mut widget) in &mut query {
+        let on = match toggle {
+            DevArchetypeDialogueToggle::Talk => editor.dialogue_talk_enabled,
+            DevArchetypeDialogueToggle::Trade => editor.dialogue_trade_enabled,
+            DevArchetypeDialogueToggle::Recruit => editor.dialogue_recruit_enabled,
+        };
+        widget.disabled = false;
+        for child in children.iter() {
+            if let Ok(mut visibility) = marks.get_mut(child) {
+                *visibility = if on {
+                    Visibility::Visible
+                } else {
+                    Visibility::Hidden
+                };
+            }
+        }
+    }
+}
+
 pub fn sync_archetype_species_toggle_marks(
     editor: Res<DevArchetypeEditorState>,
     mut query: Query<
@@ -516,10 +657,11 @@ fn paint_field<Q: bevy::ecs::query::QueryFilter>(
 pub fn handle_archetype_modal_field_clicks(
     mut dev_state: ResMut<DevModeState>,
     editor: Res<DevArchetypeEditorState>,
-    name: Query<&Interaction, (With<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalGoldMaxField>, Without<DevArchetypeModalCaptureMarginField>)>,
-    gold_min: Query<&Interaction, (With<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMaxField>, Without<DevArchetypeModalCaptureMarginField>)>,
-    gold_max: Query<&Interaction, (With<DevArchetypeModalGoldMaxField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalCaptureMarginField>)>,
-    margin: Query<&Interaction, (With<DevArchetypeModalCaptureMarginField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalGoldMaxField>)>,
+    name: Query<&Interaction, (With<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalGoldMaxField>, Without<DevArchetypeModalCaptureMarginField>, Without<DevArchetypeDialogueMinField>)>,
+    gold_min: Query<&Interaction, (With<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMaxField>, Without<DevArchetypeModalCaptureMarginField>, Without<DevArchetypeDialogueMinField>)>,
+    gold_max: Query<&Interaction, (With<DevArchetypeModalGoldMaxField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalCaptureMarginField>, Without<DevArchetypeDialogueMinField>)>,
+    margin: Query<&Interaction, (With<DevArchetypeModalCaptureMarginField>, Without<DevArchetypeModalNameField>, Without<DevArchetypeModalGoldMinField>, Without<DevArchetypeModalGoldMaxField>, Without<DevArchetypeDialogueMinField>)>,
+    dialogue_min: Query<(&Interaction, &DevArchetypeDialogueMinField), Without<DevArchetypeModalNameField>>,
 ) {
     if !editor.modal_open {
         return;
@@ -532,6 +674,19 @@ pub fn handle_archetype_modal_field_clicks(
         dev_state.text_focus = DevTextFieldFocus::ArchetypeGoldMax;
     } else if margin.iter().any(|i| *i == Interaction::Pressed) {
         dev_state.text_focus = DevTextFieldFocus::ArchetypeCaptureMargin;
+    } else {
+        for (interaction, field) in &dialogue_min {
+            if *interaction != Interaction::Pressed {
+                continue;
+            }
+            dev_state.text_focus = match field {
+                DevArchetypeDialogueMinField::Talk => DevTextFieldFocus::ArchetypeDialogueTalkMin,
+                DevArchetypeDialogueMinField::Trade => DevTextFieldFocus::ArchetypeDialogueTradeMin,
+                DevArchetypeDialogueMinField::Recruit => {
+                    DevTextFieldFocus::ArchetypeDialogueRecruitMin
+                }
+            };
+        }
     }
 }
 

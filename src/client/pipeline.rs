@@ -53,6 +53,8 @@ impl Plugin for ClientPipelinePlugin {
             .init_resource::<crate::client::selection::WorldSelectionRevision>()
             .init_resource::<crate::client::inventory_intent::InventoryIntentQueue>()
             .init_resource::<crate::client::PendingBuildingPlayerInteractionState>()
+            .init_resource::<crate::client::PendingDialogueInteractionState>()
+            .init_resource::<crate::client::ContextMenuScreenAnchor>()
             .init_resource::<crate::client::PendingCorpsePlayerInteractionState>()
             .init_resource::<crate::client::commands::ResolvedCommandFeedback>();
     }
@@ -77,6 +79,8 @@ pub struct CollectUnitInputParams<'w> {
     pub menu_block: Option<Res<'w, crate::menu::MenuInputBlock>>,
     pub selected_units: Res<'w, SelectedUnits>,
     pub world_selection: Res<'w, WorldSelectionState>,
+    pub context_menu_anchor: ResMut<'w, crate::client::ContextMenuScreenAnchor>,
+    pub unit_interaction_menu: Res<'w, crate::ui::gameplay::UnitInteractionMenuState>,
 }
 
 impl CollectUnitInputParams<'_> {
@@ -84,6 +88,7 @@ impl CollectUnitInputParams<'_> {
         self.menu_block.as_ref().is_some_and(|b| b.blocks())
             || gameplay_input_blocked_by_hud(&self.hud_hover)
             || self.build_mode.blocks_gameplay_world_intents()
+            || self.unit_interaction_menu.blocks_world_input()
     }
 }
 
@@ -221,6 +226,9 @@ pub fn collect_unit_input_intents(
                     &mut params.world,
                     unit_id,
                 );
+            }
+            if let Some(screen) = cursor_screen_position(&windows) {
+                params.context_menu_anchor.position = Some(screen);
             }
             params.queue.push(ClientIntent::ContextualCommand {
                 target: CommandTarget::Unit { unit_id },

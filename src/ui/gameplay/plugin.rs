@@ -78,6 +78,18 @@ use super::terrain_analysis::{
     spawn_terrain_analysis_ui, sync_terrain_analysis_dev_diagnostics, sync_terrain_analysis_panel,
     update_terrain_analysis_cursor_readout,
 };
+use super::dialogue::{
+    DialogueSessionState, collect_dialogue_keyboard_input, handle_dialogue_back_button,
+    handle_dialogue_close_button, handle_dialogue_option_buttons, reconcile_dialogue_panel,
+    spawn_dialogue_panel, sync_dialogue_panel, sync_dialogue_panel_visibility,
+};
+use super::unit_interaction_menu::{
+    UnitInteractionMenuState, collect_unit_interaction_menu_keyboard_input,
+    dismiss_unit_interaction_menu_on_outside_click, handle_unit_interaction_menu_backdrop_click,
+    handle_unit_interaction_menu_option_clicks, reconcile_unit_interaction_menu,
+    spawn_unit_interaction_menu, sync_unit_interaction_menu, sync_unit_interaction_menu_layout,
+    sync_unit_interaction_menu_visibility,
+};
 use super::unit_skills::{
     UnitSkillsPanelState, collect_unit_skills_keyboard_input, handle_unit_skills_close_button,
     reconcile_unit_skills_panel, spawn_unit_skills_panel, sync_unit_skills_panel,
@@ -110,6 +122,8 @@ impl Plugin for GameplayUiPlugin {
             .init_resource::<BuildModeCursorAnchor>()
             .init_resource::<BuildingPanelState>()
             .init_resource::<UnitSkillsPanelState>()
+            .init_resource::<DialogueSessionState>()
+            .init_resource::<UnitInteractionMenuState>()
             .init_resource::<SettlementWorkforcePanelState>()
             .init_resource::<FieldsMenuState>()
             .init_resource::<FloatingGameplayWindowRegistry>()
@@ -130,6 +144,8 @@ impl Plugin for GameplayUiPlugin {
                 spawn_inventory_panel,
                 spawn_building_menu_panel,
                 spawn_unit_skills_panel,
+                spawn_dialogue_panel,
+                spawn_unit_interaction_menu,
                 spawn_settlement_workforce_panel,
             ),
         );
@@ -189,6 +205,32 @@ impl Plugin for GameplayUiPlugin {
                 sync_command_panel_buttons,
             )
                 .after(sync_gameplay_ui_state)
+                .in_set(GameplayUiSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                reconcile_dialogue_panel,
+                sync_dialogue_panel_visibility,
+                sync_dialogue_panel,
+                handle_dialogue_close_button,
+                handle_dialogue_back_button,
+                handle_dialogue_option_buttons,
+            )
+                .chain()
+                .after(sync_gameplay_ui_state)
+                .in_set(GameplayUiSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                reconcile_unit_interaction_menu,
+                sync_unit_interaction_menu_visibility,
+                sync_unit_interaction_menu_layout,
+                sync_unit_interaction_menu,
+            )
+                .chain()
+                .after(sync_dialogue_panel)
                 .in_set(GameplayUiSystems),
         )
         .add_systems(
@@ -254,6 +296,9 @@ impl Plugin for GameplayUiPlugin {
                 handle_utility_button_clicks,
                 handle_fields_menu_option_clicks,
                 dismiss_fields_menu_on_outside_click,
+                handle_unit_interaction_menu_backdrop_click,
+                handle_unit_interaction_menu_option_clicks,
+                dismiss_unit_interaction_menu_on_outside_click,
                 handle_building_production_controls,
                 handle_settlement_workforce_controls,
                 update_squad_entry_hover,
@@ -282,6 +327,8 @@ impl Plugin for GameplayUiPlugin {
                 handle_inventory_panel_buttons,
                 collect_inventory_keyboard_input,
                 collect_unit_skills_keyboard_input,
+                collect_dialogue_keyboard_input,
+                collect_unit_interaction_menu_keyboard_input,
                 collect_settlement_workforce_keyboard_input,
                 reconcile_inventory_ui_from_world,
                 sync_inventory_panel_contents,

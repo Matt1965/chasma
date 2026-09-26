@@ -3,7 +3,9 @@
 //! Input → Intent → Command → Simulation → Presentation
 
 mod building_interaction_dispatch;
+mod context_menu_anchor;
 mod corpse_interaction_dispatch;
+mod dialogue_dispatch;
 pub mod commands;
 mod dispatcher;
 mod intent;
@@ -13,11 +15,18 @@ pub mod pipeline;
 pub mod selection;
 pub mod settlement_context;
 
+pub use context_menu_anchor::ContextMenuScreenAnchor;
 pub use corpse_interaction_dispatch::{
     CorpsePlayerInteractionOutcome, PendingCorpsePlayerInteraction,
     PendingCorpsePlayerInteractionState, resolve_corpse_interact_target,
     supersede_pending_corpse_interaction_for_selection, tick_pending_corpse_player_interactions,
-    try_dispatch_corpse_player_interaction,
+    try_dispatch_corpse_from_contextual_target, try_dispatch_corpse_player_interaction,
+};
+pub use dialogue_dispatch::{
+    DialogueDispatchOutcome, PendingDialogueInteraction, PendingDialogueInteractionState,
+    dispatch_dialogue_action, supersede_pending_dialogue_for_selection,
+    tick_pending_dialogue_interactions, try_complete_pending_dialogue_interaction,
+    try_open_unit_interaction_menu,
 };
 pub use building_interaction_dispatch::{
     OwnedBuildingInteractionOutcome, PendingBuildingPlayerInteraction,

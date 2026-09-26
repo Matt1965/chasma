@@ -12,6 +12,7 @@ use super::state::UnitState;
 use super::vitals::UnitVitals;
 use super::appearance::UnitAppearance;
 use super::work_skill::UnitWorkSkillState;
+use crate::world::dialogue::UnitDialogueConfig;
 use crate::world::equipment::UnitEquipmentInventories;
 use crate::world::ownership::{Affiliation, OwnerId, TeamId, UnitOwnership};
 use crate::world::relationship::{FactionId, SpeciesId};
@@ -62,6 +63,8 @@ pub struct UnitRecord {
     pub work_skills: UnitWorkSkillState,
     /// Persisted visual appearance (CG1). Required when definition has appearance support.
     pub appearance: Option<UnitAppearance>,
+    /// Baked social interaction capabilities from spawn archetype. None = no player dialogue.
+    pub dialogue: Option<UnitDialogueConfig>,
 }
 
 impl UnitRecord {
@@ -99,6 +102,7 @@ impl UnitRecord {
             settlement_id: None,
             work_skills: UnitWorkSkillState::default(),
             appearance: None,
+            dialogue: None,
         }
     }
 

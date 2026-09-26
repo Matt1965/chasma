@@ -32,6 +32,15 @@ pub fn handle_archetype_editor_keyboard(
         DevTextFieldFocus::ArchetypeCaptureMargin => {
             edit_margin_buffer(&keyboard, &mut scratch.capture_margin_input);
         }
+        DevTextFieldFocus::ArchetypeDialogueTalkMin => {
+            edit_signed_int_buffer(&keyboard, &mut editor.dialogue_talk_min);
+        }
+        DevTextFieldFocus::ArchetypeDialogueTradeMin => {
+            edit_signed_int_buffer(&keyboard, &mut editor.dialogue_trade_min);
+        }
+        DevTextFieldFocus::ArchetypeDialogueRecruitMin => {
+            edit_signed_int_buffer(&keyboard, &mut editor.dialogue_recruit_min);
+        }
         _ => {}
     }
 }
@@ -44,6 +53,24 @@ fn edit_text_buffer(keyboard: &ButtonInput<KeyCode>, buffer: &mut String, allow_
     for key in keyboard.get_just_pressed() {
         if let Some(ch) = key_to_char(*key, allow_letters) {
             if allow_letters || buffer.len() < 12 {
+                buffer.push(ch);
+            }
+        }
+    }
+}
+
+fn edit_signed_int_buffer(keyboard: &ButtonInput<KeyCode>, buffer: &mut String) {
+    if keyboard.just_pressed(KeyCode::Backspace) {
+        buffer.pop();
+        return;
+    }
+    for key in keyboard.get_just_pressed() {
+        if *key == KeyCode::Minus && buffer.is_empty() {
+            buffer.push('-');
+            continue;
+        }
+        if let Some(ch) = key_to_char(*key, false) {
+            if buffer.len() < 12 {
                 buffer.push(ch);
             }
         }

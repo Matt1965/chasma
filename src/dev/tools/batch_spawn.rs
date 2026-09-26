@@ -8,7 +8,8 @@ use crate::world::{
     BuildingPlacementContext, DoodadCatalog, DoodadPlacementOverrides,
     DoodadSource, FootprintCatalog, InteriorProfileCatalog, InventoryCatalogCtx, ItemCatalog,
     OccupancyCatalogs, UnitArchetypeCatalog, UnitArchetypeId, UnitCatalog, UnitSource, WorldData,
-    WorldPosition, apply_unit_archetype_spawn_overrides, create_dev_complete_building,
+    WorldPosition, apply_unit_archetype_dialogue_config, apply_unit_archetype_spawn_overrides,
+    create_dev_complete_building,
     create_dev_complete_building_with_inventory, create_doodad, create_unit_with_inventory,
     apply_building_archetype_placement, definition_requires_inventory_allocation,
     place_player_building, place_player_building_with_inventory,
@@ -245,6 +246,7 @@ fn spawn_at(
                 inventory_ctx,
             ) {
                 Ok(record) => {
+                    apply_unit_archetype_dialogue_config(world, record.id, &spec);
                     apply_unit_archetype_spawn_overrides(
                         world,
                         &record,
