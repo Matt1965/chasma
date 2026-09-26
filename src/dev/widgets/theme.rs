@@ -1,5 +1,7 @@
 //! Shared dev workspace visual language (Slice 9 / 13).
 
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 // --- Typography ---

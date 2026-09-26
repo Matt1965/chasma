@@ -1,5 +1,8 @@
 //! Dev-window drag math and viewport clamping (Slice 3).
 
+// Catalog viewport helpers are retained for upcoming dev catalog layout work.
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 pub const TITLE_BAR_HEIGHT_PX: f32 = 28.0;

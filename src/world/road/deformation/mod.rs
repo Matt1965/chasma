@@ -7,7 +7,7 @@ mod store;
 mod tile;
 
 pub use bake::{
-    affected_chunk_ids_for_network, depression_meters_to_heightfield_units,
+    affected_chunk_ids_for_network,
     ensure_chunk_road_deformation, rebake_road_deformation_for_chunks,
 };
 pub use persist::{
@@ -22,6 +22,9 @@ pub use store::{
     sync_store_tiles_to_chunks, sync_store_tiles_to_resident_chunks,
 };
 pub use tile::RoadHeightDeltaTile;
+
+#[cfg(test)]
+pub use bake::depression_meters_to_heightfield_units;
 
 #[cfg(test)]
 mod tests;

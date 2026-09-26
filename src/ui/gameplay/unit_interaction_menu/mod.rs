@@ -8,7 +8,9 @@ mod state;
 #[cfg(test)]
 mod tests;
 
-pub use content::{InteractionMenuRow, build_interaction_menu_rows, should_omit_interaction_menu_option};
+pub use content::{build_interaction_menu_rows, should_omit_interaction_menu_option};
+#[cfg(test)]
+pub use content::InteractionMenuRow;
 pub use input::{
     collect_unit_interaction_menu_keyboard_input, dismiss_unit_interaction_menu_on_outside_click,
     handle_unit_interaction_menu_backdrop_click, handle_unit_interaction_menu_option_clicks,

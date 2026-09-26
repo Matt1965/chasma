@@ -1630,7 +1630,7 @@ fn apply_contextual_placement_action(
 
 /// Keep catalog list areas within the current viewport.
 pub(crate) fn sync_catalog_panel_layout(
-    registry: Res<DevWindowRegistry>,
+    _registry: Res<DevWindowRegistry>,
     metrics: Res<CatalogScrollMetrics>,
     mut nodes: ParamSet<(
         Query<(&DevWindowRoot, &mut Node)>,

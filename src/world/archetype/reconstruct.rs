@@ -9,7 +9,7 @@ use crate::world::inventory::{
     restore_inventory_subgraph,
 };
 use crate::world::authoring_transform::QuantizedOrientation;
-use crate::world::item_pile::{ItemPileSource, WorldItemPileRecord, WorldPileContents};
+use crate::world::item_pile::{ItemPileSource, WorldItemPileRecord};
 use crate::world::{
     BuildingAuthoringError, BuildingCatalog, BuildingDefinitionId, BuildingId, BuildingOwnership,
     BuildingRecord, DoodadCatalog, DoodadDefinitionId, DoodadPlacementOverrides, DoodadSource,

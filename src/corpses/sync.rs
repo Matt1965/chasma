@@ -67,7 +67,7 @@ pub(crate) fn visible_corpse_ids(
 }
 
 /// Keep derived corpse entities aligned with [`WorldData`] chunk residency.
-pub fn sync_corpse_render_entities(
+pub(crate) fn sync_corpse_render_entities(
     mut commands: Commands,
     world: Res<WorldData>,
     catalog: Res<UnitCatalog>,

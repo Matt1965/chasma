@@ -11,7 +11,7 @@ mod tests;
 
 pub use panel::spawn_environment_controls;
 pub use state::{
-    DevWorldEnvironmentSection, DevWorldWaterEnabledToggle, DevWorldWaterSection,
+    DevWorldEnvironmentSection,
     WorldEnvironmentUiState,
 };
 pub use systems::{
