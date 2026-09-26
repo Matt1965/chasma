@@ -510,20 +510,22 @@ pub fn sync_archetype_editor_modal(
 
 pub fn sync_archetype_dialogue_min_texts(
     editor: Res<DevArchetypeEditorState>,
-    mut talk: Query<&mut Text, With<DevArchetypeDialogueTalkMinText>>,
-    mut trade: Query<&mut Text, With<DevArchetypeDialogueTradeMinText>>,
-    mut recruit: Query<&mut Text, With<DevArchetypeDialogueRecruitMinText>>,
+    mut texts: bevy::ecs::system::ParamSet<(
+        Query<&mut Text, With<DevArchetypeDialogueTalkMinText>>,
+        Query<&mut Text, With<DevArchetypeDialogueTradeMinText>>,
+        Query<&mut Text, With<DevArchetypeDialogueRecruitMinText>>,
+    )>,
 ) {
     if !editor.modal_open {
         return;
     }
-    if let Ok(mut text) = talk.single_mut() {
+    if let Ok(mut text) = texts.p0().single_mut() {
         **text = editor.dialogue_talk_min.clone();
     }
-    if let Ok(mut text) = trade.single_mut() {
+    if let Ok(mut text) = texts.p1().single_mut() {
         **text = editor.dialogue_trade_min.clone();
     }
-    if let Ok(mut text) = recruit.single_mut() {
+    if let Ok(mut text) = texts.p2().single_mut() {
         **text = editor.dialogue_recruit_min.clone();
     }
 }
