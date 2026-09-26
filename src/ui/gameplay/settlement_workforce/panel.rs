@@ -25,7 +25,7 @@ use super::layout::{
     PANEL_WIDTH_PX, matrix_min_width, permission_checkbox_label, permission_col_width,
 };
 use super::scroll::{
-    WORKFORCE_SCROLLBAR_MIN_THUMB_PX, WORKFORCE_SCROLLBAR_TRACK_WIDTH_PX,
+    WORKFORCE_SCROLLBAR_TRACK_WIDTH_PX,
     reset_settlement_workforce_scroll,
 };
 use super::state::SettlementWorkforcePanelState;

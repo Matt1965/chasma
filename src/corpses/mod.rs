@@ -22,4 +22,4 @@ pub use ownership::{
 };
 pub use plugin::CorpseRuntimePlugin;
 pub use spawn::spawn_corpse_render_entity;
-pub use sync::{CorpseRenderIndex, CorpseRuntimeSystems, sync_corpse_render_entities};
+pub use sync::{CorpseRenderIndex, CorpseRuntimeSystems};

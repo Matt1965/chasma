@@ -117,7 +117,7 @@ const ENDCAP_RIGHT_SOURCE_WIDTH: f32 =
     HUD_ENDCAP_RIGHT_WIDTH_PX / (HUD_HEIGHT_PX / HUD_SOURCE_BAND_HEIGHT_PX);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct SectionWidths {
+pub(in crate::ui::gameplay::hud) struct SectionWidths {
     selected: f32,
     roster: f32,
     command: f32,

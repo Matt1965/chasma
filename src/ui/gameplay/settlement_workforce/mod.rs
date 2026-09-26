@@ -10,11 +10,7 @@ mod state;
 #[cfg(test)]
 mod tests;
 
-pub use content::{
-    NO_FOCUSED_SETTLEMENT_MESSAGE, NO_SETTLEMENT_WORKERS_MESSAGE, SettlementWorkforceSnapshot,
-    WorkforceMatrixCell, WorkforceMatrixRow, build_settlement_workforce_snapshot,
-    permission_column_labels, settlement_workforce_member_unit_ids,
-};
+pub use content::build_settlement_workforce_snapshot;
 #[cfg(test)]
 pub use content::snapshot_contains_permission_column;
 #[cfg(test)]
@@ -43,3 +39,9 @@ pub use panel::{
 };
 pub use scroll::SettlementWorkforceScrollPlugin;
 pub use state::SettlementWorkforcePanelState;
+
+#[cfg(test)]
+pub use content::{
+    NO_FOCUSED_SETTLEMENT_MESSAGE, NO_SETTLEMENT_WORKERS_MESSAGE, permission_column_labels,
+    settlement_workforce_member_unit_ids,
+};

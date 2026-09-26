@@ -349,7 +349,7 @@ fn probe_surface_point(
 
 #[cfg(feature = "dev")]
 fn finish_probe(
-    position: WorldPosition,
+    _position: WorldPosition,
     global: Vec3,
     chunk_label: String,
     terrain_chunk_loaded: bool,

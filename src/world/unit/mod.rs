@@ -138,7 +138,7 @@ pub use restore::{
     UnitRestoreError, normalize_restored_unit, restore_unit_record, validate_unit_for_restore,
 };
 pub use self_maintenance::{
-    FoodSourceRef, HungerStage, NutritionProfile, SelfMaintenanceActivity, SelfMaintenanceContext,
+    HungerStage, NutritionProfile, SelfMaintenanceActivity, SelfMaintenanceContext,
     UnitNutritionState, UnitSelfMaintenanceState, evaluate_hunger_stage, hunger_prevents_work_claim,
     hunger_stage_label, initialize_unit_nutrition, step_unit_nutrition_decay,
     step_unit_self_maintenance_post_movement, step_unit_self_maintenance_pre_work,

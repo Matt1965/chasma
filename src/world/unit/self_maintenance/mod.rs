@@ -17,7 +17,9 @@ pub use food::{
 };
 #[cfg(test)]
 pub use nutrition::{apply_nutrition_decay, restore_nutrition};
-pub use state::{FoodSourceRef, SelfMaintenanceActivity, UnitSelfMaintenanceState};
+pub use state::{SelfMaintenanceActivity, UnitSelfMaintenanceState};
+#[cfg(test)]
+pub use state::FoodSourceRef;
 pub use step::{
     SelfMaintenanceContext, hunger_prevents_work_claim, initialize_unit_nutrition,
     step_unit_nutrition_decay, step_unit_self_maintenance_post_movement,

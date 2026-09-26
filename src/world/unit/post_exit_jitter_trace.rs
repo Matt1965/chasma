@@ -7,11 +7,10 @@ use bevy::prelude::*;
 
 use super::id::UnitId;
 use super::movement::BlockedMovementReason;
-use super::state::UnitState;
 use crate::world::{
     ChunkLayout, NavigationAgent, NavigationConfig, NavigationPath, NavigationWaypoint,
     PassabilityAgent, PassabilityCatalogs, PassabilityResult, PortalId, PortalType, SpaceId,
-    WorldData, WorldPosition, ground_position_in_space, is_segment_walkable_in_space,
+    WorldData, WorldPosition, is_segment_walkable_in_space,
     query_navigation_point_legality, resolve_surface_entrance_escape_position,
     surface_blueprint_support_blocks_position, surface_position_in_entrance_access_corridor,
     xz_distance,
@@ -770,7 +769,7 @@ fn emit_session(world: &mut WorldData, unit_id: UnitId) {
 }
 
 #[cfg(feature = "dev")]
-fn emit_and_clear(world: &mut WorldData, unit_id: UnitId, body_lines: Vec<String>) {
+fn emit_and_clear(world: &mut WorldData, _unit_id: UnitId, body_lines: Vec<String>) {
     let mut lines = body_lines;
     if !lines.first().is_some_and(|line| line.starts_with('[')) {
         lines.insert(0, TRACE_MARKER.to_string());

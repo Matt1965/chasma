@@ -179,7 +179,7 @@ pub fn sync_preview_idle_animation(
         let slot_index = roster_member.map(|member| member.slot_index).unwrap_or(0);
         let phase_fraction = preview_idle_phase_fraction(slot_index);
         if let Ok((_, mut player, mut transitions)) = players.get_mut(link.player_entity) {
-            let mut active = transitions.play(&mut player, *node, Duration::ZERO);
+            let active = transitions.play(&mut player, *node, Duration::ZERO);
             active.repeat();
             if phase_fraction > f32::EPSILON {
                 active.set_seek_time(phase_fraction * idle_duration);
