@@ -343,8 +343,13 @@ relationship features were added.
 Incidents, crimes, witnesses, reporting and information propagation, detailed culpability,
 reputation event curves and diminishing returns, personality, full creature behavior templates,
 regional standing, LOS and occlusion, `PER` influence, hearing and smell, perception memory and
-alertness, trade and recruiting consumers, friendly-fire and own-unit attack design, relationship
-UI, dev relationship inspector or overlay, caching and precomputed relationship aggregates.
+alertness, trade economy execution, recruitment execution, friendly-fire and own-unit attack
+design, relationship UI, dev relationship inspector or overlay, caching and precomputed
+relationship aggregates.
+
+**Implemented consumer (dialogue foundation):** dialogue/social eligibility via
+`evaluate_dialogue_option` (NPC → actor `effective_relationship_for_records`). Talk/Trade/Recruit
+options emit typed `DialogueAction` seams; trade economy and recruitment execution remain deferred.
 
 ---
 

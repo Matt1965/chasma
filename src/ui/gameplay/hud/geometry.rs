@@ -3,6 +3,9 @@
 //! Slice 1 frame art and Slice 2 palette read these numbers; they do not
 //! invent their own width/height rules.
 
+// Section layout helpers remain while HUD panels finish wiring.
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 use super::super::roster_scroll::ROSTER_NAV_BUTTON_WIDTH_PX;
@@ -117,7 +120,7 @@ const ENDCAP_RIGHT_SOURCE_WIDTH: f32 =
     HUD_ENDCAP_RIGHT_WIDTH_PX / (HUD_HEIGHT_PX / HUD_SOURCE_BAND_HEIGHT_PX);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct SectionWidths {
+pub(in crate::ui::gameplay::hud) struct SectionWidths {
     selected: f32,
     roster: f32,
     command: f32,

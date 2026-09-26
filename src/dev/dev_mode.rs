@@ -33,6 +33,9 @@ pub enum DevTextFieldFocus {
     ArchetypeName,
     ArchetypeGoldMin,
     ArchetypeGoldMax,
+    ArchetypeDialogueTalkMin,
+    ArchetypeDialogueTradeMin,
+    ArchetypeDialogueRecruitMin,
     ArchetypeCaptureMargin,
     RoadName,
 }

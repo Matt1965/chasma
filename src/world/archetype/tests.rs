@@ -34,6 +34,7 @@ fn sample_unit_archetypes() -> UnitArchetypeCatalog {
                 slot: EquipmentSlot::Weapon,
             }],
             inventory_stacks: Vec::new(),
+            dialogue: None,
             enabled: true,
         },
         UnitArchetypeDefinition {
@@ -45,6 +46,7 @@ fn sample_unit_archetypes() -> UnitArchetypeCatalog {
             affiliation_override: Some(Affiliation::Player),
             equipment: Vec::new(),
             inventory_stacks: Vec::new(),
+            dialogue: None,
             enabled: true,
         },
     ])
@@ -63,6 +65,7 @@ fn unit_archetype_catalog_rejects_duplicate_ids() {
             affiliation_override: None,
             equipment: Vec::new(),
             inventory_stacks: Vec::new(),
+            dialogue: None,
             enabled: true,
         },
         UnitArchetypeDefinition {
@@ -74,6 +77,7 @@ fn unit_archetype_catalog_rejects_duplicate_ids() {
             affiliation_override: None,
             equipment: Vec::new(),
             inventory_stacks: Vec::new(),
+            dialogue: None,
             enabled: true,
         },
     ];
@@ -94,6 +98,7 @@ fn unit_archetype_rejects_invalid_gold_range() {
         affiliation_override: None,
         equipment: Vec::new(),
         inventory_stacks: Vec::new(),
+        dialogue: None,
         enabled: true,
     }];
     assert!(matches!(

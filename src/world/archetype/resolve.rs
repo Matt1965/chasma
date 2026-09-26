@@ -15,6 +15,8 @@ use super::building::{
 
 };
 
+use crate::world::dialogue::UnitDialogueConfig;
+
 use super::unit::{
 
     ArchetypeEquipmentEntry, ArchetypeInventoryStack, UnitArchetypeCatalog,
@@ -42,6 +44,8 @@ pub struct ResolvedUnitSpawnSpec {
     pub gold_min: u32,
 
     pub gold_max: u32,
+
+    pub dialogue: Option<UnitDialogueConfig>,
 
 }
 
@@ -149,6 +153,8 @@ pub fn resolve_unit_spawn_spec(
 
                 gold_max: 0,
 
+                dialogue: None,
+
             });
 
         }
@@ -194,6 +200,8 @@ pub fn resolve_unit_spawn_spec(
         gold_min: archetype.gold_min,
 
         gold_max: archetype.gold_max,
+
+        dialogue: archetype.dialogue.clone(),
 
     })
 

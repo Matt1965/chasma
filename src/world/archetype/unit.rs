@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::world::dialogue::UnitDialogueConfig;
 use crate::world::equipment::EquipmentSlot;
 use crate::world::relationship::SpeciesId;
 use crate::world::Affiliation;
@@ -47,6 +48,9 @@ pub struct UnitArchetypeDefinition {
     pub affiliation_override: Option<Affiliation>,
     pub equipment: Vec<ArchetypeEquipmentEntry>,
     pub inventory_stacks: Vec<ArchetypeInventoryStack>,
+    /// Optional social interaction configuration baked onto spawned units.
+    #[serde(default)]
+    pub dialogue: Option<UnitDialogueConfig>,
     pub enabled: bool,
 }
 

@@ -4,7 +4,8 @@ use bevy::prelude::Vec3;
 
 use crate::world::{
     AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldData,
-    is_valid_autonomous_attack_target, is_valid_explicit_attack_target,
+    is_player_controllable, is_valid_autonomous_attack_target, is_valid_explicit_attack_target,
+    unit_supports_dialogue,
 };
 
 use crate::world::{UnitId, WorldPosition};
@@ -113,6 +114,13 @@ pub fn resolve_contextual_command_with_armed(
                     command_type: CommandType::Attack,
                     target: CommandTarget::Unit { unit_id: *unit_id },
                 })
+            } else if ctx.world.get_unit(*unit_id).is_some_and(|unit| {
+                unit_supports_dialogue(unit) && !is_player_controllable(unit)
+            }) {
+                Some(ContextualCommandIntent {
+                    command_type: CommandType::Interact,
+                    target: CommandTarget::Unit { unit_id: *unit_id },
+                })
             } else {
                 Some(ContextualCommandIntent {
                     command_type: CommandType::Move,
@@ -167,10 +175,11 @@ mod tests {
         AuthoredFacetKey, AuthoredRelationshipCatalog, DirectedRelationshipEdgeKey, FactionId,
     };
     use crate::world::{
-        ChunkCoord, ChunkLayout, LocalPosition, UnitDefinitionId, UnitOwnership, UnitSource,
+        ChunkCoord, ChunkLayout, DialogueActionKind, DialogueOptionRule, LocalPosition,
+        UnitDefinitionId, UnitDialogueConfig, UnitOwnership, UnitRecord, UnitPlacement, UnitSource,
         WorldData, WorldPosition, create_unit_with_ownership,
     };
-    use bevy::prelude::Vec3;
+    use bevy::prelude::{Quat, Vec3};
 
     fn pos(x: f32, z: f32) -> WorldPosition {
         WorldPosition::new(
@@ -220,6 +229,64 @@ mod tests {
             authored_relationships: authored,
             targeting_policy: AttackTargetingPolicy::default(),
         }
+    }
+
+    #[test]
+    fn dialogue_npc_click_resolves_to_interact() {
+        let unit_catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = WorldData::new(ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let player = create_unit_with_ownership(
+            &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let mut npc = UnitRecord::new(
+            crate::world::UnitId::new(2),
+            UnitDefinitionId::new("bandit"),
+            UnitPlacement::new(pos(5.0, 5.0), Quat::IDENTITY),
+            UnitSource::Authored,
+            UnitOwnership::neutral(),
+            100,
+            crate::world::FactionId::new("neutral"),
+            crate::world::SpeciesId::new("human"),
+        );
+        npc.dialogue = Some(UnitDialogueConfig {
+            talk: DialogueOptionRule {
+                enabled: true,
+                min_relationship: 0,
+            },
+            trade: DialogueOptionRule::default(),
+            recruit: DialogueOptionRule::default(),
+        });
+        world
+            .insert_unit(
+                crate::world::ChunkId::new(ChunkCoord::new(0, 0)),
+                npc,
+            )
+            .unwrap();
+        let resolved = resolve_contextual_command(&ctx(
+            &[player],
+            CommandTarget::Unit {
+                unit_id: crate::world::UnitId::new(2),
+            },
+            &world,
+            &unit_catalog,
+            &weapons,
+            &crate::world::ItemCatalog::default(),
+            &authored(),
+        ))
+        .unwrap();
+        assert_eq!(resolved.command_type, CommandType::Interact);
     }
 
     #[test]

@@ -15,10 +15,12 @@ pub use binding::BuildingInventoryBinding;
 pub use binding_id::BuildingInventoryBindingId;
 pub use definition::BuildingInventoryBindingDefinition;
 pub use query::{
-    building_inventory_bindings, building_inventories_with_role,
+    building_inventory_bindings,
     default_building_inventory_binding, primary_building_inventory_id,
     resolve_building_inventory_binding,
 };
+#[cfg(test)]
+pub use query::building_inventories_with_role;
 pub use role::BuildingInventoryRole;
 pub use store::{BuildingInventoryBindingSet, BuildingInventoryBindingStore};
 pub use validation::{

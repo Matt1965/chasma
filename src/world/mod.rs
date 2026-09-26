@@ -12,6 +12,7 @@ mod config;
 mod coordinates;
 mod corpse;
 mod data;
+pub mod dialogue;
 mod doodad;
 pub mod equipment;
 mod formation;
@@ -48,7 +49,8 @@ pub use armor::{
     resolve_damage_after_armor,
 };
 pub use archetype::{
-    apply_unit_archetype_spawn_overrides, ArchetypeApplyError, ArchetypeCaptureError,
+    apply_unit_archetype_dialogue_config, apply_unit_archetype_spawn_overrides,
+    ArchetypeApplyError, ArchetypeCaptureError,
     ArchetypeEquipmentEntry, ArchetypeInventoryStack, ArchetypePersistenceError,
     ArchetypeResolveError, BUILDING_ARCHETYPES_RON_PATH, BuildingArchetypeCaptureMetadata,
     BuildingArchetypeCaptureRegion, BuildingArchetypeCatalog, BuildingArchetypeCatalogError,
@@ -114,6 +116,10 @@ pub use building::merge_starter_extensions_into_catalog;
 pub use building::starter_building_category_definitions;
 #[cfg(any(test, feature = "dev"))]
 pub use building::starter_definitions as starter_building_definitions;
+#[cfg(test)]
+pub use building::catalog::{
+    smelter_building_definition_for_tests, starter_building_catalog_with_smelter,
+};
 #[cfg(any(test, feature = "dev"))]
 pub use building::two_room_hut_navigation_blueprint;
 pub use building::{
@@ -290,6 +296,12 @@ pub use config::WorldConfig;
 pub use coordinates::{ChunkCoord, ChunkLayout, LocalPosition, WorldPosition};
 #[cfg(feature = "dev")]
 pub use corpse::dev_expire_corpse;
+pub use dialogue::{
+    DialogueAction, DialogueActionKind, DialogueContent, DialogueOptionAvailability,
+    DialogueOptionRule, DialogueUnavailableReason, UnitDialogueConfig,
+    DIALOGUE_INTERACTION_RANGE_METERS, evaluate_dialogue_option, present_dialogue_options,
+    unit_supports_dialogue, units_within_dialogue_range,
+};
 pub use corpse::{
     CorpseError, CorpseId, CorpseLifecycleReport, CorpseRecord, CorpseSettings, CorpseState,
     CorpseStore, DEFAULT_CORPSE_LIFETIME_TICKS, create_corpse_from_unit, is_corpse_loot_inventory,

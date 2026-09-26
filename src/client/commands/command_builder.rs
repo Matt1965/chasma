@@ -14,6 +14,7 @@ pub enum BuiltCommandPlan {
     AttackMove { destination: WorldPosition },
     StopAll,
     HoldAll,
+    OpenUnitInteractionMenu { target: UnitId },
     NoOp,
 }
 
@@ -52,7 +53,12 @@ pub fn build_command_plan(
         }
         CommandType::Stop => Ok(BuiltCommandPlan::StopAll),
         CommandType::HoldPosition => Ok(BuiltCommandPlan::HoldAll),
-        CommandType::Interact => Ok(BuiltCommandPlan::NoOp),
+        CommandType::Interact => match &intent.target {
+            CommandTarget::Unit { unit_id } => {
+                Ok(BuiltCommandPlan::OpenUnitInteractionMenu { target: *unit_id })
+            }
+            _ => Ok(BuiltCommandPlan::NoOp),
+        },
     }
 }
 
@@ -198,6 +204,25 @@ mod tests {
         assert_eq!(
             build_command_plan(&intent, &selection, &world).unwrap(),
             BuiltCommandPlan::HoldAll
+        );
+    }
+
+    #[test]
+    fn interact_unit_builds_interaction_menu_plan() {
+        let world = flat_world();
+        let mut selection = SelectedUnits::default();
+        selection.set_single(crate::world::UnitId::new(1));
+        let intent = ContextualCommandIntent {
+            command_type: CommandType::Interact,
+            target: CommandTarget::Unit {
+                unit_id: crate::world::UnitId::new(2),
+            },
+        };
+        assert_eq!(
+            build_command_plan(&intent, &selection, &world).unwrap(),
+            BuiltCommandPlan::OpenUnitInteractionMenu {
+                target: crate::world::UnitId::new(2),
+            }
         );
     }
 

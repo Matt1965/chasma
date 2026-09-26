@@ -248,6 +248,48 @@ pub fn tick_pending_corpse_player_interactions(mut params: PendingCorpseInteract
     );
 }
 
+pub fn try_dispatch_corpse_from_contextual_target(
+    world: &mut WorldData,
+    inventory_queue: &mut InventoryIntentQueue,
+    pending: &mut PendingCorpsePlayerInteractionState,
+    corpse_settings: &CorpseSettings,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
+    building_catalog: &crate::world::BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
+    interaction_catalog: &crate::world::BuildingInteractionProfileCatalog,
+    pile_settings: &ItemPileSettings,
+    actor_unit_id: UnitId,
+    target: CommandTarget,
+) -> Option<CorpsePlayerInteractionOutcome> {
+    let corpse_id = resolve_corpse_interact_target(
+        world,
+        building_catalog,
+        doodad_catalog,
+        footprint_catalog,
+        interaction_catalog,
+        unit_catalog,
+        weapon_catalog,
+        pile_settings,
+        corpse_settings,
+        target,
+    )?;
+    try_dispatch_corpse_player_interaction(
+        world,
+        inventory_queue,
+        pending,
+        corpse_settings,
+        unit_catalog,
+        weapon_catalog,
+        doodad_catalog,
+        nav_config,
+        actor_unit_id,
+        corpse_id,
+    )
+}
+
 pub fn resolve_corpse_interact_target(
     world: &WorldData,
     building_catalog: &crate::world::BuildingCatalog,
@@ -305,5 +347,253 @@ pub fn resolve_corpse_interact_target(
     match interaction.target {
         InteractionTargetRef::Corpse(corpse_id) if interaction.valid => Some(corpse_id),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::client::commands::CommandTarget;
+    use crate::world::{
+        Affiliation, ChunkCoord, ChunkData, ChunkId, ChunkLayout, CorpseRecord, CorpseState,
+        Heightfield, InventoryCatalogCtx, InventoryId, LocalPosition, SpaceId, UnitCatalog,
+        UnitDefinitionId, UnitOwnership, UnitPlacement, UnitSource, WeaponCatalog,
+        create_unit_with_inventory, starter_inventory_profile_definitions,
+        starter_item_category_definitions, starter_item_definitions, starter_unit_definitions,
+    };
+    use bevy::prelude::{Quat, Vec3};
+
+    fn layout() -> ChunkLayout {
+        ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        }
+    }
+
+    fn flat_world() -> WorldData {
+        let mut world = WorldData::new(layout());
+        let heightfield = Heightfield::from_samples(3, 128.0, vec![0.0; 9]).unwrap();
+        world.insert(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            ChunkData::new(heightfield, Vec::new()),
+        );
+        world
+    }
+
+    fn pos(x: f32, z: f32) -> crate::world::WorldPosition {
+        crate::world::WorldPosition::new(
+            ChunkCoord::new(0, 0),
+            LocalPosition::new(Vec3::new(x, 0.0, z)),
+        )
+    }
+
+    fn inventory_ctx() -> InventoryCatalogCtx<'static> {
+        let categories =
+            crate::world::ItemCategoryCatalog::from_definitions(starter_item_category_definitions())
+                .unwrap();
+        let items =
+            crate::world::ItemCatalog::from_definitions(starter_item_definitions(), &categories)
+                .unwrap();
+        let profiles = crate::world::InventoryProfileCatalog::from_definitions(
+            starter_inventory_profile_definitions(),
+        )
+        .unwrap();
+        let items = Box::leak(Box::new(items));
+        let categories = Box::leak(Box::new(categories));
+        let profiles = Box::leak(Box::new(profiles));
+        InventoryCatalogCtx::new(items, categories, profiles)
+    }
+
+    fn insert_corpse(
+        world: &mut WorldData,
+        id: u64,
+        position: crate::world::WorldPosition,
+        inventory_id: Option<InventoryId>,
+    ) -> CorpseId {
+        let corpse_id = CorpseId::new(id);
+        let record = CorpseRecord::new(
+            corpse_id,
+            crate::world::UnitId::new(99),
+            UnitDefinitionId::new("bandit"),
+            UnitPlacement::new(position, Quat::IDENTITY),
+            SpaceId::SURFACE,
+            inventory_id,
+            None,
+            None,
+            None,
+            None,
+            Affiliation::Unknown,
+            0,
+            100,
+        );
+        let chunk = ChunkId::new(position.chunk);
+        world.corpse_store_mut().insert(chunk, record).unwrap();
+        corpse_id
+    }
+
+    #[test]
+    fn in_range_corpse_click_opens_inventory() {
+        let mut world = flat_world();
+        let ctx = inventory_ctx();
+        let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+        let actor = create_unit_with_inventory(
+            &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(10.0, 10.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+            &ctx,
+        )
+        .unwrap();
+        let corpse_inventory = InventoryId::new(500);
+        insert_corpse(&mut world, 1, pos(10.2, 10.2), Some(corpse_inventory));
+        let mut pending = PendingCorpsePlayerInteractionState::default();
+        let mut inventory_queue = InventoryIntentQueue::default();
+        let outcome = try_dispatch_corpse_from_contextual_target(
+            &mut world,
+            &mut inventory_queue,
+            &mut pending,
+            &CorpseSettings::default(),
+            &unit_catalog,
+            &WeaponCatalog::default(),
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            &crate::world::BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
+            &crate::world::ItemPileSettings::default(),
+            actor.id,
+            CommandTarget::Terrain {
+                position: pos(10.2, 10.2),
+            },
+        )
+        .expect("corpse interaction");
+        assert!(outcome.opened_inventory);
+        assert!(!outcome.deferred_until_arrival);
+        assert!(pending.get().is_none());
+        assert!(!inventory_queue.is_empty());
+    }
+
+    #[test]
+    fn out_of_range_corpse_click_defers_until_arrival() {
+        let mut world = flat_world();
+        let ctx = inventory_ctx();
+        let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+        let actor = create_unit_with_inventory(
+            &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+            &ctx,
+        )
+        .unwrap();
+        let corpse_id = insert_corpse(&mut world, 1, pos(40.0, 40.0), Some(InventoryId::new(500)));
+        let mut pending = PendingCorpsePlayerInteractionState::default();
+        let mut inventory_queue = InventoryIntentQueue::default();
+        let outcome = try_dispatch_corpse_from_contextual_target(
+            &mut world,
+            &mut inventory_queue,
+            &mut pending,
+            &CorpseSettings::default(),
+            &unit_catalog,
+            &WeaponCatalog::default(),
+            &DoodadCatalog::default(),
+            &NavigationConfig::default(),
+            &crate::world::BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
+            &crate::world::ItemPileSettings::default(),
+            actor.id,
+            CommandTarget::Terrain {
+                position: pos(40.0, 40.0),
+            },
+        )
+        .expect("corpse interaction");
+        assert!(outcome.deferred_until_arrival);
+        assert!(outcome.issued_approach);
+        assert_eq!(pending.get().unwrap().corpse_id, corpse_id);
+        assert!(inventory_queue.is_empty());
+    }
+
+    #[test]
+    fn pending_corpse_completes_on_arrival() {
+        let mut world = flat_world();
+        let ctx = inventory_ctx();
+        let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+        let actor = create_unit_with_inventory(
+            &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(10.0, 10.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+            &ctx,
+        )
+        .unwrap();
+        let corpse_id = insert_corpse(&mut world, 1, pos(10.2, 10.2), Some(InventoryId::new(500)));
+        let mut pending = PendingCorpsePlayerInteractionState::default();
+        pending.set(actor.id, corpse_id);
+        let mut inventory_queue = InventoryIntentQueue::default();
+        assert!(try_complete_pending_corpse_player_interaction(
+            &mut pending,
+            &mut inventory_queue,
+            &world,
+            &CorpseSettings::default(),
+        ));
+        assert!(pending.get().is_none());
+        assert!(!inventory_queue.is_empty());
+    }
+
+    #[test]
+    fn expired_corpse_click_does_nothing() {
+        let mut world = flat_world();
+        let ctx = inventory_ctx();
+        let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+        let actor = create_unit_with_inventory(
+            &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            pos(10.0, 10.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+            &ctx,
+        )
+        .unwrap();
+        let corpse_id = insert_corpse(&mut world, 1, pos(10.2, 10.2), Some(InventoryId::new(500)));
+        world
+            .corpse_store_mut()
+            .get_mut(corpse_id)
+            .unwrap()
+            .state = CorpseState::Expired;
+        let mut pending = PendingCorpsePlayerInteractionState::default();
+        let mut inventory_queue = InventoryIntentQueue::default();
+        assert!(
+            try_dispatch_corpse_from_contextual_target(
+                &mut world,
+                &mut inventory_queue,
+                &mut pending,
+                &CorpseSettings::default(),
+                &unit_catalog,
+                &WeaponCatalog::default(),
+                &DoodadCatalog::default(),
+                &NavigationConfig::default(),
+                &crate::world::BuildingCatalog::default(),
+                &FootprintCatalog::default(),
+                &crate::world::BuildingInteractionProfileCatalog::default(),
+                &crate::world::ItemPileSettings::default(),
+                actor.id,
+                CommandTarget::Terrain {
+                    position: pos(10.2, 10.2),
+                },
+            )
+            .is_none()
+        );
     }
 }

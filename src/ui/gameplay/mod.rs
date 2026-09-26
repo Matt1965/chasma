@@ -6,8 +6,10 @@ pub mod building_selection;
 pub mod combat_display;
 mod command_feedback;
 mod command_panel;
+pub mod dialogue;
 mod cursor_feedback;
 mod fields_menu;
+mod unit_interaction_menu;
 mod floating_window;
 mod hud;
 mod input_gate;
@@ -58,6 +60,9 @@ pub use floating_window::{
 };
 pub use input_gate::{
     PlayerHudHoverState, gameplay_input_blocked_by_hud, update_player_hud_hover_state,
+};
+pub use unit_interaction_menu::{
+    UnitInteractionMenuState, build_interaction_menu_rows, should_omit_interaction_menu_option,
 };
 pub use inventory::{
     InventoryEntryWidget, InventoryGridCell, InventoryGridPane, InventoryPaneSide,
