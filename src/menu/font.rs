@@ -23,10 +23,7 @@ pub const MENU_BANNER_FONT_SIZE: f32 = 12.0;
 
 /// Explicit absolute [`TextFont`] on the default UI font (never multiply an existing size).
 pub fn menu_text_font(font_size: f32) -> TextFont {
-    TextFont {
-        font_size,
-        ..default()
-    }
+    crate::ui::text::absolute_text_font(font_size)
 }
 
 /// Marker on Pause Menu text entities for style invariants / tests.

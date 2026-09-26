@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use crate::camera::RtsCamera;
+use crate::ui::text::set_text2d_if_changed;
 use crate::terrain::{TerrainRenderAssets, world_position_to_render_global};
 use crate::world::{ItemCatalog, ItemPileId, WorldConfig, WorldData, pile_item_definition_id};
 
@@ -28,6 +29,7 @@ pub fn sync_item_pile_dev_labels(
     render_assets: Option<Res<TerrainRenderAssets>>,
     mut label_index: ResMut<ItemPileDevLabelIndex>,
     labels: Query<Entity, With<ItemPileDevLabel>>,
+    mut label_entities: Query<(&mut Transform, &mut Text2d), With<ItemPileDevLabel>>,
 ) {
     let Some(dev_state) = dev_state else {
         return;
@@ -82,9 +84,10 @@ pub fn sync_item_pile_dev_labels(
         ) + Vec3::Y * presentation.dev_label_offset_y;
 
         if let Some(entity) = label_index.0.get(&pile_id).copied() {
-            commands
-                .entity(entity)
-                .insert((Transform::from_translation(translation), Text2d::new(label)));
+            if let Ok((mut transform, mut text)) = label_entities.get_mut(entity) {
+                transform.translation = translation;
+                set_text2d_if_changed(&mut text, &label);
+            }
             continue;
         }
 

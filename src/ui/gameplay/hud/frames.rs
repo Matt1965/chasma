@@ -31,6 +31,7 @@ use super::super::styles::{HUD_ENDCAP_SEAT_PX, HUD_PLATE_JOIN_OVERLAP_PX};
 use super::super::utility_panel::UtilityPanelRoot;
 use super::assets::{HudFrameBackground, HudUiAssets};
 use super::geometry::HudViewportGeometry;
+use crate::ui::text::{set_val_px_if_changed, snap_ui_px};
 
 /// One HUD plate in the run, left to right.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -203,24 +204,24 @@ pub fn sync_hud_plate_frames(
 
         // Interior edges overlap so join chamfers land on plate body. Outer
         // edges tuck under the endcap noses so the rails meet without a gap.
-        let left = if interior_left {
+        let left = snap_ui_px(if interior_left {
             min_x - HUD_PLATE_JOIN_OVERLAP_PX
         } else {
             (endcap_left - HUD_ENDCAP_SEAT_PX).max(0.0)
-        };
-        let right = if interior_right {
+        });
+        let right = snap_ui_px(if interior_right {
             max_x + HUD_PLATE_JOIN_OVERLAP_PX
         } else {
             root_width - endcap_right + HUD_ENDCAP_SEAT_PX
-        };
+        });
         let width = (right - left).max(0.0);
 
         for (frame, mut node) in &mut frames {
             if frame.section != section {
                 continue;
             }
-            node.left = Val::Px(left);
-            node.width = Val::Px(width);
+            set_val_px_if_changed(&mut node.left, left);
+            set_val_px_if_changed(&mut node.width, width);
         }
     }
 }

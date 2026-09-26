@@ -1,5 +1,6 @@
 //! User interface layers (gameplay HUD, future menus).
 
+pub mod text;
 pub mod gameplay;
 pub mod origin_select;
 pub mod unit_editor;

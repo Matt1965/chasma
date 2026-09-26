@@ -256,6 +256,10 @@ pub fn compute_hud_viewport_geometry(viewport: Vec2) -> HudViewportGeometry {
     }
 }
 
+/// Last geometry values written into the HUD node tree.
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Default)]
+pub struct AppliedHudViewportGeometry(Option<HudViewportGeometry>);
+
 /// Track the primary window and refresh [`HudViewportGeometry`] on resize.
 pub fn measure_hud_viewport_geometry(
     windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
@@ -276,27 +280,37 @@ pub fn apply_hud_viewport_geometry(world: &mut World) {
     let Some(geom) = world.get_resource::<HudViewportGeometry>().cloned() else {
         return;
     };
+    let mut applied = world
+        .get_resource_or_insert_with(AppliedHudViewportGeometry::default)
+        .clone();
+    if applied.0 == Some(geom) {
+        return;
+    }
+    applied.0 = Some(geom);
+    world.insert_resource(applied);
+
+    use crate::ui::text::set_val_px_if_changed;
 
     for mut node in world
         .query_filtered::<&mut Node, With<super::super::layout::GameplayHudRoot>>()
         .iter_mut(world)
     {
-        node.height = Val::Px(geom.hud_height);
+        set_val_px_if_changed(&mut node.height, geom.hud_height);
     }
     for mut node in world
         .query_filtered::<&mut Node, With<super::super::layout::BottomBar>>()
         .iter_mut(world)
     {
-        node.left = Val::Px(geom.endcap_left_width);
-        node.right = Val::Px(geom.endcap_right_width);
-        node.top = Val::Px(geom.frame_top);
-        node.bottom = Val::Px(geom.frame_bottom);
+        set_val_px_if_changed(&mut node.left, geom.endcap_left_width);
+        set_val_px_if_changed(&mut node.right, geom.endcap_right_width);
+        set_val_px_if_changed(&mut node.top, geom.frame_top);
+        set_val_px_if_changed(&mut node.bottom, geom.frame_bottom);
     }
     for mut node in world
         .query_filtered::<&mut Node, With<super::super::selected_unit_panel::SelectedUnitPanelRoot>>()
         .iter_mut(world)
     {
-        node.width = Val::Px(geom.selected_width);
+        set_val_px_if_changed(&mut node.width, geom.selected_width);
     }
     for mut node in world
         .query_filtered::<&mut Node, With<super::super::squad_panel::SquadPanelRoot>>()
@@ -310,19 +324,19 @@ pub fn apply_hud_viewport_geometry(world: &mut World) {
         .query_filtered::<&mut Node, With<super::super::command_panel::CommandPanelRoot>>()
         .iter_mut(world)
     {
-        node.width = Val::Px(geom.command_width);
+        set_val_px_if_changed(&mut node.width, geom.command_width);
     }
     for mut node in world
         .query_filtered::<&mut Node, With<super::super::utility_panel::UtilityPanelRoot>>()
         .iter_mut(world)
     {
-        node.width = Val::Px(geom.utility_width);
+        set_val_px_if_changed(&mut node.width, geom.utility_width);
     }
     for mut node in world
         .query_filtered::<&mut Node, With<super::super::selected_unit_panel::SelectedUnitPortraitFrame>>()
         .iter_mut(world)
     {
-        node.width = Val::Px(geom.portrait_width);
+        set_val_px_if_changed(&mut node.width, geom.portrait_width);
     }
     for mut node in world
         .query_filtered::<&mut Node, (
@@ -332,42 +346,42 @@ pub fn apply_hud_viewport_geometry(world: &mut World) {
         .iter_mut(world)
     {
         node.flex_grow = 0.0;
-        node.flex_basis = Val::Px(geom.command_button_width);
-        node.width = Val::Px(geom.command_button_width);
+        set_val_px_if_changed(&mut node.flex_basis, geom.command_button_width);
+        set_val_px_if_changed(&mut node.width, geom.command_button_width);
     }
     for mut node in world
         .query_filtered::<&mut Node, With<super::super::squad_panel::SquadEntryList>>()
         .iter_mut(world)
     {
-        node.column_gap = Val::Px(geom.card_gap);
+        set_val_px_if_changed(&mut node.column_gap, geom.card_gap);
     }
     for mut node in world
         .query_filtered::<&mut Node, With<HudEndcapLeft>>()
         .iter_mut(world)
     {
-        node.width = Val::Px(geom.endcap_left_width);
+        set_val_px_if_changed(&mut node.width, geom.endcap_left_width);
     }
     for mut node in world
         .query_filtered::<&mut Node, With<HudEndcapRight>>()
         .iter_mut(world)
     {
-        node.width = Val::Px(geom.endcap_right_width);
+        set_val_px_if_changed(&mut node.width, geom.endcap_right_width);
     }
     for mut node in world
         .query_filtered::<&mut Node, With<HudEndcapSpire>>()
         .iter_mut(world)
     {
-        node.right = Val::Px(geom.endcap_right_width);
-        node.width = Val::Px(ENDCAP_SPIRE_SOURCE_WIDTH * geom.art_scale);
-        node.height = Val::Px(ENDCAP_SPIRE_SOURCE_HEIGHT * geom.art_scale);
+        set_val_px_if_changed(&mut node.right, geom.endcap_right_width);
+        set_val_px_if_changed(&mut node.width, ENDCAP_SPIRE_SOURCE_WIDTH * geom.art_scale);
+        set_val_px_if_changed(&mut node.height, ENDCAP_SPIRE_SOURCE_HEIGHT * geom.art_scale);
     }
     for (frame, mut node) in world
         .query::<(&super::frames::HudPlateFrame, &mut Node)>()
         .iter_mut(world)
     {
         let (top, bottom) = frame.section.insets_px();
-        node.top = Val::Px(top);
-        node.height = Val::Px((geom.hud_height - top - bottom).max(0.0));
+        set_val_px_if_changed(&mut node.top, top);
+        set_val_px_if_changed(&mut node.height, (geom.hud_height - top - bottom).max(0.0));
     }
 }
 

@@ -39,6 +39,7 @@ use crate::dev::widgets::{
 };
 
 use crate::simulation::{SimulationControlRequests, SimulationControlState};
+use crate::ui::text::set_text_if_changed;
 
 const MENU_BTN_WIDTH_PX: f32 = 100.0;
 const MENU_BTN_HEIGHT_PX: f32 = 24.0;
@@ -982,7 +983,7 @@ pub(crate) fn sync_dev_panel_content(
     }
 
     if let Ok(mut text) = texts.p0().single_mut() {
-        **text = format_search_field_display(&dev_state);
+        set_text_if_changed(&mut text, &format_search_field_display(&dev_state));
     }
 
     let catalog_entries: Vec<CatalogBrowserEntry> = if dev_state.active_tab == DevTab::Items {
@@ -1010,7 +1011,7 @@ pub(crate) fn sync_dev_panel_content(
     };
 
     if let Ok(mut text) = texts.p1().single_mut() {
-        **text = match dev_state.active_tab {
+        let label = match dev_state.active_tab {
             DevTab::Units | DevTab::Doodads | DevTab::Buildings => {
                 format!(
                     "Definitions ({}) - enabled-only: {} - E toggles",
@@ -1025,6 +1026,7 @@ pub(crate) fn sync_dev_panel_content(
             ),
             _ => String::new(),
         };
+        set_text_if_changed(&mut text, &label);
     }
 
     let definition_visible_rows = visible_row_count(
@@ -1048,7 +1050,10 @@ pub(crate) fn sync_dev_panel_content(
     for (row, interaction, mut text, mut bg) in texts.p5().iter_mut() {
         if row.index < visible_catalog.len() {
             let entry = &visible_catalog[row.index];
-            **text = format_list_row(entry, dev_state.favorites.contains(&entry.definition));
+            set_text_if_changed(
+                &mut text,
+                &format_list_row(entry, dev_state.favorites.contains(&entry.definition)),
+            );
             let selected = dev_state
                 .selected_definition
                 .as_ref()
@@ -1059,7 +1064,7 @@ pub(crate) fn sync_dev_panel_content(
                 menu_button_bg(interaction, false)
             };
         } else {
-            **text = String::new();
+            set_text_if_changed(&mut text, "");
             *bg = BackgroundColor(Color::srgba(0.08, 0.1, 0.12, 0.5));
         }
     }
@@ -1090,13 +1095,16 @@ pub(crate) fn sync_dev_panel_content(
 
     for (row, interaction, mut text, mut bg) in texts.p6().iter_mut() {
         if !show_archetypes {
-            **text = String::new();
+            set_text_if_changed(&mut text, "");
             *bg = BackgroundColor(Color::srgba(0.08, 0.1, 0.12, 0.5));
             continue;
         }
         if row.index < visible_archetypes.len() {
             let entry = &visible_archetypes[row.index];
-            **text = truncate_label(entry.label(), MAX_LIST_LABEL_CHARS);
+            set_text_if_changed(
+                &mut text,
+                &truncate_label(entry.label(), MAX_LIST_LABEL_CHARS),
+            );
             let selected = archetype_row_selected(&dev_state, entry);
             *bg = if selected {
                 BackgroundColor(BTN_BG_ACTIVE)
@@ -1104,25 +1112,26 @@ pub(crate) fn sync_dev_panel_content(
                 menu_button_bg(interaction, false)
             };
         } else {
-            **text = String::new();
+            set_text_if_changed(&mut text, "");
             *bg = BackgroundColor(Color::srgba(0.08, 0.1, 0.12, 0.5));
         }
     }
 
     if let Ok(mut text) = texts.p2().single_mut() {
-        **text = String::new();
+        set_text_if_changed(&mut text, "");
     }
 
     if let Ok(mut text) = texts.p3().single_mut() {
-        **text = String::new();
+        set_text_if_changed(&mut text, "");
     }
 
     if let Ok(mut text) = texts.p4().single_mut() {
-        **text = if dev_state.last_spawn_message.is_empty() {
-            String::new()
+        let message = if dev_state.last_spawn_message.is_empty() {
+            ""
         } else {
-            dev_state.last_spawn_message.clone()
+            dev_state.last_spawn_message.as_str()
         };
+        set_text_if_changed(&mut text, message);
     }
 
     if let Ok(mut node) = catalog_layout_nodes.p1().single_mut() {

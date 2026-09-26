@@ -8,6 +8,7 @@ use super::components::{FloatingGameplayWindowRoot, FloatingWindowTitleBarDragRe
 use super::math::{clamp_window_position, window_position_from_pointer};
 use super::state::FloatingGameplayWindowRegistry;
 use crate::ui::gameplay::inventory::InventoryUiState;
+use crate::ui::text::set_val_px_if_changed;
 
 /// Track viewport size and re-clamp remembered positions on resize.
 pub fn sync_floating_gameplay_window_viewport(
@@ -91,8 +92,8 @@ pub fn sync_floating_gameplay_window_presentation(
         let Some(state) = registry.session(root.id) else {
             continue;
         };
-        node.left = Val::Px(state.position.x);
-        node.top = Val::Px(state.position.y);
+        set_val_px_if_changed(&mut node.left, state.position.x);
+        set_val_px_if_changed(&mut node.top, state.position.y);
         node.bottom = Val::Auto;
         node.right = Val::Auto;
         *z_index = ZIndex(registry.z_index(root.id));

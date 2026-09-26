@@ -196,6 +196,8 @@ fn spawn_context_card(parent: &mut ChildSpawnerCommands<'_>) {
                 ..default()
             },
             Text::new(""),
+            small_text_font(),
+            TextColor(TEXT_MUTED),
         ));
     });
 }
@@ -226,6 +228,8 @@ fn spawn_status_card(parent: &mut ChildSpawnerCommands<'_>) {
                     ..default()
                 },
                 Text::new(""),
+                small_text_font(),
+                TextColor(TEXT_MUTED),
             ));
             spawn_draft_actions(card);
         });
@@ -300,6 +304,8 @@ fn spawn_collapsible_generation(parent: &mut ChildSpawnerCommands<'_>) {
                     ..default()
                 },
                 Text::new(""),
+                small_text_font(),
+                TextColor(TEXT_MUTED),
             ));
             body.spawn((
                 DevNavigationEditorGenerationDetailsText,
