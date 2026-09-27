@@ -304,7 +304,6 @@ impl Plugin for DevModePlugin {
                     tick_dev_search_debounce,
                     sync_catalog_browse_index,
                     update_dev_window_interaction_state,
-                    sync_dev_panel_hover_from_windows,
                     handle_dev_window_pointer,
                     focus_dev_window_on_ui_press,
                     focus_dev_window_on_panel_press,
@@ -358,6 +357,16 @@ impl Plugin for DevModePlugin {
                     .chain(),
             )
                 .chain()
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                window::refresh_dev_window_pointer_capture,
+                window::sync_dev_panel_hover_from_windows,
+            )
+                .chain()
+                .after(window::sync_dev_window_computed_sizes)
                 .in_set(DevModeInputSystems),
         )
         .add_systems(
@@ -616,6 +625,8 @@ impl Plugin for DevModePlugin {
             Update,
             handle_dev_spawn_click
                 .after(sync_save_window_content)
+                .after(window::apply_dev_window_input_gate)
+                .after(window::sync_dev_panel_hover_from_windows)
                 .in_set(DevModeInputSystems),
         )
         .add_systems(
@@ -628,7 +639,7 @@ impl Plugin for DevModePlugin {
         .add_systems(
             Update,
             apply_dev_window_input_gate
-                .after(handle_dev_window_pointer)
+                .after(window::sync_dev_panel_hover_from_windows)
                 .before(sync_dev_gameplay_input_block)
                 .in_set(DevModeInputSystems),
         )

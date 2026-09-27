@@ -80,6 +80,27 @@ pub fn sync_dev_panel_hover_from_windows(
     panel_hovered.hovered = interaction.blocks_world_mouse();
 }
 
+/// After layout sizes are known, treat the full window rectangle as pointer capture.
+pub fn refresh_dev_window_pointer_capture(
+    dev_state: Res<DevModeState>,
+    registry: Res<DevWindowRegistry>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    mut interaction: ResMut<DevWindowInteractionState>,
+) {
+    if !dev_state.enabled {
+        interaction.pointer_inside_window_bounds = false;
+        return;
+    }
+    let cursor = windows
+        .single()
+        .ok()
+        .and_then(|window| window.cursor_position());
+    interaction.pointer_inside_window_bounds = cursor.is_some_and(|point| {
+        registry.pointer_over_visible_window(point)
+            || registry.pointer_over_workspace_launcher(point)
+    });
+}
+
 /// Apply window interaction to the dev input gate (after per-handler mutations).
 pub fn apply_dev_window_input_gate(
     interaction: Res<DevWindowInteractionState>,
