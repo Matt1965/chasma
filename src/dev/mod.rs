@@ -225,8 +225,9 @@ impl Plugin for DevModePlugin {
             .init_resource::<gizmo::TransformEditState>()
             .init_resource::<DevPanelHoverState>()
             .init_resource::<tools::DevPlacementPreview>()
-            .init_resource::<tools::DevPlacementPreviewScratch>()
-            .init_resource::<DevPreviewAnchor>()
+            .init_resource::<tools::DevPlacementPreviewScratch>();
+        tools::init_placement_model_preview(app);
+        app.init_resource::<DevPreviewAnchor>()
             .init_resource::<scenes::DevSceneRegistry>()
             .init_resource::<settlement_placement::SettlementPlacementPreview>()
             .init_resource::<settlement_placement::SettlementPlacementRejectionFeedbacks>()
@@ -668,6 +669,11 @@ impl Plugin for DevModePlugin {
                 inventory_tools::sync_dev_held_item_world_ghost,
             )
                 .chain()
+                .in_set(DevModePresentationSystems),
+        )
+        .add_systems(
+            Update,
+            tools::preview_model::sync_dev_placement_model_previews
                 .in_set(DevModePresentationSystems),
         );
     }

@@ -28,6 +28,24 @@ impl UnitSceneAssets {
         self.scenes_by_render_key.get(render_key)
     }
 
+    /// Load and cache a unit scene for dev placement preview (and other late-discovered keys).
+    pub fn ensure_scene_for_render_key(
+        &mut self,
+        render_key: &str,
+        asset_server: &AssetServer,
+    ) -> Option<Handle<Scene>> {
+        if let Some(scene) = self.scenes_by_render_key.get(render_key) {
+            return Some(scene.clone());
+        }
+        let Some(path) = gltf_asset_path(&UnitRenderKey::reserved(render_key)) else {
+            return None;
+        };
+        let scene: Handle<Scene> =
+            asset_server.load(GltfAssetLabel::Scene(DEFAULT_GLTF_SCENE_INDEX).from_asset(path));
+        self.scenes_by_render_key.insert(render_key.to_owned(), scene.clone());
+        Some(scene)
+    }
+
     /// Test helper — resolves via definition legacy render key.
     #[cfg(test)]
     pub fn scene_for(&self, definition_id: &UnitDefinitionId) -> Option<&Handle<Scene>> {
