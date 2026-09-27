@@ -145,16 +145,21 @@ def collect_armature_meshes(armature: bpy.types.Object) -> list[bpy.types.Object
     return meshes
 
 
-def rescale_if_microscopic(armature: bpy.types.Object, target_height_m: float = 3.0) -> None:
-    """Some SK FBX files import at ~1/100 size even with global_scale=0.01."""
+def normalize_skeleton_before_animations(armature: bpy.types.Object, target_height_m: float = 3.0) -> None:
+    """Bake FBX import scale into the rest pose before merging animation FBXs.
+
+    Animations must target the final bind pose. Rescaling after merge causes skinning explosions.
+    """
     meshes = collect_armature_meshes(armature)
+    if any(abs(component - 1.0) > 0.001 for component in armature.scale):
+        bake_object_scales(armature)
     if not meshes:
         return
     max_dim = max(max(mesh.dimensions) for mesh in meshes)
     if max_dim >= 0.5:
         return
     factor = target_height_m / max(max_dim, 1e-6)
-    armature.scale = tuple(component * factor for component in armature.scale)
+    armature.scale = (factor, factor, factor)
     bpy.context.view_layer.update()
     bake_object_scales(armature)
 
@@ -169,6 +174,29 @@ def bake_object_scales(armature: bpy.types.Object) -> None:
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
 
+def purge_stray_actions(armature: bpy.types.Object) -> None:
+    if armature.animation_data:
+        for track in list(armature.animation_data.nla_tracks):
+            if "|" in track.name or "Take 001" in track.name:
+                armature.animation_data.nla_tracks.remove(track)
+        armature.animation_data.action = None
+    for action in list(bpy.data.actions):
+        if "|" in action.name or "Take 001" in action.name:
+            bpy.data.actions.remove(action)
+
+
+def keep_only_nla_actions(armature: bpy.types.Object) -> None:
+    allowed: set[str] = set()
+    if armature.animation_data:
+        for track in armature.animation_data.nla_tracks:
+            for strip in track.strips:
+                if strip.action:
+                    allowed.add(strip.action.name)
+    for action in list(bpy.data.actions):
+        if action.name not in allowed:
+            bpy.data.actions.remove(action)
+
+
 def export_glb(output: Path, armature: bpy.types.Object) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.object.select_all(action="DESELECT")
@@ -180,7 +208,7 @@ def export_glb(output: Path, armature: bpy.types.Object) -> None:
         filepath=str(output),
         export_format="GLB",
         use_selection=True,
-        export_apply=True,
+        export_apply=False,
         export_animations=True,
         export_skins=True,
         export_all_influences=False,
@@ -219,10 +247,10 @@ def main() -> None:
     if armature is None:
         raise SystemExit("No armature in SK FBX")
 
-    if armature.animation_data and armature.animation_data.nla_tracks:
-        for track in list(armature.animation_data.nla_tracks):
-            if "|" in track.name or "Take 001" in track.name:
-                armature.animation_data.nla_tracks.remove(track)
+    normalize_skeleton_before_animations(armature)
+    purge_stray_actions(armature)
+    for action in list(bpy.data.actions):
+        bpy.data.actions.remove(action)
 
     anim_paths = sorted(p for p in fbx_dir.glob(f"{anim_prefix}@*.FBX") if p != sk_path)
     anim_paths += sorted(p for p in fbx_dir.glob(f"{anim_prefix}@*.fbx") if p != sk_path)
@@ -248,9 +276,8 @@ def main() -> None:
         merge_action_onto_armature(armature, action, clip)
         delete_objects(imported)
 
-    rescale_if_microscopic(armature)
-    if max(armature.scale) < 0.99 or min(armature.scale) > 1.01:
-        bake_object_scales(armature)
+    purge_stray_actions(armature)
+    keep_only_nla_actions(armature)
     mat_name = f"M_{args.monster_name.replace(' ', '')}"
     apply_textures_to_meshes(args.source_dir, mat_name)
     limit_skin_weights(4)

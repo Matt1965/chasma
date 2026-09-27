@@ -4,7 +4,6 @@
         "render_key":  "tyranopode",
         "glb_path":  "assets\\units\\tyranopode.glb",
         "clips":  [
-                      "Armature|Take 001|BaseLayer",
                       "Bite",
                       "CrawlBackwards",
                       "CrawlBackwards_RM",
@@ -43,7 +42,6 @@
         "render_key":  "muscomorph",
         "glb_path":  "assets\\units\\muscomorph.glb",
         "clips":  [
-                      "Armature|Take 001|BaseLayer",
                       "BiteAttack",
                       "BiteAttack_RM",
                       "CrawlBackwards",
@@ -77,7 +75,6 @@
         "render_key":  "telluropod",
         "glb_path":  "assets\\units\\telluropod.glb",
         "clips":  [
-                      "Armature|Take 001|BaseLayer",
                       "BiteAttack",
                       "BiteAttack_RM",
                       "Crawl",
@@ -101,7 +98,6 @@
         "render_key":  "clypeosaurus",
         "glb_path":  "assets\\units\\clypeosaurus.glb",
         "clips":  [
-                      "Armature|Take 001|BaseLayer",
                       "Death",
                       "GetHitBack",
                       "GetHitFront",
@@ -135,7 +131,6 @@
         "render_key":  "giant_slug",
         "glb_path":  "assets\\units\\giant_slug.glb",
         "clips":  [
-                      "Armature|Take 001|BaseLayer",
                       "CrawlForward",
                       "CrawlForward_RM",
                       "CrawlForwardTurnLeft",
@@ -171,7 +166,6 @@
         "render_key":  "karcinomorph",
         "glb_path":  "assets\\units\\karcinomorph.glb",
         "clips":  [
-                      "Armature|Take 001|BaseLayer",
                       "CrawlBackwards",
                       "CrawlBackwards_RM",
                       "CrawlForward",
@@ -208,7 +202,6 @@
         "render_key":  "scyver",
         "glb_path":  "assets\\units\\scyver.glb",
         "clips":  [
-                      "Armature|Take 001|BaseLayer",
                       "BiteAttack1",
                       "BiteAttack1_RM",
                       "BiteAttack2",
@@ -253,7 +246,6 @@
         "render_key":  "scolomorph",
         "glb_path":  "assets\\units\\scolomorph.glb",
         "clips":  [
-                      "Armature|Take 001|BaseLayer",
                       "BiteForwardAttack",
                       "BiteForwardAttack_RM",
                       "CrawlForward",
@@ -298,7 +290,6 @@
         "render_key":  "tetrachnide",
         "glb_path":  "assets\\units\\tetrachnide.glb",
         "clips":  [
-                      "Armature|Take 001|BaseLayer",
                       "ClawsAttack",
                       "ClawsAttackForward",
                       "ClawsAttackForward_RM",
@@ -335,7 +326,6 @@
         "render_key":  "vespomorph",
         "glb_path":  "assets\\units\\vespomorph.glb",
         "clips":  [
-                      "Armature|Take 001|BaseLayer",
                       "Death",
                       "DeathHitTheGround",
                       "Falling",
@@ -368,7 +358,6 @@
         "render_key":  "morphorrid",
         "glb_path":  "assets\\units\\morphorrid.glb",
         "clips":  [
-                      "Armature|Take 001|BaseLayer",
                       "Death",
                       "GetHitBack",
                       "GetHitFront",
@@ -415,7 +404,6 @@
         "glb_path":  "assets\\units\\carcidonte.glb",
         "clips":  [
                       "4TailShotCombo",
-                      "Armature|Take 001|BaseLayer",
                       "ClawsAttack",
                       "ClawsAttackForward",
                       "ClawsAttackForward_RM",
@@ -458,7 +446,6 @@
         "render_key":  "entomorane",
         "glb_path":  "assets\\units\\entomorane.glb",
         "clips":  [
-                      "Armature|Take 001|BaseLayer",
                       "BiteAttack",
                       "BiteAttackForward",
                       "BiteAttackForward_RM",
@@ -495,7 +482,6 @@
         "render_key":  "laminferox",
         "glb_path":  "assets\\units\\laminferox.glb",
         "clips":  [
-                      "Armature|Take 001|BaseLayer",
                       "BiteAttack",
                       "BiteAttackForward",
                       "BiteAttackForward_RM",

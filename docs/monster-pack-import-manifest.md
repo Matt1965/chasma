@@ -35,6 +35,8 @@ Pipeline: `tools/monster_pack/` (see README there)
 
 Clip names are exact GLB names in `tools/monster_pack/import_manifest.json`. Locomotion uses non-`_RM` clips where both exist.
 
+**Animation export:** Skeleton scale is baked to final size **before** animation FBXs are merged. Merging animations first and rescaling after caused skinning spikes / vertical stretching in-game.
+
 ## Placeholder gameplay data
 
 All new units use **wild** faction, per-monster **Species Key** (sheet row added), and shared placeholder stats from `integrate_monster_pack_workbook.py` (`Level` 3, `Base HP` 40, `Move Speed` 3.5, etc.). Weapon damage/range are placeholders. **Rotation Correction Y Deg** 180 and **Turn Speed Deg/s** 360 unless tuned per asset.
