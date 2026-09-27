@@ -286,6 +286,34 @@ When uncertainty exists, choose the solution that preserves architectural flexib
 
 ---
 
+# Branch merge / closeout workflow
+
+When the user approves merge with phrasing such as "merge", "merge branch", "merge yours", "merge to main", or "go ahead and merge", perform the **standard feature-branch closeout** (not a local-only merge).
+
+1. Work from the agent's **permanent worktree** only.
+2. `git fetch origin`.
+3. If `origin/main` has advanced, sync the feature branch with **`git merge origin/main`** — **never rebase** during closeout.
+4. Resolve conflicts preserving the approved feature and current `main` behavior.
+5. Run validation appropriate to the changed system (e.g. `cargo check --features dev`).
+6. Commit merge/conflict/docs changes as needed.
+7. Push the feature branch.
+8. From `C:\BevyFiles\chasma`, merge the feature branch into `main` and push `main` to origin.
+9. The feature branch is **retired** (history only); **do not reuse** it for a new task.
+10. Park the agent worktree on its ready branch at latest `origin/main`:
+
+```text
+git fetch origin
+git switch -C agent-X/ready origin/main
+```
+
+**Permanent worktrees:** `C:\BevyFiles\chasma` (main/integration), `C:\BevyFiles\chasma-agent-a`, `C:\BevyFiles\chasma-agent-b`, `C:\BevyFiles\chasma-agent-c`.
+
+**Ready branches:** `agent-a/ready`, `agent-b/ready`, `agent-c/ready`.
+
+**Rules:** Worktree folders are permanent; branches are not. No task-specific worktree folders, duplicate clones, or `-2`/`-temp` paths. Tracked feature work must be committed before parking. Do not destructive-clean or delete known untracked authored/diagnostic files just to tidy the worktree. "Merge" means merge **and** push `main`. Closeout report: feature commit SHA, resulting `main` SHA, validation result, and confirmation parked on `agent-X/ready`.
+
+---
+
 # Cargo / local build (Windows)
 
 The user's normal launch is:
