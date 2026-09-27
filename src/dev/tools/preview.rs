@@ -1,4 +1,7 @@
-//! Ghost preview for dev placement (gizmos only — no ECS entities, ADR-044).
+//! Ghost preview for dev placement (ADR-044).
+//!
+//! [`DevPlacementPreview`] / [`PreviewPoint`] remain the authoritative placement plan.
+//! Translucent model ghosts are synced separately in `preview_model.rs`.
 
 use bevy::prelude::*;
 
@@ -9,7 +12,7 @@ use crate::world::{
     WorldPosition,
 };
 
-use super::super::dev_mode::DevModeState;
+use super::super::dev_mode::{DefinitionId, DevModeState, DevTab};
 use super::batch_spawn::{BatchSpawnRequest, BatchSpawnScratch, plan_batch_spawn};
 use super::placement_rules::{PlacementValidateContext, PlacementValidation, validate_placement};
 
@@ -117,17 +120,28 @@ pub fn update_dev_placement_preview(
         rules: &dev_state.placement_rules,
     };
 
-    generate_preview_points(
-        &request,
-        definition.id_str(),
-        &world,
-        &unit_catalog,
-        &doodad_catalog,
-        &building_catalog,
-        &ctx,
-        &mut scratch.batch,
-        &mut preview.points,
-    );
+    if matches!(definition, DefinitionId::Item(_)) {
+        if dev_state.active_tab == DevTab::Items
+            && (dev_state.dev_held_item_id().is_some() || dev_state.inventory.pile_placement_armed)
+        {
+            preview.points.push(PreviewPoint {
+                position: anchor_pos,
+                valid: true,
+            });
+        }
+    } else {
+        generate_preview_points(
+            &request,
+            definition.id_str(),
+            &world,
+            &unit_catalog,
+            &doodad_catalog,
+            &building_catalog,
+            &ctx,
+            &mut scratch.batch,
+            &mut preview.points,
+        );
+    }
     preview.active = !preview.points.is_empty();
 }
 
