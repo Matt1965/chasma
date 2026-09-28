@@ -89,7 +89,6 @@ fn catalog_row_pool_supports_long_lists() {
     use super::{catalog_row_pool_capacity, visible_row_count};
     use crate::dev::window::CATALOG_MAX_LIST_HEIGHT_PX;
 
-    let row_height = 28.0;
-    let capacity = catalog_row_pool_capacity(CATALOG_MAX_LIST_HEIGHT_PX, row_height);
-    assert!(capacity >= visible_row_count(CATALOG_MAX_LIST_HEIGHT_PX, row_height));
+    let capacity = catalog_row_pool_capacity(CATALOG_MAX_LIST_HEIGHT_PX);
+    assert!(capacity >= visible_row_count(CATALOG_MAX_LIST_HEIGHT_PX));
 }

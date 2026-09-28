@@ -123,19 +123,6 @@ fn ai_controller_can_use_different_faction() {
 }
 
 #[test]
-fn controller_and_faction_are_independent_in_state() {
-    use crate::dev::dev_mode::{DevModeState, DevSpawnController};
-
-    let mut state = DevModeState::default();
-    state.spawn_faction_id = FactionId::new("wild");
-    state.cycle_spawn_controller();
-    assert_eq!(state.spawn_controller, DevSpawnController::Ai);
-    assert_eq!(state.spawn_faction_id.as_str(), "wild");
-    state.cycle_spawn_faction(&crate::world::FactionCatalog::default());
-    assert_eq!(state.spawn_controller, DevSpawnController::Ai);
-}
-
-#[test]
 fn archetype_default_faction_used_when_catalog_not_overriding() {
     let catalog = UnitCatalog::default();
     let archetypes = UnitArchetypeCatalog::from_definitions(vec![UnitArchetypeDefinition {

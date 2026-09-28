@@ -1,5 +1,5 @@
 use super::*;
-use crate::world::ownership::UnitOwnership;
+use crate::world::UnitOwnership;
 use crate::world::relationship::{
     AuthoredFacetKey, AuthoredRelationshipCatalog, DirectedRelationshipEdgeKey, FactionId,
     RelationshipStandingStore, SpeciesId,
@@ -328,7 +328,7 @@ fn player_controlled_target_blocks_recruit() {
     let actor = unit_record(1, None);
     let mut target = unit_record(2, Some(merchant_config()));
     target.affiliation = Affiliation::Player;
-    target.owner_id = Some(crate::world::ownership::DEFAULT_PLAYER_OWNER_ID);
+    target.owner_id = Some(crate::world::DEFAULT_PLAYER_OWNER_ID);
     insert_units(&mut world, actor, target);
     let authored = AuthoredRelationshipCatalog::default();
     let standing = RelationshipStandingStore::default();
