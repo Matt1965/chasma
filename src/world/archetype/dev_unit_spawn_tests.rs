@@ -30,34 +30,14 @@ fn pos() -> WorldPosition {
     )
 }
 
-fn spawn_from_spec(
-    world: &mut WorldData,
-    catalog: &UnitCatalog,
-    spec: &ResolvedUnitSpawnSpec,
-    ctx: &crate::world::InventoryCatalogCtx<'_>,
-) -> crate::world::UnitRecord {
-    create_unit_with_inventory_and_faction(
-        catalog,
-        &AppearanceProfileCatalog::empty(),
-        world,
-        &spec.definition_id,
-        pos(),
-        UnitSource::Dev,
-        spec.ownership,
-        spec.faction_id.clone(),
-        ctx,
-    )
-    .unwrap()
-}
-
 #[test]
 fn player_controller_with_explicit_faction_is_commandable() {
     let catalog = UnitCatalog::default();
     let archetypes = UnitArchetypeCatalog::default();
-    let bandit = UnitDefinitionId::new("bandit");
+    let wolf = UnitDefinitionId::new("wolf");
     let faction_a = FactionId::new("player");
     let spec = resolve_unit_spawn_spec(
-        &bandit,
+        &wolf,
         None,
         UnitOwnership::player_default(),
         Some(&faction_a),
@@ -67,20 +47,23 @@ fn player_controller_with_explicit_faction_is_commandable() {
     .unwrap();
     assert_eq!(spec.faction_id, faction_a);
     let mut world = flat_world();
-    let categories = crate::world::ItemCategoryCatalog::from_definitions(
-        crate::world::starter_item_category_definitions(),
-    )
-    .unwrap();
-    let mut items = crate::world::test_equipment_fixture_definitions();
-    items.extend(crate::world::starter_item_definitions());
-    let item_catalog =
-        crate::world::ItemCatalog::from_definitions(items, &categories).unwrap();
     let profiles = crate::world::InventoryProfileCatalog::from_definitions(
         crate::world::equipment::equipment_slot_profile_definitions(),
     )
     .unwrap();
-    let ctx = crate::world::InventoryCatalogCtx::new(&item_catalog, &categories, &profiles);
-    let record = spawn_from_spec(&mut world, &catalog, &spec, &ctx);
+    let ctx = crate::world::equipment::minimal_catalog_ctx(&profiles);
+    let record = create_unit_with_inventory_and_faction(
+        &catalog,
+        &AppearanceProfileCatalog::empty(),
+        &mut world,
+        &wolf,
+        pos(),
+        UnitSource::Dev,
+        spec.ownership,
+        spec.faction_id.clone(),
+        &ctx,
+    )
+    .unwrap();
     assert_eq!(record.faction_id, faction_a);
     assert!(is_player_controllable(&record));
 }
