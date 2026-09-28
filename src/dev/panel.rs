@@ -226,11 +226,6 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::SpawnController,
         ),
         (
-            "Faction: Player",
-            DevContextualPlacementAction::CycleSpawnFaction,
-            PlacementControlField::SpawnFaction,
-        ),
-        (
             "Yaw +",
             DevContextualPlacementAction::RotationUp,
             PlacementControlField::Rotation,
@@ -863,6 +858,11 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
                                     },
                                     TextColor(Color::srgba(0.88, 0.94, 0.98, 1.0)),
                                 ));
+                                if field == super::catalog::PlacementControlField::SpawnController {
+                                    super::catalog::faction_picker::spawn_spawn_faction_picker(
+                                        placement,
+                                    );
+                                }
                             }
                         });
                 });
@@ -1432,7 +1432,6 @@ pub(crate) fn sync_dev_search_box_style(
 /// Handle tab, list, and catalog button presses.
 pub(crate) fn handle_dev_panel_ui_interaction(
     mut dev_state: ResMut<DevModeState>,
-    faction_catalog: Res<crate::world::FactionCatalog>,
     catalogs: DevPanelCatalogResources,
     mut filter_cache: ResMut<CatalogFilterCache>,
     mut debounce: ResMut<DevSearchDebounce>,
@@ -1489,6 +1488,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
             gate.block_gameplay_mouse = true;
             panel_click_without_search = true;
             dev_state.active_tab = button.tab;
+            dev_state.catalog.close_faction_picker();
             dev_state.list_scroll = 0;
             dev_state.archetype_list_scroll = 0;
             if !dev_state.shows_archetype_pane() {
@@ -1579,7 +1579,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
         }
         gate.block_gameplay_mouse = true;
         panel_click_without_search = true;
-        apply_contextual_placement_action(&mut dev_state, &faction_catalog, button.action);
+        apply_contextual_placement_action(&mut dev_state, button.action);
     }
 
     if panel_click_without_search {
@@ -1589,7 +1589,6 @@ pub(crate) fn handle_dev_panel_ui_interaction(
 
 fn apply_contextual_placement_action(
     state: &mut DevModeState,
-    factions: &crate::world::FactionCatalog,
     action: DevContextualPlacementAction,
 ) {
     match action {
@@ -1628,9 +1627,6 @@ fn apply_contextual_placement_action(
         }
         DevContextualPlacementAction::CycleSpawnController => {
             state.cycle_spawn_controller();
-        }
-        DevContextualPlacementAction::CycleSpawnFaction => {
-            state.cycle_spawn_faction(factions);
         }
         DevContextualPlacementAction::RotationUp => {
             state.placement_yaw_deg = (state.placement_yaw_deg + 5.0) % 360.0;

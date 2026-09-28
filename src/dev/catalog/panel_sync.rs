@@ -215,7 +215,6 @@ fn field_visible(
 /// Keep placement control labels in sync (team affiliation display).
 pub fn sync_catalog_placement_button_labels(
     dev_state: Res<crate::dev::dev_mode::DevModeState>,
-    faction_catalog: Res<crate::world::FactionCatalog>,
     registry: Res<crate::dev::window::DevWindowRegistry>,
     mut buttons: Query<(&DevContextualPlacementButton, &mut Text), With<DevPanelUi>>,
 ) {
@@ -227,11 +226,6 @@ pub fn sync_catalog_placement_button_labels(
             && button.field == PlacementControlField::SpawnController
         {
             **text = dev_state.spawn_controller_button_label();
-        }
-        if button.action == DevContextualPlacementAction::CycleSpawnFaction
-            && button.field == PlacementControlField::SpawnFaction
-        {
-            **text = dev_state.spawn_faction_button_label(&faction_catalog);
         }
     }
 }

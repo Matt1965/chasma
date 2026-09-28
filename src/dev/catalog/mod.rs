@@ -2,6 +2,8 @@
 
 mod components;
 
+pub(crate) mod faction_picker;
+
 mod panel_sync;
 
 mod placement_controls;

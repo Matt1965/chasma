@@ -191,7 +191,7 @@ pub fn placement_control_tooltip(field: PlacementControlField) -> &'static str {
             "Cycle spawn controller (Player vs AI). Controls who can issue orders; does not change faction."
         }
         PlacementControlField::SpawnFaction => {
-            "Cycle spawn faction from the faction catalog. Relationship identity only; does not change controller."
+            "Choose spawn faction from the catalog list. Relationship identity only; does not change controller."
         }
         PlacementControlField::Rotation => "Initial yaw in degrees for the next placement.",
         PlacementControlField::Scale => {

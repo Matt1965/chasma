@@ -52,7 +52,6 @@ fn catalog_placement_glyph_policy() {
 fn catalog_placement_actions_exclude_deselect() {
     for action in [
         DevContextualPlacementAction::CycleSpawnController,
-        DevContextualPlacementAction::CycleSpawnFaction,
         DevContextualPlacementAction::CycleBrush,
     ] {
         let name = format!("{action:?}");
@@ -76,12 +75,10 @@ fn spawn_controller_and_faction_labels_are_independent() {
         state.spawn_faction_button_label(&factions),
         "Faction: Wild"
     );
-    let before_faction = state.spawn_faction_id.clone();
-    state.cycle_spawn_faction(&factions);
+    state.select_spawn_faction(FactionId::new("bandits"));
     assert_eq!(state.spawn_controller_button_label(), "Controller: AI");
-    if factions.len() > 1 {
-        assert_ne!(before_faction, state.spawn_faction_id);
-    }
+    assert_eq!(state.spawn_faction_id.as_str(), "bandits");
+    assert!(!state.catalog.faction_picker_open);
 }
 
 #[test]

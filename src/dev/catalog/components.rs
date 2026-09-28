@@ -49,8 +49,6 @@ pub(crate) enum DevContextualPlacementAction {
 
     CycleSpawnController,
 
-    CycleSpawnFaction,
-
     RotationUp,
 
     RotationDown,

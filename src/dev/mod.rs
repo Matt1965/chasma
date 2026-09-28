@@ -481,8 +481,15 @@ impl Plugin for DevModePlugin {
         )
         .add_systems(
             Update,
+            catalog::faction_picker::sync_spawn_faction_picker
+                .after(sync_dev_catalog_chrome)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
             (
                 handle_dev_panel_ui_interaction,
+                catalog::faction_picker::handle_spawn_faction_picker,
                 handle_save_window_interaction,
                 handle_debug_toggle_buttons,
                 world_environment::handle_world_environment_actions,

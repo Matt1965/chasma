@@ -450,6 +450,11 @@ impl DevModeState {
         self.spawn_controller = self.spawn_controller.cycle();
     }
 
+    pub fn select_spawn_faction(&mut self, faction_id: FactionId) {
+        self.spawn_faction_id = faction_id;
+        self.catalog.faction_picker_open = false;
+    }
+
     pub fn cycle_spawn_faction(&mut self, factions: &FactionCatalog) {
         let mut enabled: Vec<_> = factions
             .enabled_definitions()
