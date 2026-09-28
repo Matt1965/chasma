@@ -14,7 +14,8 @@ pub struct PlacementControlSet {
     pub radius: bool,
     pub grid_columns: bool,
     pub grid_rows: bool,
-    pub affiliation: bool,
+    pub spawn_controller: bool,
+    pub spawn_faction: bool,
     pub rotation: bool,
     pub scale: bool,
     pub footprint_status: bool,
@@ -28,7 +29,8 @@ pub enum PlacementControlField {
     Radius,
     GridColumns,
     GridRows,
-    Affiliation,
+    SpawnController,
+    SpawnFaction,
     Rotation,
     Scale,
 }
@@ -86,7 +88,8 @@ pub fn placement_control_set(
 fn unit_controls(mode: BrushMode) -> PlacementControlSet {
     let mut set = PlacementControlSet {
         pattern: true,
-        affiliation: true,
+        spawn_controller: true,
+        spawn_faction: true,
         ..Default::default()
     };
     match mode {
@@ -110,7 +113,8 @@ fn unit_controls(mode: BrushMode) -> PlacementControlSet {
 
 fn doodad_controls(mode: BrushMode, doodad: Option<&DoodadDefinition>) -> PlacementControlSet {
     let mut set = unit_controls(mode);
-    set.affiliation = false;
+    set.spawn_controller = false;
+    set.spawn_faction = false;
     set.rotation = true;
     set.scale = doodad
         .map(|def| def.min_scale < def.max_scale || def.max_scale > 1.0)
@@ -183,8 +187,11 @@ pub fn placement_control_tooltip(field: PlacementControlField) -> &'static str {
         PlacementControlField::GridColumns | PlacementControlField::GridRows => {
             "Grid dimensions for grid brush placement."
         }
-        PlacementControlField::Affiliation => {
-            "Cycle spawn team (Player <-> Wilds). Units only; does not change placed doodads/buildings."
+        PlacementControlField::SpawnController => {
+            "Cycle spawn controller (Player vs AI). Controls who can issue orders; does not change faction."
+        }
+        PlacementControlField::SpawnFaction => {
+            "Cycle spawn faction from the faction catalog. Relationship identity only; does not change controller."
         }
         PlacementControlField::Rotation => "Initial yaw in degrees for the next placement.",
         PlacementControlField::Scale => {

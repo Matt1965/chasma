@@ -21,6 +21,7 @@ use crate::world::equipment::{
     equipment_slot_profile_definitions, minimal_catalog_ctx,
 };
 use crate::world::ownership::{UnitOwnership, default_ownership_for_source};
+use crate::world::relationship::FactionId;
 use crate::world::{
     InventoryProfileCatalog, UnitDefinitionId, UnitInsertError, WorldData, WorldPosition,
 };
@@ -67,6 +68,7 @@ pub fn create_unit_with_ownership(
         None,
         None,
         Quat::IDENTITY,
+        None,
     )
 }
 
@@ -94,6 +96,7 @@ pub fn create_unit_with_ownership_and_appearance(
         inventory_ctx,
         Some(appearance),
         facing,
+        None,
     )
 }
 
@@ -119,6 +122,34 @@ pub fn create_unit_with_inventory(
         Some(inventory_ctx),
         None,
         Quat::IDENTITY,
+        None,
+    )
+}
+
+/// Create a unit with explicit ownership and faction (dev / archetype-resolved spawns).
+pub fn create_unit_with_inventory_and_faction(
+    catalog: &UnitCatalog,
+    appearance_profiles: &crate::world::AppearanceProfileCatalog,
+    world: &mut WorldData,
+    definition_id: &UnitDefinitionId,
+    position: WorldPosition,
+    source: UnitSource,
+    ownership: UnitOwnership,
+    faction_id: FactionId,
+    inventory_ctx: &crate::world::InventoryCatalogCtx<'_>,
+) -> Result<UnitRecord, UnitAuthoringError> {
+    create_unit_with_ownership_impl(
+        catalog,
+        appearance_profiles,
+        world,
+        definition_id,
+        position,
+        source,
+        ownership,
+        Some(inventory_ctx),
+        None,
+        Quat::IDENTITY,
+        Some(faction_id),
     )
 }
 
@@ -133,6 +164,7 @@ fn create_unit_with_ownership_impl(
     inventory_ctx: Option<&crate::world::InventoryCatalogCtx<'_>>,
     appearance_override: Option<crate::world::UnitAppearance>,
     facing: Quat,
+    faction_id_override: Option<FactionId>,
 ) -> Result<UnitRecord, UnitAuthoringError> {
     let definition = catalog
         .get(definition_id)
@@ -152,7 +184,7 @@ fn create_unit_with_ownership_impl(
         source,
         ownership,
         definition.max_hp,
-        definition.faction_id.clone(),
+        faction_id_override.unwrap_or_else(|| definition.faction_id.clone()),
         definition.species_id.clone(),
     );
 

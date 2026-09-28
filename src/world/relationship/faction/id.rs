@@ -1,7 +1,8 @@
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// Stable slug identity for a faction (ADR-132 Phase 1).
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Reflect)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Reflect, Serialize, Deserialize)]
 pub struct FactionId(pub String);
 
 impl FactionId {

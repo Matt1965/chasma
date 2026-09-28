@@ -1,6 +1,7 @@
 use super::*;
 use crate::world::equipment::EquipmentSlot;
 use crate::world::relationship::SpeciesId;
+use crate::world::UnitOwnership;
 use crate::world::Affiliation;
 use crate::world::{
     BuildingDefinitionId, BuildingLifecycleState, ItemCatalog, ItemCategoryCatalog,
@@ -28,7 +29,7 @@ fn sample_unit_archetypes() -> UnitArchetypeCatalog {
             applicable_species: vec![SpeciesId::new("human")],
             gold_min: 5,
             gold_max: 25,
-            affiliation_override: Some(Affiliation::Hostile),
+            default_faction_id: Some(crate::world::relationship::FactionId::new("bandits")),
             equipment: vec![ArchetypeEquipmentEntry {
                 item_id: crate::world::ItemDefinitionId::new("iron_sword"),
                 slot: EquipmentSlot::Weapon,
@@ -43,7 +44,7 @@ fn sample_unit_archetypes() -> UnitArchetypeCatalog {
             applicable_species: vec![SpeciesId::new("human")],
             gold_min: 0,
             gold_max: 0,
-            affiliation_override: Some(Affiliation::Player),
+            default_faction_id: Some(crate::world::relationship::FactionId::new("player")),
             equipment: Vec::new(),
             inventory_stacks: Vec::new(),
             dialogue: None,
@@ -62,7 +63,7 @@ fn unit_archetype_catalog_rejects_duplicate_ids() {
             applicable_species: vec![SpeciesId::new("human")],
             gold_min: 0,
             gold_max: 0,
-            affiliation_override: None,
+            default_faction_id: None,
             equipment: Vec::new(),
             inventory_stacks: Vec::new(),
             dialogue: None,
@@ -74,7 +75,7 @@ fn unit_archetype_catalog_rejects_duplicate_ids() {
             applicable_species: vec![SpeciesId::new("human")],
             gold_min: 0,
             gold_max: 0,
-            affiliation_override: None,
+            default_faction_id: None,
             equipment: Vec::new(),
             inventory_stacks: Vec::new(),
             dialogue: None,
@@ -95,7 +96,7 @@ fn unit_archetype_rejects_invalid_gold_range() {
         applicable_species: vec![SpeciesId::new("human")],
         gold_min: 10,
         gold_max: 5,
-        affiliation_override: None,
+        default_faction_id: None,
         equipment: Vec::new(),
         inventory_stacks: Vec::new(),
         dialogue: None,
@@ -125,7 +126,7 @@ fn unit_archetype_filters_by_species() {
 }
 
 #[test]
-fn resolve_unit_spawn_spec_default_uses_dev_affiliation() {
+fn resolve_unit_spawn_spec_default_uses_spawn_ownership() {
     let unit_catalog = unit_catalog();
     let archetypes = UnitArchetypeCatalog::default();
     let bandit = UnitDefinitionId::new("bandit");
@@ -133,7 +134,8 @@ fn resolve_unit_spawn_spec_default_uses_dev_affiliation() {
     let spec = resolve_unit_spawn_spec(
         &bandit,
         None,
-        Affiliation::Wildlife,
+        UnitOwnership::wildlife(),
+        None,
         &unit_catalog,
         &archetypes,
     )
@@ -153,13 +155,18 @@ fn resolve_unit_spawn_spec_applies_archetype_overlay() {
     let spec = resolve_unit_spawn_spec(
         &bandit,
         Some(&UnitArchetypeId::new("bandit_loadout")),
-        Affiliation::Wildlife,
+        UnitOwnership::wildlife(),
+        None,
         &unit_catalog,
         &archetypes,
     )
     .unwrap();
 
-    assert_eq!(spec.ownership.affiliation, Affiliation::Hostile);
+    assert_eq!(spec.ownership.affiliation, Affiliation::Wildlife);
+    assert_eq!(
+        spec.faction_id,
+        crate::world::relationship::FactionId::new("bandits")
+    );
     assert_eq!(spec.equipment.len(), 1);
     assert_eq!(spec.gold_min, 5);
     assert_eq!(spec.gold_max, 25);
@@ -174,7 +181,8 @@ fn resolve_unit_spawn_spec_rejects_inapplicable_species() {
     let err = resolve_unit_spawn_spec(
         &wolf,
         Some(&UnitArchetypeId::new("guard_loadout")),
-        Affiliation::Player,
+        UnitOwnership::player_default(),
+        None,
         &unit_catalog,
         &archetypes,
     )

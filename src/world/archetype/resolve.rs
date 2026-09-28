@@ -3,7 +3,8 @@ use crate::world::building::BuildingLifecycleState;
 use crate::world::ownership::UnitOwnership;
 use crate::world::BuildingOwnership;
 
-use crate::world::{Affiliation, BuildingDefinitionId, UnitCatalog, UnitDefinitionId};
+use crate::world::relationship::FactionId;
+use crate::world::{Affiliation, BuildingDefinitionId, UnitCatalog, UnitDefinition, UnitDefinitionId};
 
 
 
@@ -36,6 +37,8 @@ pub struct ResolvedUnitSpawnSpec {
     pub definition_id: UnitDefinitionId,
 
     pub ownership: UnitOwnership,
+
+    pub faction_id: FactionId,
 
     pub equipment: Vec<ArchetypeEquipmentEntry>,
 
@@ -109,102 +112,71 @@ pub enum ArchetypeResolveError {
 
 
 
-pub fn resolve_unit_spawn_spec(
-
-    base_definition_id: &UnitDefinitionId,
-
-    archetype_id: Option<&UnitArchetypeId>,
-
-    dev_affiliation: Affiliation,
-
-    unit_catalog: &UnitCatalog,
-
-    archetype_catalog: &UnitArchetypeCatalog,
-
-) -> Result<ResolvedUnitSpawnSpec, ArchetypeResolveError> {
-
-    if unit_catalog.get(base_definition_id).is_none() {
-
-        return Err(ArchetypeResolveError::BaseUnitNotFound(
-
-            base_definition_id.clone(),
-
-        ));
-
+/// Faction precedence: explicit catalog choice, then archetype default, then unit definition.
+pub fn resolve_unit_spawn_faction_id(
+    definition: &UnitDefinition,
+    archetype: Option<&UnitArchetypeDefinition>,
+    catalog_faction: Option<&FactionId>,
+) -> FactionId {
+    if let Some(id) = catalog_faction {
+        return id.clone();
     }
+    if let Some(id) = archetype.and_then(|a| a.default_faction_id.clone()) {
+        return id;
+    }
+    definition.faction_id.clone()
+}
 
+pub fn resolve_unit_spawn_spec(
+    base_definition_id: &UnitDefinitionId,
+    archetype_id: Option<&UnitArchetypeId>,
+    ownership: UnitOwnership,
+    catalog_faction: Option<&FactionId>,
+    unit_catalog: &UnitCatalog,
+    archetype_catalog: &UnitArchetypeCatalog,
+) -> Result<ResolvedUnitSpawnSpec, ArchetypeResolveError> {
+    let definition = unit_catalog
+        .get(base_definition_id)
+        .ok_or_else(|| ArchetypeResolveError::BaseUnitNotFound(base_definition_id.clone()))?;
 
-
-    let archetype = match archetype_id {
-
-        None => {
-
-            return Ok(ResolvedUnitSpawnSpec {
-
-                definition_id: base_definition_id.clone(),
-
-                ownership: UnitOwnership::with_affiliation(dev_affiliation),
-
-                equipment: Vec::new(),
-
-                inventory_stacks: Vec::new(),
-
-                gold_min: 0,
-
-                gold_max: 0,
-
-                dialogue: None,
-
-            });
-
+    let archetype_ref = match archetype_id {
+        None => None,
+        Some(id) => {
+            let archetype = archetype_catalog
+                .get(id)
+                .ok_or_else(|| ArchetypeResolveError::ArchetypeNotFound {
+                    kind: "unit",
+                    id: id.as_str().to_string(),
+                })?;
+            validate_unit_archetype(base_definition_id, archetype, unit_catalog)?;
+            Some(archetype)
         }
-
-        Some(id) => archetype_catalog
-
-            .get(id)
-
-            .ok_or_else(|| ArchetypeResolveError::ArchetypeNotFound {
-
-                kind: "unit",
-
-                id: id.as_str().to_string(),
-
-            })?,
-
     };
 
+    let faction_id =
+        resolve_unit_spawn_faction_id(definition, archetype_ref, catalog_faction);
 
-
-    validate_unit_archetype(base_definition_id, archetype, unit_catalog)?;
-
-
-
-    let affiliation = archetype
-
-        .affiliation_override
-
-        .unwrap_or(dev_affiliation);
-
-
+    let (equipment, inventory_stacks, gold_min, gold_max, dialogue) = match archetype_ref {
+        None => (Vec::new(), Vec::new(), 0, 0, None),
+        Some(archetype) => (
+            archetype.equipment.clone(),
+            archetype.inventory_stacks.clone(),
+            archetype.gold_min,
+            archetype.gold_max,
+            archetype.dialogue.clone(),
+        ),
+    };
 
     Ok(ResolvedUnitSpawnSpec {
-
         definition_id: base_definition_id.clone(),
-
-        ownership: UnitOwnership::with_affiliation(affiliation),
-
-        equipment: archetype.equipment.clone(),
-
-        inventory_stacks: archetype.inventory_stacks.clone(),
-
-        gold_min: archetype.gold_min,
-
-        gold_max: archetype.gold_max,
-
-        dialogue: archetype.dialogue.clone(),
-
+        ownership,
+        faction_id,
+        equipment,
+        inventory_stacks,
+        gold_min,
+        gold_max,
+        dialogue,
     })
-
 }
 
 

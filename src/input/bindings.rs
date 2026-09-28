@@ -57,7 +57,7 @@ mod tests {
     fn spawn_affiliation_no_longer_uses_bare_t() {
         assert_eq!(
             GlobalBinding::CycleSpawnAffiliation.label(),
-            "Shift+T — cycle dev spawn affiliation (dev only)"
+            "Shift+T — cycle dev spawn controller (dev only)"
         );
     }
 }

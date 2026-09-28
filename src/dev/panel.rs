@@ -221,9 +221,14 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::GridRows,
         ),
         (
-            "Team: Player",
-            DevContextualPlacementAction::CycleSpawnTeam,
-            PlacementControlField::Affiliation,
+            "Controller: Player",
+            DevContextualPlacementAction::CycleSpawnController,
+            PlacementControlField::SpawnController,
+        ),
+        (
+            "Faction: Player",
+            DevContextualPlacementAction::CycleSpawnFaction,
+            PlacementControlField::SpawnFaction,
         ),
         (
             "Yaw +",
@@ -1427,6 +1432,7 @@ pub(crate) fn sync_dev_search_box_style(
 /// Handle tab, list, and catalog button presses.
 pub(crate) fn handle_dev_panel_ui_interaction(
     mut dev_state: ResMut<DevModeState>,
+    faction_catalog: Res<crate::world::FactionCatalog>,
     catalogs: DevPanelCatalogResources,
     mut filter_cache: ResMut<CatalogFilterCache>,
     mut debounce: ResMut<DevSearchDebounce>,
@@ -1573,7 +1579,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
         }
         gate.block_gameplay_mouse = true;
         panel_click_without_search = true;
-        apply_contextual_placement_action(&mut dev_state, button.action);
+        apply_contextual_placement_action(&mut dev_state, &faction_catalog, button.action);
     }
 
     if panel_click_without_search {
@@ -1583,6 +1589,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
 
 fn apply_contextual_placement_action(
     state: &mut DevModeState,
+    factions: &crate::world::FactionCatalog,
     action: DevContextualPlacementAction,
 ) {
     match action {
@@ -1619,8 +1626,11 @@ fn apply_contextual_placement_action(
         DevContextualPlacementAction::GridRowsDown => {
             state.brush.grid_rows = state.brush.grid_rows.saturating_sub(1).max(1);
         }
-        DevContextualPlacementAction::CycleSpawnTeam => {
-            state.cycle_spawn_affiliation();
+        DevContextualPlacementAction::CycleSpawnController => {
+            state.cycle_spawn_controller();
+        }
+        DevContextualPlacementAction::CycleSpawnFaction => {
+            state.cycle_spawn_faction(factions);
         }
         DevContextualPlacementAction::RotationUp => {
             state.placement_yaw_deg = (state.placement_yaw_deg + 5.0) % 360.0;

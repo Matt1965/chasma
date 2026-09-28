@@ -59,7 +59,7 @@ pub use debug_window::{
 };
 pub use dev_mode::{
     DefinitionId, DevDebugFlags, DevInventoryEndpoint, DevInventoryToolState, DevModeInputGate,
-    DevModeState, DevTab, DevTextFieldFocus, SpawnMode,
+    DevModeState, DevSpawnController, DevTab, DevTextFieldFocus, SpawnMode,
 };
 pub use fields_window::{setup_fields_window_panel, sync_dev_fields_panel_visibility};
 pub use origin_editor::{

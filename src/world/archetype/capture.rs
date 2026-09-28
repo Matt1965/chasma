@@ -35,7 +35,7 @@ pub enum ArchetypeCaptureError {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CapturedUnitArchetypeTemplate {
     pub species_id: SpeciesId,
-    pub affiliation_override: Option<crate::world::Affiliation>,
+    pub default_faction_id: Option<crate::world::relationship::FactionId>,
     pub equipment: Vec<ArchetypeEquipmentEntry>,
     pub inventory_stacks: Vec<ArchetypeInventoryStack>,
     pub gold_on_unit: u32,
@@ -89,7 +89,7 @@ pub fn capture_unit_archetype_template(
 
     Ok(CapturedUnitArchetypeTemplate {
         species_id: unit.species_id.clone(),
-        affiliation_override: Some(unit.affiliation),
+        default_faction_id: Some(unit.faction_id.clone()),
         equipment,
         inventory_stacks,
         gold_on_unit,
@@ -111,7 +111,7 @@ pub fn build_unit_archetype_definition(
         applicable_species,
         gold_min,
         gold_max,
-        affiliation_override: template.affiliation_override,
+        default_faction_id: template.default_faction_id.clone(),
         equipment: template.equipment.clone(),
         inventory_stacks: template.inventory_stacks.clone(),
         dialogue,
