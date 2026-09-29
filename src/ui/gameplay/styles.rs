@@ -1,5 +1,8 @@
 //! Shared Bevy UI styling for the player HUD (P-UI1).
 
+// Planned bottom-HUD chrome tokens remain while panels are still wiring up.
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 pub use super::typography::{

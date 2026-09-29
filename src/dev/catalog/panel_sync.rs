@@ -200,7 +200,9 @@ fn field_visible(
 
         PlacementControlField::GridRows => controls.grid_rows,
 
-        PlacementControlField::Affiliation => controls.affiliation,
+        PlacementControlField::SpawnController => controls.spawn_controller,
+
+        PlacementControlField::SpawnFaction => controls.spawn_faction,
 
         PlacementControlField::Rotation => controls.rotation,
 
@@ -220,10 +222,10 @@ pub fn sync_catalog_placement_button_labels(
         return;
     }
     for (button, mut text) in &mut buttons {
-        if button.action == DevContextualPlacementAction::CycleSpawnTeam
-            && button.field == PlacementControlField::Affiliation
+        if button.action == DevContextualPlacementAction::CycleSpawnController
+            && button.field == PlacementControlField::SpawnController
         {
-            **text = dev_state.spawn_team_button_label();
+            **text = dev_state.spawn_controller_button_label();
         }
     }
 }

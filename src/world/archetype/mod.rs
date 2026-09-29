@@ -22,6 +22,8 @@ mod world_item_capture_tests;
 #[cfg(test)]
 mod reconstruct_tests;
 #[cfg(test)]
+mod dev_unit_spawn_tests;
+#[cfg(test)]
 mod tests;
 
 pub use apply::{
@@ -63,7 +65,7 @@ pub use persistence::{
 };
 pub use resolve::{
     ArchetypeResolveError, ResolvedBuildingSpawnSpec, ResolvedUnitSpawnSpec,
-    resolve_building_spawn_spec, resolve_unit_spawn_spec,
+    resolve_building_spawn_spec, resolve_unit_spawn_faction_id, resolve_unit_spawn_spec,
 };
 pub use unit::{
     ArchetypeEquipmentEntry, ArchetypeInventoryStack, UnitArchetypeCatalog,

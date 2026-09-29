@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use bevy::asset::LoadState;
 use bevy::prelude::*;
 
 use crate::world::{
@@ -120,10 +121,39 @@ impl AnimationValidationIndex {
     }
 }
 
+/// glTF load state for animation validation (defer until loaded).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AnimationGltfValidationState {
+    /// Handle not registered yet, or asset server still loading dependencies.
+    Pending,
+    /// Asset server reported a failed load.
+    LoadFailed,
+    /// Load finished; `Gltf` asset data should be available.
+    Ready,
+}
+
+/// Classify whether animation validation may run for a unit glTF handle.
+pub fn animation_gltf_validation_state(
+    handle: Option<&Handle<Gltf>>,
+    asset_server: &AssetServer,
+) -> AnimationGltfValidationState {
+    let Some(handle) = handle else {
+        return AnimationGltfValidationState::Pending;
+    };
+    match asset_server.get_load_state(handle) {
+        Some(LoadState::Loaded) => AnimationGltfValidationState::Ready,
+        Some(LoadState::Failed(_)) => AnimationGltfValidationState::LoadFailed,
+        Some(LoadState::Loading) | Some(LoadState::NotLoaded) | None => {
+            AnimationGltfValidationState::Pending
+        }
+    }
+}
+
 /// Validate profile + glTF clip availability for one definition (A6).
 pub fn validate_definition_animation_assets(
     definition: &UnitDefinition,
     profile: Option<&AnimationProfile>,
+    gltf_state: AnimationGltfValidationState,
     gltf: Option<&Gltf>,
     weapon_clip_name: Option<&str>,
 ) -> DefinitionValidationReport {
@@ -168,12 +198,28 @@ pub fn validate_definition_animation_assets(
         return report;
     }
 
+    match gltf_state {
+        AnimationGltfValidationState::Pending => return report,
+        AnimationGltfValidationState::LoadFailed => {
+            report.push(
+                ValidationSeverity::Error,
+                "missing_gltf",
+                format!(
+                    "unit `{}` glTF failed to load for animation validation",
+                    definition.id.as_str()
+                ),
+            );
+            return report;
+        }
+        AnimationGltfValidationState::Ready => {}
+    }
+
     let Some(gltf) = gltf else {
         report.push(
             ValidationSeverity::Error,
             "missing_gltf",
             format!(
-                "unit `{}` glTF not loaded for animation validation",
+                "unit `{}` glTF load completed but asset data is unavailable",
                 definition.id.as_str()
             ),
         );
@@ -361,15 +407,78 @@ mod tests {
     #[test]
     fn missing_profile_is_error() {
         let definition = sample_definition(Some("missing"));
-        let report = validate_definition_animation_assets(&definition, None, None, None);
+        let report = validate_definition_animation_assets(
+            &definition,
+            None,
+            AnimationGltfValidationState::Ready,
+            None,
+            None,
+        );
         assert!(report.has_error());
     }
 
     #[test]
     fn static_model_is_info() {
         let definition = sample_definition(None);
-        let report = validate_definition_animation_assets(&definition, None, None, None);
+        let report = validate_definition_animation_assets(
+            &definition,
+            None,
+            AnimationGltfValidationState::Ready,
+            None,
+            None,
+        );
         assert!(report.issues.iter().any(|i| i.code == "static_model"));
+    }
+
+    #[test]
+    fn pending_gltf_does_not_emit_missing_gltf_error() {
+        let definition = sample_definition(Some("humanoid"));
+        let report = validate_definition_animation_assets(
+            &definition,
+            Some(&crate::world::AnimationProfile::new(
+                crate::world::AnimationProfileId::new("humanoid"),
+                "Idle",
+                None,
+                None,
+                1.0,
+                true,
+            )),
+            AnimationGltfValidationState::Pending,
+            None,
+            None,
+        );
+        assert!(
+            !report
+                .issues
+                .iter()
+                .any(|issue| issue.code == "missing_gltf")
+        );
+    }
+
+    #[test]
+    fn failed_gltf_load_emits_missing_gltf_error() {
+        let definition = sample_definition(Some("humanoid"));
+        let report = validate_definition_animation_assets(
+            &definition,
+            Some(&crate::world::AnimationProfile::new(
+                crate::world::AnimationProfileId::new("humanoid"),
+                "Idle",
+                None,
+                None,
+                1.0,
+                true,
+            )),
+            AnimationGltfValidationState::LoadFailed,
+            None,
+            None,
+        );
+        assert!(report.has_error());
+        assert!(
+            report
+                .issues
+                .iter()
+                .any(|issue| issue.code == "missing_gltf")
+        );
     }
 
     #[test]

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::world::dialogue::UnitDialogueConfig;
 use crate::world::equipment::EquipmentSlot;
 use crate::world::relationship::SpeciesId;
-use crate::world::Affiliation;
+use crate::world::relationship::FactionId;
 use crate::world::{ItemDefinitionId, UnitCatalog, UnitDefinitionId};
 
 /// Stable key for a unit spawn archetype preset.
@@ -45,7 +45,9 @@ pub struct UnitArchetypeDefinition {
     pub applicable_species: Vec<SpeciesId>,
     pub gold_min: u32,
     pub gold_max: u32,
-    pub affiliation_override: Option<Affiliation>,
+    /// Default relationship faction when spawn does not specify one explicitly.
+    #[serde(default)]
+    pub default_faction_id: Option<FactionId>,
     pub equipment: Vec<ArchetypeEquipmentEntry>,
     pub inventory_stacks: Vec<ArchetypeInventoryStack>,
     /// Optional social interaction configuration baked onto spawned units.

@@ -1,5 +1,8 @@
 //! Authoritative equipment -> desired presentation reconciliation (pure).
 
+// Ownership typing is retained for upcoming corpse/unit presentation split.
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 use crate::world::equipment::{

@@ -19,7 +19,7 @@ use crate::world::{
     BuildingOwnership, BuildingSource, ChunkCoord, ChunkExtent, ItemDefinitionId, LocalPosition,
     UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource, WorldData, WorldPosition,
     bootstrap_constant_field, create_building_with_inventory, create_unit_with_inventory,
-    starter_building_definitions, starter_inventory_profile_definitions,
+    starter_building_catalog_with_smelter, starter_inventory_profile_definitions,
     starter_item_category_definitions, starter_item_definitions, starter_operation_definitions,
     starter_unit_definitions,
 };
@@ -82,9 +82,7 @@ impl ChainFixture {
             ChunkCoord::new(0, 0),
             crate::world::field_value_from_percent(100.0),
         );
-        let categories = BuildingCategoryCatalog::default();
-        let building_catalog =
-            BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
+        let building_catalog = starter_building_catalog_with_smelter();
         let operation_catalog =
             OperationCatalog::from_definitions(starter_operation_definitions()).unwrap();
         let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();

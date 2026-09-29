@@ -160,7 +160,7 @@ pub fn dev_mode_keyboard_input(
     }
 
     if keyboard.just_pressed(KeyCode::KeyT) {
-        dev_state.cycle_spawn_affiliation();
+        dev_state.cycle_spawn_controller();
     }
 
     if keyboard.just_pressed(KeyCode::Escape) && dev_state.settlement_placement_armed {
@@ -654,6 +654,8 @@ pub fn handle_dev_spawn_click(
         world_seed: crate::doodads::DEFAULT_DOODAD_WORLD_SEED,
         layout,
         spawn_affiliation: params.dev_state.spawn_affiliation,
+        unit_spawn_ownership: params.dev_state.unit_spawn_ownership(),
+        unit_spawn_faction_id: params.dev_state.spawn_faction_id.clone(),
         placement_yaw_deg: params.dev_state.placement_yaw_deg,
         placement_uniform_scale: params.dev_state.placement_uniform_scale,
         terrain_vertical_scale: vertical_scale,

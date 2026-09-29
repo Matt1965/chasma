@@ -14,7 +14,8 @@ use super::components::{
 };
 use super::layers::{FULL_BODY_CLIP_MASK, LOWER_BODY_CLIP_MASK, UPPER_BODY_CLIP_MASK};
 use super::validation::{
-    AnimationValidationIndex, DefinitionValidationReport, validate_definition_animation_assets,
+    AnimationGltfValidationState, AnimationValidationIndex, DefinitionValidationReport,
+    animation_gltf_validation_state, validate_definition_animation_assets,
 };
 use crate::units::assets::gltf_asset_path;
 use crate::units::components::{UnitRenderEntity, UnitRenderMetadata};
@@ -510,11 +511,24 @@ pub fn build_unit_animation_graphs(
         };
         let profile = profiles.get(profile_id);
         let gltf_handle = assets.gltfs.get(&definition.id).cloned();
+        let gltf_state = animation_gltf_validation_state(
+            gltf_handle.as_ref(),
+            &asset_server,
+        );
+        if gltf_state == AnimationGltfValidationState::Pending {
+            continue;
+        }
         let gltf = gltf_handle.as_ref().and_then(|handle| gltfs.get(handle));
         let weapon_clip = weapons
             .get(&definition.default_weapon_id)
             .map(|value| value.animation_key.as_str());
-        let report = validate_definition_animation_assets(definition, profile, gltf, weapon_clip);
+        let report = validate_definition_animation_assets(
+            definition,
+            profile,
+            gltf_state,
+            gltf,
+            weapon_clip,
+        );
         assets.validation.log_new_issues(&report);
         assets
             .validation

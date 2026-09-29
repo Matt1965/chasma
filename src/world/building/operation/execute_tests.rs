@@ -67,42 +67,7 @@ fn operation_catalog() -> OperationCatalog {
 }
 
 fn smelter_definition() -> BuildingDefinition {
-    BuildingDefinition::new(
-        BuildingDefinitionId::new("smelter"),
-        "Smelter",
-        crate::world::BuildingCategoryId::new("production"),
-        BuildingRenderKey::reserved("smelter"),
-        BuildingRenderKey::reserved("smelter_collision"),
-        400,
-        90.0,
-        FootprintSpec::Circle { radius_meters: 2.5 },
-        30.0,
-        true,
-    )
-    .with_supported_operations([OperationDefinitionId::new("smelt_iron")])
-    .with_default_operation_id(OperationDefinitionId::new("smelt_iron"))
-    .with_inventory_bindings(vec![
-        BuildingInventoryBindingDefinition::new(
-            "ore_input",
-            BuildingInventoryRole::Input,
-            crate::world::InventoryProfileId::new("chest_large"),
-        ),
-        BuildingInventoryBindingDefinition::new(
-            "fuel_input",
-            BuildingInventoryRole::Fuel,
-            crate::world::InventoryProfileId::new("chest_small"),
-        ),
-        BuildingInventoryBindingDefinition::new(
-            "metal_output",
-            BuildingInventoryRole::Output,
-            crate::world::InventoryProfileId::new("chest_small"),
-        ),
-        BuildingInventoryBindingDefinition::new(
-            "slag_output",
-            BuildingInventoryRole::Waste,
-            crate::world::InventoryProfileId::new("chest_small"),
-        ),
-    ])
+    crate::world::smelter_building_definition_for_tests()
 }
 
 fn iron_mine_definition() -> BuildingDefinition {
@@ -110,8 +75,8 @@ fn iron_mine_definition() -> BuildingDefinition {
         BuildingDefinitionId::new("iron_mine"),
         "Iron Mine",
         crate::world::BuildingCategoryId::new("production"),
-        BuildingRenderKey::reserved("smelter"),
-        BuildingRenderKey::reserved("smelter_collision"),
+        BuildingRenderKey::reserved("stone_mine"),
+        BuildingRenderKey::reserved("stone_mine"),
         400,
         90.0,
         FootprintSpec::Circle { radius_meters: 2.5 },

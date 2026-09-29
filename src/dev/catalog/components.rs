@@ -47,7 +47,7 @@ pub(crate) enum DevContextualPlacementAction {
 
     GridRowsDown,
 
-    CycleSpawnTeam,
+    CycleSpawnController,
 
     RotationUp,
 

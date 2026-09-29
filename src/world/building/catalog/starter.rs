@@ -53,31 +53,6 @@ mod fixtures {
         .with_default(true)
     }
 
-    fn smelter_inventory_bindings() -> Vec<BuildingInventoryBindingDefinition> {
-        vec![
-            BuildingInventoryBindingDefinition::new(
-                "ore_input",
-                BuildingInventoryRole::Input,
-                InventoryProfileId::new("chest_large"),
-            ),
-            BuildingInventoryBindingDefinition::new(
-                "fuel_input",
-                BuildingInventoryRole::Fuel,
-                InventoryProfileId::new("chest_small"),
-            ),
-            BuildingInventoryBindingDefinition::new(
-                "metal_output",
-                BuildingInventoryRole::Output,
-                InventoryProfileId::new("chest_small"),
-            ),
-            BuildingInventoryBindingDefinition::new(
-                "slag_output",
-                BuildingInventoryRole::Waste,
-                InventoryProfileId::new("chest_small"),
-            ),
-        ]
-    }
-
     fn bakery_inventory_bindings() -> Vec<BuildingInventoryBindingDefinition> {
         vec![
             BuildingInventoryBindingDefinition::new(
@@ -174,26 +149,6 @@ mod fixtures {
                 warehouse_route_output("bread_output", "bread"),
             ]),
             BuildingDefinition::new(
-                BuildingDefinitionId::new("smelter"),
-                "Smelter",
-                BuildingCategoryId::new("production"),
-                BuildingRenderKey::reserved("smelter"),
-                BuildingRenderKey::reserved("smelter_collision"),
-                400,
-                90.0,
-                FootprintSpec::Circle { radius_meters: 2.5 },
-                30.0,
-                true,
-            )
-            .with_supported_operations([OperationDefinitionId::new("smelt_iron")])
-            .with_default_operation_id(OperationDefinitionId::new("smelt_iron"))
-            .with_inventory_bindings(smelter_inventory_bindings())
-            .with_logistics_routes([
-                warehouse_route_input("ore_input", "iron_ore"),
-                warehouse_route_output("metal_output", "iron_bar"),
-                warehouse_route_output("slag_output", "slag"),
-            ]),
-            BuildingDefinition::new(
                 BuildingDefinitionId::new("storage_chest"),
                 "Storage Chest",
                 BuildingCategoryId::new("storage"),
@@ -265,8 +220,8 @@ mod fixtures {
             BuildingDefinitionId::new("iron_mine"),
             "Iron Mine",
             BuildingCategoryId::new("production"),
-            BuildingRenderKey::reserved("smelter"),
-            BuildingRenderKey::reserved("smelter_collision"),
+            BuildingRenderKey::reserved("stone_mine"),
+            BuildingRenderKey::reserved("stone_mine"),
             500,
             120.0,
             FootprintSpec::Circle { radius_meters: 3.0 },
@@ -286,8 +241,8 @@ mod fixtures {
             BuildingDefinitionId::new("copper_mine"),
             "Copper Mine",
             BuildingCategoryId::new("production"),
-            BuildingRenderKey::reserved("smelter"),
-            BuildingRenderKey::reserved("smelter_collision"),
+            BuildingRenderKey::reserved("stone_mine"),
+            BuildingRenderKey::reserved("stone_mine"),
             500,
             120.0,
             FootprintSpec::Circle { radius_meters: 3.0 },

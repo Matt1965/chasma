@@ -59,7 +59,7 @@ pub use debug_window::{
 };
 pub use dev_mode::{
     DefinitionId, DevDebugFlags, DevInventoryEndpoint, DevInventoryToolState, DevModeInputGate,
-    DevModeState, DevTab, DevTextFieldFocus, SpawnMode,
+    DevModeState, DevSpawnController, DevTab, DevTextFieldFocus, SpawnMode,
 };
 pub use fields_window::{setup_fields_window_panel, sync_dev_fields_panel_visibility};
 pub use origin_editor::{
@@ -225,8 +225,9 @@ impl Plugin for DevModePlugin {
             .init_resource::<gizmo::TransformEditState>()
             .init_resource::<DevPanelHoverState>()
             .init_resource::<tools::DevPlacementPreview>()
-            .init_resource::<tools::DevPlacementPreviewScratch>()
-            .init_resource::<DevPreviewAnchor>()
+            .init_resource::<tools::DevPlacementPreviewScratch>();
+        tools::init_placement_model_preview(app);
+        app.init_resource::<DevPreviewAnchor>()
             .init_resource::<scenes::DevSceneRegistry>()
             .init_resource::<settlement_placement::SettlementPlacementPreview>()
             .init_resource::<settlement_placement::SettlementPlacementRejectionFeedbacks>()
@@ -303,7 +304,6 @@ impl Plugin for DevModePlugin {
                     tick_dev_search_debounce,
                     sync_catalog_browse_index,
                     update_dev_window_interaction_state,
-                    sync_dev_panel_hover_from_windows,
                     handle_dev_window_pointer,
                     focus_dev_window_on_ui_press,
                     focus_dev_window_on_panel_press,
@@ -357,6 +357,16 @@ impl Plugin for DevModePlugin {
                     .chain(),
             )
                 .chain()
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                window::refresh_dev_window_pointer_capture,
+                window::sync_dev_panel_hover_from_windows,
+            )
+                .chain()
+                .after(window::sync_dev_window_computed_sizes)
                 .in_set(DevModeInputSystems),
         )
         .add_systems(
@@ -464,6 +474,7 @@ impl Plugin for DevModePlugin {
         .add_systems(
             Update,
             (
+                catalog::faction_picker::handle_spawn_faction_picker_scroll_wheel,
                 catalog::scroll::handle_catalog_list_scroll_wheel,
                 catalog::scroll::handle_catalog_list_scrollbar_track_click,
             )
@@ -471,8 +482,15 @@ impl Plugin for DevModePlugin {
         )
         .add_systems(
             Update,
+            catalog::faction_picker::sync_spawn_faction_picker
+                .after(sync_dev_catalog_chrome)
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
             (
                 handle_dev_panel_ui_interaction,
+                catalog::faction_picker::handle_spawn_faction_picker,
                 handle_save_window_interaction,
                 handle_debug_toggle_buttons,
                 world_environment::handle_world_environment_actions,
@@ -615,6 +633,8 @@ impl Plugin for DevModePlugin {
             Update,
             handle_dev_spawn_click
                 .after(sync_save_window_content)
+                .after(window::apply_dev_window_input_gate)
+                .after(window::sync_dev_panel_hover_from_windows)
                 .in_set(DevModeInputSystems),
         )
         .add_systems(
@@ -627,7 +647,7 @@ impl Plugin for DevModePlugin {
         .add_systems(
             Update,
             apply_dev_window_input_gate
-                .after(handle_dev_window_pointer)
+                .after(window::sync_dev_panel_hover_from_windows)
                 .before(sync_dev_gameplay_input_block)
                 .in_set(DevModeInputSystems),
         )
@@ -668,6 +688,11 @@ impl Plugin for DevModePlugin {
                 inventory_tools::sync_dev_held_item_world_ghost,
             )
                 .chain()
+                .in_set(DevModePresentationSystems),
+        )
+        .add_systems(
+            Update,
+            tools::preview_model::sync_dev_placement_model_previews
                 .in_set(DevModePresentationSystems),
         );
     }

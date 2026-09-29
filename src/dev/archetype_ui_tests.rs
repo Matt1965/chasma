@@ -52,7 +52,7 @@ fn invalidate_archetype_resets_incompatible_species() {
             applicable_species: vec![SpeciesId::new("human")],
             gold_min: 0,
             gold_max: 0,
-            affiliation_override: None,
+            default_faction_id: None,
             equipment: Vec::new(),
             inventory_stacks: Vec::new(),
             dialogue: None,

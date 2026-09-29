@@ -12,6 +12,7 @@ use crate::debug::relationship_links::{
 use crate::debug::settings::{DebugOverlayCategory, DebugOverlaySettings};
 use crate::terrain::TerrainRenderAssets;
 use crate::units::input::world_position_to_screen;
+use crate::ui::text::{set_text_if_changed, set_val_px_if_changed};
 use crate::world::{AuthoredRelationshipCatalog, UnitCatalog, WorldConfig, WorldData};
 
 use super::helpers::{render_position, xz_to_render_y};
@@ -68,6 +69,14 @@ pub fn draw_relationship_links_overlay(
     render_assets: Option<Res<TerrainRenderAssets>>,
     mut label_index: ResMut<RelationshipLinkLabelIndex>,
     labels: Query<(Entity, &RelationshipLinkLabelKey)>,
+    mut existing_labels: Query<
+        (
+            &mut RelationshipLinkLabelAnchor,
+            &mut Text,
+            &mut TextColor,
+        ),
+        With<RelationshipLinkLabelKey>,
+    >,
     root: Query<Entity, With<RelationshipLinkLabelsRoot>>,
 ) {
     if !settings.category_enabled(DebugOverlayCategory::RelationshipLinks) {
@@ -136,6 +145,7 @@ pub fn draw_relationship_links_overlay(
             label_a_anchor,
             &format_signed_relationship(pair.a_to_b),
             A_TO_B_LINE_COLOR,
+            &mut existing_labels,
         );
         sync_label(
             &mut commands,
@@ -149,6 +159,7 @@ pub fn draw_relationship_links_overlay(
             label_b_anchor,
             &format_signed_relationship(pair.b_to_a),
             B_TO_A_LINE_COLOR,
+            &mut existing_labels,
         );
         desired.insert(RelationshipLinkLabelKey {
             unit_a: pair.unit_a,
@@ -214,8 +225,8 @@ pub fn sync_label_screen_node(
 ) {
     match projection {
         Some(screen) => {
-            node.left = Val::Px(screen.x - offset.x);
-            node.top = Val::Px(screen.y - offset.y);
+            set_val_px_if_changed(&mut node.left, screen.x - offset.x);
+            set_val_px_if_changed(&mut node.top, screen.y - offset.y);
             node.display = Display::Flex;
             *visibility = Visibility::Visible;
         }
@@ -234,15 +245,21 @@ fn sync_label(
     world_anchor: Vec3,
     text: &str,
     color: Color,
+    existing_labels: &mut Query<
+        (
+            &mut RelationshipLinkLabelAnchor,
+            &mut Text,
+            &mut TextColor,
+        ),
+        With<RelationshipLinkLabelKey>,
+    >,
 ) {
     if let Some(entity) = label_index.0.get(&key).copied() {
-        commands.entity(entity).insert((
-            RelationshipLinkLabelAnchor {
-                world: world_anchor,
-            },
-            Text::new(text),
-            TextColor(color),
-        ));
+        if let Ok((mut anchor, mut label_text, mut label_color)) = existing_labels.get_mut(entity) {
+            anchor.world = world_anchor;
+            set_text_if_changed(&mut label_text, text);
+            *label_color = TextColor(color);
+        }
         return;
     }
 

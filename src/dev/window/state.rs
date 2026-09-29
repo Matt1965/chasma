@@ -236,11 +236,16 @@ pub struct DevWindowInteractionState {
     pub any_window_hovered: bool,
     pub launcher_hovered: bool,
     pub dragging: bool,
+    /// Cursor inside a visible window or launcher rectangle (not only interactive widgets).
+    pub pointer_inside_window_bounds: bool,
 }
 
 impl DevWindowInteractionState {
     pub fn blocks_world_mouse(self) -> bool {
-        self.any_window_hovered || self.launcher_hovered || self.dragging
+        self.any_window_hovered
+            || self.launcher_hovered
+            || self.dragging
+            || self.pointer_inside_window_bounds
     }
 
     pub fn blocks_camera(self) -> bool {
@@ -324,6 +329,15 @@ mod tests {
         };
         assert!(state.blocks_world_mouse());
         assert!(!state.blocks_camera());
+    }
+
+    #[test]
+    fn window_rect_capture_blocks_without_widget_hover() {
+        let state = DevWindowInteractionState {
+            pointer_inside_window_bounds: true,
+            ..Default::default()
+        };
+        assert!(state.blocks_world_mouse());
     }
 
     #[test]

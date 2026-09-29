@@ -22,9 +22,11 @@ mod phase5_tests;
 
 pub use catalog::NeedCatalog;
 pub use definition::{
-    DEFAULT_FOOD_PLANNING_HORIZON_TICKS, NeedDefinition, NeedEvaluationMethod, NeedMeasurementType,
+    NeedDefinition, NeedEvaluationMethod, NeedMeasurementType,
     NeedResponseCategory, NeedTargetSource,
 };
+#[cfg(test)]
+pub use definition::DEFAULT_FOOD_PLANNING_HORIZON_TICKS;
 pub use evaluate::{
     NeedEvalContext, evaluate_settlement_needs,
 };

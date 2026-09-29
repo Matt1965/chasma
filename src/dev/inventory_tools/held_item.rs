@@ -10,7 +10,6 @@ use crate::dev::inventory_tools::ops::{
     dev_effective_placement_quantity, dev_place_item_at_anchor, dev_spawn_ground_pile,
 };
 use crate::dev::{DevPanelHoverState, input::DevSpawnClickParams};
-use crate::item_piles::ItemPilePresentationSettings;
 use crate::terrain::TerrainRenderAssets;
 use crate::ui::gameplay::{
     InventoryEntryWidget, InventoryGridCell, InventoryGridPane, InventoryPanelRoot,
@@ -282,52 +281,12 @@ pub fn sync_dev_held_item_screen_ghost(
 }
 
 pub fn sync_dev_held_item_world_ghost(
-    dev_state: Res<DevModeState>,
-    world: Res<WorldData>,
-    world_config: Res<crate::world::WorldConfig>,
-    render_assets: Option<Res<TerrainRenderAssets>>,
-    windows: Query<&Window, With<PrimaryWindow>>,
-    camera: Query<(&Camera, &GlobalTransform), With<RtsCamera>>,
-    pile_settings: Res<ItemPilePresentationSettings>,
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
     existing: Query<Entity, With<DevHeldItemWorldGhost>>,
 ) {
     for entity in &existing {
         commands.entity(entity).despawn();
     }
-    if dev_state.dev_held_item_id().is_none() {
-        return;
-    }
-    let Some(ray) = cursor_world_ray(&windows, &camera) else {
-        return;
-    };
-    let layout = world_config.chunk_layout();
-    let vertical_scale = render_assets
-        .as_ref()
-        .map(|assets| assets.vertical_scale)
-        .unwrap_or(1.0);
-    let Some(click) = terrain_click_to_world_position(&ray, &world, layout, vertical_scale) else {
-        return;
-    };
-
-    let mesh = meshes.add(Sphere::new(pile_settings.fallback_sphere_radius));
-    let material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.9, 0.75, 0.2, 0.45),
-        alpha_mode: AlphaMode::Blend,
-        unlit: true,
-        ..default()
-    });
-    let global = click.world_position.to_global(layout);
-    commands.spawn((
-        DevHeldItemWorldGhost,
-        Mesh3d(mesh),
-        MeshMaterial3d(material),
-        Transform::from_translation(global + Vec3::Y * pile_settings.fallback_sphere_radius),
-        GlobalTransform::default(),
-        Visibility::default(),
-    ));
 }
 
 #[cfg(test)]

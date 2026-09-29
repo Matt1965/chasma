@@ -3,9 +3,10 @@
 use super::definition::{
     BuildingNavigationBlueprint, NavigationEntranceDefinition, NavigationFloorDefinition,
     NavigationPolygon2d, NavigationRegionConnectionDefinition, NavigationRegionConnectionKind,
-    NavigationRegionDefinition, NavigationVerticalTransitionDefinition,
-    NavigationVerticalTransitionKind,
+    NavigationRegionDefinition,
 };
+#[cfg(test)]
+use super::definition::{NavigationVerticalTransitionDefinition, NavigationVerticalTransitionKind};
 
 fn region(
     key: impl Into<String>,

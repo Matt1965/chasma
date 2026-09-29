@@ -20,7 +20,10 @@ pub use resolve::{
     rotation_from_yaw_and_normal,
 };
 pub use sample::{
-    TerrainFootprintReport, TerrainFootprintSample, plane_normal_from_coefficients,
     presentation_plane_normal, sample_terrain_under_footprint,
     slope_degrees_from_plane_coefficients,
+};
+#[cfg(test)]
+pub use sample::{
+    TerrainFootprintReport, TerrainFootprintSample, plane_normal_from_coefficients,
 };

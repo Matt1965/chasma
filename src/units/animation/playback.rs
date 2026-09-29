@@ -611,7 +611,7 @@ fn apply_layered_playback(
         }
         if full_body.freeze_pose {
             player.stop_all();
-            let mut active = player.play(full_body.node);
+            let active = player.play(full_body.node);
             active.set_seek_time(0.0);
             active.pause();
             result.full_body_node = Some(full_body.node);

@@ -2,6 +2,7 @@
 
 mod components;
 mod id;
+mod hit_test;
 mod math;
 mod setup;
 mod state;
@@ -13,7 +14,7 @@ pub use components::{
 pub use id::DevWindowId;
 pub use math::{
     CATALOG_MAX_LIST_HEIGHT_PX, CATALOG_PANEL_WIDTH_PX, NAVIGATION_EDITOR_WIDTH_PX,
-    TITLE_BAR_HEIGHT_PX, catalog_list_max_height, clamp_window_position,
+    TITLE_BAR_HEIGHT_PX, clamp_window_position,
     navigation_editor_body_max_height, navigation_editor_panel_width,
     navigation_editor_uses_two_columns,
 };
@@ -24,9 +25,11 @@ pub use state::{
 pub use systems::{
     apply_dev_window_input_gate, focus_dev_window_on_panel_press, focus_dev_window_on_ui_press,
     handle_dev_mode_window_lifecycle, handle_dev_window_pointer, sync_dev_panel_hover_from_windows,
-    sync_dev_window_computed_sizes, sync_dev_window_presentation, sync_dev_window_viewport,
-    update_dev_window_interaction_state,
+    refresh_dev_window_pointer_capture, sync_dev_window_computed_sizes,
+    sync_dev_window_presentation, sync_dev_window_viewport, update_dev_window_interaction_state,
 };
 
+#[cfg(test)]
+mod input_gate_tests;
 #[cfg(test)]
 mod tests;

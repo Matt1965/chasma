@@ -31,4 +31,4 @@ pub use commit::{
     dev_gizmo_building_commit_options, dev_gizmo_doodad_commit_options,
 };
 pub use draw::draw_transform_gizmo;
-pub use state::{DoodadPreviewPlacement, pile_preview_from_record};
+pub use state::pile_preview_from_record;

@@ -19,7 +19,7 @@ use crate::world::{
     BuildingOwnership, BuildingSource, ChunkCoord, ChunkExtent, DoodadCatalog, ItemDefinitionId,
     LocalPosition, NavigationConfig, UnitCatalog, UnitDefinitionId, UnitOwnership, UnitSource,
     WeaponCatalog, WorldData, WorldPosition, create_building_with_inventory,
-    create_unit_with_inventory, destroy_building, starter_building_definitions,
+    create_unit_with_inventory, destroy_building, starter_building_catalog_with_smelter,
     starter_inventory_profile_definitions, starter_item_category_definitions,
     starter_item_definitions, starter_operation_definitions, starter_unit_definitions,
 };
@@ -83,9 +83,7 @@ struct LogisticsFixture {
 impl LogisticsFixture {
     fn new() -> Self {
         let mut world = flat_world();
-        let categories = BuildingCategoryCatalog::default();
-        let building_catalog =
-            BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
+        let building_catalog = starter_building_catalog_with_smelter();
         let operation_catalog =
             OperationCatalog::from_definitions(starter_operation_definitions()).unwrap();
         let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
@@ -660,9 +658,7 @@ fn production_completion_can_trigger_output_haul_route() {
 #[test]
 fn farm_generates_prispod_output_haul_request() {
     let mut world = flat_world();
-    let categories = BuildingCategoryCatalog::default();
-    let building_catalog =
-        BuildingCatalog::from_definitions(starter_building_definitions(), &categories).unwrap();
+    let building_catalog = starter_building_catalog_with_smelter();
     let ownership = BuildingOwnership::with_affiliation(Affiliation::Player);
     let ctx = test_inventory_ctx();
     let chest = create_building_with_inventory(
@@ -1578,10 +1574,7 @@ mod schedule_proof {
                 state.policies.automation_enabled = false;
             }
 
-            let categories = BuildingCategoryCatalog::default();
-            let building_catalog =
-                BuildingCatalog::from_definitions(starter_building_definitions(), &categories)
-                    .unwrap();
+            let building_catalog = starter_building_catalog_with_smelter();
             let operation_catalog =
                 OperationCatalog::from_definitions(starter_operation_definitions()).unwrap();
             let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();

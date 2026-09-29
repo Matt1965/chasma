@@ -70,7 +70,8 @@ pub use archetype::{
     durable_extensions_summary, validate_building_archetype_definition, world_item_member_summary,
     load_building_archetype_catalog_from_ron, load_dev_building_archetype_catalog,
     load_dev_unit_archetype_catalog, load_unit_archetype_catalog_from_ron,
-    resolve_building_spawn_spec, resolve_unit_spawn_spec, save_building_archetype_catalog_to_ron,
+    resolve_building_spawn_spec, resolve_unit_spawn_faction_id, resolve_unit_spawn_spec,
+    save_building_archetype_catalog_to_ron,
     save_unit_archetype_catalog_to_ron, slugify_archetype_id, unique_building_archetype_id,
     unique_unit_archetype_id, validate_gold_range,
 };
@@ -116,6 +117,10 @@ pub use building::merge_starter_extensions_into_catalog;
 pub use building::starter_building_category_definitions;
 #[cfg(any(test, feature = "dev"))]
 pub use building::starter_definitions as starter_building_definitions;
+#[cfg(test)]
+pub use building::catalog::{
+    smelter_building_definition_for_tests, starter_building_catalog_with_smelter,
+};
 #[cfg(any(test, feature = "dev"))]
 pub use building::two_room_hut_navigation_blueprint;
 pub use building::{
@@ -739,6 +744,7 @@ pub use unit::{
     UnitWorkCapabilities, UnitWorkSkillState, WorkSkillCatalog, WorkSkillCatalogError,
     WorkSkillDefinition, WorkSkillError, WorkSkillId, apply_attacking_combat_facing,
     apply_validated_attack_order, create_unit, create_unit_with_inventory,
+    create_unit_with_inventory_and_faction,
     create_unit_with_ownership, create_unit_with_ownership_and_appearance,
     evaluate_hunger_stage, facing_rotation_from_direction_xz,
     facing_rotation_from_travel, ground_unit_position, ground_unit_to_terrain,

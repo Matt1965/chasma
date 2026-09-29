@@ -5,6 +5,8 @@ use std::collections::HashSet;
 use bevy::prelude::*;
 
 use crate::debug::DebugOverlayConfig;
+use crate::world::UnitOwnership;
+use crate::world::relationship::{FactionCatalog, FactionId};
 use crate::world::{
     BuildingArchetypeId, BuildingDefinitionId, DoodadDefinitionId, InventoryId, InventoryProfileId,
     ItemDefinitionId, ItemPileId, UnitArchetypeId, UnitDefinitionId, WorldPosition,
@@ -77,6 +79,37 @@ pub enum DevTab {
     Debug,
     WorldTools,
     TerrainFields,
+}
+
+/// Who can issue orders to the next dev unit spawn (independent of faction).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash, Reflect)]
+pub enum DevSpawnController {
+    #[default]
+    Player,
+    Ai,
+}
+
+impl DevSpawnController {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Player => "Player",
+            Self::Ai => "AI",
+        }
+    }
+
+    pub fn to_ownership(self) -> UnitOwnership {
+        match self {
+            Self::Player => UnitOwnership::player_default(),
+            Self::Ai => UnitOwnership::wildlife(),
+        }
+    }
+
+    pub fn cycle(self) -> Self {
+        match self {
+            Self::Player => Self::Ai,
+            Self::Ai => Self::Player,
+        }
+    }
 }
 
 /// What the spawn tool will place at the next world click.
@@ -155,7 +188,11 @@ pub struct DevModeState {
     pub favorite_slots: [Option<DefinitionId>; 9],
     pub spawn_history: DevSpawnHistory,
     pub last_spawn: Option<(DefinitionId, WorldPosition)>,
-    /// Affiliation assigned to the next dev unit spawn (O1).
+    /// Controller for the next dev unit spawn (player-commandable vs AI).
+    pub spawn_controller: DevSpawnController,
+    /// Faction identity for the next dev unit spawn ([`FactionCatalog`]).
+    pub spawn_faction_id: FactionId,
+    /// Affiliation for building/settlement dev placement (not unit controller/faction).
     pub spawn_affiliation: crate::world::Affiliation,
     /// Active text-field focus — global dev shortcuts are suppressed while set (DV2).
     pub text_focus: DevTextFieldFocus,
@@ -197,6 +234,8 @@ impl Default for DevModeState {
             favorite_slots: std::array::from_fn(|_| None),
             spawn_history: DevSpawnHistory::default(),
             last_spawn: None,
+            spawn_controller: DevSpawnController::Player,
+            spawn_faction_id: FactionId::new("player"),
             spawn_affiliation: crate::world::Affiliation::Player,
             text_focus: DevTextFieldFocus::None,
             inventory: DevInventoryToolState::default(),
@@ -329,8 +368,9 @@ impl DevModeState {
             .map(DefinitionId::id_str)
             .unwrap_or("none");
         format!(
-            "Tool: {tool}\nSelection: {selection}\nTeam: {}\nBrush: {}",
-            self.spawn_team_label(),
+            "Tool: {tool}\nSelection: {selection}\nController: {}\nFaction: {}\nBrush: {}",
+            self.spawn_controller.label(),
+            self.spawn_faction_id.as_str(),
             self.brush.mode.label(),
         )
     }
@@ -406,24 +446,46 @@ impl DevModeState {
         }
     }
 
-    pub fn cycle_spawn_affiliation(&mut self) {
-        self.spawn_affiliation = match self.spawn_affiliation {
-            crate::world::Affiliation::Player => crate::world::Affiliation::Wildlife,
-            crate::world::Affiliation::Wildlife => crate::world::Affiliation::Player,
-            _ => crate::world::Affiliation::Player,
-        };
+    pub fn cycle_spawn_controller(&mut self) {
+        self.spawn_controller = self.spawn_controller.cycle();
     }
 
-    pub fn spawn_team_label(&self) -> &'static str {
-        match self.spawn_affiliation {
-            crate::world::Affiliation::Player => "Player",
-            crate::world::Affiliation::Wildlife => "Wilds",
-            other => other.label(),
+    pub fn select_spawn_faction(&mut self, faction_id: FactionId) {
+        self.spawn_faction_id = faction_id;
+        self.catalog.close_faction_picker();
+    }
+
+    pub fn cycle_spawn_faction(&mut self, factions: &FactionCatalog) {
+        let mut enabled: Vec<_> = factions
+            .enabled_definitions()
+            .map(|def| def.id.clone())
+            .collect();
+        if enabled.is_empty() {
+            return;
         }
+        enabled.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+        let current = self.spawn_faction_id.as_str();
+        let next = enabled
+            .iter()
+            .position(|id| id.as_str() == current)
+            .map(|index| enabled[(index + 1) % enabled.len()].clone())
+            .unwrap_or_else(|| enabled[0].clone());
+        self.spawn_faction_id = next;
     }
 
-    pub fn spawn_team_button_label(&self) -> String {
-        format!("Team: {}", self.spawn_team_label())
+    pub fn spawn_controller_button_label(&self) -> String {
+        format!("Controller: {}", self.spawn_controller.label())
+    }
+
+    pub fn spawn_faction_button_label(&self, factions: &FactionCatalog) -> String {
+        let name = factions
+            .display_name(&self.spawn_faction_id)
+            .unwrap_or(self.spawn_faction_id.as_str());
+        format!("Faction: {name}")
+    }
+
+    pub fn unit_spawn_ownership(&self) -> UnitOwnership {
+        self.spawn_controller.to_ownership()
     }
 
     pub fn toggle_favorite(&mut self, id: DefinitionId) {

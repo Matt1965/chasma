@@ -14,6 +14,7 @@ use crate::ui::gameplay::layout::PlayerHudUi;
 use crate::ui::gameplay::styles::{
     BAR_BG, PANEL_BG, TEXT_MUTED, TEXT_PRIMARY, panel_body_font, panel_title_font,
 };
+use crate::ui::text::set_text_if_changed;
 /// Root node for the build catalog overlay.
 #[derive(Component, Debug)]
 pub struct BuildCatalogRoot;
@@ -144,6 +145,7 @@ pub fn sync_build_catalog_contents(
     building_catalog: Res<BuildingCatalog>,
     category_catalog: Res<BuildingCategoryCatalog>,
     mut commands: Commands,
+    mut cache: Local<(String, String)>,
     category_list: Query<Entity, With<BuildCategoryList>>,
     definition_list: Query<Entity, With<BuildDefinitionList>>,
     mut texts: bevy::ecs::system::ParamSet<(
@@ -152,11 +154,12 @@ pub fn sync_build_catalog_contents(
     )>,
 ) {
     if !build_mode.is_active() {
+        *cache = (String::new(), String::new());
         return;
     }
 
     if let Ok(mut text) = texts.p0().single_mut() {
-        **text = build_status_line(&build_mode, &building_catalog);
+        set_text_if_changed(&mut text, &build_status_line(&build_mode, &building_catalog));
     }
 
     if let Ok(mut text) = texts.p1().single_mut() {
@@ -165,34 +168,67 @@ pub fn sync_build_catalog_contents(
         } else {
             format!("Search: {}", build_mode.search_query)
         };
-        **text = label;
+        set_text_if_changed(&mut text, &label);
     }
 
-    if let Ok(parent) = category_list.single() {
-        commands.entity(parent).despawn_children();
-        spawn_category_button(&mut commands, parent, None, ALL_CATEGORY_LABEL);
-        for category in category_catalog.enabled_definitions() {
-            spawn_category_button(
-                &mut commands,
-                parent,
-                Some(category.id.clone()),
-                &category.display_name,
-            );
+    let category_key = category_list_key(&category_catalog);
+    if cache.0 != category_key {
+        cache.0 = category_key;
+        if let Ok(parent) = category_list.single() {
+            commands.entity(parent).despawn_children();
+            spawn_category_button(&mut commands, parent, None, ALL_CATEGORY_LABEL);
+            for category in category_catalog.enabled_definitions() {
+                spawn_category_button(
+                    &mut commands,
+                    parent,
+                    Some(category.id.clone()),
+                    &category.display_name,
+                );
+            }
         }
     }
 
-    if let Ok(parent) = definition_list.single() {
-        commands.entity(parent).despawn_children();
-        let mut definitions: Vec<&BuildingDefinition> = building_catalog
-            .enabled_definitions()
-            .filter(|def| category_matches(&build_mode, def))
-            .filter(|def| search_matches(&build_mode, def))
-            .collect();
-        definitions.sort_by_key(|def| def.id.as_str().to_string());
-        for definition in definitions {
-            spawn_definition_button(&mut commands, parent, definition);
+    let definition_key = definition_list_key(&build_mode, &building_catalog);
+    if cache.1 != definition_key {
+        cache.1 = definition_key;
+        if let Ok(parent) = definition_list.single() {
+            commands.entity(parent).despawn_children();
+            let mut definitions: Vec<&BuildingDefinition> = building_catalog
+                .enabled_definitions()
+                .filter(|def| category_matches(&build_mode, def))
+                .filter(|def| search_matches(&build_mode, def))
+                .collect();
+            definitions.sort_by_key(|def| def.id.as_str().to_string());
+            for definition in definitions {
+                spawn_definition_button(&mut commands, parent, definition);
+            }
         }
     }
+}
+
+fn category_list_key(category_catalog: &BuildingCategoryCatalog) -> String {
+    let mut ids: Vec<&str> = category_catalog
+        .enabled_definitions()
+        .map(|category| category.id.as_str())
+        .collect();
+    ids.sort_unstable();
+    ids.join("|")
+}
+
+fn definition_list_key(build_mode: &BuildModeState, building_catalog: &BuildingCatalog) -> String {
+    let category = build_mode
+        .selected_category
+        .as_ref()
+        .map(|id| id.as_str())
+        .unwrap_or("");
+    let mut ids: Vec<&str> = building_catalog
+        .enabled_definitions()
+        .filter(|def| category_matches(build_mode, def))
+        .filter(|def| search_matches(build_mode, def))
+        .map(|def| def.id.as_str())
+        .collect();
+    ids.sort_unstable();
+    format!("{category}|{}|{}", build_mode.search_query, ids.join("|"))
 }
 
 fn build_status_line(build_mode: &BuildModeState, building_catalog: &BuildingCatalog) -> String {
@@ -433,5 +469,31 @@ fn search_key_char(key: KeyCode) -> Option<char> {
         KeyCode::Digit8 => Some('8'),
         KeyCode::Digit9 => Some('9'),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::world::{BuildingCatalog, BuildingCategoryCatalog, BuildingDefinitionId};
+
+    #[test]
+    fn definition_list_key_changes_with_search_and_category() {
+        let catalog = BuildingCatalog::default();
+        let mut build_mode = BuildModeState::default();
+        let key_a = definition_list_key(&build_mode, &catalog);
+        build_mode.search_query = "hut".to_string();
+        let key_b = definition_list_key(&build_mode, &catalog);
+        assert_ne!(key_a, key_b);
+        build_mode.search_query.clear();
+        build_mode.selected_category = Some(BuildingCategoryId::new("residential"));
+        let key_c = definition_list_key(&build_mode, &catalog);
+        assert_ne!(key_a, key_c);
+    }
+
+    #[test]
+    fn category_list_key_is_stable_for_same_catalog() {
+        let catalog = BuildingCategoryCatalog::default();
+        assert_eq!(category_list_key(&catalog), category_list_key(&catalog));
     }
 }

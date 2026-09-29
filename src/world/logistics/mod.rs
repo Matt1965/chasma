@@ -40,7 +40,7 @@ pub use register::{
 pub use request::HaulingRequest;
 pub use reservation::{
     InventoryReservationStore, available_stack_quantity,
-    destination_can_fit_stack_quantity, release_request_reservations,
+    destination_can_fit_stack_quantity,
 };
 pub use route::{BuildingLogisticsRouteDefinition, LogisticsEndpointIndex};
 pub use save::{
@@ -51,6 +51,14 @@ pub use step::{HaulTickReport, step_haul_worker_tasks};
 pub use store::HaulingRequestStore;
 pub use task::{assign_hauling_task, assign_hauling_task_with_priority};
 pub use types::{
-    HaulExecutionPhase, HaulingBlockingReason, HaulingGenerationReason, HaulingRequestPriority,
-    HaulingRequestStatus, HaulingReservationState, LogisticsRouteTrigger,
+    HaulingRequestPriority,
+    HaulingRequestStatus, LogisticsRouteTrigger,
+};
+
+#[cfg(test)]
+pub use reservation::release_request_reservations;
+#[cfg(test)]
+pub use types::{
+    HaulExecutionPhase, HaulingBlockingReason, HaulingGenerationReason,
+    HaulingReservationState,
 };

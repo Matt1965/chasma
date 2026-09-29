@@ -1,5 +1,5 @@
 use super::*;
-use crate::world::ownership::UnitOwnership;
+use crate::world::UnitOwnership;
 use crate::world::relationship::{
     AuthoredFacetKey, AuthoredRelationshipCatalog, DirectedRelationshipEdgeKey, FactionId,
     RelationshipStandingStore, SpeciesId,
@@ -92,7 +92,7 @@ fn old_archetype_deserializes_without_dialogue_field() {
         applicable_species: ["human"],
         gold_min: 0,
         gold_max: 0,
-        affiliation_override: None,
+        default_faction_id: None,
         equipment: [],
         inventory_stacks: [],
         enabled: true,
@@ -109,7 +109,7 @@ fn archetype_dialogue_round_trips_through_ron() {
         applicable_species: vec![SpeciesId::new("human")],
         gold_min: 0,
         gold_max: 0,
-        affiliation_override: None,
+        default_faction_id: None,
         equipment: Vec::new(),
         inventory_stacks: Vec::new(),
         dialogue: Some(merchant_config()),
@@ -128,7 +128,7 @@ fn archetype_spawn_bakes_dialogue_onto_unit_record() {
         applicable_species: vec![SpeciesId::new("human")],
         gold_min: 0,
         gold_max: 0,
-        affiliation_override: None,
+        default_faction_id: None,
         equipment: Vec::new(),
         inventory_stacks: Vec::new(),
         dialogue: Some(merchant_config()),
@@ -139,7 +139,8 @@ fn archetype_spawn_bakes_dialogue_onto_unit_record() {
     let spec = resolve_unit_spawn_spec(
         &UnitDefinitionId::new("bandit"),
         Some(&UnitArchetypeId::new("test_merchant")),
-        Affiliation::Neutral,
+        crate::world::UnitOwnership::neutral(),
+        None,
         &unit_catalog,
         &archetypes,
     )
@@ -166,7 +167,7 @@ fn changing_archetype_after_spawn_does_not_mutate_existing_unit() {
         applicable_species: vec![SpeciesId::new("human")],
         gold_min: 0,
         gold_max: 0,
-        affiliation_override: None,
+        default_faction_id: None,
         equipment: Vec::new(),
         inventory_stacks: Vec::new(),
         dialogue: Some(merchant_config()),
@@ -177,7 +178,8 @@ fn changing_archetype_after_spawn_does_not_mutate_existing_unit() {
     let spec = resolve_unit_spawn_spec(
         &UnitDefinitionId::new("bandit"),
         Some(&UnitArchetypeId::new("test_merchant")),
-        Affiliation::Neutral,
+        crate::world::UnitOwnership::neutral(),
+        None,
         &unit_catalog,
         &archetypes,
     )
@@ -326,7 +328,7 @@ fn player_controlled_target_blocks_recruit() {
     let actor = unit_record(1, None);
     let mut target = unit_record(2, Some(merchant_config()));
     target.affiliation = Affiliation::Player;
-    target.owner_id = Some(crate::world::ownership::DEFAULT_PLAYER_OWNER_ID);
+    target.owner_id = Some(crate::world::DEFAULT_PLAYER_OWNER_ID);
     insert_units(&mut world, actor, target);
     let authored = AuthoredRelationshipCatalog::default();
     let standing = RelationshipStandingStore::default();

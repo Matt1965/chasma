@@ -39,6 +39,7 @@ use crate::dev::widgets::{
 };
 
 use crate::simulation::{SimulationControlRequests, SimulationControlState};
+use crate::ui::text::set_text_if_changed;
 
 const MENU_BTN_WIDTH_PX: f32 = 100.0;
 const MENU_BTN_HEIGHT_PX: f32 = 24.0;
@@ -220,9 +221,9 @@ fn contextual_placement_buttons() -> Vec<(
             PlacementControlField::GridRows,
         ),
         (
-            "Team: Player",
-            DevContextualPlacementAction::CycleSpawnTeam,
-            PlacementControlField::Affiliation,
+            "Controller: Player",
+            DevContextualPlacementAction::CycleSpawnController,
+            PlacementControlField::SpawnController,
         ),
         (
             "Yaw +",
@@ -857,6 +858,11 @@ pub(crate) fn setup_dev_panel(mut commands: Commands, bodies: Query<(Entity, &De
                                     },
                                     TextColor(Color::srgba(0.88, 0.94, 0.98, 1.0)),
                                 ));
+                                if field == super::catalog::PlacementControlField::SpawnController {
+                                    super::catalog::faction_picker::spawn_spawn_faction_picker(
+                                        placement,
+                                    );
+                                }
                             }
                         });
                 });
@@ -982,7 +988,7 @@ pub(crate) fn sync_dev_panel_content(
     }
 
     if let Ok(mut text) = texts.p0().single_mut() {
-        **text = format_search_field_display(&dev_state);
+        set_text_if_changed(&mut text, &format_search_field_display(&dev_state));
     }
 
     let catalog_entries: Vec<CatalogBrowserEntry> = if dev_state.active_tab == DevTab::Items {
@@ -1010,7 +1016,7 @@ pub(crate) fn sync_dev_panel_content(
     };
 
     if let Ok(mut text) = texts.p1().single_mut() {
-        **text = match dev_state.active_tab {
+        let label = match dev_state.active_tab {
             DevTab::Units | DevTab::Doodads | DevTab::Buildings => {
                 format!(
                     "Definitions ({}) - enabled-only: {} - E toggles",
@@ -1025,6 +1031,7 @@ pub(crate) fn sync_dev_panel_content(
             ),
             _ => String::new(),
         };
+        set_text_if_changed(&mut text, &label);
     }
 
     let definition_visible_rows = visible_row_count(
@@ -1048,7 +1055,10 @@ pub(crate) fn sync_dev_panel_content(
     for (row, interaction, mut text, mut bg) in texts.p5().iter_mut() {
         if row.index < visible_catalog.len() {
             let entry = &visible_catalog[row.index];
-            **text = format_list_row(entry, dev_state.favorites.contains(&entry.definition));
+            set_text_if_changed(
+                &mut text,
+                &format_list_row(entry, dev_state.favorites.contains(&entry.definition)),
+            );
             let selected = dev_state
                 .selected_definition
                 .as_ref()
@@ -1059,7 +1069,7 @@ pub(crate) fn sync_dev_panel_content(
                 menu_button_bg(interaction, false)
             };
         } else {
-            **text = String::new();
+            set_text_if_changed(&mut text, "");
             *bg = BackgroundColor(Color::srgba(0.08, 0.1, 0.12, 0.5));
         }
     }
@@ -1090,13 +1100,16 @@ pub(crate) fn sync_dev_panel_content(
 
     for (row, interaction, mut text, mut bg) in texts.p6().iter_mut() {
         if !show_archetypes {
-            **text = String::new();
+            set_text_if_changed(&mut text, "");
             *bg = BackgroundColor(Color::srgba(0.08, 0.1, 0.12, 0.5));
             continue;
         }
         if row.index < visible_archetypes.len() {
             let entry = &visible_archetypes[row.index];
-            **text = truncate_label(entry.label(), MAX_LIST_LABEL_CHARS);
+            set_text_if_changed(
+                &mut text,
+                &truncate_label(entry.label(), MAX_LIST_LABEL_CHARS),
+            );
             let selected = archetype_row_selected(&dev_state, entry);
             *bg = if selected {
                 BackgroundColor(BTN_BG_ACTIVE)
@@ -1104,25 +1117,26 @@ pub(crate) fn sync_dev_panel_content(
                 menu_button_bg(interaction, false)
             };
         } else {
-            **text = String::new();
+            set_text_if_changed(&mut text, "");
             *bg = BackgroundColor(Color::srgba(0.08, 0.1, 0.12, 0.5));
         }
     }
 
     if let Ok(mut text) = texts.p2().single_mut() {
-        **text = String::new();
+        set_text_if_changed(&mut text, "");
     }
 
     if let Ok(mut text) = texts.p3().single_mut() {
-        **text = String::new();
+        set_text_if_changed(&mut text, "");
     }
 
     if let Ok(mut text) = texts.p4().single_mut() {
-        **text = if dev_state.last_spawn_message.is_empty() {
-            String::new()
+        let message = if dev_state.last_spawn_message.is_empty() {
+            ""
         } else {
-            dev_state.last_spawn_message.clone()
+            dev_state.last_spawn_message.as_str()
         };
+        set_text_if_changed(&mut text, message);
     }
 
     if let Ok(mut node) = catalog_layout_nodes.p1().single_mut() {
@@ -1474,6 +1488,7 @@ pub(crate) fn handle_dev_panel_ui_interaction(
             gate.block_gameplay_mouse = true;
             panel_click_without_search = true;
             dev_state.active_tab = button.tab;
+            dev_state.catalog.close_faction_picker();
             dev_state.list_scroll = 0;
             dev_state.archetype_list_scroll = 0;
             if !dev_state.shows_archetype_pane() {
@@ -1610,8 +1625,8 @@ fn apply_contextual_placement_action(
         DevContextualPlacementAction::GridRowsDown => {
             state.brush.grid_rows = state.brush.grid_rows.saturating_sub(1).max(1);
         }
-        DevContextualPlacementAction::CycleSpawnTeam => {
-            state.cycle_spawn_affiliation();
+        DevContextualPlacementAction::CycleSpawnController => {
+            state.cycle_spawn_controller();
         }
         DevContextualPlacementAction::RotationUp => {
             state.placement_yaw_deg = (state.placement_yaw_deg + 5.0) % 360.0;
@@ -1630,7 +1645,7 @@ fn apply_contextual_placement_action(
 
 /// Keep catalog list areas within the current viewport.
 pub(crate) fn sync_catalog_panel_layout(
-    registry: Res<DevWindowRegistry>,
+    _registry: Res<DevWindowRegistry>,
     metrics: Res<CatalogScrollMetrics>,
     mut nodes: ParamSet<(
         Query<(&DevWindowRoot, &mut Node)>,

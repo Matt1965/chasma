@@ -13,6 +13,22 @@ const SESSION_HEADER: &str = "# chasma dev startup log";
 
 pub const DEV_BUILDING_CATALOG_RON_PATH: &str = "assets/buildings/catalog.ron";
 
+/// Building ids withheld from dev/runtime until authored assets exist.
+const UNFINISHED_DEV_BUILDING_IDS: &[&str] = &["smelter"];
+
+fn omit_unfinished_dev_buildings(
+    categories: &BuildingCategoryCatalog,
+    buildings: BuildingCatalog,
+) -> BuildingCatalog {
+    let definitions = buildings
+        .definitions()
+        .iter()
+        .filter(|definition| !UNFINISHED_DEV_BUILDING_IDS.contains(&definition.id.as_str()))
+        .cloned()
+        .collect();
+    BuildingCatalog::from_definitions(definitions, categories).expect("filtered building catalog")
+}
+
 /// Load building categories and definitions for dev startup from the design workbook.
 pub fn resolve_dev_building_catalog(
     inventory_profiles: &crate::world::InventoryProfileCatalog,
@@ -42,6 +58,16 @@ pub fn resolve_dev_building_catalog(
             }
             if let Some(reports) = sizing_reports {
                 reports.extend(summary.sizing_reports);
+            }
+            let buildings = omit_unfinished_dev_buildings(&categories, buildings);
+            for id in UNFINISHED_DEV_BUILDING_IDS {
+                append_log_line(
+                    DEV_STARTUP_LOG_PATH,
+                    SESSION_HEADER,
+                    &format!(
+                        "Omitting unfinished building `{id}` from dev catalog (no authored model)"
+                    ),
+                );
             }
             (categories, buildings)
         }
@@ -75,6 +101,7 @@ fn try_import_dev_building_catalog(
 > {
     let (categories, buildings, summary) =
         import_building_catalog_from_excel(path, inventory_profiles)?;
+    let buildings = omit_unfinished_dev_buildings(&categories, buildings);
     if let Err(err) = super::super::ron::export_buildings_to_ron(
         Path::new(DEV_BUILDING_CATALOG_RON_PATH),
         categories.definitions(),

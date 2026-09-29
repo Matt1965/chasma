@@ -2,12 +2,14 @@
 
 mod combat_trace;
 mod file;
+mod gltf_console;
 
 pub use combat_trace::{write_combat_trace, write_perception_trace};
 pub use file::{
     FileLogError, append_log_block, append_log_line, append_log_line_buffered,
     begin_fresh_session_log, write_session_header,
 };
+pub use gltf_console::configure_log_plugin;
 
 /// Directory for all runtime log files (relative to process working directory).
 pub const LOGS_DIR: &str = "logs";

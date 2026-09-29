@@ -6,7 +6,7 @@ use bevy::window::PrimaryWindow;
 
 use crate::camera::RtsCamera;
 use crate::debug::MovementBlockObservability;
-use crate::simulation::{BuildingSimulationParams, SimulationControlState};
+use crate::simulation::SimulationControlState;
 use crate::world::{
     BuildingCatalog, BuildingFieldRequirementCatalog, BuildingFieldRequirementCatalogRevision,
     BuildingInteractionProfileCatalog, BuildingTerrainAssessmentStore, DoodadCatalog,

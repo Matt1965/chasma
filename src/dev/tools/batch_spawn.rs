@@ -2,6 +2,8 @@
 
 use bevy::prelude::*;
 
+use crate::world::UnitOwnership;
+use crate::world::relationship::FactionId;
 use crate::world::{
     BuildingArchetypeCatalog, BuildingArchetypeId, BuildingCatalog, BuildingLifecycleState,
     BuildingNavigationBlueprintCatalog, BuildingPlacementConfig,
@@ -10,7 +12,7 @@ use crate::world::{
     OccupancyCatalogs, UnitArchetypeCatalog, UnitArchetypeId, UnitCatalog, UnitSource, WorldData,
     WorldPosition, apply_unit_archetype_dialogue_config, apply_unit_archetype_spawn_overrides,
     create_dev_complete_building,
-    create_dev_complete_building_with_inventory, create_doodad, create_unit_with_inventory,
+    create_dev_complete_building_with_inventory, create_doodad, create_unit_with_inventory_and_faction,
     apply_building_archetype_placement, definition_requires_inventory_allocation,
     place_player_building, place_player_building_with_inventory,
     remove_building, resolve_authoritative_building_placement, resolve_building_spawn_spec,
@@ -37,8 +39,12 @@ pub struct BatchSpawnRequest {
     pub rules: PlacementRules,
     pub world_seed: u64,
     pub layout: crate::world::ChunkLayout,
-    /// Runtime affiliation for dev unit spawns (O1).
+    /// Building/settlement placement affiliation (not unit controller/faction).
     pub spawn_affiliation: crate::world::Affiliation,
+    /// Unit spawn ownership from dev Controller (units only).
+    pub unit_spawn_ownership: UnitOwnership,
+    /// Unit spawn faction from dev Faction picker (units only).
+    pub unit_spawn_faction_id: FactionId,
     /// Initial placement yaw (degrees) for doodads/buildings (Slice 4).
     pub placement_yaw_deg: f32,
     /// Initial uniform scale for doodads/buildings when supported (Slice 4).
@@ -184,6 +190,8 @@ pub fn execute_batch_spawn(
             item_catalog,
             &request.definition,
             position,
+            request.unit_spawn_ownership,
+            request.unit_spawn_faction_id.clone(),
             request.spawn_affiliation,
             request.placement_yaw_deg,
             request.placement_uniform_scale,
@@ -216,6 +224,8 @@ fn spawn_at(
     item_catalog: &ItemCatalog,
     definition: &DefinitionId,
     position: WorldPosition,
+    unit_ownership: UnitOwnership,
+    unit_faction_id: FactionId,
     spawn_affiliation: crate::world::Affiliation,
     placement_yaw_deg: f32,
     placement_uniform_scale: f32,
@@ -228,14 +238,15 @@ fn spawn_at(
             let spec = match resolve_unit_spawn_spec(
                 definition_id,
                 unit_archetype,
-                spawn_affiliation,
+                unit_ownership,
+                Some(&unit_faction_id),
                 unit_catalog,
                 unit_archetype_catalog,
             ) {
                 Ok(spec) => spec,
                 Err(_) => return false,
             };
-            match create_unit_with_inventory(
+            match create_unit_with_inventory_and_faction(
                 unit_catalog,
                 appearance_profiles,
                 world,
@@ -243,6 +254,7 @@ fn spawn_at(
                 position,
                 UnitSource::Dev,
                 spec.ownership,
+                spec.faction_id.clone(),
                 inventory_ctx,
             ) {
                 Ok(record) => {
@@ -553,6 +565,8 @@ mod tests {
             world_seed: 7,
             layout: layout(),
             spawn_affiliation: crate::world::Affiliation::Player,
+            unit_spawn_ownership: UnitOwnership::player_default(),
+            unit_spawn_faction_id: FactionId::new("player"),
             placement_yaw_deg: 0.0,
             placement_uniform_scale: 1.0,
             terrain_vertical_scale: 1.0,
@@ -614,6 +628,8 @@ mod tests {
             world_seed: 1,
             layout: layout(),
             spawn_affiliation: crate::world::Affiliation::Player,
+            unit_spawn_ownership: UnitOwnership::player_default(),
+            unit_spawn_faction_id: FactionId::new("player"),
             placement_yaw_deg: 0.0,
             placement_uniform_scale: 1.0,
             terrain_vertical_scale: 1.0,
@@ -656,6 +672,8 @@ mod tests {
             world_seed: 0,
             layout: layout(),
             spawn_affiliation: crate::world::Affiliation::Player,
+            unit_spawn_ownership: UnitOwnership::player_default(),
+            unit_spawn_faction_id: FactionId::new("player"),
             placement_yaw_deg: 0.0,
             placement_uniform_scale: 1.0,
             terrain_vertical_scale: 1.0,
@@ -732,6 +750,8 @@ mod tests {
             world_seed: 11,
             layout: building_placement_layout(),
             spawn_affiliation: crate::world::Affiliation::Player,
+            unit_spawn_ownership: UnitOwnership::player_default(),
+            unit_spawn_faction_id: FactionId::new("player"),
             placement_yaw_deg: 0.0,
             placement_uniform_scale: 1.0,
             terrain_vertical_scale: 1.0,

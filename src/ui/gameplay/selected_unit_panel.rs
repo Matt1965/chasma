@@ -366,6 +366,8 @@ pub fn spawn_selected_unit_panel(parent: &mut ChildSpawnerCommands<'_>) {
                     ..default()
                 },
                 Text::new(NO_SELECTION_LABEL),
+                hud_heading_font(),
+                TextColor(TEXT_PRIMARY),
             ));
         });
 }
