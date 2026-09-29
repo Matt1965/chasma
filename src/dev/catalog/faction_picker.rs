@@ -1,6 +1,8 @@
 //! Scrollable faction picker for dev unit spawn (replaces cycle-through button).
 
+use bevy::input::mouse::AccumulatedMouseScroll;
 use bevy::prelude::*;
+use bevy::ui::{ComputedNode, FocusPolicy, RelativeCursorPosition, ScrollPosition};
 
 use super::placement_controls::{PlacementControlSet, placement_control_set, placement_ui_context};
 use super::state::CatalogSessionState;
@@ -10,7 +12,10 @@ use crate::dev::window::DevWindowRegistry;
 use crate::world::relationship::{FactionCatalog, FactionDefinition, FactionId};
 
 const ROW_HEIGHT_PX: f32 = 22.0;
+const ROW_GAP_PX: f32 = 1.0;
+const DROPDOWN_PADDING_PX: f32 = 2.0;
 const DROPDOWN_MAX_HEIGHT_PX: f32 = 132.0;
+const FACTION_SCROLL_WHEEL_LINE_PX: f32 = 20.0;
 
 #[derive(Component, Debug)]
 pub(crate) struct DevSpawnFactionPickerBlock;
@@ -22,7 +27,10 @@ pub(crate) struct DevSpawnFactionTrigger;
 pub(crate) struct DevSpawnFactionTriggerLabel;
 
 #[derive(Component, Debug)]
-pub(crate) struct DevSpawnFactionDropdown;
+pub(crate) struct DevSpawnFactionDropdownScroll;
+
+#[derive(Component, Debug)]
+pub(crate) struct DevSpawnFactionDropdownContent;
 
 #[derive(Component, Debug)]
 pub(crate) struct DevSpawnFactionOption {
@@ -109,23 +117,51 @@ pub(crate) fn spawn_spawn_faction_picker(parent: &mut ChildSpawnerCommands<'_>) 
                         ));
                     });
                 });
-            block.spawn((
-                DevSpawnFactionDropdown,
-                DevPanelUi,
-                Node {
-                    flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(1.0),
-                    padding: UiRect::all(Val::Px(2.0)),
-                    max_height: Val::Px(DROPDOWN_MAX_HEIGHT_PX),
-                    overflow: Overflow::scroll_y(),
-                    border: UiRect::all(Val::Px(1.0)),
-                    display: Display::None,
-                    ..default()
-                },
-                BackgroundColor(Color::srgba(0.08, 0.12, 0.17, 0.98)),
-                BorderColor::all(Color::srgba(0.25, 0.38, 0.48, 0.85)),
-            ));
+            block
+                .spawn((
+                    DevSpawnFactionDropdownScroll,
+                    DevPanelUi,
+                    RelativeCursorPosition::default(),
+                    ScrollPosition::default(),
+                    FocusPolicy::Block,
+                    Node {
+                        flex_direction: FlexDirection::Column,
+                        padding: UiRect::all(Val::Px(DROPDOWN_PADDING_PX)),
+                        max_height: Val::Px(DROPDOWN_MAX_HEIGHT_PX),
+                        width: Val::Percent(100.0),
+                        overflow: Overflow::scroll_y(),
+                        border: UiRect::all(Val::Px(1.0)),
+                        display: Display::None,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba(0.08, 0.12, 0.17, 0.98)),
+                    BorderColor::all(Color::srgba(0.25, 0.38, 0.48, 0.85)),
+                ))
+                .with_children(|scroll| {
+                    scroll.spawn((
+                        DevSpawnFactionDropdownContent,
+                        DevPanelUi,
+                        Node {
+                            flex_direction: FlexDirection::Column,
+                            row_gap: Val::Px(ROW_GAP_PX),
+                            width: Val::Percent(100.0),
+                            ..default()
+                        },
+                    ));
+                });
         });
+}
+
+pub(crate) fn max_faction_dropdown_scroll_y(viewport_height: f32, content_height: f32) -> f32 {
+    (content_height - viewport_height).max(0.0)
+}
+
+pub(crate) fn clamp_faction_dropdown_scroll_y(
+    offset_y: f32,
+    viewport_height: f32,
+    content_height: f32,
+) -> f32 {
+    offset_y.clamp(0.0, max_faction_dropdown_scroll_y(viewport_height, content_height))
 }
 
 fn sorted_enabled_factions(catalog: &FactionCatalog) -> Vec<&FactionDefinition> {
@@ -158,25 +194,32 @@ fn placement_controls_for_state(
 }
 
 pub(crate) fn sync_spawn_faction_picker(
-    dev_state: Res<DevModeState>,
+    mut dev_state: ResMut<DevModeState>,
     faction_catalog: Res<FactionCatalog>,
     building_catalog: Res<crate::world::BuildingCatalog>,
     doodad_catalog: Res<crate::world::DoodadCatalog>,
     registry: Res<DevWindowRegistry>,
     mut block: Query<
         (&mut Visibility, &mut Node),
-        (With<DevSpawnFactionPickerBlock>, Without<DevSpawnFactionDropdown>),
+        (
+            With<DevSpawnFactionPickerBlock>,
+            Without<DevSpawnFactionDropdownScroll>,
+        ),
     >,
     mut dropdown: Query<
         (&mut Visibility, &mut Node),
-        (With<DevSpawnFactionDropdown>, Without<DevSpawnFactionPickerBlock>),
+        (
+            With<DevSpawnFactionDropdownScroll>,
+            Without<DevSpawnFactionPickerBlock>,
+        ),
     >,
+    mut scroll_positions: Query<&mut ScrollPosition, With<DevSpawnFactionDropdownScroll>>,
     mut trigger_label: Query<&mut Text, With<DevSpawnFactionTriggerLabel>>,
     mut option_rows: Query<
         (&DevSpawnFactionOption, &mut BackgroundColor, &mut BorderColor),
     >,
     mut commands: Commands,
-    dropdown_entity: Query<Entity, With<DevSpawnFactionDropdown>>,
+    content_entity: Query<Entity, With<DevSpawnFactionDropdownContent>>,
     existing_options: Query<(Entity, &DevSpawnFactionOption)>,
 ) {
     let catalog_open =
@@ -211,6 +254,7 @@ pub(crate) fn sync_spawn_faction_picker(
     }
 
     let open = dev_state.catalog.faction_picker_open;
+    let mut scroll_y = dev_state.catalog.faction_picker_scroll_y;
     if let Ok((mut visibility, mut node)) = dropdown.single_mut() {
         *visibility = if open {
             Visibility::Visible
@@ -222,6 +266,13 @@ pub(crate) fn sync_spawn_faction_picker(
         } else {
             Display::None
         };
+    }
+
+    if !open {
+        for mut scroll in scroll_positions.iter_mut() {
+            scroll.y = 0.0;
+        }
+        scroll_y = 0.0;
     }
 
     let factions = sorted_enabled_factions(&faction_catalog);
@@ -238,7 +289,11 @@ pub(crate) fn sync_spawn_faction_picker(
         for (entity, _) in existing_options.iter() {
             commands.entity(entity).despawn();
         }
-        if let Ok(parent) = dropdown_entity.single() {
+        if let Ok(parent) = content_entity.single() {
+            scroll_y = 0.0;
+            for mut scroll in scroll_positions.iter_mut() {
+                scroll.y = 0.0;
+            }
             for def in factions {
                 let is_selected = def.id.as_str() == selected;
                 let (bg, border) = option_style(is_selected, false);
@@ -274,6 +329,60 @@ pub(crate) fn sync_spawn_faction_picker(
             *bg = BackgroundColor(option_style(is_selected, false).0);
             *border = BorderColor::all(option_style(is_selected, false).1);
         }
+    }
+
+    if open {
+        for mut scroll in scroll_positions.iter_mut() {
+            scroll.y = scroll_y;
+        }
+    }
+
+    dev_state.catalog.faction_picker_scroll_y = scroll_y;
+}
+
+pub(crate) fn handle_spawn_faction_picker_scroll_wheel(
+    mut dev_state: ResMut<DevModeState>,
+    mouse_scroll: Res<AccumulatedMouseScroll>,
+    registry: Res<DevWindowRegistry>,
+    mut gate: ResMut<crate::dev::DevModeInputGate>,
+    viewports: Query<
+        (&RelativeCursorPosition, &ComputedNode),
+        With<DevSpawnFactionDropdownScroll>,
+    >,
+    content_nodes: Query<&ComputedNode, With<DevSpawnFactionDropdownContent>>,
+    mut scroll_positions: Query<&mut ScrollPosition, With<DevSpawnFactionDropdownScroll>>,
+) {
+    if !dev_state.enabled
+        || !registry.is_visible(crate::dev::window::DevWindowId::Catalog)
+        || !dev_state.catalog.faction_picker_open
+    {
+        return;
+    }
+    let wheel_delta = mouse_scroll.delta.y;
+    if wheel_delta.abs() <= f32::EPSILON {
+        return;
+    }
+
+    for (relative, viewport_node) in &viewports {
+        if relative.normalized.is_none() {
+            continue;
+        }
+        let viewport_height = viewport_node.size().y;
+        let content_height = content_nodes
+            .single()
+            .map(|node| node.size().y)
+            .unwrap_or(0.0);
+        gate.block_camera_scroll = true;
+        dev_state.catalog.faction_picker_scroll_y -= wheel_delta * FACTION_SCROLL_WHEEL_LINE_PX;
+        dev_state.catalog.faction_picker_scroll_y = clamp_faction_dropdown_scroll_y(
+            dev_state.catalog.faction_picker_scroll_y,
+            viewport_height,
+            content_height,
+        );
+        for mut scroll in scroll_positions.iter_mut() {
+            scroll.y = dev_state.catalog.faction_picker_scroll_y;
+        }
+        return;
     }
 }
 
@@ -323,5 +432,18 @@ pub(crate) fn handle_spawn_faction_picker(
 impl CatalogSessionState {
     pub fn close_faction_picker(&mut self) {
         self.faction_picker_open = false;
+        self.faction_picker_scroll_y = 0.0;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dropdown_scroll_clamps_to_content_minus_viewport() {
+        assert_eq!(max_faction_dropdown_scroll_y(100.0, 250.0), 150.0);
+        assert_eq!(clamp_faction_dropdown_scroll_y(200.0, 100.0, 250.0), 150.0);
+        assert_eq!(clamp_faction_dropdown_scroll_y(-5.0, 100.0, 250.0), 0.0);
     }
 }

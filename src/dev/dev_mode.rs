@@ -452,7 +452,7 @@ impl DevModeState {
 
     pub fn select_spawn_faction(&mut self, faction_id: FactionId) {
         self.spawn_faction_id = faction_id;
-        self.catalog.faction_picker_open = false;
+        self.catalog.close_faction_picker();
     }
 
     pub fn cycle_spawn_faction(&mut self, factions: &FactionCatalog) {

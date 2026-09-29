@@ -474,6 +474,7 @@ impl Plugin for DevModePlugin {
         .add_systems(
             Update,
             (
+                catalog::faction_picker::handle_spawn_faction_picker_scroll_wheel,
                 catalog::scroll::handle_catalog_list_scroll_wheel,
                 catalog::scroll::handle_catalog_list_scrollbar_track_click,
             )

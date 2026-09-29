@@ -19,6 +19,9 @@ pub struct CatalogSessionState {
 
     /// Unit spawn faction dropdown expanded in the catalog placement section.
     pub faction_picker_open: bool,
+
+    /// Vertical scroll offset for the faction dropdown list (pixels).
+    pub faction_picker_scroll_y: f32,
 }
 
 impl Default for CatalogSessionState {
@@ -31,6 +34,8 @@ impl Default for CatalogSessionState {
             status_ttl_frames: 0,
 
             faction_picker_open: false,
+
+            faction_picker_scroll_y: 0.0,
         }
     }
 }
