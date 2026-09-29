@@ -78,6 +78,131 @@ fn npc_with_dialogue(talk: bool, trade: bool, recruit: bool) -> (WorldData, Unit
 }
 
 #[test]
+fn player_to_player_rows_are_trade_only() {
+    let mut world = flat_world();
+    let actor = UnitId::new(1);
+    let target = UnitId::new(2);
+    world
+        .insert_unit(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            UnitRecord::new(
+                actor,
+                UnitDefinitionId::new("player_unit"),
+                UnitPlacement::new(pos(0.0, 0.0), Quat::IDENTITY),
+                UnitSource::Authored,
+                UnitOwnership::player_default(),
+                100,
+                crate::world::FactionId::new("player"),
+                crate::world::SpeciesId::new("human"),
+            ),
+        )
+        .unwrap();
+    world
+        .insert_unit(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            UnitRecord::new(
+                target,
+                UnitDefinitionId::new("player_unit"),
+                UnitPlacement::new(pos(1.0, 0.0), Quat::IDENTITY),
+                UnitSource::Authored,
+                UnitOwnership::player_default(),
+                100,
+                crate::world::FactionId::new("player"),
+                crate::world::SpeciesId::new("human"),
+            ),
+        )
+        .unwrap();
+
+    let rows = build_interaction_menu_rows(
+        &world,
+        &AuthoredRelationshipCatalog::default(),
+        world.relationship_standing_store(),
+        actor,
+        target,
+    );
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].kind, DialogueActionKind::Trade);
+    assert!(rows[0].enabled);
+}
+
+#[test]
+fn player_owned_target_with_dialogue_uses_authored_rows_not_trade_only() {
+    let mut world = flat_world();
+    let actor = UnitId::new(1);
+    let target = UnitId::new(2);
+    world
+        .insert_unit(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            UnitRecord::new(
+                actor,
+                UnitDefinitionId::new("player_unit"),
+                UnitPlacement::new(pos(0.0, 0.0), Quat::IDENTITY),
+                UnitSource::Authored,
+                UnitOwnership::player_default(),
+                100,
+                crate::world::FactionId::new("player"),
+                crate::world::SpeciesId::new("human"),
+            ),
+        )
+        .unwrap();
+    let mut target_record = UnitRecord::new(
+        target,
+        UnitDefinitionId::new("trader"),
+        UnitPlacement::new(pos(1.0, 0.0), Quat::IDENTITY),
+        UnitSource::Authored,
+        UnitOwnership::player_default(),
+        100,
+        crate::world::FactionId::new("player"),
+        crate::world::SpeciesId::new("human"),
+    );
+    target_record.dialogue = Some(UnitDialogueConfig {
+        talk: DialogueOptionRule {
+            enabled: true,
+            min_relationship: 0,
+        },
+        trade: DialogueOptionRule {
+            enabled: true,
+            min_relationship: 0,
+        },
+        recruit: DialogueOptionRule {
+            enabled: true,
+            min_relationship: 0,
+        },
+    });
+    world
+        .insert_unit(ChunkId::new(ChunkCoord::new(0, 0)), target_record)
+        .unwrap();
+
+    let rows = build_interaction_menu_rows(
+        &world,
+        &AuthoredRelationshipCatalog::default(),
+        world.relationship_standing_store(),
+        actor,
+        target,
+    );
+    assert_eq!(rows.len(), 3);
+    assert!(rows.iter().any(|r| r.kind == DialogueActionKind::Talk && r.enabled));
+    assert!(rows.iter().any(|r| r.kind == DialogueActionKind::Trade && r.enabled));
+    assert!(rows.iter().any(|r| r.kind == DialogueActionKind::Recruit && r.enabled));
+}
+
+#[test]
+fn shows_all_authored_enabled_npc_options() {
+    let (world, actor, target) = npc_with_dialogue(true, true, true);
+    let rows = build_interaction_menu_rows(
+        &world,
+        &AuthoredRelationshipCatalog::default(),
+        world.relationship_standing_store(),
+        actor,
+        target,
+    );
+    assert_eq!(rows.len(), 3);
+    assert!(rows.iter().any(|r| r.kind == DialogueActionKind::Talk && r.enabled));
+    assert!(rows.iter().any(|r| r.kind == DialogueActionKind::Trade && !r.enabled));
+    assert!(rows.iter().any(|r| r.kind == DialogueActionKind::Recruit && !r.enabled));
+}
+
+#[test]
 fn omits_disabled_capabilities() {
     let (world, actor, target) = npc_with_dialogue(true, false, true);
     let rows = build_interaction_menu_rows(

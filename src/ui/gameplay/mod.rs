@@ -62,7 +62,9 @@ pub use input_gate::{
     PlayerHudHoverState, gameplay_input_blocked_by_hud, update_player_hud_hover_state,
 };
 pub use unit_interaction_menu::{
-    UnitInteractionMenuState, build_interaction_menu_rows, should_omit_interaction_menu_option,
+    UnitInteractionMenuState, build_interaction_menu_rows, interaction_menu_option_selectable,
+    is_player_to_player_trade_pair, should_omit_interaction_menu_option,
+    unit_accepts_context_interaction_menu, uses_player_trade_only_menu,
 };
 pub use inventory::{
     InventoryEntryWidget, InventoryGridCell, InventoryGridPane, InventoryPaneSide,
