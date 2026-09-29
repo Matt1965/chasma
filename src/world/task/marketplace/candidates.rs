@@ -28,6 +28,8 @@ pub struct MarketplaceCandidate {
     pub listing: MarketplaceListing,
     pub distance_meters: f32,
     pub score: f32,
+    pub priority_component: f32,
+    pub distance_component: f32,
     pub eligible: bool,
     pub block_reason: Option<String>,
 }

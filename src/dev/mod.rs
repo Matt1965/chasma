@@ -54,8 +54,9 @@ pub use catalog_cache::{
 pub use build_identity::DevBuildIdentity;
 pub use debug_controls::{apply_dev_debug_flags, dev_flags_from_overlay, sync_dev_debug_controls};
 pub use debug_window::{
-    handle_debug_toggle_buttons, setup_debug_window_panel, sync_debug_panel_button_styles,
-    sync_debug_panel_content,
+    handle_brain_view_buttons, handle_debug_toggle_buttons, setup_debug_window_panel,
+    sync_brain_panel, sync_debug_panel_button_styles, sync_debug_panel_content,
+    BrainDecisionHistory, BrainPanelState, tick_brain_decision_history,
 };
 pub use dev_mode::{
     DefinitionId, DevDebugFlags, DevInventoryEndpoint, DevInventoryToolState, DevModeInputGate,
@@ -227,7 +228,9 @@ impl Plugin for DevModePlugin {
             .init_resource::<tools::DevPlacementPreview>()
             .init_resource::<tools::DevPlacementPreviewScratch>();
         tools::init_placement_model_preview(app);
-        app.init_resource::<DevPreviewAnchor>()
+        app.init_resource::<BrainPanelState>()
+            .init_resource::<BrainDecisionHistory>()
+            .init_resource::<DevPreviewAnchor>()
             .init_resource::<scenes::DevSceneRegistry>()
             .init_resource::<settlement_placement::SettlementPlacementPreview>()
             .init_resource::<settlement_placement::SettlementPlacementRejectionFeedbacks>()
@@ -371,6 +374,14 @@ impl Plugin for DevModePlugin {
         )
         .add_systems(
             Update,
+            (
+                sync_brain_panel.after(sync_debug_panel_content),
+                tick_brain_decision_history,
+            )
+                .in_set(DevModeInputSystems),
+        )
+        .add_systems(
+            Update,
             widgets::tick_dev_button_activation_flashes.in_set(DevModeInputSystems),
         )
         .add_systems(
@@ -493,6 +504,7 @@ impl Plugin for DevModePlugin {
                 catalog::faction_picker::handle_spawn_faction_picker,
                 handle_save_window_interaction,
                 handle_debug_toggle_buttons,
+                handle_brain_view_buttons,
                 world_environment::handle_world_environment_actions,
                 world_environment::handle_world_cycle_toggles,
                 world_environment::handle_world_time_presets,
