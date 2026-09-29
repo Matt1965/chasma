@@ -49,7 +49,8 @@ fn selection_change_cannot_show_stale_unit_id() {
     let b = build_unit_brain_snapshot(&selection, &selected, &world, None, &[]);
     assert!(a.empty_message.is_some());
     assert!(b.empty_message.is_some());
-    assert_ne!(a.unit_id, b.unit_id);
+    assert!(a.unit_id.is_none());
+    assert!(b.unit_id.is_none());
 }
 
 #[test]
