@@ -4,13 +4,16 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use crate::ui::gameplay::dialogue::DialogueSessionState;
-use crate::ui::gameplay::{UnitInteractionMenuState, build_interaction_menu_rows};
+use crate::ui::gameplay::{
+    UnitInteractionMenuState, build_interaction_menu_rows, unit_accepts_context_interaction_menu,
+    uses_player_trade_only_menu,
+};
 use crate::units::input::{MoveOrdersReport, SelectedUnits, issue_move_orders_to_selection};
 use crate::world::{AttackTargetingPolicy, DialogueActionKind, is_unit_alive};
 use crate::world::relationship::AuthoredRelationshipCatalog;
 use crate::world::{
     DoodadCatalog, NavigationConfig, UnitCatalog, UnitId, WeaponCatalog, WorldData,
-    is_player_controllable, unit_supports_dialogue, units_within_dialogue_range,
+    unit_supports_dialogue, units_within_dialogue_range,
 };
 
 /// A unit approaching an NPC to perform a selected social action.
@@ -83,6 +86,10 @@ fn pending_still_valid(
     if !is_unit_alive(actor) || !is_unit_alive(target) {
         return false;
     }
+    if uses_player_trade_only_menu(world, pending.actor_unit_id, pending.target_unit_id) {
+        return pending.action == DialogueActionKind::Trade
+            && actor.current_space_id == target.current_space_id;
+    }
     if !unit_supports_dialogue(target) {
         return false;
     }
@@ -121,21 +128,7 @@ pub fn try_open_unit_interaction_menu(
     target_unit_id: UnitId,
     screen_position: Vec2,
 ) -> bool {
-    let target = world.get_unit(target_unit_id);
-    if !target.is_some_and(|record| {
-        unit_supports_dialogue(record) && !is_player_controllable(record)
-    }) {
-        return false;
-    }
-
-    let rows = build_interaction_menu_rows(
-        world,
-        authored_relationships,
-        world.relationship_standing_store(),
-        actor_unit_id,
-        target_unit_id,
-    );
-    if rows.is_empty() {
+    if !unit_accepts_context_interaction_menu(world, actor_unit_id, target_unit_id) {
         return false;
     }
 
@@ -158,6 +151,24 @@ pub fn dispatch_dialogue_action(
     target_unit_id: UnitId,
     action: DialogueActionKind,
 ) -> DialogueDispatchOutcome {
+    if uses_player_trade_only_menu(world, actor_unit_id, target_unit_id) {
+        if action != DialogueActionKind::Trade {
+            return DialogueDispatchOutcome::Ignored;
+        }
+        return dispatch_social_action_after_range_check(
+            world,
+            dialogue,
+            pending,
+            unit_catalog,
+            weapon_catalog,
+            doodad_catalog,
+            nav_config,
+            actor_unit_id,
+            target_unit_id,
+            action,
+        );
+    }
+
     let target = world.get_unit(target_unit_id);
     if !target.is_some_and(unit_supports_dialogue) {
         return DialogueDispatchOutcome::Ignored;
@@ -177,6 +188,32 @@ pub fn dispatch_dialogue_action(
         return DialogueDispatchOutcome::Ignored;
     }
 
+    dispatch_social_action_after_range_check(
+        world,
+        dialogue,
+        pending,
+        unit_catalog,
+        weapon_catalog,
+        doodad_catalog,
+        nav_config,
+        actor_unit_id,
+        target_unit_id,
+        action,
+    )
+}
+
+fn dispatch_social_action_after_range_check(
+    world: &mut WorldData,
+    dialogue: &mut DialogueSessionState,
+    pending: &mut PendingDialogueInteractionState,
+    unit_catalog: &UnitCatalog,
+    weapon_catalog: &WeaponCatalog,
+    doodad_catalog: &DoodadCatalog,
+    nav_config: &NavigationConfig,
+    actor_unit_id: UnitId,
+    target_unit_id: UnitId,
+    action: DialogueActionKind,
+) -> DialogueDispatchOutcome {
     if units_within_dialogue_range(world, actor_unit_id, target_unit_id) {
         pending.clear_for_unit(actor_unit_id);
         apply_dialogue_action(dialogue, actor_unit_id, target_unit_id, action);

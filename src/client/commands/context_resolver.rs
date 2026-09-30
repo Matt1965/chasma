@@ -3,9 +3,9 @@
 use bevy::prelude::Vec3;
 
 use crate::world::{
+    is_unit_alive,
     AttackTargetingPolicy, UnitCatalog, WeaponCatalog, WorldData,
-    is_player_controllable, is_valid_autonomous_attack_target, is_valid_explicit_attack_target,
-    unit_supports_dialogue,
+    is_valid_autonomous_attack_target, is_valid_explicit_attack_target,
 };
 
 use crate::world::{UnitId, WorldPosition};
@@ -114,9 +114,12 @@ pub fn resolve_contextual_command_with_armed(
                     command_type: CommandType::Attack,
                     target: CommandTarget::Unit { unit_id: *unit_id },
                 })
-            } else if ctx.world.get_unit(*unit_id).is_some_and(|unit| {
-                unit_supports_dialogue(unit) && !is_player_controllable(unit)
-            }) {
+            } else if *unit_id != attacker
+                && ctx
+                    .world
+                    .get_unit(*unit_id)
+                    .is_some_and(|unit| is_unit_alive(unit))
+            {
                 Some(ContextualCommandIntent {
                     command_type: CommandType::Interact,
                     target: CommandTarget::Unit { unit_id: *unit_id },
@@ -290,7 +293,7 @@ mod tests {
     }
 
     #[test]
-    fn neutral_unit_default_click_resolves_to_move() {
+    fn neutral_living_unit_click_resolves_to_interact_without_dialogue_config() {
         let unit_catalog = UnitCatalog::default();
         let weapons = WeaponCatalog::default();
         let mut world = WorldData::new(ChunkLayout {
@@ -329,7 +332,50 @@ mod tests {
             &authored(),
         ))
         .unwrap();
-        assert_eq!(resolved.command_type, CommandType::Move);
+        assert_eq!(resolved.command_type, CommandType::Interact);
+    }
+
+    #[test]
+    fn player_to_player_unit_click_resolves_to_interact() {
+        let unit_catalog = UnitCatalog::default();
+        let weapons = WeaponCatalog::default();
+        let mut world = WorldData::new(ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let actor = create_unit_with_ownership(
+            &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let ally = create_unit_with_ownership(
+            &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(5.0, 5.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let resolved = resolve_contextual_command(&ctx(
+            &[actor],
+            CommandTarget::Unit { unit_id: ally },
+            &world,
+            &unit_catalog,
+            &weapons,
+            &crate::world::ItemCatalog::default(),
+            &authored(),
+        ))
+        .unwrap();
+        assert_eq!(resolved.command_type, CommandType::Interact);
     }
 
     #[test]

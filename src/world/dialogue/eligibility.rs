@@ -3,7 +3,6 @@
 use bevy::prelude::*;
 
 use crate::world::combat::is_unit_alive;
-use crate::world::ownership::is_player_controllable;
 use crate::world::relationship::{
     AuthoredRelationshipCatalog, RelationshipStandingStore, effective_relationship_for_records,
 };
@@ -151,12 +150,6 @@ fn evaluate_with_config(
             DialogueActionKind::Recruit => DialogueUnavailableReason::TargetCannotBeRecruited,
             DialogueActionKind::Talk => DialogueUnavailableReason::OptionDisabled,
         });
-    }
-
-    if matches!(kind, DialogueActionKind::Trade | DialogueActionKind::Recruit)
-        && is_player_controllable(target)
-    {
-        return DialogueOptionAvailability::Unavailable(DialogueUnavailableReason::TargetIsPlayerUnit);
     }
 
     let relationship = effective_relationship_for_records(

@@ -1,3 +1,58 @@
 (
-    definitions: [],
+    definitions: [
+        (
+            id: ("trader"),
+            display_name: "trader",
+            applicable_species: [
+                ("human"),
+            ],
+            gold_min: 100,
+            gold_max: 300,
+            affiliation_override: Some(Player),
+            equipment: [],
+            inventory_stacks: [],
+            dialogue: Some((
+                talk: (
+                    enabled: true,
+                    min_relationship: 0,
+                ),
+                trade: (
+                    enabled: true,
+                    min_relationship: 0,
+                ),
+                recruit: (
+                    enabled: true,
+                    min_relationship: 0,
+                ),
+            )),
+            enabled: true,
+        ),
+        (
+            id: ("trader2"),
+            display_name: "trader2",
+            applicable_species: [
+                ("human"),
+            ],
+            gold_min: 100,
+            gold_max: 200,
+            affiliation_override: Some(Player),
+            equipment: [],
+            inventory_stacks: [],
+            dialogue: Some((
+                talk: (
+                    enabled: true,
+                    min_relationship: 0,
+                ),
+                trade: (
+                    enabled: true,
+                    min_relationship: 0,
+                ),
+                recruit: (
+                    enabled: true,
+                    min_relationship: 0,
+                ),
+            )),
+            enabled: true,
+        ),
+    ],
 )

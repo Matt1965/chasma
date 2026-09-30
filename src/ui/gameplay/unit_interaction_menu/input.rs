@@ -7,10 +7,8 @@ use crate::client::{PendingDialogueInteractionState, dispatch_dialogue_action};
 use crate::ui::gameplay::build_mode::BuildModeState;
 use crate::ui::gameplay::dialogue::DialogueSessionState;
 use crate::world::relationship::AuthoredRelationshipCatalog;
-use crate::world::{
-    AttackTargetingPolicy, DoodadCatalog, NavigationConfig, UnitCatalog, WeaponCatalog, WorldData,
-    evaluate_dialogue_option,
-};
+use super::content::interaction_menu_option_selectable;
+use crate::world::{DoodadCatalog, NavigationConfig, UnitCatalog, WeaponCatalog, WorldData};
 
 use super::panel::{
     UnitInteractionMenuBackdrop, UnitInteractionMenuOptionButton, UnitInteractionMenuRoot,
@@ -86,16 +84,14 @@ pub fn handle_unit_interaction_menu_option_clicks(
         if *interaction != Interaction::Pressed {
             continue;
         }
-        if !evaluate_dialogue_option(
+        if !interaction_menu_option_selectable(
             &world,
             &authored_relationships,
             standing,
             actor,
             target,
             button.0,
-        )
-        .is_available()
-        {
+        ) {
             continue;
         }
         let kind = button.0;
@@ -138,10 +134,6 @@ pub fn dismiss_unit_interaction_menu_on_outside_click(
 pub fn reconcile_unit_interaction_menu(
     mut menu: ResMut<UnitInteractionMenuState>,
     world: Res<WorldData>,
-    authored_relationships: Res<AuthoredRelationshipCatalog>,
-    weapon_catalog: Res<WeaponCatalog>,
-    unit_catalog: Res<UnitCatalog>,
-    item_catalog: Res<crate::world::ItemCatalog>,
 ) {
     if !menu.open {
         return;
@@ -164,32 +156,6 @@ pub fn reconcile_unit_interaction_menu(
     let target_alive = world.get_unit(target).is_some_and(crate::world::is_unit_alive);
     let actor_alive = world.get_unit(actor).is_some_and(crate::world::is_unit_alive);
     if !target_alive || !actor_alive {
-        menu.close();
-        return;
-    }
-
-    if crate::world::is_valid_autonomous_attack_target(
-        &world,
-        &authored_relationships,
-        actor,
-        target,
-        &weapon_catalog,
-        &unit_catalog,
-        &item_catalog,
-        AttackTargetingPolicy::default(),
-    ) {
-        menu.close();
-        return;
-    }
-
-    let rows = super::content::build_interaction_menu_rows(
-        &world,
-        &authored_relationships,
-        world.relationship_standing_store(),
-        actor,
-        target,
-    );
-    if rows.is_empty() {
         menu.close();
     }
 }

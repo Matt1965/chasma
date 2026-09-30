@@ -3361,6 +3361,98 @@ mod tests {
     }
 
     #[test]
+    fn contextual_command_opens_trade_menu_for_player_target_without_dialogue_config() {
+        let mut sel = DispatchSelectionBundle::new();
+        let mut move_feedback = MoveCommandFeedback::default();
+        let mut world = flat_world();
+        let mut modifiers = ClientInputModifiers::default();
+        let mut inventory_queue = crate::client::inventory_intent::InventoryIntentQueue::default();
+        let mut terrain = DispatchTerrainBundle::new();
+        let mut pending = PendingDispatchTrace::default();
+        let mut menu = crate::ui::gameplay::UnitInteractionMenuState::default();
+        let catalog = UnitCatalog::default();
+        let actor = create_unit_with_ownership(
+            &catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(1.0, 1.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        let ally = create_unit_with_ownership(
+            &catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+            &mut world,
+            &UnitDefinitionId::new("wolf"),
+            pos(5.0, 5.0),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+        )
+        .unwrap()
+        .id;
+        sel.selected_units.set_single(actor);
+
+        let status = dispatch_one(
+            &ClientIntent::ContextualCommand {
+                target: CommandTarget::Unit { unit_id: ally },
+            },
+            &mut sel.apply_params(),
+            &mut move_feedback,
+            &mut world,
+            &catalog,
+            &WeaponCatalog::default(),
+            &crate::world::ItemCatalog::default(),
+            &DoodadCatalog::default(),
+            &BuildingCatalog::default(),
+            &FootprintCatalog::default(),
+            &crate::world::BuildingInteractionProfileCatalog::default(),
+            &NavigationConfig::default(),
+            &AuthoredRelationshipCatalog::default(),
+            layout(),
+            1.0,
+            &PlayerInteractionSettings::default(),
+            None,
+            None,
+            &mut modifiers,
+            &mut None,
+            &mut pending,
+            SelectionControllabilityPolicy::gameplay_default(),
+            None,
+            &mut BuildModeState::default(),
+            &LocalPlayerOwnership::default(),
+            &mut BuildingPanelState::default(),
+            &mut crate::client::PendingBuildingPlayerInteractionState::default(),
+            &mut crate::client::PendingDialogueInteractionState::default(),
+            &mut crate::ui::gameplay::dialogue::DialogueSessionState::default(),
+            &mut menu,
+            &mut crate::client::ContextMenuScreenAnchor::default(),
+            &mut crate::client::PendingCorpsePlayerInteractionState::default(),
+            0,
+            &mut inventory_queue,
+            &crate::world::CorpseSettings::default(),
+            &OperationCatalog::default(),
+            &ItemCategoryCatalog::default(),
+            &InventoryProfileCatalog::default(),
+            &terrain.field_catalog,
+            &terrain.profile_catalog,
+            &terrain.requirement_catalog,
+            0,
+            0,
+            &mut terrain.assessment_store,
+            &crate::world::ItemPileSettings::default(),
+            #[cfg(feature = "dev")]
+            &crate::ui::gameplay::BuildModePlacementTrace::default(),
+        );
+        assert_eq!(status, IntentDispatchStatus::Applied);
+        assert!(menu.open);
+        assert_eq!(menu.target_unit_id, Some(ally));
+        assert!(!move_feedback.has_active_marker());
+    }
+
+    #[test]
     fn contextual_command_plain_corpse_click_loots_without_armed_interact() {
         use crate::world::{
             Affiliation, CorpseId, CorpseRecord, InventoryCatalogCtx, InventoryId, SpaceId,

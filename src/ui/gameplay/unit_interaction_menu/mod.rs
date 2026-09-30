@@ -8,7 +8,11 @@ mod state;
 #[cfg(test)]
 mod tests;
 
-pub use content::{build_interaction_menu_rows, should_omit_interaction_menu_option};
+pub use content::{
+    build_interaction_menu_rows, interaction_menu_option_selectable,
+    is_player_to_player_trade_pair, should_omit_interaction_menu_option,
+    unit_accepts_context_interaction_menu, uses_player_trade_only_menu,
+};
 #[cfg(test)]
 pub use content::InteractionMenuRow;
 pub use input::{
