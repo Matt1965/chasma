@@ -96,20 +96,18 @@ fn spawn_workspace_launcher(commands: &mut Commands) {
                 column,
                 DevLauncherGroup::Windows,
                 "Windows",
-                "Show or hide dev windows: Save, Catalog, Selected Object, Brain, Debug, World, \
-                 Settlement, Fields, Road Editor, Navigation Editor, and Origin Editor.",
+                "Show or hide dev windows: Save, Selected Object, Catalog, Brain, Debug, and World.",
                 DevWindowId::WINDOWS_LAUNCHER,
             );
 
-            if !DevWindowId::ADVANCED_LAUNCHER.is_empty() {
-                spawn_launcher_row(
-                    column,
-                    DevLauncherGroup::Advanced,
-                    "Advanced",
-                    "Show or hide additional advanced authoring windows.",
-                    DevWindowId::ADVANCED_LAUNCHER,
-                );
-            }
+            spawn_launcher_row(
+                column,
+                DevLauncherGroup::Advanced,
+                "Advanced",
+                "Show or hide advanced authoring windows: Settlement, Fields, Road Editor, \
+                 Navigation Editor, and Origin Editor.",
+                DevWindowId::ADVANCED_LAUNCHER,
+            );
         });
 }
 

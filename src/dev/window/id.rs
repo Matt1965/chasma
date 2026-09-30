@@ -107,19 +107,20 @@ impl DevWindowId {
 
     pub const WINDOWS_LAUNCHER: &'static [DevWindowId] = &[
         Self::Save,
-        Self::Catalog,
         Self::SelectedObject,
+        Self::Catalog,
         Self::Brain,
         Self::Debug,
         Self::World,
+    ];
+
+    /// Windows shown in the Advanced launcher row.
+
+    pub const ADVANCED_LAUNCHER: &'static [DevWindowId] = &[
         Self::Settlement,
         Self::Fields,
         Self::Roads,
         Self::NavigationEditor,
         Self::OriginEditor,
     ];
-
-    /// Windows shown in the Advanced launcher row (empty when all tools live under Windows).
-
-    pub const ADVANCED_LAUNCHER: &'static [DevWindowId] = &[];
 }
