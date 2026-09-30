@@ -53,6 +53,8 @@ pub struct BrainCardModel {
     pub subtitle: String,
     pub status_label: String,
     pub tone: BrainStatusTone,
+    /// Provenance gap shown beside this spine card when a link is missing.
+    pub link_note: Option<String>,
     pub inspector: BrainInspectorModel,
 }
 
@@ -152,16 +154,16 @@ pub fn build_unit_document(
 
     let header_action = format_unit_action_title(&unit.state, &unit.combat_state, task.as_ref());
     let mut header_subtitle = format!(
-        "Unit {} · {}",
+        "Unit {} - {}",
         unit_id.raw(),
         unit.definition_id.as_str()
     );
     if let Some(name) = settlement_label {
-        header_subtitle.push_str(" · ");
+        header_subtitle.push_str(" - ");
         header_subtitle.push_str(&name);
     }
     if brain.unit_inspect_override == Some(unit_id) {
-        header_subtitle.push_str(" · Inspecting from settlement");
+        header_subtitle.push_str(" - Inspecting from settlement");
     }
 
     let authority = super::model::resolve_authority_internal(&unit.combat_state, task.as_ref());
@@ -230,8 +232,8 @@ pub fn build_settlement_document(
 
     let chain_title = selected_need
         .as_ref()
-        .map(|n| format!("{} decision → work", humanize_token(n)))
-        .unwrap_or_else(|| "Decision → work".into());
+        .map(|n| format!("{} decision to work", humanize_token(n)))
+        .unwrap_or_else(|| "Decision to work".into());
 
     let intent_plan = world.settlement_intent_store().get(settlement_id).cloned();
     let cards = build_settlement_chain(
@@ -244,7 +246,7 @@ pub fn build_settlement_document(
     SettlementBrainDocument {
         empty_message: None,
         settlement_name,
-        header_subtitle: "Settlement at camera · Latest recorded evaluations".into(),
+        header_subtitle: "Settlement at camera - Latest recorded evaluations".into(),
         needs,
         chain_title,
         cards,
@@ -286,13 +288,25 @@ fn build_unit_cards(
         }
 
         if let Some(origin) = task.strategic.as_ref() {
-            if let Some(need_card) = need_card_from_origin(world, origin, n) {
+            let need_key = need_id_from_intent_id(&origin.intent_id);
+            let need_card = need_card_from_origin(world, origin, n);
+            let need_linked = need_card.is_some();
+            if let Some(need_card) = need_card {
                 cards.push(need_card);
                 n += 1;
             }
-            cards.push(intent_card(n, origin, world, settlement_id_from_origin(origin)));
+            let mut intent = intent_card(n, origin, world, settlement_id_from_origin(origin));
+            if !need_linked && !need_key.is_empty() {
+                intent.link_note = Some("Need link: provenance unavailable".into());
+            }
+            cards.push(intent);
             n += 1;
-            cards.push(task_card(n, task, "Strategic task"));
+            let mut task_card_model = task_card(n, task, "Strategic task");
+            if evaluation.is_none() {
+                task_card_model.link_note =
+                    Some("Assignment evaluation: provenance unavailable".into());
+            }
+            cards.push(task_card_model);
             n += 1;
             if let Some(card) = assignment_card(n, evaluation, current_task_id, task) {
                 cards.push(card);
@@ -374,11 +388,12 @@ fn settlement_need_card(
         id: format!("need:{}", need_id),
         number,
         title: humanize_token(need_id),
-        subtitle: format!("Need · Pressure {}", snap.pressure),
+        subtitle: format!("Need, pressure {}", snap.pressure),
         status_label: "Linked".into(),
+        link_note: None,
         tone: BrainStatusTone::Linked,
         inspector: BrainInspectorModel {
-            system_tag: "SA2 · Need snapshot".into(),
+            system_tag: "SA2 - Need snapshot".into(),
             title: humanize_token(need_id),
             rows: vec![
                 row("Pressure", snap.pressure.to_string()),
@@ -432,11 +447,12 @@ fn need_card_from_origin(
         id: "need".into(),
         number,
         title: humanize_token(need_key),
-        subtitle: format!("Need · Pressure {}", snap.pressure),
+        subtitle: format!("Need, pressure {}", snap.pressure),
         status_label: "Linked".into(),
+        link_note: None,
         tone: BrainStatusTone::Linked,
         inspector: BrainInspectorModel {
-            system_tag: "SA2 · Need snapshot".into(),
+            system_tag: "SA2 - Need snapshot".into(),
             title: humanize_token(need_key),
             rows: vec![
                 row("Pressure", snap.pressure.to_string()),
@@ -486,22 +502,32 @@ fn intent_card(
         }) {
             rows.push(row(
                 "Other intent",
-                format!("{} · {}", rejected.response_id.as_str(), rejected.reason.label()),
+                format!("{} - {}", rejected.response_id.as_str(), rejected.reason.label()),
             ));
             rows.push(row("Recorded score", format!("{:.1}", rejected.arbitration_score)));
         }
     } else {
         rows.push(row("Plan", "Provenance unavailable"));
     }
+    let (status_label, tone, link_note) = if intent.is_some() {
+        ("Selected".into(), BrainStatusTone::Selected, None)
+    } else {
+        (
+            "Unavailable".into(),
+            BrainStatusTone::Unavailable,
+            Some("Intent plan: provenance unavailable".into()),
+        )
+    };
     BrainCardModel {
         id: "intent".into(),
         number,
         title: humanize_token(&title),
         subtitle: "Selected settlement intent".into(),
-        status_label: "Selected".into(),
-        tone: BrainStatusTone::Selected,
+        status_label,
+        link_note,
+        tone,
         inspector: BrainInspectorModel {
-            system_tag: "SA4 · Arbitration".into(),
+            system_tag: "SA4 - Arbitration".into(),
             title: humanize_token(&title),
             rows,
             candidate_race: Vec::new(),
@@ -518,11 +544,12 @@ fn task_card(number: u32, task: &TaskRecord, subtitle: &str) -> BrainCardModel {
         id: "task".into(),
         number,
         title: task_title(task),
-        subtitle: format!("{} · Building {}", subtitle, building.raw()),
+        subtitle: format!("{} - Building {}", subtitle, building.raw()),
         status_label: "Assigned".into(),
+        link_note: None,
         tone: BrainStatusTone::Assigned,
         inspector: BrainInspectorModel {
-            system_tag: "Task store · Strategic provenance".into(),
+            system_tag: "Task store - Strategic provenance".into(),
             title: task_title(task),
             rows: vec![
                 row("Status", format!("{:?}", task.state)),
@@ -560,9 +587,10 @@ fn assignment_card(
         title: format!("This task won for Unit {}", eval.unit_id.raw()),
         subtitle: "Latest assignment evaluation".into(),
         status_label: format!("Score {:.0}", score),
+        link_note: None,
         tone: BrainStatusTone::Score,
         inspector: BrainInspectorModel {
-            system_tag: "SA7 · Latest assignment evaluation".into(),
+            system_tag: "SA7 - Latest assignment evaluation".into(),
             title: format!("Task choices for Unit {}", eval.unit_id.raw()),
             rows: vec![
                 row("Chosen task", format_task_id(eval.chosen_task_id)),
@@ -588,15 +616,22 @@ fn action_card(
     _eval: Option<&WorkerEvaluation>,
 ) -> BrainCardModel {
     let title = format_unit_action_title(state, combat, task);
+    let (status_label, tone) = action_status_label_and_tone(state, combat);
+    let subtitle = if tone == BrainStatusTone::Executing {
+        "Current action"
+    } else {
+        "Current state"
+    };
     BrainCardModel {
         id: "action".into(),
         number,
         title: title.clone(),
-        subtitle: "Current action".into(),
-        status_label: "Executing".into(),
-        tone: BrainStatusTone::Executing,
+        subtitle: subtitle.into(),
+        status_label,
+        tone,
+        link_note: None,
         inspector: BrainInspectorModel {
-            system_tag: "Unit record · Current execution".into(),
+            system_tag: "Unit record - current execution".into(),
             title,
             rows: vec![
                 row(
@@ -621,7 +656,48 @@ fn action_card(
 }
 
 fn idle_action_card(number: u32, state: &UnitState, combat: &CombatState) -> BrainCardModel {
-    action_card(number, state, combat, None, None)
+    let title = format_unit_action_title(state, combat, None);
+    BrainCardModel {
+        id: "action".into(),
+        number,
+        title,
+        subtitle: "Current state".into(),
+        status_label: "Idle".into(),
+        link_note: None,
+        tone: BrainStatusTone::Neutral,
+        inspector: BrainInspectorModel {
+            system_tag: "Unit record".into(),
+            title: "Idle".into(),
+            rows: vec![row(
+                "Active combat",
+                if crate::world::unit_in_active_combat(combat) {
+                    "Yes"
+                } else {
+                    "No"
+                },
+            )],
+            candidate_race: Vec::new(),
+            candidate_extra: 0,
+            candidate_stale_note: None,
+            source_records: Vec::new(),
+        },
+    }
+}
+
+fn action_status_label_and_tone(
+    state: &UnitState,
+    combat: &CombatState,
+) -> (String, BrainStatusTone) {
+    if crate::world::unit_in_active_combat(combat) {
+        return ("Combat".into(), BrainStatusTone::Executing);
+    }
+    match state {
+        UnitState::Idle => ("Idle".into(), BrainStatusTone::Neutral),
+        UnitState::Dead => ("Dead".into(), BrainStatusTone::Unavailable),
+        UnitState::Moving { .. } | UnitState::Working { .. } => {
+            ("Executing".into(), BrainStatusTone::Executing)
+        }
+    }
 }
 
 fn player_order_card(number: u32, task: &TaskRecord) -> BrainCardModel {
@@ -631,6 +707,7 @@ fn player_order_card(number: u32, task: &TaskRecord) -> BrainCardModel {
         title: "Player order".into(),
         subtitle: task_title(task),
         status_label: "Player".into(),
+        link_note: None,
         tone: BrainStatusTone::Selected,
         inspector: BrainInspectorModel {
             system_tag: "Player assignment".into(),
@@ -651,6 +728,7 @@ fn combat_prev_card(number: u32, task: &TaskRecord) -> BrainCardModel {
         title: "Previous work".into(),
         subtitle: task_title(task),
         status_label: "Linked".into(),
+        link_note: None,
         tone: BrainStatusTone::Linked,
         inspector: BrainInspectorModel {
             system_tag: "Task store".into(),
@@ -671,6 +749,7 @@ fn combat_card(number: u32, combat: &CombatState) -> BrainCardModel {
         title: "Combat override".into(),
         subtitle: format!("{:?}", combat),
         status_label: "Combat".into(),
+        link_note: None,
         tone: BrainStatusTone::Executing,
         inspector: BrainInspectorModel {
             system_tag: "Combat state".into(),
@@ -692,9 +771,10 @@ fn settlement_intent_card(number: u32, intent: &SettlementIntent) -> BrainCardMo
         title: humanize_token(title),
         subtitle: "Selected intent".into(),
         status_label: "Selected".into(),
+        link_note: None,
         tone: BrainStatusTone::Selected,
         inspector: BrainInspectorModel {
-            system_tag: "SA4 · Arbitration".into(),
+            system_tag: "SA4 - Arbitration".into(),
             title: humanize_token(title),
             rows: arbitration_rows(&intent.arbitration, intent),
             candidate_race: Vec::new(),
@@ -715,9 +795,10 @@ fn building_card(
         title: format!("Building {}", assignment.building_id.raw()),
         subtitle: "Building intent propagation".into(),
         status_label: "Linked".into(),
+        link_note: None,
         tone: BrainStatusTone::Linked,
         inspector: BrainInspectorModel {
-            system_tag: "SA5 · Propagation".into(),
+            system_tag: "SA5 - Propagation".into(),
             title: format!("Building {}", assignment.building_id.raw()),
             rows: vec![
                 row("Originating intent", assignment.intent_id.as_str()),
@@ -740,9 +821,10 @@ fn settlement_task_card(number: u32, task: &TaskRecord, intent: &SettlementInten
         title: task_title(task),
         subtitle: "Strategic task".into(),
         status_label: "Assigned".into(),
+        link_note: None,
         tone: BrainStatusTone::Assigned,
         inspector: BrainInspectorModel {
-            system_tag: "SA6 · Strategic task".into(),
+            system_tag: "SA6 - Strategic task".into(),
             title: task_title(task),
             rows: vec![
                 row("Originating intent", intent.intent_id.as_str()),
@@ -768,6 +850,7 @@ fn worker_card(number: u32, unit_id: UnitId) -> BrainCardModel {
         title: format!("Unit {}", unit_id.raw()),
         subtitle: "Assigned worker".into(),
         status_label: "Inspect".into(),
+        link_note: None,
         tone: BrainStatusTone::Linked,
         inspector: BrainInspectorModel {
             system_tag: "Worker".into(),

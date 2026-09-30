@@ -594,9 +594,9 @@ pub fn spawn_brain_window(
         DevWindowId::Brain,
         session,
         default_brain_position,
-        DEFAULT_PANEL_WIDTH_PX + 120.0,
-        Some(560.0),
-        Some(720.0),
+        DEFAULT_PANEL_WIDTH_PX,
+        Some(480.0),
+        None,
         902,
     );
 }

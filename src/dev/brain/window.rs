@@ -14,6 +14,12 @@ use crate::client::CameraSettlementContext;
 use crate::dev::dev_mode::DevModeState;
 use crate::dev::input::DevPanelUi;
 use crate::dev::window::{DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowUi};
+use crate::dev::widgets::theme::{
+    BTN_BG_ACTIVE, BTN_BG_IDLE, BTN_BORDER_ACTIVE, BTN_BORDER_IDLE, CARD_BG, CARD_BORDER,
+    FIELD_BG_IDLE, FONT_SIZE_LABEL, SPACE_CONTROL, SPACE_SECTION, SPACE_BUTTON_PAD_X,
+    SPACE_BUTTON_PAD_Y, STATUS_SUCCESS, STATUS_WARNING, TEXT_LABEL, TEXT_MUTED, TEXT_PRIMARY,
+    TEXT_SECTION, label_text_font, small_text_font,
+};
 use crate::units::input::SelectedUnits;
 use crate::world::{UnitId, WorldData};
 
@@ -46,15 +52,7 @@ pub struct DevBrainWorkerButton {
 #[derive(Component, Debug)]
 pub struct DevBrainSourceRecordsToggle;
 
-const PAGE_BG: Color = Color::srgba(0.94, 0.95, 0.97, 1.0);
-const CARD_BG: Color = Color::srgba(1.0, 1.0, 1.0, 1.0);
-const CARD_SELECTED: Color = Color::srgba(0.88, 0.94, 0.99, 1.0);
-const BORDER: Color = Color::srgba(0.82, 0.86, 0.90, 1.0);
-const TEXT: Color = Color::srgba(0.12, 0.14, 0.18, 1.0);
-const MUTED: Color = Color::srgba(0.45, 0.50, 0.56, 1.0);
-const ACCENT: Color = Color::srgba(0.20, 0.45, 0.72, 1.0);
-const GREEN: Color = Color::srgba(0.15, 0.52, 0.32, 1.0);
-const AMBER: Color = Color::srgba(0.72, 0.42, 0.10, 1.0);
+const SPINE_CONNECTOR_HEIGHT_PX: f32 = 6.0;
 
 pub fn setup_brain_window_panel(mut commands: Commands, bodies: Query<(Entity, &DevWindowBody)>) {
     for (entity, body) in &bodies {
@@ -70,10 +68,9 @@ pub fn setup_brain_window_panel(mut commands: Commands, bodies: Query<(Entity, &
                     width: Val::Percent(100.0),
                     min_height: Val::Px(0.0),
                     flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(8.0),
+                    row_gap: Val::Px(SPACE_SECTION),
                     ..default()
                 },
-                BackgroundColor(PAGE_BG),
             ))
             .with_children(|root| {
                 spawn_tabs(root);
@@ -83,7 +80,7 @@ pub fn setup_brain_window_panel(mut commands: Commands, bodies: Query<(Entity, &
                     Node {
                         width: Val::Percent(100.0),
                         flex_direction: FlexDirection::Column,
-                        row_gap: Val::Px(8.0),
+                        row_gap: Val::Px(SPACE_SECTION),
                         ..default()
                     },
                 ));
@@ -99,8 +96,8 @@ fn spawn_tabs(parent: &mut ChildSpawnerCommands<'_>) {
             DevPanelUi,
             Node {
                 flex_direction: FlexDirection::Row,
-                column_gap: Val::Px(6.0),
-                justify_content: JustifyContent::Center,
+                column_gap: Val::Px(SPACE_CONTROL),
+                flex_wrap: FlexWrap::Wrap,
                 width: Val::Percent(100.0),
                 ..default()
             },
@@ -118,22 +115,18 @@ fn spawn_tab(parent: &mut ChildSpawnerCommands<'_>, label: &str, view: BrainView
             DevPanelUi,
             Button,
             Node {
-                padding: UiRect::axes(Val::Px(14.0), Val::Px(5.0)),
-                border: UiRect::all(Val::Px(1.0)),
+                padding: UiRect::axes(Val::Px(SPACE_BUTTON_PAD_X), Val::Px(SPACE_BUTTON_PAD_Y)),
                 ..default()
             },
-            BackgroundColor(CARD_BG),
-            BorderColor::all(BORDER),
+            BackgroundColor(BTN_BG_IDLE),
+            BorderColor::all(BTN_BORDER_IDLE),
         ))
         .with_children(|b| {
             b.spawn((
                 DevPanelUi,
                 Text::new(label),
-                TextFont {
-                    font_size: 11.0,
-                    ..default()
-                },
-                TextColor(TEXT),
+                label_text_font(),
+                TextColor(TEXT_PRIMARY),
             ));
         });
 }
@@ -157,12 +150,12 @@ pub fn sync_brain_window(
 
     for (tab, mut bg, mut border) in &mut tabs {
         let active = tab.view == brain_state.view;
-        *bg = BackgroundColor(if active {
-            CARD_SELECTED
+        *bg = BackgroundColor(if active { BTN_BG_ACTIVE } else { BTN_BG_IDLE });
+        *border = BorderColor::all(if active {
+            BTN_BORDER_ACTIVE
         } else {
-            CARD_BG
+            BTN_BORDER_IDLE
         });
-        *border = BorderColor::all(if active { ACCENT } else { BORDER });
     }
 
     let unit_id = resolve_inspected_unit_id(&brain_state, &world_selection, &selected_units);
@@ -193,7 +186,6 @@ pub fn sync_brain_window(
                 spawn_settlement_view(parent, &doc, &selected_card, show_sources);
             }
         }
-        spawn_legend(parent);
     });
 }
 
@@ -262,8 +254,8 @@ fn spawn_context_header(
                 },
             ))
             .with_children(|col| {
-                col.spawn(body_text(title, 16.0, TEXT));
-                col.spawn(body_text(subtitle, 10.0, MUTED));
+                col.spawn(primary_text(title));
+                col.spawn(small_muted_text(subtitle));
             });
             if let Some(auth) = authority {
                 row.spawn((
@@ -276,8 +268,8 @@ fn spawn_context_header(
                     },
                 ))
                 .with_children(|col| {
-                    col.spawn(pill(format!("Authority: {}", auth)));
-                    col.spawn(body_text("Current unit state", 9.0, MUTED));
+                    col.spawn(authority_badge(format!("Authority: {}", auth)));
+                    col.spawn(small_muted_text("Current unit state"));
                 });
             }
         });
@@ -303,8 +295,8 @@ fn spawn_need_pressures(parent: &mut ChildSpawnerCommands<'_>, needs: &[super::d
                     border: UiRect::all(Val::Px(1.0)),
                     ..default()
                 },
-                BackgroundColor(if need.selected { CARD_SELECTED } else { CARD_BG }),
-                BorderColor::all(if need.selected { ACCENT } else { BORDER }),
+                BackgroundColor(if need.selected { BTN_BG_ACTIVE } else { CARD_BG }),
+                BorderColor::all(if need.selected { BTN_BORDER_ACTIVE } else { CARD_BORDER }),
             ))
             .with_children(|card| {
                 card.spawn((
@@ -317,10 +309,10 @@ fn spawn_need_pressures(parent: &mut ChildSpawnerCommands<'_>, needs: &[super::d
                     },
                 ))
                 .with_children(|r| {
-                    r.spawn(body_text(&need.need_id, 11.0, TEXT));
-                    r.spawn(body_text(need.pressure.to_string(), 11.0, TEXT));
+                    r.spawn(label_text(&need.need_id));
+                    r.spawn(label_text(&need.pressure.to_string()));
                 });
-                spawn_bar(card, need.pressure as f32, 100.0, GREEN);
+                spawn_bar(card, need.pressure as f32, 100.0, STATUS_SUCCESS);
             });
     }
 }
@@ -341,7 +333,9 @@ fn spawn_main_columns(
             Node {
                 width: Val::Percent(100.0),
                 flex_direction: FlexDirection::Row,
-                column_gap: Val::Px(10.0),
+                flex_wrap: FlexWrap::Wrap,
+                column_gap: Val::Px(SPACE_SECTION),
+                row_gap: Val::Px(SPACE_SECTION),
                 align_items: AlignItems::FlexStart,
                 ..default()
             },
@@ -350,16 +344,23 @@ fn spawn_main_columns(
             row.spawn((
                 DevPanelUi,
                 Node {
-                    width: Val::Percent(42.0),
                     flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(4.0),
+                    row_gap: Val::Px(SPACE_CONTROL),
+                    flex_grow: 1.0,
+                    flex_shrink: 1.0,
+                    flex_basis: Val::Percent(45.0),
+                    min_width: Val::Px(180.0),
+                    width: Val::Percent(100.0),
                     ..default()
                 },
             ))
             .with_children(|spine| {
                 spawn_section_title(spine, "Decision spine");
-                spawn_muted(spine, "Cause → execution");
-                for card in cards {
+                spawn_muted(spine, "Cause to execution");
+                for (index, card) in cards.iter().enumerate() {
+                    if index > 0 {
+                        spawn_spine_connector(spine);
+                    }
                     if let Some(raw) = card.id.strip_prefix("worker:") {
                         if let Ok(raw_id) = raw.parse::<u64>() {
                             spawn_worker_spine_card(spine, card, selected_id, UnitId::new(raw_id));
@@ -372,14 +373,18 @@ fn spawn_main_columns(
             row.spawn((
                 DevPanelUi,
                 Node {
-                    width: Val::Percent(58.0),
                     flex_direction: FlexDirection::Column,
-                    padding: UiRect::all(Val::Px(10.0)),
+                    padding: UiRect::all(Val::Px(SPACE_SECTION)),
                     border: UiRect::all(Val::Px(1.0)),
+                    flex_grow: 1.0,
+                    flex_shrink: 1.0,
+                    flex_basis: Val::Percent(55.0),
+                    min_width: Val::Px(200.0),
+                    width: Val::Percent(100.0),
                     ..default()
                 },
                 BackgroundColor(CARD_BG),
-                BorderColor::all(BORDER),
+                BorderColor::all(CARD_BORDER),
             ))
             .with_children(|inspector| {
                 if let Some(card) = selected {
@@ -415,11 +420,11 @@ fn spawn_worker_spine_card(
                 border: UiRect::all(Val::Px(1.0)),
                 ..default()
             },
-            BackgroundColor(if selected { CARD_SELECTED } else { CARD_BG }),
-            BorderColor::all(if selected { ACCENT } else { BORDER }),
+            BackgroundColor(if selected { BTN_BG_ACTIVE } else { CARD_BG }),
+            BorderColor::all(if selected { BTN_BORDER_ACTIVE } else { CARD_BORDER }),
         ))
         .with_children(|row| {
-            row.spawn(body_text(format!("{:02}", card.number), 10.0, MUTED));
+            row.spawn(small_muted_text(format!("{:02}", card.number)));
             row.spawn((
                 DevPanelUi,
                 Node {
@@ -430,10 +435,10 @@ fn spawn_worker_spine_card(
                 },
             ))
             .with_children(|col| {
-                col.spawn(body_text(&card.title, 11.0, TEXT));
-                col.spawn(body_text(&card.subtitle, 9.0, MUTED));
+                col.spawn(label_text(&card.title));
+                col.spawn(small_muted_text(&card.subtitle));
             });
-            row.spawn(body_text("Inspect →", 10.0, GREEN));
+            row.spawn(label_text_colored("Inspect unit", STATUS_SUCCESS));
         });
 }
 
@@ -459,11 +464,11 @@ fn spawn_spine_card(
                 border: UiRect::all(Val::Px(1.0)),
                 ..default()
             },
-            BackgroundColor(if selected { CARD_SELECTED } else { CARD_BG }),
-            BorderColor::all(if selected { ACCENT } else { BORDER }),
+            BackgroundColor(if selected { BTN_BG_ACTIVE } else { CARD_BG }),
+            BorderColor::all(if selected { BTN_BORDER_ACTIVE } else { CARD_BORDER }),
         ))
         .with_children(|row| {
-            row.spawn(body_text(format!("{:02}", card.number), 10.0, MUTED));
+            row.spawn(small_muted_text(format!("{:02}", card.number)));
             row.spawn((
                 DevPanelUi,
                 Node {
@@ -474,11 +479,28 @@ fn spawn_spine_card(
                 },
             ))
             .with_children(|col| {
-                col.spawn(body_text(&card.title, 11.0, TEXT));
-                col.spawn(body_text(&card.subtitle, 9.0, MUTED));
+                col.spawn(label_text(&card.title));
+                col.spawn(small_muted_text(&card.subtitle));
+                if let Some(note) = &card.link_note {
+                    col.spawn(small_muted_text(note));
+                }
             });
-            row.spawn(body_text(&card.status_label, 10.0, tone_color(card.tone)));
+            row.spawn(label_text_colored(&card.status_label, tone_color(card.tone)));
         });
+}
+
+fn spawn_spine_connector(parent: &mut ChildSpawnerCommands<'_>) {
+    parent
+        .spawn((
+            DevPanelUi,
+            Node {
+                width: Val::Px(2.0),
+                height: Val::Px(SPINE_CONNECTOR_HEIGHT_PX),
+                margin: UiRect::left(Val::Px(14.0)),
+                ..default()
+            },
+            BackgroundColor(CARD_BORDER),
+        ));
 }
 
 fn spawn_inspector(
@@ -486,8 +508,8 @@ fn spawn_inspector(
     model: &BrainInspectorModel,
     show_sources: bool,
 ) {
-    parent.spawn(body_text(&model.system_tag, 9.0, MUTED));
-    parent.spawn(body_text(&model.title, 14.0, TEXT));
+    parent.spawn(section_text(&model.system_tag));
+    parent.spawn(primary_text(&model.title));
     if let Some(note) = &model.candidate_stale_note {
         spawn_muted(parent, note);
     }
@@ -520,22 +542,38 @@ fn spawn_inspector(
         ))
         .with_children(|b| {
             let label = if show_sources {
-                "▼ Source records"
+                "Source records (hide)"
             } else {
-                "▶ Source records"
+                "Source records (show)"
             };
-            b.spawn(body_text(label, 10.0, ACCENT));
+            b.spawn(small_muted_text(label));
         });
     if show_sources {
-        for row in &model.source_records {
-            spawn_field_row(parent, row);
-        }
+        parent
+            .spawn((
+                DevPanelUi,
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    margin: UiRect::top(Val::Px(SPACE_CONTROL)),
+                    padding: UiRect::all(Val::Px(SPACE_CONTROL)),
+                    border: UiRect::all(Val::Px(1.0)),
+                    row_gap: Val::Px(2.0),
+                    ..default()
+                },
+                BackgroundColor(FIELD_BG_IDLE),
+                BorderColor::all(CARD_BORDER),
+            ))
+            .with_children(|block| {
+                for row in &model.source_records {
+                    spawn_field_row(block, row);
+                }
+            });
     }
 }
 
 fn spawn_candidate(parent: &mut ChildSpawnerCommands<'_>, cand: &super::model::BrainCandidateRaceRow, max: f32) {
     let prefix = if cand.chosen { "[chosen] " } else { "" };
-    parent.spawn(body_text(
+    parent.spawn(label_text_colored(
         format!(
             "{}{} score={:.1} (pri={:.0} dist=-{:.2})",
             prefix,
@@ -544,10 +582,22 @@ fn spawn_candidate(parent: &mut ChildSpawnerCommands<'_>, cand: &super::model::B
             cand.priority_component,
             cand.distance_component
         ),
-        10.0,
-        if cand.chosen { ACCENT } else { TEXT },
+        if cand.chosen {
+            STATUS_SUCCESS
+        } else {
+            TEXT_PRIMARY
+        },
     ));
-    spawn_bar(parent, cand.total_score, max, if cand.chosen { ACCENT } else { MUTED });
+    spawn_bar(
+        parent,
+        cand.total_score,
+        max,
+        if cand.chosen {
+            STATUS_SUCCESS
+        } else {
+            TEXT_MUTED
+        },
+    );
 }
 
 fn spawn_history(parent: &mut ChildSpawnerCommands<'_>, blocks: &[BrainHistoryBlock]) {
@@ -577,7 +627,7 @@ fn spawn_history(parent: &mut ChildSpawnerCommands<'_>, blocks: &[BrainHistoryBl
                         ..default()
                     },
                     BackgroundColor(CARD_BG),
-                    BorderColor::all(BORDER),
+                    BorderColor::all(CARD_BORDER),
                 ))
                 .with_children(|card| {
                     if block.is_latest {
@@ -588,7 +638,7 @@ fn spawn_history(parent: &mut ChildSpawnerCommands<'_>, blocks: &[BrainHistoryBl
                                 height: Val::Percent(100.0),
                                 ..default()
                             },
-                            BackgroundColor(AMBER),
+                            BackgroundColor(STATUS_WARNING),
                         ));
                     }
                     card.spawn((
@@ -600,16 +650,12 @@ fn spawn_history(parent: &mut ChildSpawnerCommands<'_>, blocks: &[BrainHistoryBl
                         },
                     ))
                     .with_children(|col| {
-                        col.spawn(body_text(
-                            if block.is_latest {
-                                format!("{} · Latest", block.title)
-                            } else {
-                                block.title.clone()
-                            },
-                            9.0,
-                            MUTED,
-                        ));
-                        col.spawn(body_text(&block.detail, 10.0, TEXT));
+                        col.spawn(small_muted_text(if block.is_latest {
+                            format!("{} - latest", block.title)
+                        } else {
+                            block.title.clone()
+                        }));
+                        col.spawn(label_text(&block.detail));
                     });
                 });
             }
@@ -629,8 +675,8 @@ fn spawn_field_row(parent: &mut ChildSpawnerCommands<'_>, row: &BrainFieldRow) {
             },
         ))
         .with_children(|r| {
-            r.spawn(body_text(&row.label, 10.0, MUTED));
-            r.spawn(body_text(&row.value, 10.0, TEXT));
+            r.spawn(small_muted_text(&row.label));
+            r.spawn(label_text(&row.value));
         });
 }
 
@@ -645,7 +691,7 @@ fn spawn_bar(parent: &mut ChildSpawnerCommands<'_>, value: f32, max: f32, color:
                 margin: UiRect::vertical(Val::Px(2.0)),
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.88, 0.90, 0.92, 1.0)),
+            BackgroundColor(FIELD_BG_IDLE),
         ))
         .with_children(|track| {
             track.spawn((
@@ -660,58 +706,84 @@ fn spawn_bar(parent: &mut ChildSpawnerCommands<'_>, value: f32, max: f32, color:
         });
 }
 
-fn spawn_legend(parent: &mut ChildSpawnerCommands<'_>) {
-    spawn_muted(
-        parent,
-        "Green: selected / linked · Amber: executing · Missing links show 'Provenance unavailable'",
-    );
-}
-
 fn spawn_section_title(parent: &mut ChildSpawnerCommands<'_>, title: &str) {
-    parent.spawn(body_text(title, 11.0, TEXT));
+    parent.spawn(section_text(title));
 }
 
 fn spawn_muted(parent: &mut ChildSpawnerCommands<'_>, text: &str) {
-    parent.spawn(body_text(text, 9.0, MUTED));
+    parent.spawn(small_muted_text(text));
 }
 
-fn body_text(text: impl Into<String>, size: f32, color: Color) -> (DevPanelUi, Text, TextFont, TextColor) {
+fn primary_text(text: impl Into<String>) -> (DevPanelUi, Text, TextFont, TextColor) {
     (
         DevPanelUi,
         Text::new(text),
         TextFont {
-            font_size: size,
+            font_size: FONT_SIZE_LABEL + 1.0,
             ..default()
         },
+        TextColor(TEXT_PRIMARY),
+    )
+}
+
+fn label_text(text: impl Into<String>) -> (DevPanelUi, Text, TextFont, TextColor) {
+    (
+        DevPanelUi,
+        Text::new(text),
+        label_text_font(),
+        TextColor(TEXT_PRIMARY),
+    )
+}
+
+fn label_text_colored(text: impl Into<String>, color: Color) -> (DevPanelUi, Text, TextFont, TextColor) {
+    (
+        DevPanelUi,
+        Text::new(text),
+        label_text_font(),
         TextColor(color),
     )
 }
 
-fn pill(text: String) -> impl Bundle {
+fn section_text(text: impl Into<String>) -> (DevPanelUi, Text, TextFont, TextColor) {
     (
         DevPanelUi,
         Text::new(text),
-        TextFont {
-            font_size: 9.0,
-            ..default()
-        },
-        TextColor(ACCENT),
+        small_text_font(),
+        TextColor(TEXT_SECTION),
+    )
+}
+
+fn small_muted_text(text: impl Into<String>) -> (DevPanelUi, Text, TextFont, TextColor) {
+    (
+        DevPanelUi,
+        Text::new(text),
+        small_text_font(),
+        TextColor(TEXT_MUTED),
+    )
+}
+
+fn authority_badge(text: String) -> impl Bundle {
+    (
+        DevPanelUi,
+        Text::new(text),
+        small_text_font(),
+        TextColor(TEXT_LABEL),
         Node {
-            padding: UiRect::axes(Val::Px(8.0), Val::Px(3.0)),
+            padding: UiRect::axes(Val::Px(SPACE_BUTTON_PAD_X), Val::Px(3.0)),
             border: UiRect::all(Val::Px(1.0)),
             ..default()
         },
-        BackgroundColor(CARD_SELECTED),
-        BorderColor::all(ACCENT),
+        BackgroundColor(CARD_BG),
+        BorderColor::all(BTN_BORDER_ACTIVE),
     )
 }
 
 fn tone_color(tone: BrainStatusTone) -> Color {
     match tone {
-        BrainStatusTone::Executing => AMBER,
-        BrainStatusTone::Rejected | BrainStatusTone::Unavailable => MUTED,
-        BrainStatusTone::Score => TEXT,
-        _ => GREEN,
+        BrainStatusTone::Executing => STATUS_WARNING,
+        BrainStatusTone::Rejected | BrainStatusTone::Unavailable => TEXT_MUTED,
+        BrainStatusTone::Neutral | BrainStatusTone::Score => TEXT_LABEL,
+        _ => STATUS_SUCCESS,
     }
 }
 
