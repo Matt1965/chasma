@@ -7,3 +7,6 @@ pub const WORLD_RENDER_LAYER: RenderLayers = RenderLayers::layer(0);
 
 /// Unit Editor isolated preview studio (preview unit, lights, backdrop).
 pub const PREVIEW_RENDER_LAYER: RenderLayers = RenderLayers::layer(1);
+
+/// Gameplay HUD unit portrait capture stage (isolated from world and editor preview).
+pub const PORTRAIT_RENDER_LAYER: RenderLayers = RenderLayers::layer(2);

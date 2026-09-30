@@ -82,8 +82,9 @@ pub use plugin::{
     GameplayCommandInputSystems, GameplayInputGateSystems, GameplayUiPlugin, GameplayUiSystems,
 };
 pub use selected_unit_panel::{
-    SelectedUnitPanelSnapshot, build_selected_panel_snapshot, build_selected_unit_snapshot,
-    format_single_unit_lines, format_unit_detail_lines, unit_state_label,
+    SelectedUnitPanelSnapshot, SelectedUnitPortraitFallback, build_selected_panel_snapshot,
+    build_selected_unit_snapshot, format_single_unit_lines, format_unit_detail_lines,
+    unit_state_label,
 };
 pub use selection_ui::{clear_gameplay_hud_dirty, sync_gameplay_ui_state};
 pub use settlement_workforce::{

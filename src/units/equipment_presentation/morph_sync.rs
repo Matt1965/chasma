@@ -11,6 +11,7 @@ use crate::units::appearance_presentation::sync::{
 };
 use crate::corpses::CorpseSceneRoot;
 use crate::units::components::UnitSceneRoot;
+use crate::units::portraits::UnitPortraitSceneRoot;
 use crate::units::presentation::UnitPresentationAppearance;
 use crate::units::sync::UnitSyncOverrides;
 use crate::world::{AppearanceProfileCatalog, resolve_equipment_morph_weights};
@@ -29,7 +30,10 @@ pub fn sync_unit_equipment_morphs(
     mut mesh_morph: Query<&mut MeshMorphWeights>,
     mesh3d: Query<&Mesh3d>,
     child_of: Query<&ChildOf>,
-    unit_roots: Query<&UnitPresentationAppearance, Or<(With<UnitSceneRoot>, With<CorpseSceneRoot>)>>,
+    unit_roots: Query<
+        &UnitPresentationAppearance,
+        Or<(With<UnitSceneRoot>, With<CorpseSceneRoot>, With<UnitPortraitSceneRoot>)>,
+    >,
     equipment: Query<
         (
             Entity,

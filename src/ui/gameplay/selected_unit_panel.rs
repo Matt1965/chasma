@@ -1,6 +1,9 @@
 //! Bottom-left selected-object stats panel (P-UI1, BP1).
 
 use bevy::prelude::*;
+use bevy::ui::widget::ImageNode;
+
+use crate::units::SelectedUnitPortraitImage;
 
 use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::units::input::SelectedUnits;
@@ -45,7 +48,7 @@ pub(crate) struct SelectedUnitNameText;
 pub(crate) struct SelectedUnitSubtitleText;
 
 #[derive(Component, Debug)]
-pub(crate) struct SelectedUnitPortraitFallback;
+pub struct SelectedUnitPortraitFallback;
 
 #[derive(Component, Debug)]
 pub(crate) struct SelectedUnitNutritionRow;
@@ -308,6 +311,16 @@ pub fn spawn_selected_unit_panel(parent: &mut ChildSpawnerCommands<'_>) {
                             hud_inset_fill_style(),
                         ))
                         .with_children(|portrait| {
+                            portrait.spawn((
+                                SelectedUnitPortraitImage,
+                                ImageNode::new(Handle::default()),
+                                Node {
+                                    width: Val::Percent(100.0),
+                                    height: Val::Percent(100.0),
+                                    ..default()
+                                },
+                                Visibility::Hidden,
+                            ));
                             portrait.spawn((
                                 SelectedUnitPortraitFallback,
                                 Text::new("?"),
