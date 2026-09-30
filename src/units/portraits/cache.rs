@@ -157,7 +157,7 @@ mod tests {
 
     fn sig(unit: u32, digest: u64) -> PortraitAppearanceSignature {
         PortraitAppearanceSignature {
-            unit_id: UnitId::new(unit),
+            unit_id: UnitId::new(unit as u64),
             digest,
         }
     }
