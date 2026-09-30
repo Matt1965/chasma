@@ -6,7 +6,8 @@ use bevy::prelude::*;
 
 use super::id::DevWindowId;
 use super::math::{
-    DEFAULT_PANEL_WIDTH_PX, default_brain_position, default_catalog_position, default_debug_position,
+    DEFAULT_PANEL_WIDTH_PX, brain_panel_width, default_brain_position, default_catalog_position,
+    default_debug_position,
     default_fields_position, default_navigation_editor_position, default_origin_editor_position,
     default_roads_position,
     default_save_position,
@@ -29,6 +30,7 @@ impl DevWindowSessionState {
     pub fn new_default(id: DevWindowId, viewport: Vec2) -> Self {
         let width = match id {
             DevWindowId::NavigationEditor => navigation_editor_panel_width(viewport),
+            DevWindowId::Brain => brain_panel_width(viewport),
             _ => DEFAULT_PANEL_WIDTH_PX,
         };
         let position = match id {

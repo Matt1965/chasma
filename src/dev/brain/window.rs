@@ -13,7 +13,10 @@ use crate::client::selection::WorldSelectionState;
 use crate::client::CameraSettlementContext;
 use crate::dev::dev_mode::DevModeState;
 use crate::dev::input::DevPanelUi;
-use crate::dev::window::{DevWindowBody, DevWindowId, DevWindowRegistry, DevWindowUi};
+use crate::dev::window::{
+    brain_panel_width, brain_should_stack_columns, DevWindowBody, DevWindowId, DevWindowRegistry,
+    DevWindowUi,
+};
 use crate::dev::widgets::theme::{
     BTN_BG_ACTIVE, BTN_BG_IDLE, BTN_BORDER_ACTIVE, BTN_BORDER_IDLE, CARD_BG, CARD_BORDER,
     FIELD_BG_IDLE, FONT_SIZE_LABEL, SPACE_CONTROL, SPACE_SECTION, SPACE_BUTTON_PAD_X,
@@ -53,6 +56,9 @@ pub struct DevBrainWorkerButton {
 pub struct DevBrainSourceRecordsToggle;
 
 const SPINE_CONNECTOR_HEIGHT_PX: f32 = 6.0;
+const BRAIN_SCROLL_MAX_HEIGHT_PX: f32 = 420.0;
+const SPINE_WIDTH_PERCENT: f32 = 38.0;
+const INSPECTOR_WIDTH_PERCENT: f32 = 62.0;
 
 pub fn setup_brain_window_panel(mut commands: Commands, bodies: Query<(Entity, &DevWindowBody)>) {
     for (entity, body) in &bodies {
@@ -79,6 +85,8 @@ pub fn setup_brain_window_panel(mut commands: Commands, bodies: Query<(Entity, &
                     DevPanelUi,
                     Node {
                         width: Val::Percent(100.0),
+                        min_height: Val::Px(0.0),
+                        flex_grow: 1.0,
                         flex_direction: FlexDirection::Column,
                         row_gap: Val::Px(SPACE_SECTION),
                         ..default()
@@ -168,6 +176,17 @@ pub fn sync_brain_window(
 
     let selected_card = brain_state.selected_card_id.clone();
     let show_sources = brain_state.source_records_expanded;
+    let panel_width = registry
+        .session(DevWindowId::Brain)
+        .map(|s| {
+            if s.computed_size.x > 10.0 {
+                s.computed_size.x
+            } else {
+                brain_panel_width(registry.viewport)
+            }
+        })
+        .unwrap_or_else(|| brain_panel_width(registry.viewport));
+    let stack_columns = brain_should_stack_columns(panel_width);
 
     commands.entity(root).with_children(|parent| {
         match brain_state.view {
@@ -179,11 +198,11 @@ pub fn sync_brain_window(
                     &world,
                     &history,
                 );
-                spawn_unit_view(parent, &doc, &selected_card, show_sources);
+                spawn_unit_view(parent, &doc, &selected_card, show_sources, stack_columns);
             }
             BrainView::Settlement => {
                 let doc = build_settlement_document(&brain_state, &settlement_context, &world);
-                spawn_settlement_view(parent, &doc, &selected_card, show_sources);
+                spawn_settlement_view(parent, &doc, &selected_card, show_sources, stack_columns);
             }
         }
     });
@@ -194,6 +213,7 @@ fn spawn_unit_view(
     doc: &UnitBrainDocument,
     selected_card: &Option<String>,
     show_sources: bool,
+    stack_columns: bool,
 ) {
     if let Some(msg) = &doc.empty_message {
         spawn_muted(parent, msg);
@@ -203,7 +223,14 @@ fn spawn_unit_view(
     let card_id = selected_card
         .clone()
         .or_else(|| doc.cards.last().map(|c| c.id.clone()));
-    spawn_main_columns(parent, &doc.cards, card_id.as_deref(), show_sources);
+    spawn_spine_inspector_split(
+        parent,
+        &doc.cards,
+        card_id.as_deref(),
+        show_sources,
+        stack_columns,
+        None,
+    );
     spawn_history(parent, &doc.history);
 }
 
@@ -212,18 +239,25 @@ fn spawn_settlement_view(
     doc: &SettlementBrainDocument,
     selected_card: &Option<String>,
     show_sources: bool,
+    stack_columns: bool,
 ) {
     if let Some(msg) = &doc.empty_message {
         spawn_muted(parent, msg);
         return;
     }
     spawn_context_header(parent, &doc.settlement_name, &doc.header_subtitle, Some("Settlement"));
-    spawn_need_pressures(parent, &doc.needs);
-    spawn_section_title(parent, &doc.chain_title);
     let card_id = selected_card
         .clone()
         .or_else(|| doc.cards.first().map(|c| c.id.clone()));
-    spawn_main_columns(parent, &doc.cards, card_id.as_deref(), show_sources);
+    let settlement_chrome = Some((doc.needs.as_slice(), doc.chain_title.as_str()));
+    spawn_spine_inspector_split(
+        parent,
+        &doc.cards,
+        card_id.as_deref(),
+        show_sources,
+        stack_columns,
+        settlement_chrome,
+    );
 }
 
 fn spawn_context_header(
@@ -317,26 +351,44 @@ fn spawn_need_pressures(parent: &mut ChildSpawnerCommands<'_>, needs: &[super::d
     }
 }
 
-fn spawn_main_columns(
+fn spawn_spine_inspector_split(
     parent: &mut ChildSpawnerCommands<'_>,
     cards: &[BrainCardModel],
     selected_id: Option<&str>,
     show_sources: bool,
+    stack_columns: bool,
+    settlement_chrome: Option<(&[super::document::SettlementNeedRow], &str)>,
 ) {
     let selected = cards
         .iter()
         .find(|c| Some(c.id.as_str()) == selected_id)
         .or_else(|| cards.last());
+    let spine_width = if stack_columns {
+        Val::Percent(100.0)
+    } else {
+        Val::Percent(SPINE_WIDTH_PERCENT)
+    };
+    let inspector_width = if stack_columns {
+        Val::Percent(100.0)
+    } else {
+        Val::Percent(INSPECTOR_WIDTH_PERCENT)
+    };
     parent
         .spawn((
             DevPanelUi,
             Node {
                 width: Val::Percent(100.0),
                 flex_direction: FlexDirection::Row,
-                flex_wrap: FlexWrap::Wrap,
+                flex_wrap: if stack_columns {
+                    FlexWrap::Wrap
+                } else {
+                    FlexWrap::NoWrap
+                },
                 column_gap: Val::Px(SPACE_SECTION),
                 row_gap: Val::Px(SPACE_SECTION),
                 align_items: AlignItems::FlexStart,
+                flex_grow: 1.0,
+                min_height: Val::Px(0.0),
                 ..default()
             },
         ))
@@ -344,17 +396,21 @@ fn spawn_main_columns(
             row.spawn((
                 DevPanelUi,
                 Node {
+                    width: spine_width,
+                    min_width: Val::Px(200.0),
+                    flex_shrink: 0.0,
                     flex_direction: FlexDirection::Column,
+                    max_height: Val::Px(BRAIN_SCROLL_MAX_HEIGHT_PX),
+                    overflow: Overflow::scroll_y(),
                     row_gap: Val::Px(SPACE_CONTROL),
-                    flex_grow: 1.0,
-                    flex_shrink: 1.0,
-                    flex_basis: Val::Percent(45.0),
-                    min_width: Val::Px(180.0),
-                    width: Val::Percent(100.0),
                     ..default()
                 },
             ))
             .with_children(|spine| {
+                if let Some((needs, chain_title)) = settlement_chrome {
+                    spawn_need_pressures(spine, needs);
+                    spawn_section_title(spine, chain_title);
+                }
                 spawn_section_title(spine, "Decision spine");
                 spawn_muted(spine, "Cause to execution");
                 for (index, card) in cards.iter().enumerate() {
@@ -373,14 +429,15 @@ fn spawn_main_columns(
             row.spawn((
                 DevPanelUi,
                 Node {
+                    width: inspector_width,
+                    min_width: Val::Px(240.0),
+                    flex_grow: 1.0,
+                    flex_shrink: 1.0,
                     flex_direction: FlexDirection::Column,
                     padding: UiRect::all(Val::Px(SPACE_SECTION)),
                     border: UiRect::all(Val::Px(1.0)),
-                    flex_grow: 1.0,
-                    flex_shrink: 1.0,
-                    flex_basis: Val::Percent(55.0),
-                    min_width: Val::Px(200.0),
-                    width: Val::Percent(100.0),
+                    max_height: Val::Px(BRAIN_SCROLL_MAX_HEIGHT_PX),
+                    overflow: Overflow::scroll_y(),
                     ..default()
                 },
                 BackgroundColor(CARD_BG),
@@ -508,8 +565,20 @@ fn spawn_inspector(
     model: &BrainInspectorModel,
     show_sources: bool,
 ) {
-    parent.spawn(section_text(&model.system_tag));
-    parent.spawn(primary_text(&model.title));
+    parent.spawn((
+        section_text(&model.system_tag),
+        Node {
+            width: Val::Percent(100.0),
+            ..default()
+        },
+    ));
+    parent.spawn((
+        primary_text(&model.title),
+        Node {
+            width: Val::Percent(100.0),
+            ..default()
+        },
+    ));
     if let Some(note) = &model.candidate_stale_note {
         spawn_muted(parent, note);
     }
@@ -622,7 +691,7 @@ fn spawn_history(parent: &mut ChildSpawnerCommands<'_>, blocks: &[BrainHistoryBl
                     Node {
                         flex_direction: FlexDirection::Row,
                         column_gap: Val::Px(6.0),
-                        padding: UiRect::all(Val::Px(6.0)),
+                        padding: UiRect::axes(Val::Px(4.0), Val::Px(3.0)),
                         border: UiRect::all(Val::Px(1.0)),
                         ..default()
                     },

@@ -64,28 +64,26 @@ fn windows_launcher_order() {
             DevWindowId::Save,
             DevWindowId::Catalog,
             DevWindowId::SelectedObject,
+            DevWindowId::Brain,
+            DevWindowId::Debug,
+            DevWindowId::World,
+            DevWindowId::Settlement,
+            DevWindowId::Fields,
+            DevWindowId::Roads,
+            DevWindowId::NavigationEditor,
+            DevWindowId::OriginEditor,
         ]
+    );
+    assert_eq!(
+        DevWindowId::NavigationEditor.launcher_label(),
+        "Navigation Editor"
     );
 }
 
 #[test]
 
-fn advanced_launcher_order_and_labels() {
-    assert_eq!(
-        DevWindowId::ADVANCED_LAUNCHER,
-        &[
-            DevWindowId::Debug,
-            DevWindowId::Brain,
-            DevWindowId::World,
-            DevWindowId::Fields,
-            DevWindowId::NavigationEditor,
-        ]
-    );
-
-    assert_eq!(
-        DevWindowId::NavigationEditor.launcher_label(),
-        "Navigation Editor"
-    );
+fn advanced_launcher_is_empty() {
+    assert!(DevWindowId::ADVANCED_LAUNCHER.is_empty());
 }
 
 #[test]

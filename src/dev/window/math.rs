@@ -24,6 +24,11 @@ pub const NAVIGATION_EDITOR_MIN_WIDTH_PX: f32 = 620.0;
 /// Viewport margin when clamping Navigation Editor width.
 pub const NAVIGATION_EDITOR_VIEWPORT_MARGIN_PX: f32 = 12.0;
 pub const DEFAULT_PANEL_BODY_PADDING_PX: f32 = 10.0;
+/// Target width for the Brain diagnostics window (two-column layout).
+pub const BRAIN_PANEL_TARGET_WIDTH_PX: f32 = 900.0;
+/// Minimum Brain window width before stacking spine and inspector vertically.
+pub const BRAIN_TWO_COLUMN_MIN_WIDTH_PX: f32 = 640.0;
+pub const BRAIN_VIEWPORT_MARGIN_PX: f32 = 12.0;
 /// Margin between the Navigation Editor bottom edge and the viewport bottom.
 pub const NAV_EDITOR_VIEWPORT_MARGIN_PX: f32 = 12.0;
 /// Minimum scrollable body height for the Navigation Editor.
@@ -118,9 +123,19 @@ pub fn default_selected_object_position(viewport: Vec2, _window_width: f32) -> V
 }
 
 /// Default top-left for the Debug window (center-right, offset from catalog).
+/// Brain panel width clamped to the current viewport.
+pub fn brain_panel_width(viewport: Vec2) -> f32 {
+    let available = viewport.x - BRAIN_VIEWPORT_MARGIN_PX - LAUNCHER_LEFT_PX;
+    BRAIN_PANEL_TARGET_WIDTH_PX.min(available.max(280.0))
+}
+
+pub fn brain_should_stack_columns(panel_width: f32) -> bool {
+    panel_width < BRAIN_TWO_COLUMN_MIN_WIDTH_PX
+}
+
 pub fn default_brain_position(viewport: Vec2, window_width: f32) -> Vec2 {
     let top = LAUNCHER_TOP_PX + LAUNCHER_HEIGHT_PX + 6.0;
-    let x = (viewport.x - window_width - 12.0).max(LAUNCHER_LEFT_PX);
+    let x = (viewport.x - window_width - BRAIN_VIEWPORT_MARGIN_PX).max(LAUNCHER_LEFT_PX);
     Vec2::new(x, top + 20.0)
 }
 
@@ -242,6 +257,25 @@ mod tests {
             NAVIGATION_EDITOR_MIN_WIDTH_PX
         ));
         assert!(!navigation_editor_uses_two_columns(500.0));
+    }
+
+    #[test]
+    fn brain_panel_width_targets_900_on_large_viewport() {
+        let width = brain_panel_width(Vec2::new(1920.0, 1080.0));
+        assert!((width - BRAIN_PANEL_TARGET_WIDTH_PX).abs() < 1.0);
+    }
+
+    #[test]
+    fn brain_panel_width_clamps_to_viewport() {
+        let width = brain_panel_width(Vec2::new(700.0, 480.0));
+        assert!(width < BRAIN_PANEL_TARGET_WIDTH_PX);
+        assert!(width <= 700.0 - BRAIN_VIEWPORT_MARGIN_PX - LAUNCHER_LEFT_PX + 1.0);
+    }
+
+    #[test]
+    fn brain_stack_columns_when_narrow() {
+        assert!(!brain_should_stack_columns(900.0));
+        assert!(brain_should_stack_columns(600.0));
     }
 
     #[test]

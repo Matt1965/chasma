@@ -18,7 +18,8 @@ use super::math::{
     TITLE_BAR_HEIGHT_PX, default_debug_position, default_fields_position,
     default_navigation_editor_position, default_origin_editor_position, default_roads_position,
     default_save_position,
-    default_brain_position, default_selected_object_position, default_settlement_position,
+    brain_panel_width, default_brain_position, default_selected_object_position,
+    default_settlement_position,
     default_world_position,
     navigation_editor_body_max_height,
     navigation_editor_panel_width,
@@ -95,18 +96,20 @@ fn spawn_workspace_launcher(commands: &mut Commands) {
                 column,
                 DevLauncherGroup::Windows,
                 "Windows",
-                "Show or hide primary dev windows: Save, Catalog, and Selected Object.",
+                "Show or hide dev windows: Save, Catalog, Selected Object, Brain, Debug, World, \
+                 Settlement, Fields, Road Editor, Navigation Editor, and Origin Editor.",
                 DevWindowId::WINDOWS_LAUNCHER,
             );
 
-            spawn_launcher_row(
-                column,
-                DevLauncherGroup::Advanced,
-                "Advanced",
-                "Show or hide advanced authoring windows: Debug, Brain, World, Settlement, \
-                 Fields, Roads, Navigation Editor, and Origin Editor.",
-                DevWindowId::ADVANCED_LAUNCHER,
-            );
+            if !DevWindowId::ADVANCED_LAUNCHER.is_empty() {
+                spawn_launcher_row(
+                    column,
+                    DevLauncherGroup::Advanced,
+                    "Advanced",
+                    "Show or hide additional advanced authoring windows.",
+                    DevWindowId::ADVANCED_LAUNCHER,
+                );
+            }
         });
 }
 
@@ -589,13 +592,22 @@ pub fn spawn_brain_window(
     commands: &mut Commands,
     session: Option<&super::state::DevWindowSessionState>,
 ) {
+    let width = session
+        .map(|s| {
+            if s.computed_size.x > 10.0 {
+                s.computed_size.x
+            } else {
+                brain_panel_width(Vec2::new(1280.0, 720.0))
+            }
+        })
+        .unwrap_or_else(|| brain_panel_width(Vec2::new(1280.0, 720.0)));
     spawn_advanced_window_shell(
         commands,
         DevWindowId::Brain,
         session,
         default_brain_position,
-        DEFAULT_PANEL_WIDTH_PX,
-        Some(480.0),
+        width,
+        Some(520.0),
         None,
         902,
     );
