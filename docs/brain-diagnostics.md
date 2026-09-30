@@ -1,12 +1,12 @@
 # Brain diagnostics (dev-only)
 
-Brain lives in **Debug** (`DevWindowId::Debug`) under **Brain diagnostics**. It answers:
+Brain is a dedicated dev window (`DevWindowId::Brain`). Open it from **Windows → Advanced → Brain**. It answers:
 
 > Why is this unit doing what it is doing?
 
 ## Views
 
-- **Unit** — follows [`WorldSelectionState`](../../src/client/selection/mod.rs) primary unit. Empty when nothing is selected.
+- **Unit** — follows world selection (or settlement-chain **Inspect** focus override). Empty when nothing is selected.
 - **Settlement** — follows [`CameraSettlementContext`](../../src/client/settlement_context/mod.rs) focused settlement. Empty when camera focus does not resolve a settlement.
 
 ## Data sources (authoritative)
@@ -21,9 +21,8 @@ Brain lives in **Debug** (`DevWindowId::Debug`) under **Brain diagnostics**. It 
 | Decision history | `BrainDecisionHistory` (dev resource; task/combat/activity transitions) |
 | Need pressures | `NeedEvaluationStore` / `NeedSnapshot` |
 | Intents | `SettlementIntentStore` / `SettlementIntentPlan` |
-| Arbitration bars | `ArbitrationScoreBreakdown` on `SettlementIntent` |
-| Rejected intents | `RejectedIntentCandidate` / `IntentRejectionReason` |
-| Downstream | `BuildingIntentPropagationStore`, `TaskStore`, `WorkerAssignmentReport` |
+| Arbitration | `ArbitrationScoreBreakdown`, `RejectedIntentCandidate` / `IntentRejectionReason` |
+| Decision-to-work chain | `BuildingIntentPropagationStore`, `TaskStore`, `WorkerAssignmentReport` |
 
 ## Intentionally omitted
 
@@ -31,6 +30,7 @@ Brain lives in **Debug** (`DevWindowId::Debug`) under **Brain diagnostics**. It 
 - Inferred or recomputed scores in UI
 - Per-tick state dumps
 - Settlement directly “choosing” a worker (SA7 owns assignment)
+- **Self** authority without an authoritative source
 
 ## Supported history transitions
 

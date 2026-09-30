@@ -2,6 +2,7 @@
 
 mod animation_focus;
 mod archetype_editor;
+mod brain;
 mod build_identity;
 mod animation_panel;
 mod catalog;
@@ -53,10 +54,13 @@ pub use catalog_cache::{
 };
 pub use build_identity::DevBuildIdentity;
 pub use debug_controls::{apply_dev_debug_flags, dev_flags_from_overlay, sync_dev_debug_controls};
+pub use brain::{
+    BrainDecisionHistory, BrainWindowState, handle_brain_window_input, setup_brain_window_panel,
+    sync_brain_window, tick_brain_decision_history,
+};
 pub use debug_window::{
-    handle_brain_view_buttons, handle_debug_toggle_buttons, setup_debug_window_panel,
-    sync_brain_panel, sync_debug_panel_button_styles, sync_debug_panel_content,
-    BrainDecisionHistory, BrainPanelState, tick_brain_decision_history,
+    handle_debug_toggle_buttons, setup_debug_window_panel, sync_debug_panel_button_styles,
+    sync_debug_panel_content,
 };
 pub use dev_mode::{
     DefinitionId, DevDebugFlags, DevInventoryEndpoint, DevInventoryToolState, DevModeInputGate,
@@ -228,7 +232,7 @@ impl Plugin for DevModePlugin {
             .init_resource::<tools::DevPlacementPreview>()
             .init_resource::<tools::DevPlacementPreviewScratch>();
         tools::init_placement_model_preview(app);
-        app.init_resource::<BrainPanelState>()
+        app.init_resource::<BrainWindowState>()
             .init_resource::<BrainDecisionHistory>()
             .init_resource::<DevPreviewAnchor>()
             .init_resource::<scenes::DevSceneRegistry>()
@@ -250,6 +254,7 @@ impl Plugin for DevModePlugin {
                     setup_selected_object_panel,
                     setup_navigation_editor_panel,
                     setup_debug_window_panel,
+                    setup_brain_window_panel,
                     setup_world_window_panel,
                     setup_settlement_window_panel,
                     setup_fields_window_panel,
@@ -375,7 +380,7 @@ impl Plugin for DevModePlugin {
         .add_systems(
             Update,
             (
-                sync_brain_panel.after(sync_debug_panel_content),
+                sync_brain_window.after(sync_debug_panel_content),
                 tick_brain_decision_history,
             )
                 .in_set(DevModeInputSystems),
@@ -504,7 +509,7 @@ impl Plugin for DevModePlugin {
                 catalog::faction_picker::handle_spawn_faction_picker,
                 handle_save_window_interaction,
                 handle_debug_toggle_buttons,
-                handle_brain_view_buttons,
+                handle_brain_window_input,
                 world_environment::handle_world_environment_actions,
                 world_environment::handle_world_cycle_toggles,
                 world_environment::handle_world_time_presets,

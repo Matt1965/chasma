@@ -1,6 +1,7 @@
 //! Brain diagnostics model and history tests.
 
 use super::history::{BrainDecisionHistory, record_brain_unit_history};
+use super::state::{BrainView, BrainWindowState};
 use super::model::{
     build_settlement_brain_snapshot, build_unit_brain_snapshot, candidate_race_rows,
     intent_arbitration_bars, spine_stages_for_unit, NO_SELECTED_UNIT_MESSAGE,
@@ -174,6 +175,27 @@ fn spine_omits_settlement_stages_for_player_task() {
     let labels: Vec<_> = stages.iter().map(|s| s.label.as_str()).collect();
     assert!(labels.contains(&"Player order"));
     assert!(!labels.contains(&"Need"));
+}
+
+#[test]
+fn brain_window_clears_card_selection_when_unit_context_changes() {
+    let mut state = BrainWindowState::default();
+    state.on_context_changed(Some(UnitId::new(1)), None);
+    state.selected_card_id = Some("task".into());
+    state.on_context_changed(Some(UnitId::new(1)), None);
+    assert_eq!(state.selected_card_id, Some("task".into()));
+    state.on_context_changed(Some(UnitId::new(2)), None);
+    assert_eq!(state.selected_card_id, None);
+}
+
+#[test]
+fn open_unit_inspect_switches_view_without_gameplay_side_effects() {
+    let mut state = BrainWindowState::default();
+    state.view = BrainView::Settlement;
+    state.open_unit_inspect(UnitId::new(4));
+    assert_eq!(state.view, BrainView::Unit);
+    assert_eq!(state.unit_inspect_override, Some(UnitId::new(4)));
+    assert_eq!(state.selected_card_id, None);
 }
 
 #[test]

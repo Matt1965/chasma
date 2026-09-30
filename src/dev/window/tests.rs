@@ -75,6 +75,7 @@ fn advanced_launcher_order_and_labels() {
         DevWindowId::ADVANCED_LAUNCHER,
         &[
             DevWindowId::Debug,
+            DevWindowId::Brain,
             DevWindowId::World,
             DevWindowId::Fields,
             DevWindowId::NavigationEditor,

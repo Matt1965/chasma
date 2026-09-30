@@ -118,6 +118,12 @@ pub fn default_selected_object_position(viewport: Vec2, _window_width: f32) -> V
 }
 
 /// Default top-left for the Debug window (center-right, offset from catalog).
+pub fn default_brain_position(viewport: Vec2, window_width: f32) -> Vec2 {
+    let top = LAUNCHER_TOP_PX + LAUNCHER_HEIGHT_PX + 6.0;
+    let x = (viewport.x - window_width - 12.0).max(LAUNCHER_LEFT_PX);
+    Vec2::new(x, top + 20.0)
+}
+
 pub fn default_debug_position(viewport: Vec2, window_width: f32) -> Vec2 {
     let top = LAUNCHER_TOP_PX + LAUNCHER_HEIGHT_PX + 6.0;
     let x = (viewport.x - window_width - 12.0).max(LAUNCHER_LEFT_PX);

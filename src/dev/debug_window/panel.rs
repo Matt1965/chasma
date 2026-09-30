@@ -215,7 +215,6 @@ pub fn setup_debug_window_panel(mut commands: Commands, bodies: Query<(Entity, &
                         },
                         TextColor(Color::srgba(0.72, 0.82, 0.9, 1.0)),
                     ));
-                    super::brain::setup_brain_panel(root);
                     for group in TOGGLE_GROUPS {
                         root.spawn((
                             DevPanelUi,

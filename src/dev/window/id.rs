@@ -20,6 +20,9 @@ pub enum DevWindowId {
     /// Runtime diagnostic overlays (Slice 8).
     Debug,
 
+    /// Settlement AI provenance diagnostics (unit + settlement views).
+    Brain,
+
     /// Environment and time-of-day authoring (Slice 8).
     World,
 
@@ -49,6 +52,8 @@ impl DevWindowId {
 
             Self::Debug => "Debug",
 
+            Self::Brain => "Brain",
+
             Self::World => "World",
 
             Self::Settlement => "Settlement",
@@ -73,6 +78,7 @@ impl DevWindowId {
             Self::Save
             | Self::NavigationEditor
             | Self::Debug
+            | Self::Brain
             | Self::World
             | Self::Settlement
             | Self::Fields
@@ -88,6 +94,7 @@ impl DevWindowId {
             | Self::SelectedObject
             | Self::NavigationEditor
             | Self::Debug
+            | Self::Brain
             | Self::World
             | Self::Settlement
             | Self::Fields
@@ -105,6 +112,7 @@ impl DevWindowId {
 
     pub const ADVANCED_LAUNCHER: &'static [DevWindowId] = &[
         Self::Debug,
+        Self::Brain,
         Self::World,
         Self::Settlement,
         Self::Fields,

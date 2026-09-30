@@ -130,7 +130,7 @@ pub fn build_unit_brain_snapshot(
 
     let task_id = world.task_store().unit_task_id(unit_id);
     let task = task_id.and_then(|id| world.task_store().get(id).cloned());
-    let authority = resolve_authority(&unit.combat_state, task.as_ref());
+    let authority = resolve_authority_internal(&unit.combat_state, task.as_ref());
     let action_summary = format_unit_action(&unit.state, &unit.combat_state);
     let task_summary = task.as_ref().map(format_task_line);
     let spine = spine_stages_for_unit(world, unit_id, &unit.state, &unit.combat_state, task.as_ref());
@@ -219,7 +219,7 @@ pub fn build_settlement_brain_snapshot(
     }
 }
 
-fn resolve_authority(
+pub(crate) fn resolve_authority_internal(
     combat_state: &CombatState,
     task: Option<&TaskRecord>,
 ) -> Option<BrainAuthoritySource> {
@@ -393,7 +393,7 @@ pub fn candidate_race_rows(
     candidate_race_from_evaluation(evaluation)
 }
 
-fn candidate_race_from_evaluation(
+pub(crate) fn candidate_race_from_evaluation(
     evaluation: Option<&WorkerEvaluation>,
 ) -> (Vec<BrainCandidateRaceRow>, u32, Vec<String>) {
     let Some(eval) = evaluation else {
