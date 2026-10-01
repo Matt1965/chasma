@@ -62,8 +62,11 @@ fn windows_launcher_order() {
         DevWindowId::WINDOWS_LAUNCHER,
         &[
             DevWindowId::Save,
-            DevWindowId::Catalog,
             DevWindowId::SelectedObject,
+            DevWindowId::Catalog,
+            DevWindowId::Brain,
+            DevWindowId::Debug,
+            DevWindowId::World,
         ]
     );
 }
@@ -74,13 +77,13 @@ fn advanced_launcher_order_and_labels() {
     assert_eq!(
         DevWindowId::ADVANCED_LAUNCHER,
         &[
-            DevWindowId::Debug,
-            DevWindowId::World,
+            DevWindowId::Settlement,
             DevWindowId::Fields,
+            DevWindowId::Roads,
             DevWindowId::NavigationEditor,
+            DevWindowId::OriginEditor,
         ]
     );
-
     assert_eq!(
         DevWindowId::NavigationEditor.launcher_label(),
         "Navigation Editor"

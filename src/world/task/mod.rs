@@ -32,7 +32,8 @@ pub use marketplace::{
     AssignmentDecision, AssignmentScore, AssignmentValidationError, MIN_PREEMPT_PRIORITY_RANKS,
     MIN_STICK_TICKS, MarketplaceCandidate, MarketplaceListing, PreemptPolicyOverride,
     WORKER_ASSIGNMENT_CADENCE_TICKS, WorkerAssignmentContext, WorkerAssignmentReport,
-    WorkerAssignmentStore, WorkerEvaluation, may_preempt, may_preempt_with_override,
+    WorkerAssignmentStore, WorkerCandidateDiagnostic, WorkerEvaluation, may_preempt,
+    may_preempt_with_override,
     score_marketplace_listing, step_worker_assignment, sync_operate_workstation_tasks,
     validate_worker_assignments,
 };

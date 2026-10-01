@@ -15,7 +15,9 @@ mod validation;
 mod tests;
 
 pub use candidates::{MarketplaceCandidate, MarketplaceListing};
-pub use report::{AssignmentDecision, WorkerAssignmentReport, WorkerEvaluation};
+pub use report::{
+    AssignmentDecision, WorkerAssignmentReport, WorkerCandidateDiagnostic, WorkerEvaluation,
+};
 pub use score::{
     AssignmentScore, MIN_PREEMPT_PRIORITY_RANKS, MIN_STICK_TICKS, PreemptPolicyOverride,
     may_preempt, may_preempt_with_override, score_marketplace_listing,

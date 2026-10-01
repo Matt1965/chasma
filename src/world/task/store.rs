@@ -29,6 +29,10 @@ impl TaskStore {
         self.tasks.get(&id)
     }
 
+    pub fn records(&self) -> impl Iterator<Item = &TaskRecord> {
+        self.tasks.values()
+    }
+
     pub fn get_mut(&mut self, id: TaskId) -> Option<&mut TaskRecord> {
         self.tasks.get_mut(&id)
     }

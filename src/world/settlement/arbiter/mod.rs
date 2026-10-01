@@ -25,6 +25,7 @@ pub use intent::{
     IntentId, IntentPersistence, IntentRejectionReason, RejectedIntentCandidate, SettlementIntent,
     SettlementIntentPlan,
 };
+pub use scoring::ArbitrationScoreBreakdown;
 pub use step::{
     INTENT_ARBITRATION_CADENCE_TICKS, arbitrate_settlement_intent_now,
     step_settlement_response_arbitration,

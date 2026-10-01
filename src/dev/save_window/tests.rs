@@ -17,7 +17,8 @@ fn save_defaults_closed() {
 #[test]
 fn save_is_first_windows_launcher_entry() {
     assert_eq!(DevWindowId::WINDOWS_LAUNCHER[0], DevWindowId::Save);
-    assert_eq!(DevWindowId::WINDOWS_LAUNCHER[1], DevWindowId::Catalog);
+    assert_eq!(DevWindowId::WINDOWS_LAUNCHER[1], DevWindowId::SelectedObject);
+    assert_eq!(DevWindowId::WINDOWS_LAUNCHER[2], DevWindowId::Catalog);
 }
 
 #[test]

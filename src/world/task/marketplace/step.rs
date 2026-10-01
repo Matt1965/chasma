@@ -553,6 +553,8 @@ fn evaluate_listings_for_worker(
             listing: listing.clone(),
             distance_meters: distance,
             score: scored.total,
+            priority_component: scored.priority_component,
+            distance_component: scored.distance_component,
             eligible,
             block_reason: block,
         });

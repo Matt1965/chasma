@@ -14,7 +14,7 @@ pub use components::{
 pub use id::DevWindowId;
 pub use math::{
     CATALOG_MAX_LIST_HEIGHT_PX, CATALOG_PANEL_WIDTH_PX, NAVIGATION_EDITOR_WIDTH_PX,
-    TITLE_BAR_HEIGHT_PX, clamp_window_position,
+    TITLE_BAR_HEIGHT_PX, brain_panel_width, brain_should_stack_columns, clamp_window_position,
     navigation_editor_body_max_height, navigation_editor_panel_width,
     navigation_editor_uses_two_columns,
 };

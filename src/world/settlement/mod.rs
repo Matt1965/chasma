@@ -33,7 +33,8 @@ pub use anchor::{
     SettlementAnchorRecord, SettlementAnchorStore, SettlementCreationError,
 };
 pub use arbiter::{
-    ArbitrationContext, HIGH_PRESSURE_THRESHOLD, INTENT_ARBITRATION_CADENCE_TICKS, IntentId,
+    ArbitrationContext, ArbitrationScoreBreakdown, HIGH_PRESSURE_THRESHOLD,
+    INTENT_ARBITRATION_CADENCE_TICKS, IntentId,
     IntentPersistence, IntentRejectionReason, IntentValidationError, MAX_INTENTS_PER_NEED_HIGH,
     MAX_INTENTS_PER_NEED_NORMAL, MAX_SETTLEMENT_INTENTS, MIN_ARBITRATION_SCORE,
     RejectedIntentCandidate, SettlementIntent, SettlementIntentPlan, SettlementIntentStore,
