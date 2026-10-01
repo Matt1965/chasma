@@ -7,6 +7,9 @@ use crate::units::equipment_presentation::finalize_skinned_equipment_overlays;
 use crate::units::sync::UnitRuntimeSystems;
 
 use super::cache::UnitPortraitCache;
+use super::diagnostics::{
+    PortraitDiagnosticTrace, sync_portrait_diagnostic_camera, sync_portrait_diagnostic_stage,
+};
 use super::equipment::sync_portrait_equipment_presentation;
 use super::pipeline::{
     UnitPortraitCaptureState, UnitPortraitUiDemand, drive_portrait_capture_pipeline,
@@ -27,28 +30,55 @@ impl Plugin for UnitPortraitPlugin {
         app.init_resource::<UnitPortraitCache>()
             .init_resource::<UnitPortraitCaptureState>()
             .init_resource::<UnitPortraitUiDemand>()
+            .init_resource::<PortraitDiagnosticTrace>()
+            .init_resource::<super::equipment::UnitPortraitEquipmentIndex>()
             .add_systems(Startup, setup_unit_portrait_studio)
             .add_systems(
                 Update,
-                (
-                    maintain_portrait_cache_requests,
-                    propagate_portrait_render_layers,
-                    sync_portrait_camera_active,
-                    sync_portrait_capture_camera,
-                    update_portrait_actor_framing,
-                )
-                    .in_set(UnitPortraitSystems),
+                maintain_portrait_cache_requests.in_set(UnitPortraitSystems),
             )
-            .init_resource::<super::equipment::UnitPortraitEquipmentIndex>()
+            .add_systems(
+                Update,
+                propagate_portrait_render_layers.in_set(UnitPortraitSystems),
+            )
+            .add_systems(
+                Update,
+                sync_portrait_diagnostic_stage.in_set(UnitPortraitSystems),
+            )
+            .add_systems(
+                Update,
+                sync_portrait_diagnostic_camera.in_set(UnitPortraitSystems),
+            )
+            .add_systems(
+                Update,
+                sync_portrait_camera_active.in_set(UnitPortraitSystems),
+            )
+            .add_systems(
+                Update,
+                sync_portrait_capture_camera.in_set(UnitPortraitSystems),
+            )
+            .add_systems(
+                Update,
+                update_portrait_actor_framing.in_set(UnitPortraitSystems),
+            )
             .add_systems(
                 PostUpdate,
                 (
                     sync_portrait_equipment_presentation,
                     finalize_skinned_equipment_overlays,
+                )
+                    .chain()
+                    .after(InheritWeightSystems)
+                    .in_set(UnitPortraitSystems),
+            )
+            .add_systems(
+                PostUpdate,
+                (
+                    propagate_portrait_render_layers,
                     drive_portrait_capture_pipeline,
                 )
                     .chain()
-                    .after(InheritWeightSystems),
+                    .in_set(UnitPortraitSystems),
             );
     }
 }

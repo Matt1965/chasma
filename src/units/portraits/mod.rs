@@ -2,12 +2,14 @@
 
 mod cache;
 mod components;
+mod diagnostics;
 mod equipment;
 mod framing;
 mod pipeline;
 mod plugin;
 mod signature;
 mod studio;
+mod studio_images;
 mod ui;
 
 pub use components::UnitPortraitSceneRoot;

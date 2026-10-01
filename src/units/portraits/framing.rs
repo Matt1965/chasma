@@ -39,6 +39,15 @@ pub fn portrait_framing_override(definition_id: &UnitDefinitionId) -> PortraitFr
     }
 }
 
+/// Whole-model framing for diagnostic step 5.
+pub fn portrait_generous_framing_from_bounds(center: Vec3, body_height: f32) -> UnitPortraitFraming {
+    let height = body_height.max(0.8);
+    UnitPortraitFraming {
+        focus: Vec3::new(center.x, center.y, center.z),
+        head_height: height * 1.15,
+    }
+}
+
 pub fn portrait_framing_from_bounds(
     center: Vec3,
     body_height: f32,
