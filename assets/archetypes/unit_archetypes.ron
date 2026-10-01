@@ -10,7 +10,10 @@
             gold_max: 300,
             affiliation_override: Some(Player),
             equipment: [],
-            inventory_stacks: [],
+            inventory_stacks: [
+                (item_id: ("iron_ore"), quantity: 4),
+                (item_id: ("bread"), quantity: 2),
+            ],
             dialogue: Some((
                 talk: (
                     enabled: true,

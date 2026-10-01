@@ -31,6 +31,10 @@ impl FloatingWindowSessionState {
                 default_settlement_workforce_position(viewport)
             }
             FloatingGameplayWindowId::Dialogue => default_unit_skills_position(viewport),
+            FloatingGameplayWindowId::Trade => {
+                let base = default_unit_inventory_position(viewport);
+                Vec2::new(base.x + 40.0, base.y - 40.0)
+            }
         };
         Self {
             position,
@@ -51,6 +55,7 @@ fn default_computed_size(id: FloatingGameplayWindowId, viewport: Vec2) -> Vec2 {
             Vec2::new((viewport.x * 0.72).clamp(860.0, 900.0), viewport.y * 0.62)
         }
         FloatingGameplayWindowId::Dialogue => Vec2::new(280.0, viewport.y * 0.45),
+        FloatingGameplayWindowId::Trade => Vec2::new(640.0, viewport.y * 0.75),
     }
 }
 

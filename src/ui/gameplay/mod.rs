@@ -10,6 +10,7 @@ pub mod dialogue;
 mod cursor_feedback;
 mod fields_menu;
 mod unit_interaction_menu;
+mod trade;
 mod floating_window;
 mod hud;
 mod input_gate;

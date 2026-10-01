@@ -26,6 +26,7 @@ pub struct InventoryGroundPreview;
 /// Track hovered grid cell / ground target while dragging.
 pub fn update_inventory_drag_preview(
     world: Res<WorldData>,
+    items: Res<crate::world::ItemCatalog>,
     building_catalog: Res<BuildingCatalog>,
     interaction_catalog: Res<BuildingInteractionProfileCatalog>,
     ui: Res<InventoryUiState>,
@@ -74,14 +75,52 @@ pub fn update_inventory_drag_preview(
         target,
     );
 
-    preview.placement = placement;
-    if let Some(reason) = &preview.placement.reason {
+    if let Some(reason) = &placement.reason {
         preview.status_line = reason.clone().message();
-    } else if preview.placement.valid {
-        preview.status_line.clear();
+    } else if placement.valid {
+        preview.status_line = trade_drag_status_line(ui.as_ref(), items.as_ref(), drag, &placement);
     } else {
         preview.status_line = "No valid drop target.".into();
     }
+    preview.placement = placement;
+}
+
+fn trade_drag_status_line(
+    ui: &InventoryUiState,
+    items: &crate::world::ItemCatalog,
+    drag: &super::state::InventoryDragState,
+    placement: &InventoryPlacementPreview,
+) -> String {
+    let seller_id = match ui.trade_seller_inventory_id {
+        Some(id) => id,
+        None => return String::new(),
+    };
+    let dest = match placement.target {
+        InventoryDropTarget::GridCell {
+            inventory_id: dest,
+            ..
+        } => dest,
+        _ => return String::new(),
+    };
+    if drag.source_inventory_id == dest {
+        return String::new();
+    }
+    if drag.source_inventory_id != seller_id && dest != seller_id {
+        return String::new();
+    }
+    let definition = match items.get(&drag.item_definition_id) {
+        Some(def) => def,
+        None => return String::new(),
+    };
+    let qty = drag.quantity.max(1);
+    if dest == seller_id {
+        let unit = crate::world::vendor_buy_price_gold(definition.base_value_gold);
+        let total = crate::world::trade_line_total(unit, qty);
+        return format!("Sell for {total} gold ({unit} each).");
+    }
+    let unit = crate::world::vendor_sell_price_gold(definition.base_value_gold);
+    let total = crate::world::trade_line_total(unit, qty);
+    format!("Buy for {total} gold ({unit} each).")
 }
 
 /// Spawn or update the inventory grid ghost overlay.

@@ -223,11 +223,15 @@ pub fn sync_dialogue_panel(
         *border = next_border;
     }
 
+    let show_back = matches!(
+        dialogue.view,
+        DialogueView::TradePlaceholder | DialogueView::RecruitPlaceholder
+    );
     for mut node in &mut back_buttons {
-        node.display = if options_view {
-            Display::None
-        } else {
+        node.display = if show_back {
             Display::Flex
+        } else {
+            Display::None
         };
     }
 }
@@ -252,8 +256,17 @@ pub fn handle_dialogue_back_button(
 
 pub fn handle_dialogue_option_buttons(
     mut dialogue: ResMut<DialogueSessionState>,
-    world: Res<WorldData>,
+    mut pending: ResMut<crate::client::PendingDialogueInteractionState>,
+    mut trade: ResMut<crate::client::TradeSessionState>,
+    mut inventory_ui: ResMut<crate::ui::gameplay::InventoryUiState>,
+    mut inventory_queue: ResMut<crate::client::inventory_intent::InventoryIntentQueue>,
+    mut registry: ResMut<crate::ui::gameplay::FloatingGameplayWindowRegistry>,
+    mut world: ResMut<WorldData>,
     authored_relationships: Res<AuthoredRelationshipCatalog>,
+    unit_catalog: Res<UnitCatalog>,
+    weapon_catalog: Res<crate::world::WeaponCatalog>,
+    doodad_catalog: Res<crate::world::DoodadCatalog>,
+    nav_config: Res<crate::world::NavigationConfig>,
     buttons: Query<(&Interaction, &DialogueOptionButton), Without<DialogueBackButton>>,
 ) {
     if !dialogue.open || !matches!(dialogue.view, DialogueView::Options) {
@@ -267,12 +280,47 @@ pub fn handle_dialogue_option_buttons(
         Some(id) => id,
         None => return,
     };
-    let standing = world.relationship_standing_store();
-
     for (interaction, button) in &buttons {
         if *interaction != Interaction::Pressed {
             continue;
         }
+        if button.0 == DialogueActionKind::Trade {
+            let standing = world.relationship_standing_store();
+            if !crate::world::evaluate_dialogue_option(
+                &world,
+                &authored_relationships,
+                standing,
+                actor,
+                target,
+                DialogueActionKind::Trade,
+            )
+            .is_available()
+            {
+                continue;
+            }
+            let outcome = crate::client::dispatch_dialogue_action(
+                &mut world,
+                &mut dialogue,
+                &mut pending,
+                &mut trade,
+                &mut inventory_ui,
+                &mut inventory_queue,
+                &mut registry,
+                &authored_relationships,
+                &unit_catalog,
+                &weapon_catalog,
+                &doodad_catalog,
+                &nav_config,
+                actor,
+                target,
+                DialogueActionKind::Trade,
+            );
+            if outcome == crate::client::DialogueDispatchOutcome::Opened {
+                dialogue.close();
+            }
+            continue;
+        }
+        let standing = world.relationship_standing_store();
         let availability = crate::world::evaluate_dialogue_option(
             &world,
             &authored_relationships,

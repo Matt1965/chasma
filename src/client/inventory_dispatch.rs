@@ -4,13 +4,15 @@ use bevy::prelude::*;
 
 use crate::ui::gameplay::InventoryUiError;
 use crate::ui::gameplay::InventoryUiState;
+use crate::client::TradeSessionState;
 use crate::world::{
     BuildingCatalog, BuildingId, BuildingInteractionProfileCatalog, CorpseId, EntryIndex,
     InventoryAccessResult, InventoryCatalogCtx, InventoryId, InventoryProfileCatalog, ItemCatalog,
-    ItemCategoryCatalog, ItemPileId, ItemPileSettings, TransferPlacementPolicy,
-    TreasuryAccessPolicy, UnitId, WorldData, auto_sort, can_unit_access_building_inventory,
-    can_unit_access_inventory, count_physical_gold, deposit_gold, drop_unit_inventory_entry,
-    half_stack_quantity, loot_corpse_entry, mark_storage_logistics_dirty_for_inventory, move_entry,
+    ItemCategoryCatalog, ItemPileId, ItemPileSettings, TradeTransactionError, TradeTransferMode,
+    TradeTransferRequest, TransferPlacementPolicy, TreasuryAccessPolicy, UnitId, WorldData,
+    auto_sort, can_unit_access_building_inventory, can_unit_access_inventory, count_physical_gold,
+    deposit_gold, drop_unit_inventory_entry, execute_trade_transfer, half_stack_quantity,
+    loot_corpse_entry, mark_storage_logistics_dirty_for_inventory, move_entry,
     pickup_pile_into_inventory, transfer_entry_full, transfer_half, transfer_one,
 };
 
@@ -24,6 +26,7 @@ pub fn dispatch_inventory_intents(
     mut queue: ResMut<InventoryIntentQueue>,
     mut ui: ResMut<InventoryUiState>,
     mut world: ResMut<WorldData>,
+    mut trade: ResMut<TradeSessionState>,
     items: Res<ItemCatalog>,
     categories: Res<ItemCategoryCatalog>,
     profiles: Res<InventoryProfileCatalog>,
@@ -39,6 +42,8 @@ pub fn dispatch_inventory_intents(
             &intent,
             &mut ui,
             &mut world,
+            &mut trade,
+            &items,
             &ctx,
             &building_catalog,
             &interaction_catalog,
@@ -57,6 +62,8 @@ fn dispatch_one(
     intent: &InventoryIntent,
     ui: &mut InventoryUiState,
     world: &mut WorldData,
+    trade: &mut TradeSessionState,
+    items: &ItemCatalog,
     ctx: &InventoryCatalogCtx<'_>,
     building_catalog: &BuildingCatalog,
     interaction_catalog: &BuildingInteractionProfileCatalog,
@@ -125,6 +132,8 @@ fn dispatch_one(
         } => transfer_with_policy(
             ui,
             world,
+            trade,
+            items,
             ctx,
             building_catalog,
             interaction_catalog,
@@ -142,6 +151,8 @@ fn dispatch_one(
         } => transfer_with_policy(
             ui,
             world,
+            trade,
+            items,
             ctx,
             building_catalog,
             interaction_catalog,
@@ -159,6 +170,8 @@ fn dispatch_one(
         } => transfer_with_policy(
             ui,
             world,
+            trade,
+            items,
             ctx,
             building_catalog,
             interaction_catalog,
@@ -199,16 +212,25 @@ fn dispatch_one(
                     return InventoryIntentStatus::Rejected;
                 }
             }
-            let policy = if source_inventory_id == destination_inventory_id {
-                TransferPlacementPolicy::ExactCell {
-                    x: *anchor_x,
-                    y: *anchor_y,
-                }
-            } else {
-                TransferPlacementPolicy::ExactCell {
-                    x: *anchor_x,
-                    y: *anchor_y,
-                }
+            if let Some(status) = try_execute_trade_transfer(
+                trade,
+                ui,
+                world,
+                items,
+                ctx,
+                *source_inventory_id,
+                *source_entry_index,
+                *destination_inventory_id,
+                TradeTransferMode::ToCell {
+                    anchor_x: *anchor_x,
+                    anchor_y: *anchor_y,
+                },
+            ) {
+                return status;
+            }
+            let policy = TransferPlacementPolicy::ExactCell {
+                x: *anchor_x,
+                y: *anchor_y,
             };
             let (inventory_store, instance_store) = world.inventory_runtime_mut();
             match transfer_entry_full(
@@ -467,6 +489,8 @@ enum TransferMode {
 fn transfer_with_policy(
     ui: &mut InventoryUiState,
     world: &mut WorldData,
+    trade: &mut TradeSessionState,
+    items: &ItemCatalog,
     ctx: &InventoryCatalogCtx<'_>,
     building_catalog: &BuildingCatalog,
     interaction_catalog: &BuildingInteractionProfileCatalog,
@@ -498,6 +522,24 @@ fn transfer_with_policy(
             ui.feedback_message = message;
             return InventoryIntentStatus::Rejected;
         }
+    }
+    let trade_mode = match mode {
+        TransferMode::Full => TradeTransferMode::Full,
+        TransferMode::One => TradeTransferMode::One,
+        TransferMode::Half => TradeTransferMode::Half,
+    };
+    if let Some(status) = try_execute_trade_transfer(
+        trade,
+        ui,
+        world,
+        items,
+        ctx,
+        source_inventory_id,
+        source_entry_index,
+        destination_inventory_id,
+        trade_mode,
+    ) {
+        return status;
     }
     let policy = TransferPlacementPolicy::MergeThenFirstFit;
     let (inventory_store, instance_store) = world.inventory_runtime_mut();
@@ -548,6 +590,82 @@ fn transfer_with_policy(
     }
 }
 
+fn try_execute_trade_transfer(
+    trade: &mut TradeSessionState,
+    ui: &mut InventoryUiState,
+    world: &mut WorldData,
+    items: &ItemCatalog,
+    ctx: &InventoryCatalogCtx<'_>,
+    source_inventory_id: InventoryId,
+    source_entry_index: EntryIndex,
+    destination_inventory_id: InventoryId,
+    mode: TradeTransferMode,
+) -> Option<InventoryIntentStatus> {
+    if !trade.open {
+        return None;
+    }
+    let seller_inventory_id = trade.seller_inventory_id()?;
+    let buyer_unit_id = trade.buyer_unit_id?;
+    if ui.actor_unit_id != Some(buyer_unit_id) {
+        return Some(InventoryIntentStatus::Rejected);
+    }
+    if source_inventory_id != seller_inventory_id
+        && destination_inventory_id != seller_inventory_id
+    {
+        return None;
+    }
+    if source_inventory_id == destination_inventory_id {
+        return None;
+    }
+    let buyer_inventory_id = world
+        .get_unit(buyer_unit_id)
+        .and_then(|unit| unit.inventory_id)?;
+    let request = TradeTransferRequest {
+        buyer_unit_id,
+        buyer_inventory_id,
+        seller_inventory_id,
+        source_inventory_id,
+        source_entry_index,
+        destination_inventory_id,
+        mode,
+    };
+    match execute_trade_transfer(world, ctx, items, &request) {
+        Ok(outcome) => {
+            if outcome.report.moved == 0 {
+                ui.feedback_message = "Trade could not complete.".into();
+                Some(InventoryIntentStatus::Rejected)
+            } else {
+                trade.bump_content_revision();
+                ui.feedback_message = if outcome.gold_delta_for_buyer < 0 {
+                    format!("Purchased {} for {} gold.", outcome.report.moved, -outcome.gold_delta_for_buyer)
+                } else if outcome.gold_delta_for_buyer > 0 {
+                    format!("Sold {} for {} gold.", outcome.report.moved, outcome.gold_delta_for_buyer)
+                } else {
+                    String::new()
+                };
+                ui.invalidate_drag();
+                Some(InventoryIntentStatus::Applied)
+            }
+        }
+        Err(TradeTransactionError::InsufficientBuyerGold) => {
+            ui.feedback_message = "Not enough gold.".into();
+            Some(InventoryIntentStatus::Rejected)
+        }
+        Err(TradeTransactionError::GoldCreditFailed) => {
+            ui.feedback_message = "No room for sale gold.".into();
+            Some(InventoryIntentStatus::Rejected)
+        }
+        Err(TradeTransactionError::ItemNotPriced) => {
+            ui.feedback_message = "Item cannot be traded.".into();
+            Some(InventoryIntentStatus::Rejected)
+        }
+        Err(_) => {
+            ui.feedback_message = "Trade failed.".into();
+            Some(InventoryIntentStatus::Rejected)
+        }
+    }
+}
+
 fn revision_matches(
     world: &WorldData,
     inventory_id: InventoryId,
@@ -573,6 +691,9 @@ fn inventory_access_denied_message(
                 Some(InventoryUiError::InventoryClosed.message())
             };
         }
+    }
+    if ui.trade_seller_inventory_id == Some(inventory_id) {
+        return None;
     }
     match can_unit_access_inventory(
         world,
@@ -638,10 +759,12 @@ fn apply_open_mode(ui: &mut InventoryUiState, world: &WorldData, mode: &Inventor
         }
         InventoryOpenMode::DualTransfer {
             actor_unit_id,
+            peer_unit_id,
             secondary_inventory_id,
             secondary_label,
         } => {
             state.left_inventory_id = world.get_unit(*actor_unit_id).and_then(|u| u.inventory_id);
+            state.peer_unit_id = *peer_unit_id;
             state.right_inventory_id = Some(*secondary_inventory_id);
             if secondary_label == "Corpse" {
                 state.corpse_id = find_corpse_for_inventory(world, *secondary_inventory_id);
@@ -690,6 +813,15 @@ fn reconcile_open_inventories(ui: &mut InventoryUiState, world: &WorldData) {
     }
     if let Some(actor) = ui.actor_unit_id {
         if world.get_unit(actor).is_none() {
+            ui.close();
+            return;
+        }
+    }
+    if let Some(peer) = ui.peer_unit_id {
+        let peer_ok = world.get_unit(peer).is_some_and(crate::world::is_unit_alive);
+        let peer_inventory = world.get_unit(peer).and_then(|u| u.inventory_id);
+        if !peer_ok || peer_inventory != ui.right_inventory_id {
+            ui.feedback_message = "Transfer partner unavailable.".into();
             ui.close();
         }
     }
@@ -870,6 +1002,7 @@ pub fn try_open_container_inventory(
         .unwrap_or_else(|| "Container".into());
     Ok(InventoryOpenMode::DualTransfer {
         actor_unit_id,
+        peer_unit_id: None,
         secondary_inventory_id: inventory_id,
         secondary_label: label,
     })
@@ -890,6 +1023,7 @@ pub fn try_open_corpse_inventory(
         .ok_or(InventoryUiError::InventoryClosed)?;
     Ok(InventoryOpenMode::DualTransfer {
         actor_unit_id,
+        peer_unit_id: None,
         secondary_inventory_id: inventory_id,
         secondary_label: "Corpse".into(),
     })
@@ -1027,10 +1161,13 @@ mod tests {
         .unwrap();
         let expected = unit.inventory_id;
         let mut ui = InventoryUiState::default();
+        let mut trade_session = TradeSessionState::default();
         let status = dispatch_one(
             &InventoryIntent::Open(InventoryOpenMode::UnitOnly { unit_id: unit.id }),
             &mut ui,
             &mut world,
+            &mut trade_session,
+            &items,
             &ctx,
             &BuildingCatalog::default(),
             &BuildingInteractionProfileCatalog::default(),
@@ -1072,6 +1209,7 @@ mod tests {
         let mut ui = InventoryUiState::default();
         ui.open_mode(InventoryOpenMode::UnitOnly { unit_id: unit.id });
         ui.left_inventory_id = Some(inventory_id);
+        let mut trade_session = TradeSessionState::default();
         let status = dispatch_one(
             &InventoryIntent::MoveEntry {
                 inventory_id,
@@ -1082,6 +1220,8 @@ mod tests {
             },
             &mut ui,
             &mut world,
+            &mut trade_session,
+            &items,
             &ctx,
             &BuildingCatalog::default(),
             &BuildingInteractionProfileCatalog::default(),
@@ -1174,10 +1314,13 @@ mod tests {
         )
         .unwrap();
         let mut ui = InventoryUiState::default();
+        let mut trade_session = TradeSessionState::default();
         dispatch_one(
             &InventoryIntent::Open(mode),
             &mut ui,
             &mut world,
+            &mut trade_session,
+            &items,
             &ctx,
             &building_catalog,
             &interaction_catalog,

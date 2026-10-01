@@ -10,15 +10,17 @@ pub enum FloatingGameplayWindowId {
     UnitSkills,
     SettlementWorkforce,
     Dialogue,
+    Trade,
 }
 
 impl FloatingGameplayWindowId {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::BuildingMenu,
         Self::UnitInventory,
         Self::UnitSkills,
         Self::SettlementWorkforce,
         Self::Dialogue,
+        Self::Trade,
     ];
 
     pub fn label(self) -> &'static str {
@@ -28,6 +30,7 @@ impl FloatingGameplayWindowId {
             Self::UnitSkills => "Unit Skills",
             Self::SettlementWorkforce => "Settlement Workforce",
             Self::Dialogue => "Dialogue",
+            Self::Trade => "Trade",
         }
     }
 }

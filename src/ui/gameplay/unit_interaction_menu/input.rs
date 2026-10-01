@@ -3,7 +3,10 @@
 use bevy::input::keyboard::KeyCode;
 use bevy::prelude::*;
 
-use crate::client::{PendingDialogueInteractionState, dispatch_dialogue_action};
+use crate::client::inventory_intent::InventoryIntentQueue;
+use crate::client::{PendingDialogueInteractionState, TradeSessionState, dispatch_dialogue_action};
+use crate::ui::gameplay::InventoryUiState;
+use crate::ui::gameplay::FloatingGameplayWindowRegistry;
 use crate::ui::gameplay::build_mode::BuildModeState;
 use crate::ui::gameplay::dialogue::DialogueSessionState;
 use crate::world::relationship::AuthoredRelationshipCatalog;
@@ -57,6 +60,10 @@ pub fn handle_unit_interaction_menu_option_clicks(
     mut dialogue: ResMut<DialogueSessionState>,
     mut pending: ResMut<PendingDialogueInteractionState>,
     mut world: ResMut<WorldData>,
+    mut trade: ResMut<TradeSessionState>,
+    mut inventory_ui: ResMut<InventoryUiState>,
+    mut inventory_queue: ResMut<InventoryIntentQueue>,
+    mut floating_registry: ResMut<FloatingGameplayWindowRegistry>,
     authored_relationships: Res<AuthoredRelationshipCatalog>,
     unit_catalog: Res<UnitCatalog>,
     weapon_catalog: Res<WeaponCatalog>,
@@ -100,6 +107,10 @@ pub fn handle_unit_interaction_menu_option_clicks(
             &mut world,
             &mut dialogue,
             &mut pending,
+            &mut trade,
+            &mut inventory_ui,
+            &mut inventory_queue,
+            &mut floating_registry,
             &authored_relationships,
             &unit_catalog,
             &weapon_catalog,

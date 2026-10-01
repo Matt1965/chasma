@@ -6,6 +6,8 @@ mod building_interaction_dispatch;
 mod context_menu_anchor;
 mod corpse_interaction_dispatch;
 mod dialogue_dispatch;
+mod interaction_flow;
+mod trade_session;
 pub mod commands;
 mod dispatcher;
 mod intent;
@@ -21,6 +23,13 @@ pub use corpse_interaction_dispatch::{
     PendingCorpsePlayerInteractionState, resolve_corpse_interact_target,
     supersede_pending_corpse_interaction_for_selection, tick_pending_corpse_player_interactions,
     try_dispatch_corpse_from_contextual_target, try_dispatch_corpse_player_interaction,
+};
+pub use interaction_flow::{
+    SellerStockSource, npc_trade_still_valid, open_npc_trade_session, open_peer_unit_transfer,
+    unit_display_name,
+};
+pub use trade_session::{
+    TradeSessionState, close_trade_session, reconcile_trade_session, seller_display_name,
 };
 pub use dialogue_dispatch::{
     DialogueDispatchOutcome, PendingDialogueInteraction, PendingDialogueInteractionState,

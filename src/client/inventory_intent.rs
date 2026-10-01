@@ -14,6 +14,7 @@ pub enum InventoryOpenMode {
     },
     DualTransfer {
         actor_unit_id: UnitId,
+        peer_unit_id: Option<UnitId>,
         secondary_inventory_id: InventoryId,
         secondary_label: String,
     },

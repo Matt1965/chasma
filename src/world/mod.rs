@@ -13,6 +13,7 @@ mod coordinates;
 mod corpse;
 mod data;
 pub mod dialogue;
+pub mod trade;
 mod doodad;
 pub mod equipment;
 mod formation;
@@ -302,6 +303,11 @@ pub use dialogue::{
     DialogueOptionRule, DialogueUnavailableReason, UnitDialogueConfig,
     DIALOGUE_INTERACTION_RANGE_METERS, evaluate_dialogue_option, present_dialogue_options,
     unit_supports_dialogue, units_within_dialogue_range,
+};
+pub use trade::{
+    TradeDirection, TradeTransactionError, TradeTransferMode, TradeTransferOutcome,
+    TradeTransferRequest, VENDOR_PURCHASE_PRICE_MULTIPLIER, classify_trade_transfer,
+    execute_trade_transfer, trade_line_total, vendor_buy_price_gold, vendor_sell_price_gold,
 };
 pub use corpse::{
     CorpseError, CorpseId, CorpseLifecycleReport, CorpseRecord, CorpseSettings, CorpseState,

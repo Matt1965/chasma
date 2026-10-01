@@ -2,7 +2,7 @@ use super::state::{DialogueSessionState, DialogueView};
 use crate::world::{DialogueAction, DialogueActionKind, DialogueContent};
 
 #[test]
-fn selecting_talk_produces_hi_and_back_returns_to_options() {
+fn selecting_talk_shows_greeting_without_options_back_step() {
     let mut session = DialogueSessionState::default();
     session.open_session(crate::world::UnitId::new(1), crate::world::UnitId::new(2));
     session.select_option(
@@ -18,29 +18,19 @@ fn selecting_talk_produces_hi_and_back_returns_to_options() {
         session.last_action,
         Some(DialogueAction::Talk { .. })
     ));
-    session.back_to_options();
-    assert!(matches!(session.view, DialogueView::Options));
+    assert!(!matches!(session.view, DialogueView::Options));
 }
 
 #[test]
-fn trade_and_recruit_emit_placeholder_actions() {
+fn recruit_still_uses_placeholder_view() {
     let mut session = DialogueSessionState::default();
     session.open_session(crate::world::UnitId::new(1), crate::world::UnitId::new(2));
-    session.select_option(
-        DialogueActionKind::Trade,
-        crate::world::UnitId::new(1),
-        crate::world::UnitId::new(2),
-    );
-    assert!(matches!(session.view, DialogueView::TradePlaceholder));
-    assert!(matches!(
-        session.last_action,
-        Some(DialogueAction::Trade { .. })
-    ));
-    session.back_to_options();
     session.select_option(
         DialogueActionKind::Recruit,
         crate::world::UnitId::new(1),
         crate::world::UnitId::new(2),
     );
     assert!(matches!(session.view, DialogueView::RecruitPlaceholder));
+    session.back_to_options();
+    assert!(matches!(session.view, DialogueView::Options));
 }

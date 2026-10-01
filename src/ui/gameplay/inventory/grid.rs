@@ -57,6 +57,7 @@ pub enum InventoryPaneSide {
 pub enum InventoryPaneKind {
     Personal,
     Secondary,
+    TradeSeller,
     Equipment(EquipmentSlot),
     BackpackInternal,
 }
@@ -64,8 +65,8 @@ pub enum InventoryPaneKind {
 impl InventoryPaneKind {
     pub fn quick_transfer_destination(self, ui: &InventoryUiState) -> Option<InventoryId> {
         match self {
-            Self::Personal => ui.right_inventory_id,
-            Self::Secondary => ui.left_inventory_id,
+            Self::Personal => ui.right_inventory_id.or(ui.trade_seller_inventory_id),
+            Self::Secondary | Self::TradeSeller => ui.left_inventory_id,
             Self::Equipment(_) | Self::BackpackInternal => ui.left_inventory_id,
         }
     }
@@ -73,6 +74,7 @@ impl InventoryPaneKind {
     pub fn header_side(self) -> InventoryPaneSide {
         match self {
             Self::Personal => InventoryPaneSide::Left,
+            Self::TradeSeller => InventoryPaneSide::Left,
             _ => InventoryPaneSide::Right,
         }
     }

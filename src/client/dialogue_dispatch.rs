@@ -1,13 +1,17 @@
 //! Player dialogue approach and session open dispatch.
 
-use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
+use crate::client::inventory_intent::InventoryIntentQueue;
+use crate::client::{open_npc_trade_session, open_peer_unit_transfer};
+use crate::ui::gameplay::InventoryUiState;
+use crate::ui::gameplay::FloatingGameplayWindowRegistry;
 use crate::ui::gameplay::dialogue::DialogueSessionState;
 use crate::ui::gameplay::{
     UnitInteractionMenuState, build_interaction_menu_rows, unit_accepts_context_interaction_menu,
     uses_player_trade_only_menu,
 };
+use crate::client::TradeSessionState;
 use crate::units::input::{MoveOrdersReport, SelectedUnits, issue_move_orders_to_selection};
 use crate::world::{AttackTargetingPolicy, DialogueActionKind, is_unit_alive};
 use crate::world::relationship::AuthoredRelationshipCatalog;
@@ -118,6 +122,52 @@ fn apply_dialogue_action(
     dialogue.select_option(action, actor_unit_id, target_unit_id);
 }
 
+fn complete_social_action(
+    world: &WorldData,
+    authored_relationships: &AuthoredRelationshipCatalog,
+    unit_catalog: &UnitCatalog,
+    dialogue: &mut DialogueSessionState,
+    trade: &mut TradeSessionState,
+    inventory_ui: &mut InventoryUiState,
+    queue: &mut InventoryIntentQueue,
+    registry: &mut FloatingGameplayWindowRegistry,
+    actor_unit_id: UnitId,
+    target_unit_id: UnitId,
+    action: DialogueActionKind,
+) -> bool {
+    if action == DialogueActionKind::Trade {
+        let opened = if uses_player_trade_only_menu(world, actor_unit_id, target_unit_id) {
+            open_peer_unit_transfer(
+                world,
+                unit_catalog,
+                inventory_ui,
+                queue,
+                registry,
+                actor_unit_id,
+                target_unit_id,
+            )
+        } else {
+            open_npc_trade_session(
+                world,
+                authored_relationships,
+                trade,
+                inventory_ui,
+                queue,
+                registry,
+                actor_unit_id,
+                target_unit_id,
+            )
+        };
+        if opened {
+            dialogue.close();
+            return true;
+        }
+        return false;
+    }
+    apply_dialogue_action(dialogue, actor_unit_id, target_unit_id, action);
+    true
+}
+
 pub fn try_open_unit_interaction_menu(
     menu: &mut UnitInteractionMenuState,
     dialogue: &mut DialogueSessionState,
@@ -142,6 +192,10 @@ pub fn dispatch_dialogue_action(
     world: &mut WorldData,
     dialogue: &mut DialogueSessionState,
     pending: &mut PendingDialogueInteractionState,
+    trade: &mut TradeSessionState,
+    inventory_ui: &mut InventoryUiState,
+    queue: &mut InventoryIntentQueue,
+    registry: &mut FloatingGameplayWindowRegistry,
     authored_relationships: &AuthoredRelationshipCatalog,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
@@ -159,6 +213,11 @@ pub fn dispatch_dialogue_action(
             world,
             dialogue,
             pending,
+            trade,
+            inventory_ui,
+            queue,
+            registry,
+            authored_relationships,
             unit_catalog,
             weapon_catalog,
             doodad_catalog,
@@ -192,6 +251,11 @@ pub fn dispatch_dialogue_action(
         world,
         dialogue,
         pending,
+        trade,
+        inventory_ui,
+        queue,
+        registry,
+        authored_relationships,
         unit_catalog,
         weapon_catalog,
         doodad_catalog,
@@ -206,6 +270,11 @@ fn dispatch_social_action_after_range_check(
     world: &mut WorldData,
     dialogue: &mut DialogueSessionState,
     pending: &mut PendingDialogueInteractionState,
+    trade: &mut TradeSessionState,
+    inventory_ui: &mut InventoryUiState,
+    queue: &mut InventoryIntentQueue,
+    registry: &mut FloatingGameplayWindowRegistry,
+    authored_relationships: &AuthoredRelationshipCatalog,
     unit_catalog: &UnitCatalog,
     weapon_catalog: &WeaponCatalog,
     doodad_catalog: &DoodadCatalog,
@@ -216,8 +285,22 @@ fn dispatch_social_action_after_range_check(
 ) -> DialogueDispatchOutcome {
     if units_within_dialogue_range(world, actor_unit_id, target_unit_id) {
         pending.clear_for_unit(actor_unit_id);
-        apply_dialogue_action(dialogue, actor_unit_id, target_unit_id, action);
-        return DialogueDispatchOutcome::Opened;
+        if complete_social_action(
+            world,
+            authored_relationships,
+            unit_catalog,
+            dialogue,
+            trade,
+            inventory_ui,
+            queue,
+            registry,
+            actor_unit_id,
+            target_unit_id,
+            action,
+        ) {
+            return DialogueDispatchOutcome::Opened;
+        }
+        return DialogueDispatchOutcome::Ignored;
     }
 
     pending.set(actor_unit_id, target_unit_id, action);
@@ -275,8 +358,13 @@ fn issue_approach_to_dialogue(
 pub fn try_complete_pending_dialogue_interaction(
     dialogue: &mut DialogueSessionState,
     pending: &mut PendingDialogueInteractionState,
+    trade: &mut TradeSessionState,
+    inventory_ui: &mut InventoryUiState,
+    queue: &mut InventoryIntentQueue,
+    registry: &mut FloatingGameplayWindowRegistry,
     world: &WorldData,
     authored_relationships: &AuthoredRelationshipCatalog,
+    unit_catalog: &UnitCatalog,
 ) -> bool {
     let Some(pending_interaction) = pending.get() else {
         return false;
@@ -295,29 +383,43 @@ pub fn try_complete_pending_dialogue_interaction(
         return false;
     }
 
-    apply_dialogue_action(
+    let completed = complete_social_action(
+        world,
+        authored_relationships,
+        unit_catalog,
         dialogue,
+        trade,
+        inventory_ui,
+        queue,
+        registry,
         pending_interaction.actor_unit_id,
         pending_interaction.target_unit_id,
         pending_interaction.action,
     );
     pending.clear();
-    true
+    completed
 }
 
-#[derive(SystemParam)]
-pub struct PendingDialogueInteractionTickParams<'w> {
-    pub pending: ResMut<'w, PendingDialogueInteractionState>,
-    pub dialogue: ResMut<'w, DialogueSessionState>,
-    pub world: Res<'w, WorldData>,
-    pub authored_relationships: Res<'w, AuthoredRelationshipCatalog>,
-}
-
-pub fn tick_pending_dialogue_interactions(mut params: PendingDialogueInteractionTickParams) {
+pub fn tick_pending_dialogue_interactions(
+    mut dialogue: ResMut<DialogueSessionState>,
+    mut pending: ResMut<PendingDialogueInteractionState>,
+    mut trade: ResMut<TradeSessionState>,
+    mut inventory_ui: ResMut<InventoryUiState>,
+    mut queue: ResMut<InventoryIntentQueue>,
+    mut registry: ResMut<FloatingGameplayWindowRegistry>,
+    world: Res<WorldData>,
+    authored_relationships: Res<AuthoredRelationshipCatalog>,
+    unit_catalog: Res<UnitCatalog>,
+) {
     try_complete_pending_dialogue_interaction(
-        &mut params.dialogue,
-        &mut params.pending,
-        &params.world,
-        &params.authored_relationships,
+        &mut dialogue,
+        &mut pending,
+        &mut trade,
+        &mut inventory_ui,
+        &mut queue,
+        &mut registry,
+        &world,
+        &authored_relationships,
+        &unit_catalog,
     );
 }

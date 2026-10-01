@@ -50,6 +50,8 @@ pub struct InventoryUiState {
     pub open: bool,
     pub mode: Option<InventoryOpenMode>,
     pub actor_unit_id: Option<UnitId>,
+    /// Bound peer unit for player-to-player transfer (selection must not substitute another unit).
+    pub peer_unit_id: Option<UnitId>,
     pub left_inventory_id: Option<InventoryId>,
     pub right_inventory_id: Option<InventoryId>,
     pub secondary_label: Option<String>,
@@ -70,6 +72,8 @@ pub struct InventoryUiState {
     pub last_revision_corpse_equipment: u64,
     pub last_revision_corpse_backpack: u64,
     pub last_corpse_backpack_internal_id: Option<InventoryId>,
+    /// Vendor stock inventory during an active trade session (authoritative id on seller unit).
+    pub trade_seller_inventory_id: Option<InventoryId>,
 }
 
 impl InventoryUiState {
@@ -87,6 +91,7 @@ impl InventoryUiState {
         match mode {
             InventoryOpenMode::UnitOnly { unit_id } => {
                 self.actor_unit_id = Some(unit_id);
+                self.peer_unit_id = None;
                 self.left_inventory_id = None;
                 self.right_inventory_id = None;
                 self.secondary_label = None;
@@ -98,10 +103,12 @@ impl InventoryUiState {
             }
             InventoryOpenMode::DualTransfer {
                 actor_unit_id,
+                peer_unit_id,
                 secondary_inventory_id,
                 secondary_label,
             } => {
                 self.actor_unit_id = Some(actor_unit_id);
+                self.peer_unit_id = peer_unit_id;
                 self.right_inventory_id = Some(secondary_inventory_id);
                 self.secondary_label = Some(secondary_label);
                 self.pile_id = None;
@@ -115,6 +122,7 @@ impl InventoryUiState {
                 pile_id,
             } => {
                 self.actor_unit_id = Some(actor_unit_id);
+                self.peer_unit_id = None;
                 self.pile_id = Some(pile_id);
                 self.right_inventory_id = None;
                 self.secondary_label = Some("World Pile".to_string());
@@ -131,6 +139,7 @@ impl InventoryUiState {
                 label,
             } => {
                 self.actor_unit_id = Some(actor_unit_id);
+                self.peer_unit_id = None;
                 self.treasury_id = Some(treasury_id);
                 self.settlement_id = Some(settlement_id);
                 self.treasury_building_id = Some(building_id);

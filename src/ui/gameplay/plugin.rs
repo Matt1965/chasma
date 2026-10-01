@@ -83,6 +83,10 @@ use super::dialogue::{
     handle_dialogue_close_button, handle_dialogue_option_buttons, reconcile_dialogue_panel,
     spawn_dialogue_panel, sync_dialogue_panel, sync_dialogue_panel_visibility,
 };
+use super::trade::{
+    handle_trade_panel_close, reconcile_trade_panel, spawn_trade_panel,
+    sync_trade_panel_contents, sync_trade_panel_visibility,
+};
 use super::unit_interaction_menu::{
     UnitInteractionMenuState, collect_unit_interaction_menu_keyboard_input,
     dismiss_unit_interaction_menu_on_outside_click, handle_unit_interaction_menu_backdrop_click,
@@ -123,6 +127,8 @@ impl Plugin for GameplayUiPlugin {
             .init_resource::<BuildingPanelState>()
             .init_resource::<UnitSkillsPanelState>()
             .init_resource::<DialogueSessionState>()
+            .init_resource::<crate::client::TradeSessionState>()
+            .init_resource::<super::trade::panel::TradePanelContentLatch>()
             .init_resource::<UnitInteractionMenuState>()
             .init_resource::<SettlementWorkforcePanelState>()
             .init_resource::<FieldsMenuState>()
@@ -145,6 +151,7 @@ impl Plugin for GameplayUiPlugin {
                 spawn_building_menu_panel,
                 spawn_unit_skills_panel,
                 spawn_dialogue_panel,
+                super::trade::spawn_trade_panel,
                 spawn_unit_interaction_menu,
                 spawn_settlement_workforce_panel,
             ),
@@ -219,6 +226,18 @@ impl Plugin for GameplayUiPlugin {
             )
                 .chain()
                 .after(sync_gameplay_ui_state)
+                .in_set(GameplayUiSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                reconcile_trade_panel,
+                sync_trade_panel_visibility,
+                sync_trade_panel_contents,
+                handle_trade_panel_close,
+            )
+                .chain()
+                .after(sync_dialogue_panel)
                 .in_set(GameplayUiSystems),
         )
         .add_systems(

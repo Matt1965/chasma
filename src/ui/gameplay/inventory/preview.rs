@@ -217,6 +217,10 @@ fn evaluate_ground_drop(
         return invalid(target, InventoryUiError::InvalidTargetCell);
     }
 
+    if ui.trade_seller_inventory_id == Some(drag.source_inventory_id) {
+        return invalid(target, InventoryUiError::AccessDenied);
+    }
+
     InventoryPlacementPreview {
         target,
         valid: true,
@@ -253,6 +257,9 @@ fn inventory_access_error(
                 Some(InventoryUiError::InventoryClosed)
             };
         }
+    }
+    if ui.trade_seller_inventory_id == Some(inventory_id) {
+        return None;
     }
     match can_unit_access_inventory(
         world,
