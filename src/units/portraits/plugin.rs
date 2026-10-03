@@ -3,6 +3,7 @@
 use bevy::mesh::InheritWeightSystems;
 use bevy::prelude::*;
 
+use crate::units::appearance_presentation::sync_unit_appearance_morphs;
 use crate::units::equipment_presentation::finalize_skinned_equipment_overlays;
 use crate::units::sync::UnitRuntimeSystems;
 
@@ -58,17 +59,15 @@ impl Plugin for UnitPortraitPlugin {
                 sync_portrait_capture_camera.in_set(UnitPortraitSystems),
             )
             .add_systems(
-                Update,
-                update_portrait_actor_framing.in_set(UnitPortraitSystems),
-            )
-            .add_systems(
                 PostUpdate,
                 (
                     sync_portrait_equipment_presentation,
                     finalize_skinned_equipment_overlays,
+                    update_portrait_actor_framing,
                 )
                     .chain()
                     .after(InheritWeightSystems)
+                    .after(sync_unit_appearance_morphs)
                     .in_set(UnitPortraitSystems),
             )
             .add_systems(

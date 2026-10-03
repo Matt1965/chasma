@@ -7,10 +7,10 @@ use crate::world::equipment::{EquipmentSlot, slot_supports_equipment_presentatio
 use crate::world::{
     AppearanceProfileCatalog, EquipmentVisualCatalog, InventoryEntryContents, ItemCatalog,
     UnitCatalog, UnitId, UnitRecord, WorldData, effective_render_key_for_appearance,
-    effective_unit_render_key_str,
 };
 
 use super::cache::PortraitAppearanceSignature;
+use super::resolve::portrait_render_key_str;
 
 /// Equipment slots that can affect a head-and-shoulders portrait.
 pub const PORTRAIT_EQUIPMENT_SLOTS: [EquipmentSlot; 3] = [
@@ -34,8 +34,7 @@ pub fn portrait_signature_for_unit(
     visuals: &EquipmentVisualCatalog,
 ) -> Option<PortraitAppearanceSignature> {
     let definition = unit_catalog.get(&unit.definition_id)?;
-    let render_key =
-        effective_unit_render_key_str(unit, definition, appearance_profiles).ok()?;
+    let render_key = portrait_render_key_str(unit, definition, appearance_profiles)?;
     let appearance = unit.appearance.as_ref();
     let mut hasher = DefaultHasher::new();
     unit.definition_id.as_str().hash(&mut hasher);

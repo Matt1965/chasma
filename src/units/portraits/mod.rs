@@ -7,6 +7,7 @@ mod equipment;
 mod framing;
 mod pipeline;
 mod plugin;
+mod resolve;
 mod signature;
 mod studio;
 mod studio_images;

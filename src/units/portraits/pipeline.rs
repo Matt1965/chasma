@@ -3,6 +3,7 @@
 use bevy::asset::LoadState;
 use bevy::camera::RenderTarget;
 use bevy::ecs::system::SystemParam;
+use bevy::mesh::skinning::SkinnedMesh;
 use bevy::prelude::*;
 
 use crate::camera::render_layers::PORTRAIT_RENDER_LAYER;
@@ -11,8 +12,7 @@ use crate::units::presentation::UnitPresentationAppearance;
 use crate::units::UnitSceneAssets;
 use crate::world::{
     AppearanceProfileCatalog, EquipmentVisualCatalog, ItemCatalog, UnitCatalog, UnitId,
-    UnitAppearance, UnitDefinition, UnitRecord, WorldData, effective_unit_render_key_str,
-    resolve_canonical_default_appearance, unit_visual_rotation, unit_visual_scale,
+    UnitRecord, WorldData, unit_visual_rotation, unit_visual_scale,
 };
 
 use super::cache::{PortraitAppearanceSignature, PortraitCaptureRequest, UnitPortraitCache};
@@ -25,9 +25,11 @@ use super::diagnostics::{
     portrait_diagnostic_step, portrait_diagnostics_block_cache,
 };
 use super::framing::{
-    PORTRAIT_UNIT_YAW, measure_actor_bounds, portrait_camera_transform,
-    portrait_framing_from_bounds, portrait_generous_framing_from_bounds,
+    PORTRAIT_UNIT_YAW, count_actor_render_primitives, measure_actor_bounds,
+    portrait_camera_transform, portrait_fallback_body_height, portrait_framing_from_bounds,
+    portrait_generous_framing_from_bounds,
 };
+use super::resolve::{portrait_appearance_for_unit, portrait_render_key_str};
 use super::signature::portrait_signature_for_unit;
 use super::studio::new_portrait_render_target_image;
 use super::studio_images::UnitPortraitStudioImages;
@@ -59,6 +61,7 @@ pub struct PortraitCaptureActorQueries<'w, 's> {
     pub framing_ready: Query<'w, 's, &'static UnitPortraitFraming>,
     pub children: Query<'w, 's, &'static Children>,
     pub mesh3d: Query<'w, 's, &'static Mesh3d>,
+    pub skinned: Query<'w, 's, &'static SkinnedMesh>,
     pub equipment_visuals: Query<'w, 's, Entity, With<crate::units::equipment_presentation::UnitEquipmentVisual>>,
 }
 
@@ -117,28 +120,51 @@ pub fn update_portrait_actor_framing(
     unit_catalog: Res<UnitCatalog>,
     mut commands: Commands,
     actors: Query<
-        (Entity, &UnitRenderMetadata),
+        (
+            Entity,
+            &UnitRenderMetadata,
+            Option<&UnitPresentationAppearance>,
+            &GlobalTransform,
+        ),
         (With<UnitPortraitSceneRoot>, Without<UnitPortraitFraming>),
     >,
     children: Query<&Children>,
     mesh3d: Query<&Mesh3d>,
+    skinned: Query<&SkinnedMesh>,
     meshes: Res<Assets<Mesh>>,
     global_transforms: Query<&GlobalTransform>,
 ) {
     let step = portrait_diagnostic_step();
-    for (entity, metadata) in &actors {
-        if let Some((center, height)) =
-            measure_actor_bounds(entity, &children, &mesh3d, &meshes, &global_transforms)
-        {
-            let framing = if step == 5 {
-                portrait_generous_framing_from_bounds(center, height)
-            } else if let Some(definition) = unit_catalog.get(&metadata.definition_id) {
-                portrait_framing_from_bounds(center, height, definition)
-            } else {
-                continue;
-            };
-            commands.entity(entity).insert(framing);
+    for (entity, metadata, presentation, actor_global) in &actors {
+        let Some(definition) = unit_catalog.get(&metadata.definition_id) else {
+            continue;
+        };
+        let height_scale = presentation
+            .map(|value| value.appearance.height_scale)
+            .unwrap_or(1.0);
+        let (center, height) = measure_actor_bounds(
+            entity,
+            &children,
+            &mesh3d,
+            &meshes,
+            &global_transforms,
+        )
+        .unwrap_or_else(|| {
+            let body_height = portrait_fallback_body_height(definition, height_scale);
+            let center = actor_global.transform_point(Vec3::new(0.0, body_height * 0.5, 0.0));
+            (center, body_height)
+        });
+
+        if count_actor_render_primitives(entity, &children, &mesh3d, &skinned) == 0 {
+            continue;
         }
+
+        let framing = if step == 5 {
+            portrait_generous_framing_from_bounds(center, height)
+        } else {
+            portrait_framing_from_bounds(center, height, definition)
+        };
+        commands.entity(entity).insert(framing);
     }
 }
 
@@ -184,6 +210,7 @@ pub fn drive_portrait_capture_pipeline(
                 &mut queries.cameras,
                 &queries.children,
                 &queries.mesh3d,
+                &queries.skinned,
                 &mut world_params.equipment_index,
                 &queries.equipment_visuals,
                 step,
@@ -241,7 +268,13 @@ pub fn drive_portrait_capture_pipeline(
         return;
     }
 
-    if count_actor_meshes(actor_entity, &queries.children, &queries.mesh3d) == 0 {
+    if count_actor_render_primitives(
+        actor_entity,
+        &queries.children,
+        &queries.mesh3d,
+        &queries.skinned,
+    ) == 0
+    {
         return;
     }
 
@@ -277,17 +310,6 @@ pub fn drive_portrait_capture_pipeline(
     );
 }
 
-fn portrait_appearance_for_unit(
-    unit: &UnitRecord,
-    definition: &UnitDefinition,
-    profiles: &AppearanceProfileCatalog,
-) -> Option<UnitAppearance> {
-    if let Some(appearance) = unit.appearance.clone() {
-        return Some(appearance);
-    }
-    resolve_canonical_default_appearance(definition, profiles).ok()
-}
-
 fn begin_next_capture(
     commands: &mut Commands,
     cache: &mut UnitPortraitCache,
@@ -315,18 +337,16 @@ fn begin_next_capture(
         cache.coalesce_queue(request.unit_id, request.signature, request.generation);
         return;
     };
-    let render_key_str = match effective_unit_render_key_str(
-        unit,
-        definition,
-        appearance_profiles,
-    ) {
-        Ok(key) => key,
-        Err(_) => {
-            cache.coalesce_queue(request.unit_id, request.signature, request.generation);
-            return;
-        }
+    let Some(render_key_str) =
+        portrait_render_key_str(unit, definition, appearance_profiles)
+    else {
+        cache.coalesce_queue(request.unit_id, request.signature, request.generation);
+        return;
     };
-    let Some(scene) = scene_assets.scene_for_render_key(&render_key_str).cloned() else {
+    let Some(scene) = scene_assets
+        .ensure_scene_for_render_key(&render_key_str, asset_server)
+    else {
+        scene_assets.log_missing_once(&render_key_str);
         cache.coalesce_queue(request.unit_id, request.signature, request.generation);
         return;
     };
@@ -402,28 +422,6 @@ fn finish_capture(
     capture.render_settle_frames = 0;
 }
 
-fn count_actor_meshes(root: Entity, children: &Query<&Children>, mesh3d: &Query<&Mesh3d>) -> u32 {
-    let mut count = 0u32;
-    count_meshes_recursive(root, children, mesh3d, &mut count);
-    count
-}
-
-fn count_meshes_recursive(
-    entity: Entity,
-    children: &Query<&Children>,
-    mesh3d: &Query<&Mesh3d>,
-    count: &mut u32,
-) {
-    if mesh3d.get(entity).is_ok() {
-        *count += 1;
-    }
-    if let Ok(kids) = children.get(entity) {
-        for child in kids.iter() {
-            count_meshes_recursive(child, children, mesh3d, count);
-        }
-    }
-}
-
 fn drive_diagnostic_live_unit(
     commands: &mut Commands,
     demand: &UnitPortraitUiDemand,
@@ -438,6 +436,7 @@ fn drive_diagnostic_live_unit(
     cameras: &mut Query<&mut RenderTarget, With<UnitPortraitCamera>>,
     children: &Query<&Children>,
     mesh3d: &Query<&Mesh3d>,
+    skinned: &Query<&SkinnedMesh>,
     equipment_index: &mut UnitPortraitEquipmentIndex,
     equipment_visuals: &Query<Entity, With<crate::units::equipment_presentation::UnitEquipmentVisual>>,
     step: u8,
@@ -458,7 +457,7 @@ fn drive_diagnostic_live_unit(
             .active_request
             .is_some_and(|request| request.unit_id == unit_id)
         {
-            let _ = count_actor_meshes(actor, children, mesh3d);
+            let _ = count_actor_render_primitives(actor, children, mesh3d, skinned);
             return;
         }
         clear_portrait_equipment_for_actor(commands, actor, equipment_index, equipment_visuals);
@@ -474,15 +473,12 @@ fn drive_diagnostic_live_unit(
     let Some(definition) = unit_catalog.get(&unit.definition_id) else {
         return;
     };
-    let render_key_str = match effective_unit_render_key_str(
-        unit,
-        definition,
-        appearance_profiles,
-    ) {
-        Ok(key) => key,
-        Err(_) => return,
+    let Some(render_key_str) = portrait_render_key_str(unit, definition, appearance_profiles)
+    else {
+        return;
     };
-    let Some(scene) = scene_assets.scene_for_render_key(&render_key_str).cloned() else {
+    let Some(scene) = scene_assets.ensure_scene_for_render_key(&render_key_str, asset_server)
+    else {
         return;
     };
     if !matches!(asset_server.get_load_state(&scene), Some(LoadState::Loaded)) {
