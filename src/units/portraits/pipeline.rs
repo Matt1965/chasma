@@ -17,7 +17,8 @@ use crate::world::{
 
 use super::cache::{PortraitAppearanceSignature, PortraitCaptureRequest, UnitPortraitCache};
 use super::components::{
-    UnitPortraitActor, UnitPortraitCamera, UnitPortraitFraming, UnitPortraitSceneRoot,
+    UnitPortraitActor, UnitPortraitBoundsWait, UnitPortraitCamera, UnitPortraitFraming,
+    UnitPortraitFramingFallback, UnitPortraitFramingMeasured, UnitPortraitSceneRoot,
     UnitPortraitStageRoot,
 };
 use super::equipment::{UnitPortraitEquipmentIndex, clear_portrait_equipment_for_actor};
@@ -34,8 +35,10 @@ use super::signature::portrait_signature_for_unit;
 use super::studio::new_portrait_render_target_image;
 use super::studio_images::UnitPortraitStudioImages;
 
-const PORTRAIT_WARMUP_FRAMES: u32 = 4;
-const PORTRAIT_RENDER_SETTLE_FRAMES: u32 = 3;
+const PORTRAIT_WARMUP_FRAMES: u32 = 6;
+const PORTRAIT_RENDER_SETTLE_FRAMES: u32 = 4;
+/// Frames to wait for skinned glTF meshes before using catalog height fallback framing.
+const PORTRAIT_BOUNDS_FALLBACK_FRAMES: u32 = 12;
 
 #[derive(SystemParam)]
 pub struct PortraitCaptureWorldParams<'w> {
@@ -59,9 +62,13 @@ pub struct PortraitCaptureActorQueries<'w, 's> {
     pub actors: Query<'w, 's, Entity, With<UnitPortraitActor>>,
     pub actor_roots: Query<'w, 's, Entity, With<UnitPortraitSceneRoot>>,
     pub framing_ready: Query<'w, 's, &'static UnitPortraitFraming>,
+    pub framing_measured: Query<'w, 's, &'static UnitPortraitFramingMeasured>,
+    pub framing_fallback: Query<'w, 's, &'static UnitPortraitFramingFallback>,
     pub children: Query<'w, 's, &'static Children>,
     pub mesh3d: Query<'w, 's, &'static Mesh3d>,
     pub skinned: Query<'w, 's, &'static SkinnedMesh>,
+    pub global_transforms: Query<'w, 's, &'static GlobalTransform>,
+    pub meshes: Res<'w, Assets<Mesh>>,
     pub equipment_visuals: Query<'w, 's, Entity, With<crate::units::equipment_presentation::UnitEquipmentVisual>>,
 }
 
@@ -72,6 +79,10 @@ pub struct UnitPortraitCaptureState {
     pub target_image: Option<Handle<Image>>,
     pub warmup_frames_remaining: u32,
     pub render_settle_frames: u32,
+    /// Portrait camera has been aimed using [`UnitPortraitFraming`] this capture.
+    pub camera_aligned: bool,
+    /// Measured mesh bounds were observed on the actor (not fallback-only).
+    pub measured_bounds_ready: bool,
 }
 
 /// Primary units that need fresh portraits (HUD writes here each frame).
@@ -125,6 +136,7 @@ pub fn update_portrait_actor_framing(
             &UnitRenderMetadata,
             Option<&UnitPresentationAppearance>,
             &GlobalTransform,
+            Option<&UnitPortraitBoundsWait>,
         ),
         (With<UnitPortraitSceneRoot>, Without<UnitPortraitFraming>),
     >,
@@ -135,29 +147,37 @@ pub fn update_portrait_actor_framing(
     global_transforms: Query<&GlobalTransform>,
 ) {
     let step = portrait_diagnostic_step();
-    for (entity, metadata, presentation, actor_global) in &actors {
+    for (entity, metadata, presentation, actor_global, bounds_wait) in &actors {
         let Some(definition) = unit_catalog.get(&metadata.definition_id) else {
             continue;
         };
+        if count_actor_render_primitives(entity, &children, &mesh3d, &skinned) == 0 {
+            continue;
+        }
         let height_scale = presentation
             .map(|value| value.appearance.height_scale)
             .unwrap_or(1.0);
-        let (center, height) = measure_actor_bounds(
+
+        let (center, height, measured) = if let Some(bounds) = measure_actor_bounds(
             entity,
             &children,
             &mesh3d,
             &meshes,
             &global_transforms,
-        )
-        .unwrap_or_else(|| {
+        ) {
+            (bounds.0, bounds.1, true)
+        } else {
+            let waited = bounds_wait.map(|value| value.frames).unwrap_or(0);
+            if waited < PORTRAIT_BOUNDS_FALLBACK_FRAMES {
+                commands
+                    .entity(entity)
+                    .insert(UnitPortraitBoundsWait { frames: waited + 1 });
+                continue;
+            }
             let body_height = portrait_fallback_body_height(definition, height_scale);
             let center = actor_global.transform_point(Vec3::new(0.0, body_height * 0.5, 0.0));
-            (center, body_height)
-        });
-
-        if count_actor_render_primitives(entity, &children, &mesh3d, &skinned) == 0 {
-            continue;
-        }
+            (center, body_height, false)
+        };
 
         let framing = if step == 5 {
             portrait_generous_framing_from_bounds(center, height)
@@ -165,11 +185,17 @@ pub fn update_portrait_actor_framing(
             portrait_framing_from_bounds(center, height, definition)
         };
         commands.entity(entity).insert(framing);
+        if measured {
+            commands.entity(entity).insert(UnitPortraitFramingMeasured);
+        } else {
+            commands.entity(entity).insert(UnitPortraitFramingFallback);
+        }
+        commands.entity(entity).remove::<UnitPortraitBoundsWait>();
     }
 }
 
 pub fn sync_portrait_capture_camera(
-    capture: Res<UnitPortraitCaptureState>,
+    mut capture: ResMut<UnitPortraitCaptureState>,
     actors: Query<&UnitPortraitFraming, With<UnitPortraitSceneRoot>>,
     mut cameras: Query<&mut Transform, With<UnitPortraitCamera>>,
 ) {
@@ -185,6 +211,11 @@ pub fn sync_portrait_capture_camera(
     let transform = portrait_camera_transform(framing);
     for mut camera_transform in &mut cameras {
         *camera_transform = transform;
+    }
+    if !capture.camera_aligned {
+        capture.camera_aligned = true;
+        capture.warmup_frames_remaining = PORTRAIT_WARMUP_FRAMES;
+        capture.render_settle_frames = 0;
     }
 }
 
@@ -268,6 +299,24 @@ pub fn drive_portrait_capture_pipeline(
         return;
     }
 
+    if !world_params.capture.camera_aligned {
+        return;
+    }
+
+    if queries.framing_measured.get(actor_entity).is_ok() {
+        world_params.capture.measured_bounds_ready = true;
+    } else if measure_actor_bounds(
+        actor_entity,
+        &queries.children,
+        &queries.mesh3d,
+        &queries.meshes,
+        &queries.global_transforms,
+    )
+    .is_some()
+    {
+        world_params.capture.measured_bounds_ready = true;
+    }
+
     if count_actor_render_primitives(
         actor_entity,
         &queries.children,
@@ -291,6 +340,18 @@ pub fn drive_portrait_capture_pipeline(
         if world_params.capture.render_settle_frames > 0 {
             return;
         }
+    }
+
+    let framing_confirmed = queries.framing_measured.get(actor_entity).is_ok()
+        || queries.framing_fallback.get(actor_entity).is_ok();
+    if !framing_confirmed {
+        return;
+    }
+    if !world_params.capture.measured_bounds_ready
+        && queries.framing_fallback.get(actor_entity).is_err()
+    {
+        world_params.capture.render_settle_frames = PORTRAIT_RENDER_SETTLE_FRAMES;
+        return;
     }
 
     let image = world_params.capture.target_image.clone().unwrap();
@@ -392,8 +453,10 @@ fn begin_next_capture(
     capture.active_request = Some(request);
     capture.actor_entity = Some(actor);
     capture.target_image = Some(handle);
-    capture.warmup_frames_remaining = PORTRAIT_WARMUP_FRAMES;
+    capture.warmup_frames_remaining = 0;
     capture.render_settle_frames = 0;
+    capture.camera_aligned = false;
+    capture.measured_bounds_ready = false;
 }
 
 fn finish_capture(
@@ -420,6 +483,8 @@ fn finish_capture(
     capture.target_image = None;
     capture.warmup_frames_remaining = 0;
     capture.render_settle_frames = 0;
+    capture.camera_aligned = false;
+    capture.measured_bounds_ready = false;
 }
 
 fn drive_diagnostic_live_unit(

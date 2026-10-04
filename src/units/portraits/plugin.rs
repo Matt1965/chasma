@@ -55,28 +55,18 @@ impl Plugin for UnitPortraitPlugin {
                 sync_portrait_camera_active.in_set(UnitPortraitSystems),
             )
             .add_systems(
-                Update,
-                sync_portrait_capture_camera.in_set(UnitPortraitSystems),
-            )
-            .add_systems(
                 PostUpdate,
                 (
                     sync_portrait_equipment_presentation,
                     finalize_skinned_equipment_overlays,
                     update_portrait_actor_framing,
-                )
-                    .chain()
-                    .after(InheritWeightSystems)
-                    .after(sync_unit_appearance_morphs)
-                    .in_set(UnitPortraitSystems),
-            )
-            .add_systems(
-                PostUpdate,
-                (
+                    sync_portrait_capture_camera,
                     propagate_portrait_render_layers,
                     drive_portrait_capture_pipeline,
                 )
                     .chain()
+                    .after(InheritWeightSystems)
+                    .after(sync_unit_appearance_morphs)
                     .in_set(UnitPortraitSystems),
             );
     }

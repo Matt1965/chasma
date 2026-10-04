@@ -35,6 +35,7 @@ fn portrait_slot_image(
             capture
                 .active_request
                 .filter(|request| request.unit_id == unit_id)
+                .filter(|_| capture.camera_aligned)
                 .and_then(|_| capture.target_image.clone())
         }),
     }

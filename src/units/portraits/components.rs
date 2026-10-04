@@ -34,3 +34,15 @@ pub struct UnitPortraitFraming {
     pub focus: Vec3,
     pub head_height: f32,
 }
+
+/// Retries mesh-bound measurement before applying catalog fallback framing.
+#[derive(Component, Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct UnitPortraitBoundsWait {
+    pub frames: u32,
+}
+
+#[derive(Component, Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct UnitPortraitFramingMeasured;
+
+#[derive(Component, Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct UnitPortraitFramingFallback;
