@@ -286,6 +286,20 @@ When uncertainty exists, choose the solution that preserves architectural flexib
 
 ---
 
+# Imported asset fidelity (monster pack / GLB)
+
+Imported assets must preserve authored geometry, rig behavior, morphs, and animation. Do not hide unresolved import or presentation defects by collapsing bones, suppressing body parts, deleting legitimate animation channels, freezing poses, pasting unrelated curves, or adding unexplained asset-specific overrides.
+
+Such alterations are permitted only as explicitly authorized custom content work. Label and document them as intentional changes to the source behavior.
+
+A conversion repair must correct a demonstrated conversion defect and preserve the intended result. A workaround that merely conceals the symptom cannot be presented as a completed repair.
+
+Valid coordinate conversion, unit conversion, placement adjustments, and demonstrated exporter repairs remain appropriate. They must have clear ownership and supporting evidence.
+
+Authoring and repair steps live in `tools/monster_pack/README.md` and `tools/monster_pack/IMPORT_FIDELITY.md`.
+
+---
+
 # Branch merge / closeout workflow
 
 When the user approves merge with phrasing such as "merge", "merge branch", "merge yours", "merge to main", or "go ahead and merge", perform the **standard feature-branch closeout** (not a local-only merge).

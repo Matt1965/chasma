@@ -1,0 +1,11 @@
+﻿{
+    "converter":  "Blender 4.2.3 io_scene_gltf2 + monster_export_core",
+    "checkpoints":  {
+                        "02_before_glb_postprocess.glb":  "Copy of 01 (pre rebase/scene-x90)",
+                        "03_faithful_postexport.glb":  "rebase clip starts + FBX2glTF scene +90 X if SK path used",
+                        "01_blender_gltf_export.glb":  "Blender export_scene.gltf GLB, no Python post",
+                        "04_previous_shipped.glb":  "Prior assets/units/bufomorph.glb before regen"
+                    },
+    "sk_import":  "FBX2glTF fallback when Blender FBX SK import fails",
+    "faithful_post":  "finish_glb_post_export(strip=false) + apply_fbx2gltf_scene_root_x90"
+}

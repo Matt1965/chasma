@@ -26,3 +26,8 @@ Desktop.ini
 # Generated asset/cache directories
 /assets/generated/
 /assets/cache/
+
+# Monster pack local diagnostics (large GLBs; manifests/PNGs may be committed)
+/tools/monster_pack/diagnostics/**/*.glb
+/tools/monster_pack/__pycache__/
+/tools/monster_pack/_audit_*.glb
