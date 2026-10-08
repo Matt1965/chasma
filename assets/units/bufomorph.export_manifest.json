@@ -1,0 +1,230 @@
+{
+  "monster_name": "Bufomorph",
+  "output_glb": "c:\\BevyFiles\\chasma\\assets\\units\\bufomorph.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\SK_Buformorph.FBX",
+  "used_fbx2gltf_sk": true,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 42,
+  "unique_clips_expected": 21,
+  "unique_clips_merged": 21,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Buformorph@BiteAttack.FBX",
+      "clip_name": "BiteAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@BiteAttack_RM.FBX",
+      "clip_name": "BiteAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@HopBackwards.FBX",
+      "clip_name": "HopBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@HopBackwards_RM.FBX",
+      "clip_name": "HopBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@HopForward.FBX",
+      "clip_name": "HopForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@HopForward_RM.FBX",
+      "clip_name": "HopForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@HopLeft.FBX",
+      "clip_name": "HopLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@HopLeft_RM.FBX",
+      "clip_name": "HopLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@HopRight.FBX",
+      "clip_name": "HopRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@HopRight_RM.FBX",
+      "clip_name": "HopRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@SpitAttack.FBX",
+      "clip_name": "SpitAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@TongueAttack.FBX",
+      "clip_name": "TongueAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Buformorph@BiteAttack.FBX",
+      "clip_name": "BiteAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@BiteAttack_RM.FBX",
+      "clip_name": "BiteAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@HopBackwards.FBX",
+      "clip_name": "HopBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@HopBackwards_RM.FBX",
+      "clip_name": "HopBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@HopForward.FBX",
+      "clip_name": "HopForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@HopForward_RM.FBX",
+      "clip_name": "HopForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@HopLeft.FBX",
+      "clip_name": "HopLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@HopLeft_RM.FBX",
+      "clip_name": "HopLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@HopRight.FBX",
+      "clip_name": "HopRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@HopRight_RM.FBX",
+      "clip_name": "HopRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@SpitAttack.FBX",
+      "clip_name": "SpitAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Buformorph@TongueAttack.FBX",
+      "clip_name": "TongueAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 20,
+    "scene_root_x90": true
+  }
+}

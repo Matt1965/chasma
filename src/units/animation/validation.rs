@@ -423,6 +423,19 @@ mod tests {
             "expected IdleBreathe in bufomorph glb, got: {names:?}"
         );
 
+        let manifest_path = path.with_extension("export_manifest.json");
+        if manifest_path.is_file() {
+            let manifest_text = std::fs::read_to_string(&manifest_path).expect("export manifest");
+            assert!(
+                manifest_text.contains("\"complete\": true"),
+                "bufomorph export manifest must report complete=true"
+            );
+            assert!(
+                manifest_text.contains("\"unique_clips_merged\": 21"),
+                "bufomorph must merge 21 unique clips per export manifest"
+            );
+        }
+
         let idle = document
             .animations()
             .find(|a| a.name() == Some("IdleBreathe"))

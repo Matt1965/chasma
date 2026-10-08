@@ -43,6 +43,7 @@ def diagnose_bufomorph_glb(path: Path) -> None:
         path,
         _BUFOMORPH_BODY_BONE,
         catalog_yaw_y_deg=_BUFOMORPH_CATALOG_YAW_DEG,
+        catalog_roll_z_deg=90.0,
     )
     print(path, f"verify_presentation_upright ok={ok} up={tuple(round(c, 3) for c in up)}")
     print(

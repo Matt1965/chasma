@@ -1,0 +1,308 @@
+[
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\arthromahre.glb",
+    "animations": 21,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\bufomorph.glb",
+    "animations": 21,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 51,
+    "idle_body_rotation_channel": true,
+    "idle_tongue_channels": 27,
+    "likely_legacy_strip_or_bufomorph_fix": false
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\carcidonte.glb",
+    "animations": 36,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\cavecrawler.glb",
+    "animations": 24,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\clypeosaurus.glb",
+    "animations": 26,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\deinodonte.glb",
+    "animations": 21,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 4,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\densoptere.glb",
+    "animations": 27,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\drackmahre.glb",
+    "animations": 32,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\entomorane.glb",
+    "animations": 29,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\fox.glb",
+    "animations": 3,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\giant_slug.glb",
+    "animations": 28,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 7,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\gorosaurus.glb",
+    "animations": 41,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\gryllunguis.glb",
+    "animations": 15,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\hellcreeper.glb",
+    "animations": 25,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\hideoplast.glb",
+    "animations": 30,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\human_female.glb",
+    "animations": 10,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\human_male.glb",
+    "animations": 10,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\karcinomorph.glb",
+    "animations": 29,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\karckmahre.glb",
+    "animations": 24,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\laminferox.glb",
+    "animations": 34,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 1,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\letalobrach.glb",
+    "animations": 31,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 3,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\marhomorph.glb",
+    "animations": 31,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\morphorrid.glb",
+    "animations": 38,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\muscomorph.glb",
+    "animations": 26,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\pardathrox.glb",
+    "animations": 27,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\perderos.glb",
+    "animations": 41,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\robot.glb",
+    "animations": 0,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\scolomorph.glb",
+    "animations": 37,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\scyver.glb",
+    "animations": 37,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\skorpmare.glb",
+    "animations": 18,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\telluropod.glb",
+    "animations": 16,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\tetrachnide.glb",
+    "animations": 29,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\tyranopode.glb",
+    "animations": 31,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  },
+  {
+    "path": "C:\\BevyFiles\\chasma\\assets\\units\\vespomorph.glb",
+    "animations": 25,
+    "collapsed_tongue_bind": false,
+    "idle_child_translation_channels": 0,
+    "idle_body_rotation_channel": false,
+    "idle_tongue_channels": 0,
+    "likely_legacy_strip_or_bufomorph_fix": true
+  }
+]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import shutil
@@ -318,32 +319,71 @@ def export_monster_glb(
 
     merged = 0
     seen_names: set[str] = set()
+    clip_rows: list[dict] = []
     for anim_path in anim_paths:
         clip = clip_name_from_fbx(anim_prefix, anim_path.name)
         if clip in seen_names:
+            clip_rows.append(
+                {
+                    "source_file": anim_path.name,
+                    "clip_name": clip,
+                    "outcome": "skipped_duplicate_manifest_entry",
+                }
+            )
             continue
         if not include_rm_clips and clip.endswith("_RM"):
+            clip_rows.append(
+                {
+                    "source_file": anim_path.name,
+                    "clip_name": clip,
+                    "outcome": "skipped_rm_clip",
+                }
+            )
             continue
-        imported = import_fbx(anim_path)
-        source_armature = find_armature(imported)
-        action = None
-        if source_armature and source_armature.animation_data:
-            action = source_armature.animation_data.action
-        if source_armature is not None:
-            apply_object_scale(source_armature)
-        if action is None:
-            delete_objects(imported)
+        error = None
+        imported: list = []
+        try:
+            imported = import_fbx(anim_path)
+            source_armature = find_armature(imported)
+            action = None
+            if source_armature and source_armature.animation_data:
+                action = source_armature.animation_data.action
+            if source_armature is not None:
+                apply_object_scale(source_armature)
+            if action is None:
+                error = "no_action_after_import"
+            else:
+                merge_action(
+                    action,
+                    clip,
+                    translation_bones,
+                    strip_fcurves=strip_blender_fcurves,
+                )
+        except Exception as exc:  # noqa: BLE001 — recorded in export manifest
+            error = f"{type(exc).__name__}: {exc}"
+        finally:
+            if imported:
+                delete_objects(imported)
+            purge_junk_actions()
+        if error:
+            clip_rows.append(
+                {
+                    "source_file": anim_path.name,
+                    "clip_name": clip,
+                    "outcome": "import_failed",
+                    "error": error,
+                }
+            )
             continue
-        merge_action(
-            action,
-            clip,
-            translation_bones,
-            strip_fcurves=strip_blender_fcurves,
-        )
-        delete_objects(imported)
-        purge_junk_actions()
         seen_names.add(clip)
         merged += 1
+        clip_rows.append(
+            {
+                "source_file": anim_path.name,
+                "clip_name": clip,
+                "outcome": "merged",
+            }
+        )
 
     purge_junk_actions(seen_names)
     mat_name = f"M_{monster_name.replace(' ', '')}"
@@ -378,5 +418,28 @@ def export_monster_glb(
 
     if checkpoint_dir is not None:
         shutil.copy2(work_path, output)
+
+    manifest_path = output.with_suffix(".export_manifest.json")
+    unique_expected = {clip_name_from_fbx(anim_prefix, p.name) for p in anim_paths}
+    manifest = {
+        "monster_name": monster_name,
+        "output_glb": str(output),
+        "sk_fbx": str(sk_fbx),
+        "used_fbx2gltf_sk": used_fbx2gltf_sk,
+        "strip_child_channels": strip_child_channels,
+        "strip_blender_fcurves": strip_blender_fcurves,
+        "source_fbx_files": len(anim_paths),
+        "unique_clips_expected": len(unique_expected),
+        "unique_clips_merged": len(seen_names),
+        "complete": len(seen_names) == len(unique_expected),
+        "clips": clip_rows,
+        "post_export": {
+            "stripped_channels": removed,
+            "kept_channels": kept,
+            "rebased_clips": rebased,
+            "scene_root_x90": used_fbx2gltf_sk,
+        },
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     return merged, removed, kept, rebased

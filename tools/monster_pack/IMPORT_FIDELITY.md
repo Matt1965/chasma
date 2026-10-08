@@ -11,9 +11,18 @@ Policy: see **Imported asset fidelity** in `AGENTS.md`.
    - **FBX2glTF SK fallback only:** `apply_fbx2gltf_scene_root_x90` (Godot FBX2glTF drops Blender `io_scene_fbx` armature +90° X; see tyranopode/muscomorph working GLBs).
 4. **Runtime presentation** — Units sheet rotation correction and `ModelComposition` offsets (ADR-128), not internal bone rotation hacks.
 
-## Opt-in channel stripping
+## Opt-in channel stripping (authorized custom content only)
 
-`glb_sanitize_animations.py --strip-child-channels` removes child-bone **translation** (except named root bones) and all **scale** animation channels. Use only when a pipeline audit documents erroneous exporter data (e.g. cavecrawler direct converter vs Unity FBX — `tyranopode/ANIMATION_REPORT.md`). **Not** part of the default monster-pack export.
+`glb_sanitize_animations.py --strip-child-channels` removes child-bone **translation** (except named root bones) and all **scale** animation channels.
+
+This is **not** a routine import step. It is **behavior-changing** and permitted only when:
+
+1. A pipeline audit documents erroneous exporter data (e.g. cavecrawler direct converter — see `tyranopode/ANIMATION_REPORT.md` on the agent worktree), and
+2. The change is recorded as **authorized custom content** in that audit (not as default monster-pack export).
+
+Default `monster_export_core` / `blender_export_monster.py` must keep `strip_child_channels=false`.
+
+Each export writes `<output>.export_manifest.json` with per-FBX outcomes and a `complete` flag.
 
 ## Removed workarounds (do not reintroduce)
 

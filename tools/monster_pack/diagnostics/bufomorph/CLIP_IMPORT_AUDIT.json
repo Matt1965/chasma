@@ -1,0 +1,302 @@
+{
+  "fbx_dir": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files",
+  "animation_prefix": "Buformorph",
+  "source_files": 42,
+  "unique_clips_ok": 21,
+  "rows": [
+    {
+      "source_file": "Buformorph@BiteAttack.FBX",
+      "clip_name": "BiteAttack",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@BiteAttack_RM.FBX",
+      "clip_name": "BiteAttack_RM",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@Death.FBX",
+      "clip_name": "Death",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopBackwards.FBX",
+      "clip_name": "HopBackwards",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopBackwards_RM.FBX",
+      "clip_name": "HopBackwards_RM",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopForward.FBX",
+      "clip_name": "HopForward",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopForward_RM.FBX",
+      "clip_name": "HopForward_RM",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopLeft.FBX",
+      "clip_name": "HopLeft",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopLeft_RM.FBX",
+      "clip_name": "HopLeft_RM",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopRight.FBX",
+      "clip_name": "HopRight",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopRight_RM.FBX",
+      "clip_name": "HopRight_RM",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@Run.FBX",
+      "clip_name": "Run",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@SpitAttack.FBX",
+      "clip_name": "SpitAttack",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@TongueAttack.FBX",
+      "clip_name": "TongueAttack",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@BiteAttack.FBX",
+      "clip_name": "BiteAttack",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@BiteAttack_RM.FBX",
+      "clip_name": "BiteAttack_RM",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@Death.FBX",
+      "clip_name": "Death",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopBackwards.FBX",
+      "clip_name": "HopBackwards",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopBackwards_RM.FBX",
+      "clip_name": "HopBackwards_RM",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopForward.FBX",
+      "clip_name": "HopForward",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopForward_RM.FBX",
+      "clip_name": "HopForward_RM",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopLeft.FBX",
+      "clip_name": "HopLeft",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopLeft_RM.FBX",
+      "clip_name": "HopLeft_RM",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopRight.FBX",
+      "clip_name": "HopRight",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@HopRight_RM.FBX",
+      "clip_name": "HopRight_RM",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@Run.FBX",
+      "clip_name": "Run",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@SpitAttack.FBX",
+      "clip_name": "SpitAttack",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    },
+    {
+      "source_file": "Buformorph@TongueAttack.FBX",
+      "clip_name": "TongueAttack",
+      "import_ok": true,
+      "blender_action": "Armature|Take 001|BaseLayer",
+      "error": null
+    }
+  ]
+}
