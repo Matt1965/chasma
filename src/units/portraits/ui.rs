@@ -11,6 +11,7 @@ use super::cache::UnitPortraitCache;
 use super::diagnostics::{
     PortraitDiagnosticTrace, portrait_diagnostic_step, portrait_diagnostics_show_without_selection,
 };
+use super::lifecycle_probe::{PortraitLifecycleProbe, lifecycle_probe_hud_image};
 use super::pipeline::{UnitPortraitCaptureState, UnitPortraitUiDemand};
 use super::studio_images::UnitPortraitStudioImages;
 
@@ -20,11 +21,15 @@ pub struct SelectedUnitPortraitImage;
 
 fn portrait_slot_image(
     step: u8,
+    lifecycle: &PortraitLifecycleProbe,
     studio: &UnitPortraitStudioImages,
     cache: &UnitPortraitCache,
     capture: &UnitPortraitCaptureState,
     primary: Option<crate::world::UnitId>,
 ) -> Option<Handle<Image>> {
+    if let Some(handle) = lifecycle_probe_hud_image(lifecycle, cache, primary) {
+        return Some(handle);
+    }
     match step {
         1 => Some(studio.checkerboard.clone()),
         2..=6 => Some(studio.live_target.clone()),
@@ -47,6 +52,7 @@ pub fn sync_selected_unit_portrait_ui(
     selection: Res<SelectedUnits>,
     cache: Res<UnitPortraitCache>,
     capture: Res<UnitPortraitCaptureState>,
+    lifecycle: Res<PortraitLifecycleProbe>,
     studio: Res<UnitPortraitStudioImages>,
     mut demand: ResMut<UnitPortraitUiDemand>,
     mut trace: ResMut<PortraitDiagnosticTrace>,
@@ -62,7 +68,8 @@ pub fn sync_selected_unit_portrait_ui(
     demand.primary_unit = primary;
 
     let step = portrait_diagnostic_step();
-    let cached_image = portrait_slot_image(step, &studio, &cache, &capture, primary);
+    let cached_image =
+        portrait_slot_image(step, &lifecycle, &studio, &cache, &capture, primary);
     let show_portrait = cached_image.is_some()
         && (primary.is_some() || portrait_diagnostics_show_without_selection(step));
 

@@ -25,6 +25,9 @@ use super::equipment::{UnitPortraitEquipmentIndex, clear_portrait_equipment_for_
 use super::diagnostics::{
     portrait_diagnostic_step, portrait_diagnostics_block_cache,
 };
+use super::lifecycle_probe::{
+    portrait_lifecycle_blocks_production, note_production_finish_capture,
+};
 use super::framing::{
     PORTRAIT_UNIT_YAW, count_actor_render_primitives, measure_actor_bounds,
     portrait_camera_transform, portrait_fallback_body_height, portrait_framing_from_bounds,
@@ -92,6 +95,7 @@ pub struct UnitPortraitUiDemand {
 }
 
 pub fn maintain_portrait_cache_requests(
+    lifecycle: Res<super::lifecycle_probe::PortraitLifecycleProbe>,
     demand: Res<UnitPortraitUiDemand>,
     world: Res<WorldData>,
     unit_catalog: Res<UnitCatalog>,
@@ -100,6 +104,9 @@ pub fn maintain_portrait_cache_requests(
     visuals: Res<EquipmentVisualCatalog>,
     mut cache: ResMut<UnitPortraitCache>,
 ) {
+    if portrait_lifecycle_blocks_production(&lifecycle) {
+        return;
+    }
     if portrait_diagnostics_block_cache(portrait_diagnostic_step()) {
         return;
     }
@@ -223,7 +230,12 @@ pub fn drive_portrait_capture_pipeline(
     mut commands: Commands,
     mut world_params: PortraitCaptureWorldParams,
     mut queries: PortraitCaptureActorQueries,
+    mut lifecycle: ResMut<super::lifecycle_probe::PortraitLifecycleProbe>,
+    camera_read: Query<&Camera, With<UnitPortraitCamera>>,
 ) {
+    if portrait_lifecycle_blocks_production(&lifecycle) {
+        return;
+    }
     let step = portrait_diagnostic_step();
     if portrait_diagnostics_block_cache(step) {
         if step >= 5 {
@@ -276,6 +288,8 @@ pub fn drive_portrait_capture_pipeline(
             &queries.equipment_visuals,
             false,
             &mut world_params.cache,
+            &mut lifecycle,
+            &camera_read,
         );
         return;
     }
@@ -291,6 +305,8 @@ pub fn drive_portrait_capture_pipeline(
             &queries.equipment_visuals,
             false,
             &mut world_params.cache,
+            &mut lifecycle,
+            &camera_read,
         );
         return;
     }
@@ -368,6 +384,8 @@ pub fn drive_portrait_capture_pipeline(
         &queries.equipment_visuals,
         committed,
         &mut world_params.cache,
+        &mut lifecycle,
+        &camera_read,
     );
 }
 
@@ -459,6 +477,10 @@ fn begin_next_capture(
     capture.measured_bounds_ready = false;
 }
 
+/// Ends an in-flight capture. **Repair policy:** if lifecycle A/B shows post-commit clear
+/// (mesh gone while camera still targets the published `Image`), deactivate or retarget the
+/// portrait camera **before** despawning the actor here — do not rely on stage-3-style safe
+/// ordering elsewhere; production can still clear the texture with the unsafe order.
 fn finish_capture(
     commands: &mut Commands,
     capture: &mut UnitPortraitCaptureState,
@@ -466,7 +488,13 @@ fn finish_capture(
     equipment_visuals: &Query<Entity, With<crate::units::equipment_presentation::UnitEquipmentVisual>>,
     committed: bool,
     cache: &mut UnitPortraitCache,
+    lifecycle: &mut super::lifecycle_probe::PortraitLifecycleProbe,
+    cameras: &Query<&Camera, With<UnitPortraitCamera>>,
 ) {
+    let camera_active = cameras.iter().next().is_some_and(|camera| camera.is_active);
+    let published_image = capture.target_image.as_ref().map(|handle| handle.id());
+    note_production_finish_capture(lifecycle, committed, published_image, camera_active);
+
     if let Some(actor) = capture.actor_entity {
         clear_portrait_equipment_for_actor(commands, actor, equipment_index, equipment_visuals);
         if commands.get_entity(actor).is_ok() {

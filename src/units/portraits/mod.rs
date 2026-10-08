@@ -5,6 +5,7 @@ mod components;
 mod diagnostics;
 mod equipment;
 mod framing;
+mod lifecycle_probe;
 mod pipeline;
 mod plugin;
 mod resolve;

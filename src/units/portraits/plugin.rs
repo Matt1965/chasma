@@ -12,6 +12,11 @@ use super::diagnostics::{
     PortraitDiagnosticTrace, sync_portrait_diagnostic_camera, sync_portrait_diagnostic_stage,
 };
 use super::equipment::sync_portrait_equipment_presentation;
+use super::lifecycle_probe::{
+    apply_portrait_lifecycle_probe, portrait_lifecycle_probe_input,
+    record_portrait_lifecycle_trace, sync_portrait_lifecycle_camera_override,
+    PortraitLifecycleProbe, PortraitLifecycleTrace,
+};
 use super::pipeline::{
     UnitPortraitCaptureState, UnitPortraitUiDemand, drive_portrait_capture_pipeline,
     maintain_portrait_cache_requests, sync_portrait_capture_camera, update_portrait_actor_framing,
@@ -32,6 +37,8 @@ impl Plugin for UnitPortraitPlugin {
             .init_resource::<UnitPortraitCaptureState>()
             .init_resource::<UnitPortraitUiDemand>()
             .init_resource::<PortraitDiagnosticTrace>()
+            .init_resource::<PortraitLifecycleProbe>()
+            .init_resource::<PortraitLifecycleTrace>()
             .init_resource::<super::equipment::UnitPortraitEquipmentIndex>()
             .add_systems(Startup, setup_unit_portrait_studio)
             .add_systems(
@@ -55,14 +62,26 @@ impl Plugin for UnitPortraitPlugin {
                 sync_portrait_camera_active.in_set(UnitPortraitSystems),
             )
             .add_systems(
+                Update,
+                portrait_lifecycle_probe_input.in_set(UnitPortraitSystems),
+            )
+            .add_systems(
+                Update,
+                sync_portrait_lifecycle_camera_override
+                    .after(sync_portrait_camera_active)
+                    .in_set(UnitPortraitSystems),
+            )
+            .add_systems(
                 PostUpdate,
                 (
                     sync_portrait_equipment_presentation,
                     finalize_skinned_equipment_overlays,
                     update_portrait_actor_framing,
                     sync_portrait_capture_camera,
+                    apply_portrait_lifecycle_probe,
                     propagate_portrait_render_layers,
                     drive_portrait_capture_pipeline,
+                    record_portrait_lifecycle_trace,
                 )
                     .chain()
                     .after(InheritWeightSystems)
