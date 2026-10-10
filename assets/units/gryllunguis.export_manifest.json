@@ -1,0 +1,170 @@
+{
+  "monster_name": "Gryllunguis",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\gryllunguis.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 6\\Gryllunguis\\FBX Files\\SK_Gryllunguis.FBX",
+  "used_fbx2gltf_sk": true,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 30,
+  "unique_clips_expected": 15,
+  "unique_clips_merged": 15,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Gryllunguis@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@Jump.FBX",
+      "clip_name": "Jump",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@Jump_RM.FBX",
+      "clip_name": "Jump_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@JumpBite.FBX",
+      "clip_name": "JumpBite",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@JumpBite_RM.FBX",
+      "clip_name": "JumpBite_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@Spit.FBX",
+      "clip_name": "Spit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gryllunguis@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gryllunguis@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gryllunguis@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gryllunguis@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gryllunguis@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gryllunguis@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gryllunguis@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gryllunguis@Jump.FBX",
+      "clip_name": "Jump",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gryllunguis@Jump_RM.FBX",
+      "clip_name": "Jump_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gryllunguis@JumpBite.FBX",
+      "clip_name": "JumpBite",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gryllunguis@JumpBite_RM.FBX",
+      "clip_name": "JumpBite_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gryllunguis@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gryllunguis@Spit.FBX",
+      "clip_name": "Spit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gryllunguis@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gryllunguis@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 14,
+    "scene_root_x90": true
+  }
+}

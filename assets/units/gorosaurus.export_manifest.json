@@ -1,0 +1,430 @@
+{
+  "monster_name": "Gorosaurus",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\gorosaurus.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 1\\Gorosaurus\\FBX Files\\SK_Gorosaurus.FBX",
+  "used_fbx2gltf_sk": true,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 82,
+  "unique_clips_expected": 41,
+  "unique_clips_merged": 41,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Gorosaurus@2HitComboAttack.FBX",
+      "clip_name": "2HitComboAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@2HitComboAttackForward.FBX",
+      "clip_name": "2HitComboAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@2HitComboAttackForward_RM.FBX",
+      "clip_name": "2HitComboAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@3HitComboAttack.FBX",
+      "clip_name": "3HitComboAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@3HitComboAttackForward.FBX",
+      "clip_name": "3HitComboAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@3HitComboAttackForward_RM.FBX",
+      "clip_name": "3HitComboAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@4HitComboAttack.FBX",
+      "clip_name": "4HitComboAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@4HitComboAttackForward.FBX",
+      "clip_name": "4HitComboAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@4HitComboAttackForward_RM.FBX",
+      "clip_name": "4HitComboAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@attack1.FBX",
+      "clip_name": "attack1",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@attack1Forward.FBX",
+      "clip_name": "attack1Forward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@attack1Forward_RM.FBX",
+      "clip_name": "attack1Forward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@attack2.FBX",
+      "clip_name": "attack2",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@attack2Forward.FBX",
+      "clip_name": "attack2Forward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@attack2Forward_RM.FBX",
+      "clip_name": "attack2Forward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@attack3.FBX",
+      "clip_name": "attack3",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@attack3Forward.FBX",
+      "clip_name": "attack3Forward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@attack3Forward_RM.FBX",
+      "clip_name": "attack3Forward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@death.FBX",
+      "clip_name": "death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@GetHitHeavyBack.FBX",
+      "clip_name": "GetHitHeavyBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@GetHitHeavyBack_RM.FBX",
+      "clip_name": "GetHitHeavyBack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@GetHitHeavyFront.FBX",
+      "clip_name": "GetHitHeavyFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@GetHitHeavyFront_RM.FBX",
+      "clip_name": "GetHitHeavyFront_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@Idle.FBX",
+      "clip_name": "Idle",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@jumpAttack.FBX",
+      "clip_name": "jumpAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@jumpAttack_RM.FBX",
+      "clip_name": "jumpAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@jumpBackwards.FBX",
+      "clip_name": "jumpBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@jumpBackwards_RM.FBX",
+      "clip_name": "jumpBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@jumpForward.FBX",
+      "clip_name": "jumpForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@jumpForward_RM.FBX",
+      "clip_name": "jumpForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@jumpLeft.FBX",
+      "clip_name": "jumpLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@jumpLeft_RM.FBX",
+      "clip_name": "jumpLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@jumpRight.FBX",
+      "clip_name": "jumpRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@jumpRight_RM.FBX",
+      "clip_name": "jumpRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@roar.FBX",
+      "clip_name": "roar",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Gorosaurus@2HitComboAttack.FBX",
+      "clip_name": "2HitComboAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@2HitComboAttackForward.FBX",
+      "clip_name": "2HitComboAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@2HitComboAttackForward_RM.FBX",
+      "clip_name": "2HitComboAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@3HitComboAttack.FBX",
+      "clip_name": "3HitComboAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@3HitComboAttackForward.FBX",
+      "clip_name": "3HitComboAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@3HitComboAttackForward_RM.FBX",
+      "clip_name": "3HitComboAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@4HitComboAttack.FBX",
+      "clip_name": "4HitComboAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@4HitComboAttackForward.FBX",
+      "clip_name": "4HitComboAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@4HitComboAttackForward_RM.FBX",
+      "clip_name": "4HitComboAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@attack1.FBX",
+      "clip_name": "attack1",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@attack1Forward.FBX",
+      "clip_name": "attack1Forward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@attack1Forward_RM.FBX",
+      "clip_name": "attack1Forward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@attack2.FBX",
+      "clip_name": "attack2",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@attack2Forward.FBX",
+      "clip_name": "attack2Forward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@attack2Forward_RM.FBX",
+      "clip_name": "attack2Forward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@attack3.FBX",
+      "clip_name": "attack3",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@attack3Forward.FBX",
+      "clip_name": "attack3Forward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@attack3Forward_RM.FBX",
+      "clip_name": "attack3Forward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@death.FBX",
+      "clip_name": "death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@GetHitHeavyBack.FBX",
+      "clip_name": "GetHitHeavyBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@GetHitHeavyBack_RM.FBX",
+      "clip_name": "GetHitHeavyBack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@GetHitHeavyFront.FBX",
+      "clip_name": "GetHitHeavyFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@GetHitHeavyFront_RM.FBX",
+      "clip_name": "GetHitHeavyFront_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@Idle.FBX",
+      "clip_name": "Idle",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@jumpAttack.FBX",
+      "clip_name": "jumpAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@jumpAttack_RM.FBX",
+      "clip_name": "jumpAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@jumpBackwards.FBX",
+      "clip_name": "jumpBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@jumpBackwards_RM.FBX",
+      "clip_name": "jumpBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@jumpForward.FBX",
+      "clip_name": "jumpForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@jumpForward_RM.FBX",
+      "clip_name": "jumpForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@jumpLeft.FBX",
+      "clip_name": "jumpLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@jumpLeft_RM.FBX",
+      "clip_name": "jumpLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@jumpRight.FBX",
+      "clip_name": "jumpRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@jumpRight_RM.FBX",
+      "clip_name": "jumpRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@roar.FBX",
+      "clip_name": "roar",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Gorosaurus@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 40,
+    "scene_root_x90": true
+  }
+}

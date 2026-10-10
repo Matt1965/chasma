@@ -1,0 +1,270 @@
+{
+  "monster_name": "Hellcreeper",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\hellcreeper.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 1\\Hellcreeper\\FBX Files\\SK_Hellcreeper.FBX",
+  "used_fbx2gltf_sk": true,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 50,
+  "unique_clips_expected": 25,
+  "unique_clips_merged": 25,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Hellcreeper@Bite.FBX",
+      "clip_name": "Bite",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@GetHit1.FBX",
+      "clip_name": "GetHit1",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@GetHit2.FBX",
+      "clip_name": "GetHit2",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@Idle.FBX",
+      "clip_name": "Idle",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@JumpBackwards.FBX",
+      "clip_name": "JumpBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@JumpBackwards_RM.FBX",
+      "clip_name": "JumpBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@JumpBite.FBX",
+      "clip_name": "JumpBite",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@JumpBite_RM.FBX",
+      "clip_name": "JumpBite_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@JumpForward.FBX",
+      "clip_name": "JumpForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@JumpForward_RM.FBX",
+      "clip_name": "JumpForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@JumpLeft.FBX",
+      "clip_name": "JumpLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@JumpLeft_RM.FBX",
+      "clip_name": "JumpLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@JumpRight.FBX",
+      "clip_name": "JumpRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@JumpRight_RM.FBX",
+      "clip_name": "JumpRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@spit.FBX",
+      "clip_name": "spit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@strafeLeft.FBX",
+      "clip_name": "strafeLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@strafeLeft_RM.FBX",
+      "clip_name": "strafeLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@strafeRight.FBX",
+      "clip_name": "strafeRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@strafeRight_RM.FBX",
+      "clip_name": "strafeRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hellcreeper@Bite.FBX",
+      "clip_name": "Bite",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@GetHit1.FBX",
+      "clip_name": "GetHit1",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@GetHit2.FBX",
+      "clip_name": "GetHit2",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@Idle.FBX",
+      "clip_name": "Idle",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@JumpBackwards.FBX",
+      "clip_name": "JumpBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@JumpBackwards_RM.FBX",
+      "clip_name": "JumpBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@JumpBite.FBX",
+      "clip_name": "JumpBite",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@JumpBite_RM.FBX",
+      "clip_name": "JumpBite_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@JumpForward.FBX",
+      "clip_name": "JumpForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@JumpForward_RM.FBX",
+      "clip_name": "JumpForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@JumpLeft.FBX",
+      "clip_name": "JumpLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@JumpLeft_RM.FBX",
+      "clip_name": "JumpLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@JumpRight.FBX",
+      "clip_name": "JumpRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@JumpRight_RM.FBX",
+      "clip_name": "JumpRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@spit.FBX",
+      "clip_name": "spit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@strafeLeft.FBX",
+      "clip_name": "strafeLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@strafeLeft_RM.FBX",
+      "clip_name": "strafeLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@strafeRight.FBX",
+      "clip_name": "strafeRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@strafeRight_RM.FBX",
+      "clip_name": "strafeRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hellcreeper@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 24,
+    "scene_root_x90": true
+  }
+}

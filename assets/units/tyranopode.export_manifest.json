@@ -1,0 +1,330 @@
+{
+  "monster_name": "Tyranopode",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\tyranopode.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 1\\Tyranopode\\FBX Files\\SK_Tyranopode.FBX",
+  "used_fbx2gltf_sk": false,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 62,
+  "unique_clips_expected": 31,
+  "unique_clips_merged": 31,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Tyranopode@Bite.FBX",
+      "clip_name": "Bite",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@CrawlBackwards.FBX",
+      "clip_name": "CrawlBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@CrawlBackwards_RM.FBX",
+      "clip_name": "CrawlBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@CrawlForward.FBX",
+      "clip_name": "CrawlForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@CrawlForward_RM.FBX",
+      "clip_name": "CrawlForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@CrawlLeft.FBX",
+      "clip_name": "CrawlLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@CrawlLeft_RM.FBX",
+      "clip_name": "CrawlLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@CrawlRight.FBX",
+      "clip_name": "CrawlRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@CrawlRight_RM.FBX",
+      "clip_name": "CrawlRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@GetHit.FBX",
+      "clip_name": "GetHit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@Idle.FBX",
+      "clip_name": "Idle",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@JumpBackwards.FBX",
+      "clip_name": "JumpBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@JumpBackwards_RM.FBX",
+      "clip_name": "JumpBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@JumpBite.FBX",
+      "clip_name": "JumpBite",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@JumpBite_RM.FBX",
+      "clip_name": "JumpBite_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@JumpForward.FBX",
+      "clip_name": "JumpForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@JumpForward_RM.FBX",
+      "clip_name": "JumpForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@JumpLeft.FBX",
+      "clip_name": "JumpLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@JumpLeft_RM.FBX",
+      "clip_name": "JumpLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@JumpRight.FBX",
+      "clip_name": "JumpRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@JumpRight_RM.FBX",
+      "clip_name": "JumpRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@JumpTentaclesSmashAttack.FBX",
+      "clip_name": "JumpTentaclesSmashAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@JumpTentaclesSmashAttack_RM.FBX",
+      "clip_name": "JumpTentaclesSmashAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@RoarExhaleGas.FBX",
+      "clip_name": "RoarExhaleGas",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@Spit.FBX",
+      "clip_name": "Spit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@TentacleAttackLeft.FBX",
+      "clip_name": "TentacleAttackLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@TentacleAttackRight.FBX",
+      "clip_name": "TentacleAttackRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@Tentacles2HitCombo.FBX",
+      "clip_name": "Tentacles2HitCombo",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@Tentacles3HitCombo.FBX",
+      "clip_name": "Tentacles3HitCombo",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@TentaclesSmashAttack.FBX",
+      "clip_name": "TentaclesSmashAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tyranopode@Bite.FBX",
+      "clip_name": "Bite",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@CrawlBackwards.FBX",
+      "clip_name": "CrawlBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@CrawlBackwards_RM.FBX",
+      "clip_name": "CrawlBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@CrawlForward.FBX",
+      "clip_name": "CrawlForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@CrawlForward_RM.FBX",
+      "clip_name": "CrawlForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@CrawlLeft.FBX",
+      "clip_name": "CrawlLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@CrawlLeft_RM.FBX",
+      "clip_name": "CrawlLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@CrawlRight.FBX",
+      "clip_name": "CrawlRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@CrawlRight_RM.FBX",
+      "clip_name": "CrawlRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@GetHit.FBX",
+      "clip_name": "GetHit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@Idle.FBX",
+      "clip_name": "Idle",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@JumpBackwards.FBX",
+      "clip_name": "JumpBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@JumpBackwards_RM.FBX",
+      "clip_name": "JumpBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@JumpBite.FBX",
+      "clip_name": "JumpBite",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@JumpBite_RM.FBX",
+      "clip_name": "JumpBite_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@JumpForward.FBX",
+      "clip_name": "JumpForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@JumpForward_RM.FBX",
+      "clip_name": "JumpForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@JumpLeft.FBX",
+      "clip_name": "JumpLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@JumpLeft_RM.FBX",
+      "clip_name": "JumpLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@JumpRight.FBX",
+      "clip_name": "JumpRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@JumpRight_RM.FBX",
+      "clip_name": "JumpRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@JumpTentaclesSmashAttack.FBX",
+      "clip_name": "JumpTentaclesSmashAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@JumpTentaclesSmashAttack_RM.FBX",
+      "clip_name": "JumpTentaclesSmashAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@RoarExhaleGas.FBX",
+      "clip_name": "RoarExhaleGas",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@Spit.FBX",
+      "clip_name": "Spit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@TentacleAttackLeft.FBX",
+      "clip_name": "TentacleAttackLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@TentacleAttackRight.FBX",
+      "clip_name": "TentacleAttackRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@Tentacles2HitCombo.FBX",
+      "clip_name": "Tentacles2HitCombo",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@Tentacles3HitCombo.FBX",
+      "clip_name": "Tentacles3HitCombo",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tyranopode@TentaclesSmashAttack.FBX",
+      "clip_name": "TentaclesSmashAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 7,
+    "scene_root_x90": false
+  }
+}

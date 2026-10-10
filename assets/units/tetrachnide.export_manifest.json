@@ -1,0 +1,310 @@
+{
+  "monster_name": "Tetrachnide",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\tetrachnide.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 4\\Tetrachnide\\FBX Files\\SK_Tetrachnide.FBX",
+  "used_fbx2gltf_sk": false,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 58,
+  "unique_clips_expected": 29,
+  "unique_clips_merged": 29,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Tetrachnide@ClawsAttack.FBX",
+      "clip_name": "ClawsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@ClawsAttackForward.FBX",
+      "clip_name": "ClawsAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@ClawsAttackForward_RM.FBX",
+      "clip_name": "ClawsAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlBackwards.FBX",
+      "clip_name": "CrawlBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlBackwards_RM.FBX",
+      "clip_name": "CrawlBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlForward.FBX",
+      "clip_name": "CrawlForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlForward_RM.FBX",
+      "clip_name": "CrawlForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlLeft.FBX",
+      "clip_name": "CrawlLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlLeft_RM.FBX",
+      "clip_name": "CrawlLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlRight.FBX",
+      "clip_name": "CrawlRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlRight_RM.FBX",
+      "clip_name": "CrawlRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@JumpBiteAttack.FBX",
+      "clip_name": "JumpBiteAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@JumpBiteAttack_RM.FBX",
+      "clip_name": "JumpBiteAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@Taunt.FBX",
+      "clip_name": "Taunt",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90LeftClawsAttack.FBX",
+      "clip_name": "Turn90LeftClawsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90LeftClawsAttack_RM.FBX",
+      "clip_name": "Turn90LeftClawsAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90RightClawsAttack.FBX",
+      "clip_name": "Turn90RightClawsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90RightClawsAttack_RM.FBX",
+      "clip_name": "Turn90RightClawsAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Tetrachnide@ClawsAttack.FBX",
+      "clip_name": "ClawsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@ClawsAttackForward.FBX",
+      "clip_name": "ClawsAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@ClawsAttackForward_RM.FBX",
+      "clip_name": "ClawsAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlBackwards.FBX",
+      "clip_name": "CrawlBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlBackwards_RM.FBX",
+      "clip_name": "CrawlBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlForward.FBX",
+      "clip_name": "CrawlForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlForward_RM.FBX",
+      "clip_name": "CrawlForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlLeft.FBX",
+      "clip_name": "CrawlLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlLeft_RM.FBX",
+      "clip_name": "CrawlLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlRight.FBX",
+      "clip_name": "CrawlRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@CrawlRight_RM.FBX",
+      "clip_name": "CrawlRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@JumpBiteAttack.FBX",
+      "clip_name": "JumpBiteAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@JumpBiteAttack_RM.FBX",
+      "clip_name": "JumpBiteAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@Taunt.FBX",
+      "clip_name": "Taunt",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90LeftClawsAttack.FBX",
+      "clip_name": "Turn90LeftClawsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90LeftClawsAttack_RM.FBX",
+      "clip_name": "Turn90LeftClawsAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90RightClawsAttack.FBX",
+      "clip_name": "Turn90RightClawsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Tetrachnide@Turn90RightClawsAttack_RM.FBX",
+      "clip_name": "Turn90RightClawsAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 6,
+    "scene_root_x90": false
+  }
+}

@@ -12,6 +12,10 @@
 
 ## Pack-wide recovery
 
+`run_faithful_batch_export.ps1` + `inventory.json` -> `assets/units/*.glb` + `*.export_manifest.json`.
+
+Progress: `diagnostics/FAITHFUL_BATCH_RECOVERY.json` (updated after each batch run).
+
 See `diagnostics/AFFECTED_ASSETS_RECOVERY.md` and `audit_glb_animation_fidelity.py`.
 
 ## Tools

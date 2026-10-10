@@ -1,0 +1,360 @@
+{
+  "monster_name": "Laminferox",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\laminferox.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 6\\Laminferox\\FBX Files\\SK_Laminoferox.FBX",
+  "used_fbx2gltf_sk": false,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 68,
+  "unique_clips_expected": 34,
+  "unique_clips_merged": 34,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Laminoferox@BiteAttack.FBX",
+      "clip_name": "BiteAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@BiteAttackForward.FBX",
+      "clip_name": "BiteAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@BiteAttackForward_RM.FBX",
+      "clip_name": "BiteAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@Fire6Spits.FBX",
+      "clip_name": "Fire6Spits",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@GrabBiteThrowAttack.FBX",
+      "clip_name": "GrabBiteThrowAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@GrabBiteThrowAttackForward.FBX",
+      "clip_name": "GrabBiteThrowAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@GrabBiteThrowAttackForward_RM.FBX",
+      "clip_name": "GrabBiteThrowAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@JumpBackwards.FBX",
+      "clip_name": "JumpBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@JumpBackwards_RM.FBX",
+      "clip_name": "JumpBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@JumpBiteAttack.FBX",
+      "clip_name": "JumpBiteAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@JumpBiteAttack_RM.FBX",
+      "clip_name": "JumpBiteAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@JumpForward.FBX",
+      "clip_name": "JumpForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@JumpForward_RM.FBX",
+      "clip_name": "JumpForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@JumpGrabBiteThrowAttack.FBX",
+      "clip_name": "JumpGrabBiteThrowAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@JumpGrabBiteThrowAttack_RM.FBX",
+      "clip_name": "JumpGrabBiteThrowAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@WalkBackwards.FBX",
+      "clip_name": "WalkBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@WalkBackwards_RM.FBX",
+      "clip_name": "WalkBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@WalkForward.FBX",
+      "clip_name": "WalkForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@WalkForward_RM.FBX",
+      "clip_name": "WalkForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@WalkLeft.FBX",
+      "clip_name": "WalkLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@WalkLeft_RM.FBX",
+      "clip_name": "WalkLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@WalkRight.FBX",
+      "clip_name": "WalkRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@WalkRight_RM.FBX",
+      "clip_name": "WalkRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Laminoferox@BiteAttack.FBX",
+      "clip_name": "BiteAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@BiteAttackForward.FBX",
+      "clip_name": "BiteAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@BiteAttackForward_RM.FBX",
+      "clip_name": "BiteAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@Fire6Spits.FBX",
+      "clip_name": "Fire6Spits",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@GrabBiteThrowAttack.FBX",
+      "clip_name": "GrabBiteThrowAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@GrabBiteThrowAttackForward.FBX",
+      "clip_name": "GrabBiteThrowAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@GrabBiteThrowAttackForward_RM.FBX",
+      "clip_name": "GrabBiteThrowAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@JumpBackwards.FBX",
+      "clip_name": "JumpBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@JumpBackwards_RM.FBX",
+      "clip_name": "JumpBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@JumpBiteAttack.FBX",
+      "clip_name": "JumpBiteAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@JumpBiteAttack_RM.FBX",
+      "clip_name": "JumpBiteAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@JumpForward.FBX",
+      "clip_name": "JumpForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@JumpForward_RM.FBX",
+      "clip_name": "JumpForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@JumpGrabBiteThrowAttack.FBX",
+      "clip_name": "JumpGrabBiteThrowAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@JumpGrabBiteThrowAttack_RM.FBX",
+      "clip_name": "JumpGrabBiteThrowAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@WalkBackwards.FBX",
+      "clip_name": "WalkBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@WalkBackwards_RM.FBX",
+      "clip_name": "WalkBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@WalkForward.FBX",
+      "clip_name": "WalkForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@WalkForward_RM.FBX",
+      "clip_name": "WalkForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@WalkLeft.FBX",
+      "clip_name": "WalkLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@WalkLeft_RM.FBX",
+      "clip_name": "WalkLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@WalkRight.FBX",
+      "clip_name": "WalkRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Laminoferox@WalkRight_RM.FBX",
+      "clip_name": "WalkRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 8,
+    "scene_root_x90": false
+  }
+}

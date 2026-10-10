@@ -1,0 +1,290 @@
+{
+  "monster_name": "Pardathrox",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\pardathrox.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Pardathrox\\FBX Files\\SK_Pardathrox.FBX",
+  "used_fbx2gltf_sk": true,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 54,
+  "unique_clips_expected": 27,
+  "unique_clips_merged": 27,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Pardathrox@2HitComboClawsAttack.FBX",
+      "clip_name": "2HitComboClawsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@2HitComboClawsAttackForward.FBX",
+      "clip_name": "2HitComboClawsAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@2HitComboClawsAttackForward_RM.FBX",
+      "clip_name": "2HitComboClawsAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@BiteAttack.FBX",
+      "clip_name": "BiteAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@BiteAttackForward.FBX",
+      "clip_name": "BiteAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@BiteAttackForward_RM.FBX",
+      "clip_name": "BiteAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@ClawsAttackLeft.FBX",
+      "clip_name": "ClawsAttackLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@ClawsAttackLeftForward.FBX",
+      "clip_name": "ClawsAttackLeftForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@ClawsAttackLeftForward_RM.FBX",
+      "clip_name": "ClawsAttackLeftForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@ClawsAttackRight.FBX",
+      "clip_name": "ClawsAttackRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@ClawsAttackRightForward.FBX",
+      "clip_name": "ClawsAttackRightForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@ClawsAttackRightForward_RM.FBX",
+      "clip_name": "ClawsAttackRightForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@Taunt.FBX",
+      "clip_name": "Taunt",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@Turn180Left.FBX",
+      "clip_name": "Turn180Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@Turn180Left_RM.FBX",
+      "clip_name": "Turn180Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@Turn180Right.FBX",
+      "clip_name": "Turn180Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@Turn180Right_RM.FBX",
+      "clip_name": "Turn180Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Pardathrox@2HitComboClawsAttack.FBX",
+      "clip_name": "2HitComboClawsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@2HitComboClawsAttackForward.FBX",
+      "clip_name": "2HitComboClawsAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@2HitComboClawsAttackForward_RM.FBX",
+      "clip_name": "2HitComboClawsAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@BiteAttack.FBX",
+      "clip_name": "BiteAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@BiteAttackForward.FBX",
+      "clip_name": "BiteAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@BiteAttackForward_RM.FBX",
+      "clip_name": "BiteAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@ClawsAttackLeft.FBX",
+      "clip_name": "ClawsAttackLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@ClawsAttackLeftForward.FBX",
+      "clip_name": "ClawsAttackLeftForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@ClawsAttackLeftForward_RM.FBX",
+      "clip_name": "ClawsAttackLeftForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@ClawsAttackRight.FBX",
+      "clip_name": "ClawsAttackRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@ClawsAttackRightForward.FBX",
+      "clip_name": "ClawsAttackRightForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@ClawsAttackRightForward_RM.FBX",
+      "clip_name": "ClawsAttackRightForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@Taunt.FBX",
+      "clip_name": "Taunt",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@Turn180Left.FBX",
+      "clip_name": "Turn180Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@Turn180Left_RM.FBX",
+      "clip_name": "Turn180Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@Turn180Right.FBX",
+      "clip_name": "Turn180Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@Turn180Right_RM.FBX",
+      "clip_name": "Turn180Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Pardathrox@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 26,
+    "scene_root_x90": true
+  }
+}

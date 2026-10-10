@@ -1,0 +1,270 @@
+{
+  "monster_name": "Vespomorph",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\vespomorph.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 4\\Vespomorph\\FBX Files\\SK_Vespomorph.FBX",
+  "used_fbx2gltf_sk": false,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 50,
+  "unique_clips_expected": 25,
+  "unique_clips_merged": 25,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Vespomorph@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@DeathHitTheGround.FBX",
+      "clip_name": "DeathHitTheGround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@Falling.FBX",
+      "clip_name": "Falling",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@Fly.FBX",
+      "clip_name": "Fly",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@FlyBiteAttack.FBX",
+      "clip_name": "FlyBiteAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@FlyGetHit.FBX",
+      "clip_name": "FlyGetHit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@FlyGetHitToFalling.FBX",
+      "clip_name": "FlyGetHitToFalling",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@FlySpitAttack.FBX",
+      "clip_name": "FlySpitAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@FlyStingerAttack.FBX",
+      "clip_name": "FlyStingerAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@FlyTaunt.FBX",
+      "clip_name": "FlyTaunt",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@GetHit.FBX",
+      "clip_name": "GetHit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@Idle.FBX",
+      "clip_name": "Idle",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@JumpBiteAttack.FBX",
+      "clip_name": "JumpBiteAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@JumpBiteAttack_RM.FBX",
+      "clip_name": "JumpBiteAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@Landing.FBX",
+      "clip_name": "Landing",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@SpitAttack.FBX",
+      "clip_name": "SpitAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@Taunt.FBX",
+      "clip_name": "Taunt",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@WalkBackwards.FBX",
+      "clip_name": "WalkBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@WalkBackwards_RM.FBX",
+      "clip_name": "WalkBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@WalkForward.FBX",
+      "clip_name": "WalkForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@WalkForward_RM.FBX",
+      "clip_name": "WalkForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@WalkLeft.FBX",
+      "clip_name": "WalkLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@WalkLeft_RM.FBX",
+      "clip_name": "WalkLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@WalkRight.FBX",
+      "clip_name": "WalkRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@WalkRight_RM.FBX",
+      "clip_name": "WalkRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Vespomorph@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@DeathHitTheGround.FBX",
+      "clip_name": "DeathHitTheGround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@Falling.FBX",
+      "clip_name": "Falling",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@Fly.FBX",
+      "clip_name": "Fly",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@FlyBiteAttack.FBX",
+      "clip_name": "FlyBiteAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@FlyGetHit.FBX",
+      "clip_name": "FlyGetHit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@FlyGetHitToFalling.FBX",
+      "clip_name": "FlyGetHitToFalling",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@FlySpitAttack.FBX",
+      "clip_name": "FlySpitAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@FlyStingerAttack.FBX",
+      "clip_name": "FlyStingerAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@FlyTaunt.FBX",
+      "clip_name": "FlyTaunt",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@GetHit.FBX",
+      "clip_name": "GetHit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@Idle.FBX",
+      "clip_name": "Idle",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@JumpBiteAttack.FBX",
+      "clip_name": "JumpBiteAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@JumpBiteAttack_RM.FBX",
+      "clip_name": "JumpBiteAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@Landing.FBX",
+      "clip_name": "Landing",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@SpitAttack.FBX",
+      "clip_name": "SpitAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@Taunt.FBX",
+      "clip_name": "Taunt",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@WalkBackwards.FBX",
+      "clip_name": "WalkBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@WalkBackwards_RM.FBX",
+      "clip_name": "WalkBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@WalkForward.FBX",
+      "clip_name": "WalkForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@WalkForward_RM.FBX",
+      "clip_name": "WalkForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@WalkLeft.FBX",
+      "clip_name": "WalkLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@WalkLeft_RM.FBX",
+      "clip_name": "WalkLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@WalkRight.FBX",
+      "clip_name": "WalkRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Vespomorph@WalkRight_RM.FBX",
+      "clip_name": "WalkRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 6,
+    "scene_root_x90": false
+  }
+}

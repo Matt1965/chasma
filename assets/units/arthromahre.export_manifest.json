@@ -1,0 +1,230 @@
+{
+  "monster_name": "Arthromahre",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\arthromahre.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Arthromahre\\FBX Files\\SK_Arthromahre.FBX",
+  "used_fbx2gltf_sk": true,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 42,
+  "unique_clips_expected": 21,
+  "unique_clips_merged": 21,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Arthromahre@ClawsAttackLeft.FBX",
+      "clip_name": "ClawsAttackLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@ClawsAttackRight.FBX",
+      "clip_name": "ClawsAttackRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@ClawsAttackRightForward.FBX",
+      "clip_name": "ClawsAttackRightForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@ClawsAttackRightForward_RM.FBX",
+      "clip_name": "ClawsAttackRightForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@DoubleClawsAttack.FBX",
+      "clip_name": "DoubleClawsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@DoubleClawsAttackForward.FBX",
+      "clip_name": "DoubleClawsAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@DoubleClawsAttackForward_RM.FBX",
+      "clip_name": "DoubleClawsAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@SpitterAttack.FBX",
+      "clip_name": "SpitterAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Arthromahre@ClawsAttackLeft.FBX",
+      "clip_name": "ClawsAttackLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@ClawsAttackRight.FBX",
+      "clip_name": "ClawsAttackRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@ClawsAttackRightForward.FBX",
+      "clip_name": "ClawsAttackRightForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@ClawsAttackRightForward_RM.FBX",
+      "clip_name": "ClawsAttackRightForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@DoubleClawsAttack.FBX",
+      "clip_name": "DoubleClawsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@DoubleClawsAttackForward.FBX",
+      "clip_name": "DoubleClawsAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@DoubleClawsAttackForward_RM.FBX",
+      "clip_name": "DoubleClawsAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@SpitterAttack.FBX",
+      "clip_name": "SpitterAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Arthromahre@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 20,
+    "scene_root_x90": true
+  }
+}

@@ -1,0 +1,380 @@
+{
+  "monster_name": "Carcidonte",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\carcidonte.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 6\\Carcidonte\\FBX Files\\SK_Carcidonte.FBX",
+  "used_fbx2gltf_sk": false,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 72,
+  "unique_clips_expected": 36,
+  "unique_clips_merged": 36,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Carcidonte@4TailShotCombo.FBX",
+      "clip_name": "4TailShotCombo",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@ClawsAttack.FBX",
+      "clip_name": "ClawsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@ClawsAttackForward.FBX",
+      "clip_name": "ClawsAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@ClawsAttackForward_RM.FBX",
+      "clip_name": "ClawsAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@Idle.FBX",
+      "clip_name": "Idle",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@JumpBackwards.FBX",
+      "clip_name": "JumpBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@JumpBackwards_RM.FBX",
+      "clip_name": "JumpBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@JumpBiteAttack.FBX",
+      "clip_name": "JumpBiteAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@JumpBiteAttack_RM.FBX",
+      "clip_name": "JumpBiteAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@JumpClawsAttack.FBX",
+      "clip_name": "JumpClawsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@JumpClawsAttack_RM.FBX",
+      "clip_name": "JumpClawsAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@JumpForward.FBX",
+      "clip_name": "JumpForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@JumpForward_RM.FBX",
+      "clip_name": "JumpForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@SingleTailShot.FBX",
+      "clip_name": "SingleTailShot",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@Turn90LeftClawsAttack.FBX",
+      "clip_name": "Turn90LeftClawsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@Turn90LeftClawsAttack_RM.FBX",
+      "clip_name": "Turn90LeftClawsAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@Turn90RightClawsAttack.FBX",
+      "clip_name": "Turn90RightClawsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@Turn90RightClawsAttack_RM.FBX",
+      "clip_name": "Turn90RightClawsAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@WalkBackwards.FBX",
+      "clip_name": "WalkBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@WalkBackwards_RM.FBX",
+      "clip_name": "WalkBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@WalkForward.FBX",
+      "clip_name": "WalkForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@WalkForward_RM.FBX",
+      "clip_name": "WalkForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@WalkLeft.FBX",
+      "clip_name": "WalkLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@WalkLeft_RM.FBX",
+      "clip_name": "WalkLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@WalkRight.FBX",
+      "clip_name": "WalkRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@WalkRight_RM.FBX",
+      "clip_name": "WalkRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Carcidonte@4TailShotCombo.FBX",
+      "clip_name": "4TailShotCombo",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@ClawsAttack.FBX",
+      "clip_name": "ClawsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@ClawsAttackForward.FBX",
+      "clip_name": "ClawsAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@ClawsAttackForward_RM.FBX",
+      "clip_name": "ClawsAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@Idle.FBX",
+      "clip_name": "Idle",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@JumpBackwards.FBX",
+      "clip_name": "JumpBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@JumpBackwards_RM.FBX",
+      "clip_name": "JumpBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@JumpBiteAttack.FBX",
+      "clip_name": "JumpBiteAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@JumpBiteAttack_RM.FBX",
+      "clip_name": "JumpBiteAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@JumpClawsAttack.FBX",
+      "clip_name": "JumpClawsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@JumpClawsAttack_RM.FBX",
+      "clip_name": "JumpClawsAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@JumpForward.FBX",
+      "clip_name": "JumpForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@JumpForward_RM.FBX",
+      "clip_name": "JumpForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@SingleTailShot.FBX",
+      "clip_name": "SingleTailShot",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@Turn90LeftClawsAttack.FBX",
+      "clip_name": "Turn90LeftClawsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@Turn90LeftClawsAttack_RM.FBX",
+      "clip_name": "Turn90LeftClawsAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@Turn90RightClawsAttack.FBX",
+      "clip_name": "Turn90RightClawsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@Turn90RightClawsAttack_RM.FBX",
+      "clip_name": "Turn90RightClawsAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@WalkBackwards.FBX",
+      "clip_name": "WalkBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@WalkBackwards_RM.FBX",
+      "clip_name": "WalkBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@WalkForward.FBX",
+      "clip_name": "WalkForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@WalkForward_RM.FBX",
+      "clip_name": "WalkForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@WalkLeft.FBX",
+      "clip_name": "WalkLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@WalkLeft_RM.FBX",
+      "clip_name": "WalkLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@WalkRight.FBX",
+      "clip_name": "WalkRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Carcidonte@WalkRight_RM.FBX",
+      "clip_name": "WalkRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 5,
+    "scene_root_x90": false
+  }
+}

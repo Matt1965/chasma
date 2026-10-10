@@ -1,0 +1,290 @@
+{
+  "monster_name": "Densoptere",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\densoptere.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 6\\Densoptere\\FBX Files\\SK_Densoptere.FBX",
+  "used_fbx2gltf_sk": true,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 54,
+  "unique_clips_expected": 27,
+  "unique_clips_merged": 27,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Densoptere@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@DeathHitTheGround.FBX",
+      "clip_name": "DeathHitTheGround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@Falling.FBX",
+      "clip_name": "Falling",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@FlyNormal.FBX",
+      "clip_name": "FlyNormal",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@FlyNormalGetHit.FBX",
+      "clip_name": "FlyNormalGetHit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@FlyNormalGetHitToFalling.FBX",
+      "clip_name": "FlyNormalGetHitToFalling",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@FlyNormalToLanding.FBX",
+      "clip_name": "FlyNormalToLanding",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@FlyStationary.FBX",
+      "clip_name": "FlyStationary",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@FlyStationaryBite.FBX",
+      "clip_name": "FlyStationaryBite",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@FlyStationaryGetHit.FBX",
+      "clip_name": "FlyStationaryGetHit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@FlyStationaryToLanding.FBX",
+      "clip_name": "FlyStationaryToLanding",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@FlyStionaryGetHitToFalling.FBX",
+      "clip_name": "FlyStionaryGetHitToFalling",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@GetHit.FBX",
+      "clip_name": "GetHit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@Glide.FBX",
+      "clip_name": "Glide",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@Jump.FBX",
+      "clip_name": "Jump",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@Jump_RM.FBX",
+      "clip_name": "Jump_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@JumpBite.FBX",
+      "clip_name": "JumpBite",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@JumpBite_RM.FBX",
+      "clip_name": "JumpBite_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@TakeOff.FBX",
+      "clip_name": "TakeOff",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@Taunt.FBX",
+      "clip_name": "Taunt",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Densoptere@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@DeathHitTheGround.FBX",
+      "clip_name": "DeathHitTheGround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@Falling.FBX",
+      "clip_name": "Falling",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@FlyNormal.FBX",
+      "clip_name": "FlyNormal",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@FlyNormalGetHit.FBX",
+      "clip_name": "FlyNormalGetHit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@FlyNormalGetHitToFalling.FBX",
+      "clip_name": "FlyNormalGetHitToFalling",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@FlyNormalToLanding.FBX",
+      "clip_name": "FlyNormalToLanding",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@FlyStationary.FBX",
+      "clip_name": "FlyStationary",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@FlyStationaryBite.FBX",
+      "clip_name": "FlyStationaryBite",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@FlyStationaryGetHit.FBX",
+      "clip_name": "FlyStationaryGetHit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@FlyStationaryToLanding.FBX",
+      "clip_name": "FlyStationaryToLanding",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@FlyStionaryGetHitToFalling.FBX",
+      "clip_name": "FlyStionaryGetHitToFalling",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@GetHit.FBX",
+      "clip_name": "GetHit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@Glide.FBX",
+      "clip_name": "Glide",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@Jump.FBX",
+      "clip_name": "Jump",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@Jump_RM.FBX",
+      "clip_name": "Jump_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@JumpBite.FBX",
+      "clip_name": "JumpBite",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@JumpBite_RM.FBX",
+      "clip_name": "JumpBite_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@TakeOff.FBX",
+      "clip_name": "TakeOff",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@Taunt.FBX",
+      "clip_name": "Taunt",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Densoptere@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 26,
+    "scene_root_x90": true
+  }
+}

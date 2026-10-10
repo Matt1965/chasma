@@ -1,0 +1,330 @@
+{
+  "monster_name": "Marhomorph",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\marhomorph.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 1\\Marhomorph\\FBX Files\\SK_Marhomorph.FBX",
+  "used_fbx2gltf_sk": true,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 62,
+  "unique_clips_expected": 31,
+  "unique_clips_merged": 31,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Marhomorph@Bite.FBX",
+      "clip_name": "Bite",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@Falling.FBX",
+      "clip_name": "Falling",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyBackwards.FBX",
+      "clip_name": "FlyBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyForward.FBX",
+      "clip_name": "FlyForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyLeft.FBX",
+      "clip_name": "FlyLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyNormalGetHit.FBX",
+      "clip_name": "FlyNormalGetHit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyNormalLanding.FBX",
+      "clip_name": "FlyNormalLanding",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyNormalLanding_RM.FBX",
+      "clip_name": "FlyNormalLanding_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyNormalToFalling.FBX",
+      "clip_name": "FlyNormalToFalling",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyRight.FBX",
+      "clip_name": "FlyRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationary.FBX",
+      "clip_name": "FlyStationary",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationaryGetHit.FBX",
+      "clip_name": "FlyStationaryGetHit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationaryLanding.FBX",
+      "clip_name": "FlyStationaryLanding",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationaryLeftSpit.FBX",
+      "clip_name": "FlyStationaryLeftSpit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationaryRightSpit.FBX",
+      "clip_name": "FlyStationaryRightSpit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationaryRoar.FBX",
+      "clip_name": "FlyStationaryRoar",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationarySpit.FBX",
+      "clip_name": "FlyStationarySpit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationaryToFalling.FBX",
+      "clip_name": "FlyStationaryToFalling",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@GetHit.FBX",
+      "clip_name": "GetHit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@Glide.FBX",
+      "clip_name": "Glide",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@GoInAir.FBX",
+      "clip_name": "GoInAir",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@GoInAir_RM.FBX",
+      "clip_name": "GoInAir_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@HitTheGround.FBX",
+      "clip_name": "HitTheGround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@Idle.FBX",
+      "clip_name": "Idle",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@JumpBite.FBX",
+      "clip_name": "JumpBite",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@JumpBite_RM.FBX",
+      "clip_name": "JumpBite_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@Spit.FBX",
+      "clip_name": "Spit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Marhomorph@Bite.FBX",
+      "clip_name": "Bite",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@Falling.FBX",
+      "clip_name": "Falling",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyBackwards.FBX",
+      "clip_name": "FlyBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyForward.FBX",
+      "clip_name": "FlyForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyLeft.FBX",
+      "clip_name": "FlyLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyNormalGetHit.FBX",
+      "clip_name": "FlyNormalGetHit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyNormalLanding.FBX",
+      "clip_name": "FlyNormalLanding",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyNormalLanding_RM.FBX",
+      "clip_name": "FlyNormalLanding_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyNormalToFalling.FBX",
+      "clip_name": "FlyNormalToFalling",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyRight.FBX",
+      "clip_name": "FlyRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationary.FBX",
+      "clip_name": "FlyStationary",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationaryGetHit.FBX",
+      "clip_name": "FlyStationaryGetHit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationaryLanding.FBX",
+      "clip_name": "FlyStationaryLanding",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationaryLeftSpit.FBX",
+      "clip_name": "FlyStationaryLeftSpit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationaryRightSpit.FBX",
+      "clip_name": "FlyStationaryRightSpit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationaryRoar.FBX",
+      "clip_name": "FlyStationaryRoar",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationarySpit.FBX",
+      "clip_name": "FlyStationarySpit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@FlyStationaryToFalling.FBX",
+      "clip_name": "FlyStationaryToFalling",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@GetHit.FBX",
+      "clip_name": "GetHit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@Glide.FBX",
+      "clip_name": "Glide",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@GoInAir.FBX",
+      "clip_name": "GoInAir",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@GoInAir_RM.FBX",
+      "clip_name": "GoInAir_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@HitTheGround.FBX",
+      "clip_name": "HitTheGround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@Idle.FBX",
+      "clip_name": "Idle",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@JumpBite.FBX",
+      "clip_name": "JumpBite",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@JumpBite_RM.FBX",
+      "clip_name": "JumpBite_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@Spit.FBX",
+      "clip_name": "Spit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Marhomorph@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 30,
+    "scene_root_x90": true
+  }
+}

@@ -22,6 +22,11 @@ def channel_stats(path: Path) -> dict:
         all(s < 0.01 for s in nodes[i].get("scale", [1, 1, 1])) for i in tongue
     )
     idle = next((a for a in gltf.get("animations", []) if a.get("name") == "IdleBreathe"), None)
+    if idle is None:
+        idle = next(
+            (a for a in gltf.get("animations", []) if "idle" in (a.get("name") or "").lower()),
+            None,
+        )
     child_trans = 0
     body_rot_idle = False
     tongue_ch_idle = 0

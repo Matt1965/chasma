@@ -1,0 +1,260 @@
+{
+  "monster_name": "Karckmahre",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\karckmahre.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 3\\Karckmahre\\FBX Files\\SK_Karckmahre.FBX",
+  "used_fbx2gltf_sk": true,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 48,
+  "unique_clips_expected": 24,
+  "unique_clips_merged": 24,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Karckmahre@Claws2HitComboAttack.FBX",
+      "clip_name": "Claws2HitComboAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@Claws2HitComboAttack_RM.FBX",
+      "clip_name": "Claws2HitComboAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@ClawsAttackLeft.FBX",
+      "clip_name": "ClawsAttackLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@ClawsAttackLeft_RM.FBX",
+      "clip_name": "ClawsAttackLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@ClawsAttackRight.FBX",
+      "clip_name": "ClawsAttackRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@ClawsAttackRight_RM.FBX",
+      "clip_name": "ClawsAttackRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@JumpBiteAttack.FBX",
+      "clip_name": "JumpBiteAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@JumpBiteAttack_RM.FBX",
+      "clip_name": "JumpBiteAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@SpitAttack.FBX",
+      "clip_name": "SpitAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@Taunt.FBX",
+      "clip_name": "Taunt",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karckmahre@Claws2HitComboAttack.FBX",
+      "clip_name": "Claws2HitComboAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@Claws2HitComboAttack_RM.FBX",
+      "clip_name": "Claws2HitComboAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@ClawsAttackLeft.FBX",
+      "clip_name": "ClawsAttackLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@ClawsAttackLeft_RM.FBX",
+      "clip_name": "ClawsAttackLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@ClawsAttackRight.FBX",
+      "clip_name": "ClawsAttackRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@ClawsAttackRight_RM.FBX",
+      "clip_name": "ClawsAttackRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@JumpBiteAttack.FBX",
+      "clip_name": "JumpBiteAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@JumpBiteAttack_RM.FBX",
+      "clip_name": "JumpBiteAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@SpitAttack.FBX",
+      "clip_name": "SpitAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@Taunt.FBX",
+      "clip_name": "Taunt",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karckmahre@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 23,
+    "scene_root_x90": true
+  }
+}

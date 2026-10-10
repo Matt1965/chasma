@@ -1,0 +1,390 @@
+{
+  "monster_name": "Scyver",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\scyver.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 3\\Scyver\\FBX Files\\SK_Scyver.FBX",
+  "used_fbx2gltf_sk": false,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 74,
+  "unique_clips_expected": 37,
+  "unique_clips_merged": 37,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Scyver@BiteAttack1.FBX",
+      "clip_name": "BiteAttack1",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@BiteAttack1_RM.FBX",
+      "clip_name": "BiteAttack1_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@BiteAttack2.FBX",
+      "clip_name": "BiteAttack2",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@BiteAttack2_RM.FBX",
+      "clip_name": "BiteAttack2_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@BiteAttack3.FBX",
+      "clip_name": "BiteAttack3",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@BiteAttack3_RM.FBX",
+      "clip_name": "BiteAttack3_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@DeathHitTheGround.FBX",
+      "clip_name": "DeathHitTheGround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@DeathToFalling.FBX",
+      "clip_name": "DeathToFalling",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@DodgeDown.FBX",
+      "clip_name": "DodgeDown",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@DodgeDown_RM.FBX",
+      "clip_name": "DodgeDown_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@DodgeLeft.FBX",
+      "clip_name": "DodgeLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@DodgeLeft_RM.FBX",
+      "clip_name": "DodgeLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@DodgeRight.FBX",
+      "clip_name": "DodgeRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@DodgeRight_RM.FBX",
+      "clip_name": "DodgeRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@DodgeUp.FBX",
+      "clip_name": "DodgeUp",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@DodgeUp_RM.FBX",
+      "clip_name": "DodgeUp_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@Falling.FBX",
+      "clip_name": "Falling",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyForwardFast.FBX",
+      "clip_name": "FlyForwardFast",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyForwardFast_RM.FBX",
+      "clip_name": "FlyForwardFast_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyForwardSlow.FBX",
+      "clip_name": "FlyForwardSlow",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyForwardSlow_RM.FBX",
+      "clip_name": "FlyForwardSlow_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyLoopingLeft_RM.FBX",
+      "clip_name": "FlyLoopingLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyLoopingRight_RM.FBX",
+      "clip_name": "FlyLoopingRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyLoopingUpLeft_RM.FBX",
+      "clip_name": "FlyLoopingUpLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyLoopingUpRight_RM.FBX",
+      "clip_name": "FlyLoopingUpRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyStationary.FBX",
+      "clip_name": "FlyStationary",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyTurnLeftFast.FBX",
+      "clip_name": "FlyTurnLeftFast",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyTurnLeftFast_RM.FBX",
+      "clip_name": "FlyTurnLeftFast_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyTurnLeftSlow.FBX",
+      "clip_name": "FlyTurnLeftSlow",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyTurnLeftSlow_RM.FBX",
+      "clip_name": "FlyTurnLeftSlow_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyTurnRightFast.FBX",
+      "clip_name": "FlyTurnRightFast",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyTurnRightFast_RM.FBX",
+      "clip_name": "FlyTurnRightFast_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyTurnRightSlow.FBX",
+      "clip_name": "FlyTurnRightSlow",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@FlyTurnRightSlow_RM.FBX",
+      "clip_name": "FlyTurnRightSlow_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scyver@BiteAttack1.FBX",
+      "clip_name": "BiteAttack1",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@BiteAttack1_RM.FBX",
+      "clip_name": "BiteAttack1_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@BiteAttack2.FBX",
+      "clip_name": "BiteAttack2",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@BiteAttack2_RM.FBX",
+      "clip_name": "BiteAttack2_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@BiteAttack3.FBX",
+      "clip_name": "BiteAttack3",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@BiteAttack3_RM.FBX",
+      "clip_name": "BiteAttack3_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@DeathHitTheGround.FBX",
+      "clip_name": "DeathHitTheGround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@DeathToFalling.FBX",
+      "clip_name": "DeathToFalling",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@DodgeDown.FBX",
+      "clip_name": "DodgeDown",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@DodgeDown_RM.FBX",
+      "clip_name": "DodgeDown_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@DodgeLeft.FBX",
+      "clip_name": "DodgeLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@DodgeLeft_RM.FBX",
+      "clip_name": "DodgeLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@DodgeRight.FBX",
+      "clip_name": "DodgeRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@DodgeRight_RM.FBX",
+      "clip_name": "DodgeRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@DodgeUp.FBX",
+      "clip_name": "DodgeUp",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@DodgeUp_RM.FBX",
+      "clip_name": "DodgeUp_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@Falling.FBX",
+      "clip_name": "Falling",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyForwardFast.FBX",
+      "clip_name": "FlyForwardFast",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyForwardFast_RM.FBX",
+      "clip_name": "FlyForwardFast_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyForwardSlow.FBX",
+      "clip_name": "FlyForwardSlow",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyForwardSlow_RM.FBX",
+      "clip_name": "FlyForwardSlow_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyLoopingLeft_RM.FBX",
+      "clip_name": "FlyLoopingLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyLoopingRight_RM.FBX",
+      "clip_name": "FlyLoopingRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyLoopingUpLeft_RM.FBX",
+      "clip_name": "FlyLoopingUpLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyLoopingUpRight_RM.FBX",
+      "clip_name": "FlyLoopingUpRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyStationary.FBX",
+      "clip_name": "FlyStationary",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyTurnLeftFast.FBX",
+      "clip_name": "FlyTurnLeftFast",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyTurnLeftFast_RM.FBX",
+      "clip_name": "FlyTurnLeftFast_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyTurnLeftSlow.FBX",
+      "clip_name": "FlyTurnLeftSlow",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyTurnLeftSlow_RM.FBX",
+      "clip_name": "FlyTurnLeftSlow_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyTurnRightFast.FBX",
+      "clip_name": "FlyTurnRightFast",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyTurnRightFast_RM.FBX",
+      "clip_name": "FlyTurnRightFast_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyTurnRightSlow.FBX",
+      "clip_name": "FlyTurnRightSlow",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@FlyTurnRightSlow_RM.FBX",
+      "clip_name": "FlyTurnRightSlow_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scyver@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 5,
+    "scene_root_x90": false
+  }
+}

@@ -1,0 +1,230 @@
+{
+  "monster_name": "Deinodonte",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\deinodonte.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Deinodonte\\FBX Files\\SK_Deinodonte.FBX",
+  "used_fbx2gltf_sk": true,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 42,
+  "unique_clips_expected": 21,
+  "unique_clips_merged": 21,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Deinodonte@2HitComboClawsAttack.FBX",
+      "clip_name": "2HitComboClawsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@Bite.FBX",
+      "clip_name": "Bite",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@BiteForward.FBX",
+      "clip_name": "BiteForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@BiteForward_RM.FBX",
+      "clip_name": "BiteForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@ClawsAttackForward.FBX",
+      "clip_name": "ClawsAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@ClawsAttackForward_RM.FBX",
+      "clip_name": "ClawsAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@ClawsAttackLeft.FBX",
+      "clip_name": "ClawsAttackLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@ClawsAttackRight.FBX",
+      "clip_name": "ClawsAttackRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@GetHit1.FBX",
+      "clip_name": "GetHit1",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@GetHit2.FBX",
+      "clip_name": "GetHit2",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@Turn45Left.FBX",
+      "clip_name": "Turn45Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@Turn45Left_RM.FBX",
+      "clip_name": "Turn45Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@Turn45Right.FBX",
+      "clip_name": "Turn45Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@Turn45Right_RM.FBX",
+      "clip_name": "Turn45Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Deinodonte@2HitComboClawsAttack.FBX",
+      "clip_name": "2HitComboClawsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@Bite.FBX",
+      "clip_name": "Bite",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@BiteForward.FBX",
+      "clip_name": "BiteForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@BiteForward_RM.FBX",
+      "clip_name": "BiteForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@ClawsAttackForward.FBX",
+      "clip_name": "ClawsAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@ClawsAttackForward_RM.FBX",
+      "clip_name": "ClawsAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@ClawsAttackLeft.FBX",
+      "clip_name": "ClawsAttackLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@ClawsAttackRight.FBX",
+      "clip_name": "ClawsAttackRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@GetHit1.FBX",
+      "clip_name": "GetHit1",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@GetHit2.FBX",
+      "clip_name": "GetHit2",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@Turn45Left.FBX",
+      "clip_name": "Turn45Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@Turn45Left_RM.FBX",
+      "clip_name": "Turn45Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@Turn45Right.FBX",
+      "clip_name": "Turn45Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@Turn45Right_RM.FBX",
+      "clip_name": "Turn45Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Deinodonte@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 20,
+    "scene_root_x90": true
+  }
+}

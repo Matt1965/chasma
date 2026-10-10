@@ -1,0 +1,430 @@
+{
+  "monster_name": "Perderos",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\perderos.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Perderos\\FBX Files\\SK_Perderos.FBX",
+  "used_fbx2gltf_sk": true,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 82,
+  "unique_clips_expected": 41,
+  "unique_clips_merged": 41,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Perderos@ClawsAttack2HitCombo.FBX",
+      "clip_name": "ClawsAttack2HitCombo",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@ClawsAttack2HitComboForward.FBX",
+      "clip_name": "ClawsAttack2HitComboForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@ClawsAttack2HitComboForward_RM.FBX",
+      "clip_name": "ClawsAttack2HitComboForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@ClawsAttack3HitCombo.FBX",
+      "clip_name": "ClawsAttack3HitCombo",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@ClawsAttack3HitComboForward.FBX",
+      "clip_name": "ClawsAttack3HitComboForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@ClawsAttack3HitComboForward_RM.FBX",
+      "clip_name": "ClawsAttack3HitComboForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@ClawsAttackLeft.FBX",
+      "clip_name": "ClawsAttackLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@ClawsAttackLeftForward.FBX",
+      "clip_name": "ClawsAttackLeftForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@ClawsAttackLeftForward_RM.FBX",
+      "clip_name": "ClawsAttackLeftForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@ClawsAttackRight.FBX",
+      "clip_name": "ClawsAttackRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@ClawsAttackRightForward.FBX",
+      "clip_name": "ClawsAttackRightForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@ClawsAttackRightForward_RM.FBX",
+      "clip_name": "ClawsAttackRightForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@JumpBackwards.FBX",
+      "clip_name": "JumpBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@JumpBackwards_RM.FBX",
+      "clip_name": "JumpBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@JumpForward.FBX",
+      "clip_name": "JumpForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@JumpForward_RM.FBX",
+      "clip_name": "JumpForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@JumpSmashAttack.FBX",
+      "clip_name": "JumpSmashAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@JumpSmashAttack_RM.FBX",
+      "clip_name": "JumpSmashAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@SmashAttack.FBX",
+      "clip_name": "SmashAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@SmashAttackForward.FBX",
+      "clip_name": "SmashAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@SmashAttackForward_RM.FBX",
+      "clip_name": "SmashAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@Turn90LeftSmashAttack.FBX",
+      "clip_name": "Turn90LeftSmashAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@Turn90LeftSmashAttack_RM.FBX",
+      "clip_name": "Turn90LeftSmashAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@Turn90RightSmashAttack.FBX",
+      "clip_name": "Turn90RightSmashAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@Turn90RightSmashAttack_RM.FBX",
+      "clip_name": "Turn90RightSmashAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Perderos@ClawsAttack2HitCombo.FBX",
+      "clip_name": "ClawsAttack2HitCombo",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@ClawsAttack2HitComboForward.FBX",
+      "clip_name": "ClawsAttack2HitComboForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@ClawsAttack2HitComboForward_RM.FBX",
+      "clip_name": "ClawsAttack2HitComboForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@ClawsAttack3HitCombo.FBX",
+      "clip_name": "ClawsAttack3HitCombo",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@ClawsAttack3HitComboForward.FBX",
+      "clip_name": "ClawsAttack3HitComboForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@ClawsAttack3HitComboForward_RM.FBX",
+      "clip_name": "ClawsAttack3HitComboForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@ClawsAttackLeft.FBX",
+      "clip_name": "ClawsAttackLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@ClawsAttackLeftForward.FBX",
+      "clip_name": "ClawsAttackLeftForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@ClawsAttackLeftForward_RM.FBX",
+      "clip_name": "ClawsAttackLeftForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@ClawsAttackRight.FBX",
+      "clip_name": "ClawsAttackRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@ClawsAttackRightForward.FBX",
+      "clip_name": "ClawsAttackRightForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@ClawsAttackRightForward_RM.FBX",
+      "clip_name": "ClawsAttackRightForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@JumpBackwards.FBX",
+      "clip_name": "JumpBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@JumpBackwards_RM.FBX",
+      "clip_name": "JumpBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@JumpForward.FBX",
+      "clip_name": "JumpForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@JumpForward_RM.FBX",
+      "clip_name": "JumpForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@JumpSmashAttack.FBX",
+      "clip_name": "JumpSmashAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@JumpSmashAttack_RM.FBX",
+      "clip_name": "JumpSmashAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@SmashAttack.FBX",
+      "clip_name": "SmashAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@SmashAttackForward.FBX",
+      "clip_name": "SmashAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@SmashAttackForward_RM.FBX",
+      "clip_name": "SmashAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@Turn90LeftSmashAttack.FBX",
+      "clip_name": "Turn90LeftSmashAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@Turn90LeftSmashAttack_RM.FBX",
+      "clip_name": "Turn90LeftSmashAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@Turn90RightSmashAttack.FBX",
+      "clip_name": "Turn90RightSmashAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@Turn90RightSmashAttack_RM.FBX",
+      "clip_name": "Turn90RightSmashAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Perderos@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 40,
+    "scene_root_x90": true
+  }
+}
