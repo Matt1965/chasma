@@ -47,7 +47,7 @@ use super::cache::UnitPortraitCache;
 use super::components::{UnitPortraitActor, UnitPortraitCamera, UnitPortraitStageRoot};
 use super::pipeline::{UnitPortraitCaptureState, UnitPortraitUiDemand};
 use super::signature::portrait_signature_for_unit;
-use super::studio::{PORTRAIT_STAGE_OFFSET, new_portrait_render_target_image};
+use super::studio::{new_portrait_render_target_image, portrait_studio_camera_transform};
 
 pub const PORTRAIT_LIFECYCLE_STAGE_COUNT: u8 = 8;
 
@@ -183,12 +183,6 @@ pub fn sync_portrait_lifecycle_camera_override(
     for mut camera in &mut cameras {
         camera.is_active = active;
     }
-}
-
-fn generous_probe_camera_transform() -> Transform {
-    let eye = PORTRAIT_STAGE_OFFSET + Vec3::new(0.0, 1.05, 1.75);
-    let focus = PORTRAIT_STAGE_OFFSET + Vec3::new(0.0, 1.05, 0.0);
-    Transform::from_translation(eye).looking_at(focus, Vec3::Y)
 }
 
 fn cleanup_probe_state(
@@ -355,7 +349,7 @@ pub fn apply_portrait_lifecycle_probe(
         *target = RenderTarget::Image(probe_image.clone().into());
     }
     for mut transform in &mut camera_transforms {
-        *transform = generous_probe_camera_transform();
+        *transform = portrait_studio_camera_transform();
     }
 
     let mesh_alive = probe

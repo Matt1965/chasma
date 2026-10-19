@@ -1,9 +1,10 @@
 //! Shared portrait render stage (camera, lights, backdrop).
 
 use bevy::camera::{Camera, RenderTarget};
+use bevy::camera::visibility::RenderLayers;
 use bevy::prelude::*;
 
-use crate::camera::render_layers::PORTRAIT_RENDER_LAYER;
+use crate::camera::render_layers::{PORTRAIT_RENDER_LAYER, portrait_camera_view_layers};
 
 use super::components::{UnitPortraitCamera, UnitPortraitStageRoot};
 use super::diagnostics::{
@@ -15,6 +16,15 @@ use super::studio_images::{UnitPortraitStudioImages, new_portrait_render_target}
 
 pub const PORTRAIT_TEXTURE_SIZE: u32 = 256;
 pub(crate) const PORTRAIT_STAGE_OFFSET: Vec3 = Vec3::new(0.0, -8_000.0, 0.0);
+
+/// Baby-step: aim at the known studio origin until dynamic head framing is reliable.
+pub const PORTRAIT_USE_FIXED_STUDIO_CAMERA: bool = true;
+
+pub fn portrait_studio_camera_transform() -> Transform {
+    let eye = PORTRAIT_STAGE_OFFSET + Vec3::new(0.0, 1.05, 1.75);
+    let focus = PORTRAIT_STAGE_OFFSET + Vec3::new(0.0, 1.05, 0.0);
+    Transform::from_translation(eye).looking_at(focus, Vec3::Y)
+}
 
 pub fn setup_unit_portrait_studio(
     mut commands: Commands,
@@ -85,12 +95,8 @@ pub fn setup_unit_portrait_studio(
             ..default()
         },
         RenderTarget::Image(studio_images.live_target.clone().into()),
-        Transform::from_xyz(0.0, PORTRAIT_STAGE_OFFSET.y + 1.45, PORTRAIT_STAGE_OFFSET.z + 1.0)
-            .looking_at(
-                Vec3::new(0.0, PORTRAIT_STAGE_OFFSET.y + 1.45, PORTRAIT_STAGE_OFFSET.z),
-                Vec3::Y,
-            ),
-        PORTRAIT_RENDER_LAYER,
+        portrait_studio_camera_transform(),
+        portrait_camera_view_layers(),
     ));
 }
 
@@ -100,13 +106,26 @@ pub fn propagate_portrait_render_layers(
     roots: Query<Entity, With<UnitPortraitStageRoot>>,
     actors: Query<Entity, With<super::components::UnitPortraitSceneRoot>>,
     children: Query<&Children>,
+    render_layers: Query<&RenderLayers>,
 ) {
     for root in roots.iter().chain(actors.iter()) {
         for entity in descendants(root, &children) {
-            commands.entity(entity).insert(PORTRAIT_RENDER_LAYER);
+            stamp_portrait_layer(&mut commands, entity, &render_layers);
         }
-        commands.entity(root).insert(PORTRAIT_RENDER_LAYER);
+        stamp_portrait_layer(&mut commands, root, &render_layers);
     }
+}
+
+fn stamp_portrait_layer(
+    commands: &mut Commands,
+    entity: Entity,
+    render_layers: &Query<&RenderLayers>,
+) {
+    let layers = match render_layers.get(entity) {
+        Ok(existing) => existing.clone(),
+        Err(_) => RenderLayers::default(),
+    };
+    commands.entity(entity).insert(layers.with(2));
 }
 
 pub fn sync_portrait_camera_active(
