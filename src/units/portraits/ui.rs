@@ -121,25 +121,23 @@ pub fn sync_squad_portrait_ui(
     capture: Res<UnitPortraitCaptureState>,
     lifecycle: Res<PortraitLifecycleProbe>,
     studio: Res<UnitPortraitStudioImages>,
-    mut images: Query<
-        (&SquadEntryPortraitImage, &mut ImageNode, &mut Visibility),
-    >,
-    mut fallbacks: Query<
-        (&SquadEntryPortraitFallback, &mut Visibility),
-    >,
+    mut widgets: ParamSet<(
+        Query<(&SquadEntryPortraitImage, &mut ImageNode, &mut Visibility)>,
+        Query<(&SquadEntryPortraitFallback, &mut Visibility)>,
+    )>,
 ) {
     if world_selection.category != WorldSelectionCategory::Units {
-        for (_, _, mut visibility) in &mut images {
+        for (_, _, mut visibility) in widgets.p0().iter_mut() {
             *visibility = Visibility::Hidden;
         }
-        for (_, mut visibility) in &mut fallbacks {
+        for (_, mut visibility) in widgets.p1().iter_mut() {
             *visibility = Visibility::Visible;
         }
         return;
     }
 
     let step = portrait_diagnostic_step();
-    for (slot, mut image, mut image_visibility) in &mut images {
+    for (slot, mut image, mut image_visibility) in widgets.p0().iter_mut() {
         let handle = portrait_image_for_unit(
             step,
             &lifecycle,
@@ -160,7 +158,7 @@ pub fn sync_squad_portrait_ui(
         }
     }
 
-    for (slot, mut fallback_visibility) in &mut fallbacks {
+    for (slot, mut fallback_visibility) in widgets.p1().iter_mut() {
         let show_letter = portrait_image_for_unit(
             step,
             &lifecycle,
@@ -177,4 +175,4 @@ pub fn sync_squad_portrait_ui(
         };
     }
 }
-
+
