@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 use bevy::ui::FocusPolicy;
+use bevy::ui::widget::ImageNode;
 
 use crate::client::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
 use crate::units::input::SelectedUnits;
@@ -31,6 +32,18 @@ pub struct SquadPanelRoot;
 
 #[derive(Component, Debug)]
 pub struct SquadEntryButton {
+    pub unit_id: UnitId,
+}
+
+/// Cached portrait texture for a roster card (`unit_id` matches [`SquadEntryButton`]).
+#[derive(Component, Debug)]
+pub struct SquadEntryPortraitImage {
+    pub unit_id: UnitId,
+}
+
+/// Letter fallback when the portrait cache has no image yet.
+#[derive(Component, Debug)]
+pub struct SquadEntryPortraitFallback {
     pub unit_id: UnitId,
 }
 
@@ -317,6 +330,17 @@ pub fn sync_squad_panel(
                             .map(|c| c.to_ascii_uppercase().to_string())
                             .unwrap_or_else(|| "?".to_string());
                         portrait.spawn((
+                            SquadEntryPortraitImage { unit_id },
+                            ImageNode::new(Handle::default()),
+                            Node {
+                                width: Val::Percent(100.0),
+                                height: Val::Percent(100.0),
+                                ..default()
+                            },
+                            Visibility::Hidden,
+                        ));
+                        portrait.spawn((
+                            SquadEntryPortraitFallback { unit_id },
                             Text::new(initial),
                             hud_title_font(),
                             TextColor(TEXT_MUTED),

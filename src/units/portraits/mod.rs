@@ -16,4 +16,6 @@ mod ui;
 
 pub use components::UnitPortraitSceneRoot;
 pub use plugin::{UnitPortraitPlugin, UnitPortraitSystems, configure_portrait_system_sets};
-pub use ui::{SelectedUnitPortraitImage, sync_selected_unit_portrait_ui};
+pub use ui::{
+    SelectedUnitPortraitImage, sync_selected_unit_portrait_ui, sync_squad_portrait_ui,
+};

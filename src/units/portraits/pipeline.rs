@@ -12,7 +12,7 @@ use crate::units::presentation::UnitPresentationAppearance;
 use crate::units::UnitSceneAssets;
 use crate::world::{
     AppearanceProfileCatalog, EquipmentVisualCatalog, ItemCatalog, UnitCatalog, UnitId,
-    UnitRecord, WorldData, unit_visual_rotation, unit_visual_scale,
+    UnitRecord, WorldData, player_units, unit_visual_rotation, unit_visual_scale,
 };
 
 use super::cache::{PortraitAppearanceSignature, PortraitCaptureRequest, UnitPortraitCache};
@@ -119,20 +119,48 @@ pub fn maintain_portrait_cache_requests(
     }
     cache.max_entries = UnitPortraitCache::DEFAULT_CAPACITY;
     cache.prune_missing_units(|id| world.get_unit(id).is_some());
-    let Some(unit_id) = demand.primary_unit else {
-        return;
-    };
+
+    let mut roster = player_units(&world);
+    if let Some(primary) = demand.primary_unit {
+        roster.retain(|id| *id != primary);
+        roster.insert(0, primary);
+    }
+
+    for unit_id in roster {
+        maintain_portrait_request_for_unit(
+            unit_id,
+            &world,
+            &unit_catalog,
+            &appearance_profiles,
+            &items,
+            &visuals,
+            &capture,
+            &mut cache,
+        );
+    }
+}
+
+fn maintain_portrait_request_for_unit(
+    unit_id: UnitId,
+    world: &WorldData,
+    unit_catalog: &UnitCatalog,
+    appearance_profiles: &AppearanceProfileCatalog,
+    items: &ItemCatalog,
+    visuals: &EquipmentVisualCatalog,
+    capture: &UnitPortraitCaptureState,
+    cache: &mut UnitPortraitCache,
+) {
     let Some(unit) = world.get_unit(unit_id) else {
         cache.remove_unit(unit_id);
         return;
     };
     let Some(signature) = portrait_signature_for_unit(
-        &world,
+        world,
         unit,
-        &unit_catalog,
-        &appearance_profiles,
-        &items,
-        &visuals,
+        unit_catalog,
+        appearance_profiles,
+        items,
+        visuals,
     ) else {
         return;
     };

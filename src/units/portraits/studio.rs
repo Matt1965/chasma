@@ -20,9 +20,43 @@ pub(crate) const PORTRAIT_STAGE_OFFSET: Vec3 = Vec3::new(0.0, -8_000.0, 0.0);
 /// Baby-step: aim at the known studio origin until dynamic head framing is reliable.
 pub const PORTRAIT_USE_FIXED_STUDIO_CAMERA: bool = true;
 
+/// Validated full upper-body framing (`4985d386`); restore via [`portrait_studio_camera_transform_foundation`].
+pub mod foundation_camera {
+    pub const FOCUS_Y: f32 = 1.05;
+    pub const EYE_Y: f32 = 1.05;
+    pub const EYE_Z: f32 = 1.75;
+}
+
+/// Head-and-shoulders on the same studio rig (small delta from foundation).
+pub mod head_camera {
+    pub const FOCUS_Y: f32 = 1.48;
+    pub const EYE_Y: f32 = 1.50;
+    pub const EYE_Z: f32 = 1.08;
+}
+
 pub fn portrait_studio_camera_transform() -> Transform {
-    let eye = PORTRAIT_STAGE_OFFSET + Vec3::new(0.0, 1.05, 1.75);
-    let focus = PORTRAIT_STAGE_OFFSET + Vec3::new(0.0, 1.05, 0.0);
+    portrait_studio_camera_transform_head()
+}
+
+pub fn portrait_studio_camera_transform_foundation() -> Transform {
+    studio_camera_from_offsets(
+        foundation_camera::FOCUS_Y,
+        foundation_camera::EYE_Y,
+        foundation_camera::EYE_Z,
+    )
+}
+
+pub fn portrait_studio_camera_transform_head() -> Transform {
+    studio_camera_from_offsets(
+        head_camera::FOCUS_Y,
+        head_camera::EYE_Y,
+        head_camera::EYE_Z,
+    )
+}
+
+fn studio_camera_from_offsets(focus_y: f32, eye_y: f32, eye_z: f32) -> Transform {
+    let focus = PORTRAIT_STAGE_OFFSET + Vec3::new(0.0, focus_y, 0.0);
+    let eye = PORTRAIT_STAGE_OFFSET + Vec3::new(0.0, eye_y, eye_z);
     Transform::from_translation(eye).looking_at(focus, Vec3::Y)
 }
 

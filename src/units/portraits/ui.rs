@@ -4,7 +4,10 @@ use bevy::prelude::*;
 use bevy::ui::widget::ImageNode;
 
 use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
-use crate::ui::gameplay::{SelectedUnitPortraitFallback, primary_selected_unit};
+use crate::ui::gameplay::{
+    SelectedUnitPortraitFallback, SquadEntryPortraitFallback, SquadEntryPortraitImage,
+    primary_selected_unit,
+};
 use crate::units::input::SelectedUnits;
 
 use super::cache::UnitPortraitCache;
@@ -19,21 +22,21 @@ use super::studio_images::UnitPortraitStudioImages;
 #[derive(Component, Debug)]
 pub struct SelectedUnitPortraitImage;
 
-fn portrait_slot_image(
+pub(crate) fn portrait_image_for_unit(
     step: u8,
     lifecycle: &PortraitLifecycleProbe,
     studio: &UnitPortraitStudioImages,
     cache: &UnitPortraitCache,
     capture: &UnitPortraitCaptureState,
-    primary: Option<crate::world::UnitId>,
+    unit_id: Option<crate::world::UnitId>,
 ) -> Option<Handle<Image>> {
-    if let Some(handle) = lifecycle_probe_hud_image(lifecycle, cache, primary) {
+    if let Some(handle) = lifecycle_probe_hud_image(lifecycle, cache, unit_id) {
         return Some(handle);
     }
     match step {
         1 => Some(studio.checkerboard.clone()),
         2..=6 => Some(studio.live_target.clone()),
-        _ => primary.and_then(|unit_id| {
+        _ => unit_id.and_then(|unit_id| {
             if let Some(handle) = cache.image_for_unit(unit_id) {
                 return Some(handle.clone());
             }
@@ -68,8 +71,14 @@ pub fn sync_selected_unit_portrait_ui(
     demand.primary_unit = primary;
 
     let step = portrait_diagnostic_step();
-    let cached_image =
-        portrait_slot_image(step, &lifecycle, &studio, &cache, &capture, primary);
+    let cached_image = portrait_image_for_unit(
+        step,
+        &lifecycle,
+        &studio,
+        &cache,
+        &capture,
+        primary,
+    );
     let show_portrait = cached_image.is_some()
         && (primary.is_some() || portrait_diagnostics_show_without_selection(step));
 
@@ -104,3 +113,68 @@ pub fn sync_selected_unit_portrait_ui(
         };
     }
 }
+
+/// Bind cached portraits onto squad roster card plates.
+pub fn sync_squad_portrait_ui(
+    world_selection: Res<WorldSelectionState>,
+    cache: Res<UnitPortraitCache>,
+    capture: Res<UnitPortraitCaptureState>,
+    lifecycle: Res<PortraitLifecycleProbe>,
+    studio: Res<UnitPortraitStudioImages>,
+    mut images: Query<
+        (&SquadEntryPortraitImage, &mut ImageNode, &mut Visibility),
+    >,
+    mut fallbacks: Query<
+        (&SquadEntryPortraitFallback, &mut Visibility),
+    >,
+) {
+    if world_selection.category != WorldSelectionCategory::Units {
+        for (_, _, mut visibility) in &mut images {
+            *visibility = Visibility::Hidden;
+        }
+        for (_, mut visibility) in &mut fallbacks {
+            *visibility = Visibility::Visible;
+        }
+        return;
+    }
+
+    let step = portrait_diagnostic_step();
+    for (slot, mut image, mut image_visibility) in &mut images {
+        let handle = portrait_image_for_unit(
+            step,
+            &lifecycle,
+            &studio,
+            &cache,
+            &capture,
+            Some(slot.unit_id),
+        );
+        if let Some(handle) = handle {
+            *image = ImageNode {
+                image: handle,
+                color: Color::WHITE,
+                ..default()
+            };
+            *image_visibility = Visibility::Visible;
+        } else {
+            *image_visibility = Visibility::Hidden;
+        }
+    }
+
+    for (slot, mut fallback_visibility) in &mut fallbacks {
+        let show_letter = portrait_image_for_unit(
+            step,
+            &lifecycle,
+            &studio,
+            &cache,
+            &capture,
+            Some(slot.unit_id),
+        )
+        .is_none();
+        *fallback_visibility = if show_letter {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
+}
+
