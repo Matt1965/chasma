@@ -1,17 +1,17 @@
 {
   "pipeline": "option_b_fbx2gltf_gltf_merge",
-  "timestamp_utc": "2026-10-14T18:02:34.429251+00:00",
+  "timestamp_utc": "2026-10-19T19:00:05.445352+00:00",
   "source_dir": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph",
   "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\SK_Muscomorph.FBX",
   "anim_prefix": "Muscomorph",
   "output_glb": "C:\\BevyFiles\\chasma-agent-c\\assets\\units\\muscomorph.glb",
-  "output_bytes": 68493104,
-  "output_sha256": "e6b975db3bdb21f579edf679decd195f1430dde96f847da13201122d8c89bb8f",
+  "output_bytes": 68525912,
+  "output_sha256": "d6ff5f6aaeee1e3ca2ff8db71803e7dee0d59704aacde4ab9a6e2e0912614584",
   "fbx2gltf": {
     "exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
     "sk": {
       "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\SK_Muscomorph.FBX",
-      "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\SK_Muscomorph.glb",
+      "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\SK_Muscomorph.glb",
       "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
       "fbx2gltf_version": "0.13.1",
       "command": [
@@ -19,7 +19,7 @@
         "--input",
         "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\SK_Muscomorph.FBX",
         "--output",
-        "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\SK_Muscomorph",
+        "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\SK_Muscomorph",
         "--binary"
       ]
     },
@@ -27,7 +27,7 @@
       {
         "clip": "BiteAttack",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@BiteAttack.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@BiteAttack.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@BiteAttack.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -35,14 +35,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@BiteAttack.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@BiteAttack",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@BiteAttack",
           "--binary"
         ]
       },
       {
         "clip": "BiteAttack_RM",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@BiteAttack_RM.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@BiteAttack_RM.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@BiteAttack_RM.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -50,14 +50,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@BiteAttack_RM.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@BiteAttack_RM",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@BiteAttack_RM",
           "--binary"
         ]
       },
       {
         "clip": "CrawlBackwards",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlBackwards.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlBackwards.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlBackwards.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -65,14 +65,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlBackwards.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlBackwards",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlBackwards",
           "--binary"
         ]
       },
       {
         "clip": "CrawlBackwards_RM",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlBackwards_RM.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlBackwards_RM.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlBackwards_RM.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -80,14 +80,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlBackwards_RM.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlBackwards_RM",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlBackwards_RM",
           "--binary"
         ]
       },
       {
         "clip": "CrawlForward",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlForward.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlForward.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlForward.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -95,14 +95,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlForward.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlForward",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlForward",
           "--binary"
         ]
       },
       {
         "clip": "CrawlForward_RM",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlForward_RM.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlForward_RM.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlForward_RM.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -110,14 +110,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlForward_RM.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlForward_RM",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlForward_RM",
           "--binary"
         ]
       },
       {
         "clip": "CrawlLeft",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlLeft.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlLeft.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlLeft.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -125,14 +125,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlLeft.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlLeft",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlLeft",
           "--binary"
         ]
       },
       {
         "clip": "CrawlLeft_RM",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlLeft_RM.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlLeft_RM.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlLeft_RM.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -140,14 +140,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlLeft_RM.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlLeft_RM",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlLeft_RM",
           "--binary"
         ]
       },
       {
         "clip": "CrawlRight",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlRight.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlRight.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlRight.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -155,14 +155,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlRight.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlRight",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlRight",
           "--binary"
         ]
       },
       {
         "clip": "CrawlRight_RM",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlRight_RM.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlRight_RM.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlRight_RM.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -170,14 +170,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@CrawlRight_RM.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlRight_RM",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlRight_RM",
           "--binary"
         ]
       },
       {
         "clip": "Death",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@Death.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Death.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Death.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -185,14 +185,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@Death.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Death",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Death",
           "--binary"
         ]
       },
       {
         "clip": "DeathHitTheGround",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@DeathHitTheGround.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@DeathHitTheGround.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@DeathHitTheGround.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -200,14 +200,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@DeathHitTheGround.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@DeathHitTheGround",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@DeathHitTheGround",
           "--binary"
         ]
       },
       {
         "clip": "Falling",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@Falling.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Falling.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Falling.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -215,14 +215,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@Falling.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Falling",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Falling",
           "--binary"
         ]
       },
       {
         "clip": "Fly",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@Fly.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Fly.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Fly.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -230,14 +230,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@Fly.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Fly",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Fly",
           "--binary"
         ]
       },
       {
         "clip": "FlyingBiteAttack",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@FlyingBiteAttack.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@FlyingBiteAttack.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@FlyingBiteAttack.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -245,14 +245,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@FlyingBiteAttack.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@FlyingBiteAttack",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@FlyingBiteAttack",
           "--binary"
         ]
       },
       {
         "clip": "FlyingGetHit",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@FlyingGetHit.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@FlyingGetHit.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@FlyingGetHit.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -260,14 +260,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@FlyingGetHit.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@FlyingGetHit",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@FlyingGetHit",
           "--binary"
         ]
       },
       {
         "clip": "FlyingGetHitToFalling",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@FlyingGetHitToFalling.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@FlyingGetHitToFalling.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@FlyingGetHitToFalling.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -275,14 +275,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@FlyingGetHitToFalling.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@FlyingGetHitToFalling",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@FlyingGetHitToFalling",
           "--binary"
         ]
       },
       {
         "clip": "FlyingRoar",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@FlyingRoar.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@FlyingRoar.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@FlyingRoar.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -290,14 +290,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@FlyingRoar.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@FlyingRoar",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@FlyingRoar",
           "--binary"
         ]
       },
       {
         "clip": "GetHit1",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@GetHit1.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@GetHit1.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@GetHit1.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -305,14 +305,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@GetHit1.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@GetHit1",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@GetHit1",
           "--binary"
         ]
       },
       {
         "clip": "GetHit2",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@GetHit2.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@GetHit2.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@GetHit2.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -320,14 +320,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@GetHit2.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@GetHit2",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@GetHit2",
           "--binary"
         ]
       },
       {
         "clip": "IdleBreathe",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@IdleBreathe.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@IdleBreathe.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@IdleBreathe.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -335,14 +335,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@IdleBreathe.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@IdleBreathe",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@IdleBreathe",
           "--binary"
         ]
       },
       {
         "clip": "Landing",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@Landing.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Landing.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Landing.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -350,14 +350,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@Landing.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Landing",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Landing",
           "--binary"
         ]
       },
       {
         "clip": "Roar",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@Roar.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Roar.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Roar.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -365,14 +365,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@Roar.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Roar",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Roar",
           "--binary"
         ]
       },
       {
         "clip": "Spit",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@Spit.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Spit.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Spit.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -380,14 +380,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@Spit.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Spit",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Spit",
           "--binary"
         ]
       },
       {
         "clip": "StingerAttack",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@StingerAttack.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@StingerAttack.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@StingerAttack.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -395,14 +395,14 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@StingerAttack.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@StingerAttack",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@StingerAttack",
           "--binary"
         ]
       },
       {
         "clip": "TakeOff",
         "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@TakeOff.FBX",
-        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@TakeOff.glb",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@TakeOff.glb",
         "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
         "fbx2gltf_version": "0.13.1",
         "command": [
@@ -410,7 +410,7 @@
           "--input",
           "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Muscomorph\\FBX Files\\Muscomorph@TakeOff.FBX",
           "--output",
-          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@TakeOff",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@TakeOff",
           "--binary"
         ]
       }
@@ -2048,7 +2048,7 @@
     ],
     "clips": {
       "BiteAttack": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@BiteAttack.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@BiteAttack.glb",
         "copied_channels": 77,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2061,7 +2061,7 @@
         ]
       },
       "BiteAttack_RM": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@BiteAttack_RM.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@BiteAttack_RM.glb",
         "copied_channels": 82,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2074,7 +2074,7 @@
         ]
       },
       "CrawlBackwards": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlBackwards.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlBackwards.glb",
         "copied_channels": 69,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2087,7 +2087,7 @@
         ]
       },
       "CrawlBackwards_RM": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlBackwards_RM.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlBackwards_RM.glb",
         "copied_channels": 82,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2100,7 +2100,7 @@
         ]
       },
       "CrawlForward": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlForward.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlForward.glb",
         "copied_channels": 69,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2113,7 +2113,7 @@
         ]
       },
       "CrawlForward_RM": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlForward_RM.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlForward_RM.glb",
         "copied_channels": 80,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2126,7 +2126,7 @@
         ]
       },
       "CrawlLeft": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlLeft.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlLeft.glb",
         "copied_channels": 67,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [
@@ -2142,7 +2142,7 @@
         ]
       },
       "CrawlLeft_RM": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlLeft_RM.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlLeft_RM.glb",
         "copied_channels": 76,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [
@@ -2158,7 +2158,7 @@
         ]
       },
       "CrawlRight": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlRight.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlRight.glb",
         "copied_channels": 68,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2171,7 +2171,7 @@
         ]
       },
       "CrawlRight_RM": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@CrawlRight_RM.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@CrawlRight_RM.glb",
         "copied_channels": 77,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2184,7 +2184,7 @@
         ]
       },
       "Death": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Death.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Death.glb",
         "copied_channels": 69,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2197,7 +2197,7 @@
         ]
       },
       "DeathHitTheGround": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@DeathHitTheGround.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@DeathHitTheGround.glb",
         "copied_channels": 62,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [
@@ -2219,7 +2219,7 @@
         ]
       },
       "Falling": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Falling.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Falling.glb",
         "copied_channels": 80,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2232,7 +2232,7 @@
         ]
       },
       "Fly": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Fly.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Fly.glb",
         "copied_channels": 71,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2245,7 +2245,7 @@
         ]
       },
       "FlyingBiteAttack": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@FlyingBiteAttack.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@FlyingBiteAttack.glb",
         "copied_channels": 69,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2258,7 +2258,7 @@
         ]
       },
       "FlyingGetHit": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@FlyingGetHit.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@FlyingGetHit.glb",
         "copied_channels": 70,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2271,7 +2271,7 @@
         ]
       },
       "FlyingGetHitToFalling": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@FlyingGetHitToFalling.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@FlyingGetHitToFalling.glb",
         "copied_channels": 73,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2284,7 +2284,7 @@
         ]
       },
       "FlyingRoar": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@FlyingRoar.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@FlyingRoar.glb",
         "copied_channels": 72,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2297,7 +2297,7 @@
         ]
       },
       "GetHit1": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@GetHit1.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@GetHit1.glb",
         "copied_channels": 69,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2310,7 +2310,7 @@
         ]
       },
       "GetHit2": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@GetHit2.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@GetHit2.glb",
         "copied_channels": 67,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2323,7 +2323,7 @@
         ]
       },
       "IdleBreathe": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@IdleBreathe.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@IdleBreathe.glb",
         "copied_channels": 73,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2336,7 +2336,7 @@
         ]
       },
       "Landing": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Landing.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Landing.glb",
         "copied_channels": 71,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2349,7 +2349,7 @@
         ]
       },
       "Roar": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Roar.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Roar.glb",
         "copied_channels": 75,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2362,7 +2362,7 @@
         ]
       },
       "Spit": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@Spit.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@Spit.glb",
         "copied_channels": 71,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2375,7 +2375,7 @@
         ]
       },
       "StingerAttack": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@StingerAttack.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@StingerAttack.glb",
         "copied_channels": 72,
         "skipped_channels_nodes_not_in_sk": [],
         "filled_constant_channels": [],
@@ -2388,7 +2388,7 @@
         ]
       },
       "TakeOff": {
-        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b__ai2_g1v\\Muscomorph@TakeOff.glb",
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_option_b_ubccqyyv\\Muscomorph@TakeOff.glb",
         "copied_channels": 76,
         "skipped_channels_nodes_not_in_sk": [
           "Dummy004",
@@ -2421,6 +2421,12 @@
           "LINEAR"
         ]
       }
+    },
+    "skin_unify": {
+      "unified": true,
+      "canonical_skin": 7,
+      "joint_count": 54,
+      "remapped_meshes": 7
     }
   },
   "rebased_clips": 0,

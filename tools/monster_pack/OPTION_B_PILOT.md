@@ -17,8 +17,9 @@ Confirm the window title shows `agent-c/monster-pack-import @ <sha>` and the log
 1. `fbx2gltf_util.py` — FBX2glTF **0.13.1** (`tools/monster_pack/bin/`), `--binary`, same settings for SK and clips.
 2. `gltf_merge.py` — copy channels by node name; fill un-keyed skin joints from **clip file** node defaults (STEP).
 3. `rebase_gltf_animation_starts_to_zero` — timeline repair only.
-4. `unity_material_resolve.py` + `gltf_material_apply.py` — prefab `.mat` / texture GUIDs; multi-slot when FBX2glTF SK already has named materials.
-5. `export_validate.py` — translation ratio diagnostic, upright rest pose, clip completeness, sampled source agreement.
+4. `gltf_unify_skin.py` — all skinned mesh nodes share the fullest skeleton skin (fixes multi-skin FBX2glTF wing/tail spikes in Bevy).
+5. `unity_material_resolve.py` + `gltf_material_apply.py` — prefab `.mat` / texture GUIDs; multi-slot when FBX2glTF SK already has named materials.
+6. `export_validate.py` — translation ratio diagnostic, upright rest pose, clip completeness, sampled source agreement.
 
 Entry point: `export_monster_fbx2gltf.py`  
 Batch pilot: `run_option_b_pilot.ps1`

@@ -26,6 +26,7 @@ from fbx2gltf_util import convert_fbx_to_glb, resolve_fbx2gltf_exe  # noqa: E402
 from glb_sanitize_animations import load_glb, rebase_gltf_animation_starts_to_zero, write_glb  # noqa: E402
 from gltf_material_apply import apply_materials  # noqa: E402
 from gltf_merge import merge_clips_into_sk  # noqa: E402
+from gltf_unify_skin import unify_glb_skin  # noqa: E402
 from unity_material_resolve import resolve_prefab_material  # noqa: E402
 
 
@@ -85,6 +86,8 @@ def export_monster(
 
     merged = work / "merged.glb"
     merge_report = merge_clips_into_sk(sk_glb, clip_glbs, merged)
+    skin_report = unify_glb_skin(merged)
+    merge_report["skin_unify"] = skin_report
 
     gltf, blob = load_glb(merged)
     blob, rebased = rebase_gltf_animation_starts_to_zero(gltf, blob)
