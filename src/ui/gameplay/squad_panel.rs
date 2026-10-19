@@ -2,10 +2,10 @@
 
 use bevy::prelude::*;
 use bevy::ui::FocusPolicy;
-use bevy::ui::widget::ImageNode;
-
 use crate::client::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
-use crate::units::input::SelectedUnits;
+use crate::units::{
+    input::SelectedUnits, portrait_plate_image_node, portrait_plate_image_node_layout,
+};
 use crate::world::{UnitCatalog, UnitId, WorldData, player_units};
 
 use super::hud::{
@@ -329,16 +329,24 @@ pub fn sync_squad_panel(
                             .next()
                             .map(|c| c.to_ascii_uppercase().to_string())
                             .unwrap_or_else(|| "?".to_string());
-                        portrait.spawn((
-                            SquadEntryPortraitImage { unit_id },
-                            ImageNode::new(Handle::default()),
-                            Node {
-                                width: Val::Percent(100.0),
-                                height: Val::Percent(100.0),
-                                ..default()
-                            },
-                            Visibility::Hidden,
-                        ));
+                        portrait
+                            .spawn((
+                                Node {
+                                    width: Val::Percent(100.0),
+                                    height: Val::Percent(100.0),
+                                    position_type: PositionType::Relative,
+                                    overflow: Overflow::clip(),
+                                    ..default()
+                                },
+                            ))
+                            .with_children(|layer| {
+                                layer.spawn((
+                                    SquadEntryPortraitImage { unit_id },
+                                    portrait_plate_image_node(Handle::default()),
+                                    portrait_plate_image_node_layout(),
+                                    Visibility::Hidden,
+                                ));
+                            });
                         portrait.spawn((
                             SquadEntryPortraitFallback { unit_id },
                             Text::new(initial),

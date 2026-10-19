@@ -1,7 +1,7 @@
 //! Bind cached portrait textures into gameplay HUD widgets.
 
 use bevy::prelude::*;
-use bevy::ui::widget::ImageNode;
+use bevy::ui::widget::{ImageNode, NodeImageMode};
 
 use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::ui::gameplay::{
@@ -21,6 +21,28 @@ use super::studio_images::UnitPortraitStudioImages;
 /// Portrait image node in the selected-unit HUD plate.
 #[derive(Component, Debug)]
 pub struct SelectedUnitPortraitImage;
+
+/// HUD portrait wells use render-target handles; stretch to the inset instead of intrinsic 256px layout.
+pub fn portrait_plate_image_node(handle: Handle<Image>) -> ImageNode {
+    ImageNode {
+        image: handle,
+        color: Color::WHITE,
+        image_mode: NodeImageMode::Stretch,
+        ..default()
+    }
+}
+
+pub fn portrait_plate_image_node_layout() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(0.0),
+        top: Val::Px(0.0),
+        width: Val::Percent(100.0),
+        height: Val::Percent(100.0),
+        overflow: Overflow::clip(),
+        ..default()
+    }
+}
 
 pub(crate) fn portrait_image_for_unit(
     step: u8,
@@ -91,11 +113,7 @@ pub fn sync_selected_unit_portrait_ui(
         };
         if show_portrait {
             let handle = cached_image.unwrap();
-            *image = ImageNode {
-                image: handle,
-                color: Color::WHITE,
-                ..default()
-            };
+            *image = portrait_plate_image_node(handle);
             *image_visibility = Visibility::Visible;
         } else {
             *image_visibility = Visibility::Hidden;
@@ -147,11 +165,7 @@ pub fn sync_squad_portrait_ui(
             Some(slot.unit_id),
         );
         if let Some(handle) = handle {
-            *image = ImageNode {
-                image: handle,
-                color: Color::WHITE,
-                ..default()
-            };
+            *image = portrait_plate_image_node(handle);
             *image_visibility = Visibility::Visible;
         } else {
             *image_visibility = Visibility::Hidden;
