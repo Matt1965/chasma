@@ -28,8 +28,6 @@ pub fn portrait_plate_image_node(handle: Handle<Image>) -> ImageNode {
         image: handle,
         color: Color::WHITE,
         image_mode: NodeImageMode::Stretch,
-        // Render targets are Y-flipped relative to UI texture sampling on Windows/DX12.
-        flip_y: true,
         ..default()
     }
 }
