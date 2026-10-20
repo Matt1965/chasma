@@ -38,8 +38,20 @@ pub const HUD_UTILITY_MAX_PX: f32 = 176.0;
 pub const HUD_ROSTER_CARD_MIN_PX: f32 = 72.0;
 pub const HUD_ROSTER_CARD_MAX_PX: f32 = HUD_ROSTER_SLOT_WIDTH_PX;
 
+/// Roster card chrome. The card's portrait well is a square whose edge is the
+/// card's inner width; card width is derived so that square plus the fixed
+/// HP/label rows always fit the card height.
+pub const HUD_ROSTER_CARD_PADDING_PX: f32 = 4.0;
+pub const HUD_ROSTER_CARD_BORDER_PX: f32 = 1.0;
+pub const HUD_ROSTER_CARD_ROW_GAP_PX: f32 = 4.0;
+/// Vertical space the roster section spends outside the card strip.
+pub const HUD_ROSTER_HEADER_MARGIN_TOP_PX: f32 = 4.0;
+pub const HUD_ROSTER_LIST_MARGIN_BOTTOM_PX: f32 = 6.0;
+
 pub const HUD_PORTRAIT_MIN_PX: f32 = 96.0;
 pub const HUD_PORTRAIT_MAX_PX: f32 = HUD_PORTRAIT_WIDTH_PX;
+/// The selected-unit plate is square; cap its edge so it fits the content row.
+pub const HUD_PORTRAIT_HEIGHT_SHARE: f32 = 0.88;
 
 pub const HUD_COMMAND_BUTTON_MAX_PX: f32 = 72.0;
 pub const HUD_COMMAND_BUTTON_GAP_PX: f32 = 6.0;
@@ -63,8 +75,11 @@ pub struct HudViewportGeometry {
     pub roster_width: f32,
     pub command_width: f32,
     pub utility_width: f32,
+    /// Edge of the square selected-unit portrait plate.
     pub portrait_width: f32,
     pub card_width: f32,
+    /// Edge of the square portrait well inside each roster card.
+    pub roster_portrait_px: f32,
     pub card_gap: f32,
     pub command_button_width: f32,
     pub roster_viewport_width: f32,
@@ -219,6 +234,36 @@ pub fn portrait_width_for_selected_section(selected_width: f32) -> f32 {
     (selected_width * 0.31).clamp(HUD_PORTRAIT_MIN_PX, HUD_PORTRAIT_MAX_PX)
 }
 
+/// Square plate edge: the width rule, capped so the square fits the content row.
+pub fn portrait_size_for_selected_section(selected_width: f32, content_height: f32) -> f32 {
+    portrait_width_for_selected_section(selected_width)
+        .min(content_height * HUD_PORTRAIT_HEIGHT_SHARE)
+        .max(1.0)
+}
+
+/// Per-side chrome between a roster card's outer edge and its portrait well.
+pub fn roster_card_chrome_px() -> f32 {
+    HUD_ROSTER_CARD_PADDING_PX + HUD_ROSTER_CARD_BORDER_PX
+}
+
+/// Card width such that `portrait (square) + HP + label + gaps` fits the strip height.
+pub fn roster_card_width_for_content_height(content_height: f32) -> f32 {
+    use super::super::squad_panel::{
+        HUD_ROSTER_CARD_HP_HEIGHT_PX, HUD_ROSTER_CARD_LABEL_HEIGHT_PX,
+        HUD_ROSTER_HEADER_HEIGHT_PX,
+    };
+    let card_height = content_height
+        - HUD_ROSTER_HEADER_HEIGHT_PX
+        - HUD_ROSTER_HEADER_MARGIN_TOP_PX
+        - HUD_ROSTER_LIST_MARGIN_BOTTOM_PX;
+    let inner_height = card_height - 2.0 * roster_card_chrome_px();
+    let portrait = inner_height
+        - HUD_ROSTER_CARD_HP_HEIGHT_PX
+        - HUD_ROSTER_CARD_LABEL_HEIGHT_PX
+        - 2.0 * HUD_ROSTER_CARD_ROW_GAP_PX;
+    (portrait + 2.0 * roster_card_chrome_px()).clamp(HUD_ROSTER_CARD_MIN_PX, HUD_ROSTER_CARD_MAX_PX)
+}
+
 pub fn compute_hud_viewport_geometry(viewport: Vec2) -> HudViewportGeometry {
     let hud_height = compute_hud_height(viewport);
     let art_scale = hud_art_scale(hud_height);
@@ -228,18 +273,20 @@ pub fn compute_hud_viewport_geometry(viewport: Vec2) -> HudViewportGeometry {
     let frame_bottom = HUD_FRAME_BOTTOM_PX * art_scale;
     let content_row_width = (viewport.x - endcap_left_width - endcap_right_width).max(0.0);
     let sections = distribute_section_widths(content_row_width);
-    let card_width = HUD_ROSTER_CARD_MAX_PX.clamp(HUD_ROSTER_CARD_MIN_PX, HUD_ROSTER_CARD_MAX_PX);
+    let content_height = hud_content_height(hud_height);
+    let card_width = roster_card_width_for_content_height(content_height);
+    let roster_portrait_px = (card_width - 2.0 * roster_card_chrome_px()).max(1.0);
     let card_gap = HUD_ROSTER_CARD_GAP_PX;
     let roster_viewport_width = roster_viewport_width(sections.roster);
     let visible_roster_slots =
         visible_roster_card_count(roster_viewport_width, card_width, card_gap);
     let command_button_width = command_button_width(sections.command, 5);
-    let portrait_width = portrait_width_for_selected_section(sections.selected);
+    let portrait_width = portrait_size_for_selected_section(sections.selected, content_height);
 
     HudViewportGeometry {
         viewport,
         hud_height,
-        content_height: hud_content_height(hud_height),
+        content_height,
         art_scale,
         endcap_left_width,
         endcap_right_width,
@@ -252,6 +299,7 @@ pub fn compute_hud_viewport_geometry(viewport: Vec2) -> HudViewportGeometry {
         utility_width: sections.utility,
         portrait_width,
         card_width,
+        roster_portrait_px,
         card_gap,
         command_button_width,
         roster_viewport_width,
@@ -339,7 +387,9 @@ pub fn apply_hud_viewport_geometry(world: &mut World) {
         .query_filtered::<&mut Node, With<super::super::selected_unit_panel::SelectedUnitPortraitFrame>>()
         .iter_mut(world)
     {
+        // Square plate: both edges follow the resolved size or the well skews.
         set_val_px_if_changed(&mut node.width, geom.portrait_width);
+        set_val_px_if_changed(&mut node.height, geom.portrait_width);
     }
     for mut node in world
         .query_filtered::<&mut Node, (
@@ -482,6 +532,53 @@ mod tests {
     fn command_buttons_do_not_balloon_on_wide_screens() {
         let geom = geometry_at(2560.0);
         assert!(geom.command_button_width <= HUD_COMMAND_BUTTON_MAX_PX + 0.5);
+    }
+
+    /// Portrait wells are square by construction and always fit their row, so
+    /// a stretched square texture never shows uneven fill around it.
+    #[test]
+    fn portrait_wells_are_square_and_fit() {
+        use super::super::super::squad_panel::{
+            HUD_ROSTER_CARD_HP_HEIGHT_PX, HUD_ROSTER_CARD_LABEL_HEIGHT_PX,
+            HUD_ROSTER_HEADER_HEIGHT_PX,
+        };
+        for width in [1024.0, 1366.0, 1920.0, 2560.0, 3840.0] {
+            for height in [444.0, 720.0, 768.0, 1080.0, 1440.0, 2160.0] {
+                let geom = compute_hud_viewport_geometry(Vec2::new(width, height));
+                let label = format!("{width}x{height}");
+
+                // Selected plate: square edge capped by the content row.
+                assert!(
+                    geom.portrait_width <= geom.content_height * HUD_PORTRAIT_HEIGHT_SHARE + 0.01,
+                    "{label}: plate edge {} exceeds row {}",
+                    geom.portrait_width,
+                    geom.content_height
+                );
+
+                // Roster card: portrait edge is the card's inner width...
+                let chrome = 2.0 * roster_card_chrome_px();
+                assert!(
+                    (geom.roster_portrait_px - (geom.card_width - chrome)).abs() < 0.01,
+                    "{label}"
+                );
+                // ...and portrait + fixed rows fit the strip height.
+                let card_height = geom.content_height
+                    - HUD_ROSTER_HEADER_HEIGHT_PX
+                    - HUD_ROSTER_HEADER_MARGIN_TOP_PX
+                    - HUD_ROSTER_LIST_MARGIN_BOTTOM_PX;
+                let needed = chrome
+                    + geom.roster_portrait_px
+                    + HUD_ROSTER_CARD_HP_HEIGHT_PX
+                    + HUD_ROSTER_CARD_LABEL_HEIGHT_PX
+                    + 2.0 * HUD_ROSTER_CARD_ROW_GAP_PX;
+                assert!(
+                    needed <= card_height + 0.01,
+                    "{label}: card needs {needed} but strip is {card_height}"
+                );
+                assert!(geom.card_width >= HUD_ROSTER_CARD_MIN_PX - 0.01, "{label}");
+                assert!(geom.card_width <= HUD_ROSTER_CARD_MAX_PX + 0.01, "{label}");
+            }
+        }
     }
 
     /// Horizontal layout passes must not drift accepted vertical HUD geometry.

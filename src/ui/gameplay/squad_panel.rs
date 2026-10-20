@@ -3,15 +3,14 @@
 use bevy::prelude::*;
 use bevy::ui::FocusPolicy;
 use crate::client::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
-use crate::units::{
-    input::SelectedUnits, portrait_plate_image_node, portrait_plate_image_node_layout,
-    portrait_square_inset_layout,
-};
+use crate::units::{input::SelectedUnits, spawn_portrait_plate_layers};
 use crate::world::{UnitCatalog, UnitId, WorldData, player_units};
 
 use super::hud::{
-    HudViewportGeometry, hud_flex_section_node, hud_inset_fill_style, hud_inset_rim_style,
-    hud_roster_card_style, hud_roster_ghost_slot_style, hud_stat_track_style,
+    HUD_ROSTER_CARD_BORDER_PX, HUD_ROSTER_CARD_PADDING_PX, HUD_ROSTER_CARD_ROW_GAP_PX,
+    HUD_ROSTER_HEADER_MARGIN_TOP_PX, HUD_ROSTER_LIST_MARGIN_BOTTOM_PX, HudViewportGeometry,
+    hud_flex_section_node, hud_inset_fill_style, hud_inset_rim_style, hud_roster_card_style,
+    hud_roster_ghost_slot_style, hud_stat_track_style,
 };
 use super::layout::PlayerHudUi;
 use super::player_hud_state::primary_selected_unit;
@@ -103,7 +102,7 @@ pub fn spawn_squad_panel(parent: &mut ChildSpawnerCommands<'_>) {
                 Node {
                     height: Val::Px(HUD_ROSTER_HEADER_HEIGHT_PX),
                     flex_shrink: 0.0,
-                    margin: UiRect::top(Val::Px(4.0)),
+                    margin: UiRect::top(Val::Px(HUD_ROSTER_HEADER_MARGIN_TOP_PX)),
                     ..default()
                 },
             ));
@@ -113,7 +112,7 @@ pub fn spawn_squad_panel(parent: &mut ChildSpawnerCommands<'_>) {
                     align_items: AlignItems::Stretch,
                     flex_grow: 1.0,
                     min_height: Val::Px(0.0),
-                    margin: UiRect::bottom(Val::Px(6.0)),
+                    margin: UiRect::bottom(Val::Px(HUD_ROSTER_LIST_MARGIN_BOTTOM_PX)),
                     ..default()
                 })
                 .with_children(|row| {
@@ -159,8 +158,43 @@ fn roster_ghost_count(unit_count: usize, visible_slots: u32) -> usize {
         .min(visible_slots) as usize
 }
 
-fn spawn_roster_ghost_slot(parent: &mut ChildSpawnerCommands<'_>, card_width: f32) {
-    let card_radius = BorderRadius::all(Val::Px(6.0));
+/// Card shell shared by live entries and ghost slots.
+fn roster_card_node(card_width: f32) -> Node {
+    Node {
+        width: Val::Px(card_width),
+        height: Val::Percent(100.0),
+        flex_shrink: 0.0,
+        flex_direction: FlexDirection::Column,
+        padding: UiRect::all(Val::Px(HUD_ROSTER_CARD_PADDING_PX)),
+        row_gap: Val::Px(HUD_ROSTER_CARD_ROW_GAP_PX),
+        align_items: AlignItems::Stretch,
+        overflow: Overflow::clip(),
+        border: UiRect::all(Val::Px(HUD_ROSTER_CARD_BORDER_PX)),
+        border_radius: BorderRadius::all(Val::Px(6.0)),
+        ..default()
+    }
+}
+
+/// Square portrait rim; the edge comes from geometry so it always fits the card.
+fn roster_portrait_rim_node(portrait_px: f32, radius: BorderRadius) -> Node {
+    Node {
+        width: Val::Px(portrait_px),
+        height: Val::Px(portrait_px),
+        flex_grow: 0.0,
+        flex_shrink: 0.0,
+        align_self: AlignSelf::Center,
+        padding: UiRect::all(Val::Px(1.0)),
+        border: UiRect::all(Val::Px(1.0)),
+        border_radius: radius,
+        ..default()
+    }
+}
+
+fn spawn_roster_ghost_slot(
+    parent: &mut ChildSpawnerCommands<'_>,
+    card_width: f32,
+    portrait_px: f32,
+) {
     let portrait_radius = BorderRadius::all(Val::Px(4.0));
     let (face, border) = hud_roster_ghost_slot_style();
     parent
@@ -168,33 +202,13 @@ fn spawn_roster_ghost_slot(parent: &mut ChildSpawnerCommands<'_>, card_width: f3
             SquadRosterGhostSlot,
             PlayerHudUi,
             FocusPolicy::Pass,
-            Node {
-                width: Val::Px(card_width),
-                height: Val::Percent(100.0),
-                flex_shrink: 0.0,
-                flex_direction: FlexDirection::Column,
-                padding: UiRect::all(Val::Px(4.0)),
-                row_gap: Val::Px(4.0),
-                align_items: AlignItems::Stretch,
-                overflow: Overflow::clip(),
-                border: UiRect::all(Val::Px(1.0)),
-                border_radius: card_radius,
-                ..default()
-            },
+            roster_card_node(card_width),
             face,
             border,
         ))
         .with_children(|slot| {
             slot.spawn((
-                Node {
-                    width: Val::Percent(100.0),
-                    flex_grow: 1.0,
-                    min_height: Val::Px(0.0),
-                    padding: UiRect::all(Val::Px(1.0)),
-                    border: UiRect::all(Val::Px(1.0)),
-                    border_radius: portrait_radius,
-                    ..default()
-                },
+                roster_portrait_rim_node(portrait_px, portrait_radius),
                 hud_inset_rim_style(),
             ))
             .with_children(|rim| {
@@ -258,7 +272,7 @@ pub fn sync_squad_panel(
 
     let primary = primary_selected_unit(&selection);
     let card_width = geometry.card_width;
-    let _card_gap = geometry.card_gap;
+    let portrait_px = geometry.roster_portrait_px;
 
     commands.entity(list_entity).with_children(|row| {
         for unit_id in ids {
@@ -275,41 +289,20 @@ pub fn sync_squad_panel(
                     }
                 })
                 .unwrap_or(0.0);
-            let card_radius = BorderRadius::all(Val::Px(6.0));
             let (card_face, card_border) =
                 hud_roster_card_style(selected, is_primary, &Interaction::None);
             row.spawn((
                 SquadEntryButton { unit_id },
                 PlayerHudUi,
                 Button,
-                Node {
-                    width: Val::Px(card_width),
-                    height: Val::Percent(100.0),
-                    flex_shrink: 0.0,
-                    flex_direction: FlexDirection::Column,
-                    padding: UiRect::all(Val::Px(4.0)),
-                    row_gap: Val::Px(4.0),
-                    align_items: AlignItems::Stretch,
-                    overflow: Overflow::clip(),
-                    border: UiRect::all(Val::Px(1.0)),
-                    border_radius: card_radius,
-                    ..default()
-                },
+                roster_card_node(card_width),
                 BackgroundColor(card_face),
                 card_border,
             ))
             .with_children(|btn| {
                 let portrait_radius = BorderRadius::all(Val::Px(4.0));
                 btn.spawn((
-                    Node {
-                        width: Val::Percent(100.0),
-                        flex_grow: 1.0,
-                        min_height: Val::Px(0.0),
-                        padding: UiRect::all(Val::Px(1.0)),
-                        border: UiRect::all(Val::Px(1.0)),
-                        border_radius: portrait_radius,
-                        ..default()
-                    },
+                    roster_portrait_rim_node(portrait_px, portrait_radius),
                     hud_inset_rim_style(),
                 ))
                 .with_children(|rim| {
@@ -317,34 +310,26 @@ pub fn sync_squad_panel(
                         Node {
                             width: Val::Percent(100.0),
                             height: Val::Percent(100.0),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
                             border_radius: portrait_radius,
                             ..default()
                         },
                         hud_inset_fill_style(),
                     ))
-                    .with_children(|portrait| {
+                    .with_children(|well| {
                         let initial = label
                             .chars()
                             .next()
                             .map(|c| c.to_ascii_uppercase().to_string())
                             .unwrap_or_else(|| "?".to_string());
-                        portrait.spawn(portrait_square_inset_layout())
-                            .with_children(|layer| {
-                                layer.spawn((
-                                    SquadEntryPortraitImage { unit_id },
-                                    portrait_plate_image_node(Handle::default()),
-                                    portrait_plate_image_node_layout(),
-                                    Visibility::Hidden,
-                                ));
-                            });
-                        portrait.spawn((
+                        spawn_portrait_plate_layers(
+                            well,
+                            portrait_radius,
+                            SquadEntryPortraitImage { unit_id },
                             SquadEntryPortraitFallback { unit_id },
                             Text::new(initial),
                             hud_title_font(),
                             TextColor(TEXT_MUTED),
-                        ));
+                        );
                     });
                 });
                 btn.spawn((
@@ -384,7 +369,7 @@ pub fn sync_squad_panel(
             });
         }
         for _ in 0..ghost_count {
-            spawn_roster_ghost_slot(row, card_width);
+            spawn_roster_ghost_slot(row, card_width, portrait_px);
         }
     });
 }

@@ -1,6 +1,6 @@
 //! Shared portrait render stage (camera, lights, backdrop).
 
-use bevy::camera::{Camera, RenderTarget, Viewport};
+use bevy::camera::{Camera, RenderTarget};
 use bevy::camera::visibility::RenderLayers;
 use bevy::prelude::*;
 
@@ -140,47 +140,11 @@ pub fn setup_unit_portrait_studio(
             clear_color: ClearColorConfig::Custom(portrait_diagnostic_clear_color(step)),
             ..default()
         },
-        Projection::Perspective(PerspectiveProjection {
-            aspect_ratio: 1.0,
-            ..default()
-        }),
+        // Bevy derives viewport + aspect from the square render target; no override needed.
         RenderTarget::Image(studio_images.live_target.clone().into()),
         portrait_studio_camera_transform(),
         portrait_camera_view_layers(),
     ));
-}
-
-/// Keep portrait RTT projection and viewport locked to the full square texture (not the window).
-pub fn sync_portrait_camera_target_fit(
-    mut cameras: Query<(&mut Camera, &mut Projection, &RenderTarget), With<UnitPortraitCamera>>,
-    images: Res<Assets<Image>>,
-) {
-    for (mut camera, mut projection, target) in &mut cameras {
-        let Some(size) = portrait_render_target_physical_size(target, &images) else {
-            continue;
-        };
-        if size.x == 0 || size.y == 0 {
-            continue;
-        }
-        let aspect = size.x as f32 / size.y as f32;
-        if let Projection::Perspective(ref mut perspective) = *projection {
-            perspective.aspect_ratio = aspect;
-        }
-        camera.viewport = Some(Viewport {
-            physical_position: UVec2::ZERO,
-            physical_size: size,
-            ..default()
-        });
-    }
-}
-
-fn portrait_render_target_physical_size(
-    target: &RenderTarget,
-    images: &Assets<Image>,
-) -> Option<UVec2> {
-    let handle = target.as_image()?;
-    let image = images.get(handle)?;
-    Some(UVec2::new(image.width(), image.height()))
 }
 
 /// Force portrait isolation on the stage and every spawned glTF descendant.

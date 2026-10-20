@@ -22,8 +22,9 @@ use super::studio_images::UnitPortraitStudioImages;
 #[derive(Component, Debug)]
 pub struct SelectedUnitPortraitImage;
 
-/// HUD portrait wells use render-target handles; stretch to the inset instead of intrinsic 256px layout.
-pub fn portrait_plate_image_node(handle: Handle<Image>) -> ImageNode {
+/// Portrait textures are square render targets; stretch to the (square) well
+/// rather than laying out at the intrinsic 256px texture size.
+fn portrait_plate_image_node(handle: Handle<Image>) -> ImageNode {
     ImageNode {
         image: handle,
         color: Color::WHITE,
@@ -32,29 +33,63 @@ pub fn portrait_plate_image_node(handle: Handle<Image>) -> ImageNode {
     }
 }
 
-/// Square inset that preserves 1:1 portrait RTT aspect inside a non-square HUD well.
-pub fn portrait_square_inset_layout() -> Node {
-    Node {
-        width: Val::Percent(100.0),
-        max_width: Val::Percent(100.0),
-        aspect_ratio: Some(1.0),
-        align_self: AlignSelf::Center,
-        position_type: PositionType::Relative,
-        overflow: Overflow::clip(),
-        flex_shrink: 0.0,
-        ..default()
-    }
-}
-
-pub fn portrait_plate_image_node_layout() -> Node {
+/// Image layer: absolutely positioned so it always covers the well's content
+/// box, independent of any sibling (including a hidden fallback glyph).
+fn portrait_plate_image_layout(radius: BorderRadius) -> Node {
     Node {
         position_type: PositionType::Absolute,
         left: Val::Px(0.0),
         top: Val::Px(0.0),
         width: Val::Percent(100.0),
         height: Val::Percent(100.0),
-        overflow: Overflow::clip(),
+        border_radius: radius,
         ..default()
+    }
+}
+
+/// Fallback overlay: out of flow, so `Visibility::Hidden` text cannot shift the image.
+fn portrait_fallback_overlay_layout() -> Node {
+    Node {
+        position_type: PositionType::Absolute,
+        left: Val::Px(0.0),
+        top: Val::Px(0.0),
+        width: Val::Percent(100.0),
+        height: Val::Percent(100.0),
+        justify_content: JustifyContent::Center,
+        align_items: AlignItems::Center,
+        ..default()
+    }
+}
+
+/// Spawn the two layers every HUD portrait well uses: the cached-texture image
+/// and a centred letter fallback. The caller owns the well node (square, with
+/// its own rim/fill styling) and the marker components; sync systems toggle the
+/// markers' `Visibility` and bind the image handle.
+pub fn spawn_portrait_plate_layers(
+    well: &mut ChildSpawnerCommands<'_>,
+    radius: BorderRadius,
+    image_marker: impl Bundle,
+    fallback_marker: impl Bundle,
+    fallback_text: Text,
+    fallback_font: TextFont,
+    fallback_color: TextColor,
+) {
+    well.spawn((
+        image_marker,
+        portrait_plate_image_node(Handle::default()),
+        portrait_plate_image_layout(radius),
+        Visibility::Hidden,
+    ));
+    well.spawn(portrait_fallback_overlay_layout())
+        .with_children(|overlay| {
+            overlay.spawn((fallback_marker, fallback_text, fallback_font, fallback_color));
+        });
+}
+
+/// Bind a texture without rewriting the node when it is unchanged.
+fn bind_portrait_image(image: &mut ImageNode, handle: Handle<Image>) {
+    if image.image != handle || image.image_mode != NodeImageMode::Stretch {
+        *image = portrait_plate_image_node(handle);
     }
 }
 
@@ -127,7 +162,7 @@ pub fn sync_selected_unit_portrait_ui(
         };
         if show_portrait {
             let handle = cached_image.unwrap();
-            *image = portrait_plate_image_node(handle);
+            bind_portrait_image(&mut image, handle);
             *image_visibility = Visibility::Visible;
         } else {
             *image_visibility = Visibility::Hidden;
@@ -147,8 +182,10 @@ pub fn sync_selected_unit_portrait_ui(
 }
 
 /// Bind cached portraits onto squad roster card plates.
+///
+/// Roster portraits describe owned units, not the current selection, so they
+/// are never gated on what (if anything) is selected.
 pub fn sync_squad_portrait_ui(
-    world_selection: Res<WorldSelectionState>,
     cache: Res<UnitPortraitCache>,
     capture: Res<UnitPortraitCaptureState>,
     lifecycle: Res<PortraitLifecycleProbe>,
@@ -158,16 +195,6 @@ pub fn sync_squad_portrait_ui(
         Query<(&SquadEntryPortraitFallback, &mut Visibility)>,
     )>,
 ) {
-    if world_selection.category != WorldSelectionCategory::Units {
-        for (_, _, mut visibility) in widgets.p0().iter_mut() {
-            *visibility = Visibility::Hidden;
-        }
-        for (_, mut visibility) in widgets.p1().iter_mut() {
-            *visibility = Visibility::Visible;
-        }
-        return;
-    }
-
     let step = portrait_diagnostic_step();
     for (slot, mut image, mut image_visibility) in widgets.p0().iter_mut() {
         let handle = portrait_image_for_unit(
@@ -179,7 +206,7 @@ pub fn sync_squad_portrait_ui(
             Some(slot.unit_id),
         );
         if let Some(handle) = handle {
-            *image = portrait_plate_image_node(handle);
+            bind_portrait_image(&mut image, handle);
             *image_visibility = Visibility::Visible;
         } else {
             *image_visibility = Visibility::Hidden;
