@@ -11,7 +11,7 @@ pub const PREVIEW_RENDER_LAYER: RenderLayers = RenderLayers::layer(1);
 /// Gameplay HUD unit portrait capture stage (isolated from world and editor preview).
 pub const PORTRAIT_RENDER_LAYER: RenderLayers = RenderLayers::layer(2);
 
-/// Portrait RTT sees studio layer 2 and default layer 0 (fresh glTF before propagation).
+/// Portrait RTT sees studio layer 2 and layer 0 until glTF descendants are stamped.
 pub fn portrait_camera_view_layers() -> RenderLayers {
     RenderLayers::from_layers(&[0, 2])
 }

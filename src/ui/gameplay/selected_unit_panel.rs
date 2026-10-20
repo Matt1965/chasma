@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 use crate::units::{
     SelectedUnitPortraitImage, portrait_plate_image_node, portrait_plate_image_node_layout,
+    portrait_square_inset_layout,
 };
 
 use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
@@ -287,7 +288,7 @@ pub fn spawn_selected_unit_panel(parent: &mut ChildSpawnerCommands<'_>) {
                         SelectedUnitPortraitFrame,
                         Node {
                             width: Val::Px(geom.portrait_width),
-                            height: Val::Percent(88.0),
+                            height: Val::Px(geom.portrait_width),
                             padding: UiRect::all(Val::Px(2.0)),
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
@@ -311,15 +312,7 @@ pub fn spawn_selected_unit_panel(parent: &mut ChildSpawnerCommands<'_>) {
                             hud_inset_fill_style(),
                         ))
                         .with_children(|portrait| {
-                            portrait.spawn((
-                                Node {
-                                    width: Val::Percent(100.0),
-                                    height: Val::Percent(100.0),
-                                    position_type: PositionType::Relative,
-                                    overflow: Overflow::clip(),
-                                    ..default()
-                                },
-                            ))
+                            portrait.spawn(portrait_square_inset_layout())
                             .with_children(|layer| {
                                 layer.spawn((
                                     SelectedUnitPortraitImage,

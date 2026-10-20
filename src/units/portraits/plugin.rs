@@ -30,6 +30,7 @@ use super::pipeline::{
 };
 use super::studio::{
     propagate_portrait_render_layers, setup_unit_portrait_studio, sync_portrait_camera_active,
+    sync_portrait_camera_target_fit,
 };
 
 /// Systems that capture and cache unit portraits for gameplay HUD.
@@ -76,7 +77,12 @@ impl Plugin for UnitPortraitPlugin {
             )
             .add_systems(
                 Update,
-                sync_portrait_camera_active.in_set(UnitPortraitSystems),
+                (
+                    sync_portrait_camera_active,
+                    sync_portrait_camera_target_fit,
+                )
+                    .chain()
+                    .in_set(UnitPortraitSystems),
             )
             .add_systems(
                 Update,

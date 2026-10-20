@@ -56,6 +56,7 @@ pub use equipment_presentation::{
 pub use portraits::{
     SelectedUnitPortraitImage, UnitPortraitPlugin, UnitPortraitSceneRoot,
     configure_portrait_system_sets, portrait_plate_image_node, portrait_plate_image_node_layout,
+    portrait_square_inset_layout,
     sync_selected_unit_portrait_ui, sync_squad_portrait_ui,
 };
 pub use health_bars::{

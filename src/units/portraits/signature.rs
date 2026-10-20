@@ -12,6 +12,9 @@ use crate::world::{
 use super::cache::PortraitAppearanceSignature;
 use super::resolve::portrait_render_key_str;
 
+/// Bump when RTT layout / camera fit changes so HUD portraits recapture.
+const PORTRAIT_CAPTURE_PIPELINE_VERSION: u64 = 2;
+
 /// Equipment slots that can affect a head-and-shoulders portrait.
 pub const PORTRAIT_EQUIPMENT_SLOTS: [EquipmentSlot; 3] = [
     EquipmentSlot::Head,
@@ -37,6 +40,7 @@ pub fn portrait_signature_for_unit(
     let render_key = portrait_render_key_str(unit, definition, appearance_profiles)?;
     let appearance = unit.appearance.as_ref();
     let mut hasher = DefaultHasher::new();
+    PORTRAIT_CAPTURE_PIPELINE_VERSION.hash(&mut hasher);
     unit.definition_id.as_str().hash(&mut hasher);
     render_key.hash(&mut hasher);
     if let Some(appearance) = appearance {

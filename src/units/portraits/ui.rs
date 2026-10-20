@@ -28,6 +28,22 @@ pub fn portrait_plate_image_node(handle: Handle<Image>) -> ImageNode {
         image: handle,
         color: Color::WHITE,
         image_mode: NodeImageMode::Stretch,
+        // Render targets are Y-flipped relative to UI texture sampling on Windows/DX12.
+        flip_y: true,
+        ..default()
+    }
+}
+
+/// Square inset that preserves 1:1 portrait RTT aspect inside a non-square HUD well.
+pub fn portrait_square_inset_layout() -> Node {
+    Node {
+        width: Val::Percent(100.0),
+        max_width: Val::Percent(100.0),
+        aspect_ratio: Some(1.0),
+        align_self: AlignSelf::Center,
+        position_type: PositionType::Relative,
+        overflow: Overflow::clip(),
+        flex_shrink: 0.0,
         ..default()
     }
 }

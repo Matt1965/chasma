@@ -5,6 +5,7 @@ use bevy::ui::FocusPolicy;
 use crate::client::{ClientInputModifiers, ClientIntent, ClientIntentQueue};
 use crate::units::{
     input::SelectedUnits, portrait_plate_image_node, portrait_plate_image_node_layout,
+    portrait_square_inset_layout,
 };
 use crate::world::{UnitCatalog, UnitId, WorldData, player_units};
 
@@ -329,16 +330,7 @@ pub fn sync_squad_panel(
                             .next()
                             .map(|c| c.to_ascii_uppercase().to_string())
                             .unwrap_or_else(|| "?".to_string());
-                        portrait
-                            .spawn((
-                                Node {
-                                    width: Val::Percent(100.0),
-                                    height: Val::Percent(100.0),
-                                    position_type: PositionType::Relative,
-                                    overflow: Overflow::clip(),
-                                    ..default()
-                                },
-                            ))
+                        portrait.spawn(portrait_square_inset_layout())
                             .with_children(|layer| {
                                 layer.spawn((
                                     SquadEntryPortraitImage { unit_id },
