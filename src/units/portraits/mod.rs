@@ -1,5 +1,6 @@
 //! Dynamic unit portraits rendered from authoritative appearance data.
 
+mod animation;
 mod cache;
 mod components;
 mod diagnostics;

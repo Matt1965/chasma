@@ -5,7 +5,13 @@ use bevy::prelude::*;
 
 use crate::units::appearance_presentation::sync_unit_appearance_morphs;
 use crate::units::equipment_presentation::finalize_skinned_equipment_overlays;
+use crate::units::animation::UnitAnimationSystems;
 use crate::units::sync::UnitRuntimeSystems;
+
+use super::animation::{
+    discover_portrait_animation_players, install_portrait_animation_graph,
+    sync_portrait_idle_animation,
+};
 
 use super::cache::UnitPortraitCache;
 use super::diagnostics::{
@@ -42,6 +48,16 @@ impl Plugin for UnitPortraitPlugin {
             .init_resource::<PortraitLifecycleTrace>()
             .init_resource::<super::equipment::UnitPortraitEquipmentIndex>()
             .add_systems(Startup, setup_unit_portrait_studio)
+            .add_systems(
+                Update,
+                (
+                    discover_portrait_animation_players,
+                    install_portrait_animation_graph,
+                    sync_portrait_idle_animation,
+                )
+                    .chain()
+                    .in_set(UnitPortraitSystems),
+            )
             .add_systems(
                 Update,
                 maintain_portrait_cache_requests.in_set(UnitPortraitSystems),
@@ -97,6 +113,8 @@ impl Plugin for UnitPortraitPlugin {
 pub fn configure_portrait_system_sets(app: &mut App) {
     app.configure_sets(
         Update,
-        UnitPortraitSystems.after(UnitRuntimeSystems),
+        UnitPortraitSystems
+            .after(UnitRuntimeSystems)
+            .after(UnitAnimationSystems),
     );
 }

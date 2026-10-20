@@ -37,11 +37,12 @@ use super::resolve::{portrait_appearance_for_unit, portrait_render_key_str};
 use super::signature::portrait_signature_for_unit;
 use super::studio::{
     PORTRAIT_USE_FIXED_STUDIO_CAMERA, new_portrait_render_target_image,
-    portrait_studio_camera_transform,
+    portrait_studio_camera_transform_head_at,
 };
+use crate::units::AnimationPlaybackPending;
 use super::studio_images::UnitPortraitStudioImages;
 
-const PORTRAIT_WARMUP_FRAMES: u32 = 6;
+const PORTRAIT_WARMUP_FRAMES: u32 = 10;
 const PORTRAIT_RENDER_SETTLE_FRAMES: u32 = 4;
 /// Frames to wait for skinned glTF meshes before using catalog height fallback framing.
 const PORTRAIT_BOUNDS_FALLBACK_FRAMES: u32 = 12;
@@ -76,6 +77,7 @@ pub struct PortraitCaptureActorQueries<'w, 's> {
     pub global_transforms: Query<'w, 's, &'static GlobalTransform>,
     pub meshes: Res<'w, Assets<Mesh>>,
     pub equipment_visuals: Query<'w, 's, Entity, With<crate::units::equipment_presentation::UnitEquipmentVisual>>,
+    pub animation_pending: Query<'w, 's, Entity, With<AnimationPlaybackPending>>,
 }
 
 #[derive(Resource, Debug, Default)]
@@ -254,13 +256,13 @@ pub fn sync_portrait_capture_camera(
     if capture.actor_entity.is_none() {
         return;
     }
+    let actor = capture.actor_entity.unwrap();
+    let Ok(framing) = actors.get(actor) else {
+        return;
+    };
     let transform = if PORTRAIT_USE_FIXED_STUDIO_CAMERA {
-        portrait_studio_camera_transform()
+        portrait_studio_camera_transform_head_at(Vec2::new(framing.focus.x, framing.focus.z))
     } else {
-        let actor = capture.actor_entity.unwrap();
-        let Ok(framing) = actors.get(actor) else {
-            return;
-        };
         portrait_camera_transform(framing)
     };
     for mut camera_transform in &mut cameras {
@@ -404,6 +406,10 @@ pub fn drive_portrait_capture_pipeline(
     }
 
     if !world_params.capture.camera_aligned {
+        return;
+    }
+
+    if queries.animation_pending.get(actor_entity).is_ok() {
         return;
     }
 

@@ -35,28 +35,40 @@ pub mod head_camera {
 }
 
 pub fn portrait_studio_camera_transform() -> Transform {
-    portrait_studio_camera_transform_head()
+    portrait_studio_camera_transform_head_at(Vec2::ZERO)
 }
 
 pub fn portrait_studio_camera_transform_foundation() -> Transform {
-    studio_camera_from_offsets(
-        foundation_camera::FOCUS_Y,
-        foundation_camera::EYE_Y,
-        foundation_camera::EYE_Z,
-    )
+    portrait_studio_camera_transform_foundation_at(Vec2::ZERO)
 }
 
 pub fn portrait_studio_camera_transform_head() -> Transform {
+    portrait_studio_camera_transform_head_at(Vec2::ZERO)
+}
+
+/// Pan the fixed studio rig so measured mesh bounds center under the head framing.
+pub fn portrait_studio_camera_transform_head_at(center_xz: Vec2) -> Transform {
     studio_camera_from_offsets(
         head_camera::FOCUS_Y,
         head_camera::EYE_Y,
         head_camera::EYE_Z,
+        center_xz,
     )
 }
 
-fn studio_camera_from_offsets(focus_y: f32, eye_y: f32, eye_z: f32) -> Transform {
-    let focus = PORTRAIT_STAGE_OFFSET + Vec3::new(0.0, focus_y, 0.0);
-    let eye = PORTRAIT_STAGE_OFFSET + Vec3::new(0.0, eye_y, eye_z);
+pub fn portrait_studio_camera_transform_foundation_at(center_xz: Vec2) -> Transform {
+    studio_camera_from_offsets(
+        foundation_camera::FOCUS_Y,
+        foundation_camera::EYE_Y,
+        foundation_camera::EYE_Z,
+        center_xz,
+    )
+}
+
+fn studio_camera_from_offsets(focus_y: f32, eye_y: f32, eye_z: f32, center_xz: Vec2) -> Transform {
+    let horizontal = Vec3::new(center_xz.x, 0.0, center_xz.y);
+    let focus = PORTRAIT_STAGE_OFFSET + horizontal + Vec3::new(0.0, focus_y, 0.0);
+    let eye = PORTRAIT_STAGE_OFFSET + horizontal + Vec3::new(0.0, eye_y, eye_z);
     Transform::from_translation(eye).looking_at(focus, Vec3::Y)
 }
 
