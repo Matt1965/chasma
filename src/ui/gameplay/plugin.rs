@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use bevy::ui::UiSystems;
 
+use crate::menu::MenuUiSystems;
 use crate::player::GameplayPresentationSystems;
 
 use super::hud::{
@@ -211,8 +212,12 @@ impl Plugin for GameplayUiPlugin {
         .add_systems(
             Update,
             (
-                sync_selected_unit_portrait_ui.after(sync_selected_unit_panel),
-                sync_squad_portrait_ui.after(sync_squad_panel),
+                sync_selected_unit_portrait_ui
+                    .after(sync_selected_unit_panel)
+                    .after(MenuUiSystems),
+                sync_squad_portrait_ui
+                    .after(sync_squad_panel)
+                    .after(MenuUiSystems),
             )
                 .in_set(GameplayUiSystems),
         )

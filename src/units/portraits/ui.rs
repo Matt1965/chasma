@@ -5,8 +5,8 @@ use bevy::ui::widget::{ImageNode, NodeImageMode};
 
 use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::ui::gameplay::{
-    SelectedUnitPortraitFallback, SquadEntryPortraitFallback, SquadEntryPortraitImage,
-    primary_selected_unit,
+    PlayerHudState, SelectedUnitPortraitFallback, SquadEntryPortraitFallback,
+    SquadEntryPortraitImage, primary_selected_unit,
 };
 use crate::units::input::SelectedUnits;
 
@@ -120,8 +120,10 @@ pub(crate) fn portrait_image_for_unit(
     }
 }
 
-/// Sync UI demand and portrait plate presentation.
+/// Shown portrait layers use [`Visibility::Inherited`]: [`Visibility::Visible`] would
+/// ignore a hidden [`crate::ui::gameplay::GameplayHudRoot`] ancestor (menu / pause).
 pub fn sync_selected_unit_portrait_ui(
+    hud: Res<PlayerHudState>,
     world_selection: Res<WorldSelectionState>,
     selection: Res<SelectedUnits>,
     cache: Res<UnitPortraitCache>,
@@ -150,7 +152,8 @@ pub fn sync_selected_unit_portrait_ui(
         &capture,
         primary,
     );
-    let show_portrait = cached_image.is_some()
+    let show_portrait = hud.visible
+        && cached_image.is_some()
         && (primary.is_some() || portrait_diagnostics_show_without_selection(step));
 
     trace.ui_image_id = cached_image.as_ref().map(|handle| handle.id());
@@ -163,7 +166,7 @@ pub fn sync_selected_unit_portrait_ui(
         if show_portrait {
             let handle = cached_image.unwrap();
             bind_portrait_image(&mut image, handle);
-            *image_visibility = Visibility::Visible;
+            *image_visibility = Visibility::Inherited;
         } else {
             *image_visibility = Visibility::Hidden;
         }
@@ -175,8 +178,10 @@ pub fn sync_selected_unit_portrait_ui(
         };
         *fallback_visibility = if show_portrait {
             Visibility::Hidden
+        } else if hud.visible {
+            Visibility::Inherited
         } else {
-            Visibility::Visible
+            Visibility::Hidden
         };
     }
 }
@@ -186,6 +191,7 @@ pub fn sync_selected_unit_portrait_ui(
 /// Roster portraits describe owned units, not the current selection, so they
 /// are never gated on what (if anything) is selected.
 pub fn sync_squad_portrait_ui(
+    hud: Res<PlayerHudState>,
     cache: Res<UnitPortraitCache>,
     capture: Res<UnitPortraitCaptureState>,
     lifecycle: Res<PortraitLifecycleProbe>,
@@ -205,26 +211,31 @@ pub fn sync_squad_portrait_ui(
             &capture,
             Some(slot.unit_id),
         );
-        if let Some(handle) = handle {
-            bind_portrait_image(&mut image, handle);
-            *image_visibility = Visibility::Visible;
+        if hud.visible {
+            if let Some(handle) = handle {
+                bind_portrait_image(&mut image, handle);
+                *image_visibility = Visibility::Inherited;
+            } else {
+                *image_visibility = Visibility::Hidden;
+            }
         } else {
             *image_visibility = Visibility::Hidden;
         }
     }
 
     for (slot, mut fallback_visibility) in widgets.p1().iter_mut() {
-        let show_letter = portrait_image_for_unit(
-            step,
-            &lifecycle,
-            &studio,
-            &cache,
-            &capture,
-            Some(slot.unit_id),
-        )
-        .is_none();
+        let show_letter = hud.visible
+            && portrait_image_for_unit(
+                step,
+                &lifecycle,
+                &studio,
+                &cache,
+                &capture,
+                Some(slot.unit_id),
+            )
+            .is_none();
         *fallback_visibility = if show_letter {
-            Visibility::Visible
+            Visibility::Inherited
         } else {
             Visibility::Hidden
         };
