@@ -1,6 +1,7 @@
 //! Bottom-left selected-object stats panel (P-UI1, BP1).
 
 use bevy::prelude::*;
+use crate::units::{SelectedUnitPortraitImage, spawn_portrait_plate_layers};
 
 use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::units::input::SelectedUnits;
@@ -45,7 +46,7 @@ pub(crate) struct SelectedUnitNameText;
 pub(crate) struct SelectedUnitSubtitleText;
 
 #[derive(Component, Debug)]
-pub(crate) struct SelectedUnitPortraitFallback;
+pub struct SelectedUnitPortraitFallback;
 
 #[derive(Component, Debug)]
 pub(crate) struct SelectedUnitNutritionRow;
@@ -278,16 +279,14 @@ pub fn spawn_selected_unit_panel(parent: &mut ChildSpawnerCommands<'_>) {
                     ..default()
                 })
                 .with_children(|row| {
-                    // Portrait fills most of the section height, as in the mockup.
+                    // Square portrait plate (edge resolved by HudViewportGeometry).
                     let portrait_radius = BorderRadius::all(Val::Px(6.0));
                     row.spawn((
                         SelectedUnitPortraitFrame,
                         Node {
                             width: Val::Px(geom.portrait_width),
-                            height: Val::Percent(88.0),
+                            height: Val::Px(geom.portrait_width),
                             padding: UiRect::all(Val::Px(2.0)),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
                             flex_shrink: 0.0,
                             border: UiRect::all(Val::Px(1.0)),
                             border_radius: portrait_radius,
@@ -300,20 +299,21 @@ pub fn spawn_selected_unit_panel(parent: &mut ChildSpawnerCommands<'_>) {
                             Node {
                                 width: Val::Percent(100.0),
                                 height: Val::Percent(100.0),
-                                justify_content: JustifyContent::Center,
-                                align_items: AlignItems::Center,
                                 border_radius: portrait_radius,
                                 ..default()
                             },
                             hud_inset_fill_style(),
                         ))
-                        .with_children(|portrait| {
-                            portrait.spawn((
+                        .with_children(|well| {
+                            spawn_portrait_plate_layers(
+                                well,
+                                portrait_radius,
+                                SelectedUnitPortraitImage,
                                 SelectedUnitPortraitFallback,
                                 Text::new("?"),
                                 hud_heading_font(),
                                 TextColor(TEXT_MUTED),
-                            ));
+                            );
                         });
                     });
                     row.spawn(Node {

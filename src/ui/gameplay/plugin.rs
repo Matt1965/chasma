@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use bevy::ui::UiSystems;
 
+use crate::menu::MenuUiSystems;
 use crate::player::GameplayPresentationSystems;
 
 use super::hud::{
@@ -58,6 +59,7 @@ use super::inventory::{
 use super::layout::setup_player_hud_layout;
 use super::player_hud_state::{PlayerHudState, sync_primary_selection};
 use super::selected_unit_panel::sync_selected_unit_panel;
+use crate::units::{sync_selected_unit_portrait_ui, sync_squad_portrait_ui};
 use super::selection_ui::{clear_gameplay_hud_dirty, sync_gameplay_ui_state};
 use super::settlement_workforce::{
     SettlementWorkforcePanelState, SettlementWorkforceScrollPlugin,
@@ -205,6 +207,18 @@ impl Plugin for GameplayUiPlugin {
                 sync_command_panel_buttons,
             )
                 .after(sync_gameplay_ui_state)
+                .in_set(GameplayUiSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                sync_selected_unit_portrait_ui
+                    .after(sync_selected_unit_panel)
+                    .after(MenuUiSystems),
+                sync_squad_portrait_ui
+                    .after(sync_squad_panel)
+                    .after(MenuUiSystems),
+            )
                 .in_set(GameplayUiSystems),
         )
         .add_systems(

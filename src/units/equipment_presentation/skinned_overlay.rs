@@ -15,6 +15,7 @@ pub fn finalize_skinned_equipment_overlays(
         Or<(
             With<crate::units::components::UnitSceneRoot>,
             With<crate::corpses::CorpseSceneRoot>,
+            With<crate::units::portraits::UnitPortraitSceneRoot>,
         )>,
     >,
     pending: Query<

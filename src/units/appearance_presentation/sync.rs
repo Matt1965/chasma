@@ -8,6 +8,7 @@ use bevy::prelude::*;
 
 use crate::corpses::CorpseSceneRoot;
 use crate::units::components::UnitSceneRoot;
+use crate::units::portraits::UnitPortraitSceneRoot;
 use crate::units::presentation::UnitPresentationAppearance;
 use crate::units::sync::UnitSyncOverrides;
 use crate::world::{
@@ -35,7 +36,7 @@ pub fn sync_unit_appearance_morphs(
             &UnitPresentationAppearance,
             Option<&UnitAppearanceMorphFingerprint>,
         ),
-        Or<(With<UnitSceneRoot>, With<CorpseSceneRoot>)>,
+        Or<(With<UnitSceneRoot>, With<CorpseSceneRoot>, With<UnitPortraitSceneRoot>)>,
     >,
     children: Query<&Children>,
 ) {

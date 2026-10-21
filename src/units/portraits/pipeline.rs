@@ -1,0 +1,767 @@
+//! Portrait capture queue and render-to-texture pipeline.
+
+use bevy::asset::LoadState;
+use bevy::camera::RenderTarget;
+use bevy::ecs::system::SystemParam;
+use bevy::mesh::skinning::SkinnedMesh;
+use bevy::prelude::*;
+
+use crate::camera::render_layers::PORTRAIT_RENDER_LAYER;
+use crate::units::components::UnitRenderMetadata;
+use crate::units::presentation::UnitPresentationAppearance;
+use crate::units::UnitSceneAssets;
+use crate::world::{
+    AppearanceProfileCatalog, EquipmentVisualCatalog, ItemCatalog, UnitCatalog, UnitId,
+    UnitRecord, WorldData, player_units, unit_visual_rotation, unit_visual_scale,
+};
+
+use super::cache::{PortraitAppearanceSignature, PortraitCaptureRequest, UnitPortraitCache};
+use super::components::{
+    UnitPortraitActor, UnitPortraitBoundsWait, UnitPortraitCamera, UnitPortraitFraming,
+    UnitPortraitFramingFallback, UnitPortraitFramingMeasured, UnitPortraitSceneRoot,
+    UnitPortraitStageRoot,
+};
+use super::equipment::{UnitPortraitEquipmentIndex, clear_portrait_equipment_for_actor};
+use super::diagnostics::{
+    portrait_diagnostic_step, portrait_diagnostics_block_cache,
+};
+use super::lifecycle_probe::{
+    portrait_lifecycle_blocks_production, note_production_finish_capture,
+};
+use super::framing::{
+    PORTRAIT_UNIT_YAW, count_actor_render_primitives, measure_actor_bounds,
+    portrait_camera_transform, portrait_fallback_body_height, portrait_framing_from_bounds,
+    portrait_generous_framing_from_bounds,
+};
+use super::resolve::{portrait_appearance_for_unit, portrait_render_key_str};
+use super::signature::portrait_signature_for_unit;
+use super::studio::{
+    PORTRAIT_USE_FIXED_STUDIO_CAMERA, new_portrait_render_target_image,
+    portrait_studio_camera_transform_head_at,
+};
+use crate::units::AnimationPlaybackPending;
+use super::studio_images::UnitPortraitStudioImages;
+
+const PORTRAIT_WARMUP_FRAMES: u32 = 10;
+const PORTRAIT_RENDER_SETTLE_FRAMES: u32 = 4;
+/// Frames to wait for skinned glTF meshes before using catalog height fallback framing.
+const PORTRAIT_BOUNDS_FALLBACK_FRAMES: u32 = 12;
+
+#[derive(SystemParam)]
+pub struct PortraitCaptureWorldParams<'w> {
+    pub demand: Res<'w, UnitPortraitUiDemand>,
+    pub studio: Res<'w, UnitPortraitStudioImages>,
+    pub cache: ResMut<'w, UnitPortraitCache>,
+    pub capture: ResMut<'w, UnitPortraitCaptureState>,
+    pub images: ResMut<'w, Assets<Image>>,
+    pub world: Res<'w, WorldData>,
+    pub unit_catalog: Res<'w, UnitCatalog>,
+    pub appearance_profiles: Res<'w, AppearanceProfileCatalog>,
+    pub scene_assets: ResMut<'w, UnitSceneAssets>,
+    pub asset_server: Res<'w, AssetServer>,
+    pub equipment_index: ResMut<'w, UnitPortraitEquipmentIndex>,
+}
+
+#[derive(SystemParam)]
+pub struct PortraitCaptureActorQueries<'w, 's> {
+    pub stage_roots: Query<'w, 's, Entity, With<UnitPortraitStageRoot>>,
+    pub cameras: Query<'w, 's, &'static mut RenderTarget, With<UnitPortraitCamera>>,
+    pub actors: Query<'w, 's, Entity, With<UnitPortraitActor>>,
+    pub actor_roots: Query<'w, 's, Entity, With<UnitPortraitSceneRoot>>,
+    pub framing_ready: Query<'w, 's, &'static UnitPortraitFraming>,
+    pub framing_measured: Query<'w, 's, &'static UnitPortraitFramingMeasured>,
+    pub framing_fallback: Query<'w, 's, &'static UnitPortraitFramingFallback>,
+    pub children: Query<'w, 's, &'static Children>,
+    pub mesh3d: Query<'w, 's, &'static Mesh3d>,
+    pub skinned: Query<'w, 's, &'static SkinnedMesh>,
+    pub global_transforms: Query<'w, 's, &'static GlobalTransform>,
+    pub meshes: Res<'w, Assets<Mesh>>,
+    pub equipment_visuals: Query<'w, 's, Entity, With<crate::units::equipment_presentation::UnitEquipmentVisual>>,
+    pub animation_pending: Query<'w, 's, Entity, With<AnimationPlaybackPending>>,
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct UnitPortraitCaptureState {
+    pub active_request: Option<PortraitCaptureRequest>,
+    pub actor_entity: Option<Entity>,
+    pub target_image: Option<Handle<Image>>,
+    pub warmup_frames_remaining: u32,
+    pub render_settle_frames: u32,
+    /// Portrait camera has been aimed using [`UnitPortraitFraming`] this capture.
+    pub camera_aligned: bool,
+    /// Measured mesh bounds were observed on the actor (not fallback-only).
+    pub measured_bounds_ready: bool,
+    /// Wait for GPU render after settle before reading the render target (PostUpdate runs before Render).
+    pub deferred_commit: bool,
+    pub deferred_commit_armed: bool,
+}
+
+/// Primary units that need fresh portraits (HUD writes here each frame).
+#[derive(Resource, Debug, Default)]
+pub struct UnitPortraitUiDemand {
+    pub primary_unit: Option<UnitId>,
+}
+
+pub fn maintain_portrait_cache_requests(
+    lifecycle: Res<super::lifecycle_probe::PortraitLifecycleProbe>,
+    capture: Res<UnitPortraitCaptureState>,
+    demand: Res<UnitPortraitUiDemand>,
+    world: Res<WorldData>,
+    unit_catalog: Res<UnitCatalog>,
+    appearance_profiles: Res<AppearanceProfileCatalog>,
+    items: Res<ItemCatalog>,
+    visuals: Res<EquipmentVisualCatalog>,
+    mut cache: ResMut<UnitPortraitCache>,
+) {
+    if portrait_lifecycle_blocks_production(&lifecycle) {
+        return;
+    }
+    if portrait_diagnostics_block_cache(portrait_diagnostic_step()) {
+        return;
+    }
+    cache.max_entries = UnitPortraitCache::DEFAULT_CAPACITY;
+    cache.prune_missing_units(|id| world.get_unit(id).is_some());
+
+    let mut roster = player_units(&world);
+    if let Some(primary) = demand.primary_unit {
+        roster.retain(|id| *id != primary);
+        roster.insert(0, primary);
+    }
+
+    for unit_id in roster {
+        maintain_portrait_request_for_unit(
+            unit_id,
+            &world,
+            &unit_catalog,
+            &appearance_profiles,
+            &items,
+            &visuals,
+            &capture,
+            &mut cache,
+        );
+    }
+}
+
+fn maintain_portrait_request_for_unit(
+    unit_id: UnitId,
+    world: &WorldData,
+    unit_catalog: &UnitCatalog,
+    appearance_profiles: &AppearanceProfileCatalog,
+    items: &ItemCatalog,
+    visuals: &EquipmentVisualCatalog,
+    capture: &UnitPortraitCaptureState,
+    cache: &mut UnitPortraitCache,
+) {
+    let Some(unit) = world.get_unit(unit_id) else {
+        cache.remove_unit(unit_id);
+        return;
+    };
+    let Some(signature) = portrait_signature_for_unit(
+        world,
+        unit,
+        unit_catalog,
+        appearance_profiles,
+        items,
+        visuals,
+    ) else {
+        return;
+    };
+    if cache.entry_matches(unit_id, &signature) {
+        return;
+    }
+    if capture
+        .active_request
+        .is_some_and(|request| request.unit_id == unit_id && request.signature == signature)
+    {
+        return;
+    }
+    cache.request_capture(unit_id, signature);
+}
+
+pub fn update_portrait_actor_framing(
+    unit_catalog: Res<UnitCatalog>,
+    mut commands: Commands,
+    actors: Query<
+        (
+            Entity,
+            &UnitRenderMetadata,
+            Option<&UnitPresentationAppearance>,
+            &GlobalTransform,
+            Option<&UnitPortraitBoundsWait>,
+        ),
+        (With<UnitPortraitSceneRoot>, Without<UnitPortraitFraming>),
+    >,
+    children: Query<&Children>,
+    mesh3d: Query<&Mesh3d>,
+    skinned: Query<&SkinnedMesh>,
+    meshes: Res<Assets<Mesh>>,
+    global_transforms: Query<&GlobalTransform>,
+) {
+    let step = portrait_diagnostic_step();
+    for (entity, metadata, presentation, actor_global, bounds_wait) in &actors {
+        let Some(definition) = unit_catalog.get(&metadata.definition_id) else {
+            continue;
+        };
+        if count_actor_render_primitives(entity, &children, &mesh3d, &skinned) == 0 {
+            continue;
+        }
+        let height_scale = presentation
+            .map(|value| value.appearance.height_scale)
+            .unwrap_or(1.0);
+
+        let (center, height, measured) = if let Some(bounds) = measure_actor_bounds(
+            entity,
+            &children,
+            &mesh3d,
+            &meshes,
+            &global_transforms,
+        ) {
+            (bounds.0, bounds.1, true)
+        } else {
+            let waited = bounds_wait.map(|value| value.frames).unwrap_or(0);
+            if waited < PORTRAIT_BOUNDS_FALLBACK_FRAMES {
+                commands
+                    .entity(entity)
+                    .insert(UnitPortraitBoundsWait { frames: waited + 1 });
+                continue;
+            }
+            let body_height = portrait_fallback_body_height(definition, height_scale);
+            let center = actor_global.transform_point(Vec3::new(0.0, body_height * 0.5, 0.0));
+            (center, body_height, false)
+        };
+
+        let framing = if step == 5 {
+            portrait_generous_framing_from_bounds(center, height)
+        } else {
+            portrait_framing_from_bounds(center, height, definition)
+        };
+        commands.entity(entity).insert(framing);
+        if measured {
+            commands.entity(entity).insert(UnitPortraitFramingMeasured);
+        } else {
+            commands.entity(entity).insert(UnitPortraitFramingFallback);
+        }
+        commands.entity(entity).remove::<UnitPortraitBoundsWait>();
+    }
+}
+
+pub fn sync_portrait_capture_camera(
+    mut capture: ResMut<UnitPortraitCaptureState>,
+    actors: Query<&UnitPortraitFraming, With<UnitPortraitSceneRoot>>,
+    mut cameras: Query<&mut Transform, With<UnitPortraitCamera>>,
+) {
+    if capture.active_request.is_none() {
+        return;
+    }
+    if capture.actor_entity.is_none() {
+        return;
+    }
+    let actor = capture.actor_entity.unwrap();
+    let Ok(framing) = actors.get(actor) else {
+        return;
+    };
+    let transform = if PORTRAIT_USE_FIXED_STUDIO_CAMERA {
+        portrait_studio_camera_transform_head_at(Vec2::new(framing.focus.x, framing.focus.z))
+    } else {
+        portrait_camera_transform(framing)
+    };
+    for mut camera_transform in &mut cameras {
+        *camera_transform = transform;
+    }
+    if !capture.camera_aligned {
+        capture.camera_aligned = true;
+        capture.warmup_frames_remaining = PORTRAIT_WARMUP_FRAMES;
+        capture.render_settle_frames = 0;
+    }
+}
+
+pub fn drive_portrait_capture_pipeline(
+    mut commands: Commands,
+    mut world_params: PortraitCaptureWorldParams,
+    mut queries: PortraitCaptureActorQueries,
+    mut lifecycle: ResMut<super::lifecycle_probe::PortraitLifecycleProbe>,
+    mut portrait_cameras: Query<&mut Camera, With<UnitPortraitCamera>>,
+) {
+    if portrait_lifecycle_blocks_production(&lifecycle) {
+        return;
+    }
+    let step = portrait_diagnostic_step();
+    if portrait_diagnostics_block_cache(step) {
+        if step >= 5 {
+            drive_diagnostic_live_unit(
+                &mut commands,
+                &world_params.demand,
+                &world_params.studio,
+                &mut world_params.capture,
+                &world_params.world,
+                &world_params.unit_catalog,
+                &world_params.appearance_profiles,
+                &mut world_params.scene_assets,
+                &world_params.asset_server,
+                &queries.stage_roots,
+                &mut queries.cameras,
+                &queries.children,
+                &queries.mesh3d,
+                &queries.skinned,
+                &mut world_params.equipment_index,
+                &queries.equipment_visuals,
+                step,
+            );
+        }
+        return;
+    }
+
+    if world_params.capture.active_request.is_none() {
+        begin_next_capture(
+            &mut commands,
+            &mut world_params.cache,
+            &mut world_params.capture,
+            &mut world_params.images,
+            &world_params.world,
+            &world_params.unit_catalog,
+            &world_params.appearance_profiles,
+            &mut world_params.scene_assets,
+            &world_params.asset_server,
+            &queries.stage_roots,
+            &mut queries.cameras,
+        );
+        return;
+    }
+
+    let request = world_params.capture.active_request.unwrap();
+
+    if world_params.capture.deferred_commit {
+        if !world_params.capture.deferred_commit_armed {
+            world_params.capture.deferred_commit_armed = true;
+            return;
+        }
+        world_params.capture.deferred_commit = false;
+        world_params.capture.deferred_commit_armed = false;
+        let image = world_params.capture.target_image.clone().unwrap();
+        let committed = world_params.cache.commit_capture(
+            request.unit_id,
+            request.generation,
+            request.signature,
+            image,
+        );
+        if committed {
+            info!(
+                "portrait capture committed unit={:?} image={:?} primitives={}",
+                request.unit_id,
+                world_params.capture.target_image.as_ref().map(|h| h.id()),
+                count_actor_render_primitives(
+                    world_params.capture.actor_entity.unwrap(),
+                    &queries.children,
+                    &queries.mesh3d,
+                    &queries.skinned,
+                ),
+            );
+        }
+        finish_capture(
+            &mut commands,
+            &mut world_params.capture,
+            &mut world_params.equipment_index,
+            &queries.equipment_visuals,
+            committed,
+            &mut world_params.cache,
+            &mut lifecycle,
+            &mut portrait_cameras,
+        );
+        return;
+    }
+
+    if world_params.world.get_unit(request.unit_id).is_none() {
+        finish_capture(
+            &mut commands,
+            &mut world_params.capture,
+            &mut world_params.equipment_index,
+            &queries.equipment_visuals,
+            false,
+            &mut world_params.cache,
+            &mut lifecycle,
+            &mut portrait_cameras,
+        );
+        return;
+    }
+
+    let Some(actor_entity) = world_params.capture.actor_entity else {
+        return;
+    };
+    if queries.actors.get(actor_entity).is_err() || queries.actor_roots.get(actor_entity).is_err() {
+        finish_capture(
+            &mut commands,
+            &mut world_params.capture,
+            &mut world_params.equipment_index,
+            &queries.equipment_visuals,
+            false,
+            &mut world_params.cache,
+            &mut lifecycle,
+            &mut portrait_cameras,
+        );
+        return;
+    }
+
+    if !PORTRAIT_USE_FIXED_STUDIO_CAMERA && queries.framing_ready.get(actor_entity).is_err() {
+        return;
+    }
+
+    if !world_params.capture.camera_aligned {
+        return;
+    }
+
+    if queries.animation_pending.get(actor_entity).is_ok() {
+        return;
+    }
+
+    if queries.framing_measured.get(actor_entity).is_ok() {
+        world_params.capture.measured_bounds_ready = true;
+    } else if measure_actor_bounds(
+        actor_entity,
+        &queries.children,
+        &queries.mesh3d,
+        &queries.meshes,
+        &queries.global_transforms,
+    )
+    .is_some()
+    {
+        world_params.capture.measured_bounds_ready = true;
+    }
+
+    if count_actor_render_primitives(
+        actor_entity,
+        &queries.children,
+        &queries.mesh3d,
+        &queries.skinned,
+    ) == 0
+    {
+        return;
+    }
+
+    if world_params.capture.warmup_frames_remaining > 0 {
+        world_params.capture.warmup_frames_remaining -= 1;
+        if world_params.capture.warmup_frames_remaining == 0 {
+            world_params.capture.render_settle_frames = PORTRAIT_RENDER_SETTLE_FRAMES;
+        }
+        return;
+    }
+
+    if world_params.capture.render_settle_frames > 0 {
+        world_params.capture.render_settle_frames -= 1;
+        if world_params.capture.render_settle_frames > 0 {
+            return;
+        }
+    }
+
+    if !PORTRAIT_USE_FIXED_STUDIO_CAMERA {
+        let framing_confirmed = queries.framing_measured.get(actor_entity).is_ok()
+            || queries.framing_fallback.get(actor_entity).is_ok();
+        if !framing_confirmed {
+            return;
+        }
+        if !world_params.capture.measured_bounds_ready
+            && queries.framing_fallback.get(actor_entity).is_err()
+        {
+            world_params.capture.render_settle_frames = PORTRAIT_RENDER_SETTLE_FRAMES;
+            return;
+        }
+    }
+
+    world_params.capture.deferred_commit = true;
+}
+
+fn begin_next_capture(
+    commands: &mut Commands,
+    cache: &mut UnitPortraitCache,
+    capture: &mut UnitPortraitCaptureState,
+    images: &mut Assets<Image>,
+    world: &WorldData,
+    unit_catalog: &UnitCatalog,
+    appearance_profiles: &AppearanceProfileCatalog,
+    scene_assets: &mut UnitSceneAssets,
+    asset_server: &AssetServer,
+    stage_roots: &Query<Entity, With<UnitPortraitStageRoot>>,
+    cameras: &mut Query<&mut RenderTarget, With<UnitPortraitCamera>>,
+) {
+    let Some(request) = cache.pop_next_request() else {
+        return;
+    };
+    let Some(parent) = stage_roots.iter().next() else {
+        cache.coalesce_queue(request.unit_id, request.signature, request.generation);
+        return;
+    };
+    let Some(unit) = world.get_unit(request.unit_id) else {
+        return;
+    };
+    let Some(definition) = unit_catalog.get(&unit.definition_id) else {
+        cache.coalesce_queue(request.unit_id, request.signature, request.generation);
+        return;
+    };
+    let Some(render_key_str) =
+        portrait_render_key_str(unit, definition, appearance_profiles)
+    else {
+        cache.coalesce_queue(request.unit_id, request.signature, request.generation);
+        return;
+    };
+    let Some(scene) = scene_assets
+        .ensure_scene_for_render_key(&render_key_str, asset_server)
+    else {
+        scene_assets.log_missing_once(&render_key_str);
+        cache.coalesce_queue(request.unit_id, request.signature, request.generation);
+        return;
+    };
+    if !matches!(asset_server.get_load_state(&scene), Some(LoadState::Loaded)) {
+        cache.coalesce_queue(request.unit_id, request.signature, request.generation);
+        return;
+    }
+
+    let handle = new_portrait_render_target_image(images);
+    for mut target in cameras.iter_mut() {
+        *target = RenderTarget::Image(handle.clone().into());
+    }
+
+    let appearance = portrait_appearance_for_unit(unit, definition, appearance_profiles);
+    let height_scale = appearance.as_ref().map(|value| value.height_scale).unwrap_or(1.0);
+    let visual_scale = unit_visual_scale(definition, height_scale);
+    let facing = unit_visual_rotation(definition, Quat::from_rotation_y(PORTRAIT_UNIT_YAW));
+
+    let mut actor = commands.spawn((
+        UnitPortraitActor {
+            unit_id: request.unit_id,
+            request_generation: request.generation,
+        },
+        UnitRenderMetadata {
+            definition_id: unit.definition_id.clone(),
+        },
+        UnitPortraitSceneRoot,
+        SceneRoot(scene),
+        Transform {
+            translation: Vec3::ZERO,
+            rotation: facing,
+            scale: visual_scale,
+        },
+        Visibility::default(),
+        PORTRAIT_RENDER_LAYER,
+    ));
+    if let Some(appearance) = appearance {
+        actor.insert(UnitPresentationAppearance { appearance });
+    }
+    let actor = actor.id();
+    commands.entity(parent).add_child(actor);
+
+    capture.active_request = Some(request);
+    capture.actor_entity = Some(actor);
+    capture.target_image = Some(handle);
+    capture.warmup_frames_remaining = 0;
+    capture.render_settle_frames = 0;
+    capture.camera_aligned = false;
+    capture.measured_bounds_ready = false;
+    capture.deferred_commit = false;
+    capture.deferred_commit_armed = false;
+}
+
+/// Ends an in-flight capture. Portrait camera is deactivated before actor despawn so a later
+/// render cannot clear the committed [`Image`] (see lifecycle probe comparison A vs B).
+fn finish_capture(
+    commands: &mut Commands,
+    capture: &mut UnitPortraitCaptureState,
+    equipment_index: &mut UnitPortraitEquipmentIndex,
+    equipment_visuals: &Query<Entity, With<crate::units::equipment_presentation::UnitEquipmentVisual>>,
+    committed: bool,
+    cache: &mut UnitPortraitCache,
+    lifecycle: &mut super::lifecycle_probe::PortraitLifecycleProbe,
+    cameras: &mut Query<&mut Camera, With<UnitPortraitCamera>>,
+) {
+    let camera_active = cameras.iter().next().is_some_and(|camera| camera.is_active);
+    let published_image = capture.target_image.as_ref().map(|handle| handle.id());
+    note_production_finish_capture(lifecycle, committed, published_image, camera_active);
+
+    for mut camera in cameras.iter_mut() {
+        camera.is_active = false;
+    }
+
+    if let Some(actor) = capture.actor_entity {
+        clear_portrait_equipment_for_actor(commands, actor, equipment_index, equipment_visuals);
+        if commands.get_entity(actor).is_ok() {
+            commands.entity(actor).despawn();
+        }
+    }
+    if !committed {
+        if let Some(request) = capture.active_request {
+            cache.coalesce_queue(request.unit_id, request.signature, request.generation);
+        }
+    }
+    capture.active_request = None;
+    capture.actor_entity = None;
+    capture.target_image = None;
+    capture.warmup_frames_remaining = 0;
+    capture.render_settle_frames = 0;
+    capture.camera_aligned = false;
+    capture.measured_bounds_ready = false;
+    capture.deferred_commit = false;
+    capture.deferred_commit_armed = false;
+}
+
+/// Tear down production capture without committing (lifecycle probe must not render real units).
+pub fn abort_inflight_portrait_capture(
+    commands: &mut Commands,
+    capture: &mut UnitPortraitCaptureState,
+    equipment_index: &mut UnitPortraitEquipmentIndex,
+    equipment_visuals: &Query<Entity, With<crate::units::equipment_presentation::UnitEquipmentVisual>>,
+    cache: &mut UnitPortraitCache,
+) {
+    if capture.actor_entity.is_none() && capture.active_request.is_none() {
+        return;
+    }
+    if let Some(actor) = capture.actor_entity {
+        clear_portrait_equipment_for_actor(commands, actor, equipment_index, equipment_visuals);
+        if commands.get_entity(actor).is_ok() {
+            commands.entity(actor).despawn();
+        }
+    }
+    if let Some(request) = capture.active_request {
+        cache.coalesce_queue(request.unit_id, request.signature, request.generation);
+    }
+    capture.active_request = None;
+    capture.actor_entity = None;
+    capture.target_image = None;
+    capture.warmup_frames_remaining = 0;
+    capture.render_settle_frames = 0;
+    capture.camera_aligned = false;
+    capture.measured_bounds_ready = false;
+    capture.deferred_commit = false;
+    capture.deferred_commit_armed = false;
+}
+
+pub fn suspend_portrait_capture_for_lifecycle_probe(
+    probe: Res<super::lifecycle_probe::PortraitLifecycleProbe>,
+    mut commands: Commands,
+    mut capture: ResMut<UnitPortraitCaptureState>,
+    mut equipment_index: ResMut<UnitPortraitEquipmentIndex>,
+    equipment_visuals: Query<Entity, With<crate::units::equipment_presentation::UnitEquipmentVisual>>,
+    mut cache: ResMut<UnitPortraitCache>,
+) {
+    if probe.stage == 0 {
+        return;
+    }
+    abort_inflight_portrait_capture(
+        &mut commands,
+        &mut capture,
+        &mut equipment_index,
+        &equipment_visuals,
+        &mut cache,
+    );
+}
+
+fn drive_diagnostic_live_unit(
+    commands: &mut Commands,
+    demand: &UnitPortraitUiDemand,
+    studio: &UnitPortraitStudioImages,
+    capture: &mut UnitPortraitCaptureState,
+    world: &WorldData,
+    unit_catalog: &UnitCatalog,
+    appearance_profiles: &AppearanceProfileCatalog,
+    scene_assets: &mut UnitSceneAssets,
+    asset_server: &AssetServer,
+    stage_roots: &Query<Entity, With<UnitPortraitStageRoot>>,
+    cameras: &mut Query<&mut RenderTarget, With<UnitPortraitCamera>>,
+    children: &Query<&Children>,
+    mesh3d: &Query<&Mesh3d>,
+    skinned: &Query<&SkinnedMesh>,
+    equipment_index: &mut UnitPortraitEquipmentIndex,
+    equipment_visuals: &Query<Entity, With<crate::units::equipment_presentation::UnitEquipmentVisual>>,
+    step: u8,
+) {
+    let Some(unit_id) = demand.primary_unit else {
+        if let Some(actor) = capture.actor_entity {
+            clear_portrait_equipment_for_actor(commands, actor, equipment_index, equipment_visuals);
+            commands.entity(actor).despawn();
+            capture.actor_entity = None;
+        }
+        return;
+    };
+    for mut target in cameras.iter_mut() {
+        *target = RenderTarget::Image(studio.live_target.clone().into());
+    }
+    if let Some(actor) = capture.actor_entity {
+        if capture
+            .active_request
+            .is_some_and(|request| request.unit_id == unit_id)
+        {
+            let _ = count_actor_render_primitives(actor, children, mesh3d, skinned);
+            return;
+        }
+        clear_portrait_equipment_for_actor(commands, actor, equipment_index, equipment_visuals);
+        commands.entity(actor).despawn();
+        capture.actor_entity = None;
+    }
+    let Some(parent) = stage_roots.iter().next() else {
+        return;
+    };
+    let Some(unit) = world.get_unit(unit_id) else {
+        return;
+    };
+    let Some(definition) = unit_catalog.get(&unit.definition_id) else {
+        return;
+    };
+    let Some(render_key_str) = portrait_render_key_str(unit, definition, appearance_profiles)
+    else {
+        return;
+    };
+    let Some(scene) = scene_assets.ensure_scene_for_render_key(&render_key_str, asset_server)
+    else {
+        return;
+    };
+    if !matches!(asset_server.get_load_state(&scene), Some(LoadState::Loaded)) {
+        return;
+    }
+    let appearance = portrait_appearance_for_unit(unit, definition, appearance_profiles);
+    let height_scale = appearance.as_ref().map(|value| value.height_scale).unwrap_or(1.0);
+    let visual_scale = unit_visual_scale(definition, height_scale);
+    let facing = unit_visual_rotation(definition, Quat::from_rotation_y(PORTRAIT_UNIT_YAW));
+    let mut actor_cmd = commands.spawn((
+        UnitPortraitActor {
+            unit_id,
+            request_generation: 0,
+        },
+        UnitRenderMetadata {
+            definition_id: unit.definition_id.clone(),
+        },
+        UnitPortraitSceneRoot,
+        SceneRoot(scene),
+        Transform {
+            translation: Vec3::ZERO,
+            rotation: facing,
+            scale: visual_scale,
+        },
+        Visibility::default(),
+        PORTRAIT_RENDER_LAYER,
+    ));
+    if let Some(appearance) = appearance {
+        actor_cmd.insert(UnitPresentationAppearance { appearance });
+    }
+    let actor = actor_cmd.id();
+    commands.entity(parent).add_child(actor);
+    capture.actor_entity = Some(actor);
+    capture.active_request = Some(PortraitCaptureRequest {
+        unit_id,
+        signature: PortraitAppearanceSignature {
+            unit_id,
+            digest: step as u64,
+        },
+        generation: 0,
+    });
+    capture.target_image = Some(studio.live_target.clone());
+    capture.warmup_frames_remaining = 0;
+    capture.render_settle_frames = 1;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::studio_images::new_portrait_render_target;
+    use super::super::studio::PORTRAIT_TEXTURE_SIZE;
+
+    #[test]
+    fn portrait_texture_size_is_256() {
+        assert_eq!(PORTRAIT_TEXTURE_SIZE, 256);
+    }
+}

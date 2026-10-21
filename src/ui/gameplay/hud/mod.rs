@@ -23,7 +23,8 @@ pub use depth::{
 };
 pub use frames::{spawn_hud_plate_frames, sync_hud_plate_frames};
 pub use geometry::{
-    HudViewportGeometry,
+    HUD_ROSTER_CARD_BORDER_PX, HUD_ROSTER_CARD_PADDING_PX, HUD_ROSTER_CARD_ROW_GAP_PX,
+    HUD_ROSTER_HEADER_MARGIN_TOP_PX, HUD_ROSTER_LIST_MARGIN_BOTTOM_PX, HudViewportGeometry,
     apply_hud_viewport_geometry, measure_hud_viewport_geometry, visible_roster_card_count,
 };
 
