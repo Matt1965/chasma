@@ -76,6 +76,11 @@ pub fn interaction_menu_option_selectable(
     target_unit_id: UnitId,
     kind: DialogueActionKind,
 ) -> bool {
+    if is_player_to_player_trade_pair(world, actor_unit_id, target_unit_id)
+        && kind == DialogueActionKind::Trade
+    {
+        return true;
+    }
     if uses_player_trade_only_menu(world, actor_unit_id, target_unit_id) {
         return kind == DialogueActionKind::Trade;
     }

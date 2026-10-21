@@ -58,6 +58,7 @@ pub fn spawn_dialogue_panel(mut commands: Commands) {
             shell_node,
             shell_bg,
             shell_border,
+            Visibility::Hidden,
             ZIndex(412),
         ))
         .with_children(|root| {
@@ -120,15 +121,20 @@ pub fn spawn_dialogue_panel(mut commands: Commands) {
 
 pub fn sync_dialogue_panel_visibility(
     dialogue: Res<DialogueSessionState>,
-    mut roots: Query<&mut Node, With<DialoguePanelRoot>>,
+    mut roots: Query<(&mut Node, &mut Visibility), With<DialoguePanelRoot>>,
 ) {
-    let display = if dialogue.open {
-        Display::Flex
-    } else {
-        Display::None
-    };
-    for mut node in &mut roots {
-        node.display = display;
+    let visible = dialogue.open;
+    for (mut node, mut visibility) in &mut roots {
+        node.display = if visible {
+            Display::Flex
+        } else {
+            Display::None
+        };
+        *visibility = if visible {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
     }
 }
 

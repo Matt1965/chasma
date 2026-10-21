@@ -88,7 +88,6 @@ impl CollectUnitInputParams<'_> {
         self.menu_block.as_ref().is_some_and(|b| b.blocks())
             || gameplay_input_blocked_by_hud(&self.hud_hover)
             || self.build_mode.blocks_gameplay_world_intents()
-            || self.unit_interaction_menu.blocks_world_input()
     }
 }
 

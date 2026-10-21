@@ -11,12 +11,15 @@ pub enum FloatingGameplayWindowId {
     SettlementWorkforce,
     Dialogue,
     Trade,
+    /// Second unit inventory during player-to-player transfer (paired with `UnitInventory`).
+    PeerUnitInventory,
 }
 
 impl FloatingGameplayWindowId {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self::BuildingMenu,
         Self::UnitInventory,
+        Self::PeerUnitInventory,
         Self::UnitSkills,
         Self::SettlementWorkforce,
         Self::Dialogue,
@@ -31,6 +34,7 @@ impl FloatingGameplayWindowId {
             Self::SettlementWorkforce => "Settlement Workforce",
             Self::Dialogue => "Dialogue",
             Self::Trade => "Trade",
+            Self::PeerUnitInventory => "Unit Inventory",
         }
     }
 }

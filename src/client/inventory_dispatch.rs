@@ -72,7 +72,7 @@ fn dispatch_one(
 ) -> InventoryIntentStatus {
     match intent {
         InventoryIntent::Open(mode) => {
-            apply_open_mode(ui, world, mode);
+            apply_inventory_open_mode(ui, world, mode);
             InventoryIntentStatus::Applied
         }
         InventoryIntent::Close => {
@@ -747,7 +747,11 @@ fn find_corpse_for_inventory(world: &WorldData, inventory_id: InventoryId) -> Op
     None
 }
 
-fn apply_open_mode(ui: &mut InventoryUiState, world: &WorldData, mode: &InventoryOpenMode) {
+pub(crate) fn apply_inventory_open_mode(
+    ui: &mut InventoryUiState,
+    world: &WorldData,
+    mode: &InventoryOpenMode,
+) {
     let mut state = InventoryUiState::default();
     state.open_mode(mode.clone());
     match mode {
@@ -817,13 +821,16 @@ fn reconcile_open_inventories(ui: &mut InventoryUiState, world: &WorldData) {
             return;
         }
     }
-    if let Some(peer) = ui.peer_unit_id {
+    if ui.peer_unit_id.is_some() {
+        let peer = ui.peer_unit_id.unwrap();
         let peer_ok = world.get_unit(peer).is_some_and(crate::world::is_unit_alive);
         let peer_inventory = world.get_unit(peer).and_then(|u| u.inventory_id);
         if !peer_ok || peer_inventory != ui.right_inventory_id {
             ui.feedback_message = "Transfer partner unavailable.".into();
             ui.close();
+            return;
         }
+        crate::client::reconcile_peer_transfer_session(ui, world);
     }
 }
 

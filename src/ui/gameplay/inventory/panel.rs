@@ -39,6 +39,18 @@ pub struct InventoryPanelRoot;
 pub struct InventoryPanelCloseButton;
 
 #[derive(Component, Debug)]
+pub struct PeerInventoryPanelRoot;
+
+#[derive(Component, Debug)]
+pub struct PeerInventoryPanelCloseButton;
+
+#[derive(Component, Debug)]
+pub struct PeerInventoryScrollContent;
+
+#[derive(Component, Debug)]
+pub struct PeerInventoryPanelTitleText;
+
+#[derive(Component, Debug)]
 pub struct InventoryAutoSortButton {
     pub inventory_id: InventoryId,
 }
@@ -90,6 +102,7 @@ pub fn spawn_inventory_panel(mut commands: Commands) {
             shell_node,
             shell_bg,
             shell_border,
+            Visibility::Hidden,
             ZIndex(411),
         ))
         .with_children(|root| {
@@ -130,6 +143,62 @@ pub fn spawn_inventory_panel(mut commands: Commands) {
         });
 }
 
+pub fn spawn_peer_inventory_panel(mut commands: Commands) {
+    let (shell_bg, shell_border) = floating_window_shell_colors();
+    let mut shell_node = floating_window_shell_node();
+    shell_node.width = Val::Auto;
+    shell_node.min_width = Val::Px(520.0);
+    shell_node.max_width = Val::Px(520.0);
+    shell_node.max_height = Val::Percent(82.0);
+
+    commands
+        .spawn((
+            PeerInventoryPanelRoot,
+            FloatingGameplayWindowRoot {
+                id: FloatingGameplayWindowId::PeerUnitInventory,
+            },
+            PlayerHudUi,
+            Button,
+            Interaction::None,
+            FocusPolicy::Block,
+            shell_node,
+            shell_bg,
+            shell_border,
+            Visibility::Hidden,
+            ZIndex(412),
+        ))
+        .with_children(|root| {
+            spawn_floating_window_inner_frame(root, |frame| {
+                spawn_floating_title_rail(
+                    frame,
+                    FloatingGameplayWindowId::PeerUnitInventory,
+                    |title| {
+                        title.spawn((
+                            PeerInventoryPanelTitleText,
+                            Text::new("Unit Inventory"),
+                            panel_title_font(),
+                            TextColor(TEXT_PRIMARY),
+                        ));
+                    },
+                    Some((PeerInventoryPanelCloseButton, "Close")),
+                );
+                spawn_floating_window_body(frame, |body| {
+                    body.spawn((
+                        Node {
+                            width: Val::Percent(100.0),
+                            flex_direction: FlexDirection::Row,
+                            column_gap: Val::Px(10.0),
+                            align_items: AlignItems::FlexStart,
+                            overflow: Overflow::scroll(),
+                            ..default()
+                        },
+                        PeerInventoryScrollContent,
+                    ));
+                });
+            });
+        });
+}
+
 #[derive(Component, Debug)]
 pub(crate) struct InventoryDualPaneRow;
 
@@ -138,13 +207,38 @@ pub(crate) struct InventoryPaneContainer;
 
 pub fn sync_inventory_panel_visibility(
     ui: Res<InventoryUiState>,
-    mut query: Query<&mut Node, With<InventoryPanelRoot>>,
+    mut query: Query<(&mut Node, &mut Visibility), With<InventoryPanelRoot>>,
 ) {
-    for mut node in &mut query {
-        node.display = if ui.open {
+    let visible = ui.open;
+    for (mut node, mut visibility) in &mut query {
+        node.display = if visible {
             Display::Flex
         } else {
             Display::None
+        };
+        *visibility = if visible {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
+}
+
+pub fn sync_peer_inventory_panel_visibility(
+    ui: Res<InventoryUiState>,
+    mut query: Query<(&mut Node, &mut Visibility), With<PeerInventoryPanelRoot>>,
+) {
+    let visible = ui.open && ui.peer_unit_id.is_some();
+    for (mut node, mut visibility) in &mut query {
+        node.display = if visible {
+            Display::Flex
+        } else {
+            Display::None
+        };
+        *visibility = if visible {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
         };
     }
 }
@@ -321,7 +415,10 @@ pub fn sync_inventory_panel_contents(
                         .unwrap_or("Select an item for details."),
                 );
             });
-        if ui.treasury_id.is_some() || ui.right_inventory_id.is_some() || ui.pile_id.is_some() {
+        let show_secondary_column = ui.treasury_id.is_some()
+            || ui.pile_id.is_some()
+            || (ui.right_inventory_id.is_some() && ui.peer_unit_id.is_none());
+        if show_secondary_column {
             main_row
                 .spawn((
                     Node {
@@ -409,6 +506,116 @@ pub fn sync_inventory_panel_contents(
     });
 }
 
+pub fn sync_peer_inventory_panel_contents(
+    mut ui: ResMut<InventoryUiState>,
+    world: Res<WorldData>,
+    items: Res<ItemCatalog>,
+    categories: Res<ItemCategoryCatalog>,
+    profiles: Res<InventoryProfileCatalog>,
+    mut commands: Commands,
+    scroll_query: Query<Entity, With<PeerInventoryScrollContent>>,
+    mut titles: Query<&mut Text, With<PeerInventoryPanelTitleText>>,
+) {
+    let peer_unit_id = match ui.peer_unit_id {
+        Some(id) if ui.open => id,
+        _ => return,
+    };
+    let title = ui
+        .secondary_label
+        .as_deref()
+        .unwrap_or("Unit Inventory");
+    if let Ok(mut text) = titles.single_mut() {
+        **text = title.to_string();
+    }
+
+    let instance_store = world.item_instance_store();
+    let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+    let equipment_snapshot = resolve_unit_equipment_ui(&world, peer_unit_id);
+    let peer_inventory = ui.right_inventory_id;
+    let right_rev = peer_inventory
+        .map(|id| inventory_revision(&world, id))
+        .unwrap_or(0);
+    let equipment_rev = equipment_snapshot
+        .as_ref()
+        .map(|snapshot| equipment_revision(&world, snapshot))
+        .unwrap_or(0);
+    let backpack_internal = equipment_snapshot.and_then(|s| s.backpack_internal);
+    let backpack_rev = backpack_revision(&world, backpack_internal);
+
+    if right_rev == ui.last_revision_peer_inventory
+        && equipment_rev == ui.last_revision_peer_equipment
+        && backpack_rev == ui.last_revision_peer_backpack
+        && backpack_internal == ui.last_peer_backpack_internal_id
+        && !ui.is_changed()
+        && !world.is_changed()
+    {
+        return;
+    }
+
+    ui.last_revision_peer_inventory = right_rev;
+    ui.last_revision_peer_equipment = equipment_rev;
+    ui.last_revision_peer_backpack = backpack_rev;
+    ui.last_peer_backpack_internal_id = backpack_internal;
+
+    let Ok(scroll) = scroll_query.single() else {
+        return;
+    };
+    commands.entity(scroll).despawn_children();
+    commands.entity(scroll).with_children(|main_row| {
+        if let Some(snapshot) = equipment_snapshot.as_ref() {
+            spawn_equipment_section(
+                main_row,
+                &world,
+                &ctx,
+                &items,
+                &instance_store,
+                snapshot,
+                &ui,
+                "Equipment",
+            );
+        }
+        main_row
+            .spawn((
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(8.0),
+                    flex_shrink: 0.0,
+                    align_items: AlignItems::FlexStart,
+                    ..default()
+                },
+                InventoryDualPaneRow,
+            ))
+            .with_children(|unit_column| {
+                if let Some(internal_id) = backpack_internal {
+                    spawn_backpack_internal_section(
+                        unit_column,
+                        &world,
+                        &ctx,
+                        &items,
+                        &instance_store,
+                        internal_id,
+                        &ui,
+                        "Equipped Backpack",
+                    );
+                }
+                if let Some(right_id) = peer_inventory {
+                    spawn_pane(
+                        unit_column,
+                        &world,
+                        &ctx,
+                        &items,
+                        &instance_store,
+                        right_id,
+                        "Unit Inventory",
+                        InventoryPaneKind::Secondary,
+                        false,
+                        &ui,
+                    );
+                }
+            });
+    });
+}
+
 fn spawn_compact_details_panel(parent: &mut ChildSpawnerCommands<'_>, details: &str) {
     parent
         .spawn((
@@ -487,7 +694,7 @@ fn spawn_pane(
                     ..default()
                 },
             );
-            if pane_kind == InventoryPaneKind::Secondary {
+            if pane_kind == InventoryPaneKind::Secondary && ui.corpse_id.is_some() {
                 spawn_floating_raised_button(
                     pane,
                     InventoryLootAllButton,
@@ -660,25 +867,40 @@ pub fn handle_inventory_panel_buttons(
     ui: Res<InventoryUiState>,
     mut queue: ResMut<InventoryIntentQueue>,
     mut buttons: bevy::ecs::system::ParamSet<(
-        Query<&Interaction, (Changed<Interaction>, With<InventoryPanelCloseButton>)>,
+        Query<
+            &Interaction,
+            (
+                Changed<Interaction>,
+                With<InventoryPanelCloseButton>,
+            ),
+        >,
+        Query<
+            &Interaction,
+            (
+                Changed<Interaction>,
+                With<PeerInventoryPanelCloseButton>,
+            ),
+        >,
         Query<(&Interaction, &InventoryAutoSortButton), Changed<Interaction>>,
         Query<&Interaction, (Changed<Interaction>, With<InventoryLootAllButton>)>,
         Query<&Interaction, (Changed<Interaction>, With<InventoryPickupFullButton>)>,
         Query<(&Interaction, &InventoryDepositGoldButton), Changed<Interaction>>,
     )>,
 ) {
-    if buttons.p0().iter().any(|i| *i == Interaction::Pressed) {
+    if buttons.p0().iter().any(|i| *i == Interaction::Pressed)
+        || buttons.p1().iter().any(|i| *i == Interaction::Pressed)
+    {
         queue.push(InventoryIntent::Close);
         return;
     }
-    for (interaction, button) in buttons.p1().iter() {
+    for (interaction, button) in buttons.p2().iter() {
         if *interaction == Interaction::Pressed {
             queue.push(InventoryIntent::AutoSort {
                 inventory_id: button.inventory_id,
             });
         }
     }
-    if buttons.p2().iter().any(|i| *i == Interaction::Pressed) {
+    if buttons.p3().iter().any(|i| *i == Interaction::Pressed) {
         if let (Some(actor), Some(corpse_inv), Some(dest)) = (
             ui.actor_unit_id,
             ui.right_inventory_id,
@@ -691,7 +913,7 @@ pub fn handle_inventory_panel_buttons(
             });
         }
     }
-    if buttons.p3().iter().any(|i| *i == Interaction::Pressed) {
+    if buttons.p4().iter().any(|i| *i == Interaction::Pressed) {
         if let (Some(actor), Some(pile_id)) = (ui.actor_unit_id, ui.pile_id) {
             queue.push(InventoryIntent::PickupPile {
                 pile_id,
@@ -700,7 +922,7 @@ pub fn handle_inventory_panel_buttons(
             });
         }
     }
-    for (interaction, button) in buttons.p4().iter() {
+    for (interaction, button) in buttons.p5().iter() {
         if *interaction == Interaction::Pressed {
             if let (Some(actor), Some(treasury_id)) = (ui.actor_unit_id, ui.treasury_id) {
                 queue.push(InventoryIntent::DepositGold {

@@ -58,6 +58,7 @@ pub fn spawn_trade_panel(mut commands: Commands) {
             shell_node,
             shell_bg,
             shell_border,
+            Visibility::Hidden,
             ZIndex(413),
         ))
         .with_children(|root| {
@@ -93,13 +94,19 @@ pub fn spawn_trade_panel(mut commands: Commands) {
 
 pub fn sync_trade_panel_visibility(
     trade: Res<TradeSessionState>,
-    mut query: Query<&mut Node, With<TradePanelRoot>>,
+    mut query: Query<(&mut Node, &mut Visibility), With<TradePanelRoot>>,
 ) {
-    for mut node in &mut query {
-        node.display = if trade.open {
+    let visible = trade.open;
+    for (mut node, mut visibility) in &mut query {
+        node.display = if visible {
             Display::Flex
         } else {
             Display::None
+        };
+        *visibility = if visible {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
         };
     }
 }

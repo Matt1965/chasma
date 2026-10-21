@@ -72,6 +72,10 @@ pub struct InventoryUiState {
     pub last_revision_corpse_equipment: u64,
     pub last_revision_corpse_backpack: u64,
     pub last_corpse_backpack_internal_id: Option<InventoryId>,
+    pub last_revision_peer_inventory: u64,
+    pub last_revision_peer_equipment: u64,
+    pub last_revision_peer_backpack: u64,
+    pub last_peer_backpack_internal_id: Option<InventoryId>,
     /// Vendor stock inventory during an active trade session (authoritative id on seller unit).
     pub trade_seller_inventory_id: Option<InventoryId>,
 }

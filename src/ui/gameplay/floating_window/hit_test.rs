@@ -40,6 +40,7 @@ impl FloatingGameplayWindowRegistry {
 pub fn open_gameplay_floating_windows(
     building_menu_open: bool,
     inventory_open: bool,
+    peer_inventory_open: bool,
     unit_skills_open: bool,
     settlement_workforce_open: bool,
 ) -> Vec<FloatingGameplayWindowId> {
@@ -49,6 +50,9 @@ pub fn open_gameplay_floating_windows(
     }
     if inventory_open {
         open.push(FloatingGameplayWindowId::UnitInventory);
+    }
+    if peer_inventory_open {
+        open.push(FloatingGameplayWindowId::PeerUnitInventory);
     }
     if unit_skills_open {
         open.push(FloatingGameplayWindowId::UnitSkills);

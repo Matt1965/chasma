@@ -23,10 +23,11 @@ pub use grid::{
 };
 pub use input::{collect_inventory_keyboard_input, inventory_panel_blocks_world_input};
 pub use panel::{
-    InventoryPanelRoot, collect_inventory_mouse_transfers, handle_inventory_drag_release,
-    handle_inventory_entry_clicks, handle_inventory_panel_buttons,
-    reconcile_inventory_ui_from_world, spawn_inventory_panel, sync_inventory_panel_contents,
-    sync_inventory_panel_visibility,
+    InventoryPanelRoot, PeerInventoryPanelRoot, collect_inventory_mouse_transfers,
+    handle_inventory_drag_release, handle_inventory_entry_clicks, handle_inventory_panel_buttons,
+    reconcile_inventory_ui_from_world, spawn_inventory_panel, spawn_peer_inventory_panel,
+    sync_inventory_panel_contents, sync_inventory_panel_visibility,
+    sync_peer_inventory_panel_contents, sync_peer_inventory_panel_visibility,
 };
 pub use state::{InventoryDragPreviewState, InventoryUiState};
 #[cfg(test)]

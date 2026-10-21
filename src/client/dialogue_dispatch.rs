@@ -8,8 +8,8 @@ use crate::ui::gameplay::InventoryUiState;
 use crate::ui::gameplay::FloatingGameplayWindowRegistry;
 use crate::ui::gameplay::dialogue::DialogueSessionState;
 use crate::ui::gameplay::{
-    UnitInteractionMenuState, build_interaction_menu_rows, unit_accepts_context_interaction_menu,
-    uses_player_trade_only_menu,
+    UnitInteractionMenuState, build_interaction_menu_rows, is_player_to_player_trade_pair,
+    unit_accepts_context_interaction_menu, uses_player_trade_only_menu,
 };
 use crate::client::TradeSessionState;
 use crate::units::input::{MoveOrdersReport, SelectedUnits, issue_move_orders_to_selection};
@@ -17,7 +17,7 @@ use crate::world::{AttackTargetingPolicy, DialogueActionKind, is_unit_alive};
 use crate::world::relationship::AuthoredRelationshipCatalog;
 use crate::world::{
     DoodadCatalog, NavigationConfig, UnitCatalog, UnitId, WeaponCatalog, WorldData,
-    unit_supports_dialogue, units_within_dialogue_range,
+    is_player_controllable, unit_supports_dialogue, units_within_dialogue_range,
 };
 
 /// A unit approaching an NPC to perform a selected social action.
@@ -31,9 +31,17 @@ pub struct PendingDialogueInteraction {
 #[derive(Resource, Default, Debug)]
 pub struct PendingDialogueInteractionState {
     pending: Option<PendingDialogueInteraction>,
+    /// Dev: dedupe peer-trade trace lines to one log per user attempt.
+    peer_trade_log_serial: u64,
+    last_peer_trade_logged_serial: u64,
 }
 
 impl PendingDialogueInteractionState {
+    pub fn next_peer_trade_log_serial(&mut self) -> u64 {
+        self.peer_trade_log_serial += 1;
+        self.peer_trade_log_serial
+    }
+
     pub fn get(&self) -> Option<PendingDialogueInteraction> {
         self.pending
     }
@@ -90,7 +98,7 @@ fn pending_still_valid(
     if !is_unit_alive(actor) || !is_unit_alive(target) {
         return false;
     }
-    if uses_player_trade_only_menu(world, pending.actor_unit_id, pending.target_unit_id) {
+    if is_player_to_player_trade_pair(world, pending.actor_unit_id, pending.target_unit_id) {
         return pending.action == DialogueActionKind::Trade
             && actor.current_space_id == target.current_space_id;
     }
@@ -136,10 +144,11 @@ fn complete_social_action(
     action: DialogueActionKind,
 ) -> bool {
     if action == DialogueActionKind::Trade {
-        let opened = if uses_player_trade_only_menu(world, actor_unit_id, target_unit_id) {
+        let opened = if is_player_to_player_trade_pair(world, actor_unit_id, target_unit_id) {
             open_peer_unit_transfer(
                 world,
                 unit_catalog,
+                trade,
                 inventory_ui,
                 queue,
                 registry,
@@ -205,6 +214,28 @@ pub fn dispatch_dialogue_action(
     target_unit_id: UnitId,
     action: DialogueActionKind,
 ) -> DialogueDispatchOutcome {
+    if is_player_to_player_trade_pair(world, actor_unit_id, target_unit_id)
+        && action == DialogueActionKind::Trade
+    {
+        return dispatch_social_action_after_range_check(
+            world,
+            dialogue,
+            pending,
+            trade,
+            inventory_ui,
+            queue,
+            registry,
+            authored_relationships,
+            unit_catalog,
+            weapon_catalog,
+            doodad_catalog,
+            nav_config,
+            actor_unit_id,
+            target_unit_id,
+            action,
+        );
+    }
+
     if uses_player_trade_only_menu(world, actor_unit_id, target_unit_id) {
         if action != DialogueActionKind::Trade {
             return DialogueDispatchOutcome::Ignored;
@@ -266,6 +297,41 @@ pub fn dispatch_dialogue_action(
     )
 }
 
+#[cfg(feature = "dev")]
+fn log_peer_trade_attempt(
+    pending: &mut PendingDialogueInteractionState,
+    world: &WorldData,
+    inventory_ui: &InventoryUiState,
+    log_serial: u64,
+    stage: &str,
+    actor_unit_id: UnitId,
+    target_unit_id: UnitId,
+) {
+    if log_serial == 0 || pending.last_peer_trade_logged_serial == log_serial {
+        return;
+    }
+    pending.last_peer_trade_logged_serial = log_serial;
+    let actor_player = world
+        .get_unit(actor_unit_id)
+        .is_some_and(is_player_controllable);
+    let target_player = world
+        .get_unit(target_unit_id)
+        .is_some_and(is_player_controllable);
+    let in_range = units_within_dialogue_range(world, actor_unit_id, target_unit_id);
+    info!(
+        "peer_trade attempt={} stage={} actor={} target={} actor_player={} target_player={} in_range={} ui_open={} peer_bound={}",
+        log_serial,
+        stage,
+        actor_unit_id.raw(),
+        target_unit_id.raw(),
+        actor_player,
+        target_player,
+        in_range,
+        inventory_ui.open,
+        inventory_ui.peer_unit_id.is_some(),
+    );
+}
+
 fn dispatch_social_action_after_range_check(
     world: &mut WorldData,
     dialogue: &mut DialogueSessionState,
@@ -283,6 +349,14 @@ fn dispatch_social_action_after_range_check(
     target_unit_id: UnitId,
     action: DialogueActionKind,
 ) -> DialogueDispatchOutcome {
+    let log_serial = if action == DialogueActionKind::Trade
+        && is_player_to_player_trade_pair(world, actor_unit_id, target_unit_id)
+    {
+        pending.next_peer_trade_log_serial()
+    } else {
+        0
+    };
+
     if units_within_dialogue_range(world, actor_unit_id, target_unit_id) {
         pending.clear_for_unit(actor_unit_id);
         if complete_social_action(
@@ -298,12 +372,51 @@ fn dispatch_social_action_after_range_check(
             target_unit_id,
             action,
         ) {
+            #[cfg(feature = "dev")]
+            if log_serial != 0 {
+                log_peer_trade_attempt(
+                    pending,
+                    world,
+                    inventory_ui,
+                    log_serial,
+                    "opened_in_range",
+                    actor_unit_id,
+                    target_unit_id,
+                );
+            }
             return DialogueDispatchOutcome::Opened;
+        }
+        #[cfg(feature = "dev")]
+        if log_serial != 0 {
+            log_peer_trade_attempt(
+                pending,
+                world,
+                inventory_ui,
+                log_serial,
+                "open_failed_in_range",
+                actor_unit_id,
+                target_unit_id,
+            );
+        }
+        if inventory_ui.feedback_message.is_empty() {
+            inventory_ui.feedback_message = "Cannot do that right now.".into();
         }
         return DialogueDispatchOutcome::Ignored;
     }
 
     pending.set(actor_unit_id, target_unit_id, action);
+    #[cfg(feature = "dev")]
+    if log_serial != 0 {
+        log_peer_trade_attempt(
+            pending,
+            world,
+            inventory_ui,
+            log_serial,
+            "deferred_approach",
+            actor_unit_id,
+            target_unit_id,
+        );
+    }
     let issued_approach = issue_approach_to_dialogue(
         world,
         unit_catalog,
@@ -371,6 +484,24 @@ pub fn try_complete_pending_dialogue_interaction(
     };
 
     if !pending_still_valid(world, authored_relationships, pending_interaction) {
+        #[cfg(feature = "dev")]
+        if pending_interaction.action == DialogueActionKind::Trade
+            && is_player_to_player_trade_pair(
+                world,
+                pending_interaction.actor_unit_id,
+                pending_interaction.target_unit_id,
+            )
+        {
+            log_peer_trade_attempt(
+                pending,
+                world,
+                inventory_ui,
+                pending.peer_trade_log_serial,
+                "pending_dropped_still_invalid",
+                pending_interaction.actor_unit_id,
+                pending_interaction.target_unit_id,
+            );
+        }
         pending.clear();
         return false;
     }
@@ -396,6 +527,29 @@ pub fn try_complete_pending_dialogue_interaction(
         pending_interaction.target_unit_id,
         pending_interaction.action,
     );
+    #[cfg(feature = "dev")]
+    if pending_interaction.action == DialogueActionKind::Trade
+        && is_player_to_player_trade_pair(
+            world,
+            pending_interaction.actor_unit_id,
+            pending_interaction.target_unit_id,
+        )
+    {
+        let stage = if completed {
+            "completed_after_approach"
+        } else {
+            "complete_failed_after_approach"
+        };
+        log_peer_trade_attempt(
+            pending,
+            world,
+            inventory_ui,
+            pending.peer_trade_log_serial,
+            stage,
+            pending_interaction.actor_unit_id,
+            pending_interaction.target_unit_id,
+        );
+    }
     pending.clear();
     completed
 }
@@ -422,4 +576,141 @@ pub fn tick_pending_dialogue_interactions(
         &authored_relationships,
         &unit_catalog,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::client::inventory_intent::InventoryIntentQueue;
+    use crate::ui::gameplay::{
+        FloatingGameplayWindowRegistry, InventoryUiState, is_player_to_player_trade_pair,
+    };
+    use crate::world::relationship::AuthoredRelationshipCatalog;
+    use crate::world::{
+        ChunkCoord, ChunkData, ChunkId, ChunkLayout, Heightfield, InventoryCatalogCtx,
+        InventoryProfileCatalog, ItemCatalog, ItemCategoryCatalog, LocalPosition, UnitCatalog,
+        UnitDefinitionId, UnitOwnership, UnitSource, WorldData, WorldPosition,
+        create_unit_with_inventory, starter_inventory_profile_definitions,
+        starter_item_category_definitions, starter_item_definitions, starter_unit_definitions,
+    };
+    use bevy::prelude::Vec3;
+
+    fn two_player_units_far_apart() -> (WorldData, UnitId, UnitId) {
+        let mut world = WorldData::new(ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        });
+        let heightfield = Heightfield::from_samples(3, 128.0, vec![0.0; 9]).unwrap();
+        world.insert(
+            ChunkId::new(ChunkCoord::new(0, 0)),
+            ChunkData::new(heightfield, Vec::new()),
+        );
+        let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+        let categories =
+            ItemCategoryCatalog::from_definitions(starter_item_category_definitions()).unwrap();
+        let items = ItemCatalog::from_definitions(starter_item_definitions(), &categories).unwrap();
+        let profiles =
+            InventoryProfileCatalog::from_definitions(starter_inventory_profile_definitions())
+                .unwrap();
+        let ctx = InventoryCatalogCtx::new(&items, &categories, &profiles);
+        let actor = create_unit_with_inventory(
+            &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(0.0, 0.0, 0.0)),
+            ),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+            &ctx,
+        )
+        .unwrap()
+        .id;
+        let target = create_unit_with_inventory(
+            &unit_catalog,
+            &crate::world::AppearanceProfileCatalog::empty(),
+            &mut world,
+            &UnitDefinitionId::new("bandit"),
+            WorldPosition::new(
+                ChunkCoord::new(0, 0),
+                LocalPosition::new(Vec3::new(40.0, 0.0, 0.0)),
+            ),
+            UnitSource::Authored,
+            UnitOwnership::player_default(),
+            &ctx,
+        )
+        .unwrap()
+        .id;
+        (world, actor, target)
+    }
+
+    #[test]
+    fn p2p_trade_pending_stays_valid_while_out_of_dialogue_range() {
+        let (world, actor, target) = two_player_units_far_apart();
+        assert!(is_player_to_player_trade_pair(&world, actor, target));
+        assert!(
+            !units_within_dialogue_range(&world, actor, target),
+            "fixture should start out of range"
+        );
+        let pending = PendingDialogueInteraction {
+            actor_unit_id: actor,
+            target_unit_id: target,
+            action: DialogueActionKind::Trade,
+        };
+        assert!(pending_still_valid(
+            &world,
+            &AuthoredRelationshipCatalog::default(),
+            pending,
+        ));
+    }
+
+    #[test]
+    fn p2p_trade_pending_completes_after_approach_when_in_range() {
+        let (mut world, actor, target) = two_player_units_far_apart();
+        let mut pending_state = PendingDialogueInteractionState::default();
+        pending_state.set(actor, target, DialogueActionKind::Trade);
+        pending_state.next_peer_trade_log_serial();
+
+        let mut dialogue = DialogueSessionState::default();
+        let mut trade = TradeSessionState::default();
+        let mut inventory_ui = InventoryUiState::default();
+        let mut queue = InventoryIntentQueue::default();
+        let mut registry = FloatingGameplayWindowRegistry::default();
+        let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+
+        assert!(!try_complete_pending_dialogue_interaction(
+            &mut dialogue,
+            &mut pending_state,
+            &mut trade,
+            &mut inventory_ui,
+            &mut queue,
+            &mut registry,
+            &world,
+            &AuthoredRelationshipCatalog::default(),
+            &unit_catalog,
+        ));
+        assert!(pending_state.get().is_some());
+
+        let target_position = world.get_unit(target).unwrap().placement.position;
+        world
+            .relocate_unit(actor, target_position)
+            .expect("move actor into dialogue range");
+
+        assert!(try_complete_pending_dialogue_interaction(
+            &mut dialogue,
+            &mut pending_state,
+            &mut trade,
+            &mut inventory_ui,
+            &mut queue,
+            &mut registry,
+            &world,
+            &AuthoredRelationshipCatalog::default(),
+            &unit_catalog,
+        ));
+        assert!(pending_state.get().is_none());
+        assert!(inventory_ui.open);
+        assert_eq!(inventory_ui.peer_unit_id, Some(target));
+    }
 }

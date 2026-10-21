@@ -64,6 +64,7 @@ pub fn update_player_hud_hover_state(
     let open_windows = open_gameplay_floating_windows(
         building_panel.is_open(),
         inventory_ui.open,
+        inventory_ui.open && inventory_ui.peer_unit_id.is_some(),
         unit_skills.open,
         workforce_panel.open,
     );

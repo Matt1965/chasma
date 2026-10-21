@@ -44,6 +44,12 @@ pub fn default_unit_inventory_position(viewport: Vec2) -> Vec2 {
     Vec2::new(x, 72.0)
 }
 
+pub fn default_peer_unit_inventory_position(viewport: Vec2) -> Vec2 {
+    let width = (viewport.x * 0.42).clamp(280.0, 520.0);
+    let primary_x = (viewport.x - width - 16.0).max(12.0);
+    Vec2::new((primary_x - width - 12.0).max(12.0), 72.0)
+}
+
 pub fn default_unit_skills_position(viewport: Vec2) -> Vec2 {
     Vec2::new(12.0, (viewport.y * 0.45).clamp(280.0, 420.0))
 }

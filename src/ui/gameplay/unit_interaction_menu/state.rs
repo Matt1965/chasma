@@ -25,7 +25,4 @@ impl UnitInteractionMenuState {
         *self = Self::default();
     }
 
-    pub fn blocks_world_input(&self) -> bool {
-        self.open
-    }
 }

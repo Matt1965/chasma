@@ -51,8 +51,10 @@ use super::inventory::{
     InventoryDragPreviewState, InventoryUiState, cleanup_inventory_drag_previews,
     collect_inventory_keyboard_input, collect_inventory_mouse_transfers,
     handle_inventory_drag_release, handle_inventory_entry_clicks, handle_inventory_panel_buttons,
-    reconcile_inventory_ui_from_world, spawn_inventory_panel, sync_inventory_drag_ghost,
-    sync_inventory_ground_preview, sync_inventory_panel_contents, sync_inventory_panel_visibility,
+    reconcile_inventory_ui_from_world, spawn_inventory_panel, spawn_peer_inventory_panel,
+    sync_inventory_drag_ghost, sync_inventory_ground_preview, sync_inventory_panel_contents,
+    sync_inventory_panel_visibility, sync_peer_inventory_panel_contents,
+    sync_peer_inventory_panel_visibility,
     update_inventory_drag_preview,
 };
 use super::layout::setup_player_hud_layout;
@@ -89,8 +91,8 @@ use super::trade::{
 };
 use super::unit_interaction_menu::{
     UnitInteractionMenuState, collect_unit_interaction_menu_keyboard_input,
-    dismiss_unit_interaction_menu_on_outside_click, handle_unit_interaction_menu_backdrop_click,
-    handle_unit_interaction_menu_option_clicks, reconcile_unit_interaction_menu,
+    dismiss_unit_interaction_menu_on_outside_click, handle_unit_interaction_menu_option_clicks,
+    reconcile_unit_interaction_menu,
     spawn_unit_interaction_menu, sync_unit_interaction_menu, sync_unit_interaction_menu_layout,
     sync_unit_interaction_menu_visibility,
 };
@@ -148,6 +150,7 @@ impl Plugin for GameplayUiPlugin {
                 setup_player_hud_layout,
                 spawn_build_catalog_panel,
                 spawn_inventory_panel,
+                spawn_peer_inventory_panel,
                 spawn_building_menu_panel,
                 spawn_unit_skills_panel,
                 spawn_dialogue_panel,
@@ -194,7 +197,6 @@ impl Plugin for GameplayUiPlugin {
                 sync_building_menu_panel,
                 reconcile_building_menu_panel,
                 handle_building_menu_close_button,
-                sync_inventory_panel_visibility,
                 reconcile_unit_skills_panel,
                 sync_unit_skills_panel_visibility,
                 sync_unit_skills_panel,
@@ -247,9 +249,18 @@ impl Plugin for GameplayUiPlugin {
                 sync_unit_interaction_menu_visibility,
                 sync_unit_interaction_menu_layout,
                 sync_unit_interaction_menu,
+                handle_unit_interaction_menu_option_clicks,
+                dismiss_unit_interaction_menu_on_outside_click,
             )
                 .chain()
                 .after(sync_dialogue_panel)
+                .in_set(GameplayUiSystems),
+        )
+        .add_systems(
+            Update,
+            crate::client::dispatch_inventory_intents
+                .after(handle_unit_interaction_menu_option_clicks)
+                .after(handle_dialogue_option_buttons)
                 .in_set(GameplayUiSystems),
         )
         .add_systems(
@@ -315,9 +326,6 @@ impl Plugin for GameplayUiPlugin {
                 handle_utility_button_clicks,
                 handle_fields_menu_option_clicks,
                 dismiss_fields_menu_on_outside_click,
-                handle_unit_interaction_menu_backdrop_click,
-                handle_unit_interaction_menu_option_clicks,
-                dismiss_unit_interaction_menu_on_outside_click,
                 handle_building_production_controls,
                 handle_settlement_workforce_controls,
                 update_squad_entry_hover,
@@ -350,7 +358,12 @@ impl Plugin for GameplayUiPlugin {
                 collect_unit_interaction_menu_keyboard_input,
                 collect_settlement_workforce_keyboard_input,
                 reconcile_inventory_ui_from_world,
+                (
+                    sync_inventory_panel_visibility,
+                    sync_peer_inventory_panel_visibility,
+                ),
                 sync_inventory_panel_contents,
+                sync_peer_inventory_panel_contents,
                 sync_inventory_drag_ghost,
                 sync_inventory_ground_preview,
                 cleanup_inventory_drag_previews,
@@ -390,12 +403,6 @@ impl Plugin for GameplayUiPlugin {
                 .before(UiSystems::Layout),
         );
         app.add_systems(PostUpdate, sync_hud_plate_frames.after(UiSystems::Layout));
-        app.add_systems(
-            Update,
-            crate::client::dispatch_inventory_intents
-                .after(collect_inventory_keyboard_input)
-                .in_set(GameplayCommandInputSystems),
-        );
     }
 }
 

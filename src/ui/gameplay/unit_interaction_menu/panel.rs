@@ -20,9 +20,6 @@ const MENU_MARGIN_PX: f32 = 6.0;
 const ROW_GAP_PX: f32 = 2.0;
 
 #[derive(Component, Debug)]
-pub struct UnitInteractionMenuBackdrop;
-
-#[derive(Component, Debug)]
 pub struct UnitInteractionMenuRoot;
 
 #[derive(Component, Debug, Clone, Copy)]
@@ -32,24 +29,6 @@ pub struct UnitInteractionMenuOptionButton(pub DialogueActionKind);
 pub struct UnitInteractionMenuOptionText;
 
 pub fn spawn_unit_interaction_menu(mut commands: Commands) {
-    commands.spawn((
-        UnitInteractionMenuBackdrop,
-        PlayerHudUi,
-        Button,
-        Interaction::None,
-        FocusPolicy::Block,
-        Node {
-            position_type: PositionType::Absolute,
-            left: Val::Px(0.0),
-            top: Val::Px(0.0),
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            display: Display::None,
-            ..default()
-        },
-        ZIndex(420),
-    ));
-
     commands
         .spawn((
             UnitInteractionMenuRoot,
@@ -104,15 +83,14 @@ fn spawn_menu_option_button(parent: &mut ChildSpawnerCommands<'_>, kind: Dialogu
 
 pub fn sync_unit_interaction_menu_visibility(
     menu: Res<UnitInteractionMenuState>,
-    mut backdrop: Query<&mut Node, (With<UnitInteractionMenuBackdrop>, Without<UnitInteractionMenuRoot>)>,
-    mut roots: Query<&mut Node, (With<UnitInteractionMenuRoot>, Without<UnitInteractionMenuBackdrop>)>,
+    mut roots: Query<&mut Node, With<UnitInteractionMenuRoot>>,
 ) {
     let display = if menu.open {
         Display::Flex
     } else {
         Display::None
     };
-    for mut node in backdrop.iter_mut().chain(roots.iter_mut()) {
+    for mut node in &mut roots {
         node.display = display;
     }
 }

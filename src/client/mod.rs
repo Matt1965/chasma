@@ -26,7 +26,7 @@ pub use corpse_interaction_dispatch::{
 };
 pub use interaction_flow::{
     SellerStockSource, npc_trade_still_valid, open_npc_trade_session, open_peer_unit_transfer,
-    unit_display_name,
+    peer_transfer_still_valid, reconcile_peer_transfer_session, unit_display_name,
 };
 pub use trade_session::{
     TradeSessionState, close_trade_session, reconcile_trade_session, seller_display_name,

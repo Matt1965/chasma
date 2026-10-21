@@ -13,9 +13,7 @@ use crate::world::relationship::AuthoredRelationshipCatalog;
 use super::content::interaction_menu_option_selectable;
 use crate::world::{DoodadCatalog, NavigationConfig, UnitCatalog, WeaponCatalog, WorldData};
 
-use super::panel::{
-    UnitInteractionMenuBackdrop, UnitInteractionMenuOptionButton, UnitInteractionMenuRoot,
-};
+use super::panel::{UnitInteractionMenuOptionButton, UnitInteractionMenuRoot};
 use super::state::UnitInteractionMenuState;
 
 pub fn collect_unit_interaction_menu_keyboard_input(
@@ -43,18 +41,6 @@ pub fn collect_unit_interaction_menu_keyboard_input(
     }
 }
 
-pub fn handle_unit_interaction_menu_backdrop_click(
-    mut menu: ResMut<UnitInteractionMenuState>,
-    backdrop: Query<&Interaction, With<UnitInteractionMenuBackdrop>>,
-) {
-    if !menu.open {
-        return;
-    }
-    if backdrop.iter().any(|interaction| *interaction == Interaction::Pressed) {
-        menu.close();
-    }
-}
-
 pub fn handle_unit_interaction_menu_option_clicks(
     mut menu: ResMut<UnitInteractionMenuState>,
     mut dialogue: ResMut<DialogueSessionState>,
@@ -69,10 +55,7 @@ pub fn handle_unit_interaction_menu_option_clicks(
     weapon_catalog: Res<WeaponCatalog>,
     doodad_catalog: Res<DoodadCatalog>,
     nav_config: Res<NavigationConfig>,
-    buttons: Query<
-        (&Interaction, &UnitInteractionMenuOptionButton),
-        Without<UnitInteractionMenuBackdrop>,
-    >,
+    buttons: Query<(&Interaction, &UnitInteractionMenuOptionButton)>,
 ) {
     if !menu.open {
         return;
@@ -130,7 +113,10 @@ pub fn dismiss_unit_interaction_menu_on_outside_click(
     menu_hits: Query<&Interaction, With<UnitInteractionMenuRoot>>,
     option_hits: Query<&Interaction, With<UnitInteractionMenuOptionButton>>,
 ) {
-    if !menu.open || !mouse.just_pressed(MouseButton::Left) {
+    if !menu.open {
+        return;
+    }
+    if !mouse.just_pressed(MouseButton::Left) {
         return;
     }
     let ui_hit = menu_hits
@@ -145,6 +131,7 @@ pub fn dismiss_unit_interaction_menu_on_outside_click(
 pub fn reconcile_unit_interaction_menu(
     mut menu: ResMut<UnitInteractionMenuState>,
     world: Res<WorldData>,
+    selection: Res<crate::units::input::SelectedUnits>,
 ) {
     if !menu.open {
         return;
@@ -167,6 +154,11 @@ pub fn reconcile_unit_interaction_menu(
     let target_alive = world.get_unit(target).is_some_and(crate::world::is_unit_alive);
     let actor_alive = world.get_unit(actor).is_some_and(crate::world::is_unit_alive);
     if !target_alive || !actor_alive {
+        menu.close();
+        return;
+    }
+    let primary = crate::ui::gameplay::primary_selected_unit(&selection);
+    if primary != Some(actor) {
         menu.close();
     }
 }
