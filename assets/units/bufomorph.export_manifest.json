@@ -1,0 +1,2031 @@
+{
+  "pipeline": "fbx2gltf_gltf_merge",
+  "timestamp_utc": "2026-10-21T18:33:05.246989+00:00",
+  "source_dir": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\SK_Buformorph.FBX",
+  "anim_prefix": "Buformorph",
+  "output_glb": "assets\\units\\bufomorph.glb",
+  "output_bytes": 15142792,
+  "output_sha256": "36ec0ee36a0a46c48bf12b76f68cc23c2be6f65bb429475d7088b895ed24a57d",
+  "fbx2gltf": {
+    "exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+    "sk": {
+      "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\SK_Buformorph.FBX",
+      "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\SK_Buformorph.glb",
+      "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+      "fbx2gltf_version": "0.13.1",
+      "command": [
+        "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "--input",
+        "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\SK_Buformorph.FBX",
+        "--output",
+        "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\SK_Buformorph",
+        "--binary"
+      ]
+    },
+    "clips": [
+      {
+        "clip": "BiteAttack",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@BiteAttack.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@BiteAttack.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@BiteAttack.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@BiteAttack",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "BiteAttack_RM",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@BiteAttack_RM.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@BiteAttack_RM.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@BiteAttack_RM.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@BiteAttack_RM",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "Death",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@Death.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@Death.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@Death.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@Death",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "GetHitBack",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@GetHitBack.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@GetHitBack.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@GetHitBack.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@GetHitBack",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "GetHitFront",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@GetHitFront.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@GetHitFront.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@GetHitFront.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@GetHitFront",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "GetHitLeft",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@GetHitLeft.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@GetHitLeft.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@GetHitLeft.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@GetHitLeft",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "GetHitRight",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@GetHitRight.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@GetHitRight.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@GetHitRight.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@GetHitRight",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "HopBackwards",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopBackwards.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopBackwards.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopBackwards.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopBackwards",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "HopBackwards_RM",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopBackwards_RM.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopBackwards_RM.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopBackwards_RM.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopBackwards_RM",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "HopForward",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopForward.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopForward.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopForward.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopForward",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "HopForward_RM",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopForward_RM.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopForward_RM.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopForward_RM.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopForward_RM",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "HopLeft",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopLeft.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopLeft.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopLeft.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopLeft",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "HopLeft_RM",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopLeft_RM.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopLeft_RM.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopLeft_RM.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopLeft_RM",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "HopRight",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopRight.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopRight.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopRight.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopRight",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "HopRight_RM",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopRight_RM.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopRight_RM.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@HopRight_RM.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopRight_RM",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "IdleBreathe",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@IdleBreathe.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@IdleBreathe.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@IdleBreathe.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@IdleBreathe",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "IdleLookAround",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@IdleLookAround.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@IdleLookAround.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@IdleLookAround.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@IdleLookAround",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "Run",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@Run.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@Run.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@Run.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@Run",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "Run_RM",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@Run_RM.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@Run_RM.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@Run_RM.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@Run_RM",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "SpitAttack",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@SpitAttack.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@SpitAttack.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@SpitAttack.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@SpitAttack",
+          "--binary"
+        ]
+      },
+      {
+        "clip": "TongueAttack",
+        "fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@TongueAttack.FBX",
+        "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@TongueAttack.glb",
+        "fbx2gltf_exe": "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+        "fbx2gltf_version": "0.13.1",
+        "command": [
+          "C:\\BevyFiles\\chasma-agent-c\\tools\\monster_pack\\bin\\FBX2glTF-windows-x86_64.exe",
+          "--input",
+          "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\FBX Files\\Buformorph@TongueAttack.FBX",
+          "--output",
+          "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@TongueAttack",
+          "--binary"
+        ]
+      }
+    ]
+  },
+  "merge": {
+    "sk_audit": {
+      "node_count": 55,
+      "named_nodes": 55,
+      "skin_joints": 53
+    },
+    "clip_target_audits": [
+      {
+        "clip": "BiteAttack",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Finger2",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L Toe0",
+          "Bufomorph_ L Toe1",
+          "Bufomorph_ L Toe2",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger1",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R Toe0",
+          "Bufomorph_ R Toe1",
+          "Bufomorph_ R Toe2",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawLeft",
+          "Bufomorph_JawRight",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "BiteAttack_RM",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger0",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Finger2",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L Toe0",
+          "Bufomorph_ L Toe1",
+          "Bufomorph_ L Toe2",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger0",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger1",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger2",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R Toe0",
+          "Bufomorph_ R Toe1",
+          "Bufomorph_ R Toe2",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawLeft",
+          "Bufomorph_JawRight",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9",
+          "root"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "Death",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Finger2",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L Toe0",
+          "Bufomorph_ L Toe1",
+          "Bufomorph_ L Toe2",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger1",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger2",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R Toe0",
+          "Bufomorph_ R Toe1",
+          "Bufomorph_ R Toe2",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawLeft",
+          "Bufomorph_JawRight",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "GetHitBack",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawLeft",
+          "Bufomorph_JawRight",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "GetHitFront",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawLeft",
+          "Bufomorph_JawRight",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "GetHitLeft",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawLeft",
+          "Bufomorph_JawRight",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "GetHitRight",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawLeft",
+          "Bufomorph_JawRight",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "HopBackwards",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Finger2",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L Toe0",
+          "Bufomorph_ L Toe1",
+          "Bufomorph_ L Toe2",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger2",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R Toe0",
+          "Bufomorph_ R Toe1",
+          "Bufomorph_ R Toe2",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "HopBackwards_RM",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger0",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Finger2",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L Toe0",
+          "Bufomorph_ L Toe1",
+          "Bufomorph_ L Toe2",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger0",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger1",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger2",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R Toe0",
+          "Bufomorph_ R Toe1",
+          "Bufomorph_ R Toe2",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9",
+          "root"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "HopForward",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger0",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L Toe0",
+          "Bufomorph_ L Toe1",
+          "Bufomorph_ L Toe2",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger2",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R Toe0",
+          "Bufomorph_ R Toe1",
+          "Bufomorph_ R Toe2",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "HopForward_RM",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger0",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Finger2",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L Toe0",
+          "Bufomorph_ L Toe1",
+          "Bufomorph_ L Toe2",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger0",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger1",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger2",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R Toe0",
+          "Bufomorph_ R Toe1",
+          "Bufomorph_ R Toe2",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9",
+          "root"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "HopLeft",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger2",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L Toe0",
+          "Bufomorph_ L Toe1",
+          "Bufomorph_ L Toe2",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ Pelvis",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger1",
+          "Bufomorph_ R Finger2",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R Toe0",
+          "Bufomorph_ R Toe1",
+          "Bufomorph_ R Toe2",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "HopLeft_RM",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger0",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Finger2",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L Toe0",
+          "Bufomorph_ L Toe1",
+          "Bufomorph_ L Toe2",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ Pelvis",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger0",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger2",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R Toe0",
+          "Bufomorph_ R Toe1",
+          "Bufomorph_ R Toe2",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9",
+          "root"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "HopRight",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Finger2",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L Toe0",
+          "Bufomorph_ L Toe1",
+          "Bufomorph_ L Toe2",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger2",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R Toe0",
+          "Bufomorph_ R Toe1",
+          "Bufomorph_ R Toe2",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "HopRight_RM",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger0",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Finger2",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L Toe0",
+          "Bufomorph_ L Toe1",
+          "Bufomorph_ L Toe2",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger0",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger1",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger2",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R Toe0",
+          "Bufomorph_ R Toe1",
+          "Bufomorph_ R Toe2",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9",
+          "root"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "IdleBreathe",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger0",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Finger2",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger0",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger1",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger2",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawLeft",
+          "Bufomorph_JawRight",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "IdleLookAround",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger0",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Finger2",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger0",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger1",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger2",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawLeft",
+          "Bufomorph_JawRight",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "Run",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L Toe0",
+          "Bufomorph_ L Toe1",
+          "Bufomorph_ L Toe2",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Pelvis",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger0",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger1",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R Toe0",
+          "Bufomorph_ R Toe1",
+          "Bufomorph_ R Toe2",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawLeft",
+          "Bufomorph_JawRight",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "Run_RM",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger0",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Finger2",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L Toe0",
+          "Bufomorph_ L Toe1",
+          "Bufomorph_ L Toe2",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ Pelvis",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger0",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger1",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger2",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R Toe0",
+          "Bufomorph_ R Toe1",
+          "Bufomorph_ R Toe2",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawLeft",
+          "Bufomorph_JawRight",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9",
+          "root"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "SpitAttack",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawLeft",
+          "Bufomorph_JawRight",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9"
+        ],
+        "animated_nodes_missing_from_sk": []
+      },
+      {
+        "clip": "TongueAttack",
+        "clip_named_nodes": 54,
+        "parent_mismatches": [],
+        "animated_node_names": [
+          "Bufomorph_",
+          "Bufomorph_ Head",
+          "Bufomorph_ L Calf",
+          "Bufomorph_ L Clavicle",
+          "Bufomorph_ L Finger0",
+          "Bufomorph_ L Finger01",
+          "Bufomorph_ L Finger1",
+          "Bufomorph_ L Finger11",
+          "Bufomorph_ L Finger2",
+          "Bufomorph_ L Finger21",
+          "Bufomorph_ L Foot",
+          "Bufomorph_ L Forearm",
+          "Bufomorph_ L Hand",
+          "Bufomorph_ L HorseLink",
+          "Bufomorph_ L Thigh",
+          "Bufomorph_ L UpperArm",
+          "Bufomorph_ Neck",
+          "Bufomorph_ R Calf",
+          "Bufomorph_ R Clavicle",
+          "Bufomorph_ R Finger0",
+          "Bufomorph_ R Finger01",
+          "Bufomorph_ R Finger1",
+          "Bufomorph_ R Finger11",
+          "Bufomorph_ R Finger2",
+          "Bufomorph_ R Finger21",
+          "Bufomorph_ R Foot",
+          "Bufomorph_ R Forearm",
+          "Bufomorph_ R Hand",
+          "Bufomorph_ R HorseLink",
+          "Bufomorph_ R Thigh",
+          "Bufomorph_ R UpperArm",
+          "Bufomorph_ Spine",
+          "Bufomorph_ Spine1",
+          "Bufomorph_JawLeft",
+          "Bufomorph_JawRight",
+          "Bufomorph_JawUpper",
+          "Bufomorph_Tongue1",
+          "Bufomorph_Tongue2",
+          "Bufomorph_Tongue3",
+          "Bufomorph_Tongue4",
+          "Bufomorph_Tongue5",
+          "Bufomorph_Tongue6",
+          "Bufomorph_Tongue7",
+          "Bufomorph_Tongue8",
+          "Bufomorph_Tongue9"
+        ],
+        "animated_nodes_missing_from_sk": []
+      }
+    ],
+    "clips": {
+      "BiteAttack": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@BiteAttack.glb",
+        "copied_channels": 61,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_Tongue5:translation",
+          "Bufomorph_Tongue6:translation"
+        ],
+        "time_range": [
+          0.0,
+          0.5
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "BiteAttack_RM": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@BiteAttack_RM.glb",
+        "copied_channels": 88,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [],
+        "time_range": [
+          0.0,
+          0.5
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "Death": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@Death.glb",
+        "copied_channels": 66,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [],
+        "time_range": [
+          0.0,
+          1.8666666746139526
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "GetHitBack": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@GetHitBack.glb",
+        "copied_channels": 45,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_Tongue1:rotation",
+          "Bufomorph_Tongue2:translation",
+          "Bufomorph_Tongue6:translation",
+          "Bufomorph_ L Forearm:rotation",
+          "Bufomorph_ R Forearm:rotation"
+        ],
+        "time_range": [
+          0.0,
+          0.5
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "GetHitFront": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@GetHitFront.glb",
+        "copied_channels": 43,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_Tongue2:translation",
+          "Bufomorph_Tongue6:translation",
+          "Bufomorph_Tongue7:translation",
+          "Bufomorph_ L Forearm:rotation",
+          "Bufomorph_ R Forearm:rotation"
+        ],
+        "time_range": [
+          0.0,
+          0.5
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "GetHitLeft": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@GetHitLeft.glb",
+        "copied_channels": 43,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_JawUpper:translation",
+          "Bufomorph_Tongue2:translation",
+          "Bufomorph_Tongue3:translation",
+          "Bufomorph_Tongue5:translation",
+          "Bufomorph_Tongue6:translation",
+          "Bufomorph_Tongue7:translation",
+          "Bufomorph_Tongue8:translation"
+        ],
+        "time_range": [
+          0.0,
+          0.5
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "GetHitRight": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@GetHitRight.glb",
+        "copied_channels": 47,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_JawUpper:translation",
+          "Bufomorph_Tongue2:translation",
+          "Bufomorph_Tongue5:translation",
+          "Bufomorph_Tongue6:translation"
+        ],
+        "time_range": [
+          0.0,
+          0.5
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "HopBackwards": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopBackwards.glb",
+        "copied_channels": 55,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_JawRight:rotation",
+          "Bufomorph_JawLeft:rotation",
+          "Bufomorph_JawUpper:translation",
+          "Bufomorph_JawUpper:rotation",
+          "Bufomorph_Tongue1:rotation",
+          "Bufomorph_Tongue3:translation",
+          "Bufomorph_Tongue5:translation",
+          "Bufomorph_Tongue6:translation"
+        ],
+        "time_range": [
+          0.0,
+          0.5
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "HopBackwards_RM": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopBackwards_RM.glb",
+        "copied_channels": 84,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_JawRight:rotation",
+          "Bufomorph_JawLeft:rotation",
+          "Bufomorph_JawUpper:rotation",
+          "Bufomorph_Tongue1:rotation"
+        ],
+        "time_range": [
+          0.0,
+          0.5
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "HopForward": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopForward.glb",
+        "copied_channels": 58,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_JawRight:rotation",
+          "Bufomorph_JawLeft:rotation",
+          "Bufomorph_JawUpper:rotation",
+          "Bufomorph_Tongue1:rotation",
+          "Bufomorph_Tongue7:translation",
+          "Bufomorph_Tongue9:rotation"
+        ],
+        "time_range": [
+          0.0,
+          0.5
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "HopForward_RM": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopForward_RM.glb",
+        "copied_channels": 82,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_JawRight:rotation",
+          "Bufomorph_JawLeft:rotation",
+          "Bufomorph_JawUpper:rotation",
+          "Bufomorph_Tongue1:rotation",
+          "Bufomorph_Tongue9:rotation"
+        ],
+        "time_range": [
+          0.0,
+          0.5
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "HopLeft": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopLeft.glb",
+        "copied_channels": 56,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_JawRight:rotation",
+          "Bufomorph_JawLeft:rotation",
+          "Bufomorph_JawUpper:rotation",
+          "Bufomorph_Tongue2:translation",
+          "Bufomorph_Tongue4:translation",
+          "Bufomorph_Tongue6:translation",
+          "Bufomorph_Tongue7:translation"
+        ],
+        "time_range": [
+          0.0,
+          0.5
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "HopLeft_RM": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopLeft_RM.glb",
+        "copied_channels": 83,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_JawRight:rotation",
+          "Bufomorph_JawLeft:rotation",
+          "Bufomorph_JawUpper:rotation"
+        ],
+        "time_range": [
+          0.0,
+          0.5
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "HopRight": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopRight.glb",
+        "copied_channels": 53,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_ Spine:translation",
+          "Bufomorph_JawRight:rotation",
+          "Bufomorph_JawLeft:rotation",
+          "Bufomorph_JawUpper:rotation",
+          "Bufomorph_Tongue2:translation",
+          "Bufomorph_Tongue6:translation",
+          "Bufomorph_Tongue7:translation",
+          "Bufomorph_Tongue8:translation"
+        ],
+        "time_range": [
+          0.0,
+          0.5
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "HopRight_RM": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@HopRight_RM.glb",
+        "copied_channels": 83,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_JawRight:rotation",
+          "Bufomorph_JawLeft:rotation",
+          "Bufomorph_JawUpper:rotation"
+        ],
+        "time_range": [
+          0.0,
+          0.5
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "IdleBreathe": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@IdleBreathe.glb",
+        "copied_channels": 50,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_ Spine:rotation",
+          "Bufomorph_Tongue1:rotation",
+          "Bufomorph_Tongue2:rotation",
+          "Bufomorph_Tongue3:translation",
+          "Bufomorph_Tongue6:translation",
+          "Bufomorph_Tongue7:translation",
+          "Bufomorph_Tongue8:rotation",
+          "Bufomorph_Tongue9:translation",
+          "Bufomorph_Tongue9:rotation",
+          "Bufomorph_ L Forearm:rotation",
+          "Bufomorph_ R Forearm:rotation"
+        ],
+        "time_range": [
+          0.0,
+          2.0
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "IdleLookAround": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@IdleLookAround.glb",
+        "copied_channels": 60,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_Tongue3:translation",
+          "Bufomorph_Tongue6:translation",
+          "Bufomorph_Tongue7:translation",
+          "Bufomorph_Tongue9:translation",
+          "Bufomorph_ L Forearm:rotation",
+          "Bufomorph_ R Forearm:rotation"
+        ],
+        "time_range": [
+          0.0,
+          8.0
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "Run": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@Run.glb",
+        "copied_channels": 48,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_:rotation",
+          "Bufomorph_JawUpper:translation",
+          "Bufomorph_Tongue1:rotation",
+          "Bufomorph_Tongue2:translation",
+          "Bufomorph_Tongue2:rotation",
+          "Bufomorph_Tongue3:translation",
+          "Bufomorph_Tongue3:rotation",
+          "Bufomorph_Tongue4:translation",
+          "Bufomorph_Tongue4:rotation",
+          "Bufomorph_Tongue5:rotation",
+          "Bufomorph_Tongue6:translation",
+          "Bufomorph_Tongue8:translation",
+          "Bufomorph_Tongue9:translation",
+          "Bufomorph_Tongue9:rotation"
+        ],
+        "time_range": [
+          0.0,
+          0.6000000238418579
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "Run_RM": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@Run_RM.glb",
+        "copied_channels": 84,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_:rotation",
+          "Bufomorph_Tongue1:rotation",
+          "Bufomorph_Tongue4:rotation",
+          "Bufomorph_Tongue8:rotation",
+          "Bufomorph_Tongue9:rotation"
+        ],
+        "time_range": [
+          0.0,
+          0.6000000238418579
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "SpitAttack": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@SpitAttack.glb",
+        "copied_channels": 47,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [
+          "Bufomorph_Tongue5:translation",
+          "Bufomorph_Tongue6:translation",
+          "Bufomorph_Tongue8:translation"
+        ],
+        "time_range": [
+          0.0,
+          0.6666666865348816
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      },
+      "TongueAttack": {
+        "source_glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\Buformorph@TongueAttack.glb",
+        "copied_channels": 62,
+        "skipped_channels_nodes_not_in_sk": [],
+        "filled_constant_channels": [],
+        "time_range": [
+          0.0,
+          0.6666666865348816
+        ],
+        "interpolations": [
+          "LINEAR"
+        ]
+      }
+    }
+  },
+  "skin_influences": {
+    "primitives": [
+      {
+        "vertices": 4358,
+        "input_sets": 2,
+        "input_weight_sum_min": 0.9999998487473931,
+        "input_weight_sum_max": 1.0000002082524588,
+        "vertices_changed": 4358,
+        "vertices_with_dropped_influences": 2760,
+        "max_dropped_weight_mass": 0.2866463363170624,
+        "mesh": "SK_Bufomorph",
+        "mesh_index": 0,
+        "primitive": 0
+      }
+    ],
+    "max_input_sets": 2,
+    "min_input_weight_sum": 0.9999998487473931
+  },
+  "rebased_clips": 0,
+  "material": {
+    "prefab": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\Prefabs\\Buformorph_Red.prefab",
+    "material_guids": [
+      "862c749840e0a1942ab696b28582d0e7"
+    ],
+    "apply": {
+      "slots": [
+        {
+          "material": "M_Buformorph_Red",
+          "textures": {
+            "baseColor": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\Textures\\T_Bufomorph_Tint1_BaseColor.png",
+            "normal": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\Textures\\T_Bufomorph_Normal.png",
+            "metallicRoughness": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Bufomorph\\Textures\\T_Buformorph_MetallicSmoothness.tga"
+          },
+          "warnings": [],
+          "unsupported_shader_guid": "933532a4fcc9baf4fa0491de14d08ed7"
+        }
+      ]
+    }
+  },
+  "validation": {
+    "glb": "C:\\Users\\matt1\\AppData\\Local\\Temp\\chasma_monster_export_8t28tv94\\merged.glb",
+    "skin_invariants": {
+      "ok": true,
+      "issues": [],
+      "primitives": [
+        {
+          "primitive": "SK_Bufomorph[0]",
+          "vertices": 4358,
+          "skin": 0,
+          "skin_joints": 51,
+          "weight_sum_min": 0.9999999552965164,
+          "weight_sum_max": 1.0000000422587618,
+          "extra_sets": []
+        }
+      ]
+    },
+    "translation_invariance": {
+      "max_error_m": 1.4616056725880033e-05,
+      "primitive": "SK_Bufomorph[0]",
+      "world_offset": [
+        300.0,
+        50.0,
+        120.0
+      ],
+      "limit_m": 0.001
+    },
+    "rest_skinning": {
+      "max_dev_m": 1.4640768253803297e-05,
+      "warn_m": 0.02,
+      "primitives": [
+        {
+          "primitive": "SK_Bufomorph[0]",
+          "vertices": 4358,
+          "max_dev_m": 1.4640768253803297e-05,
+          "median_dev_m": 3.116054908108648e-06,
+          "extent_m": 2.268078743718803
+        }
+      ]
+    },
+    "clip_skinning": [
+      {
+        "clip": "BiteAttack",
+        "max_dev_m": 1.2114551840378431
+      },
+      {
+        "clip": "BiteAttack_RM",
+        "max_dev_m": 2.1169730274608107
+      },
+      {
+        "clip": "Death",
+        "max_dev_m": 0.8573294891838286
+      },
+      {
+        "clip": "GetHitBack",
+        "max_dev_m": 1.4321708857436775
+      },
+      {
+        "clip": "GetHitFront",
+        "max_dev_m": 1.6003684747957123
+      },
+      {
+        "clip": "GetHitLeft",
+        "max_dev_m": 1.5458092611495537
+      },
+      {
+        "clip": "GetHitRight",
+        "max_dev_m": 1.5372393552610433
+      },
+      {
+        "clip": "HopBackwards",
+        "max_dev_m": 1.8541059035519287
+      },
+      {
+        "clip": "HopBackwards_RM",
+        "max_dev_m": 2.864121451546022
+      },
+      {
+        "clip": "HopForward",
+        "max_dev_m": 1.5824597504365399
+      },
+      {
+        "clip": "HopForward_RM",
+        "max_dev_m": 1.6499521162675355
+      },
+      {
+        "clip": "HopLeft",
+        "max_dev_m": 1.5599059994025035
+      },
+      {
+        "clip": "HopLeft_RM",
+        "max_dev_m": 1.9630922368499053
+      },
+      {
+        "clip": "HopRight",
+        "max_dev_m": 1.5596397000611866
+      },
+      {
+        "clip": "HopRight_RM",
+        "max_dev_m": 1.9591751018575483
+      },
+      {
+        "clip": "IdleBreathe",
+        "max_dev_m": 1.6132653747295864
+      },
+      {
+        "clip": "IdleLookAround",
+        "max_dev_m": 1.5755150426023752
+      },
+      {
+        "clip": "Run",
+        "max_dev_m": 1.5488926813461048
+      },
+      {
+        "clip": "Run_RM",
+        "max_dev_m": 1.4076562098497363
+      },
+      {
+        "clip": "SpitAttack",
+        "max_dev_m": 1.4446218721809339
+      },
+      {
+        "clip": "TongueAttack",
+        "max_dev_m": 2.445260043035076
+      }
+    ],
+    "clips": {
+      "expected_count": 21,
+      "have_count": 21,
+      "missing": [],
+      "extra": []
+    },
+    "translation_diagnostic": {
+      "skeleton_extent_m": 1.9053881213472121,
+      "worst_translation_span_m": 3.0961053371429443,
+      "clip": "BiteAttack_RM",
+      "joint": "root",
+      "ratio": 1.6249210869194624
+    },
+    "source_agreement": {
+      "channels_checked": 252,
+      "mismatches": []
+    },
+    "warnings": [
+      "translation span 3.10 m exceeds skeleton extent 1.91 m (BiteAttack_RM / root)"
+    ],
+    "errors": [],
+    "complete": true
+  },
+  "complete": true
+}

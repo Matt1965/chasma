@@ -1,0 +1,300 @@
+{
+  "monster_name": "Giant Slug",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\giant_slug.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 3\\Giant Slug\\FBX Files\\SK_GiantSlug.FBX",
+  "used_fbx2gltf_sk": false,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 56,
+  "unique_clips_expected": 28,
+  "unique_clips_merged": 28,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "GiantSlug@CrawlForward.FBX",
+      "clip_name": "CrawlForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForward_RM.FBX",
+      "clip_name": "CrawlForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnLeft.FBX",
+      "clip_name": "CrawlForwardTurnLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnLeft_RM.FBX",
+      "clip_name": "CrawlForwardTurnLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnLeftSpittersAttack.FBX",
+      "clip_name": "CrawlForwardTurnLeftSpittersAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnLeftSpittersAttack_RM.FBX",
+      "clip_name": "CrawlForwardTurnLeftSpittersAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnRighSpittersAttack.FBX",
+      "clip_name": "CrawlForwardTurnRighSpittersAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnRighSpittersAttack_RM.FBX",
+      "clip_name": "CrawlForwardTurnRighSpittersAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnRight.FBX",
+      "clip_name": "CrawlForwardTurnRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnRight_RM.FBX",
+      "clip_name": "CrawlForwardTurnRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@SpittersAttack.FBX",
+      "clip_name": "SpittersAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@SpittersAttackForward_RM.FBX",
+      "clip_name": "SpittersAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@TongueAttackLeftRight.FBX",
+      "clip_name": "TongueAttackLeftRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@TongueAttackStraight.FBX",
+      "clip_name": "TongueAttackStraight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@Turn90LeftTongueAttack.FBX",
+      "clip_name": "Turn90LeftTongueAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@Turn90LeftTongueAttack_RM.FBX",
+      "clip_name": "Turn90LeftTongueAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@Turn90RightTongueAttack.FBX",
+      "clip_name": "Turn90RightTongueAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@Turn90RightTongueAttack_RM.FBX",
+      "clip_name": "Turn90RightTongueAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForward.FBX",
+      "clip_name": "CrawlForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForward_RM.FBX",
+      "clip_name": "CrawlForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnLeft.FBX",
+      "clip_name": "CrawlForwardTurnLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnLeft_RM.FBX",
+      "clip_name": "CrawlForwardTurnLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnLeftSpittersAttack.FBX",
+      "clip_name": "CrawlForwardTurnLeftSpittersAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnLeftSpittersAttack_RM.FBX",
+      "clip_name": "CrawlForwardTurnLeftSpittersAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnRighSpittersAttack.FBX",
+      "clip_name": "CrawlForwardTurnRighSpittersAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnRighSpittersAttack_RM.FBX",
+      "clip_name": "CrawlForwardTurnRighSpittersAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnRight.FBX",
+      "clip_name": "CrawlForwardTurnRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@CrawlForwardTurnRight_RM.FBX",
+      "clip_name": "CrawlForwardTurnRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@SpittersAttack.FBX",
+      "clip_name": "SpittersAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@SpittersAttackForward_RM.FBX",
+      "clip_name": "SpittersAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@TongueAttackLeftRight.FBX",
+      "clip_name": "TongueAttackLeftRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@TongueAttackStraight.FBX",
+      "clip_name": "TongueAttackStraight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@Turn90LeftTongueAttack.FBX",
+      "clip_name": "Turn90LeftTongueAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@Turn90LeftTongueAttack_RM.FBX",
+      "clip_name": "Turn90LeftTongueAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@Turn90RightTongueAttack.FBX",
+      "clip_name": "Turn90RightTongueAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "GiantSlug@Turn90RightTongueAttack_RM.FBX",
+      "clip_name": "Turn90RightTongueAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 6,
+    "scene_root_x90": false
+  }
+}

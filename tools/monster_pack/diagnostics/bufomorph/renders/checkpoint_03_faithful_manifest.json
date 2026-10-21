@@ -1,0 +1,17 @@
+{
+  "glb": "C:\\BevyFiles\\chasma\\assets\\units\\bufomorph.glb",
+  "label": "checkpoint_03_faithful",
+  "outer_rotation_deg": [
+    0.0,
+    90.0,
+    0.0
+  ],
+  "blender_version": "4.2.3 LTS",
+  "frames": [
+    {
+      "clip": "IdleLookAround",
+      "time_s": 0.0,
+      "png": "checkpoint_03_faithful_IdleLookAround_t0.00.png"
+    }
+  ]
+}

@@ -13,7 +13,10 @@ use crate::ui::GameplayUiPlugin;
 use crate::ui::gameplay::collect_build_mode_intents;
 use crate::ui::gameplay::{GameplayCommandInputSystems, GameplayInputGateSystems};
 use crate::units::input::{BoxSelectDrag, PlayerInteractionSettings, SelectedUnits};
-use crate::units::{UnitHealthBarState, billboard_unit_health_bars, sync_unit_health_bars};
+use crate::units::{
+    UnitHealthBarState, UnitPortraitPlugin, billboard_unit_health_bars, configure_portrait_system_sets,
+    sync_unit_health_bars,
+};
 
 use super::box_select_overlay::{setup_box_select_overlay, sync_box_select_overlay};
 use super::indicator::{UnitSelectionIndicatorState, sync_unit_selection_indicators};
@@ -93,10 +96,12 @@ impl Plugin for PlayerPlugin {
             .add_plugins(SettlementContextPlugin)
             .add_plugins(SimulationPlugin)
             .add_plugins(DebugOverlayPlugin)
-            .add_plugins(GameplayUiPlugin);
+            .add_plugins(GameplayUiPlugin)
+            .add_plugins(UnitPortraitPlugin);
         #[cfg(feature = "dev")]
         app.add_plugins(crate::dev::DevModePlugin);
         configure_player_control_sets(app);
+        configure_portrait_system_sets(app);
         #[cfg(feature = "dev")]
         app.configure_sets(
             Update,

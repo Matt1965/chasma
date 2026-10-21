@@ -1,0 +1,355 @@
+{
+  "glb": "C:\\BevyFiles\\chasma\\assets\\units\\bufomorph.glb",
+  "scene_rotation": [
+    0.7071068286895752,
+    0.0,
+    0.0,
+    0.7071068286895752
+  ],
+  "clips": {
+    "IdleLookAround": [
+      {
+        "clip": "IdleLookAround",
+        "bone": "root",
+        "path": "translation",
+        "t_key": 0.0,
+        "value": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "clip": "IdleLookAround",
+        "bone": "root",
+        "path": "rotation",
+        "t_key": 0.0,
+        "value": [
+          -0.7071067690849304,
+          0.0,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "clip": "IdleLookAround",
+        "bone": "Bufomorph_",
+        "path": "translation",
+        "t_key": 0.0,
+        "value": [
+          4.000769493472944e-08,
+          -0.02918305993080139,
+          0.3977022171020508
+        ]
+      },
+      {
+        "clip": "IdleLookAround",
+        "bone": "Bufomorph_",
+        "path": "rotation",
+        "t_key": 0.0,
+        "value": [
+          0.0,
+          0.0,
+          -0.7071062922477722,
+          0.7071072459220886
+        ]
+      },
+      {
+        "clip": "IdleLookAround",
+        "bone": "Bufomorph_JawUpper",
+        "path": "translation",
+        "t_key": 0.0,
+        "value": [
+          0.08824102580547333,
+          0.12202725559473038,
+          -2.326068369029599e-07
+        ]
+      },
+      {
+        "clip": "IdleLookAround",
+        "bone": "Bufomorph_JawUpper",
+        "path": "rotation",
+        "t_key": 0.0,
+        "value": [
+          -0.8601012825965881,
+          -0.5101233124732971,
+          -2.655921207406209e-07,
+          7.290059897968604e-07
+        ]
+      }
+    ],
+    "IdleBreathe": [
+      {
+        "clip": "IdleBreathe",
+        "bone": "root",
+        "path": "translation",
+        "t_key": 0.0,
+        "value": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "clip": "IdleBreathe",
+        "bone": "root",
+        "path": "rotation",
+        "t_key": 0.0,
+        "value": [
+          -0.7071067690849304,
+          0.0,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "clip": "IdleBreathe",
+        "bone": "Bufomorph_",
+        "path": "translation",
+        "t_key": 0.0,
+        "value": [
+          4.000769493472944e-08,
+          -0.02918305993080139,
+          0.3977022171020508
+        ]
+      },
+      {
+        "clip": "IdleBreathe",
+        "bone": "Bufomorph_",
+        "path": "rotation",
+        "t_key": 0.0,
+        "value": [
+          0.0,
+          0.0,
+          -0.7071062922477722,
+          0.7071072459220886
+        ]
+      },
+      {
+        "clip": "IdleBreathe",
+        "bone": "Bufomorph_JawUpper",
+        "path": "translation",
+        "t_key": 0.0,
+        "value": [
+          0.08824102580547333,
+          0.12202725559473038,
+          -2.326068369029599e-07
+        ]
+      },
+      {
+        "clip": "IdleBreathe",
+        "bone": "Bufomorph_JawUpper",
+        "path": "rotation",
+        "t_key": 0.0,
+        "value": [
+          -0.8601012825965881,
+          -0.5101233124732971,
+          -2.655921207406209e-07,
+          7.290059897968604e-07
+        ]
+      }
+    ],
+    "BiteAttack": [
+      {
+        "clip": "BiteAttack",
+        "bone": "root",
+        "path": "translation",
+        "t_key": 0.0,
+        "value": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "clip": "BiteAttack",
+        "bone": "root",
+        "path": "rotation",
+        "t_key": 0.0,
+        "value": [
+          -0.7071067690849304,
+          0.0,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "clip": "BiteAttack",
+        "bone": "Bufomorph_",
+        "path": "translation",
+        "t_key": 0.0,
+        "value": [
+          4.0007240187378557e-08,
+          -0.02918305993080139,
+          0.3977022171020508
+        ]
+      },
+      {
+        "clip": "BiteAttack",
+        "bone": "Bufomorph_",
+        "path": "rotation",
+        "t_key": 0.0,
+        "value": [
+          0.0,
+          0.0,
+          -0.7071062326431274,
+          0.7071073055267334
+        ]
+      },
+      {
+        "clip": "BiteAttack",
+        "bone": "Bufomorph_JawUpper",
+        "path": "translation",
+        "t_key": 0.0,
+        "value": [
+          0.08824092894792557,
+          0.12202727049589157,
+          -2.3116184877380874e-07
+        ]
+      },
+      {
+        "clip": "BiteAttack",
+        "bone": "Bufomorph_JawUpper",
+        "path": "rotation",
+        "t_key": 0.0,
+        "value": [
+          -0.8601012825965881,
+          -0.5101233720779419,
+          -2.6559226284916804e-07,
+          7.290059897968604e-07
+        ]
+      },
+      {
+        "clip": "BiteAttack",
+        "bone": "root",
+        "path": "translation",
+        "t_key": 0.5,
+        "value": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "sample_time": 0.35
+      },
+      {
+        "clip": "BiteAttack",
+        "bone": "root",
+        "path": "rotation",
+        "t_key": 0.5,
+        "value": [
+          -0.7071067690849304,
+          0.0,
+          0.0,
+          0.7071067690849304
+        ],
+        "sample_time": 0.35
+      },
+      {
+        "clip": "BiteAttack",
+        "bone": "Bufomorph_",
+        "path": "translation",
+        "t_key": 0.3333333432674408,
+        "value": [
+          1.8778193577873026e-07,
+          -3.4098703861236572,
+          27.446598052978516
+        ],
+        "sample_time": 0.35
+      },
+      {
+        "clip": "BiteAttack",
+        "bone": "Bufomorph_",
+        "path": "rotation",
+        "t_key": 0.3333333432674408,
+        "value": [
+          0.2491997331380844,
+          0.24920010566711426,
+          -0.6617391109466553,
+          0.6617401838302612
+        ],
+        "sample_time": 0.35
+      }
+    ],
+    "Run": [
+      {
+        "clip": "Run",
+        "bone": "root",
+        "path": "translation",
+        "t_key": 0.0,
+        "value": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "clip": "Run",
+        "bone": "root",
+        "path": "rotation",
+        "t_key": 0.0,
+        "value": [
+          -0.7071067690849304,
+          0.0,
+          0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "clip": "Run",
+        "bone": "Bufomorph_",
+        "path": "translation",
+        "t_key": 0.0,
+        "value": [
+          4.000610331900134e-08,
+          -0.02918305993080139,
+          0.3977024555206299
+        ]
+      },
+      {
+        "clip": "Run",
+        "bone": "Bufomorph_",
+        "path": "rotation",
+        "t_key": 0.0,
+        "value": [
+          -4.710280339463016e-16,
+          4.710273986715911e-16,
+          -0.7071062922477722,
+          0.7071072459220886
+        ]
+      },
+      {
+        "clip": "Run",
+        "bone": "Bufomorph_JawUpper",
+        "path": "translation",
+        "t_key": 0.0,
+        "value": [
+          0.08824173361063004,
+          0.12202805280685425,
+          -2.3107003244149382e-07
+        ]
+      },
+      {
+        "clip": "Run",
+        "bone": "Bufomorph_JawUpper",
+        "path": "rotation",
+        "t_key": 0.0,
+        "value": [
+          -0.8601012825965881,
+          -0.5101233124732971,
+          -2.3734146736842376e-07,
+          7.760198741380009e-07
+        ]
+      }
+    ]
+  },
+  "IdleLookAround_jaw_local_up": [
+    0.8775154306817932,
+    -0.4795484326487329,
+    -9.83068508891723e-07
+  ],
+  "IdleBreathe_jaw_local_up": [
+    0.8775154306817932,
+    -0.4795484326487329,
+    -9.83068508891723e-07
+  ]
+}

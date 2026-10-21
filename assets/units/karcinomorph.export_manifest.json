@@ -1,0 +1,310 @@
+{
+  "monster_name": "Karcinomorph",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\karcinomorph.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 3\\Karcinomorph\\FBX Files\\SK_Karcinomorph.FBX",
+  "used_fbx2gltf_sk": false,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 58,
+  "unique_clips_expected": 29,
+  "unique_clips_merged": 29,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Karcinomorph@CrawlBackwards.FBX",
+      "clip_name": "CrawlBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlBackwards_RM.FBX",
+      "clip_name": "CrawlBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlForward.FBX",
+      "clip_name": "CrawlForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlForward_RM.FBX",
+      "clip_name": "CrawlForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlLeft.FBX",
+      "clip_name": "CrawlLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlLeft_RM.FBX",
+      "clip_name": "CrawlLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlRight.FBX",
+      "clip_name": "CrawlRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlRight_RM.FBX",
+      "clip_name": "CrawlRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@GroundAppear.FBX",
+      "clip_name": "GroundAppear",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@GroundDisappear.FBX",
+      "clip_name": "GroundDisappear",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@JumpBite.FBX",
+      "clip_name": "JumpBite",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@JumpBite_RM.FBX",
+      "clip_name": "JumpBite_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@JumpLegsAttack.FBX",
+      "clip_name": "JumpLegsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@JumpLegsAttack_RM.FBX",
+      "clip_name": "JumpLegsAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@LegsAttack.FBX",
+      "clip_name": "LegsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@LegsAttackForward.FBX",
+      "clip_name": "LegsAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@LegsAttackForward_RM.FBX",
+      "clip_name": "LegsAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@Taunt.FBX",
+      "clip_name": "Taunt",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@TurnLeft.FBX",
+      "clip_name": "TurnLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@TurnLeft_RM.FBX",
+      "clip_name": "TurnLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@TurnRight.FBX",
+      "clip_name": "TurnRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@TurnRight_RM.FBX",
+      "clip_name": "TurnRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlBackwards.FBX",
+      "clip_name": "CrawlBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlBackwards_RM.FBX",
+      "clip_name": "CrawlBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlForward.FBX",
+      "clip_name": "CrawlForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlForward_RM.FBX",
+      "clip_name": "CrawlForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlLeft.FBX",
+      "clip_name": "CrawlLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlLeft_RM.FBX",
+      "clip_name": "CrawlLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlRight.FBX",
+      "clip_name": "CrawlRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@CrawlRight_RM.FBX",
+      "clip_name": "CrawlRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@GroundAppear.FBX",
+      "clip_name": "GroundAppear",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@GroundDisappear.FBX",
+      "clip_name": "GroundDisappear",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@JumpBite.FBX",
+      "clip_name": "JumpBite",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@JumpBite_RM.FBX",
+      "clip_name": "JumpBite_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@JumpLegsAttack.FBX",
+      "clip_name": "JumpLegsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@JumpLegsAttack_RM.FBX",
+      "clip_name": "JumpLegsAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@LegsAttack.FBX",
+      "clip_name": "LegsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@LegsAttackForward.FBX",
+      "clip_name": "LegsAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@LegsAttackForward_RM.FBX",
+      "clip_name": "LegsAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@Taunt.FBX",
+      "clip_name": "Taunt",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@TurnLeft.FBX",
+      "clip_name": "TurnLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@TurnLeft_RM.FBX",
+      "clip_name": "TurnLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@TurnRight.FBX",
+      "clip_name": "TurnRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Karcinomorph@TurnRight_RM.FBX",
+      "clip_name": "TurnRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 7,
+    "scene_root_x90": false
+  }
+}

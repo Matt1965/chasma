@@ -88,6 +88,8 @@ impl Plugin for UnitAnimationPlugin {
                     .chain()
                     .in_set(UnitAnimationSystems),
             );
+        #[cfg(feature = "dev")]
+        app.add_systems(Last, super::skin_runtime_probe::probe_live_unit_skinning);
     }
 }
 

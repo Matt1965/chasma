@@ -1,0 +1,280 @@
+{
+  "monster_name": "Clypeosaurus",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\clypeosaurus.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 3\\Clypeosaurus\\FBX Files\\SK_Clypeosaurus.FBX",
+  "used_fbx2gltf_sk": false,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 52,
+  "unique_clips_expected": 26,
+  "unique_clips_merged": 26,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Clypeosaurus@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@RoarAntennaElectricAttack.FBX",
+      "clip_name": "RoarAntennaElectricAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttack.FBX",
+      "clip_name": "SmashAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackForward.FBX",
+      "clip_name": "SmashAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackForward_RM.FBX",
+      "clip_name": "SmashAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackForwardLeft.FBX",
+      "clip_name": "SmashAttackForwardLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackForwardLeft_RM.FBX",
+      "clip_name": "SmashAttackForwardLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackForwardRight.FBX",
+      "clip_name": "SmashAttackForwardRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackForwardRight_RM.FBX",
+      "clip_name": "SmashAttackForwardRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackLeft.FBX",
+      "clip_name": "SmashAttackLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackLeft_RM.FBX",
+      "clip_name": "SmashAttackLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackRight.FBX",
+      "clip_name": "SmashAttackRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackRight_RM.FBX",
+      "clip_name": "SmashAttackRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@SpittersAttack.FBX",
+      "clip_name": "SpittersAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@TurnLeft.FBX",
+      "clip_name": "TurnLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@TurnLeft_RM.FBX",
+      "clip_name": "TurnLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@TurnRight.FBX",
+      "clip_name": "TurnRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@TurnRight_RM.FBX",
+      "clip_name": "TurnRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Clypeosaurus@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@RoarAntennaElectricAttack.FBX",
+      "clip_name": "RoarAntennaElectricAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttack.FBX",
+      "clip_name": "SmashAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackForward.FBX",
+      "clip_name": "SmashAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackForward_RM.FBX",
+      "clip_name": "SmashAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackForwardLeft.FBX",
+      "clip_name": "SmashAttackForwardLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackForwardLeft_RM.FBX",
+      "clip_name": "SmashAttackForwardLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackForwardRight.FBX",
+      "clip_name": "SmashAttackForwardRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackForwardRight_RM.FBX",
+      "clip_name": "SmashAttackForwardRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackLeft.FBX",
+      "clip_name": "SmashAttackLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackLeft_RM.FBX",
+      "clip_name": "SmashAttackLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackRight.FBX",
+      "clip_name": "SmashAttackRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@SmashAttackRight_RM.FBX",
+      "clip_name": "SmashAttackRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@SpittersAttack.FBX",
+      "clip_name": "SpittersAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@TurnLeft.FBX",
+      "clip_name": "TurnLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@TurnLeft_RM.FBX",
+      "clip_name": "TurnLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@TurnRight.FBX",
+      "clip_name": "TurnRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@TurnRight_RM.FBX",
+      "clip_name": "TurnRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Clypeosaurus@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 4,
+    "scene_root_x90": false
+  }
+}

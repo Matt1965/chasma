@@ -1,0 +1,23 @@
+//! Dynamic unit portraits rendered from authoritative appearance data.
+
+mod animation;
+mod cache;
+mod components;
+mod diagnostics;
+mod equipment;
+mod framing;
+mod lifecycle_probe;
+mod pipeline;
+mod plugin;
+mod resolve;
+mod signature;
+mod studio;
+mod studio_images;
+mod ui;
+
+pub use components::UnitPortraitSceneRoot;
+pub use plugin::{UnitPortraitPlugin, UnitPortraitSystems, configure_portrait_system_sets};
+pub use ui::{
+    SelectedUnitPortraitImage, spawn_portrait_plate_layers, sync_selected_unit_portrait_ui,
+    sync_squad_portrait_ui,
+};

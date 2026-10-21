@@ -184,16 +184,33 @@ fn try_handoff_or_despawn(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::corpses::CorpseRenderIndex;
     use crate::simulation::{SIMULATION_TICK_SECONDS, SimulationControlState};
-    use crate::world::{AnimationProfileId, UnitDefinitionId};
+    use crate::units::spawn::UnitRenderIndex;
+    use crate::world::{AnimationProfileId, ChunkLayout, UnitDefinitionId, WorldData};
 
-    #[test]
-    fn death_presentation_despawns_after_timer() {
+    fn test_world_data() -> WorldData {
+        WorldData::new(ChunkLayout {
+            chunk_size_meters: 256.0,
+            units_per_meter: 1.0,
+        })
+    }
+
+    fn death_presentation_test_app() -> App {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.insert_resource(UnitAnimationSettings::default());
         app.insert_resource(SimulationControlState::default());
+        app.insert_resource(test_world_data());
+        app.insert_resource(UnitRenderIndex(std::collections::HashMap::new()));
+        app.insert_resource(CorpseRenderIndex(std::collections::HashMap::new()));
         app.add_systems(Update, tick_death_presentations);
+        app
+    }
+
+    #[test]
+    fn death_presentation_despawns_after_timer() {
+        let mut app = death_presentation_test_app();
 
         let entity = app
             .world_mut()
@@ -217,14 +234,12 @@ mod tests {
 
     #[test]
     fn death_timer_freezes_while_paused() {
-        let mut app = App::new();
-        app.add_plugins(MinimalPlugins);
-        app.insert_resource(SimulationControlState {
+        let mut app = death_presentation_test_app();
+        *app.world_mut().resource_mut::<SimulationControlState>() = SimulationControlState {
             paused: true,
             step_once: false,
             current_tick: 0,
-        });
-        app.add_systems(Update, tick_death_presentations);
+        };
 
         let entity = app
             .world_mut()
@@ -250,14 +265,12 @@ mod tests {
 
     #[test]
     fn death_timer_step_once_advances_one_tick() {
-        let mut app = App::new();
-        app.add_plugins(MinimalPlugins);
-        app.insert_resource(SimulationControlState {
+        let mut app = death_presentation_test_app();
+        *app.world_mut().resource_mut::<SimulationControlState>() = SimulationControlState {
             paused: true,
             step_once: true,
             current_tick: 0,
-        });
-        app.add_systems(Update, tick_death_presentations);
+        };
 
         let entity = app
             .world_mut()

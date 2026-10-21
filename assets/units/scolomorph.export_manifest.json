@@ -1,0 +1,390 @@
+{
+  "monster_name": "Scolomorph",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\scolomorph.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 4\\Scolomorph\\FBX Files\\SK_Scolomorph.FBX",
+  "used_fbx2gltf_sk": false,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 74,
+  "unique_clips_expected": 37,
+  "unique_clips_merged": 37,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Scolomorph@BiteForwardAttack.FBX",
+      "clip_name": "BiteForwardAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@BiteForwardAttack_RM.FBX",
+      "clip_name": "BiteForwardAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlForward.FBX",
+      "clip_name": "CrawlForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlForward_RM.FBX",
+      "clip_name": "CrawlForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlForwardCombat.FBX",
+      "clip_name": "CrawlForwardCombat",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlForwardCombat_RM.FBX",
+      "clip_name": "CrawlForwardCombat_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftSharp.FBX",
+      "clip_name": "CrawlTurnLeftSharp",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftSharp_RM.FBX",
+      "clip_name": "CrawlTurnLeftSharp_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftSharpCombat.FBX",
+      "clip_name": "CrawlTurnLeftSharpCombat",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftSharpCombat_RM.FBX",
+      "clip_name": "CrawlTurnLeftSharpCombat_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftWide.FBX",
+      "clip_name": "CrawlTurnLeftWide",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftWide_RM.FBX",
+      "clip_name": "CrawlTurnLeftWide_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftWideCombat.FBX",
+      "clip_name": "CrawlTurnLeftWideCombat",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftWideCombat_RM.FBX",
+      "clip_name": "CrawlTurnLeftWideCombat_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightSharp.FBX",
+      "clip_name": "CrawlTurnRightSharp",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightSharp_RM.FBX",
+      "clip_name": "CrawlTurnRightSharp_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightSharpCombat.FBX",
+      "clip_name": "CrawlTurnRightSharpCombat",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightSharpCombat_RM.FBX",
+      "clip_name": "CrawlTurnRightSharpCombat_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightWide.FBX",
+      "clip_name": "CrawlTurnRightWide",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightWide_RM.FBX",
+      "clip_name": "CrawlTurnRightWide_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightWideCombat.FBX",
+      "clip_name": "CrawlTurnRightWideCombat",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightWideCombat_RM.FBX",
+      "clip_name": "CrawlTurnRightWideCombat_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@IdleCombat.FBX",
+      "clip_name": "IdleCombat",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@SpitAttack.FBX",
+      "clip_name": "SpitAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@TauntSpreadGas.FBX",
+      "clip_name": "TauntSpreadGas",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@Turn90LeftBiteAttack.FBX",
+      "clip_name": "Turn90LeftBiteAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@Turn90LeftBiteAttack_RM.FBX",
+      "clip_name": "Turn90LeftBiteAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@Turn90LeftCombat.FBX",
+      "clip_name": "Turn90LeftCombat",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@Turn90LeftCombat_RM.FBX",
+      "clip_name": "Turn90LeftCombat_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@Turn90RightBiteAttack.FBX",
+      "clip_name": "Turn90RightBiteAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@Turn90RightBiteAttack_RM.FBX",
+      "clip_name": "Turn90RightBiteAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@Turn90RightCombat.FBX",
+      "clip_name": "Turn90RightCombat",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@Turn90RightCombat_RM.FBX",
+      "clip_name": "Turn90RightCombat_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Scolomorph@BiteForwardAttack.FBX",
+      "clip_name": "BiteForwardAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@BiteForwardAttack_RM.FBX",
+      "clip_name": "BiteForwardAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlForward.FBX",
+      "clip_name": "CrawlForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlForward_RM.FBX",
+      "clip_name": "CrawlForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlForwardCombat.FBX",
+      "clip_name": "CrawlForwardCombat",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlForwardCombat_RM.FBX",
+      "clip_name": "CrawlForwardCombat_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftSharp.FBX",
+      "clip_name": "CrawlTurnLeftSharp",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftSharp_RM.FBX",
+      "clip_name": "CrawlTurnLeftSharp_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftSharpCombat.FBX",
+      "clip_name": "CrawlTurnLeftSharpCombat",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftSharpCombat_RM.FBX",
+      "clip_name": "CrawlTurnLeftSharpCombat_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftWide.FBX",
+      "clip_name": "CrawlTurnLeftWide",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftWide_RM.FBX",
+      "clip_name": "CrawlTurnLeftWide_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftWideCombat.FBX",
+      "clip_name": "CrawlTurnLeftWideCombat",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnLeftWideCombat_RM.FBX",
+      "clip_name": "CrawlTurnLeftWideCombat_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightSharp.FBX",
+      "clip_name": "CrawlTurnRightSharp",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightSharp_RM.FBX",
+      "clip_name": "CrawlTurnRightSharp_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightSharpCombat.FBX",
+      "clip_name": "CrawlTurnRightSharpCombat",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightSharpCombat_RM.FBX",
+      "clip_name": "CrawlTurnRightSharpCombat_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightWide.FBX",
+      "clip_name": "CrawlTurnRightWide",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightWide_RM.FBX",
+      "clip_name": "CrawlTurnRightWide_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightWideCombat.FBX",
+      "clip_name": "CrawlTurnRightWideCombat",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@CrawlTurnRightWideCombat_RM.FBX",
+      "clip_name": "CrawlTurnRightWideCombat_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@IdleCombat.FBX",
+      "clip_name": "IdleCombat",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@SpitAttack.FBX",
+      "clip_name": "SpitAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@TauntSpreadGas.FBX",
+      "clip_name": "TauntSpreadGas",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@Turn90LeftBiteAttack.FBX",
+      "clip_name": "Turn90LeftBiteAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@Turn90LeftBiteAttack_RM.FBX",
+      "clip_name": "Turn90LeftBiteAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@Turn90LeftCombat.FBX",
+      "clip_name": "Turn90LeftCombat",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@Turn90LeftCombat_RM.FBX",
+      "clip_name": "Turn90LeftCombat_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@Turn90RightBiteAttack.FBX",
+      "clip_name": "Turn90RightBiteAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@Turn90RightBiteAttack_RM.FBX",
+      "clip_name": "Turn90RightBiteAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@Turn90RightCombat.FBX",
+      "clip_name": "Turn90RightCombat",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Scolomorph@Turn90RightCombat_RM.FBX",
+      "clip_name": "Turn90RightCombat_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 6,
+    "scene_root_x90": false
+  }
+}

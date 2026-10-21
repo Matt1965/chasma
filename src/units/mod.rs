@@ -11,6 +11,7 @@ mod components;
 mod dev_spawn;
 mod appearance_presentation;
 mod equipment_presentation;
+mod portraits;
 pub mod presentation;
 mod health_bars;
 pub mod input;
@@ -51,6 +52,11 @@ pub use presentation::{
 };
 pub use equipment_presentation::{
     UnitEquipmentPresentationIndex, UnitEquipmentVisual, sync_unit_equipment_presentation,
+};
+pub use portraits::{
+    SelectedUnitPortraitImage, UnitPortraitPlugin, UnitPortraitSceneRoot,
+    configure_portrait_system_sets, spawn_portrait_plate_layers, sync_selected_unit_portrait_ui,
+    sync_squad_portrait_ui,
 };
 pub use health_bars::{
     UnitHealthBar, UnitHealthBarState, billboard_unit_health_bars, health_bar_color,

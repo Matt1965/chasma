@@ -1,0 +1,400 @@
+{
+  "monster_name": "Morphorrid",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\morphorrid.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Morphorrid\\FBX Files\\SK_Morphorrid.FBX",
+  "used_fbx2gltf_sk": false,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 76,
+  "unique_clips_expected": 38,
+  "unique_clips_merged": 38,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Morphorrid@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@Idle.FBX",
+      "clip_name": "Idle",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@JumpBackwards.FBX",
+      "clip_name": "JumpBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@JumpBackwards_RM.FBX",
+      "clip_name": "JumpBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@JumpForward.FBX",
+      "clip_name": "JumpForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@JumpForward_RM.FBX",
+      "clip_name": "JumpForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@JumpLeft.FBX",
+      "clip_name": "JumpLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@JumpLeft_RM.FBX",
+      "clip_name": "JumpLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@JumpRight.FBX",
+      "clip_name": "JumpRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@JumpRight_RM.FBX",
+      "clip_name": "JumpRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@JumpTentaclesAttack.FBX",
+      "clip_name": "JumpTentaclesAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@JumpTentaclesAttack_RM.FBX",
+      "clip_name": "JumpTentaclesAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@SpitAttack.FBX",
+      "clip_name": "SpitAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@Taunt.FBX",
+      "clip_name": "Taunt",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@TentaclesAttack.FBX",
+      "clip_name": "TentaclesAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@TentaclesAttackForward.FBX",
+      "clip_name": "TentaclesAttackForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@TentaclesAttackForward_RM.FBX",
+      "clip_name": "TentaclesAttackForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@Turn90LeftTentaclesAttack.FBX",
+      "clip_name": "Turn90LeftTentaclesAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@Turn90LeftTentaclesAttack_RM.FBX",
+      "clip_name": "Turn90LeftTentaclesAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@Turn90RightTentaclesAttack.FBX",
+      "clip_name": "Turn90RightTentaclesAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@Turn90RightTentaclesAttack_RM.FBX",
+      "clip_name": "Turn90RightTentaclesAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@WalkBackwards.FBX",
+      "clip_name": "WalkBackwards",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@WalkBackwards_RM.FBX",
+      "clip_name": "WalkBackwards_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@WalkForward.FBX",
+      "clip_name": "WalkForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@WalkForward_RM.FBX",
+      "clip_name": "WalkForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@WalkLeft.FBX",
+      "clip_name": "WalkLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@WalkLeft_RM.FBX",
+      "clip_name": "WalkLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@WalkRight.FBX",
+      "clip_name": "WalkRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@WalkRight_RM.FBX",
+      "clip_name": "WalkRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Morphorrid@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@Idle.FBX",
+      "clip_name": "Idle",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@JumpBackwards.FBX",
+      "clip_name": "JumpBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@JumpBackwards_RM.FBX",
+      "clip_name": "JumpBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@JumpForward.FBX",
+      "clip_name": "JumpForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@JumpForward_RM.FBX",
+      "clip_name": "JumpForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@JumpLeft.FBX",
+      "clip_name": "JumpLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@JumpLeft_RM.FBX",
+      "clip_name": "JumpLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@JumpRight.FBX",
+      "clip_name": "JumpRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@JumpRight_RM.FBX",
+      "clip_name": "JumpRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@JumpTentaclesAttack.FBX",
+      "clip_name": "JumpTentaclesAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@JumpTentaclesAttack_RM.FBX",
+      "clip_name": "JumpTentaclesAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@SpitAttack.FBX",
+      "clip_name": "SpitAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@Taunt.FBX",
+      "clip_name": "Taunt",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@TentaclesAttack.FBX",
+      "clip_name": "TentaclesAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@TentaclesAttackForward.FBX",
+      "clip_name": "TentaclesAttackForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@TentaclesAttackForward_RM.FBX",
+      "clip_name": "TentaclesAttackForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@Turn90LeftTentaclesAttack.FBX",
+      "clip_name": "Turn90LeftTentaclesAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@Turn90LeftTentaclesAttack_RM.FBX",
+      "clip_name": "Turn90LeftTentaclesAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@Turn90RightTentaclesAttack.FBX",
+      "clip_name": "Turn90RightTentaclesAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@Turn90RightTentaclesAttack_RM.FBX",
+      "clip_name": "Turn90RightTentaclesAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@WalkBackwards.FBX",
+      "clip_name": "WalkBackwards",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@WalkBackwards_RM.FBX",
+      "clip_name": "WalkBackwards_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@WalkForward.FBX",
+      "clip_name": "WalkForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@WalkForward_RM.FBX",
+      "clip_name": "WalkForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@WalkLeft.FBX",
+      "clip_name": "WalkLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@WalkLeft_RM.FBX",
+      "clip_name": "WalkLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@WalkRight.FBX",
+      "clip_name": "WalkRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Morphorrid@WalkRight_RM.FBX",
+      "clip_name": "WalkRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 8,
+    "scene_root_x90": false
+  }
+}

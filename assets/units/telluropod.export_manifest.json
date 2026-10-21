@@ -1,0 +1,180 @@
+{
+  "monster_name": "Telluropod",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\telluropod.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 2\\Telluropod\\FBX Files\\SK_Telluropod.FBX",
+  "used_fbx2gltf_sk": false,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 32,
+  "unique_clips_expected": 16,
+  "unique_clips_merged": 16,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Telluropod@BiteAttack.FBX",
+      "clip_name": "BiteAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@BiteAttack_RM.FBX",
+      "clip_name": "BiteAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@Crawl.FBX",
+      "clip_name": "Crawl",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@Crawl_RM.FBX",
+      "clip_name": "Crawl_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@GetHitBack_RM.FBX",
+      "clip_name": "GetHitBack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@GetHitFront_RM.FBX",
+      "clip_name": "GetHitFront_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@TongueAttack.FBX",
+      "clip_name": "TongueAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Telluropod@BiteAttack.FBX",
+      "clip_name": "BiteAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@BiteAttack_RM.FBX",
+      "clip_name": "BiteAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@Crawl.FBX",
+      "clip_name": "Crawl",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@Crawl_RM.FBX",
+      "clip_name": "Crawl_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@GetHitBack_RM.FBX",
+      "clip_name": "GetHitBack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@GetHitFront_RM.FBX",
+      "clip_name": "GetHitFront_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@TongueAttack.FBX",
+      "clip_name": "TongueAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Telluropod@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 5,
+    "scene_root_x90": false
+  }
+}

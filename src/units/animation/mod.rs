@@ -17,6 +17,10 @@ mod plugin;
 mod presentation_time;
 mod settings;
 mod skeleton;
+#[cfg(feature = "dev")]
+mod skin_runtime_probe;
+#[cfg(all(test, feature = "dev"))]
+mod skinning_runtime_tests;
 mod stress;
 mod sync;
 mod sync_timing;

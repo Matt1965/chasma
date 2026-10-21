@@ -1,0 +1,320 @@
+{
+  "monster_name": "Hideoplast",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\hideoplast.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 4\\Hideoplast\\FBX Files\\SK_Hideoplast.FBX",
+  "used_fbx2gltf_sk": true,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 60,
+  "unique_clips_expected": 30,
+  "unique_clips_merged": 30,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Hideoplast@2HitComboClawsAttack.FBX",
+      "clip_name": "2HitComboClawsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@2HitComboClawsAttack_RM.FBX",
+      "clip_name": "2HitComboClawsAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@ClawsAttackLeft.FBX",
+      "clip_name": "ClawsAttackLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@ClawsAttackLeft_RM.FBX",
+      "clip_name": "ClawsAttackLeft_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@ClawsAttackRight.FBX",
+      "clip_name": "ClawsAttackRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@ClawsAttackRight_RM.FBX",
+      "clip_name": "ClawsAttackRight_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@JumpBiteAttack.FBX",
+      "clip_name": "JumpBiteAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@JumpBiteAttack_RM.FBX",
+      "clip_name": "JumpBiteAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@JumpMandibulesAttack.FBX",
+      "clip_name": "JumpMandibulesAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@JumpMandibulesAttack_RM.FBX",
+      "clip_name": "JumpMandibulesAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@RoarSpreadAcid.FBX",
+      "clip_name": "RoarSpreadAcid",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@SpitAcid.FBX",
+      "clip_name": "SpitAcid",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@Turn90LeftClawsAttack.FBX",
+      "clip_name": "Turn90LeftClawsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@Turn90LeftClawsAttack_RM.FBX",
+      "clip_name": "Turn90LeftClawsAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@Turn90RightClawsAttack.FBX",
+      "clip_name": "Turn90RightClawsAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@Turn90RightClawsAttack_RM.FBX",
+      "clip_name": "Turn90RightClawsAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Hideoplast@2HitComboClawsAttack.FBX",
+      "clip_name": "2HitComboClawsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@2HitComboClawsAttack_RM.FBX",
+      "clip_name": "2HitComboClawsAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@ClawsAttackLeft.FBX",
+      "clip_name": "ClawsAttackLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@ClawsAttackLeft_RM.FBX",
+      "clip_name": "ClawsAttackLeft_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@ClawsAttackRight.FBX",
+      "clip_name": "ClawsAttackRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@ClawsAttackRight_RM.FBX",
+      "clip_name": "ClawsAttackRight_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@JumpBiteAttack.FBX",
+      "clip_name": "JumpBiteAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@JumpBiteAttack_RM.FBX",
+      "clip_name": "JumpBiteAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@JumpMandibulesAttack.FBX",
+      "clip_name": "JumpMandibulesAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@JumpMandibulesAttack_RM.FBX",
+      "clip_name": "JumpMandibulesAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@RoarSpreadAcid.FBX",
+      "clip_name": "RoarSpreadAcid",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@SpitAcid.FBX",
+      "clip_name": "SpitAcid",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@Turn90LeftClawsAttack.FBX",
+      "clip_name": "Turn90LeftClawsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@Turn90LeftClawsAttack_RM.FBX",
+      "clip_name": "Turn90LeftClawsAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@Turn90RightClawsAttack.FBX",
+      "clip_name": "Turn90RightClawsAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@Turn90RightClawsAttack_RM.FBX",
+      "clip_name": "Turn90RightClawsAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Hideoplast@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 29,
+    "scene_root_x90": true
+  }
+}

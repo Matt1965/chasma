@@ -1,0 +1,340 @@
+{
+  "monster_name": "Drackmahre",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\drackmahre.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 5\\Drackmahre\\FBX Files\\SK_Drackmahre.FBX",
+  "used_fbx2gltf_sk": true,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 64,
+  "unique_clips_expected": 32,
+  "unique_clips_merged": 32,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Drackmahre@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@DeathHitTheGround.FBX",
+      "clip_name": "DeathHitTheGround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@Falling.FBX",
+      "clip_name": "Falling",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@Fly.FBX",
+      "clip_name": "Fly",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationary.FBX",
+      "clip_name": "FlyStationary",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationaryGetHit.FBX",
+      "clip_name": "FlyStationaryGetHit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationaryGetHitToFalling.FBX",
+      "clip_name": "FlyStationaryGetHitToFalling",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationaryLanding.FBX",
+      "clip_name": "FlyStationaryLanding",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationaryLeft.FBX",
+      "clip_name": "FlyStationaryLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationaryRight.FBX",
+      "clip_name": "FlyStationaryRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationaryRoarSpreadEnergyBreath.FBX",
+      "clip_name": "FlyStationaryRoarSpreadEnergyBreath",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationarySpitEnergyBall.FBX",
+      "clip_name": "FlyStationarySpitEnergyBall",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@Glide.FBX",
+      "clip_name": "Glide",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@GlideGetHit.FBX",
+      "clip_name": "GlideGetHit",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@GlideGetHitToFalling.FBX",
+      "clip_name": "GlideGetHitToFalling",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@GlideLanding.FBX",
+      "clip_name": "GlideLanding",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@JumpBiteAttack.FBX",
+      "clip_name": "JumpBiteAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@JumpBiteAttack_RM.FBX",
+      "clip_name": "JumpBiteAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@RoarSpreadEnergyBreath.FBX",
+      "clip_name": "RoarSpreadEnergyBreath",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@SpitEnergyBall.FBX",
+      "clip_name": "SpitEnergyBall",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@TakeOff.FBX",
+      "clip_name": "TakeOff",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Drackmahre@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@DeathHitTheGround.FBX",
+      "clip_name": "DeathHitTheGround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@Falling.FBX",
+      "clip_name": "Falling",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@Fly.FBX",
+      "clip_name": "Fly",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationary.FBX",
+      "clip_name": "FlyStationary",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationaryGetHit.FBX",
+      "clip_name": "FlyStationaryGetHit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationaryGetHitToFalling.FBX",
+      "clip_name": "FlyStationaryGetHitToFalling",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationaryLanding.FBX",
+      "clip_name": "FlyStationaryLanding",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationaryLeft.FBX",
+      "clip_name": "FlyStationaryLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationaryRight.FBX",
+      "clip_name": "FlyStationaryRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationaryRoarSpreadEnergyBreath.FBX",
+      "clip_name": "FlyStationaryRoarSpreadEnergyBreath",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@FlyStationarySpitEnergyBall.FBX",
+      "clip_name": "FlyStationarySpitEnergyBall",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@Glide.FBX",
+      "clip_name": "Glide",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@GlideGetHit.FBX",
+      "clip_name": "GlideGetHit",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@GlideGetHitToFalling.FBX",
+      "clip_name": "GlideGetHitToFalling",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@GlideLanding.FBX",
+      "clip_name": "GlideLanding",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@JumpBiteAttack.FBX",
+      "clip_name": "JumpBiteAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@JumpBiteAttack_RM.FBX",
+      "clip_name": "JumpBiteAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@RoarSpreadEnergyBreath.FBX",
+      "clip_name": "RoarSpreadEnergyBreath",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@SpitEnergyBall.FBX",
+      "clip_name": "SpitEnergyBall",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@TakeOff.FBX",
+      "clip_name": "TakeOff",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Drackmahre@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 31,
+    "scene_root_x90": true
+  }
+}

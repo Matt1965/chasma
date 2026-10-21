@@ -404,6 +404,315 @@ mod tests {
         definition
     }
 
+    /// Clip-rig rest jaw rotation on idle (closed mouth). SK bind stays open; merge fills this constant.
+    const BUFOMORPH_IDLE_JAW_ROTATION: [f32; 4] = [
+        0.666_896_16,
+        0.745_150_7,
+        -4.168_088_8e-8,
+        -7.521_016_4e-7,
+    ];
+
+    /// SK mesh bind jaw (open modelling pose) — idle clips must not leave the mesh here at t=0.
+    const BUFOMORPH_SK_BIND_JAW_ROTATION: [f32; 4] = [
+        -0.860_101_3,
+        -0.510_123_3,
+        -2.66e-7,
+        7.29e-7,
+    ];
+
+    #[test]
+    #[cfg(feature = "dev")]
+    fn bufomorph_idle_look_around_jaw_pose_matches_pack_authoring() {
+        use std::path::PathBuf;
+
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/units/bufomorph.glb");
+        if !path.is_file() {
+            return;
+        }
+        let (document, buffers, _) = gltf::import(&path).expect("bufomorph glb");
+        let sk_jaw = document
+            .nodes()
+            .find(|n| n.name() == Some("Bufomorph_JawUpper"))
+            .expect("Bufomorph_JawUpper node");
+        let sk_rot = sk_jaw.transform().decomposed().1;
+        let sk_dot = sk_rot
+            .iter()
+            .zip(BUFOMORPH_SK_BIND_JAW_ROTATION)
+            .map(|(a, b)| *a * b)
+            .sum::<f32>();
+        assert!(
+            sk_dot.abs() > 0.999,
+            "SK bind jaw should remain pack open pose, got {sk_rot:?}"
+        );
+        let idle = document
+            .animations()
+            .find(|a| a.name() == Some("IdleLookAround"))
+            .expect("IdleLookAround");
+        let jaw_quat = bone_rotation_at_clip_time(
+            &document,
+            &buffers,
+            idle,
+            "Bufomorph_JawUpper",
+            0.0,
+        )
+        .expect("jaw rotation at t=0");
+        for (actual, expected) in jaw_quat.iter().zip(BUFOMORPH_IDLE_JAW_ROTATION) {
+            assert!(
+                (*actual - expected).abs() < 2e-4,
+                "IdleLookAround jaw should use clip-rig closed pose at t=0, got {jaw_quat:?}"
+            );
+        }
+        let breathe = document
+            .animations()
+            .find(|a| a.name() == Some("IdleBreathe"))
+            .expect("IdleBreathe");
+        let breathe_jaw = bone_rotation_at_clip_time(
+            &document,
+            &buffers,
+            breathe,
+            "Bufomorph_JawUpper",
+            0.0,
+        )
+        .expect("IdleBreathe jaw");
+        assert!(
+            jaw_quat.iter().zip(breathe_jaw).all(|(a, b)| (*a - b).abs() < 1e-5),
+            "IdleLookAround and IdleBreathe share the same clip-rig jaw rest"
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "dev")]
+    fn bufomorph_bite_attack_preserves_authored_body_motion() {
+        use std::path::PathBuf;
+
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/units/bufomorph.glb");
+        if !path.is_file() {
+            return;
+        }
+        let (document, buffers, _) = gltf::import(&path).expect("bufomorph glb");
+        let bite = document
+            .animations()
+            .find(|a| a.name() == Some("BiteAttack"))
+            .expect("BiteAttack");
+        let body_trans = bone_translation_at_clip_time(
+            &document,
+            &buffers,
+            bite,
+            "Bufomorph_",
+            0.35,
+        )
+        .expect("Bufomorph_ translation mid-clip");
+        let magnitude = (body_trans[0].powi(2) + body_trans[1].powi(2) + body_trans[2].powi(2)).sqrt();
+        assert!(
+            magnitude > 0.15 && magnitude < 2.0,
+            "BiteAttack hip motion must stay in metres (pack ~0.27 m), not Blender-merge 100x; got {body_trans:?}, |v|={magnitude}"
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "dev")]
+    fn bufomorph_pack_asset_includes_idle_breathe_clip() {
+        use std::path::PathBuf;
+
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/units/bufomorph.glb");
+        if !path.is_file() {
+            return;
+        }
+        let (document, buffers, _) = gltf::import(&path).expect("bufomorph glb");
+        let names: Vec<String> = document
+            .animations()
+            .map(|a| a.name().unwrap_or_default().to_string())
+            .collect();
+        assert!(
+            names.iter().any(|name| name == "IdleBreathe"),
+            "expected IdleBreathe in bufomorph glb, got: {names:?}"
+        );
+
+        let manifest_path = path.with_extension("export_manifest.json");
+        if manifest_path.is_file() {
+            let manifest_text = std::fs::read_to_string(&manifest_path).expect("export manifest");
+            assert!(
+                manifest_text.contains("\"complete\": true"),
+                "bufomorph export manifest must report complete=true"
+            );
+            assert!(
+                manifest_text.contains("\"pipeline\": \"fbx2gltf_gltf_merge\""),
+                "bufomorph must be exported via FBX2glTF glTF merge, not Blender merge"
+            );
+            assert!(
+                manifest_text.contains("\"have_count\": 21"),
+                "bufomorph export manifest must list 21 clips"
+            );
+        }
+
+        let idle = document
+            .animations()
+            .find(|a| a.name() == Some("IdleBreathe"))
+            .expect("IdleBreathe");
+        let (clip_start, clip_end) =
+            animation_clip_time_range(&buffers, &idle).expect("IdleBreathe key times");
+        assert!(
+            clip_start < 0.05,
+            "IdleBreathe should start at t=0 after export rebase, got start={clip_start}s"
+        );
+        assert!(
+            clip_end > 1.0 && clip_end < 6.0,
+            "IdleBreathe should be a short idle (~2s), got duration to {clip_end}s"
+        );
+
+        if let Some(tongue) = document
+            .nodes()
+            .find(|n| n.name() == Some("Bufomorph_Tongue1"))
+        {
+            let [sx, sy, sz] = tongue.transform().decomposed().2;
+            assert!(
+                sx > 0.5 && sy > 0.5 && sz > 0.5,
+                "Tongue1 scale must not be collapsed by import workarounds, got [{sx}, {sy}, {sz}]"
+            );
+        }
+
+        let body_index = document
+            .nodes()
+            .find(|n| n.name() == Some("Bufomorph_"))
+            .map(|n| n.index());
+        if let Some(body_index) = body_index {
+            let body_rotated_in_idle = idle.channels().any(|c| {
+                c.target().node().index() == body_index
+                    && c.target().property() == gltf::animation::Property::Rotation
+            });
+            assert!(
+                body_rotated_in_idle,
+                "IdleBreathe should retain Bufomorph_ rotation channels (no locomotion strip hack)"
+            );
+        }
+
+        let jaw_end = idle_jaw_track_end_seconds(&document, &buffers, idle)
+            .expect("IdleBreathe Bufomorph_JawUpper rotation");
+        assert!(
+            jaw_end >= clip_end - 0.2,
+            "IdleBreathe jaw track ends at {jaw_end}s before clip {clip_end}s; re-export from pack"
+        );
+    }
+
+    fn animation_clip_time_range(
+        buffers: &[gltf::buffer::Data],
+        animation: &gltf::Animation,
+    ) -> Option<(f32, f32)> {
+        let mut start = f32::INFINITY;
+        let mut end = f32::NEG_INFINITY;
+        for channel in animation.channels() {
+            let reader = channel.reader(|buffer| Some(&buffers[buffer.index()].0));
+            let inputs = reader.read_inputs()?;
+            for t in inputs {
+                start = start.min(t);
+                end = end.max(t);
+            }
+        }
+        if start.is_finite() && end.is_finite() {
+            Some((start, end))
+        } else {
+            None
+        }
+    }
+
+    fn bone_rotation_at_clip_time(
+        document: &gltf::Document,
+        buffers: &[gltf::buffer::Data],
+        animation: gltf::Animation,
+        bone_name: &str,
+        time_s: f32,
+    ) -> Option<[f32; 4]> {
+        let bone = document.nodes().find(|n| n.name() == Some(bone_name))?;
+        let bone_index = bone.index();
+        let channel = animation.channels().find(|c| {
+            c.target().node().index() == bone_index
+                && c.target().property() == gltf::animation::Property::Rotation
+        })?;
+        sample_vec4_channel_at_time(buffers, channel, time_s)
+    }
+
+    fn bone_translation_at_clip_time(
+        document: &gltf::Document,
+        buffers: &[gltf::buffer::Data],
+        animation: gltf::Animation,
+        bone_name: &str,
+        time_s: f32,
+    ) -> Option<[f32; 3]> {
+        let bone = document.nodes().find(|n| n.name() == Some(bone_name))?;
+        let bone_index = bone.index();
+        let channel = animation.channels().find(|c| {
+            c.target().node().index() == bone_index
+                && c.target().property() == gltf::animation::Property::Translation
+        })?;
+        sample_vec3_channel_at_time(buffers, channel, time_s)
+    }
+
+    fn sample_vec4_channel_at_time(
+        buffers: &[gltf::buffer::Data],
+        channel: gltf::animation::Channel,
+        time_s: f32,
+    ) -> Option<[f32; 4]> {
+        use gltf::animation::util::ReadOutputs;
+        use gltf::animation::util::Rotations;
+        let reader = channel.reader(|buffer| Some(&buffers[buffer.index()].0));
+        let inputs: Vec<f32> = reader.read_inputs()?.collect();
+        let outputs = reader.read_outputs()?;
+        let values: Vec<[f32; 4]> = match outputs {
+            ReadOutputs::Rotations(Rotations::F32(iter)) => iter.collect(),
+            _ => return None,
+        };
+        let idx = nearest_keyframe_index(&inputs, time_s)?;
+        values.get(idx).copied()
+    }
+
+    fn sample_vec3_channel_at_time(
+        buffers: &[gltf::buffer::Data],
+        channel: gltf::animation::Channel,
+        time_s: f32,
+    ) -> Option<[f32; 3]> {
+        use gltf::animation::util::ReadOutputs;
+        let reader = channel.reader(|buffer| Some(&buffers[buffer.index()].0));
+        let inputs: Vec<f32> = reader.read_inputs()?.collect();
+        let outputs = reader.read_outputs()?;
+        let values: Vec<[f32; 3]> = match outputs {
+            ReadOutputs::Translations(iter) => iter.collect(),
+            _ => return None,
+        };
+        let idx = nearest_keyframe_index(&inputs, time_s)?;
+        values.get(idx).copied()
+    }
+
+    fn nearest_keyframe_index(inputs: &[f32], time_s: f32) -> Option<usize> {
+        inputs
+            .iter()
+            .enumerate()
+            .min_by(|(_, a), (_, b)| {
+                (*a - time_s)
+                    .abs()
+                    .partial_cmp(&(*b - time_s).abs())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .map(|(i, _)| i)
+    }
+
+    fn idle_jaw_track_end_seconds(
+        document: &gltf::Document,
+        buffers: &[gltf::buffer::Data],
+        animation: gltf::Animation,
+    ) -> Option<f32> {
+        let jaw = document
+            .nodes()
+            .find(|n| n.name() == Some("Bufomorph_JawUpper"))?;
+        let jaw_index = jaw.index();
+        let channel = animation.channels().find(|c| {
+            c.target().node().index() == jaw_index
+                && c.target().property() == gltf::animation::Property::Rotation
+        })?;
+        let reader = channel.reader(|buffer| Some(&buffers[buffer.index()].0));
+        let inputs = reader.read_inputs()?;
+        inputs.last()
+    }
+
     #[test]
     fn missing_profile_is_error() {
         let definition = sample_definition(Some("missing"));

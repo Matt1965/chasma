@@ -1,0 +1,330 @@
+{
+  "monster_name": "Letalobrach",
+  "output_glb": "C:\\BevyFiles\\chasma\\assets\\units\\letalobrach.glb",
+  "sk_fbx": "C:\\Users\\matt1\\My project\\Assets\\Monsters Full Pack Vol 1\\Monsters Pack Vol 4\\Letalobrach\\FBX Files\\SK_Letalobrach.FBX",
+  "used_fbx2gltf_sk": true,
+  "strip_child_channels": false,
+  "strip_blender_fcurves": false,
+  "source_fbx_files": 62,
+  "unique_clips_expected": 31,
+  "unique_clips_merged": 31,
+  "complete": true,
+  "clips": [
+    {
+      "source_file": "Letalobrach@ClawAttackLeft.FBX",
+      "clip_name": "ClawAttackLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@ClawAttackLeftForward.FBX",
+      "clip_name": "ClawAttackLeftForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@ClawAttackLeftForward_RM.FBX",
+      "clip_name": "ClawAttackLeftForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@ClawAttackRight.FBX",
+      "clip_name": "ClawAttackRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@ClawAttackRightForward.FBX",
+      "clip_name": "ClawAttackRightForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@ClawAttackRightForward_RM.FBX",
+      "clip_name": "ClawAttackRightForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@ClawsAttack2HitCombo.FBX",
+      "clip_name": "ClawsAttack2HitCombo",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@ClawsAttack2HitComboForward.FBX",
+      "clip_name": "ClawsAttack2HitComboForward",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@ClawsAttack2HitComboForward_RM.FBX",
+      "clip_name": "ClawsAttack2HitComboForward_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@RamAttack.FBX",
+      "clip_name": "RamAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@RamAttack_RM.FBX",
+      "clip_name": "RamAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@Turn90LeftClawAttack.FBX",
+      "clip_name": "Turn90LeftClawAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@Turn90LeftClawAttack_RM.FBX",
+      "clip_name": "Turn90LeftClawAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@Turn90RightClawAttack.FBX",
+      "clip_name": "Turn90RightClawAttack",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@Turn90RightClawAttack_RM.FBX",
+      "clip_name": "Turn90RightClawAttack_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "merged"
+    },
+    {
+      "source_file": "Letalobrach@ClawAttackLeft.FBX",
+      "clip_name": "ClawAttackLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@ClawAttackLeftForward.FBX",
+      "clip_name": "ClawAttackLeftForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@ClawAttackLeftForward_RM.FBX",
+      "clip_name": "ClawAttackLeftForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@ClawAttackRight.FBX",
+      "clip_name": "ClawAttackRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@ClawAttackRightForward.FBX",
+      "clip_name": "ClawAttackRightForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@ClawAttackRightForward_RM.FBX",
+      "clip_name": "ClawAttackRightForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@ClawsAttack2HitCombo.FBX",
+      "clip_name": "ClawsAttack2HitCombo",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@ClawsAttack2HitComboForward.FBX",
+      "clip_name": "ClawsAttack2HitComboForward",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@ClawsAttack2HitComboForward_RM.FBX",
+      "clip_name": "ClawsAttack2HitComboForward_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@Death.FBX",
+      "clip_name": "Death",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@GetHitBack.FBX",
+      "clip_name": "GetHitBack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@GetHitFront.FBX",
+      "clip_name": "GetHitFront",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@GetHitLeft.FBX",
+      "clip_name": "GetHitLeft",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@GetHitRight.FBX",
+      "clip_name": "GetHitRight",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@IdleBreathe.FBX",
+      "clip_name": "IdleBreathe",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@IdleLookAround.FBX",
+      "clip_name": "IdleLookAround",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@RamAttack.FBX",
+      "clip_name": "RamAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@RamAttack_RM.FBX",
+      "clip_name": "RamAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@Roar.FBX",
+      "clip_name": "Roar",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@Run.FBX",
+      "clip_name": "Run",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@Run_RM.FBX",
+      "clip_name": "Run_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@Turn90Left.FBX",
+      "clip_name": "Turn90Left",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@Turn90Left_RM.FBX",
+      "clip_name": "Turn90Left_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@Turn90LeftClawAttack.FBX",
+      "clip_name": "Turn90LeftClawAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@Turn90LeftClawAttack_RM.FBX",
+      "clip_name": "Turn90LeftClawAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@Turn90Right.FBX",
+      "clip_name": "Turn90Right",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@Turn90Right_RM.FBX",
+      "clip_name": "Turn90Right_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@Turn90RightClawAttack.FBX",
+      "clip_name": "Turn90RightClawAttack",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@Turn90RightClawAttack_RM.FBX",
+      "clip_name": "Turn90RightClawAttack_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@Walk.FBX",
+      "clip_name": "Walk",
+      "outcome": "skipped_duplicate_manifest_entry"
+    },
+    {
+      "source_file": "Letalobrach@Walk_RM.FBX",
+      "clip_name": "Walk_RM",
+      "outcome": "skipped_duplicate_manifest_entry"
+    }
+  ],
+  "post_export": {
+    "stripped_channels": 0,
+    "kept_channels": 0,
+    "rebased_clips": 30,
+    "scene_root_x90": true
+  }
+}
