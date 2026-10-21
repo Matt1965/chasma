@@ -94,7 +94,7 @@ def import_sk_armature(sk_fbx: Path, scratch_dir: Path) -> tuple[bpy.types.Objec
         raise RuntimeError(f"FBX2glTF import produced no armature: {sk_fbx}")
     delete_loose_meshes(armature)
     apply_object_scale(armature)
-    apply_blender_fbx_armature_orientation(armature)
+    # FBX2glTF SK is already Y-up; do not add Blender FBX importer +90 X or post-export scene_root_x90.
     return armature, True
 
 
@@ -186,9 +186,37 @@ def collect_meshes(armature: bpy.types.Object) -> list[bpy.types.Object]:
     return out
 
 
+def _scale_pose_location_fcurves(action: bpy.types.Action, scale: tuple[float, float, float]) -> int:
+    """Rewrite pose-bone location keys to match an applied object scale.
+
+    Blender ``transform_apply(scale=True)`` rescales armature/mesh data but leaves
+    ``pose.bones[].location`` fcurves in the pre-apply unit (cm on this pack).
+    That is a converter defect, not an asset defect: the same factor applies to
+    every Unity FBX imported at object scale 0.01.
+    """
+    changed = 0
+    for fcurve in action.fcurves:
+        if "location" not in fcurve.data_path or "pose.bones" not in fcurve.data_path:
+            continue
+        axis = fcurve.array_index
+        factor = scale[axis] if axis < 3 else scale[0]
+        if abs(factor - 1.0) < 1e-8:
+            continue
+        for kp in fcurve.keyframe_points:
+            kp.co[1] *= factor
+            kp.handle_left[1] *= factor
+            kp.handle_right[1] *= factor
+        changed += 1
+    return changed
+
+
 def apply_object_scale(armature: bpy.types.Object) -> None:
-    if max(armature.scale) > 0.999 and min(armature.scale) < 1.001:
+    sx, sy, sz = armature.scale
+    if max(sx, sy, sz) > 0.999 and min(sx, sy, sz) < 1.001:
         return
+    action = armature.animation_data.action if armature.animation_data else None
+    if action is not None:
+        _scale_pose_location_fcurves(action, (sx, sy, sz))
     meshes = collect_meshes(armature)
     bpy.ops.object.select_all(action="DESELECT")
     armature.select_set(True)
@@ -413,8 +441,7 @@ def export_monster_glb(
         strip_child_translation_and_scale=strip_child_channels,
         rebase_clip_starts=True,
     )
-    if used_fbx2gltf_sk:
-        apply_fbx2gltf_scene_root_x90(work_path)
+    # scene_root_x90 is for legacy broken Blender-FBX exports only; FBX2glTF SK is upright (see INDEPENDENT_REVIEW §2.2).
 
     if checkpoint_dir is not None:
         shutil.copy2(work_path, output)
@@ -437,7 +464,7 @@ def export_monster_glb(
             "stripped_channels": removed,
             "kept_channels": kept,
             "rebased_clips": rebased,
-            "scene_root_x90": used_fbx2gltf_sk,
+            "scene_root_x90": False,
         },
     }
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")

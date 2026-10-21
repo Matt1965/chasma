@@ -1,204 +1,176 @@
-"""Validation for Option B FBX2glTF exports."""
+"""Export gate for monster GLBs (asset-agnostic).
+
+Hard errors (export fails):
+- skinning invariants: one influence set, weights sum to 1, joint indices in range, IBM present
+- translation invariance: skinning 300 m from the origin must equal skinning at the origin plus
+  the offset (the renderer-facing form of the weight-sum defect)
+- expected clips missing
+- merged clip keys differ from the source clip GLBs (merge must be verbatim)
+
+Warnings (recorded in the manifest, never block):
+- rest pose vs mesh-node placement (authored per-mesh bind offsets are legitimate)
+- translation range vs skeleton extent (large root motion is legitimate for some clips)
+- animated skinning deviation per clip (informational; authored motion can be large)
+"""
 
 from __future__ import annotations
 
-import math
-import struct
+import random
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from glb_sanitize_animations import load_glb
+from gltf_skin_influences import read_accessor
+from skin_eval import (
+    DEFAULT_WORLD_OFFSET,
+    animation_duration,
+    evaluate_pose,
+    global_matrices,
+    pose_at,
+    skin_invariants,
+    translation_invariance,
+)
+
+TRANSLATION_INVARIANCE_LIMIT_M = 0.001
+REST_DEVIATION_WARN_M = 0.02
+SOURCE_AGREEMENT_SAMPLES_PER_CLIP = 12
+SOURCE_AGREEMENT_TOLERANCE = 1e-5
 
 
-def _acc(gltf, blob, i, fmt):
-    a = gltf["accessors"][i]
-    bv = gltf["bufferViews"][a["bufferView"]]
-    off = bv.get("byteOffset", 0) + a.get("byteOffset", 0)
-    size = struct.calcsize(fmt)
-    stride = bv.get("byteStride", size)
-    return [struct.unpack_from(fmt, blob, off + k * stride) for k in range(a["count"])]
-
-
-def _qmul(a, b):
-    ax, ay, az, aw = a
-    bx, by, bz, bw = b
-    return (
-        aw * bx + ax * bw + ay * bz - az * by,
-        aw * by - ax * bz + ay * bw + az * bx,
-        aw * bz + ax * by - ay * bx + az * bw,
-        aw * bw - ax * bx - ay * by - az * bz,
-    )
-
-
-def _qrot(q, v):
-    x, y, z, w = q
-    vx, vy, vz = v
-    cx = y * vz - z * vy
-    cy = z * vx - x * vz
-    cz = x * vy - y * vx
-    return (
-        vx + 2 * (w * cx + y * cz - z * cy),
-        vy + 2 * (w * cy + z * cx - x * cz),
-        vz + 2 * (w * cz + x * cy - y * cx),
-    )
-
-
-def rest_world(gltf):
-    parent = {}
-    for i, n in enumerate(gltf["nodes"]):
-        for c in n.get("children", []):
-            parent[c] = i
-    cache = {}
-
-    def wm(i):
-        if i in cache:
-            return cache[i]
-        n = gltf["nodes"][i]
-        t = tuple(n.get("translation", [0, 0, 0]))
-        r = tuple(n.get("rotation", [0, 0, 0, 1]))
-        s = tuple(n.get("scale", [1, 1, 1]))
-        if i in parent:
-            pt, pr, ps = wm(parent[i])
-            wt = tuple(pt[k] + c for k, c in enumerate(_qrot(pr, tuple(t[k] * ps[k] for k in range(3)))))
-            cache[i] = (wt, _qmul(pr, r), tuple(ps[k] * s[k] for k in range(3)))
-        else:
-            cache[i] = (t, r, s)
-        return cache[i]
-
-    return {i: wm(i) for i in range(len(gltf["nodes"]))}
-
-
-def translation_scale_diagnostic(gltf, blob, skip_rm: bool = True) -> dict[str, Any]:
-    joints = set()
-    for s in gltf.get("skins", []):
-        joints.update(s["joints"])
-    wp = rest_world(gltf)
-    pts = [wp[j][0] for j in joints]
-    ext = max(max(p[k] for p in pts) - min(p[k] for p in pts) for k in range(3))
-    worst = (0.0, None, None)
-    for a in gltf.get("animations", []):
-        name = a.get("name") or ""
-        if skip_rm and name.endswith("_RM"):
-            continue
-        for ch in a["channels"]:
-            tgt = ch["target"]
-            if tgt["path"] != "translation" or tgt.get("node") not in joints:
-                continue
-            vals = _acc(gltf, blob, a["samplers"][ch["sampler"]]["output"], "<fff")
-            pp = max(max(v[k] for v in vals) - min(v[k] for v in vals) for k in range(3))
-            if pp > worst[0]:
-                worst = (pp, name, gltf["nodes"][tgt["node"]].get("name"))
-    ratio = worst[0] / ext if ext else float("inf")
+def clip_completeness(expected: list[str], gltf: dict) -> dict[str, Any]:
+    have = {a.get("name") for a in gltf.get("animations", [])}
     return {
-        "skeleton_extent_m": ext,
-        "worst_translation_pp_m": worst[0],
-        "ratio": ratio,
+        "expected_count": len(expected),
+        "have_count": len(have),
+        "missing": sorted(set(expected) - have),
+        "extra": sorted(have - set(expected)),
+    }
+
+
+def translation_range_diagnostic(gltf: dict, blob: bytes) -> dict[str, Any]:
+    joints: set[int] = set()
+    for skin in gltf.get("skins", []):
+        joints.update(skin["joints"])
+    rest = evaluate_rest_joint_positions(gltf, blob, joints)
+    extent = float((rest.max(axis=0) - rest.min(axis=0)).max()) if len(rest) else 0.0
+    worst = (0.0, None, None)
+    for anim in gltf.get("animations", []):
+        for channel in anim["channels"]:
+            target = channel["target"]
+            if target["path"] != "translation" or target.get("node") not in joints:
+                continue
+            values = read_accessor(gltf, blob, anim["samplers"][channel["sampler"]]["output"]).astype(np.float64)
+            span = float((values.max(axis=0) - values.min(axis=0)).max())
+            if span > worst[0]:
+                worst = (span, anim.get("name"), gltf["nodes"][target["node"]].get("name"))
+    return {
+        "skeleton_extent_m": extent,
+        "worst_translation_span_m": worst[0],
         "clip": worst[1],
         "joint": worst[2],
-        "red_flag": ratio > 1.0,
+        "ratio": (worst[0] / extent) if extent else None,
     }
 
 
-def orientation_diagnostic(gltf) -> dict[str, Any]:
-    names = {n.get("name"): i for i, n in enumerate(gltf["nodes"])}
-    wp = rest_world(gltf)
-    spine = None
-    for pelvis, head in (("Bufomorph_ Pelvis", "Bufomorph_ Head"), ("Muscomorph_Body", "Muscomorph_Head")):
-        if pelvis in names and head in names:
-            a, b = wp[names[pelvis]][0], wp[names[head]][0]
-            v = tuple(b[k] - a[k] for k in range(3))
-            ln = math.sqrt(sum(c * c for c in v)) or 1.0
-            spine = tuple(c / ln for c in v)
-            break
-    if spine is None:
-        return {"spine_axis": None, "upright_ok": None}
-    up_dot = spine[1]
-    return {"spine_axis": spine, "up_dot_y": up_dot, "upright_ok": up_dot > 0.85}
+def evaluate_rest_joint_positions(gltf: dict, blob: bytes, joints: set[int]) -> np.ndarray:
+    pose = pose_at(gltf, blob, None, 0.0)
+    globals_ = global_matrices(gltf, pose, np.eye(4))
+    return np.array([globals_[j][:3, 3] for j in sorted(joints)]) if joints else np.zeros((0, 3))
 
 
-def clip_completeness(expected: list[str], gltf) -> dict[str, Any]:
-    have = {a.get("name") for a in gltf.get("animations", [])}
-    missing = sorted(set(expected) - have)
-    extra = sorted(have - set(expected))
-    return {"expected_count": len(expected), "have_count": len(have), "missing": missing, "extra": extra}
+def _channel_index(gltf: dict) -> dict[tuple[str, str, str], dict]:
+    out: dict[tuple[str, str, str], dict] = {}
+    for anim in gltf.get("animations", []):
+        for channel in anim["channels"]:
+            target = channel["target"]
+            node = target.get("node")
+            if node is None:
+                continue
+            key = (anim.get("name"), gltf["nodes"][node].get("name"), target["path"])
+            out[key] = anim["samplers"][channel["sampler"]]
+    return out
 
 
-def sample_channel_at(gltf, blob, anim_name: str, node_name: str, path: str, t: float):
-    names = {n.get("name"): i for i, n in enumerate(gltf["nodes"])}
-    if node_name not in names:
-        return None
-    ni = names[node_name]
-    anim = next((a for a in gltf["animations"] if a.get("name") == anim_name), None)
-    if not anim:
-        return None
-    for ch in anim["channels"]:
-        if ch["target"].get("node") != ni or ch["target"]["path"] != path:
-            continue
-        s = anim["samplers"][ch["sampler"]]
-        times = [v[0] for v in _acc(gltf, blob, s["input"], "<f")]
-        fmt = "<fff" if path != "rotation" else "<ffff"
-        vals = _acc(gltf, blob, s["output"], fmt)
-        k = min(range(len(times)), key=lambda j: abs(times[j] - t))
-        return vals[k], times[k]
-    return None
+def source_agreement(merged_gltf: dict, merged_blob: bytes, clip_glbs: dict[str, Path], seed: int = 7) -> dict[str, Any]:
+    """Sampled channels in the merged GLB must equal the FBX2glTF clip GLB values exactly."""
+    merged_index = _channel_index(merged_gltf)
+    rng = random.Random(seed)
+    mismatches: list[str] = []
+    checked = 0
+    for clip_name, clip_path in sorted(clip_glbs.items()):
+        cg, cb = load_glb(clip_path)
+        source_anim_name = cg["animations"][0].get("name")
+        source_index = _channel_index(cg)
+        keys = [k for k in source_index if k[0] == source_anim_name and (clip_name, k[1], k[2]) in merged_index]
+        rng.shuffle(keys)
+        for key in keys[:SOURCE_AGREEMENT_SAMPLES_PER_CLIP]:
+            src = read_accessor(cg, cb, source_index[key]["output"]).astype(np.float64)
+            dst = read_accessor(merged_gltf, merged_blob, merged_index[(clip_name, key[1], key[2])]["output"]).astype(np.float64)
+            checked += 1
+            if src.shape != dst.shape or float(np.abs(src - dst).max()) > SOURCE_AGREEMENT_TOLERANCE:
+                mismatches.append(f"{clip_name}/{key[1]}/{key[2]}")
+    return {"channels_checked": checked, "mismatches": mismatches}
 
 
-def compare_merged_to_clip_source(
-    merged_path: Path,
-    clip_glbs: dict[str, Path],
-    samples: list[tuple[str, str, str, float]],
-) -> list[dict[str, Any]]:
-    mg, mb = load_glb(merged_path)
-    rows = []
-    for clip, node, path, t in samples:
-        merged = sample_channel_at(mg, mb, clip, node, path, t)
-        cg, cb = load_glb(clip_glbs[clip])
-        src_anim = cg["animations"][0]["name"]
-        src = sample_channel_at(cg, cb, src_anim, node, path, t)
-        if merged is None or src is None:
-            rows.append({"clip": clip, "node": node, "path": path, "error": "missing channel"})
-            continue
-        mv, _ = merged
-        sv, _ = src
-        delta = max(abs(mv[i] - sv[i]) for i in range(len(mv)))
-        rows.append({"clip": clip, "node": node, "path": path, "t": t, "delta": delta, "ok": delta < 1e-4})
-    return rows
-
-
-def validate_export(
-    glb_path: Path,
-    expected_clips: list[str],
-    clip_glbs: dict[str, Path] | None = None,
-) -> dict[str, Any]:
+def validate_export(glb_path: Path, expected_clips: list[str], clip_glbs: dict[str, Path] | None = None) -> dict[str, Any]:
     gltf, blob = load_glb(glb_path)
-    report = {
-        "glb": str(glb_path),
-        "translation_diagnostic": translation_scale_diagnostic(gltf, blob),
-        "orientation": orientation_diagnostic(gltf),
-        "clips": clip_completeness(expected_clips, gltf),
-    }
-    errors = []
-    if report["translation_diagnostic"]["red_flag"]:
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    invariants = skin_invariants(gltf, blob)
+    errors.extend(invariants["issues"])
+
+    invariance = translation_invariance(gltf, blob, DEFAULT_WORLD_OFFSET)
+    if invariance["max_error_m"] > TRANSLATION_INVARIANCE_LIMIT_M:
         errors.append(
-            f"translation ratio {report['translation_diagnostic']['ratio']:.1f} > 1.0 "
-            f"({report['translation_diagnostic']['clip']} / {report['translation_diagnostic']['joint']})"
+            f"skinning depends on world position: {invariance['max_error_m']:.3f} m error at offset "
+            f"{DEFAULT_WORLD_OFFSET} ({invariance['primitive']}) - weights/joints are not renderer-consistent"
         )
-    if report["orientation"]["upright_ok"] is False:
-        errors.append(f"rest spine axis not upright: {report['orientation']['spine_axis']}")
-    if report["clips"]["missing"]:
-        errors.append(f"missing clips: {report['clips']['missing']}")
+
+    rest_rows = evaluate_pose(gltf, blob, pose_at(gltf, blob, None, 0.0), DEFAULT_WORLD_OFFSET)
+    rest_max = max((r["max_dev_m"] for r in rest_rows), default=0.0)
+    if rest_max > REST_DEVIATION_WARN_M:
+        worst = max(rest_rows, key=lambda r: r["max_dev_m"])
+        warnings.append(
+            f"rest pose differs from mesh-node placement by {rest_max:.3f} m ({worst['primitive']}); "
+            "authored per-mesh bind offset, renders identically in Unity"
+        )
+
+    clip_rows: list[dict[str, Any]] = []
+    for anim in gltf.get("animations", []):
+        duration = animation_duration(gltf, blob, anim)
+        rows = evaluate_pose(gltf, blob, pose_at(gltf, blob, anim, duration * 0.5), DEFAULT_WORLD_OFFSET)
+        clip_rows.append({"clip": anim.get("name"), "max_dev_m": max((r["max_dev_m"] for r in rows), default=0.0)})
+
+    clips = clip_completeness(expected_clips, gltf)
+    if clips["missing"]:
+        errors.append(f"missing clips: {clips['missing']}")
+
+    translation = translation_range_diagnostic(gltf, blob)
+    if translation["ratio"] is not None and translation["ratio"] > 1.0:
+        warnings.append(
+            f"translation span {translation['worst_translation_span_m']:.2f} m exceeds skeleton extent "
+            f"{translation['skeleton_extent_m']:.2f} m ({translation['clip']} / {translation['joint']})"
+        )
+
+    agreement = None
     if clip_glbs:
-        samples = [
-            ("IdleLookAround", "Bufomorph_", "translation", 0.35),
-            ("BiteAttack", "Bufomorph_", "translation", 0.35),
-            ("IdleLookAround", "Bufomorph_JawUpper", "rotation", 0.0),
-        ]
-        if not any(n in {x.get("name") for x in gltf["nodes"]} for n in ("Bufomorph_",)):
-            samples = [("BiteAttack", "Muscomorph_Body", "translation", 0.35)]
-        report["source_agreement"] = compare_merged_to_clip_source(glb_path, clip_glbs, samples)
-        for row in report["source_agreement"]:
-            if row.get("ok") is False:
-                errors.append(f"source mismatch {row}")
-    report["complete"] = len(errors) == 0
-    report["errors"] = errors
-    return report
+        agreement = source_agreement(gltf, blob, clip_glbs)
+        if agreement["mismatches"]:
+            errors.append(f"merged channels differ from source clip GLBs: {agreement['mismatches'][:6]}")
+
+    return {
+        "glb": str(glb_path),
+        "skin_invariants": invariants,
+        "translation_invariance": {**invariance, "limit_m": TRANSLATION_INVARIANCE_LIMIT_M},
+        "rest_skinning": {"max_dev_m": rest_max, "warn_m": REST_DEVIATION_WARN_M, "primitives": rest_rows},
+        "clip_skinning": clip_rows,
+        "clips": clips,
+        "translation_diagnostic": translation,
+        "source_agreement": agreement,
+        "warnings": warnings,
+        "errors": errors,
+        "complete": not errors,
+    }

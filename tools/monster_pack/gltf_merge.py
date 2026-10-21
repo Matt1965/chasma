@@ -1,4 +1,8 @@
-"""glTF-level merge of FBX2glTF clip GLBs into the FBX2glTF SK GLB (Option B)."""
+"""glTF-level merge of FBX2glTF clip GLBs into the FBX2glTF SK GLB.
+
+Channels are copied verbatim by node name. Keys are never re-anchored, clamped, or stripped;
+if a clip disagrees with the SK bind pose that is a source defect to report, not to hide.
+"""
 
 from __future__ import annotations
 

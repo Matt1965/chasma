@@ -82,7 +82,28 @@ pub fn spawn_dev_preview_units(
 
     let layout = config.chunk_layout();
     let focus = camera.initial_focus;
-    let spawn_plan = build_spawn_plan(&renderable);
+    // `CHASMA_DEV_PREVIEW_UNITS=U-0007,U-0029` overrides the default single preview unit so an
+    // operator (or an agent reading `logs/dev_startup.log`) can start the game with specific
+    // definitions spawned without clicking through the dev UI.
+    let requested: Vec<&UnitDefinition> = std::env::var("CHASMA_DEV_PREVIEW_UNITS")
+        .ok()
+        .map(|raw| {
+            raw.split(',')
+                .map(str::trim)
+                .filter(|id| !id.is_empty())
+                .filter_map(|id| renderable.iter().copied().find(|def| def.id.as_str() == id))
+                .collect()
+        })
+        .unwrap_or_default();
+    let spawn_plan = if requested.is_empty() {
+        build_spawn_plan(&renderable)
+    } else {
+        dev_preview_spawn_offsets(requested.len())
+            .into_iter()
+            .zip(requested)
+            .map(|((offset_x, offset_z), def)| (def, offset_x, offset_z))
+            .collect()
+    };
 
     for (_, offset_x, offset_z) in &spawn_plan {
         let global = Vec3::new(focus.x + offset_x, 0.0, focus.z + offset_z);

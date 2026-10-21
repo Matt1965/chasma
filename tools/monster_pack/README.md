@@ -2,24 +2,22 @@
 
 **Policy:** `AGENTS.md` (Imported asset fidelity) and `IMPORT_FIDELITY.md`.
 
-## Faithful export (Bufomorph and pack creatures)
+## Export (any Unity pack creature)
 
 ```text
-cd C:\BevyFiles\chasma\tools\monster_pack
+cd C:\BevyFiles\chasma-agent-c
 $env:CHASMA_BLENDER_EXE = "C:\BevyFiles\Temp\blender-4.2.3\blender-4.2.3-windows-x64\blender.exe"
-.\run_bufomorph_diagnostics.ps1
+.\tools\monster_pack\export_unity_monster.ps1 `
+  -SourceDir "<pack monster folder>" `
+  -MonsterName Bufomorph `
+  -AnimPrefix Buformorph `
+  -SkFbx "<path>\SK_Buformorph.FBX" `
+  -Output "C:\BevyFiles\chasma-agent-c\assets\units\bufomorph.glb"
 ```
 
-Or single export:
+Pilot (Bufomorph + Muscomorph): `.\tools\monster_pack\run_option_b_pilot.ps1`
 
-```text
-blender --background --python blender_export_monster.py -- ^
-  --source-dir "<pack monster folder>" ^
-  --monster-name Bufomorph ^
-  --anim-prefix Buformorph ^
-  --sk-fbx "<path>\SK_Buformorph.FBX" ^
-  --output "C:\BevyFiles\chasma\assets\units\bufomorph.glb"
-```
+Blender is the only production exporter. `export_monster_fbx2gltf.py` is not used for shipped units.
 
 Post-export **diagnostics only** (does not modify the GLB):
 

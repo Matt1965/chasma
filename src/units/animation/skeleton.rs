@@ -182,7 +182,7 @@ fn log_unit_animation_runtime_identity(
         .unwrap_or_else(|| "<no default weapon>".to_string());
     let workbook = crate::data_import::dev_design_workbook_path();
     let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    info!(
+    let line = format!(
         "unit animation identity: unit `{}` glb `{}` bytes={len} fnv1a64={hash:016x} profile `{}` idle `{idle}` split_bone `{split}` attack_clip `{attack}` workbook `{}` manifest_dir `{}`",
         definition.id.as_str(),
         disk_path.display(),
@@ -190,6 +190,8 @@ fn log_unit_animation_runtime_identity(
         workbook.display(),
         manifest_dir.display(),
     );
+    info!("{line}");
+    crate::logging::append_log_line(crate::logging::DEV_STARTUP_LOG_PATH, "# unit animation", &line);
 }
 
 #[cfg(feature = "dev")]

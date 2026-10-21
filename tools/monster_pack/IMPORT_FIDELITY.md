@@ -2,62 +2,38 @@
 
 Policy: see **Imported asset fidelity** in `AGENTS.md`.
 
-> **Known defects in the current "faithful export path" (2026-10-11 review):** the Blender merge
-> applies cm pose-location fcurves to a metre rig (100x joint translation on 30 of 32 pack GLBs),
-> discards the animation-FBX rest pose (Bufomorph jaw/tongue stay at the open SK bind pose), alters
-> the SK rest skeleton on the FBX2glTF fallback, and `apply_fbx2gltf_scene_root_x90` rolls an
-> already-upright model. Evidence, target process and implementation map:
-> `diagnostics/bufomorph/INDEPENDENT_REVIEW.md`. Prototype tools: `experimental/`.
+Forensics and target process: `diagnostics/bufomorph/INDEPENDENT_REVIEW.md`.
 
-## Option B export path (pilot — Bufomorph, Muscomorph)
+## Production export path (every pack creature)
 
-See `OPTION_B_PILOT.md`. Production entry: `export_monster_fbx2gltf.py`.
+```text
+export_unity_monster.ps1  →  export_monster_fbx2gltf.py
+```
 
-## Legacy Blender merge path (batch recovery until pilot sign-off)
+Steps (generic, no per-creature Blender branches):
 
-1. **Blender merge** — `monster_export_core.export_monster_glb`: import SK + per-clip FBX, merge actions, texture bind, `export_scene.gltf` (GLB).
-2. **No Blender fcurve stripping** unless `--strip-child-channels` (legacy pipelines only).
-3. **GLB post-export** — `finish_glb_post_export`:
-   - **Always:** `rebase_gltf_animation_starts_to_zero` (NLA timeline offset is a demonstrated exporter defect; does not remove motion).
-   - **FBX2glTF SK fallback only:** `apply_fbx2gltf_scene_root_x90` (Godot FBX2glTF drops Blender `io_scene_fbx` armature +90° X; see tyranopode/muscomorph working GLBs).
-4. **Runtime presentation** — Units sheet rotation correction and `ModelComposition` offsets (ADR-128), not internal bone rotation hacks.
+1. **FBX2glTF** — SK and every clip FBX → GLB (same converter, same space).
+2. **glTF merge** — `gltf_merge.merge_clips_into_sk` copies channels by node name and **STEP-fills** un-keyed skin joints from each clip file's node defaults when they differ from the SK bind (Unity poses clip-rig rest for un-keyed bones; required for jaw/tongue).
+3. **Skin influences** — fold `JOINTS_n`/`WEIGHTS_n` into one normalized four-influence set (`gltf_skin_influences.py`).
+4. **Timeline** — `rebase_gltf_animation_starts_to_zero` only.
+5. **Materials** — Unity prefab resolve + `gltf_material_apply.py`.
+6. **Validate** — `export_validate.py` (weight sum, translation invariance, clip completeness).
 
-## Opt-in channel stripping (authorized custom content only)
+Do **not** post-edit inverse bind matrices. Do **not** apply `scene_root_x90` on FBX2glTF SK exports (SK is already Y-up; that roll was compensating a broken Blender round-trip).
 
-`glb_sanitize_animations.py --strip-child-channels` removes child-bone **translation** (except named root bones) and all **scale** animation channels.
+`monster_export_core.py` / Blender remain a **fallback** for assets FBX2glTF cannot read; they are not the production path for shipped pack units.
 
-This is **not** a routine import step. It is **behavior-changing** and permitted only when:
+## Runtime presentation (catalog, not conversion hacks)
 
-1. A pipeline audit documents erroneous exporter data (e.g. cavecrawler direct converter — see `tyranopode/ANIMATION_REPORT.md` on the agent worktree), and
-2. The change is recorded as **authorized custom content** in that audit (not as default monster-pack export).
+- **Rotation correction** on the Units sheet (`asset_sizing.rotation_correction`): gameplay forward-axis adaptation only (typical pack: **Y=180**). If a **Z roll** is required to stand the model up, the GLB bind is still wrong — fix export first, then remove the roll.
+- **Bufomorph (U-0029)** with the FBX2glTF GLB: measured upright with catalog **Y=180, Z=90** until bind hierarchy matches cavecrawler-style SK orientation (see `monster_orientation.verify_presentation_upright`).
+- **ModelComposition** offset Y: ground contact, not jaw/tongue repair.
 
-Default `monster_export_core` / `blender_export_monster.py` must keep `strip_child_channels=false`.
+## Retired workarounds (do not reintroduce)
 
-Each export writes `<output>.export_manifest.json` with per-FBX outcomes and a `complete` flag.
-
-## Removed workarounds (do not reintroduce)
-
-| Operation | Was | Why removed |
-|-----------|-----|-------------|
-| `tuck_skinned_tongue_chain` | Tongue scale collapse + strip tongue channels | Hides bind-pose / clip fidelity issues |
-| `align_armature_root_bone` / `align_bufomorph_body_bind_pose` | Force `root` / `Bufomorph_` rest rotation | Upright without conversion evidence |
-| `strip_root_motion_from_locomotion_clips` | Drop root/body rot/trans on idle/locomotion | Compensated for bind hacks; deletes authored motion |
-| `fix_bufomorph_glb` post-pass | Combined above + scene sink | Superseded by faithful export + runtime offset |
-| Default `sanitize_file` on export | Strip translation/scale channels | No per-asset evidence on bufomorph path |
-
-## Repair map (evidence-driven)
-
-| Symptom | Owner | Repair |
-|---------|-------|--------|
-| Clips start at NLA offset (~10s) | `rebase_gltf_animation_starts_to_zero` | Shift keys to t=0 |
-| SK import fails in Blender; FBX2glTF used | `apply_fbx2gltf_scene_root_x90` | Restore armature object +90° X on scene root |
-| Creature sideways in game | Units sheet + spawn composition | Catalog yaw/pitch/roll; not deform bone edits |
-| Feet floating / buried | `ModelComposition` offset Y | Diagnostic: `bufomorph_glb_helpers.print_recommended_model_offset_y` |
-| Jaw track shorter than idle clip | Re-export from pack | Death-paste guard in `validate_bufomorph_idle_jaw_timing` |
-| Vertex explosion after IBM edit | Re-export from Blender | Never post-edit inverse bind matrices |
-
-## Diagnostics
-
-Checkpoints and headless renders: `run_bufomorph_diagnostics.ps1` writes under `tools/monster_pack/diagnostics/` (not shipped in `assets/`).
-
-Verify orientation separately from mouth/tongue/jaw animation.
+| Removed | Why |
+|---|---|
+| `gltf_unify_skin` on shipped assets | Masked per-mesh IBM conflicts; fix bind at export |
+| `align_bufomorph_body_bind_pose`, tongue tuck, locomotion strip | Symptom suppression |
+| `apply_fbx2gltf_scene_root_x90` on faithful FBX2glTF SK | Rolls an already-upright rig |
+| Blender `merge_action` without clip-rig fill | Drops closed-mouth reference pose |

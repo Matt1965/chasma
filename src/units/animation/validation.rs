@@ -404,10 +404,18 @@ mod tests {
         definition
     }
 
-    /// Pack-authoritative jaw bind pose on idle clips (open mouth is source behavior).
-    const BUFOMORPH_JAW_BIND_ROTATION: [f32; 4] = [
-        -0.8601013,
-        -0.5101233,
+    /// Clip-rig rest jaw rotation on idle (closed mouth). SK bind stays open; merge fills this constant.
+    const BUFOMORPH_IDLE_JAW_ROTATION: [f32; 4] = [
+        0.666_896_16,
+        0.745_150_7,
+        -4.168_088_8e-8,
+        -7.521_016_4e-7,
+    ];
+
+    /// SK mesh bind jaw (open modelling pose) — idle clips must not leave the mesh here at t=0.
+    const BUFOMORPH_SK_BIND_JAW_ROTATION: [f32; 4] = [
+        -0.860_101_3,
+        -0.510_123_3,
         -2.66e-7,
         7.29e-7,
     ];
@@ -422,6 +430,20 @@ mod tests {
             return;
         }
         let (document, buffers, _) = gltf::import(&path).expect("bufomorph glb");
+        let sk_jaw = document
+            .nodes()
+            .find(|n| n.name() == Some("Bufomorph_JawUpper"))
+            .expect("Bufomorph_JawUpper node");
+        let sk_rot = sk_jaw.transform().decomposed().1;
+        let sk_dot = sk_rot
+            .iter()
+            .zip(BUFOMORPH_SK_BIND_JAW_ROTATION)
+            .map(|(a, b)| *a * b)
+            .sum::<f32>();
+        assert!(
+            sk_dot.abs() > 0.999,
+            "SK bind jaw should remain pack open pose, got {sk_rot:?}"
+        );
         let idle = document
             .animations()
             .find(|a| a.name() == Some("IdleLookAround"))
@@ -434,10 +456,10 @@ mod tests {
             0.0,
         )
         .expect("jaw rotation at t=0");
-        for (actual, expected) in jaw_quat.iter().zip(BUFOMORPH_JAW_BIND_ROTATION) {
+        for (actual, expected) in jaw_quat.iter().zip(BUFOMORPH_IDLE_JAW_ROTATION) {
             assert!(
                 (*actual - expected).abs() < 2e-4,
-                "IdleLookAround jaw rotation should match faithful export of pack FBX, got {jaw_quat:?}"
+                "IdleLookAround jaw should use clip-rig closed pose at t=0, got {jaw_quat:?}"
             );
         }
         let breathe = document
@@ -454,7 +476,7 @@ mod tests {
         .expect("IdleBreathe jaw");
         assert!(
             jaw_quat.iter().zip(breathe_jaw).all(|(a, b)| (*a - b).abs() < 1e-5),
-            "IdleLookAround and IdleBreathe share the same authored jaw bind pose"
+            "IdleLookAround and IdleBreathe share the same clip-rig jaw rest"
         );
     }
 
@@ -482,8 +504,8 @@ mod tests {
         .expect("Bufomorph_ translation mid-clip");
         let magnitude = (body_trans[0].powi(2) + body_trans[1].powi(2) + body_trans[2].powi(2)).sqrt();
         assert!(
-            magnitude > 20.0,
-            "BiteAttack must retain pack hip/root motion on Bufomorph_ (got {body_trans:?}, |v|={magnitude})"
+            magnitude > 0.15 && magnitude < 2.0,
+            "BiteAttack hip motion must stay in metres (pack ~0.27 m), not Blender-merge 100x; got {body_trans:?}, |v|={magnitude}"
         );
     }
 
@@ -514,8 +536,12 @@ mod tests {
                 "bufomorph export manifest must report complete=true"
             );
             assert!(
-                manifest_text.contains("\"unique_clips_merged\": 21"),
-                "bufomorph must merge 21 unique clips per export manifest"
+                manifest_text.contains("\"pipeline\": \"fbx2gltf_gltf_merge\""),
+                "bufomorph must be exported via FBX2glTF glTF merge, not Blender merge"
+            );
+            assert!(
+                manifest_text.contains("\"have_count\": 21"),
+                "bufomorph export manifest must list 21 clips"
             );
         }
 
@@ -534,7 +560,10 @@ mod tests {
             "IdleBreathe should be a short idle (~2s), got duration to {clip_end}s"
         );
 
-        if let Some(tongue) = document.nodes().find(|n| n.name() == Some("Tongue1")) {
+        if let Some(tongue) = document
+            .nodes()
+            .find(|n| n.name() == Some("Bufomorph_Tongue1"))
+        {
             let [sx, sy, sz] = tongue.transform().decomposed().2;
             assert!(
                 sx > 0.5 && sy > 0.5 && sz > 0.5,

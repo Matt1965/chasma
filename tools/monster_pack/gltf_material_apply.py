@@ -107,6 +107,10 @@ def apply_materials(glb_path: Path, materials: list[ResolvedMaterial], out_path:
             if name in by_name:
                 reports.append(_apply_one_material_slot(gltf, blob, i, by_name[name]))
         missing_names = [m.material_name for m in materials if m.material_name not in {s.get("name") for s in existing}]
+        if missing_names and len(existing) == 1 and len(materials) == 1 and not reports:
+            # Unity variant materials (e.g. M_Buformorph_Red) often differ from the FBX slot name (M_Buformorph).
+            reports.append(_apply_one_material_slot(gltf, blob, 0, materials[0]))
+            missing_names = []
         if missing_names:
             raise ValueError(f"glTF has no material slots for: {missing_names}")
     else:

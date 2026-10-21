@@ -1,7 +1,6 @@
-# Option B pilot (FBX2glTF + glTF merge)
+# Monster pack export (Bufomorph + Muscomorph pilot)
 
 **Runtime worktree:** `C:\BevyFiles\chasma-agent-c`  
-**Branch:** `agent-c/monster-pack-import`  
 **Owner run command:**
 
 ```text
@@ -9,46 +8,33 @@ cd C:\BevyFiles\chasma-agent-c
 cargo run --features dev
 ```
 
-Confirm the window title shows `agent-c/monster-pack-import @ <sha>` and the log line  
-`unit animation identity: ... workbook ... manifest_dir C:\BevyFiles\chasma-agent-c`.
+## Production path (generic — no per-creature exceptions)
 
-## Pipeline
+1. `export_unity_monster.ps1` runs Blender headless.
+2. `monster_export_core.py` imports the SK FBX (Blender FBX; FBX2glTF SK only if that import has no armature/mesh).
+3. Each clip FBX is imported, **object scale is applied, and pose-bone location fcurves are multiplied by that same scale** (Unity cm → metres). This is the pack-wide converter fix; it is not a Bufomorph special case.
+4. Clips are renamed onto the SK armature. No channel strip, tongue tuck, root-motion strip, or IBM rewrite.
+5. `rebase_gltf_animation_starts_to_zero` only (NLA start offset).
+6. Scene-root +90 X only when the SK itself came through FBX2glTF (Blender FBX already applied armature orientation).
 
-1. `fbx2gltf_util.py` — FBX2glTF **0.13.1** (`tools/monster_pack/bin/`), `--binary`, same settings for SK and clips.
-2. `gltf_merge.py` — copy channels by node name; fill un-keyed skin joints from **clip file** node defaults (STEP).
-3. `rebase_gltf_animation_starts_to_zero` — timeline repair only.
-4. `gltf_unify_skin.py` — all skinned mesh nodes share the fullest skeleton skin (fixes multi-skin FBX2glTF wing/tail spikes in Bevy).
-5. `unity_material_resolve.py` + `gltf_material_apply.py` — prefab `.mat` / texture GUIDs; multi-slot when FBX2glTF SK already has named materials.
-6. `export_validate.py` — translation ratio diagnostic, upright rest pose, clip completeness, sampled source agreement.
+Entry: `export_unity_monster.ps1`  
+Pilot both creatures: `run_option_b_pilot.ps1`
 
-Entry point: `export_monster_fbx2gltf.py`  
-Batch pilot: `run_option_b_pilot.ps1`
+## Why FBX2glTF glTF-merge is not the production path
 
-Each output writes `<name>.export_manifest.json` (sources, merge skips, material slots, validation).
+`export_monster_fbx2gltf.py` keeps FBX2glTF’s per-mesh skins. Those skins disagree on inverse bind matrices for the same bone (`Muscomorph_Body`, `Muscomorph_WingLeft_A`). Bevy then evaluates `joint_global * IBM` with the wrong IBM. Live `logs/dev_startup.log` skin probe on that path:
 
-## Pilot creatures (regenerated)
+- wings / tail: `max_dev=0.000m`
+- body: `max_dev=42m`
+- horns: `max_dev=14m`
+- bufomorph: `max_dev=95m` (joints at scale 1.507, IBM at 1.0)
 
-| Creature | GLB | Bytes (approx) | Catalog rotation |
-|----------|-----|----------------|------------------|
-| Bufomorph | `assets/units/bufomorph.glb` | 15,037,712 | Y=180 only (Z cleared) |
-| Muscomorph | `assets/units/muscomorph.glb` | 68,493,104 | Y=180 (unchanged) |
+That is an exporter/bind contract failure, not a defect in the paid Unity files.
 
-Previous shipped bufomorph retained as `assets/units/bufomorph.glb.pre_option_b_backup` when present.
+`gltf_unify_skin.py` / clip rest-anchoring are not used on the production path.
 
-**Not regenerated:** `cavecrawler.glb` (regression reference).
+## Manual check
 
-## Blender merge path
-
-`monster_export_core.py` / `blender_export_monster.py` remain for batch recovery and cavecrawler-style assets until pilot review; **do not** use them for new pack exports.
-
-## Remaining pack
-
-~30 creatures still on the Blender merge path (`import_manifest.json`). Regenerate only after pilot sign-off.
-
-## Manual runtime verification (owner)
-
-1. Spawn Bufomorph (U-0029): idle mouth closed, attack lunge without underground flip, textures visible.
-2. Spawn Muscomorph (U-0007): crawl/fly clips, wing + body materials.
-3. Spot-check human layered animation and Cavecrawler locomotion unchanged.
-
-Log `unit animation identity` must show `fnv1a64` matching the current `.export_manifest.json` `output_sha256` prefix check (use manifest `output_sha256` full hash vs file).
+1. Spawn Muscomorph (U-0007) and Bufomorph (U-0029): body is a creature, not a ribbon.
+2. `logs/dev_startup.log` `unit animation identity` matches the new GLB size.
+3. Skin probe lines: body `max_dev` on the order of the mesh (centimetres to a couple of metres for authored motion), not tens of metres of spikes.
