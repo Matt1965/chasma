@@ -2,7 +2,10 @@
 
 use bevy::prelude::*;
 
+use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
 use crate::dev::gizmo::SelectedWorldObject;
+use crate::units::input::SelectedUnits;
+use crate::world::{UnitId, WorldData};
 
 /// Pending destructive action awaiting confirmation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -10,6 +13,7 @@ pub enum PendingDeleteTarget {
     Doodad(crate::world::DoodadId),
     Building(crate::world::BuildingId),
     ItemPile(crate::world::ItemPileId),
+    Unit(UnitId),
 }
 
 /// Session-only Selected Object presentation state.
@@ -39,5 +43,29 @@ impl SelectedObjectUiState {
             SelectedWorldObject::Building(id) => Some(PendingDeleteTarget::Building(id)),
             SelectedWorldObject::ItemPile(id) => Some(PendingDeleteTarget::ItemPile(id)),
         };
+    }
+
+    pub fn request_delete_unit(&mut self, unit_id: UnitId) {
+        self.pending_delete = Some(PendingDeleteTarget::Unit(unit_id));
+    }
+
+    /// Returns false when selection no longer matches the armed delete target.
+    pub fn pending_delete_still_valid(
+        pending: PendingDeleteTarget,
+        world_selection: &WorldSelectionState,
+        selected_units: &SelectedUnits,
+        world: &WorldData,
+    ) -> bool {
+        match pending {
+            PendingDeleteTarget::Doodad(id) => world_selection.transform_doodad() == Some(id),
+            PendingDeleteTarget::Building(id) => world_selection.transform_building() == Some(id),
+            PendingDeleteTarget::ItemPile(id) => world_selection.transform_item_pile() == Some(id),
+            PendingDeleteTarget::Unit(unit_id) => {
+                world_selection.category == WorldSelectionCategory::Units
+                    && selected_units.0.len() == 1
+                    && selected_units.0.contains(&unit_id)
+                    && world.get_unit(unit_id).is_some()
+            }
+        }
     }
 }

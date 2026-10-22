@@ -3,7 +3,8 @@
 use bevy::ecs::system::ParamSet;
 use bevy::prelude::*;
 
-use crate::client::selection::{WorldSelectionChange, apply_world_selection};
+use crate::client::selection::{WorldSelectionCategory, WorldSelectionChange, apply_world_selection};
+use crate::ui::gameplay::primary_selected_unit;
 use crate::dev::gizmo::{DevTool, GizmoInputParams, activate_dev_transform_tool, selected_object};
 use crate::dev::inspector::DevBuildingActionParams;
 use crate::simulation::SimulationControlState;
@@ -80,6 +81,12 @@ pub fn handle_selected_object_actions(
             SelectedObjectAction::Delete => {
                 if let Some(target) = selected_object(&gizmo.world_selection) {
                     gizmo.selected_object_ui.request_delete(target);
+                } else if gizmo.world_selection.category == WorldSelectionCategory::Units
+                    && gizmo.selected_units.0.len() == 1
+                {
+                    if let Some(unit_id) = primary_selected_unit(&gizmo.selected_units) {
+                        gizmo.selected_object_ui.request_delete_unit(unit_id);
+                    }
                 }
             }
             SelectedObjectAction::CancelDelete => {
@@ -157,18 +164,11 @@ fn execute_delete(
         tick,
     };
 
-    let selection_params = &mut crate::client::selection::ApplyWorldSelectionParams {
-        world_selection: &mut gizmo.world_selection,
-        selected_units: &mut gizmo.selected_units,
-        hud: None,
-        revision: Some(&mut gizmo.selection_revision),
-    };
-
     match pending {
         PendingDeleteTarget::Doodad(id) => match remove_doodad(&mut gizmo.world, id, Some(occ)) {
             Ok(_) => {
                 gizmo.inspector.last_message = format!("Deleted doodad #{}", id.raw());
-                apply_world_selection(WorldSelectionChange::ClearWorldObject, selection_params);
+                apply_dev_selection_change(gizmo, WorldSelectionChange::ClearWorldObject);
             }
             Err(err) => gizmo.inspector.last_message = format!("Delete failed: {err:?}"),
         },
@@ -183,7 +183,7 @@ fn execute_delete(
                 Some(&inventory_cleanup),
             );
             gizmo.inspector.last_message = format!("Destroyed building #{}", id.raw());
-            apply_world_selection(WorldSelectionChange::ClearWorldObject, selection_params);
+            apply_dev_selection_change(gizmo, WorldSelectionChange::ClearWorldObject);
         }
         PendingDeleteTarget::ItemPile(pile_id) => {
             match dev_remove_entry(
@@ -194,9 +194,38 @@ fn execute_delete(
             ) {
                 Ok(msg) => {
                     gizmo.inspector.last_message = msg;
-                    apply_world_selection(WorldSelectionChange::ClearWorldObject, selection_params);
+                    apply_dev_selection_change(gizmo, WorldSelectionChange::ClearWorldObject);
                 }
                 Err(err) => gizmo.inspector.last_message = err.to_string(),
+            }
+        }
+        PendingDeleteTarget::Unit(unit_id) => {
+            let remaining = gizmo
+                .selected_units
+                .0
+                .iter()
+                .filter(|id| **id != unit_id)
+                .copied()
+                .collect();
+            match crate::world::dev_delete_unit(
+                &mut gizmo.world,
+                unit_id,
+                &gizmo.unit_catalog,
+                &inventory_ctx,
+                tick,
+            ) {
+                Ok(_) => {
+                    gizmo.inspector.last_message = format!("Deleted unit #{}", unit_id.raw());
+                    apply_dev_selection_change(
+                        gizmo,
+                        WorldSelectionChange::ReplaceUnits {
+                            unit_ids: remaining,
+                        },
+                    );
+                }
+                Err(err) => {
+                    gizmo.inspector.last_message = format!("Delete failed: {err:?}");
+                }
             }
         }
     }
@@ -205,4 +234,16 @@ fn execute_delete(
     gizmo.edit.target = None;
     gizmo.edit.mode = DevTool::Select;
     gizmo.edit.cancel_drag();
+}
+
+fn apply_dev_selection_change(gizmo: &mut GizmoInputParams, change: WorldSelectionChange) {
+    apply_world_selection(
+        change,
+        &mut crate::client::selection::ApplyWorldSelectionParams {
+            world_selection: &mut gizmo.world_selection,
+            selected_units: &mut gizmo.selected_units,
+            hud: None,
+            revision: Some(&mut gizmo.selection_revision),
+        },
+    );
 }

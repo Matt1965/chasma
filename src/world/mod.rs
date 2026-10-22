@@ -775,10 +775,10 @@ pub use unit::{
 };
 #[cfg(feature = "dev")]
 pub use unit::{
-    finish_command_resolution_failure, maybe_begin_entrance_traversal_session, maybe_begin_session,
-    record_entrance_interior_first_step, record_entrance_membership_update,
-    record_entrance_opening_legality_probe, record_entrance_pathfinding_probe,
-    record_entrance_transition_probe, record_order_issuance,
+    dev_delete_unit, finish_command_resolution_failure,
+    maybe_begin_entrance_traversal_session, maybe_begin_session, record_entrance_interior_first_step,
+    record_entrance_membership_update, record_entrance_opening_legality_probe,
+    record_entrance_pathfinding_probe, record_entrance_transition_probe, record_order_issuance,
 };
 
 /// Owns the World Data Layer: the authoritative coordinate model (ADR-001),

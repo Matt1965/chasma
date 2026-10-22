@@ -104,3 +104,31 @@ pub fn finalize_unit_removal(
     let _ = world.remove_unit_by_id(unit_id);
     Ok(outcome)
 }
+
+/// Dev Selected Object delete — inventory destroy policy, no corpse (ADR-089 I3).
+#[cfg(feature = "dev")]
+pub fn dev_delete_unit(
+    world: &mut WorldData,
+    unit_id: UnitId,
+    catalog: &UnitCatalog,
+    ctx: &InventoryCatalogCtx<'_>,
+    tick: u64,
+) -> Result<UnitRemovalOutcome, super::death::UnitRemovalError> {
+    if world.get_unit(unit_id).is_none() {
+        return Ok(UnitRemovalOutcome {
+            unit_id,
+            reason: super::death::RemovalReason::DevDeleted,
+            corpse_id: None,
+        });
+    }
+    super::death::cancel_unit_activity_before_removal(world, unit_id);
+    finalize_unit_removal(
+        world,
+        unit_id,
+        super::death::RemovalReason::DevDeleted,
+        catalog,
+        ctx,
+        &CorpseSettings::default(),
+        tick,
+    )
+}

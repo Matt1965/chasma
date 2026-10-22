@@ -1,7 +1,17 @@
 //! Selected Object window tests (Slice 5).
 
 use super::format::{EMPTY_STATE, format_unit_summary, unit_is_player_commandable};
-use super::state::SelectedObjectUiState;
+use super::state::{PendingDeleteTarget, SelectedObjectUiState};
+use crate::client::selection::{WorldSelectionCategory, WorldSelectionState};
+use crate::units::input::SelectedUnits;
+use crate::world::{ChunkLayout, WorldData};
+
+fn test_layout() -> ChunkLayout {
+    ChunkLayout {
+        chunk_size_meters: 256.0,
+        units_per_meter: 1.0,
+    }
+}
 use crate::dev::dev_mode::DevTab;
 use crate::dev::inspector::{ChunkResidencySnapshot, UnitInspectorSnapshot};
 use crate::dev::window::DevWindowId;
@@ -79,6 +89,35 @@ fn multi_unit_summary_shows_count() {
 fn diagnostics_default_collapsed() {
     let state = SelectedObjectUiState::default();
     assert!(!state.diagnostics_expanded);
+}
+
+#[test]
+fn unit_pending_delete_requires_single_matching_selection() {
+    let world = WorldData::new(test_layout());
+    let unit_id = UnitId::new(7);
+    let mut world_selection = WorldSelectionState::default();
+    world_selection.category = WorldSelectionCategory::Units;
+    let mut selected = SelectedUnits::default();
+    selected.set_single(unit_id);
+
+    assert!(!SelectedObjectUiState::pending_delete_still_valid(
+        PendingDeleteTarget::Unit(unit_id),
+        &world_selection,
+        &selected,
+        &world,
+    ));
+
+    let mut ui = SelectedObjectUiState::default();
+    ui.request_delete_unit(unit_id);
+    assert_eq!(ui.pending_delete, Some(PendingDeleteTarget::Unit(unit_id)));
+
+    selected.set_single(UnitId::new(8));
+    assert!(!SelectedObjectUiState::pending_delete_still_valid(
+        PendingDeleteTarget::Unit(unit_id),
+        &world_selection,
+        &selected,
+        &world,
+    ));
 }
 
 #[test]

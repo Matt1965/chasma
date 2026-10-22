@@ -302,7 +302,7 @@ pub fn sync_selected_object_panel(
     unit_catalog: Res<UnitCatalog>,
     requirement_catalog: Res<BuildingFieldRequirementCatalog>,
     inspector: Res<WorldInspectorState>,
-    ui_state: Res<SelectedObjectUiState>,
+    mut ui_state: ResMut<SelectedObjectUiState>,
     blueprint_inspection: Res<crate::dev::BlueprintInspectionState>,
     tool_state: Res<DevToolState>,
     edit: Res<TransformEditState>,
@@ -357,6 +357,17 @@ pub fn sync_selected_object_panel(
 ) {
     let visible = dev_state.enabled && registry.is_visible(DevWindowId::SelectedObject);
 
+    if let Some(pending) = ui_state.pending_delete {
+        if !SelectedObjectUiState::pending_delete_still_valid(
+            pending,
+            &world_selection,
+            &selected_units,
+            &world,
+        ) {
+            ui_state.clear_pending_delete();
+        }
+    }
+
     let show_transform = visible
         && matches!(
             world_selection.category,
@@ -365,12 +376,13 @@ pub fn sync_selected_object_panel(
                 | WorldSelectionCategory::ItemPile
         );
     let show_delete = visible
-        && matches!(
+        && (matches!(
             world_selection.category,
             WorldSelectionCategory::Doodad
                 | WorldSelectionCategory::Building
                 | WorldSelectionCategory::ItemPile
-        );
+        ) || (world_selection.category == WorldSelectionCategory::Units
+            && selected_units.0.len() == 1));
     let show_edit_unit = visible
         && world_selection.category == WorldSelectionCategory::Units
         && selected_units.0.len() == 1

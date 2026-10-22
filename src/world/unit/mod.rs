@@ -134,6 +134,8 @@ pub use placement::UnitPlacement;
 pub use portal_trace::{PortalTransitionEvent, PortalTransitionTrace};
 pub use post_exit_jitter_trace::PostExitJitterTrace;
 pub use record::UnitRecord;
+#[cfg(feature = "dev")]
+pub use removal::dev_delete_unit;
 #[cfg(any(test, feature = "dev"))]
 pub use restore::{
     UnitRestoreError, normalize_restored_unit, restore_unit_record, validate_unit_for_restore,

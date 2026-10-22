@@ -215,6 +215,11 @@ fn detect_and_queue_deaths(world: &mut WorldData, tick: u64, report: &mut UnitDe
     }
 }
 
+/// Cancel tasks, orders, and combat state before authoritative removal (dev delete, death).
+pub fn cancel_unit_activity_before_removal(world: &mut WorldData, unit_id: UnitId) {
+    finalize_dead_unit_side_effects(world, unit_id);
+}
+
 fn finalize_dead_unit_side_effects(world: &mut WorldData, unit_id: UnitId) {
     let mut events = Vec::new();
     cancel_unit_task(world, unit_id, TaskCancelReason::WorkerDied, &mut events);
