@@ -13,7 +13,7 @@ use super::cache::PortraitAppearanceSignature;
 use super::resolve::portrait_render_key_str;
 
 /// Bump when RTT layout / camera fit changes so HUD portraits recapture.
-const PORTRAIT_CAPTURE_PIPELINE_VERSION: u64 = 4;
+const PORTRAIT_CAPTURE_PIPELINE_VERSION: u64 = 5;
 
 /// Equipment slots that can affect a head-and-shoulders portrait.
 pub const PORTRAIT_EQUIPMENT_SLOTS: [EquipmentSlot; 3] = [

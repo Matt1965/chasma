@@ -4,7 +4,9 @@ use bevy::mesh::InheritWeightSystems;
 use bevy::prelude::*;
 
 use crate::units::appearance_presentation::sync_unit_appearance_morphs;
-use crate::units::equipment_presentation::finalize_skinned_equipment_overlays;
+use crate::units::equipment_presentation::{
+    finalize_skinned_equipment_overlays, sync_unit_equipment_morphs,
+};
 use crate::units::animation::UnitAnimationSystems;
 use crate::units::sync::UnitRuntimeSystems;
 
@@ -93,6 +95,8 @@ impl Plugin for UnitPortraitPlugin {
                 (
                     sync_portrait_equipment_presentation,
                     finalize_skinned_equipment_overlays,
+                    sync_unit_appearance_morphs,
+                    sync_unit_equipment_morphs,
                     update_portrait_actor_framing,
                     sync_portrait_capture_camera,
                     suspend_portrait_capture_for_lifecycle_probe,

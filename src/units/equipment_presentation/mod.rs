@@ -15,11 +15,9 @@ mod morph_sync_tests;
 mod tests;
 
 pub use components::{
-    UnitEquipmentMorphConfig, UnitEquipmentSceneRoot, UnitEquipmentSkinnedPending,
-    UnitEquipmentVisual,
+    UnitEquipmentMorphConfig, UnitEquipmentMorphFingerprint, UnitEquipmentSceneRoot,
+    UnitEquipmentSkinnedPending, UnitEquipmentVisual,
 };
-#[cfg(test)]
-pub use components::{UnitEquipmentMorphFingerprint};
 pub use corpse_sync::{
     CorpseEquipmentPresentationIndex, sync_corpse_equipment_presentation,
 };

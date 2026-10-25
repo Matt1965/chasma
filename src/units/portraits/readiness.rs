@@ -1,15 +1,21 @@
 //! Capture gating: portraits commit only when presentation matches authoritative state.
 
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+
 use bevy::mesh::morph::MeshMorphWeights;
+use bevy::mesh::skinning::SkinnedMesh;
 use bevy::prelude::*;
 
 use crate::units::appearance_presentation::sync::{collect_morph_primitives, morph_digest};
 use crate::units::equipment_presentation::{
-    UnitEquipmentSkinnedPending, UnitEquipmentVisual, desired_equipment_presentations_for_unit,
+    UnitEquipmentMorphConfig, UnitEquipmentMorphFingerprint, UnitEquipmentSkinnedPending,
+    UnitEquipmentVisual, desired_equipment_presentations_for_unit,
 };
 use crate::units::equipment_presentation::DesiredEquipmentPresentation;
 use crate::units::UnitAppearanceMorphFingerprint;
 use crate::units::presentation::UnitPresentationAppearance;
+use crate::world::AppearanceParamId;
 use crate::world::{
     AppearanceProfileCatalog, EquipmentVisualCatalog, ItemCatalog, UnitCatalog, UnitDefinition,
     UnitRecord, WorldData, effective_unit_render_key_str,
@@ -40,7 +46,12 @@ pub fn portrait_actor_equipment_ready(
     index: &UnitPortraitEquipmentIndex,
     visuals_alive: &Query<Entity, With<UnitEquipmentVisual>>,
     pending_skinned: &Query<Entity, With<UnitEquipmentSkinnedPending>>,
+    presentation: Option<&UnitPresentationAppearance>,
+    equipment_morph_config: &Query<&UnitEquipmentMorphConfig>,
+    equipment_morph_fingerprint: &Query<&UnitEquipmentMorphFingerprint>,
     children: &Query<&Children>,
+    mesh3d: &Query<&Mesh3d>,
+    skinned: &Query<&SkinnedMesh>,
 ) -> bool {
     for entry in desired {
         let key = (actor, entry.slot);
@@ -57,6 +68,25 @@ pub fn portrait_actor_equipment_ready(
             || descendant_has_component(actor, pending_skinned, children)
         {
             return false;
+        }
+        if count_drawables_under(*visual, children, mesh3d, skinned) == 0 {
+            return false;
+        }
+        if let Ok(config) = equipment_morph_config.get(*visual) {
+            if !config.consumed_morph_params.is_empty() {
+                let Some(presentation) = presentation else {
+                    return false;
+                };
+                let expected = UnitEquipmentMorphFingerprint::from_appearance(
+                    presentation.appearance.profile_id.as_str(),
+                    presentation.appearance.body_variant_id.as_str(),
+                    morph_digest(&presentation.appearance),
+                    consumed_param_digest(&config.consumed_morph_params),
+                );
+                if equipment_morph_fingerprint.get(*visual) != Ok(&expected) {
+                    return false;
+                }
+            }
         }
     }
     for (root, slot) in index.visuals.keys() {
@@ -129,11 +159,14 @@ pub fn portrait_capture_presentation_ready(
     equipment_index: &UnitPortraitEquipmentIndex,
     visuals_alive: &Query<Entity, With<UnitEquipmentVisual>>,
     pending_skinned: &Query<Entity, With<UnitEquipmentSkinnedPending>>,
+    equipment_morph_config: &Query<&UnitEquipmentMorphConfig>,
+    equipment_morph_fingerprint: &Query<&UnitEquipmentMorphFingerprint>,
     presentation: Option<&UnitPresentationAppearance>,
     morph_fingerprint: Option<&UnitAppearanceMorphFingerprint>,
     meshes: &Assets<Mesh>,
     mesh_morph: &Query<&MeshMorphWeights>,
     mesh3d: &Query<&Mesh3d>,
+    skinned: &Query<&SkinnedMesh>,
     children: &Query<&Children>,
 ) -> bool {
     let unit_render_key = match effective_unit_render_key_str(unit, definition, appearance_profiles)
@@ -154,7 +187,12 @@ pub fn portrait_capture_presentation_ready(
         equipment_index,
         visuals_alive,
         pending_skinned,
+        presentation,
+        equipment_morph_config,
+        equipment_morph_fingerprint,
         children,
+        mesh3d,
+        skinned,
     ) && portrait_actor_morphs_ready(
         actor,
         presentation,
@@ -164,6 +202,33 @@ pub fn portrait_capture_presentation_ready(
         mesh3d,
         children,
     )
+}
+
+fn count_drawables_under(
+    root: Entity,
+    children: &Query<&Children>,
+    mesh3d: &Query<&Mesh3d>,
+    skinned: &Query<&SkinnedMesh>,
+) -> u32 {
+    let mut count = 0u32;
+    let mut stack = vec![root];
+    while let Some(entity) = stack.pop() {
+        if mesh3d.get(entity).is_ok() || skinned.get(entity).is_ok() {
+            count += 1;
+        }
+        if let Ok(kids) = children.get(entity) {
+            stack.extend(kids.iter());
+        }
+    }
+    count
+}
+
+fn consumed_param_digest(params: &[AppearanceParamId]) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    for param in params {
+        param.as_str().hash(&mut hasher);
+    }
+    hasher.finish()
 }
 
 fn descendant_has_component<T: Component>(

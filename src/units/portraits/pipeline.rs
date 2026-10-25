@@ -82,6 +82,8 @@ pub struct PortraitCaptureActorQueries<'w, 's> {
     pub equipment_visuals: Query<'w, 's, Entity, With<crate::units::equipment_presentation::UnitEquipmentVisual>>,
     pub animation_pending: Query<'w, 's, Entity, With<AnimationPlaybackPending>>,
     pub pending_skinned: Query<'w, 's, Entity, With<UnitEquipmentSkinnedPending>>,
+    pub equipment_morph_config: Query<'w, 's, &'static crate::units::equipment_presentation::UnitEquipmentMorphConfig>,
+    pub equipment_morph_fingerprint: Query<'w, 's, &'static crate::units::equipment_presentation::UnitEquipmentMorphFingerprint>,
     pub presentation: Query<'w, 's, &'static UnitPresentationAppearance>,
     pub morph_fingerprint: Query<'w, 's, &'static UnitAppearanceMorphFingerprint>,
     pub mesh_morph: Query<'w, 's, &'static bevy::mesh::morph::MeshMorphWeights>,
@@ -519,11 +521,14 @@ pub fn drive_portrait_capture_pipeline(
         &world_params.equipment_index,
         &queries.equipment_visuals,
         &queries.pending_skinned,
+        &queries.equipment_morph_config,
+        &queries.equipment_morph_fingerprint,
         presentation,
         morph_fingerprint,
         &queries.meshes,
         &queries.mesh_morph,
         &queries.mesh3d,
+        &queries.skinned,
         &queries.children,
     ) {
         world_params.capture.render_settle_frames = 0;

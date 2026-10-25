@@ -9,8 +9,12 @@ use crate::ui::gameplay::{
     SquadEntryPortraitImage, primary_selected_unit,
 };
 use crate::units::input::SelectedUnits;
+use crate::world::{
+    AppearanceProfileCatalog, EquipmentVisualCatalog, ItemCatalog, UnitCatalog, UnitId, WorldData,
+};
 
-use super::cache::UnitPortraitCache;
+use super::cache::{PortraitAppearanceSignature, UnitPortraitCache};
+use super::signature::portrait_signature_for_unit;
 use super::diagnostics::{
     PortraitDiagnosticTrace, portrait_diagnostic_step, portrait_diagnostics_show_without_selection,
 };
@@ -99,7 +103,8 @@ pub(crate) fn portrait_image_for_unit(
     studio: &UnitPortraitStudioImages,
     cache: &UnitPortraitCache,
     capture: &UnitPortraitCaptureState,
-    unit_id: Option<crate::world::UnitId>,
+    unit_id: Option<UnitId>,
+    signature: Option<PortraitAppearanceSignature>,
 ) -> Option<Handle<Image>> {
     if let Some(handle) = lifecycle_probe_hud_image(lifecycle, cache, unit_id) {
         return Some(handle);
@@ -108,22 +113,47 @@ pub(crate) fn portrait_image_for_unit(
         1 => Some(studio.checkerboard.clone()),
         2..=6 => Some(studio.live_target.clone()),
         _ => unit_id.and_then(|unit_id| {
-            if let Some(handle) = cache.image_for_unit(unit_id) {
-                return Some(handle.clone());
+            let signature = signature?;
+            if cache.entry_matches(unit_id, &signature) {
+                return cache.image_for_unit(unit_id).cloned();
             }
             capture
                 .active_request
-                .filter(|request| request.unit_id == unit_id)
+                .filter(|request| request.unit_id == unit_id && request.signature == signature)
                 .filter(|_| capture.camera_aligned)
                 .and_then(|_| capture.target_image.clone())
         }),
     }
 }
 
+fn portrait_signature_for_unit_id(
+    world: &WorldData,
+    unit_id: UnitId,
+    unit_catalog: &UnitCatalog,
+    appearance_profiles: &AppearanceProfileCatalog,
+    items: &ItemCatalog,
+    visuals: &EquipmentVisualCatalog,
+) -> Option<PortraitAppearanceSignature> {
+    let unit = world.get_unit(unit_id)?;
+    portrait_signature_for_unit(
+        world,
+        unit,
+        unit_catalog,
+        appearance_profiles,
+        items,
+        visuals,
+    )
+}
+
 /// Shown portrait layers use [`Visibility::Inherited`]: [`Visibility::Visible`] would
 /// ignore a hidden [`crate::ui::gameplay::GameplayHudRoot`] ancestor (menu / pause).
 pub fn sync_selected_unit_portrait_ui(
     hud: Res<PlayerHudState>,
+    world: Res<WorldData>,
+    unit_catalog: Res<UnitCatalog>,
+    appearance_profiles: Res<AppearanceProfileCatalog>,
+    items: Res<ItemCatalog>,
+    equipment_visuals: Res<EquipmentVisualCatalog>,
     world_selection: Res<WorldSelectionState>,
     selection: Res<SelectedUnits>,
     cache: Res<UnitPortraitCache>,
@@ -144,6 +174,16 @@ pub fn sync_selected_unit_portrait_ui(
     demand.primary_unit = primary;
 
     let step = portrait_diagnostic_step();
+    let signature = primary.and_then(|unit_id| {
+        portrait_signature_for_unit_id(
+            &world,
+            unit_id,
+            &unit_catalog,
+            &appearance_profiles,
+            &items,
+            &equipment_visuals,
+        )
+    });
     let cached_image = portrait_image_for_unit(
         step,
         &lifecycle,
@@ -151,6 +191,7 @@ pub fn sync_selected_unit_portrait_ui(
         &cache,
         &capture,
         primary,
+        signature,
     );
     let show_portrait = hud.visible
         && cached_image.is_some()
@@ -192,6 +233,11 @@ pub fn sync_selected_unit_portrait_ui(
 /// are never gated on what (if anything) is selected.
 pub fn sync_squad_portrait_ui(
     hud: Res<PlayerHudState>,
+    world: Res<WorldData>,
+    unit_catalog: Res<UnitCatalog>,
+    appearance_profiles: Res<AppearanceProfileCatalog>,
+    items: Res<ItemCatalog>,
+    equipment_visuals: Res<EquipmentVisualCatalog>,
     cache: Res<UnitPortraitCache>,
     capture: Res<UnitPortraitCaptureState>,
     lifecycle: Res<PortraitLifecycleProbe>,
@@ -203,6 +249,14 @@ pub fn sync_squad_portrait_ui(
 ) {
     let step = portrait_diagnostic_step();
     for (slot, mut image, mut image_visibility) in widgets.p0().iter_mut() {
+        let signature = portrait_signature_for_unit_id(
+            &world,
+            slot.unit_id,
+            &unit_catalog,
+            &appearance_profiles,
+            &items,
+            &equipment_visuals,
+        );
         let handle = portrait_image_for_unit(
             step,
             &lifecycle,
@@ -210,6 +264,7 @@ pub fn sync_squad_portrait_ui(
             &cache,
             &capture,
             Some(slot.unit_id),
+            signature,
         );
         if hud.visible {
             if let Some(handle) = handle {
@@ -232,6 +287,14 @@ pub fn sync_squad_portrait_ui(
                 &cache,
                 &capture,
                 Some(slot.unit_id),
+                portrait_signature_for_unit_id(
+                    &world,
+                    slot.unit_id,
+                    &unit_catalog,
+                    &appearance_profiles,
+                    &items,
+                    &equipment_visuals,
+                ),
             )
             .is_none();
         *fallback_visibility = if show_letter {
