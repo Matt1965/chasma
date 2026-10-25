@@ -23,7 +23,7 @@ use super::resolve::{
     desired_equipment_presentations_for_unit,
 };
 
-fn flat_world() -> WorldData {
+pub(crate) fn flat_world() -> WorldData {
     let mut world = WorldData::new(ChunkLayout {
         chunk_size_meters: 256.0,
         units_per_meter: 1.0,
@@ -107,7 +107,7 @@ fn visual_mapping(
     }
 }
 
-fn test_ctx() -> &'static InventoryCatalogCtx<'static> {
+pub(crate) fn test_ctx() -> &'static InventoryCatalogCtx<'static> {
     static CTX: std::sync::OnceLock<InventoryCatalogCtx<'static>> = std::sync::OnceLock::new();
     CTX.get_or_init(|| {
         let categories = Box::leak(Box::new(
@@ -210,7 +210,10 @@ fn test_ctx() -> &'static InventoryCatalogCtx<'static> {
     })
 }
 
-fn spawn_bandit(world: &mut WorldData, ctx: &InventoryCatalogCtx<'_>) -> crate::world::UnitRecord {
+pub(crate) fn spawn_bandit(
+    world: &mut WorldData,
+    ctx: &InventoryCatalogCtx<'_>,
+) -> crate::world::UnitRecord {
     let catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
     create_unit_with_inventory(
         &catalog,
@@ -225,7 +228,7 @@ fn spawn_bandit(world: &mut WorldData, ctx: &InventoryCatalogCtx<'_>) -> crate::
     .unwrap()
 }
 
-fn equip_unique(
+pub(crate) fn equip_unique(
     world: &mut WorldData,
     ctx: &InventoryCatalogCtx<'_>,
     unit: &crate::world::UnitRecord,
@@ -537,4 +540,38 @@ fn skinned_fit_metadata_does_not_change_runtime_transform() {
     assert_eq!(desired.len(), 1);
     assert_eq!(desired[0].presentation.local_scale, Vec3::ONE);
     assert_eq!(desired[0].presentation.local_translation, Vec3::ZERO);
+}
+
+#[test]
+fn portrait_signature_changes_when_head_equipment_equipped() {
+    use crate::units::portraits::portrait_signature_for_unit;
+    use crate::world::{AppearanceProfileCatalog, UnitCatalog};
+
+    let ctx = test_ctx();
+    let mut world = flat_world();
+    let unit = spawn_bandit(&mut world, ctx);
+    let unit_id = unit.id;
+    let unit_catalog = UnitCatalog::from_definitions(starter_unit_definitions()).unwrap();
+    let appearance_profiles = AppearanceProfileCatalog::empty();
+    let visuals = test_visuals();
+    let bare = portrait_signature_for_unit(
+        &world,
+        world.get_unit(unit_id).unwrap(),
+        &unit_catalog,
+        &appearance_profiles,
+        ctx.items,
+        visuals,
+    )
+    .unwrap();
+    equip_unique(&mut world, ctx, &unit, "test_helmet", EquipmentSlot::Head);
+    let equipped = portrait_signature_for_unit(
+        &world,
+        world.get_unit(unit_id).unwrap(),
+        &unit_catalog,
+        &appearance_profiles,
+        ctx.items,
+        visuals,
+    )
+    .unwrap();
+    assert_ne!(bare.digest, equipped.digest);
 }

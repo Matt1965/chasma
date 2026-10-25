@@ -8,8 +8,8 @@ use bevy::prelude::*;
 
 use crate::camera::render_layers::PORTRAIT_RENDER_LAYER;
 use crate::units::components::UnitRenderMetadata;
-use crate::units::presentation::UnitPresentationAppearance;
 use crate::units::UnitSceneAssets;
+use crate::units::{UnitAppearanceMorphFingerprint, UnitPresentationAppearance};
 use crate::world::{
     AppearanceProfileCatalog, EquipmentVisualCatalog, ItemCatalog, UnitCatalog, UnitId,
     UnitRecord, WorldData, player_units, unit_visual_rotation, unit_visual_scale,
@@ -34,7 +34,9 @@ use super::framing::{
     portrait_generous_framing_from_bounds,
 };
 use super::resolve::{portrait_appearance_for_unit, portrait_render_key_str};
+use super::readiness::portrait_capture_presentation_ready;
 use super::signature::portrait_signature_for_unit;
+use crate::units::equipment_presentation::UnitEquipmentSkinnedPending;
 use super::studio::{
     PORTRAIT_USE_FIXED_STUDIO_CAMERA, new_portrait_render_target_image,
     portrait_studio_camera_transform_head_at,
@@ -42,7 +44,6 @@ use super::studio::{
 use crate::units::AnimationPlaybackPending;
 use super::studio_images::UnitPortraitStudioImages;
 
-const PORTRAIT_WARMUP_FRAMES: u32 = 10;
 const PORTRAIT_RENDER_SETTLE_FRAMES: u32 = 4;
 /// Frames to wait for skinned glTF meshes before using catalog height fallback framing.
 const PORTRAIT_BOUNDS_FALLBACK_FRAMES: u32 = 12;
@@ -59,6 +60,8 @@ pub struct PortraitCaptureWorldParams<'w> {
     pub appearance_profiles: Res<'w, AppearanceProfileCatalog>,
     pub scene_assets: ResMut<'w, UnitSceneAssets>,
     pub asset_server: Res<'w, AssetServer>,
+    pub items: Res<'w, ItemCatalog>,
+    pub equipment_catalog: Res<'w, EquipmentVisualCatalog>,
     pub equipment_index: ResMut<'w, UnitPortraitEquipmentIndex>,
 }
 
@@ -78,6 +81,10 @@ pub struct PortraitCaptureActorQueries<'w, 's> {
     pub meshes: Res<'w, Assets<Mesh>>,
     pub equipment_visuals: Query<'w, 's, Entity, With<crate::units::equipment_presentation::UnitEquipmentVisual>>,
     pub animation_pending: Query<'w, 's, Entity, With<AnimationPlaybackPending>>,
+    pub pending_skinned: Query<'w, 's, Entity, With<UnitEquipmentSkinnedPending>>,
+    pub presentation: Query<'w, 's, &'static UnitPresentationAppearance>,
+    pub morph_fingerprint: Query<'w, 's, &'static UnitAppearanceMorphFingerprint>,
+    pub mesh_morph: Query<'w, 's, &'static bevy::mesh::morph::MeshMorphWeights>,
 }
 
 #[derive(Resource, Debug, Default)]
@@ -270,7 +277,6 @@ pub fn sync_portrait_capture_camera(
     }
     if !capture.camera_aligned {
         capture.camera_aligned = true;
-        capture.warmup_frames_remaining = PORTRAIT_WARMUP_FRAMES;
         capture.render_settle_frames = 0;
     }
 }
@@ -329,6 +335,20 @@ pub fn drive_portrait_capture_pipeline(
     }
 
     let request = world_params.capture.active_request.unwrap();
+
+    if world_params.cache.requested_generation.get(&request.unit_id) != Some(&request.generation) {
+        finish_capture(
+            &mut commands,
+            &mut world_params.capture,
+            &mut world_params.equipment_index,
+            &queries.equipment_visuals,
+            false,
+            &mut world_params.cache,
+            &mut lifecycle,
+            &mut portrait_cameras,
+        );
+        return;
+    }
 
     if world_params.capture.deferred_commit {
         if !world_params.capture.deferred_commit_armed {
@@ -413,6 +433,41 @@ pub fn drive_portrait_capture_pipeline(
         return;
     }
 
+    let Some(unit) = world_params.world.get_unit(request.unit_id) else {
+        finish_capture(
+            &mut commands,
+            &mut world_params.capture,
+            &mut world_params.equipment_index,
+            &queries.equipment_visuals,
+            false,
+            &mut world_params.cache,
+            &mut lifecycle,
+            &mut portrait_cameras,
+        );
+        return;
+    };
+    if !super::readiness::portrait_capture_signature_current(
+        &world_params.world,
+        unit,
+        &world_params.unit_catalog,
+        &world_params.appearance_profiles,
+        &world_params.items,
+        &world_params.equipment_catalog,
+        &request.signature,
+    ) {
+        finish_capture(
+            &mut commands,
+            &mut world_params.capture,
+            &mut world_params.equipment_index,
+            &queries.equipment_visuals,
+            false,
+            &mut world_params.cache,
+            &mut lifecycle,
+            &mut portrait_cameras,
+        );
+        return;
+    }
+
     if queries.framing_measured.get(actor_entity).is_ok() {
         world_params.capture.measured_bounds_ready = true;
     } else if measure_actor_bounds(
@@ -437,14 +492,47 @@ pub fn drive_portrait_capture_pipeline(
         return;
     }
 
-    if world_params.capture.warmup_frames_remaining > 0 {
-        world_params.capture.warmup_frames_remaining -= 1;
-        if world_params.capture.warmup_frames_remaining == 0 {
-            world_params.capture.render_settle_frames = PORTRAIT_RENDER_SETTLE_FRAMES;
-        }
+    let Some(definition) = world_params.unit_catalog.get(&unit.definition_id) else {
+        finish_capture(
+            &mut commands,
+            &mut world_params.capture,
+            &mut world_params.equipment_index,
+            &queries.equipment_visuals,
+            false,
+            &mut world_params.cache,
+            &mut lifecycle,
+            &mut portrait_cameras,
+        );
+        return;
+    };
+    let presentation = queries.presentation.get(actor_entity).ok();
+    let morph_fingerprint = queries.morph_fingerprint.get(actor_entity).ok();
+    if !portrait_capture_presentation_ready(
+        actor_entity,
+        unit,
+        definition,
+        &world_params.world,
+        &world_params.unit_catalog,
+        &world_params.appearance_profiles,
+        &world_params.items,
+        &world_params.equipment_catalog,
+        &world_params.equipment_index,
+        &queries.equipment_visuals,
+        &queries.pending_skinned,
+        presentation,
+        morph_fingerprint,
+        &queries.meshes,
+        &queries.mesh_morph,
+        &queries.mesh3d,
+        &queries.children,
+    ) {
+        world_params.capture.render_settle_frames = 0;
         return;
     }
 
+    if world_params.capture.render_settle_frames == 0 {
+        world_params.capture.render_settle_frames = PORTRAIT_RENDER_SETTLE_FRAMES;
+    }
     if world_params.capture.render_settle_frames > 0 {
         world_params.capture.render_settle_frames -= 1;
         if world_params.capture.render_settle_frames > 0 {

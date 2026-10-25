@@ -5,6 +5,7 @@ mod cache;
 mod components;
 mod diagnostics;
 mod equipment;
+mod readiness;
 mod framing;
 mod lifecycle_probe;
 mod pipeline;
@@ -21,3 +22,6 @@ pub use ui::{
     SelectedUnitPortraitImage, spawn_portrait_plate_layers, sync_selected_unit_portrait_ui,
     sync_squad_portrait_ui,
 };
+
+#[cfg(test)]
+pub use signature::portrait_signature_for_unit;

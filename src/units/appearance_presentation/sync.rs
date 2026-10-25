@@ -164,7 +164,7 @@ pub(crate) fn apply_mesh_morph_weights(
     true
 }
 
-fn morph_digest(appearance: &crate::world::UnitAppearance) -> u64 {
+pub(crate) fn morph_digest(appearance: &crate::world::UnitAppearance) -> u64 {
     let mut hasher = DefaultHasher::new();
     appearance.profile_id.as_str().hash(&mut hasher);
     appearance.body_variant_id.as_str().hash(&mut hasher);

@@ -11,7 +11,6 @@ use crate::units::equipment_presentation::{
     UnitEquipmentMorphConfig, UnitEquipmentSceneRoot, UnitEquipmentSkinnedPending,
     UnitEquipmentVisual, desired_equipment_presentations_for_unit, resolve_socket_bone_entity,
 };
-use crate::units::presentation::UnitPresentationAppearance;
 use crate::units::sync::UnitSyncOverrides;
 use crate::world::equipment::EquipmentPresentationMode;
 use crate::world::{
@@ -45,7 +44,6 @@ pub fn sync_portrait_equipment_presentation(
     overrides: Option<Res<UnitSyncOverrides>>,
     portrait_roots: Query<
         (Entity, &UnitPortraitActor, &UnitRenderMetadata, &UnitPortraitSceneRoot),
-        With<UnitPresentationAppearance>,
     >,
     visuals_alive: Query<Entity, With<UnitEquipmentVisual>>,
     names: Query<&Name>,
