@@ -299,69 +299,19 @@ struct RestorePlan {
         super::relationship_standing_snapshot::SceneRelationshipStandingPersistence,
 }
 
-struct DevWorldEntityBackup {
-    units: Vec<UnitRecord>,
-    doodads: Vec<DoodadRecord>,
-    next_unit_id: u64,
-    next_doodad_id: u64,
-}
-
-impl DevWorldEntityBackup {
-    fn capture(world: &WorldData) -> Self {
-        let units = world
-            .sorted_unit_ids()
-            .into_iter()
-            .filter_map(|id| world.get_unit(id).cloned())
-            .collect();
-        let doodads = world
-            .sorted_doodad_ids()
-            .into_iter()
-            .filter_map(|id| world.get_doodad(id).cloned())
-            .collect();
-        Self {
-            units,
-            doodads,
-            next_unit_id: world.dev_next_unit_id(),
-            next_doodad_id: world.dev_next_doodad_id(),
-        }
-    }
-
-    fn restore(
-        &self,
-        world: &mut WorldData,
-        unit_catalog: &UnitCatalog,
-        doodad_catalog: &DoodadCatalog,
-    ) -> Result<(), SceneApplyError> {
-        world.dev_clear_units_and_doodads();
-        let mut unit_ids = HashSet::new();
-        for unit in &self.units {
-            restore_unit_record(world, unit_catalog, unit.clone(), &mut unit_ids)?;
-        }
-        let mut doodad_ids = HashSet::new();
-        let mut procedural_keys = HashSet::new();
-        for doodad in &self.doodads {
-            restore_doodad_record(
-                world,
-                doodad_catalog,
-                doodad.clone(),
-                &mut doodad_ids,
-                &mut procedural_keys,
-            )?;
-        }
-        world.dev_restore_id_counters(self.next_unit_id, self.next_doodad_id, 1);
-        world
-            .verify_instance_indexes()
-            .map_err(SceneApplyError::IndexConsistencyFailure)?;
-        Ok(())
-    }
-}
-
 /// Clear all unit and doodad instances from world data (dev-only).
 pub fn clear_world_entities(world: &mut WorldData) {
     world.dev_clear_units_and_doodads();
 }
 
-/// Validate and apply a scene through validated restore APIs only (REVIEW-A5).
+/// Dev scene **adapter** for authoritative session loading (Chunk 1B).
+///
+/// Validates and applies a [`SceneDefinition`] through restore/rebuild APIs.
+/// The interchange format is partial; rollback proof uses
+/// [`crate::persistence::AuthoritativeSessionSnapshot`], not scene re-export.
+///
+/// When `simulation_tick` is provided, the full authoritative session (world +
+/// tick) is protected by [`crate::persistence::transactional_session_load`].
 pub fn apply_scene(
     world: &mut WorldData,
     unit_catalog: &UnitCatalog,
@@ -372,6 +322,7 @@ pub fn apply_scene(
     nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
     appearance_profiles: &crate::world::AppearanceProfileCatalog,
     scene: &SceneDefinition,
+    simulation_tick: Option<&mut u64>,
 ) -> Result<SceneApplyReport, SceneApplyError> {
     let plan = build_restore_plan(
         unit_catalog,
@@ -380,18 +331,68 @@ pub fn apply_scene(
         building_catalog,
         scene,
     )?;
-    let backup = DevWorldEntityBackup::capture(world);
-    let started = Instant::now();
 
+    let started = Instant::now();
+    let apply_body = |world: &mut WorldData| {
+        apply_scene_plan(
+            world,
+            unit_catalog,
+            doodad_catalog,
+            building_catalog,
+            footprint_catalog,
+            interior_catalog,
+            nav_catalog,
+            scene,
+            &plan,
+        )
+    };
+
+    let report = if let Some(tick) = simulation_tick {
+        crate::persistence::transactional_session_load(world, tick, apply_body)
+            .map_err(|rolled| rolled.error)?
+    } else {
+        let mut tick = 0u64;
+        crate::persistence::transactional_session_load(world, &mut tick, apply_body)
+            .map_err(|rolled| rolled.error)?
+    };
+
+    let elapsed_ms = started.elapsed().as_millis().min(u64::MAX as u128) as u64;
+    let report = SceneApplyReport {
+        units_loaded: report.units_loaded,
+        doodads_loaded: report.doodads_loaded,
+        buildings_loaded: report.buildings_loaded,
+        world_seed: scene.world_seed,
+        elapsed_ms,
+        transient_state_cleared: true,
+    };
+
+    info!(
+        "dev scene loaded: units={} doodads={} buildings={} seed={} took={}ms transient_cleared=true",
+        report.units_loaded,
+        report.doodads_loaded,
+        report.buildings_loaded,
+        report.world_seed,
+        report.elapsed_ms
+    );
+
+    Ok(report)
+}
+
+/// Applies a validated restore plan (mutates `WorldData` only).
+fn apply_scene_plan(
+    world: &mut WorldData,
+    unit_catalog: &UnitCatalog,
+    doodad_catalog: &DoodadCatalog,
+    building_catalog: &BuildingCatalog,
+    footprint_catalog: &FootprintCatalog,
+    interior_catalog: &InteriorProfileCatalog,
+    nav_catalog: Option<&BuildingNavigationBlueprintCatalog>,
+    scene: &SceneDefinition,
+    plan: &RestorePlan,
+) -> Result<SceneApplyReport, SceneApplyError> {
     world.dev_clear_units_and_doodads();
 
-    let apply_result = apply_restore_plan(world, unit_catalog, doodad_catalog, &plan);
-    if let Err(err) = apply_result {
-        if let Err(rollback_err) = backup.restore(world, unit_catalog, doodad_catalog) {
-            error!("dev scene rollback failed after apply error: {rollback_err}");
-        }
-        return Err(err);
-    }
+    apply_restore_plan(world, unit_catalog, doodad_catalog, plan)?;
 
     let occ = OccupancyCatalogs {
         doodad: doodad_catalog,
@@ -456,26 +457,21 @@ pub fn apply_scene(
         }
     }
 
-    let elapsed_ms = started.elapsed().as_millis().min(u64::MAX as u128) as u64;
-    let report = SceneApplyReport {
+    #[cfg(feature = "dev")]
+    if crate::dev::scenes::test_support::late_apply_failure_active() {
+        return Err(SceneApplyError::InventoryRestore {
+            reason: "injected late apply failure (test)".into(),
+        });
+    }
+
+    Ok(SceneApplyReport {
         units_loaded: plan.units.len() as u32,
         doodads_loaded: plan.doodads.len() as u32,
         buildings_loaded: plan.buildings.len() as u32,
         world_seed: scene.world_seed,
-        elapsed_ms,
+        elapsed_ms: 0,
         transient_state_cleared: true,
-    };
-
-    info!(
-        "dev scene loaded: units={} doodads={} buildings={} seed={} took={}ms transient_cleared=true",
-        report.units_loaded,
-        report.doodads_loaded,
-        report.buildings_loaded,
-        report.world_seed,
-        report.elapsed_ms
-    );
-
-    Ok(report)
+    })
 }
 
 fn build_restore_plan(
@@ -1118,6 +1114,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap();
         assert_eq!(report.units_loaded, 2);
@@ -1152,6 +1149,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap();
         assert_eq!(world.sorted_doodad_ids().len(), 1);
@@ -1200,6 +1198,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap();
         assert_eq!(world.sorted_unit_ids().len(), 2);
@@ -1232,6 +1231,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap_err();
         assert!(matches!(err, SceneApplyError::MissingUnitDefinition { .. }));
@@ -1265,6 +1265,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap_err();
         assert!(matches!(err, SceneApplyError::DuplicateUnitId { .. }));
@@ -1325,6 +1326,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap_err();
         assert!(matches!(
@@ -1358,6 +1360,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene_a,
+            None,
         )
         .unwrap();
         let scene_b = sample_scene(&world);
@@ -1391,6 +1394,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap();
         assert!(world.get_unit(id).is_some());
@@ -1438,6 +1442,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap();
         let record = world.get_building(building_id).unwrap();
@@ -1529,6 +1534,7 @@ mod tests {
             Some(&nav_catalog),
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap();
 
@@ -1609,6 +1615,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap_err();
         assert!(matches!(err, SceneApplyError::BuildingRestore(_)));
@@ -1761,6 +1768,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap();
 
@@ -1876,6 +1884,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap();
 
@@ -1970,6 +1979,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap();
         assert_eq!(
@@ -2083,6 +2093,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap();
 
@@ -2173,6 +2184,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap();
 
@@ -2236,6 +2248,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap();
 

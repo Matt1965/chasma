@@ -129,6 +129,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap();
 
@@ -195,6 +196,7 @@ mod tests {
             None,
             &crate::world::AppearanceProfileCatalog::empty(),
             &scene,
+            None,
         )
         .unwrap();
         assert!(world.get_unit(unit_a).is_some());

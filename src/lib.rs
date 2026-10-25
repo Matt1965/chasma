@@ -20,6 +20,7 @@ pub mod corpses;
 pub mod item_piles;
 pub mod logging;
 pub mod menu;
+pub mod persistence;
 pub mod player;
 pub mod projectiles;
 pub mod settlement_anchors;

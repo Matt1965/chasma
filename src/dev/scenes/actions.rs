@@ -89,6 +89,7 @@ pub fn load_scene_by_id(
         nav_catalog,
         appearance_profiles,
         &scene,
+        None,
     )
     .map_err(|err| err.to_string())
 }

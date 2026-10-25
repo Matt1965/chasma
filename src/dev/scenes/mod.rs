@@ -12,19 +12,21 @@ mod relationship_standing_snapshot;
 mod save;
 mod settlement_state_snapshot;
 mod snapshot;
+#[cfg(feature = "dev")]
+pub mod test_support;
 
 pub use actions::{
     DevSceneRegistry, clear_dev_world, delete_scene, init_dev_scene_registry, load_scene_by_id,
     save_current_world,
 };
 pub use inventory_snapshot::{capture_inventory_persistence, restore_inventory_persistence};
-pub use load::{SceneApplyReport, apply_scene, clear_world_entities};
+pub use load::{SceneApplyError, SceneApplyReport, apply_scene, clear_world_entities};
 pub use registry::{SceneCaptureContext, SceneRegistry, SceneRegistryEntry};
 pub use save::DEV_SCENES_DIR;
 pub use snapshot::{
     SceneAppearanceMorphEntry, SceneDebugFlagsSnapshot, SceneQuat, SceneUnitAppearanceRecord,
-    SceneUnitRecord, SceneUnitSource, SceneUnitState, SceneWorldPosition, SCENE_VERSION,
-    capture_scene,
+    SceneDefinition, SceneUnitRecord, SceneUnitSource, SceneUnitState, SceneWorldPosition,
+    SCENE_VERSION, capture_scene,
 };
 
 #[cfg(test)]
